@@ -1,0 +1,12 @@
+{
+  "name": "extensions/examples/frameworks/crewai",
+  "version": "v1alpha1",
+  "specs": {
+    "agent.researcher.backstory": "You are adept at finding the right candidates by exploring various online resources. Your skill in identifying suitable candidates ensures the best match for job positions.\n",
+    "agent.researcher.goal": "Find potential candidates for the job\n",
+    "agent.researcher.role": "Job Candidate Researcher\n",
+    "inputs.research_candidates_task": "string",
+    "task.research_candidates_task.description": "Conduct thorough research to find potential candidates for the specified job. Utilize various online resources and databases to gather a comprehensive list of potential candidates. Ensure that the candidates meet the job requirements provided.\nJob Requirements: {job_requirements}\n",
+    "task.research_candidates_task.expected_output": "A list of 10 potential candidates with their contact information and brief profiles highlighting their suitability.\n"
+  }
+}

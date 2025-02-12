@@ -1,0 +1,10 @@
+{
+  "name": "extensions/examples/base",
+  "version": "v1alpha1",
+  "specs": {
+    "categories": [
+      "rag",
+      "summarisation"
+    ]
+  }
+}

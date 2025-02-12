@@ -1,0 +1,31 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1alpha1;
+
+import "core/v1alpha1/digest.proto";
+import "google/protobuf/struct.proto";
+
+// Extensions provide dynamic descriptors for an agent data model.
+// For example, security features can be described using extensions.
+//
+// This is an immutable object.
+message Extension {
+  // Name of the extension attached to this agent
+  string name = 1;
+  // Version of the extension attached to this agent
+  string version = 2;
+  // Metadata associated with this extension
+  map<string, string> annotations = 3;
+  // Specs specifies the schema object of this extension
+  google.protobuf.Struct specs = 4;
+  // Digest of the whole object
+  Digest digest = 5;
+}
+
+// Reference to the Extension in the content store
+message ExtensionRef {
+  Digest digest = 1;
+}

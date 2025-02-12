@@ -1,0 +1,11 @@
+{
+  "name": "extensions.directory.cisco.com/examples/crewai",
+  "version": "v1alpha1",
+  "specs": {
+    "agent.<agentname>.backstory": "<backstory>",
+    "agent.<agentname>.goal": "<goal>",
+    "agent.<agentname>.role": "<role>",
+    "task.<taskname>.description": "<description>",
+    "task.<taskname>.expected_output": "<expected_output>"
+  }
+}

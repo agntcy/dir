@@ -1,0 +1,8 @@
+{
+  "name": "extensions/examples/frameworks/crewai",
+  "version": "v1alpha1",
+  "specs": {
+    "purpose": "To streamline the recruitment process by identifying, matching, and engaging potential job candidates for specified job roles.",
+    "workflows": "[Research potential candidates for a job using online resources., Match candidates to job roles and score them based on their fit., Develop and implement outreach strategies to engage selected candidates., Compile and present reports on the best candidates to recruiters.]"
+  }
+}

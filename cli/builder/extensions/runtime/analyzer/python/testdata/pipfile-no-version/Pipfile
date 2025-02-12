@@ -1,0 +1,12 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+Django = "==4.*"
+waitress = {version = "*", markers="sys_platform == 'win32'"}
+gunicorn = {version = "*", markers="sys_platform == 'linux'"}
+
+[dev-packages]
+pytest-cov = "==3.*"

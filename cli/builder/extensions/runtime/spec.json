@@ -1,0 +1,17 @@
+{
+  "name": "extensions.directory.cisco.com/examples/runtime",
+  "version": "v1alpha1",
+  "specs": {
+    "language": "<language-name>",
+    "version": "<language-version>",
+    "sbom": {
+      "name": "<sbom-name>",
+      "packages": [
+        {
+          "name": "<pkg-name>",
+          "version": "<pkg-version>"
+        }
+      ]
+    }
+  }
+}

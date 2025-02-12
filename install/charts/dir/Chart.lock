@@ -1,0 +1,6 @@
+dependencies:
+- name: registryserver
+  repository: file://registryserver
+  version: 0.1.0
+digest: sha256:e57966560e0f7729731ffe1e6fb8dcfcd590f5817f49b543be4e705f5d8d5cbb
+generated: "2025-01-20T17:24:05.768452+01:00"

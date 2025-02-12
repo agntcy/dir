@@ -1,0 +1,47 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1alpha1;
+
+import "core/v1alpha1/digest.proto";
+
+// Locator provides actual artifact locators for an agent data model.
+// For example, this can include a reference to a helm chart.
+//
+// This is an immutable object.
+message Locator {
+  // Name of the locator for this agent
+  string name = 1;
+  // Metadata associated with this locator
+  map<string, string> annotations = 2;
+  // Type of the locator
+  LocatorType type = 3;
+  // Source of the locator
+  LocatorSource source = 4;
+  // Digest of the whole object
+  Digest digest = 5;
+}
+
+// Reference to the locator in the content store
+message LocatorRef {
+  Digest digest = 1;
+}
+
+// LocatorSource collects locator source details
+message LocatorSource {
+  // Location URI where this source can be found
+  string url = 1;
+  // Size of the source in bytes pointed by the `url` property
+  uint64 size = 2;
+  // Digest of the source pointed by the `url` property
+  optional Digest digest = 3;
+}
+
+// LocatorType collects supported types for locators
+enum LocatorType {
+  LOCATOR_TYPE_UNSPECIFIED = 0;
+  LOCATOR_TYPE_HELM_CHART = 1;
+  LOCATOR_TYPE_PYTHON_PACKAGE = 2;
+}

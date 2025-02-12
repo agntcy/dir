@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
+regcred:
+  create: false
+
+registryserver:
+  image:
+    repository: ghcr.io/agntcy/dir-registryserver
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: NodePort

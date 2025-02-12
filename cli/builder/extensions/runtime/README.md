@@ -1,0 +1,5 @@
+### Runtime extension
+
+When the agent data model is created from the source code, it is possible to extract more information in order to describe agent's capabilities and constraints. For example, it may be needed to extract programming language details and packages for a given agent to describe its runtime _constraints_. Or, details about the agent's taxonomy may be needed to properly describe its _capabilities_, for example indicating whether an agent can perform network analysis or text summarization tasks. You can read more about agent's capabilities in the [Taxonomy of tasks](taxonomy.md) section. Information contained in this extension can be leveraged by a custom search service implemented in the application layer to provide more detailed search results.
+
+An example extension specification to enable these features is given below.

@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1alpha1;
+
+import "core/v1alpha1/digest.proto";
+import "core/v1alpha1/locator.proto";
+import "core/v1alpha1/extension.proto";
+
+// Data model defines a schema for versioned AI agent content representation.
+// The schema provides a way to describe features, constraints, artifact
+// locators, ownership, or other relevant details of an agent.
+//
+// This is an immutable object.
+message Agent {
+  // Name of the agent
+  string name = 1;
+  // Version of the agent
+  string version = 2;
+  // List of agent’s authors in the form of `author-name <author-email>`
+  repeated string authors = 3;
+  // Additional metadata associated with this agent
+  map<string, string> annotations = 4;
+  // List of source locators where this agent can be found or used from
+  repeated Locator locators = 5;
+  // List of extensions that describe this agent and its capabilities more in depth
+  repeated Extension extensions = 6;
+  // Digest of the whole object
+  Digest digest = 7;
+}
+
+// Reference to the agent in the content store
+message AgentRef {
+  Digest digest = 1;
+}

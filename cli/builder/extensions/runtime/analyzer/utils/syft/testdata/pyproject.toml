@@ -1,0 +1,10 @@
+[tool.poetry]
+name = "simple"
+version = "0.1.0"
+description = "simple using crewAI"
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+crewai = "^0.83.0"
+report = {path = "../../../integrations/report/template/python"}

@@ -1,0 +1,475 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+vars:
+  ## Image config
+  IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agncty" }}'
+  IMAGE_TAG: '{{ .IMAGE_TAG | default "v0.1.0-rc" }}'
+  IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "--set *.platform=linux/amd64,linux/arm64" }}'
+
+  ## Dependency config
+  BIN_DIR: '{{ .ROOT_DIR }}/bin'
+  HELM_VERSION: '3.16.3'
+  HELM_BIN: '{{ .BIN_DIR }}/helm-{{.HELM_VERSION}}'
+  KUBECTL_VERSION: '1.31.3'
+  KUBECTL_BIN: '{{ .BIN_DIR }}/kubectl-{{.KUBECTL_VERSION}}'
+  KIND_VERSION: '0.25.0'
+  KIND_BIN: '{{ .BIN_DIR }}/kind-{{.KIND_VERSION}}'
+  PROTOC_VERSION: '27.1'
+  PROTOC_BIN: '{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}'
+  BUFBUILD_VERSION: '1.49.0'
+  BUFBUILD_BIN: '{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}'
+  GO_VERSION: '1.23.2'
+  MULTIMOD_VERSION: '0.17.0'
+  MULTIMOD_BIN: '{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}'
+  GOLANGCI_LINT_VERSION: '1.63.4'
+  GOLANGCI_LINT_BIN: '{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}'
+  LICENSEI_VERSION: '0.9.0'
+  LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
+
+tasks:
+  default:
+    cmds:
+      - task -l
+
+  ##
+  ## API
+  ##
+  api:gen:
+    desc: Generates API stubs
+    deps:
+      - task: deps:protoc
+      - task: deps:bufbuild
+    dir: ./api
+    # NOTE(ramizpolic): This allows Taskfile YAML parsing to accept '{' as a starting command token.
+    # In translation, this is interpreted as a regular multi-line shell script.
+    cmd: |
+      {{.BUFBUILD_BIN}} dep update
+      {{.BUFBUILD_BIN}} generate
+
+  api:clean:
+    desc: Clean generated API stubs
+    deps:
+      - task: api:clean:go
+      - task: api:clean:js
+    cmds:
+      - echo "Success"
+
+  api:clean:go:
+    desc: Clean generated Golang API stubs
+    dir: ./api/stubs/go
+    cmds:
+      - find . \( -name "*.pb.go" -o -name "*_grpc.pb.go" -o -name "*.pb.gw.go" \) -type f -delete
+
+  api:clean:js:
+    desc: Clean generated JavaScript API stubs
+    dir: ./api/stubs/js
+    cmds:
+      - find . -type f -delete
+
+  ##
+  ## CLI
+  ##
+  cli:compile:
+    desc: Compile CLI binaries
+    dir: ./cli/cmd
+    vars:
+      GOOS: '{{ .GOOS | default OS }}'
+      GOARCH: '{{ .GOARCH | default ARCH }}'
+      BINARY_NAME: '{{ .BINARY_NAME | default "dirctl" }}'
+      OUT_DIR: '{{ .ROOT_DIR }}/bin'
+    cmds:
+      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -extldflags -static" -o {{.OUT_DIR}}/{{.BINARY_NAME}} main.go
+
+  cli:compile:all:
+    desc: Compile CLI client binaries for multiple platforms
+    cmds:
+      - for:
+          matrix:
+            OS: ["linux", "darwin"]
+            ARCH: ["amd64", "arm64"]
+        cmd: GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dirctl-{{.ITEM.OS}}-{{.ITEM.ARCH}} task cli:compile
+
+  ##
+  ## Registry
+  ##
+  registry:build:
+    desc: Build Registry server image
+    cmds:
+      - docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-registryserver
+
+  registry:test:
+    desc: Unit test Registry code
+    dir: ./registry
+    cmds:
+      - go -C ./client test ./...
+      - go -C ./server test ./...
+      - go -C ./types test ./...
+
+  registry:start:
+    desc: Start Registry server
+    cmds:
+      - |
+        docker run -d --rm \
+          --name dir-registryserver \
+          -p 8888:8888 \
+          {{.IMAGE_REPO}}/dir-registryserver:{{.IMAGE_TAG}}
+
+  ##
+  ## Dependencies
+  ##
+  deps:
+    desc: Install dependencies
+    cmds:
+      - task: deps:helm
+      - task: deps:kubectl
+      - task: deps:kind
+      - task: deps:protoc
+      - task: deps:bufbuild
+
+  deps:bin-dir:
+    desc: Create bin directory
+    internal: true
+    run: once
+    cmd: mkdir -p {{.BIN_DIR}}
+    status:
+      - test -d {{.BIN_DIR}}
+
+  deps:helm:
+    desc: Ensure supported Helm version is installed
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which curl
+      - which tar
+    cmds:
+      - cmd: echo "Downloading Helm v{{.HELM_VERSION}}..."
+      - cmd: curl -sSfL 'https://get.helm.sh/helm-v{{.HELM_VERSION}}-{{OS}}-{{ARCH}}.tar.gz' --output - | tar xzvOf - '{{OS}}-{{ARCH}}/helm' > {{.HELM_BIN}}
+      - cmd: chmod +x {{.HELM_BIN}}
+    status:
+      - test -x {{.HELM_BIN}}
+
+  deps:kubectl:
+    desc: Ensure supported kubectl version is installed
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which curl
+    cmds:
+      - cmd: echo "Downloading Kubectl v{{.KUBECTL_VERSION}}..."
+      - cmd: curl -L "https://dl.k8s.io/release/v{{.KUBECTL_VERSION}}/bin/{{OS}}/{{ARCH}}/kubectl" -o {{.KUBECTL_BIN}}
+      - cmd: chmod +x {{.KUBECTL_BIN}}
+    status:
+      - test -x {{.KUBECTL_BIN}}
+
+  deps:kind:
+    desc: Ensure supported kind version is installed
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which go
+    cmds:
+      - cmd: echo "Downloading Kind v{{.KIND_VERSION}}..."
+      - cmd: GOBIN={{.BIN_DIR}} go install sigs.k8s.io/kind@v{{.KIND_VERSION}}
+      - cmd: mv {{.BIN_DIR}}/kind {{.KIND_BIN}}
+    status:
+      - test -x {{.KIND_BIN}}
+
+  deps:protoc:
+    desc: Ensure supported Protoc version and plugins are installed
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which go
+      - which curl
+      - which unzip
+    vars:
+      ARCH_TYPE: '{{ if eq ARCH "arm64" }}aarch_64{{ else if eq ARCH "amd64" }}x86_64{{else if eq ARCH "s390x"}}x390_64{{ else }}{{ARCH}}{{ end }}'
+      OS_VARIANT: '{{ if eq OS "darwin" }}osx-universal_binary{{ else if eq OS "windows" }}win64{{else}}linux-{{.ARCH_TYPE}}{{ end }}'
+    cmds:
+      - cmd: echo "Downloading Protoc v{{.PROTOC_VERSION}}..."
+      - cmd: |
+             curl -sL https://github.com/protocolbuffers/protobuf/releases/download/v{{.PROTOC_VERSION}}/protoc-{{.PROTOC_VERSION}}-{{.OS_VARIANT}}.zip -o {{.BIN_DIR}}/tmp.zip
+             unzip -j {{.BIN_DIR}}/tmp.zip "bin/protoc" -d {{.BIN_DIR}}
+             mv {{.BIN_DIR}}/protoc {{.PROTOC_BIN}}
+             rm {{.BIN_DIR}}/tmp.zip
+      - cmd: chmod +x {{.PROTOC_BIN}}
+      - cmd: echo "Downloading go plugins for protoc..."
+      - cmd: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+      - cmd: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+      - cmd: go install github.com/NathanBaulch/protoc-gen-cobra@latest
+    status:
+      - test -x {{.PROTOC_BIN}}
+
+  deps:bufbuild:
+    desc: Ensure supported bufbuild version is installed
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which curl
+    vars:
+      ARCH_TYPE: '{{ if eq ARCH "amd64" }}x86_64{{ else }}{{ARCH}}{{ end }}'
+    cmds:
+      - cmd: echo "Downloading BufBuild v{{.BUFBUILD_VERSION}}..."
+      - cmd: |
+          curl -L "https://github.com/bufbuild/buf/releases/download/v{{.BUFBUILD_VERSION}}/buf-{{OS}}-{{.ARCH_TYPE}}" -o {{.BUFBUILD_BIN}}
+      - cmd: chmod +x {{.BUFBUILD_BIN}}
+    status:
+      - test -x {{.BUFBUILD_BIN}}
+
+  deps:tidy:
+    desc: Ensure dependencies are up-to-date
+    vars:
+      GO_MOD_DIR:
+        sh: find . -name go.mod -exec dirname {} \;
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: go -C {{.ITEM}} mod tidy -go={{.GO_VERSION}}
+
+  deps:multimod-bin:
+    desc: Build the multimod binary
+    deps:
+      - deps:bin-dir
+    vars:
+      MULTIMOD_REPO_DIR: '{{ .BIN_DIR }}/opentelemetry-go-build-tools'
+    cmds:
+      - git clone https://github.com/open-telemetry/opentelemetry-go-build-tools --branch multimod/v{{.MULTIMOD_VERSION}} {{.MULTIMOD_REPO_DIR}}
+      - go build -C {{.MULTIMOD_REPO_DIR}}/multimod -o {{.MULTIMOD_BIN}} main.go
+      - rm -rf {{.MULTIMOD_REPO_DIR}}
+    status:
+      - test -x {{.MULTIMOD_BIN}}
+
+  deps:golangci-lint:
+    desc: Install golangci-lint
+    deps:
+      - deps:bin-dir
+    cmds:
+      - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v{{.GOLANGCI_LINT_VERSION}}
+      - mv {{.BIN_DIR}}/golangci-lint {{.GOLANGCI_LINT_BIN}}
+      - chmod +x {{.GOLANGCI_LINT_BIN}}
+    status:
+      - test -x {{.GOLANGCI_LINT_BIN}}
+
+  deps:licensei:
+    desc: Install licensei
+    deps:
+      - deps:bin-dir
+    cmds:
+      - curl -sfL https://raw.githubusercontent.com/goph/licensei/master/install.sh | bash -s v{{.LICENSEI_VERSION}}
+      - mv {{.BIN_DIR}}/licensei {{.LICENSEI_BIN}}
+      - chmod +x {{.LICENSEI_BIN}}
+    status:
+      - test -x {{.LICENSEI_BIN}}
+
+  ##
+  ## Storage: OCI Registry
+  ##
+  oci:start:
+    desc: Start local OCI registry node
+    vars:
+      IMAGE: ghcr.io/project-zot/zot-minimal-linux-{{ARCH}}:v2.1.1
+    cmds:
+      - docker run -it --rm -d -p 5000:5000 --name oci-registry {{.IMAGE}}
+
+  oci:stop:
+    desc: Stop local OCI registry node
+    cmds:
+      - docker stop oci-registry
+
+  ##
+  ## General: Code
+  ##
+  gen:
+    desc: Generate code for all components
+    cmds:
+      - task: api:gen
+
+  ##
+  ## General: Images
+  ##
+  build:
+    desc: Build images for all components
+    cmds:
+      - docker buildx bake {{.IMAGE_BAKE_OPTS}}
+
+  pull:
+    desc: Pull images for all components
+    cmds:
+      - |
+        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          echo "Pulling image: $image"
+          docker pull $image
+        done
+
+  push:
+    desc: Build and push images for all components
+    prompt:
+      - Are you sure you want to push the images to remote registry?
+    cmds:
+      - docker buildx bake {{.IMAGE_BAKE_OPTS}} --set=*.output=type=registry
+
+  release:
+    desc: Release images for all components with release tag tag
+    prompt:
+      - Are you sure you want to push the images to remote registry?
+    vars:
+      RELEASE_TAG: '{{ .RELEASE_TAG | default "v0.0.0-dev" }}'
+    cmds:
+      # TODO: use buildx to simplify
+      - |
+        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          release_image="${image%%:*}:{{.RELEASE_TAG}}"
+          skopeo copy --multi-arch all docker://$image docker://$release_image
+        done
+
+  ##
+  ## General: Testing
+  ##
+  test:unit:
+    desc: Run unit tests on codebase
+    deps: # run in parallel
+      - registry:test
+    cmds:
+      - echo "Success"
+
+  test:e2e:
+    desc: Run end-to-end tests
+    deps:
+      - cli:compile
+    cmds:
+      # TODO Skip kubernetes setup for now
+      # - defer: { task: test:kubernetes-env:cleanup }
+      # # Bootstrap
+      # # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
+      # - task: test:kubernetes-env:bootstrap
+      - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
+
+  test:kubernetes-env:bootstrap:
+    internal: true
+    desc: Bootstrap Kubernetes test environment
+    deps:
+      - deps:helm
+      - deps:kubectl
+      - deps:kind
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
+      KIND_CREATE_OPTS:   '{{ .KIND_CREATE_OPTS | default "" }}'
+      # Helm args
+      HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
+    cmds:
+      # TODO: make logic idempotent so that running functional tests does not change previous contexts
+
+      # Create ephemeral cluster
+      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
+      - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
+
+      # Check cluster status
+      - '{{ .KUBECTL_BIN }} cluster-info'
+
+      # Import images
+      - |
+        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
+        done
+
+      # Deploy chart
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --set registryserver.image.tag="{{ .IMAGE_TAG }}" \
+          --namespace {{ .HELM_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+      # Port-forward dependency services
+      - |
+        {{ .KUBECTL_BIN }} port-forward service/dir-registryserver  8888:8888   -n {{ .HELM_NAMESPACE }} &
+
+      # Delay to ensure services are online
+      - sleep 10
+
+  test:kubernetes-env:cleanup:
+    internal: true
+    desc: Cleanup Kubernetes test environment
+    deps:
+      - deps:kind
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
+    cmds:
+      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
+
+  ##
+  ## Release
+  ##
+
+  release:verify:
+    desc: Verify release readiness
+    deps:
+      - task: deps:multimod-bin
+    cmds:
+      - '{{ .MULTIMOD_BIN }} verify'
+
+  release:prepare:
+    desc: Prepare release
+    deps:
+      - task: deps:multimod-bin
+    cmds:
+      - '{{ .MULTIMOD_BIN }} prerelease --all-module-sets --skip-go-mod-tidy=true --commit-to-different-branch=false'
+
+  ##
+  ## Linters
+  ##
+
+  lint:go:
+    desc: Run Golang linters
+    deps:
+      - task: deps:golangci-lint
+    vars:
+      GO_MOD_DIR:
+        sh: find . -name go.mod -exec dirname {} \;
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: echo "Running golangci-lint in {{.ITEM}}" && (cd {{.ITEM}} && {{.GOLANGCI_LINT_BIN}} run --timeout 5m)
+
+  lint:buf:
+    desc: Run Buf linters
+    deps:
+      - task: deps:protoc
+      - task: deps:bufbuild
+    dir: ./api
+    cmds:
+      - '{{.BUFBUILD_BIN}} lint'
+
+  lint:
+    desc: Run all linters
+    deps:
+      - lint:go
+      - lint:buf
+
+  ##
+  ## License
+  ##
+  license:check:
+    desc: Check licenses
+    deps:
+      - task: deps:licensei
+    vars:
+      GO_MOD_DIR:
+        sh: find . -name go.mod -exec dirname {} \;
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} check --config {{.ROOT_DIR}}/.licensei.toml

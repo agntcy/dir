@@ -1,0 +1,25 @@
+# Secrets
+.env
+.envrc
+
+# Builds
+bin/
+
+# Python
+__pycache__/
+.venv/
+
+# JS
+node_modules
+
+# Helm
+install/charts/dir/charts/
+
+# MacOS
+.DS_Store
+
+# Test output
+e2e/tmp/*
+agent_model.json
+
+.vscode/

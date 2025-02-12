@@ -1,0 +1,11 @@
+{
+  "name": "extensions.directory.cisco.com/examples/categories",
+  "version": "v1alpha1",
+  "specs": {
+    "categories": [
+      "<category1>",
+      "<category2>",
+      "<category3>"
+    ]
+  }
+}

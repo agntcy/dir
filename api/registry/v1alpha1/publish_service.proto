@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package registry.v1alpha1;
+
+import "google/protobuf/empty.proto";
+import "registry/v1alpha1/object.proto";
+
+// Defines an interface for object publishing service
+// to provide mutable referencing for immutable data.
+//
+// Required for the Announce and Discover API.
+//
+// This is a namespaced service: <registry>/<owner>/<repo>
+service PublishService {
+  // Create creates a new named record for an object.
+  rpc Publish(PublishRequest) returns (google.protobuf.Empty);
+  // Delete removes an existing named record of an object.
+  rpc Unpublish(Record) returns (google.protobuf.Empty);
+  // Resolve performs lookup operation for the requested record
+  // and returns associated object reference.
+  rpc Resolve(Record) returns (ObjectRef);
+}
+
+message Record {
+  string name = 1;
+}
+
+message PublishRequest {
+  // Record to create
+  Record record = 1;
+
+  // Object to associate with the tag
+  ObjectRef ref = 2;
+}

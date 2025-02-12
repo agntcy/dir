@@ -1,0 +1,12 @@
+{
+  "name": "extensions.directory.cisco.com/examples/base",
+  "version": "v1alpha1",
+  "specs": {
+    "authors": [
+      "<author1>",
+      "<author2>",
+      "<author3>"
+    ],
+    "created_at": "<datetime>"
+  }
+}

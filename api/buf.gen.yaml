@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
+version: v2
+managed:
+  enabled: true
+  disable:
+    - module: buf.build/googleapis/googleapis
+  override:
+    # Overrides for Golang package stubs
+    - file_option: go_package_prefix
+      value: github.com/agntcy/dir/api
+plugins:
+  # Stubs for Golang
+  - remote: buf.build/protocolbuffers/go:v1.28.1
+    out: stubs/go
+    opt: paths=source_relative
+  - remote: buf.build/grpc/go:v1.5.1
+    out: stubs/go
+    opt: paths=source_relative,require_unimplemented_servers=false,use_generic_streams_experimental=false
+  - remote: buf.build/grpc-ecosystem/gateway:v2.26.0
+    out: stubs/go
+    opt:
+      - paths=source_relative
+      - generate_unbound_methods=true

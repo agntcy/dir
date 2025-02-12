@@ -1,0 +1,18 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1alpha1;
+
+// A digest of content
+message Digest {
+  DigestType type = 1;
+  bytes value = 2;
+}
+
+// List of supported digest types
+enum DigestType {
+  DIGEST_TYPE_UNSPECIFIED = 0;
+  DIGEST_TYPE_SHA256 = 1;
+}

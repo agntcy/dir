@@ -1,0 +1,48 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package registry.v1alpha1;
+
+import "core/v1alpha1/digest.proto";
+
+// ObjectType specifies supported objects by type
+enum ObjectType {
+  OBJECT_TYPE_UNSPECIFIED = 0;
+  OBJECT_TYPE_CUSTOM = 1;
+  OBJECT_TYPE_LOCATOR = 2;
+  OBJECT_TYPE_EXTENSION = 3;
+  OBJECT_TYPE_AGENT = 4;
+}
+
+message ObjectMeta {
+  // Arbitrary type specifier of this object
+  ObjectType type = 1;
+
+  // Arbitrary name specifier of this object.
+  // This can be associated with type for more details.
+  string name = 2;
+
+  // Annotations contains arbitrary metadata
+  map<string, string> annotations = 3;
+
+  // Digest associated with this object
+  core.v1alpha1.Digest digest = 4;
+}
+
+message Object {
+  // Metadata associated with this object
+  ObjectMeta metadata = 1;
+
+  // Size in bytes of data
+  uint64 size = 2;
+
+  // Raw contents of the object
+  bytes data = 3;
+}
+
+// Reference to an object by its digest
+message ObjectRef {
+  core.v1alpha1.Digest digest = 1;
+}

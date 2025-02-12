@@ -1,0 +1,11 @@
+{
+  "name": "extensions/examples/base",
+  "version": "v1alpha1",
+  "specs": {
+    "authors": [
+      "Jane Doe",
+      "John Doe"
+    ],
+    "created_at": "2025-01-31T08:55:13Z"
+  }
+}
