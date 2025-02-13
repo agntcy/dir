@@ -39,7 +39,7 @@ Main software components:
 
 ### Golang Packages
 
-See https://pkg.go.dev/agntcy/dir
+See https://pkg.go.dev/github.com/agntcy/dir
 
 ### Binaries
 
