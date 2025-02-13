@@ -12,7 +12,7 @@ provenance, integrity and ownership.
 - _Build Kit_ - Provides a development kit to facilitate generation of data models from different sources.
 - _Extensions_ - Supports model and build extensions to enrich agent records for custom use-cases.
 - _Announce_ - Enables publication of agent records to the network.
-- _Discover_ - Allows listening of agent records publication events from the network.
+- _Discover_ - Listen and retreive agent record published on the network.
 - _Search_ - Supports searching of agent records across the network that satisfy given attributes and constraints.
 - _Security_ - Relies on well-known security principles to provide data provenance, integrity and ownership.
 
