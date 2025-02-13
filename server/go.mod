@@ -8,7 +8,7 @@ replace (
 
 require (
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
-	github.com/agntcy/dir/api v0.0.0-00010101000000-000000000000
+	github.com/agntcy/dir/api v0.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/spf13/afero v1.11.0
