@@ -11,9 +11,9 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.0.3
+	github.com/agntcy/dir/api v0.1.0
 	github.com/agntcy/dir/cli v0.0.0-00010101000000-000000000000
-	github.com/agntcy/dir/client v0.0.0-00010101000000-000000000000
+	github.com/agntcy/dir/client v0.1.0
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.0
 )
