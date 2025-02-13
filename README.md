@@ -8,12 +8,12 @@ provenance, integrity and ownership.
 
 ## Features
 
-- _Standards_ - Defines standard schema for data representation and exchange of agentic apps.
-- _Build Kit_ - Provides a development kit to facilitate generation of data models from different sources.
-- _Extensions_ - Supports model and build extensions to enrich agent records for custom use-cases.
-- _Announce_ - Enables publication of agent records to the network.
-- _Discover_ - Listen and retreive agent records published on the network.
-- _Search_ - Supports searching of agent records across the network that satisfy given attributes and constraints.
+- _Standards_ - Defines standard schema for data representation and exchange.
+- _Dev Kit_ - Tooling to facilitate API interaction and generation of agent data models from different sources.
+- _Extensions_ - Supports model schema and build extensions to enrich agent data models for custom use-cases.
+- _Announce_ - Enables publication of records to the network.
+- _Discover_ - Listen and retreive records published on the network.
+- _Search_ - Supports searching of records across the network that satisfy given attributes and constraints.
 - _Security_ - Relies on well-known security principles to provide data provenance, integrity and ownership.
 
 **NOTE**: This is an alpha version, some features may be missing and breaking changes are expected.
