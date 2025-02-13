@@ -4,7 +4,7 @@
 # Documentation available at: https://docs.docker.com/build/bake/
 
 # Docker build args
-variable "IMAGE_REPO" {default = "ghcr.io/agncty"}
+variable "IMAGE_REPO" {default = "ghcr.io/agntcy"}
 variable "IMAGE_TAG" {default = "v0.1.0-rc"}
 
 function "get_tag" {
@@ -14,7 +14,7 @@ function "get_tag" {
 
 group "default" {
   targets = [
-    "dir-registryserver",
+    "dir-apiserver",
     "dir-ctl",
   ]
 }
@@ -34,14 +34,14 @@ target "docker-metadata-action" {
 }
 
 
-target "dir-registryserver" {
+target "dir-apiserver" {
   context = "."
-  dockerfile = "./registry/server/Dockerfile"
+  dockerfile = "./server/Dockerfile"
   inherits = [
     "_common",
     "docker-metadata-action",
   ]
-  tags = get_tag(target.docker-metadata-action.tags, "${target.dir-registryserver.name}")
+  tags = get_tag(target.docker-metadata-action.tags, "${target.dir-apiserver.name}")
 }
 
 target "dir-ctl" {

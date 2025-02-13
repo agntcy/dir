@@ -5,6 +5,7 @@ package runtime
 
 import (
 	"context"
+	"github.com/agntcy/dir/cli/builder/extensions/runtime/analyzer"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,14 @@ func TestNewRuntime(t *testing.T) {
 }
 
 func TestBuildRuntime(t *testing.T) {
-	expectedSBOM := `{"name":"testdata","packages":[{"name":"crewai","version":"0.83.0"},{"name":"langchain","version":"0.3.14"},{"name":"langchain-openai","version":"0.2.14"}]}`
+	expectedSBOM := analyzer.SBOM{
+		Name: "testdata",
+		Packages: []analyzer.Package{
+			{Name: "crewai", Version: "0.83.0"},
+			{Name: "langchain", Version: "0.3.14"},
+			{Name: "langchain-openai", Version: "0.2.14"},
+		},
+	}
 	expectedLanguage := "python"
 	expectedVersion := ">=3.11,<3.13"
 

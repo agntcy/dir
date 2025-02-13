@@ -58,7 +58,7 @@ jobs:
 
       - name: License
         run: |
-          task license:check
+          task license
         continue-on-error: true # TODO remove this line once license cache is fixed
 
   verify-gen:
@@ -129,7 +129,7 @@ jobs:
     uses: ./.github/workflows/reusable-build-push.yaml
     with:
       bake_target: ${{ matrix.targets }}
-      image_repo: ghcr.io/cisco-eti
+      image_repo: ghcr.io/agntcy
       image_tag: ${{ needs.prepare-build.outputs.image_tag }}
 
   test:
@@ -139,7 +139,7 @@ jobs:
       - build-push
     uses: ./.github/workflows/reusable-test.yaml
     with:
-      image_repo: ghcr.io/cisco-eti
+      image_repo: ghcr.io/agntcy
       image_tag: ${{ needs.prepare-build.outputs.image_tag }}
 
   release:
@@ -151,7 +151,7 @@ jobs:
       - test
     uses: ./.github/workflows/reusable-release.yaml
     with:
-      image_repo: ghcr.io/cisco-eti
+      image_repo: ghcr.io/agntcy
       image_tag: ${{ needs.prepare-build.outputs.image_tag }}
       release_tag: ${{ needs.prepare-build.outputs.release_tag }}
 

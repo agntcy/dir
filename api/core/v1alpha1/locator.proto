@@ -24,11 +24,6 @@ message Locator {
   Digest digest = 5;
 }
 
-// Reference to the locator in the content store
-message LocatorRef {
-  Digest digest = 1;
-}
-
 // LocatorSource collects locator source details
 message LocatorSource {
   // Location URI where this source can be found

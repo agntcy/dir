@@ -27,6 +27,6 @@ version: 0.1.0
 appVersion: "1.16.0"
 
 dependencies:
-  - name: registryserver
+  - name: apiserver
     version: 0.1.0
-    repository: file://registryserver
+    repository: file://apiserver

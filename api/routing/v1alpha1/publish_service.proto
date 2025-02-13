@@ -1,0 +1,41 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package routing.v1alpha1;
+
+import "google/protobuf/empty.proto";
+import "core/v1alpha1/object.proto";
+
+// Defines an interface for publication and retrieval
+// of objects across interconnected network.
+//
+// Required for the Announce and Discover API.
+//
+// This is a namespaced service: <directory>/<owner>/<repo>
+service PublishService {
+  // Create creates a new named record for an object.
+  // Validation is performed based on the associated metadata of referenced object.
+  rpc Publish(PublishRequest) returns (google.protobuf.Empty);
+  // Delete removes an existing named record of an object.
+  rpc Unpublish(Record) returns (google.protobuf.Empty);
+  // Resolve performs lookup operation for the requested record
+  // and returns associated object reference.
+  rpc Resolve(Record) returns (core.v1alpha1.ObjectRef);
+}
+
+message Record {
+  // FQDN name of the record to be published. Examples:
+  //  - agent by tag: /agents/<namespace>/<agent-name>:<agent-tag>
+  //  - agent by digest: /agents/<namespace>/<agent-name>:<agent-digest>
+  string name = 1;
+}
+
+message PublishRequest {
+  // Record to create
+  Record record = 1;
+
+  // Object to associate with the record
+  core.v1alpha1.ObjectRef ref = 2;
+}

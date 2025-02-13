@@ -16,7 +16,7 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "pull",
-	Short: "Pull compiled agent model from registry server",
+	Short: "Pull compiled agent model from Directory",
 	Long: `Usage example:
 
 	# Pull by digest
@@ -29,10 +29,10 @@ var Command = &cobra.Command{
 }
 
 func runCommand(cmd *cobra.Command) error {
-	// Get the registry client from the context.
-	c, ok := util.GetRegistryClientFromContext(cmd.Context())
+	// Get the client from the context.
+	c, ok := util.GetClientFromContext(cmd.Context())
 	if !ok {
-		return fmt.Errorf("failed to get registry client from context")
+		return fmt.Errorf("failed to get client from context")
 	}
 
 	var dig coretypes.Digest

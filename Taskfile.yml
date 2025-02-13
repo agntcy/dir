@@ -5,7 +5,7 @@ version: "3"
 
 vars:
   ## Image config
-  IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agncty" }}'
+  IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   IMAGE_TAG: '{{ .IMAGE_TAG | default "v0.1.0-rc" }}'
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "--set *.platform=linux/amd64,linux/arm64" }}'
 
@@ -30,19 +30,84 @@ vars:
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
 
 tasks:
+  ##
+  ## General
+  ##
   default:
     cmds:
       - task -l
+
+  gen:
+    desc: Generate code for all components
+    cmds:
+      - task: api:gen
+
+  check:
+    desc: Checks for all code violations
+    cmds:
+      - task: lint
+      - task: license
+
+  build:
+    desc: Build images for all components
+    cmds:
+      - docker buildx bake {{.IMAGE_BAKE_OPTS}}
+
+  pull:
+    desc: Pull images for all components
+    cmds:
+      - |
+        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          echo "Pulling image: $image"
+          docker pull $image
+        done
+
+  push:
+    desc: Build and push images for all components
+    prompt:
+      - Are you sure you want to push the images to remote registry?
+    cmds:
+      - docker buildx bake {{.IMAGE_BAKE_OPTS}} --set=*.output=type=registry
+
+  release:
+    desc: Release images for all components with release tag tag
+    prompt:
+      - Are you sure you want to push the images to remote registry?
+    vars:
+      RELEASE_TAG: '{{ .RELEASE_TAG | default "v0.0.0-dev" }}'
+    cmds:
+      # TODO: use buildx to simplify
+      - |
+        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          release_image="${image%%:*}:{{.RELEASE_TAG}}"
+          skopeo copy --multi-arch all docker://$image docker://$release_image
+        done
+
+  release:verify:
+    desc: Verify release readiness
+    deps:
+      - task: deps:multimod-bin
+    cmds:
+      - '{{ .MULTIMOD_BIN }} verify'
+
+  release:prepare:
+    desc: Prepare release
+    deps:
+      - task: deps:multimod-bin
+    cmds:
+      - '{{ .MULTIMOD_BIN }} prerelease --all-module-sets --skip-go-mod-tidy=true --commit-to-different-branch=false'
 
   ##
   ## API
   ##
   api:gen:
     desc: Generates API stubs
+    dir: ./api
     deps:
       - task: deps:protoc
       - task: deps:bufbuild
-    dir: ./api
     # NOTE(ramizpolic): This allows Taskfile YAML parsing to accept '{' as a starting command token.
     # In translation, this is interpreted as a regular multi-line shell script.
     cmd: |
@@ -51,23 +116,15 @@ tasks:
 
   api:clean:
     desc: Clean generated API stubs
-    deps:
-      - task: api:clean:go
-      - task: api:clean:js
-    cmds:
-      - echo "Success"
-
-  api:clean:go:
-    desc: Clean generated Golang API stubs
-    dir: ./api/stubs/go
+    dir: ./api
     cmds:
       - find . \( -name "*.pb.go" -o -name "*_grpc.pb.go" -o -name "*.pb.gw.go" \) -type f -delete
 
-  api:clean:js:
-    desc: Clean generated JavaScript API stubs
-    dir: ./api/stubs/js
+  api:test:
+    desc: Unit test API code
+    dir: ./api
     cmds:
-      - find . -type f -delete
+      - go -C . test ./...
 
   ##
   ## CLI
@@ -92,30 +149,196 @@ tasks:
             ARCH: ["amd64", "arm64"]
         cmd: GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dirctl-{{.ITEM.OS}}-{{.ITEM.ARCH}} task cli:compile
 
-  ##
-  ## Registry
-  ##
-  registry:build:
-    desc: Build Registry server image
+  cli:test:
+    desc: Unit test CLI code
+    dir: ./cli
     cmds:
-      - docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-registryserver
+      - go -C . test ./...
 
-  registry:test:
-    desc: Unit test Registry code
-    dir: ./registry
+  ##
+  ## Client SDK
+  ##
+  client:test:
+    desc: Unit test Client code
+    dir: ./client
     cmds:
-      - go -C ./client test ./...
-      - go -C ./server test ./...
-      - go -C ./types test ./...
+      - go -C . test ./...
 
-  registry:start:
-    desc: Start Registry server
+  ##
+  ## Server
+  ##
+  server:build:
+    desc: Build Directory server image
     cmds:
+      - docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver
+
+  server:start:
+    desc: Start Directory server
+    cmds:
+      # TODO: this should run via golang, not docker
       - |
         docker run -d --rm \
-          --name dir-registryserver \
+          --name dir-apiserver \
           -p 8888:8888 \
-          {{.IMAGE_REPO}}/dir-registryserver:{{.IMAGE_TAG}}
+          {{.IMAGE_REPO}}/dir-apiserver:{{.IMAGE_TAG}}
+
+  server:store:start:
+    desc: Start local OCI registry server for storage
+    vars:
+      IMAGE: ghcr.io/project-zot/zot-minimal-linux-{{ARCH}}:v2.1.1
+    cmds:
+      - docker run -it --rm -d -p 5000:5000 --name oci-registry {{.IMAGE}}
+
+  server:store:stop:
+    desc: Stop local OCI registry node
+    cmds:
+      - docker stop oci-registry
+
+  server:test:
+    desc: Unit test Directory server code
+    dir: ./server
+    cmds:
+      - go -C . test ./...
+
+  ##
+  ## Testing
+  ##
+  test:unit:
+    desc: Run unit tests on codebase
+    deps: # run in parallel
+      - api:test
+      - cli:test
+      - client:test
+      - server:test
+    cmds:
+      - echo "Success"
+
+  test:e2e:
+    desc: Run end-to-end tests
+    deps:
+      - cli:compile
+    cmds:
+      - defer: { task: test:kubernetes-env:cleanup }
+      # Bootstrap
+      # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
+      - task: test:kubernetes-env:bootstrap
+      - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
+
+  test:kubernetes-env:bootstrap:
+    internal: true
+    desc: Bootstrap Kubernetes test environment
+    deps:
+      - deps:helm
+      - deps:kubectl
+      - deps:kind
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
+      KIND_CREATE_OPTS:   '{{ .KIND_CREATE_OPTS | default "" }}'
+      # Helm args
+      HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
+      HELM_ALL_CHART_PATHS: 
+        sh: find . -name Chart.yaml -exec dirname {} \;
+    cmds:
+      # TODO: make logic idempotent so that running functional tests does not change previous contexts
+
+      # Create ephemeral cluster
+      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
+      - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
+
+      # Check cluster status
+      - '{{ .KUBECTL_BIN }} cluster-info'
+
+      # Import images
+      - |
+        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
+        done
+
+      # Add Helm repo
+      - '{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts'
+
+      # Update dependencies
+      - for: { var: HELM_ALL_CHART_PATHS }
+        cmd: 'cd {{ .ITEM }} && {{ .HELM_BIN }} dependency update'
+
+      # Deploy chart
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --namespace {{ .HELM_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+      # Port-forward dependency services
+      - |
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver  8888:8888   -n {{ .HELM_NAMESPACE }} &
+
+      # Delay to ensure services are online
+      - sleep 10
+
+  test:kubernetes-env:cleanup:
+    internal: true
+    desc: Cleanup Kubernetes test environment
+    deps:
+      - deps:kind
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
+    cmds:
+      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
+
+  ##
+  ## Linters
+  ##
+  lint:go:
+    desc: Run Golang linters
+    deps:
+      - task: deps:golangci-lint
+    vars:
+      GO_MOD_DIR:
+        sh: find . -name go.mod -exec dirname {} \;
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: echo "Running golangci-lint in {{.ITEM}}" && (cd {{.ITEM}} && {{.GOLANGCI_LINT_BIN}} run --timeout 5m)
+
+  lint:buf:
+    desc: Run Buf linters
+    deps:
+      - task: deps:protoc
+      - task: deps:bufbuild
+    dir: ./api
+    cmds:
+      - '{{.BUFBUILD_BIN}} lint'
+
+  lint:
+    desc: Run all linters
+    deps:
+      - lint:go
+      - lint:buf
+
+  ##
+  ## License
+  ##
+  license:
+    desc: Check licenses
+    deps:
+      - task: deps:licensei
+    vars:
+      GO_MOD_DIR:
+        sh: find . -name go.mod -exec dirname {} \;
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} check --config {{.ROOT_DIR}}/.licensei.toml
 
   ##
   ## Dependencies
@@ -191,10 +414,10 @@ tasks:
     cmds:
       - cmd: echo "Downloading Protoc v{{.PROTOC_VERSION}}..."
       - cmd: |
-             curl -sL https://github.com/protocolbuffers/protobuf/releases/download/v{{.PROTOC_VERSION}}/protoc-{{.PROTOC_VERSION}}-{{.OS_VARIANT}}.zip -o {{.BIN_DIR}}/tmp.zip
-             unzip -j {{.BIN_DIR}}/tmp.zip "bin/protoc" -d {{.BIN_DIR}}
-             mv {{.BIN_DIR}}/protoc {{.PROTOC_BIN}}
-             rm {{.BIN_DIR}}/tmp.zip
+          curl -sL https://github.com/protocolbuffers/protobuf/releases/download/v{{.PROTOC_VERSION}}/protoc-{{.PROTOC_VERSION}}-{{.OS_VARIANT}}.zip -o {{.BIN_DIR}}/tmp.zip
+          unzip -j {{.BIN_DIR}}/tmp.zip "bin/protoc" -d {{.BIN_DIR}}
+          mv {{.BIN_DIR}}/protoc {{.PROTOC_BIN}}
+          rm {{.BIN_DIR}}/tmp.zip
       - cmd: chmod +x {{.PROTOC_BIN}}
       - cmd: echo "Downloading go plugins for protoc..."
       - cmd: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
@@ -262,214 +485,3 @@ tasks:
       - chmod +x {{.LICENSEI_BIN}}
     status:
       - test -x {{.LICENSEI_BIN}}
-
-  ##
-  ## Storage: OCI Registry
-  ##
-  oci:start:
-    desc: Start local OCI registry node
-    vars:
-      IMAGE: ghcr.io/project-zot/zot-minimal-linux-{{ARCH}}:v2.1.1
-    cmds:
-      - docker run -it --rm -d -p 5000:5000 --name oci-registry {{.IMAGE}}
-
-  oci:stop:
-    desc: Stop local OCI registry node
-    cmds:
-      - docker stop oci-registry
-
-  ##
-  ## General: Code
-  ##
-  gen:
-    desc: Generate code for all components
-    cmds:
-      - task: api:gen
-
-  ##
-  ## General: Images
-  ##
-  build:
-    desc: Build images for all components
-    cmds:
-      - docker buildx bake {{.IMAGE_BAKE_OPTS}}
-
-  pull:
-    desc: Pull images for all components
-    cmds:
-      - |
-        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-        echo "$images" | while read image; do
-          echo "Pulling image: $image"
-          docker pull $image
-        done
-
-  push:
-    desc: Build and push images for all components
-    prompt:
-      - Are you sure you want to push the images to remote registry?
-    cmds:
-      - docker buildx bake {{.IMAGE_BAKE_OPTS}} --set=*.output=type=registry
-
-  release:
-    desc: Release images for all components with release tag tag
-    prompt:
-      - Are you sure you want to push the images to remote registry?
-    vars:
-      RELEASE_TAG: '{{ .RELEASE_TAG | default "v0.0.0-dev" }}'
-    cmds:
-      # TODO: use buildx to simplify
-      - |
-        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-        echo "$images" | while read image; do
-          release_image="${image%%:*}:{{.RELEASE_TAG}}"
-          skopeo copy --multi-arch all docker://$image docker://$release_image
-        done
-
-  ##
-  ## General: Testing
-  ##
-  test:unit:
-    desc: Run unit tests on codebase
-    deps: # run in parallel
-      - registry:test
-    cmds:
-      - echo "Success"
-
-  test:e2e:
-    desc: Run end-to-end tests
-    deps:
-      - cli:compile
-    cmds:
-      # TODO Skip kubernetes setup for now
-      # - defer: { task: test:kubernetes-env:cleanup }
-      # # Bootstrap
-      # # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
-      # - task: test:kubernetes-env:bootstrap
-      - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
-
-  test:kubernetes-env:bootstrap:
-    internal: true
-    desc: Bootstrap Kubernetes test environment
-    deps:
-      - deps:helm
-      - deps:kubectl
-      - deps:kind
-    vars:
-      # Kind args
-      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
-      KIND_CREATE_OPTS:   '{{ .KIND_CREATE_OPTS | default "" }}'
-      # Helm args
-      HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
-      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
-      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
-    cmds:
-      # TODO: make logic idempotent so that running functional tests does not change previous contexts
-
-      # Create ephemeral cluster
-      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
-      - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
-
-      # Check cluster status
-      - '{{ .KUBECTL_BIN }} cluster-info'
-
-      # Import images
-      - |
-        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-        echo "$images" | while read image; do
-          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
-        done
-
-      # Deploy chart
-      - |
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dir \
-          {{ .HELM_CHART_PATH }} \
-          -f {{ .HELM_VALUES_PATH }} \
-          --set registryserver.image.tag="{{ .IMAGE_TAG }}" \
-          --namespace {{ .HELM_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Port-forward dependency services
-      - |
-        {{ .KUBECTL_BIN }} port-forward service/dir-registryserver  8888:8888   -n {{ .HELM_NAMESPACE }} &
-
-      # Delay to ensure services are online
-      - sleep 10
-
-  test:kubernetes-env:cleanup:
-    internal: true
-    desc: Cleanup Kubernetes test environment
-    deps:
-      - deps:kind
-    vars:
-      # Kind args
-      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
-    cmds:
-      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
-
-  ##
-  ## Release
-  ##
-
-  release:verify:
-    desc: Verify release readiness
-    deps:
-      - task: deps:multimod-bin
-    cmds:
-      - '{{ .MULTIMOD_BIN }} verify'
-
-  release:prepare:
-    desc: Prepare release
-    deps:
-      - task: deps:multimod-bin
-    cmds:
-      - '{{ .MULTIMOD_BIN }} prerelease --all-module-sets --skip-go-mod-tidy=true --commit-to-different-branch=false'
-
-  ##
-  ## Linters
-  ##
-
-  lint:go:
-    desc: Run Golang linters
-    deps:
-      - task: deps:golangci-lint
-    vars:
-      GO_MOD_DIR:
-        sh: find . -name go.mod -exec dirname {} \;
-    cmds:
-      - for: { var: GO_MOD_DIR }
-        cmd: echo "Running golangci-lint in {{.ITEM}}" && (cd {{.ITEM}} && {{.GOLANGCI_LINT_BIN}} run --timeout 5m)
-
-  lint:buf:
-    desc: Run Buf linters
-    deps:
-      - task: deps:protoc
-      - task: deps:bufbuild
-    dir: ./api
-    cmds:
-      - '{{.BUFBUILD_BIN}} lint'
-
-  lint:
-    desc: Run all linters
-    deps:
-      - lint:go
-      - lint:buf
-
-  ##
-  ## License
-  ##
-  license:check:
-    desc: Check licenses
-    deps:
-      - task: deps:licensei
-    vars:
-      GO_MOD_DIR:
-        sh: find . -name go.mod -exec dirname {} \;
-    cmds:
-      - for: { var: GO_MOD_DIR }
-        cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} check --config {{.ROOT_DIR}}/.licensei.toml

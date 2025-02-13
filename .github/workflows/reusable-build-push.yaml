@@ -68,6 +68,7 @@ jobs:
             ./docker-bake.hcl
             ${{ steps.metadata.outputs.bake-file }}
           targets: ${{ inputs.bake_target }}
+          provenance: false
           set: |
             *.output=type=registry
             *.cache-from=type=local,src=/tmp/.buildx-cache

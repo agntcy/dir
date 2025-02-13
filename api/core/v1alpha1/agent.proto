@@ -30,8 +30,3 @@ message Agent {
   // Digest of the whole object
   Digest digest = 7;
 }
-
-// Reference to the agent in the content store
-message AgentRef {
-  Digest digest = 1;
-}

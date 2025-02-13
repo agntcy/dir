@@ -4,8 +4,16 @@ go 1.23.2
 
 toolchain go1.23.4
 
+replace (
+	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/cli => ../cli
+	github.com/agntcy/dir/client => ../client
+)
+
 require (
+	github.com/agntcy/dir/api v0.0.3
 	github.com/agntcy/dir/cli v0.0.0-00010101000000-000000000000
+	github.com/agntcy/dir/client v0.0.0-00010101000000-000000000000
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.0
 )
@@ -51,7 +59,6 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.8.0 // indirect
 	github.com/charmbracelet/lipgloss v1.0.0 // indirect
 	github.com/charmbracelet/x/ansi v0.4.5 // indirect
-	github.com/agntcy/dir/api v0.0.3 // indirect
 	github.com/cloudflare/circl v1.3.8 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/containerd v1.7.24 // indirect
@@ -105,6 +112,7 @@ require (
 	github.com/google/pprof v0.0.0-20241029153458-d1b30febd7db // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -207,6 +215,7 @@ require (
 	golang.org/x/tools v0.29.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
@@ -215,9 +224,4 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/client-go v0.31.3 // indirect
-)
-
-replace (
-	github.com/agntcy/dir/api => ../api/stubs/go
-	github.com/agntcy/dir/cli => ../cli
 )

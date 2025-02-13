@@ -5,7 +5,7 @@ syntax = "proto3";
 
 package core.v1alpha1;
 
-// A digest of content
+// A digest of content or globally unique content identifier
 message Digest {
   DigestType type = 1;
   bytes value = 2;

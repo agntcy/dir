@@ -1,3 +1,6 @@
+# IDEs
+.vscode/
+
 # Secrets
 .env
 .envrc
@@ -14,6 +17,7 @@ node_modules
 
 # Helm
 install/charts/dir/charts/
+install/charts/dir/apiserver/charts/
 
 # MacOS
 .DS_Store
@@ -21,5 +25,3 @@ install/charts/dir/charts/
 # Test output
 e2e/tmp/*
 agent_model.json
-
-.vscode/

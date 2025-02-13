@@ -6,18 +6,18 @@ package util
 import (
 	"context"
 
-	"github.com/agntcy/dir/registry/client"
+	"github.com/agntcy/dir/client"
 )
 
 type ClientContextKeyType string
 
-const ClientContextKey ClientContextKeyType = "ContextRegistryClient"
+const ClientContextKey ClientContextKeyType = "ContextDirClient"
 
-func SetRegistryClientForContext(ctx context.Context, c *client.Client) context.Context {
+func SetClientForContext(ctx context.Context, c *client.Client) context.Context {
 	return context.WithValue(ctx, ClientContextKey, c)
 }
 
-func GetRegistryClientFromContext(ctx context.Context) (*client.Client, bool) {
+func GetClientFromContext(ctx context.Context) (*client.Client, bool) {
 	cli, ok := ctx.Value(ClientContextKey).(*client.Client)
 
 	return cli, ok

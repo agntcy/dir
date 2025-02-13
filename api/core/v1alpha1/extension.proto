@@ -24,8 +24,3 @@ message Extension {
   // Digest of the whole object
   Digest digest = 5;
 }
-
-// Reference to the Extension in the content store
-message ExtensionRef {
-  Digest digest = 1;
-}

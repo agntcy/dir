@@ -11,7 +11,6 @@ import (
 	"os"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	registrytypes "github.com/agntcy/dir/api/registry/v1alpha1"
 	"github.com/agntcy/dir/cli/util"
 
 	"github.com/spf13/cobra"
@@ -19,7 +18,7 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "push",
-	Short: "Push compiled agent model to registry server",
+	Short: "Push compiled agent model to Directory server",
 	Long: `Usage example:
 
 	# From file
@@ -38,10 +37,10 @@ var Command = &cobra.Command{
 }
 
 func runCommand(cmd *cobra.Command) error {
-	// Get the registry client from the context.
-	c, ok := util.GetRegistryClientFromContext(cmd.Context())
+	// Get the client from the context.
+	c, ok := util.GetClientFromContext(cmd.Context())
 	if !ok {
-		return fmt.Errorf("failed to get registry client from context")
+		return fmt.Errorf("failed to get client from context")
 	}
 
 	// Create a reader from the file or stdin.
@@ -63,10 +62,9 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	// Define the metadata for the object.
-	meta := &registrytypes.ObjectMeta{
-		Type:        registrytypes.ObjectType_OBJECT_TYPE_AGENT,
-		Name:        agent.Name,
-		Annotations: agent.Annotations,
+	meta, err := agent.ObjectMeta()
+	if err != nil {
+		return fmt.Errorf("failed to get object meta: %w", err)
 	}
 
 	// Use the client's Push method to send the data.
@@ -75,7 +73,7 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to push data: %w", err)
 	}
 
-	fmt.Printf("Pushed data with digest: %v\n", digest.ToString())
+	_, _ = fmt.Fprint(cmd.OutOrStdout(), digest.ToString())
 	return nil
 }
 

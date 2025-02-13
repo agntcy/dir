@@ -4,11 +4,15 @@
 regcred:
   create: false
 
-registryserver:
+apiserver:
   image:
-    repository: ghcr.io/agntcy/dir-registryserver
+    repository: ghcr.io/agntcy/dir-apiserver
     tag: latest
     pullPolicy: IfNotPresent
 
   service:
     type: NodePort
+
+  config:
+    provider: "oci"
+    oci_registry_address: "dir-zot:5000"

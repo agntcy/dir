@@ -6,16 +6,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/agntcy/dir/cli/cmd/build"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
-	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/util"
-	"github.com/agntcy/dir/registry/client"
+	"github.com/agntcy/dir/client"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -25,16 +23,27 @@ var rootCmd = &cobra.Command{
 	Short: "CLI tool to interact with Directory",
 	Long:  ``,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		c, err := client.New()
+		// Set client via context for all requests
+		// TODO: make client config configurable via CLI args
+		c, err := client.New(client.WithDefaultConfig())
 		if err != nil {
-			return fmt.Errorf("failed to create registry client: %w", err)
+			return fmt.Errorf("failed to create client: %w", err)
 		}
 
-		ctx := util.SetRegistryClientForContext(cmd.Context(), c)
+		ctx := util.SetClientForContext(cmd.Context(), c)
 		cmd.SetContext(ctx)
 
 		return nil
 	},
+}
+
+func init() {
+	// TODO register CLI flags
+
+	// Register commands
+	rootCmd.AddCommand(build.Command)
+	rootCmd.AddCommand(pull.Command)
+	rootCmd.AddCommand(push.Command)
 }
 
 func main() {
@@ -50,14 +59,4 @@ func main() {
 
 	// TODO: format commands output to avoid cleanup
 	_, _ = fmt.Fprintf(rootCmd.OutOrStdout(), "\n")
-}
-
-func init() {
-	// TODO register CLI flags
-
-	// Register commands
-	rootCmd.AddCommand(build.Command)
-	rootCmd.AddCommand(pull.Command)
-	rootCmd.AddCommand(push.Command)
-	rootCmd.AddCommand(search.Command)
 }

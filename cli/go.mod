@@ -3,16 +3,16 @@ module github.com/agntcy/dir/cli
 go 1.23.2
 
 replace (
-	github.com/agntcy/dir/api => ../api/stubs/go
-	github.com/agntcy/dir/registry/client => ../registry/client
+	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/client => ../client
 )
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.7.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0
-	github.com/anchore/syft v1.19.0
 	github.com/agntcy/dir/api v0.0.3
-	github.com/agntcy/dir/registry/client v0.0.0-00010101000000-000000000000
+	github.com/agntcy/dir/client v0.0.0-00010101000000-000000000000
+	github.com/anchore/syft v1.19.0
 	github.com/ghetzel/go-stockutil v1.12.3
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pelletier/go-toml v1.9.5

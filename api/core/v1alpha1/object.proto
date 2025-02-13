@@ -1,0 +1,55 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1alpha1;
+
+import "core/v1alpha1/digest.proto";
+
+// ObjectType specifies supported objects by type
+enum ObjectType {
+  OBJECT_TYPE_UNSPECIFIED = 0;
+  OBJECT_TYPE_CUSTOM = 1;
+  OBJECT_TYPE_LOCATOR = 2;
+  OBJECT_TYPE_EXTENSION = 3;
+  OBJECT_TYPE_AGENT = 4;
+}
+
+// ObjectMeta collects common data about an object
+message ObjectMeta {
+  // Arbitrary type specifier of this object.
+  // Predefined types are always processed as JSON objects.
+  ObjectType type = 1;
+
+  // Arbitrary kind specifier of this object.
+  // This value should be used for custom objects to describe their schema.
+  // For existing objects such as agent data models, this value is ignored.
+  string kind = 2;
+
+  // Arbitrary name specifier of this object
+  string name = 3;
+
+  // Annotations contains arbitrary metadata
+  map<string, string> annotations = 4;
+
+  // Digest associated with this object
+  Digest digest = 5;
+}
+
+// Object defines representation schema of an object
+message Object {
+  // Metadata associated with this object
+  ObjectMeta metadata = 1;
+
+  // Size in bytes of data
+  uint64 size = 2;
+
+  // Raw contents of the object
+  bytes data = 3;
+}
+
+// Unique reference to an object by its digest
+message ObjectRef {
+  Digest digest = 1;
+}

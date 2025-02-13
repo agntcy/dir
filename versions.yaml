@@ -7,9 +7,8 @@ module-sets:
     modules:
       - github.com/agntcy/dir/api
       - github.com/agntcy/dir/cli
-      - github.com/agntcy/dir/registry/types
-      - github.com/agntcy/dir/registry/server
-      - github.com/agntcy/dir/registry/client
+      - github.com/agntcy/dir/client
+      - github.com/agntcy/dir/server
 
 excluded-modules:
   - github.com/agntcy/dir/e2e

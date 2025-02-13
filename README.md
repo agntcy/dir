@@ -1,33 +1,61 @@
 # Agent Directory
 
-The Agent Directory (dir) allows publication of information about AI agents via standard data models. 
-It provides standard interfaces to perform publication, 
-discovery based on queries about agent's attributes and constraints, 
-and storage for the data models with basic security features such as provenance and ownership.
+The Agent Directory (dir) allows publication and exchange of information about AI
+agents via standard data models on a distributed peer-to-peer network. 
+It provides standard interfaces to perform publication, discovery based on queries about agent's
+attributes and constraints, and storage for the data models with basic security features such as
+provenance and ownership.
 
 ## Features
 
-- **Standards**: Defines a standard models for agent data representation.
-- **Extensions**: Supports model and build extensions to enrich models with usage-specific data.
-- **Announce**: Enables publication of new agents on the network.
-- **Discover**: Allows listening for the publication of new agents on the network.
-- **Search**: Supports searching of agents across the network that satisfy given attributes and constraints.
-- **Security**: Employs common standards to provide data provenance and ownership.
+- _Standards_ - Defines standard models for AI agent data representation.
+- _Extensions_ - Supports model and build extensions to enrich models with usage-specific data.
+- _Announce_ - Enables publication of new agents on the network.
+- _Discover_ - Allows listening for the publication of new agents on the network.
+- _Search_ - Supports searching of agents across the network that satisfy given attributes and constraints.
+- _Security_ - Employs common standards to provide data provenance and ownership.
+
+**NOTE**: This is an alpha version, some features may be missing and breaking changes are expected.
 
 ## Source tree
 
 Main software components:
 
 - [api](./api) - gRPC specification for models and services
-- [cli](./cli) - tooling for interacting with services
+- [cli](./cli) - command line tooling for interacting with services
+- [cli/builder/extensions](./cli/builder/extensions) - schema specification and tooling for model extensions
+- [client](./client) - client SDK tooling for interacting with services
 - [e2e](./e2e) - end-to-end testing framework
-- [registry](./registry) - distributed services for storage and publication of agents
+- [server](./server) - node implementation for distributed services that provide storage and networking capabilities
 
-## Requirements
+## Prerequisites
 
 - [Taskfile](https://taskfile.dev/)
 - [Docker](https://www.docker.com/)
 - Golang
+
+## Artifacts distribution
+
+### Golang Packages
+
+See https://pkg.go.dev/agntcy/dir
+
+### Binaries
+
+See https://github.com/agntcy/dir/releases
+
+### Container images
+
+```bash
+docker pull ghcr.io/agntcy/dir/dir-ctl:latest
+docker pull ghcr.io/agntcy/dir/dir-apiserver:latest
+```
+
+### Helm charts
+
+```bash
+helm pull ghcr.io/agntcy/dir/helm-charts/dir:latest
+```
 
 ## Development
 
