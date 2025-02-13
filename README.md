@@ -14,7 +14,7 @@ provenance, integrity and ownership.
 - _Announce_ - Enables publication of agent records to the network.
 - _Discover_ - Allows listening of agent records publication events from the network.
 - _Search_ - Supports searching of agent records across the network that satisfy given attributes and constraints.
-- _Security_ - Relies on security to provide data provenance, integrity and ownership.
+- _Security_ - Relies on well-known security principles to provide data provenance, integrity and ownership.
 
 **NOTE**: This is an alpha version, some features may be missing and breaking changes are expected.
 
