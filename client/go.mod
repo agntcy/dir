@@ -7,7 +7,7 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.1.0
+	github.com/agntcy/dir/api v0.1.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/spf13/viper v1.19.0
 	google.golang.org/grpc v1.70.0
