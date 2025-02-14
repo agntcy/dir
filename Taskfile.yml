@@ -41,6 +41,7 @@ tasks:
     desc: Generate code for all components
     cmds:
       - task: api:gen
+      - task: helm:gen
 
   check:
     desc: Checks for all code violations
@@ -239,8 +240,6 @@ tasks:
       HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
       HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
-      HELM_ALL_CHART_PATHS: 
-        sh: find . -name Chart.yaml -exec dirname {} \;
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -257,13 +256,6 @@ tasks:
         echo "$images" | while read image; do
           {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
-
-      # Add Helm repo
-      - '{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts'
-
-      # Update dependencies
-      - for: { var: HELM_ALL_CHART_PATHS }
-        cmd: 'cd {{ .ITEM }} && {{ .HELM_BIN }} dependency update'
 
       # Deploy chart
       - |
@@ -485,3 +477,21 @@ tasks:
       - chmod +x {{.LICENSEI_BIN}}
     status:
       - test -x {{.LICENSEI_BIN}}
+
+  ##
+  ## Helm
+  ##
+  helm:gen:
+    desc: Update Helm dependencies for chart and subcharts
+    deps:
+      - deps:helm
+    vars:
+      HELM_ALL_CHART_PATHS: 
+        sh: find . -name Chart.yaml -exec dirname {} \;
+    cmds:
+      # Add Helm repo
+      - '{{ .HELM_BIN }} repo add project-zot http://zotregistry.dev/helm-charts'
+
+      # Update dependencies
+      - for: { var: HELM_ALL_CHART_PATHS }
+        cmd: 'cd {{ .ITEM }} && {{ .HELM_BIN }} dependency update'
