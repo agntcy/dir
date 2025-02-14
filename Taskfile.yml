@@ -131,14 +131,14 @@ tasks:
   ##
   cli:compile:
     desc: Compile CLI binaries
-    dir: ./cli/cmd
+    dir: ./cli
     vars:
       GOOS: '{{ .GOOS | default OS }}'
       GOARCH: '{{ .GOARCH | default ARCH }}'
       BINARY_NAME: '{{ .BINARY_NAME | default "dirctl" }}'
       OUT_DIR: '{{ .ROOT_DIR }}/bin'
     cmds:
-      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -extldflags -static" -o {{.OUT_DIR}}/{{.BINARY_NAME}} main.go
+      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -extldflags -static" -o {{.OUT_DIR}}/{{.BINARY_NAME}} cli.go
 
   cli:compile:all:
     desc: Compile CLI client binaries for multiple platforms
