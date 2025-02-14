@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=bind,source=.,target=/build,ro \
     xx-go build ${BUILD_OPTS} -ldflags="-s -w -extldflags -static" \
-    -o /bin/dirctl ./cmd/main.go
+    -o /bin/dirctl ./cli.go
 
 RUN xx-verify /bin/dirctl
 

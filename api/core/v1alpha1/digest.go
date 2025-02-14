@@ -22,7 +22,7 @@ func init() {
 }
 
 func (d *Digest) ToString() string {
-	return fmt.Sprintf("%s:%x", d.GetType(), d.GetValue())
+	return fmt.Sprintf("%s:%x", DigestType_name[int32(d.GetType())], d.GetValue())
 }
 
 func (d *Digest) FromString(str string) error {

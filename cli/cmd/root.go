@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
-package main
+package cmd
 
 import (
 	"context"
@@ -11,16 +11,12 @@ import (
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/util"
 	"github.com/agntcy/dir/client"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/spf13/cobra"
 )
 
 var clientConfig = client.DefaultConfig
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:   "dirctl",
 	Short: "CLI tool to interact with Directory",
 	Long:  ``,
@@ -41,26 +37,20 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	// Register client config
-	flags := rootCmd.PersistentFlags()
+	flags := RootCmd.PersistentFlags()
 	flags.StringVar(&clientConfig.ServerAddress, "server-addr", clientConfig.ServerAddress, "Directory Server API address")
 
 	// Register subcommands
-	rootCmd.AddCommand(build.Command)
-	rootCmd.AddCommand(pull.Command)
-	rootCmd.AddCommand(push.Command)
+	RootCmd.AddCommand(build.Command)
+	RootCmd.AddCommand(pull.Command)
+	RootCmd.AddCommand(push.Command)
 }
 
-func main() {
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGHUP, syscall.SIGTERM)
-	defer func() {
-		cancel()
-	}()
-
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+func Run(ctx context.Context) error {
+	if err := RootCmd.ExecuteContext(ctx); err != nil {
+		return err
 	}
 
-	// TODO: format commands output to avoid cleanup
-	_, _ = fmt.Fprintf(rootCmd.OutOrStdout(), "\n")
+	_, _ = fmt.Fprintf(RootCmd.OutOrStdout(), "\n")
+	return nil
 }

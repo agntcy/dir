@@ -5,16 +5,11 @@ package e2e
 
 import (
 	"bytes"
-	"context"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/util"
-	"github.com/agntcy/dir/client"
 	"os"
 	"path/filepath"
 
-	buildcmd "github.com/agntcy/dir/cli/cmd/build"
-	pullcmd "github.com/agntcy/dir/cli/cmd/pull"
-	pushcmd "github.com/agntcy/dir/cli/cmd/push"
+	clicmd "github.com/agntcy/dir/cli/cmd"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -25,7 +20,6 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		// Test params
 		marketingStrategyPath string
 		tempAgentPath         string
-		testCtx               context.Context
 	)
 
 	ginkgo.BeforeEach(func() {
@@ -37,26 +31,19 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			tempAgentDir = os.TempDir()
 		}
 		tempAgentPath = filepath.Join(tempAgentDir, "agent.json")
-
-		// Create client
-		client, err := client.New(client.WithDefaultConfig())
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-		// Set context for CLI client
-		testCtx = util.SetClientForContext(context.Background(), client)
 	})
 
 	ginkgo.Context("agent compilation", func() {
 		ginkgo.It("should compile an agent", func() {
 			var outputBuffer bytes.Buffer
 
-			compileCmd := buildcmd.Command
+			compileCmd := clicmd.RootCmd
 			compileCmd.SetOut(&outputBuffer)
-			compileCmd.SetContext(testCtx)
 			compileCmd.SetArgs([]string{
+				"build",
 				"--name=marketing-strategy",
 				"--version=v1.0.0",
-				"--artifact-type=LOCATOR_TYPE_PYTHON_PACKAGE",
+				"--artifact-type=python-package",
 				"--artifact-url=http://ghcr.io/cisco-agents/marketing-strategy",
 				"--author=author1",
 				"--author=author2",
@@ -80,10 +67,10 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should push an agent", func() {
 			var outputBuffer bytes.Buffer
 
-			pushCmd := pushcmd.Command
+			pushCmd := clicmd.RootCmd
 			pushCmd.SetOut(&outputBuffer)
-			pushCmd.SetContext(testCtx)
 			pushCmd.SetArgs([]string{
+				"push",
 				"--from-file", tempAgentPath,
 			})
 
@@ -98,10 +85,10 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should pull an existing agent", func() {
 			var outputBuffer bytes.Buffer
 
-			pullCmd := pullcmd.Command
+			pullCmd := clicmd.RootCmd
 			pullCmd.SetOut(&outputBuffer)
-			pullCmd.SetContext(testCtx)
 			pullCmd.SetArgs([]string{
+				"pull",
 				"--digest", agentDigest.ToString(),
 			})
 
@@ -112,9 +99,9 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 
 	ginkgo.Context("agent immutability", func() {
 		ginkgo.It("push existing agent again", func() {
-			pushCmd := pushcmd.Command
-			pushCmd.SetContext(testCtx)
+			pushCmd := clicmd.RootCmd
 			pushCmd.SetArgs([]string{
+				"push",
 				"--from-file", tempAgentPath,
 			})
 

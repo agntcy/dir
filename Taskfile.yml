@@ -174,13 +174,11 @@ tasks:
 
   server:start:
     desc: Start Directory server
+    dir: server/cmd
+    vars:
+      PROVIDER: '{{ .PROVIDER | default "localfs" }}'
     cmds:
-      # TODO: this should run via golang, not docker
-      - |
-        docker run -d --rm \
-          --name dir-apiserver \
-          -p 8888:8888 \
-          {{.IMAGE_REPO}}/dir-apiserver:{{.IMAGE_TAG}}
+      - DIRECTORY_SERVER_PROVIDER={{.PROVIDER}} go run main.go
 
   server:store:start:
     desc: Start local OCI registry server for storage
