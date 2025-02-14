@@ -25,15 +25,6 @@ type options struct {
 
 type Option func(*options) error
 
-func WithDefaultConfig() Option {
-	return func(opts *options) error {
-		opts.config = &Config{
-			ServerAddress: DefaultServerAddress,
-		}
-		return nil
-	}
-}
-
 func WithEnvConfig() Option {
 	return func(opts *options) error {
 		var err error

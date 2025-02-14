@@ -10,6 +10,7 @@ type options struct {
 	Version      string
 	ArtifactUrl  string
 	ArtifactType string
+	CreatedAt    string
 	Inputs       []string
 	LLMAnalyzer  bool
 
@@ -49,4 +50,8 @@ func init() {
 		[]string{},
 		"Categories to set for the agent. Overrides builder defaults. Example usage: --category category1 --category category2",
 	)
+
+	// Creation time (only for dev purposes)
+	flags.StringVar(&opts.CreatedAt, "created-at", "", "Agent creation time in RFC3339 format")
+	_ = flags.MarkHidden("created-at")
 }

@@ -27,7 +27,7 @@ var Command = &cobra.Command{
 	# From stdin
 	dirctl build <args> | dirctl push
 
-	# Forward (no-op)
+	# From pull
 	dirctl pull --id agent-id | dirctl push
 
 `,
@@ -73,7 +73,12 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to push data: %w", err)
 	}
 
-	_, _ = fmt.Fprint(cmd.OutOrStdout(), digest.ToString())
+	// Print digest to output
+	_, err = fmt.Fprint(cmd.OutOrStdout(), digest.ToString())
+	if err != nil {
+		return fmt.Errorf("failed to print digest: %w", err)
+	}
+
 	return nil
 }
 

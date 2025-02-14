@@ -8,6 +8,7 @@ package core.v1alpha1;
 import "core/v1alpha1/digest.proto";
 import "core/v1alpha1/locator.proto";
 import "core/v1alpha1/extension.proto";
+import "google/protobuf/timestamp.proto";
 
 // Data model defines a schema for versioned AI agent content representation.
 // The schema provides a way to describe features, constraints, artifact
@@ -21,12 +22,14 @@ message Agent {
   string version = 2;
   // List of agent’s authors in the form of `author-name <author-email>`
   repeated string authors = 3;
+  // Creation timestamp of the agent
+  google.protobuf.Timestamp created_at = 4;
   // Additional metadata associated with this agent
-  map<string, string> annotations = 4;
+  map<string, string> annotations = 5;
   // List of source locators where this agent can be found or used from
-  repeated Locator locators = 5;
+  repeated Locator locators = 6;
   // List of extensions that describe this agent and its capabilities more in depth
-  repeated Extension extensions = 6;
+  repeated Extension extensions = 7;
   // Digest of the whole object
-  Digest digest = 7;
+  Digest digest = 8;
 }

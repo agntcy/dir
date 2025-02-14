@@ -17,6 +17,10 @@ const (
 	DefaultServerAddress = "0.0.0.0:8888"
 )
 
+var DefaultConfig = Config{
+	ServerAddress: DefaultServerAddress,
+}
+
 type Config struct {
 	ServerAddress string `json:"server_address,omitempty" mapstructure:"server_address"`
 }

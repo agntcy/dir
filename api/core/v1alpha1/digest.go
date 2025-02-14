@@ -9,6 +9,18 @@ import (
 	"strings"
 )
 
+func init() {
+	// Override allowed names for digest types
+	DigestType_name = map[int32]string{
+		0: "unspecified",
+		1: "sha256",
+	}
+	DigestType_value = map[string]int32{
+		"unspecified": 0,
+		"sha256":      1,
+	}
+}
+
 func (d *Digest) ToString() string {
 	return fmt.Sprintf("%s:%x", d.GetType(), d.GetValue())
 }

@@ -20,7 +20,10 @@ var Command = &cobra.Command{
 	Long: `Usage example:
 
 	# Pull by digest
-	dirctl pull --agent-digest DIGEST_TYPE_SHA256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+	dirctl pull --digest sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+
+	# Pull in combination with other commands
+	dirctl pull --digest $(dirctl build | dirctl push)
 
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -47,25 +50,24 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	// Read the data from the reader.
-	data, err := io.ReadAll(reader)
+	agentRaw, err := io.ReadAll(reader)
 	if err != nil {
 		return fmt.Errorf("failed to read data: %w", err)
 	}
 
-	// Unmarshal the data into an Agent struct.
-	var agent coretypes.Agent
-	if err := json.Unmarshal(data, &agent); err != nil {
-		return fmt.Errorf("failed to unmarshal agent: %w", err)
+	// Unmarshal the data into an Agent struct for validation only
+	{
+		var agent coretypes.Agent
+		if err := json.Unmarshal(agentRaw, &agent); err != nil {
+			return fmt.Errorf("failed to unmarshal agent: %w", err)
+		}
 	}
 
-	meta, err := c.Lookup(cmd.Context(), &dig)
+	// Print to output
+	_, err = fmt.Fprint(cmd.OutOrStdout(), string(agentRaw))
 	if err != nil {
-		return fmt.Errorf("failed to lookup metadata: %w", err)
+		return fmt.Errorf("failed to print built data: %w", err)
 	}
-
-	// Print the agent details.
-	fmt.Printf("Pulled agent: %+v\n", &agent)
-	fmt.Printf("Metadata: %+v\n", meta)
 
 	return nil
 }

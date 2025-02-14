@@ -12,5 +12,4 @@ type options struct {
 func init() {
 	flags := Command.Flags()
 	flags.StringVar(&opts.AgentDigest, "digest", "", "Digest of the agent to pull")
-	// TODO: add alias to --id
 }

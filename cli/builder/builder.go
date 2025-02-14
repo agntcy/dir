@@ -7,7 +7,6 @@ import (
 	"context"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/builder/extensions/base"
 	"github.com/agntcy/dir/cli/builder/extensions/category"
 	"github.com/agntcy/dir/cli/builder/extensions/crewai"
 	"github.com/agntcy/dir/cli/builder/extensions/llmanalyzer"
@@ -22,17 +21,6 @@ func Build(
 	categories []string,
 	LLMAnalyzer bool,
 ) error {
-	// Base extension
-	baseBuilder := base.New(authors)
-	baseExtension, err := baseBuilder.Build(ctx)
-	if err != nil {
-		return err
-	}
-	baseAPIExtension, err := baseExtension.ToAPIExtension()
-	if err != nil {
-		return err
-	}
-
 	// Runtime extension
 	runtimeBuilder := runtime.New(fsPath)
 	runtimeExtension, err := runtimeBuilder.Build(ctx)
@@ -68,7 +56,6 @@ func Build(
 
 	agent.Extensions = append(
 		agent.Extensions,
-		&baseAPIExtension,
 		&runtimeAPIExtension,
 		&categoryAPIExtension,
 		&crewaiAPIExtension,
