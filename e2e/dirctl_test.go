@@ -5,9 +5,10 @@ package e2e
 
 import (
 	"bytes"
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"os"
 	"path/filepath"
+
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 
 	clicmd "github.com/agntcy/dir/cli/cmd"
 

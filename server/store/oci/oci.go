@@ -6,14 +6,17 @@ package oci
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -50,8 +53,8 @@ func New(config Config) (types.StoreService, error) {
 	}, nil
 }
 
-func (s *store) Lookup(ctx context.Context, ref *coretypes.Digest) (*coretypes.ObjectMeta, error) {
-	_, metaReader, err := s.repository.Blobs().FetchReference(ctx, string(ref.Value))
+func (s *store) Lookup(ctx context.Context, digest *coretypes.Digest) (*coretypes.ObjectMeta, error) {
+	_, metaReader, err := s.repository.Blobs().FetchReference(ctx, ocidigest.NewDigestFromBytes(ocidigest.SHA256, digest.Value).String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch object: %w", err)
 	}
@@ -87,10 +90,16 @@ func (s *store) Push(ctx context.Context, meta *coretypes.ObjectMeta, contents i
 		return &coretypes.Digest{}, fmt.Errorf("failed to push object: %w", err)
 	}
 
+	// extract signature
+	digestValue, err := hex.DecodeString(desc.Digest.Encoded())
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode digest: %w", err)
+	}
+
 	// Create metadata
 	meta.Digest = &coretypes.Digest{
 		Type:  coretypes.DigestType_DIGEST_TYPE_SHA256,
-		Value: []byte(desc.Digest.String()),
+		Value: digestValue,
 	}
 	metaBytes, err := json.Marshal(meta)
 	if err != nil {
@@ -104,19 +113,25 @@ func (s *store) Push(ctx context.Context, meta *coretypes.ObjectMeta, contents i
 		return &coretypes.Digest{}, fmt.Errorf("failed to push object: %w", err)
 	}
 
+	// extract signature
+	digestValue, err = hex.DecodeString(metaDesc.Digest.Encoded())
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode digest: %w", err)
+	}
+
 	return &coretypes.Digest{
 		Type:  coretypes.DigestType_DIGEST_TYPE_SHA256,
-		Value: []byte(metaDesc.Digest.String()),
+		Value: digestValue,
 	}, nil
 }
 
-func (s *store) Pull(ctx context.Context, ref *coretypes.Digest) (io.Reader, error) {
-	meta, err := s.Lookup(ctx, ref)
+func (s *store) Pull(ctx context.Context, digest *coretypes.Digest) (io.Reader, error) {
+	meta, err := s.Lookup(ctx, digest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup object: %w", err)
 	}
 
-	_, reader, err := s.repository.Blobs().FetchReference(ctx, string(meta.Digest.Value))
+	_, reader, err := s.repository.Blobs().FetchReference(ctx, ocidigest.NewDigestFromBytes(ocidigest.SHA256, meta.Digest.Value).String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch object: %w", err)
 	}
@@ -124,14 +139,14 @@ func (s *store) Pull(ctx context.Context, ref *coretypes.Digest) (io.Reader, err
 	return reader, nil
 }
 
-func (s *store) Delete(ctx context.Context, ref *coretypes.Digest) error {
-	meta, err := s.Lookup(ctx, ref)
+func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
+	meta, err := s.Lookup(ctx, digest)
 	if err != nil {
 		return fmt.Errorf("failed to lookup object: %w", err)
 	}
 
 	// Delete the metadata
-	metaDescriptor, err := s.repository.Blobs().Resolve(ctx, string(ref.Value))
+	metaDescriptor, err := s.repository.Blobs().Resolve(ctx, ocidigest.NewDigestFromBytes(ocidigest.SHA256, digest.Value).String())
 	if err != nil {
 		return fmt.Errorf("failed to resolve object: %w", err)
 	}
@@ -140,7 +155,7 @@ func (s *store) Delete(ctx context.Context, ref *coretypes.Digest) error {
 	}
 
 	// Delete the blob
-	objectDescriptor, err := s.repository.Blobs().Resolve(ctx, string(meta.Digest.Value))
+	objectDescriptor, err := s.repository.Blobs().Resolve(ctx, ocidigest.NewDigestFromBytes(ocidigest.SHA256, meta.Digest.Value).String())
 	if err != nil {
 		return fmt.Errorf("failed to resolve object: %w", err)
 	}

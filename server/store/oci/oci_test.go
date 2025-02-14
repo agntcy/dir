@@ -3,9 +3,10 @@ package oci
 import (
 	"bytes"
 	"context"
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"io"
 	"testing"
+
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
 )

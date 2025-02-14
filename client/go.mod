@@ -2,9 +2,7 @@ module github.com/agntcy/dir/client
 
 go 1.23.2
 
-replace (
-	github.com/agntcy/dir/api => ../api
-)
+replace github.com/agntcy/dir/api => ../api
 
 require (
 	github.com/agntcy/dir/api v0.1.1
