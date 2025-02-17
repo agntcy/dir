@@ -94,7 +94,7 @@ loop:
 	// Get content dig
 	dig := coretypes.Digest{
 		Type:  coretypes.DigestType_DIGEST_TYPE_SHA256,
-		Value: hasher.Sum(nil),
+		Value: fmt.Sprintf("%x", hasher.Sum(nil)),
 	}
 
 	// Rename contents file to the digest hash
