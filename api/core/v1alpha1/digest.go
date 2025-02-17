@@ -4,7 +4,6 @@
 package corev1alpha1
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
 )
@@ -22,7 +21,7 @@ func init() {
 }
 
 func (d *Digest) ToString() string {
-	return fmt.Sprintf("%s:%x", DigestType_name[int32(d.GetType())], d.GetValue())
+	return fmt.Sprintf("%s:%s", DigestType_name[int32(d.GetType())], d.GetValue())
 }
 
 func (d *Digest) FromString(str string) error {
@@ -32,16 +31,10 @@ func (d *Digest) FromString(str string) error {
 		return fmt.Errorf("digest parts not found")
 	}
 
-	// extract signature
-	digestValue, err := hex.DecodeString(parts[1])
-	if err != nil {
-		return fmt.Errorf("failed to decode digest: %w", err)
-	}
-
 	// update digest
 	*d = Digest{
 		Type:  DigestType(DigestType_value[parts[0]]),
-		Value: digestValue,
+		Value: parts[1],
 	}
 
 	return nil

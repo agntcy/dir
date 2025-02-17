@@ -7,8 +7,12 @@ package core.v1alpha1;
 
 // A digest of content or globally unique content identifier
 message Digest {
+  // Type of the digest
   DigestType type = 1;
-  bytes value = 2;
+
+  // Value of the digest. The value is a hex formatted string.
+  // Example: "7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc"
+  string value = 2;
 }
 
 // List of supported digest types
