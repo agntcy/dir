@@ -48,8 +48,8 @@ See https://github.com/agntcy/dir/releases
 ### Container images
 
 ```bash
-docker pull ghcr.io/agntcy/dir/dir-ctl:latest
-docker pull ghcr.io/agntcy/dir/dir-apiserver:latest
+docker pull ghcr.io/agntcy/dir-ctl:latest
+docker pull ghcr.io/agntcy/dir-apiserver:latest
 ```
 
 ### Helm charts
@@ -69,6 +69,32 @@ task gen
 task build
 task test:e2e
 ```
+
+## Deployment
+
+To deploy the Directory, you can use the provided `Taskfile` commands to start the necessary services and deploy the Directory server.
+
+### Local OCI Provider and Directory
+
+To start a local OCI registry server for storage and the Directory server Golang module, use the following commands:
+
+```bash
+task server:store:start
+task server:start
+```
+
+These commands will set up a local environment for development and testing purposes.
+
+### Helm chart
+
+To deploy the Directory using Helm charts, you can create a Kubernetes cluster using `kind` and then deploy the Directory Helm chart. Use the following commands:
+
+```bash
+task deploy:k8s:bootstrap
+task deploy:k8s:cleanup
+```
+
+The `bootstrap` task will create a Kubernetes cluster and deploy the Directory Helm chart, while the `cleanup` task will remove the cluster and clean up any resources created during the deployment.
 
 ## Copyright Notice
 

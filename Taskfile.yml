@@ -217,15 +217,17 @@ tasks:
     deps:
       - cli:compile
     cmds:
-      - defer: { task: test:kubernetes-env:cleanup }
+      - defer: { task: deploy:k8s:cleanup }
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
-      - task: test:kubernetes-env:bootstrap
+      - task: deploy:k8s:bootstrap
       - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
 
-  test:kubernetes-env:bootstrap:
-    internal: true
-    desc: Bootstrap Kubernetes test environment
+  ##
+  ## Deployment
+  ##
+  deploy:k8s:bootstrap:
+    desc: Bootstrap Kubernetes environment
     deps:
       - deps:helm
       - deps:kubectl
@@ -276,9 +278,8 @@ tasks:
       # Delay to ensure services are online
       - sleep 10
 
-  test:kubernetes-env:cleanup:
-    internal: true
-    desc: Cleanup Kubernetes test environment
+  deploy:k8s:cleanup:
+    desc: Cleanup Kubernetes environment
     deps:
       - deps:kind
     vars:
