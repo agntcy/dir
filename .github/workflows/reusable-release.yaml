@@ -98,12 +98,16 @@ jobs:
         run: |
           helm package install/charts/dir --dependency-update --version ${{ inputs.release_tag }}
           echo "package=${{ steps.chart-name.outputs.value }}-${{ inputs.release_tag }}.tgz" >> "$GITHUB_OUTPUT"
+          helm package install/charts/dir --dependency-update --version latest
+          echo "latest_package=${{ steps.chart-name.outputs.value }}-latest.tgz" >> "$GITHUB_OUTPUT"
 
       - name: Helm push to GHCR OCI registry
         shell: bash
         run: |
           echo "🚧 Pushing ${{ steps.build.outputs.package }} to GHCR OCI registry"
           helm push ${{ steps.build.outputs.package }} oci://${{ inputs.image_repo }}/dir/helm-charts
+          echo "🚧 Pushing ${{ steps.build.outputs.latest_package }} to GHCR OCI registry"
+          helm push ${{ steps.build.outputs.latest_package }} oci://${{ inputs.image_repo }}/dir/helm-charts
 
   cli:
     name: CLI
