@@ -86,10 +86,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	}
 
 	// Print to output
-	_, err = fmt.Fprint(cmd.OutOrStdout(), string(agentRaw))
-	if err != nil {
-		return fmt.Errorf("failed to print built data: %w", err)
-	}
+	cmd.Print(string(agentRaw))
 
 	return nil
 }

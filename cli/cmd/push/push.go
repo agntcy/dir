@@ -28,7 +28,7 @@ var Command = &cobra.Command{
 	dirctl build <args> | dirctl push
 
 	# From pull
-	dirctl pull --id agent-id | dirctl push
+	dirctl pull --digest sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef | dirctl push
 
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -74,10 +74,7 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	// Print digest to output
-	_, err = fmt.Fprint(cmd.OutOrStdout(), digest.Encode())
-	if err != nil {
-		return fmt.Errorf("failed to print digest: %w", err)
-	}
+	cmd.Print(digest.Encode())
 
 	return nil
 }

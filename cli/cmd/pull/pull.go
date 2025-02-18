@@ -10,6 +10,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/util"
+	"gopkg.in/yaml.v3"
 
 	"github.com/spf13/cobra"
 )
@@ -56,18 +57,30 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	// Unmarshal the data into an Agent struct for validation only
-	{
-		var agent coretypes.Agent
-		if err := json.Unmarshal(agentRaw, &agent); err != nil {
-			return fmt.Errorf("failed to unmarshal agent: %w", err)
+	var agent coretypes.Agent
+	if err := json.Unmarshal(agentRaw, &agent); err != nil {
+		return fmt.Errorf("failed to unmarshal agent: %w", err)
+	}
+
+	// Marshal the data into the desired format
+	var output []byte
+	switch opts.OutputFormat {
+	case "yaml":
+		output, err = yaml.Marshal(&agent)
+		if err != nil {
+			return fmt.Errorf("failed to marshal agent to YAML: %w", err)
 		}
+	case "json":
+		output, err = json.MarshalIndent(&agent, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal agent to JSON: %w", err)
+		}
+	default:
+		return fmt.Errorf("unsupported output format: %s", opts.OutputFormat)
 	}
 
 	// Print to output
-	_, err = fmt.Fprint(cmd.OutOrStdout(), string(agentRaw))
-	if err != nil {
-		return fmt.Errorf("failed to print built data: %w", err)
-	}
+	cmd.Print(string(output))
 
 	return nil
 }
