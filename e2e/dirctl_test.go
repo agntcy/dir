@@ -79,7 +79,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Retrieve agentID from output
-			err = agentDigest.FromString(outputBuffer.String())
+			err = agentDigest.Decode(outputBuffer.String())
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 
@@ -90,7 +90,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
-				"--digest", agentDigest.ToString(),
+				"--digest", agentDigest.Encode(),
 			})
 
 			err := pullCmd.Execute()

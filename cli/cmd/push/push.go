@@ -74,7 +74,7 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	// Print digest to output
-	_, err = fmt.Fprint(cmd.OutOrStdout(), digest.ToString())
+	_, err = fmt.Fprint(cmd.OutOrStdout(), digest.Encode())
 	if err != nil {
 		return fmt.Errorf("failed to print digest: %w", err)
 	}

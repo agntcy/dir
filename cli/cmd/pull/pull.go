@@ -39,7 +39,7 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	var dig coretypes.Digest
-	if err := dig.FromString(opts.AgentDigest); err != nil {
+	if err := dig.Decode(opts.AgentDigest); err != nil {
 		return fmt.Errorf("failed to parse digest: %w", err)
 	}
 

@@ -15,6 +15,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -52,7 +53,12 @@ func New(config Config) (types.StoreService, error) {
 }
 
 func (s *store) Lookup(ctx context.Context, digest *coretypes.Digest) (*coretypes.ObjectMeta, error) {
-	_, metaReader, err := s.repository.Blobs().FetchReference(ctx, digest.ToString())
+	ociDigest, err := convertToOciDigest(digest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert digest: %w", err)
+	}
+
+	_, metaReader, err := s.repository.Blobs().FetchReference(ctx, ociDigest.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch object: %w", err)
 	}
@@ -117,7 +123,12 @@ func (s *store) Pull(ctx context.Context, digest *coretypes.Digest) (io.Reader, 
 		return nil, fmt.Errorf("failed to lookup object: %w", err)
 	}
 
-	_, reader, err := s.repository.Blobs().FetchReference(ctx, meta.Digest.ToString())
+	metaOciDigest, err := convertToOciDigest(meta.Digest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert digest: %w", err)
+	}
+
+	_, reader, err := s.repository.Blobs().FetchReference(ctx, metaOciDigest.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch object: %w", err)
 	}
@@ -131,8 +142,13 @@ func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
 		return fmt.Errorf("failed to lookup object: %w", err)
 	}
 
+	ociDigest, err := convertToOciDigest(digest)
+	if err != nil {
+		return fmt.Errorf("failed to convert digest: %w", err)
+	}
+
 	// Delete the metadata
-	metaDescriptor, err := s.repository.Blobs().Resolve(ctx, digest.ToString())
+	metaDescriptor, err := s.repository.Blobs().Resolve(ctx, ociDigest.String())
 	if err != nil {
 		return fmt.Errorf("failed to resolve object: %w", err)
 	}
@@ -140,8 +156,13 @@ func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
 		return fmt.Errorf("failed to delete object: %w", err)
 	}
 
+	metaOciDigest, err := convertToOciDigest(meta.Digest)
+	if err != nil {
+		return fmt.Errorf("failed to convert digest: %w", err)
+	}
+
 	// Delete the blob
-	objectDescriptor, err := s.repository.Blobs().Resolve(ctx, meta.Digest.ToString())
+	objectDescriptor, err := s.repository.Blobs().Resolve(ctx, metaOciDigest.String())
 	if err != nil {
 		return fmt.Errorf("failed to resolve object: %w", err)
 	}
@@ -150,4 +171,13 @@ func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
 	}
 
 	return nil
+}
+
+// convertToOciDigest converts a coretypes.Digest to an ocidigest.Digest
+func convertToOciDigest(digest *coretypes.Digest) (*ocidigest.Digest, error) {
+	if digest.Type == coretypes.DigestType_DIGEST_TYPE_SHA256 {
+		d := ocidigest.NewDigestFromEncoded("sha256", digest.Value)
+		return &d, nil
+	}
+	return nil, fmt.Errorf("unsupported digest type: %v", digest.Type)
 }

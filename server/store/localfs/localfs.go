@@ -99,7 +99,7 @@ loop:
 
 	// Rename contents file to the digest hash
 	_ = contentsFile.Close()
-	if err := c.dataFs.Rename(contentsFile.Name(), dig.ToString()); err != nil {
+	if err := c.dataFs.Rename(contentsFile.Name(), dig.Encode()); err != nil {
 		return &coretypes.Digest{}, fmt.Errorf("failed to rename file: %w", err)
 	}
 
@@ -110,7 +110,7 @@ loop:
 	}
 
 	// Store raw metadata
-	err = afero.WriteReader(c.metaFs, dig.ToString(), bytes.NewReader(metadataRaw))
+	err = afero.WriteReader(c.metaFs, dig.Encode(), bytes.NewReader(metadataRaw))
 	if err != nil {
 		return &coretypes.Digest{}, fmt.Errorf("failed to store metadata: %w", err)
 	}
@@ -120,7 +120,7 @@ loop:
 
 func (c *store) Lookup(_ context.Context, dig *coretypes.Digest) (*coretypes.ObjectMeta, error) {
 	// Read metadata file from FS
-	metadataRaw, err := afero.ReadFile(c.metaFs, dig.ToString())
+	metadataRaw, err := afero.ReadFile(c.metaFs, dig.Encode())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open metadata: %w", err)
 	}
@@ -136,7 +136,7 @@ func (c *store) Lookup(_ context.Context, dig *coretypes.Digest) (*coretypes.Obj
 
 func (c *store) Pull(_ context.Context, dig *coretypes.Digest) (io.Reader, error) {
 	// Open the file for reading
-	file, err := c.dataFs.Open(dig.ToString())
+	file, err := c.dataFs.Open(dig.Encode())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open contents: %w", err)
 	}
@@ -146,12 +146,12 @@ func (c *store) Pull(_ context.Context, dig *coretypes.Digest) (io.Reader, error
 }
 
 func (c *store) Delete(_ context.Context, dig *coretypes.Digest) error {
-	err := c.dataFs.Remove(dig.ToString())
+	err := c.dataFs.Remove(dig.Encode())
 	if err != nil {
 		return fmt.Errorf("failed to remove contents: %w", err)
 	}
 
-	err = c.metaFs.Remove(dig.ToString())
+	err = c.metaFs.Remove(dig.Encode())
 	if err != nil {
 		return fmt.Errorf("failed to delete metadata: %w", err)
 	}
