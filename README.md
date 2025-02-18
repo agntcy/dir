@@ -96,6 +96,63 @@ task deploy:k8s:cleanup
 
 The `bootstrap` task will create a Kubernetes cluster and deploy the Directory Helm chart, while the `cleanup` task will remove the cluster and clean up any resources created during the deployment.
 
+## CLI Commands
+
+The Directory CLI provides `build`, `push`, and `pull` commands to interact with the Directory server. Below are the details on how to run each command.
+
+To run these commands, you can either:
+* Use the binary compiled with `task cli:compile` like `./bin/dirctl <command> <args>`
+* Use the CLI module by navigating to the `cli` directory and running `go run cli.go <command> <args>`
+
+### Build Command
+
+The `build` command is used to compile and build the agent data model.
+
+Usage:
+```bash
+dirctl build [options] <path-to-agent>
+```
+
+Options:
+- `--name` : Name of the agent.
+- `--version` : Version of the agent.
+- `--artifact-url` : URL of the agent artifact.
+- `--artifact-type` : Type of the agent artifact.
+- `--author` : Authors to set for the agent. Overrides builder defaults. Example usage: `--author author1 --author author2`.
+- `--category` : Categories to set for the agent. Overrides builder defaults. Example usage: `--category category1 --category category2`.
+- `--created-at` : Agent creation time in RFC3339 format.
+- `--llmanalyzer` : Enable LLMAnalyzer extension.
+
+### Push Command
+
+The `push` command is used to publish the built agent data model to the store.
+
+Usage:
+```bash
+dirctl push [options]
+```
+
+Options:
+- `--from-file` : Read compiled data from file, reads from STDIN if empty.
+- `--server-addr`: Directory Server API address (default "0.0.0.0:8888")
+
+Example usage with read from STDIN: `dirctl build <args> | dirctl push`.
+
+### Pull Command
+
+The `pull` command is used to retrieve agent data model from the store.
+
+Usage:
+```bash
+dirctl pull [options]
+```
+
+Options:
+- `--digest` : Digest of the agent to pull.
+- `--server-addr`: Directory Server API address (default "0.0.0.0:8888")
+
+Example usage in combination with other commands: `dirctl pull --digest $(dirctl build | dirctl push)`.
+
 ## Copyright Notice
 
 [Copyright Notice and License](./LICENSE.md)
