@@ -4,10 +4,13 @@
 apiserver:
   image:
     repository: ghcr.io/agntcy/dir-apiserver
-    tag: v0.1.1
+    tag: v0.1.2
     pullPolicy: IfNotPresent
     pullSecrets:
       - name: regcred
+
+  config:
+    oci_registry_address: "agntcy-dir-zot.default.svc.cluster.local:5000"
 
   service:
     type: NodePort

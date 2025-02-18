@@ -18,7 +18,7 @@ config:
   server_port: 8888
   health_port: 8889
   provider: "oci"
-  oci_registry_address: "dir-zot:5000"
+  oci_registry_address: "agntcy-dir-zot.default.svc.cluster.local:5000"
 
 # service exposes gRPC server api
 service:
