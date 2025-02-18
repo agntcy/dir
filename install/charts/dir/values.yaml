@@ -4,12 +4,15 @@
 apiserver:
   image:
     repository: ghcr.io/agntcy/dir-apiserver
-    tag: v0.1.2
+    tag: latest
     pullPolicy: IfNotPresent
     pullSecrets:
       - name: regcred
 
   config:
+    server_port: 8888
+    health_port: 8889
+    provider: "oci"
     oci_registry_address: "agntcy-dir-zot.default.svc.cluster.local:5000"
 
   service:

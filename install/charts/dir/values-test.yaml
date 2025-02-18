@@ -14,5 +14,7 @@ apiserver:
     type: NodePort
 
   config:
+    server_port: 8888
+    health_port: 8889
     provider: "oci"
     oci_registry_address: "dir-zot:5000"

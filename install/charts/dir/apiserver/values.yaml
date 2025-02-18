@@ -10,7 +10,7 @@ fullnameOverride: ""
 
 image:
   repository: ghcr.io/agntcy/dir-apiserver
-  tag: demo
+  tag: latest
   pullPolicy: IfNotPresent
   pullSecrets: []
 
