@@ -11,7 +11,6 @@ type options struct {
 	ArtifactUrl  string
 	ArtifactType string
 	CreatedAt    string
-	Inputs       []string
 	LLMAnalyzer  bool
 
 	// Base extension
@@ -27,12 +26,6 @@ func init() {
 	flags.StringVar(&opts.Version, "version", "", "Version of the agent")
 	flags.StringVar(&opts.ArtifactUrl, "artifact-url", "", "Agent artifact URL")
 	flags.StringVar(&opts.ArtifactType, "artifact-type", "", "Agent artifact type")
-	flags.StringSliceVar(
-		&opts.Inputs,
-		"input",
-		[]string{},
-		"Inputs to set for the agent. Overrides builder defaults. Example usage: --input number --input text",
-	)
 	flags.BoolVarP(&opts.LLMAnalyzer, "llmanalyzer", "l", false, "Enable LLMAnalyzer extension")
 
 	// Base extension
