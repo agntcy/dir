@@ -39,7 +39,7 @@ Main software components:
 
 ### Golang Packages
 
-See https://pkg.go.dev/github.com/agntcy/dir
+See [API package](https://pkg.go.dev/github.com/agntcy/dir/api), [Server package](https://pkg.go.dev/github.com/agntcy/dir/server) and [CLI package](https://pkg.go.dev/github.com/agntcy/dir/cli).
 
 ### Binaries
 
@@ -72,11 +72,11 @@ task test:e2e
 
 ## Deployment
 
-To deploy the Directory, you can use the provided `Taskfile` commands to start the necessary services and deploy the Directory server.
+To deploy the Directory, you can use the provided `Taskfile` commands to start the necessary services and deploy the Directory server. Alternatively, you can deploy from a GitHub Helm chart release.
 
-### Local OCI Provider and Directory
+### Local Deployment
 
-To start a local OCI registry server for storage and the Directory server Golang module, use the following commands:
+To start a local OCI registry server for storage and the Directory server, use the following commands:
 
 ```bash
 task server:store:start
@@ -85,24 +85,25 @@ task server:start
 
 These commands will set up a local environment for development and testing purposes.
 
-### Helm chart
+### Remote Deployment
 
-To deploy the Directory using Helm charts, you can create a Kubernetes cluster using `kind` and then deploy the Directory Helm chart. Use the following commands:
+To deploy the Directory into an existing Kubernetes cluster, use a released Helm chart from GitHub with the following commands:
 
 ```bash
-task deploy:k8s:bootstrap
-task deploy:k8s:cleanup
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version latest
+helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version latest
 ```
 
-The `bootstrap` task will create a Kubernetes cluster and deploy the Directory Helm chart, while the `cleanup` task will remove the cluster and clean up any resources created during the deployment.
+These commands will pull the latest version of the Directory Helm chart from the GitHub Container Registry and install or upgrade the Directory in your Kubernetes cluster. Ensure that your Kubernetes cluster is properly configured and accessible before running these commands. The `helm upgrade --install` command will either upgrade an existing release or install a new release if it does not exist.
 
-## CLI Commands
+## Usage
 
 The Directory CLI provides `build`, `push`, and `pull` commands to interact with the Directory server. Below are the details on how to run each command.
 
 To run these commands, you can either:
-* Use the binary compiled with `task cli:compile` like `./bin/dirctl <command> <args>`
-* Use the CLI module by navigating to the `cli` directory and running `go run cli.go <command> <args>`
+* Download a released CLI binary with `curl -L -o dirctl https://github.com/agntcy/dir/releases/download/<release tag>/dirctl-$(uname | tr '[:upper:]' '[:lower:]')-$(uname -m)`
+* Use a binary compiled from source with `task cli:compile`
+* Use CLI module from source by navigating to the `cli` directory and running `go run cli.go <command> <args>`
 
 ### Build Command
 
@@ -125,7 +126,7 @@ Options:
 
 ### Push Command
 
-The `push` command is used to publish the built agent data model to the store.
+The `push` command is used to publish the built agent data model to the store. The input data model should be JSON formatted.
 
 Usage:
 ```bash
@@ -133,14 +134,14 @@ dirctl push [options]
 ```
 
 Options:
-- `--from-file` : Read compiled data from file, reads from STDIN if empty.
+- `--from-file` : Read compiled data from JSON file, reads from STDIN if empty.
 - `--server-addr`: Directory Server API address (default "0.0.0.0:8888")
 
 Example usage with read from STDIN: `dirctl build <args> | dirctl push`.
 
 ### Pull Command
 
-The `pull` command is used to retrieve agent data model from the store.
+The `pull` command is used to retrieve agent data model from the store. The output data model will be JSON formatted.
 
 Usage:
 ```bash
