@@ -15,4 +15,6 @@ approved = [
 
 ignored = [
   "github.com/agntcy/dir/api",
+  
+  "google.golang.org/protobuf" # BSD-3-Clause
 ]
