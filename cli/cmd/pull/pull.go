@@ -10,7 +10,6 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/util"
-	"gopkg.in/yaml.v3"
 
 	"github.com/spf13/cobra"
 )
@@ -20,8 +19,8 @@ var Command = &cobra.Command{
 	Short: "Pull compiled agent model from Directory",
 	Long: `Usage example:
 
-	# Pull by digest
-	dirctl pull --digest sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+	# Pull by digest and output in JSON format
+	dirctl pull --digest <digest-string> --json
 
 	# Pull in combination with other commands
 	dirctl pull --digest $(dirctl build | dirctl push)
@@ -62,25 +61,18 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to unmarshal agent: %w", err)
 	}
 
-	// Marshal the data into the desired format
-	var output []byte
-	switch opts.OutputFormat {
-	case "yaml":
-		output, err = yaml.Marshal(&agent)
-		if err != nil {
-			return fmt.Errorf("failed to marshal agent to YAML: %w", err)
-		}
-	case "json":
-		output, err = json.MarshalIndent(&agent, "", "  ")
+	// If JSON flag is set, marshal the agent to JSON and print it
+	if opts.JSON {
+		output, err := json.MarshalIndent(&agent, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal agent to JSON: %w", err)
 		}
-	default:
-		return fmt.Errorf("unsupported output format: %s", opts.OutputFormat)
+		cmd.Print(string(output))
+		return nil
 	}
 
-	// Print to output
-	cmd.Print(string(output))
+	// Print the raw agent data
+	cmd.Print(string(agentRaw))
 
 	return nil
 }

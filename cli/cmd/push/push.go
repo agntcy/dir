@@ -28,7 +28,7 @@ var Command = &cobra.Command{
 	dirctl build <args> | dirctl push
 
 	# From pull
-	dirctl pull --digest sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef | dirctl push
+	dirctl pull --digest <digest-string> --json | dirctl push
 
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
