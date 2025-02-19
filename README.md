@@ -117,7 +117,7 @@ dirctl build [options] <path-to-agent>
 Options:
 - `--name` : Name of the agent.
 - `--version` : Version of the agent.
-- `--artifact` : Artifacts to set for the agent. Each artifact should be in the format `type:url`. Example usage: `--artifact type1:url1 --artifact type2:url2`. Supported types: `docker-image`, `python-package` and `helm-chart`.
+- `--artifact` : Artifacts to set for the agent. Each artifact should be in the format `type:url`. Example usage: `--artifact type1:url1 --artifact type2:url2`. Supported types: `docker-image`, `python-package`, `helm-chart`, `source-code` and `binary`.
 - `--author` : Authors to set for the agent. Overrides builder defaults. Example usage: `--author author1 --author author2`.
 - `--category` : Categories to set for the agent. Overrides builder defaults. Example usage: `--category category1 --category category2`.
 - `--created-at` : Agent creation time in RFC3339 format.

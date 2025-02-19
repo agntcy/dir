@@ -10,11 +10,15 @@ func init() {
 		1: "helm-chart",
 		2: "docker-image",
 		3: "python-package",
+		4: "source-code",
+		5: "binary",
 	}
 	LocatorType_value = map[string]int32{
 		"unspecified":    0,
 		"helm-chart":     1,
 		"docker-image":   2,
 		"python-package": 3,
+		"source-code":    4,
+		"binary":         5,
 	}
 }
