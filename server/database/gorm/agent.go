@@ -1,14 +1,16 @@
-package database
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+package gorm
 
 import (
 	"context"
+
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	ds "github.com/dep2p/libp2p/datastore"
 	"github.com/dep2p/libp2p/datastore/query"
 	"gorm.io/gorm"
 )
-
-const agentTableName = "agents"
 
 // AgentTable handles all database operations for agent data models.
 //
@@ -21,10 +23,8 @@ const agentTableName = "agents"
 //     We can create our own database object as well.
 //   - We can use the StoreService to perform O(1) operations in Get, GetSize, Has
 //     for optimization,but this can be done some other time.
-type agentTable struct{}
-
-func New(db *gorm.DB) (ds.Datastore, error) {
-	return &agentTable{}, nil
+type agentTable struct {
+	db *gorm.DB
 }
 
 func (s *agentTable) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
