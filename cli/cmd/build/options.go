@@ -6,29 +6,23 @@ package build
 var opts = &options{}
 
 type options struct {
-	Name         string
-	Version      string
-	ArtifactUrl  string
-	ArtifactType string
-	CreatedAt    string
-	LLMAnalyzer  bool
-
-	// Base extension
-	Authors []string
-
-	// Category extension
-	Categories []string
+	Name        string
+	Version     string
+	CreatedAt   string
+	LLMAnalyzer bool
+	Authors     []string
+	Categories  []string
+	Artifacts   []string
 }
 
 func init() {
 	flags := Command.Flags()
 	flags.StringVar(&opts.Name, "name", "", "Name of the agent")
 	flags.StringVar(&opts.Version, "version", "", "Version of the agent")
-	flags.StringVar(&opts.ArtifactUrl, "artifact-url", "", "Agent artifact URL")
-	flags.StringVar(&opts.ArtifactType, "artifact-type", "", "Agent artifact type")
+
+	// LLM Analyzer extension
 	flags.BoolVarP(&opts.LLMAnalyzer, "llmanalyzer", "l", false, "Enable LLMAnalyzer extension")
 
-	// Base extension
 	flags.StringSliceVar(
 		&opts.Authors,
 		"author",
@@ -47,4 +41,12 @@ func init() {
 	// Creation time (only for dev purposes)
 	flags.StringVar(&opts.CreatedAt, "created-at", "", "Agent creation time in RFC3339 format")
 	_ = flags.MarkHidden("created-at")
+
+	// Artifacts
+	flags.StringSliceVar(
+		&opts.Artifacts,
+		"artifact",
+		[]string{},
+		"Artifacts to set for the agent. Each artifact should be in the format 'type:url'. Example usage: --artifact type1:url1 --artifact type2:url2",
+	)
 }

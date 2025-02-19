@@ -217,7 +217,7 @@ tasks:
     deps:
       - cli:compile
     cmds:
-      - defer: { task: deploy:kubernetes-env:cleanup }
+      - defer: { task: test:kubernetes-env:cleanup }
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
       - task: test:kubernetes-env:bootstrap

@@ -117,8 +117,7 @@ dirctl build [options] <path-to-agent>
 Options:
 - `--name` : Name of the agent.
 - `--version` : Version of the agent.
-- `--artifact-url` : URL of the agent artifact.
-- `--artifact-type` : Type of the agent artifact.
+- `--artifact` : Artifacts to set for the agent. Each artifact should be in the format `type:url`. Example usage: `--artifact type1:url1 --artifact type2:url2`.
 - `--author` : Authors to set for the agent. Overrides builder defaults. Example usage: `--author author1 --author author2`.
 - `--category` : Categories to set for the agent. Overrides builder defaults. Example usage: `--category category1 --category category2`.
 - `--created-at` : Agent creation time in RFC3339 format.

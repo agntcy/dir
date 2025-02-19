@@ -6,8 +6,10 @@ package build
 import (
 	"encoding/json"
 	"fmt"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"strings"
 	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder"
@@ -22,8 +24,8 @@ var Command = &cobra.Command{
 	dirctl build \
 		--name="agent-name" \
 		--version="v1.0.0" \
-		--artifact-url="http://ghcr.io/example/example" \
-		--artifact-type="docker-image" \
+		--artifact="docker-image:http://ghcr.io/example/example" \
+		--artifact="python-package:http://ghcr.io/example/example" \
 		--author="author1" \
 		--author="author2" \
 		--category="category1" \
@@ -50,11 +52,27 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		}
 	}
 
-	// Load in artifact type
-	var ok bool
-	var artifactType int32
-	if artifactType, ok = apicore.LocatorType_value[opts.ArtifactType]; !ok {
-		return fmt.Errorf("invalid artifact type: %s", opts.ArtifactType)
+	// Load in artifacts
+	var locators []*apicore.Locator
+	for _, artifact := range opts.Artifacts {
+		// Split artifact into type and URL
+		parts := strings.SplitN(artifact, ":", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid artifact format, expected 'type:url'")
+		}
+
+		var ok bool
+		var artifactType int32
+		if artifactType, ok = apicore.LocatorType_value[parts[0]]; !ok {
+			return fmt.Errorf("invalid artifact type: %s", parts[0])
+		}
+
+		locators = append(locators, &apicore.Locator{
+			Type: apicore.LocatorType(artifactType),
+			Source: &apicore.LocatorSource{
+				Url: parts[1],
+			},
+		})
 	}
 
 	// Create agent data model
@@ -63,14 +81,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		Version:   opts.Version,
 		Authors:   opts.Authors,
 		CreatedAt: timestamppb.New(createdAt),
-		Locators: []*apicore.Locator{
-			{
-				Type: apicore.LocatorType(artifactType),
-				Source: &apicore.LocatorSource{
-					Url: opts.ArtifactUrl,
-				},
-			},
-		},
+		Locators:  locators,
 	}
 
 	// Build to obtain agent model
