@@ -23,8 +23,8 @@ var Command = &cobra.Command{
 	dirctl build \
 		--name="agent-name" \
 		--version="v1.0.0" \
-		--artifact="docker-image:http://ghcr.io/example/example" \
-		--artifact="python-package:http://ghcr.io/example/example" \
+		--locator="docker-image:http://ghcr.io/example/example" \
+		--locator="python-package:http://ghcr.io/example/example" \
 		--author="author1" \
 		--author="author2" \
 		--category="category1" \
@@ -43,7 +43,7 @@ var Command = &cobra.Command{
 func runCommand(cmd *cobra.Command, agentPath string) error {
 	// Get configuration from flags
 	buildConfig := &config.Config{}
-	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.CreatedAt, opts.LLMAnalyzer, opts.Authors, opts.Categories, opts.Artifacts)
+	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.CreatedAt, opts.LLMAnalyzer, opts.Authors, opts.Categories, opts.Locators)
 	if err != nil {
 		return fmt.Errorf("failed to load config from flags: %w", err)
 	}

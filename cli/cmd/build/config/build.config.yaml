@@ -17,8 +17,8 @@ categories:
   - "category1"
   - "category2"
 
-# List of artifacts of the agent
-artifacts:
+# List of locators of the agent
+locators:
   - type: "docker-image"
     url: "url1"
   - type: "binary"

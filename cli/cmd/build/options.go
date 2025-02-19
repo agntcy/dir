@@ -12,7 +12,7 @@ type options struct {
 	LLMAnalyzer bool
 	Authors     []string
 	Categories  []string
-	Artifacts   []string
+	Locators    []string
 	ConfigFile  string
 }
 
@@ -43,12 +43,12 @@ func init() {
 	flags.StringVar(&opts.CreatedAt, "created-at", "", "Agent creation time in RFC3339 format")
 	_ = flags.MarkHidden("created-at")
 
-	// Artifacts
+	// Locators
 	flags.StringSliceVar(
-		&opts.Artifacts,
-		"artifact",
+		&opts.Locators,
+		"locator",
 		[]string{},
-		"Artifacts to set for the agent. Each artifact should be in the format 'type:url'. Example usage: --artifact type1:url1 --artifact type2:url2. Supported types: 'docker-image', 'python-package', 'helm-chart', 'source-code' and 'binary'.",
+		"Artifact locators to set for the agent. Each locator should be in the format 'type:url'. Example usage: --locator type1:url1 --locator type2:url2. Supported types: 'docker-image', 'python-package', 'helm-chart', 'source-code' and 'binary'.",
 	)
 
 	flags.StringVarP(&opts.ConfigFile, "config-file", "c", "", "Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML")
