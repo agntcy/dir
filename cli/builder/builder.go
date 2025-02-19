@@ -13,14 +13,7 @@ import (
 	"github.com/agntcy/dir/cli/builder/extensions/runtime"
 )
 
-func Build(
-	ctx context.Context,
-	fsPath string,
-	agent *apicore.Agent,
-	authors []string,
-	categories []string,
-	LLMAnalyzer bool,
-) error {
+func Build(ctx context.Context, fsPath string, agent *apicore.Agent, categories []string, LLMAnalyzer bool) error {
 	// Runtime extension
 	runtimeBuilder := runtime.New(fsPath)
 	runtimeExtension, err := runtimeBuilder.Build(ctx)

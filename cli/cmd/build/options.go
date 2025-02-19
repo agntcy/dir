@@ -13,6 +13,7 @@ type options struct {
 	Authors     []string
 	Categories  []string
 	Artifacts   []string
+	ConfigFile  string
 }
 
 func init() {
@@ -49,4 +50,6 @@ func init() {
 		[]string{},
 		"Artifacts to set for the agent. Each artifact should be in the format 'type:url'. Example usage: --artifact type1:url1 --artifact type2:url2. Supported types: 'docker-image', 'python-package', 'helm-chart', 'source-code' and 'binary'.",
 	)
+
+	flags.StringVarP(&opts.ConfigFile, "config-file", "c", "", "Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML")
 }

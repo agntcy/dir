@@ -122,6 +122,7 @@ Options:
 - `--category` : Categories to set for the agent. Overrides builder defaults. Example usage: `--category category1 --category category2`.
 - `--created-at` : Agent creation time in RFC3339 format.
 - `--llmanalyzer` : Enable LLMAnalyzer extension.
+- `--config-file` : Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML. Example template: cli/cmd/build/config/build.config.yaml.
 
 ### Push Command
 

@@ -13,6 +13,7 @@ import (
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder"
+	"github.com/agntcy/dir/cli/cmd/build/config"
 	"github.com/spf13/cobra"
 )
 
@@ -75,17 +76,34 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		})
 	}
 
-	// Create agent data model
-	agent := &apicore.Agent{
-		Name:      opts.Name,
-		Version:   opts.Version,
-		Authors:   opts.Authors,
-		CreatedAt: timestamppb.New(createdAt),
-		Locators:  locators,
+	// Load config file if provided
+	var config config.Config
+	if opts.ConfigFile != "" {
+		err := config.LoadFromFile(opts.ConfigFile)
+		if err != nil {
+			return fmt.Errorf("failed to load config file: %w", err)
+		}
+	}
+	configLocators, err := config.GetAPILocators()
+	if err != nil {
+		return fmt.Errorf("failed to get locators from config: %w", err)
 	}
 
+	// Create agent data model from config and from options
+	// Option values should override config values
+	agent := &apicore.Agent{
+		Name:      firstNonEmpty(opts.Name, config.Name),
+		Version:   firstNonEmpty(opts.Version, config.Version),
+		Authors:   firstNonEmptySlice(opts.Authors, config.Authors),
+		CreatedAt: timestamppb.New(firstNonEmptyTime(createdAt, config.CreatedAt)),
+		Locators:  firstNonEmptySlice(locators, configLocators),
+	}
+
+	categories := firstNonEmptySlice(opts.Categories, config.Categories)
+	llmanalyzer := opts.LLMAnalyzer
+
 	// Build to obtain agent model
-	err := builder.Build(cmd.Context(), agentPath, agent, opts.Authors, opts.Categories, opts.LLMAnalyzer)
+	err = builder.Build(cmd.Context(), agentPath, agent, categories, llmanalyzer)
 	if err != nil {
 		return fmt.Errorf("failed to build agent: %w", err)
 	}
@@ -100,4 +118,25 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	cmd.Print(string(agentRaw))
 
 	return nil
+}
+
+func firstNonEmpty(opt, cfg string) string {
+	if opt != "" {
+		return opt
+	}
+	return cfg
+}
+
+func firstNonEmptySlice[T any](opt, cfg []T) []T {
+	if len(opt) > 0 {
+		return opt
+	}
+	return cfg
+}
+
+func firstNonEmptyTime(opt, cfg time.Time) time.Time {
+	if !opt.IsZero() {
+		return opt
+	}
+	return cfg
 }
