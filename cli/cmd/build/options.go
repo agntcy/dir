@@ -47,6 +47,6 @@ func init() {
 		&opts.Artifacts,
 		"artifact",
 		[]string{},
-		"Artifacts to set for the agent. Each artifact should be in the format 'type:url'. Example usage: --artifact type1:url1 --artifact type2:url2",
+		"Artifacts to set for the agent. Each artifact should be in the format 'type:url'. Example usage: --artifact type1:url1 --artifact type2:url2. Supported types: 'docker-image', 'python-package', 'helm-chart', 'source-code' and 'binary'.",
 	)
 }
