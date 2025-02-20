@@ -10,18 +10,18 @@ import (
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
 )
 
-type Locator struct {
+type Artifact struct {
 	Type string `yaml:"type"`
 	URL  string `yaml:"url"`
 }
 
 type Config struct {
-	Name        string    `yaml:"name"`
-	Version     string    `yaml:"version"`
-	LLMAnalyzer bool      `yaml:"llmanalyzer"`
-	Authors     []string  `yaml:"authors"`
-	Categories  []string  `yaml:"categories"`
-	Locators    []Locator `yaml:"locators"`
+	Name        string     `yaml:"name"`
+	Version     string     `yaml:"version"`
+	LLMAnalyzer bool       `yaml:"llmanalyzer"`
+	Authors     []string   `yaml:"authors"`
+	Categories  []string   `yaml:"categories"`
+	Artifacts   []Artifact `yaml:"artifacts"`
 }
 
 func (c *Config) LoadFromFile(path string) error {
@@ -45,7 +45,7 @@ func (c *Config) LoadFromFile(path string) error {
 
 func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 	var locators []*apicore.Locator
-	for _, locator := range c.Locators {
+	for _, locator := range c.Artifacts {
 		var ok bool
 		var locatorType int32
 		if locatorType, ok = apicore.LocatorType_value[locator.Type]; !ok {

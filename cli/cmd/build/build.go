@@ -133,10 +133,3 @@ func firstNonEmptySlice[T any](opt, cfg []T) []T {
 	}
 	return cfg
 }
-
-func firstNonEmptyTime(opt, cfg time.Time) time.Time {
-	if !opt.IsZero() {
-		return opt
-	}
-	return cfg
-}
