@@ -11,82 +11,28 @@ import (
 	"github.com/agntcy/dir/cli/builder/extensions/crewai"
 	"github.com/agntcy/dir/cli/builder/extensions/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/extensions/runtime"
+	"github.com/agntcy/dir/cli/builder/manager"
 )
 
 func Build(ctx context.Context, fsPath string, agent *apicore.Agent, categories []string, LLMAnalyzer bool) error {
-	// Runtime extension
-	runtimeBuilder := runtime.New(fsPath)
-	runtimeExtension, err := runtimeBuilder.Build(ctx)
-	if err != nil {
-		return err
-	}
-	runtimeAPIExtension, err := runtimeExtension.ToAPIExtension()
-	if err != nil {
-		return err
-	}
+	extManager := manager.NewExtensionManager()
 
-	// Category extension
-	categoryBuilder := category.New(categories)
-	categoryExtension, err := categoryBuilder.Build(ctx)
-	if err != nil {
-		return err
-	}
-	categoryAPIExtension, err := categoryExtension.ToAPIExtension()
-	if err != nil {
-		return err
-	}
+	// Register extensions
+	extManager.Register(runtime.ExtensionName, fsPath)
+	extManager.Register(category.ExtensionName, categories)
+	extManager.Register(crewai.ExtensionName, fsPath)
 
-	// CrewAI extension
-	crewaiBuilder := crewai.New(fsPath)
-	crewaiExtension, err := crewaiBuilder.Build(ctx)
-	if err != nil {
-		return err
-	}
-	crewaiAPIExtension, err := crewaiExtension.ToAPIExtension()
-	if err != nil {
-		return err
-	}
-
-	agent.Extensions = append(
-		agent.Extensions,
-		&runtimeAPIExtension,
-		&categoryAPIExtension,
-		&crewaiAPIExtension,
-	)
-
-	// LLManalyzer extension
 	if LLMAnalyzer {
-		llmanalyzerBuilder, err := llmanalyzer.New(fsPath)
-		if err != nil {
-			return err
-		}
-		llmanalyzerExtension, err := llmanalyzerBuilder.Build(ctx)
-		if err != nil {
-			return err
-		}
-		llmanalyzerAPIExtension, err := llmanalyzerExtension.ToAPIExtension()
-		if err != nil {
-			return err
-		}
-
-		agent.Extensions = append(agent.Extensions, &llmanalyzerAPIExtension)
+		extManager.Register(llmanalyzer.ExtensionName, fsPath)
 	}
 
-	// Security extension
-	//securityBuilder := security.New(agent)
-	//securityExtension, err := securityBuilder.Build(ctx)
-	//if err != nil {
-	//	return err
-	//}
-	//securityAPIExtension, err := securityExtension.ToAPIExtension()
-	//if err != nil {
-	//	return err
-	//}
+	// Build and append extensions to agent
+	extensions, err := extManager.Build(ctx)
+	if err != nil {
+		return err
+	}
 
-	// agent.Extensions = append(
-	// 	agent.Extensions,
-	// &securityAPIExtension,
-	// )
+	agent.Extensions = append(agent.Extensions, extensions...)
 
 	return nil
 }

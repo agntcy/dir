@@ -4,9 +4,6 @@ name: "agent-name"
 # The version of the agent
 version: "v1.0.0"
 
-# The creation date and time of the agent configuration (RFC3339 format)
-created-at: "2025-02-19T15:04:05Z"
-
 # Enable or disable the LLM analyzer extension
 llmanalyzer: false
 
