@@ -141,5 +141,5 @@ func compareJSON(json1, json2 []byte) (bool, error) {
 	// Overwrite fields
 	agent1.CreatedAt = agent2.CreatedAt
 
-	return reflect.DeepEqual(agent1, agent2), nil
+	return reflect.DeepEqual(agent1, agent2), nil //nolint:govet
 }

@@ -6,7 +6,6 @@ package build
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -43,69 +42,48 @@ var Command = &cobra.Command{
 }
 
 func runCommand(cmd *cobra.Command, agentPath string) error {
-	// Override creation time if requested
-	createdAt := time.Now()
-	if opts.CreatedAt != "" {
-		var err error
-		createdAt, err = time.Parse(time.RFC3339, opts.CreatedAt)
-		if err != nil {
-			return fmt.Errorf("failed to parse create time: %w", err)
-		}
+	// Get configuration from flags
+	buildConfig := &config.Config{}
+	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.LLMAnalyzer, opts.Authors, opts.Categories, opts.Artifacts)
+	if err != nil {
+		return fmt.Errorf("failed to load config from flags: %w", err)
 	}
 
-	// Load in artifacts
-	var locators []*apicore.Locator
-	for _, artifact := range opts.Artifacts {
-		// Split artifact into type and URL
-		parts := strings.SplitN(artifact, ":", 2)
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid artifact format, expected 'type:url'")
-		}
-
-		var ok bool
-		var artifactType int32
-		if artifactType, ok = apicore.LocatorType_value[parts[0]]; !ok {
-			return fmt.Errorf("invalid artifact type: %s", parts[0])
-		}
-
-		locators = append(locators, &apicore.Locator{
-			Type: apicore.LocatorType(artifactType),
-			Source: &apicore.LocatorSource{
-				Url: parts[1],
-			},
-		})
-	}
-
-	// Load config file if provided
-	var config config.Config
+	// Get configuration from file
 	if opts.ConfigFile != "" {
-		err := config.LoadFromFile(opts.ConfigFile)
+		fileConfig := &config.Config{}
+		err := fileConfig.LoadFromFile(opts.ConfigFile)
 		if err != nil {
 			return fmt.Errorf("failed to load config file: %w", err)
 		}
+
+		// Merge file config with flags config
+		// Flags should override file config
+		buildConfig.MergeConfig(fileConfig)
 	}
-	configLocators, err := config.GetAPILocators()
+
+	// Set source to agent path
+	buildConfig.Source = agentPath
+
+	locators, err := buildConfig.GetAPILocators()
 	if err != nil {
 		return fmt.Errorf("failed to get locators from config: %w", err)
 	}
 
-	// Create agent data model from config and from options
-	// Option values should override config values
-	agent := &apicore.Agent{
-		Name:      firstNonEmpty(opts.Name, config.Name),
-		Version:   firstNonEmpty(opts.Version, config.Version),
-		Authors:   firstNonEmptySlice(opts.Authors, config.Authors),
-		CreatedAt: timestamppb.New(createdAt),
-		Locators:  firstNonEmptySlice(locators, configLocators),
-	}
-
-	categories := firstNonEmptySlice(opts.Categories, config.Categories)
-	llmanalyzer := opts.LLMAnalyzer
-
 	// Build to obtain agent model
-	err = builder.Build(cmd.Context(), agentPath, agent, categories, llmanalyzer)
+	extensions, err := builder.Build(cmd.Context(), buildConfig)
 	if err != nil {
 		return fmt.Errorf("failed to build agent: %w", err)
+	}
+
+	// Create agent data model
+	agent := &apicore.Agent{
+		Name:       buildConfig.Name,
+		Version:    buildConfig.Version,
+		Authors:    buildConfig.Authors,
+		CreatedAt:  timestamppb.New(time.Now()),
+		Locators:   locators,
+		Extensions: extensions,
 	}
 
 	// Construct output
@@ -118,18 +96,4 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	cmd.Print(string(agentRaw))
 
 	return nil
-}
-
-func firstNonEmpty(opt, cfg string) string {
-	if opt != "" {
-		return opt
-	}
-	return cfg
-}
-
-func firstNonEmptySlice[T any](opt, cfg []T) []T {
-	if len(opt) > 0 {
-		return opt
-	}
-	return cfg
 }
