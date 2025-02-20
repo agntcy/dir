@@ -95,7 +95,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		Name:      firstNonEmpty(opts.Name, config.Name),
 		Version:   firstNonEmpty(opts.Version, config.Version),
 		Authors:   firstNonEmptySlice(opts.Authors, config.Authors),
-		CreatedAt: timestamppb.New(firstNonEmptyTime(createdAt, config.CreatedAt)),
+		CreatedAt: timestamppb.New(createdAt),
 		Locators:  firstNonEmptySlice(locators, configLocators),
 	}
 

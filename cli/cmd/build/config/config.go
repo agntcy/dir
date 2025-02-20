@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 
 	"gopkg.in/yaml.v2"
 
@@ -19,7 +18,6 @@ type Locator struct {
 type Config struct {
 	Name        string    `yaml:"name"`
 	Version     string    `yaml:"version"`
-	CreatedAt   time.Time `yaml:"created-at"`
 	LLMAnalyzer bool      `yaml:"llmanalyzer"`
 	Authors     []string  `yaml:"authors"`
 	Categories  []string  `yaml:"categories"`
