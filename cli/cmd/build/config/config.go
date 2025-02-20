@@ -16,14 +16,21 @@ type Artifact struct {
 	URL  string `yaml:"url"`
 }
 
+type Extension struct {
+	Name    string            `yaml:"name"`
+	Version string            `yaml:"version"`
+	Specs   map[string]string `yaml:"specs"`
+}
+
 type Config struct {
-	Source      string     `yaml:"source"`
-	Name        string     `yaml:"name"`
-	Version     string     `yaml:"version"`
-	LLMAnalyzer bool       `yaml:"llmanalyzer"`
-	Authors     []string   `yaml:"authors"`
-	Categories  []string   `yaml:"categories"`
-	Artifacts   []Artifact `yaml:"artifacts"`
+	Source      string      `yaml:"source"`
+	Name        string      `yaml:"name"`
+	Version     string      `yaml:"version"`
+	LLMAnalyzer bool        `yaml:"llmanalyzer"`
+	Authors     []string    `yaml:"authors"`
+	Categories  []string    `yaml:"categories"`
+	Artifacts   []Artifact  `yaml:"artifacts"`
+	Extensions  []Extension `yaml:"extensions"`
 }
 
 func (c *Config) LoadFromFlags(name, version string, llmAnalyzer bool, authors, categories []string, rawArtifacts []string) error {
@@ -48,6 +55,8 @@ func (c *Config) LoadFromFlags(name, version string, llmAnalyzer bool, authors, 
 		})
 	}
 	c.Artifacts = artifacts
+
+	// TODO Allow for extensions to be passed in via flags?
 
 	return nil
 }
@@ -95,9 +104,11 @@ func (c *Config) MergeConfig(extra *Config) {
 	c.Name = firstNonEmpty(c.Name, extra.Name)
 	c.Version = firstNonEmpty(c.Version, extra.Version)
 	// c.LLMAnalyzer = c.LLMAnalyzer
+	// TODO check if slice fields should be merged or replaced
 	c.Authors = firstNonEmptySlice(c.Authors, extra.Authors)
 	c.Categories = firstNonEmptySlice(c.Categories, extra.Categories)
 	c.Artifacts = firstNonEmptySlice(c.Artifacts, extra.Artifacts)
+	c.Extensions = firstNonEmptySlice(c.Extensions, extra.Extensions)
 }
 
 func firstNonEmpty(opt, cfg string) string {

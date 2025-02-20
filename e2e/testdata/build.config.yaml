@@ -30,15 +30,10 @@ artifacts:
 #   version: "v1.0.0"
 #   specs:
 #     key1: "value1"
-# This structure will be injected into the agent's model
+# This extension will be injected into the agent's model
 extensions:
-  - name: "extension1"
+  - name: "license"
     version: "v1.0.0"
     specs:
-      key1: "value1"
-      key2: "value2"
-  - name: "extension2"
-    version: "v1.0.0"
-    specs:
-      key1: "value1"
-      key2: "value2"
+      license: "Apache-2.0"
+      header: "Copyright (c) 2025 Cisco and/or its affiliates."

@@ -56,6 +56,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 				"--author=author2",
 				"--category=category1",
 				"--category=category2",
+				"--config-file=testdata/build.config.yaml",
 				marketingStrategyPath,
 			})
 

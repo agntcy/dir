@@ -6,7 +6,8 @@
     "author2"
   ],
   "created_at": {
-    "seconds": 1735689600
+    "seconds": 1740070975,
+    "nanos": 61129000
   },
   "locators": [
     {
@@ -94,6 +95,14 @@
         "task.project_understanding_task.expected_output": "A detailed summary of the project and a profile of the target audience.\n",
         "task.research_task.description": "Conduct a thorough research about the customer and competitors in the context of {customer_domain}. Make sure you find any interesting and relevant information given the current year is 2024. We are working with them on the following project: {project_description}.\n",
         "task.research_task.expected_output": "A complete report on the customer and their customers and competitors, including their demographics, preferences, market positioning and audience engagement.\n"
+      }
+    },
+    {
+      "name": "license",
+      "version": "v1.0.0",
+      "specs": {
+        "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
+        "license": "Apache-2.0"
       }
     }
   ]
