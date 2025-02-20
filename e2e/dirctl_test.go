@@ -5,8 +5,11 @@ package e2e
 
 import (
 	"bytes"
+	_ "embed"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 
@@ -15,6 +18,9 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
+
+//go:embed testdata/agent.json
+var expectedAgentJSON []byte
 
 var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 	var (
@@ -48,6 +54,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 				"--artifact=docker-image:http://ghcr.io/cisco-agents/marketing-strategy",
 				"--author=author1",
 				"--author=author2",
+				"--category=category1",
+				"--category=category2",
 				marketingStrategyPath,
 			})
 
@@ -59,6 +67,11 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 
 			err = os.WriteFile(tempAgentPath, outputBuffer.Bytes(), 0644)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Compare the output with the expected JSON
+			equal, err := compareJSON(outputBuffer.Bytes(), expectedAgentJSON)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 	})
 
@@ -111,3 +124,22 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		})
 	})
 })
+
+func compareJSON(json1, json2 []byte) (bool, error) {
+	var agent1, agent2 coretypes.Agent
+
+	err := json.Unmarshal(json1, &agent1)
+	if err != nil {
+		return false, err
+	}
+
+	err = json.Unmarshal(json2, &agent2)
+	if err != nil {
+		return false, err
+	}
+
+	// Overwrite fields
+	agent1.CreatedAt = agent2.CreatedAt
+
+	return reflect.DeepEqual(agent1, agent2), nil
+}

@@ -32,7 +32,6 @@ func (em *ExtensionManager) Build(ctx context.Context) ([]*apicore.Extension, er
 		switch name {
 		case category.ExtensionName:
 			ext, err = category.New(config.([]string)).Build(ctx)
-
 		case crewai.ExtensionName:
 			ext, err = crewai.New(config.(string)).Build(ctx)
 		case llmanalyzer.ExtensionName:
