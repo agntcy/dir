@@ -4,9 +4,7 @@
 package types
 
 type Agent struct {
-	Model
+	Model `gorm:"embedded"`
 
-	Name    string `json:"name,omitempty" mapstructure:"name"`
-	Version string `json:"version,omitempty" mapstructure:"version"`
-	Digest  string `json:"digest,omitempty" mapstructure:"digest"`
+	Name string `gorm:"not null"`
 }

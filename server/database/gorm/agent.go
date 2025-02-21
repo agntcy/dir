@@ -19,17 +19,6 @@ const (
 	agentTableName = "agents"
 )
 
-// AgentTable handles all database operations for agent data models.
-//
-// Following notes are true:
-//   - The table is served via SQL. The constructor only needs the database instance
-//     and to reserve a specific table name (use agentTableName).
-//   - Keys are always constructed with the schema: /<namespace>/<agent-digest>.
-//     Use AgentCID function on the received key in db ops to extract agent digest/CID.
-//   - Value that is being exchanged (read/written/queried) is of type core.ObjectMeta.
-//     We can create our own database object as well.
-//   - We can use the StoreService to perform O(1) operations in Get, GetSize, Has
-//     for optimization,but this can be done some other time.
 type agentTable struct {
 	db *gorm.DB
 }
@@ -41,22 +30,71 @@ func NewAgentTable(db *gorm.DB) ds.Datastore {
 }
 
 func (s *agentTable) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
-	//TODO implement me
-	panic("implement me")
+	keyDigest, err := AgentCID(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract agent digest: %w", err)
+	}
+
+	var agent types.Agent
+	err = s.db.WithContext(ctx).
+		Table(agentTableName).
+		Where("c_id = ?", keyDigest.Encode()).
+		Where("deleted_at IS NULL").
+		First(&agent).Error
+	if err != nil && err == gorm.ErrRecordNotFound {
+		return nil, ds.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get agent: %w", err)
+	}
+
+	// Create ObjectMeta from the agent data
+	objectMeta := &coretypes.ObjectMeta{
+		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT,
+		Digest: keyDigest,
+		Name:   agent.Name,
+	}
+
+	// Marshal the ObjectMeta to JSON
+	marshalledObjectMeta, err := json.Marshal(objectMeta)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal object meta: %w", err)
+	}
+
+	return marshalledObjectMeta, nil
 }
 
 func (s *agentTable) Has(ctx context.Context, key ds.Key) (exists bool, err error) {
-	//TODO implement me
-	panic("implement me")
+	keyDigest, err := AgentCID(key)
+	if err != nil {
+		return false, fmt.Errorf("failed to extract agent digest: %w", err)
+	}
+
+	var count int64
+	err = s.db.WithContext(ctx).
+		Table(agentTableName).
+		Where("c_id = ?", keyDigest.Encode()).
+		Where("deleted_at IS NULL").
+		Count(&count).Error
+
+	if err != nil {
+		return false, fmt.Errorf("failed to check agent existence: %w", err)
+	}
+
+	return count > 0, nil
 }
 
-// GetSize we can fake return back here
 func (s *agentTable) GetSize(ctx context.Context, key ds.Key) (size int, err error) {
-	//TODO implement me
-	panic("implement me")
+	// Get the actual data
+    data, err := s.Get(ctx, key)
+    if err != nil {
+        return 0, err
+    }
+
+    // Return the size of the serialized data
+    return len(data), nil
 }
 
-// Query dont implement now
 func (s *agentTable) Query(ctx context.Context, q query.Query) (query.Results, error) {
 	//TODO implement me
 	panic("implement me")
@@ -68,18 +106,64 @@ func (s *agentTable) Put(ctx context.Context, key ds.Key, value []byte) error {
 		return fmt.Errorf("failed to unmarshal value: %w", err)
 	}
 
-	agent := types.Agent{
-		Name:    objectMeta.Name,
-		Version: objectMeta.Version,
-		Digest:  objectMeta.Digest.Encode(),
+	if objectMeta.Type != coretypes.ObjectType_OBJECT_TYPE_AGENT {
+		return fmt.Errorf("invalid object type: %v", objectMeta.Type)
 	}
 
-	return s.db.WithContext(ctx).Table(agentTableName).Save(&agent).Error
+	if objectMeta.Digest == nil {
+		return fmt.Errorf("missing digest in object meta")
+	}
+
+	keyDigest, err := AgentCID(key)
+	if err != nil {
+		return fmt.Errorf("failed to extract agent digest: %w", err)
+	}
+
+	if keyDigest.String() != objectMeta.Digest.String() {
+		return fmt.Errorf("digest mismatch: %v != %v", keyDigest, objectMeta.Digest)
+	}
+
+	// Check if the agent already exists
+	exists, err := s.Has(ctx, key)
+	if err != nil {
+		return fmt.Errorf("failed to check if agent exists: %w", err)
+	}
+
+	if exists {
+		return fmt.Errorf("agent already exists with this key: %v", key.BaseNamespace())
+	}
+
+	agent := types.Agent{
+		Model: types.Model{
+			CID: objectMeta.Digest.Encode(),
+		},
+		Name: objectMeta.GetName(),
+	}
+
+	return s.db.WithContext(ctx).Table(agentTableName).Create(&agent).Error
 }
 
 func (s *agentTable) Delete(ctx context.Context, key ds.Key) error {
-	//TODO implement me
-	panic("implement me")
+	keyDigest, err := AgentCID(key)
+	if err != nil {
+		return fmt.Errorf("failed to extract agent digest: %w", err)
+	}
+
+	result := s.db.WithContext(ctx).
+		Table(agentTableName).
+		Where("c_id = ?", keyDigest.Encode()).
+		Delete(&types.Agent{})
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete agent: %w", result.Error)
+	}
+
+	// If no rows were affected, the record didn't exist
+	if result.RowsAffected == 0 {
+		return ds.ErrNotFound
+	}
+
+	return nil
 }
 
 // Sync dont implement now
@@ -88,10 +172,11 @@ func (s *agentTable) Sync(ctx context.Context, prefix ds.Key) error {
 	panic("implement me")
 }
 
-// Close should only close the actual table, not the database itself
 func (s *agentTable) Close() error {
-	//TODO implement me
-	panic("implement me")
+	// Since we're using GORM and the database connection is managed externally,
+    // we don't need to do any specific cleanup for just the table.
+    // The actual database connection closure should be handled by the main application.
+    return nil
 }
 
 // AgentCID extracts the agent digest (UID) from the key.

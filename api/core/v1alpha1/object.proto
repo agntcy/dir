@@ -35,9 +35,6 @@ message ObjectMeta {
 
   // Digest associated with this object
   Digest digest = 5;
-
-  // Version of the agent or extension, for locator it is ignored
-  string Version = 6;
 }
 
 // Object defines representation schema of an object

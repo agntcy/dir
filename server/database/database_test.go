@@ -6,8 +6,6 @@ package database
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log"
 	"testing"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -29,37 +27,66 @@ func TestDatabase(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a key
-	key := ds.NewKey("/namespace/sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+	key := ds.NewKey("/agents/blobs/sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
 
 	digest := &coretypes.Digest{
-		Type: coretypes.DigestType_DIGEST_TYPE_SHA256,
+		Type:  coretypes.DigestType_DIGEST_TYPE_SHA256,
 		Value: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 	}
 
-	// Create an Agent object
-	agent := &coretypes.Agent{
-		Name:    "example-agent",
-		Version: "1.0.0",
-		Digest:  digest,
-	}
-
-	// Convert the Agent object to ObjectMeta
-	objectMeta, err := agent.ObjectMeta()
-	if err != nil {
-		log.Fatalf("failed to convert agent to object meta: %v", err)
+	objectMeta := &coretypes.ObjectMeta{
+		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT,
+		Name:   "example-agent:1.0.0",
+		Digest: digest,
 	}
 
 	// Marshal the ObjectMeta to a byte slice
 	value, err := json.Marshal(objectMeta)
 	if err != nil {
-		log.Fatalf("failed to marshal object meta: %v", err)
+		t.Fatalf("failed to marshal object meta: %v", err)
 	}
 
-	// Call the Put method
-	err = db.Agent().Put(ctx, key, value)
+	// Call the Has method
+	exists, err := db.Agent().Has(ctx, key)
 	if err != nil {
-		log.Fatalf("failed to put data: %v", err)
+		t.Fatalf("failed to check if key exists: %v", err)
 	}
 
-	fmt.Println("Data successfully stored in the database")
+	if !exists {
+		t.Log("key does not exist")
+
+		// Call the Put method
+		err = db.Agent().Put(ctx, key, value)
+		if err != nil {
+			t.Fatalf("failed to put data: %v", err)
+		}
+
+		t.Log("Data successfully stored in the database")
+	} else {
+		t.Logf("Key %s exists in the database", key.BaseNamespace())
+	}
+
+	// Call the Get method
+	value, err = db.Agent().Get(ctx, key)
+	if err != nil {
+		t.Fatalf("failed to get data: %v", err)
+	}
+
+	t.Logf("Data successfully retrieved from the database: %s", string(value))
+
+	// Call the GetSize method
+	size, err := db.Agent().GetSize(ctx, key)
+	if err != nil {
+		t.Fatalf("failed to get size of data: %v", err)
+	}
+
+	t.Logf("Size of data: %d bytes", size)
+
+	// Call the Delete method
+	err = db.Agent().Delete(ctx, key)
+	if err != nil {
+		t.Fatalf("failed to delete data: %v", err)
+	}
+
+	t.Log("Data successfully deleted from the database")
 }

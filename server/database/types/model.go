@@ -6,21 +6,13 @@ package types
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type Model struct {
-	ID        string         `gorm:"type:text;primaryKey"`
-	CreatedAt time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP"`
-	UpdatedAt time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP"`
+	CID string `gorm:"type:text"`
+
+	CreatedAt time.Time `gorm:"autoCreateTime"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
-}
-
-func (model *Model) BeforeCreate(_ *gorm.DB) error {
-	if model.ID == "" {
-		model.ID = uuid.New().String()
-	}
-
-	return nil
 }
