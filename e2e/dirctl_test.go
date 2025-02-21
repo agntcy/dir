@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 
@@ -141,6 +142,26 @@ func compareJSON(json1, json2 []byte) (bool, error) {
 
 	// Overwrite fields
 	agent1.CreatedAt = agent2.CreatedAt
+
+	// Sort the authors slices
+	sort.Strings(agent1.Authors)
+	sort.Strings(agent2.Authors)
+
+	// Sort the locators slices by type
+	sort.Slice(agent1.Locators, func(i, j int) bool {
+		return agent1.Locators[i].Type < agent1.Locators[j].Type
+	})
+	sort.Slice(agent2.Locators, func(i, j int) bool {
+		return agent2.Locators[i].Type < agent2.Locators[j].Type
+	})
+
+	// Sort the extensions slices
+	sort.Slice(agent1.Extensions, func(i, j int) bool {
+		return agent1.Extensions[i].Name < agent1.Extensions[j].Name
+	})
+	sort.Slice(agent2.Extensions, func(i, j int) bool {
+		return agent2.Extensions[i].Name < agent2.Extensions[j].Name
+	})
 
 	return reflect.DeepEqual(agent1, agent2), nil //nolint:govet
 }
