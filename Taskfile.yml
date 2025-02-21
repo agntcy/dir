@@ -197,6 +197,7 @@ tasks:
     desc: Unit test Directory server code
     dir: ./server
     cmds:
+      - mkdir -p /tmp/sqlite && touch /tmp/sqlite/dir.db
       - go -C . test ./...
 
   ##
@@ -484,7 +485,7 @@ tasks:
     deps:
       - deps:helm
     vars:
-      HELM_ALL_CHART_PATHS: 
+      HELM_ALL_CHART_PATHS:
         sh: find . -name Chart.yaml -exec dirname {} \;
     cmds:
       # Add Helm repo
