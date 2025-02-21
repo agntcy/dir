@@ -5,11 +5,18 @@ package gorm
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/server/database/types"
 	ds "github.com/dep2p/libp2p/datastore"
 	"github.com/dep2p/libp2p/datastore/query"
 	"gorm.io/gorm"
+)
+
+const (
+	agentTableName = "agents"
 )
 
 // AgentTable handles all database operations for agent data models.
@@ -25,6 +32,12 @@ import (
 //     for optimization,but this can be done some other time.
 type agentTable struct {
 	db *gorm.DB
+}
+
+func NewAgentTable(db *gorm.DB) ds.Datastore {
+	return &agentTable{
+		db: db,
+	}
 }
 
 func (s *agentTable) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
@@ -50,8 +63,18 @@ func (s *agentTable) Query(ctx context.Context, q query.Query) (query.Results, e
 }
 
 func (s *agentTable) Put(ctx context.Context, key ds.Key, value []byte) error {
-	//TODO implement me
-	panic("implement me")
+	var objectMeta coretypes.ObjectMeta
+	if err := json.Unmarshal(value, &objectMeta); err != nil {
+		return fmt.Errorf("failed to unmarshal value: %w", err)
+	}
+
+	agent := types.Agent{
+		Name:    objectMeta.Name,
+		Version: objectMeta.Version,
+		Digest:  objectMeta.Digest.Encode(),
+	}
+
+	return s.db.WithContext(ctx).Table(agentTableName).Save(&agent).Error
 }
 
 func (s *agentTable) Delete(ctx context.Context, key ds.Key) error {
@@ -75,7 +98,7 @@ func (s *agentTable) Close() error {
 // For example, for key=/<namespace>/<agent-digest>, we return digest=<agent-digest>
 func AgentCID(key ds.Key) (*coretypes.Digest, error) {
 	var digest coretypes.Digest
-	if err := digest.Decode(key.Name()); err != nil {
+	if err := digest.Decode(key.BaseNamespace()); err != nil {
 		return nil, err
 	}
 	return &digest, nil

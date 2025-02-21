@@ -13,6 +13,7 @@ func (agent *Agent) ObjectMeta() (*ObjectMeta, error) {
 		Name:        fmt.Sprintf("%s:%s", agent.Name, agent.Version),
 		Annotations: agent.Annotations,
 		Digest:      agent.Digest,
+		Version:     agent.Version,
 	}, nil
 }
 
@@ -35,5 +36,6 @@ func (extension *Extension) ObjectMeta() (*ObjectMeta, error) {
 		Name:        fmt.Sprintf("%s:%s", extension.Name, extension.Version),
 		Annotations: extension.Annotations,
 		Digest:      extension.Digest,
+		Version:     extension.Version,
 	}, nil
 }

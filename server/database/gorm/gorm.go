@@ -17,9 +17,7 @@ type gormDB struct {
 }
 
 func (g *gormDB) Agent() ds.Datastore {
-	return &agentTable{
-		db: g.db,
-	}
+	return NewAgentTable(g.db)
 }
 
 func NewGorm(cfg *config.Config) (types.Database, error) {
