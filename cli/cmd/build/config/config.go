@@ -100,7 +100,7 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 	return locators, nil
 }
 
-func (c *Config) MergeConfig(extra *Config) {
+func (c *Config) Merge(extra *Config) {
 	c.Name = firstNonEmpty(c.Name, extra.Name)
 	c.Version = firstNonEmpty(c.Version, extra.Version)
 	// c.LLMAnalyzer = c.LLMAnalyzer

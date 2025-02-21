@@ -59,7 +59,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 
 		// Merge file config with flags config
 		// Flags should override file config
-		buildConfig.MergeConfig(fileConfig)
+		buildConfig.Merge(fileConfig)
 	}
 
 	// Set source to agent path
