@@ -6,6 +6,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/agntcy/dir/cli/cmd/build"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
@@ -31,6 +33,8 @@ var RootCmd = &cobra.Command{
 		ctx := util.SetClientForContext(cmd.Context(), c)
 		cmd.SetContext(ctx)
 
+		cmd.SetOut(os.Stdout)
+
 		return nil
 	},
 }
@@ -51,6 +55,6 @@ func Run(ctx context.Context) error {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(RootCmd.OutOrStdout(), "\n")
+	RootCmd.Print("\n")
 	return nil
 }
