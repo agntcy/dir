@@ -39,12 +39,14 @@ const (
 type ExtensionSpecs map[string]string
 
 type crewAI struct {
-	fsPath string
+	path        string
+	ignorePaths []string
 }
 
-func New(fsPath string) types.ExtensionBuilder {
+func New(path string, ignore []string) types.ExtensionBuilder {
 	return &crewAI{
-		fsPath: fsPath,
+		path:        path,
+		ignorePaths: ignore,
 	}
 }
 
@@ -53,7 +55,13 @@ func (c *crewAI) Build(_ context.Context) (*types.AgentExtension, error) {
 
 	// open folder
 	// parse agent data from filesystem
-	err := filepath.WalkDir(c.fsPath, func(fpath string, entry fs.DirEntry, _ error) error {
+	err := filepath.WalkDir(c.path, func(fpath string, entry fs.DirEntry, _ error) error {
+		// skip files in ignore list
+		for _, ignorePath := range c.ignorePaths {
+			if strings.Contains(fpath, ignorePath) {
+				return nil
+			}
+		}
 		// skip dirs and non-yaml crewAI files
 		if entry == nil || !entry.Type().IsRegular() {
 			return nil

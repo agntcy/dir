@@ -48,6 +48,9 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		return fmt.Errorf("failed to load config from flags: %w", err)
 	}
 
+	// Set source to agent path
+	buildConfig.Builder.Source = agentPath
+
 	// Get configuration from file
 	if opts.ConfigFile != "" {
 		fileConfig := &config.Config{}
@@ -60,9 +63,6 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		// Flags should override file config
 		buildConfig.Merge(fileConfig)
 	}
-
-	// Set source to agent path
-	buildConfig.Builder.Source = agentPath
 
 	locators, err := buildConfig.GetAPILocators()
 	if err != nil {

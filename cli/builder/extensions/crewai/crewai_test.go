@@ -19,7 +19,7 @@ var (
 )
 
 func TestBuilder(t *testing.T) {
-	builder := New("./testdata")
+	builder := New("./testdata", []string{})
 
 	// build
 	gotExtension, err := builder.Build(context.Background())

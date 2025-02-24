@@ -2,7 +2,9 @@ package manager
 
 import (
 	"context"
+
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
+	builderconfig "github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/extensions/crewai"
 	"github.com/agntcy/dir/cli/builder/extensions/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/extensions/runtime"
@@ -30,10 +32,12 @@ func (em *ExtensionManager) Build(ctx context.Context) ([]*apicore.Extension, er
 
 		switch name {
 		case crewai.ExtensionName:
-			ext, err = crewai.New(config.(string)).Build(ctx)
+			cfg := config.(*builderconfig.Config)
+			ext, err = crewai.New(cfg.Source, cfg.SourceIgnore).Build(ctx)
 		case llmanalyzer.ExtensionName:
 			var extBuilder clitypes.ExtensionBuilder
-			extBuilder, err = llmanalyzer.New(config.(string))
+			cfg := config.(*builderconfig.Config)
+			extBuilder, err = llmanalyzer.New(cfg.Source, cfg.SourceIgnore)
 			if err != nil {
 				return nil, err
 			}

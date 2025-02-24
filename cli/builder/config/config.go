@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
-package builder
+package config
 
 type Config struct {
 	Source       string   `yaml:"source"`
-	SourceIgnore []string `yaml:"sourceignore"`
+	SourceIgnore []string `yaml:"source-ignore"`
 
 	LLMAnalyzer bool `yaml:"llmanalyzer"`
 }

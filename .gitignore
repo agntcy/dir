@@ -10,7 +10,6 @@ bin/
 
 # Python
 __pycache__/
-.venv/
 
 # JS
 node_modules

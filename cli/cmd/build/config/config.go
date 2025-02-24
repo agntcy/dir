@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/builder"
+	builderconfig "github.com/agntcy/dir/cli/builder/config"
 )
 
 type Locator struct {
@@ -30,7 +30,7 @@ type Config struct {
 	Locators   []Locator   `yaml:"locators"`
 	Extensions []Extension `yaml:"extensions"`
 
-	Builder builder.Config `yaml:"builder"`
+	Builder builderconfig.Config `yaml:"builder"`
 }
 
 func (c *Config) LoadFromFlags(name, version string, llmAnalyzer bool, authors, rawLocators []string) error {
@@ -103,11 +103,14 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 func (c *Config) Merge(extra *Config) {
 	c.Name = firstNonEmpty(c.Name, extra.Name)
 	c.Version = firstNonEmpty(c.Version, extra.Version)
-	// c.LLMAnalyzer = c.LLMAnalyzer
+	// c.Builder.LLMAnalyzer = c.Builder.LLMAnalyzer
 	// TODO check if slice fields should be merged or replaced
 	c.Authors = firstNonEmptySlice(c.Authors, extra.Authors)
 	c.Locators = firstNonEmptySlice(c.Locators, extra.Locators)
 	c.Extensions = firstNonEmptySlice(c.Extensions, extra.Extensions)
+
+	c.Builder.Source = firstNonEmpty(c.Builder.Source, extra.Builder.Source)
+	c.Builder.SourceIgnore = firstNonEmptySlice(c.Builder.SourceIgnore, extra.Builder.SourceIgnore)
 }
 
 func firstNonEmpty(opt, cfg string) string {

@@ -53,12 +53,13 @@ type ExtensionSpecs struct {
 }
 
 type llmanalyzer struct {
-	cfg    *Config
-	fsPath string
-	client *azopenai.Client
+	cfg         *Config
+	fsPath      string
+	ignorePaths []string
+	client      *azopenai.Client
 }
 
-func New(fsPath string) (types.ExtensionBuilder, error) {
+func New(fsPath string, ignorePaths []string) (types.ExtensionBuilder, error) {
 	cfg, err := NewConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load LLMAnalyzer configuration: %w", err)
@@ -76,14 +77,15 @@ func New(fsPath string) (types.ExtensionBuilder, error) {
 	}
 
 	return &llmanalyzer{
-		cfg:    cfg,
-		fsPath: fsPath,
-		client: client,
+		cfg:         cfg,
+		fsPath:      fsPath,
+		ignorePaths: ignorePaths,
+		client:      client,
 	}, nil
 }
 
 func (l *llmanalyzer) Build(ctx context.Context) (*types.AgentExtension, error) {
-	filesContent, err := concatenateFiles(l.fsPath, []string{".py", ".yml", ".yaml"})
+	filesContent, err := concatenateFiles(l.fsPath, l.ignorePaths, []string{".py", ".yml", ".yaml"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to concatenate files: %w", err)
 	}
@@ -125,10 +127,16 @@ func (l *llmanalyzer) Build(ctx context.Context) (*types.AgentExtension, error) 
 	}, nil
 }
 
-func concatenateFiles(dirPath string, extensions []string) (string, error) {
+func concatenateFiles(dirPath string, ignorePaths []string, extensions []string) (string, error) {
 	var result strings.Builder
 
 	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		// skip files in ignore list
+		for _, ignorePath := range ignorePaths {
+			if strings.Contains(path, ignorePath) {
+				return nil
+			}
+		}
 		if err != nil {
 			return fmt.Errorf("failed to walk path %s: %w", path, err)
 		}

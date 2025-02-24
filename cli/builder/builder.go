@@ -7,21 +7,22 @@ import (
 	"context"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/extensions/crewai"
 	"github.com/agntcy/dir/cli/builder/extensions/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/extensions/runtime"
 	"github.com/agntcy/dir/cli/builder/manager"
 )
 
-func Build(ctx context.Context, cfg *Config) ([]*apicore.Extension, error) {
+func Build(ctx context.Context, cfg *config.Config) ([]*apicore.Extension, error) {
 	extManager := manager.NewExtensionManager()
 
 	// Register extensions
 	extManager.Register(runtime.ExtensionName, cfg.Source)
-	extManager.Register(crewai.ExtensionName, cfg.Source)
+	extManager.Register(crewai.ExtensionName, cfg)
 
 	if cfg.LLMAnalyzer {
-		extManager.Register(llmanalyzer.ExtensionName, cfg.Source)
+		extManager.Register(llmanalyzer.ExtensionName, cfg)
 	}
 
 	// Build and append extensions to agent
