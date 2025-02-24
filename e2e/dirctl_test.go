@@ -55,8 +55,6 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 				"--locator=docker-image:http://ghcr.io/cisco-agents/marketing-strategy",
 				"--author=author1",
 				"--author=author2",
-				"--category=category1",
-				"--category=category2",
 				"--config-file=testdata/build.config.yaml",
 				marketingStrategyPath,
 			})

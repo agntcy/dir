@@ -12,11 +12,6 @@ authors:
   - "author1"
   - "author2"
 
-# List of categories of the agent
-categories:
-  - "category1"
-  - "category2"
-
 # List of locators of the agent
 locators:
   - type: "docker-image"
@@ -37,3 +32,7 @@ extensions:
     specs:
       license: "Apache-2.0"
       header: "Copyright (c) 2025 Cisco and/or its affiliates."
+  - name: "category"
+    version: "v1.0.0"
+    specs:
+      categories: ["category1", "category2"]

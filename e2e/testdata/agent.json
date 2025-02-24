@@ -6,8 +6,8 @@
     "author2"
   ],
   "created_at": {
-    "seconds": 1740070975,
-    "nanos": 61129000
+    "seconds": 1740400495,
+    "nanos": 498854000
   },
   "locators": [
     {
@@ -58,16 +58,6 @@
       }
     },
     {
-      "name": "category",
-      "version": "v0.0.0",
-      "specs": {
-        "categories": [
-          "category1",
-          "category2"
-        ]
-      }
-    },
-    {
       "name": "crewai",
       "version": "v0.0.0",
       "specs": {
@@ -103,6 +93,16 @@
       "specs": {
         "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
         "license": "Apache-2.0"
+      }
+    },
+    {
+      "name": "category",
+      "version": "v1.0.0",
+      "specs": {
+        "categories": [
+          "category1",
+          "category2"
+        ]
       }
     }
   ]

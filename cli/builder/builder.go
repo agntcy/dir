@@ -7,7 +7,6 @@ import (
 	"context"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/builder/extensions/category"
 	"github.com/agntcy/dir/cli/builder/extensions/crewai"
 	"github.com/agntcy/dir/cli/builder/extensions/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/extensions/runtime"
@@ -21,7 +20,6 @@ func Build(ctx context.Context, cfg *config.Config) ([]*apicore.Extension, error
 
 	// Register extensions
 	extManager.Register(runtime.ExtensionName, cfg.Source)
-	extManager.Register(category.ExtensionName, cfg.Categories)
 	extManager.Register(crewai.ExtensionName, cfg.Source)
 
 	if cfg.LLMAnalyzer {

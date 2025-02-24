@@ -10,7 +10,6 @@ type options struct {
 	Version     string
 	LLMAnalyzer bool
 	Authors     []string
-	Categories  []string
 	Locators    []string
 	ConfigFile  string
 }
@@ -28,14 +27,6 @@ func init() {
 		"author",
 		[]string{},
 		"Authors to set for the agent. Overrides builder defaults. Example usage: --author author1 --author author2",
-	)
-
-	// Category extension
-	flags.StringSliceVar(
-		&opts.Categories,
-		"category",
-		[]string{},
-		"Categories to set for the agent. Overrides builder defaults. Example usage: --category category1 --category category2",
 	)
 
 	// Locators

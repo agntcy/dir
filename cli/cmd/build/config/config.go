@@ -28,17 +28,15 @@ type Config struct {
 	Version     string      `yaml:"version"`
 	LLMAnalyzer bool        `yaml:"llmanalyzer"`
 	Authors     []string    `yaml:"authors"`
-	Categories  []string    `yaml:"categories"`
 	Locators    []Locator   `yaml:"locators"`
 	Extensions  []Extension `yaml:"extensions"`
 }
 
-func (c *Config) LoadFromFlags(name, version string, llmAnalyzer bool, authors, categories []string, rawLocators []string) error {
+func (c *Config) LoadFromFlags(name, version string, llmAnalyzer bool, authors, rawLocators []string) error {
 	c.Name = name
 	c.Version = version
 	c.LLMAnalyzer = llmAnalyzer
 	c.Authors = authors
-	c.Categories = categories
 
 	// Load in locators
 	var locators []Locator
@@ -106,7 +104,6 @@ func (c *Config) Merge(extra *Config) {
 	// c.LLMAnalyzer = c.LLMAnalyzer
 	// TODO check if slice fields should be merged or replaced
 	c.Authors = firstNonEmptySlice(c.Authors, extra.Authors)
-	c.Categories = firstNonEmptySlice(c.Categories, extra.Categories)
 	c.Locators = firstNonEmptySlice(c.Locators, extra.Locators)
 	c.Extensions = firstNonEmptySlice(c.Extensions, extra.Extensions)
 }

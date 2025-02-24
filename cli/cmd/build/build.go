@@ -28,8 +28,6 @@ var Command = &cobra.Command{
 		--locator="python-package:http://ghcr.io/example/example" \
 		--author="author1" \
 		--author="author2" \
-		--category="category1" \
-		--category="category2" \
 		./path-to-agent
 
 `,
@@ -44,7 +42,7 @@ var Command = &cobra.Command{
 func runCommand(cmd *cobra.Command, agentPath string) error {
 	// Get configuration from flags
 	buildConfig := &config.Config{}
-	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.LLMAnalyzer, opts.Authors, opts.Categories, opts.Locators)
+	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.LLMAnalyzer, opts.Authors, opts.Locators)
 	if err != nil {
 		return fmt.Errorf("failed to load config from flags: %w", err)
 	}

@@ -12,11 +12,6 @@ authors:
   - "author1"
   - "author2"
 
-# List of categories of the agent
-categories:
-  - "category1"
-  - "category2"
-
 # List of locators of the agent
 locators:
   - type: "docker-image"
