@@ -6,6 +6,7 @@ package build
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -43,7 +44,7 @@ var Command = &cobra.Command{
 func runCommand(cmd *cobra.Command, agentPath string) error {
 	// Get configuration from flags
 	buildConfig := &config.Config{}
-	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.CreatedAt, opts.LLMAnalyzer, opts.Authors, opts.Categories, opts.Locators)
+	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.LLMAnalyzer, opts.Authors, opts.Categories, opts.Locators)
 	if err != nil {
 		return fmt.Errorf("failed to load config from flags: %w", err)
 	}
@@ -80,7 +81,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		Name:       buildConfig.Name,
 		Version:    buildConfig.Version,
 		Authors:    buildConfig.Authors,
-		CreatedAt:  timestamppb.New(buildConfig.CreatedAt),
+		CreatedAt:  timestamppb.New(time.Now()),
 		Locators:   locators,
 		Extensions: extensions,
 	}

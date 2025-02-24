@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v2"
 
@@ -27,7 +26,6 @@ type Config struct {
 	Source      string      `yaml:"source"`
 	Name        string      `yaml:"name"`
 	Version     string      `yaml:"version"`
-	CreatedAt   time.Time   `yaml:"created_at"`
 	LLMAnalyzer bool        `yaml:"llmanalyzer"`
 	Authors     []string    `yaml:"authors"`
 	Categories  []string    `yaml:"categories"`
@@ -35,22 +33,12 @@ type Config struct {
 	Extensions  []Extension `yaml:"extensions"`
 }
 
-func (c *Config) LoadFromFlags(name, version, createdAt string, llmAnalyzer bool, authors, categories []string, rawLocators []string) error {
+func (c *Config) LoadFromFlags(name, version string, llmAnalyzer bool, authors, categories []string, rawLocators []string) error {
 	c.Name = name
 	c.Version = version
 	c.LLMAnalyzer = llmAnalyzer
 	c.Authors = authors
 	c.Categories = categories
-
-	// Override creation time if requested
-	c.CreatedAt = time.Now()
-	if createdAt != "" {
-		var err error
-		c.CreatedAt, err = time.Parse(time.RFC3339, createdAt)
-		if err != nil {
-			return fmt.Errorf("failed to parse create time: %w", err)
-		}
-	}
 
 	// Load in locators
 	var locators []Locator
