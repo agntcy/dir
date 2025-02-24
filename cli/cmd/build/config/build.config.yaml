@@ -4,9 +4,6 @@ name: "agent-name"
 # The version of the agent
 version: "v1.0.0"
 
-# Enable or disable the LLM analyzer extension
-llmanalyzer: false
-
 # List of authors of the agent
 authors:
   - "author1"
@@ -37,3 +34,14 @@ extensions:
     specs:
       key1: "value1"
       key2: "value2"
+
+builder:
+  # Source code of the agent
+  source: "path/to/source"
+
+  # List of paths to ignore
+  source-ignore:
+    - ".venv/*"
+
+  # Enable or disable the LLM analyzer extension
+  llmanalyzer: false

@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/cli/builder"
 )
 
 type Locator struct {
@@ -23,20 +24,21 @@ type Extension struct {
 }
 
 type Config struct {
-	Source      string      `yaml:"source"`
-	Name        string      `yaml:"name"`
-	Version     string      `yaml:"version"`
-	LLMAnalyzer bool        `yaml:"llmanalyzer"`
-	Authors     []string    `yaml:"authors"`
-	Locators    []Locator   `yaml:"locators"`
-	Extensions  []Extension `yaml:"extensions"`
+	Name       string      `yaml:"name"`
+	Version    string      `yaml:"version"`
+	Authors    []string    `yaml:"authors"`
+	Locators   []Locator   `yaml:"locators"`
+	Extensions []Extension `yaml:"extensions"`
+
+	Builder builder.Config `yaml:"builder"`
 }
 
 func (c *Config) LoadFromFlags(name, version string, llmAnalyzer bool, authors, rawLocators []string) error {
 	c.Name = name
 	c.Version = version
-	c.LLMAnalyzer = llmAnalyzer
 	c.Authors = authors
+
+	c.Builder.LLMAnalyzer = llmAnalyzer
 
 	// Load in locators
 	var locators []Locator

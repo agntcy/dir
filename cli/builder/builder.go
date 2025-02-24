@@ -11,11 +11,9 @@ import (
 	"github.com/agntcy/dir/cli/builder/extensions/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/extensions/runtime"
 	"github.com/agntcy/dir/cli/builder/manager"
-	"github.com/agntcy/dir/cli/cmd/build/config"
-	"github.com/agntcy/dir/cli/types"
 )
 
-func Build(ctx context.Context, cfg *config.Config) ([]*apicore.Extension, error) {
+func Build(ctx context.Context, cfg *Config) ([]*apicore.Extension, error) {
 	extManager := manager.NewExtensionManager()
 
 	// Register extensions
@@ -30,22 +28,6 @@ func Build(ctx context.Context, cfg *config.Config) ([]*apicore.Extension, error
 	extensions, err := extManager.Build(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	// Append config extensions
-	for _, ext := range cfg.Extensions {
-		extension := types.AgentExtension{
-			Name:    ext.Name,
-			Version: ext.Version,
-			Specs:   ext.Specs,
-		}
-
-		apiExt, err := extension.ToAPIExtension()
-		if err != nil {
-			return nil, err
-		}
-
-		extensions = append(extensions, &apiExt)
 	}
 
 	return extensions, nil

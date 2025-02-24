@@ -13,6 +13,7 @@ import (
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/cmd/build/config"
+	"github.com/agntcy/dir/cli/types"
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +62,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	}
 
 	// Set source to agent path
-	buildConfig.Source = agentPath
+	buildConfig.Builder.Source = agentPath
 
 	locators, err := buildConfig.GetAPILocators()
 	if err != nil {
@@ -69,9 +70,25 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	}
 
 	// Build to obtain agent model
-	extensions, err := builder.Build(cmd.Context(), buildConfig)
+	extensions, err := builder.Build(cmd.Context(), &buildConfig.Builder)
 	if err != nil {
 		return fmt.Errorf("failed to build agent: %w", err)
+	}
+
+	// Append config extensions
+	for _, ext := range buildConfig.Extensions {
+		extension := types.AgentExtension{
+			Name:    ext.Name,
+			Version: ext.Version,
+			Specs:   ext.Specs,
+		}
+
+		apiExt, err := extension.ToAPIExtension()
+		if err != nil {
+			return fmt.Errorf("failed to convert extension to API extension: %w", err)
+		}
+
+		extensions = append(extensions, &apiExt)
 	}
 
 	// Create agent data model
