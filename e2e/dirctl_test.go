@@ -7,6 +7,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -43,10 +44,22 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 
 	ginkgo.Context("agent compilation", func() {
 		ginkgo.It("should compile an agent", func() {
-			var outputBuffer bytes.Buffer
+			// Function to capture output
+			captureOutput := func(f func()) []byte {
+				old := os.Stdout
+				r, w, _ := os.Pipe()
+				os.Stdout = w
+
+				f()
+
+				w.Close()
+				os.Stdout = old
+
+				out, _ := io.ReadAll(r)
+				return out
+			}
 
 			compileCmd := clicmd.RootCmd
-			compileCmd.SetOut(&outputBuffer)
 			compileCmd.SetArgs([]string{
 				"build",
 				"--name=marketing-strategy",
@@ -59,17 +72,23 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 				marketingStrategyPath,
 			})
 
+			// Capture the output without modifying compileCmd.SetOut()
+			output := captureOutput(func() {
+				err := compileCmd.Execute()
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			})
+
 			err := compileCmd.Execute()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			err = os.MkdirAll(filepath.Dir(tempAgentPath), 0755)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			err = os.WriteFile(tempAgentPath, outputBuffer.Bytes(), 0644)
+			err = os.WriteFile(tempAgentPath, output, 0644)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Compare the output with the expected JSON
-			equal, err := compareJSON(outputBuffer.Bytes(), expectedAgentJSON)
+			equal, err := compareJSON(output, expectedAgentJSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
