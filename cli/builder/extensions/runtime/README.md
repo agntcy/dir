@@ -6,7 +6,7 @@ For example, it may be needed to extract programming language details and packag
 
 Or, details about the agent's taxonomy may be needed to properly describe its _capabilities_, for example indicating whether an agent can perform network analysis or text summarization tasks.
 
-You can read more about agent's capabilities in the [Taxonomy of tasks](taxonomy.md) section.
+You can read more about agent's capabilities in the [Taxonomy of tasks](https://schema.oasf.agntcy.org/?extensions=) section.
 
 Information contained in this extension can be leveraged by a custom search service implemented in the application layer to provide more detailed search results.
 
