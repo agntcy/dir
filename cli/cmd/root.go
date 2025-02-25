@@ -55,6 +55,5 @@ func Run(ctx context.Context) error {
 		return err
 	}
 
-	RootCmd.Print("\n")
 	return nil
 }
