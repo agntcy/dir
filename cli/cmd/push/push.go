@@ -11,6 +11,7 @@ import (
 	"os"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util"
 
 	"github.com/spf13/cobra"
@@ -74,7 +75,7 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	// Print digest to output
-	cmd.Print(digest.Encode())
+	presenter.Print(cmd, digest.Encode())
 
 	return nil
 }

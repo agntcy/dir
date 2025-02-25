@@ -9,6 +9,7 @@ import (
 	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util"
 
 	"github.com/spf13/cobra"
@@ -72,7 +73,7 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	// Print the raw agent data
-	cmd.Print(string(agentRaw))
+	presenter.Print(cmd, string(agentRaw))
 
 	return nil
 }

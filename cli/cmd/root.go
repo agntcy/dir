@@ -33,8 +33,6 @@ var RootCmd = &cobra.Command{
 		ctx := util.SetClientForContext(cmd.Context(), c)
 		cmd.SetContext(ctx)
 
-		cmd.SetOut(os.Stdout)
-
 		return nil
 	},
 }

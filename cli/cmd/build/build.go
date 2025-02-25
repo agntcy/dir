@@ -13,6 +13,7 @@ import (
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/cmd/build/config"
+	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/types"
 	"github.com/spf13/cobra"
 )
@@ -108,7 +109,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	}
 
 	// Print to output
-	cmd.Print(string(agentRaw))
+	presenter.Print(cmd, string(agentRaw))
 
 	return nil
 }
