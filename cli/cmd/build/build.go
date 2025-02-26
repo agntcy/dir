@@ -44,7 +44,7 @@ var Command = &cobra.Command{
 func runCommand(cmd *cobra.Command, agentPath string) error {
 	// Get configuration from flags
 	buildConfig := &config.Config{}
-	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.LLMAnalyzer, opts.Authors, opts.Locators)
+	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.LLMAnalyzer, opts.CrewAI, opts.Authors, opts.Locators)
 	if err != nil {
 		return fmt.Errorf("failed to load config from flags: %w", err)
 	}

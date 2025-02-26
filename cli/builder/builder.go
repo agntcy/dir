@@ -19,7 +19,10 @@ func Build(ctx context.Context, cfg *config.Config) ([]*apicore.Extension, error
 
 	// Register extensions
 	extManager.Register(runtime.ExtensionName, cfg.Source)
-	extManager.Register(crewai.ExtensionName, cfg)
+
+	if cfg.CrewAI {
+		extManager.Register(crewai.ExtensionName, cfg)
+	}
 
 	if cfg.LLMAnalyzer {
 		extManager.Register(llmanalyzer.ExtensionName, cfg)

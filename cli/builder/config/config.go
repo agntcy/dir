@@ -8,4 +8,5 @@ type Config struct {
 	SourceIgnore []string `yaml:"source-ignore"`
 
 	LLMAnalyzer bool `yaml:"llmanalyzer"`
+	CrewAI      bool `yaml:"crewai"`
 }

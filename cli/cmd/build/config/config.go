@@ -33,12 +33,13 @@ type Config struct {
 	Builder builderconfig.Config `yaml:"builder"`
 }
 
-func (c *Config) LoadFromFlags(name, version string, llmAnalyzer bool, authors, rawLocators []string) error {
+func (c *Config) LoadFromFlags(name, version string, llmAnalyzer, crewai bool, authors, rawLocators []string) error {
 	c.Name = name
 	c.Version = version
 	c.Authors = authors
 
 	c.Builder.LLMAnalyzer = llmAnalyzer
+	c.Builder.CrewAI = crewai
 
 	// Load in locators
 	var locators []Locator
@@ -104,6 +105,7 @@ func (c *Config) Merge(extra *Config) {
 	c.Name = firstNonEmpty(c.Name, extra.Name)
 	c.Version = firstNonEmpty(c.Version, extra.Version)
 	// c.Builder.LLMAnalyzer = c.Builder.LLMAnalyzer
+	// c.Builder.CrewAI = c.Builder.CrewAI
 	// TODO check if slice fields should be merged or replaced
 	c.Authors = firstNonEmptySlice(c.Authors, extra.Authors)
 	c.Locators = firstNonEmptySlice(c.Locators, extra.Locators)

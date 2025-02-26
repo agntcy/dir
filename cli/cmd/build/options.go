@@ -9,6 +9,7 @@ type options struct {
 	Name        string
 	Version     string
 	LLMAnalyzer bool
+	CrewAI      bool
 	Authors     []string
 	Locators    []string
 	ConfigFile  string
@@ -21,6 +22,9 @@ func init() {
 
 	// LLM Analyzer extension
 	flags.BoolVarP(&opts.LLMAnalyzer, "llmanalyzer", "l", false, "Enable LLMAnalyzer extension")
+
+	// CrewAI extension
+	flags.BoolVarP(&opts.CrewAI, "crewai", "c", false, "Enable CrewAI extension")
 
 	flags.StringSliceVar(
 		&opts.Authors,
@@ -37,5 +41,5 @@ func init() {
 		"Artifact locators to set for the agent. Each locator should be in the format 'type:url'. Example usage: --locator type1:url1 --locator type2:url2. Supported types: 'docker-image', 'python-package', 'helm-chart', 'source-code' and 'binary'.",
 	)
 
-	flags.StringVarP(&opts.ConfigFile, "config-file", "c", "", "Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML")
+	flags.StringVarP(&opts.ConfigFile, "config-file", "f", "", "Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML")
 }
