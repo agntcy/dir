@@ -44,6 +44,9 @@ var SupportedAgentFrameworkPackages = []string{
 	"langgraph",
 	"langchain-openai",
 	"llama-deploy",
+	"llama-index",
+	"llama-index-llms-azure-openai",
+	"llama-index-llms-azure",
 	"autogen-core",
 }
 
