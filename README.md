@@ -119,8 +119,8 @@ Options:
 - `--version` : Version of the agent.
 - `--locator` : Artifact locators to set for the agent. Each locator should be in the format `type:url`. Example usage: `--locator type1:url1 --locator type2:url2`. Supported types: `docker-image`, `python-package`, `helm-chart`, `source-code` and `binary`.
 - `--author` : Authors to set for the agent. Overrides builder defaults. Example usage: `--author author1 --author author2`.
-- `--llmanalyzer` : Enable LLMAnalyzer extension.
-- `--crewai` : Enable CrewAI extension.
+- `--llmanalyzer` : Enable LLMAnalyzer build extension.
+- `--crewai` : Enable CrewAI build extension.
 - `--config-file` : Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML. Example template: cli/cmd/build/config/build.config.yaml.
 
 ### Push Command
