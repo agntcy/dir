@@ -1,0 +1,48 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package routing.v1alpha1;
+
+import "google/protobuf/empty.proto";
+import "core/v1alpha1/object.proto";
+
+// Defines an interface for publication and retrieval
+// of objects across interconnected network.
+service RoutingService {
+  // Notifies the network that the node is providing this path.
+  // Path may be an actual item on the object store.
+  rpc Provide(Path) returns (google.protobuf.Empty);
+  // Resolve all the nodes that are providing this path.
+  rpc Resolve(Path) returns (stream Nodes);
+  // Check if a given node has this path.
+  rpc Lookup(Path) returns (google.protobuf.Empty);
+  // List a given path. Only first children are returned.
+  rpc List(Path) returns (stream Paths);
+}
+
+// Path to an object for content routing.
+message Path {
+  repeated string parts = 3;
+}
+
+// Object to hold a collection of paths
+message Paths {
+  repeated Path paths = 1;
+}
+
+// Node on the network
+message Node {
+  // Unique identifier of the node
+  string id = 1;
+
+  // Addresses on which this node is reachable from.
+  // Schema: https://github.com/multiformats/multiaddr
+  repeated string adds = 2;
+}
+
+// Object to hold a collection of nodes
+message Nodes {
+  repeated Node nodes = 1;
+}

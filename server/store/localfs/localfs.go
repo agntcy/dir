@@ -22,7 +22,7 @@ type store struct {
 	dataFs afero.Fs
 }
 
-func New(baseDir string) (types.StoreService, error) {
+func New(baseDir string) (types.StoreAPI, error) {
 	dataDir := filepath.Join(baseDir, "contents")
 	if err := DefaultFs.MkdirAll(dataDir, 0o777); err != nil {
 		return nil, err

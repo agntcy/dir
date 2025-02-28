@@ -16,7 +16,7 @@ const (
 	OCI     = Provider("oci")
 )
 
-func New(config *config.Config) (types.StoreService, error) {
+func New(config *config.Config) (types.StoreAPI, error) {
 	switch provider := Provider(config.Provider); provider {
 	case OCI:
 		store, err := oci.New(config.OCI)

@@ -23,7 +23,7 @@ type store struct {
 	repository *remote.Repository
 }
 
-func New(config Config) (types.StoreService, error) {
+func New(config Config) (types.StoreAPI, error) {
 	repo, err := remote.NewRepository(fmt.Sprintf("%s/%s", config.RegistryAddress, config.RepositoryName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to remote repo: %w", err)

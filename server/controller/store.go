@@ -17,11 +17,11 @@ import (
 )
 
 type storeController struct {
-	store types.StoreService
+	store types.StoreAPI
 	storetypes.UnimplementedStoreServiceServer
 }
 
-func NewStoreController(store types.StoreService) storetypes.StoreServiceServer {
+func NewStoreController(store types.StoreAPI) storetypes.StoreServiceServer {
 	return &storeController{
 		store:                           store,
 		UnimplementedStoreServiceServer: storetypes.UnimplementedStoreServiceServer{},
@@ -34,12 +34,7 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 		return fmt.Errorf("failed to receive first message: %w", err)
 	}
 
-	metadata := firstMessage.GetMetadata()
-	if metadata == nil {
-		return fmt.Errorf("metadata is required")
-	}
-
-	log.Printf("Received metadata: Type=%v, Name=%s, Annotations=%v\n", metadata.Type, metadata.Name, metadata.Annotations)
+	log.Printf("Received metadata: Kind=%v, Name=%s\n", firstMessage.Kind.String(), firstMessage.Name)
 
 	pr, pw := io.Pipe()
 
@@ -70,13 +65,12 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 		}
 	}()
 
-	digest, err := s.store.Push(
+	ref, err := s.store.Push(
 		context.Background(),
-		&coretypes.ObjectMeta{
-			Type:        metadata.Type,
-			Name:        metadata.Name,
-			Annotations: metadata.Annotations,
-			Digest:      metadata.Digest,
+		&coretypes.ObjectRef{
+			Name: firstMessage.Name,
+			Kind: firstMessage.Kind,
+			Size: firstMessage.Size,
 		},
 		pr,
 	)
@@ -84,7 +78,7 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 		return fmt.Errorf("failed to push: %w", err)
 	}
 
-	return stream.SendAndClose(&coretypes.ObjectRef{Digest: digest})
+	return stream.SendAndClose(ref)
 }
 
 func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService_PullServer) error {
@@ -92,7 +86,7 @@ func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreS
 		return fmt.Errorf("digest is required")
 	}
 
-	reader, err := s.store.Pull(context.Background(), req.Digest)
+	reader, err := s.store.Pull(context.Background(), req)
 	if err != nil {
 		return fmt.Errorf("failed to pull: %w", err)
 	}
