@@ -1,7 +1,7 @@
 {
   "name": "extensions.directory.cisco.com/examples/runtime",
   "version": "v1alpha1",
-  "specs": {
+  "data": {
     "language": "<language-name>",
     "version": "<language-version>",
     "sbom": {

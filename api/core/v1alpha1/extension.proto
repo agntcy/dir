@@ -5,22 +5,29 @@ syntax = "proto3";
 
 package core.v1alpha1;
 
-import "core/v1alpha1/digest.proto";
 import "google/protobuf/struct.proto";
 
 // Extensions provide dynamic descriptors for an agent data model.
-// For example, security features can be described using extensions.
+// For example, arbitrary data and third-party features can be
+// described using extensions.
+//
+// Key := {name}/{version}
 //
 // This is an immutable object.
 message Extension {
-  // Name of the extension attached to this agent
+  // Name of the extension attached to an agent.
   string name = 1;
-  // Version of the extension attached to this agent
+  // Version of the extension attached to an agent.
   string version = 2;
-  // Metadata associated with this extension
+  // Metadata associated with this extension.
   map<string, string> annotations = 3;
-  // Specs specifies the schema object of this extension
-  google.protobuf.Struct specs = 4;
-  // Digest of the whole object
-  Digest digest = 5;
+  // Value of the data.
+  optional google.protobuf.Struct data = 4;
+  // Reference to the data on the content storage.
+  // This allows model producers and extension
+  // consumers to leverage the storage layer and
+  // bypass restrictions on the request size.
+  //
+  // NOTE: currently not used
+  // optional ObjectRef data_ref = 5;
 }

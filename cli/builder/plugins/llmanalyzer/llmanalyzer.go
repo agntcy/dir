@@ -44,7 +44,7 @@ Violation Examples (DO NOT DO THESE):
 Analyze the provided codebase focusing only on business logic and core workflows. Return the analysis as a single JSON object matching the exact structure above.`
 )
 
-type ExtensionSpecs struct {
+type ExtensionData struct {
 	Purpose   string   `json:"purpose"`
 	Workflows []string `json:"workflows"`
 }
@@ -93,7 +93,7 @@ func (l *llmanalyzer) Build(ctx context.Context) ([]*types.AgentExtension, error
 		&azopenai.ChatRequestUserMessage{Content: azopenai.NewChatRequestUserMessageContent(filesContent)},
 	}
 
-	var specs ExtensionSpecs
+	var exData ExtensionData
 
 	var lastErr error
 
@@ -108,23 +108,23 @@ func (l *llmanalyzer) Build(ctx context.Context) ([]*types.AgentExtension, error
 			continue
 		}
 
-		err = json.Unmarshal([]byte(*resp.Choices[0].Message.Content), &specs)
+		err = json.Unmarshal([]byte(*resp.Choices[0].Message.Content), &exData)
 		if err == nil {
 			break
 		}
 
-		lastErr = fmt.Errorf("attempt %d: failed to unmarshal agent specs: %w", attempt+1, err)
+		lastErr = fmt.Errorf("attempt %d: failed to unmarshal output: %w", attempt+1, err)
 	}
 
 	if lastErr != nil {
-		return nil, fmt.Errorf("failed to unmarshal agent specs after %d attempts: %w", maxRetries, lastErr)
+		return nil, fmt.Errorf("failed to unmarshal output after %d attempts: %w", maxRetries, lastErr)
 	}
 
 	return []*types.AgentExtension{
 		{
 			Name:    PluginName,
 			Version: PluginVersion,
-			Specs:   specs,
+			Data:    exData,
 		},
 	}, nil
 }

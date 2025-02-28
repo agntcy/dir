@@ -19,7 +19,7 @@ var Command = &cobra.Command{
 	Short: "Build agent model to prepare for pushing",
 	Long: `Usage example:
 
-	dirctl build --config agntcy-config.yaml
+	dirctl build --config build.config.yml
 
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {

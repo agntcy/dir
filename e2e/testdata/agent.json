@@ -5,33 +5,33 @@
     "author1",
     "author2"
   ],
-  "created_at": {
-    "seconds": 1741894330,
-    "nanos": 760930000
-  },
+  "created_at": "2025-03-14T20:17:18+01:00",
   "skills": [
-    "skill1",
-    "skill2"
-  ],
-  "locators": [
     {
-      "name": "docker-image",
-      "source": {
-        "url": "url1"
-      }
+      "category_name": "skill1"
     },
     {
-      "name": "binary",
-      "source": {
-        "url": "url2"
-      }
+      "category_name": "skill2"
+    }
+  ],
+  "annotations": {
+    "key": "value"
+  },
+  "locators": [
+    {
+      "type": "docker-image",
+      "url": "url1"
+    },
+    {
+      "type": "binary",
+      "url": "url2"
     }
   ],
   "extensions": [
     {
       "name": "oasf.agntcy.org/features/runtime/framework",
       "version": "v0.0.0",
-      "specs": {
+      "data": {
         "sbom": {
           "name": "marketing-strategy",
           "packages": [
@@ -62,7 +62,7 @@
     {
       "name": "oasf.agntcy.org/features/runtime/language",
       "version": "v0.0.0",
-      "specs": {
+      "data": {
         "type": "python",
         "version": "\u003e=3.11,\u003c3.13"
       }
@@ -70,7 +70,7 @@
     {
       "name": "license",
       "version": "v1.0.0",
-      "specs": {
+      "data": {
         "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
         "license": "Apache-2.0"
       }

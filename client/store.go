@@ -13,7 +13,10 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 )
 
-func (c *Client) Push(ctx context.Context, meta *coretypes.ObjectMeta, reader io.Reader) (*coretypes.Digest, error) {
+// Push
+// TODO: when pushing extension data, squash items and push individually before pushing agent.
+// TODO: this allows larger agent file while keeping data in extension compact.
+func (c *Client) Push(ctx context.Context, ref *coretypes.ObjectRef, reader io.Reader) (*coretypes.ObjectRef, error) {
 	stream, err := c.StoreServiceClient.Push(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create push stream: %w", err)
@@ -32,9 +35,8 @@ func (c *Client) Push(ctx context.Context, meta *coretypes.ObjectMeta, reader io
 		}
 
 		obj := &coretypes.Object{
-			Metadata: meta,
-			Size:     uint64(n), //nolint:gosec
-			Data:     buf[:n],
+			Ref:  ref,
+			Data: buf[:n],
 		}
 
 		if err := stream.Send(obj); err != nil {
@@ -47,15 +49,13 @@ func (c *Client) Push(ctx context.Context, meta *coretypes.ObjectMeta, reader io
 		return nil, fmt.Errorf("could not receive response: %w", err)
 	}
 
-	return resp.GetDigest(), nil
+	return resp, nil
 }
 
-func (c *Client) Pull(ctx context.Context, dig *coretypes.Digest) (io.Reader, error) {
-	req := &coretypes.ObjectRef{
-		Digest: dig,
-	}
-
-	stream, err := c.StoreServiceClient.Pull(ctx, req)
+// Pull
+// TODO: needs to pull each extension data individually and send back.
+func (c *Client) Pull(ctx context.Context, ref *coretypes.ObjectRef) (io.Reader, error) {
+	stream, err := c.StoreServiceClient.Pull(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pull stream: %w", err)
 	}
@@ -80,12 +80,8 @@ func (c *Client) Pull(ctx context.Context, dig *coretypes.Digest) (io.Reader, er
 	return &buffer, nil
 }
 
-func (c *Client) Lookup(ctx context.Context, dig *coretypes.Digest) (*coretypes.ObjectMeta, error) {
-	req := &coretypes.ObjectRef{
-		Digest: dig,
-	}
-
-	meta, err := c.StoreServiceClient.Lookup(ctx, req)
+func (c *Client) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+	meta, err := c.StoreServiceClient.Lookup(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup object: %w", err)
 	}

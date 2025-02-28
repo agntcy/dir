@@ -14,6 +14,7 @@ apiserver:
     health_port: 8889
     provider: "oci"
     oci_registry_address: "agntcy-dir-zot.default.svc.cluster.local:5000"
+    oci_auth_config_insecure: "true"
 
   service:
     type: NodePort

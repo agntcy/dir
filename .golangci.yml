@@ -9,6 +9,7 @@ linters:
   # Disable specific linter
   # https://golangci-lint.run/usage/linters/#disabled-by-default
   disable:
+    - inamedparam # Allow unnamed args
     - funlen # Allow long functions
     - lll # Allow long lines
     - gochecknoglobals # Allow global variables

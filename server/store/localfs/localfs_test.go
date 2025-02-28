@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/server/store/localfs/config"
+	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,29 +20,33 @@ func TestStore(t *testing.T) {
 	ctx := t.Context()
 
 	// Create store
-	store, err := New(os.TempDir())
+	store, err := New(config.Config{Dir: os.TempDir()})
 	assert.NoError(t, err, "failed to create store")
 
 	// Define testing object
 	objContents := []byte("example!")
-	objMeta := coretypes.ObjectMeta{
-		Type: coretypes.ObjectType_OBJECT_TYPE_CUSTOM,
-		Name: "example",
+	objRef := &coretypes.ObjectRef{
+		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+		Digest: digest.FromBytes(objContents).String(),
+		Size:   uint64(len(objContents)),
 		Annotations: map[string]string{
-			"label": "example",
+			"name":       "name",
+			"version":    "version",
+			"created_at": "created_at",
 		},
 	}
 
 	// Push
-	digest, err := store.Push(ctx, &objMeta, bytes.NewReader(objContents))
+	digest, err := store.Push(ctx, objRef, bytes.NewReader(objContents))
 	assert.NoError(t, err, "push failed")
 
 	// Lookup
 	fetchedMeta, err := store.Lookup(ctx, digest)
 	assert.NoError(t, err, "lookup failed")
-	assert.Equal(t, objMeta.GetType(), fetchedMeta.GetType())
-	assert.Equal(t, objMeta.GetName(), fetchedMeta.GetName())
-	assert.Equal(t, objMeta.GetAnnotations(), fetchedMeta.GetAnnotations())
+	assert.Equal(t, objRef.GetDigest(), fetchedMeta.GetDigest())
+	assert.Equal(t, objRef.GetType(), fetchedMeta.GetType())
+	assert.Equal(t, objRef.GetSize(), fetchedMeta.GetSize())
+	assert.Equal(t, objRef.GetAnnotations(), fetchedMeta.GetAnnotations())
 
 	// Pull
 	fetchedReader, err := store.Pull(ctx, digest)

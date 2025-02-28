@@ -44,14 +44,14 @@ func TestBuildRuntime(t *testing.T) {
 	ret, err := r.Build(t.Context())
 	assert.NoError(t, err)
 
-	frameworkSpecs, ok := ret[0].Specs.(framework.ExtensionSpecs)
+	frameworkData, ok := ret[0].Data.(framework.ExtensionData)
 	assert.True(t, ok)
-	assert.Equal(t, expectedSBOM, frameworkSpecs.SBOM)
+	assert.Equal(t, expectedSBOM, frameworkData.SBOM)
 
-	languageSpecs, ok := ret[1].Specs.(language.ExtensionSpecs)
+	languageData, ok := ret[1].Data.(language.ExtensionData)
 	assert.True(t, ok)
-	assert.Equal(t, analyzer.Python, languageSpecs.Type)
-	assert.Equal(t, expectedVersion, languageSpecs.Version)
+	assert.Equal(t, analyzer.Python, languageData.Type)
+	assert.Equal(t, expectedVersion, languageData.Version)
 }
 
 func TestBuildRuntimeWithInvalidSource(t *testing.T) {

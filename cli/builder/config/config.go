@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	apicore "github.com/agntcy/dir/api/core/v1alpha1"
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"gopkg.in/yaml.v2"
 )
 
@@ -20,16 +20,17 @@ type Locator struct {
 type Extension struct {
 	Name    string         `yaml:"name"`
 	Version string         `yaml:"version"`
-	Specs   map[string]any `yaml:"specs"`
+	Data    map[string]any `yaml:"data"`
 }
 
 type Model struct {
-	Name       string      `yaml:"name"`
-	Version    string      `yaml:"version"`
-	Authors    []string    `yaml:"authors"`
-	Skills     []string    `yaml:"skills"`
-	Locators   []Locator   `yaml:"locators"`
-	Extensions []Extension `yaml:"extensions"`
+	Name        string            `yaml:"name"`
+	Version     string            `yaml:"version"`
+	Authors     []string          `yaml:"authors"`
+	Annotations map[string]string `yaml:"annotations"`
+	Skills      []string          `yaml:"skills"`
+	Locators    []Locator         `yaml:"locators"`
+	Extensions  []Extension       `yaml:"extensions"`
 }
 
 type Builder struct {
@@ -64,25 +65,36 @@ func (c *Config) LoadFromFile(path string) error {
 	return nil
 }
 
-func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
-	locators := make([]*apicore.Locator, 0, len(c.Model.Locators))
+func (c *Config) GetAPILocators() ([]*coretypes.Locator, error) {
+	locators := make([]*coretypes.Locator, 0, len(c.Model.Locators))
 
 	for _, locator := range c.Model.Locators {
 		var ok bool
 
 		var locatorType int32
 
-		if locatorType, ok = apicore.LocatorType_value[locator.Type]; !ok {
+		if locatorType, ok = coretypes.LocatorType_value[locator.Type]; !ok {
 			return nil, fmt.Errorf("invalid locator type: %s", locator.Type)
 		}
 
-		locators = append(locators, &apicore.Locator{
-			Name: apicore.LocatorType_name[locatorType],
-			Source: &apicore.LocatorSource{
-				Url: locator.URL,
-			},
+		locators = append(locators, &coretypes.Locator{
+			Type: coretypes.LocatorType_name[locatorType],
+			Url:  locator.URL,
 		})
 	}
 
 	return locators, nil
+}
+
+func (c *Config) GetSkills() ([]*coretypes.Skill, error) {
+	skills := make([]*coretypes.Skill, 0, len(c.Model.Locators))
+
+	for _, skill := range c.Model.Skills {
+		skills = append(skills, &coretypes.Skill{
+			// TODO: fix FQDN mapping!
+			CategoryName: &skill,
+		})
+	}
+
+	return skills, nil
 }

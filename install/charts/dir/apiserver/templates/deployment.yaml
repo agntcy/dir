@@ -60,6 +60,8 @@ spec:
               value: "{{ .Values.config.provider }}"
             - name: DIRECTORY_SERVER_OCI_REGISTRY_ADDRESS
               value: "{{ .Values.config.oci_registry_address }}"
+            - name: DIRECTORY_SERVER_OCI_AUTH_CONFIG_INSECURE
+              value: "{{ .Values.config.oci_auth_config_insecure }}"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

@@ -8,13 +8,12 @@ import (
 	"fmt"
 	"time"
 
-	apicore "github.com/agntcy/dir/api/core/v1alpha1"
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/plugins/crewai"
 	"github.com/agntcy/dir/cli/builder/plugins/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime"
 	clitypes "github.com/agntcy/dir/cli/types"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Builder struct {
@@ -50,14 +49,14 @@ func (b *Builder) RegisterPlugins() error {
 	return nil
 }
 
-func (b *Builder) BuildUserAgent() (*apicore.Agent, error) {
-	APIExtensions := make([]*apicore.Extension, 0, len(b.cfg.Model.Extensions))
+func (b *Builder) BuildUserAgent() (*coretypes.Agent, error) {
+	APIExtensions := make([]*coretypes.Extension, 0, len(b.cfg.Model.Extensions))
 
 	for _, i := range b.cfg.Model.Extensions {
 		extension := clitypes.AgentExtension{
 			Name:    i.Name,
 			Version: i.Version,
-			Specs:   i.Specs,
+			Data:    i.Data,
 		}
 
 		APIExtension, err := extension.ToAPIExtension()
@@ -73,19 +72,25 @@ func (b *Builder) BuildUserAgent() (*apicore.Agent, error) {
 		return nil, fmt.Errorf("failed to get locators from config: %w", err)
 	}
 
-	return &apicore.Agent{
-		Name:       b.cfg.Model.Name,
-		Version:    b.cfg.Model.Version,
-		Authors:    b.cfg.Model.Authors,
-		CreatedAt:  timestamppb.New(time.Now()),
-		Skills:     b.cfg.Model.Skills,
-		Locators:   locators,
-		Extensions: APIExtensions,
+	skills, err := b.cfg.GetSkills()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get skills from config: %w", err)
+	}
+
+	return &coretypes.Agent{
+		Name:        b.cfg.Model.Name,
+		Version:     b.cfg.Model.Version,
+		Authors:     b.cfg.Model.Authors,
+		CreatedAt:   time.Now().Format(time.RFC3339),
+		Annotations: b.cfg.Model.Annotations,
+		Skills:      skills,
+		Locators:    locators,
+		Extensions:  APIExtensions,
 	}, nil
 }
 
-func (b *Builder) BuildAgent(ctx context.Context) (*apicore.Agent, error) {
-	var APIExtensions []*apicore.Extension
+func (b *Builder) BuildAgent(ctx context.Context) (*coretypes.Agent, error) {
+	var APIExtensions []*coretypes.Extension
 
 	for _, plugin := range b.plugins {
 		extensions, err := plugin.Build(ctx)
@@ -103,7 +108,7 @@ func (b *Builder) BuildAgent(ctx context.Context) (*apicore.Agent, error) {
 		}
 	}
 
-	return &apicore.Agent{
+	return &coretypes.Agent{
 		Extensions: APIExtensions,
 	}, nil
 }

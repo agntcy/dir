@@ -6,7 +6,6 @@ package store
 import (
 	"fmt"
 
-	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/store/localfs"
 	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/server/types"
@@ -19,22 +18,25 @@ const (
 	OCI     = Provider("oci")
 )
 
-func New(config *config.Config) (types.StoreService, error) {
-	switch provider := Provider(config.Provider); provider {
-	case OCI:
-		store, err := oci.New(config.OCI)
+// TODO: add options for adding cache
+func New(opts types.APIOptions) (types.StoreAPI, error) {
+	switch provider := Provider(opts.Config().Provider); provider {
+	case LocalFS:
+		store, err := localfs.New(opts.Config().LocalFS)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OCI store: %w", err)
 		}
 
 		return store, nil
-	case LocalFS:
-		store, err := localfs.New(config.LocalFS.Dir)
+
+	case OCI:
+		store, err := oci.New(opts.Config().OCI)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create localfs store: %w", err)
+			return nil, fmt.Errorf("failed to create OCI store: %w", err)
 		}
 
 		return store, nil
+
 	default:
 		return nil, fmt.Errorf("unsupported provider=%s", provider)
 	}

@@ -17,7 +17,7 @@ const (
 	ExtensionVersion = "v0.0.0"
 )
 
-type ExtensionSpecs struct {
+type ExtensionData struct {
 	Type    analyzer.LanguageType `json:"type,omitempty"`
 	Version string                `json:"version,omitempty"`
 }
@@ -45,7 +45,7 @@ func (l *Language) Build(_ context.Context) (*types.AgentExtension, error) {
 	return &types.AgentExtension{
 		Name:    ExtensionName,
 		Version: ExtensionVersion,
-		Specs: ExtensionSpecs{
+		Data: ExtensionData{
 			Type:    runtimeInfo.Language,
 			Version: runtimeInfo.Version,
 		},

@@ -26,7 +26,7 @@ const (
 	Langchain  Type = "langchain"
 )
 
-type ExtensionSpecs struct {
+type ExtensionData struct {
 	SBOM any `json:"sbom,omitempty"`
 }
 
@@ -53,7 +53,7 @@ func (fw *Framework) Build(_ context.Context) (*types.AgentExtension, error) {
 	return &types.AgentExtension{
 		Name:    ExtensionName,
 		Version: ExtensionVersion,
-		Specs: ExtensionSpecs{
+		Data: ExtensionData{
 			SBOM: sbom,
 		},
 	}, nil

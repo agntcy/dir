@@ -18,3 +18,4 @@ apiserver:
     health_port: 8889
     provider: "oci"
     oci_registry_address: "dir-zot:5000"
+    oci_auth_config_insecure: "true"

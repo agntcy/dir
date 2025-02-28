@@ -1,7 +1,7 @@
 {
   "name": "extensions.directory.cisco.com/examples/crewai",
   "version": "v1alpha1",
-  "specs": {
+  "data": {
     "purpose": "<purpose>",
     "workflows": "[<task1>, <task2>, <task3>]"
   }

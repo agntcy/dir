@@ -15,6 +15,10 @@ model:
     - "skill1"
     - "skill2"
 
+  # Annotations of the agent
+  annotations:
+    key: value
+
   # List of locators of the agent
   locators:
     - type: "docker-image"
@@ -26,13 +30,13 @@ model:
   # Only supports extensions with the following structure:
   # - name: "extension1"
   #   version: "v1.0.0"
-  #   specs:
+  #   data:
   #     key1: "value1"
   # This extension will be injected into the agent's model
   extensions:
     - name: "license"
       version: "v1.0.0"
-      specs:
+      data:
         license: "Apache-2.0"
         header: "Copyright (c) 2025 Cisco and/or its affiliates."
 

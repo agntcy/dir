@@ -19,7 +19,7 @@ vars:
   KIND_BIN: '{{ .BIN_DIR }}/kind-{{.KIND_VERSION}}'
   PROTOC_VERSION: '27.1'
   PROTOC_BIN: '{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}'
-  BUFBUILD_VERSION: '1.49.0'
+  BUFBUILD_VERSION: '1.50.1'
   BUFBUILD_BIN: '{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}'
   GO_VERSION: '1.24.1'
   MULTIMOD_VERSION: '0.17.0'
@@ -128,6 +128,7 @@ tasks:
 
   cli:compile:all:
     desc: Compile CLI client binaries for multiple platforms
+    aliases: [compile]
     cmds:
       - for:
           matrix:
@@ -161,17 +162,48 @@ tasks:
   server:start:
     desc: Start Directory server
     dir: server/cmd
-    vars:
-      PROVIDER: '{{ .PROVIDER | default "localfs" }}'
     cmds:
-      - DIRECTORY_SERVER_PROVIDER={{.PROVIDER}} go run main.go
+      - defer: { task: server:store:stop }
+      - task: server:store:start
+      - go run main.go
 
   server:store:start:
     desc: Start local OCI registry server for storage
     vars:
-      IMAGE: ghcr.io/project-zot/zot-minimal-linux-{{ARCH}}:v2.1.1
+      IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:v2.1.1
     cmds:
-      - docker run -it --rm -d -p 5000:5000 --name oci-registry {{.IMAGE}}
+      - |
+        # mount config
+        cat > /tmp/zot-config.json <<EOF
+        {
+          "distSpecVersion": "1.1.1",
+          "storage": {
+            "rootDirectory": "/tmp/zot"
+          },
+          "http": {
+            "address": "127.0.0.1",
+            "port": "5000"
+          },
+          "log": {
+            "level": "debug"
+          },
+          "extensions": {
+            "search": {
+              "enable": true,
+              "cve": {
+                "updateInterval": "24h"
+              }
+            }
+          }
+        }
+        EOF
+  
+        # run docker with attached volume
+        docker run \
+              -it \
+              --rm -d -p 5000:5000 \
+              -v /tmp/config.json:/config.json:ro \
+              --name oci-registry {{.IMAGE}}
 
   server:store:stop:
     desc: Stop local OCI registry node
@@ -182,14 +214,20 @@ tasks:
     desc: Unit test Directory server code
     dir: ./server
     cmds:
-      - mkdir -p /tmp/sqlite && touch /tmp/sqlite/dir.db
       - go -C . test ./... {{.EXTRA_ARGS}}
+
+  server:bench:
+    desc: Benchmark Directory server code
+    dir: ./server
+    cmds:
+      - go -C . test -bench=. ./...
 
   ##
   ## Testing
   ##
   test:unit:
     desc: Run unit tests on codebase
+    aliases: [test]
     deps: # run in parallel
       - cli:test
       - api:test
@@ -214,8 +252,15 @@ tasks:
         vars:
           EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-server.out -json > {{.ROOT_DIR}}/test-report-dir-server.json"
 
+  bench:
+    desc: Run bench tests on codebase
+    cmds: # run in sequence
+      - task: server:bench
+      - echo "Done"
+
   test:e2e:
     desc: Run end-to-end tests
+    aliases: [e2e]
     deps:
       - cli:compile
     cmds:
@@ -297,11 +342,16 @@ tasks:
     deps:
       - task: deps:golangci-lint
     vars:
+      FIX: '{{ .FIX | default "false" }}'
+      FIX_FLAG: '{{if eq .FIX "true"}}--fix{{end}}'
       GO_MOD_DIR:
         sh: find . -name go.mod -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
-        cmd: echo "Running golangci-lint in {{.ITEM}}" && (cd {{.ITEM}} && {{.GOLANGCI_LINT_BIN}} run --config {{.ROOT_DIR}}/.golangci.yml)
+        cmd: |
+          echo "Running golangci-lint in {{.ITEM}}"
+          cd {{.ITEM}}
+          {{.GOLANGCI_LINT_BIN}} run --config {{.ROOT_DIR}}/.golangci.yml {{.FIX_FLAG}}
 
   lint:buf:
     desc: Run Buf linters
@@ -354,6 +404,7 @@ tasks:
 
   deps:helm:
     desc: Ensure supported Helm version is installed
+    internal: true
     deps:
       - deps:bin-dir
     preconditions:
@@ -368,6 +419,7 @@ tasks:
 
   deps:kubectl:
     desc: Ensure supported kubectl version is installed
+    internal: true
     deps:
       - deps:bin-dir
     preconditions:
@@ -381,6 +433,7 @@ tasks:
 
   deps:kind:
     desc: Ensure supported kind version is installed
+    internal: true
     deps:
       - deps:bin-dir
     preconditions:
@@ -394,6 +447,7 @@ tasks:
 
   deps:protoc:
     desc: Ensure supported Protoc version and plugins are installed
+    internal: true
     deps:
       - deps:bin-dir
     preconditions:
@@ -420,6 +474,7 @@ tasks:
 
   deps:bufbuild:
     desc: Ensure supported bufbuild version is installed
+    internal: true
     deps:
       - deps:bin-dir
     preconditions:
@@ -436,6 +491,7 @@ tasks:
 
   deps:tidy:
     desc: Ensure dependencies are up-to-date
+    internal: true
     vars:
       GO_MOD_DIR:
         sh: find . -name go.mod -exec dirname {} \;
@@ -445,6 +501,7 @@ tasks:
 
   deps:multimod-bin:
     desc: Build the multimod binary
+    internal: true
     deps:
       - deps:bin-dir
     vars:
@@ -458,6 +515,7 @@ tasks:
 
   deps:golangci-lint:
     desc: Install golangci-lint
+    internal: true
     deps:
       - deps:bin-dir
     cmds:
@@ -469,6 +527,7 @@ tasks:
 
   deps:licensei:
     desc: Install licensei
+    internal: true
     deps:
       - deps:bin-dir
     cmds:
@@ -483,6 +542,7 @@ tasks:
   ##
   helm:gen:
     desc: Update Helm dependencies for chart and subcharts
+    internal: true
     deps:
       - deps:helm
     vars:

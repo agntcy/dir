@@ -3,6 +3,8 @@
 
 package corev1alpha1
 
+import "path"
+
 func removeDuplicates[T comparable](slice []T) []T {
 	keys := make(map[T]struct{})
 	result := make([]T, 0, len(slice))
@@ -61,21 +63,13 @@ func (x *Agent) Merge(other *Agent) {
 	x.Name = firstNonEmptyString(x.GetName(), other.GetName())
 	x.Version = firstNonEmptyString(x.GetVersion(), other.GetVersion())
 
-	if x.GetCreatedAt() == nil {
+	if x.GetCreatedAt() == "" {
 		x.CreatedAt = other.GetCreatedAt()
-	}
-
-	if x.GetDigest() == nil {
-		x.Digest = other.GetDigest()
 	}
 
 	// Merge slices without duplicates, keeping receiver's values first
 	if len(other.GetAuthors()) > 0 {
 		x.Authors = removeDuplicates(append(other.GetAuthors(), x.GetAuthors()...))
-	}
-
-	if len(other.GetSkills()) > 0 {
-		x.Skills = removeDuplicates(append(other.GetSkills(), x.GetSkills()...))
 	}
 
 	// Merge annotations, keeping receiver's values when keys conflict
@@ -89,24 +83,35 @@ func (x *Agent) Merge(other *Agent) {
 		}
 	}
 
-	// Merge Locators, keeping receiver's values when names conflict
+	// Merge Locators, keeping receiver's values when "type/url" conflict
 	if len(other.GetLocators()) > 0 {
 		x.Locators = mergeItems(
 			x.GetLocators(),
 			other.GetLocators(),
 			func(locator *Locator) string {
-				return locator.GetName()
+				return path.Join(locator.GetType(), locator.GetUrl())
 			},
 		)
 	}
 
-	// Merge Extensions, keeping receiver's values when names conflict
+	// Merge Extensions, keeping receiver's values when "name/version" conflict
 	if len(other.GetExtensions()) > 0 {
 		x.Extensions = mergeItems(
 			x.GetExtensions(),
 			other.GetExtensions(),
 			func(extension *Extension) string {
-				return extension.GetName()
+				return path.Join(extension.GetName(), extension.GetVersion())
+			},
+		)
+	}
+
+	// Merge skills, keeping receiver's values when FQDN conflict
+	if len(other.GetSkills()) > 0 {
+		x.Skills = mergeItems(
+			x.GetSkills(),
+			other.GetSkills(),
+			func(skill *Skill) string {
+				return skill.FQDN()
 			},
 		)
 	}

@@ -9,18 +9,15 @@ import "google/protobuf/empty.proto";
 import "core/v1alpha1/object.proto";
 
 // Defines an interface for content-addressable storage
-// service for service-specific objects such as blobs, files, etc.
-//
-// Required for the Distribution API.
-//
-// This is a namespaced service: <directory>/<owner>/<repo>
+// service for arbitrary data such as blobs, files, etc.
+// It may also store metadata for pushed objects.
 service StoreService {
   // Push performs streamed write operation for provided object.
   rpc Push(stream core.v1alpha1.Object) returns (core.v1alpha1.ObjectRef);
   // Pull performs streamed read operation for the requested object.
   rpc Pull(core.v1alpha1.ObjectRef) returns (stream core.v1alpha1.Object);
-  // Lookup performs lookup operation for the requested object.
-  rpc Lookup(core.v1alpha1.ObjectRef) returns (core.v1alpha1.ObjectMeta);
+  // Lookup resolves ref data from digest only.
+  rpc Lookup(core.v1alpha1.ObjectRef) returns (core.v1alpha1.ObjectRef);
   // Remove performs delete operation for the requested object.
   rpc Delete(core.v1alpha1.ObjectRef) returns (google.protobuf.Empty);
 }

@@ -1,0 +1,83 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package routing.v1alpha1;
+
+import "google/protobuf/empty.proto";
+import "core/v1alpha1/object.proto";
+import "routing/v1alpha1/routing.proto";
+
+// FS-def of Agent (v0.0.1, digest, agent):
+// /dir-name -> search over all network
+//    /node-name -> search over all agents
+//        /agent-name -> search over a collection
+//          /v0.1.0: -> search for props on a single
+//   - /extensions
+//     - /identity
+//   - /skills
+//     - /RAG
+//
+// Defines an interface for publication and retrieval
+// of objects across interconnected network.
+// Public List: /<dir>/agents/<agent-name>/<agent-version>/locators/helm-chart,docker-image
+// Internal List: /<dir>/agents/*/latest/locators/helm-chart,docker-image
+//
+// Key schema:
+//  - Agents: /agents/<agent-name>
+//    Example: /agents/research-agent
+//  - Locators: /<dir>/agents/<agent-name>/locators/<locator-type>/<locator-url>
+//    Example: /agents/research-agent/locators/helm-chart
+//  - Skills: /<dir>/agents/<agent-name>/skills/<skill-name>
+//    Example: /agents/research-agent/skills/RAG
+//  - Extensions: /<dir>/agents/<agent-name>/extensions/<extension-name>
+//    Example: /agents/research-agent/extensions/identity
+//
+// Returned objects MAY be fetched from peer node's Store API.
+service RoutingService {
+  // Notifies the network that the node is providing given object.
+  // Listeners should use this event to update their routing tables.
+  // They may optionally forward the request to other nodes.
+  // Items need to be periodically republished to avoid stale data.
+  rpc Publish(PublishRequest) returns (google.protobuf.Empty);
+  // Lookup if the given key is present on the node.
+  rpc Lookup(Key) returns (core.v1alpha1.ObjectRef);
+  // Resolve all the nodes that are serving this key.
+  rpc Resolve(Key) returns (stream Peer);
+  // List all the available items across the network.
+  rpc List(ListRequest) returns (stream ListResponse);
+}
+
+message PublishRequest {
+  // Peer that is broadcasting the record.
+  Peer peer = 1;
+
+  // Published record reference.
+  core.v1alpha1.ObjectRef record = 2;
+}
+
+message ListRequest {
+  // Key to be listed
+  Key key = 1;
+
+  // Regexp filter for sub-keys
+  string filter = 2;
+}
+
+message ListResponse {
+  message Item {
+    // Key associated with a given object
+    Key key = 1;
+
+    // Peers that have this key.
+    repeated Peer peers = 2;
+ 
+    // Optional reference to an object.
+    // Item may only hold a reference to an object.
+    optional core.v1alpha1.ObjectRef record = 3;
+  }
+
+  // Returned items that match a given request
+  repeated Item items = 1;
+}

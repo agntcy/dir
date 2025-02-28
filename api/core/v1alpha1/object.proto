@@ -5,51 +5,34 @@ syntax = "proto3";
 
 package core.v1alpha1;
 
-import "core/v1alpha1/digest.proto";
-
-// ObjectType specifies supported objects by type
-enum ObjectType {
-  OBJECT_TYPE_UNSPECIFIED = 0;
-  OBJECT_TYPE_CUSTOM = 1;
-  OBJECT_TYPE_LOCATOR = 2;
-  OBJECT_TYPE_EXTENSION = 3;
-  OBJECT_TYPE_AGENT = 4;
-}
-
-// ObjectMeta collects common data about an object
-message ObjectMeta {
-  // Arbitrary type specifier of this object.
-  // Predefined types are always processed as JSON objects.
-  ObjectType type = 1;
-
-  // Arbitrary kind specifier of this object.
-  // This value should be used for custom objects to describe their schema.
-  // For existing objects such as agent data models, this value is ignored.
-  string kind = 2;
-
-  // Arbitrary name specifier of this object
-  string name = 3;
-
-  // Annotations contains arbitrary metadata
-  map<string, string> annotations = 4;
-
-  // Digest associated with this object
-  Digest digest = 5;
-}
-
-// Object defines representation schema of an object
-message Object {
-  // Metadata associated with this object
-  ObjectMeta metadata = 1;
-
-  // Size in bytes of data
-  uint64 size = 2;
-
-  // Raw contents of the object
-  bytes data = 3;
-}
-
-// Unique reference to an object by its digest
+// Reference to a typed object in the content store.
 message ObjectRef {
-  Digest digest = 1;
+  // Digest of the object data.
+  // Digest is used as a globally unique ID of an object.
+  // Specs: https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests
+  string digest = 1;
+  // Type of the object. Can be looked up from digest.
+  string type = 2;
+  // Size of the object. Can be looked up from digest.
+  uint64 size = 3;
+  // Additional metadata associated with this object.
+  // Can be looked up from digest.
+  map<string, string> annotations = 4;
+}
+
+// The actual object stored in the content store.
+message Object {
+  // This is only needed in push.
+  optional ObjectRef ref = 1;
+  // Opaque data held by this object. Arbitrary in size.
+  // Readers should know how to process this value.
+  bytes data = 2;
+}
+
+// ObjectType defines a list of native types.
+// Other types may be used but some operations
+// on the storage layer may not be supported.
+enum ObjectType {
+  OBJECT_TYPE_RAW = 0; // "raw"
+  OBJECT_TYPE_AGENT = 1; // "agent"
 }

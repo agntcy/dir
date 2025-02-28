@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package controller
 
 import (
@@ -16,33 +17,35 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type storeController struct {
-	store types.StoreService
+type storeCtrl struct {
 	storetypes.UnimplementedStoreServiceServer
+	store types.StoreAPI
 }
 
-func NewStoreController(store types.StoreService) storetypes.StoreServiceServer {
-	return &storeController{
-		store:                           store,
+func NewStoreController(store types.StoreAPI) storetypes.StoreServiceServer {
+	return &storeCtrl{
 		UnimplementedStoreServiceServer: storetypes.UnimplementedStoreServiceServer{},
+		store:                           store,
 	}
 }
 
-func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
+func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
+	// TODO: validate
 	firstMessage, err := stream.Recv()
 	if err != nil {
 		return fmt.Errorf("failed to receive first message: %w", err)
 	}
 
-	metadata := firstMessage.GetMetadata()
-	if metadata == nil {
-		return errors.New("metadata is required")
+	log.Printf("Received: %v\n", firstMessage.GetRef())
+
+	// lookup (skip if exists)
+	ref, err := s.store.Lookup(stream.Context(), firstMessage.GetRef())
+	if err == nil {
+		return stream.SendAndClose(ref)
 	}
 
-	log.Printf("Received metadata: Type=%v, Name=%s, Annotations=%v\n", metadata.GetType(), metadata.GetName(), metadata.GetAnnotations())
-
+	// read packets into a pipe in the background
 	pr, pw := io.Pipe()
-
 	go func() {
 		defer pw.Close()
 
@@ -74,33 +77,24 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 		}
 	}()
 
-	digest, err := s.store.Push(
-		context.Background(),
-		&coretypes.ObjectMeta{
-			Type:        metadata.GetType(),
-			Name:        metadata.GetName(),
-			Annotations: metadata.GetAnnotations(),
-			Digest:      metadata.GetDigest(),
-		},
-		pr,
-	)
+	// push
+	ref, err = s.store.Push(stream.Context(), firstMessage.GetRef(), pr)
 	if err != nil {
 		return fmt.Errorf("failed to push: %w", err)
 	}
 
-	if err := stream.SendAndClose(&coretypes.ObjectRef{Digest: digest}); err != nil {
-		return fmt.Errorf("failed to send and close stream: %w", err)
-	}
-
-	return nil
+	return stream.SendAndClose(ref)
 }
 
-func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService_PullServer) error {
-	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
-		return errors.New("digest is required")
+func (s storeCtrl) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService_PullServer) error {
+	// lookup (maybe not needed)
+	ref, err := s.store.Lookup(stream.Context(), req)
+	if err != nil {
+		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	reader, err := s.store.Pull(context.Background(), req.GetDigest())
+	// pull
+	reader, err := s.store.Pull(stream.Context(), ref)
 	if err != nil {
 		return fmt.Errorf("failed to pull: %w", err)
 	}
@@ -120,19 +114,25 @@ func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreS
 		}
 
 		// forward data
-		err = stream.Send(&coretypes.Object{Data: buf[:n]})
+		err = stream.Send(&coretypes.Object{
+			Data: buf[:n],
+		})
 		if err != nil {
 			return fmt.Errorf("failed to send: %w", err)
 		}
 	}
 }
 
-func (s storeController) Lookup(ctx context.Context, req *coretypes.ObjectRef) (*coretypes.ObjectMeta, error) {
-	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
+func (s storeCtrl) Lookup(ctx context.Context, req *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+	// validate
+	if req.GetDigest() == "" {
 		return nil, errors.New("digest is required")
 	}
 
-	meta, err := s.store.Lookup(ctx, req.GetDigest())
+	// TODO: add caching to avoid querying the Storage API
+
+	// lookup
+	meta, err := s.store.Lookup(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup: %w", err)
 	}
@@ -140,12 +140,12 @@ func (s storeController) Lookup(ctx context.Context, req *coretypes.ObjectRef) (
 	return meta, nil
 }
 
-func (s storeController) Delete(ctx context.Context, req *coretypes.ObjectRef) (*emptypb.Empty, error) {
-	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
+func (s storeCtrl) Delete(ctx context.Context, req *coretypes.ObjectRef) (*emptypb.Empty, error) {
+	if req.GetDigest() == "" {
 		return nil, errors.New("digest is required")
 	}
 
-	err := s.store.Delete(ctx, req.GetDigest())
+	err := s.store.Delete(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete: %w", err)
 	}

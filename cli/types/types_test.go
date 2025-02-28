@@ -11,7 +11,7 @@ import (
 )
 
 func TestAgentExtension_ToAPIExtension(t *testing.T) {
-	type ExtensionSpecs struct {
+	type ExtensionData struct {
 		TestString string            `json:"test_string,omitempty"`
 		TestSlice  []string          `json:"test_slice,omitempty"`
 		TestMap    map[string]string `json:"test_map,omitempty"`
@@ -20,7 +20,7 @@ func TestAgentExtension_ToAPIExtension(t *testing.T) {
 	agentExtension := AgentExtension{
 		Name:    "base",
 		Version: "v0.0.0",
-		Specs: ExtensionSpecs{
+		Data: ExtensionData{
 			TestString: "test",
 			TestSlice:  []string{"test1", "test2"},
 			TestMap: map[string]string{
@@ -38,5 +38,5 @@ func TestAgentExtension_ToAPIExtension(t *testing.T) {
 		"test_string": "test",
 		"test_slice":  []interface{}{"test1", "test2"},
 		"test_map":    map[string]interface{}{"key1": "value1", "key2": "value2"},
-	}, apiExtension.GetSpecs().AsMap())
+	}, apiExtension.GetData().AsMap())
 }

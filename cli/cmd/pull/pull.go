@@ -39,13 +39,12 @@ func runCommand(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	var dig coretypes.Digest
-	if err := dig.Decode(opts.AgentDigest); err != nil {
-		return fmt.Errorf("failed to parse digest: %w", err)
-	}
-
-	// Use the client's Pull method to retrieve the data.
-	reader, err := c.Pull(cmd.Context(), &dig)
+	// Fetch object from store
+	reader, err := c.Pull(cmd.Context(), &coretypes.ObjectRef{
+		Digest:      opts.AgentDigest,
+		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+		Annotations: nil,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}

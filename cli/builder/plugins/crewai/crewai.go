@@ -3,7 +3,7 @@
 
 package crewai
 
-// TODO: extract crewAI agent specs from a file
+// TODO: extract crewAI agent data from a file
 
 import (
 	"context"
@@ -133,7 +133,7 @@ func (c *crewAI) Build(_ context.Context) ([]*types.AgentExtension, error) {
 		{
 			Name:    PluginName,
 			Version: PluginVersion,
-			Specs:   metadata,
+			Data:    metadata,
 		},
 	}, nil
 }

@@ -14,6 +14,7 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util"
+	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 )
 
@@ -62,20 +63,19 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
 
-	// Define the metadata for the object.
-	meta, err := agent.ObjectMeta()
-	if err != nil {
-		return fmt.Errorf("failed to get object meta: %w", err)
-	}
-
 	// Use the client's Push method to send the data.
-	digest, err := c.Push(cmd.Context(), meta, bytes.NewReader(data))
+	ref, err := c.Push(cmd.Context(), &coretypes.ObjectRef{
+		Digest:      digest.FromBytes(data).String(),
+		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+		Size:        uint64(len(data)),
+		Annotations: agent.GetAnnotations(),
+	}, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to push data: %w", err)
 	}
 
 	// Print digest to output
-	presenter.Print(cmd, digest.Encode())
+	presenter.Print(cmd, ref.GetDigest())
 
 	return nil
 }

@@ -1,12 +1,10 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
-package types
+package config
 
-import (
-	ds "github.com/dep2p/libp2p/datastore"
-)
+const DefaultDir = "/tmp"
 
-type Database interface {
-	Agent() ds.Datastore
+type Config struct {
+	Dir string `json:"dir,omitempty" mapstructure:"dir"`
 }

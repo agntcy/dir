@@ -22,30 +22,35 @@ model:
     - type: "binary"
       url: "url2"
 
+  # Annotations of the agent
+  annotations:
+    key-1: value
+    key-2: value
+
   # List of custom extensions of the agent
   # Only supports extensions with the following structure:
   # - name: "extension1"
   #   version: "v1.0.0"
-  #   specs:
+  #   data:
   #     key1: "value1"
   # This structure will be injected into the agent's model
   extensions:
     - name: "extension1"
       version: "v1.0.0"
-      specs:
+      data:
         key1: "value1"
         key2: "value2"
 
     - name: "extension2"
       version: "v1.0.0"
-      specs:
+      data:
         key1: "value1"
         key2: "value2"
 
     # Framework related configurations
     - name: "oasf.agntcy.org/features/runtime/framework"
       version: "v0.0.0"
-      specs:
+      data:
         # The type of the framework, valid values are: "crewai", "autogen", "langchain", "llamaindex"
         type: "crewai"
         # The version of the framework library
@@ -54,7 +59,7 @@ model:
     # Language related configurations
     - name: "oasf.agntcy.org/features/runtime/language"
       version: "v0.0.0"
-      specs:
+      data:
         # The programming language of the agent
         type: "python"
         # The version of the programming language

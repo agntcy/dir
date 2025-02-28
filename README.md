@@ -67,6 +67,7 @@ To execute the test suite locally, run:
 ```bash
 task gen
 task build
+task test:unit
 task test:e2e
 ```
 

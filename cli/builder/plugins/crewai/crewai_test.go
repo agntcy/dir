@@ -26,9 +26,9 @@ func TestBuilder(t *testing.T) {
 	assert.NoError(t, err)
 
 	// validate
-	specs, ok := gotExtensions[0].Specs.(map[string]string)
+	data, ok := gotExtensions[0].Data.(map[string]string)
 	assert.True(t, ok)
 
-	specs[expectedKey] = expectedValue
-	specs[inputKey] = inputValue
+	data[expectedKey] = expectedValue
+	data[inputKey] = inputValue
 }

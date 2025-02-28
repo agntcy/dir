@@ -35,18 +35,15 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // Defines an interface for content-addressable storage
-// service for service-specific objects such as blobs, files, etc.
-//
-// Required for the Distribution API.
-//
-// This is a namespaced service: <directory>/<owner>/<repo>
+// service for arbitrary data such as blobs, files, etc.
+// It may also store metadata for pushed objects.
 type StoreServiceClient interface {
 	// Push performs streamed write operation for provided object.
 	Push(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushClient, error)
 	// Pull performs streamed read operation for the requested object.
 	Pull(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (StoreService_PullClient, error)
-	// Lookup performs lookup operation for the requested object.
-	Lookup(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*v1alpha1.ObjectMeta, error)
+	// Lookup resolves ref data from digest only.
+	Lookup(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*v1alpha1.ObjectRef, error)
 	// Remove performs delete operation for the requested object.
 	Delete(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -127,9 +124,9 @@ func (x *storeServicePullClient) Recv() (*v1alpha1.Object, error) {
 	return m, nil
 }
 
-func (c *storeServiceClient) Lookup(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*v1alpha1.ObjectMeta, error) {
+func (c *storeServiceClient) Lookup(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*v1alpha1.ObjectRef, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1alpha1.ObjectMeta)
+	out := new(v1alpha1.ObjectRef)
 	err := c.cc.Invoke(ctx, StoreService_Lookup_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -152,18 +149,15 @@ func (c *storeServiceClient) Delete(ctx context.Context, in *v1alpha1.ObjectRef,
 // for forward compatibility.
 //
 // Defines an interface for content-addressable storage
-// service for service-specific objects such as blobs, files, etc.
-//
-// Required for the Distribution API.
-//
-// This is a namespaced service: <directory>/<owner>/<repo>
+// service for arbitrary data such as blobs, files, etc.
+// It may also store metadata for pushed objects.
 type StoreServiceServer interface {
 	// Push performs streamed write operation for provided object.
 	Push(StoreService_PushServer) error
 	// Pull performs streamed read operation for the requested object.
 	Pull(*v1alpha1.ObjectRef, StoreService_PullServer) error
-	// Lookup performs lookup operation for the requested object.
-	Lookup(context.Context, *v1alpha1.ObjectRef) (*v1alpha1.ObjectMeta, error)
+	// Lookup resolves ref data from digest only.
+	Lookup(context.Context, *v1alpha1.ObjectRef) (*v1alpha1.ObjectRef, error)
 	// Remove performs delete operation for the requested object.
 	Delete(context.Context, *v1alpha1.ObjectRef) (*emptypb.Empty, error)
 }
@@ -181,7 +175,7 @@ func (UnimplementedStoreServiceServer) Push(StoreService_PushServer) error {
 func (UnimplementedStoreServiceServer) Pull(*v1alpha1.ObjectRef, StoreService_PullServer) error {
 	return status.Errorf(codes.Unimplemented, "method Pull not implemented")
 }
-func (UnimplementedStoreServiceServer) Lookup(context.Context, *v1alpha1.ObjectRef) (*v1alpha1.ObjectMeta, error) {
+func (UnimplementedStoreServiceServer) Lookup(context.Context, *v1alpha1.ObjectRef) (*v1alpha1.ObjectRef, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Lookup not implemented")
 }
 func (UnimplementedStoreServiceServer) Delete(context.Context, *v1alpha1.ObjectRef) (*emptypb.Empty, error) {

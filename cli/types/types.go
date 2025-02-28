@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	structpb "google.golang.org/protobuf/types/known/structpb"
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type ExtensionBuilderType string
@@ -17,32 +17,32 @@ type ExtensionBuilderType string
 type AgentExtension struct {
 	Name    string `json:"name,omitempty"`
 	Version string `json:"version,omitempty"`
-	Specs   any    `json:"specs,omitempty"`
+	Data    any    `json:"data,omitempty"`
 }
 
-func (a *AgentExtension) ToAPIExtension() (apicore.Extension, error) {
+func (a *AgentExtension) ToAPIExtension() (coretypes.Extension, error) {
 	// Marshal any to json
-	jsonSpecs, err := json.Marshal(a.Specs)
+	data, err := json.Marshal(a.Data)
 	if err != nil {
-		return apicore.Extension{}, fmt.Errorf("failed to marshal specs: %w", err)
+		return coretypes.Extension{}, fmt.Errorf("failed to marshal data: %w", err)
 	}
 
 	// Unmarshal json to map[string]any
-	var newSpecs map[string]interface{}
-	if err := json.Unmarshal(jsonSpecs, &newSpecs); err != nil {
-		return apicore.Extension{}, fmt.Errorf("failed to unmarshal specs: %w", err)
+	var mapData map[string]interface{}
+	if err := json.Unmarshal(data, &mapData); err != nil {
+		return coretypes.Extension{}, fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
-	// Convert the specs to a Struct
-	specsStruct, err := structpb.NewStruct(newSpecs)
+	// Convert the data to struct
+	structData, err := structpb.NewStruct(mapData)
 	if err != nil {
-		return apicore.Extension{}, fmt.Errorf("failed to convert specs to struct: %w", err)
+		return coretypes.Extension{}, fmt.Errorf("failed to convert data to struct: %w", err)
 	}
 
-	return apicore.Extension{
+	return coretypes.Extension{
 		Name:    a.Name,
 		Version: a.Version,
-		Specs:   specsStruct,
+		Data:    structData,
 	}, nil
 }
 
