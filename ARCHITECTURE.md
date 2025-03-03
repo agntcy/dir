@@ -86,7 +86,7 @@ See more in the [Content Identity](https://github.com/multiformats/cid) specs.
 
 ## Network
 
-The Directory network MUST use a PKI based identity.
+The Directory network MUST use a cryptographically strong identity.
 A "dir node" is a program that can publish, find, and replicate objects across the network. 
 Its identity is defined by a private key.
 
@@ -193,3 +193,4 @@ List of items to be done:
   - Add RFC template
   - Add some mathematical estimates for network and data size
   - Provide system requirements
+  - Dual DHT considerations (WAN/LAN vs Content-Specific)
