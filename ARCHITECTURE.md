@@ -3,6 +3,30 @@
 This document defines the Directory protocol, including the data models, services, and interfaces.
 It serves as a technical document on the specification and implementation of the protocol.
 
+<!-- TOC -->
+* [Data Models](#data-models)
+  * [Structure](#structure-)
+  * [Schema](#schema)
+* [Storage](#storage)
+  * [Content digest](#content-digest)
+* [Network](#network)
+* [Routing](#routing)
+  * [Announcement](#announcement)
+  * [Discovery](#discovery)
+  * [Routing Tables](#routing-tables)
+  * [Naming & Namespacing](#naming--namespacing)
+* [Bootstrapping](#bootstrapping)
+* [Stack](#stack)
+* [Considerations](#considerations)
+  * [Replication](#replication)
+  * [Availability](#availability)
+  * [Security](#security)
+  * [Performances](#performances)
+  * [TODO](#todo)
+<!-- TOC -->
+
+---
+
 ## Data Models
 
 ### Structure 
@@ -67,10 +91,10 @@ A "dir node" is a program that can publish, find, and replicate objects across t
 Its identity is defined by a private key.
 
 The node MAY be allowed to work in one of the following **modes of operation**:
-- **client** - The node can interact with the public network, but it does not expose any interfaces to it.
+- **client** -- The node can interact with the public network, but it does not expose any interfaces to it.
 The interfaces can be exposed only to the local network.
-- **swarm** - The node exposes all its interfaces to a subset of nodes on the network.
-- **server** - The node exposes all its interfaces to the public network.
+- **swarm** -- The node exposes all its interfaces to a subset of nodes on the network.
+- **server** -- The node exposes all its interfaces to the public network.
 
 All interfaces and operations on the network MUST be provided and performed by the node itself.
 
@@ -102,43 +126,34 @@ The nodes participating in the network MUST be able to **find published contents
 The minimal interface required to implement the Discovery API consists of two sub-interfaces
 for querying and traversing the objects on a given node based on:
 
-- **Discovery By Name** --
+- **Discovery By Name**
   - `List(path=/agents)` -- returns a list of unique agent names
   - `List(path=/agents/{agent})` -- returns a list of all release digests associated with a given agent
 
-- **Discovery By Skill** --
+- **Discovery By Skill**
   - `List(path=/skills)` -- returns a list of unique skill names
   - `List(path=/skills/{skill})` -- returns a list of unique agent names that have a release with a given skill
 
 Implementations MAY allow more granular querying logic for the Discovery API.
 
-#### Agent Routing Table
+### Routing Tables
 
 ```mermaid
 flowchart TD
-    Node --> Agents
+  Node --> Agents
+  Node --> Skills
 
-    Agents ---> Agent-Alice
-    Agents .-> Agent-Bob
-    Agents .-> Agent-Charlie
+  subgraph Agents
+      Alice --> /dir/CID-Alice-v1
+      Bob .-> /dir/CID-Bob-v1
+      Bob .-> /dir/CID-Bob-v2
+  end
 
-    Agent-Alice --> /dir/CID-for-release-1
-    Agent-Alice --> /dir/CID-for-release-2
-```
-
-#### Skill Routing Table
-
-```mermaid
-flowchart TD
-    Node --> Skills
-
-    Skills ---> Skill-A
-    Skills .-> Skill-B
-    Skills .-> Skill-C
-
-    Skill-A --> Agent-Alice
-    Skill-A .-> Agent-Bob
-    Skill-A .-> Agent-Charlie
+  subgraph Skills
+      RAG --> Alice
+      TextSummary --> Alice
+      TextSummary .-> Bob
+  end
 ```
 
 Clients SHOULD first query the Skill Routing Table to find which agents have a given skill,
@@ -149,14 +164,14 @@ This is to prevent creating record duplications between the two graphs.
 An agent with a given skill can be traversed using Agent Routing table
 once we know that the given agent has a release that contains a given skill.
 
-### Bootstrapping
-
-Define how the nodes should initialize their routing data and
-connect with the rest of the network.
-
-### Naming and Namespacing
+### Naming & Namespacing
 
 Define more details on the APIs that will serve the Routing using path-based traversal.
+
+## Bootstrapping
+
+Define how the nodes should initialize their storage data, routing data, and
+connect with the rest of the network.
 
 ## Stack
 
@@ -174,7 +189,7 @@ Below is an architecture diagram of the current system that implements the Direc
 
 ---
 
-### TODO
-
-List of items to be resolved:
-  - RFC
+List of items to be done:
+  - Add RFC template
+  - Add some mathematical estimates for network and data size
+  - Provide system requirements
