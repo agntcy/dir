@@ -102,13 +102,13 @@ The nodes participating in the network MUST be able to **find published contents
 The minimal interface required to implement the Discovery API consists of two sub-interfaces
 for querying and traversing the objects on a given node based on:
 
-- **Discovery By Skill** -- allow
-  - `List(path=/skills)` -- returns a list of unique skill names available on the node
-  - `List(path=/skills/{skill})` -- returns a list of latest digests for all unique agents that belong to a given skill
-  
 - **Discovery By Name** --
   - `List(path=/agents)` -- returns a list of unique agent names
-  - `List(path=/agents/{agent})` -- returns a list of digests associated with a given agent. 
+  - `List(path=/agents/{agent})` -- returns a list of all release digests associated with a given agent
+
+- **Discovery By Skill** --
+  - `List(path=/skills)` -- returns a list of unique skill names
+  - `List(path=/skills/{skill})` -- returns a list of unique agent names that have a release with a given skill
 
 Implementations MAY allow more granular querying logic for the Discovery API.
 
@@ -122,16 +122,9 @@ flowchart TD
     Agents .-> Agent-Bob
     Agents .-> Agent-Charlie
 
-    Agent-Alice --> v1.0.0
-    Agent-Alice --> latest
-    
-    v1.0.0 --> /dir/multihash
-    latest --> /dir/multihash
-
-    Agent-Alice --> /dir/multihash
+    Agent-Alice --> /dir/CID-for-release-1
+    Agent-Alice --> /dir/CID-for-release-2
 ```
-
-Note that each agent has a `latest` tag which points to the last announcement event.
 
 #### Skill Routing Table
 
@@ -146,14 +139,15 @@ flowchart TD
     Skill-A --> Agent-Alice
     Skill-A .-> Agent-Bob
     Skill-A .-> Agent-Charlie
-
-    Agent-Alice --> latest
-
-    latest --> /dir/multihash
 ```
 
-Note that the implementations can decide to serve the Agent routing table via the Skill routing table.
-For example, agent list operations can be performed using Skill subtree matching that agent name without traversing all the tags and digests for a single agent collection.
+Clients SHOULD first query the Skill Routing Table to find which agents have a given skill,
+and then query the releases for a given agent using the Agent Routing Table.
+
+Note that each skill only points to the agent name (or subgraph) rather than having all the digests for all agents. 
+This is to prevent creating record duplications between the two graphs.
+An agent with a given skill can be traversed using Agent Routing table
+once we know that the given agent has a release that contains a given skill.
 
 ### Bootstrapping
 
