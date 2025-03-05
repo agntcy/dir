@@ -1,29 +1,55 @@
 {
-  "name": "marketing-strategy",
+  "name": "agent-name",
   "version": "v1.0.0",
   "authors": [
     "author1",
     "author2"
   ],
   "created_at": {
-    "seconds": 1740584881,
-    "nanos": 364085000
+    "seconds": 1741181628,
+    "nanos": 715015000
   },
   "locators": [
     {
-      "type": 3,
+      "type": 2,
       "source": {
-        "url": "http://ghcr.io/cisco-agents/marketing-strategy"
+        "url": "url1"
       }
     },
     {
-      "type": 2,
+      "type": 5,
       "source": {
-        "url": "http://ghcr.io/cisco-agents/marketing-strategy"
+        "url": "url2"
       }
     }
   ],
   "extensions": [
+    {
+      "name": "oasf.agntcy.org/features/runtime/framework",
+      "version": "v0.0.0",
+      "specs": {
+        "type": "crewai",
+        "version": "0.102.0"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/runtime/language",
+      "version": "v0.0.0",
+      "specs": {
+        "type": "python",
+        "version": "3.12.0"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/skills",
+      "version": "v0.0.0",
+      "specs": {
+        "skills": [
+          "skill1",
+          "skill2"
+        ]
+      }
+    },
     {
       "name": "runtime",
       "version": "v0.0.0",

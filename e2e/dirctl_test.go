@@ -26,14 +26,11 @@ var expectedAgentJSON []byte
 var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 	var (
 		// Test params
-		marketingStrategyPath string
-		tempAgentPath         string
+		tempAgentPath string
 	)
 
 	ginkgo.BeforeEach(func() {
 		// Load common config
-		examplesDir := "testdata/"
-		marketingStrategyPath = filepath.Join(examplesDir, "marketing-strategy")
 		tempAgentDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
 		if tempAgentDir == "" {
 			tempAgentDir = os.TempDir()
@@ -49,14 +46,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			compileCmd.SetOut(&outputBuffer)
 			compileCmd.SetArgs([]string{
 				"build",
-				"--name=marketing-strategy",
-				"--version=v1.0.0",
-				"--locator=python-package:http://ghcr.io/cisco-agents/marketing-strategy",
-				"--locator=docker-image:http://ghcr.io/cisco-agents/marketing-strategy",
-				"--author=author1",
-				"--author=author2",
-				"--config-file=testdata/build.config.yaml",
-				marketingStrategyPath,
+				"--config=testdata/build.config.yaml",
 			})
 
 			err := compileCmd.Execute()
@@ -161,5 +151,5 @@ func compareJSON(json1, json2 []byte) (bool, error) {
 		return agent2.Extensions[i].Name < agent2.Extensions[j].Name
 	})
 
-	return reflect.DeepEqual(agent1, agent2), nil //nolint:govet
+	return reflect.DeepEqual(&agent1, &agent2), nil //nolint:govet
 }

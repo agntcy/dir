@@ -34,16 +34,41 @@ extensions:
     specs:
       categories: ["category1", "category2"]
 
-builder:
-  # Source code of the agent
-  source: "path/to/source"
+# Source code of the agent
+source: "testdata/marketing-strategy"
 
-  # List of paths to ignore
-  source-ignore:
-    - ".venv/"
+# List of paths to ignore
+source-ignore:
+  - ".venv/"
 
-  # Enable or disable the LLM analyzer extension
-  llmanalyzer: false
+# Enable or disable the LLM analyzer extension
+llmanalyzer: false
 
-  # Enable or disable the CrewAI extension
-  crewai: false
+# Enable or disable the CrewAI extension
+crewai: false
+
+# The skills of the agent
+skills:
+
+  # The name of the skill
+  items:
+    - "skill1"
+    - "skill2"
+
+# Framework related configurations
+framework:
+
+  # The type of the framework, valid values are: "crewai", "autogen", "langchain", "llamaindex"
+  type: "crewai"
+
+  # The version of the framework library
+  version: "0.102.0"
+
+# The programming language and it's version used by the agent
+language:
+
+  # The programming language of the agent
+  type: "python"
+
+  # The version of the programming language
+  version: "3.12.0"

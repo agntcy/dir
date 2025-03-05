@@ -63,7 +63,7 @@ framework:
   type: "crewai"
 
   # The version of the framework library
-  version: "v0.0.0"
+  version: "0.102.0"
 
 # The programming language and it's version used by the agent
 language:
