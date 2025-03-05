@@ -36,7 +36,7 @@ extensions:
       key2: "value2"
 
 # Source code of the agent
-source: "../alfred"
+source: "path/to/source"
 
 # List of paths to ignore
 source-ignore:
