@@ -1,4 +1,4 @@
-package skill
+package skills
 
 import (
 	"context"
@@ -13,22 +13,26 @@ const (
 	ExtensionVersion = "v0.0.0"
 )
 
-type skill struct {
+type Config struct {
+	Items []string `yaml:"items"`
+}
+
+type skills struct {
 	skills []string
 }
 
-func New(skills []string) *skill {
-	return &skill{
-		skills: skills,
+func New(cfg *Config) *skills {
+	return &skills{
+		skills: cfg.Items,
 	}
 }
 
-func (a *skill) Build(_ context.Context) (*types.AgentExtension, error) {
+func (s *skills) Build(_ context.Context) (*types.AgentExtension, error) {
 	return &types.AgentExtension{
 		Name:    ExtensionName,
 		Version: ExtensionVersion,
 		Specs: map[string][]string{
-			"skills": a.skills,
+			"skills": s.skills,
 		},
 	}, nil
 }

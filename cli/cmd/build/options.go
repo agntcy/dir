@@ -11,5 +11,5 @@ type options struct {
 
 func init() {
 	flags := Command.Flags()
-	flags.StringVarP(&opts.ConfigFile, "config-file", "f", "", "Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML")
+	flags.StringVarP(&opts.ConfigFile, "config", "f", "", "Path to the build configuration file. Supported formats: YAML")
 }

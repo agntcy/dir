@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	builderconfig "github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/extensions/crewai"
 	"github.com/agntcy/dir/cli/builder/extensions/framework"
 	"github.com/agntcy/dir/cli/builder/extensions/language"
 	"github.com/agntcy/dir/cli/builder/extensions/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/extensions/runtime"
-	"github.com/agntcy/dir/cli/builder/extensions/skill"
+	"github.com/agntcy/dir/cli/builder/extensions/skills"
+	"github.com/agntcy/dir/cli/cmd/build/config"
 	clitypes "github.com/agntcy/dir/cli/types"
 )
 
@@ -23,25 +23,42 @@ func NewExtensionManager() *ExtensionManager {
 	return &ExtensionManager{extensions: make(map[string]interface{})}
 }
 
-func (em *ExtensionManager) Register(name string, config interface{}) {
+func (em *ExtensionManager) register(name string, config interface{}) {
 	em.extensions[name] = config
 }
 
-func (em *ExtensionManager) Build(ctx context.Context) ([]*apicore.Extension, error) {
+func (em *ExtensionManager) RegisterExtensions(cfg *config.Config) {
+	// Register extensions
+	em.register(framework.ExtensionName, cfg.Framework)
+	em.register(language.ExtensionName, cfg.Language)
+	em.register(skills.ExtensionName, cfg.Skills)
+
+	em.register(runtime.ExtensionName, cfg.Source)
+
+	if cfg.CrewAI {
+		em.register(crewai.ExtensionName, cfg)
+	}
+
+	if cfg.LLMAnalyzer {
+		em.register(llmanalyzer.ExtensionName, cfg)
+	}
+}
+
+func (em *ExtensionManager) Run(ctx context.Context) ([]*apicore.Extension, error) {
 	var builtExtensions []*apicore.Extension
 
-	for name, config := range em.extensions {
+	for name, givenCfg := range em.extensions {
 		var ext *clitypes.AgentExtension
 		var err error
 
 		switch name {
 		case crewai.ExtensionName:
-			cfg := config.(*builderconfig.Config)
+			cfg := givenCfg.(*config.Config)
 			ext, err = crewai.New(cfg.Source, cfg.SourceIgnore).Build(ctx)
 
 		case llmanalyzer.ExtensionName:
 			var extBuilder clitypes.ExtensionBuilder
-			cfg := config.(*builderconfig.Config)
+			cfg := givenCfg.(*config.Config)
 			extBuilder, err = llmanalyzer.New(cfg.Source, cfg.SourceIgnore)
 			if err != nil {
 				return nil, err
@@ -49,19 +66,19 @@ func (em *ExtensionManager) Build(ctx context.Context) ([]*apicore.Extension, er
 			ext, err = extBuilder.Build(ctx)
 
 		case runtime.ExtensionName:
-			ext, err = runtime.New(config.(string)).Build(ctx)
+			ext, err = runtime.New(givenCfg.(string)).Build(ctx)
 
 		case framework.ExtensionName:
-			cfg := config.(builderconfig.Framework)
+			cfg := givenCfg.(framework.Config)
 			ext, err = framework.New(&cfg).Build(ctx)
 
 		case language.ExtensionName:
-			cfg := config.(builderconfig.Language)
+			cfg := givenCfg.(language.Config)
 			ext, err = language.New(&cfg).Build(ctx)
 
-		case skill.ExtensionName:
-			cfg := config.([]string)
-			ext, err = skill.New(cfg).Build(ctx)
+		case skills.ExtensionName:
+			cfg := givenCfg.(skills.Config)
+			ext, err = skills.New(&cfg).Build(ctx)
 
 		default:
 			return nil, fmt.Errorf("unknown extension: %s", name)

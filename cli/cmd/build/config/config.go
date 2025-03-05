@@ -8,7 +8,9 @@ import (
 	"gopkg.in/yaml.v2"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	builderconfig "github.com/agntcy/dir/cli/builder/config"
+	"github.com/agntcy/dir/cli/builder/extensions/framework"
+	"github.com/agntcy/dir/cli/builder/extensions/language"
+	"github.com/agntcy/dir/cli/builder/extensions/skills"
 )
 
 type Locator struct {
@@ -29,7 +31,15 @@ type Config struct {
 	Locators   []Locator   `yaml:"locators"`
 	Extensions []Extension `yaml:"extensions"`
 
-	Builder builderconfig.Config `yaml:"builder"`
+	Source       string   `yaml:"source"`
+	SourceIgnore []string `yaml:"source-ignore"`
+
+	LLMAnalyzer bool `yaml:"llmanalyzer"`
+	CrewAI      bool `yaml:"crewai"`
+
+	Framework framework.Config `yaml:"framework"`
+	Language  language.Config  `yaml:"language"`
+	Skills    skills.Config    `yaml:"skills"`
 }
 
 func (c *Config) LoadFromFile(path string) error {
@@ -72,5 +82,11 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 }
 
 func (c *Config) Validate() error {
-	return c.Builder.Validate()
+	switch framework.FrameworkType(c.Framework.Type) {
+	case framework.CrewAI, framework.Autogen, framework.Llmaindex, framework.Langchain:
+	default:
+		return fmt.Errorf("invalid framework type: %s", c.Framework.Type)
+	}
+
+	return nil
 }

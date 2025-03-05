@@ -3,7 +3,6 @@ package framework
 import (
 	"context"
 
-	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/types"
 )
 
@@ -14,25 +13,39 @@ const (
 	ExtensionVersion = "v0.0.0"
 )
 
+type FrameworkType string
+
+const (
+	CrewAI    FrameworkType = "crewai"
+	Autogen   FrameworkType = "autogen"
+	Llmaindex FrameworkType = "llma-index"
+	Langchain FrameworkType = "langchain"
+)
+
+type Config struct {
+	Type    FrameworkType `yaml:"type"`
+	Version string        `yaml:"version"`
+}
+
 type framework struct {
-	Type    string
+	Type    FrameworkType
 	Version string
 }
 
-func New(cfg *config.Framework) *framework {
+func New(cfg *Config) *framework {
 	return &framework{
 		Type:    cfg.Type,
 		Version: cfg.Version,
 	}
 }
 
-func (a *framework) Build(_ context.Context) (*types.AgentExtension, error) {
+func (fw *framework) Build(_ context.Context) (*types.AgentExtension, error) {
 	return &types.AgentExtension{
 		Name:    ExtensionName,
 		Version: ExtensionVersion,
 		Specs: map[string]string{
-			"type":    a.Type,
-			"version": a.Version,
+			"type":    string(fw.Type),
+			"version": fw.Version,
 		},
 	}, nil
 }
