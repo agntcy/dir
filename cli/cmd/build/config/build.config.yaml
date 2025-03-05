@@ -48,3 +48,26 @@ builder:
 
   # Enable or disable the CrewAI extension
   crewai: false
+
+  # The skills of the agent
+  skills:
+    - "skill1"
+    - "skill2"
+
+  # Framework related configurations
+  framework:
+
+    # The type of the framework, valid values are: "crewai", "autogen", "langchain", "llamaindex"
+    type: "crewai"
+
+    # The version of the framework library
+    version: "v0.0.0"
+
+  # The programming language and it's version used by the agent
+  language:
+
+    # The programming language of the agent
+    type: "python"
+
+    # The version of the programming language
+    version: "3.12.0"

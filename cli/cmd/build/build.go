@@ -23,46 +23,29 @@ var Command = &cobra.Command{
 	Short: "Build agent model to prepare for pushing",
 	Long: `Usage example:
 
-	dirctl build \
-		--name="agent-name" \
-		--version="v1.0.0" \
-		--locator="docker-image:http://ghcr.io/example/example" \
-		--locator="python-package:http://ghcr.io/example/example" \
-		--author="author1" \
-		--author="author2" \
-		./path-to-agent
+	dirctl build --config-file agntcy-config.yaml
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return fmt.Errorf("arg missing: must provide path to agent")
-		}
-		return runCommand(cmd, args[0])
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return runCommand(cmd)
 	},
 }
 
-func runCommand(cmd *cobra.Command, agentPath string) error {
-	// Get configuration from flags
-	buildConfig := &config.Config{}
-	err := buildConfig.LoadFromFlags(opts.Name, opts.Version, opts.LLMAnalyzer, opts.CrewAI, opts.Authors, opts.Locators)
-	if err != nil {
-		return fmt.Errorf("failed to load config from flags: %w", err)
+func runCommand(cmd *cobra.Command) error {
+	if opts.ConfigFile == "" {
+		return fmt.Errorf("config file is required")
 	}
 
-	// Set source to agent path
-	buildConfig.Builder.Source = agentPath
+	// Get configuration from flags
+	buildConfig := &config.Config{}
+	err := buildConfig.LoadFromFile(opts.ConfigFile)
+	if err != nil {
+		return fmt.Errorf("failed to load config file: %w", err)
+	}
 
-	// Get configuration from file
-	if opts.ConfigFile != "" {
-		fileConfig := &config.Config{}
-		err := fileConfig.LoadFromFile(opts.ConfigFile)
-		if err != nil {
-			return fmt.Errorf("failed to load config file: %w", err)
-		}
-
-		// Merge file config with flags config
-		// Flags should override file config
-		buildConfig.Merge(fileConfig)
+	err = buildConfig.Validate()
+	if err != nil {
+		return fmt.Errorf("failed to validate builder config: %w", err)
 	}
 
 	locators, err := buildConfig.GetAPILocators()

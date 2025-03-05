@@ -21,7 +21,7 @@ var RootCmd = &cobra.Command{
 	Use:   "dirctl",
 	Short: "CLI tool to interact with Directory",
 	Long:  ``,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		// Set client via context for all requests
 		// TODO: make client config configurable via CLI args
 		c, err := client.New(client.WithConfig(&clientConfig))
