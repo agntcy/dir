@@ -9,6 +9,11 @@ authors:
   - "author1"
   - "author2"
 
+# The skills of the agent (OASF specific)
+skills:
+  - "skill1"
+  - "skill2"
+
 # List of locators of the agent
 locators:
   - type: "docker-image"
@@ -29,46 +34,43 @@ extensions:
     specs:
       license: "Apache-2.0"
       header: "Copyright (c) 2025 Cisco and/or its affiliates."
+
   - name: "category"
     version: "v1.0.0"
     specs:
       categories: ["category1", "category2"]
 
-# Source code of the agent
-source: "testdata/marketing-strategy"
+  # Framework related configurations
+  - name: "oasf.agntcy.org/features/runtime/framework" # can be auto-produced by runtime plugin
+    version: "v1.0.0"
+    specs:
+      # The type of the framework, valid values are: "crewai", "autogen", "langchain", "llamaindex"
+      type: "crewai"
+      # The version of the framework library
+      version: "0.102.0"
 
-# List of paths to ignore
-source-ignore:
-  - ".venv/"
+  # Framework related configurations
+  - name: "oasf.agntcy.org/features/runtime/language" # can be auto-produced by runtime plugin
+    version: "v1.0.0"
+    specs:
+      # The programming language of the agent
+      type: "python"
+      # The version of the programming language
+      version: "3.12.0"
 
-# Enable or disable the LLM analyzer extension
-llmanalyzer: false
+builder:
+  # Source code of the agent
+  source: "testdata/marketing-strategy"
 
-# Enable or disable the CrewAI extension
-crewai: false
+  # List of paths to ignore
+  source-ignore:
+    - ".venv/"
 
-# The skills of the agent
-skills:
+  # Enable or disable the LLM analyzer extension
+  llmanalyzer: false
 
-  # The name of the skill
-  items:
-    - "skill1"
-    - "skill2"
+  # Enable or disable the CrewAI extension
+  crewai: false
 
-# Framework related configurations
-framework:
-
-  # The type of the framework, valid values are: "crewai", "autogen", "langchain", "llamaindex"
-  type: "crewai"
-
-  # The version of the framework library
-  version: "0.102.0"
-
-# The programming language and it's version used by the agent
-language:
-
-  # The programming language of the agent
-  type: "python"
-
-  # The version of the programming language
-  version: "3.12.0"
+  # Enable or disable the runtime extension
+  runtime: false

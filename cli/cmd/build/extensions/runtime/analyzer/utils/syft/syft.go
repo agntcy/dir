@@ -10,7 +10,7 @@ import (
 	"slices"
 
 	"github.com/anchore/syft/syft"
-	"github.com/agntcy/dir/cli/builder/extensions/runtime/analyzer"
+	"github.com/agntcy/dir/cli/cmd/build/extensions/runtime/analyzer"
 )
 
 type Syft struct{}

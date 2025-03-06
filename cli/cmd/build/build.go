@@ -11,10 +11,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/builder/manager"
 	"github.com/agntcy/dir/cli/cmd/build/config"
+	"github.com/agntcy/dir/cli/cmd/build/manager"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/types"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +44,7 @@ func runCommand(cmd *cobra.Command) error {
 
 	err = cfg.Validate()
 	if err != nil {
-		return fmt.Errorf("failed to validate builder config: %w", err)
+		return fmt.Errorf("failed to validate config: %w", err)
 	}
 
 	locators, err := cfg.GetAPILocators()
@@ -53,27 +52,14 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to get locators from config: %w", err)
 	}
 
-	manager := manager.NewExtensionManager()
-	manager.RegisterExtensions(cfg)
+	manager := manager.NewExtensionManager(cfg)
+	err = manager.RegisterExtensions()
+	if err != nil {
+		return fmt.Errorf("failed to register extensions: %w", err)
+	}
 	extensions, err := manager.Run(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("failed to run extension manager: %w", err)
-	}
-
-	// Append config extensions
-	for _, ext := range cfg.Extensions {
-		extension := types.AgentExtension{
-			Name:    ext.Name,
-			Version: ext.Version,
-			Specs:   ext.Specs,
-		}
-
-		apiExt, err := extension.ToAPIExtension()
-		if err != nil {
-			return fmt.Errorf("failed to convert extension to API extension: %w", err)
-		}
-
-		extensions = append(extensions, &apiExt)
 	}
 
 	// Create agent data model
@@ -82,6 +68,7 @@ func runCommand(cmd *cobra.Command) error {
 		Version:    cfg.Version,
 		Authors:    cfg.Authors,
 		CreatedAt:  timestamppb.New(time.Now()),
+		Skills:     cfg.Skills,
 		Locators:   locators,
 		Extensions: extensions,
 	}

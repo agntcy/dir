@@ -8,9 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/builder/extensions/framework"
-	"github.com/agntcy/dir/cli/builder/extensions/language"
-	"github.com/agntcy/dir/cli/builder/extensions/skills"
+	"github.com/agntcy/dir/cli/cmd/build/extensions/framework"
 )
 
 type Locator struct {
@@ -24,22 +22,22 @@ type Extension struct {
 	Specs   map[string]any `yaml:"specs"`
 }
 
+type Builder struct {
+	Source       string   `yaml:"source"`
+	SourceIgnore []string `yaml:"source-ignore"`
+	LLMAnalyzer  bool     `yaml:"llmanalyzer"`
+	CrewAI       bool     `yaml:"crewai"`
+	Runtime      bool     `yaml:"runtime"`
+}
+
 type Config struct {
 	Name       string      `yaml:"name"`
 	Version    string      `yaml:"version"`
 	Authors    []string    `yaml:"authors"`
 	Locators   []Locator   `yaml:"locators"`
+	Skills     []string    `yaml:"skills"`
 	Extensions []Extension `yaml:"extensions"`
-
-	Source       string   `yaml:"source"`
-	SourceIgnore []string `yaml:"source-ignore"`
-
-	LLMAnalyzer bool `yaml:"llmanalyzer"`
-	CrewAI      bool `yaml:"crewai"`
-
-	Framework framework.Config `yaml:"framework"`
-	Language  language.Config  `yaml:"language"`
-	Skills    skills.Config    `yaml:"skills"`
+	Builder    Builder     `yaml:"builder"`
 }
 
 func (c *Config) LoadFromFile(path string) error {
@@ -71,7 +69,7 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 		}
 
 		locators = append(locators, &apicore.Locator{
-			Type: apicore.LocatorType(locatorType),
+			Name: apicore.LocatorType_name[locatorType],
 			Source: &apicore.LocatorSource{
 				Url: locator.URL,
 			},
@@ -82,10 +80,12 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 }
 
 func (c *Config) Validate() error {
-	switch framework.FrameworkType(c.Framework.Type) {
-	case framework.CrewAI, framework.Autogen, framework.Llmaindex, framework.Langchain:
-	default:
-		return fmt.Errorf("invalid framework type: %s", c.Framework.Type)
+	for _, ext := range c.Extensions {
+		if ext.Name == framework.ExtensionName {
+			if c.Builder.Runtime {
+				return fmt.Errorf("runtime extension is not allowed with framework extension")
+			}
+		}
 	}
 
 	return nil

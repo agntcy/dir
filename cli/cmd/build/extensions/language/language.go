@@ -2,8 +2,10 @@ package language
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/agntcy/dir/cli/types"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -16,6 +18,20 @@ const (
 type Config struct {
 	Type    string `yaml:"type"`
 	Version string `yaml:"version"`
+}
+
+func (c *Config) From(data map[string]any) error {
+	yamlData, err := yaml.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal data: %w", err)
+	}
+
+	err = yaml.Unmarshal(yamlData, c)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %w", err)
+	}
+
+	return nil
 }
 
 type language struct {

@@ -24,12 +24,14 @@ message Agent {
   repeated string authors = 3;
   // Creation timestamp of the agent
   google.protobuf.Timestamp created_at = 4;
+  // List of skills that this agent can perform
+  repeated string skills = 5;
   // Additional metadata associated with this agent
-  map<string, string> annotations = 5;
+  map<string, string> annotations = 6;
   // List of source locators where this agent can be found or used from
-  repeated Locator locators = 6;
+  repeated Locator locators = 7;
   // List of extensions that describe this agent and its capabilities more in depth
-  repeated Extension extensions = 7;
+  repeated Extension extensions = 8;
   // Digest of the whole object
-  Digest digest = 8;
+  Digest digest = 9;
 }
