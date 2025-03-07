@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
 package config
 
 import (
@@ -8,8 +11,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/builder/plugins/framework"
-	"github.com/agntcy/dir/cli/builder/plugins/language"
 )
 
 type Locator struct {
@@ -82,20 +83,4 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 	}
 
 	return locators, nil
-}
-
-func (c *Config) Validate() error {
-	for _, ext := range c.Model.Extensions {
-		if c.Builder.Runtime {
-			if ext.Name == framework.ExtensionName {
-				return fmt.Errorf("runtime extension is not allowed with framework extension")
-			}
-
-			if ext.Name == language.ExtensionName {
-				return fmt.Errorf("runtime extension is not allowed with language extension")
-			}
-		}
-	}
-
-	return nil
 }

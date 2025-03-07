@@ -6,8 +6,8 @@
     "author2"
   ],
   "created_at": {
-    "seconds": 1741336290,
-    "nanos": 49415000
+    "seconds": 1741358840,
+    "nanos": 173883000
   },
   "skills": [
     "skill1",
@@ -28,22 +28,6 @@
     }
   ],
   "extensions": [
-    {
-      "name": "oasf.agntcy.org/features/runtime/framework",
-      "version": "v0.0.0",
-      "specs": {
-        "type": "crewai",
-        "version": "0.102.0"
-      }
-    },
-    {
-      "name": "oasf.agntcy.org/features/runtime/language",
-      "version": "v0.0.0",
-      "specs": {
-        "type": "python",
-        "version": "3.12.0"
-      }
-    },
     {
       "name": "license",
       "version": "v1.0.0",

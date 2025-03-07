@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
 package builder
 
 import (
@@ -7,8 +10,6 @@ import (
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/plugins/crewai"
-	"github.com/agntcy/dir/cli/builder/plugins/framework"
-	"github.com/agntcy/dir/cli/builder/plugins/language"
 	"github.com/agntcy/dir/cli/builder/plugins/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime"
 	"github.com/agntcy/dir/cli/types"
@@ -16,48 +17,18 @@ import (
 )
 
 type Builder struct {
-	extensions       []clitypes.ExtensionBuilder
-	customExtensions []int
-	cfg              *config.Config
+	extensions []clitypes.ExtensionBuilder
+	cfg        *config.Config
 }
 
 func NewBuilder(cfg *config.Config) *Builder {
 	return &Builder{
-		extensions:       make([]clitypes.ExtensionBuilder, 0),
-		customExtensions: make([]int, 0),
-		cfg:              cfg,
+		extensions: make([]clitypes.ExtensionBuilder, 0),
+		cfg:        cfg,
 	}
 }
 
-func (em *Builder) RegisterExtensions() error {
-	for i, ext := range em.cfg.Model.Extensions {
-		switch ext.Name {
-		case framework.ExtensionName:
-			frameworkCfg := &framework.Config{}
-			err := frameworkCfg.From(ext.Specs)
-			if err != nil {
-				return fmt.Errorf("failed to register framework extension: %w", err)
-			}
-			err = frameworkCfg.Validate()
-			if err != nil {
-				return fmt.Errorf("failed to validate framework extension: %w", err)
-			}
-			em.extensions = append(em.extensions, framework.New(frameworkCfg))
-
-		case language.ExtensionName:
-			languageCfg := &language.Config{}
-			err := languageCfg.From(ext.Specs)
-			if err != nil {
-				return fmt.Errorf("failed to register language extension: %w", err)
-			}
-			em.extensions = append(em.extensions, language.New(languageCfg))
-
-		default:
-			em.customExtensions = append(em.customExtensions, i)
-
-		}
-	}
-
+func (em *Builder) RegisterPlugins() error {
 	if em.cfg.Builder.CrewAI {
 		em.extensions = append(em.extensions, crewai.New(em.cfg.Builder.Source, em.cfg.Builder.SourceIgnore))
 	}
@@ -94,11 +65,11 @@ func (em *Builder) Run(ctx context.Context) ([]*apicore.Extension, error) {
 		builtExtensions = append(builtExtensions, &apiExt)
 	}
 
-	for _, i := range em.customExtensions {
+	for _, i := range em.cfg.Model.Extensions {
 		extension := types.AgentExtension{
-			Name:    em.cfg.Model.Extensions[i].Name,
-			Version: em.cfg.Model.Extensions[i].Version,
-			Specs:   em.cfg.Model.Extensions[i].Specs,
+			Name:    i.Name,
+			Version: i.Version,
+			Specs:   i.Specs,
 		}
 
 		apiExt, err := extension.ToAPIExtension()

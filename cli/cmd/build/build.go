@@ -42,18 +42,13 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to load config file: %w", err)
 	}
 
-	err = cfg.Validate()
-	if err != nil {
-		return fmt.Errorf("failed to validate config: %w", err)
-	}
-
 	locators, err := cfg.GetAPILocators()
 	if err != nil {
 		return fmt.Errorf("failed to get locators from config: %w", err)
 	}
 
 	manager := builder.NewBuilder(cfg)
-	err = manager.RegisterExtensions()
+	err = manager.RegisterPlugins()
 	if err != nil {
 		return fmt.Errorf("failed to register extensions: %w", err)
 	}
