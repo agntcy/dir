@@ -29,6 +29,15 @@ type Config struct {
 	Version string        `yaml:"version"`
 }
 
+func (c *Config) Validate() error {
+	switch c.Type {
+	case CrewAI, Autogen, Llmaindex, Langchain:
+		return nil
+	default:
+		return fmt.Errorf("invalid framework type: %s", c.Type)
+	}
+}
+
 func (c *Config) From(data map[string]any) error {
 	yamlData, err := yaml.Marshal(data)
 	if err != nil {

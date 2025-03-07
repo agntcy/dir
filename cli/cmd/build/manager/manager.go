@@ -38,6 +38,10 @@ func (em *ExtensionManager) RegisterExtensions() error {
 			if err != nil {
 				return fmt.Errorf("failed to register framework extension: %w", err)
 			}
+			err = frameworkCfg.Validate()
+			if err != nil {
+				return fmt.Errorf("failed to validate framework extension: %w", err)
+			}
 			em.extensions = append(em.extensions, framework.New(frameworkCfg))
 
 		case language.ExtensionName:

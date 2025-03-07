@@ -35,11 +35,6 @@ extensions:
       license: "Apache-2.0"
       header: "Copyright (c) 2025 Cisco and/or its affiliates."
 
-  - name: "category"
-    version: "v1.0.0"
-    specs:
-      categories: ["category1", "category2"]
-
   # Framework related configurations
   - name: "oasf.agntcy.org/features/runtime/framework" # can be auto-produced by runtime plugin
     version: "v1.0.0"

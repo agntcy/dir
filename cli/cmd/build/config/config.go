@@ -9,6 +9,7 @@ import (
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/cmd/build/extensions/framework"
+	"github.com/agntcy/dir/cli/cmd/build/extensions/language"
 )
 
 type Locator struct {
@@ -81,9 +82,13 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 
 func (c *Config) Validate() error {
 	for _, ext := range c.Extensions {
-		if ext.Name == framework.ExtensionName {
-			if c.Builder.Runtime {
+		if c.Builder.Runtime {
+			if ext.Name == framework.ExtensionName {
 				return fmt.Errorf("runtime extension is not allowed with framework extension")
+			}
+
+			if ext.Name == language.ExtensionName {
+				return fmt.Errorf("runtime extension is not allowed with language extension")
 			}
 		}
 	}

@@ -6,8 +6,8 @@
     "author2"
   ],
   "created_at": {
-    "seconds": 1741270774,
-    "nanos": 972422000
+    "seconds": 1741336290,
+    "nanos": 49415000
   },
   "skills": [
     "skill1",
@@ -50,16 +50,6 @@
       "specs": {
         "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
         "license": "Apache-2.0"
-      }
-    },
-    {
-      "name": "category",
-      "version": "v1.0.0",
-      "specs": {
-        "categories": [
-          "category1",
-          "category2"
-        ]
       }
     }
   ]
