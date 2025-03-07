@@ -48,7 +48,7 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	manager := builder.NewBuilder(cfg)
-	err = manager.RegisterPlugins()
+	err = manager.RegisterExtensions()
 	if err != nil {
 		return fmt.Errorf("failed to register extensions: %w", err)
 	}
