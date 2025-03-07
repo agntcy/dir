@@ -28,7 +28,7 @@ func NewBuilder(cfg *config.Config) *Builder {
 	}
 }
 
-func (em *Builder) RegisterPlugins() error {
+func (em *Builder) RegisterExtensions() error {
 	if em.cfg.Builder.CrewAI {
 		em.extensions = append(em.extensions, crewai.New(em.cfg.Builder.Source, em.cfg.Builder.SourceIgnore))
 	}
