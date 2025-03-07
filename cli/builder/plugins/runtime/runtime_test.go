@@ -5,7 +5,7 @@ package runtime
 
 import (
 	"context"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/runtime/analyzer"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

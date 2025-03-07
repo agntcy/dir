@@ -11,8 +11,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/cmd/build/config"
-	"github.com/agntcy/dir/cli/cmd/build/manager"
+	"github.com/agntcy/dir/cli/builder/config"
+	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
@@ -52,7 +52,7 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to get locators from config: %w", err)
 	}
 
-	manager := manager.NewExtensionManager(cfg)
+	manager := builder.NewBuilder(cfg)
 	err = manager.RegisterExtensions()
 	if err != nil {
 		return fmt.Errorf("failed to register extensions: %w", err)
@@ -64,11 +64,11 @@ func runCommand(cmd *cobra.Command) error {
 
 	// Create agent data model
 	agent := &apicore.Agent{
-		Name:       cfg.Name,
-		Version:    cfg.Version,
-		Authors:    cfg.Authors,
+		Name:       cfg.Model.Name,
+		Version:    cfg.Model.Version,
+		Authors:    cfg.Model.Authors,
 		CreatedAt:  timestamppb.New(time.Now()),
-		Skills:     cfg.Skills,
+		Skills:     cfg.Model.Skills,
 		Locators:   locators,
 		Extensions: extensions,
 	}

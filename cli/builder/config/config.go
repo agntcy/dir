@@ -8,8 +8,8 @@ import (
 	"gopkg.in/yaml.v2"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/framework"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/language"
+	"github.com/agntcy/dir/cli/builder/plugins/framework"
+	"github.com/agntcy/dir/cli/builder/plugins/language"
 )
 
 type Locator struct {
@@ -23,6 +23,15 @@ type Extension struct {
 	Specs   map[string]any `yaml:"specs"`
 }
 
+type Model struct {
+	Name       string      `yaml:"name"`
+	Version    string      `yaml:"version"`
+	Authors    []string    `yaml:"authors"`
+	Locators   []Locator   `yaml:"locators"`
+	Skills     []string    `yaml:"skills"`
+	Extensions []Extension `yaml:"extensions"`
+}
+
 type Builder struct {
 	Source       string   `yaml:"source"`
 	SourceIgnore []string `yaml:"source-ignore"`
@@ -32,13 +41,8 @@ type Builder struct {
 }
 
 type Config struct {
-	Name       string      `yaml:"name"`
-	Version    string      `yaml:"version"`
-	Authors    []string    `yaml:"authors"`
-	Locators   []Locator   `yaml:"locators"`
-	Skills     []string    `yaml:"skills"`
-	Extensions []Extension `yaml:"extensions"`
-	Builder    Builder     `yaml:"builder"`
+	Model   Model   `yaml:"model"`
+	Builder Builder `yaml:"builder"`
 }
 
 func (c *Config) LoadFromFile(path string) error {
@@ -62,7 +66,7 @@ func (c *Config) LoadFromFile(path string) error {
 
 func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 	var locators []*apicore.Locator
-	for _, locator := range c.Locators {
+	for _, locator := range c.Model.Locators {
 		var ok bool
 		var locatorType int32
 		if locatorType, ok = apicore.LocatorType_value[locator.Type]; !ok {
@@ -81,7 +85,7 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 }
 
 func (c *Config) Validate() error {
-	for _, ext := range c.Extensions {
+	for _, ext := range c.Model.Extensions {
 		if c.Builder.Runtime {
 			if ext.Name == framework.ExtensionName {
 				return fmt.Errorf("runtime extension is not allowed with framework extension")

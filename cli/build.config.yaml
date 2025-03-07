@@ -28,13 +28,19 @@ model:
   #   version: "v1.0.0"
   #   specs:
   #     key1: "value1"
-  # This extension will be injected into the agent's model
+  # This structure will be injected into the agent's model
   extensions:
-    - name: "license"
+    - name: "extension1"
       version: "v1.0.0"
       specs:
-        license: "Apache-2.0"
-        header: "Copyright (c) 2025 Cisco and/or its affiliates."
+        key1: "value1"
+        key2: "value2"
+
+    - name: "extension2"
+      version: "v1.0.0"
+      specs:
+        key1: "value1"
+        key2: "value2"
 
     # Framework related configurations
     - name: "oasf.agntcy.org/features/runtime/framework" # can be auto-produced by runtime plugin
@@ -56,7 +62,7 @@ model:
 
 builder:
   # Source code of the agent
-  source: "testdata/marketing-strategy"
+  source: "path/to/source"
 
   # List of paths to ignore
   source-ignore:

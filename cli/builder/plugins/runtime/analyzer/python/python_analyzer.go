@@ -14,8 +14,8 @@ import (
 	toml "github.com/pelletier/go-toml"
 	"go.uber.org/multierr"
 
-	"github.com/agntcy/dir/cli/cmd/build/extensions/runtime/analyzer"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/runtime/analyzer/utils/syft"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer/utils/syft"
 )
 
 const (

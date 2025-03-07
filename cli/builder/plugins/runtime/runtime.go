@@ -6,8 +6,8 @@ package runtime
 import (
 	"context"
 
-	"github.com/agntcy/dir/cli/cmd/build/extensions/runtime/analyzer"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/runtime/analyzer/python"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer/python"
 	"github.com/agntcy/dir/cli/types"
 )
 

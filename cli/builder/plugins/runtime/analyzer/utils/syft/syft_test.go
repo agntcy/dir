@@ -6,7 +6,7 @@ package syft
 import (
 	"testing"
 
-	"github.com/agntcy/dir/cli/cmd/build/extensions/runtime/analyzer"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 )
 
 func TestSyft(t *testing.T) {

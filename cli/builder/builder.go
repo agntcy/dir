@@ -1,36 +1,36 @@
-package manager
+package builder
 
 import (
 	"context"
 	"fmt"
 
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/cmd/build/config"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/crewai"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/framework"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/language"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/llmanalyzer"
-	"github.com/agntcy/dir/cli/cmd/build/extensions/runtime"
+	"github.com/agntcy/dir/cli/builder/config"
+	"github.com/agntcy/dir/cli/builder/plugins/crewai"
+	"github.com/agntcy/dir/cli/builder/plugins/framework"
+	"github.com/agntcy/dir/cli/builder/plugins/language"
+	"github.com/agntcy/dir/cli/builder/plugins/llmanalyzer"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime"
 	"github.com/agntcy/dir/cli/types"
 	clitypes "github.com/agntcy/dir/cli/types"
 )
 
-type ExtensionManager struct {
+type Builder struct {
 	extensions       []clitypes.ExtensionBuilder
 	customExtensions []int
 	cfg              *config.Config
 }
 
-func NewExtensionManager(cfg *config.Config) *ExtensionManager {
-	return &ExtensionManager{
+func NewBuilder(cfg *config.Config) *Builder {
+	return &Builder{
 		extensions:       make([]clitypes.ExtensionBuilder, 0),
 		customExtensions: make([]int, 0),
 		cfg:              cfg,
 	}
 }
 
-func (em *ExtensionManager) RegisterExtensions() error {
-	for i, ext := range em.cfg.Extensions {
+func (em *Builder) RegisterExtensions() error {
+	for i, ext := range em.cfg.Model.Extensions {
 		switch ext.Name {
 		case framework.ExtensionName:
 			frameworkCfg := &framework.Config{}
@@ -77,7 +77,7 @@ func (em *ExtensionManager) RegisterExtensions() error {
 	return nil
 }
 
-func (em *ExtensionManager) Run(ctx context.Context) ([]*apicore.Extension, error) {
+func (em *Builder) Run(ctx context.Context) ([]*apicore.Extension, error) {
 	var builtExtensions []*apicore.Extension
 
 	for _, ext := range em.extensions {
@@ -96,9 +96,9 @@ func (em *ExtensionManager) Run(ctx context.Context) ([]*apicore.Extension, erro
 
 	for _, i := range em.customExtensions {
 		extension := types.AgentExtension{
-			Name:    em.cfg.Extensions[i].Name,
-			Version: em.cfg.Extensions[i].Version,
-			Specs:   em.cfg.Extensions[i].Specs,
+			Name:    em.cfg.Model.Extensions[i].Name,
+			Version: em.cfg.Model.Extensions[i].Version,
+			Specs:   em.cfg.Model.Extensions[i].Specs,
 		}
 
 		apiExt, err := extension.ToAPIExtension()
