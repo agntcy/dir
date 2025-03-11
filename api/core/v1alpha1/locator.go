@@ -14,6 +14,7 @@ func init() {
 		5: "binary",
 	}
 	LocatorType_value = map[string]int32{
+		"":               0,
 		"unspecified":    0,
 		"helm-chart":     1,
 		"docker-image":   2,

@@ -27,9 +27,12 @@ const (
 // The schema provides a way to describe features, constraints, artifact
 // locators, and other relevant details of an agent.
 //
+// Key := {name}:{version} - newest versioned release
+// Key := {name}:{version}@{digest} - exact versioned release
+//
 // This is an immutable object.
 //
-// Max size: 2 MB (or to fully fit on a single DAG node)
+// Max size: 2 MB (or to fully fit in a single request)
 // TODO: provide better estimate based on actual restrictions across all properties
 type Agent struct {
 	state         protoimpl.MessageState
@@ -48,7 +51,16 @@ type Agent struct {
 	// Additional metadata associated with this agent.
 	Annotations map[string]string `protobuf:"bytes,5,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// List of skills that this agent is capable of performing.
-	// Specs: https://schema.oasf.agntcy.org/skills
+	// Specs: https://schema.oasf.agntcy.org/skills.
+	//
+	// Mapping schema between OASF objects:
+	//
+	//	Key := {category_uid || category_name}/{class_uid || class_name}
+	//
+	// Example (https://schema.oasf.agntcy.org/classes/contextual_comprehension)
+	//
+	//	Key (numerical form) = 1/10101
+	//	Key (textual form) = Natural Language Processing [1]/Contextual Comprehension [10101]
 	Skills []string `protobuf:"bytes,6,rep,name=skills,proto3" json:"skills,omitempty"`
 	// List of source locators where this agent can be found or used from.
 	Locators []*Locator `protobuf:"bytes,7,rep,name=locators,proto3" json:"locators,omitempty"`

@@ -14,7 +14,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
 	"google.golang.org/grpc"
@@ -45,7 +44,7 @@ func request_StoreService_Push_0(ctx context.Context, marshaler runtime.Marshale
 	}
 	dec := marshaler.NewDecoder(req.Body)
 	for {
-		var protoReq corev1alpha1.Object
+		var protoReq Object
 		err = dec.Decode(&protoReq)
 		if errors.Is(err, io.EOF) {
 			break
@@ -79,7 +78,7 @@ func request_StoreService_Push_0(ctx context.Context, marshaler runtime.Marshale
 
 func request_StoreService_Pull_0(ctx context.Context, marshaler runtime.Marshaler, client StoreServiceClient, req *http.Request, pathParams map[string]string) (StoreService_PullClient, runtime.ServerMetadata, error) {
 	var (
-		protoReq corev1alpha1.ObjectRef
+		protoReq ObjectRef
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -99,7 +98,7 @@ func request_StoreService_Pull_0(ctx context.Context, marshaler runtime.Marshale
 
 func request_StoreService_Lookup_0(ctx context.Context, marshaler runtime.Marshaler, client StoreServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq corev1alpha1.ObjectRef
+		protoReq ObjectRef
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -111,7 +110,7 @@ func request_StoreService_Lookup_0(ctx context.Context, marshaler runtime.Marsha
 
 func local_request_StoreService_Lookup_0(ctx context.Context, marshaler runtime.Marshaler, server StoreServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq corev1alpha1.ObjectRef
+		protoReq ObjectRef
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -123,7 +122,7 @@ func local_request_StoreService_Lookup_0(ctx context.Context, marshaler runtime.
 
 func request_StoreService_Delete_0(ctx context.Context, marshaler runtime.Marshaler, client StoreServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq corev1alpha1.ObjectRef
+		protoReq ObjectRef
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -135,7 +134,7 @@ func request_StoreService_Delete_0(ctx context.Context, marshaler runtime.Marsha
 
 func local_request_StoreService_Delete_0(ctx context.Context, marshaler runtime.Marshaler, server StoreServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq corev1alpha1.ObjectRef
+		protoReq ObjectRef
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {

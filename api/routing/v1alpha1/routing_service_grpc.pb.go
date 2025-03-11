@@ -23,9 +23,9 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	RoutingService_Provide_FullMethodName = "/routing.v1alpha1.RoutingService/Provide"
-	RoutingService_Resolve_FullMethodName = "/routing.v1alpha1.RoutingService/Resolve"
+	RoutingService_Publish_FullMethodName = "/routing.v1alpha1.RoutingService/Publish"
 	RoutingService_Lookup_FullMethodName  = "/routing.v1alpha1.RoutingService/Lookup"
+	RoutingService_Resolve_FullMethodName = "/routing.v1alpha1.RoutingService/Resolve"
 	RoutingService_List_FullMethodName    = "/routing.v1alpha1.RoutingService/List"
 )
 
@@ -35,16 +35,36 @@ const (
 //
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
+//
+// Key schema:
+//   - Agents: /<peer>/<dir>/agents/<agent-name>
+//     Example: /peer-pubkey/cisco/agents/research-agent
+//     Response: Array of Agent digests (newest to oldest)
+//   - Locators: /<peer>/<dir>/agents/<agent-name>/locators/<locator-type>
+//     Example: /peer-pubkey/cisco/agents/research-agent/locators/helm-chart
+//     Response: Array of Agent digests (newest to oldest)
+//   - Skills: /<peer>/<dir>/agents/<agent-name>/skills/<skill-name>
+//     Example: /peer-pubkey/cisco/agents/research-agent/skills/RAG
+//     Response: Array of Agent digests (newest to oldest)
+//
+// NOTE: Returned objects can be fetched from peer node's Store API.
+// TODO: Verify key schema against requirements.
+// TODO: How do we rebuild/bootstrap the tree using only Store API?
+//
+// Distance between keys is calculated via XOR function,
+// for example https://xor.pw.
 type RoutingServiceClient interface {
-	// Notifies the network that the node is providing this path.
-	// Path may be an actual item on the object store.
-	Provide(ctx context.Context, in *Path, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Resolve all the nodes that are providing this path.
-	Resolve(ctx context.Context, in *Path, opts ...grpc.CallOption) (RoutingService_ResolveClient, error)
-	// Check if a given node has this path.
-	Lookup(ctx context.Context, in *Path, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// List a given path. Only first children are returned.
-	List(ctx context.Context, in *Path, opts ...grpc.CallOption) (RoutingService_ListClient, error)
+	// Notifies the network that the node is providing given objects.
+	// Listeners should use this event to update their routing tables.
+	// They may optionally forward the request to other nodes.
+	// Items need to be periodically republished to avoid stale data.
+	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Lookup if the given key is present on the node.
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Resolve all the nodes that are serving this key.
+	Resolve(ctx context.Context, in *ResolveRequest, opts ...grpc.CallOption) (RoutingService_ResolveClient, error)
+	// List all the available items across the network.
+	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (RoutingService_ListClient, error)
 }
 
 type routingServiceClient struct {
@@ -55,17 +75,27 @@ func NewRoutingServiceClient(cc grpc.ClientConnInterface) RoutingServiceClient {
 	return &routingServiceClient{cc}
 }
 
-func (c *routingServiceClient) Provide(ctx context.Context, in *Path, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *routingServiceClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, RoutingService_Provide_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RoutingService_Publish_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *routingServiceClient) Resolve(ctx context.Context, in *Path, opts ...grpc.CallOption) (RoutingService_ResolveClient, error) {
+func (c *routingServiceClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, RoutingService_Lookup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *routingServiceClient) Resolve(ctx context.Context, in *ResolveRequest, opts ...grpc.CallOption) (RoutingService_ResolveClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &RoutingService_ServiceDesc.Streams[0], RoutingService_Resolve_FullMethodName, cOpts...)
 	if err != nil {
@@ -82,7 +112,7 @@ func (c *routingServiceClient) Resolve(ctx context.Context, in *Path, opts ...gr
 }
 
 type RoutingService_ResolveClient interface {
-	Recv() (*Nodes, error)
+	Recv() (*ResolveResponse, error)
 	grpc.ClientStream
 }
 
@@ -90,25 +120,15 @@ type routingServiceResolveClient struct {
 	grpc.ClientStream
 }
 
-func (x *routingServiceResolveClient) Recv() (*Nodes, error) {
-	m := new(Nodes)
+func (x *routingServiceResolveClient) Recv() (*ResolveResponse, error) {
+	m := new(ResolveResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *routingServiceClient) Lookup(ctx context.Context, in *Path, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, RoutingService_Lookup_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *routingServiceClient) List(ctx context.Context, in *Path, opts ...grpc.CallOption) (RoutingService_ListClient, error) {
+func (c *routingServiceClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (RoutingService_ListClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &RoutingService_ServiceDesc.Streams[1], RoutingService_List_FullMethodName, cOpts...)
 	if err != nil {
@@ -125,7 +145,7 @@ func (c *routingServiceClient) List(ctx context.Context, in *Path, opts ...grpc.
 }
 
 type RoutingService_ListClient interface {
-	Recv() (*Paths, error)
+	Recv() (*ListResponse, error)
 	grpc.ClientStream
 }
 
@@ -133,8 +153,8 @@ type routingServiceListClient struct {
 	grpc.ClientStream
 }
 
-func (x *routingServiceListClient) Recv() (*Paths, error) {
-	m := new(Paths)
+func (x *routingServiceListClient) Recv() (*ListResponse, error) {
+	m := new(ListResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -147,16 +167,36 @@ func (x *routingServiceListClient) Recv() (*Paths, error) {
 //
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
+//
+// Key schema:
+//   - Agents: /<peer>/<dir>/agents/<agent-name>
+//     Example: /peer-pubkey/cisco/agents/research-agent
+//     Response: Array of Agent digests (newest to oldest)
+//   - Locators: /<peer>/<dir>/agents/<agent-name>/locators/<locator-type>
+//     Example: /peer-pubkey/cisco/agents/research-agent/locators/helm-chart
+//     Response: Array of Agent digests (newest to oldest)
+//   - Skills: /<peer>/<dir>/agents/<agent-name>/skills/<skill-name>
+//     Example: /peer-pubkey/cisco/agents/research-agent/skills/RAG
+//     Response: Array of Agent digests (newest to oldest)
+//
+// NOTE: Returned objects can be fetched from peer node's Store API.
+// TODO: Verify key schema against requirements.
+// TODO: How do we rebuild/bootstrap the tree using only Store API?
+//
+// Distance between keys is calculated via XOR function,
+// for example https://xor.pw.
 type RoutingServiceServer interface {
-	// Notifies the network that the node is providing this path.
-	// Path may be an actual item on the object store.
-	Provide(context.Context, *Path) (*emptypb.Empty, error)
-	// Resolve all the nodes that are providing this path.
-	Resolve(*Path, RoutingService_ResolveServer) error
-	// Check if a given node has this path.
-	Lookup(context.Context, *Path) (*emptypb.Empty, error)
-	// List a given path. Only first children are returned.
-	List(*Path, RoutingService_ListServer) error
+	// Notifies the network that the node is providing given objects.
+	// Listeners should use this event to update their routing tables.
+	// They may optionally forward the request to other nodes.
+	// Items need to be periodically republished to avoid stale data.
+	Publish(context.Context, *PublishRequest) (*emptypb.Empty, error)
+	// Lookup if the given key is present on the node.
+	Lookup(context.Context, *LookupRequest) (*emptypb.Empty, error)
+	// Resolve all the nodes that are serving this key.
+	Resolve(*ResolveRequest, RoutingService_ResolveServer) error
+	// List all the available items across the network.
+	List(*ListRequest, RoutingService_ListServer) error
 }
 
 // UnimplementedRoutingServiceServer should be embedded to have
@@ -166,16 +206,16 @@ type RoutingServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedRoutingServiceServer struct{}
 
-func (UnimplementedRoutingServiceServer) Provide(context.Context, *Path) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Provide not implemented")
+func (UnimplementedRoutingServiceServer) Publish(context.Context, *PublishRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
 }
-func (UnimplementedRoutingServiceServer) Resolve(*Path, RoutingService_ResolveServer) error {
-	return status.Errorf(codes.Unimplemented, "method Resolve not implemented")
-}
-func (UnimplementedRoutingServiceServer) Lookup(context.Context, *Path) (*emptypb.Empty, error) {
+func (UnimplementedRoutingServiceServer) Lookup(context.Context, *LookupRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Lookup not implemented")
 }
-func (UnimplementedRoutingServiceServer) List(*Path, RoutingService_ListServer) error {
+func (UnimplementedRoutingServiceServer) Resolve(*ResolveRequest, RoutingService_ResolveServer) error {
+	return status.Errorf(codes.Unimplemented, "method Resolve not implemented")
+}
+func (UnimplementedRoutingServiceServer) List(*ListRequest, RoutingService_ListServer) error {
 	return status.Errorf(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedRoutingServiceServer) testEmbeddedByValue() {}
@@ -198,47 +238,26 @@ func RegisterRoutingServiceServer(s grpc.ServiceRegistrar, srv RoutingServiceSer
 	s.RegisterService(&RoutingService_ServiceDesc, srv)
 }
 
-func _RoutingService_Provide_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Path)
+func _RoutingService_Publish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RoutingServiceServer).Provide(ctx, in)
+		return srv.(RoutingServiceServer).Publish(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RoutingService_Provide_FullMethodName,
+		FullMethod: RoutingService_Publish_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RoutingServiceServer).Provide(ctx, req.(*Path))
+		return srv.(RoutingServiceServer).Publish(ctx, req.(*PublishRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RoutingService_Resolve_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Path)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(RoutingServiceServer).Resolve(m, &routingServiceResolveServer{ServerStream: stream})
-}
-
-type RoutingService_ResolveServer interface {
-	Send(*Nodes) error
-	grpc.ServerStream
-}
-
-type routingServiceResolveServer struct {
-	grpc.ServerStream
-}
-
-func (x *routingServiceResolveServer) Send(m *Nodes) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 func _RoutingService_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Path)
+	in := new(LookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -250,13 +269,34 @@ func _RoutingService_Lookup_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: RoutingService_Lookup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RoutingServiceServer).Lookup(ctx, req.(*Path))
+		return srv.(RoutingServiceServer).Lookup(ctx, req.(*LookupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoutingService_Resolve_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ResolveRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(RoutingServiceServer).Resolve(m, &routingServiceResolveServer{ServerStream: stream})
+}
+
+type RoutingService_ResolveServer interface {
+	Send(*ResolveResponse) error
+	grpc.ServerStream
+}
+
+type routingServiceResolveServer struct {
+	grpc.ServerStream
+}
+
+func (x *routingServiceResolveServer) Send(m *ResolveResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 func _RoutingService_List_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Path)
+	m := new(ListRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -264,7 +304,7 @@ func _RoutingService_List_Handler(srv interface{}, stream grpc.ServerStream) err
 }
 
 type RoutingService_ListServer interface {
-	Send(*Paths) error
+	Send(*ListResponse) error
 	grpc.ServerStream
 }
 
@@ -272,7 +312,7 @@ type routingServiceListServer struct {
 	grpc.ServerStream
 }
 
-func (x *routingServiceListServer) Send(m *Paths) error {
+func (x *routingServiceListServer) Send(m *ListResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -284,8 +324,8 @@ var RoutingService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RoutingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Provide",
-			Handler:    _RoutingService_Provide_Handler,
+			MethodName: "Publish",
+			Handler:    _RoutingService_Publish_Handler,
 		},
 		{
 			MethodName: "Lookup",

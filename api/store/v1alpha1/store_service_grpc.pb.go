@@ -11,7 +11,6 @@ package storev1alpha1
 
 import (
 	context "context"
-	v1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -40,11 +39,11 @@ type StoreServiceClient interface {
 	// Push performs streamed write operation for provided object.
 	Push(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushClient, error)
 	// Pull performs streamed read operation for the requested object.
-	Pull(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (StoreService_PullClient, error)
-	// Lookup resolves ref data from CID only.
-	Lookup(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*v1alpha1.ObjectRef, error)
+	Pull(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (StoreService_PullClient, error)
+	// Lookup resolves ref data from digest only.
+	Lookup(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*ObjectRef, error)
 	// Remove performs delete operation for the requested object.
-	Delete(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Delete(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type storeServiceClient struct {
@@ -66,8 +65,8 @@ func (c *storeServiceClient) Push(ctx context.Context, opts ...grpc.CallOption) 
 }
 
 type StoreService_PushClient interface {
-	Send(*v1alpha1.Object) error
-	CloseAndRecv() (*v1alpha1.ObjectRef, error)
+	Send(*Object) error
+	CloseAndRecv() (*ObjectRef, error)
 	grpc.ClientStream
 }
 
@@ -75,22 +74,22 @@ type storeServicePushClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServicePushClient) Send(m *v1alpha1.Object) error {
+func (x *storeServicePushClient) Send(m *Object) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServicePushClient) CloseAndRecv() (*v1alpha1.ObjectRef, error) {
+func (x *storeServicePushClient) CloseAndRecv() (*ObjectRef, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
-	m := new(v1alpha1.ObjectRef)
+	m := new(ObjectRef)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *storeServiceClient) Pull(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (StoreService_PullClient, error) {
+func (c *storeServiceClient) Pull(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (StoreService_PullClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[1], StoreService_Pull_FullMethodName, cOpts...)
 	if err != nil {
@@ -107,7 +106,7 @@ func (c *storeServiceClient) Pull(ctx context.Context, in *v1alpha1.ObjectRef, o
 }
 
 type StoreService_PullClient interface {
-	Recv() (*v1alpha1.Object, error)
+	Recv() (*Object, error)
 	grpc.ClientStream
 }
 
@@ -115,17 +114,17 @@ type storeServicePullClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServicePullClient) Recv() (*v1alpha1.Object, error) {
-	m := new(v1alpha1.Object)
+func (x *storeServicePullClient) Recv() (*Object, error) {
+	m := new(Object)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *storeServiceClient) Lookup(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*v1alpha1.ObjectRef, error) {
+func (c *storeServiceClient) Lookup(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*ObjectRef, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1alpha1.ObjectRef)
+	out := new(ObjectRef)
 	err := c.cc.Invoke(ctx, StoreService_Lookup_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -133,7 +132,7 @@ func (c *storeServiceClient) Lookup(ctx context.Context, in *v1alpha1.ObjectRef,
 	return out, nil
 }
 
-func (c *storeServiceClient) Delete(ctx context.Context, in *v1alpha1.ObjectRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *storeServiceClient) Delete(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, StoreService_Delete_FullMethodName, in, out, cOpts...)
@@ -153,11 +152,11 @@ type StoreServiceServer interface {
 	// Push performs streamed write operation for provided object.
 	Push(StoreService_PushServer) error
 	// Pull performs streamed read operation for the requested object.
-	Pull(*v1alpha1.ObjectRef, StoreService_PullServer) error
-	// Lookup resolves ref data from CID only.
-	Lookup(context.Context, *v1alpha1.ObjectRef) (*v1alpha1.ObjectRef, error)
+	Pull(*ObjectRef, StoreService_PullServer) error
+	// Lookup resolves ref data from digest only.
+	Lookup(context.Context, *ObjectRef) (*ObjectRef, error)
 	// Remove performs delete operation for the requested object.
-	Delete(context.Context, *v1alpha1.ObjectRef) (*emptypb.Empty, error)
+	Delete(context.Context, *ObjectRef) (*emptypb.Empty, error)
 }
 
 // UnimplementedStoreServiceServer should be embedded to have
@@ -170,13 +169,13 @@ type UnimplementedStoreServiceServer struct{}
 func (UnimplementedStoreServiceServer) Push(StoreService_PushServer) error {
 	return status.Errorf(codes.Unimplemented, "method Push not implemented")
 }
-func (UnimplementedStoreServiceServer) Pull(*v1alpha1.ObjectRef, StoreService_PullServer) error {
+func (UnimplementedStoreServiceServer) Pull(*ObjectRef, StoreService_PullServer) error {
 	return status.Errorf(codes.Unimplemented, "method Pull not implemented")
 }
-func (UnimplementedStoreServiceServer) Lookup(context.Context, *v1alpha1.ObjectRef) (*v1alpha1.ObjectRef, error) {
+func (UnimplementedStoreServiceServer) Lookup(context.Context, *ObjectRef) (*ObjectRef, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Lookup not implemented")
 }
-func (UnimplementedStoreServiceServer) Delete(context.Context, *v1alpha1.ObjectRef) (*emptypb.Empty, error) {
+func (UnimplementedStoreServiceServer) Delete(context.Context, *ObjectRef) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 func (UnimplementedStoreServiceServer) testEmbeddedByValue() {}
@@ -204,8 +203,8 @@ func _StoreService_Push_Handler(srv interface{}, stream grpc.ServerStream) error
 }
 
 type StoreService_PushServer interface {
-	SendAndClose(*v1alpha1.ObjectRef) error
-	Recv() (*v1alpha1.Object, error)
+	SendAndClose(*ObjectRef) error
+	Recv() (*Object, error)
 	grpc.ServerStream
 }
 
@@ -213,12 +212,12 @@ type storeServicePushServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServicePushServer) SendAndClose(m *v1alpha1.ObjectRef) error {
+func (x *storeServicePushServer) SendAndClose(m *ObjectRef) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServicePushServer) Recv() (*v1alpha1.Object, error) {
-	m := new(v1alpha1.Object)
+func (x *storeServicePushServer) Recv() (*Object, error) {
+	m := new(Object)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -226,7 +225,7 @@ func (x *storeServicePushServer) Recv() (*v1alpha1.Object, error) {
 }
 
 func _StoreService_Pull_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(v1alpha1.ObjectRef)
+	m := new(ObjectRef)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -234,7 +233,7 @@ func _StoreService_Pull_Handler(srv interface{}, stream grpc.ServerStream) error
 }
 
 type StoreService_PullServer interface {
-	Send(*v1alpha1.Object) error
+	Send(*Object) error
 	grpc.ServerStream
 }
 
@@ -242,12 +241,12 @@ type storeServicePullServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServicePullServer) Send(m *v1alpha1.Object) error {
+func (x *storeServicePullServer) Send(m *Object) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 func _StoreService_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1alpha1.ObjectRef)
+	in := new(ObjectRef)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -259,13 +258,13 @@ func _StoreService_Lookup_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: StoreService_Lookup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StoreServiceServer).Lookup(ctx, req.(*v1alpha1.ObjectRef))
+		return srv.(StoreServiceServer).Lookup(ctx, req.(*ObjectRef))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _StoreService_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1alpha1.ObjectRef)
+	in := new(ObjectRef)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -277,7 +276,7 @@ func _StoreService_Delete_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: StoreService_Delete_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StoreServiceServer).Delete(ctx, req.(*v1alpha1.ObjectRef))
+		return srv.(StoreServiceServer).Delete(ctx, req.(*ObjectRef))
 	}
 	return interceptor(ctx, in, info, handler)
 }

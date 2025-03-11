@@ -6,43 +6,81 @@ syntax = "proto3";
 package routing.v1alpha1;
 
 import "google/protobuf/empty.proto";
-import "core/v1alpha1/object.proto";
+import "store/v1alpha1/object.proto";
+import "routing/v1alpha1/routing.proto";
 
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
+//
+// Key schema:
+//  - Agents: /<peer>/<dir>/agents/<agent-name>
+//    Example: /peer-pubkey/cisco/agents/research-agent
+//    Response: Array of Agent digests (newest to oldest)
+//  - Locators: /<peer>/<dir>/agents/<agent-name>/locators/<locator-type>
+//    Example: /peer-pubkey/cisco/agents/research-agent/locators/helm-chart
+//    Response: Array of Agent digests (newest to oldest)
+//  - Skills: /<peer>/<dir>/agents/<agent-name>/skills/<skill-name>
+//    Example: /peer-pubkey/cisco/agents/research-agent/skills/RAG
+//    Response: Array of Agent digests (newest to oldest)
+//
+// NOTE: Returned objects can be fetched from peer node's Store API.
+// TODO: Verify key schema against requirements.
+// TODO: How do we rebuild/bootstrap the tree using only Store API?
+//
+// Distance between keys is calculated via XOR function,
+// for example https://xor.pw.
 service RoutingService {
-  // Notifies the network that the node is providing this path.
-  // Path may be an actual item on the object store.
-  rpc Provide(Path) returns (google.protobuf.Empty);
-  // Resolve all the nodes that are providing this path.
-  rpc Resolve(Path) returns (stream Nodes);
-  // Check if a given node has this path.
-  rpc Lookup(Path) returns (google.protobuf.Empty);
-  // List a given path. Only first children are returned.
-  rpc List(Path) returns (stream Paths);
+  // Notifies the network that the node is providing given objects.
+  // Listeners should use this event to update their routing tables.
+  // They may optionally forward the request to other nodes.
+  // Items need to be periodically republished to avoid stale data.
+  rpc Publish(PublishRequest) returns (google.protobuf.Empty);
+  // Lookup if the given key is present on the node.
+  rpc Lookup(LookupRequest) returns (google.protobuf.Empty);
+  // Resolve all the nodes that are serving this key.
+  rpc Resolve(ResolveRequest) returns (stream ResolveResponse);
+  // List all the available items across the network.
+  rpc List(ListRequest) returns (stream ListResponse);
 }
 
-// Path to an object for content routing.
-message Path {
-  repeated string parts = 3;
+message PublishRequest {
+  // The record being published, usually this is an agent data model.
+  // This record will be served via key.
+  store.v1alpha1.ObjectRef record = 1;
+
+  // Additional payload like the namespace, owner, etc...
 }
 
-// Object to hold a collection of paths
-message Paths {
-  repeated Path paths = 1;
+message ResolveRequest {
+  // Key (or path) to be resolved
+  Key key = 1;
 }
 
-// Node on the network
-message Node {
-  // Unique identifier of the node
-  string id = 1;
-
-  // Addresses on which this node is reachable from.
-  // Schema: https://github.com/multiformats/multiaddr
-  repeated string adds = 2;
+message ResolveResponse {
+  // Resolved peers that are serving a given key
+  repeated Peer peers = 1;
 }
 
-// Object to hold a collection of nodes
-message Nodes {
-  repeated Node nodes = 1;
+message LookupRequest {
+  // Key (or path) to be checked
+  Key key = 1;
+}
+
+message ListRequest {
+  // Keys (or paths) to be listed
+  repeated Key keys = 1;
+
+  // Regexp queries for keys (or paths)
+  string queries = 2;
+}
+
+message ListResponse {
+  // Request for which this response was returned for.
+  Key parent = 1;
+
+  // Published keys for a given request.
+  repeated Key keys = 2;
+
+  // Record published for a specific key.
+  repeated store.v1alpha1.ObjectRef records = 3;
 }

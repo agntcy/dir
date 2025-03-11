@@ -1,0 +1,34 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package routing.v1alpha1;
+
+import "store/v1alpha1/object.proto";
+
+enum ConnectionType {
+  // Sender does not have a connection to peer, and no extra information (default)
+  NOT_CONNECTED = 0;
+  // Sender has a live connection to peer
+  CONNECTED = 1;
+  // Sender recently connected to peer
+  CAN_CONNECT = 2;
+  // Sender recently tried to connect to peer repeatedly but failed to connect
+  // ("try" here is loose, but this should signal "made strong effort, failed")
+  CANNOT_CONNECT = 3;
+}
+
+message Peer {
+  // ID of a given peer.
+  bytes id = 1;
+  // Multiaddrs for a given peer.
+  repeated bytes addrs = 2;
+  // Used to signal the sender's connection capabilities to the peer.
+  ConnectionType connection = 3;
+}
+
+message Key {
+  // Path of a given key.
+  repeated string path = 1;
+}

@@ -1,0 +1,40 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package store.v1alpha1;
+
+// Reference to a typed object in the content store.
+message ObjectRef {
+  // Digest of the object.
+  // Specs: https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests
+  string digest = 1;
+  // Name of the object. Can be looked up from digest.
+  optional string name = 2;
+  // Type of the object. Can be custom or native ObjectType.
+  // Can be looked up from digest.
+  optional string type = 3;
+  // Size of the object. Can be looked up from digest.
+  optional uint64 size = 4;
+}
+
+// The actual object stored in the content store.
+message Object {
+  // Name of the object.
+  string name = 1;
+  // Type of the object. Can be custom or native ObjectType.
+  string type = 2;
+  // Size of the object.
+  uint64 size = 3;
+  // Opaque data held by this object. Arbitrary in size.
+  // Readers should know how to process this value.
+  bytes data = 4;
+}
+
+// ObjectType defines native types of objects.
+enum ObjectType {
+  OBJECT_TYPE_UNSPECIFIED = 0; // "", "unspecified"
+  OBJECT_TYPE_AGENT = 1; // "agent"
+  OBJECT_TYPE_EXTENSION = 2; // "extension"
+}
