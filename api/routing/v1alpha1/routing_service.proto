@@ -52,7 +52,7 @@ message PublishRequest {
 }
 
 message ResolveRequest {
-  // Key (or path) to be resolved
+  // Key to be resolved
   Key key = 1;
 }
 
@@ -62,25 +62,27 @@ message ResolveResponse {
 }
 
 message LookupRequest {
-  // Key (or path) to be checked
+  // Key to be checked
   Key key = 1;
 }
 
 message ListRequest {
-  // Keys (or paths) to be listed
-  repeated Key keys = 1;
+  // Key to be listed
+  Key key = 1;
 
-  // Regexp queries for keys (or paths)
-  string queries = 2;
+  // Regexp filters for the items
+  string filters = 2;
 }
 
 message ListResponse {
-  // Request for which this response was returned for.
-  Key parent = 1;
+  message Item {
+    // Key associated with a given record
+    Key key = 1;
 
-  // Published keys for a given request.
-  repeated Key keys = 2;
+    // Optional value under a given key
+    optional store.v1alpha1.ObjectRef record = 2;
+  }
 
-  // Record published for a specific key.
-  repeated store.v1alpha1.ObjectRef records = 3;
+  // Returned items that match a given request.
+  repeated Item items = 2;
 }

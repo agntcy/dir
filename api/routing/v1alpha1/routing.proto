@@ -5,8 +5,6 @@ syntax = "proto3";
 
 package routing.v1alpha1;
 
-import "store/v1alpha1/object.proto";
-
 enum ConnectionType {
   // Sender does not have a connection to peer, and no extra information (default)
   NOT_CONNECTED = 0;

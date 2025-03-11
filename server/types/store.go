@@ -7,20 +7,20 @@ import (
 	"context"
 	"io"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 )
 
 // StoreAPI handles management of content-addressable object storage
 type StoreAPI interface {
 	// Push object to content store
-	Push(context.Context, *coretypes.ObjectRef, io.Reader) (*coretypes.ObjectRef, error)
+	Push(context.Context, *storetypes.ObjectRef, io.Reader) (*storetypes.ObjectRef, error)
 
 	// Pull object from content store
-	Pull(context.Context, *coretypes.ObjectRef) (io.Reader, error)
+	Pull(context.Context, *storetypes.ObjectRef) (io.Reader, error)
 
-	// Lookup metadata about the object from CID
-	Lookup(context.Context, *coretypes.ObjectRef) (*coretypes.ObjectRef, error)
+	// Lookup metadata about the object from digest
+	Lookup(context.Context, *storetypes.ObjectRef) (*storetypes.ObjectRef, error)
 
 	// Delete the object
-	Delete(context.Context, *coretypes.ObjectRef) error
+	Delete(context.Context, *storetypes.ObjectRef) error
 }
