@@ -7,6 +7,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -116,12 +117,12 @@ func compareJSON(json1, json2 []byte) (bool, error) {
 
 	err := json.Unmarshal(json1, &agent1)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to unmarshal json: %w", err)
 	}
 
 	err = json.Unmarshal(json2, &agent2)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to unmarshal json: %w", err)
 	}
 
 	// Overwrite fields

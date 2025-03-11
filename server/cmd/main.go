@@ -4,6 +4,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/agntcy/dir/server"
 	"github.com/agntcy/dir/server/config"
 	"github.com/spf13/cobra"
@@ -16,7 +18,7 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		cfg, err := config.LoadConfig()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to load config: %w", err)
 		}
 
 		return server.Run(cmd.Context(), cfg)

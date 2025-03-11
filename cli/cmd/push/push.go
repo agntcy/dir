@@ -82,7 +82,12 @@ func runCommand(cmd *cobra.Command) error {
 
 func getReader() (io.Reader, error) {
 	if opts.FromFile != "" {
-		return os.Open(opts.FromFile)
+		file, err := os.Open(opts.FromFile)
+		if err != nil {
+			return nil, fmt.Errorf("could not open file %s: %w", opts.FromFile, err)
+		}
+
+		return file, nil
 	}
 
 	return os.Stdin, nil

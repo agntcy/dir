@@ -5,6 +5,7 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer/python"
@@ -47,12 +48,12 @@ func (c *runtime) Build(_ context.Context) (*types.AgentExtension, error) {
 	// get the runtime version and relevant dependencies
 	runtimeInfo, err := c.analyzer.RuntimeVersion(c.source)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get runtime version: %w", err)
 	}
 
 	sbom, err := c.analyzer.SBOM(c.source)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get SBOM: %w", err)
 	}
 
 	return &types.AgentExtension{

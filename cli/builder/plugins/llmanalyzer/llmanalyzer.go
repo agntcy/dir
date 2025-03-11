@@ -173,7 +173,7 @@ func concatenateFiles(dirPath string, ignorePaths []string, extensions []string)
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to concatenate files: %w", err)
 	}
 
 	return result.String(), nil

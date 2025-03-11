@@ -4,6 +4,8 @@
 package gorm
 
 import (
+	"fmt"
+
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/database/types"
 	ds "github.com/dep2p/libp2p/datastore"
@@ -22,11 +24,11 @@ func (g *gormDB) Agent() ds.Datastore {
 func NewGorm(cfg *config.Config) (types.Database, error) {
 	db, err := gorm.Open(sqlite.Open(cfg.DatabaseDSN), &gorm.Config{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	if err = db.AutoMigrate(&types.Agent{}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
 	return &gormDB{db: db}, nil

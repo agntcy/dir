@@ -186,7 +186,7 @@ func (s *agentTable) Close() error {
 func AgentCID(key ds.Key) (*coretypes.Digest, error) {
 	var digest coretypes.Digest
 	if err := digest.Decode(key.BaseNamespace()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode agent digest: %w", err)
 	}
 
 	return &digest, nil

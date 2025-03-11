@@ -99,7 +99,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	// Wait for context cancellation
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("stopping server due to context cancellation: %w", ctx.Err())
 	case sig := <-sigCh:
 		return fmt.Errorf("stopping server due to signal: %v", sig)
 	case err := <-errCh:

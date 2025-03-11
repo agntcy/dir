@@ -20,7 +20,12 @@ const (
 func NewDatabase(cfg *config.Config) (types.Database, error) {
 	switch driver := Driver(cfg.DBDriver); driver {
 	case GORM:
-		return gorm.NewGorm(cfg)
+		db, err := gorm.NewGorm(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize gorm database: %w", err)
+		}
+
+		return db, nil
 	default:
 		return nil, fmt.Errorf("unsupported driver: %s", driver)
 	}

@@ -49,7 +49,7 @@ func init() {
 
 func Run(ctx context.Context) error {
 	if err := RootCmd.ExecuteContext(ctx); err != nil {
-		return err
+		return fmt.Errorf("failed to execute command: %w", err)
 	}
 
 	return nil

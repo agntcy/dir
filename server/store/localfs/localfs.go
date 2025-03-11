@@ -28,17 +28,17 @@ type store struct {
 func New(baseDir string) (types.StoreService, error) {
 	dataDir := filepath.Join(baseDir, "contents")
 	if err := DefaultFs.MkdirAll(dataDir, 0o777); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
 	dataTmpDir := filepath.Join(baseDir, "contents", "tmp")
 	if err := DefaultFs.MkdirAll(dataTmpDir, 0o777); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create data tmp directory: %w", err)
 	}
 
 	metaDir := filepath.Join(baseDir, "metadata")
 	if err := DefaultFs.MkdirAll(metaDir, 0o777); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create metadata directory: %w", err)
 	}
 
 	return &store{

@@ -23,8 +23,7 @@ linters:
     - exhaustruct # Allow structures with uninitialized fields
     - depguard # Allow all package imports
     - testpackage # Allow not having a test package
-    - wrapcheck # TODO needs code changes to enable
-    - err113 # TODO needs code changes to enable
+    - err113
 
 linters-settings:
   gomoddirectives:

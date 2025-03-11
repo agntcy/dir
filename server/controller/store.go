@@ -88,7 +88,11 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 		return fmt.Errorf("failed to push: %w", err)
 	}
 
-	return stream.SendAndClose(&coretypes.ObjectRef{Digest: digest})
+	if err := stream.SendAndClose(&coretypes.ObjectRef{Digest: digest}); err != nil {
+		return fmt.Errorf("failed to send and close stream: %w", err)
+	}
+
+	return nil
 }
 
 func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService_PullServer) error {

@@ -48,7 +48,12 @@ var SupportedAgentFrameworkPackages = []string{
 }
 
 func (a *pythonAnalyzer) SBOM(path string) (analyzer.SBOM, error) {
-	return a.syft.SBOM(path, SupportedAgentFrameworkPackages)
+	sbom, err := a.syft.SBOM(path, SupportedAgentFrameworkPackages)
+	if err != nil {
+		return analyzer.SBOM{}, fmt.Errorf("failed to generate SBOM for path %s: %w", path, err)
+	}
+
+	return sbom, nil
 }
 
 func (a *pythonAnalyzer) RuntimeVersion(path string) (analyzer.RuntimeInfo, error) {
@@ -78,7 +83,7 @@ func resolveFileSystemPath(path string) (analyzer.RuntimeInfo, error) {
 	// Check if path is a directory or a file
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		return analyzer.RuntimeInfo{}, err
+		return analyzer.RuntimeInfo{}, fmt.Errorf("failed to stat path: %w", err)
 	}
 
 	if !fileInfo.IsDir() {
@@ -124,14 +129,14 @@ func resolveFileSystemPath(path string) (analyzer.RuntimeInfo, error) {
 	// Add more checks for other files/formats as needed
 	return analyzer.RuntimeInfo{
 		Version: version,
-	}, multierr.Combine(errs...)
+	}, fmt.Errorf("failed to resolve file system path: %w", multierr.Combine(errs...))
 }
 
 //nolint:forcetypeassert
 func parsePyprojectToml(path string) (string, error) {
 	config, err := toml.LoadFile(path)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to load file: %w", err)
 	}
 
 	// Try first with the standard "requires-python" in the [project] section
@@ -154,7 +159,7 @@ func parsePyprojectToml(path string) (string, error) {
 func parsePipfile(path string) (string, error) {
 	config, err := toml.LoadFile(path)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to load file: %w", err)
 	}
 
 	// Try with the "python_version" in the [requires] section
@@ -175,7 +180,7 @@ func parseSetupPy(path string) (string, error) {
 
 	file, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
@@ -192,7 +197,7 @@ func parseSetupPy(path string) (string, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to scan file: %w", err)
 	}
 
 	return "", fmt.Errorf("%w: %s", errNoVersion, path)
