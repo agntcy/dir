@@ -35,10 +35,8 @@ linters-settings:
 
   goheader:
     values:
-      const:
-        COMPANY: Cisco Systems, Inc.
       regexp:
         YEAR: 202[4-5]
     template: |-
-      SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+      SPDX-FileCopyrightText: Copyright (c) {{ YEAR }} Cisco and/or its affiliates.
       SPDX-License-Identifier: Apache-2.0
