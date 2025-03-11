@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder"
+	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
@@ -62,7 +60,7 @@ func runCommand(cmd *cobra.Command) error {
 		Name:       cfg.Model.Name,
 		Version:    cfg.Model.Version,
 		Authors:    cfg.Model.Authors,
-		CreatedAt:  timestamppb.New(time.Now()),
+		CreatedAt:  time.Now().Format(time.RFC3339),
 		Skills:     cfg.Model.Skills,
 		Locators:   locators,
 		Extensions: extensions,

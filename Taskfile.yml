@@ -179,6 +179,8 @@ tasks:
     vars:
       PROVIDER: '{{ .PROVIDER | default "localfs" }}'
     cmds:
+      - defer: { task: server:store:stop }
+      - task: server:store:start
       - DIRECTORY_SERVER_PROVIDER={{.PROVIDER}} go run main.go
 
   server:store:start:

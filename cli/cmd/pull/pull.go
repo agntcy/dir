@@ -6,6 +6,7 @@ package pull
 import (
 	"encoding/json"
 	"fmt"
+	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -39,13 +40,10 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to get client from context")
 	}
 
-	var dig coretypes.Digest
-	if err := dig.Decode(opts.AgentDigest); err != nil {
-		return fmt.Errorf("failed to parse digest: %w", err)
-	}
-
-	// Use the client's Pull method to retrieve the data.
-	reader, err := c.Pull(cmd.Context(), &dig)
+	// Fetch object from store
+	reader, err := c.Pull(cmd.Context(), &storetypes.ObjectRef{
+		Digest: opts.AgentDigest,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}

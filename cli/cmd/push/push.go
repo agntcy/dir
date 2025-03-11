@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"io"
 	"os"
 
@@ -62,20 +63,16 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
 
-	// Define the metadata for the object.
-	meta, err := agent.ObjectMeta()
-	if err != nil {
-		return fmt.Errorf("failed to get object meta: %w", err)
-	}
-
 	// Use the client's Push method to send the data.
-	digest, err := c.Push(cmd.Context(), meta, bytes.NewReader(data))
+	digest, err := c.Push(cmd.Context(), &storetypes.ObjectRef{
+		Name: &agent.Name,
+	}, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("failed to push data: %w", err)
 	}
 
 	// Print digest to output
-	presenter.Print(cmd, digest.Encode())
+	presenter.Print(cmd, digest.Digest)
 
 	return nil
 }

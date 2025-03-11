@@ -6,14 +6,13 @@ package oci
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"io"
 
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/types"
 	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -52,83 +51,51 @@ func New(config Config) (types.StoreAPI, error) {
 	}, nil
 }
 
-func (s *store) Lookup(ctx context.Context, digest *coretypes.Digest) (*coretypes.ObjectMeta, error) {
-	ociDigest, err := convertToOciDigest(digest)
+func (s *store) Lookup(ctx context.Context, ref *storetypes.ObjectRef) (*storetypes.ObjectRef, error) {
+	digest, err := convertToOciDigest(ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert digest: %w", err)
 	}
 
-	_, metaReader, err := s.repository.Blobs().FetchReference(ctx, ociDigest.String())
+	descriptor, err := s.repository.Blobs().Resolve(ctx, digest.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch object: %w", err)
 	}
 
-	// Read the blob
-	metaBytes, err := io.ReadAll(metaReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read object: %w", err)
-	}
-
-	// Unmarshal the object
-	meta := &coretypes.ObjectMeta{}
-	if err := json.Unmarshal(metaBytes, meta); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal object: %w", err)
-	}
-
-	return meta, nil
+	return convertToRef(descriptor), nil
 }
 
-// TODO Currently, read contents is required to create an OCI descriptor for the object.
-// Explore options to allow pushing objects without having to read the contents.
-func (s *store) Push(ctx context.Context, meta *coretypes.ObjectMeta, contents io.Reader) (*coretypes.Digest, error) {
+// Push object to the OCI.
+//
+// TODO: Currently, full read is required to create an OCI descriptor.
+func (s *store) Push(ctx context.Context, ref *storetypes.ObjectRef, contents io.Reader) (*storetypes.ObjectRef, error) {
 	// Read the contents to create an OCI descriptor
 	contentsBytes, err := io.ReadAll(contents)
 	if err != nil {
-		return &coretypes.Digest{}, fmt.Errorf("failed to read contents: %w", err)
+		return nil, fmt.Errorf("failed to read contents: %w", err)
 	}
 
 	// Push contents to the repository
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeDescriptor, contentsBytes)
+	desc.Annotations = map[string]string{
+		"name": *ref.Name,
+		"type": *ref.Type,
+	}
 	err = s.repository.Push(ctx, desc, bytes.NewReader(contentsBytes))
 	if err != nil {
-		return &coretypes.Digest{}, fmt.Errorf("failed to push object: %w", err)
+		return nil, fmt.Errorf("failed to push object: %w", err)
 	}
 
-	// Create metadata
-	meta.Digest = &coretypes.Digest{
-		Type:  coretypes.DigestType_DIGEST_TYPE_SHA256,
-		Value: desc.Digest.Encoded(),
-	}
-	metaBytes, err := json.Marshal(meta)
-	if err != nil {
-		return &coretypes.Digest{}, fmt.Errorf("failed to marshal metadata: %w", err)
-	}
-
-	// Push metadata to the repository
-	metaDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeDescriptor, metaBytes)
-	err = s.repository.Push(ctx, metaDesc, bytes.NewReader(metaBytes))
-	if err != nil {
-		return &coretypes.Digest{}, fmt.Errorf("failed to push object: %w", err)
-	}
-
-	return &coretypes.Digest{
-		Type:  coretypes.DigestType_DIGEST_TYPE_SHA256,
-		Value: metaDesc.Digest.Encoded(),
-	}, nil
+	return convertToRef(desc), nil
 }
 
-func (s *store) Pull(ctx context.Context, digest *coretypes.Digest) (io.Reader, error) {
-	meta, err := s.Lookup(ctx, digest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to lookup object: %w", err)
-	}
-
-	metaOciDigest, err := convertToOciDigest(meta.Digest)
+func (s *store) Pull(ctx context.Context, ref *storetypes.ObjectRef) (io.Reader, error) {
+	digest, err := convertToOciDigest(ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert digest: %w", err)
 	}
 
-	_, reader, err := s.repository.Blobs().FetchReference(ctx, metaOciDigest.String())
+	_, reader, err := s.repository.Blobs().FetchReference(ctx, digest.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch object: %w", err)
 	}
@@ -136,33 +103,14 @@ func (s *store) Pull(ctx context.Context, digest *coretypes.Digest) (io.Reader, 
 	return reader, nil
 }
 
-func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
-	meta, err := s.Lookup(ctx, digest)
-	if err != nil {
-		return fmt.Errorf("failed to lookup object: %w", err)
-	}
-
-	ociDigest, err := convertToOciDigest(digest)
-	if err != nil {
-		return fmt.Errorf("failed to convert digest: %w", err)
-	}
-
-	// Delete the metadata
-	metaDescriptor, err := s.repository.Blobs().Resolve(ctx, ociDigest.String())
-	if err != nil {
-		return fmt.Errorf("failed to resolve object: %w", err)
-	}
-	if err := s.repository.Delete(ctx, metaDescriptor); err != nil {
-		return fmt.Errorf("failed to delete object: %w", err)
-	}
-
-	metaOciDigest, err := convertToOciDigest(meta.Digest)
+func (s *store) Delete(ctx context.Context, ref *storetypes.ObjectRef) error {
+	digest, err := convertToOciDigest(ref)
 	if err != nil {
 		return fmt.Errorf("failed to convert digest: %w", err)
 	}
 
 	// Delete the blob
-	objectDescriptor, err := s.repository.Blobs().Resolve(ctx, metaOciDigest.String())
+	objectDescriptor, err := s.repository.Blobs().Resolve(ctx, digest.Encoded())
 	if err != nil {
 		return fmt.Errorf("failed to resolve object: %w", err)
 	}
@@ -173,11 +121,25 @@ func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
 	return nil
 }
 
-// convertToOciDigest converts a coretypes.Digest to an ocidigest.Digest
-func convertToOciDigest(digest *coretypes.Digest) (*ocidigest.Digest, error) {
-	if digest.Type == coretypes.DigestType_DIGEST_TYPE_SHA256 {
-		d := ocidigest.NewDigestFromEncoded("sha256", digest.Value)
-		return &d, nil
+// convertToOciDigest converts an ObjectRef to an ocidigest.Digest
+func convertToOciDigest(ref *storetypes.ObjectRef) (*ocidigest.Digest, error) {
+	digest := ocidigest.Digest(ref.Digest)
+	if err := digest.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate OCI digest: %w", err)
 	}
-	return nil, fmt.Errorf("unsupported digest type: %v", digest.Type)
+	return &digest, nil
+}
+
+func convertToRef(descriptor ocispec.Descriptor) *storetypes.ObjectRef {
+	size := uint64(descriptor.Size)
+	return &storetypes.ObjectRef{
+		Digest: descriptor.Digest.String(),
+		Name:   ptrTo[string](descriptor.Annotations["name"]),
+		Type:   ptrTo[string](descriptor.Annotations["type"]),
+		Size:   &size,
+	}
+}
+
+func ptrTo[T any](value T) *T {
+	return &value
 }

@@ -34,7 +34,7 @@ func TestAgentExtension_ToAPIExtension(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, apiExtension.Name, agentExtension.Name)
 	assert.Equal(t, apiExtension.Version, agentExtension.Version)
-	assert.Equal(t, apiExtension.Specs.AsMap(), map[string]interface{}{
+	assert.Equal(t, apiExtension.Data.AsMap(), map[string]interface{}{
 		"test_string": "test",
 		"test_slice":  []interface{}{"test1", "test2"},
 		"test_map":    map[string]interface{}{"key1": "value1", "key2": "value2"},

@@ -42,7 +42,7 @@ func (a *AgentExtension) ToAPIExtension() (apicore.Extension, error) {
 	return apicore.Extension{
 		Name:    a.Name,
 		Version: a.Version,
-		Specs:   specsStruct,
+		Data:    specsStruct,
 	}, nil
 }
 

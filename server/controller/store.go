@@ -6,7 +6,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"io"
 	"log"
 
@@ -34,7 +33,7 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 		return fmt.Errorf("failed to receive first message: %w", err)
 	}
 
-	log.Printf("Received metadata: Kind=%v, Name=%s\n", firstMessage.Kind.String(), firstMessage.Name)
+	log.Printf("Received: Type=%v, Name=%s\n", firstMessage.Type, firstMessage.Name)
 
 	pr, pw := io.Pipe()
 
@@ -67,10 +66,10 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 
 	ref, err := s.store.Push(
 		context.Background(),
-		&coretypes.ObjectRef{
-			Name: firstMessage.Name,
-			Kind: firstMessage.Kind,
-			Size: firstMessage.Size,
+		&storetypes.ObjectRef{
+			Name: &firstMessage.Name,
+			Type: &firstMessage.Type,
+			Size: &firstMessage.Size,
 		},
 		pr,
 	)
@@ -81,12 +80,17 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 	return stream.SendAndClose(ref)
 }
 
-func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService_PullServer) error {
-	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
+func (s storeController) Pull(req *storetypes.ObjectRef, stream storetypes.StoreService_PullServer) error {
+	if req.GetDigest() == "" {
 		return fmt.Errorf("digest is required")
 	}
 
-	reader, err := s.store.Pull(context.Background(), req)
+	ref, err := s.store.Lookup(context.Background(), req)
+	if err != nil {
+		return fmt.Errorf("failed to pull: %w", err)
+	}
+
+	reader, err := s.store.Pull(context.Background(), ref)
 	if err != nil {
 		return fmt.Errorf("failed to pull: %w", err)
 	}
@@ -104,19 +108,24 @@ func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreS
 		}
 
 		// forward data
-		err = stream.Send(&coretypes.Object{Data: buf[:n]})
+		err = stream.Send(&storetypes.Object{
+			Name: *ref.Name,
+			Type: *ref.Type,
+			Size: uint64(n),
+			Data: buf[:n],
+		})
 		if err != nil {
 			return fmt.Errorf("failed to send: %w", err)
 		}
 	}
 }
 
-func (s storeController) Lookup(ctx context.Context, req *coretypes.ObjectRef) (*coretypes.ObjectMeta, error) {
-	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
+func (s storeController) Lookup(ctx context.Context, req *storetypes.ObjectRef) (*storetypes.ObjectRef, error) {
+	if req.GetDigest() == "" {
 		return nil, fmt.Errorf("digest is required")
 	}
 
-	meta, err := s.store.Lookup(ctx, req.Digest)
+	meta, err := s.store.Lookup(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup: %w", err)
 	}
@@ -124,12 +133,12 @@ func (s storeController) Lookup(ctx context.Context, req *coretypes.ObjectRef) (
 	return meta, nil
 }
 
-func (s storeController) Delete(_ context.Context, req *coretypes.ObjectRef) (*emptypb.Empty, error) {
-	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
+func (s storeController) Delete(_ context.Context, req *storetypes.ObjectRef) (*emptypb.Empty, error) {
+	if req.GetDigest() == "" {
 		return nil, fmt.Errorf("digest is required")
 	}
 
-	err := s.store.Delete(context.Background(), req.Digest)
+	err := s.store.Delete(context.Background(), req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete: %w", err)
 	}

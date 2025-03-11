@@ -10,7 +10,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 
-	"github.com/agntcy/dir/server/store/localfs"
 	"github.com/agntcy/dir/server/store/oci"
 )
 
@@ -25,10 +24,6 @@ const (
 	// Provider configuration
 
 	DefaultProvider = "oci"
-
-	// DB confguration
-
-	DefaultDBDriver = "gorm"
 )
 
 type Config struct {
@@ -37,13 +32,8 @@ type Config struct {
 	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
 	// Provider configuration
 	Provider string `json:"provider,omitempty" mapstructure:"provider"`
-	// LocalFS configuration
-	LocalFS localfs.Config `json:",inline" mapstructure:",squash"`
 	// OCI configuration
 	OCI oci.Config `json:",inline" mapstructure:",squash"`
-	// DB configuration
-	DBDriver    string `json:"db_driver,omitempty" mapstructure:"db_driver"`
-	DatabaseDSN string `json:"database_dsn,omitempty" mapstructure:"database_dsn"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -73,12 +63,6 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("provider", DefaultProvider)
 
 	//
-	// LocalFS configuration
-	//
-	_ = v.BindEnv("localfs_dir")
-	v.SetDefault("localfs_dir", localfs.DefaultDir)
-
-	//
 	// OCI configuration
 	//
 	_ = v.BindEnv("oci_registry_address")
@@ -89,15 +73,6 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("oci_zot_username")
 	_ = v.BindEnv("oci_zot_password")
-
-	//
-	// DB configuration
-	//
-
-	_ = v.BindEnv("db_driver")
-	v.SetDefault("db_driver", DefaultDBDriver)
-
-	_ = v.BindEnv("database_dsn")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

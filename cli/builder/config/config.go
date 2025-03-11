@@ -75,10 +75,8 @@ func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
 		}
 
 		locators = append(locators, &apicore.Locator{
-			Name: apicore.LocatorType_name[locatorType],
-			Source: &apicore.LocatorSource{
-				Url: locator.URL,
-			},
+			Type: apicore.LocatorType_name[locatorType],
+			Url:  locator.URL,
 		})
 	}
 

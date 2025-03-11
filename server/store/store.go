@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/server/config"
-	"github.com/agntcy/dir/server/store/localfs"
 	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/server/types"
 )
@@ -12,8 +11,7 @@ import (
 type Provider string
 
 const (
-	LocalFS = Provider("localfs")
-	OCI     = Provider("oci")
+	OCI = Provider("oci")
 )
 
 func New(config *config.Config) (types.StoreAPI, error) {
@@ -22,12 +20,6 @@ func New(config *config.Config) (types.StoreAPI, error) {
 		store, err := oci.New(config.OCI)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OCI store: %w", err)
-		}
-		return store, nil
-	case LocalFS:
-		store, err := localfs.New(config.LocalFS.Dir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create localfs store: %w", err)
 		}
 		return store, nil
 	default:

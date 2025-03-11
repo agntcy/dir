@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"io"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 )
 
-func (c *Client) Push(ctx context.Context, meta *coretypes.ObjectMeta, reader io.Reader) (*coretypes.Digest, error) {
+func (c *Client) Push(ctx context.Context, ref *storetypes.ObjectRef, reader io.Reader) (*storetypes.ObjectRef, error) {
 	stream, err := c.StoreServiceClient.Push(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create push stream: %w", err)
@@ -29,10 +29,11 @@ func (c *Client) Push(ctx context.Context, meta *coretypes.ObjectMeta, reader io
 			break
 		}
 
-		obj := &coretypes.Object{
-			Metadata: meta,
-			Size:     uint64(n),
-			Data:     buf[:n],
+		obj := &storetypes.Object{
+			Name: ref.GetName(),
+			Type: ref.GetType(),
+			Size: uint64(n),
+			Data: buf[:n],
 		}
 
 		if err := stream.Send(obj); err != nil {
@@ -45,15 +46,11 @@ func (c *Client) Push(ctx context.Context, meta *coretypes.ObjectMeta, reader io
 		return nil, fmt.Errorf("could not receive response: %w", err)
 	}
 
-	return resp.Digest, nil
+	return resp, nil
 }
 
-func (c *Client) Pull(ctx context.Context, dig *coretypes.Digest) (io.Reader, error) {
-	req := &coretypes.ObjectRef{
-		Digest: dig,
-	}
-
-	stream, err := c.StoreServiceClient.Pull(ctx, req)
+func (c *Client) Pull(ctx context.Context, ref *storetypes.ObjectRef) (io.Reader, error) {
+	stream, err := c.StoreServiceClient.Pull(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pull stream: %w", err)
 	}
@@ -77,12 +74,8 @@ func (c *Client) Pull(ctx context.Context, dig *coretypes.Digest) (io.Reader, er
 	return &buffer, nil
 }
 
-func (c *Client) Lookup(ctx context.Context, dig *coretypes.Digest) (*coretypes.ObjectMeta, error) {
-	req := &coretypes.ObjectRef{
-		Digest: dig,
-	}
-
-	meta, err := c.StoreServiceClient.Lookup(ctx, req)
+func (c *Client) Lookup(ctx context.Context, ref *storetypes.ObjectRef) (*storetypes.ObjectRef, error) {
+	meta, err := c.StoreServiceClient.Lookup(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup object: %w", err)
 	}

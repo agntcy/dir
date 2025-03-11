@@ -3,10 +3,9 @@ package oci
 import (
 	"bytes"
 	"context"
+	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"io"
 	"testing"
-
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -26,24 +25,22 @@ func TestStore(t *testing.T) {
 
 	// Define testing object
 	objContents := []byte("example!")
-	objMeta := coretypes.ObjectMeta{
-		Type: coretypes.ObjectType_OBJECT_TYPE_CUSTOM,
-		Name: "example",
-		Annotations: map[string]string{
-			"label": "example",
-		},
+	objRef := storetypes.ObjectRef{
+		Type: ptrTo[string]("example-type"),
+		Name: ptrTo[string]("example-name"),
+		Size: ptrTo[uint64](123),
 	}
 
 	// Push
-	digest, err := store.Push(ctx, &objMeta, bytes.NewReader(objContents))
+	digest, err := store.Push(ctx, &objRef, bytes.NewReader(objContents))
 	assert.NoErrorf(t, err, "push failed")
 
 	// Lookup
-	fetchedMeta, err := store.Lookup(ctx, digest)
+	fetchedRef, err := store.Lookup(ctx, digest)
 	assert.NoErrorf(t, err, "lookup failed")
-	assert.Equal(t, objMeta.Type, fetchedMeta.Type)
-	assert.Equal(t, objMeta.Name, fetchedMeta.Name)
-	assert.Equal(t, objMeta.Annotations, fetchedMeta.Annotations)
+	assert.Equal(t, objRef.Type, fetchedRef.Type)
+	assert.Equal(t, objRef.Name, fetchedRef.Name)
+	// assert.Equal(t, objRef.Annotations, fetchedRef.Annotations)
 
 	// Pull
 	fetchedReader, err := store.Pull(ctx, digest)
