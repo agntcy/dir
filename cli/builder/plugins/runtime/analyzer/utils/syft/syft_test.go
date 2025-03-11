@@ -13,6 +13,7 @@ func TestSyft(t *testing.T) {
 	t.Run("SBOM", func(t *testing.T) {
 		// Test the SBOM method
 		s := Syft{}
+
 		sbom, err := s.SBOM("testdata", []string{"crewai"})
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)

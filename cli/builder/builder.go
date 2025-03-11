@@ -12,7 +12,6 @@ import (
 	"github.com/agntcy/dir/cli/builder/plugins/crewai"
 	"github.com/agntcy/dir/cli/builder/plugins/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime"
-	"github.com/agntcy/dir/cli/types"
 	clitypes "github.com/agntcy/dir/cli/types"
 )
 
@@ -38,6 +37,7 @@ func (em *Builder) RegisterExtensions() error {
 		if err != nil {
 			return fmt.Errorf("failed to register LLMAnalyzer extension: %w", err)
 		}
+
 		em.extensions = append(em.extensions, LLMAnalyzer)
 	}
 
@@ -49,7 +49,7 @@ func (em *Builder) RegisterExtensions() error {
 }
 
 func (em *Builder) Run(ctx context.Context) ([]*apicore.Extension, error) {
-	var builtExtensions []*apicore.Extension
+	builtExtensions := make([]*apicore.Extension, 0, len(em.extensions)+len(em.cfg.Model.Extensions))
 
 	for _, ext := range em.extensions {
 		extension, err := ext.Build(ctx)
@@ -66,7 +66,7 @@ func (em *Builder) Run(ctx context.Context) ([]*apicore.Extension, error) {
 	}
 
 	for _, i := range em.cfg.Model.Extensions {
-		extension := types.AgentExtension{
+		extension := clitypes.AgentExtension{
 			Name:    i.Name,
 			Version: i.Version,
 			Specs:   i.Specs,

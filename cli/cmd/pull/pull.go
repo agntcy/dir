@@ -5,13 +5,13 @@ package pull
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util"
-
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +36,7 @@ func runCommand(cmd *cobra.Command) error {
 	// Get the client from the context.
 	c, ok := util.GetClientFromContext(cmd.Context())
 	if !ok {
-		return fmt.Errorf("failed to get client from context")
+		return errors.New("failed to get client from context")
 	}
 
 	var dig coretypes.Digest
@@ -68,7 +68,9 @@ func runCommand(cmd *cobra.Command) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal agent to JSON: %w", err)
 		}
+
 		cmd.Print(string(output))
+
 		return nil
 	}
 

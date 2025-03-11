@@ -18,7 +18,6 @@ func TestDatabase(t *testing.T) {
 		DBDriver:    "gorm",
 		DatabaseDSN: "/tmp/sqlite/dir.db",
 	})
-
 	if err != nil {
 		t.Fatalf("Failed to create database: %v", err)
 	}

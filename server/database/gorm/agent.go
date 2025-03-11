@@ -6,6 +6,7 @@ package gorm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -29,21 +30,23 @@ func NewAgentTable(db *gorm.DB) ds.Datastore {
 	}
 }
 
-func (s *agentTable) Get(ctx context.Context, key ds.Key) (value []byte, err error) {
+func (s *agentTable) Get(ctx context.Context, key ds.Key) ([]byte, error) {
 	keyDigest, err := AgentCID(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract agent digest: %w", err)
 	}
 
 	var agent types.Agent
+
 	err = s.db.WithContext(ctx).
 		Table(agentTableName).
 		Where("c_id = ?", keyDigest.Encode()).
 		Where("deleted_at IS NULL").
 		First(&agent).Error
-	if err != nil && err == gorm.ErrRecordNotFound {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ds.ErrNotFound
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get agent: %w", err)
 	}
@@ -64,19 +67,19 @@ func (s *agentTable) Get(ctx context.Context, key ds.Key) (value []byte, err err
 	return marshalledObjectMeta, nil
 }
 
-func (s *agentTable) Has(ctx context.Context, key ds.Key) (exists bool, err error) {
+func (s *agentTable) Has(ctx context.Context, key ds.Key) (bool, error) {
 	keyDigest, err := AgentCID(key)
 	if err != nil {
 		return false, fmt.Errorf("failed to extract agent digest: %w", err)
 	}
 
 	var count int64
+
 	err = s.db.WithContext(ctx).
 		Table(agentTableName).
 		Where("c_id = ?", keyDigest.Encode()).
 		Where("deleted_at IS NULL").
 		Count(&count).Error
-
 	if err != nil {
 		return false, fmt.Errorf("failed to check agent existence: %w", err)
 	}
@@ -84,19 +87,19 @@ func (s *agentTable) Has(ctx context.Context, key ds.Key) (exists bool, err erro
 	return count > 0, nil
 }
 
-func (s *agentTable) GetSize(ctx context.Context, key ds.Key) (size int, err error) {
+func (s *agentTable) GetSize(ctx context.Context, key ds.Key) (int, error) {
 	// Get the actual data
-    data, err := s.Get(ctx, key)
-    if err != nil {
-        return 0, err
-    }
+	data, err := s.Get(ctx, key)
+	if err != nil {
+		return 0, err
+	}
 
-    // Return the size of the serialized data
-    return len(data), nil
+	// Return the size of the serialized data
+	return len(data), nil
 }
 
-func (s *agentTable) Query(ctx context.Context, q query.Query) (query.Results, error) {
-	//TODO implement me
+func (s *agentTable) Query(_ context.Context, _ query.Query) (query.Results, error) {
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -106,12 +109,12 @@ func (s *agentTable) Put(ctx context.Context, key ds.Key, value []byte) error {
 		return fmt.Errorf("failed to unmarshal value: %w", err)
 	}
 
-	if objectMeta.Type != coretypes.ObjectType_OBJECT_TYPE_AGENT {
-		return fmt.Errorf("invalid object type: %v", objectMeta.Type)
+	if objectMeta.GetType() != coretypes.ObjectType_OBJECT_TYPE_AGENT {
+		return fmt.Errorf("invalid object type: %v", objectMeta.GetType())
 	}
 
-	if objectMeta.Digest == nil {
-		return fmt.Errorf("missing digest in object meta")
+	if objectMeta.GetDigest() == nil {
+		return errors.New("missing digest in object meta")
 	}
 
 	keyDigest, err := AgentCID(key)
@@ -119,8 +122,8 @@ func (s *agentTable) Put(ctx context.Context, key ds.Key, value []byte) error {
 		return fmt.Errorf("failed to extract agent digest: %w", err)
 	}
 
-	if keyDigest.String() != objectMeta.Digest.String() {
-		return fmt.Errorf("digest mismatch: %v != %v", keyDigest, objectMeta.Digest)
+	if keyDigest.String() != objectMeta.GetDigest().String() {
+		return fmt.Errorf("digest mismatch: %v != %v", keyDigest, objectMeta.GetDigest())
 	}
 
 	// Check if the agent already exists
@@ -135,7 +138,7 @@ func (s *agentTable) Put(ctx context.Context, key ds.Key, value []byte) error {
 
 	agent := types.Agent{
 		Model: types.Model{
-			CID: objectMeta.Digest.Encode(),
+			CID: objectMeta.GetDigest().Encode(),
 		},
 		Name: objectMeta.GetName(),
 	}
@@ -166,25 +169,25 @@ func (s *agentTable) Delete(ctx context.Context, key ds.Key) error {
 	return nil
 }
 
-// Sync dont implement now
-func (s *agentTable) Sync(ctx context.Context, prefix ds.Key) error {
-	//TODO implement me
+// Sync dont implement now.
+func (s *agentTable) Sync(_ context.Context, _ ds.Key) error {
+	// TODO implement me
 	panic("implement me")
 }
 
 func (s *agentTable) Close() error {
 	// Since we're using GORM and the database connection is managed externally,
-    // we don't need to do any specific cleanup for just the table.
-    // The actual database connection closure should be handled by the main application.
-    return nil
+	// we don't need to do any specific cleanup for just the table.
+	// The actual database connection closure should be handled by the main application.
+	return nil
 }
 
-// AgentCID extracts the agent digest (UID) from the key.
-// For example, for key=/<namespace>/<agent-digest>, we return digest=<agent-digest>
+// For example, for key=/<namespace>/<agent-digest>, we return digest=<agent-digest>.
 func AgentCID(key ds.Key) (*coretypes.Digest, error) {
 	var digest coretypes.Digest
 	if err := digest.Decode(key.BaseNamespace()); err != nil {
 		return nil, err
 	}
+
 	return &digest, nil
 }

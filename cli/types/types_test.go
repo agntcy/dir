@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
-// Test ToAPIExtension method
+//nolint:testifylint
 package types
 
 import (
@@ -31,12 +31,12 @@ func TestAgentExtension_ToAPIExtension(t *testing.T) {
 	}
 
 	apiExtension, err := agentExtension.ToAPIExtension()
-	assert.Nil(t, err)
-	assert.Equal(t, apiExtension.Name, agentExtension.Name)
-	assert.Equal(t, apiExtension.Version, agentExtension.Version)
-	assert.Equal(t, apiExtension.Specs.AsMap(), map[string]interface{}{
+	assert.NoError(t, err)
+	assert.Equal(t, apiExtension.GetName(), agentExtension.Name)
+	assert.Equal(t, apiExtension.GetVersion(), agentExtension.Version)
+	assert.Equal(t, map[string]interface{}{
 		"test_string": "test",
 		"test_slice":  []interface{}{"test1", "test2"},
 		"test_map":    map[string]interface{}{"key1": "value1", "key2": "value2"},
-	})
+	}, apiExtension.GetSpecs().AsMap())
 }

@@ -1,13 +1,16 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
+// nolint:mnd
 package localfs
 
 import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -49,7 +52,6 @@ func (c *store) Push(ctx context.Context, meta *coretypes.ObjectMeta, contents i
 	//  using a background writer
 	// TODO: chunking does not work properly, it needs to be moved to a util
 	// package as we will need to reuse it across providers
-
 	// create temp file that will hold the contents
 	contentsFile, err := afero.TempFile(c.dataFs, "tmp", "*")
 	if err != nil {
@@ -67,10 +69,10 @@ loop:
 		// Check context
 		select {
 		case <-ctx.Done():
-			return &coretypes.Digest{}, fmt.Errorf("context expired")
+			return &coretypes.Digest{}, errors.New("context expired")
 		default:
 			n, err := contents.Read(chunk[:])
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break loop
 			}
 			if err != nil {
@@ -94,11 +96,12 @@ loop:
 	// Get content dig
 	dig := coretypes.Digest{
 		Type:  coretypes.DigestType_DIGEST_TYPE_SHA256,
-		Value: fmt.Sprintf("%x", hasher.Sum(nil)),
+		Value: hex.EncodeToString(hasher.Sum(nil)),
 	}
 
 	// Rename contents file to the digest hash
 	_ = contentsFile.Close()
+
 	if err := c.dataFs.Rename(contentsFile.Name(), dig.Encode()); err != nil {
 		return &coretypes.Digest{}, fmt.Errorf("failed to rename file: %w", err)
 	}

@@ -5,8 +5,8 @@ package client
 
 import (
 	"fmt"
-	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 
+	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -29,6 +29,7 @@ func WithEnvConfig() Option {
 	return func(opts *options) error {
 		var err error
 		opts.config, err = LoadConfig()
+
 		return err
 	}
 }
@@ -36,6 +37,7 @@ func WithEnvConfig() Option {
 func WithConfig(config *Config) Option {
 	return func(opts *options) error {
 		opts.config = config
+
 		return nil
 	}
 }

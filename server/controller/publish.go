@@ -5,6 +5,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -27,10 +28,11 @@ func NewPublishController(publish types.PublishService) routingtypes.PublishServ
 
 func (c *publishController) Publish(ctx context.Context, req *routingtypes.PublishRequest) (*emptypb.Empty, error) {
 	if req.GetRecord() == nil || req.GetRecord().GetName() == "" {
-		return nil, fmt.Errorf("record name is required")
+		return nil, errors.New("record name is required")
 	}
+
 	if req.GetRef() == nil || req.GetRef().GetDigest() == nil || len(req.GetRef().GetDigest().GetValue()) == 0 {
-		return nil, fmt.Errorf("digest is required")
+		return nil, errors.New("digest is required")
 	}
 
 	digest := &coretypes.Digest{
@@ -48,7 +50,7 @@ func (c *publishController) Publish(ctx context.Context, req *routingtypes.Publi
 
 func (c *publishController) Unpublish(ctx context.Context, req *routingtypes.Record) (*emptypb.Empty, error) {
 	if req.GetName() == "" {
-		return nil, fmt.Errorf("record name is required")
+		return nil, errors.New("record name is required")
 	}
 
 	err := c.publish.Unpublish(ctx, req.GetName())
@@ -61,7 +63,7 @@ func (c *publishController) Unpublish(ctx context.Context, req *routingtypes.Rec
 
 func (c *publishController) Resolve(ctx context.Context, req *routingtypes.Record) (*coretypes.ObjectRef, error) {
 	if req.GetName() == "" {
-		return nil, fmt.Errorf("record name is required")
+		return nil, errors.New("record name is required")
 	}
 
 	digest, err := c.publish.Resolve(ctx, req.GetName())

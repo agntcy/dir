@@ -4,6 +4,7 @@
 package llmanalyzer
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -16,8 +17,8 @@ const (
 )
 
 type Config struct {
-	AzureOpenAIAPIKey         string `json:"azure_openai_api_key,omitempty" mapstructure:"azure_openai_api_key"`
-	AzureOpenAIAPIEndpoint    string `json:"azure_openai_api_endpoint,omitempty" mapstructure:"azure_openai_api_endpoint"`
+	AzureOpenAIAPIKey         string `json:"azure_openai_api_key,omitempty"         mapstructure:"azure_openai_api_key"`
+	AzureOpenAIAPIEndpoint    string `json:"azure_openai_api_endpoint,omitempty"    mapstructure:"azure_openai_api_endpoint"`
 	AzureOpenAIDeploymentName string `json:"azure_openai_deployment_name,omitempty" mapstructure:"azure_openai_deployment_name"`
 }
 
@@ -51,13 +52,15 @@ func NewConfig() (*Config, error) {
 
 func (c *Config) Validate() error {
 	if c.AzureOpenAIAPIKey == "" {
-		return fmt.Errorf("Azure OpenAI API key is required")
+		return errors.New("azure OpenAI API key is required")
 	}
+
 	if c.AzureOpenAIAPIEndpoint == "" {
-		return fmt.Errorf("Azure OpenAI API endpoint is required")
+		return errors.New("azure OpenAI API endpoint is required")
 	}
+
 	if c.AzureOpenAIDeploymentName == "" {
-		return fmt.Errorf("Azure OpenAI deployment name is required")
+		return errors.New("azure OpenAI deployment name is required")
 	}
 
 	return nil

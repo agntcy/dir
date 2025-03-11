@@ -11,17 +11,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/agntcy/dir/cli/types"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/agntcy/dir/cli/types"
 )
 
 const (
-	// ExtensionName is the name of the extension
+	// ExtensionName is the name of the extension.
 	ExtensionName = "llmanalyzer"
-	// ExtensionVersion is the version of the extension
+	// ExtensionVersion is the version of the extension.
 	ExtensionVersion = "v0.0.0"
 
 	maxRetries = 3
@@ -71,6 +70,7 @@ func New(fsPath string, ignorePaths []string) (types.ExtensionBuilder, error) {
 	}
 
 	keyCredential := azcore.NewKeyCredential(cfg.AzureOpenAIAPIKey)
+
 	client, err := azopenai.NewClientWithKeyCredential(cfg.AzureOpenAIAPIEndpoint, keyCredential, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OpenAI client: %w", err)
@@ -96,15 +96,17 @@ func (l *llmanalyzer) Build(ctx context.Context) (*types.AgentExtension, error) 
 	}
 
 	var specs ExtensionSpecs
+
 	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
+
+	for attempt := range maxRetries {
 		resp, err := l.client.GetChatCompletions(ctx, azopenai.ChatCompletionsOptions{
 			Messages:       messages,
 			DeploymentName: to.Ptr(l.cfg.AzureOpenAIDeploymentName),
 		}, nil)
-
 		if err != nil {
 			lastErr = fmt.Errorf("attempt %d: LLM API call failed: %w", attempt+1, err)
+
 			continue
 		}
 
@@ -137,6 +139,7 @@ func concatenateFiles(dirPath string, ignorePaths []string, extensions []string)
 				return nil
 			}
 		}
+
 		if err != nil {
 			return fmt.Errorf("failed to walk path %s: %w", path, err)
 		}
@@ -146,9 +149,11 @@ func concatenateFiles(dirPath string, ignorePaths []string, extensions []string)
 		}
 
 		hasValidExt := false
+
 		for _, ext := range extensions {
 			if strings.HasSuffix(info.Name(), ext) {
 				hasValidExt = true
+
 				break
 			}
 		}
@@ -167,7 +172,6 @@ func concatenateFiles(dirPath string, ignorePaths []string, extensions []string)
 
 		return nil
 	})
-
 	if err != nil {
 		return "", err
 	}

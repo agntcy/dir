@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:testifylint
 package runtime
 
 import (
 	"context"
-	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"testing"
 
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,7 +35,7 @@ func TestBuildRuntime(t *testing.T) {
 
 	r := New(source)
 	ret, err := r.Build(context.Background())
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	specs, ok := ret.Specs.(ExtensionSpecs)
 	assert.True(t, ok)
@@ -46,17 +47,17 @@ func TestBuildRuntime(t *testing.T) {
 func TestBuildRuntimeWithInvalidSource(t *testing.T) {
 	r := New("invalid")
 	_, err := r.Build(context.Background())
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestBuildRuntimeWithUnsupportedSource(t *testing.T) {
 	r := New("./analyzer/python/testdata/unsupported")
 	_, err := r.Build(context.Background())
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }
 
 func TestBuildRuntimeWithNoVersion(t *testing.T) {
 	r := New("./analyzer/python/testdata/no-version")
 	_, err := r.Build(context.Background())
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 }

@@ -12,12 +12,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/Portshift/go-utils/healthz"
 	apitypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/store"
-
-	"github.com/Portshift/go-utils/healthz"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -57,6 +56,7 @@ func (s Server) Start(errCh chan<- error) {
 	listen, err := net.Listen("tcp", s.listenAddress)
 	if err != nil {
 		errCh <- fmt.Errorf("failed to listen on %s: %w", s.listenAddress, err)
+
 		return
 	}
 
@@ -69,6 +69,7 @@ func (s Server) Start(errCh chan<- error) {
 
 		if err := s.grpcServer.Serve(listen); err != nil {
 			errCh <- fmt.Errorf("failed to start server: %w", err)
+
 			return
 		}
 	}()
@@ -102,6 +103,6 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	case sig := <-sigCh:
 		return fmt.Errorf("stopping server due to signal: %v", sig)
 	case err := <-errCh:
-		return fmt.Errorf("stopping server due to error: %v", err)
+		return fmt.Errorf("stopping server due to error: %w", err)
 	}
 }

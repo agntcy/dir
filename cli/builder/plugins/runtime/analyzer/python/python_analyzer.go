@@ -11,21 +11,18 @@ import (
 	"path/filepath"
 	"regexp"
 
-	toml "github.com/pelletier/go-toml"
-	"go.uber.org/multierr"
-
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer/utils/syft"
+	toml "github.com/pelletier/go-toml"
+	"go.uber.org/multierr"
 )
 
 const (
 	language = "python"
 )
 
-var (
-	// no version found in pyproject.toml, Pipfile, or requirements.txt
-	errNoVersion = errors.New("no version found in file")
-)
+// no version found in pyproject.toml, Pipfile, or requirements.txt.
+var errNoVersion = errors.New("no version found in file")
 
 type pythonAnalyzer struct {
 	syft syft.Syft
@@ -73,7 +70,9 @@ func getRuntimeInfo(path string) (analyzer.RuntimeInfo, error) {
 func resolveFileSystemPath(path string) (analyzer.RuntimeInfo, error) {
 	// the version
 	version := ""
+
 	var err error
+
 	var errs []error
 
 	// Check if path is a directory or a file
@@ -128,6 +127,7 @@ func resolveFileSystemPath(path string) (analyzer.RuntimeInfo, error) {
 	}, multierr.Combine(errs...)
 }
 
+//nolint:forcetypeassert
 func parsePyprojectToml(path string) (string, error) {
 	config, err := toml.LoadFile(path)
 	if err != nil {
@@ -150,6 +150,7 @@ func parsePyprojectToml(path string) (string, error) {
 	return "", fmt.Errorf("%w: %s", errNoVersion, path)
 }
 
+//nolint:forcetypeassert
 func parsePipfile(path string) (string, error) {
 	config, err := toml.LoadFile(path)
 	if err != nil {
@@ -166,7 +167,7 @@ func parsePipfile(path string) (string, error) {
 	return "", fmt.Errorf("%w: %s", errNoVersion, path)
 }
 
-// parse the setup.py file to find the python version in python_requires
+// parse the setup.py file to find the python version in python_requires.
 func parseSetupPy(path string) (string, error) {
 	// NOTE(msardara): this won't work if the version string is stored in a variable
 	regexPattern := `python_requires\s*=\s*['"]([^'"]+)['"]`

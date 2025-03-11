@@ -1,13 +1,17 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
+//nolint:testifylint
 package localfs
 
 import (
 	"bytes"
 	"context"
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"io"
 	"os"
 	"testing"
 
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +20,7 @@ func TestStore(t *testing.T) {
 
 	// Create store
 	store, err := New(os.TempDir())
-	assert.NoErrorf(t, err, "failed to create store")
+	assert.NoError(t, err, "failed to create store")
 
 	// Define testing object
 	objContents := []byte("example!")
@@ -30,18 +34,19 @@ func TestStore(t *testing.T) {
 
 	// Push
 	digest, err := store.Push(ctx, &objMeta, bytes.NewReader(objContents))
-	assert.NoErrorf(t, err, "push failed")
+	assert.NoError(t, err, "push failed")
 
 	// Lookup
 	fetchedMeta, err := store.Lookup(ctx, digest)
-	assert.NoErrorf(t, err, "lookup failed")
-	assert.Equal(t, objMeta.Type, fetchedMeta.Type)
-	assert.Equal(t, objMeta.Name, fetchedMeta.Name)
-	assert.Equal(t, objMeta.Annotations, fetchedMeta.Annotations)
+	assert.NoError(t, err, "lookup failed")
+	assert.Equal(t, objMeta.GetType(), fetchedMeta.GetType())
+	assert.Equal(t, objMeta.GetName(), fetchedMeta.GetName())
+	assert.Equal(t, objMeta.GetAnnotations(), fetchedMeta.GetAnnotations())
 
 	// Pull
 	fetchedReader, err := store.Pull(ctx, digest)
 	assert.NoErrorf(t, err, "pull failed")
+
 	fetchedContents, _ := io.ReadAll(fetchedReader)
 	// TODO: fix chunking and sizing issues
 	assert.Equal(t, objContents, fetchedContents[:len(objContents)])

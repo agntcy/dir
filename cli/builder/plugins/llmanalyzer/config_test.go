@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:testifylint
 package llmanalyzer
 
 import (
@@ -53,6 +54,7 @@ func TestNewConfig(t *testing.T) {
 					return
 				}
 			}
+
 			t.Cleanup(func() {
 				os.Clearenv()
 			})
@@ -61,7 +63,7 @@ func TestNewConfig(t *testing.T) {
 			if err != nil {
 				assert.EqualError(t, ttp.wantError, err.Error(), "Unexpected error message")
 			} else {
-				assert.Nil(t, ttp.wantError, "Expected no error but got one")
+				assert.NoError(t, ttp.wantError, "Expected no error but got one")
 			}
 
 			if ttp.wantConfig != nil {
@@ -93,7 +95,7 @@ func TestValidateConfig(t *testing.T) {
 				AzureOpenAIAPIEndpoint:    "https://api.openai.com",
 				AzureOpenAIDeploymentName: "test-deployment",
 			},
-			wantError: errors.New("Azure OpenAI API key is required"),
+			wantError: errors.New("azure OpenAI API key is required"),
 		},
 		{
 			name: "Missing API Endpoint",
@@ -102,7 +104,7 @@ func TestValidateConfig(t *testing.T) {
 				AzureOpenAIAPIEndpoint:    "",
 				AzureOpenAIDeploymentName: "test-deployment",
 			},
-			wantError: errors.New("Azure OpenAI API endpoint is required"),
+			wantError: errors.New("azure OpenAI API endpoint is required"),
 		},
 		{
 			name: "Missing Deployment Name",
@@ -111,7 +113,7 @@ func TestValidateConfig(t *testing.T) {
 				AzureOpenAIAPIEndpoint:    "https://api.openai.com",
 				AzureOpenAIDeploymentName: "",
 			},
-			wantError: errors.New("Azure OpenAI deployment name is required"),
+			wantError: errors.New("azure OpenAI deployment name is required"),
 		},
 	}
 
@@ -122,7 +124,7 @@ func TestValidateConfig(t *testing.T) {
 			if err != nil {
 				assert.EqualError(t, err, ttp.wantError.Error(), "Unexpected error message")
 			} else {
-				assert.Nil(t, ttp.wantError, "Expected an error but got nil")
+				assert.NoError(t, ttp.wantError, "Expected an error but got nil")
 			}
 		})
 	}

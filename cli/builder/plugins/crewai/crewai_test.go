@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:testifylint
 package crewai
 
 import (
@@ -23,11 +24,12 @@ func TestBuilder(t *testing.T) {
 
 	// build
 	gotExtension, err := builder.Build(context.Background())
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	// validate
 	specs, ok := gotExtension.Specs.(map[string]string)
 	assert.True(t, ok)
+
 	specs[expectedKey] = expectedValue
 	specs[inputKey] = inputValue
 }

@@ -9,8 +9,8 @@ import (
 	"path"
 	"slices"
 
-	"github.com/anchore/syft/syft"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
+	"github.com/anchore/syft/syft"
 )
 
 type Syft struct{}
@@ -19,18 +19,21 @@ func (s *Syft) SBOM(filePath string, supportedPackages []string) (analyzer.SBOM,
 	ctx := context.Background()
 
 	cfg := syft.DefaultGetSourceConfig()
+
 	source, err := syft.GetSource(ctx, filePath, cfg)
 	if err != nil {
 		return analyzer.SBOM{}, fmt.Errorf("failed to get source: %w", err)
 	}
 
 	sbomConfig := syft.DefaultCreateSBOMConfig()
+
 	sbom, err := syft.CreateSBOM(ctx, source, sbomConfig)
 	if err != nil {
 		return analyzer.SBOM{}, fmt.Errorf("failed to create SBOM: %w", err)
 	}
 
-	var packages []analyzer.Package
+	packages := make([]analyzer.Package, 0, sbom.Artifacts.Packages.PackageCount())
+
 	p := sbom.Artifacts.Packages.Sorted()
 	for _, pkg := range p {
 		// Skip packages not in agent framework packages list

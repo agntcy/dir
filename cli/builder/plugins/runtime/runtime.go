@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	// ExtensionName is the name of the extension
+	// ExtensionName is the name of the extension.
 	ExtensionName = "runtime"
-	// ExtensionVersion is the version of the extension
+	// ExtensionVersion is the version of the extension.
 	ExtensionVersion = "v0.0.0"
 )
 

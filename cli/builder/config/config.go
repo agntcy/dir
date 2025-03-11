@@ -8,9 +8,8 @@ import (
 	"io"
 	"os"
 
-	"gopkg.in/yaml.v2"
-
 	apicore "github.com/agntcy/dir/api/core/v1alpha1"
+	"gopkg.in/yaml.v2"
 )
 
 type Locator struct {
@@ -66,10 +65,13 @@ func (c *Config) LoadFromFile(path string) error {
 }
 
 func (c *Config) GetAPILocators() ([]*apicore.Locator, error) {
-	var locators []*apicore.Locator
+	locators := make([]*apicore.Locator, 0, len(c.Model.Locators))
+
 	for _, locator := range c.Model.Locators {
 		var ok bool
+
 		var locatorType int32
+
 		if locatorType, ok = apicore.LocatorType_value[locator.Type]; !ok {
 			return nil, fmt.Errorf("invalid locator type: %s", locator.Type)
 		}

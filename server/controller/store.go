@@ -5,14 +5,14 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"io"
 	"log"
 
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"github.com/agntcy/dir/server/types"
-
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -36,35 +36,39 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 
 	metadata := firstMessage.GetMetadata()
 	if metadata == nil {
-		return fmt.Errorf("metadata is required")
+		return errors.New("metadata is required")
 	}
 
-	log.Printf("Received metadata: Type=%v, Name=%s, Annotations=%v\n", metadata.Type, metadata.Name, metadata.Annotations)
+	log.Printf("Received metadata: Type=%v, Name=%s, Annotations=%v\n", metadata.GetType(), metadata.GetName(), metadata.GetAnnotations())
 
 	pr, pw := io.Pipe()
 
 	go func() {
 		defer pw.Close()
-		if len(firstMessage.Data) > 0 {
-			if _, err := pw.Write(firstMessage.Data); err != nil {
+
+		if len(firstMessage.GetData()) > 0 {
+			if _, err := pw.Write(firstMessage.GetData()); err != nil {
 				pw.CloseWithError(err)
+
 				return
 			}
 		}
 
 		for {
 			obj, err := stream.Recv()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return
 			}
 
 			if err != nil {
 				pw.CloseWithError(err)
+
 				return
 			}
 
-			if _, err := pw.Write(obj.Data); err != nil {
+			if _, err := pw.Write(obj.GetData()); err != nil {
 				pw.CloseWithError(err)
+
 				return
 			}
 		}
@@ -73,10 +77,10 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 	digest, err := s.store.Push(
 		context.Background(),
 		&coretypes.ObjectMeta{
-			Type:        metadata.Type,
-			Name:        metadata.Name,
-			Annotations: metadata.Annotations,
-			Digest:      metadata.Digest,
+			Type:        metadata.GetType(),
+			Name:        metadata.GetName(),
+			Annotations: metadata.GetAnnotations(),
+			Digest:      metadata.GetDigest(),
 		},
 		pr,
 	)
@@ -89,21 +93,23 @@ func (s storeController) Push(stream storetypes.StoreService_PushServer) error {
 
 func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService_PullServer) error {
 	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
-		return fmt.Errorf("digest is required")
+		return errors.New("digest is required")
 	}
 
-	reader, err := s.store.Pull(context.Background(), req.Digest)
+	reader, err := s.store.Pull(context.Background(), req.GetDigest())
 	if err != nil {
 		return fmt.Errorf("failed to pull: %w", err)
 	}
 
-	buf := make([]byte, 4096)
+	buf := make([]byte, 4096) //nolint:mnd
+
 	for {
 		n, readErr := reader.Read(buf)
 		if readErr == io.EOF && n == 0 {
 			// exit as we read all the chunks
 			return nil
 		}
+
 		if readErr != io.EOF && readErr != nil {
 			// return if a non-nil error and stream was not fully read
 			return fmt.Errorf("failed to read: %w", err)
@@ -119,10 +125,10 @@ func (s storeController) Pull(req *coretypes.ObjectRef, stream storetypes.StoreS
 
 func (s storeController) Lookup(ctx context.Context, req *coretypes.ObjectRef) (*coretypes.ObjectMeta, error) {
 	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
-		return nil, fmt.Errorf("digest is required")
+		return nil, errors.New("digest is required")
 	}
 
-	meta, err := s.store.Lookup(ctx, req.Digest)
+	meta, err := s.store.Lookup(ctx, req.GetDigest())
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup: %w", err)
 	}
@@ -130,12 +136,12 @@ func (s storeController) Lookup(ctx context.Context, req *coretypes.ObjectRef) (
 	return meta, nil
 }
 
-func (s storeController) Delete(_ context.Context, req *coretypes.ObjectRef) (*emptypb.Empty, error) {
+func (s storeController) Delete(ctx context.Context, req *coretypes.ObjectRef) (*emptypb.Empty, error) {
 	if req.GetDigest() == nil || len(req.GetDigest().GetValue()) == 0 {
-		return nil, fmt.Errorf("digest is required")
+		return nil, errors.New("digest is required")
 	}
 
-	err := s.store.Delete(context.Background(), req.Digest)
+	err := s.store.Delete(ctx, req.GetDigest())
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete: %w", err)
 	}

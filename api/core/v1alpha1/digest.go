@@ -4,6 +4,7 @@
 package corev1alpha1
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -28,14 +29,14 @@ func (d *Digest) Encode() string {
 func (d *Digest) Decode(str string) error {
 	// parse and validate digest
 	parts := strings.Split(str, ":")
-	if len(parts) != 2 {
-		return fmt.Errorf("digest parts not found")
+	if len(parts) != 2 { //nolint:mnd
+		return errors.New("digest parts not found")
 	}
 
 	// validate digest
 	digestType := DigestType(DigestType_value[parts[0]])
 	if digestType == DigestType_DIGEST_TYPE_SHA256 && !isValidSHA256(parts[1]) {
-		return fmt.Errorf("invalid SHA-256 hash")
+		return errors.New("invalid SHA-256 hash")
 	}
 
 	// update digest
@@ -47,12 +48,13 @@ func (d *Digest) Decode(str string) error {
 	return nil
 }
 
-// isValidSHA256 checks if a string is a valid SHA-256 hash
+// isValidSHA256 checks if a string is a valid SHA-256 hash.
 func isValidSHA256(s string) bool {
 	// SHA-256 hash is a 64-character hexadecimal string
 	matched, err := regexp.MatchString("^[a-fA-F0-9]{64}$", s)
 	if err != nil {
 		return false
 	}
+
 	return matched
 }

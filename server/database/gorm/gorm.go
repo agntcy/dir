@@ -7,7 +7,6 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/database/types"
 	ds "github.com/dep2p/libp2p/datastore"
-
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

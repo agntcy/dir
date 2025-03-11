@@ -10,9 +10,9 @@ import (
 func (agent *Agent) ObjectMeta() (*ObjectMeta, error) {
 	return &ObjectMeta{
 		Type:        ObjectType_OBJECT_TYPE_AGENT,
-		Name:        fmt.Sprintf("%s:%s", agent.Name, agent.Version),
-		Annotations: agent.Annotations,
-		Digest:      agent.Digest,
+		Name:        fmt.Sprintf("%s:%s", agent.GetName(), agent.GetVersion()),
+		Annotations: agent.GetAnnotations(),
+		Digest:      agent.GetDigest(),
 	}, nil
 }
 
@@ -20,20 +20,20 @@ func (locator *Locator) ObjectMeta() (*ObjectMeta, error) {
 	return &ObjectMeta{
 		Type: ObjectType_OBJECT_TYPE_LOCATOR,
 		Name: fmt.Sprintf("%s:%s:%s",
-			locator.Type.String(),
-			locator.Name,
-			locator.Source.Url, // url may contain ":" delimeter, so careful when parsing back
+			locator.GetType().String(),
+			locator.GetName(),
+			locator.GetSource().GetUrl(), // url may contain ":" delimeter, so careful when parsing back
 		),
-		Annotations: locator.Annotations,
-		Digest:      locator.Digest,
+		Annotations: locator.GetAnnotations(),
+		Digest:      locator.GetDigest(),
 	}, nil
 }
 
 func (extension *Extension) ObjectMeta() (*ObjectMeta, error) {
 	return &ObjectMeta{
 		Type:        ObjectType_OBJECT_TYPE_EXTENSION,
-		Name:        fmt.Sprintf("%s:%s", extension.Name, extension.Version),
-		Annotations: extension.Annotations,
-		Digest:      extension.Digest,
+		Name:        fmt.Sprintf("%s:%s", extension.GetName(), extension.GetVersion()),
+		Annotations: extension.GetAnnotations(),
+		Digest:      extension.GetDigest(),
 	}, nil
 }

@@ -10,13 +10,12 @@ import (
 	"fmt"
 	"io"
 
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry/remote"
-
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/types"
 	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 type store struct {
@@ -89,6 +88,7 @@ func (s *store) Push(ctx context.Context, meta *coretypes.ObjectMeta, contents i
 
 	// Push contents to the repository
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeDescriptor, contentsBytes)
+
 	err = s.repository.Push(ctx, desc, bytes.NewReader(contentsBytes))
 	if err != nil {
 		return &coretypes.Digest{}, fmt.Errorf("failed to push object: %w", err)
@@ -99,6 +99,7 @@ func (s *store) Push(ctx context.Context, meta *coretypes.ObjectMeta, contents i
 		Type:  coretypes.DigestType_DIGEST_TYPE_SHA256,
 		Value: desc.Digest.Encoded(),
 	}
+
 	metaBytes, err := json.Marshal(meta)
 	if err != nil {
 		return &coretypes.Digest{}, fmt.Errorf("failed to marshal metadata: %w", err)
@@ -106,6 +107,7 @@ func (s *store) Push(ctx context.Context, meta *coretypes.ObjectMeta, contents i
 
 	// Push metadata to the repository
 	metaDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeDescriptor, metaBytes)
+
 	err = s.repository.Push(ctx, metaDesc, bytes.NewReader(metaBytes))
 	if err != nil {
 		return &coretypes.Digest{}, fmt.Errorf("failed to push object: %w", err)
@@ -123,7 +125,7 @@ func (s *store) Pull(ctx context.Context, digest *coretypes.Digest) (io.Reader, 
 		return nil, fmt.Errorf("failed to lookup object: %w", err)
 	}
 
-	metaOciDigest, err := convertToOciDigest(meta.Digest)
+	metaOciDigest, err := convertToOciDigest(meta.GetDigest())
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert digest: %w", err)
 	}
@@ -152,11 +154,12 @@ func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve object: %w", err)
 	}
+
 	if err := s.repository.Delete(ctx, metaDescriptor); err != nil {
 		return fmt.Errorf("failed to delete object: %w", err)
 	}
 
-	metaOciDigest, err := convertToOciDigest(meta.Digest)
+	metaOciDigest, err := convertToOciDigest(meta.GetDigest())
 	if err != nil {
 		return fmt.Errorf("failed to convert digest: %w", err)
 	}
@@ -166,6 +169,7 @@ func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve object: %w", err)
 	}
+
 	if err := s.repository.Delete(ctx, objectDescriptor); err != nil {
 		return fmt.Errorf("failed to delete object: %w", err)
 	}
@@ -173,11 +177,13 @@ func (s *store) Delete(ctx context.Context, digest *coretypes.Digest) error {
 	return nil
 }
 
-// convertToOciDigest converts a coretypes.Digest to an ocidigest.Digest
+// convertToOciDigest converts a coretypes.Digest to an ocidigest.Digest.
 func convertToOciDigest(digest *coretypes.Digest) (*ocidigest.Digest, error) {
-	if digest.Type == coretypes.DigestType_DIGEST_TYPE_SHA256 {
-		d := ocidigest.NewDigestFromEncoded("sha256", digest.Value)
+	if digest.GetType() == coretypes.DigestType_DIGEST_TYPE_SHA256 {
+		d := ocidigest.NewDigestFromEncoded("sha256", digest.GetValue())
+
 		return &d, nil
 	}
-	return nil, fmt.Errorf("unsupported digest type: %v", digest.Type)
+
+	return nil, fmt.Errorf("unsupported digest type: %v", digest.GetType())
 }

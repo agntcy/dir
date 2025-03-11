@@ -6,6 +6,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -25,13 +26,14 @@ func (c *Client) Push(ctx context.Context, meta *coretypes.ObjectMeta, reader io
 		if err != nil && err != io.EOF {
 			return nil, fmt.Errorf("failed to read data: %w", err)
 		}
+
 		if n == 0 {
 			break
 		}
 
 		obj := &coretypes.Object{
 			Metadata: meta,
-			Size:     uint64(n),
+			Size:     uint64(n), //nolint:gosec
 			Data:     buf[:n],
 		}
 
@@ -45,7 +47,7 @@ func (c *Client) Push(ctx context.Context, meta *coretypes.ObjectMeta, reader io
 		return nil, fmt.Errorf("could not receive response: %w", err)
 	}
 
-	return resp.Digest, nil
+	return resp.GetDigest(), nil
 }
 
 func (c *Client) Pull(ctx context.Context, dig *coretypes.Digest) (io.Reader, error) {
@@ -62,14 +64,15 @@ func (c *Client) Pull(ctx context.Context, dig *coretypes.Digest) (io.Reader, er
 
 	for {
 		obj, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to receive object: %w", err)
 		}
 
-		if _, err := buffer.Write(obj.Data); err != nil {
+		if _, err := buffer.Write(obj.GetData()); err != nil {
 			return nil, fmt.Errorf("failed to write data to buffer: %w", err)
 		}
 	}

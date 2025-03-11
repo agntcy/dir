@@ -19,7 +19,7 @@ type Config struct {
 	AuthConfig `json:"auth_config,omitempty" mapstructure:"auth_config"`
 }
 
-// AuthConfig represents the configuration for authentication
+// AuthConfig represents the configuration for authentication.
 type AuthConfig struct {
 	Username string `json:"username,omitempty" mapstructure:"username"`
 	Password string `json:"password,omitempty" mapstructure:"password"`

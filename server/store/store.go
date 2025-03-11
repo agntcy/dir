@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+// SPDX-License-Identifier: Apache-2.0
+
 package store
 
 import (
@@ -23,12 +26,14 @@ func New(config *config.Config) (types.StoreService, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OCI store: %w", err)
 		}
+
 		return store, nil
 	case LocalFS:
 		store, err := localfs.New(config.LocalFS.Dir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create localfs store: %w", err)
 		}
+
 		return store, nil
 	default:
 		return nil, fmt.Errorf("unsupported provider=%s", provider)

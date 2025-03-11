@@ -30,9 +30,9 @@ var keyTypeMapping = map[string]string{
 }
 
 const (
-	// ExtensionName is the name of the extension
+	// ExtensionName is the name of the extension.
 	ExtensionName = "crewai"
-	// ExtensionVersion is the version of the extension
+	// ExtensionVersion is the version of the extension.
 	ExtensionVersion = "v0.0.0"
 )
 
@@ -50,6 +50,7 @@ func New(path string, ignore []string) types.ExtensionBuilder {
 	}
 }
 
+//nolint:gocognit,cyclop
 func (c *crewAI) Build(_ context.Context) (*types.AgentExtension, error) {
 	metadata := make(map[string]string)
 
@@ -66,6 +67,7 @@ func (c *crewAI) Build(_ context.Context) (*types.AgentExtension, error) {
 		if entry == nil || !entry.Type().IsRegular() {
 			return nil
 		}
+
 		switch filepath.Ext(fpath) {
 		case ".yml", ".yaml":
 			// only yaml files
@@ -99,6 +101,7 @@ func (c *crewAI) Build(_ context.Context) (*types.AgentExtension, error) {
 			if !found {
 				return nil // skip non-crewai attributes
 			}
+
 			key = fmt.Sprintf("%s.%s", keyType, key)
 
 			// validate if key already present to avoid same agent definition
@@ -112,9 +115,9 @@ func (c *crewAI) Build(_ context.Context) (*types.AgentExtension, error) {
 			// inject IO details
 			if strings.Contains(key, "task.") {
 				parts := strings.Split(key, ".")
-				if len(parts) >= 2 {
-					io_key := fmt.Sprintf("inputs.%s", parts[1])
-					metadata[io_key] = "string"
+				if len(parts) >= 2 { //nolint:mnd
+					ioKey := "inputs." + parts[1]
+					metadata[ioKey] = "string"
 				}
 			}
 

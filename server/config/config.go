@@ -7,33 +7,32 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
-	"github.com/spf13/viper"
-
 	"github.com/agntcy/dir/server/store/localfs"
 	"github.com/agntcy/dir/server/store/oci"
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/viper"
 )
 
 const (
 	DefaultEnvPrefix = "DIRECTORY_SERVER"
 
-	// API configuration
+	// API configuration.
 
 	DefaultListenAddress      = "0.0.0.0:8888"
 	DefaultHealthCheckAddress = "0.0.0.0:8889"
 
-	// Provider configuration
+	// Provider configuration.
 
 	DefaultProvider = "oci"
 
-	// DB confguration
+	// DB confguration.
 
 	DefaultDBDriver = "gorm"
 )
 
 type Config struct {
 	// API configuration
-	ListenAddress      string `json:"listen_address,omitempty" mapstructure:"listen_address"`
+	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
 	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
 	// Provider configuration
 	Provider string `json:"provider,omitempty" mapstructure:"provider"`
@@ -42,7 +41,7 @@ type Config struct {
 	// OCI configuration
 	OCI oci.Config `json:",inline" mapstructure:",squash"`
 	// DB configuration
-	DBDriver    string `json:"db_driver,omitempty" mapstructure:"db_driver"`
+	DBDriver    string `json:"db_driver,omitempty"    mapstructure:"db_driver"`
 	DatabaseDSN string `json:"database_dsn,omitempty" mapstructure:"database_dsn"`
 }
 
