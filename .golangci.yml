@@ -1,0 +1,45 @@
+run:
+  timeout: 5m
+
+linters:
+  # Enable all available linters.
+  # Default: false
+  enable-all: true
+
+  # Disable specific linter
+  # https://golangci-lint.run/usage/linters/#disabled-by-default
+  disable:
+    - exportloopref # deprecated
+    - funlen # Allow long functions
+    - lll # Allow long lines
+    - gochecknoglobals # Allow global variables
+    - paralleltest # Allow missing t.Parallel() in tests
+    - godox # Allow TODOs
+    - tagliatelle # Allow json(camel)
+    - gochecknoinits # Allow init function
+    - nolintlint # Allow nolint
+    - varnamelen # Allow short var names
+    - ireturn # Allow returning with interfaces
+    - exhaustruct # Allow structures with uninitialized fields
+    - depguard # Allow all package imports
+    - testpackage # Allow not having a test package
+    - wrapcheck # TODO needs code changes to enable
+    - err113 # TODO needs code changes to enable
+
+linters-settings:
+  gomoddirectives:
+    # Allow local `replace` directives. Default is false.
+    replace-local: true
+
+  cyclop:
+    max-complexity: 15
+
+  goheader:
+    values:
+      const:
+        COMPANY: Cisco Systems, Inc.
+      regexp:
+        YEAR: 202[4-5]
+    template: |-
+      SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+      SPDX-License-Identifier: Apache-2.0

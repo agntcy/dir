@@ -300,7 +300,7 @@ tasks:
         sh: find . -name go.mod -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
-        cmd: echo "Running golangci-lint in {{.ITEM}}" && (cd {{.ITEM}} && {{.GOLANGCI_LINT_BIN}} run --timeout 5m)
+        cmd: echo "Running golangci-lint in {{.ITEM}}" && (cd {{.ITEM}} && {{.GOLANGCI_LINT_BIN}} run --config {{.ROOT_DIR}}/.golangci.yml)
 
   lint:buf:
     desc: Run Buf linters
