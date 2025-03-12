@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -85,7 +86,7 @@ func TestGetRuntimeInfo(t *testing.T) {
 
 			if tt.expectedVersion != "" && err == nil {
 				assert.Equal(t, tt.expectedVersion, ret.Version)
-				assert.Equal(t, "python", ret.Language)
+				assert.Equal(t, analyzer.Python, ret.Language)
 			}
 
 			if tt.wantErr && err == nil {

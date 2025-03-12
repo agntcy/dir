@@ -30,20 +30,16 @@ var keyTypeMapping = map[string]string{
 }
 
 const (
-	// ExtensionName is the name of the extension.
-	ExtensionName = "crewai"
-	// ExtensionVersion is the version of the extension.
-	ExtensionVersion = "v0.0.0"
+	PluginName    = "crewai"
+	PluginVersion = "v0.0.0"
 )
-
-type ExtensionSpecs map[string]string
 
 type crewAI struct {
 	path        string
 	ignorePaths []string
 }
 
-func New(path string, ignore []string) types.ExtensionBuilder {
+func New(path string, ignore []string) types.Builder {
 	return &crewAI{
 		path:        path,
 		ignorePaths: ignore,
@@ -51,7 +47,7 @@ func New(path string, ignore []string) types.ExtensionBuilder {
 }
 
 //nolint:gocognit,cyclop
-func (c *crewAI) Build(_ context.Context) (*types.AgentExtension, error) {
+func (c *crewAI) Build(_ context.Context) ([]*types.AgentExtension, error) {
 	metadata := make(map[string]string)
 
 	// open folder
@@ -133,9 +129,11 @@ func (c *crewAI) Build(_ context.Context) (*types.AgentExtension, error) {
 		return nil, fmt.Errorf("failed to process file tree: %w", err)
 	}
 
-	return &types.AgentExtension{
-		Name:    ExtensionName,
-		Version: ExtensionVersion,
-		Specs:   metadata,
+	return []*types.AgentExtension{
+		{
+			Name:    PluginName,
+			Version: PluginVersion,
+			Specs:   metadata,
+		},
 	}, nil
 }

@@ -27,8 +27,8 @@ type Model struct {
 	Name       string      `yaml:"name"`
 	Version    string      `yaml:"version"`
 	Authors    []string    `yaml:"authors"`
-	Locators   []Locator   `yaml:"locators"`
 	Skills     []string    `yaml:"skills"`
+	Locators   []Locator   `yaml:"locators"`
 	Extensions []Extension `yaml:"extensions"`
 }
 

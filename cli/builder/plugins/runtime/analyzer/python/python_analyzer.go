@@ -17,10 +17,6 @@ import (
 	"go.uber.org/multierr"
 )
 
-const (
-	language = "python"
-)
-
 // no version found in pyproject.toml, Pipfile, or requirements.txt.
 var errNoVersion = errors.New("no version found in file")
 
@@ -66,7 +62,7 @@ func getRuntimeInfo(path string) (analyzer.RuntimeInfo, error) {
 	// by the image SBOM, but for now we are only looking at the source code
 	ret, err := resolveFileSystemPath(path)
 	if err == nil {
-		ret.Language = language
+		ret.Language = analyzer.Python
 	}
 
 	return ret, err

@@ -30,9 +30,15 @@ type SBOM struct {
 
 // RuntimeInfo represents the minimal runtime version required.
 type RuntimeInfo struct {
-	Language string `json:"language"`
-	Version  string `json:"version,omitempty"`
+	Language LanguageType `json:"language"`
+	Version  string       `json:"version,omitempty"`
 }
+
+type LanguageType string
+
+const (
+	Python LanguageType = "python"
+)
 
 // Analyzer is the interface that wraps the methods required to analyze packages.
 type Analyzer interface {

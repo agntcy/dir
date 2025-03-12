@@ -18,10 +18,8 @@ import (
 )
 
 const (
-	// ExtensionName is the name of the extension.
-	ExtensionName = "llmanalyzer"
-	// ExtensionVersion is the version of the extension.
-	ExtensionVersion = "v0.0.0"
+	PluginName    = "llmanalyzer"
+	PluginVersion = "v0.0.0"
 
 	maxRetries = 3
 	prompt     = `You are a source code analyzer that must output ONLY raw JSON.
@@ -58,7 +56,7 @@ type llmanalyzer struct {
 	client      *azopenai.Client
 }
 
-func New(fsPath string, ignorePaths []string) (types.ExtensionBuilder, error) {
+func New(fsPath string, ignorePaths []string) (types.Builder, error) {
 	cfg, err := NewConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load LLMAnalyzer configuration: %w", err)
@@ -84,7 +82,7 @@ func New(fsPath string, ignorePaths []string) (types.ExtensionBuilder, error) {
 	}, nil
 }
 
-func (l *llmanalyzer) Build(ctx context.Context) (*types.AgentExtension, error) {
+func (l *llmanalyzer) Build(ctx context.Context) ([]*types.AgentExtension, error) {
 	filesContent, err := concatenateFiles(l.fsPath, l.ignorePaths, []string{".py", ".yml", ".yaml"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to concatenate files: %w", err)
@@ -122,10 +120,12 @@ func (l *llmanalyzer) Build(ctx context.Context) (*types.AgentExtension, error) 
 		return nil, fmt.Errorf("failed to unmarshal agent specs after %d attempts: %w", maxRetries, lastErr)
 	}
 
-	return &types.AgentExtension{
-		Name:    ExtensionName,
-		Version: ExtensionVersion,
-		Specs:   specs,
+	return []*types.AgentExtension{
+		{
+			Name:    PluginName,
+			Version: PluginVersion,
+			Specs:   specs,
+		},
 	}, nil
 }
 

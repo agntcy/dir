@@ -46,6 +46,6 @@ func (a *AgentExtension) ToAPIExtension() (apicore.Extension, error) {
 	}, nil
 }
 
-type ExtensionBuilder interface {
-	Build(ctx context.Context) (*AgentExtension, error)
+type Builder interface {
+	Build(ctx context.Context) ([]*AgentExtension, error)
 }

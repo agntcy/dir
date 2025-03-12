@@ -8,7 +8,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/framework"
+	"github.com/agntcy/dir/cli/builder/plugins/runtime/language"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,8 +19,14 @@ const (
 	source = "./analyzer/utils/syft/testdata"
 )
 
+var cfg = &config.Config{
+	Builder: config.Builder{
+		Source: source,
+	},
+}
+
 func TestNewRuntime(t *testing.T) {
-	r := New(source)
+	r := New(cfg)
 	assert.NotNil(t, r)
 }
 
@@ -30,34 +39,39 @@ func TestBuildRuntime(t *testing.T) {
 			{Name: "langchain-openai", Version: "0.2.14"},
 		},
 	}
-	expectedLanguage := "python"
 	expectedVersion := ">=3.11,<3.13"
 
-	r := New(source)
+	r := New(cfg)
 	ret, err := r.Build(context.Background())
 	assert.NoError(t, err)
 
-	specs, ok := ret.Specs.(ExtensionSpecs)
+	frameworkSpecs, ok := ret[0].Specs.(framework.ExtensionSpecs)
 	assert.True(t, ok)
-	assert.Equal(t, expectedLanguage, specs.Language)
-	assert.Equal(t, expectedVersion, specs.Version)
-	assert.Equal(t, expectedSBOM, specs.SBOM)
+	assert.Equal(t, expectedSBOM, frameworkSpecs.SBOM)
+
+	languageSpecs, ok := ret[1].Specs.(language.ExtensionSpecs)
+	assert.True(t, ok)
+	assert.Equal(t, analyzer.Python, languageSpecs.Type)
+	assert.Equal(t, expectedVersion, languageSpecs.Version)
 }
 
 func TestBuildRuntimeWithInvalidSource(t *testing.T) {
-	r := New("invalid")
+	cfg.Builder.Source = "invalid"
+	r := New(cfg)
 	_, err := r.Build(context.Background())
 	assert.Error(t, err)
 }
 
 func TestBuildRuntimeWithUnsupportedSource(t *testing.T) {
-	r := New("./analyzer/python/testdata/unsupported")
+	cfg.Builder.Source = "./analyzer/python/testdata/unsupported"
+	r := New(cfg)
 	_, err := r.Build(context.Background())
 	assert.Error(t, err)
 }
 
 func TestBuildRuntimeWithNoVersion(t *testing.T) {
-	r := New("./analyzer/python/testdata/no-version")
+	cfg.Builder.Source = "./analyzer/python/testdata/no-version"
+	r := New(cfg)
 	_, err := r.Build(context.Background())
 	assert.Error(t, err)
 }

@@ -7,12 +7,12 @@ import (
 	"fmt"
 )
 
-func (agent *Agent) ObjectMeta() (*ObjectMeta, error) {
+func (x *Agent) ObjectMeta() (*ObjectMeta, error) {
 	return &ObjectMeta{
 		Type:        ObjectType_OBJECT_TYPE_AGENT,
-		Name:        fmt.Sprintf("%s:%s", agent.GetName(), agent.GetVersion()),
-		Annotations: agent.GetAnnotations(),
-		Digest:      agent.GetDigest(),
+		Name:        fmt.Sprintf("%s:%s", x.GetName(), x.GetVersion()),
+		Annotations: x.GetAnnotations(),
+		Digest:      x.GetDigest(),
 	}, nil
 }
 

@@ -50,5 +50,5 @@ builder:
   # Enable or disable the CrewAI extension
   crewai: false
 
-  # Enable or disable the runtime extension
-  runtime: false
+  # Enable or disable the runtime
+  runtime: true

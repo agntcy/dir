@@ -23,11 +23,11 @@ func TestBuilder(t *testing.T) {
 	builder := New("./testdata", []string{})
 
 	// build
-	gotExtension, err := builder.Build(context.Background())
+	gotExtensions, err := builder.Build(context.Background())
 	assert.NoError(t, err)
 
 	// validate
-	specs, ok := gotExtension.Specs.(map[string]string)
+	specs, ok := gotExtensions[0].Specs.(map[string]string)
 	assert.True(t, ok)
 
 	specs[expectedKey] = expectedValue

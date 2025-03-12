@@ -7,14 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
-	apicore "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var Command = &cobra.Command{
@@ -43,33 +40,24 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to load config file: %w", err)
 	}
 
-	locators, err := cfg.GetAPILocators()
+	builderInstance := builder.NewBuilder(cfg)
+
+	err = builderInstance.RegisterPlugins()
 	if err != nil {
-		return fmt.Errorf("failed to get locators from config: %w", err)
+		return fmt.Errorf("failed to register plugins: %w", err)
 	}
 
-	manager := builder.NewBuilder(cfg)
-
-	err = manager.RegisterExtensions()
+	agent, err := builderInstance.BuildUserAgent()
 	if err != nil {
-		return fmt.Errorf("failed to register extensions: %w", err)
+		return fmt.Errorf("failed to build user agent: %w", err)
 	}
 
-	extensions, err := manager.Run(cmd.Context())
+	builderAgent, err := builderInstance.BuildAgent(cmd.Context())
 	if err != nil {
-		return fmt.Errorf("failed to run extension manager: %w", err)
+		return fmt.Errorf("failed to build plugins: %w", err)
 	}
 
-	// Create agent data model
-	agent := &apicore.Agent{
-		Name:       cfg.Model.Name,
-		Version:    cfg.Model.Version,
-		Authors:    cfg.Model.Authors,
-		CreatedAt:  timestamppb.New(time.Now()),
-		Skills:     cfg.Model.Skills,
-		Locators:   locators,
-		Extensions: extensions,
-	}
+	agent.Merge(builderAgent)
 
 	// Construct output
 	agentRaw, err := json.MarshalIndent(agent, "", "  ")

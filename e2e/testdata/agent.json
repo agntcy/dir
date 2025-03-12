@@ -6,8 +6,8 @@
     "author2"
   ],
   "created_at": {
-    "seconds": 1741358840,
-    "nanos": 173883000
+    "seconds": 1741894330,
+    "nanos": 760930000
   },
   "skills": [
     "skill1",
@@ -28,6 +28,45 @@
     }
   ],
   "extensions": [
+    {
+      "name": "oasf.agntcy.org/features/runtime/framework",
+      "version": "v0.0.0",
+      "specs": {
+        "sbom": {
+          "name": "marketing-strategy",
+          "packages": [
+            {
+              "name": "crewai",
+              "version": "0.55.2"
+            },
+            {
+              "name": "langchain",
+              "version": "0.2.16"
+            },
+            {
+              "name": "langchain-ollama",
+              "version": "0.1.3"
+            },
+            {
+              "name": "langchain-openai",
+              "version": "0.1.25"
+            },
+            {
+              "name": "langgraph",
+              "version": "0.2.34"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/runtime/language",
+      "version": "v0.0.0",
+      "specs": {
+        "type": "python",
+        "version": "\u003e=3.11,\u003c3.13"
+      }
+    },
     {
       "name": "license",
       "version": "v1.0.0",

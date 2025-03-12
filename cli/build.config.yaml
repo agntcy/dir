@@ -42,6 +42,24 @@ model:
         key1: "value1"
         key2: "value2"
 
+    # Framework related configurations
+    - name: "oasf.agntcy.org/features/runtime/framework"
+      version: "v0.0.0"
+      specs:
+        # The type of the framework, valid values are: "crewai", "autogen", "langchain", "llamaindex"
+        type: "crewai"
+        # The version of the framework library
+        version: "0.102.0"
+
+    # Language related configurations
+    - name: "oasf.agntcy.org/features/runtime/language"
+      version: "v0.0.0"
+      specs:
+        # The programming language of the agent
+        type: "python"
+        # The version of the programming language
+        version: "3.12.0"
+
 builder:
   # Source code of the agent
   source: "path/to/source"
@@ -56,5 +74,5 @@ builder:
   # Enable or disable the CrewAI extension
   crewai: false
 
-  # Enable or disable the runtime extension
+  # Enable or disable the runtime
   runtime: false
