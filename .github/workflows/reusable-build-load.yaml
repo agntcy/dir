@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 # SPDX-License-Identifier: Apache-2.0
 
-name: Build and Push
+name: Build and Load
 
 on:
   workflow_call:
@@ -9,7 +9,7 @@ on:
       bake_target:
         required: true
         type: string
-        description: "Bake target to build and push"
+        description: "Bake target to build and load"
       image_repo:
         required: true
         type: string
@@ -20,8 +20,8 @@ on:
         description: "Image tag to use."
 
 jobs:
-  build-and-push:
-    name: Build and Push
+  build-and-load:
+    name: Build and Load
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -60,10 +60,12 @@ jobs:
             type=raw,value=${{ inputs.image_tag }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
-      - name: Create cache directory
-        run: mkdir -p /tmp/.buildx-cache
+      - name: Create cache and artifacts directories
+        run: |
+          mkdir -p /tmp/.buildx-cache
+          mkdir /tmp/artifacts
 
-      - name: Build and push
+      - name: Build
         uses: docker/bake-action@a4d7f0b5b91c14a296d792d4ec53a9db17f02e67 # v5.5.0
         with:
           files: |
@@ -72,8 +74,17 @@ jobs:
           targets: ${{ inputs.bake_target }}
           provenance: false
           set: |
-            *.output=type=registry
+            *.platform=linux/amd64
+            *.output=type=docker,dest=/tmp/artifacts/${{ inputs.bake_target }}.tar
             *.cache-from=type=local,src=/tmp/.buildx-cache
         env:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
+          DOCKER_BUILD_RECORD_UPLOAD: false
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4.6.1
+        with:
+          name: ${{ inputs.bake_target }}
+          path: /tmp/artifacts/${{ inputs.bake_target }}.tar
+          retention-days: 1

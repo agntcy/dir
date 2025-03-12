@@ -122,12 +122,18 @@ jobs:
           kind create cluster --config $KIND_CONFIG_FILE --name kind
           kubectl cluster-info
 
-      - name: Pull images
-        env:
-          IMAGE_REPO: ${{ inputs.image_repo }}
-          IMAGE_TAG: ${{ inputs.image_tag }}
+      - name: Download artifacts
+        uses: actions/download-artifact@v4.1.9
+        with:
+          path: tmp/artifacts
+          merge-multiple: true
+
+      - name: Load images to local Docker registry
         run: |
-          task pull
+          for image_archive in tmp/artifacts/*.tar; do
+            docker load --input "$image_archive"
+          done
+          docker images
 
       - name: Run end-to-end tests
         env:
