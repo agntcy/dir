@@ -124,9 +124,6 @@ tasks:
   api:test:
     desc: Unit test API code
     dir: ./api
-    vars:
-       # extra args inject additional context into testing e.g. to handle coverage
-       EXTRA_ARGS: "-coverprofile coverage-dir-api.out -json > test-report-dir-api.json"
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
@@ -156,9 +153,6 @@ tasks:
   cli:test:
     desc: Unit test CLI code
     dir: ./cli
-    vars:
-       # extra args inject additional context into testing e.g. to handle coverage
-       EXTRA_ARGS: "-coverprofile coverage-dir-cli.out -json > test-report-dir-cli.json"
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
@@ -168,9 +162,6 @@ tasks:
   client:test:
     desc: Unit test Client code
     dir: ./client
-    vars:
-       # extra args inject additional context into testing e.g. to handle coverage
-       EXTRA_ARGS: "-coverprofile coverage-dir-client.out -json > test-report-dir-client.json"
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
@@ -205,9 +196,6 @@ tasks:
   server:test:
     desc: Unit test Directory server code
     dir: ./server
-    vars:
-       # extra args inject additional context into testing e.g. to handle coverage
-       EXTRA_ARGS: "-coverprofile coverage-dir-server.out -json > test-report-dir-server.json"
     cmds:
       - mkdir -p /tmp/sqlite && touch /tmp/sqlite/dir.db
       - go -C . test ./... {{.EXTRA_ARGS}}
@@ -224,6 +212,22 @@ tasks:
       - server:test
     cmds:
       - echo "Success"
+
+  test:unit:cover:
+    desc: Run all unit tests with coverage and generate reports
+    deps:
+      - task: test:unit:cli
+        vars:
+          EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-cli.out -json > {{.ROOT_DIR}}/test-report-dir-cli.json"
+      - task: test:unit:api
+        vars:
+          EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-api.out -json > {{.ROOT_DIR}}/test-report-dir-api.json"
+      - task: test:unit:client
+        vars:
+          EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-client.out -json > {{.ROOT_DIR}}/test-report-dir-client.json"
+      - task: test:unit:server
+        vars:
+          EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-server.out -json > {{.ROOT_DIR}}/test-report-dir-server.json"
 
   test:e2e:
     desc: Run end-to-end tests
