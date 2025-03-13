@@ -152,8 +152,8 @@ jobs:
     uses: ./.github/workflows/reusable-release.yaml
     with:
       image_repo: ghcr.io/agntcy
-      image_tag: ${{ needs.prepare-build.outputs.image_tag }}
       release_tag: ${{ needs.prepare-build.outputs.release_tag }}
+      bake_targets: ${{ needs.prepare-build.outputs.targets }}
 
   success:
     name: Success

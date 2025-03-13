@@ -10,14 +10,14 @@ on:
         required: true
         type: string
         description: "Image repo to use."
-      image_tag:
-        required: true
-        type: string
-        description: "Image tag to use."
       release_tag:
         required: true
         type: string
         description: "Release tag for all components."
+      bake_targets:
+        required: true
+        type: string
+        description: "Bake targets to build and push"
       helm-version:
         required: false
         default: "3.12.1"
@@ -28,12 +28,11 @@ jobs:
   images:
     name: Images
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        targets: ${{ fromJson(inputs.bake_targets) }}
     steps:
-      - name: Install Skopeo
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y skopeo
-
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
         with:
@@ -51,12 +50,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN  }}
 
       - name: Release images
-        env:
-          IMAGE_REPO: ${{ inputs.image_repo }}
-          IMAGE_TAG: ${{ inputs.image_tag }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-        run: |
-          task release -y
+        uses: ./.github/workflows/reusable-build-push.yaml
+        with:
+          bake_target: ${{ matrix.targets }}
+          image_repo: ${{ inputs.image_repo }}
+          image_tag: ${{ inputs.release_tag }}
 
   chart:
     name: Helm chart
