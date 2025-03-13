@@ -124,8 +124,11 @@ tasks:
   api:test:
     desc: Unit test API code
     dir: ./api
+    vars:
+       # extra args inject additional context into testing e.g. to handle coverage
+       EXTRA_ARGS: "-coverprofile coverage-dir-api.out -json > test-report-dir-api.json"
     cmds:
-      - go -C . test ./...
+      - go -C . test ./... {{.EXTRA_ARGS}}
 
   ##
   ## CLI
@@ -153,8 +156,11 @@ tasks:
   cli:test:
     desc: Unit test CLI code
     dir: ./cli
+    vars:
+       # extra args inject additional context into testing e.g. to handle coverage
+       EXTRA_ARGS: "-coverprofile coverage-dir-cli.out -json > test-report-dir-cli.json"
     cmds:
-      - go -C . test ./...
+      - go -C . test ./... {{.EXTRA_ARGS}}
 
   ##
   ## Client SDK
@@ -162,8 +168,11 @@ tasks:
   client:test:
     desc: Unit test Client code
     dir: ./client
+    vars:
+       # extra args inject additional context into testing e.g. to handle coverage
+       EXTRA_ARGS: "-coverprofile coverage-dir-client.out -json > test-report-dir-client.json"
     cmds:
-      - go -C . test ./...
+      - go -C . test ./... {{.EXTRA_ARGS}}
 
   ##
   ## Server
@@ -196,9 +205,12 @@ tasks:
   server:test:
     desc: Unit test Directory server code
     dir: ./server
+    vars:
+       # extra args inject additional context into testing e.g. to handle coverage
+       EXTRA_ARGS: "-coverprofile coverage-dir-server.out -json > test-report-dir-server.json"
     cmds:
       - mkdir -p /tmp/sqlite && touch /tmp/sqlite/dir.db
-      - go -C . test ./...
+      - go -C . test ./... {{.EXTRA_ARGS}}
 
   ##
   ## Testing
