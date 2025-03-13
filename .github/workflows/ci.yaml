@@ -118,7 +118,7 @@ jobs:
         id: targets
         uses: docker/bake-action/subaction/list-targets@a4d7f0b5b91c14a296d792d4ec53a9db17f02e67 # v5.5.0
 
-  build-push:
+  build-load:
     name: ${{ matrix.targets }}
     needs:
       - prepare-build
@@ -126,7 +126,7 @@ jobs:
       fail-fast: false
       matrix:
         targets: ${{ fromJson(needs.prepare-build.outputs.targets) }}
-    uses: ./.github/workflows/reusable-build-push.yaml
+    uses: ./.github/workflows/reusable-build-load.yaml
     with:
       bake_target: ${{ matrix.targets }}
       image_repo: ghcr.io/agntcy
@@ -136,7 +136,7 @@ jobs:
     name: Test
     needs:
       - prepare-build
-      - build-push
+      - build-load
     uses: ./.github/workflows/reusable-test.yaml
     with:
       image_repo: ghcr.io/agntcy
@@ -147,7 +147,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     needs:
       - prepare-build
-      - build-push
+      - build-load
       - test
     uses: ./.github/workflows/reusable-release.yaml
     with:
@@ -162,7 +162,7 @@ jobs:
     if: ${{ !cancelled() && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'failure') }}
     needs:
       - prepare-build
-      - build-push
+      - build-load
       - test
       - release
     runs-on: ubuntu-latest
