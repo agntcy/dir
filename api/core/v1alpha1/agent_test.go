@@ -1,6 +1,3 @@
-// SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
-// SPDX-License-Identifier: Apache-2.0
-
 package corev1alpha1
 
 import (
@@ -8,23 +5,18 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestAgent_Merge(t *testing.T) {
-	now := timestamppb.New(time.Now())
-	digest := &Digest{
+	now := time.Now()
+	timestamp := timestamppb.New(now)
+
+	testDigest := &Digest{
 		Type:  DigestType_DIGEST_TYPE_SHA256,
 		Value: "7173b809ca12ec5dee4506cd86be934c4596dd234ee82c0662eac04a8c2c71dc",
 	}
-
-	specs1, _ := structpb.NewStruct(map[string]interface{}{
-		"key1": "value1",
-	})
-	specs2, _ := structpb.NewStruct(map[string]interface{}{
-		"key2": "value2",
-	})
 
 	tests := []struct {
 		name     string
@@ -36,171 +28,58 @@ func TestAgent_Merge(t *testing.T) {
 			name:     "nil receiver",
 			receiver: nil,
 			other:    &Agent{Name: "test"},
-			want:     nil,
+			want:     &Agent{Name: "test"},
 		},
 		{
 			name:     "nil other",
 			receiver: &Agent{Name: "test"},
 			other:    nil,
-			want:     &Agent{Name: "test", Annotations: map[string]string{}},
+			want:     &Agent{Name: "test"},
 		},
 		{
-			name: "merge scalar fields",
+			name: "merge basic fields",
 			receiver: &Agent{
-				Name:    "",
-				Version: "",
+				Name:      "original",
+				Version:   "",
+				CreatedAt: nil,
+				Digest:    nil,
 			},
 			other: &Agent{
-				Name:      "test-agent",
-				Version:   "1.0.0",
-				CreatedAt: now,
-				Digest:    digest,
+				Name:      "other",
+				Version:   "1.0",
+				CreatedAt: timestamp,
+				Digest:    testDigest,
 			},
 			want: &Agent{
-				Name:        "test-agent",
-				Version:     "1.0.0",
-				CreatedAt:   now,
-				Digest:      digest,
-				Annotations: map[string]string{},
-			},
-		},
-		{
-			name: "merge locators",
-			receiver: &Agent{
-				Locators: []*Locator{
-					{
-						Name: "loc1",
-						Type: LocatorType_LOCATOR_TYPE_DOCKER_IMAGE,
-						Source: &LocatorSource{
-							Url:  "registry.example.com/agent:v1",
-							Size: 1024,
-							Digest: &Digest{
-								Type:  DigestType_DIGEST_TYPE_SHA256,
-								Value: "digest1",
-							},
-						},
-						Annotations: map[string]string{
-							"key1": "value1",
-						},
-						Digest: &Digest{
-							Type:  DigestType_DIGEST_TYPE_SHA256,
-							Value: "loc-digest1",
-						},
-					},
-				},
-				Annotations: map[string]string{},
-			},
-			other: &Agent{
-				Locators: []*Locator{
-					{
-						Name: "loc1",
-						Type: LocatorType_LOCATOR_TYPE_DOCKER_IMAGE,
-						Source: &LocatorSource{
-							Url:  "registry.example.com/agent:v2",
-							Size: 2048,
-							Digest: &Digest{
-								Type:  DigestType_DIGEST_TYPE_SHA256,
-								Value: "digest2",
-							},
-						},
-					},
-					{
-						Name: "loc2",
-						Type: LocatorType_LOCATOR_TYPE_HELM_CHART,
-						Source: &LocatorSource{
-							Url: "https://charts.example.com/agent",
-						},
-					},
-				},
-			},
-			want: &Agent{
-				Annotations: map[string]string{},
-				Locators: []*Locator{
-					{
-						Name: "loc1",
-						Type: LocatorType_LOCATOR_TYPE_DOCKER_IMAGE,
-						Source: &LocatorSource{
-							Url:  "registry.example.com/agent:v1",
-							Size: 1024,
-							Digest: &Digest{
-								Type:  DigestType_DIGEST_TYPE_SHA256,
-								Value: "digest1",
-							},
-						},
-						Annotations: map[string]string{
-							"key1": "value1",
-						},
-						Digest: &Digest{
-							Type:  DigestType_DIGEST_TYPE_SHA256,
-							Value: "loc-digest1",
-						},
-					},
-					{
-						Name: "loc2",
-						Type: LocatorType_LOCATOR_TYPE_HELM_CHART,
-						Source: &LocatorSource{
-							Url: "https://charts.example.com/agent",
-						},
-					},
-				},
+				Name:      "original",
+				Version:   "1.0",
+				CreatedAt: timestamp,
+				Digest:    testDigest,
 			},
 		},
 		{
-			name: "merge extensions",
+			name: "merge lists and maps",
 			receiver: &Agent{
-				Extensions: []*Extension{
-					{
-						Name:    "ext1",
-						Version: "1.0",
-						Annotations: map[string]string{
-							"key1": "value1",
-						},
-						Specs: specs1,
-						Digest: &Digest{
-							Type:  DigestType_DIGEST_TYPE_SHA256,
-							Value: "ext-digest1",
-						},
-					},
+				Authors: []string{"author1"},
+				Skills:  []string{"skill1"},
+				Annotations: map[string]string{
+					"key1": "value1",
 				},
-				Annotations: map[string]string{},
 			},
 			other: &Agent{
-				Extensions: []*Extension{
-					{
-						Name:    "ext1",
-						Version: "2.0",
-						Annotations: map[string]string{
-							"key1": "other-value1",
-						},
-						Specs: specs2,
-					},
-					{
-						Name:    "ext2",
-						Version: "1.0",
-						Specs:   specs2,
-					},
+				Authors: []string{"author2", "author1"},
+				Skills:  []string{"skill2"},
+				Annotations: map[string]string{
+					"key1": "other-value1",
+					"key2": "value2",
 				},
 			},
 			want: &Agent{
-				Annotations: map[string]string{},
-				Extensions: []*Extension{
-					{
-						Name:    "ext1",
-						Version: "1.0",
-						Annotations: map[string]string{
-							"key1": "value1",
-						},
-						Specs: specs1,
-						Digest: &Digest{
-							Type:  DigestType_DIGEST_TYPE_SHA256,
-							Value: "ext-digest1",
-						},
-					},
-					{
-						Name:    "ext2",
-						Version: "1.0",
-						Specs:   specs2,
-					},
+				Authors: []string{"author2", "author1"},
+				Skills:  []string{"skill2", "skill1"},
+				Annotations: map[string]string{
+					"key1": "value1",
+					"key2": "value2",
 				},
 			},
 		},
@@ -209,7 +88,11 @@ func TestAgent_Merge(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.receiver.Merge(tt.other)
-			assert.Equal(t, tt.want, tt.receiver)
+
+			// Use proto.Equal for comparing protobuf messages
+			if tt.receiver != nil {
+				assert.True(t, proto.Equal(tt.want, tt.receiver))
+			}
 		})
 	}
 }

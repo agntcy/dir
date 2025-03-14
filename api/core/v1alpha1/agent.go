@@ -18,15 +18,43 @@ func removeDuplicates[T comparable](slice []T) []T {
 	return result
 }
 
+func firstNonEmptyString(first, second string) string {
+	if first != "" {
+		return first
+	}
+	return second
+}
+
+func mergeItems[T any](receiverItems, otherItems []*T, getName func(*T) string) []*T {
+	itemMap := make(map[string]*T)
+
+	// Add other's items first
+	for _, item := range otherItems {
+		if item != nil {
+			itemMap[getName(item)] = item
+		}
+	}
+
+	// Override with receiver's items
+	for _, item := range receiverItems {
+		if item != nil {
+			itemMap[getName(item)] = item
+		}
+	}
+
+	mergedItems := make([]*T, 0, len(itemMap))
+	for _, item := range itemMap {
+		mergedItems = append(mergedItems, item)
+	}
+
+	return mergedItems
+}
+
 //nolint:gocognit,cyclop
 func (x *Agent) Merge(other *Agent) {
 	if x == nil {
+		x = other
 		return
-	}
-
-	// Merge annotations, keeping receiver's values when keys conflict
-	if x.GetAnnotations() == nil {
-		x.Annotations = make(map[string]string)
 	}
 
 	if other == nil {
@@ -34,13 +62,8 @@ func (x *Agent) Merge(other *Agent) {
 	}
 
 	// Only use other's scalar fields if receiver doesn't have them set
-	if x.GetName() == "" {
-		x.Name = other.GetName()
-	}
-
-	if x.GetVersion() == "" {
-		x.Version = other.GetVersion()
-	}
+	x.Name = firstNonEmptyString(x.GetName(), other.GetName())
+	x.Version = firstNonEmptyString(x.GetVersion(), other.GetVersion())
 
 	if x.GetCreatedAt() == nil {
 		x.CreatedAt = other.GetCreatedAt()
@@ -59,6 +82,11 @@ func (x *Agent) Merge(other *Agent) {
 		x.Skills = removeDuplicates(append(other.GetSkills(), x.GetSkills()...))
 	}
 
+	// Merge annotations, keeping receiver's values when keys conflict
+	if x.GetAnnotations() == nil {
+		x.Annotations = make(map[string]string)
+	}
+
 	for k, v := range other.GetAnnotations() {
 		if _, exists := x.GetAnnotations()[k]; !exists {
 			x.Annotations[k] = v
@@ -67,49 +95,23 @@ func (x *Agent) Merge(other *Agent) {
 
 	// Merge Locators, keeping receiver's values when names conflict
 	if len(other.GetLocators()) > 0 {
-		locatorMap := make(map[string]*Locator)
-
-		// Add other's locators first
-		for _, loc := range other.GetLocators() {
-			if loc != nil {
-				locatorMap[loc.GetName()] = loc
-			}
-		}
-
-		// Override with receiver's locators
-		for _, loc := range x.GetLocators() {
-			if loc != nil {
-				locatorMap[loc.GetName()] = loc
-			}
-		}
-
-		x.Locators = make([]*Locator, 0, len(locatorMap))
-		for _, loc := range locatorMap {
-			x.Locators = append(x.GetLocators(), loc)
-		}
+		x.Locators = mergeItems(
+			x.GetLocators(),
+			other.GetLocators(),
+			func(locator *Locator) string {
+				return locator.GetName()
+			},
+		)
 	}
 
 	// Merge Extensions, keeping receiver's values when names conflict
 	if len(other.GetExtensions()) > 0 {
-		extensionMap := make(map[string]*Extension)
-
-		// Add other's extensions first
-		for _, ext := range other.GetExtensions() {
-			if ext != nil {
-				extensionMap[ext.GetName()] = ext
-			}
-		}
-
-		// Override with receiver's extensions
-		for _, ext := range x.GetExtensions() {
-			if ext != nil {
-				extensionMap[ext.GetName()] = ext
-			}
-		}
-
-		x.Extensions = make([]*Extension, 0, len(extensionMap))
-		for _, ext := range extensionMap {
-			x.Extensions = append(x.Extensions, ext)
-		}
+		x.Extensions = mergeItems(
+			x.GetExtensions(),
+			other.GetExtensions(),
+			func(extension *Extension) string {
+				return extension.GetName()
+			},
+		)
 	}
 }
