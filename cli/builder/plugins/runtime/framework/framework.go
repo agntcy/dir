@@ -20,10 +20,10 @@ const (
 type Type string
 
 const (
-	CrewAI    Type = "crewai"
-	Autogen   Type = "autogen"
+	CrewAI     Type = "crewai"
+	Autogen    Type = "autogen"
 	Llamaindex Type = "llama-index"
-	Langchain Type = "langchain"
+	Langchain  Type = "langchain"
 )
 
 type ExtensionSpecs struct {
