@@ -6,7 +6,7 @@ replace github.com/agntcy/dir/api => ../api
 
 require (
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
-	github.com/agntcy/dir/api v0.1.3
+	github.com/agntcy/dir/api v0.1.4
 	github.com/dep2p/libp2p v0.0.6
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/opencontainers/go-digest v1.0.0
