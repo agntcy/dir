@@ -68,11 +68,11 @@ builder:
   source-ignore:
     - ".venv/"
 
-  # Enable or disable the LLM analyzer extension
+  # Enable or disable the LLMAnalyzer plugin
   llmanalyzer: false
 
-  # Enable or disable the CrewAI extension
+  # Enable or disable the CrewAI plugin
   crewai: false
 
-  # Enable or disable the runtime
+  # Enable or disable the runtime plugin
   runtime: false

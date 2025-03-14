@@ -57,6 +57,8 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to build plugins: %w", err)
 	}
 
+	// Merge Agent Model from user config with Agent Model from plugins
+	// User model will override plugin model
 	agent.Merge(builderAgent)
 
 	// Construct output
