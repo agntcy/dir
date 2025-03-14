@@ -54,9 +54,6 @@ func mergeItems[T any](receiverItems, otherItems []*T, getName func(*T) string) 
 //nolint:gocognit,cyclop
 func (x *Agent) Merge(other *Agent) {
 	if x == nil {
-		//nolint:staticcheck
-		x = other
-
 		return
 	}
 
