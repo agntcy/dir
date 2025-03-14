@@ -22,7 +22,7 @@ type Type string
 const (
 	CrewAI    Type = "crewai"
 	Autogen   Type = "autogen"
-	Llmaindex Type = "llma-index"
+	Llamaindex Type = "llama-index"
 	Langchain Type = "langchain"
 )
 

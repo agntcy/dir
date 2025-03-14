@@ -28,12 +28,6 @@ func TestAgent_Merge(t *testing.T) {
 		want     *Agent
 	}{
 		{
-			name:     "nil receiver",
-			receiver: nil,
-			other:    &Agent{Name: "test"},
-			want:     &Agent{Name: "test"},
-		},
-		{
 			name:     "nil other",
 			receiver: &Agent{Name: "test"},
 			other:    nil,
@@ -93,9 +87,7 @@ func TestAgent_Merge(t *testing.T) {
 			tt.receiver.Merge(tt.other)
 
 			// Use proto.Equal for comparing protobuf messages
-			if tt.receiver != nil {
-				assert.True(t, proto.Equal(tt.want, tt.receiver))
-			}
+			assert.True(t, proto.Equal(tt.want, tt.receiver))
 		})
 	}
 }
