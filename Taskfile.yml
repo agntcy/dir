@@ -206,8 +206,8 @@ tasks:
   test:unit:
     desc: Run unit tests on codebase
     deps: # run in parallel
-      - api:test
       - cli:test
+      - api:test
       - client:test
       - server:test
     cmds:
@@ -216,16 +216,16 @@ tasks:
   test:unit:cover:
     desc: Run all unit tests with coverage and generate reports
     deps:
-      - task: test:unit:cli
+      - task: cli:test
         vars:
           EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-cli.out -json > {{.ROOT_DIR}}/test-report-dir-cli.json"
-      - task: test:unit:api
+      - task: api:test
         vars:
           EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-api.out -json > {{.ROOT_DIR}}/test-report-dir-api.json"
-      - task: test:unit:client
+      - task: client:test
         vars:
           EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-client.out -json > {{.ROOT_DIR}}/test-report-dir-client.json"
-      - task: test:unit:server
+      - task: server:test
         vars:
           EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-server.out -json > {{.ROOT_DIR}}/test-report-dir-server.json"
 
