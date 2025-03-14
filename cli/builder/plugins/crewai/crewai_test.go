@@ -5,7 +5,6 @@
 package crewai
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +22,7 @@ func TestBuilder(t *testing.T) {
 	builder := New("./testdata", []string{})
 
 	// build
-	gotExtensions, err := builder.Build(context.Background())
+	gotExtensions, err := builder.Build(t.Context())
 	assert.NoError(t, err)
 
 	// validate

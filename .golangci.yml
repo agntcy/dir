@@ -9,7 +9,6 @@ linters:
   # Disable specific linter
   # https://golangci-lint.run/usage/linters/#disabled-by-default
   disable:
-    - exportloopref # deprecated
     - funlen # Allow long functions
     - lll # Allow long lines
     - gochecknoglobals # Allow global variables
@@ -24,6 +23,7 @@ linters:
     - depguard # Allow all package imports
     - testpackage # Allow not having a test package
     - err113
+    - tenv # deprecated
 
 linters-settings:
   gomoddirectives:

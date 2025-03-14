@@ -4,7 +4,6 @@
 package database
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -23,7 +22,7 @@ func TestDatabase(t *testing.T) {
 	}
 
 	// Create a context
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a key
 	key := ds.NewKey("/agents/blobs/sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")

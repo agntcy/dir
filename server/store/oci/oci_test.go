@@ -6,7 +6,6 @@ package oci
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"testing"
 
@@ -18,7 +17,7 @@ func TestStore(t *testing.T) {
 	// Skip manual test that requires zot to be running
 	t.SkipNow()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	config := Config{
 		RegistryAddress: "localhost:5000",
 		RepositoryName:  "test",

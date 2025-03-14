@@ -49,10 +49,7 @@ func TestNewConfig(t *testing.T) {
 		ttp := tt
 		t.Run(ttp.name, func(t *testing.T) {
 			for envKey, envVal := range ttp.envVars {
-				err := os.Setenv(envKey, envVal)
-				if err != nil {
-					return
-				}
+				t.Setenv(envKey, envVal)
 			}
 
 			t.Cleanup(func() {

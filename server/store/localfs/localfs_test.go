@@ -6,7 +6,6 @@ package localfs
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"os"
 	"testing"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create store
 	store, err := New(os.TempDir())
