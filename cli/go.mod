@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/cli
 
-go 1.23.2
+go 1.24.1
 
 replace (
 	github.com/agntcy/dir/api => ../api

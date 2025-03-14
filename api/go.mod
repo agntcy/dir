@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/api
 
-go 1.23.2
+go 1.24.1
 
 require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.0
