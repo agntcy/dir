@@ -10,7 +10,7 @@ provenance, integrity and ownership.
 
 - _Standards_ - Defines standard schema for data representation and exchange.
 - _Dev Kit_ - Tooling to facilitate API interaction and generation of agent data models from different sources.
-- _Extensions_ - Supports model schema and build extensions to enrich agent data models for custom use-cases.
+- _Plugins_ - Supports model schema and build plugins to enrich agent data models for custom use-cases.
 - _Announce_ - Enables publication of records to the network.
 - _Discover_ - Listen and retreive records published on the network.
 - _Search_ - Supports searching of records across the network that satisfy given attributes and constraints.
@@ -24,7 +24,7 @@ Main software components:
 
 - [api](./api) - gRPC specification for models and services
 - [cli](./cli) - command line tooling for interacting with services
-- [cli/builder/extensions](./cli/builder/extensions) - schema specification and tooling for model extensions
+- [cli/builder/plugins](./cli/builder/plugins) - schema specification and tooling for model plugins
 - [client](./client) - client SDK tooling for interacting with services
 - [e2e](./e2e) - end-to-end testing framework
 - [server](./server) - node implementation for distributed services that provide storage and networking capabilities
@@ -111,17 +111,11 @@ The `build` command is used to compile and build the agent data model.
 
 Usage:
 ```bash
-dirctl build [options] <path-to-agent>
+dirctl build [options]
 ```
 
 Options:
-- `--name` : Name of the agent.
-- `--version` : Version of the agent.
-- `--locator` : Artifact locators to set for the agent. Each locator should be in the format `type:url`. Example usage: `--locator type1:url1 --locator type2:url2`. Supported types: `docker-image`, `python-package`, `helm-chart`, `source-code` and `binary`.
-- `--author` : Authors to set for the agent. Overrides builder defaults. Example usage: `--author author1 --author author2`.
-- `--llmanalyzer` : Enable LLMAnalyzer build extension.
-- `--crewai` : Enable CrewAI build extension.
-- `--config-file` : Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML. Example template: cli/cmd/build/config/build.config.yaml.
+- `--config-file` : Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML. Example template: cli/build.config.yaml.
 
 ### Push Command
 
