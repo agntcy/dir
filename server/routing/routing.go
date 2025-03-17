@@ -20,7 +20,7 @@ func New(opts types.APIOptions) (types.RoutingAPI, error) {
 	}, nil
 }
 
-func (r *routing) List(ctx context.Context, key types.Key, filters string, readerFn func(types.Key, coretypes.ObjectRef) error) error {
+func (r *routing) List(context.Context, types.Key, string, func(types.Key, coretypes.ObjectRef) error) error {
 	panic("unimplemented")
 }
 

@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	// Used for dir-specific annotations
+	// Used for dir-specific annotations.
 	manifestDirObjectKeyPrefix = "org.agntcy.dir"
 	manifestDirObjectTypeKey   = manifestDirObjectKeyPrefix + "/type"
 )
@@ -126,7 +126,7 @@ func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.
 		Digest:      blobRef.GetDigest(),
 		Type:        ref.GetType(),
 		Size:        ref.GetSize(),
-		Annotations: cleanMeta(ref.Annotations),
+		Annotations: cleanMeta(ref.GetAnnotations()),
 	}, nil
 }
 
@@ -209,7 +209,7 @@ func (s *store) Delete(_ context.Context, _ *coretypes.ObjectRef) error {
 	return nil
 }
 
-// pushData pushes raw data to OCI
+// pushData pushes raw data to OCI.
 func (s *store) pushData(ctx context.Context, ref *coretypes.ObjectRef, rd io.Reader) (*coretypes.ObjectRef, ocispec.Descriptor, error) {
 	// push blob
 	blobDesc := ocispec.Descriptor{

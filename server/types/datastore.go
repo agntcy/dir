@@ -9,6 +9,8 @@ import (
 
 // Key provides a unified path-based interface for all objects.
 // All objects (and their properties) in the system are identified by a key.
+// Note: This key schema MUST be used for all object, including storage, routing,
+// and any other internal data to allow interoperability between different services.
 //
 // TODO: define key logic for transformation and querying between services
 // TODO: expand interface if needed with Dir-specific data

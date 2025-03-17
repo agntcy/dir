@@ -18,14 +18,12 @@ import (
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 )
 
-// Node represents a p2p node that can run the Routing API via DHT.
-//
-// TODO: connect p2p interface to serve the Routing API
+// TODO: connect p2p interface to serve the Routing API.
 type Node struct {
 	node host.Host
 }
 
-// TODO: make ctor more configurable with options
+// TODO: make ctor more configurable with options.
 func NewNode() (*Node, func() error, error) {
 	// Select keypair
 	priv, _, err := crypto.GenerateKeyPair(

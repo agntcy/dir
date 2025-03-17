@@ -9,20 +9,8 @@ import "google/protobuf/empty.proto";
 import "core/v1alpha1/object.proto";
 import "routing/v1alpha1/routing.proto";
 
-// FS-def of Agent (v0.0.1, digest, agent):
-// /dir-name -> search over all network
-//    /node-name -> search over all agents
-//        /agent-name -> search over a collection
-//          /v0.1.0: -> search for props on a single
-//   - /extensions
-//     - /identity
-//   - /skills
-//     - /RAG
-//
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
-// Public List: /<dir>/agents/<agent-name>/<agent-version>/locators/helm-chart,docker-image
-// Internal List: /<dir>/agents/*/latest/locators/helm-chart,docker-image
 //
 // Key schema:
 //  - Agents: /agents/<agent-name>

@@ -18,7 +18,7 @@ const (
 	OCI     = Provider("oci")
 )
 
-// TODO: add options for adding cache
+// TODO: add options for adding cache.
 func New(opts types.APIOptions) (types.StoreAPI, error) {
 	switch provider := Provider(opts.Config().Provider); provider {
 	case LocalFS:

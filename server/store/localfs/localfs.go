@@ -58,7 +58,9 @@ func (c *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.
 	// Byte array is allocated on the stack and reused.
 	// Calculate contents hash on the fly.
 	var chunk [4096]byte
+
 	var size uint64
+
 	hasher := sha256.New()
 
 loop:
@@ -81,7 +83,7 @@ loop:
 			if err != nil {
 				return &coretypes.ObjectRef{}, fmt.Errorf("failed to write contents: %w", err)
 			}
-			size += uint64(n)
+			size += uint64(n) //nolint:gosec // We are not dealing with sensitive data here.
 
 			// Update hash (only with the bytes that were read)
 			_, err = hasher.Write(chunk[:n])
@@ -90,6 +92,7 @@ loop:
 			}
 		}
 	}
+
 	_ = contentsFile.Close()
 
 	// Calculate content digest
@@ -104,9 +107,10 @@ loop:
 	metadataRef := &coretypes.ObjectRef{
 		Digest:      digest,
 		Size:        size,
-		Type:        ref.Type,
-		Annotations: ref.Annotations,
+		Type:        ref.GetType(),
+		Annotations: ref.GetAnnotations(),
 	}
+
 	metadataRaw, err := json.Marshal(metadataRef)
 	if err != nil {
 		return &coretypes.ObjectRef{}, fmt.Errorf("failed to process metadata: %w", err)

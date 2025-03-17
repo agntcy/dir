@@ -19,6 +19,7 @@ It serves as a technical document on the specification and implementation of the
   - [Stack](#stack)
   - [Datastore API](#datastore-api)
   - [Considerations](#considerations)
+    - [FS implementation](#fs-implementation)
     - [Replication](#replication)
     - [Availability](#availability)
     - [Security](#security)
@@ -141,7 +142,7 @@ flowchart TD
   subgraph Agents
       Alice --> digest-alice-v1
       Bob .-> digest-Bob-v1
-      Bob .-> digest-Bob-v1
+      Bob .-> digest-Bob-v
   end
 
   subgraph Locators
@@ -171,9 +172,39 @@ It can be supported with any path-based key-value store.
 Its main usage is to provide local data caching, querying, and data synchronisation to remote services.
 
 The current implementation of the Directory relies on the [go-datastore](https://github.com/ipfs/go-datastore).
-This choice is twofold: a) we can build all our APIs by relying solely on the go-datastore, and b) we can be fully reuse the datastore for DHT serving.
+This choice is twofold: a) we can build all our APIs by relying solely on the single go-datastore interface, and b) we can be fully reuse the datastore for DHT serving.
 
 ## Considerations
+
+### FS implementation
+
+This shows how the Directory Protocol can be implemented using filesystem-only representation.
+
+NOTE: This is highly experimental and may not be up to date.
+
+```bash
+
+/<dir>                - network level
+  /<node>             - node level
+    /<agent>          - collection level
+      /blobs          - pushed objects
+        /<digest-A>
+        /<digest-B>
+      /tags           - published objects
+        /latest
+        /<tag-A>
+        /<tag-B>
+      /skills         - list of skills, ie. digests by skill
+        /<skill>
+          /<digest-A>
+      /locators       - list of locators, ie. digests by locator
+        /<locator>
+          /<digest-B>
+      /extensions     - list of extensions, ie. extensions by locator
+        /<extension>
+          /<digest-A>
+          /<digest-B>
+```
 
 ### Replication
 

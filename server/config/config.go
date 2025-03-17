@@ -33,8 +33,8 @@ type Config struct {
 
 	// Provider configuration
 	Provider string         `json:"provider,omitempty" mapstructure:"provider"`
-	LocalFS  localfs.Config `json:"localfs,omitempty" mapstructure:"localfs"`
-	OCI      oci.Config     `json:"oci,omitempty" mapstructure:"oci"`
+	LocalFS  localfs.Config `json:"localfs,omitempty"  mapstructure:"localfs"`
+	OCI      oci.Config     `json:"oci,omitempty"      mapstructure:"oci"`
 }
 
 func LoadConfig() (*Config, error) {

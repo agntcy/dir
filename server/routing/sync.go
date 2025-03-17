@@ -10,6 +10,8 @@ import (
 )
 
 // TODO: implement what happens after publish event, ie. how we sync received data.
-func (r *routing) sync(ctx context.Context, ref *coretypes.ObjectRef) error {
-	panic("unimplemented")
+//
+//nolint:unused
+func (r *routing) sync(context.Context, *coretypes.ObjectRef) error {
+	return nil
 }
