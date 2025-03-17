@@ -34,21 +34,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// FS-def of Agent (v0.0.1, digest, agent):
-// /dir-name -> search over all network
-//
-//	 /node-name -> search over all agents
-//	     /agent-name -> search over a collection
-//	       /v0.1.0: -> search for props on a single
-//	- /extensions
-//	  - /identity
-//	- /skills
-//	  - /RAG
-//
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
-// Public List: /<dir>/agents/<agent-name>/<agent-version>/locators/helm-chart,docker-image
-// Internal List: /<dir>/agents/*/latest/locators/helm-chart,docker-image
 //
 // Key schema:
 //   - Agents: /agents/<agent-name>
@@ -173,21 +160,8 @@ func (x *routingServiceListClient) Recv() (*ListResponse, error) {
 // All implementations should embed UnimplementedRoutingServiceServer
 // for forward compatibility.
 //
-// FS-def of Agent (v0.0.1, digest, agent):
-// /dir-name -> search over all network
-//
-//	 /node-name -> search over all agents
-//	     /agent-name -> search over a collection
-//	       /v0.1.0: -> search for props on a single
-//	- /extensions
-//	  - /identity
-//	- /skills
-//	  - /RAG
-//
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
-// Public List: /<dir>/agents/<agent-name>/<agent-version>/locators/helm-chart,docker-image
-// Internal List: /<dir>/agents/*/latest/locators/helm-chart,docker-image
 //
 // Key schema:
 //   - Agents: /agents/<agent-name>
