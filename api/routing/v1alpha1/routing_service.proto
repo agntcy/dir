@@ -46,11 +46,8 @@ message PublishRequest {
 }
 
 message ListRequest {
-  // Key to be listed
-  Key key = 1;
-
   // Regexp query for sub-keys
-  string query = 2;
+  string query = 1;
 }
 
 message ListResponse {

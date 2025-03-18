@@ -499,7 +499,6 @@ tasks:
 
   deps:tidy:
     desc: Ensure dependencies are up-to-date
-    internal: true
     vars:
       GO_MOD_DIR:
         sh: find . -name go.mod -exec dirname {} \;
