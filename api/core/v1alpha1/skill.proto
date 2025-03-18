@@ -16,16 +16,16 @@ package core.v1alpha1;
 //  Key := 1/10101
 //  Key := Natural Language Processing [1]/Contextual Comprehension [10101]
 message Skill {
+  // Schema/object version.
+  string version = 1;
   // UID of the category.
-  string category_uid = 1;
+  string category_uid = 2;
   // UID of the class.
-  string class_uid = 2;
-  // Name of the category.
-  optional string category_name = 3;
-  // Name of the class.
-  optional string class_name = 4;
+  string class_uid = 3;
   // Additional metadata for this skill.
-  map<string, string> annotations = 5;
-  // Optional schema version.
-  optional string version = 6;
+  map<string, string> annotations = 4;
+  // Optional human-readable name of the category.
+  optional string category_name = 5;
+  // Optional human-readable name of the class.
+  optional string class_name = 6;
 }

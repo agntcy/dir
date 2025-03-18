@@ -12,9 +12,9 @@ message Key {
 
 message Peer {
   // ID of a given peer.
-  bytes id = 1;
+  string id = 1;
   // Multiaddrs for a given peer.
-  repeated bytes addrs = 2;
+  repeated string addrs = 2;
   // Used to signal the sender's connection capabilities to the peer.
   ConnectionType connection = 3;
 }

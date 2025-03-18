@@ -4,6 +4,7 @@ This document defines the Directory protocol, including the data models, service
 It serves as a technical document on the specification and implementation of the protocol.
 
 <!-- TOC -->
+
 - [Architecture](#architecture)
   - [Data Models](#data-models)
     - [Structure](#structure)
@@ -24,6 +25,7 @@ It serves as a technical document on the specification and implementation of the
     - [Availability](#availability)
     - [Security](#security)
     - [Performances](#performances)
+
 <!-- TOC -->
 
 ---
@@ -80,7 +82,7 @@ The interface currently used across the system is defined in [api/store](api/sto
 ### Content digest
 
 The content digest MUST be generated using a [cryptographic hash function](https://en.wikipedia.org/wiki/Cryptographic_hash_function).
-The purpose of the digest is to serve as a **global identifier of arbitrary data** on the storage layer.
+The purpose of the digest is to serve as a __global identifier of arbitrary data__ on the storage layer.
 See more in the [OCI Content Digest](https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests) specs.
 
 ## Network
@@ -92,7 +94,7 @@ Its identity is defined by a private key.
 The node MAY be allowed to work in one of the following **modes of operation**:
 
 - **client** -- The node can interact with the public network, but it does not expose any interfaces to it.
-The interfaces can be exposed only to the local network.
+   The interfaces can be exposed only to the local network.
 - **swarm** -- The node exposes all its interfaces to a subset of nodes on the network.
 - **server** -- The node exposes all its interfaces to the public network.
 
@@ -121,13 +123,15 @@ For example, `Publish(routing.PublishRequest)`.
 
 ### Discovery
 
-The nodes participating in the network MUST be able to **list** published contents using exact match lookup via:
+The nodes participating in the network MUST be able to **list and query** published contents using attribute-based key matching via:
 
 - **name** -- List agents by name
-- **locator** -- List agents by locator types
 - **skill** -- List agents by skills names
+- **locator** -- List agents by locator types
+- **extensions** -- List agents by extension types
 
-Implementations MAY also expose more granular **querying** logic.
+Implementations MUST expose at least skill-based discovery,
+but MAY expose more additional discovery types and more granular querying logic.
 The minimal interface required to implement the Discovery API consists of a method that queries the routing table based on a given request.
 For example, `List(routing.ListRequest)`.
 
@@ -140,20 +144,19 @@ flowchart TD
   Node --> Locators
 
   subgraph Agents
-      Alice --> digest-alice-v1
+      Alice --> digest-Alice-v1
       Bob .-> digest-Bob-v1
-      Bob .-> digest-Bob-v
+      Bob .-> digest-Bob-v2
   end
 
   subgraph Locators
-      helm-chart --> digest-alice-v1
-      python-package .-> digest-Bob-v1
+      helm-chart --> Alice
+      python-package --> Bob
   end
 
   subgraph Skills
       RAG --> Bob
       Text-Summary --> Alice
-      Text-Summary .-> Bob
   end
 ```
 
@@ -172,7 +175,7 @@ It can be supported with any path-based key-value store.
 Its main usage is to provide local data caching, querying, and data synchronisation to remote services.
 
 The current implementation of the Directory relies on the [go-datastore](https://github.com/ipfs/go-datastore).
-This choice is twofold: a) we can build all our APIs by relying solely on the single go-datastore interface, and b) we can be fully reuse the datastore for DHT serving.
+This choice is twofold: a) we can build all our APIs by relying solely on the single go-datastore interface, and b) we can fully reuse the datastore for DHT serving.
 
 ## Considerations
 
@@ -186,24 +189,23 @@ NOTE: This is highly experimental and may not be up to date.
 
 /<dir>                - network level
   /<node>             - node level
-    /<agent>          - collection level
-      /blobs          - pushed objects
-        /<digest-A>
-        /<digest-B>
-      /tags           - published objects
-        /latest
+    /blobs            - pushed objects
+      /<digest-X>
+      /<digest-Y>
+    /<agent>          - collection/repo level
+      version         - repo info file
+      /tags           - published objects (resolves to a digest)
         /<tag-A>
         /<tag-B>
       /skills         - list of skills, ie. digests by skill
         /<skill>
-          /<digest-A>
+          /<digest-X>
       /locators       - list of locators, ie. digests by locator
         /<locator>
-          /<digest-B>
-      /extensions     - list of extensions, ie. extensions by locator
+          /<digest-Y>
+      /extensions     - list of extensions, ie. digests by extension
         /<extension>
-          /<digest-A>
-          /<digest-B>
+          /<digest-X>
 ```
 
 ### Replication
@@ -218,7 +220,7 @@ NOTE: This is highly experimental and may not be up to date.
 
 List of items to be done:
 
-- Add RFC template  
+- Add RFC template
 - Add some estimates for network and data size
 - Provide system requirements
 - DHT considerations

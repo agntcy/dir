@@ -8,6 +8,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/ipfs/go-datastore/query"
 )
 
 type routing struct {
@@ -20,18 +21,10 @@ func New(opts types.APIOptions) (types.RoutingAPI, error) {
 	}, nil
 }
 
-func (r *routing) List(context.Context, types.Key, string, func(types.Key, coretypes.ObjectRef) error) error {
-	panic("unimplemented")
-}
-
-func (r *routing) Lookup(context.Context, types.Key) (*coretypes.ObjectRef, error) {
-	panic("unimplemented")
-}
-
 func (r *routing) Publish(context.Context, *coretypes.ObjectRef) error {
 	panic("unimplemented")
 }
 
-func (r *routing) Resolve(context.Context, types.Key) (<-chan *types.Peer, error) {
+func (r *routing) List(context.Context, query.Query) (*coretypes.ObjectRef, error) {
 	panic("unimplemented")
 }
