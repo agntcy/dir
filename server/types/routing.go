@@ -24,7 +24,7 @@ type RoutingAPI interface {
 
 	// List a given key.
 	// This reads from content datastore.
-	List(context.Context, query.Query) ([]*coretypes.ObjectRef, error)
+	List(context.Context, string) ([]*coretypes.ObjectRef, error)
 
 	// TODO: Resolve all the nodes that are providing this key.
 	// This reads from peer datastore.

@@ -53,7 +53,27 @@ func (c *routingCtlr) Resolve(_ *routingtypes.Key, _ routingtypes.RoutingService
 	panic("implement me")
 }
 
-func (c *routingCtlr) List(_ *routingtypes.ListRequest, _ routingtypes.RoutingService_ListServer) error {
-	// TODO implement me
-	panic("implement me")
+func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.RoutingService_ListServer) error {
+	refs, err := c.routing.List(context.Background(), req.Query)
+	if err != nil {
+		return fmt.Errorf("failed to list: %w", err)
+	}
+
+	items := []*routingtypes.ListResponse_Item{}
+	for _, ref := range refs {
+		items = append(items, &routingtypes.ListResponse_Item{
+			Key:    nil, // TODO: required? if yes, get agent from ref and compute key
+			Peers:  nil, // TODO: implement me when peers are available
+			Record: ref,
+		})
+	}
+
+	if err := srv.Send(
+		&routingtypes.ListResponse{
+			Items: items,
+		}); err != nil {
+		return fmt.Errorf("failed to send ref: %w", err)
+	}
+
+	return nil
 }
