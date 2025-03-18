@@ -4,6 +4,8 @@
 //nolint:mnd
 package corev1alpha1
 
+import "fmt"
+
 func init() {
 	// Override allowed names for locator types
 	LocatorType_name = map[int32]string{
@@ -23,4 +25,8 @@ func init() {
 		"source-code":    4,
 		"binary":         5,
 	}
+}
+
+func (l *Locator) Key() string {
+	return fmt.Sprintf("%s/%s", l.GetType(), l.GetUrl())
 }

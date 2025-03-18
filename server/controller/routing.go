@@ -54,7 +54,7 @@ func (c *routingCtlr) Resolve(_ *routingtypes.Key, _ routingtypes.RoutingService
 }
 
 func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.RoutingService_ListServer) error {
-	refs, err := c.routing.List(context.Background(), req.Query)
+	refs, err := c.routing.List(context.Background(), req.GetQuery())
 	if err != nil {
 		return fmt.Errorf("failed to list: %w", err)
 	}

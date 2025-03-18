@@ -7,7 +7,6 @@ import (
 	"context"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/ipfs/go-datastore/query"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
