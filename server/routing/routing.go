@@ -21,10 +21,10 @@ func New(opts types.APIOptions) (types.RoutingAPI, error) {
 	}, nil
 }
 
-func (r *routing) Publish(context.Context, *coretypes.ObjectRef) error {
+func (r *routing) Publish(context.Context, *coretypes.ObjectRef, *coretypes.Agent) error {
 	panic("unimplemented")
 }
 
-func (r *routing) List(context.Context, query.Query) (*coretypes.ObjectRef, error) {
+func (r *routing) List(context.Context, query.Query) ([]*coretypes.ObjectRef, error) {
 	panic("unimplemented")
 }

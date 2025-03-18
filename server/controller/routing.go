@@ -35,7 +35,7 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 		return nil, errors.New("digest is required")
 	}
 
-	err := c.routing.Publish(ctx, req.GetRecord())
+	err := c.routing.Publish(ctx, req.GetRecord(), &coretypes.Agent{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to publish: %w", err)
 	}

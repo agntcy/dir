@@ -20,11 +20,11 @@ type RoutingAPI interface {
 	// It can perform sync to store the data to other nodes.
 	// For now, we try sync on every publish.
 	// TODO: find a better sync mechanism (buffered sync).
-	Publish(context.Context, *coretypes.ObjectRef) error
+	Publish(context.Context, *coretypes.ObjectRef, *coretypes.Agent) error
 
 	// List a given key.
 	// This reads from content datastore.
-	List(context.Context, query.Query) (*coretypes.ObjectRef, error)
+	List(context.Context, query.Query) ([]*coretypes.ObjectRef, error)
 
 	// TODO: Resolve all the nodes that are providing this key.
 	// This reads from peer datastore.

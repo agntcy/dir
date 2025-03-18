@@ -38,14 +38,14 @@ const (
 // of objects across interconnected network.
 //
 // Key schema:
-//   - Agents: /agents/<agent-name>
-//     Example: /agents/research-agent
-//   - Locators: /<dir>/agents/<agent-name>/locators/<locator-type>/<locator-url>
-//     Example: /agents/research-agent/locators/helm-chart
-//   - Skills: /<dir>/agents/<agent-name>/skills/<skill-name>
-//     Example: /agents/research-agent/skills/RAG
-//   - Extensions: /<dir>/agents/<agent-name>/extensions/<extension-name>
-//     Example: /agents/research-agent/extensions/identity
+//   - Agents: /<agent-name>
+//     Example: /research-agent
+//   - Locators: /<agent-name>/locators/<locator-type>
+//     Example: /research-agent/locators/helm-chart
+//   - Skills: /<agent-name>/skills/<skill-name>
+//     Example: /research-agent/skills/RAG
+//   - Extensions: /<agent-name>/extensions/<extension-name>
+//     Example: /research-agent/extensions/identity
 //
 // Returned objects MAY be fetched from peer node's Store API.
 type RoutingServiceClient interface {
@@ -164,14 +164,14 @@ func (x *routingServiceListClient) Recv() (*ListResponse, error) {
 // of objects across interconnected network.
 //
 // Key schema:
-//   - Agents: /agents/<agent-name>
-//     Example: /agents/research-agent
-//   - Locators: /<dir>/agents/<agent-name>/locators/<locator-type>/<locator-url>
-//     Example: /agents/research-agent/locators/helm-chart
-//   - Skills: /<dir>/agents/<agent-name>/skills/<skill-name>
-//     Example: /agents/research-agent/skills/RAG
-//   - Extensions: /<dir>/agents/<agent-name>/extensions/<extension-name>
-//     Example: /agents/research-agent/extensions/identity
+//   - Agents: /<agent-name>
+//     Example: /research-agent
+//   - Locators: /<agent-name>/locators/<locator-type>
+//     Example: /research-agent/locators/helm-chart
+//   - Skills: /<agent-name>/skills/<skill-name>
+//     Example: /research-agent/skills/RAG
+//   - Extensions: /<agent-name>/extensions/<extension-name>
+//     Example: /research-agent/extensions/identity
 //
 // Returned objects MAY be fetched from peer node's Store API.
 type RoutingServiceServer interface {

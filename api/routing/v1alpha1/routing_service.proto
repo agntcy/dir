@@ -13,14 +13,14 @@ import "routing/v1alpha1/routing.proto";
 // of objects across interconnected network.
 //
 // Key schema:
-//  - Agents: /agents/<agent-name>
-//    Example: /agents/research-agent
-//  - Locators: /<dir>/agents/<agent-name>/locators/<locator-type>/<locator-url>
-//    Example: /agents/research-agent/locators/helm-chart
-//  - Skills: /<dir>/agents/<agent-name>/skills/<skill-name>
-//    Example: /agents/research-agent/skills/RAG
-//  - Extensions: /<dir>/agents/<agent-name>/extensions/<extension-name>
-//    Example: /agents/research-agent/extensions/identity
+//  - Agents: /<agent-name>
+//    Example: /research-agent
+//  - Locators: /<agent-name>/locators/<locator-type>
+//    Example: /research-agent/locators/helm-chart
+//  - Skills: /<agent-name>/skills/<skill-name>
+//    Example: /research-agent/skills/RAG
+//  - Extensions: /<agent-name>/extensions/<extension-name>
+//    Example: /research-agent/extensions/identity
 //
 // Returned objects MAY be fetched from peer node's Store API.
 service RoutingService {
@@ -49,8 +49,8 @@ message ListRequest {
   // Key to be listed
   Key key = 1;
 
-  // Regexp filter for sub-keys
-  string filter = 2;
+  // Regexp query for sub-keys
+  string query = 2;
 }
 
 message ListResponse {
