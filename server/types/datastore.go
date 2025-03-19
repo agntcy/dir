@@ -35,5 +35,5 @@ type Key interface {
 //
 // Ref: https://github.com/ipfs/go-datastore
 type Datastore interface {
-	datastore.Datastore
+	datastore.Batching
 }
