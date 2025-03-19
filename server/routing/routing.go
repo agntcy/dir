@@ -10,6 +10,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	ocidigest "github.com/opencontainers/go-digest"
 )
@@ -30,8 +31,43 @@ func New(opts types.APIOptions) (types.RoutingAPI, error) {
 	}, nil
 }
 
-func (r *routing) Publish(context.Context, *coretypes.ObjectRef, *coretypes.Agent) error {
-	panic("unimplemented")
+func (r *routing) Publish(ctx context.Context, ref *coretypes.ObjectRef, a *coretypes.Agent) error {
+	// Validate
+	if ref.GetType() != coretypes.ObjectType_OBJECT_TYPE_AGENT.String() {
+		return fmt.Errorf("invalid object type: %s", ref.GetType())
+	}
+
+	// Skills
+	for _, s := range a.GetSkills() {
+		k := datastore.NewKey(fmt.Sprintf("skills/%s/%s", s.Key(), ref.GetDigest()))
+
+		err := r.ds.Put(ctx, k, nil)
+		if err != nil {
+			return fmt.Errorf("failed to put skill key: %w", err)
+		}
+	}
+
+	// Locators
+	for _, l := range a.GetLocators() {
+		k := datastore.NewKey(fmt.Sprintf("locators/%s/%s", l.Key(), ref.GetDigest()))
+
+		err := r.ds.Put(ctx, k, nil)
+		if err != nil {
+			return fmt.Errorf("failed to put locator key: %w", err)
+		}
+	}
+
+	// Extensions
+	for _, e := range a.GetExtensions() {
+		k := datastore.NewKey(fmt.Sprintf("extensions/%s/%s", e.Key(), ref.GetDigest()))
+
+		err := r.ds.Put(ctx, k, nil)
+		if err != nil {
+			return fmt.Errorf("failed to put extension key: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (r *routing) List(ctx context.Context, q string) ([]*coretypes.ObjectRef, error) {
@@ -57,6 +93,7 @@ func (r *routing) List(ctx context.Context, q string) ([]*coretypes.ObjectRef, e
 		}
 
 		refs = append(refs, &coretypes.ObjectRef{
+			Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
 			Digest: digest,
 		})
 	}
