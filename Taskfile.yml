@@ -6,7 +6,10 @@ version: "3"
 vars:
   ## Image config
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
-  IMAGE_TAG: '{{ .IMAGE_TAG | default "v0.1.0-rc" }}'
+  COMMIT_SHA:
+    sh: git rev-parse --short HEAD
+  IMAGE_TAG: '{{ .IMAGE_TAG | default .COMMIT_SHA }}'
+  IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}'
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
 
   ## Dependency config
@@ -54,18 +57,18 @@ tasks:
     vars:
       GOARCH: '{{ .GOARCH | default ARCH }}'
     cmds:
-      - docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}}
+      - '{{.IMAGE_BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}}'
 
   build:all:
     desc: Build images for all components for multiple platforms
     cmds:
-      - docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/amd64,linux/arm64
+      - '{{.IMAGE_BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/amd64,linux/arm64'
 
   pull:
     desc: Pull images for all components
     cmds:
       - |
-        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        images=$({{.IMAGE_BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
         echo "$images" | while read image; do
           echo "Pulling image: $image"
           docker pull $image
@@ -76,7 +79,7 @@ tasks:
     prompt:
       - Are you sure you want to push the images to remote registry?
     cmds:
-      - docker buildx bake {{.IMAGE_BAKE_OPTS}} --set=*.output=type=registry
+      - '{{.IMAGE_BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set=*.output=type=registry'
 
   release:verify:
     desc: Verify release readiness
@@ -164,7 +167,7 @@ tasks:
   server:build:
     desc: Build Directory server image
     cmds:
-      - docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver
+      - '{{.IMAGE_BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver'
 
   server:start:
     desc: Start Directory server
@@ -302,7 +305,7 @@ tasks:
 
       # Import images
       - |
-        images=$(docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        images=$({{.IMAGE_BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
         echo "$images" | while read image; do
           {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
