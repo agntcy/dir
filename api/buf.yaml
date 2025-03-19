@@ -2,10 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 version: v2
-#deps:
-#  - buf.build/bufbuild/bufplugin
-#  - buf.build/bufbuild/protovalidate
-#  - buf.build/googleapis/googleapis
 lint:
   disallow_comment_ignores: true
   use:
