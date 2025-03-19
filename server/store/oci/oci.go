@@ -239,9 +239,16 @@ func refToCID(ref *coretypes.ObjectRef) string {
 
 // cleanMeta returns metadata without OCI- or Dir- annotations.
 func cleanMeta(meta map[string]string) map[string]string {
+	if meta == nil {
+		return map[string]string{}
+	}
+
+	// delete all OCI-specific metadata
 	delete(meta, "org.opencontainers.image.created")
+	
+	// delete all Dir-specific metadata
 	delete(meta, manifestDirObjectTypeKey)
-	// TODO: remove all keys that start with "manifestDirObjectKeyPrefix"
+	// TODO: clean all with dir prefix
 
 	return meta
 }
