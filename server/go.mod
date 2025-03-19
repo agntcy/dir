@@ -7,11 +7,10 @@ replace github.com/agntcy/dir/api => ../api
 require (
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
 	github.com/agntcy/dir/api v0.1.4
-	github.com/dep2p/libp2p v0.0.6
 	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-datastore v0.8.2
 	github.com/libp2p/go-libp2p v0.41.0
-	github.com/libp2p/go-libp2p-core v0.20.1
+	github.com/libp2p/go-libp2p-gorpc v0.6.0
 	github.com/libp2p/go-libp2p-kad-dht v0.30.2
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/multiformats/go-multihash v0.2.3
@@ -35,7 +34,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20200604182044-b73af7476f6c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
-	github.com/dep2p/log v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/elastic/gosigar v0.14.3 // indirect
 	github.com/flynn/noise v1.1.0 // indirect
@@ -53,7 +51,6 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/boxo v0.29.1 // indirect
@@ -76,8 +73,6 @@ require (
 	github.com/libp2p/go-netroute v0.2.2 // indirect
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/libp2p/go-yamux/v5 v5.0.0 // indirect
-	github.com/libp2p/zeroconf/v2 v2.2.0 // indirect
-	github.com/magiconair/properties v1.8.9 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.63 // indirect
@@ -131,13 +126,13 @@ require (
 	github.com/quic-go/webtransport-go v0.8.1-0.20241018022711-4ac2c9250e66 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/sagikazarmark/locafero v0.8.0 // indirect
-	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/ugorji/go/codec v1.2.6 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
@@ -160,7 +155,6 @@ require (
 	gonum.org/v1/gonum v0.15.1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250313205543-e70fdf4c4cb4 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250313205543-e70fdf4c4cb4 // indirect
-	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.0 // indirect
 )
