@@ -1,62 +1,42 @@
 {
-  "name": "agent-name",
+  "name": "directory.agntcy.org/cisco/marketing-strategy",
   "version": "v1.0.0",
   "authors": [
-    "author1",
-    "author2"
+    "Cisco Systems"
   ],
-  "created_at": "2025-03-14T20:17:18+01:00",
-  "skills": [
-    {
-      "category_name": "skill1"
-    },
-    {
-      "category_name": "skill2"
-    }
-  ],
+  "created_at": "2025-03-19T17:06:37Z",
   "annotations": {
     "key": "value"
   },
+  "skills": [
+    {
+      "category_name": "Text Completion [10201]"
+    },
+    {
+      "category_name": "Problem Solving [10702]"
+    }
+  ],
   "locators": [
     {
       "type": "docker-image",
-      "url": "url1"
-    },
-    {
-      "type": "binary",
-      "url": "url2"
+      "url": "https://ghcr.io/agntcy/marketing-strategy"
     }
   ],
   "extensions": [
     {
+      "name": "license",
+      "version": "v1.0.0",
+      "data": {
+        "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
+        "license": "Apache-2.0"
+      }
+    },
+    {
       "name": "oasf.agntcy.org/features/runtime/framework",
       "version": "v0.0.0",
       "data": {
-        "sbom": {
-          "name": "marketing-strategy",
-          "packages": [
-            {
-              "name": "crewai",
-              "version": "0.55.2"
-            },
-            {
-              "name": "langchain",
-              "version": "0.2.16"
-            },
-            {
-              "name": "langchain-ollama",
-              "version": "0.1.3"
-            },
-            {
-              "name": "langchain-openai",
-              "version": "0.1.25"
-            },
-            {
-              "name": "langgraph",
-              "version": "0.2.34"
-            }
-          ]
-        }
+        "name": "crewai",
+        "version": "0.55.2"
       }
     },
     {
@@ -65,14 +45,6 @@
       "data": {
         "type": "python",
         "version": "\u003e=3.11,\u003c3.13"
-      }
-    },
-    {
-      "name": "license",
-      "version": "v1.0.0",
-      "data": {
-        "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
-        "license": "Apache-2.0"
       }
     }
   ]

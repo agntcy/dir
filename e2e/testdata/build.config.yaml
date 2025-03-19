@@ -1,55 +1,42 @@
 model:
-  # The name of the agent
-  name: "agent-name"
+  name: "directory.agntcy.org/cisco/marketing-strategy"
 
-  # The version of the agent
   version: "v1.0.0"
 
-  # List of authors of the agent
   authors:
-    - "author1"
-    - "author2"
+    - "Cisco Systems"
 
-  # The skills of the agent (OASF specific)
   skills:
-    - "skill1"
-    - "skill2"
+    - "Text Completion [10201]"
+    - "Problem Solving [10702]"
 
-  # Annotations of the agent
   annotations:
     key: value
 
-  # List of locators of the agent
   locators:
     - type: "docker-image"
-      url: "url1"
-    - type: "binary"
-      url: "url2"
+      url: "https://ghcr.io/agntcy/marketing-strategy"
 
-  # List of custom extensions of the agent
-  # Only supports extensions with the following structure:
-  # - name: "extension1"
-  #   version: "v1.0.0"
-  #   data:
-  #     key1: "value1"
-  # This extension will be injected into the agent's model
   extensions:
     - name: "license"
       version: "v1.0.0"
       data:
         license: "Apache-2.0"
         header: "Copyright (c) 2025 Cisco and/or its affiliates."
+    - name: "oasf.agntcy.org/features/runtime/framework"
+      version: "v0.0.0"
+      data:
+        name: "crewai"
+        version: "0.55.2"
+    - name: "oasf.agntcy.org/features/runtime/language"
+      version: "v0.0.0"
+      data:
+        type: "python"
+        version: ">=3.11,<3.13"
 
 builder:
-  # Source code of the agent
-  source: "testdata/marketing-strategy"
-
-  # List of paths to ignore
+  source: "https://ghcr.io/agntcy/marketing-strategy"
   source-ignore:
     - ".venv/"
-
-  # Enable or disable the LLM analyzer extension
   llmanalyzer: false
-
-  # Enable or disable the runtime
-  runtime: true
+  runtime: false
