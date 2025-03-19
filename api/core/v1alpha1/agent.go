@@ -105,13 +105,13 @@ func (x *Agent) Merge(other *Agent) {
 		)
 	}
 
-	// Merge skills, keeping receiver's values when FQDN conflict
+	// Merge skills, keeping receiver's values when "key" conflict
 	if len(other.GetSkills()) > 0 {
 		x.Skills = mergeItems(
 			x.GetSkills(),
 			other.GetSkills(),
 			func(skill *Skill) string {
-				return skill.FQDN()
+				return skill.Key()
 			},
 		)
 	}

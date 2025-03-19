@@ -5,10 +5,6 @@ package corev1alpha1
 
 import "fmt"
 
-func (skill *Skill) FQDN() string {
-	return fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName())
-}
-
 func (skill *Skill) Key() string {
-	return skill.FQDN()
+	return fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName())
 }
