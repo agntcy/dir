@@ -262,7 +262,7 @@ tasks:
     desc: Run end-to-end tests
     aliases: [e2e]
     deps:
-      - cli:compile
+      - build
     cmds:
       - defer: { task: test:kubernetes-env:cleanup }
       # Bootstrap
