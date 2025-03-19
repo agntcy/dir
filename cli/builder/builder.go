@@ -10,7 +10,6 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/config"
-	"github.com/agntcy/dir/cli/builder/plugins/crewai"
 	"github.com/agntcy/dir/cli/builder/plugins/llmanalyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime"
 	clitypes "github.com/agntcy/dir/cli/types"
@@ -29,10 +28,6 @@ func NewBuilder(cfg *config.Config) *Builder {
 }
 
 func (b *Builder) RegisterPlugins() error {
-	if b.cfg.Builder.CrewAI {
-		b.plugins = append(b.plugins, crewai.New(b.cfg.Builder.Source, b.cfg.Builder.SourceIgnore))
-	}
-
 	if b.cfg.Builder.LLMAnalyzer {
 		LLMAnalyzer, err := llmanalyzer.New(b.cfg.Builder.Source, b.cfg.Builder.SourceIgnore)
 		if err != nil {

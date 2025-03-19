@@ -37,7 +37,6 @@ type Builder struct {
 	Source       string   `yaml:"source"`
 	SourceIgnore []string `yaml:"source-ignore"`
 	LLMAnalyzer  bool     `yaml:"llmanalyzer"`
-	CrewAI       bool     `yaml:"crewai"`
 	Runtime      bool     `yaml:"runtime"`
 }
 

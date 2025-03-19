@@ -76,8 +76,5 @@ builder:
   # Enable or disable the LLMAnalyzer plugin
   llmanalyzer: false
 
-  # Enable or disable the CrewAI plugin
-  crewai: false
-
   # Enable or disable the runtime plugin
   runtime: false

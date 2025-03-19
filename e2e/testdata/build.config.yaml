@@ -51,8 +51,5 @@ builder:
   # Enable or disable the LLM analyzer extension
   llmanalyzer: false
 
-  # Enable or disable the CrewAI extension
-  crewai: false
-
   # Enable or disable the runtime
   runtime: true
