@@ -11,10 +11,13 @@ approved = [
   "ISC",
   "MIT",
   "OpenSSL",
+  "CC0-1.0",
 ]
 
 ignored = [
   "github.com/agntcy/dir/api",
   
-  "google.golang.org/protobuf" # BSD-3-Clause
+  "google.golang.org/protobuf", # BSD-3-Clause
+  "github.com/xi2/xz", # Public Domain https://github.com/xi2/xz/blob/master/LICENSE
+  "github.com/libp2p/go-libp2p-gorpc" # MIT https://github.com/libp2p/go-libp2p-gorpc?tab=readme-ov-file#license
 ]
