@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
-package routing
+package p2p
 
 import (
 	"context"
@@ -15,10 +15,10 @@ import (
 	duitls "github.com/libp2p/go-libp2p/p2p/discovery/util"
 )
 
-// runDiscovery starts the discovery process in a blocking mode.
+// Discover starts the discovery process in a blocking mode.
 // This should be started as a goroutine.
 // Returns on context expiry.
-func runDiscovery(ctx context.Context, h host.Host, dht *dht.IpfsDHT, rendezvous string) {
+func discover(ctx context.Context, h host.Host, dht *dht.IpfsDHT, rendezvous string) {
 	routingDiscovery := discovery.NewRoutingDiscovery(dht)
 	duitls.Advertise(ctx, routingDiscovery, rendezvous)
 
@@ -36,6 +36,7 @@ func runDiscovery(ctx context.Context, h host.Host, dht *dht.IpfsDHT, rendezvous
 			peers, err := duitls.FindPeers(ctx, routingDiscovery, rendezvous)
 			if err != nil {
 				log.Printf("Error while searching for peers: %v", err)
+
 				continue
 			}
 
@@ -44,6 +45,7 @@ func runDiscovery(ctx context.Context, h host.Host, dht *dht.IpfsDHT, rendezvous
 				if p.ID == h.ID() { // skip self
 					continue
 				}
+
 				if h.Network().Connectedness(p.ID) == network.Connected { // skip connected
 					continue
 				}
@@ -51,6 +53,7 @@ func runDiscovery(ctx context.Context, h host.Host, dht *dht.IpfsDHT, rendezvous
 				_, err = h.Network().DialPeer(ctx, p.ID)
 				if err != nil {
 					log.Printf("Error while connecting to peer %v: %v", p.ID, err)
+
 					continue
 				}
 

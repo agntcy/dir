@@ -1,11 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
-package routing
+package p2p
 
 import (
-	"context"
-	"crypto/rand"
 	"fmt"
 
 	"github.com/libp2p/go-libp2p"
@@ -14,18 +12,8 @@ import (
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 )
 
-// newHost creates a new host libp2p host
-func newHost(ctx context.Context, listenAddr string) (host.Host, error) {
-	// Select keypair
-	priv, _, err := crypto.GenerateKeyPairWithReader(
-		crypto.Ed25519, // Select your key type. Ed25519 are nice short
-		-1,             // Select key length when possible (i.e. RSA).
-		rand.Reader,    // Always generate a random ID
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create p2p host keypair: %w", err)
-	}
-
+// newHost creates a new host libp2p host.
+func newHost(listenAddr string, key crypto.PrivKey) (host.Host, error) {
 	// Select connection manager
 	// connMgr, err := connmgr.NewConnManager(
 	// 	100, //nolint:mnd
@@ -35,11 +23,10 @@ func newHost(ctx context.Context, listenAddr string) (host.Host, error) {
 	// if err != nil {
 	// 	return nil, fmt.Errorf("failed to create p2p host connection manager: %w", err)
 	// }
-
 	// Create host
 	host, err := libp2p.New(
 		// Use the keypair we generated
-		libp2p.Identity(priv),
+		libp2p.Identity(key),
 		// Multiple listen addresses
 		libp2p.ListenAddrStrings(listenAddr),
 		// support TLS connections

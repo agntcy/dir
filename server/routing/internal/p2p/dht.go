@@ -1,23 +1,22 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 // SPDX-License-Identifier: Apache-2.0
 
-package routing
+package p2p
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
-
-	"log"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
-// newDHT creates a DHT over libp2p host.
+// newDHT creates a DHT to be served over libp2p host.
 // DHT will serve as a bootstrap peer if no bootstrap peers provided.
-func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo) (*dht.IpfsDHT, error) {
+func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo, refreshPeriod time.Duration) (*dht.IpfsDHT, error) {
 	var options []dht.Option
 
 	// If no bootstrap nodes provided, we are the bootstrap node.
@@ -26,33 +25,41 @@ func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo)
 	} else {
 		options = append(options, dht.BootstrapPeers(bootstrapPeers...))
 	}
-	options = append(options, dht.RoutingTableRefreshPeriod(1*time.Second))
+
+	// Set refresh period
+	if refreshPeriod > 0 {
+		options = append(options, dht.RoutingTableRefreshPeriod(refreshPeriod))
+	}
 
 	// Create DHT
 	kdht, err := dht.New(ctx, host, options...)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	// Bootstrap DHT
 	if err = kdht.Bootstrap(ctx); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	// Sync with bootstrap nodes
 	var wg sync.WaitGroup
 	for _, p := range bootstrapPeers {
 		wg.Add(1)
+
 		go func(p peer.AddrInfo) {
 			defer wg.Done()
+
 			if err := host.Connect(ctx, p); err != nil {
 				log.Printf("Error while connecting to node %v: %-v", p.ID, err)
+
 				return
 			}
 
 			log.Printf("Successfully connected to bootstrap node: %v", p.ID)
 		}(p)
 	}
+
 	wg.Wait()
 
 	return kdht, nil
