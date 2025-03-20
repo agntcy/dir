@@ -3,7 +3,13 @@
 
 package corev1alpha1
 
-import "path"
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path"
+)
 
 func removeDuplicates[T comparable](slice []T) []T {
 	keys := make(map[T]struct{})
@@ -54,39 +60,39 @@ func mergeItems[T any](receiverItems, otherItems []*T, getName func(*T) string) 
 }
 
 //nolint:gocognit,cyclop
-func (x *Agent) Merge(other *Agent) {
+func (a *Agent) Merge(other *Agent) {
 	if other == nil {
 		return
 	}
 
 	// Only use other's scalar fields if receiver doesn't have them set
-	x.Name = firstNonEmptyString(x.GetName(), other.GetName())
-	x.Version = firstNonEmptyString(x.GetVersion(), other.GetVersion())
+	a.Name = firstNonEmptyString(a.GetName(), other.GetName())
+	a.Version = firstNonEmptyString(a.GetVersion(), other.GetVersion())
 
-	if x.GetCreatedAt() == "" {
-		x.CreatedAt = other.GetCreatedAt()
+	if a.GetCreatedAt() == "" {
+		a.CreatedAt = other.GetCreatedAt()
 	}
 
 	// Merge slices without duplicates, keeping receiver's values first
 	if len(other.GetAuthors()) > 0 {
-		x.Authors = removeDuplicates(append(other.GetAuthors(), x.GetAuthors()...))
+		a.Authors = removeDuplicates(append(other.GetAuthors(), a.GetAuthors()...))
 	}
 
 	// Merge annotations, keeping receiver's values when keys conflict
-	if x.GetAnnotations() == nil {
-		x.Annotations = make(map[string]string)
+	if a.GetAnnotations() == nil {
+		a.Annotations = make(map[string]string)
 	}
 
 	for k, v := range other.GetAnnotations() {
-		if _, exists := x.GetAnnotations()[k]; !exists {
-			x.Annotations[k] = v
+		if _, exists := a.GetAnnotations()[k]; !exists {
+			a.Annotations[k] = v
 		}
 	}
 
 	// Merge Locators, keeping receiver's values when "type/url" conflict
 	if len(other.GetLocators()) > 0 {
-		x.Locators = mergeItems(
-			x.GetLocators(),
+		a.Locators = mergeItems(
+			a.GetLocators(),
 			other.GetLocators(),
 			func(locator *Locator) string {
 				return path.Join(locator.GetType(), locator.GetUrl())
@@ -96,8 +102,8 @@ func (x *Agent) Merge(other *Agent) {
 
 	// Merge Extensions, keeping receiver's values when "name/version" conflict
 	if len(other.GetExtensions()) > 0 {
-		x.Extensions = mergeItems(
-			x.GetExtensions(),
+		a.Extensions = mergeItems(
+			a.GetExtensions(),
 			other.GetExtensions(),
 			func(extension *Extension) string {
 				return path.Join(extension.GetName(), extension.GetVersion())
@@ -107,12 +113,31 @@ func (x *Agent) Merge(other *Agent) {
 
 	// Merge skills, keeping receiver's values when "key" conflict
 	if len(other.GetSkills()) > 0 {
-		x.Skills = mergeItems(
-			x.GetSkills(),
+		a.Skills = mergeItems(
+			a.GetSkills(),
 			other.GetSkills(),
 			func(skill *Skill) string {
 				return skill.Key()
 			},
 		)
 	}
+}
+
+func (a *Agent) LoadFromFile(path string) error {
+	reader, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("failed to read data: %w", err)
+	}
+
+	err = json.Unmarshal(data, a)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %w", err)
+	}
+
+	return nil
 }

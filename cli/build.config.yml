@@ -1,71 +1,8 @@
-model:
-  # The name of the agent
-  name: "agent-name"
-
-  # The version of the agent
-  version: "v1.0.0"
-
-  # List of authors of the agent
-  authors:
-    - "author1"
-    - "author2"
-
-  # The skills of the agent (OASF specific)
-  skills:
-    - "skill1"
-    - "skill2"
-
-  # List of locators of the agent
-  locators:
-    - type: "docker-image"
-      url: "url1"
-    - type: "binary"
-      url: "url2"
-
-  # Annotations of the agent
-  annotations:
-    key-1: value
-    key-2: value
-
-  # List of custom extensions of the agent
-  # Only supports extensions with the following structure:
-  # - name: "extension1"
-  #   version: "v1.0.0"
-  #   data:
-  #     key1: "value1"
-  # This structure will be injected into the agent's model
-  extensions:
-    - name: "extension1"
-      version: "v1.0.0"
-      data:
-        key1: "value1"
-        key2: "value2"
-
-    - name: "extension2"
-      version: "v1.0.0"
-      data:
-        key1: "value1"
-        key2: "value2"
-
-    # Framework related configurations
-    - name: "oasf.agntcy.org/features/runtime/framework"
-      version: "v0.0.0"
-      data:
-        # The type of the framework, valid values are: "crewai", "autogen", "langchain", "llamaindex"
-        type: "crewai"
-        # The version of the framework library
-        version: "0.102.0"
-
-    # Language related configurations
-    - name: "oasf.agntcy.org/features/runtime/language"
-      version: "v0.0.0"
-      data:
-        # The programming language of the agent
-        type: "python"
-        # The version of the programming language
-        version: "3.12.0"
-
 builder:
+  # Base agent model path.
+  # Path is either absolute or relative to this build config file.
+  base-model: "agent.base.json"
+
   # List of paths to ignore
   source-ignore:
     - ".venv/"

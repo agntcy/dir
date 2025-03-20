@@ -1,41 +1,14 @@
-model:
-  name: "directory.agntcy.org/cisco/marketing-strategy"
-
-  version: "v1.0.0"
-
-  authors:
-    - "Cisco Systems"
-
-  skills:
-    - "Text Completion [10201]"
-    - "Problem Solving [10702]"
-
-  annotations:
-    key: value
-
-  locators:
-    - type: "docker-image"
-      url: "https://ghcr.io/agntcy/marketing-strategy"
-
-  extensions:
-    - name: "license"
-      version: "v1.0.0"
-      data:
-        license: "Apache-2.0"
-        header: "Copyright (c) 2025 Cisco and/or its affiliates."
-    - name: "oasf.agntcy.org/features/runtime/framework"
-      version: "v0.0.0"
-      data:
-        name: "crewai"
-        version: "0.55.2"
-    - name: "oasf.agntcy.org/features/runtime/language"
-      version: "v0.0.0"
-      data:
-        type: "python"
-        version: ">=3.11,<3.13"
-
 builder:
+  # Base agent model path.
+  # Path is either absolute or relative to this build config file.
+  base-model: "agent.base.json"
+
+  # List of paths to ignore
   source-ignore:
     - ".venv/"
+
+  # Enable or disable the LLMAnalyzer plugin
   llmanalyzer: false
+
+  # Enable or disable the runtime plugin
   runtime: false

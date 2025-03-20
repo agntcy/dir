@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/presenter"
@@ -50,7 +51,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		configFile = configFilePath
 	}
 
-	// Get configuration from flags
+	// Get configuration from file
 	cfg := &config.Config{}
 
 	err := cfg.LoadFromFile(configFile)
@@ -65,11 +66,16 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 		return fmt.Errorf("failed to register plugins: %w", err)
 	}
 
-	agent, err := builderInstance.BuildUserAgent()
+	// load base agent from file
+	agent := &coretypes.Agent{}
+	baseAgentPath := filepath.Join(filepath.Dir(configFile), cfg.Builder.BaseModelPath)
+
+	err = agent.LoadFromFile(baseAgentPath)
 	if err != nil {
-		return fmt.Errorf("failed to build user agent: %w", err)
+		return fmt.Errorf("failed to load agent from file %s: %w", baseAgentPath, err)
 	}
 
+	// run plugins
 	builderAgent, err := builderInstance.BuildAgent(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("failed to build plugins: %w", err)

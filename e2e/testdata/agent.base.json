@@ -1,0 +1,51 @@
+{
+  "name": "directory.agntcy.org/cisco/marketing-strategy",
+  "version": "v1.0.0",
+  "authors": [
+    "Cisco Systems"
+  ],
+  "created_at": "2025-03-19T17:06:37Z",
+  "annotations": {
+    "key": "value"
+  },
+  "skills": [
+    {
+      "category_name": "Text Completion [10201]"
+    },
+    {
+      "category_name": "Problem Solving [10702]"
+    }
+  ],
+  "locators": [
+    {
+      "type": "docker-image",
+      "url": "https://ghcr.io/agntcy/marketing-strategy"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "license",
+      "version": "v1.0.0",
+      "data": {
+        "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
+        "license": "Apache-2.0"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/runtime/framework",
+      "version": "v0.0.0",
+      "data": {
+        "name": "crewai",
+        "version": "0.55.2"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/runtime/language",
+      "version": "v0.0.0",
+      "data": {
+        "type": "python",
+        "version": "\u003e=3.11,\u003c3.13"
+      }
+    }
+  ]
+}
