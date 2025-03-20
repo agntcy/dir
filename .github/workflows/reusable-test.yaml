@@ -49,12 +49,7 @@ jobs:
         with:
           go-version: '1.24.1'
           check-latest: true
-          cache-dependency-path: |
-            api/go.sum
-            cli/go.sum
-            client/go.sum
-            e2e/go.sum
-            server/go.sum
+          cache-dependency-path: "**/*.sum"
 
       - name: Run unit tests
         run: |
@@ -85,12 +80,7 @@ jobs:
         with:
           go-version: '1.24.1'
           check-latest: true
-          cache-dependency-path: |
-            api/go.sum
-            cli/go.sum
-            client/go.sum
-            e2e/go.sum
-            server/go.sum
+          cache-dependency-path: "**/*.sum"
 
       #
       # Install kubernetes tools
