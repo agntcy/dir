@@ -245,7 +245,7 @@ func cleanMeta(meta map[string]string) map[string]string {
 
 	// delete all OCI-specific metadata
 	delete(meta, "org.opencontainers.image.created")
-	
+
 	// delete all Dir-specific metadata
 	delete(meta, manifestDirObjectTypeKey)
 	// TODO: clean all with dir prefix
