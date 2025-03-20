@@ -63,7 +63,7 @@ jobs:
         with:
           path: |
             **/.licensei.cache
-          key: license-cache-${{ runner.os }}-${{ hashFiles('**/.licensei.cache') }}
+          key: license-cache-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             license-cache-${{ runner.os }}-
 
@@ -76,7 +76,6 @@ jobs:
       - name: License
         run: |
           task license
-        continue-on-error: true # TODO remove this line once license cache is fixed
 
   verify-gen:
     name: Verify generated files
