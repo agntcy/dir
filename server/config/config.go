@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	routing "github.com/agntcy/dir/server/routing/config"
 	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/mitchellh/mapstructure"
@@ -35,6 +36,9 @@ type Config struct {
 	Provider string         `json:"provider,omitempty" mapstructure:"provider"`
 	LocalFS  localfs.Config `json:"localfs,omitempty"  mapstructure:"localfs"`
 	OCI      oci.Config     `json:"oci,omitempty"      mapstructure:"oci"`
+
+	// Routing configuration
+	Routing routing.Config `json:"routing,omitempty"      mapstructure:"routing"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -50,7 +54,6 @@ func LoadConfig() (*Config, error) {
 	//
 	// API configuration
 	//
-
 	_ = v.BindEnv("listen_address")
 	v.SetDefault("listen_address", DefaultListenAddress)
 
@@ -88,6 +91,18 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("oci.auth_config.password")
 	_ = v.BindEnv("oci.auth_config.access_token")
 	_ = v.BindEnv("oci.auth_config.refresh_token")
+
+	//
+	// Routing configuration
+	//
+	_ = v.BindEnv("routing.listen_address")
+	v.SetDefault("routing.listen_address", routing.DefaultListenddress)
+
+	_ = v.BindEnv("routing.bootstrap_peers")
+	v.SetDefault("routing.bootstrap_peers", strings.Join(routing.DefaultBootstrapPeers, ","))
+
+	_ = v.BindEnv("routing.key_path")
+	v.SetDefault("routing.key_path", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

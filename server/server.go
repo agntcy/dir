@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Portshift/go-utils/healthz"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -18,6 +19,7 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/datastore"
+	"github.com/agntcy/dir/server/internal/p2p"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
@@ -33,20 +35,20 @@ type Server struct {
 	routing       types.RoutingAPI
 	healthzServer *healthz.Server
 	grpcServer    *grpc.Server
+	p2pServer     *p2p.Server
 }
 
 func Run(ctx context.Context, cfg *config.Config) error {
 	errCh := make(chan error)
 
 	// Start server
-	server, err := New(cfg)
+	server, err := New(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
+	defer server.Close()
 
-	server.Start(ctx, errCh)
-	defer server.Stop()
-	log.Printf("server started on %s", cfg.ListenAddress)
+	log.Printf("Server started: %s", cfg.ListenAddress)
 
 	// Wait for deactivation
 	sigCh := make(chan os.Signal, 1)
@@ -63,7 +65,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
-func New(cfg *config.Config) (*Server, error) {
+func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Create local datastore
 	dstore, err := datastore.New(cfg)
 	if err != nil {
@@ -76,13 +78,25 @@ func New(cfg *config.Config) (*Server, error) {
 		datastore: dstore,
 	}
 
+	// Create P2P
+	p2pServer, err := p2p.New(ctx,
+		p2p.WithListenAddress(cfg.Routing.ListenAddress),
+		p2p.WithBootstrapAddrs(cfg.Routing.BootstrapPeers),
+		p2p.WithRefreshInterval(1*time.Minute),
+		p2p.WithRandevous(routing.ProtocolRendezvous),
+		p2p.WithIdentityKeyPath(cfg.Routing.KeyPath),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create p2p: %w", err)
+	}
+
 	// Create APIs
 	storeAPI, err := store.New(options) //nolint:staticcheck
 	if err != nil {
 		return nil, fmt.Errorf("failed to create store: %w", err)
 	}
 
-	routingAPI, err := routing.New(options)
+	routingAPI, err := routing.New(p2pServer, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
@@ -103,6 +117,11 @@ func New(cfg *config.Config) (*Server, error) {
 	// Register server
 	reflection.Register(server.grpcServer)
 
+	// Start server
+	if err := server.start(ctx); err != nil {
+		return nil, fmt.Errorf("failed to start server: %w", err)
+	}
+
 	return server, nil
 }
 
@@ -112,23 +131,25 @@ func (s Server) Store() types.StoreAPI { return s.store }
 
 func (s Server) Routing() types.RoutingAPI { return s.routing }
 
-func (s Server) Start(ctx context.Context, errCh chan<- error) {
+func (s Server) Close() {
+	s.p2pServer.Close()
+	s.grpcServer.GracefulStop()
+}
+
+func (s Server) start(ctx context.Context) error {
 	// Bootstrap
 	if err := s.bootstrap(ctx); err != nil {
-		errCh <- fmt.Errorf("failed to bootstrap server: %w", err)
-
-		return
+		return fmt.Errorf("failed to bootstrap server: %w", err)
 	}
 
 	// Create a listener on TCP port
 	listen, err := net.Listen("tcp", s.Options().Config().ListenAddress)
 	if err != nil {
-		errCh <- fmt.Errorf("failed to listen on %s: %w", s.Options().Config().ListenAddress, err)
-
-		return
+		return fmt.Errorf("failed to listen on %s: %w", s.Options().Config().ListenAddress, err)
 	}
 
-	// Serve gRPC server
+	// Serve gRPC server in the background.
+	// If the server cannot be started, exit with code 1.
 	go func() {
 		// Start health check server
 		s.healthzServer.Start()
@@ -136,15 +157,11 @@ func (s Server) Start(ctx context.Context, errCh chan<- error) {
 		defer s.healthzServer.SetIsReady(false)
 
 		if err := s.grpcServer.Serve(listen); err != nil {
-			errCh <- fmt.Errorf("failed to start server: %w", err)
-
-			return
+			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()
-}
 
-func (s Server) Stop() {
-	s.grpcServer.GracefulStop()
+	return nil
 }
 
 func (s Server) bootstrap(_ context.Context) error {

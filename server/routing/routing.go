@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/server/internal/p2p"
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -22,12 +23,14 @@ var (
 )
 
 type routing struct {
-	ds types.Datastore
+	ds     types.Datastore
+	server *p2p.Server
 }
 
-func New(opts types.APIOptions) (types.RoutingAPI, error) {
+func New(server *p2p.Server, opts types.APIOptions) (types.RoutingAPI, error) {
 	return &routing{
-		ds: opts.Datastore(),
+		ds:     opts.Datastore(),
+		server: server,
 	}, nil
 }
 
@@ -56,6 +59,8 @@ func (r *routing) Publish(ctx context.Context, ref *coretypes.ObjectRef, a *core
 			return fmt.Errorf("failed to put locator key: %w", err)
 		}
 	}
+
+	// Notify routing
 
 	return nil
 }
@@ -121,9 +126,10 @@ func getAgentDigestFromKey(k string) (string, error) {
 	}
 
 	// Check if last part is a valid digest.
-	if _, err := ocidigest.Parse(parts[len(parts)-1]); err != nil {
-		return "", fmt.Errorf("invalid digest: %s", parts[len(parts)-1])
+	digest := parts[len(parts)-1]
+	if _, err := ocidigest.Parse(digest); err != nil {
+		return "", fmt.Errorf("invalid digest: %s", digest)
 	}
 
-	return parts[len(parts)-1], nil
+	return digest, nil
 }

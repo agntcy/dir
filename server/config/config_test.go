@@ -7,8 +7,9 @@ package config
 import (
 	"testing"
 
-	fsconfig "github.com/agntcy/dir/server/store/localfs/config"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	routing "github.com/agntcy/dir/server/routing/config"
+	localfs "github.com/agntcy/dir/server/store/localfs/config"
+	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,25 +34,36 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_OCI_AUTH_CONFIG_PASSWORD":      "password",
 				"DIRECTORY_SERVER_OCI_AUTH_CONFIG_ACCESS_TOKEN":  "access-token",
 				"DIRECTORY_SERVER_OCI_AUTH_CONFIG_REFRESH_TOKEN": "refresh-token",
+				"DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS":        "/ip4/1.1.1.1/tcp/1",
+				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":       "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
+				"DIRECTORY_SERVER_ROUTING_KEY_PATH":              "/path/to/key",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress:      "example.com:8889",
 				HealthCheckAddress: "example.com:18888",
 				Provider:           "provider",
-				LocalFS: fsconfig.Config{
+				LocalFS: localfs.Config{
 					Dir: "local-dir-fs",
 				},
-				OCI: ociconfig.Config{
+				OCI: oci.Config{
 					LocalDir:        "local-dir",
 					RegistryAddress: "example.com:5001",
 					RepositoryName:  "test-dir",
-					AuthConfig: ociconfig.AuthConfig{
+					AuthConfig: oci.AuthConfig{
 						Insecure:     true,
 						Username:     "username",
 						Password:     "password",
 						RefreshToken: "refresh-token",
 						AccessToken:  "access-token",
 					},
+				},
+				Routing: routing.Config{
+					ListenAddress: "/ip4/1.1.1.1/tcp/1",
+					BootstrapPeers: []string{
+						"/ip4/1.1.1.1/tcp/1",
+						"/ip4/1.1.1.1/tcp/2",
+					},
+					KeyPath: "/path/to/key",
 				},
 			},
 		},
@@ -62,15 +74,19 @@ func TestConfig(t *testing.T) {
 				ListenAddress:      DefaultListenAddress,
 				HealthCheckAddress: DefaultHealthCheckAddress,
 				Provider:           DefaultProvider,
-				LocalFS: fsconfig.Config{
-					Dir: fsconfig.DefaultDir,
+				LocalFS: localfs.Config{
+					Dir: localfs.DefaultDir,
 				},
-				OCI: ociconfig.Config{
-					RegistryAddress: ociconfig.DefaultRegistryAddress,
-					RepositoryName:  ociconfig.DefaultRepositoryName,
-					AuthConfig: ociconfig.AuthConfig{
-						Insecure: ociconfig.DefaultAuthConfigInsecure,
+				OCI: oci.Config{
+					RegistryAddress: oci.DefaultRegistryAddress,
+					RepositoryName:  oci.DefaultRepositoryName,
+					AuthConfig: oci.AuthConfig{
+						Insecure: oci.DefaultAuthConfigInsecure,
 					},
+				},
+				Routing: routing.Config{
+					ListenAddress:  routing.DefaultListenddress,
+					BootstrapPeers: routing.DefaultBootstrapPeers,
 				},
 			},
 		},

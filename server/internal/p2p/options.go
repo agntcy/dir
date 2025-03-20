@@ -6,6 +6,7 @@ package p2p
 import (
 	"crypto/rand"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -37,6 +38,32 @@ func WithRandevous(randevous string) Option {
 func WithIdentityKey(key crypto.PrivKey) Option {
 	return func(opts *options) error {
 		opts.Key = key
+
+		return nil
+	}
+}
+
+func WithIdentityKeyPath(keyPath string) Option {
+	return func(opts *options) error {
+		// If path is not set, skip
+		if keyPath == "" {
+			return nil
+		}
+
+		// Read data
+		keyData, err := os.ReadFile(keyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read key: %w", err)
+		}
+
+		// Generate random key
+		generatedKey, err := crypto.UnmarshalPrivateKey(keyData)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal identity key: %w", err)
+		}
+
+		// set key
+		opts.Key = generatedKey
 
 		return nil
 	}
@@ -96,6 +123,7 @@ func WithAPIRegistrer(reg APIRegistrer) Option {
 
 func withRandomIdentity() Option {
 	return func(opts *options) error {
+		// Do not generate random identity if we already have the key
 		if opts.Key != nil {
 			return nil
 		}
