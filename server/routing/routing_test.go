@@ -31,12 +31,6 @@ var testAgent = &coretypes.Agent{
 			Url:  "url1",
 		},
 	},
-	Extensions: []*coretypes.Extension{
-		{
-			Name:    "extension1",
-			Version: "v1",
-		},
-	},
 }
 
 func getObjectRef(a *coretypes.Agent) *coretypes.ObjectRef {
@@ -71,10 +65,8 @@ var invalidQueries = []string{
 	"/agents/agentX",
 	"/skills/",
 	"/locators",
-	"/extensions",
 	"skills/",
 	"locators/",
-	"extensions/",
 }
 
 func TestList_InvalidQuery(t *testing.T) {

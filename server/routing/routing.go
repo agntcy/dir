@@ -57,16 +57,6 @@ func (r *routing) Publish(ctx context.Context, ref *coretypes.ObjectRef, a *core
 		}
 	}
 
-	// Extensions
-	for _, e := range a.GetExtensions() {
-		k := datastore.NewKey(fmt.Sprintf("extensions/%s/%s", e.Key(), ref.GetDigest()))
-
-		err := r.ds.Put(ctx, k, nil)
-		if err != nil {
-			return fmt.Errorf("failed to put extension key: %w", err)
-		}
-	}
-
 	return nil
 }
 
@@ -104,7 +94,6 @@ func (r *routing) List(ctx context.Context, q string) ([]*coretypes.ObjectRef, e
 var supportedQueryTypes = []string{
 	"/skills/",
 	"/locators/",
-	"/extensions/",
 }
 
 func isValidQuery(q string) bool {
