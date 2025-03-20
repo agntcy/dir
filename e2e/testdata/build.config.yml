@@ -35,7 +35,6 @@ model:
         version: ">=3.11,<3.13"
 
 builder:
-  source: "https://ghcr.io/agntcy/marketing-strategy"
   source-ignore:
     - ".venv/"
   llmanalyzer: false

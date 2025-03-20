@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/framework"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/language"
 	"github.com/agntcy/dir/cli/types"
@@ -18,10 +17,10 @@ type runtime struct {
 	language  *language.Language
 }
 
-func New(cfg *config.Config) types.Builder {
+func New(source string) types.Builder {
 	return &runtime{
-		framework: framework.New(cfg.Builder.Source),
-		language:  language.New(cfg.Builder.Source),
+		framework: framework.New(source),
+		language:  language.New(source),
 	}
 }
 

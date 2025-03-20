@@ -43,7 +43,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			compileCmd.SetOut(&outputBuffer)
 			compileCmd.SetArgs([]string{
 				"build",
-				"--config=testdata/build.config.yaml",
+				"testdata",
 			})
 
 			err := compileCmd.Execute()

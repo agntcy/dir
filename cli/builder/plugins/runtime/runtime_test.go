@@ -7,7 +7,6 @@ package runtime
 import (
 	"testing"
 
-	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/framework"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/language"
@@ -18,14 +17,8 @@ const (
 	source = "./analyzer/utils/syft/testdata"
 )
 
-var cfg = &config.Config{
-	Builder: config.Builder{
-		Source: source,
-	},
-}
-
 func TestNewRuntime(t *testing.T) {
-	r := New(cfg)
+	r := New(source)
 	assert.NotNil(t, r)
 }
 
@@ -40,7 +33,7 @@ func TestBuildRuntime(t *testing.T) {
 	}
 	expectedVersion := ">=3.11,<3.13"
 
-	r := New(cfg)
+	r := New(source)
 	ret, err := r.Build(t.Context())
 	assert.NoError(t, err)
 
@@ -55,22 +48,19 @@ func TestBuildRuntime(t *testing.T) {
 }
 
 func TestBuildRuntimeWithInvalidSource(t *testing.T) {
-	cfg.Builder.Source = "invalid"
-	r := New(cfg)
+	r := New("invalid")
 	_, err := r.Build(t.Context())
 	assert.Error(t, err)
 }
 
 func TestBuildRuntimeWithUnsupportedSource(t *testing.T) {
-	cfg.Builder.Source = "./analyzer/python/testdata/unsupported"
-	r := New(cfg)
+	r := New("./analyzer/python/testdata/unsupported")
 	_, err := r.Build(t.Context())
 	assert.Error(t, err)
 }
 
 func TestBuildRuntimeWithNoVersion(t *testing.T) {
-	cfg.Builder.Source = "./analyzer/python/testdata/no-version"
-	r := New(cfg)
+	r := New("./analyzer/python/testdata/no-version")
 	_, err := r.Build(t.Context())
 	assert.Error(t, err)
 }

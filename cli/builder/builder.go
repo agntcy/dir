@@ -17,19 +17,21 @@ import (
 
 type Builder struct {
 	plugins []clitypes.Builder
+	source  string
 	cfg     *config.Config
 }
 
-func NewBuilder(cfg *config.Config) *Builder {
+func NewBuilder(source string, cfg *config.Config) *Builder {
 	return &Builder{
 		plugins: make([]clitypes.Builder, 0),
+		source:  source,
 		cfg:     cfg,
 	}
 }
 
 func (b *Builder) RegisterPlugins() error {
 	if b.cfg.Builder.LLMAnalyzer {
-		LLMAnalyzer, err := llmanalyzer.New(b.cfg.Builder.Source, b.cfg.Builder.SourceIgnore)
+		LLMAnalyzer, err := llmanalyzer.New(b.source, b.cfg.Builder.SourceIgnore)
 		if err != nil {
 			return fmt.Errorf("failed to register LLMAnalyzer plugin: %w", err)
 		}
@@ -38,7 +40,7 @@ func (b *Builder) RegisterPlugins() error {
 	}
 
 	if b.cfg.Builder.Runtime {
-		b.plugins = append(b.plugins, runtime.New(b.cfg))
+		b.plugins = append(b.plugins, runtime.New(b.source))
 	}
 
 	return nil

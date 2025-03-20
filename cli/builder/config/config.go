@@ -34,7 +34,6 @@ type Model struct {
 }
 
 type Builder struct {
-	Source       string   `yaml:"source"`
 	SourceIgnore []string `yaml:"source-ignore"`
 	LLMAnalyzer  bool     `yaml:"llmanalyzer"`
 	Runtime      bool     `yaml:"runtime"`

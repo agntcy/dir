@@ -11,5 +11,5 @@ type options struct {
 
 func init() {
 	flags := Command.Flags()
-	flags.StringVarP(&opts.ConfigFile, "config", "f", "", "Path to the build configuration file. Supported formats: YAML")
+	flags.StringVarP(&opts.ConfigFile, "config", "c", "", "Path to the build configuration file. Supported formats: YAML")
 }
