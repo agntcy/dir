@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	clicmd "github.com/agntcy/dir/cli/cmd"
@@ -124,6 +125,26 @@ func compareJSON(json1, json2 []byte) (bool, error) {
 
 	// Overwrite CreatedAt
 	agent1.CreatedAt = agent2.GetCreatedAt()
+
+	// Sort the authors slices
+	sort.Strings(agent1.GetAuthors())
+	sort.Strings(agent2.GetAuthors())
+
+	// Sort the locators slices by type
+	sort.Slice(agent1.GetLocators(), func(i, j int) bool {
+		return agent1.GetLocators()[i].GetType() < agent1.GetLocators()[j].GetType()
+	})
+	sort.Slice(agent2.GetLocators(), func(i, j int) bool {
+		return agent2.GetLocators()[i].GetType() < agent2.GetLocators()[j].GetType()
+	})
+
+	// Sort the extensions slices
+	sort.Slice(agent1.GetExtensions(), func(i, j int) bool {
+		return agent1.GetExtensions()[i].GetName() < agent1.GetExtensions()[j].GetName()
+	})
+	sort.Slice(agent2.GetExtensions(), func(i, j int) bool {
+		return agent2.GetExtensions()[i].GetName() < agent2.GetExtensions()[j].GetName()
+	})
 
 	// Convert back to JSON
 	json1, err := json.Marshal(&agent1)
