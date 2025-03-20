@@ -6,6 +6,7 @@ package client
 import (
 	"fmt"
 
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -17,6 +18,7 @@ const (
 
 type Client struct {
 	storetypes.StoreServiceClient
+	routingtypes.RoutingServiceClient
 }
 
 type options struct {
@@ -61,6 +63,7 @@ func New(opts ...Option) (*Client, error) {
 	}
 
 	return &Client{
-		StoreServiceClient: storetypes.NewStoreServiceClient(client),
+		StoreServiceClient:   storetypes.NewStoreServiceClient(client),
+		RoutingServiceClient: routingtypes.NewRoutingServiceClient(client),
 	}, nil
 }
