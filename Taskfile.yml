@@ -390,6 +390,17 @@ tasks:
       - for: { var: GO_MOD_DIR }
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} check --config {{.ROOT_DIR}}/.licensei.toml
 
+  license:cache:
+    desc: Check licenses
+    deps:
+      - task: deps:licensei
+    vars:
+      GO_MOD_DIR:
+        sh: find . -name go.mod -exec dirname {} \;
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
+
   ##
   ## Dependencies
   ##
