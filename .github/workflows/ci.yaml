@@ -34,9 +34,21 @@ jobs:
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
+      - name: Create lint cache directory
+        run: mkdir -p /tmp/.lint-cache
+
+      - name: Setup lint cache
+        uses: actions/cache@v4.2.3
+        with:
+          path: |
+            /tmp/.lint-cache
+          key: lint-cache-${{ runner.os }}-${{ hashFiles('**/*.go') }}
+          restore-keys: |
+            lint-cache-${{ runner.os }}-
+
       - name: Lint Go
         run: |
-          task lint:go
+          GOLANGCI_LINT_CACHE=/tmp/.lint-cache task lint:go
 
       - name: Lint Buf
         run: |

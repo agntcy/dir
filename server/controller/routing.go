@@ -53,6 +53,7 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 	if err := json.Unmarshal(data, &agent); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
 	}
+
 	err = c.routing.Publish(ctx, req.GetRecord(), &agent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to publish: %w", err)
