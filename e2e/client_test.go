@@ -16,7 +16,7 @@ import (
 	"github.com/opencontainers/go-digest"
 )
 
-var _ = ginkgo.Describe("DIR Client end-to-end tests", func() {
+var _ = ginkgo.Describe("client end-to-end tests", func() {
 	var err error
 	ctx := context.Background()
 

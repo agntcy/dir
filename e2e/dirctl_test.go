@@ -12,6 +12,7 @@ import (
 	clicmd "github.com/agntcy/dir/cli/cmd"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"github.com/opencontainers/go-digest"
 )
 
 //go:embed testdata/agent.json
@@ -19,19 +20,16 @@ var expectedAgentJSON []byte
 
 var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 	// Test params
-	var tempAgentPath string
+	var tempAgentDigest string
 
-	ginkgo.BeforeEach(func() {
-		// Load common config
-		tempAgentDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
-		if tempAgentDir == "" {
-			tempAgentDir = os.TempDir()
-		}
-		tempAgentPath = filepath.Join(tempAgentDir, "agent.json")
-	})
+	tempAgentDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
+	if tempAgentDir == "" {
+		tempAgentDir = os.TempDir()
+	}
+	tempAgentPath := filepath.Join(tempAgentDir, "agent.json")
 
-	ginkgo.Context("agent compilation", func() {
-		ginkgo.It("should compile an agent", func() {
+	ginkgo.Context("agent build", func() {
+		ginkgo.It("should build an agent", func() {
 			var outputBuffer bytes.Buffer
 
 			compileCmd := clicmd.RootCmd
@@ -58,8 +56,6 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 	})
 
 	ginkgo.Context("agent push and pull", func() {
-		var agentDigest string
-
 		ginkgo.It("should push an agent", func() {
 			var outputBuffer bytes.Buffer
 
@@ -73,8 +69,11 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			err := pushCmd.Execute()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Retrieve agentID from output
-			agentDigest = outputBuffer.String()
+			tempAgentDigest = outputBuffer.String()
+
+			// Ensure the digest is valid
+			_, err = digest.Parse(tempAgentDigest)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 
 		ginkgo.It("should pull an existing agent", func() {
@@ -84,17 +83,18 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
-				"--digest", agentDigest,
+				"--digest", tempAgentDigest,
 			})
 
 			err := pullCmd.Execute()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
-	})
 
-	ginkgo.Context("agent immutability", func() {
-		ginkgo.It("push existing agent again", func() {
+		ginkgo.It("should push the same agent again and return the same digest", func() {
+			var outputBuffer bytes.Buffer
+
 			pushCmd := clicmd.RootCmd
+			pushCmd.SetOut(&outputBuffer)
 			pushCmd.SetArgs([]string{
 				"push",
 				"--from-file", tempAgentPath,
@@ -102,6 +102,48 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 
 			err := pushCmd.Execute()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Ensure the digests are the same
+			newAgentDigest := outputBuffer.String()
+			gomega.Expect(newAgentDigest).To(gomega.Equal(tempAgentDigest))
+		})
+
+		ginkgo.It("should push two different agents and return different digests", func() {
+			var outputBuffer bytes.Buffer
+
+			// Modify the agent file to create a different agent
+			tempAgentPath2 := filepath.Join(tempAgentDir, "agent2.json")
+			err := os.WriteFile(tempAgentPath2, []byte(`{"name": "different-agent"}`), 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Push second agent
+			pushCmd2 := clicmd.RootCmd
+			pushCmd2.SetOut(&outputBuffer)
+			pushCmd2.SetArgs([]string{
+				"push",
+				"--from-file", tempAgentPath2,
+			})
+
+			err = pushCmd2.Execute()
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			newAgentDigest := outputBuffer.String()
+
+			// Ensure the digests are different
+			gomega.Expect(newAgentDigest).NotTo(gomega.Equal(tempAgentDigest))
+		})
+
+		ginkgo.It("should pull a non-existent agent and return an error", func() {
+			var outputBuffer bytes.Buffer
+
+			pullCmd := clicmd.RootCmd
+			pullCmd.SetOut(&outputBuffer)
+			pullCmd.SetArgs([]string{
+				"pull",
+				"--digest", "non-existent-digest",
+			})
+
+			err := pullCmd.Execute()
+			gomega.Expect(err).To(gomega.HaveOccurred())
 		})
 	})
 })
