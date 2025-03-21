@@ -28,3 +28,19 @@ type APIOptions interface {
 	// Used as a local data source to serve routing, storage, and caching.
 	Datastore() Datastore
 }
+
+type options struct {
+	config    *config.Config
+	datastore Datastore
+}
+
+func NewOptions(config *config.Config, ds Datastore) APIOptions {
+	return &options{
+		config:    config,
+		datastore: ds,
+	}
+}
+
+func (o options) Config() *config.Config { return o.config }
+
+func (o options) Datastore() Datastore { return o.datastore }

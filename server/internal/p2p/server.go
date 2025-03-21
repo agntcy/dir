@@ -9,6 +9,7 @@ import (
 	"log"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -45,12 +46,24 @@ func New(ctx context.Context, opts ...Option) (*Server, error) {
 	}, nil
 }
 
-// Addresses returns the addresses at which we can reach this server.
+// Info returns the addresses at which we can reach this server.
 func (s *Server) Info() *peer.AddrInfo {
 	return &peer.AddrInfo{
 		ID:    s.host.ID(),
 		Addrs: s.host.Addrs(),
 	}
+}
+
+func (s *Server) Host() host.Host {
+	return s.host
+}
+
+func (s *Server) DHT() *dht.IpfsDHT {
+	return s.dht
+}
+
+func (s *Server) Key() crypto.PrivKey {
+	return s.host.Peerstore().PrivKey(s.host.ID())
 }
 
 // Close stops running services.
@@ -89,7 +102,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		log.Printf("Host: %v %v", host.ID(), host.Addrs())
 
 		// Create DHT
-		kdht, err := newDHT(ctx, host, opts.BootstrapPeers, opts.RefreshInterval)
+		kdht, err := newDHT(ctx, host, opts.BootstrapPeers, opts.RefreshInterval, opts.DHTCustomOpts...)
 		if err != nil {
 			statusCh <- status{Err: err}
 

@@ -16,9 +16,7 @@ import (
 
 // newDHT creates a DHT to be served over libp2p host.
 // DHT will serve as a bootstrap peer if no bootstrap peers provided.
-func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo, refreshPeriod time.Duration) (*dht.IpfsDHT, error) {
-	var options []dht.Option
-
+func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo, refreshPeriod time.Duration, options ...dht.Option) (*dht.IpfsDHT, error) {
 	// If no bootstrap nodes provided, we are the bootstrap node.
 	if len(bootstrapPeers) == 0 {
 		options = append(options, dht.Mode(dht.ModeServer))

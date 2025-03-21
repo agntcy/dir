@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 )
 
 func removeDuplicates[T comparable](slice []T) []T {
@@ -95,7 +94,7 @@ func (a *Agent) Merge(other *Agent) {
 			a.GetLocators(),
 			other.GetLocators(),
 			func(locator *Locator) string {
-				return path.Join(locator.GetType(), locator.GetUrl())
+				return locator.Key()
 			},
 		)
 	}
@@ -106,7 +105,7 @@ func (a *Agent) Merge(other *Agent) {
 			a.GetExtensions(),
 			other.GetExtensions(),
 			func(extension *Extension) string {
-				return path.Join(extension.GetName(), extension.GetVersion())
+				return extension.Key()
 			},
 		)
 	}

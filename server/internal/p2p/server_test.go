@@ -10,11 +10,9 @@ import (
 	"time"
 
 	p2p "github.com/agntcy/dir/server/internal/p2p"
-	"github.com/agntcy/dir/server/internal/p2p/mockrpc"
 	"github.com/agntcy/dir/server/internal/p2p/mockstream"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -56,13 +54,13 @@ func startTestNode(ctx context.Context, t *testing.T, addr string, bootstrapAddr
 		p2p.WithBootstrapPeers(bootstrapAddrs),
 		p2p.WithRefreshInterval(1*time.Second),
 		p2p.WithRandevous("connect"),
-		// Both protocol API registration works.
-		// Any of them can be used to forward gRPC requests over.
-		// However, one of the two will be faster to write to channel.
-		// This is okay as we only want to check if the networking works.
-		p2p.WithAPIRegistrer(func(host host.Host) error {
-			return mockrpc.Start(ctx, host, protocol.ID("/featX/v1.0.0"), listenCh, bootstrapAddrs)
-		}),
+		// // Both protocol API registration works.
+		// // Any of them can be used to forward gRPC requests over.
+		// // We chose socket approach as its faster and more stable for testing.
+		// // This is okay as we only want to check if the networking works.
+		// p2p.WithAPIRegistrer(func(host host.Host) error {
+		// 	return mockrpc.Start(ctx, host, protocol.ID("/featX/v1.0.0"), listenCh, bootstrapAddrs)
+		// }),
 		p2p.WithAPIRegistrer(func(host host.Host) error {
 			host.SetStreamHandler("/featY/v1.0.0", mockstream.HandleStream(ctx, listenCh))
 			go mockstream.StartDataStream(ctx, host, "/featY/v1.0.0", listenCh)

@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -23,6 +24,7 @@ type options struct {
 	RefreshInterval time.Duration
 	Randevous       string
 	APIRegistrer    APIRegistrer
+	DHTCustomOpts   []dht.Option
 }
 
 type Option func(*options) error
@@ -117,6 +119,15 @@ func WithAPIRegistrer(reg APIRegistrer) Option {
 	return func(opts *options) error {
 		opts.APIRegistrer = reg
 
+		return nil
+	}
+}
+
+// WithCustomDHTOpts sets custom config for DHT.
+// NOTE: this is app-specific, be careful when using!
+func WithCustomDHTOpts(dhtOpts ...dht.Option) Option {
+	return func(opts *options) error {
+		opts.DHTCustomOpts = dhtOpts
 		return nil
 	}
 }

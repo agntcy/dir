@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/Portshift/go-utils/healthz"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -19,7 +18,6 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/datastore"
-	"github.com/agntcy/dir/server/internal/p2p"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
@@ -35,7 +33,6 @@ type Server struct {
 	routing       types.RoutingAPI
 	healthzServer *healthz.Server
 	grpcServer    *grpc.Server
-	p2pServer     *p2p.Server
 }
 
 func Run(ctx context.Context, cfg *config.Config) error {
@@ -73,22 +70,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	}
 
 	// Load API options
-	options := &options{
-		config:    cfg,
-		datastore: dstore,
-	}
-
-	// Create P2P
-	p2pServer, err := p2p.New(ctx,
-		p2p.WithListenAddress(cfg.Routing.ListenAddress),
-		p2p.WithBootstrapAddrs(cfg.Routing.BootstrapPeers),
-		p2p.WithRefreshInterval(1*time.Minute),
-		p2p.WithRandevous(routing.ProtocolRendezvous),
-		p2p.WithIdentityKeyPath(cfg.Routing.KeyPath),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create p2p: %w", err)
-	}
+	options := types.NewOptions(cfg, dstore)
 
 	// Create APIs
 	storeAPI, err := store.New(options) //nolint:staticcheck
@@ -96,7 +78,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create store: %w", err)
 	}
 
-	routingAPI, err := routing.New(p2pServer, options)
+	routingAPI, err := routing.New(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
@@ -132,7 +114,6 @@ func (s Server) Store() types.StoreAPI { return s.store }
 func (s Server) Routing() types.RoutingAPI { return s.routing }
 
 func (s Server) Close() {
-	s.p2pServer.Close()
 	s.grpcServer.GracefulStop()
 }
 
@@ -169,12 +150,3 @@ func (s Server) bootstrap(_ context.Context) error {
 	// TODO: also update cache datastore
 	return nil
 }
-
-type options struct {
-	config    *config.Config
-	datastore types.Datastore
-}
-
-func (o options) Config() *config.Config { return o.config }
-
-func (o options) Datastore() types.Datastore { return o.datastore }
