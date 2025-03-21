@@ -5,8 +5,10 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -17,11 +19,13 @@ import (
 type routingCtlr struct {
 	routingtypes.UnimplementedRoutingServiceServer
 	routing types.RoutingAPI
+	store   types.StoreAPI
 }
 
-func NewRoutingController(routing types.RoutingAPI) routingtypes.RoutingServiceServer {
+func NewRoutingController(routing types.RoutingAPI, store types.StoreAPI) routingtypes.RoutingServiceServer {
 	return &routingCtlr{
 		routing:                           routing,
+		store:                             store,
 		UnimplementedRoutingServiceServer: routingtypes.UnimplementedRoutingServiceServer{},
 	}
 }
@@ -35,11 +39,21 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 		return nil, errors.New("digest is required")
 	}
 
-	if req.GetAgent() == nil {
-		return nil, errors.New("agent is required")
+	reader, err := c.store.Pull(ctx, req.GetRecord())
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull: %w", err)
 	}
 
-	err := c.routing.Publish(ctx, req.GetRecord(), req.GetAgent())
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read data: %w", err)
+	}
+
+	var agent coretypes.Agent
+	if err := json.Unmarshal(data, &agent); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
+	}
+	err = c.routing.Publish(ctx, req.GetRecord(), &agent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to publish: %w", err)
 	}

@@ -82,7 +82,7 @@ var _ = ginkgo.Describe("DIR Client end-to-end tests", func() {
 
 	ginkgo.Context("routing publish and list", func() {
 		ginkgo.It("should publish an agent", func() {
-			err = c.Publish(ctx, ref, agent)
+			err = c.Publish(ctx, ref)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 

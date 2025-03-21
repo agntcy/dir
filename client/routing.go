@@ -13,10 +13,9 @@ import (
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 )
 
-func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef, agent *coretypes.Agent) error {
+func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef) error {
 	_, err := c.RoutingServiceClient.Publish(ctx, &routingtypes.PublishRequest{
 		Record: ref,
-		Agent:  agent,
 		Peer:   nil, // TODO check if required in client
 	})
 	if err != nil {

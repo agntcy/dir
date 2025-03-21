@@ -98,7 +98,7 @@ func New(cfg *config.Config) (*Server, error) {
 
 	// Register APIs
 	storetypes.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI))
-	routingtypes.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI))
+	routingtypes.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
 
 	// Register server
 	reflection.Register(server.grpcServer)

@@ -44,9 +44,6 @@ message PublishRequest {
 
   // Published record reference.
   core.v1alpha1.ObjectRef record = 2;
-
-  // Published agent.
-  core.v1alpha1.Agent agent = 3;
 }
 
 message ListRequest {
