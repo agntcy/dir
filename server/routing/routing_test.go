@@ -5,14 +5,14 @@
 package routing
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/server/internal/p2p"
+	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/opencontainers/go-digest"
@@ -20,7 +20,7 @@ import (
 )
 
 func TestPublish_InvalidRef(t *testing.T) {
-	r := &routing{ds: nil}
+	r := &routing{}
 	invalidRef := &coretypes.ObjectRef{Type: "invalid"}
 
 	t.Run("Invalid ref: "+invalidRef.GetType(), func(t *testing.T) {
@@ -74,6 +74,7 @@ func TestPublishList_ValidQuery(t *testing.T) {
 		testRef2 = getObjectRef(testAgent2)
 
 		validQueriesWithExpectedObjectRef = map[string][]*coretypes.ObjectRef{
+			// tests exact lookup for skills
 			"/skills/category1/class1": {
 				{
 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
@@ -84,12 +85,21 @@ func TestPublishList_ValidQuery(t *testing.T) {
 					Digest: testRef2.GetDigest(),
 				},
 			},
-			"/skills/category2/class2": {
+			// tests prefix based-lookup for skills
+			"/skills/category2": {
 				{
 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
 					Digest: testRef2.GetDigest(),
 				},
 			},
+			// tests exact lookup for locators
+			"/locators/type1/url1": {
+				{
+					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+					Digest: testRef.GetDigest(),
+				},
+			},
+			// tests prefix based-lookup for locators
 			"/locators/type1": {
 				{
 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
@@ -103,10 +113,9 @@ func TestPublishList_ValidQuery(t *testing.T) {
 	mainNode, err := p2p.NewMockServer(t.Context(), protocol.ID(ProtocolPrefix))
 	assert.NoError(t, err)
 
-	// create in-memory datastore
-	ds := datastore.NewMapDatastore()
+	// create routing
 	r := &routing{
-		ds:     ds,
+		dstore: datastore.NewMapDatastore(),
 		server: mainNode,
 	}
 	assert.NoError(t, err)
@@ -141,37 +150,6 @@ func TestPublishList_ValidQuery(t *testing.T) {
 	}
 }
 
-func TestRouting(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// create demo network
-	server, err := p2p.NewMockServer(ctx, protocol.ID(ProtocolPrefix))
-	assert.NoError(t, err)
-
-	// wait for server ready state
-	time.Sleep(1 * time.Second)
-
-	// announce
-	err = server.DHT().Provide(ctx, keyToCid("/skills/helm-chart/my-agent"), true)
-	assert.NoError(t, err)
-
-	// discover
-	ch := server.DHT().FindProvidersAsync(ctx, keyToCid("/skills/helm-chart/my-agent"), 10)
-	assert.NoError(t, err)
-	found := false
-	for data := range ch {
-		fmt.Println(data.String())
-		found = true
-	}
-	assert.True(t, found)
-
-	// get providers
-	peers, err := server.DHT().GetClosestPeers(ctx, "/asf")
-	assert.NoError(t, err)
-	assert.True(t, len(peers) > 0)
-}
-
 func getObjectRef(a *coretypes.Agent) *coretypes.ObjectRef {
 	raw, _ := json.Marshal(a) //nolint:errchkjson
 
@@ -185,4 +163,44 @@ func getObjectRef(a *coretypes.Agent) *coretypes.ObjectRef {
 
 func toPtr[T any](v T) *T {
 	return &v
+}
+
+func TestSplitSkillPath(t *testing.T) {
+	tests := []struct {
+		skillPath string
+		expected  []string
+	}{
+		{"/skills/", []string{}},
+		{"/skills/X", []string{"/skills/X"}},
+		{"/skills/X/Y", []string{"/skills/X", "/skills/X/Y"}},
+		{"/skills/X/Y/Z", []string{"/skills/X", "/skills/X/Y", "/skills/X/Y/Z"}},
+		{"/skills/X/Y/Z/K", []string{"/skills/X", "/skills/X/Y", "/skills/X/Y/Z", "/skills/X/Y/Z/K"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.skillPath, func(t *testing.T) {
+			result := splitSkillPath(test.skillPath)
+			assert.Equal(t, test.expected, result, test.skillPath)
+		})
+	}
+}
+
+// Function to calculate Bloom filter size
+func calculateBloomFilterSize(n uint, p float64) (uint, uint) {
+	m := -float64(n) * math.Log(p) / (math.Pow(math.Log(2), 2))
+	k := (m / float64(n)) * math.Log(2)
+
+	return uint(m), uint(math.Ceil(k))
+}
+
+func TestNesto(t *testing.T) {
+	// Number of elements and desired false positive rate
+	n := uint(100000000)
+	p := 0.01
+
+	// Calculate Bloom filter size and optimal hash functions
+	m, k := calculateBloomFilterSize(n, p)
+
+	fmt.Printf("Bloom Filter Size: %d bytes\n", m/1024)
+	fmt.Printf("Optimal Number of Hash Functions: %d\n", k)
 }

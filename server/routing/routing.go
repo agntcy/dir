@@ -6,11 +6,12 @@ package routing
 import (
 	"context"
 	"fmt"
+	"path"
 	"slices"
 	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/server/internal/p2p"
+	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -28,7 +29,7 @@ var (
 )
 
 type routing struct {
-	ds     types.Datastore
+	dstore types.Datastore
 	server *p2p.Server
 }
 
@@ -52,7 +53,7 @@ func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
 	}
 
 	return &routing{
-		ds:     opts.Datastore(),
+		dstore: opts.Datastore(),
 		server: server,
 	}, nil
 }
@@ -63,38 +64,32 @@ func (r *routing) Publish(ctx context.Context, ref *coretypes.ObjectRef, agent *
 		return fmt.Errorf("invalid object type: %s", ref.GetType())
 	}
 
-	// Keep track of all object attribute keys.
+	// Keep track of all skills attribute keys.
 	// We will publish this to the DHT.
-	var attrKeys []string
+	var skills []string
 
 	// Cache skills
 	for _, skill := range agent.GetSkills() {
-		key := datastore.NewKey(fmt.Sprintf("skills/%s/%s", skill.Key(), ref.GetDigest()))
-		if err := r.ds.Put(ctx, key, nil); err != nil {
+		skillKey := fmt.Sprintf("/skills/%s", skill.Key())
+		agentSkillKey := fmt.Sprintf("%s/%s", skillKey, ref.GetDigest())
+		if err := r.dstore.Put(ctx, datastore.NewKey(agentSkillKey), nil); err != nil {
 			return fmt.Errorf("failed to put skill key: %w", err)
 		}
-		attrKeys = append(attrKeys, key.String())
+
+		skills = append(skills, skillKey)
 	}
 
 	// Cache locators
 	for _, loc := range agent.GetLocators() {
-		key := datastore.NewKey(fmt.Sprintf("locators/%s/%s", loc.Key(), ref.GetDigest()))
-		if err := r.ds.Put(ctx, key, nil); err != nil {
+		agentLocatorKey := fmt.Sprintf("/locators/%s/%s", loc.Key(), ref.GetDigest())
+		if err := r.dstore.Put(ctx, datastore.NewKey(agentLocatorKey), nil); err != nil {
 			return fmt.Errorf("failed to put locator key: %w", err)
 		}
-		attrKeys = append(attrKeys, key.String())
 	}
 
-	// Sort attr keys for idempotency
-	slices.Sort(attrKeys)
-	attrKey := strings.Join(attrKeys, ",")
-	attrKey = "/dir/" + attrKey
-
-	// Announce to the network that we can provide
-	// the data for a given key.
-	err := r.server.DHT().Provide(ctx, keyToCid(attrKey), true)
-	if err != nil {
-		return fmt.Errorf("failed to announce to the network: %w", err)
+	// Announce skills to the DHT
+	if err := r.announceSkills(ctx, skills); err != nil {
+		return fmt.Errorf("failed to announce skills to the network: %w", err)
 	}
 
 	return nil
@@ -107,7 +102,7 @@ func (r *routing) List(ctx context.Context, prefixQuery string) ([]*coretypes.Ob
 	}
 
 	// Query local data
-	results, err := r.ds.Query(ctx, query.Query{Prefix: prefixQuery})
+	results, err := r.dstore.Query(ctx, query.Query{Prefix: prefixQuery})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query datastore: %w", err)
 	}
@@ -130,8 +125,45 @@ func (r *routing) List(ctx context.Context, prefixQuery string) ([]*coretypes.Ob
 
 	// Resolve query!
 	// Find providers and try fetching from those
+	attrKey := path.Clean("/dir/" + prefixQuery)
+	resCh := r.server.DHT().FindProvidersAsync(ctx, keyToCid(attrKey), 10)
+	for res := range resCh {
+		fmt.Printf("Found a peer %s serving the key %s\n", res.ID.String(), attrKey)
+	}
 
 	return records, nil
+}
+
+// Announce to the network that we can provide
+// the data for the given skills.
+//
+// We need to announce that we can serve all available skills, ie
+//
+//	skill/X, skill/X/Y, skill/X/Y/Z
+//
+// Otherwise, we cannot lookup if a node has: skill/text, or skill/text/rag
+//
+// We dont publish data about locators, we filter that directly from the node
+// once we discover it via DHT and connect to it via RPC.
+func (r *routing) announceSkills(ctx context.Context, skills []string) error {
+	// Create a map of skills we need to publish
+	skillMap := map[string]*struct{}{}
+	for _, skill := range skills {
+		for _, subSkill := range splitSkillPath(skill) {
+			skillMap[subSkill] = nil
+		}
+	}
+
+	// Announce skills
+	for skill := range skillMap {
+		skill = path.Clean("/dir/" + skill)
+		err := r.server.DHT().Provide(ctx, keyToCid(skill), true)
+		if err != nil {
+			return fmt.Errorf("failed to announce skill to the network: %w", err)
+		}
+	}
+
+	return nil
 }
 
 var supportedQueryTypes = []string{
@@ -175,4 +207,23 @@ func getAgentDigestFromKey(k string) (string, error) {
 func keyToCid(key string) cid.Cid {
 	hash, _ := mh.Sum([]byte(key), mh.SHA2_256, -1)
 	return cid.NewCidV1(cid.Raw, hash)
+}
+
+// splits the skill into sub-skills, for example:
+// /skills/text/rag => /skills/text, /skills/text/rag
+func splitSkillPath(skillPath string) []string {
+	// Split the skillPath by the delimiter '/'
+	parts := strings.Split(path.Clean(skillPath), "/")
+
+	subSkills := []string{}
+	for i := 2; i < len(parts); i++ {
+		// Construct sub-skill paths incrementally
+		subSkill := strings.Join(parts[:i+1], "/")
+		subSkills = append(subSkills, subSkill)
+	}
+
+	// always return sorted
+	slices.Sort(subSkills)
+
+	return subSkills
 }

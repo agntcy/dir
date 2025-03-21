@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	p2p "github.com/agntcy/dir/server/internal/p2p"
-	"github.com/agntcy/dir/server/internal/p2p/mockstream"
+	p2p "github.com/agntcy/dir/server/routing/internal/p2p"
+	"github.com/agntcy/dir/server/routing/internal/p2p/mockstream"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
