@@ -7,6 +7,7 @@ package routing.v1alpha1;
 
 import "google/protobuf/empty.proto";
 import "core/v1alpha1/object.proto";
+import "core/v1alpha1/agent.proto";
 import "routing/v1alpha1/routing.proto";
 
 // Defines an interface for publication and retrieval
@@ -43,6 +44,9 @@ message PublishRequest {
 
   // Published record reference.
   core.v1alpha1.ObjectRef record = 2;
+
+  // Published agent.
+  core.v1alpha1.Agent agent = 3;
 }
 
 message ListRequest {
