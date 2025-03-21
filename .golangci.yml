@@ -39,5 +39,5 @@ linters-settings:
       regexp:
         YEAR: 202[4-5]
     template: |-
-      SPDX-FileCopyrightText: Copyright (c) {{ YEAR }} Cisco and/or its affiliates.
+      Copyright AGNTCY Contributors (https://github.com/agntcy)
       SPDX-License-Identifier: Apache-2.0
