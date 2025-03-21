@@ -17,6 +17,7 @@ import (
 )
 
 var _ = ginkgo.Describe("DIR Client end-to-end tests", func() {
+	var err error
 	ctx := context.Background()
 
 	// Create a new client
@@ -27,6 +28,18 @@ var _ = ginkgo.Describe("DIR Client end-to-end tests", func() {
 	agent := &coretypes.Agent{
 		Name:    "test-agent",
 		Version: "v1",
+		Skills: []*coretypes.Skill{
+			{
+				CategoryName: Ptr("test-category"),
+				ClassName:    Ptr("test-class"),
+			},
+		},
+		Locators: []*coretypes.Locator{
+			{
+				Type: "source-code",
+				Url:  "url1",
+			},
+		},
 	}
 
 	// Marshal the Agent struct back to bytes.
@@ -42,7 +55,6 @@ var _ = ginkgo.Describe("DIR Client end-to-end tests", func() {
 	}
 
 	ginkgo.Context("agent push and pull", func() {
-		var err error
 		ginkgo.It("should push an agent to store", func() {
 			ref, err = c.Push(ctx, ref, bytes.NewReader(agentData))
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -68,7 +80,16 @@ var _ = ginkgo.Describe("DIR Client end-to-end tests", func() {
 		})
 	})
 
-	// Test client routing methods
-	// - routing publish works
-	// - routing list works
+	ginkgo.Context("routing publish and list", func() {
+		ginkgo.It("should publish an agent", func() {
+			err = c.Publish(ctx, ref)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.It("should list published agents by skill", func() {
+			refs, err := c.List(ctx, "/skills/test")
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(refs).To(gomega.HaveLen(1))
+		})
+	})
 })

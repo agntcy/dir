@@ -12,6 +12,10 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 )
 
+func Ptr[T any](v T) *T {
+	return &v
+}
+
 //nolint:govet
 func compareJSONAgents(json1, json2 []byte) (bool, error) {
 	var agent1, agent2 coretypes.Agent
