@@ -17,6 +17,20 @@ type LabelMetric struct {
 
 type Metrics map[string]LabelMetric
 
+func (m *Metrics) increment(label string) {
+	if _, ok := (*m)[label]; !ok {
+		(*m)[label] = LabelMetric{
+			Name:  label,
+			Total: 0,
+		}
+	}
+
+	(*m)[label] = LabelMetric{
+		Name:  label,
+		Total: (*m)[label].Total + 1,
+	}
+}
+
 func (m *Metrics) load(ctx context.Context, dstore types.Datastore) error {
 	res, err := dstore.Query(ctx, query.Query{
 		Prefix: "/metrics",

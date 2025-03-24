@@ -6,9 +6,8 @@ package routing
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
+	"path"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -16,6 +15,7 @@ import (
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/query"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ocidigest "github.com/opencontainers/go-digest"
@@ -61,87 +61,119 @@ func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local b
 	ref := object.GetRef()
 	agent := object.GetAgent()
 
-	// Keep track of all skill attribute keys.
-	// We will record this across the network.
-	var skills []string //nolint:prealloc
+	metrics := make(Metrics)
+	if err := metrics.load(ctx, r.dstore); err != nil {
+		return fmt.Errorf("failed to load metrics: %w", err)
+	}
 
-	// Cache skills
+	batch, err := r.dstore.Batch(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create batch: %w", err)
+	}
+
 	for _, skill := range agent.GetSkills() {
-		skillKey := "/skills/" + skill.Key()
+		key := fmt.Sprintf("/skills/%s", skill.Key())
 
-		agentSkillKey := fmt.Sprintf("%s/%s", skillKey, ref.GetDigest())
-		if err := r.dstore.Put(ctx, datastore.NewKey(agentSkillKey), nil); err != nil {
+		// Add key with digest
+		agentSkillKey := fmt.Sprintf("%s/%s", key, ref.GetDigest())
+		if err := batch.Put(ctx, datastore.NewKey(agentSkillKey), nil); err != nil {
 			return fmt.Errorf("failed to put skill key: %w", err)
 		}
 
-		skills = append(skills, skillKey) //nolint:staticcheck
+		metrics.increment(key)
 	}
+
+	err = batch.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to commit batch: %w", err)
+	}
+
+	err = metrics.update(ctx, r.dstore)
+
+	// TODO: Publish items to the network via libp2p RPC
 
 	return nil
 }
 
 func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
-	// // TODO: Validate request
-	// if !isValidQuery(prefixQuery) {
-	// 	return nil, fmt.Errorf("invalid query: %s", prefixQuery)
-	// }
-	// // Query local data
-	// results, err := r.dstore.Query(ctx, query.Query{
-	// 	Prefix: prefixQuery,
-	// })
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to query datastore: %w", err)
-	// }
-	// // Store fetched data into a slice
-	// var records []*coretypes.ObjectRef
-	// // Fetch from local
-	// for entry := range results.Next() {
-	// 	digest, err := getAgentDigestFromKey(entry.Key)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to get digest from key: %w", err)
-	// 	}
-	// 	records = append(records, &coretypes.ObjectRef{
-	// 		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-	// 		Digest: digest,
-	// 	})
-	// }
-	// TODO: Fetch items from the network via libp2p RPC
-	return nil, errors.New("not implemented")
-}
+	ch := make(chan *routingtypes.ListResponse_Item)
+	defer close(ch)
 
-var supportedQueryTypes = []string{
-	"/skills/",
-}
-
-func isValidQuery(q string) bool {
-	// Check if query has at least a query type and a query value
-	// e.e. /skills/ is not valid since it does not have a skill query value
-	parts := strings.Split(strings.Trim(q, "/"), "/")
-	if len(parts) < 2 { //nolint:mnd
-		return false
+	metrics := make(Metrics)
+	if err := metrics.load(ctx, r.dstore); err != nil {
+		return nil, fmt.Errorf("failed to load metrics: %w", err)
 	}
 
-	// Check if query type is supported
-	for _, s := range supportedQueryTypes {
-		if strings.HasPrefix(q, s) {
-			return true
+	// Get least common label
+	leastCommonLabel := req.Labels[0]
+	for _, label := range req.Labels {
+		if metrics[label].Total < metrics[leastCommonLabel].Total {
+			leastCommonLabel = label
 		}
 	}
 
-	return false
+	// Get filters for not least common labels
+	var filters []query.Filter
+	for _, label := range req.Labels {
+		if label != leastCommonLabel {
+			filters = append(filters, &labelFilter{
+				dstore: r.dstore,
+				ctx:    ctx,
+				label:  label,
+			})
+		}
+	}
+
+	go func() {
+		res, err := r.dstore.Query(ctx, query.Query{
+			Prefix:  leastCommonLabel,
+			Filters: filters,
+		})
+		if err != nil {
+			return
+		}
+
+		for entry := range res.Next() {
+			digest, err := getAgentDigestFromKey(entry.Key)
+			if err != nil {
+				return
+			}
+
+			ch <- &routingtypes.ListResponse_Item{
+				Record: &coretypes.ObjectRef{
+					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+					Digest: digest,
+				},
+			}
+		}
+	}()
+
+	// TODO: Fetch items from the network via libp2p RPC if not found in the local datastore
+
+	return ch, nil
 }
 
 func getAgentDigestFromKey(k string) (string, error) {
-	parts := strings.Split(k, "/")
-	if len(parts) == 0 {
-		return "", fmt.Errorf("invalid key: %s", k)
-	}
-
-	// Check if last part is a valid digest.
-	digest := parts[len(parts)-1]
+	// Check if digest is valid
+	digest := path.Base(k)
 	if _, err := ocidigest.Parse(digest); err != nil {
 		return "", fmt.Errorf("invalid digest: %s", digest)
 	}
 
 	return digest, nil
+}
+
+var _ query.Filter = (*labelFilter)(nil)
+
+type labelFilter struct {
+	dstore types.Datastore
+	ctx    context.Context
+
+	label string
+}
+
+func (s *labelFilter) Filter(e query.Entry) bool {
+	digest := path.Base(e.Key)
+	has, _ := s.dstore.Has(s.ctx, datastore.NewKey(fmt.Sprintf("%s/%s", s.label, digest)))
+	return has
 }
