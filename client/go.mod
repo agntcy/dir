@@ -5,7 +5,7 @@ go 1.24.1
 replace github.com/agntcy/dir/api => ../api
 
 require (
-	github.com/agntcy/dir/api v0.1.4
+	github.com/agntcy/dir/api v0.1.5
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/spf13/viper v1.19.0
 	google.golang.org/grpc v1.70.0
