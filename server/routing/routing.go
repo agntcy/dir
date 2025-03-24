@@ -1,10 +1,12 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:revive,unused
 package routing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -61,17 +63,18 @@ func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local b
 
 	// Keep track of all skill attribute keys.
 	// We will record this across the network.
-	var skills []string
+	var skills []string //nolint:prealloc
 
 	// Cache skills
 	for _, skill := range agent.GetSkills() {
-		skillKey := fmt.Sprintf("/skills/%s", skill.Key())
+		skillKey := "/skills/" + skill.Key()
+
 		agentSkillKey := fmt.Sprintf("%s/%s", skillKey, ref.GetDigest())
 		if err := r.dstore.Put(ctx, datastore.NewKey(agentSkillKey), nil); err != nil {
 			return fmt.Errorf("failed to put skill key: %w", err)
 		}
 
-		skills = append(skills, skillKey)
+		skills = append(skills, skillKey) //nolint:staticcheck
 	}
 
 	// Cache locators
@@ -92,7 +95,6 @@ func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-ch
 	// if !isValidQuery(prefixQuery) {
 	// 	return nil, fmt.Errorf("invalid query: %s", prefixQuery)
 	// }
-
 	// // Query local data
 	// results, err := r.dstore.Query(ctx, query.Query{
 	// 	Prefix: prefixQuery,
@@ -100,26 +102,21 @@ func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-ch
 	// if err != nil {
 	// 	return nil, fmt.Errorf("failed to query datastore: %w", err)
 	// }
-
 	// // Store fetched data into a slice
 	// var records []*coretypes.ObjectRef
-
 	// // Fetch from local
 	// for entry := range results.Next() {
 	// 	digest, err := getAgentDigestFromKey(entry.Key)
 	// 	if err != nil {
 	// 		return nil, fmt.Errorf("failed to get digest from key: %w", err)
 	// 	}
-
 	// 	records = append(records, &coretypes.ObjectRef{
 	// 		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
 	// 		Digest: digest,
 	// 	})
 	// }
-
 	// TODO: Fetch items from the network via libp2p RPC
-
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
 
 var supportedQueryTypes = []string{

@@ -38,7 +38,7 @@ type Config struct {
 	OCI      oci.Config     `json:"oci,omitempty"      mapstructure:"oci"`
 
 	// Routing configuration
-	Routing routing.Config `json:"routing,omitempty"      mapstructure:"routing"`
+	Routing routing.Config `json:"routing,omitempty" mapstructure:"routing"`
 }
 
 func LoadConfig() (*Config, error) {

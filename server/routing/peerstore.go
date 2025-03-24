@@ -1,3 +1,7 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+//nolint:revive
 package routing
 
 import (
@@ -9,8 +13,7 @@ import (
 
 var _ providers.ProviderStore = &peerstore{}
 
-// peerstore is used by the DHT to respond to content announcement and discovery data.
-// TODO: decide what to do here based on routing primitives
+// TODO: decide what to do here based on routing primitives.
 type peerstore struct{}
 
 func (p *peerstore) AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error {

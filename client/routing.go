@@ -5,6 +5,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -22,10 +23,8 @@ func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef) error {
 	return nil
 }
 
-func (c *Client) List(ctx context.Context, query string) (<-chan *routingtypes.ListResponse_Item, error) {
-	_, err := c.RoutingServiceClient.List(ctx, &routingtypes.ListRequest{
-		// Query: query,
-	})
+func (c *Client) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
+	_, err := c.RoutingServiceClient.List(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pull stream: %w", err)
 	}
@@ -50,5 +49,5 @@ func (c *Client) List(ctx context.Context, query string) (<-chan *routingtypes.L
 	// }
 
 	// TODO return read channel
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }

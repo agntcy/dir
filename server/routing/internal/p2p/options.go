@@ -128,6 +128,7 @@ func WithAPIRegistrer(reg APIRegistrer) Option {
 func WithCustomDHTOpts(dhtOpts ...dht.Option) Option {
 	return func(opts *options) error {
 		opts.DHTCustomOpts = dhtOpts
+
 		return nil
 	}
 }

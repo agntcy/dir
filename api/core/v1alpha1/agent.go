@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-// TODO: read labels from an agent model, ie. skills
+// TODO: read labels from an agent model, ie. skills.
 func (x *Agent) GetLabels() map[string]string {
 	if x == nil {
 		return nil
@@ -20,39 +20,39 @@ func (x *Agent) GetLabels() map[string]string {
 }
 
 //nolint:gocognit,cyclop
-func (a *Agent) Merge(other *Agent) {
+func (x *Agent) Merge(other *Agent) {
 	if other == nil {
 		return
 	}
 
 	// Only use other's scalar fields if receiver doesn't have them set
-	a.Name = firstNonEmptyString(a.GetName(), other.GetName())
-	a.Version = firstNonEmptyString(a.GetVersion(), other.GetVersion())
+	x.Name = firstNonEmptyString(x.GetName(), other.GetName())
+	x.Version = firstNonEmptyString(x.GetVersion(), other.GetVersion())
 
-	if a.GetCreatedAt() == "" {
-		a.CreatedAt = other.GetCreatedAt()
+	if x.GetCreatedAt() == "" {
+		x.CreatedAt = other.GetCreatedAt()
 	}
 
 	// Merge slices without duplicates, keeping receiver's values first
 	if len(other.GetAuthors()) > 0 {
-		a.Authors = removeDuplicates(append(other.GetAuthors(), a.GetAuthors()...))
+		x.Authors = removeDuplicates(append(other.GetAuthors(), x.GetAuthors()...))
 	}
 
 	// Merge annotations, keeping receiver's values when keys conflict
-	if a.GetAnnotations() == nil {
-		a.Annotations = make(map[string]string)
+	if x.GetAnnotations() == nil {
+		x.Annotations = make(map[string]string)
 	}
 
 	for k, v := range other.GetAnnotations() {
-		if _, exists := a.GetAnnotations()[k]; !exists {
-			a.Annotations[k] = v
+		if _, exists := x.GetAnnotations()[k]; !exists {
+			x.Annotations[k] = v
 		}
 	}
 
 	// Merge Locators, keeping receiver's values when "type/url" conflict
 	if len(other.GetLocators()) > 0 {
-		a.Locators = mergeItems(
-			a.GetLocators(),
+		x.Locators = mergeItems(
+			x.GetLocators(),
 			other.GetLocators(),
 			func(locator *Locator) string {
 				return locator.Key()
@@ -62,8 +62,8 @@ func (a *Agent) Merge(other *Agent) {
 
 	// Merge Extensions, keeping receiver's values when "name/version" conflict
 	if len(other.GetExtensions()) > 0 {
-		a.Extensions = mergeItems(
-			a.GetExtensions(),
+		x.Extensions = mergeItems(
+			x.GetExtensions(),
 			other.GetExtensions(),
 			func(extension *Extension) string {
 				return extension.Key()
@@ -73,8 +73,8 @@ func (a *Agent) Merge(other *Agent) {
 
 	// Merge skills, keeping receiver's values when "key" conflict
 	if len(other.GetSkills()) > 0 {
-		a.Skills = mergeItems(
-			a.GetSkills(),
+		x.Skills = mergeItems(
+			x.GetSkills(),
 			other.GetSkills(),
 			func(skill *Skill) string {
 				return skill.Key()
@@ -83,7 +83,7 @@ func (a *Agent) Merge(other *Agent) {
 	}
 }
 
-func (a *Agent) LoadFromFile(path string) error {
+func (x *Agent) LoadFromFile(path string) error {
 	reader, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -94,7 +94,7 @@ func (a *Agent) LoadFromFile(path string) error {
 		return fmt.Errorf("failed to read data: %w", err)
 	}
 
-	err = json.Unmarshal(data, a)
+	err = json.Unmarshal(data, x)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal data: %w", err)
 	}

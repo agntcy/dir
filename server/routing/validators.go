@@ -1,7 +1,11 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+//nolint:revive
 package routing
 
 import (
-	"fmt"
+	"errors"
 
 	record "github.com/libp2p/go-libp2p-record"
 )
@@ -17,7 +21,8 @@ func (v *validator) Validate(key string, value []byte) error {
 
 func (v *validator) Select(key string, values [][]byte) (int, error) {
 	if len(values) == 0 {
-		return 0, fmt.Errorf("nothing to select")
+		return 0, errors.New("nothing to select")
 	}
+
 	return 0, nil
 }
