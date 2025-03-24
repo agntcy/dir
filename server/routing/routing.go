@@ -77,14 +77,6 @@ func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local b
 		skills = append(skills, skillKey) //nolint:staticcheck
 	}
 
-	// Cache locators
-	for _, loc := range agent.GetLocators() {
-		agentLocatorKey := fmt.Sprintf("/locators/%s/%s", loc.Key(), ref.GetDigest())
-		if err := r.dstore.Put(ctx, datastore.NewKey(agentLocatorKey), nil); err != nil {
-			return fmt.Errorf("failed to put locator key: %w", err)
-		}
-	}
-
 	return nil
 }
 
@@ -119,7 +111,6 @@ func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-ch
 
 var supportedQueryTypes = []string{
 	"/skills/",
-	"/locators/",
 }
 
 func isValidQuery(q string) bool {
