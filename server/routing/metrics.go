@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package routing
 
 import (
@@ -43,6 +46,7 @@ func (m *Metrics) load(ctx context.Context, dstore types.Datastore) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse metrics data: %w", err)
 	}
+
 	if len(entries) > 1 {
 		return fmt.Errorf("unexpected number of metrics entries: %d", len(entries))
 	}
@@ -50,17 +54,20 @@ func (m *Metrics) load(ctx context.Context, dstore types.Datastore) error {
 	if len(entries) == 0 {
 		metrics := make(Metrics)
 		*m = metrics
+
 		return nil
 	}
 
 	// Parse existing metrics
 	metrics := make(Metrics)
+
 	err = json.Unmarshal(entries[0].Value, &metrics)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal metrics data: %w", err)
 	}
 
 	*m = metrics
+
 	return nil
 }
 

@@ -59,7 +59,14 @@ func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
 
 func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local bool) error {
 	ref := object.GetRef()
+	if ref == nil {
+		return fmt.Errorf("invalid object reference: %v", ref)
+	}
+
 	agent := object.GetAgent()
+	if agent == nil {
+		return fmt.Errorf("invalid agent object: %v", agent)
+	}
 
 	metrics := make(Metrics)
 	if err := metrics.load(ctx, r.dstore); err != nil {
@@ -72,7 +79,7 @@ func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local b
 	}
 
 	for _, skill := range agent.GetSkills() {
-		key := fmt.Sprintf("/skills/%s", skill.Key())
+		key := "/skills/" + skill.Key()
 
 		// Add key with digest
 		agentSkillKey := fmt.Sprintf("%s/%s", key, ref.GetDigest())
@@ -89,6 +96,9 @@ func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local b
 	}
 
 	err = metrics.update(ctx, r.dstore)
+	if err != nil {
+		return fmt.Errorf("failed to update metrics: %w", err)
+	}
 
 	// TODO: Publish items to the network via libp2p RPC
 
@@ -97,7 +107,7 @@ func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local b
 
 func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
 	ch := make(chan *routingtypes.ListResponse_Item)
-	defer close(ch)
+	errCh := make(chan error, 1)
 
 	metrics := make(Metrics)
 	if err := metrics.load(ctx, r.dstore); err != nil {
@@ -105,8 +115,8 @@ func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-ch
 	}
 
 	// Get least common label
-	leastCommonLabel := req.Labels[0]
-	for _, label := range req.Labels {
+	leastCommonLabel := req.GetLabels()[0]
+	for _, label := range req.GetLabels() {
 		if metrics[label].Total < metrics[leastCommonLabel].Total {
 			leastCommonLabel = label
 		}
@@ -114,7 +124,8 @@ func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-ch
 
 	// Get filters for not least common labels
 	var filters []query.Filter
-	for _, label := range req.Labels {
+
+	for _, label := range req.GetLabels() {
 		if label != leastCommonLabel {
 			filters = append(filters, &labelFilter{
 				dstore: r.dstore,
@@ -125,17 +136,24 @@ func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-ch
 	}
 
 	go func() {
+		defer close(ch)
+		defer close(errCh)
+
 		res, err := r.dstore.Query(ctx, query.Query{
 			Prefix:  leastCommonLabel,
 			Filters: filters,
 		})
 		if err != nil {
+			errCh <- err
+
 			return
 		}
 
 		for entry := range res.Next() {
 			digest, err := getAgentDigestFromKey(entry.Key)
 			if err != nil {
+				errCh <- err
+
 				return
 			}
 
@@ -150,7 +168,12 @@ func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-ch
 
 	// TODO: Fetch items from the network via libp2p RPC if not found in the local datastore
 
-	return ch, nil
+	select {
+	case err := <-errCh:
+		return nil, err
+	default:
+		return ch, nil
+	}
 }
 
 func getAgentDigestFromKey(k string) (string, error) {
@@ -165,6 +188,7 @@ func getAgentDigestFromKey(k string) (string, error) {
 
 var _ query.Filter = (*labelFilter)(nil)
 
+//nolint:containedctx
 type labelFilter struct {
 	dstore types.Datastore
 	ctx    context.Context
@@ -175,5 +199,6 @@ type labelFilter struct {
 func (s *labelFilter) Filter(e query.Entry) bool {
 	digest := path.Base(e.Key)
 	has, _ := s.dstore.Has(s.ctx, datastore.NewKey(fmt.Sprintf("%s/%s", s.label, digest)))
+
 	return has
 }

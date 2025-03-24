@@ -4,177 +4,220 @@
 // nolint:testifylint
 package routing
 
-// TODO: to be fixed
+import (
+	"context"
+	"encoding/json"
+	"testing"
+	"time"
 
-// import (
-// 	"context"
-// 	"encoding/json"
-// 	"testing"
-// 	"time"
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	"github.com/agntcy/dir/server/config"
+	routingconfig "github.com/agntcy/dir/server/routing/config"
+	"github.com/agntcy/dir/server/types"
+	"github.com/ipfs/go-datastore"
+	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/assert"
+)
 
-// 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-// 	"github.com/agntcy/dir/server/config"
-// 	routingconfig "github.com/agntcy/dir/server/routing/config"
-// 	"github.com/agntcy/dir/server/types"
-// 	"github.com/ipfs/go-datastore"
-// 	"github.com/opencontainers/go-digest"
-// 	"github.com/stretchr/testify/assert"
-// )
+func TestPublish_InvalidObject(t *testing.T) {
+	r := &routing{}
 
-// func TestPublish_InvalidRef(t *testing.T) {
-// 	r := &routing{}
-// 	invalidRef := &coretypes.ObjectRef{Type: "invalid"}
+	t.Run("Invalid object", func(t *testing.T) {
+		err := r.Publish(t.Context(), &coretypes.Object{
+			Ref:   nil,
+			Agent: nil,
+		}, true)
 
-// 	t.Run("Invalid ref: "+invalidRef.GetType(), func(t *testing.T) {
-// 		err := r.Publish(t.Context(), invalidRef, nil)
-// 		assert.Error(t, err)
-// 		assert.Equal(t, "invalid object type: "+invalidRef.GetType(), err.Error())
-// 	})
-// }
+		assert.Error(t, err)
+		assert.Equal(t, "invalid object reference: <nil>", err.Error())
+	})
+}
 
-// func TestList_InvalidQuery(t *testing.T) {
-// 	r := &routing{}
-// 	invalidQueries := []string{
-// 		"",
-// 		"/",
-// 		"/agents",
-// 		"/agents/agentX",
-// 		"/skills/",
-// 		"/locators",
-// 		"skills/",
-// 		"locators/",
-// 	}
+func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
+	// Test data
+	var (
+		testAgent = &coretypes.Agent{
+			Skills: []*coretypes.Skill{
+				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+			},
+		}
+		testAgent2 = &coretypes.Agent{
+			Skills: []*coretypes.Skill{
+				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
+			},
+		}
 
-// 	for _, q := range invalidQueries {
-// 		t.Run("Invalid query: "+q, func(t *testing.T) {
-// 			_, err := r.List(t.Context(), q)
-// 			assert.Error(t, err)
-// 			assert.Equal(t, "invalid query: "+q, err.Error())
-// 		})
-// 	}
-// }
+		testRef  = getObjectRef(testAgent)
+		testRef2 = getObjectRef(testAgent2)
 
-// func TestPublishList_ValidQuery(t *testing.T) {
-// 	// Test data
-// 	var (
-// 		testAgent = &coretypes.Agent{
-// 			Skills: []*coretypes.Skill{
-// 				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-// 			},
-// 			Locators: []*coretypes.Locator{
-// 				{Type: "type1", Url: "url1"},
-// 			},
-// 		}
-// 		testAgent2 = &coretypes.Agent{
-// 			Skills: []*coretypes.Skill{
-// 				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-// 				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
-// 			},
-// 		}
+		validQueriesWithExpectedObjectRef = map[string][]*coretypes.ObjectRef{
+			// tests exact lookup for skills
+			"/skills/category1/class1": {
+				{
+					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+					Digest: testRef.GetDigest(),
+				},
+				{
+					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+					Digest: testRef2.GetDigest(),
+				},
+			},
+			// tests prefix based-lookup for skills
+			"/skills/category2": {
+				{
+					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+					Digest: testRef2.GetDigest(),
+				},
+			},
+		}
+	)
 
-// 		testRef  = getObjectRef(testAgent)
-// 		testRef2 = getObjectRef(testAgent2)
+	// create demo network
+	mainNode := newTestServer(t.Context(), t, nil)
+	r := newTestServer(t.Context(), t, mainNode.server.P2pAddrs())
 
-// 		validQueriesWithExpectedObjectRef = map[string][]*coretypes.ObjectRef{
-// 			// tests exact lookup for skills
-// 			"/skills/category1/class1": {
-// 				{
-// 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-// 					Digest: testRef.GetDigest(),
-// 				},
-// 				{
-// 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-// 					Digest: testRef2.GetDigest(),
-// 				},
-// 			},
-// 			// tests prefix based-lookup for skills
-// 			"/skills/category2": {
-// 				{
-// 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-// 					Digest: testRef2.GetDigest(),
-// 				},
-// 			},
-// 			// tests exact lookup for locators
-// 			"/locators/type1/url1": {
-// 				{
-// 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-// 					Digest: testRef.GetDigest(),
-// 				},
-// 			},
-// 			// tests prefix based-lookup for locators
-// 			"/locators/type1": {
-// 				{
-// 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-// 					Digest: testRef.GetDigest(),
-// 				},
-// 			},
-// 		}
-// 	)
+	// wait for connection
+	<-mainNode.server.DHT().RefreshRoutingTable()
+	time.Sleep(1 * time.Second)
 
-// 	// create demo network
-// 	mainNode := newTestServer(t, t.Context(), nil)
-// 	r := newTestServer(t, t.Context(), mainNode.server.P2pAddrs())
+	// Publish first agent
+	err := r.Publish(t.Context(), &coretypes.Object{
+		Ref:   testRef,
+		Agent: testAgent,
+	}, true)
+	assert.NoError(t, err)
 
-// 	// wait for connection
-// 	<-mainNode.server.DHT().RefreshRoutingTable()
-// 	time.Sleep(1 * time.Second)
+	// Publish second agent
+	err = r.Publish(t.Context(), &coretypes.Object{
+		Ref:   testRef2,
+		Agent: testAgent2,
+	}, true)
+	assert.NoError(t, err)
 
-// 	// Publish first agent
-// 	err := r.Publish(t.Context(), testRef, testAgent)
-// 	assert.NoError(t, err)
+	for k, v := range validQueriesWithExpectedObjectRef {
+		t.Run("Valid query: "+k, func(t *testing.T) {
+			// list
+			refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
+				Labels: []string{k},
+			})
+			assert.NoError(t, err)
 
-// 	// Publish second agent
-// 	err = r.Publish(t.Context(), testRef2, testAgent2)
-// 	assert.NoError(t, err)
+			// Collect items from the channel
+			var refs []*routingtypes.ListResponse_Item
+			for ref := range refsChan {
+				refs = append(refs, ref)
+			}
 
-// 	for k, v := range validQueriesWithExpectedObjectRef {
-// 		t.Run("Valid query: "+k, func(t *testing.T) {
-// 			// list
-// 			refs, err := r.List(t.Context(), k)
-// 			assert.NoError(t, err)
+			// check if expected refs are present
+			assert.Len(t, refs, len(v))
 
-// 			// check if expected refs are present
-// 			assert.Len(t, refs, len(v))
+			// check if all expected refs are present
+			for _, expectedRef := range v {
+				found := false
 
-// 			for _, ref := range refs {
-// 				for _, r := range v {
-// 					if ref.GetDigest() == r.GetDigest() {
-// 						break
-// 					}
-// 				}
-// 			}
-// 		})
-// 	}
-// }
+				for _, ref := range refs {
+					if ref.GetRecord().GetDigest() == expectedRef.GetDigest() {
+						found = true
 
-// func getObjectRef(a *coretypes.Agent) *coretypes.ObjectRef {
-// 	raw, _ := json.Marshal(a) //nolint:errchkjson
+						break
+					}
+				}
 
-// 	return &coretypes.ObjectRef{
-// 		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-// 		Digest:      digest.FromBytes(raw).String(),
-// 		Size:        uint64(len(raw)),
-// 		Annotations: a.Annotations,
-// 	}
-// }
+				assert.True(t, found, "Expected ref not found: %s", expectedRef.GetDigest())
+			}
+		})
+	}
+}
 
-// func toPtr[T any](v T) *T {
-// 	return &v
-// }
+func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
+	// Test data
+	var (
+		testAgent = &coretypes.Agent{
+			Skills: []*coretypes.Skill{
+				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
+			},
+		}
 
-// func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *routing {
-// 	t.Helper()
+		testRef = getObjectRef(testAgent)
+	)
 
-// 	r, err := New(ctx, types.NewOptions(
-// 		&config.Config{
-// 			Routing: routingconfig.Config{
-// 				ListenAddress:  routingconfig.DefaultListenddress,
-// 				BootstrapPeers: bootPeers,
-// 			},
-// 		},
-// 		datastore.NewMapDatastore(),
-// 	))
-// 	assert.NoError(t, err)
+	// create demo network
+	mainNode := newTestServer(t.Context(), t, nil)
+	r := newTestServer(t.Context(), t, mainNode.server.P2pAddrs())
 
-// 	return r.(*routing)
-// }
+	// wait for connection
+	<-mainNode.server.DHT().RefreshRoutingTable()
+	time.Sleep(1 * time.Second)
+
+	// Publish first agent
+	err := r.Publish(t.Context(), &coretypes.Object{
+		Ref:   testRef,
+		Agent: testAgent,
+	}, true)
+	assert.NoError(t, err)
+
+	// Publish second agent
+	err = r.Publish(t.Context(), &coretypes.Object{
+		Ref:   testRef,
+		Agent: testAgent,
+	}, true)
+	assert.NoError(t, err)
+
+	t.Run("Valid multi skill query", func(t *testing.T) {
+		// list
+		refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
+			Labels: []string{"/skills/category1/class1", "/skills/category2/class2"},
+		})
+		assert.NoError(t, err)
+
+		// Collect items from the channel
+		var refs []*routingtypes.ListResponse_Item
+		for ref := range refsChan {
+			refs = append(refs, ref)
+		}
+
+		// check if expected refs are present
+		assert.Len(t, refs, 1)
+
+		// check if expected ref is present
+		assert.Equal(t, testRef.GetDigest(), refs[0].GetRecord().GetDigest())
+	})
+}
+
+func getObjectRef(a *coretypes.Agent) *coretypes.ObjectRef {
+	raw, _ := json.Marshal(a) //nolint:errchkjson
+
+	return &coretypes.ObjectRef{
+		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+		Digest:      digest.FromBytes(raw).String(),
+		Size:        uint64(len(raw)),
+		Annotations: a.GetAnnotations(),
+	}
+}
+
+func toPtr[T any](v T) *T {
+	return &v
+}
+
+func newTestServer(ctx context.Context, t *testing.T, bootPeers []string) *routing {
+	t.Helper()
+
+	r, err := New(ctx, types.NewOptions(
+		&config.Config{
+			Routing: routingconfig.Config{
+				ListenAddress:  routingconfig.DefaultListenddress,
+				BootstrapPeers: bootPeers,
+			},
+		},
+		datastore.NewMapDatastore(),
+	))
+	assert.NoError(t, err)
+
+	routingInstance, ok := r.(*routing)
+	assert.True(t, ok, "expected *routing type")
+
+	return routingInstance
+}
