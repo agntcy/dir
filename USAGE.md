@@ -59,11 +59,11 @@ as well as multicast mode for tag-based routing.
   dir list <digest> --peers
 
   # Get a list of keys that a given peer can serve, ie. find the type of data.
-  # Keys are OASF (e.g. skills) and Dir-specific models (e.g. repos).
+  # Keys are OASF (e.g. skills,locators) and Dir-specific (e.g. publisher).
   dir list <peer-id> --keys
 
   # Get a list of agent digests across the network that can satisfy the query.
-  dir list --keys skill=voice,skill=coding
+  dir list --keys skill=voice,skill=coding,publisher=cisco
 ```
 
 Use `--local` to list data available on the local routing table.  
