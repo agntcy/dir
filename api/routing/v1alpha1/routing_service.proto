@@ -12,29 +12,17 @@ import "routing/v1alpha1/routing.proto";
 
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
-//
-// Key schema:
-//  - Agents: /<agent-name>
-//    Example: /research-agent
-//  - Locators: /<agent-name>/locators/<locator-type>
-//    Example: /research-agent/locators/helm-chart
-//  - Skills: /<agent-name>/skills/<skill-name>
-//    Example: /research-agent/skills/RAG
-//  - Extensions: /<agent-name>/extensions/<extension-name>
-//    Example: /research-agent/extensions/identity
-//
-// Returned objects MAY be fetched from peer node's Store API.
 service RoutingService {
   // Notifies the network that the node is providing given object.
   // Listeners should use this event to update their routing tables.
   // They may optionally forward the request to other nodes.
   // Items need to be periodically republished to avoid stale data.
+  //
+  // It is the API responsibility to fully construct the routing details,
+  // these are minimal details needed for us to publish the request.
   rpc Publish(PublishRequest) returns (google.protobuf.Empty);
-  // Lookup if the given key is present on the node.
-  rpc Lookup(Key) returns (core.v1alpha1.ObjectRef);
-  // Resolve all the nodes that are serving this key.
-  rpc Resolve(Key) returns (stream Peer);
   // List all the available items across the network.
+  // TODO: maybe remove to search?
   rpc List(ListRequest) returns (stream ListResponse);
 }
 
@@ -44,11 +32,22 @@ message PublishRequest {
 
   // Published record reference.
   core.v1alpha1.ObjectRef record = 2;
+
+  // Publish locally only.
+  // This item will never end up in the network,
+  // unless republished with local=false.
+  optional bool local = 3;
 }
 
 message ListRequest {
-  // Regexp query for sub-keys
-  string query = 1;
+  // Target peer.
+  optional Peer peer = 1;
+
+  // Target key.
+  Key key = 2;
+
+  // Max routing depth.
+  optional uint32 max_hops = 3;
 }
 
 message ListResponse {
@@ -56,11 +55,11 @@ message ListResponse {
     // Key associated with a given object
     Key key = 1;
 
-    // Peers that have this key.
-    repeated Peer peers = 2;
- 
-    // Optional reference to an object.
-    // Item may only hold a reference to an object.
+    // Peer that returned this object.
+    Peer peer = 2;
+
+    // Found object if any.
+    // If empty, then only the key is important.
     optional core.v1alpha1.ObjectRef record = 3;
   }
 

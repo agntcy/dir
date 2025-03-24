@@ -6,24 +6,20 @@ package routing
 import (
 	"context"
 	"fmt"
-	"path"
-	"slices"
 	"strings"
+	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/types"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/protocol"
-	mh "github.com/multiformats/go-multihash"
 	ocidigest "github.com/opencontainers/go-digest"
 )
 
 var (
-	// TODO: expose gRPC interfaces over p2p via streams or RPCs.
 	ProtocolPrefix     = "dir"
 	ProtocolRendezvous = ProtocolPrefix + "/connect"
 )
@@ -38,14 +34,15 @@ func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
 	server, err := p2p.New(ctx,
 		p2p.WithListenAddress(opts.Config().Routing.ListenAddress),
 		p2p.WithBootstrapAddrs(opts.Config().Routing.BootstrapPeers),
-		// p2p.WithRefreshInterval(1*time.Minute),
-		p2p.WithRandevous(ProtocolRendezvous),
+		p2p.WithRefreshInterval(1*time.Second), // quick refresh, TODO: make configurable
+		p2p.WithRandevous(ProtocolRendezvous),  // enable libp2p auto-discovery
 		p2p.WithIdentityKeyPath(opts.Config().Routing.KeyPath),
 		p2p.WithCustomDHTOpts(
-			dht.Datastore(opts.Datastore()),
+			dht.Datastore(opts.Datastore()), // custom DHT datastore
 			// dht.Validator(&validator{}),
-			dht.NamespacedValidator("dir", &validator{}),
-			dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)),
+			dht.NamespacedValidator("dir", &validator{}),    // custom namespace validator
+			dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)), // custom DHT protocol
+			dht.ProviderStore(&peerstore{}),                 // provider store
 		),
 	)
 	if err != nil {
@@ -59,13 +56,8 @@ func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
 }
 
 func (r *routing) Publish(ctx context.Context, ref *coretypes.ObjectRef, agent *coretypes.Agent) error {
-	// Validate
-	if ref.GetType() != coretypes.ObjectType_OBJECT_TYPE_AGENT.String() {
-		return fmt.Errorf("invalid object type: %s", ref.GetType())
-	}
-
-	// Keep track of all skills attribute keys.
-	// We will publish this to the DHT.
+	// Keep track of all skill attribute keys.
+	// We will record this across the network.
 	var skills []string
 
 	// Cache skills
@@ -87,10 +79,13 @@ func (r *routing) Publish(ctx context.Context, ref *coretypes.ObjectRef, agent *
 		}
 	}
 
-	// Announce skills to the DHT
-	if err := r.announceSkills(ctx, skills); err != nil {
-		return fmt.Errorf("failed to announce skills to the network: %w", err)
+	// Broadcast to the DHT that we are providing this object
+	err := r.server.DHT().Provide(ctx, ref.GetCID(), true)
+	if err != nil {
+		return fmt.Errorf("failed to announce skill to the network: %w", err)
 	}
+
+	// TODO: sync records across p2p network via RPC
 
 	return nil
 }
@@ -102,7 +97,9 @@ func (r *routing) List(ctx context.Context, prefixQuery string) ([]*coretypes.Ob
 	}
 
 	// Query local data
-	results, err := r.dstore.Query(ctx, query.Query{Prefix: prefixQuery})
+	results, err := r.dstore.Query(ctx, query.Query{
+		Prefix: prefixQuery,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query datastore: %w", err)
 	}
@@ -123,47 +120,9 @@ func (r *routing) List(ctx context.Context, prefixQuery string) ([]*coretypes.Ob
 		})
 	}
 
-	// Resolve query!
-	// Find providers and try fetching from those
-	attrKey := path.Clean("/dir/" + prefixQuery)
-	resCh := r.server.DHT().FindProvidersAsync(ctx, keyToCid(attrKey), 10)
-	for res := range resCh {
-		fmt.Printf("Found a peer %s serving the key %s\n", res.ID.String(), attrKey)
-	}
+	// TODO: if connected, reach out across the network to find content
 
 	return records, nil
-}
-
-// Announce to the network that we can provide
-// the data for the given skills.
-//
-// We need to announce that we can serve all available skills, ie
-//
-//	skill/X, skill/X/Y, skill/X/Y/Z
-//
-// Otherwise, we cannot lookup if a node has: skill/text, or skill/text/rag
-//
-// We dont publish data about locators, we filter that directly from the node
-// once we discover it via DHT and connect to it via RPC.
-func (r *routing) announceSkills(ctx context.Context, skills []string) error {
-	// Create a map of skills we need to publish
-	skillMap := map[string]*struct{}{}
-	for _, skill := range skills {
-		for _, subSkill := range splitSkillPath(skill) {
-			skillMap[subSkill] = nil
-		}
-	}
-
-	// Announce skills
-	for skill := range skillMap {
-		skill = path.Clean("/dir/" + skill)
-		err := r.server.DHT().Provide(ctx, keyToCid(skill), true)
-		if err != nil {
-			return fmt.Errorf("failed to announce skill to the network: %w", err)
-		}
-	}
-
-	return nil
 }
 
 var supportedQueryTypes = []string{
@@ -202,28 +161,4 @@ func getAgentDigestFromKey(k string) (string, error) {
 	}
 
 	return digest, nil
-}
-
-func keyToCid(key string) cid.Cid {
-	hash, _ := mh.Sum([]byte(key), mh.SHA2_256, -1)
-	return cid.NewCidV1(cid.Raw, hash)
-}
-
-// splits the skill into sub-skills, for example:
-// /skills/text/rag => /skills/text, /skills/text/rag
-func splitSkillPath(skillPath string) []string {
-	// Split the skillPath by the delimiter '/'
-	parts := strings.Split(path.Clean(skillPath), "/")
-
-	subSkills := []string{}
-	for i := 2; i < len(parts); i++ {
-		// Construct sub-skill paths incrementally
-		subSkill := strings.Join(parts[:i+1], "/")
-		subSkills = append(subSkills, subSkill)
-	}
-
-	// always return sorted
-	slices.Sort(subSkills)
-
-	return subSkills
 }

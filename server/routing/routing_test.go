@@ -5,16 +5,16 @@
 package routing
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
-	"math"
 	"testing"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/server/routing/internal/p2p"
+	"github.com/agntcy/dir/server/config"
+	routingconfig "github.com/agntcy/dir/server/routing/config"
+	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 )
@@ -110,20 +110,15 @@ func TestPublishList_ValidQuery(t *testing.T) {
 	)
 
 	// create demo network
-	mainNode, err := p2p.NewMockServer(t.Context(), protocol.ID(ProtocolPrefix))
-	assert.NoError(t, err)
+	mainNode := newTestServer(t, t.Context(), nil)
+	r := newTestServer(t, t.Context(), mainNode.server.P2pAddrs())
 
-	// create routing
-	r := &routing{
-		dstore: datastore.NewMapDatastore(),
-		server: mainNode,
-	}
-	assert.NoError(t, err)
-	<-mainNode.DHT().RefreshRoutingTable()
+	// wait for connection
+	<-mainNode.server.DHT().RefreshRoutingTable()
 	time.Sleep(1 * time.Second)
 
 	// Publish first agent
-	err = r.Publish(t.Context(), testRef, testAgent)
+	err := r.Publish(t.Context(), testRef, testAgent)
 	assert.NoError(t, err)
 
 	// Publish second agent
@@ -165,42 +160,19 @@ func toPtr[T any](v T) *T {
 	return &v
 }
 
-func TestSplitSkillPath(t *testing.T) {
-	tests := []struct {
-		skillPath string
-		expected  []string
-	}{
-		{"/skills/", []string{}},
-		{"/skills/X", []string{"/skills/X"}},
-		{"/skills/X/Y", []string{"/skills/X", "/skills/X/Y"}},
-		{"/skills/X/Y/Z", []string{"/skills/X", "/skills/X/Y", "/skills/X/Y/Z"}},
-		{"/skills/X/Y/Z/K", []string{"/skills/X", "/skills/X/Y", "/skills/X/Y/Z", "/skills/X/Y/Z/K"}},
-	}
+func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *routing {
+	t.Helper()
 
-	for _, test := range tests {
-		t.Run(test.skillPath, func(t *testing.T) {
-			result := splitSkillPath(test.skillPath)
-			assert.Equal(t, test.expected, result, test.skillPath)
-		})
-	}
-}
+	r, err := New(ctx, types.NewOptions(
+		&config.Config{
+			Routing: routingconfig.Config{
+				ListenAddress:  routingconfig.DefaultListenddress,
+				BootstrapPeers: bootPeers,
+			},
+		},
+		datastore.NewMapDatastore(),
+	))
+	assert.NoError(t, err)
 
-// Function to calculate Bloom filter size
-func calculateBloomFilterSize(n uint, p float64) (uint, uint) {
-	m := -float64(n) * math.Log(p) / (math.Pow(math.Log(2), 2))
-	k := (m / float64(n)) * math.Log(2)
-
-	return uint(m), uint(math.Ceil(k))
-}
-
-func TestNesto(t *testing.T) {
-	// Number of elements and desired false positive rate
-	n := uint(100000000)
-	p := 0.01
-
-	// Calculate Bloom filter size and optimal hash functions
-	m, k := calculateBloomFilterSize(n, p)
-
-	fmt.Printf("Bloom Filter Size: %d bytes\n", m/1024)
-	fmt.Printf("Optimal Number of Hash Functions: %d\n", k)
+	return r.(*routing)
 }

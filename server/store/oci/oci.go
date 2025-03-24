@@ -15,8 +15,6 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
-	"github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
 	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -116,7 +114,7 @@ func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.
 	// tag => resolves manifest to object which can be looked up (lookup)
 	// tag => allows to pull object directly (pull)
 	// tag => allows listing and filtering tags (list)
-	_, err = oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), refToCID(blobRef))
+	_, err = oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), blobRef.GetCID().String())
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +146,7 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 	var manifest ocispec.Manifest
 	{
 		// resolve manifest from remote tag
-		manifestDesc, err := s.repo.Resolve(ctx, refToCID(ref))
+		manifestDesc, err := s.repo.Resolve(ctx, ref.GetCID().String())
 		if err != nil {
 			// soft fail
 			return ref, nil
@@ -227,14 +225,6 @@ func (s *store) pushData(ctx context.Context, ref *coretypes.ObjectRef, rd io.Re
 		Type:   coretypes.ObjectType_OBJECT_TYPE_RAW.String(),
 		Size:   uint64(blobDesc.Size),
 	}, blobDesc, nil
-}
-
-// refToCID turns object digest into CID.
-func refToCID(ref *coretypes.ObjectRef) string {
-	hash, _ := mh.Sum([]byte(ref.GetDigest()), mh.SHA2_256, -1)
-	c := cid.NewCidV1(cid.Raw, hash)
-
-	return c.String()
 }
 
 // cleanMeta returns metadata without OCI- or Dir- annotations.

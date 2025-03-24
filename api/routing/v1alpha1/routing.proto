@@ -6,7 +6,9 @@ syntax = "proto3";
 package routing.v1alpha1;
 
 message Key {
-  // Full path of the key that holds some data.
+  // Path encoding of the key that holds some data.
+  // For example, /skill=text,locator=helm-chart,ref=agent/DIGEST,
+  // which encodes {skill=text, locator=helm-chart, ref=agent/DIGEST}
   repeated string path = 1;
 }
 

@@ -5,7 +5,6 @@ package p2p_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -23,21 +22,10 @@ func TestServer(t *testing.T) {
 
 	// create bootstrap node
 	bootstrap, _ := startTestNode(ctx, t, "/ip4/0.0.0.0/tcp/0", nil)
-	defer bootstrap.Close()
-
-	// we need to connect to p2p addr otherwise discovery will not work
-	var bootInfos []peer.AddrInfo //nolint:prealloc
-
-	for _, addr := range bootstrap.Info().Addrs {
-		p2pAddr, err := peer.AddrInfoFromString(fmt.Sprintf("%s/p2p/%s", addr.String(), bootstrap.Info().ID.String()))
-		assert.NoError(t, err) //nolint:testifylint
-
-		bootInfos = append(bootInfos, *p2pAddr)
-	}
 
 	// connect some nodes
-	_, aliceCh := startTestNode(ctx, t, "/ip4/0.0.0.0/tcp/0", bootInfos)
-	_, bobCh := startTestNode(ctx, t, "/ip4/0.0.0.0/tcp/0", bootInfos)
+	_, aliceCh := startTestNode(ctx, t, "/ip4/0.0.0.0/tcp/0", bootstrap.P2pInfo())
+	_, bobCh := startTestNode(ctx, t, "/ip4/0.0.0.0/tcp/0", bootstrap.P2pInfo())
 
 	// wait to exchanged messages
 	<-aliceCh

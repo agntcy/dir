@@ -1,0 +1,123 @@
+# Content-addressable storage settings.
+storage:
+  # Storage driver: local, oci
+  driver: oci
+
+  # OCI-backed store
+  oci:
+    # Cache dir for OCI data.
+    # Data is initially stored into cache directory.
+    # If disabled, data will be pushed directly to remote,
+    # Otherwise it will be pushed only once the buffer_size is reached.
+    # On application restart, cache is backed up/pushed again.
+    cache:
+      enabled: true
+      buffer_size: 100M
+      source: /tmp/agntcy-dir/store/oci
+    # If set to false, use cache as main source.
+    # Do not push to remote store at all.
+    enabled: false
+    # Registry to use on remote.
+    registry: ghcr.io
+    # All data will be stored under this repo.
+    # Objects are pushed as tags, manifests, and blobs.
+    repo: agntcy-dir
+    # Auth credentials to use.
+    auth:
+      access_token: access-token
+      refresh_token: refresh-token
+
+  # If you wish to use non-OCI backed store, use this.
+  # For example, you can mount an S3 as a volume.
+  local:
+    source: /tmp/agntcy-dir/store/local
+
+# Routing settings for the peer-to-peer network.
+routing:
+  # Routing table filesystem backup.
+  # It is okay for the routing table to be deleted
+  # since items are rebroadcasted.
+  # This is just to speed up serving for future requests.
+  source: /tmp/agntcy-dir/routing
+
+  # Path to private key file for peer ID.
+  # Ideally, this should be encrypted.
+  # TODO: add more auth providers for peer identification.
+  # TODO: allow passing ENV flags for decryption or setting auth data.
+  auth:
+    key: /tmp/agntcy-dir/node.privkey
+
+  # Use in server mode, otherwise this will only be a client node
+  # that is used to send requests to DHT, but not respond to them.
+  # DHT is exposed to: ie. /dir/dht/v1.0.0
+  server: true
+
+  # Use in private mode, ie. /dir/dht/lan/v1.0.0
+  private: true
+  
+  # Nodes to use for bootstrapping of the DHT.
+  # We read initial routing tables here and get introduced
+  # to the network.
+  bootstrap_peers:
+    - {id: node1, addr: /ipv4/addr/port/p2p/node1 }
+    - {id: node2, addr: /ipv4/addr/port/p2p/node2 }
+    - {id: node3, addr: /ipv4/addr/port/p2p/node2 }
+
+  # Peers to add to local routing table on start.
+  # These form the initial overlay network for this peer.
+  peers:
+    - /ipv4/addr/port/p2p/hostA
+    - /ipv4/addr/port/p2p/hostB
+
+  # Serve and respond to the following keys on the network.
+  # We will be able to query this data locally.
+  # We should have pick keys with good aggregation.
+  #
+  # For Discover API, we can use bloom filters
+  # https://hur.st/bloomfilter/?n=100000000&p=1.0E-7
+  #
+  # One PutValue request value to DHT can send 10KBs, ie
+  #   10240/256 (bytes per key) = 40 full-length keys
+  #
+  # We should limit to 64 different key info, for example
+  #   8 skills + 8 locators + 16 apps-specific tags (TODO: to be defined).
+  #
+  # We can validate peer ID on receiving nodes to prevent bad actors from writing
+  # data on certain peers.
+  keys: |
+    # # By default, we participate in agent model content routing
+    # object/type/agent
+    
+    # Agents with specific media skills
+    agent/skill/text
+    agent/skill/video
+    agent/skill/audio
+
+    # Agents for specific envs
+    agent/locator/binary
+    agent/locator/source-code
+
+    # Other app-specific keys, e.g. publishers
+    publisher/agntcy
+    publisher/cisco
+    object/type/my-type
+
+  # Republication process for data announced to the network.
+  # Newly published items are announced as part of the request.
+  republish_period: 4h
+
+  # Sync certain keys into storage our own store.
+  # Once we pull the data, we will inform the network
+  # that we are providing it (ie. publish announce for the model
+  # plus the data on about the keys).
+  # This can be used as a backup node for tagged data.
+  # In addition to the routing keys we are sering for routing,
+  # we will also append these keys to the list so that we can
+  # listen for the announcement requests.
+  sync:
+    # Keys must fully match to allow syncing.
+    - keys: |
+        # Sync all Cisco text-based agents
+        agent/skill/text
+        publisher/cisco
+        object/type/agent

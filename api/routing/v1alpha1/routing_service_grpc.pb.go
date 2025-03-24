@@ -11,7 +11,6 @@ package routingv1alpha1
 
 import (
 	context "context"
-	v1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -25,8 +24,6 @@ const _ = grpc.SupportPackageIsVersion8
 
 const (
 	RoutingService_Publish_FullMethodName = "/routing.v1alpha1.RoutingService/Publish"
-	RoutingService_Lookup_FullMethodName  = "/routing.v1alpha1.RoutingService/Lookup"
-	RoutingService_Resolve_FullMethodName = "/routing.v1alpha1.RoutingService/Resolve"
 	RoutingService_List_FullMethodName    = "/routing.v1alpha1.RoutingService/List"
 )
 
@@ -36,29 +33,17 @@ const (
 //
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
-//
-// Key schema:
-//   - Agents: /<agent-name>
-//     Example: /research-agent
-//   - Locators: /<agent-name>/locators/<locator-type>
-//     Example: /research-agent/locators/helm-chart
-//   - Skills: /<agent-name>/skills/<skill-name>
-//     Example: /research-agent/skills/RAG
-//   - Extensions: /<agent-name>/extensions/<extension-name>
-//     Example: /research-agent/extensions/identity
-//
-// Returned objects MAY be fetched from peer node's Store API.
 type RoutingServiceClient interface {
 	// Notifies the network that the node is providing given object.
 	// Listeners should use this event to update their routing tables.
 	// They may optionally forward the request to other nodes.
 	// Items need to be periodically republished to avoid stale data.
+	//
+	// It is the API responsibility to fully construct the routing details,
+	// these are minimal details needed for us to publish the request.
 	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Lookup if the given key is present on the node.
-	Lookup(ctx context.Context, in *Key, opts ...grpc.CallOption) (*v1alpha1.ObjectRef, error)
-	// Resolve all the nodes that are serving this key.
-	Resolve(ctx context.Context, in *Key, opts ...grpc.CallOption) (RoutingService_ResolveClient, error)
 	// List all the available items across the network.
+	// TODO: maybe remove to search?
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (RoutingService_ListClient, error)
 }
 
@@ -80,52 +65,9 @@ func (c *routingServiceClient) Publish(ctx context.Context, in *PublishRequest, 
 	return out, nil
 }
 
-func (c *routingServiceClient) Lookup(ctx context.Context, in *Key, opts ...grpc.CallOption) (*v1alpha1.ObjectRef, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1alpha1.ObjectRef)
-	err := c.cc.Invoke(ctx, RoutingService_Lookup_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *routingServiceClient) Resolve(ctx context.Context, in *Key, opts ...grpc.CallOption) (RoutingService_ResolveClient, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &RoutingService_ServiceDesc.Streams[0], RoutingService_Resolve_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &routingServiceResolveClient{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type RoutingService_ResolveClient interface {
-	Recv() (*Peer, error)
-	grpc.ClientStream
-}
-
-type routingServiceResolveClient struct {
-	grpc.ClientStream
-}
-
-func (x *routingServiceResolveClient) Recv() (*Peer, error) {
-	m := new(Peer)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *routingServiceClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (RoutingService_ListClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &RoutingService_ServiceDesc.Streams[1], RoutingService_List_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &RoutingService_ServiceDesc.Streams[0], RoutingService_List_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -162,29 +104,17 @@ func (x *routingServiceListClient) Recv() (*ListResponse, error) {
 //
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.
-//
-// Key schema:
-//   - Agents: /<agent-name>
-//     Example: /research-agent
-//   - Locators: /<agent-name>/locators/<locator-type>
-//     Example: /research-agent/locators/helm-chart
-//   - Skills: /<agent-name>/skills/<skill-name>
-//     Example: /research-agent/skills/RAG
-//   - Extensions: /<agent-name>/extensions/<extension-name>
-//     Example: /research-agent/extensions/identity
-//
-// Returned objects MAY be fetched from peer node's Store API.
 type RoutingServiceServer interface {
 	// Notifies the network that the node is providing given object.
 	// Listeners should use this event to update their routing tables.
 	// They may optionally forward the request to other nodes.
 	// Items need to be periodically republished to avoid stale data.
+	//
+	// It is the API responsibility to fully construct the routing details,
+	// these are minimal details needed for us to publish the request.
 	Publish(context.Context, *PublishRequest) (*emptypb.Empty, error)
-	// Lookup if the given key is present on the node.
-	Lookup(context.Context, *Key) (*v1alpha1.ObjectRef, error)
-	// Resolve all the nodes that are serving this key.
-	Resolve(*Key, RoutingService_ResolveServer) error
 	// List all the available items across the network.
+	// TODO: maybe remove to search?
 	List(*ListRequest, RoutingService_ListServer) error
 }
 
@@ -197,12 +127,6 @@ type UnimplementedRoutingServiceServer struct{}
 
 func (UnimplementedRoutingServiceServer) Publish(context.Context, *PublishRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
-}
-func (UnimplementedRoutingServiceServer) Lookup(context.Context, *Key) (*v1alpha1.ObjectRef, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Lookup not implemented")
-}
-func (UnimplementedRoutingServiceServer) Resolve(*Key, RoutingService_ResolveServer) error {
-	return status.Errorf(codes.Unimplemented, "method Resolve not implemented")
 }
 func (UnimplementedRoutingServiceServer) List(*ListRequest, RoutingService_ListServer) error {
 	return status.Errorf(codes.Unimplemented, "method List not implemented")
@@ -245,45 +169,6 @@ func _RoutingService_Publish_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RoutingService_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Key)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(RoutingServiceServer).Lookup(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: RoutingService_Lookup_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RoutingServiceServer).Lookup(ctx, req.(*Key))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _RoutingService_Resolve_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Key)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(RoutingServiceServer).Resolve(m, &routingServiceResolveServer{ServerStream: stream})
-}
-
-type RoutingService_ResolveServer interface {
-	Send(*Peer) error
-	grpc.ServerStream
-}
-
-type routingServiceResolveServer struct {
-	grpc.ServerStream
-}
-
-func (x *routingServiceResolveServer) Send(m *Peer) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 func _RoutingService_List_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ListRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -316,17 +201,8 @@ var RoutingService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Publish",
 			Handler:    _RoutingService_Publish_Handler,
 		},
-		{
-			MethodName: "Lookup",
-			Handler:    _RoutingService_Lookup_Handler,
-		},
 	},
 	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "Resolve",
-			Handler:       _RoutingService_Resolve_Handler,
-			ServerStreams: true,
-		},
 		{
 			StreamName:    "List",
 			Handler:       _RoutingService_List_Handler,

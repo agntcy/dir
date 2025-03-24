@@ -82,7 +82,9 @@ func (ConnectionType) EnumDescriptor() ([]byte, []int) {
 
 type Key struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Full path of the key that holds some data.
+	// Path encoding of the key that holds some data.
+	// For example, /skill=text,locator=helm-chart,ref=agent/DIGEST,
+	// which encodes {skill=text, locator=helm-chart, ref=agent/DIGEST}
 	Path          []string `protobuf:"bytes,1,rep,name=path,proto3" json:"path,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -59,50 +59,6 @@ func local_request_RoutingService_Publish_0(ctx context.Context, marshaler runti
 	return msg, metadata, err
 }
 
-func request_RoutingService_Lookup_0(ctx context.Context, marshaler runtime.Marshaler, client RoutingServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq Key
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	msg, err := client.Lookup(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
-	return msg, metadata, err
-}
-
-func local_request_RoutingService_Lookup_0(ctx context.Context, marshaler runtime.Marshaler, server RoutingServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var (
-		protoReq Key
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	msg, err := server.Lookup(ctx, &protoReq)
-	return msg, metadata, err
-}
-
-func request_RoutingService_Resolve_0(ctx context.Context, marshaler runtime.Marshaler, client RoutingServiceClient, req *http.Request, pathParams map[string]string) (RoutingService_ResolveClient, runtime.ServerMetadata, error) {
-	var (
-		protoReq Key
-		metadata runtime.ServerMetadata
-	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-	}
-	stream, err := client.Resolve(ctx, &protoReq)
-	if err != nil {
-		return nil, metadata, err
-	}
-	header, err := stream.Header()
-	if err != nil {
-		return nil, metadata, err
-	}
-	metadata.HeaderMD = header
-	return stream, metadata, nil
-}
-
 func request_RoutingService_List_0(ctx context.Context, marshaler runtime.Marshaler, client RoutingServiceClient, req *http.Request, pathParams map[string]string) (RoutingService_ListClient, runtime.ServerMetadata, error) {
 	var (
 		protoReq ListRequest
@@ -148,33 +104,6 @@ func RegisterRoutingServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 		forward_RoutingService_Publish_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-	})
-	mux.Handle(http.MethodPost, pattern_RoutingService_Lookup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		var stream runtime.ServerTransportStream
-		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/routing.v1alpha1.RoutingService/Lookup", runtime.WithHTTPPathPattern("/routing.v1alpha1.RoutingService/Lookup"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := local_request_RoutingService_Lookup_0(annotatedContext, inboundMarshaler, server, req, pathParams)
-		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
-		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
-		if err != nil {
-			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		forward_RoutingService_Lookup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-	})
-
-	mux.Handle(http.MethodPost, pattern_RoutingService_Resolve_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
-		_, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-		return
 	})
 
 	mux.Handle(http.MethodPost, pattern_RoutingService_List_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -240,40 +169,6 @@ func RegisterRoutingServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 		}
 		forward_RoutingService_Publish_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodPost, pattern_RoutingService_Lookup_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/routing.v1alpha1.RoutingService/Lookup", runtime.WithHTTPPathPattern("/routing.v1alpha1.RoutingService/Lookup"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_RoutingService_Lookup_0(annotatedContext, inboundMarshaler, client, req, pathParams)
-		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
-		if err != nil {
-			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		forward_RoutingService_Lookup_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-	})
-	mux.Handle(http.MethodPost, pattern_RoutingService_Resolve_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
-		ctx, cancel := context.WithCancel(req.Context())
-		defer cancel()
-		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/routing.v1alpha1.RoutingService/Resolve", runtime.WithHTTPPathPattern("/routing.v1alpha1.RoutingService/Resolve"))
-		if err != nil {
-			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		resp, md, err := request_RoutingService_Resolve_0(annotatedContext, inboundMarshaler, client, req, pathParams)
-		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
-		if err != nil {
-			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
-			return
-		}
-		forward_RoutingService_Resolve_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
-	})
 	mux.Handle(http.MethodPost, pattern_RoutingService_List_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
@@ -296,14 +191,10 @@ func RegisterRoutingServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 
 var (
 	pattern_RoutingService_Publish_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"routing.v1alpha1.RoutingService", "Publish"}, ""))
-	pattern_RoutingService_Lookup_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"routing.v1alpha1.RoutingService", "Lookup"}, ""))
-	pattern_RoutingService_Resolve_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"routing.v1alpha1.RoutingService", "Resolve"}, ""))
 	pattern_RoutingService_List_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"routing.v1alpha1.RoutingService", "List"}, ""))
 )
 
 var (
 	forward_RoutingService_Publish_0 = runtime.ForwardResponseMessage
-	forward_RoutingService_Lookup_0  = runtime.ForwardResponseMessage
-	forward_RoutingService_Resolve_0 = runtime.ForwardResponseStream
 	forward_RoutingService_List_0    = runtime.ForwardResponseStream
 )
