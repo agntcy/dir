@@ -6,6 +6,7 @@ package types
 import (
 	"context"
 
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -19,9 +20,12 @@ type RoutingAPI interface {
 	// It can perform sync to store the data to other nodes.
 	// For now, we try sync on every publish.
 	// TODO: find a better sync mechanism (buffered sync).
-	Publish(context.Context, routingtypes.PublishRequest) error
+	// Request can be assumed to be validated.
+	// We are only intersted in agent objects. Data on this object should be empty.
+	Publish(ctx context.Context, object *coretypes.Object, local bool) error
 
-	// List a given key.
+	// Search to network with a given request.
 	// This reads from content datastore.
-	List(context.Context, routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error)
+	// Request can be assumed to be validated.
+	List(context.Context, *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error)
 }

@@ -73,7 +73,10 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
 	}
 
-	err = c.routing.Publish(ctx, req.GetRecord(), &agent)
+	err = c.routing.Publish(ctx, &coretypes.Object{
+		Ref:   ref,
+		Agent: &agent,
+	}, req.GetLocal())
 	if err != nil {
 		return nil, fmt.Errorf("failed to publish: %w", err)
 	}
@@ -81,34 +84,26 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 	return &emptypb.Empty{}, nil
 }
 
-func (c *routingCtlr) Lookup(_ context.Context, _ *routingtypes.Key) (*coretypes.ObjectRef, error) {
-	// TODO implement me
-	panic("implement me")
-}
-
-func (c *routingCtlr) Resolve(_ *routingtypes.Key, _ routingtypes.RoutingService_ResolveServer) error {
-	// TODO implement me
-	panic("implement me")
-}
-
 func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.RoutingService_ListServer) error {
-	refs, err := c.routing.List(context.Background(), req.GetQuery())
+	_, err := c.routing.List(context.Background(), req)
 	if err != nil {
 		return fmt.Errorf("failed to list: %w", err)
 	}
 
-	items := []*routingtypes.ListResponse_Item{}
-	for _, ref := range refs {
-		items = append(items, &routingtypes.ListResponse_Item{
-			Key:    nil, // TODO: required? if yes, get agent from ref and compute key
-			Peers:  nil, // TODO: implement me when peers are available
-			Record: ref,
-		})
-	}
+	// TODO: stream results from API to response
+
+	// items := []*routingtypes.ListResponse_Item{}
+	// for _, ref := range refs {
+	// 	items = append(items, &routingtypes.ListResponse_Item{
+	// 		Key:    nil, // TODO: required? if yes, get agent from ref and compute key
+	// 		Peers:  nil, // TODO: implement me when peers are available
+	// 		Record: ref,
+	// 	})
+	// }
 
 	if err := srv.Send(
 		&routingtypes.ListResponse{
-			Items: items,
+			Items: nil, // TODO!
 		}); err != nil {
 		return fmt.Errorf("failed to send ref: %w", err)
 	}

@@ -10,52 +10,13 @@ import (
 	"os"
 )
 
-func removeDuplicates[T comparable](slice []T) []T {
-	keys := make(map[T]struct{})
-	result := make([]T, 0, len(slice))
-
-	for _, item := range slice {
-		if _, exists := keys[item]; !exists {
-			keys[item] = struct{}{}
-
-			result = append(result, item)
-		}
+// TODO: read labels from an agent model, ie. skills
+func (x *Agent) GetLabels() map[string]string {
+	if x == nil {
+		return nil
 	}
 
-	return result
-}
-
-func firstNonEmptyString(first, second string) string {
-	if first != "" {
-		return first
-	}
-
-	return second
-}
-
-func mergeItems[T any](receiverItems, otherItems []*T, getName func(*T) string) []*T {
-	itemMap := make(map[string]*T)
-
-	// Add other's items first
-	for _, item := range otherItems {
-		if item != nil {
-			itemMap[getName(item)] = item
-		}
-	}
-
-	// Override with receiver's items
-	for _, item := range receiverItems {
-		if item != nil {
-			itemMap[getName(item)] = item
-		}
-	}
-
-	mergedItems := make([]*T, 0, len(itemMap))
-	for _, item := range itemMap {
-		mergedItems = append(mergedItems, item)
-	}
-
-	return mergedItems
+	return map[string]string{}
 }
 
 //nolint:gocognit,cyclop
@@ -139,4 +100,52 @@ func (a *Agent) LoadFromFile(path string) error {
 	}
 
 	return nil
+}
+
+func removeDuplicates[T comparable](slice []T) []T {
+	keys := make(map[T]struct{})
+	result := make([]T, 0, len(slice))
+
+	for _, item := range slice {
+		if _, exists := keys[item]; !exists {
+			keys[item] = struct{}{}
+
+			result = append(result, item)
+		}
+	}
+
+	return result
+}
+
+func firstNonEmptyString(first, second string) string {
+	if first != "" {
+		return first
+	}
+
+	return second
+}
+
+func mergeItems[T any](receiverItems, otherItems []*T, getName func(*T) string) []*T {
+	itemMap := make(map[string]*T)
+
+	// Add other's items first
+	for _, item := range otherItems {
+		if item != nil {
+			itemMap[getName(item)] = item
+		}
+	}
+
+	// Override with receiver's items
+	for _, item := range receiverItems {
+		if item != nil {
+			itemMap[getName(item)] = item
+		}
+	}
+
+	mergedItems := make([]*T, 0, len(itemMap))
+	for _, item := range itemMap {
+		mergedItems = append(mergedItems, item)
+	}
+
+	return mergedItems
 }

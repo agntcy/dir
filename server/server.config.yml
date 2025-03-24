@@ -14,6 +14,7 @@ storage:
       enabled: true
       buffer_size: 100M
       source: /tmp/agntcy-dir/store/oci
+
     # If set to false, use cache as main source.
     # Do not push to remote store at all.
     enabled: false
@@ -69,22 +70,22 @@ routing:
     - /ipv4/addr/port/p2p/hostA
     - /ipv4/addr/port/p2p/hostB
 
-  # Serve and respond to the following keys on the network.
+  # Serve and respond to the following labels on the network.
   # We will be able to query this data locally.
-  # We should have pick keys with good aggregation.
+  # We should pick labels with good aggregation.
   #
   # For Discover API, we can use bloom filters
   # https://hur.st/bloomfilter/?n=100000000&p=1.0E-7
   #
   # One PutValue request value to DHT can send 10KBs, ie
-  #   10240/256 (bytes per key) = 40 full-length keys
+  #   10240/256 (bytes per label) = 40 full-length labels
   #
-  # We should limit to 64 different key info, for example
-  #   8 skills + 8 locators + 16 apps-specific tags (TODO: to be defined).
+  # We should limit to N different labels, for example
+  #   8 skills + 8 locators
   #
   # We can validate peer ID on receiving nodes to prevent bad actors from writing
   # data on certain peers.
-  keys: |
+  labels: |
     # # By default, we participate in agent model content routing
     # object/type/agent
     
@@ -106,17 +107,17 @@ routing:
   # Newly published items are announced as part of the request.
   republish_period: 4h
 
-  # Sync certain keys into storage our own store.
+  # Sync certain labels into storage our own store.
   # Once we pull the data, we will inform the network
   # that we are providing it (ie. publish announce for the model
-  # plus the data on about the keys).
+  # plus the data on about the labels).
   # This can be used as a backup node for tagged data.
-  # In addition to the routing keys we are sering for routing,
-  # we will also append these keys to the list so that we can
-  # listen for the announcement requests.
+  # In addition to the routing labels we are storing for routing,
+  # we will also append these labels to the list so that we can
+  # listen for the network requests.
   sync:
-    # Keys must fully match to allow syncing.
-    - keys: |
+    # Labels must fully match (AND clause against label matching) to allow syncing.
+    - labels: |
         # Sync all Cisco text-based agents
         agent/skill/text
         publisher/cisco

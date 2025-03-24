@@ -10,10 +10,10 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ocidigest "github.com/opencontainers/go-digest"
@@ -55,7 +55,10 @@ func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
 	}, nil
 }
 
-func (r *routing) Publish(ctx context.Context, ref *coretypes.ObjectRef, agent *coretypes.Agent) error {
+func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local bool) error {
+	ref := object.GetRef()
+	agent := object.GetAgent()
+
 	// Keep track of all skill attribute keys.
 	// We will record this across the network.
 	var skills []string
@@ -79,50 +82,44 @@ func (r *routing) Publish(ctx context.Context, ref *coretypes.ObjectRef, agent *
 		}
 	}
 
-	// Broadcast to the DHT that we are providing this object
-	err := r.server.DHT().Provide(ctx, ref.GetCID(), true)
-	if err != nil {
-		return fmt.Errorf("failed to announce skill to the network: %w", err)
-	}
-
-	// TODO: sync records across p2p network via RPC
+	// TODO: Publish items to the network via libp2p RPC
 
 	return nil
 }
 
-func (r *routing) List(ctx context.Context, prefixQuery string) ([]*coretypes.ObjectRef, error) {
-	// Validate query
-	if !isValidQuery(prefixQuery) {
-		return nil, fmt.Errorf("invalid query: %s", prefixQuery)
-	}
+func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
+	// // TODO: Validate request
+	// if !isValidQuery(prefixQuery) {
+	// 	return nil, fmt.Errorf("invalid query: %s", prefixQuery)
+	// }
 
-	// Query local data
-	results, err := r.dstore.Query(ctx, query.Query{
-		Prefix: prefixQuery,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to query datastore: %w", err)
-	}
+	// // Query local data
+	// results, err := r.dstore.Query(ctx, query.Query{
+	// 	Prefix: prefixQuery,
+	// })
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to query datastore: %w", err)
+	// }
 
-	// Store fetched data into a slice
-	var records []*coretypes.ObjectRef
+	// // Store fetched data into a slice
+	// var records []*coretypes.ObjectRef
 
-	// Fetch from local
-	for entry := range results.Next() {
-		digest, err := getAgentDigestFromKey(entry.Key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get digest from key: %w", err)
-		}
+	// // Fetch from local
+	// for entry := range results.Next() {
+	// 	digest, err := getAgentDigestFromKey(entry.Key)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to get digest from key: %w", err)
+	// 	}
 
-		records = append(records, &coretypes.ObjectRef{
-			Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-			Digest: digest,
-		})
-	}
+	// 	records = append(records, &coretypes.ObjectRef{
+	// 		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+	// 		Digest: digest,
+	// 	})
+	// }
 
-	// TODO: if connected, reach out across the network to find content
+	// TODO: Fetch items from the network via libp2p RPC
 
-	return records, nil
+	return nil, fmt.Errorf("not implemented")
 }
 
 var supportedQueryTypes = []string{

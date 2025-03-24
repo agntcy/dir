@@ -1,14 +1,17 @@
 # Usage
 
-This document defines a basic overview on how to use the Dir tooling.
-To run the examples below, it is required to have an up-and-running Dir API instance.
+This document defines a basic overview on how to use the project.
+To run the examples below, it is required to have an up-and-running Dir API instance.  
+Check [Deployment](DEPLOYMENT.md) guide on how to deploy the neccessary services.
 
-Although the following example is shown for a CLI usage scenario,
+> Although the following example is shown for CLI-based usage scenario,
 there is an effort on exposing the same functionality via Golang and Python SDKs.
 
 ## Storage API
 
-This API enables the interaction with a local storage layer.
+This API enables interaction with the local storage layer.
+It is used as an blob store for Dir objects and serves both
+the networking and user-specific purposes.
 
 ```bash
   # push
@@ -24,7 +27,7 @@ This API enables the interaction with a local storage layer.
 
 ## Routing API
 
-This API enables the interaction with the networking layer.
+This API enables interaction with the networking layer.
 
 ### Announce
 
@@ -44,26 +47,26 @@ This API only works for the data already pushed to local store.
   dir unpublish <digest>
 ```
 
-Use `--local` to publish data only to local routing table.
+Use `--local` to publish the data to the local routing table.
 Local data cannot be pulled by the network layer,
-while for published data, peers can try to request the given digests.
+while for published data, peers can reach out to request specific objects.
 
 ### Discover
 
 Search for the data across the network.
-This API supports both unicast- mode for routing to specific peers/sources,
-as well as multicast mode for tag-based routing.
+This API supports both unicast- mode for routing to specific peers/objects,
+as well as multicast mode for attribute-based routing.
 
 ```bash
   # Get a list of peer addresses holding specific agents, ie. find the location of data.
   dir list <digest> --peers
 
-  # Get a list of keys that a given peer can serve, ie. find the type of data.
-  # Keys are OASF (e.g. skills,locators) and Dir-specific (e.g. publisher).
-  dir list <peer-id> --keys
+  # Get a list of labels that a given peer can serve, ie. find the type of data.
+  # Labels are defined by OASF.
+  dir list <peer-id> --labels
 
   # Get a list of agent digests across the network that can satisfy the query.
-  dir list --keys skill=voice,skill=coding,publisher=cisco
+  dir list --labels skill=voice,skill=coding
 ```
 
 Use `--local` to list data available on the local routing table.  

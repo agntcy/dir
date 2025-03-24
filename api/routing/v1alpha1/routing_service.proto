@@ -27,39 +27,44 @@ service RoutingService {
 }
 
 message PublishRequest {
-  // Peer that is broadcasting the record.
-  Peer peer = 1;
-
   // Published record reference.
-  core.v1alpha1.ObjectRef record = 2;
+  // On publish, we read from the local store and extract the neccessary labels.
+  core.v1alpha1.ObjectRef record = 1;
 
   // Publish locally only.
   // This item will never end up in the network,
   // unless republished with local=false.
-  optional bool local = 3;
+  optional bool local = 2;
 }
 
 message ListRequest {
   // Target peer.
   optional Peer peer = 1;
 
-  // Target key.
-  Key key = 2;
+  // Target labels.
+  // For example, labels={"skill": "text", "skill": "text/rag"}
+  map<string, string> labels = 2;
+
+  // Target object, if any.
+  optional core.v1alpha1.ObjectRef record = 3;
 
   // Max routing depth.
-  optional uint32 max_hops = 3;
+  optional uint32 max_hops = 4;
+
+  // List only locally published data.
+  optional bool local = 5;
 }
 
 message ListResponse {
   message Item {
-    // Key associated with a given object
-    Key key = 1;
+    // Labels associated with a given object
+    map<string, string> labels = 1;
 
     // Peer that returned this object.
     Peer peer = 2;
 
     // Found object if any.
-    // If empty, then only the key is important.
+    // If empty, then only the labels are important.
     optional core.v1alpha1.ObjectRef record = 3;
   }
 
