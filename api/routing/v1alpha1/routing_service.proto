@@ -42,8 +42,8 @@ message ListRequest {
   optional Peer peer = 1;
 
   // Target labels.
-  // For example, labels={"skill": "text", "skill": "text/rag"}
-  map<string, string> labels = 2;
+  // For example, labels={"skill=text", "skill=text/rag"}
+  repeated string labels = 2;
 
   // Target object, if any.
   optional core.v1alpha1.ObjectRef record = 3;
@@ -58,7 +58,7 @@ message ListRequest {
 message ListResponse {
   message Item {
     // Labels associated with a given object
-    map<string, string> labels = 1;
+    repeated string labels = 1;
 
     // Peer that returned this object.
     Peer peer = 2;

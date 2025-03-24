@@ -85,8 +85,6 @@ func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local b
 		}
 	}
 
-	// TODO: Publish items to the network via libp2p RPC
-
 	return nil
 }
 

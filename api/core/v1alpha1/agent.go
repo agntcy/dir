@@ -10,15 +10,6 @@ import (
 	"os"
 )
 
-// TODO: read labels from an agent model, ie. skills.
-func (x *Agent) GetLabels() map[string]string {
-	if x == nil {
-		return nil
-	}
-
-	return map[string]string{}
-}
-
 //nolint:gocognit,cyclop
 func (x *Agent) Merge(other *Agent) {
 	if other == nil {
