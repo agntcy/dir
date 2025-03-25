@@ -134,11 +134,18 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 				return
 			}
 
-			// get agent from peer
-			object, err := r.store.Pull(ctx, &coretypes.ObjectRef{
+			ref, err := r.store.Lookup(ctx, &coretypes.ObjectRef{
 				Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
 				Digest: digest,
 			})
+			if err != nil {
+				log.Printf("failed to lookup agent: %v", err)
+
+				continue
+			}
+
+			// get agent from peer
+			object, err := r.store.Pull(ctx, ref)
 			if err != nil {
 				log.Printf("failed to pull agent: %v", err)
 
