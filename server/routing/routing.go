@@ -8,12 +8,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
+	"github.com/agntcy/dir/server/routing/rpc"
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -31,9 +33,14 @@ var (
 	refreshInterval = 5 * time.Minute
 )
 
+// routing only implements local operations for the routing layer (ie what i have locally stored).
+// the networking operation is handled by the handler which runs this across
 type routing struct {
-	dstore types.Datastore
-	server *p2p.Server
+	storeAPI types.StoreAPI
+	dstore   types.Datastore
+	server   *p2p.Server
+	service  *rpc.Service
+	notifyCh chan *notification
 }
 
 func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local bool) error {
@@ -98,7 +105,14 @@ func (r *routing) List(ctx context.Context, req *routingtypes.ListRequest) (<-ch
 	return nil, errors.New("not implemented")
 }
 
-func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
+func New(ctx context.Context, storeAPI types.StoreAPI, opts types.APIOptions) (types.RoutingAPI, error) {
+	// Create routing
+	routeAPI := &routing{
+		dstore:   opts.Datastore(),
+		storeAPI: storeAPI,
+		notifyCh: make(chan *notification, 1000),
+	}
+
 	// Create P2P server
 	server, err := p2p.New(ctx,
 		p2p.WithListenAddress(opts.Config().Routing.ListenAddress),
@@ -118,7 +132,11 @@ func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
 				return []dht.Option{
 					dht.Datastore(opts.Datastore()),                 // custom DHT datastore
 					dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)), // custom DHT protocol prefix
-					dht.ProviderStore(&peerstore{h, providerMgr}),
+					dht.ProviderStore(&handler{
+						ProviderManager: providerMgr,
+						hostID:          h.ID().String(),
+						notifyCh:        routeAPI.notifyCh,
+					}),
 				}, nil
 			},
 		),
@@ -127,10 +145,43 @@ func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
 		return nil, fmt.Errorf("failed to create p2p: %w", err)
 	}
 
-	return &routing{
-		dstore: opts.Datastore(),
-		server: server,
-	}, nil
+	// update server pointers
+	routeAPI.server = server
+
+	// Register RPC server
+	rpcService, err := rpc.New(ctx, server.Host(), storeAPI, routeAPI)
+	if err != nil {
+		defer server.Close()
+		return nil, err
+	}
+
+	// update service
+	routeAPI.service = rpcService
+
+	// run listener in background
+	go func(ctx context.Context) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		// check if anything on notify
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case notif := <-routeAPI.notifyCh:
+				// lookup
+				meta, err := routeAPI.service.Lookup(ctx, notif.Peer.ID, notif.Ref)
+				if err != nil {
+					log.Printf("failed to lookup: %v", err)
+					continue
+				}
+
+				log.Printf("lookup result: %v", meta)
+			}
+		}
+	}(ctx)
+
+	return routeAPI, nil
 }
 
 var supportedQueryTypes = []string{

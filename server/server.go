@@ -78,7 +78,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create store: %w", err)
 	}
 
-	routingAPI, err := routing.New(ctx, options)
+	routingAPI, err := routing.New(ctx, storeAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}

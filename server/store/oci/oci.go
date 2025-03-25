@@ -110,11 +110,17 @@ func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.
 		return nil, err
 	}
 
+	// get CID of blob
+	blobCID, err := blobRef.GetCID()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get blob CID: %w", err)
+	}
+
 	// tag manifest
 	// tag => resolves manifest to object which can be looked up (lookup)
 	// tag => allows to pull object directly (pull)
 	// tag => allows listing and filtering tags (list)
-	_, err = oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), blobRef.GetCID().String())
+	_, err = oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), blobCID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +151,14 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 	// read manifest data from remote
 	var manifest ocispec.Manifest
 	{
+		// get CID of ref
+		refCID, err := ref.GetCID()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ref CID: %w", err)
+		}
+
 		// resolve manifest from remote tag
-		manifestDesc, err := s.repo.Resolve(ctx, ref.GetCID().String())
+		manifestDesc, err := s.repo.Resolve(ctx, refCID.String())
 		if err != nil {
 			// soft fail
 			return ref, nil

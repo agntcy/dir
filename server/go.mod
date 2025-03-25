@@ -2,11 +2,14 @@ module github.com/agntcy/dir/server
 
 go 1.24.1
 
-replace github.com/agntcy/dir/api => ../api
+replace (
+	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/client => ../client
+)
 
 require (
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
-	github.com/agntcy/dir/api v0.1.4
+	github.com/agntcy/dir/api v0.1.5
 	github.com/ipfs/go-datastore v0.8.2
 	github.com/libp2p/go-libp2p v0.41.0
 	github.com/libp2p/go-libp2p-gorpc v0.6.0
@@ -25,6 +28,7 @@ require (
 )
 
 require (
+	github.com/agntcy/dir/client v0.1.3
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

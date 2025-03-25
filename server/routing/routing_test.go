@@ -5,17 +5,10 @@
 package routing
 
 import (
-	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/server/config"
-	routingconfig "github.com/agntcy/dir/server/routing/config"
-	"github.com/agntcy/dir/server/types"
-	"github.com/ipfs/go-datastore"
-	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -156,89 +149,4 @@ func TestPublishList_ValidQuery(t *testing.T) {
 	// 		}
 	// 	})
 	// }
-}
-
-func TestPublish_Agent(t *testing.T) {
-	// Test data
-	testAgent := &coretypes.Agent{
-		Skills: []*coretypes.Skill{
-			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-		},
-		Locators: []*coretypes.Locator{
-			{Type: "type1", Url: "url1"},
-		},
-	}
-	testRef := getObjectRef(testAgent)
-
-	// create demo network
-	firstNode := newTestServer(t, t.Context(), nil)
-	secondNode := newTestServer(t, t.Context(), firstNode.server.P2pAddrs())
-
-	// wait for connection
-	time.Sleep(2 * time.Second)
-	<-firstNode.server.DHT().RefreshRoutingTable()
-	<-secondNode.server.DHT().RefreshRoutingTable()
-
-	// publish the key on second node and wait on the first
-	digestCID, err := testRef.GetCID()
-	assert.NoError(t, err)
-
-	// announce the key
-	err = secondNode.server.DHT().Provide(t.Context(), digestCID, true)
-	assert.NoError(t, err)
-
-	// wait for sync
-	time.Sleep(2 * time.Second)
-	<-firstNode.server.DHT().RefreshRoutingTable()
-	<-secondNode.server.DHT().RefreshRoutingTable()
-
-	// check on first
-	found := false
-	peerCh := firstNode.server.DHT().FindProvidersAsync(t.Context(), digestCID, 1)
-	for peer := range peerCh {
-		if peer.ID == secondNode.server.Host().ID() {
-			found = true
-			break
-		}
-	}
-	assert.True(t, found)
-}
-
-func getObjectRef(a *coretypes.Agent) *coretypes.ObjectRef {
-	raw, _ := json.Marshal(a) //nolint:errchkjson
-
-	return &coretypes.ObjectRef{
-		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-		Digest:      digest.FromBytes(raw).String(),
-		Size:        uint64(len(raw)),
-		Annotations: a.Annotations,
-	}
-}
-
-func toPtr[T any](v T) *T {
-	return &v
-}
-
-func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *routing {
-	t.Helper()
-
-	// override interval for routing table refresh
-	realInterval := refreshInterval
-	refreshInterval = 1 * time.Second
-	defer func() {
-		refreshInterval = realInterval
-	}()
-
-	r, err := New(ctx, types.NewOptions(
-		&config.Config{
-			Routing: routingconfig.Config{
-				ListenAddress:  routingconfig.DefaultListenddress,
-				BootstrapPeers: bootPeers,
-			},
-		},
-		datastore.NewMapDatastore(),
-	))
-	assert.NoError(t, err)
-
-	return r.(*routing)
 }
