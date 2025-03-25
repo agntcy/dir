@@ -13,6 +13,7 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
+	"github.com/agntcy/dir/server/routing/rpc"
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -27,9 +28,14 @@ var (
 	refreshInterval = 5 * time.Minute
 )
 
+// routing only implements local operations for the routing layer (ie what i have locally stored).
+// the networking operation is handled by the handler which runs this across
 type routing struct {
-	dstore types.Datastore
-	server *p2p.Server
+	storeAPI types.StoreAPI
+	dstore   types.Datastore
+	server   *p2p.Server
+	service  *rpc.Service
+	notifyCh chan *notification
 }
 
 func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local bool) error {

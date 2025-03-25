@@ -35,7 +35,6 @@ func TestPublish_InvalidObject(t *testing.T) {
 }
 
 func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
-	// Test data
 	var (
 		testAgent = &coretypes.Agent{
 			Skills: []*coretypes.Skill{
