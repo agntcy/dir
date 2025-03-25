@@ -5,6 +5,11 @@
 package routing
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -25,6 +30,53 @@ func TestPublish_InvalidObject(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, "invalid object reference: <nil>", err.Error())
 	})
+}
+
+type mockStore struct {
+	data map[string]*coretypes.Object
+}
+
+func newMockStore() *mockStore {
+	return &mockStore{
+		data: make(map[string]*coretypes.Object),
+	}
+}
+
+func (m *mockStore) Push(_ context.Context, ref *coretypes.ObjectRef, contents io.Reader) (*coretypes.ObjectRef, error) {
+	b, err := io.ReadAll(contents)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	m.data[ref.GetDigest()] = &coretypes.Object{
+		Ref:   ref,
+		Agent: &coretypes.Agent{},
+		Data:  b,
+	}
+
+	return ref, nil
+}
+
+func (m *mockStore) Lookup(_ context.Context, ref *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+	if obj, exists := m.data[ref.GetDigest()]; exists {
+		return obj.GetRef(), nil
+	}
+
+	return nil, errors.New("test object not found")
+}
+
+func (m *mockStore) Pull(_ context.Context, ref *coretypes.ObjectRef) (io.ReadCloser, error) {
+	if obj, exists := m.data[ref.GetDigest()]; exists {
+		return io.NopCloser(bytes.NewReader(obj.GetData())), nil
+	}
+
+	return nil, errors.New("test object not found")
+}
+
+func (m *mockStore) Delete(_ context.Context, ref *coretypes.ObjectRef) error {
+	delete(m.data, ref.GetDigest())
+
+	return nil
 }
 
 func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
@@ -74,8 +126,24 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	<-mainNode.remote.server.DHT().RefreshRoutingTable()
 	time.Sleep(1 * time.Second)
 
+	// Mock store
+	mockstore := newMockStore()
+	r.local.store = mockstore
+
+	agentData, err := json.Marshal(testAgent)
+	assert.NoError(t, err)
+
+	_, err = r.local.store.Push(t.Context(), testRef, bytes.NewReader(agentData))
+	assert.NoError(t, err)
+
+	agentData2, err := json.Marshal(testAgent2)
+	assert.NoError(t, err)
+
+	_, err = r.local.store.Push(t.Context(), testRef2, bytes.NewReader(agentData2))
+	assert.NoError(t, err)
+
 	// Publish first agent
-	err := r.Publish(t.Context(), &coretypes.Object{
+	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef,
 		Agent: testAgent,
 	}, true)
@@ -145,14 +213,17 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	<-mainNode.remote.server.DHT().RefreshRoutingTable()
 	time.Sleep(1 * time.Second)
 
-	// Publish first agent
-	err := r.Publish(t.Context(), &coretypes.Object{
-		Ref:   testRef,
-		Agent: testAgent,
-	}, true)
+	// Mock store
+	mockstore := newMockStore()
+	r.local.store = mockstore
+
+	agentData, err := json.Marshal(testAgent)
 	assert.NoError(t, err)
 
-	// Publish second agent
+	_, err = r.local.store.Push(t.Context(), testRef, bytes.NewReader(agentData))
+	assert.NoError(t, err)
+
+	// Publish first agent
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef,
 		Agent: testAgent,
