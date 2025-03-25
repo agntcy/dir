@@ -51,7 +51,7 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *coret
 	return nil
 }
 
-func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *coretypes.Agent) error {
+func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *coretypes.Object) error {
 	// validate request
 	if in == nil || out == nil {
 		return fmt.Errorf("invalid request: nil request/response")
@@ -90,7 +90,10 @@ func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *coretyp
 		return fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
-	*out = *agent //nolint
+	*out = coretypes.Object{
+		Ref:   meta,
+		Agent: agent,
+	}
 
 	return nil
 }
@@ -154,8 +157,8 @@ func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *coretypes.Objec
 	return &resp, nil
 }
 
-func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectRef) (*coretypes.Agent, error) {
-	var resp coretypes.Agent
+func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectRef) (*coretypes.Object, error) {
+	var resp coretypes.Object
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncPull, req, &resp)
 	if err != nil {
 		return nil, err

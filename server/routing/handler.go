@@ -32,7 +32,7 @@ type handler struct {
 }
 
 func (h *handler) AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error {
-	if err := h.resolveAgent(ctx, key, prov); err != nil {
+	if err := h.handleAnnounce(ctx, key, prov); err != nil {
 		// log this error only
 		log.Printf("Failed to resolve agent: %v", err)
 	}
@@ -44,9 +44,9 @@ func (h *handler) GetProviders(ctx context.Context, key []byte) ([]peer.AddrInfo
 	return h.ProviderManager.GetProviders(ctx, key)
 }
 
-// resolveAgent tries to reach out to the provider in order to update the local routing data
+// handleAnnounce tries to parse the data from provider in order to update the local routing data
 // about the content and peer.
-func (h *handler) resolveAgent(ctx context.Context, key []byte, prov peer.AddrInfo) error {
+func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.AddrInfo) error {
 	// get ref digest from request
 	// if this fails, it may mean that it's not DIR-constructed CID
 	cast, err := mh.Cast(key)
@@ -67,7 +67,7 @@ func (h *handler) resolveAgent(ctx context.Context, key []byte, prov peer.AddrIn
 
 	// validete ref digest
 	if peer.ID(h.hostID) == prov.ID {
-		return fmt.Errorf("self announcement")
+		return fmt.Errorf("skipping self announcement")
 	}
 
 	log.Printf("Peer %s: Received announcement event %s from Peer %s", h.hostID, ref, prov.ID)
