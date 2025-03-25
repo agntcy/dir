@@ -7,11 +7,8 @@ import (
 	"github.com/agntcy/dir/cli/cmd/list/agents"
 	"github.com/agntcy/dir/cli/cmd/list/labels"
 	"github.com/agntcy/dir/cli/cmd/list/peers"
-	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
-
-var clientConfig = client.DefaultConfig
 
 var Command = &cobra.Command{
 	Use:   "list",
