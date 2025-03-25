@@ -92,9 +92,7 @@ func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.Routi
 
 	items := []*routingtypes.ListResponse_Item{}
 	for i := range itemChan {
-		items = append(items, &routingtypes.ListResponse_Item{
-			Record: i.GetRecord(),
-		})
+		items = append(items, i)
 	}
 
 	if err := srv.Send(&routingtypes.ListResponse{Items: items}); err != nil {
