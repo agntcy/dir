@@ -124,7 +124,17 @@ func start(ctx context.Context, opts *options) <-chan status {
 		log.Printf("Host: %v %v", host.ID(), host.Addrs())
 
 		// Create DHT
-		kdht, err := newDHT(ctx, host, opts.BootstrapPeers, opts.RefreshInterval, opts.DHTCustomOpts...)
+		var customDhtOpts []dht.Option
+		if opts.DHTCustomOpts != nil {
+			customDhtOpts, err = opts.DHTCustomOpts(host)
+			if err != nil {
+				statusCh <- status{Err: err}
+
+				return
+			}
+		}
+
+		kdht, err := newDHT(ctx, host, opts.BootstrapPeers, opts.RefreshInterval, customDhtOpts...)
 		if err != nil {
 			statusCh <- status{Err: err}
 

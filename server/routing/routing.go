@@ -16,45 +16,20 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p/core/protocol"
 	ocidigest "github.com/opencontainers/go-digest"
 )
 
 var (
 	ProtocolPrefix     = "dir"
-	ProtocolRendezvous = ProtocolPrefix + "/connect"
+	ProtocolRendezvous = "dir/connect"
+
+	// refresh interval for DHT routing tables
+	refreshInterval = 5 * time.Minute
 )
 
 type routing struct {
 	dstore types.Datastore
 	server *p2p.Server
-}
-
-func New(ctx context.Context, opts types.APIOptions) (types.RoutingAPI, error) {
-	// Create P2P server
-	server, err := p2p.New(ctx,
-		p2p.WithListenAddress(opts.Config().Routing.ListenAddress),
-		p2p.WithBootstrapAddrs(opts.Config().Routing.BootstrapPeers),
-		p2p.WithRefreshInterval(1*time.Second), // quick refresh, TODO: make configurable
-		p2p.WithRandevous(ProtocolRendezvous),  // enable libp2p auto-discovery
-		p2p.WithIdentityKeyPath(opts.Config().Routing.KeyPath),
-		p2p.WithCustomDHTOpts(
-			dht.Datastore(opts.Datastore()), // custom DHT datastore
-			// dht.Validator(&validator{}),
-			dht.NamespacedValidator("dir", &validator{}),    // custom namespace validator
-			dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)), // custom DHT protocol
-			dht.ProviderStore(&peerstore{}),                 // provider store
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create p2p: %w", err)
-	}
-
-	return &routing{
-		dstore: opts.Datastore(),
-		server: server,
-	}, nil
 }
 
 func (r *routing) Publish(ctx context.Context, object *coretypes.Object, local bool) error {

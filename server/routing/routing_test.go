@@ -205,6 +205,13 @@ func toPtr[T any](v T) *T {
 func newTestServer(ctx context.Context, t *testing.T, bootPeers []string) *routing {
 	t.Helper()
 
+	// override interval for routing table refresh
+	realInterval := refreshInterval
+	refreshInterval = 1 * time.Second
+	defer func() {
+		refreshInterval = realInterval
+	}()
+
 	r, err := New(ctx, types.NewOptions(
 		&config.Config{
 			Routing: routingconfig.Config{
