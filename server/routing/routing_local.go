@@ -126,6 +126,8 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			return
 		}
 
+		processedAgentDigests := make(map[string]struct{})
+
 		for entry := range res.Next() {
 			digest, err := getAgentDigestFromKey(entry.Key)
 			if err != nil {
@@ -133,6 +135,11 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 
 				return
 			}
+
+			if _, ok := processedAgentDigests[digest]; ok {
+				continue
+			}
+			processedAgentDigests[digest] = struct{}{}
 
 			ref, err := r.store.Lookup(ctx, &coretypes.ObjectRef{
 				Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
