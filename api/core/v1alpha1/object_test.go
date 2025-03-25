@@ -1,3 +1,7 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+//nolint:testifylint
 package corev1alpha1
 
 import (
@@ -48,8 +52,10 @@ func TestObjectRef_CIDConversion(t *testing.T) {
 			if tc.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errMsg)
+
 				return
 			}
+
 			assert.NoError(t, err)
 
 			// Convert back from CID
@@ -58,8 +64,8 @@ func TestObjectRef_CIDConversion(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify the round-trip conversion
-			assert.Equal(t, orig.Type, converted.Type)
-			assert.Equal(t, orig.Digest, converted.Digest)
+			assert.Equal(t, orig.GetType(), converted.GetType())
+			assert.Equal(t, orig.GetDigest(), converted.GetDigest())
 		})
 	}
 }

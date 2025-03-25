@@ -13,5 +13,5 @@ func init() {
 	flags := Command.Flags()
 	flags.StringVar(&opts.Query, "query", "", "Query to search for agents")
 
-	Command.MarkFlagRequired("query")
+	Command.MarkFlagRequired("query") //nolint:errcheck
 }

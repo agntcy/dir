@@ -4,6 +4,7 @@
 package corev1alpha1
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -36,14 +37,14 @@ func (x *ObjectRef) GetCID() (cid.Cid, error) {
 	// Split the digest into algorithm and hash parts
 	// Example digest format: "sha256:1234abcd..."
 	parts := strings.Split(x.GetDigest(), ":")
-	if len(parts) != 2 {
-		return cid.Cid{}, fmt.Errorf("invalid digest format")
+	if len(parts) != 2 { //nolint:mnd
+		return cid.Cid{}, errors.New("invalid digest format")
 	}
 
 	// Create a multihash using SHA256
 	hash, err := mh.Encode([]byte(parts[1]), mh.SHA2_256)
 	if err != nil {
-		return cid.Cid{}, err
+		return cid.Cid{}, err //nolint:wrapcheck
 	}
 
 	// Use the appropriate codec based on object type
@@ -55,7 +56,7 @@ func (x *ObjectRef) GetCID() (cid.Cid, error) {
 	return cid.NewCidV1(codecType, hash), nil
 }
 
-// FromCID reconstructs the ObjectRef digest from a CID
+// FromCID reconstructs the ObjectRef digest from a CID.
 func (x *ObjectRef) FromCID(c cid.Cid) error {
 	// Get the multihash from CID
 	decoded, err := mh.Decode(c.Hash())
@@ -64,7 +65,7 @@ func (x *ObjectRef) FromCID(c cid.Cid) error {
 	}
 
 	// Set the digest in sha256:hash format
-	x.Digest = fmt.Sprintf("sha256:%s", string(decoded.Digest))
+	x.Digest = "sha256:" + string(decoded.Digest)
 
 	// Set the type based on codec
 	switch c.Prefix().Codec {

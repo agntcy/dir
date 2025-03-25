@@ -1,27 +1,20 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// nolint:testifylint
+// nolint:testifylint,wsl
 package routing
 
 import (
-	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
-	"github.com/agntcy/dir/server/config"
-	routingconfig "github.com/agntcy/dir/server/routing/config"
-	"github.com/agntcy/dir/server/types"
-	"github.com/ipfs/go-datastore"
-	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPublish_InvalidObject(t *testing.T) {
-	r := &routing{}
+	r := &routeLocal{}
 
 	t.Run("Invalid object", func(t *testing.T) {
 		err := r.Publish(t.Context(), &coretypes.Object{
@@ -74,11 +67,11 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	)
 
 	// create demo network
-	mainNode := newTestServer(t.Context(), t, nil)
-	r := newTestServer(t.Context(), t, mainNode.server.P2pAddrs())
+	mainNode := newTestServer(t, t.Context(), nil)
+	r := newTestServer(t, t.Context(), mainNode.remote.server.P2pAddrs())
 
 	// wait for connection
-	<-mainNode.server.DHT().RefreshRoutingTable()
+	<-mainNode.remote.server.DHT().RefreshRoutingTable()
 	time.Sleep(1 * time.Second)
 
 	// Publish first agent
@@ -99,6 +92,7 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 		t.Run("Valid query: "+k, func(t *testing.T) {
 			// list
 			refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
+				Local:  toPtr(true),
 				Labels: []string{k},
 			})
 			assert.NoError(t, err)
@@ -144,11 +138,11 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	)
 
 	// create demo network
-	mainNode := newTestServer(t.Context(), t, nil)
-	r := newTestServer(t.Context(), t, mainNode.server.P2pAddrs())
+	mainNode := newTestServer(t, t.Context(), nil)
+	r := newTestServer(t, t.Context(), mainNode.remote.server.P2pAddrs())
 
 	// wait for connection
-	<-mainNode.server.DHT().RefreshRoutingTable()
+	<-mainNode.remote.server.DHT().RefreshRoutingTable()
 	time.Sleep(1 * time.Second)
 
 	// Publish first agent
@@ -168,6 +162,7 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	t.Run("Valid multi skill query", func(t *testing.T) {
 		// list
 		refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
+			Local:  toPtr(true),
 			Labels: []string{"/skills/category1/class1", "/skills/category2/class2"},
 		})
 		assert.NoError(t, err)
@@ -184,46 +179,4 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 		// check if expected ref is present
 		assert.Equal(t, testRef.GetDigest(), refs[0].GetRecord().GetDigest())
 	})
-}
-
-func getObjectRef(a *coretypes.Agent) *coretypes.ObjectRef {
-	raw, _ := json.Marshal(a) //nolint:errchkjson
-
-	return &coretypes.ObjectRef{
-		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-		Digest:      digest.FromBytes(raw).String(),
-		Size:        uint64(len(raw)),
-		Annotations: a.GetAnnotations(),
-	}
-}
-
-func toPtr[T any](v T) *T {
-	return &v
-}
-
-func newTestServer(ctx context.Context, t *testing.T, bootPeers []string) *routing {
-	t.Helper()
-
-	// override interval for routing table refresh
-	realInterval := refreshInterval
-	refreshInterval = 1 * time.Second
-	defer func() {
-		refreshInterval = realInterval
-	}()
-
-	r, err := New(ctx, types.NewOptions(
-		&config.Config{
-			Routing: routingconfig.Config{
-				ListenAddress:  routingconfig.DefaultListenddress,
-				BootstrapPeers: bootPeers,
-			},
-		},
-		datastore.NewMapDatastore(),
-	))
-	assert.NoError(t, err)
-
-	routingInstance, ok := r.(*routing)
-	assert.True(t, ok, "expected *routing type")
-
-	return routingInstance
 }

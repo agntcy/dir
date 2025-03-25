@@ -61,7 +61,7 @@ func WithIdentityKeyPath(keyPath string) Option {
 		}
 
 		// Generate random key
-		generatedKey, err := crypto.UnmarshalPrivateKey(keyData)
+		generatedKey, err := crypto.UnmarshalEd25519PrivateKey(keyData)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal identity key: %w", err)
 		}

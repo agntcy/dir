@@ -13,5 +13,5 @@ func init() {
 	flags := Command.Flags()
 	flags.StringVar(&opts.Digest, "digest", "", "Digest to search for peers")
 
-	Command.MarkFlagRequired("digest")
+	Command.MarkFlagRequired("digest") //nolint:errcheck
 }

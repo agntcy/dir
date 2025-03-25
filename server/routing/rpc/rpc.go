@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// nolint
 package rpc
 
 import (
@@ -34,10 +35,18 @@ type RPCAPI struct {
 	service *Service
 }
 
+type PullResponse struct {
+	Digest      string
+	Type        string
+	Size        uint64
+	Annotations map[string]string
+	Data        []byte
+}
+
 func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *coretypes.ObjectRef) error {
 	// validate request
 	if in == nil || out == nil {
-		return fmt.Errorf("invalid request: nil request/response")
+		return errors.New("invalid request: nil request/response")
 	}
 
 	// handle lookup
@@ -51,10 +60,10 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *coret
 	return nil
 }
 
-func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *coretypes.Object) error {
+func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *PullResponse) error {
 	// validate request
 	if in == nil || out == nil {
-		return fmt.Errorf("invalid request: nil request/response")
+		return errors.New("invalid request: nil request/response")
 	}
 
 	// lookup
@@ -64,11 +73,12 @@ func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *coretyp
 	}
 
 	// validate lookup before pull
-	if meta.Type != coretypes.ObjectType_OBJECT_TYPE_AGENT.String() {
-		return fmt.Errorf("can only pull agent object")
+	if meta.GetType() != coretypes.ObjectType_OBJECT_TYPE_AGENT.String() {
+		return errors.New("can only pull agent object")
 	}
-	if meta.Size > MaxPullSize {
-		return fmt.Errorf("object too large to pull: %d bytes", meta.Size)
+
+	if meta.GetSize() > MaxPullSize {
+		return fmt.Errorf("object too large to pull: %d bytes", meta.GetSize())
 	}
 
 	// pull data
@@ -79,20 +89,18 @@ func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *coretyp
 	defer reader.Close()
 
 	// read result from reader
-	data, err := io.ReadAll(io.LimitReader(reader, int64(meta.Size)))
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return fmt.Errorf("failed to read: %w", err)
 	}
 
-	// convert to agent
-	var agent *coretypes.Agent
-	if err := json.Unmarshal(data, &agent); err != nil {
-		return fmt.Errorf("failed to unmarshal: %w", err)
-	}
-
-	*out = coretypes.Object{
-		Ref:   meta,
-		Agent: agent,
+	// set output
+	*out = PullResponse{
+		Digest:      meta.GetDigest(),
+		Type:        meta.GetType(),
+		Size:        meta.GetSize(),
+		Data:        data,
+		Annotations: meta.Annotations,
 	}
 
 	return nil
@@ -102,7 +110,7 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *routetypes.ListRequest, 
 	// validate request
 	in := <-inCh
 	if in == nil || out == nil {
-		return fmt.Errorf("invalid request: nil request/response")
+		return errors.New("invalid request: nil request/response")
 	}
 
 	// list
@@ -137,6 +145,7 @@ func New(ctx context.Context, host host.Host, store types.StoreAPI, route types.
 
 	// register api
 	rpcAPI := RPCAPI{service: service}
+
 	err := service.rpcServer.Register(&rpcAPI)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
@@ -150,26 +159,45 @@ func New(ctx context.Context, host host.Host, store types.StoreAPI, route types.
 
 func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
 	var resp coretypes.ObjectRef
+
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncLookup, req, &resp)
 	if err != nil {
 		return nil, err
 	}
+
 	return &resp, nil
 }
 
 func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectRef) (*coretypes.Object, error) {
-	var resp coretypes.Object
+	var resp PullResponse
+
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncPull, req, &resp)
 	if err != nil {
 		return nil, err
 	}
-	return &resp, nil
+
+	// convert to agent
+	var agent *coretypes.Agent
+	if err := json.Unmarshal(resp.Data, &agent); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
+	}
+
+	return &coretypes.Object{
+		Ref: &coretypes.ObjectRef{
+			Digest:      resp.Digest,
+			Type:        resp.Type,
+			Size:        resp.Size,
+			Annotations: resp.Annotations,
+		},
+		Agent: agent,
+	}, nil
 }
 
-// range over the result channel, then read the error after the loop
+// range over the result channel, then read the error after the loop.
 func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.ListResponse_Item, <-chan error) {
 	outCh := make(chan *routetypes.ListResponse_Item, 10)
 	errCh := make(chan error, 1)
+
 	go func() {
 		inCh := make(chan *routetypes.ListRequest, 1)
 		inCh <- req
@@ -188,6 +216,7 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 
 func (s *Service) getPeers() peer.IDSlice {
 	var filtered peer.IDSlice
+
 	for _, pID := range s.host.Peerstore().Peers() {
 		if pID != s.host.ID() {
 			filtered = append(filtered, pID)

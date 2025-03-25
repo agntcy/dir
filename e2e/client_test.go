@@ -84,7 +84,7 @@ var _ = ginkgo.Describe("client end-to-end tests", func() {
 			err = c.Publish(ctx, &coretypes.ObjectRef{
 				Digest: ref.GetDigest(),
 				Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-			})
+			}, true)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 

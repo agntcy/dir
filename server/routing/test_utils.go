@@ -1,3 +1,7 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+// nolint
 package routing
 
 import (
@@ -24,7 +28,7 @@ func getObjectRef(a *coretypes.Agent) *coretypes.ObjectRef {
 		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
 		Digest:      digest.FromBytes(raw).String(),
 		Size:        uint64(len(raw)),
-		Annotations: a.Annotations,
+		Annotations: a.GetAnnotations(),
 	}
 }
 
@@ -32,12 +36,13 @@ func toPtr[T any](v T) *T {
 	return &v
 }
 
-func newTestServer(ctx context.Context, t *testing.T, bootPeers []string) *routing {
+func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route {
 	t.Helper()
 
 	// override interval for routing table refresh
 	realInterval := refreshInterval
 	refreshInterval = 1 * time.Second
+
 	defer func() {
 		refreshInterval = realInterval
 	}()
@@ -65,5 +70,5 @@ func newTestServer(ctx context.Context, t *testing.T, bootPeers []string) *routi
 	r, err := New(ctx, s, opts)
 	assert.NoError(t, err)
 
-	return r.(*routing)
+	return r.(*route)
 }

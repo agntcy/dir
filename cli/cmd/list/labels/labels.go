@@ -4,27 +4,79 @@
 package labels
 
 import (
+	"errors"
+	"fmt"
+
+	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
+	"github.com/agntcy/dir/cli/util"
 	"github.com/spf13/cobra"
 )
 
 var Command = &cobra.Command{
 	Use:   "labels",
-	Short: "List the labels a peer can serve",
+	Short: "List the labels across the network",
 	Long: `Usage example:
 
-	# Get a list of labels that a given peer can serve, ie. find the type of data.
+	# Get a list of labels that across the network, ie. find the type of data.
   	# Labels are OASF (e.g. skills, locators) and Dir-specific (e.g. publisher).
-   	dir list labels --peer-id <peer-id>
+   	dir list labels text text/rag
+	
+	# For a specific peer, run the following command.
+	dir list labels text text/rag --peer <peer-id>
+	
 
 `,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runCommand(cmd)
+	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
+		return runCommand(cmd, args)
 	},
 }
 
-func runCommand(cmd *cobra.Command) error {
-	presenter.Printf(cmd, "hello labels command, peer-id: %s\n", opts.PeerId)
+func runCommand(cmd *cobra.Command, args []string) error {
+	// Get the client from the context.
+	c, ok := util.GetClientFromContext(cmd.Context())
+	if !ok {
+		return errors.New("failed to get client from context")
+	}
+
+	// Is peer set
+	var peer *routetypes.Peer
+	if opts.PeerId != "" {
+		peer = &routetypes.Peer{
+			Id: opts.PeerId,
+		}
+	}
+
+	// Get a list of arguments (skills)
+	var skills []string
+	if len(args) > 0 {
+		skills = args
+	}
+
+	// Get max hops
+	maxHops := uint32(10) //nolint:mnd
+
+	// Run extensive search
+	isLocal, _ := cmd.Flags().GetBool("local")
+	items, err := c.List(cmd.Context(), &routetypes.ListRequest{
+		Peer:    peer,
+		Labels:  skills,
+		MaxHops: &maxHops,
+		Local:   &isLocal,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list peers: %w", err)
+	}
+
+	for item := range items {
+		presenter.Printf(cmd,
+			"Peer: %v | Labels: %v | Annotations: %v | Digest: %v\n",
+			item.GetPeer().GetId(),
+			item.GetLabels(),
+			item.GetRecord().GetAnnotations(),
+			item.GetRecord().GetDigest(),
+		)
+	}
 
 	return nil
 }

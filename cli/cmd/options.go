@@ -3,8 +3,9 @@
 
 package cmd
 
-var opts = &options{}
+var opts = &options{} //nolint:unused
 
+//nolint:unused
 type options struct {
 	Query string
 }
@@ -13,5 +14,5 @@ func init() {
 	flags := RootCmd.Flags()
 	flags.StringVar(&clientConfig.ServerAddress, "server-addr", clientConfig.ServerAddress, "Directory Server API address")
 
-	RootCmd.MarkFlagRequired("server-addr")
+	RootCmd.MarkFlagRequired("server-addr") //nolint:errcheck
 }

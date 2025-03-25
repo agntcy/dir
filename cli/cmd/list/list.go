@@ -4,20 +4,38 @@
 package list
 
 import (
+	"fmt"
+
 	"github.com/agntcy/dir/cli/cmd/list/agents"
 	"github.com/agntcy/dir/cli/cmd/list/labels"
 	"github.com/agntcy/dir/cli/cmd/list/peers"
+	"github.com/agntcy/dir/cli/util"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
+
+var clientConfig = client.DefaultConfig
 
 var Command = &cobra.Command{
 	Use:   "list",
 	Short: "List different type of objects on the network",
-	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		// Set client via context for all requests
+		// TODO: make client config configurable via CLI args
+		c, err := client.New(client.WithConfig(&clientConfig))
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
+
+		ctx := util.SetClientForContext(cmd.Context(), c)
+		cmd.SetContext(ctx)
+
 		// Ensure all subcommands inherit the flags
 		for _, subCmd := range cmd.Commands() {
 			subCmd.Flags().AddFlagSet(cmd.PersistentFlags())
 		}
+
+		return nil
 	},
 }
 

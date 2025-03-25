@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// nolint:testifylint
+// nolint
 package routing
 
 import (
@@ -15,7 +15,7 @@ import (
 )
 
 // Testing 2 nodes, A -> B
-// B stores and announces an agent.
+// stores and announces an agent.
 // A discovers it retrieves the key metadata from B.
 func TestHandler(t *testing.T) {
 	// Test data
@@ -31,12 +31,12 @@ func TestHandler(t *testing.T) {
 
 	// create demo network
 	firstNode := newTestServer(t, t.Context(), nil)
-	secondNode := newTestServer(t, t.Context(), firstNode.server.P2pAddrs())
+	secondNode := newTestServer(t, t.Context(), firstNode.remote.server.P2pAddrs())
 
 	// wait for connection
 	time.Sleep(2 * time.Second)
-	<-firstNode.server.DHT().RefreshRoutingTable()
-	<-secondNode.server.DHT().RefreshRoutingTable()
+	<-firstNode.remote.server.DHT().RefreshRoutingTable()
+	<-secondNode.remote.server.DHT().RefreshRoutingTable()
 
 	// publish the key on second node and wait on the first
 	digestCID, err := testRef.GetCID()
@@ -44,26 +44,29 @@ func TestHandler(t *testing.T) {
 
 	// push the data
 	data, _ := json.Marshal(testAgent)
-	testRef, err = secondNode.storeAPI.Push(t.Context(), testRef, bytes.NewReader(data))
+	testRef, err = secondNode.remote.storeAPI.Push(t.Context(), testRef, bytes.NewReader(data))
 	assert.NoError(t, err)
 
 	// announce the key
-	err = secondNode.server.DHT().Provide(t.Context(), digestCID, true)
+	err = secondNode.remote.server.DHT().Provide(t.Context(), digestCID, true)
 	assert.NoError(t, err)
 
 	// wait for sync
 	time.Sleep(2 * time.Second)
-	<-firstNode.server.DHT().RefreshRoutingTable()
-	<-secondNode.server.DHT().RefreshRoutingTable()
+	<-firstNode.remote.server.DHT().RefreshRoutingTable()
+	<-secondNode.remote.server.DHT().RefreshRoutingTable()
 
 	// check on first
 	found := false
-	peerCh := firstNode.server.DHT().FindProvidersAsync(t.Context(), digestCID, 1)
+
+	peerCh := firstNode.remote.server.DHT().FindProvidersAsync(t.Context(), digestCID, 1)
 	for peer := range peerCh {
-		if peer.ID == secondNode.server.Host().ID() {
+		if peer.ID == secondNode.remote.server.Host().ID() {
 			found = true
+
 			break
 		}
 	}
+
 	assert.True(t, found)
 }

@@ -38,12 +38,22 @@ func New(ctx context.Context, opts ...Option) (*Server, error) {
 		return nil, fmt.Errorf("failed while starting services: %w", status.Err)
 	}
 
-	return &Server{
+	server := &Server{
 		opts:    options,
 		host:    status.Host,
 		dht:     status.DHT,
 		closeFn: status.Close,
-	}, nil
+	}
+
+	// print info about the host
+	log.Println("Host: ", server.Info().ID)
+	log.Println("Addresses: ")
+
+	for _, addr := range server.P2pAddrs() {
+		log.Println(addr)
+	}
+
+	return server, nil
 }
 
 // Info returns the addresses at which we can reach this server.
@@ -159,6 +169,14 @@ func start(ctx context.Context, opts *options) <-chan status {
 
 		// Run until context expiry
 		log.Print("Running routing services")
+
+		for _, peer := range opts.BootstrapPeers {
+			for _, addr := range peer.Addrs {
+				host.Peerstore().AddAddr(peer.ID, addr, 0)
+			}
+		}
+
+		<-kdht.RefreshRoutingTable()
 
 		// At this point, we are done.
 		// Notify listener that we are ready.
