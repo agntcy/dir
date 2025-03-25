@@ -46,6 +46,7 @@ func runCommand(cmd *cobra.Command, args []string) error {
 
 	// Lookup from digest
 	meta, err := c.Lookup(cmd.Context(), &coretypes.ObjectRef{
+		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
 		Digest: digest,
 	})
 	if err != nil {
