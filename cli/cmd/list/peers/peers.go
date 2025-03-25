@@ -37,6 +37,7 @@ func runCommand(cmd *cobra.Command) error {
 
 	// Lookup from digest
 	isLocal, _ := cmd.Flags().GetBool("local")
+
 	items, err := c.List(cmd.Context(), &routetypes.ListRequest{
 		Local: &isLocal,
 		Record: &coretypes.ObjectRef{

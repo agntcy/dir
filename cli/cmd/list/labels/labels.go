@@ -58,6 +58,7 @@ func runCommand(cmd *cobra.Command, args []string) error {
 
 	// Run extensive search
 	isLocal, _ := cmd.Flags().GetBool("local")
+
 	items, err := c.List(cmd.Context(), &routetypes.ListRequest{
 		Peer:    peer,
 		Labels:  skills,
