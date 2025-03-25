@@ -10,10 +10,12 @@
   },
   "skills": [
     {
-      "category_name": "Text Completion [10201]"
+      "category_name": "text",
+      "class_name": "text_completion"
     },
     {
-      "category_name": "Problem Solving [10702]"
+      "category_name": "text",
+      "class_name": "problem_solving"
     }
   ],
   "locators": [
