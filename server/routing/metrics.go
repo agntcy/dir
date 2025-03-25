@@ -14,61 +14,44 @@ import (
 )
 
 type LabelMetric struct {
-	Name  string // label name
-	Total uint64 // total items assigned to the label
+	Name  string `json:"name"`  // label name
+	Total uint64 `json:"total"` // total items assigned to the label
 }
 
-type Metrics map[string]LabelMetric
+type Metrics struct {
+	Data map[string]LabelMetric `json:"data"`
+}
 
 func (m *Metrics) increment(label string) {
-	if _, ok := (*m)[label]; !ok {
-		(*m)[label] = LabelMetric{
+	if _, ok := m.Data[label]; !ok {
+		m.Data[label] = LabelMetric{
 			Name:  label,
 			Total: 0,
 		}
 	}
 
-	(*m)[label] = LabelMetric{
+	m.Data[label] = LabelMetric{
 		Name:  label,
-		Total: (*m)[label].Total + 1,
+		Total: m.Data[label].Total + 1,
 	}
 }
 
-func (m *Metrics) load(ctx context.Context, dstore types.Datastore) error {
-	res, err := dstore.Query(ctx, query.Query{
-		Prefix: "/metrics",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to query datastore: %w", err)
+func (m *Metrics) counts() map[string]uint64 {
+	counts := make(map[string]uint64)
+	for _, metric := range m.Data {
+		counts[metric.Name] = metric.Total
 	}
 
-	entries, err := res.Rest()
-	if err != nil {
-		return fmt.Errorf("failed to parse metrics data: %w", err)
+	return counts
+}
+
+func (m *Metrics) labels() []string {
+	labels := make([]string, 0, len(m.Data))
+	for _, metric := range m.Data {
+		labels = append(labels, metric.Name)
 	}
 
-	if len(entries) > 1 {
-		return fmt.Errorf("unexpected number of metrics entries: %d", len(entries))
-	}
-
-	if len(entries) == 0 {
-		metrics := make(Metrics)
-		*m = metrics
-
-		return nil
-	}
-
-	// Parse existing metrics
-	metrics := make(Metrics)
-
-	err = json.Unmarshal(entries[0].Value, &metrics)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal metrics data: %w", err)
-	}
-
-	*m = metrics
-
-	return nil
+	return labels
 }
 
 func (m *Metrics) update(ctx context.Context, dstore types.Datastore) error {
@@ -83,4 +66,37 @@ func (m *Metrics) update(ctx context.Context, dstore types.Datastore) error {
 	}
 
 	return nil
+}
+
+func loadMetrics(ctx context.Context, dstore types.Datastore) (*Metrics, error) {
+	res, err := dstore.Query(ctx, query.Query{
+		Prefix: "/metrics",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query datastore: %w", err)
+	}
+
+	entries, err := res.Rest()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse metrics data: %w", err)
+	}
+
+	if len(entries) > 1 {
+		return nil, fmt.Errorf("unexpected number of metrics entries: %d", len(entries))
+	}
+
+	// we dont have anything in the store, return empty metrics
+	if len(entries) == 0 {
+		return &Metrics{Data: make(map[string]LabelMetric)}, nil
+	}
+
+	// Parse existing metrics data
+	var metrics Metrics
+
+	err = json.Unmarshal(entries[0].Value, &metrics)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal metrics data: %w", err)
+	}
+
+	return &metrics, nil
 }

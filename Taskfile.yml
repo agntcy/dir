@@ -180,34 +180,51 @@ tasks:
   server:network:
     desc: Start Directory server with networking configured
     dir: server/cmd
+    deps:
+      - task: cli:compile
     vars:
       TEST_NODE_KEY: '{{ .ROOT_DIR }}/e2e/demo-hostkey'
       TEST_NODE_ADDR: '/ip4/192.168.0.201/tcp/53675'
       TEST_NODE_P2ADDR: '/ip4/192.168.0.201/tcp/53675/p2p/12D3KooWGXVFEKy5VXYYkyogqTyyftdMPeA6Q4UBDmXb5bdhLs39'
-    cmds:
-      - |
-        echo "Bootstrapping network..."
-        DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:0 \
-        DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
-        DIRECTORY_SERVER_ROUTING_KEY_PATH="{{.TEST_NODE_KEY}}" \
-        DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS="{{.TEST_NODE_ADDR}}" \
-        DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
-        go run main.go &
+      DIRCTL: '{{ .ROOT_DIR }}/bin/dirctl'
+      EXAMPLE: '{{ .ROOT_DIR }}/e2e/testdata'
+    cmd: |
+      # Bootstrap network
+      echo "Bootstrapping network..."
+      DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:0 \
+      DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
+      DIRECTORY_SERVER_ROUTING_KEY_PATH="{{.TEST_NODE_KEY}}" \
+      DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS="{{.TEST_NODE_ADDR}}" \
+      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
+      go run main.go &
 
-      # - for: ['node-a', 'node-b', 'node-c', 'node-d']
-      #   cmd: |
-      #     echo "Starting public node = {{.ITEM}}"
-      #     DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:0 \
-      #     DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
-      #     DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
-      #     DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
-      #     go run main.go &
+      echo "Starting private node"
+      DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
+      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
+      go run main.go &
 
-      - |
-        echo "Starting private node"
-        DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
-        DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
-        go run main.go
+      # wait for server to start
+      sleep 10
+
+      # run sample workflow
+      DIGEST=$({{.DIRCTL}} build {{.EXAMPLE}} | {{.DIRCTL}} push)
+
+      # TODO: add object stat/info command
+
+      {{.DIRCTL}} publish $DIGEST
+      {{.DIRCTL}} publish $DIGEST --local
+      
+      {{.DIRCTL}} list peers --digest $DIGEST
+      {{.DIRCTL}} list peers --digest $DIGEST --local
+
+      {{.DIRCTL}} list labels
+      {{.DIRCTL}} list labels --local
+
+      {{.DIRCTL}} list labels ""
+      {{.DIRCTL}} list labels "" --local
+
+      # wait until canceled
+      sleep 100000000
 
   server:store:start:
     desc: Start local OCI registry server for storage

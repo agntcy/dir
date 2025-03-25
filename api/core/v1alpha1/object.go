@@ -33,6 +33,7 @@ const (
 
 // GetCID returns the CID of this object digest.
 // It does not validate the object.
+// This is used for routing references.
 func (x *ObjectRef) GetCID() (cid.Cid, error) {
 	// Split the digest into algorithm and hash parts
 	// Example digest format: "sha256:1234abcd..."
@@ -57,6 +58,7 @@ func (x *ObjectRef) GetCID() (cid.Cid, error) {
 }
 
 // FromCID reconstructs the ObjectRef digest from a CID.
+// This is used for routing references.
 func (x *ObjectRef) FromCID(c cid.Cid) error {
 	// Get the multihash from CID
 	decoded, err := mh.Decode(c.Hash())
@@ -76,4 +78,13 @@ func (x *ObjectRef) FromCID(c cid.Cid) error {
 	}
 
 	return nil
+}
+
+// GetShortRef is used to encode only the digest value in a short hash.
+// The actual ObjectRef data (annotations, size, type) is not encoded.
+// This is used for storage references.
+func (x *ObjectRef) GetShortRef() string {
+	digestHash, _ := mh.Sum([]byte(x.GetDigest()), mh.SHA2_256, -1)
+
+	return digestHash.B58String()
 }

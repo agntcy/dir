@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -114,6 +115,8 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, loc
 		return fmt.Errorf("failed to announce object: %w", err)
 	}
 
+	log.Printf("Successfully announced agent %s to the network", ref.GetDigest())
+
 	return nil
 }
 
@@ -177,6 +180,8 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 				for _, addr := range prov.Addrs {
 					addrs = append(addrs, addr.String())
 				}
+
+				log.Printf("Found an announced agent %s on peer %s with skills %s", ref.GetDigest(), prov.ID, strings.Join(skills, ","))
 
 				// send back to caller
 				resCh <- &routingtypes.ListResponse_Item{
@@ -311,7 +316,7 @@ procLoop:
 			// TODO: we can validate the agent here
 			// for now, we just log the agent and its skills
 
-			log.Printf("successfully processed agent %v with skills %s", meta, skills)
+			log.Printf("successfully processed agent %v with skills %s", meta.GetDigest(), skills)
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -43,7 +44,24 @@ type PullResponse struct {
 	Data        []byte
 }
 
-func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *coretypes.ObjectRef) error {
+type LookupResponse struct {
+	Digest      string
+	Type        string
+	Size        uint64
+	Annotations map[string]string
+}
+
+type ListResponse struct {
+	Labels      []string
+	LabelCounts map[string]uint64
+	Peer        string
+	Digest      string
+	Type        string
+	Size        uint64
+	Annotations map[string]string
+}
+
+func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *LookupResponse) error {
 	// validate request
 	if in == nil || out == nil {
 		return errors.New("invalid request: nil request/response")
@@ -55,7 +73,13 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *coret
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	*out = *meta //nolint
+	// write result
+	*out = LookupResponse{
+		Digest:      meta.GetDigest(),
+		Type:        meta.GetType(),
+		Size:        meta.GetSize(),
+		Annotations: meta.Annotations,
+	}
 
 	return nil
 }
@@ -89,7 +113,7 @@ func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *PullRes
 	defer reader.Close()
 
 	// read result from reader
-	data, err := io.ReadAll(reader)
+	data, err := io.ReadAll(io.LimitReader(reader, MaxPullSize))
 	if err != nil {
 		return fmt.Errorf("failed to read: %w", err)
 	}
@@ -106,7 +130,7 @@ func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *PullRes
 	return nil
 }
 
-func (r *RPCAPI) List(ctx context.Context, inCh <-chan *routetypes.ListRequest, out chan<- *routetypes.ListResponse_Item) error {
+func (r *RPCAPI) List(ctx context.Context, inCh <-chan *routetypes.ListRequest, out chan<- *ListResponse) error {
 	// validate request
 	in := <-inCh
 	if in == nil || out == nil {
@@ -121,7 +145,15 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *routetypes.ListRequest, 
 
 	// forward results
 	for item := range listCh {
-		out <- item
+		out <- &ListResponse{
+			Labels:      item.Labels,
+			LabelCounts: item.LabelCounts,
+			Peer:        item.Peer.Id,
+			Digest:      item.Record.GetDigest(),
+			Type:        item.Record.GetType(),
+			Size:        item.Record.GetSize(),
+			Annotations: item.Record.Annotations,
+		}
 	}
 
 	return nil
@@ -158,14 +190,19 @@ func New(ctx context.Context, host host.Host, store types.StoreAPI, route types.
 }
 
 func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
-	var resp coretypes.ObjectRef
+	var resp LookupResponse
 
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncLookup, req, &resp)
 	if err != nil {
 		return nil, err
 	}
 
-	return &resp, nil
+	return &coretypes.ObjectRef{
+		Digest:      resp.Digest,
+		Type:        resp.Type,
+		Size:        resp.Size,
+		Annotations: resp.Annotations,
+	}, nil
 }
 
 func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectRef) (*coretypes.Object, error) {
@@ -194,31 +231,59 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 }
 
 // range over the result channel, then read the error after the loop.
-func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.ListResponse_Item, <-chan error) {
-	outCh := make(chan *routetypes.ListResponse_Item, 10)
-	errCh := make(chan error, 1)
+// this is done in best effort mode.
+func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.ListResponse_Item, error) {
+	respCh := make(chan *routetypes.ListResponse_Item, 10)
 
 	go func() {
 		inCh := make(chan *routetypes.ListRequest, 1)
+		outCh := make(chan *ListResponse, 10)
+
+		// close on done
+		defer close(respCh)
+		defer close(outCh)
+
+		// run listing
 		inCh <- req
 		errs := s.rpcClient.MultiStream(ctx,
-			peers,
+			filterPeers(s.host.ID(), peers),
 			DirService,
 			DirServiceFuncList,
 			inCh,
 			outCh,
 		)
-		errCh <- errors.Join(errs...)
+
+		// log error
+		if err := errors.Join(errs...); err != nil {
+			log.Printf("Failed to list data on remote: %v", err)
+		}
+
+		// try forward data left in the channel as only some requests may have failed
+		for out := range outCh {
+			respCh <- &routetypes.ListResponse_Item{
+				Labels:      out.Labels,
+				LabelCounts: out.LabelCounts,
+				Peer: &routetypes.Peer{
+					Id: out.Peer,
+				},
+				Record: &coretypes.ObjectRef{
+					Digest:      out.Digest,
+					Type:        out.Type,
+					Size:        out.Size,
+					Annotations: out.Annotations,
+				},
+			}
+		}
 	}()
 
-	return outCh, errCh
+	return respCh, nil
 }
 
-func (s *Service) getPeers() peer.IDSlice {
+func filterPeers(self peer.ID, peers []peer.ID) peer.IDSlice {
 	var filtered peer.IDSlice
 
-	for _, pID := range s.host.Peerstore().Peers() {
-		if pID != s.host.ID() {
+	for _, pID := range peers {
+		if pID != self {
 			filtered = append(filtered, pID)
 		}
 	}

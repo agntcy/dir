@@ -55,7 +55,7 @@ func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.Addr
 	// if this fails, it may mean that it's not DIR-constructed CID
 	cast, err := mh.Cast(key)
 	if err != nil {
-		return err
+		return nil
 	}
 
 	// create CID from multihash
@@ -65,7 +65,7 @@ func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.Addr
 
 	err = ref.FromCID(cid.NewCidV1(cid.Raw, cast))
 	if err != nil {
-		return err
+		return nil
 	}
 
 	// validate if valid sha256 digest
@@ -74,7 +74,7 @@ func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.Addr
 		return nil
 	}
 
-	log.Printf("Peer %s received announcement event %s from Peer %s", h.hostID, ref, prov.ID)
+	log.Printf("Peer %s received announcement event for object %s from Peer %s", h.hostID, ref.GetDigest(), prov.ID)
 
 	// notify the channel
 	h.notifyCh <- &handlerSync{

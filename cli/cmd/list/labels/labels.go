@@ -6,6 +6,7 @@ package labels
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -70,12 +71,22 @@ func runCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	for item := range items {
+		// in case we have statistics, we skip printing the item
+		if len(item.GetLabelCounts()) > 0 {
+			presenter.Printf(cmd, "Statistic for Peer %s\n", item.GetPeer())
+			presenter.Printf(cmd, "%+v\n", item.GetLabelCounts())
+
+			continue
+		}
+
+		// print the item
+		// FIXME: this can panic if we dont return full values
 		presenter.Printf(cmd,
-			"Peer: %v | Labels: %v | Annotations: %v | Digest: %v\n",
+			"Peer %v | Digest: %v | Labels: %v | Metadata: %v\n",
 			item.GetPeer().GetId(),
-			item.GetLabels(),
-			item.GetRecord().GetAnnotations(),
 			item.GetRecord().GetDigest(),
+			strings.Join(item.GetLabels(), ", "),
+			item.GetRecord().GetAnnotations(),
 		)
 	}
 

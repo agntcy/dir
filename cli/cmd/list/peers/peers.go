@@ -6,6 +6,7 @@ package peers
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -49,12 +50,13 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	for item := range items {
+		// FIXME: this can panic if we dont return full values
 		presenter.Printf(cmd,
-			"Peer: %v | Labels: %v | Annotations: %v | Digest: %v\n",
+			"Peer %v | Digest: %v | Labels: %v | Metadata: %v\n",
 			item.GetPeer().GetId(),
-			item.GetLabels(),
-			item.GetRecord().GetAnnotations(),
 			item.GetRecord().GetDigest(),
+			strings.Join(item.GetLabels(), ", "),
+			item.GetRecord().GetAnnotations(),
 		)
 	}
 

@@ -36,7 +36,7 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		return fmt.Errorf("failed to receive first message: %w", err)
 	}
 
-	log.Printf("Received: %v\n", firstMessage.GetRef())
+	log.Printf("Pushing object %s with digest %v\n", firstMessage.GetRef().GetType(), firstMessage.GetRef().GetDigest())
 
 	// lookup (skip if exists)
 	ref, err := s.store.Lookup(stream.Context(), firstMessage.GetRef())

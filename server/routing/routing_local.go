@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"path"
+	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -44,8 +45,8 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, loca
 		return fmt.Errorf("invalid agent object: %v", agent)
 	}
 
-	metrics := make(Metrics)
-	if err := metrics.load(ctx, r.dstore); err != nil {
+	metrics, err := loadMetrics(ctx, r.dstore)
+	if err != nil {
 		return fmt.Errorf("failed to load metrics: %w", err)
 	}
 
@@ -54,8 +55,11 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, loca
 		return fmt.Errorf("failed to create batch: %w", err)
 	}
 
+	// keep track of all agent skills
+	var skills []string
 	for _, skill := range agent.GetSkills() {
 		key := "/skills/" + skill.Key()
+		skills = append(skills, skill.Key())
 
 		// Add key with digest
 		agentSkillKey := fmt.Sprintf("%s/%s", key, ref.GetDigest())
@@ -71,34 +75,55 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, loca
 		return fmt.Errorf("failed to commit batch: %w", err)
 	}
 
+	// FIXME: be careful here as we can republish the same agent, so this should be idempotent.
+	// otherwise, we are just increasing counts locally for that object without doing anything.
 	err = metrics.update(ctx, r.dstore)
 	if err != nil {
 		return fmt.Errorf("failed to update metrics: %w", err)
 	}
 
-	// TODO: Publish items to the network via libp2p RPC
+	log.Printf("Successfully published agent %s with skills: %s", ref.GetDigest(), strings.Join(skills, ", "))
 
 	return nil
 }
 
 func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
-	ch := make(chan *routingtypes.ListResponse_Item)
-	errCh := make(chan error, 1)
+	// dest to write the results on
+	outCh := make(chan *routingtypes.ListResponse_Item)
 
-	metrics := make(Metrics)
-	if err := metrics.load(ctx, r.dstore); err != nil {
+	// load metrics for the client
+	metrics, err := loadMetrics(ctx, r.dstore)
+	if err != nil {
 		return nil, fmt.Errorf("failed to load metrics: %w", err)
 	}
 
+	// if we sent an empty request, return us stats for the current peer
+	if req.Record == nil && len(req.GetLabels()) == 0 {
+		go func() {
+			defer close(outCh)
+
+			outCh <- &routingtypes.ListResponse_Item{
+				Labels: metrics.labels(),
+				Peer: &routingtypes.Peer{
+					Id: "local",
+				},
+				LabelCounts: metrics.counts(),
+			}
+		}()
+
+		return outCh, nil
+	}
+
+	// validate request
 	if len(req.GetLabels()) == 0 {
 		return nil, fmt.Errorf("no labels provided")
 	}
 
-	// Get filters for not least common labels
+	// get filters for not least common labels
 	var filters []query.Filter
 	leastCommonLabel := req.GetLabels()[0]
 	for _, label := range req.GetLabels() {
-		if metrics[label].Total < metrics[leastCommonLabel].Total {
+		if metrics.Data[label].Total < metrics.Data[leastCommonLabel].Total {
 			leastCommonLabel = label
 		}
 	}
@@ -112,26 +137,26 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 		}
 	}
 
+	// start query
+	res, err := r.dstore.Query(ctx, query.Query{
+		Prefix:  leastCommonLabel,
+		Filters: filters,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query datastore: %w", err)
+	}
+
+	// process items in the background, done in best effort mode
 	go func() {
-		defer close(ch)
-		defer close(errCh)
-
-		res, err := r.dstore.Query(ctx, query.Query{
-			Prefix:  leastCommonLabel,
-			Filters: filters,
-		})
-		if err != nil {
-			errCh <- err
-
-			return
-		}
+		defer close(outCh)
 
 		processedAgentDigests := make(map[string]struct{})
 
 		for entry := range res.Next() {
+			// read agent digest from datastore key
 			digest, err := getAgentDigestFromKey(entry.Key)
 			if err != nil {
-				errCh <- err
+				log.Printf("failed to get agent digest: %v", err)
 
 				return
 			}
@@ -141,6 +166,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			}
 			processedAgentDigests[digest] = struct{}{}
 
+			// lookup agent
 			ref, err := r.store.Lookup(ctx, &coretypes.ObjectRef{
 				Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
 				Digest: digest,
@@ -159,9 +185,15 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 				continue
 			}
 
-			// read all
-			data, _ := io.ReadAll(object)
+			// read object data
+			data, err := io.ReadAll(object)
+			if err != nil {
+				log.Printf("failed to pull agent: %v", err)
 
+				continue
+			}
+
+			// covnert to agent
 			var agent *coretypes.Agent
 			if err := json.Unmarshal(data, &agent); err != nil {
 				log.Printf("failed to unmarshal agent: %v", err)
@@ -174,7 +206,8 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 				skills = append(skills, skill.Key())
 			}
 
-			ch <- &routingtypes.ListResponse_Item{
+			// forward results back
+			outCh <- &routingtypes.ListResponse_Item{
 				Labels: skills,
 				Peer: &routingtypes.Peer{
 					Id: "local",
@@ -187,12 +220,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 		}
 	}()
 
-	select {
-	case err := <-errCh:
-		return nil, err
-	default:
-		return ch, nil
-	}
+	return outCh, nil
 }
 
 func getAgentDigestFromKey(k string) (string, error) {
