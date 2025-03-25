@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -24,30 +26,34 @@ func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef) error {
 }
 
 func (c *Client) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
-	_, err := c.RoutingServiceClient.List(ctx, req)
+	stream, err := c.RoutingServiceClient.List(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pull stream: %w", err)
+		return nil, fmt.Errorf("failed to create list stream: %w", err)
 	}
 
-	// var refs []*coretypes.ObjectRef
+	refs := make(chan *routingtypes.ListResponse_Item)
 
-	// for {
-	// 	obj, err := stream.Recv()
-	// 	if errors.Is(err, io.EOF) {
-	// 		break
-	// 	}
+	go func() {
+		defer close(refs)
 
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to receive object: %w", err)
-	// 	}
+		for {
+			obj, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
 
-	// 	items := obj.GetItems()
-	// 	for _, item := range items {
-	// 		// TODO check if item peer and key are required in client
-	// 		refs = append(refs, item.GetRecord())
-	// 	}
-	// }
+			if err != nil {
+				log.Printf("error receiving object: %v\n", err)
 
-	// TODO return read channel
-	return nil, errors.New("not implemented")
+				return
+			}
+
+			items := obj.GetItems()
+			for _, item := range items {
+				refs <- item
+			}
+		}
+	}()
+
+	return refs, nil
 }

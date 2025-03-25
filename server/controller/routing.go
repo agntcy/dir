@@ -85,27 +85,20 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 }
 
 func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.RoutingService_ListServer) error {
-	_, err := c.routing.List(context.Background(), req)
+	itemChan, err := c.routing.List(srv.Context(), req)
 	if err != nil {
 		return fmt.Errorf("failed to list: %w", err)
 	}
 
-	// TODO: stream results from API to response
+	items := []*routingtypes.ListResponse_Item{}
+	for i := range itemChan {
+		items = append(items, &routingtypes.ListResponse_Item{
+			Record: i.GetRecord(),
+		})
+	}
 
-	// items := []*routingtypes.ListResponse_Item{}
-	// for _, ref := range refs {
-	// 	items = append(items, &routingtypes.ListResponse_Item{
-	// 		Key:    nil, // TODO: required? if yes, get agent from ref and compute key
-	// 		Peers:  nil, // TODO: implement me when peers are available
-	// 		Record: ref,
-	// 	})
-	// }
-
-	if err := srv.Send(
-		&routingtypes.ListResponse{
-			Items: nil, // TODO!
-		}); err != nil {
-		return fmt.Errorf("failed to send ref: %w", err)
+	if err := srv.Send(&routingtypes.ListResponse{Items: items}); err != nil {
+		return fmt.Errorf("failed to send: %w", err)
 	}
 
 	return nil

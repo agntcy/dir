@@ -3,98 +3,129 @@
 
 package e2e
 
-// TODO: fix me when ready
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
 
-// import (
-// 	"bytes"
-// 	"context"
-// 	"encoding/json"
-// 	"io"
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	routingv1alpha1 "github.com/agntcy/dir/api/routing/v1alpha1"
+	"github.com/agntcy/dir/client"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+	"github.com/opencontainers/go-digest"
+)
 
-// 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-// 	"github.com/agntcy/dir/client"
-// 	"github.com/onsi/ginkgo/v2"
-// 	"github.com/onsi/gomega"
-// 	"github.com/opencontainers/go-digest"
-// )
+var _ = ginkgo.Describe("client end-to-end tests", func() {
+	var err error
+	ctx := context.Background()
 
-// var _ = ginkgo.Describe("client end-to-end tests", func() {
-// 	var err error
-// 	ctx := context.Background()
+	// Create a new client
+	c, err := client.New(client.WithEnvConfig())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-// 	// Create a new client
-// 	c, err := client.New(client.WithEnvConfig())
-// 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	// Create agent object
+	agent := &coretypes.Agent{
+		Name:    "test-agent",
+		Version: "v1",
+		Skills: []*coretypes.Skill{
+			{
+				CategoryName: Ptr("test-category-1"),
+				ClassName:    Ptr("test-class-1"),
+			},
+			{
+				CategoryName: Ptr("test-category-2"),
+				ClassName:    Ptr("test-class-2"),
+			},
+		},
+	}
 
-// 	// Create agent object
-// 	agent := &coretypes.Agent{
-// 		Name:    "test-agent",
-// 		Version: "v1",
-// 		Skills: []*coretypes.Skill{
-// 			{
-// 				CategoryName: Ptr("test-category"),
-// 				ClassName:    Ptr("test-class"),
-// 			},
-// 		},
-// 		Locators: []*coretypes.Locator{
-// 			{
-// 				Type: "source-code",
-// 				Url:  "url1",
-// 			},
-// 		},
-// 	}
+	// Marshal the Agent struct back to bytes.
+	agentData, err := json.Marshal(agent)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-// 	// Marshal the Agent struct back to bytes.
-// 	agentData, err := json.Marshal(agent)
-// 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	// Create ref
+	ref := &coretypes.ObjectRef{
+		Digest:      digest.FromBytes(agentData).String(),
+		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+		Size:        uint64(len(agentData)),
+		Annotations: agent.GetAnnotations(),
+	}
 
-// 	// Create ref
-// 	:= &coretypes.ObjectRef{
-// 		Digest:      digest.FromBytes(agentData).String(),
-// 		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-// 		Size:        uint64(len(agentData)),
-// 		Annotations: agent.GetAnnotations(),
-// 	}
+	ginkgo.Context("agent push and pull", func() {
+		ginkgo.It("should push an agent to store", func() {
+			ref, err = c.Push(ctx, ref, bytes.NewReader(agentData))
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-// 	ginkgo.Context("agent push and pull", func() {
-// 		ginkgo.It("should push an agent to store", func() {
-// 			ref, err = c.Push(ctx, ref, bytes.NewReader(agentData))
-// 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			// Validate valid digest
+			_, err = digest.Parse(ref.GetDigest())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
 
-// 			// Validate valid digest
-// 			_, err = digest.Parse(ref.GetDigest())
-// 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-// 		})
+		ginkgo.It("should pull an agent from store", func() {
+			// Pull the agent object
+			reader, err := c.Pull(ctx, ref)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-// 		ginkgo.It("should pull an agent from store", func() {
-// 			// Pull the agent object
-// 			reader, err := c.Pull(ctx, ref)
-// 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			// Reader to bytes
+			pulledAgentData, err := io.ReadAll(reader)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-// 			// Reader to bytes
-// 			pulledAgentData, err := io.ReadAll(reader)
-// 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			// Compare pushed and pulled agent
+			equal, err := compareJSONAgents(agentData, pulledAgentData)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(equal).To(gomega.BeTrue())
+		})
+	})
 
-// 			// Compare pushed and pulled agent
-// 			equal, err := compareJSONAgents(agentData, pulledAgentData)
-// 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-// 			gomega.Expect(equal).To(gomega.BeTrue())
-// 		})
-// 	})
+	ginkgo.Context("routing publish and list", func() {
+		ginkgo.It("should publish an agent", func() {
+			err = c.Publish(ctx, &coretypes.ObjectRef{
+				Digest: ref.GetDigest(),
+				Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
 
-// 	ginkgo.Context("routing publish and list", func() {
-// 		ginkgo.It("should publish an agent", func() {
-// 			err = c.Publish(ctx, &coretypes.ObjectRef{
-// 				Digest: ref.GetDigest(),
-// 				Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-// 			})
-// 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-// 		})
+		ginkgo.It("should list published agent by one label", func() {
+			itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
+				Labels: []string{"/skills/test-category-1/test-class-1"},
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-// 		ginkgo.It("should list published agent by skill", func() {
-// 			refs, err := c.List(ctx, "/skills/test-category/test-class")
-// 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-// 			gomega.Expect(refs).To(gomega.HaveLen(1))
-// 		})
-// 	})
-// })
+			// Collect items from the channel
+			var items []*routingv1alpha1.ListResponse_Item
+			for item := range itemsChan {
+				items = append(items, item)
+			}
+
+			// Validate the response
+			gomega.Expect(items).To(gomega.HaveLen(1))
+			for _, item := range items {
+				gomega.Expect(item).NotTo(gomega.BeNil())
+				gomega.Expect(item.GetRecord().GetDigest()).To(gomega.Equal(ref.GetDigest()))
+			}
+		})
+
+		ginkgo.It("should list published agent by multiple labels", func() {
+			itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
+				Labels: []string{"/skills/test-category-1/test-class-1", "/skills/test-category-2/test-class-2"},
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Collect items from the channel
+			var items []*routingv1alpha1.ListResponse_Item
+			for item := range itemsChan {
+				items = append(items, item)
+			}
+
+			// Validate the response
+			gomega.Expect(items).To(gomega.HaveLen(1))
+			for _, item := range items {
+				gomega.Expect(item).NotTo(gomega.BeNil())
+				gomega.Expect(item.GetRecord().GetDigest()).To(gomega.Equal(ref.GetDigest()))
+			}
+		})
+	})
+})
