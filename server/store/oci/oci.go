@@ -161,7 +161,7 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 		manifestDesc, err := s.repo.Resolve(ctx, refCID.String())
 		if err != nil {
 			// soft fail
-			return ref, nil
+			return ref, fmt.Errorf("failed to resolve manifest: %w", err)
 		}
 
 		// TODO: validate manifest by size
@@ -170,7 +170,7 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 		manifestRd, err := s.repo.Fetch(ctx, manifestDesc)
 		if err != nil {
 			// soft fail
-			return ref, nil
+			return ref, fmt.Errorf("failed to fetch manifest: %w", err)
 		}
 
 		// read manifest
@@ -234,7 +234,7 @@ func (s *store) pushData(ctx context.Context, ref *coretypes.ObjectRef, rd io.Re
 	// return ref
 	return &coretypes.ObjectRef{
 		Digest: ref.GetDigest(),
-		Type:   coretypes.ObjectType_OBJECT_TYPE_RAW.String(),
+		Type:   ref.GetType(),
 		Size:   uint64(blobDesc.Size),
 	}, blobDesc, nil
 }
