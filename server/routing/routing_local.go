@@ -90,25 +90,25 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 		return nil, fmt.Errorf("failed to load metrics: %w", err)
 	}
 
+	if len(req.GetLabels()) == 0 {
+		return nil, fmt.Errorf("no labels provided")
+	}
+
 	// Get filters for not least common labels
 	var filters []query.Filter
-	leastCommonLabel := "/skills"
-	if len(req.GetLabels()) > 0 {
-		// Get least common label
-		leastCommonLabel := req.GetLabels()[0]
-		for _, label := range req.GetLabels() {
-			if metrics[label].Total < metrics[leastCommonLabel].Total {
-				leastCommonLabel = label
-			}
+	leastCommonLabel := req.GetLabels()[0]
+	for _, label := range req.GetLabels() {
+		if metrics[label].Total < metrics[leastCommonLabel].Total {
+			leastCommonLabel = label
 		}
-		for _, label := range req.GetLabels() {
-			if label != leastCommonLabel {
-				filters = append(filters, &labelFilter{
-					dstore: r.dstore,
-					ctx:    ctx,
-					label:  label,
-				})
-			}
+	}
+	for _, label := range req.GetLabels() {
+		if label != leastCommonLabel {
+			filters = append(filters, &labelFilter{
+				dstore: r.dstore,
+				ctx:    ctx,
+				label:  label,
+			})
 		}
 	}
 
