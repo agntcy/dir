@@ -45,7 +45,7 @@ config:
   # Routing settings for the peer-to-peer network.
   routing: {}
     # Address to use for routing
-    # listen_address: ""
+    # listen_address: "/ipv4/0.0.0.0/tcp/5555"
 
     # Path to private key file for peer ID.
     # key_path: /tmp/agntcy-dir/node.privkey

@@ -52,7 +52,7 @@ spec:
               {{- end }}
             - name: routing
               {{- if .Values.config.routing.listen_address }}
-              containerPort: {{ (split ":" .Values.config.routing.listen_address)._1 }}
+              containerPort: {{ (split "/" .Values.config.routing.listen_address)._4 }}
               {{- else }}
               containerPort: 8999
               {{- end }}
