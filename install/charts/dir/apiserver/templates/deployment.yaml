@@ -38,10 +38,18 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.config.server_port }}
+              {{- if .Values.config.listen_address }}
+              containerPort: {{ (split ":" .Values.config.listen_address)._1 }}
+              {{- else }}
+              containerPort: 8888
+              {{- end }}
               protocol: TCP
             - name: health
-              containerPort: {{ .Values.config.health_port }}
+              {{- if .Values.config.healthcheck_address }}
+              containerPort: {{ (split ":" .Values.config.healthcheck_address)._1 }}
+              {{- else }}
+              containerPort: 8889
+              {{- end }}
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -51,19 +59,16 @@ spec:
             httpGet:
               path: /healthz/ready
               port: health
-          env:
-            - name: DIRECTORY_SERVER_LISTEN_ADDRESS
-              value: ":{{ .Values.config.server_port }}"
-            - name: DIRECTORY_SERVER_HEALTHCHECK_ADDRESS
-              value: ":{{ .Values.config.health_port }}"
-            - name: DIRECTORY_SERVER_PROVIDER
-              value: "{{ .Values.config.provider }}"
-            - name: DIRECTORY_SERVER_OCI_REGISTRY_ADDRESS
-              value: "{{ .Values.config.oci_registry_address }}"
-            - name: DIRECTORY_SERVER_OCI_AUTH_CONFIG_INSECURE
-              value: "{{ .Values.config.oci_auth_config_insecure }}"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/agntcy/dir/server.config.yml
+              subPath: server.config.yml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "chart.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

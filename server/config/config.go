@@ -25,6 +25,10 @@ const (
 	// Provider configuration.
 
 	DefaultProvider = "oci"
+
+	DefaultConfigName = "server.config"
+	DefaultConfigType = "yml"
+	DefaultConfigPath = "/etc/agntcy/dir"
 )
 
 type Config struct {
@@ -47,9 +51,22 @@ func LoadConfig() (*Config, error) {
 		viper.EnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_")),
 	)
 
+	v.SetConfigName(DefaultConfigName)
+	v.SetConfigType(DefaultConfigType)
+	v.AddConfigPath(DefaultConfigPath)
+
 	v.SetEnvPrefix(DefaultEnvPrefix)
 	v.AllowEmptyEnv(true)
 	v.AutomaticEnv()
+
+	// Read the config file
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fmt.Println("Config file not found, use defaults.")
+		} else {
+			return nil, fmt.Errorf("failed to read configuration file: %w", err)
+		}
+	}
 
 	//
 	// API configuration

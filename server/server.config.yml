@@ -55,14 +55,14 @@ routing:
 
   # Use in private mode, ie. /dir/dht/lan/v1.0.0
   private: true
-  
+
   # Nodes to use for bootstrapping of the DHT.
   # We read initial routing tables here and get introduced
   # to the network.
   bootstrap_peers:
-    - {id: node1, addr: /ipv4/addr/port/p2p/node1 }
-    - {id: node2, addr: /ipv4/addr/port/p2p/node2 }
-    - {id: node3, addr: /ipv4/addr/port/p2p/node2 }
+    - /ipv4/addr/port/p2p/node1
+    - /ipv4/addr/port/p2p/node2
+    - /ipv4/addr/port/p2p/node2
 
   # Peers to add to local routing table on start.
   # These form the initial overlay network for this peer.
@@ -88,7 +88,7 @@ routing:
   labels: |
     # # By default, we participate in agent model content routing
     # object/type/agent
-    
+
     # Agents with specific media skills
     agent/skill/text
     agent/skill/video
