@@ -12,7 +12,7 @@ provenance, integrity and ownership.
 - _Dev Kit_ - Tooling to facilitate API interaction and generation of agent data models from different sources.
 - _Plugins_ - Supports model schema and build plugins to enrich agent data models for custom use-cases.
 - _Announce_ - Enables publication of records to the network.
-- _Discover_ - Listen and retreive records published on the network.
+- _Discover_ - Listen and retrieve records published on the network.
 - _Search_ - Supports searching of records across the network that satisfy given attributes and constraints.
 - _Security_ - Relies on well-known security principles to provide data provenance, integrity and ownership.
 
