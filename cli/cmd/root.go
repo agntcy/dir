@@ -42,10 +42,8 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(
-		// global commands
-		version.Command,
 		// local commands
-		// TODO: add version command
+		version.Command,
 		build.Command,
 		// storage commands
 		info.Command,

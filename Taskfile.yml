@@ -16,8 +16,9 @@ vars:
   ## Image config
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   IMAGE_TAG: '{{ .IMAGE_TAG | default .COMMIT_SHA }}'
-  IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
+  IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}'
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
+  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
 
   ## Dependency config
   BIN_DIR: '{{ .ROOT_DIR }}/bin'
@@ -64,18 +65,18 @@ tasks:
     vars:
       GOARCH: '{{ .GOARCH | default ARCH }}'
     cmds:
-      - '{{.IMAGE_BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}}'
+      - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}}'
 
   build:all:
     desc: Build images for all components for multiple platforms
     cmds:
-      - '{{.IMAGE_BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/amd64,linux/arm64'
+      - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/amd64,linux/arm64'
 
   pull:
     desc: Pull images for all components
     cmds:
       - |
-        images=$({{.IMAGE_BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
         echo "$images" | while read image; do
           echo "Pulling image: $image"
           docker pull $image
@@ -86,14 +87,14 @@ tasks:
     prompt:
       - Are you sure you want to push the images to remote registry?
     cmds:
-      - '{{.IMAGE_BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set=*.output=type=registry'
+      - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set=*.output=type=registry'
 
   release:verify:
     desc: Verify release readiness
     deps:
       - task: deps:multimod-bin
     cmds:
-      - '{{ .MULTIMOD_BIN }} verify'
+      - '{{ .BAKE_ENV }} verify'
 
   release:prepare:
     desc: Prepare release
@@ -175,7 +176,7 @@ tasks:
   server:build:
     desc: Build Directory server image
     cmds:
-      - '{{.IMAGE_BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver'
+      - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver'
 
   server:start:
     desc: Start Directory server
@@ -425,7 +426,7 @@ tasks:
 
       # Import images
       - |
-        images=$({{.IMAGE_BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
         echo "$images" | while read image; do
           {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
