@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wsl
 package info
 
 import (
@@ -68,9 +69,9 @@ func runCommand(cmd *cobra.Command) error {
 	for item := range items {
 		peerName := item.GetPeer().GetId()
 
-		// in case we have nothing for that host, print empty
+		// in case we have nothing for that host, skip
 		if len(item.GetLabelCounts()) == 0 {
-			presenter.Printf(cmd, "Peer %s | <empty>\n", peerName)
+			// presenter.Printf(cmd, "Peer %s | <empty>\n", peerName)
 
 			continue
 		}

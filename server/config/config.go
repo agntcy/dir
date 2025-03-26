@@ -76,7 +76,7 @@ func LoadConfig() (*Config, error) {
 	// OCI configuration
 	//
 	_ = v.BindEnv("oci.local_dir")
-	v.SetDefault("oci.local_dir", "/tmp")
+	v.SetDefault("oci.local_dir", "")
 
 	_ = v.BindEnv("oci.registry_address")
 	v.SetDefault("oci.registry_address", oci.DefaultRegistryAddress)

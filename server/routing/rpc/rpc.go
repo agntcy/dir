@@ -153,17 +153,23 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<
 			return fmt.Errorf("failed to lookup: %w", err)
 		}
 
-		// forward results
+		// resolve response before forwarding
 		for item := range listCh {
-			outCh <- &ListResponse{
+			result := &ListResponse{
 				Labels:      item.Labels,
 				LabelCounts: item.LabelCounts,
 				Peer:        in.Peer,
-				Digest:      item.Record.GetDigest(),
-				Type:        item.Record.GetType(),
-				Size:        item.Record.GetSize(),
-				Annotations: item.Record.Annotations,
 			}
+
+			if record := item.Record; record != nil {
+				result.Annotations = record.Annotations
+				result.Size = record.Size
+				result.Digest = record.Digest
+				result.Type = record.Type
+			}
+
+			// forward data
+			outCh <- result
 		}
 	}
 
@@ -294,7 +300,6 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 
 		// forward data to response channel
 		for out := range outCh {
-			log.Printf("got out: %v", out)
 			respCh <- &routetypes.ListResponse_Item{
 				Labels:      out.Labels,
 				LabelCounts: out.LabelCounts,

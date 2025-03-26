@@ -190,29 +190,41 @@ tasks:
       DIRCTL: '{{ .ROOT_DIR }}/bin/dirctl'
       EXAMPLE: '{{ .ROOT_DIR }}/e2e/testdata'
     cmd: |
-      # Bootstrap network
-      echo "Bootstrapping network..."
+      # Create temp storages
+      mkdir -p /tmp/a /tmp/b tmp/c
+      
+      echo "Creating network..."
+      
+      # Bootstrap node
       DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:0 \
       DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
       DIRECTORY_SERVER_ROUTING_KEY_PATH="{{.TEST_NODE_KEY}}" \
       DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="" \
       DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS="{{.TEST_NODE_ADDR}}" \
-      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
+      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/a \
       go run main.go &
 
+      # Host A
       DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:6000 \
       DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:6001 \
       DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
-      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
+      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/b \
       go run main.go &
 
-      # echo "Starting Directory..."
-      # DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
-      # DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
-      # go run main.go &
+      # Host B
+      DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
+      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/c \
+      go run main.go &
 
-      # wait for server to start
+      # wait for servers to start
       sleep 10
+
+      # print ready
+      echo "Directory network ready"
+      echo "Host A => 0.0.0.0:6000"
+      echo "Host B => 0.0.0.0:8888"
+
+      # TODO: push and publish some content to both servers
 
       # push data
       # DIGEST=$({{.DIRCTL}} build {{.EXAMPLE}} | {{.DIRCTL}} push --stdin)

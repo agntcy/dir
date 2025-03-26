@@ -25,6 +25,7 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 	if err != nil {
 		return nil, err
 	}
+
 	mainRounter.remote = remote
 
 	return mainRounter, nil

@@ -63,7 +63,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			pushCmd.SetOut(&outputBuffer)
 			pushCmd.SetArgs([]string{
 				"push",
-				"--from-file", tempAgentPath,
+				tempAgentPath,
 			})
 
 			err := pushCmd.Execute()
@@ -83,7 +83,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
-				"--digest", tempAgentDigest,
+				tempAgentDigest,
 			})
 
 			err := pullCmd.Execute()
@@ -97,7 +97,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			pushCmd.SetOut(&outputBuffer)
 			pushCmd.SetArgs([]string{
 				"push",
-				"--from-file", tempAgentPath,
+				tempAgentPath,
 			})
 
 			err := pushCmd.Execute()
@@ -121,7 +121,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			pushCmd2.SetOut(&outputBuffer)
 			pushCmd2.SetArgs([]string{
 				"push",
-				"--from-file", tempAgentPath2,
+				tempAgentPath2,
 			})
 
 			err = pushCmd2.Execute()
@@ -139,7 +139,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
-				"--digest", "non-existent-digest",
+				"non-existent-digest",
 			})
 
 			err := pullCmd.Execute()

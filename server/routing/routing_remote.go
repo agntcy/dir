@@ -121,17 +121,13 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ b
 }
 
 func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
-	// list data from remote for a given peer
+	// list data from remote for a given peer.
+	// this returns all the records that fully match our query.
 	if req.GetPeer() != nil {
-		log.Printf("Listing data for peer %s, %+v", req.GetPeer().GetId(), req)
+		log.Printf("Listing data for peer %s, request: %v", req.GetPeer().GetId(), req)
 
-		// send request to peer
 		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.GetPeer().GetId())}, &routingtypes.ListRequest{
-			Peer:    nil,
-			Labels:  req.GetLabels(),
-			Record:  req.GetRecord(),
-			MaxHops: req.MaxHops,
-			Network: nil,
+			Labels: req.GetLabels(),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to list data on remote: %w", err)
@@ -141,8 +137,9 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	}
 
 	// get specific agent from all remote peers hosting it
+	// this returns all the peers that are holding requested agent
 	if req.GetRecord() != nil {
-		log.Printf("Listing data for a record %s", req.GetRecord().GetDigest())
+		log.Printf("Listing data for record %s", req.GetRecord().GetDigest())
 
 		// get object CID
 		cid, err := req.GetRecord().GetCID()
@@ -161,13 +158,14 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 		}
 
 		// stream results back
-		// NOTE: we list from each provider
 		resCh := make(chan *routingtypes.ListResponse_Item, 100)
 		go func(provs []peer.AddrInfo, ref *coretypes.ObjectRef) {
 			defer close(resCh)
 
 			for _, prov := range provs {
-				// get agent from peer
+				// pull agent from peer
+				// TODO: this is not optional because we pull everything
+				// just for the sake of showing the result
 				object, err := r.service.Pull(ctx, prov.ID, ref)
 				if err != nil {
 					log.Printf("failed to pull agent: %v", err)
@@ -175,9 +173,8 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 					continue
 				}
 
+				// get agent
 				agent := object.GetAgent()
-
-				// get agent skills
 				skills := getAgentSkills(agent)
 
 				// peer addrs to string
@@ -204,67 +201,43 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	}
 
 	// run a query across peers, keep forwarding until we exhaust the hops
-	// TODO: this is a naive implementation, reconsider better selection of peers,
-	// and scheduling.
-	// fix number of hops
-	if req.MaxHops == nil {
-		req.MaxHops = new(uint32)
-		*req.MaxHops = 5
-	}
+	// TODO: this is a naive implementation, reconsider better selection of peers and scheduling.
+	log.Printf("Listing data for peer %s, request: %v", req.GetPeer().GetId(), req)
 
+	// resolve hops
 	if req.GetMaxHops() > 20 {
 		return nil, errors.New("max hops exceeded")
 	}
+	if req.MaxHops != nil && *req.MaxHops > 0 {
+		*req.MaxHops -= 1
+	}
 
+	// run in the background
 	resCh := make(chan *routingtypes.ListResponse_Item, 100)
 	go func(ctx context.Context, req *routingtypes.ListRequest) {
 		defer close(resCh)
 
-		peers := r.server.Host().Peerstore().Peers()
-
-		// get data from peers (list what each peer has)
-		localReq := &routingtypes.ListRequest{
+		// get data from peers (list what each of our connected peers has)
+		resp, err := r.service.List(ctx, r.server.Host().Peerstore().Peers(), &routingtypes.ListRequest{
 			Peer:    req.GetPeer(),
 			Labels:  req.GetLabels(),
 			Record:  req.GetRecord(),
 			MaxHops: req.MaxHops,
-			Network: toPtr(true),
-		}
-
-		resp, err := r.service.List(ctx, peers, localReq)
+			Network: toPtr(false),
+		})
 		if err != nil {
-			log.Printf("failed to list: %v", err)
+			log.Printf("failed to list from peer over the network: %v", err)
 
 			return
 		}
 
-		// stream local data results from each peer.
-		// we need to drop some peers from querying here!
+		// pass the results back
 		for item := range resp {
-			// TODO: filter what to return back
-			resCh <- item // forward results back
+			resCh <- item
 		}
 
-		//  check forwarding
-		*req.MaxHops = req.GetMaxHops() - 1
-		if req.MaxHops != nil && req.GetMaxHops() == 0 {
-			// done
-			return
-		}
-
-		// forward requests further
-		resp, err = r.service.List(ctx, peers, req)
-		if err != nil {
-			log.Printf("failed to list: %v", err)
-
-			return
-		}
-
-		// stream sub-query results
-		for item := range resp {
-			// TODO: filter what to return back
-			resCh <- item // forward results back
-		}
+		// TODO: crawl by continuing the walk based on hop count
+		// IMPORTANT: do we really want to use other nodes as hops or our peers are enough?
 	}(ctx, req)
 
 	return resCh, nil
