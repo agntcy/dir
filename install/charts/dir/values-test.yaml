@@ -14,6 +14,9 @@ apiserver:
     type: NodePort
 
   config:
+    # listen_address: "0.0.0.0:8888"
+    # healthcheck_address: "0.0.0.0:8889"
+
     provider: "oci"
 
     # OCI-backed store
@@ -24,6 +27,7 @@ apiserver:
 
       # Registry address to connect to
       registry_address: "agntcy-dir-zot.default.svc.cluster.local:5000"
+
       # All data will be stored under this repo.
       # Objects are pushed as tags, manifests, and blobs.
       # repository_name: ""
@@ -39,16 +43,16 @@ apiserver:
     #   dir: ""
 
     # Routing settings for the peer-to-peer network.
-    routing:
+    routing: {}
       # Address to use for routing
-      listen_address: ""
+      # listen_address: ""
 
       # Path to private key file for peer ID.
-      key_path: /tmp/agntcy-dir/node.privkey
+      # key_path: /tmp/agntcy-dir/node.privkey
 
       # Nodes to use for bootstrapping of the DHT.
       # We read initial routing tables here and get introduced
       # to the network.
-      bootstrap_peers:
-        - /ip4/1.1.1.1/tcp/1
-        - /ip4/1.1.1.1/tcp/2
+      # bootstrap_peers:
+      #   - /ip4/1.1.1.1/tcp/1
+      #   - /ip4/1.1.1.1/tcp/2

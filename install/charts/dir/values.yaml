@@ -4,7 +4,7 @@
 apiserver:
   image:
     repository: ghcr.io/agntcy/dir-apiserver
-    tag: 2a4e0c1
+    tag: latest
     pullPolicy: IfNotPresent
     pullSecrets:
       - name: regcred
@@ -13,6 +13,9 @@ apiserver:
     type: NodePort
 
   config:
+    # listen_address: "0.0.0.0:8888"
+    # healthcheck_address: "0.0.0.0:8889"
+
     provider: "oci"
 
     # OCI-backed store
@@ -23,6 +26,7 @@ apiserver:
 
       # Registry address to connect to
       registry_address: "agntcy-dir-zot.default.svc.cluster.local:5000"
+
       # All data will be stored under this repo.
       # Objects are pushed as tags, manifests, and blobs.
       # repository_name: ""
@@ -38,7 +42,7 @@ apiserver:
     #   dir: ""
 
     # Routing settings for the peer-to-peer network.
-    routing:
+    routing: {}
       # Address to use for routing
       # listen_address: ""
 
