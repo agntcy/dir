@@ -50,6 +50,12 @@ spec:
               {{- else }}
               containerPort: 8889
               {{- end }}
+            - name: routing
+              {{- if .Values.config.routing.listen_address }}
+              containerPort: {{ (split ":" .Values.config.routing.listen_address)._1 }}
+              {{- else }}
+              containerPort: 8999
+              {{- end }}
               protocol: TCP
           livenessProbe:
             httpGet:
