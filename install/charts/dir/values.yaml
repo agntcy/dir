@@ -4,7 +4,7 @@
 apiserver:
   image:
     repository: ghcr.io/agntcy/dir-apiserver
-    tag: 35c3d80
+    tag: latest
     pullPolicy: IfNotPresent
     pullSecrets:
       - name: regcred
