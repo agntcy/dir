@@ -10,10 +10,16 @@
   },
   "skills": [
     {
-      "category_name": "Text Completion [10201]"
+      "category_name": "Natural Language Processing",
+      "category_uid": "1",
+      "class_name": "Text Completion",
+      "class_uid": "10201"
     },
     {
-      "category_name": "Problem Solving [10702]"
+      "category_name": "Natural Language Processing",
+      "category_uid": "1",
+      "class_name": "Problem Solving",
+      "class_uid": "10702"
     }
   ],
   "locators": [
