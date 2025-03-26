@@ -18,6 +18,7 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/datastore"
+	"github.com/agntcy/dir/server/logging"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
@@ -36,6 +37,7 @@ type Server struct {
 }
 
 func Run(ctx context.Context, cfg *config.Config) error {
+	logger := logging.LoggerFromContext(ctx).With("subsystem", "Server")
 	errCh := make(chan error)
 
 	// Start server
@@ -45,7 +47,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer server.Close()
 
-	log.Printf("Server started: %s", cfg.ListenAddress)
+	logger.Info("Server started", "address", cfg.ListenAddress)
 
 	// Wait for deactivation
 	sigCh := make(chan os.Signal, 1)

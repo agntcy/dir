@@ -31,6 +31,7 @@ type Config struct {
 	// API configuration
 	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
 	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
+	LogFile            string `json:"log_file,omitempty"            mapstructure:"log_file"`
 
 	// Provider configuration
 	Provider string         `json:"provider,omitempty" mapstructure:"provider"`
@@ -59,6 +60,8 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("healthcheck_address")
 	v.SetDefault("healthcheck_address", DefaultHealthCheckAddress)
+
+	_ = v.BindEnv("log_file")
 
 	//
 	// Provider configuration

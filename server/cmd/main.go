@@ -8,6 +8,7 @@ import (
 
 	"github.com/agntcy/dir/server"
 	"github.com/agntcy/dir/server/config"
+	"github.com/agntcy/dir/server/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +22,9 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		return server.Run(cmd.Context(), cfg)
+		ctx := logging.WithLogger(cmd.Context(), cfg.LogFile)
+
+		return server.Run(ctx, cfg)
 	},
 }
 
