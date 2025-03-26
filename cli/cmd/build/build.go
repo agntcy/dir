@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	oasf "github.com/agntcy/dir/api/core/v1alpha1/oasf-validator"
 	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/presenter"
@@ -98,6 +99,12 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	// Merge Agent Model from user config with Agent Model from plugins
 	// User model will override plugin model
 	agent.Merge(builderAgent)
+
+	// Validate skills
+	err = oasf.ValidateSkills(agent.GetSkills())
+	if err != nil {
+		return fmt.Errorf("failed to validate skills: %w", err)
+	}
 
 	// Construct output
 	agentRaw, err := json.MarshalIndent(agent, "", "  ")
