@@ -20,19 +20,23 @@ var Command = &cobra.Command{
 	Short: "Pull compiled agent model from Directory",
 	Long: `Usage example:
 
-	# Pull by digest and output in JSON format
-	dirctl pull --digest <digest-string> --json
+	# Pull by digest and output it
+	dirctl pull <digest>
 
 	# Pull in combination with other commands
-	dirctl pull --digest $(dirctl build | dirctl push)
+	dirctl pull $(dirctl build | dirctl push --stdin)
 
 `,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runCommand(cmd)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return errors.New("digest is a required argument")
+		}
+
+		return runCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command) error {
+func runCommand(cmd *cobra.Command, digest string) error {
 	// Get the client from the context.
 	c, ok := util.GetClientFromContext(cmd.Context())
 	if !ok {
@@ -41,7 +45,7 @@ func runCommand(cmd *cobra.Command) error {
 
 	// Fetch object from store
 	reader, err := c.Pull(cmd.Context(), &coretypes.ObjectRef{
-		Digest:      opts.AgentDigest,
+		Digest:      digest,
 		Type:        coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
 		Annotations: nil,
 	})
@@ -61,20 +65,20 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to unmarshal agent: %w", err)
 	}
 
-	// If JSON flag is set, marshal the agent to JSON and print it
-	if opts.JSON {
-		output, err := json.MarshalIndent(&agent, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal agent to JSON: %w", err)
-		}
-
-		cmd.Print(string(output))
+	// If raw format flag is set, print and exit
+	if opts.FormatRaw {
+		presenter.Print(cmd, string(agentRaw))
 
 		return nil
 	}
 
-	// Print the raw agent data
-	presenter.Print(cmd, string(agentRaw))
+	// Pretty-print the agent
+	output, err := json.MarshalIndent(&agent, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal agent to JSON: %w", err)
+	}
+
+	presenter.Print(cmd, string(output))
 
 	return nil
 }

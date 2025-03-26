@@ -146,22 +146,22 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef,
 		Agent: testAgent,
-	}, true)
+	}, false)
 	assert.NoError(t, err)
 
 	// Publish second agent
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef2,
 		Agent: testAgent2,
-	}, true)
+	}, false)
 	assert.NoError(t, err)
 
 	for k, v := range validQueriesWithExpectedObjectRef {
 		t.Run("Valid query: "+k, func(t *testing.T) {
 			// list
 			refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
-				Local:  toPtr(true),
-				Labels: []string{k},
+				Network: toPtr(false),
+				Labels:  []string{k},
 			})
 			assert.NoError(t, err)
 
@@ -233,8 +233,8 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	t.Run("Valid multi skill query", func(t *testing.T) {
 		// list
 		refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
-			Local:  toPtr(true),
-			Labels: []string{"/skills/category1/class1", "/skills/category2/class2"},
+			Network: toPtr(false),
+			Labels:  []string{"/skills/category1/class1", "/skills/category2/class2"},
 		})
 		assert.NoError(t, err)
 

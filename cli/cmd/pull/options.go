@@ -6,12 +6,10 @@ package pull
 var opts = &options{}
 
 type options struct {
-	AgentDigest string
-	JSON        bool
+	FormatRaw bool
 }
 
 func init() {
 	flags := Command.Flags()
-	flags.StringVar(&opts.AgentDigest, "digest", "", "Digest of the agent to pull")
-	flags.BoolVar(&opts.JSON, "json", false, "Output in JSON format")
+	flags.BoolVar(&opts.FormatRaw, "raw", false, "Output in Raw format. Defaults to JSON.")
 }

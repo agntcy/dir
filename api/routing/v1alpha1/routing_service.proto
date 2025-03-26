@@ -31,10 +31,10 @@ message PublishRequest {
   // On publish, we read from the local store and extract the neccessary labels.
   core.v1alpha1.ObjectRef record = 1;
 
-  // Publish locally only.
-  // This item will never end up in the network,
-  // unless republished with local=false.
-  optional bool local = 2;
+  // Announce the publication to the network.
+  // This item will end up in the network
+  // and can be searched.
+  optional bool network = 2;
 }
 
 message ListRequest {
@@ -54,8 +54,8 @@ message ListRequest {
   // Max routing depth.
   optional uint32 max_hops = 4;
 
-  // List only locally published data (from our own node).
-  optional bool local = 5;
+  // Run a networked query.
+  optional bool network = 5;
 }
 
 message ListResponse {

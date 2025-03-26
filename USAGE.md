@@ -14,14 +14,16 @@ It is used as an blob store for Dir objects and serves both
 the networking and user-specific purposes.
 
 ```bash
+  # build
+  dir build /path/to/source > model.json
+
   # push
-  dir push <digest>
+  dir push model.json
 
   # pull
   dir pull <digest>
-  dir pull <digest> --verify
 
-  # lookup returns basic metadata about the agent
+  # lookup
   dir info <digest>
 ```
 

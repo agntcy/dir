@@ -90,8 +90,8 @@ var _ = ginkgo.Describe("client end-to-end tests", func() {
 
 		ginkgo.It("should list published agent by one label", func() {
 			itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
-				Labels: []string{"/skills/test-category-1/test-class-1"},
-				Local:  Ptr(true),
+				Labels:  []string{"/skills/test-category-1/test-class-1"},
+				Network: Ptr(false),
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -111,8 +111,8 @@ var _ = ginkgo.Describe("client end-to-end tests", func() {
 
 		ginkgo.It("should list published agent by multiple labels", func() {
 			itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
-				Labels: []string{"/skills/test-category-1/test-class-1", "/skills/test-category-2/test-class-2"},
-				Local:  Ptr(true),
+				Labels:  []string{"/skills/test-category-1/test-class-1", "/skills/test-category-2/test-class-2"},
+				Network: Ptr(false),
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

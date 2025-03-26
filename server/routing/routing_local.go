@@ -11,7 +11,6 @@ import (
 	"io"
 	"log"
 	"path"
-	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -34,7 +33,7 @@ func newLocal(store types.StoreAPI, dstore types.Datastore) *routeLocal {
 	}
 }
 
-func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, local bool) error {
+func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bool) error {
 	ref := object.GetRef()
 	if ref == nil {
 		return fmt.Errorf("invalid object reference: %v", ref)
@@ -55,19 +54,36 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, loca
 		return fmt.Errorf("failed to create batch: %w", err)
 	}
 
-	// keep track of all agent skills
-	var skills []string
-	for _, skill := range agent.GetSkills() {
-		key := "/skills/" + skill.Key()
-		skills = append(skills, skill.Key())
+	// the key where we will save the agent
+	agentKey := datastore.NewKey(fmt.Sprintf("/agents/%s", ref.GetDigest()))
 
+	// check if we have the agent already
+	// this is useful to avoid updating metrics and running the same operation multiple times
+	agentExists, err := r.dstore.Has(ctx, agentKey)
+	if err != nil {
+		return fmt.Errorf("failed to check if agent exists: %w", err)
+	}
+	if agentExists {
+		log.Printf("Skipping republish as agent %s was already published", ref.GetDigest())
+
+		return nil
+	}
+
+	// store agent for later lookup
+	if err := batch.Put(ctx, agentKey, nil); err != nil {
+		return fmt.Errorf("failed to put agent key: %w", err)
+	}
+
+	// keep track of all agent skills
+	skills := getAgentSkills(agent)
+	for _, skill := range skills {
 		// Add key with digest
-		agentSkillKey := fmt.Sprintf("%s/%s", key, ref.GetDigest())
+		agentSkillKey := fmt.Sprintf("%s/%s", skill, ref.GetDigest())
 		if err := batch.Put(ctx, datastore.NewKey(agentSkillKey), nil); err != nil {
 			return fmt.Errorf("failed to put skill key: %w", err)
 		}
 
-		metrics.increment(key)
+		metrics.increment(skill)
 	}
 
 	err = batch.Commit(ctx)
@@ -75,14 +91,13 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, loca
 		return fmt.Errorf("failed to commit batch: %w", err)
 	}
 
-	// FIXME: be careful here as we can republish the same agent, so this should be idempotent.
-	// otherwise, we are just increasing counts locally for that object without doing anything.
+	// sync metrics
 	err = metrics.update(ctx, r.dstore)
 	if err != nil {
 		return fmt.Errorf("failed to update metrics: %w", err)
 	}
 
-	log.Printf("Successfully published agent %s with skills: %s", ref.GetDigest(), strings.Join(skills, ", "))
+	log.Printf("Successfully published agent %s", ref.GetDigest())
 
 	return nil
 }
@@ -98,18 +113,18 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 	}
 
 	// if we sent an empty request, return us stats for the current peer
-	if req.Record == nil && len(req.GetLabels()) == 0 {
-		go func() {
+	if req.GetRecord() == nil && len(req.GetLabels()) == 0 {
+		go func(labels []string) {
 			defer close(outCh)
 
 			outCh <- &routingtypes.ListResponse_Item{
-				Labels: metrics.labels(),
+				Labels: labels,
 				Peer: &routingtypes.Peer{
-					Id: "local",
+					Id: "HOST",
 				},
 				LabelCounts: metrics.counts(),
 			}
-		}()
+		}(metrics.labels())
 
 		return outCh, nil
 	}
@@ -201,16 +216,13 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			}
 
 			// get agent skills
-			var skills []string
-			for _, skill := range agent.GetSkills() {
-				skills = append(skills, skill.Key())
-			}
+			skills := getAgentSkills(agent)
 
 			// forward results back
 			outCh <- &routingtypes.ListResponse_Item{
 				Labels: skills,
 				Peer: &routingtypes.Peer{
-					Id: "local",
+					Id: "HOST",
 				},
 				Record: &coretypes.ObjectRef{
 					Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
@@ -248,4 +260,13 @@ func (s *labelFilter) Filter(e query.Entry) bool {
 	has, _ := s.dstore.Has(s.ctx, datastore.NewKey(fmt.Sprintf("%s/%s", s.label, digest)))
 
 	return has
+}
+
+func getAgentSkills(agent *coretypes.Agent) []string {
+	var skills []string
+	for _, skill := range agent.GetSkills() {
+		skills = append(skills, "/skills/"+skill.Key())
+	}
+
+	return skills
 }

@@ -100,7 +100,7 @@ func newRemote(ctx context.Context, storeAPI types.StoreAPI, opts types.APIOptio
 	return routeAPI, nil
 }
 
-func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, local bool) error {
+func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ bool) error {
 	ref := object.GetRef()
 
 	// get object CID
@@ -124,8 +124,8 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	// list data from remote for a given peer
 	if req.GetPeer() != nil {
 		// force the peer to return its local data
-		req.Local = new(bool)
-		*req.Local = true
+		//		req.Local = new(bool)
+		//		*req.Local = true
 
 		// TODO: handle error
 		// we dont do anythin with the error for now, it can only time out
@@ -170,10 +170,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 				agent := object.GetAgent()
 
 				// get agent skills
-				var skills []string
-				for _, skill := range agent.GetSkills() {
-					skills = append(skills, skill.Key())
-				}
+				skills := getAgentSkills(agent)
 
 				// peer addrs to string
 				var addrs []string
@@ -181,7 +178,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 					addrs = append(addrs, addr.String())
 				}
 
-				log.Printf("Found an announced agent %s on peer %s with skills %s", ref.GetDigest(), prov.ID, strings.Join(skills, ","))
+				log.Printf("Found an announced agent %s on peer %s with skills %s", ref.GetDigest(), prov.ID, strings.Join(skills, ", "))
 
 				// send back to caller
 				resCh <- &routingtypes.ListResponse_Item{
@@ -223,7 +220,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 			Labels:  req.GetLabels(),
 			Record:  req.GetRecord(),
 			MaxHops: req.MaxHops,
-			Local:   toPtr(true),
+			Network: toPtr(true),
 		}
 
 		resp, err := r.service.List(ctx, peers, localReq)
@@ -308,15 +305,13 @@ procLoop:
 			agent := object.GetAgent()
 
 			// extract skills
-			var skills []string
-			for _, skill := range agent.GetSkills() {
-				skills = append(skills, skill.Key())
-			}
+			skills := getAgentSkills(agent)
 
-			// TODO: we can validate the agent here
-			// for now, we just log the agent and its skills
+			// TODO: we can perform validation and data synchronization here.
+			// Depending on the server configuration, we can decide if we want to
+			// pull this model into our own cache, rebroadcast it, or ignore it.
 
-			log.Printf("successfully processed agent %v with skills %s", meta.GetDigest(), skills)
+			log.Printf("Successfully processed agent %v with skills %s", meta.GetDigest(), strings.Join(skills, ", "))
 		}
 	}
 }

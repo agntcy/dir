@@ -6,10 +6,10 @@ package publish
 var opts = &options{}
 
 type options struct {
-	Local bool
+	Network bool
 }
 
 func init() {
 	flags := Command.Flags()
-	flags.BoolVar(&opts.Local, "local", false, "Publish data only to local routing table")
+	flags.BoolVar(&opts.Network, "network", false, "Publish data to the network")
 }

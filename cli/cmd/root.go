@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/cmd/build"
+	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/publish"
 	"github.com/agntcy/dir/cli/cmd/pull"
@@ -39,7 +40,18 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.AddCommand(build.Command, publish.Command, pull.Command, push.Command, list.Command)
+	RootCmd.AddCommand(
+		// local commands
+		// TODO: add version command
+		build.Command,
+		// storage commands
+		info.Command,
+		pull.Command,
+		push.Command,
+		// routing commands
+		publish.Command,
+		list.Command,
+	)
 }
 
 func Run(ctx context.Context) error {

@@ -76,7 +76,7 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 	err = c.routing.Publish(ctx, &coretypes.Object{
 		Ref:   ref,
 		Agent: &agent,
-	}, req.GetLocal())
+	}, req.GetNetwork())
 	if err != nil {
 		return nil, fmt.Errorf("failed to publish: %w", err)
 	}

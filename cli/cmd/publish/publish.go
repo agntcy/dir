@@ -15,29 +15,27 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "publish",
-	Short: "Publish compiled agent model to DHT allowing content discovery",
+	Short: "Publish compiled agent model to the network, allowing content discovery",
 	Long: `Usage example:
 
-	# Publish the data across the network.
-  	# It is not guaranteed that this will succeed.
-  	dirctl publish <digest>
-
    	# Publish the data only to the local routing table.
-    dirctl publish <digest> --local
+    dirctl publish <digest>
+
+	# Publish the data across the network.
+  	# NOTE: It is not guaranteed that this will succeed.
+  	dirctl publish <digest> --network
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
-		return runCommand(cmd, args)
+		if len(args) != 1 {
+			return errors.New("digest is a required argument")
+		}
+
+		return runCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return errors.New("requires exactly 1 argument")
-	}
-
-	digest := args[0]
-
+func runCommand(cmd *cobra.Command, digest string) error {
 	// Get the client from the context.
 	c, ok := util.GetClientFromContext(cmd.Context())
 	if !ok {
@@ -56,11 +54,16 @@ func runCommand(cmd *cobra.Command, args []string) error {
 	presenter.Printf(cmd, "Publishing agent: %v\n", meta)
 
 	// Start publishing
-	if err := c.Publish(cmd.Context(), meta, opts.Local); err != nil {
+	if err := c.Publish(cmd.Context(), meta, opts.Network); err != nil {
 		return fmt.Errorf("failed to publish: %w", err)
 	}
 
+	// Success
 	presenter.Printf(cmd, "Successfully published!\n")
+
+	if opts.Network {
+		presenter.Printf(cmd, "It may take some time for the agent to be propagated and discoverable across the network.\n")
+	}
 
 	return nil
 }

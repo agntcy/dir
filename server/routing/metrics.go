@@ -6,11 +6,11 @@ package routing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 )
 
 type LabelMetric struct {
@@ -69,32 +69,21 @@ func (m *Metrics) update(ctx context.Context, dstore types.Datastore) error {
 }
 
 func loadMetrics(ctx context.Context, dstore types.Datastore) (*Metrics, error) {
-	res, err := dstore.Query(ctx, query.Query{
-		Prefix: "/metrics",
-	})
+	// Fetch metrics data
+	data, err := dstore.Get(ctx, datastore.NewKey("/metrics"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to query datastore: %w", err)
-	}
+		if errors.Is(err, datastore.ErrNotFound) {
+			return &Metrics{
+				Data: make(map[string]LabelMetric),
+			}, nil
+		}
 
-	entries, err := res.Rest()
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse metrics data: %w", err)
-	}
-
-	if len(entries) > 1 {
-		return nil, fmt.Errorf("unexpected number of metrics entries: %d", len(entries))
-	}
-
-	// we dont have anything in the store, return empty metrics
-	if len(entries) == 0 {
-		return &Metrics{Data: make(map[string]LabelMetric)}, nil
+		return nil, fmt.Errorf("failed to update metrics data: %w", err)
 	}
 
 	// Parse existing metrics data
 	var metrics Metrics
-
-	err = json.Unmarshal(entries[0].Value, &metrics)
-	if err != nil {
+	if err := json.Unmarshal(data, &metrics); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal metrics data: %w", err)
 	}
 

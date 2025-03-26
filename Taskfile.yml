@@ -184,6 +184,7 @@ tasks:
       - task: cli:compile
     vars:
       TEST_NODE_KEY: '{{ .ROOT_DIR }}/e2e/demo-hostkey'
+      TEST_PEER_ID: '12D3KooWGXVFEKy5VXYYkyogqTyyftdMPeA6Q4UBDmXb5bdhLs39'
       TEST_NODE_ADDR: '/ip4/192.168.0.201/tcp/53675'
       TEST_NODE_P2ADDR: '/ip4/192.168.0.201/tcp/53675/p2p/12D3KooWGXVFEKy5VXYYkyogqTyyftdMPeA6Q4UBDmXb5bdhLs39'
       DIRCTL: '{{ .ROOT_DIR }}/bin/dirctl'
@@ -198,7 +199,7 @@ tasks:
       DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
       go run main.go &
 
-      echo "Starting private node"
+      echo "Starting Directory..."
       DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
       DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp \
       go run main.go &
@@ -206,22 +207,26 @@ tasks:
       # wait for server to start
       sleep 10
 
-      # run sample workflow
-      DIGEST=$({{.DIRCTL}} build {{.EXAMPLE}} | {{.DIRCTL}} push)
+      # push data
+      DIGEST=$({{.DIRCTL}} build {{.EXAMPLE}} | {{.DIRCTL}} push --stdin)
+      {{.DIRCTL}} info $DIGEST
 
-      # TODO: add object stat/info command
+      # publish data
+      {{.DIRCTL}} publish $DIGEST              # on our node
+      {{.DIRCTL}} publish $DIGEST --network    # broadcast to the network
 
-      {{.DIRCTL}} publish $DIGEST
-      {{.DIRCTL}} publish $DIGEST --local
+      # summary of published data
+      {{.DIRCTL}} list info                               # on our node
+      # {{.DIRCTL}} list info --peer {{.TEST_PEER_ID}}    # on remote node
+      # {{.DIRCTL}} list info --network                   # on the whole network
+
+      # list the publish records for an object (finds all peers providing this object)
+      {{.DIRCTL}} list --digest $DIGEST
       
-      {{.DIRCTL}} list peers --digest $DIGEST
-      {{.DIRCTL}} list peers --digest $DIGEST --local
-
-      {{.DIRCTL}} list labels
-      {{.DIRCTL}} list labels --local
-
-      {{.DIRCTL}} list labels ""
-      {{.DIRCTL}} list labels "" --local
+      # list the data that matches our query (exact match across all labels)
+      {{.DIRCTL}} list "/skills/Text Completion [10201]"                            # on our node
+      # {{.DIRCTL}} list "/skills/Text Completion [10201]" --peer {{.TEST_PEER_ID}}   # on remote node
+      # {{.DIRCTL}} list "/skills/Text Completion [10201]" --network                  # on the whole network
 
       # wait until canceled
       sleep 100000000

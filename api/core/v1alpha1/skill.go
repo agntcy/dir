@@ -6,5 +6,9 @@ package corev1alpha1
 import "fmt"
 
 func (skill *Skill) Key() string {
+	if skill.GetClassName() == "" {
+		return skill.GetCategoryName()
+	}
+
 	return fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName())
 }

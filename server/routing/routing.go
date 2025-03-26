@@ -30,16 +30,23 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 	}, nil
 }
 
-func (r *route) Publish(ctx context.Context, obj *coretypes.Object, isLocal bool) error {
-	if isLocal {
-		return r.local.Publish(ctx, obj, isLocal)
+func (r *route) Publish(ctx context.Context, object *coretypes.Object, network bool) error {
+	// always publish data locally for archival/querying
+	err := r.local.Publish(ctx, object, network)
+	if err != nil {
+		return err
 	}
 
-	return r.remote.Publish(ctx, obj, isLocal)
+	// publish to the network if requested
+	if network {
+		return r.remote.Publish(ctx, object, network)
+	}
+
+	return nil
 }
 
 func (r *route) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
-	if req.GetLocal() {
+	if !req.GetNetwork() {
 		return r.local.List(ctx, req)
 	}
 

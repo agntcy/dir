@@ -14,10 +14,10 @@ import (
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 )
 
-func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef, local bool) error {
+func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef, network bool) error {
 	_, err := c.RoutingServiceClient.Publish(ctx, &routingtypes.PublishRequest{
-		Record: ref,
-		Local:  &local,
+		Record:  ref,
+		Network: &network,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to publish object: %w", err)

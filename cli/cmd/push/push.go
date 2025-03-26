@@ -24,35 +24,47 @@ var Command = &cobra.Command{
 	Long: `Usage example:
 
 	# From file
-	dirctl push --from-file compiled.json
+	dirctl push model.json
 
-	# From stdin
-	dirctl build <args> | dirctl push
+	# From standard input. Useful for piping.
+	cat model.json | dirctl push --stdin
 
-	# From pull
-	dirctl pull --digest <digest-string> --json | dirctl push
+	# Example with build
+	dirctl build <build-path> | dirctl push --stdin
+
+	# Example with pull
+	dirctl pull <digest> | dirctl push --stdin
 
 `,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runCommand(cmd)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var fpath string
+		if len(args) > 1 {
+			return errors.New("only one file path is allowed")
+		} else if len(args) == 1 {
+			fpath = args[0]
+		}
+
+		// get source
+		source, err := getReader(fpath, opts.FromStdin)
+		if err != nil {
+			return err
+		}
+
+		return runCommand(cmd, source)
 	},
 }
 
-func runCommand(cmd *cobra.Command) error {
+func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
+	defer source.Close()
+
 	// Get the client from the context.
 	c, ok := util.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
-	// Create a reader from the file or stdin.
-	reader, err := getReader()
-	if err != nil {
-		return fmt.Errorf("could not create reader: %w", err)
-	}
-
 	// Unmarshal the content into an Agent struct.
-	agent, err := unmarshalAgent(reader)
+	agent, err := unmarshalAgent(source)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal agent: %w", err)
 	}
@@ -80,19 +92,6 @@ func runCommand(cmd *cobra.Command) error {
 	return nil
 }
 
-func getReader() (io.Reader, error) {
-	if opts.FromFile != "" {
-		file, err := os.Open(opts.FromFile)
-		if err != nil {
-			return nil, fmt.Errorf("could not open file %s: %w", opts.FromFile, err)
-		}
-
-		return file, nil
-	}
-
-	return os.Stdin, nil
-}
-
 func unmarshalAgent(reader io.Reader) (*coretypes.Agent, error) {
 	data, err := io.ReadAll(reader)
 	if err != nil {
@@ -105,4 +104,21 @@ func unmarshalAgent(reader io.Reader) (*coretypes.Agent, error) {
 	}
 
 	return &agent, nil
+}
+
+func getReader(fpath string, fromFile bool) (io.ReadCloser, error) {
+	if fpath == "" && !fromFile {
+		return nil, errors.New("reqired file path or --stdin flag")
+	}
+
+	if fpath != "" {
+		file, err := os.Open(fpath)
+		if err != nil {
+			return nil, fmt.Errorf("could not open file %s: %w", fpath, err)
+		}
+
+		return file, nil
+	}
+
+	return os.Stdin, nil
 }

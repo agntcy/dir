@@ -6,10 +6,13 @@ package push
 var opts = &options{}
 
 type options struct {
-	FromFile string
+	FromStdin bool
 }
 
 func init() {
 	flags := Command.Flags()
-	flags.StringVar(&opts.FromFile, "from-file", "", "Read compiled data from file, reads from STDIN if empty")
+	flags.BoolVar(&opts.FromStdin, "stdin", false,
+		"Read compiled data from standard input. Useful for piping. Reads from file if empty. "+
+			"Ignored if file is provided as an argument.",
+	)
 }
