@@ -4,7 +4,9 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	routing "github.com/agntcy/dir/server/routing/config"
@@ -61,8 +63,8 @@ func LoadConfig() (*Config, error) {
 
 	// Read the config file
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			fmt.Println("Config file not found, use defaults.")
+		if errors.Is(err, viper.ConfigFileNotFoundError{}) {
+			log.Print("Config file not found, use defaults.")
 		} else {
 			return nil, fmt.Errorf("failed to read configuration file: %w", err)
 		}
