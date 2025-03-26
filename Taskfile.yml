@@ -7,14 +7,16 @@ vars:
   ## Version
   RELEASE_VERSION:
     sh: grep 'version:' versions.yaml | awk '{print $2}'
+  RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/core/v1alpha1/version.Version={{ .RELEASE_VERSION }}'"
   COMMIT_SHA:
     sh: git rev-parse --short HEAD
-  VERSION: '{{ .RELEASE_VERSION }}-{{ .COMMIT_SHA }}'
+  COMMIT_SHA_LDFLAG: "-X 'github.com/agntcy/dir/api/core/v1alpha1/version.CommitHash={{ .COMMIT_SHA }}'"
+  VERSION_LDFLAGS: '{{ .RELEASE_VERSION_LDFLAG }} {{ .COMMIT_SHA_LDFLAG }}'
 
   ## Image config
   IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   IMAGE_TAG: '{{ .IMAGE_TAG | default .COMMIT_SHA }}'
-  IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}'
+  IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
 
   ## Dependency config
@@ -138,8 +140,9 @@ tasks:
       GOARCH: '{{ .GOARCH | default ARCH }}'
       BINARY_NAME: '{{ .BINARY_NAME | default "dirctl" }}'
       OUT_DIR: '{{ .ROOT_DIR }}/bin'
+      LDFLAGS: '-s -w -extldflags -static {{ .VERSION_LDFLAGS }}'
     cmds:
-      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -extldflags -static" -o {{.OUT_DIR}}/{{.BINARY_NAME}} cli.go
+      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o {{.OUT_DIR}}/{{.BINARY_NAME}} cli.go
 
   cli:compile:all:
     desc: Compile CLI client binaries for multiple platforms

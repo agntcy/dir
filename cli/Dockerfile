@@ -23,13 +23,14 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     xx-go mod download -x
 
 ARG BUILD_OPTS
+ARG EXTRA_LDFLAGS
 
 ENV CGO_ENABLED=1
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=bind,source=.,target=/build,ro \
-    xx-go build ${BUILD_OPTS} -ldflags="-s -w -extldflags -static" \
+    xx-go build ${BUILD_OPTS} -ldflags="-s -w -extldflags -static ${EXTRA_LDFLAGS}" \
     -o /bin/dirctl ./cli.go
 
 RUN xx-verify /bin/dirctl

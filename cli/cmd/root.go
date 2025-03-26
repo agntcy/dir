@@ -13,6 +13,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/publish"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
+	"github.com/agntcy/dir/cli/cmd/version"
 	"github.com/agntcy/dir/cli/util"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
@@ -41,6 +42,8 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(
+		// global commands
+		version.Command,
 		// local commands
 		// TODO: add version command
 		build.Command,
