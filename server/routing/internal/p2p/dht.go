@@ -5,7 +5,6 @@ package p2p
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -49,12 +48,12 @@ func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo,
 			defer wg.Done()
 
 			if err := host.Connect(ctx, p); err != nil {
-				log.Printf("Error while connecting to node %v: %-v", p.ID, err)
+				logger.Error("Error while connecting to node", "node", p.ID, "error", err)
 
 				return
 			}
 
-			log.Printf("Successfully connected to bootstrap node: %v", p.ID)
+			logger.Info("Successfully connected to bootstrap node", "node", p.ID)
 		}(p)
 	}
 

@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/rpc"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -30,6 +30,8 @@ var (
 
 	// refresh interval for DHT routing tables.
 	refreshInterval = 30 * time.Second
+
+	remoteLogger = logging.Logger("routing/remote")
 )
 
 // this interface handles routing across the network.
@@ -84,7 +86,7 @@ func newRemote(ctx context.Context, parentRouter types.RoutingAPI, storeAPI type
 	routeAPI.server = server
 
 	// Register RPC server
-	rpcService, err := rpc.New(ctx, server.Host(), storeAPI, parentRouter)
+	rpcService, err := rpc.New(server.Host(), storeAPI, parentRouter)
 	if err != nil {
 		defer server.Close()
 
@@ -101,6 +103,8 @@ func newRemote(ctx context.Context, parentRouter types.RoutingAPI, storeAPI type
 }
 
 func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ bool) error {
+	remoteLogger.Debug("Called remote routing's Publish method", "object", object)
+
 	ref := object.GetRef()
 
 	// get object CID
@@ -115,16 +119,18 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ b
 		return fmt.Errorf("failed to announce object %v, it will be retried in the background. Reason: %v", ref.GetDigest(), err)
 	}
 
-	log.Printf("Successfully announced agent %s to the network", ref.GetDigest())
+	remoteLogger.Debug("Successfully announced object to the network", "ref", ref)
 
 	return nil
 }
 
 func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
+	remoteLogger.Debug("Called remote routing's List method", "req", req)
+
 	// list data from remote for a given peer.
 	// this returns all the records that fully match our query.
 	if req.GetPeer() != nil {
-		log.Printf("Listing data for peer %s, request: %v", req.GetPeer().GetId(), req)
+		remoteLogger.Info("Listing data for peer", "req", req)
 
 		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.GetPeer().GetId())}, &routingtypes.ListRequest{
 			Labels: req.GetLabels(),
@@ -139,7 +145,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	// get specific agent from all remote peers hosting it
 	// this returns all the peers that are holding requested agent
 	if record := req.GetRecord(); record != nil {
-		log.Printf("Listing data for record %s", record.GetDigest())
+		remoteLogger.Info("Listing data for record", "record", record)
 
 		// get object CID
 		cid, err := record.GetCID()
@@ -168,7 +174,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 				// just for the sake of showing the result
 				object, err := r.service.Pull(ctx, prov.ID, ref)
 				if err != nil {
-					log.Printf("failed to pull agent: %v", err)
+					remoteLogger.Error("failed to pull agent", "error", err)
 
 					continue
 				}
@@ -183,7 +189,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 					addrs = append(addrs, addr.String())
 				}
 
-				log.Printf("Found an announced agent %s on peer %s with skills %s", ref.GetDigest(), prov.ID, strings.Join(skills, ", "))
+				remoteLogger.Info("Found an announced agent", "ref", ref, "peer", prov.ID, "skills", strings.Join(skills, ", "))
 
 				// send back to caller
 				resCh <- &routingtypes.ListResponse_Item{
@@ -202,7 +208,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 
 	// run a query across peers, keep forwarding until we exhaust the hops
 	// TODO: this is a naive implementation, reconsider better selection of peers and scheduling.
-	log.Printf("Listing data for peer %s, request: %v", req.GetPeer().GetId(), req)
+	remoteLogger.Info("Listing data for all peers", "req", req)
 
 	// resolve hops
 	if req.GetMaxHops() > 20 {
@@ -226,7 +232,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 			Network: toPtr(false),
 		})
 		if err != nil {
-			log.Printf("failed to list from peer over the network: %v", err)
+			remoteLogger.Error("failed to list from peer over the network", "error", err)
 
 			return
 		}
@@ -258,7 +264,7 @@ procLoop:
 			// check if we have this agent locally
 			_, err := r.storeAPI.Lookup(ctx, notif.Ref)
 			if err != nil {
-				log.Printf("failed to check if agent exists locally: %v", err)
+				remoteLogger.Error("failed to check if agent exists locally", "error", err)
 
 				continue procLoop
 			}
@@ -271,7 +277,7 @@ procLoop:
 			// lookup from remote
 			meta, err := r.service.Lookup(ctx, notif.Peer.ID, notif.Ref)
 			if err != nil {
-				log.Printf("failed to lookup: %v", err)
+				remoteLogger.Error("failed to lookup agent", "error", err)
 
 				continue procLoop
 			}
@@ -279,7 +285,7 @@ procLoop:
 			// fetch model directly from peer and drop it
 			object, err := r.service.Pull(ctx, notif.Peer.ID, notif.Ref)
 			if err != nil {
-				log.Printf("failed to pull: %v", err)
+				remoteLogger.Error("failed to pull agent", "error", err)
 
 				continue procLoop
 			}
@@ -292,7 +298,7 @@ procLoop:
 			// Depending on the server configuration, we can decide if we want to
 			// pull this model into our own cache, rebroadcast it, or ignore it.
 
-			log.Printf("Successfully processed agent %v with skills %s", meta.GetDigest(), strings.Join(skills, ", "))
+			remoteLogger.Info("Successfully processed agent", "meta", meta, "skills", strings.Join(skills, ", "))
 		}
 	}
 }

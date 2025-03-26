@@ -9,13 +9,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
 	storetypes.UnimplementedStoreServiceServer
@@ -36,11 +38,17 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		return fmt.Errorf("failed to receive first message: %w", err)
 	}
 
-	log.Printf("Pushing object %s with digest %v\n", firstMessage.GetRef().GetType(), firstMessage.GetRef().GetDigest())
+	storeLogger.Debug("Called store contoller's Push method",
+		"data", firstMessage.GetData(),
+		"agent", firstMessage.GetAgent(),
+		"object-ref", firstMessage.GetRef(),
+	)
 
 	// lookup (skip if exists)
 	ref, err := s.store.Lookup(stream.Context(), firstMessage.GetRef())
 	if err == nil {
+		storeLogger.Info("Object already exists, skipping push to store", "ref", ref)
+
 		return stream.SendAndClose(ref)
 	}
 
@@ -51,6 +59,7 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 
 		if len(firstMessage.GetData()) > 0 {
 			if _, err := pw.Write(firstMessage.GetData()); err != nil {
+				storeLogger.Error("Failed to write first message to pipe", "error", err)
 				pw.CloseWithError(err)
 
 				return
@@ -64,12 +73,14 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 			}
 
 			if err != nil {
+				storeLogger.Error("Failed to receive object", "error", err)
 				pw.CloseWithError(err)
 
 				return
 			}
 
 			if _, err := pw.Write(obj.GetData()); err != nil {
+				storeLogger.Error("Failed to write object to pipe", "error", err)
 				pw.CloseWithError(err)
 
 				return
@@ -87,6 +98,8 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 }
 
 func (s storeCtrl) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService_PullServer) error {
+	storeLogger.Debug("Called store contoller's Pull method", "req", req)
+
 	// lookup (maybe not needed)
 	ref, err := s.store.Lookup(stream.Context(), req)
 	if err != nil {
@@ -104,6 +117,8 @@ func (s storeCtrl) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService
 	for {
 		n, readErr := reader.Read(buf)
 		if readErr == io.EOF && n == 0 {
+			storeLogger.Debug("Finished reading all chunks")
+
 			// exit as we read all the chunks
 			return nil
 		}
@@ -124,6 +139,8 @@ func (s storeCtrl) Pull(req *coretypes.ObjectRef, stream storetypes.StoreService
 }
 
 func (s storeCtrl) Lookup(ctx context.Context, req *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+	storeLogger.Debug("Called store contoller's Lookup method", "req", req)
+
 	// validate
 	if req.GetDigest() == "" {
 		return nil, errors.New("digest is required")
@@ -141,6 +158,8 @@ func (s storeCtrl) Lookup(ctx context.Context, req *coretypes.ObjectRef) (*coret
 }
 
 func (s storeCtrl) Delete(ctx context.Context, req *coretypes.ObjectRef) (*emptypb.Empty, error) {
+	storeLogger.Debug("Called store contoller's Delete method", "req", req)
+
 	if req.GetDigest() == "" {
 		return nil, errors.New("digest is required")
 	}

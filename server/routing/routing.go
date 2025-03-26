@@ -5,6 +5,7 @@ package routing
 
 import (
 	"context"
+	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -35,7 +36,7 @@ func (r *route) Publish(ctx context.Context, object *coretypes.Object, network b
 	// always publish data locally for archival/querying
 	err := r.local.Publish(ctx, object, network)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to publish locally: %w", err)
 	}
 
 	// publish to the network if requested

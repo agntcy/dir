@@ -10,3 +10,4 @@ module-sets:
       - github.com/agntcy/dir/client
       - github.com/agntcy/dir/server
       - github.com/agntcy/dir/e2e
+      - github.com/agntcy/dir/utils

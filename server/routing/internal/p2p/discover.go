@@ -5,7 +5,6 @@ package p2p
 
 import (
 	"context"
-	"log"
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -25,17 +24,19 @@ func discover(ctx context.Context, h host.Host, dht *dht.IpfsDHT, rendezvous str
 	ticker := time.NewTicker(time.Second * 1)
 	defer ticker.Stop()
 
-	log.Print("Peer discovery process running")
+	logger.Debug("Peer discovery process running", "host", h.ID().String(), "rendezvous", rendezvous)
 
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Debug("Peer discovery process stopped")
+
 			return
 		case <-ticker.C:
 			// Search for peers
 			peers, err := duitls.FindPeers(ctx, routingDiscovery, rendezvous)
 			if err != nil {
-				log.Printf("Error while searching for peers: %v", err)
+				logger.Error("Error while searching for peers", "error", err)
 
 				continue
 			}
@@ -47,17 +48,19 @@ func discover(ctx context.Context, h host.Host, dht *dht.IpfsDHT, rendezvous str
 				}
 
 				if h.Network().Connectedness(p.ID) == network.Connected { // skip connected
+					logger.Debug("Skipping connected peer", "peer", p.ID.String())
+
 					continue
 				}
 
 				_, err = h.Network().DialPeer(ctx, p.ID)
 				if err != nil {
-					log.Printf("Error while connecting to peer %v: %v", p.ID, err)
+					logger.Error("Error while connecting to peer", "peer", p.ID.String(), "error", err)
 
 					continue
 				}
 
-				log.Printf("Successfully connected to peer %s", p.ID.String())
+				logger.Info("Successfully connected to peer", "peer", p.ID.String())
 			}
 		}
 	}

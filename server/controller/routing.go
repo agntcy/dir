@@ -13,9 +13,12 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/opencontainers/go-digest"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+var routingLogger = logging.Logger("controller/routing")
 
 type routingCtlr struct {
 	routingtypes.UnimplementedRoutingServiceServer
@@ -32,6 +35,8 @@ func NewRoutingController(routing types.RoutingAPI, store types.StoreAPI) routin
 }
 
 func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequest) (*emptypb.Empty, error) {
+	routingLogger.Debug("Called routing controller's Publish method", "req", req)
+
 	if req.GetRecord() == nil || req.GetRecord().GetType() == "" {
 		return nil, errors.New("record is required")
 	}
@@ -85,6 +90,8 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 }
 
 func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.RoutingService_ListServer) error {
+	routingLogger.Debug("Called routing controller's List method", "req", req)
+
 	itemChan, err := c.routing.List(srv.Context(), req)
 	if err != nil {
 		return fmt.Errorf("failed to list: %w", err)

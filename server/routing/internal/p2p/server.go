@@ -6,13 +6,15 @@ package p2p
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"github.com/agntcy/dir/utils/logging"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
+
+var logger = logging.Logger("p2p")
 
 type Server struct {
 	opts    *options
@@ -23,6 +25,8 @@ type Server struct {
 
 // New constructs a new p2p server.
 func New(ctx context.Context, opts ...Option) (*Server, error) {
+	logger.Debug("Creating new p2p server", "opts", opts)
+
 	// Load options
 	options := &options{}
 	for _, opt := range append(opts, withRandomIdentity()) {
@@ -45,13 +49,7 @@ func New(ctx context.Context, opts ...Option) (*Server, error) {
 		closeFn: status.Close,
 	}
 
-	// print info about the host
-	log.Println("Host: ", server.Info().ID)
-	log.Println("Addresses: ")
-
-	for _, addr := range server.P2pAddrs() {
-		log.Println(addr)
-	}
+	logger.Debug("P2P server created", "host", server.host.ID(), "addresses", server.P2pAddrs())
 
 	return server, nil
 }
@@ -131,7 +129,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		}
 
 		defer host.Close()
-		log.Printf("Host: %v %v", host.ID(), host.Addrs())
+		logger.Debug("Host created", "id", host.ID(), "addresses", host.Addrs())
 
 		// Create DHT
 		var customDhtOpts []dht.Option
@@ -168,7 +166,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		}
 
 		// Run until context expiry
-		log.Print("Running routing services")
+		logger.Debug("Host and DHT created, running routing services", "host", host.ID(), "addresses", host.Addrs())
 
 		for _, peer := range opts.BootstrapPeers {
 			for _, addr := range peer.Addrs {

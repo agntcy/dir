@@ -10,16 +10,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 )
+
+var logger = logging.Logger("rpc")
 
 // TODO: proper cleanup and implementation needed!
 
@@ -67,7 +69,7 @@ type ListResponse struct {
 }
 
 func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *LookupResponse) error {
-	log.Printf("P2p RPC: Executing Lookup request on remote peer %s", r.service.host.ID())
+	logger.Debug("P2p RPC: Executing Lookup request on remote peer", "peer", r.service.host.ID())
 
 	// validate request
 	if in == nil || out == nil {
@@ -92,7 +94,7 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *Looku
 }
 
 func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *PullResponse) error {
-	log.Printf("P2p RPC: Executing Pull request on remote peer %s", r.service.host.ID())
+	logger.Debug("P2p RPC: Executing Pull request on remote peer", "peer", r.service.host.ID())
 
 	// validate request
 	if in == nil || out == nil {
@@ -143,7 +145,7 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<
 	defer close(outCh)
 
 	for in := range inCh {
-		log.Printf("P2p RPC: Executing List request on remote peer %s", r.service.host.ID())
+		logger.Debug("P2p RPC: Executing List request on remote peer", "peer", r.service.host.ID())
 
 		// list
 		listCh, err := r.service.route.List(ctx, &routetypes.ListRequest{
@@ -184,7 +186,7 @@ type Service struct {
 	route     types.RoutingAPI
 }
 
-func New(ctx context.Context, host host.Host, store types.StoreAPI, route types.RoutingAPI) (*Service, error) {
+func New(host host.Host, store types.StoreAPI, route types.RoutingAPI) (*Service, error) {
 	service := &Service{
 		rpcServer: rpc.NewServer(host, Protocol),
 		host:      host,
@@ -207,6 +209,8 @@ func New(ctx context.Context, host host.Host, store types.StoreAPI, route types.
 }
 
 func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+	logger.Debug("P2p RPC: Executing Lookup request on remote peer", "peer", peer, "req", req)
+
 	var resp LookupResponse
 
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncLookup, req, &resp)
@@ -223,6 +227,8 @@ func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *coretypes.Objec
 }
 
 func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectRef) (*coretypes.Object, error) {
+	logger.Debug("P2p RPC: Executing Pull request on remote peer", "peer", peer, "req", req)
+
 	var resp PullResponse
 
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncPull, req, &resp)
@@ -250,6 +256,8 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 // range over the result channel, then read the error after the loop.
 // this is done in best effort mode.
 func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.ListResponse_Item, error) {
+	logger.Debug("P2p RPC: Executing List request on remote peers", "peers", peers, "req", req)
+
 	// reserve reasonable buffer size for output results
 	respCh := make(chan *routetypes.ListResponse_Item, 10000)
 
@@ -285,12 +293,12 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 
 		// log error
 		if err := errors.Join(errs...); err != nil {
-			log.Printf("Failed to process all List RPC requests, reason: %v", err)
+			logger.Error("Failed to process all List RPC requests", "error", err)
 
 			return
 		}
 
-		log.Printf("Successfully listed data from peers: %s", peers)
+		logger.Info("Successfully processed all List RPC requests", "peers", peers)
 	}()
 
 	// forward results from one goroutine to the output channel
