@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/Portshift/go-utils/healthz"
+	"github.com/agntcy/dir/api/core/v1alpha1/version"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"github.com/agntcy/dir/server/config"
@@ -45,7 +46,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer server.Close()
 
-	log.Printf("Server started: %s", cfg.ListenAddress)
+	log.Printf("Server started: %s, Version: %s", cfg.ListenAddress, version.String())
 
 	// Wait for deactivation
 	sigCh := make(chan os.Signal, 1)

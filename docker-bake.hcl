@@ -6,6 +6,7 @@
 # Docker build args
 variable "IMAGE_REPO" {default = "ghcr.io/agntcy"}
 variable "IMAGE_TAG" {default = "v0.1.0-rc"}
+variable "EXTRA_LDFLAGS" {default = ""}
 
 function "get_tag" {
   params = [tags, name]
@@ -27,6 +28,9 @@ target "_common" {
     "linux/arm64",
     "linux/amd64",
   ]
+  args = {
+    EXTRA_LDFLAGS = "${EXTRA_LDFLAGS}"
+  }
 }
 
 target "docker-metadata-action" {
