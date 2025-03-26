@@ -17,17 +17,17 @@ type route struct {
 }
 
 func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (types.RoutingAPI, error) {
-	local := newLocal(store, opts.Datastore())
+	mainRounter := &route{
+		local: newLocal(store, opts.Datastore()),
+	}
 
-	remote, err := newRemote(ctx, store, opts)
+	remote, err := newRemote(ctx, mainRounter, store, opts)
 	if err != nil {
 		return nil, err
 	}
+	mainRounter.remote = remote
 
-	return &route{
-		local:  local,
-		remote: remote,
-	}, nil
+	return mainRounter, nil
 }
 
 func (r *route) Publish(ctx context.Context, object *coretypes.Object, network bool) error {

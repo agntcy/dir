@@ -11,7 +11,7 @@ type options struct {
 }
 
 func init() {
-	flags := RootCmd.Flags()
+	flags := RootCmd.PersistentFlags()
 	flags.StringVar(&clientConfig.ServerAddress, "server-addr", clientConfig.ServerAddress, "Directory Server API address")
 
 	RootCmd.MarkFlagRequired("server-addr") //nolint:errcheck

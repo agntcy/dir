@@ -51,6 +51,11 @@ type LookupResponse struct {
 	Annotations map[string]string
 }
 
+type ListRequest struct {
+	Peer   string
+	Labels []string
+}
+
 type ListResponse struct {
 	Labels      []string
 	LabelCounts map[string]uint64
@@ -62,6 +67,8 @@ type ListResponse struct {
 }
 
 func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *LookupResponse) error {
+	log.Printf("P2p RPC: Executing Lookup request on remote peer %s", r.service.host.ID())
+
 	// validate request
 	if in == nil || out == nil {
 		return errors.New("invalid request: nil request/response")
@@ -85,6 +92,8 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *Looku
 }
 
 func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *PullResponse) error {
+	log.Printf("P2p RPC: Executing Pull request on remote peer %s", r.service.host.ID())
+
 	// validate request
 	if in == nil || out == nil {
 		return errors.New("invalid request: nil request/response")
@@ -130,29 +139,31 @@ func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *PullRes
 	return nil
 }
 
-func (r *RPCAPI) List(ctx context.Context, inCh <-chan *routetypes.ListRequest, out chan<- *ListResponse) error {
-	// validate request
-	in := <-inCh
-	if in == nil || out == nil {
-		return errors.New("invalid request: nil request/response")
-	}
+func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<- *ListResponse) error {
+	defer close(outCh)
 
-	// list
-	listCh, err := r.service.route.List(ctx, in)
-	if err != nil {
-		return fmt.Errorf("failed to lookup: %w", err)
-	}
+	for in := range inCh {
+		log.Printf("P2p RPC: Executing List request on remote peer %s", r.service.host.ID())
 
-	// forward results
-	for item := range listCh {
-		out <- &ListResponse{
-			Labels:      item.Labels,
-			LabelCounts: item.LabelCounts,
-			Peer:        item.Peer.Id,
-			Digest:      item.Record.GetDigest(),
-			Type:        item.Record.GetType(),
-			Size:        item.Record.GetSize(),
-			Annotations: item.Record.Annotations,
+		// list
+		listCh, err := r.service.route.List(ctx, &routetypes.ListRequest{
+			Labels: in.Labels,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to lookup: %w", err)
+		}
+
+		// forward results
+		for item := range listCh {
+			outCh <- &ListResponse{
+				Labels:      item.Labels,
+				LabelCounts: item.LabelCounts,
+				Peer:        in.Peer,
+				Digest:      item.Record.GetDigest(),
+				Type:        item.Record.GetType(),
+				Size:        item.Record.GetSize(),
+				Annotations: item.Record.Annotations,
+			}
 		}
 	}
 
@@ -233,20 +244,33 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 // range over the result channel, then read the error after the loop.
 // this is done in best effort mode.
 func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.ListResponse_Item, error) {
-	respCh := make(chan *routetypes.ListResponse_Item, 10)
+	// reserve reasonable buffer size for output results
+	respCh := make(chan *routetypes.ListResponse_Item, 10000)
 
+	// these are the peers we are interested in
+	// does not allow self-querying as it will create an infinite loop
+	reqPeers := filterPeers(s.host.ID(), peers)
+	if len(reqPeers) == 0 {
+		return nil, errors.New("no peers to list from")
+	}
+
+	// run processing in the background
+	outCh := make(chan *ListResponse, 10000) // used as intermediary forwarding channel
 	go func() {
-		inCh := make(chan *routetypes.ListRequest, 1)
-		outCh := make(chan *ListResponse, 10)
+		// run logic in the background
+		// prepare inputs for each call
+		inCh := make(chan *ListRequest, len(reqPeers)+1)
+		for _, peer := range reqPeers {
+			inCh <- &ListRequest{
+				Peer:   peer.String(),
+				Labels: req.Labels,
+			}
+		}
+		close(inCh)
 
-		// close on done
-		defer close(respCh)
-		defer close(outCh)
-
-		// run listing
-		inCh <- req
+		// run async
 		errs := s.rpcClient.MultiStream(ctx,
-			filterPeers(s.host.ID(), peers),
+			reqPeers,
 			DirService,
 			DirServiceFuncList,
 			inCh,
@@ -255,11 +279,22 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 
 		// log error
 		if err := errors.Join(errs...); err != nil {
-			log.Printf("Failed to list data on remote: %v", err)
+			log.Printf("Failed to process all List RPC requests, reason: %v", err)
+
+			return
 		}
 
-		// try forward data left in the channel as only some requests may have failed
+		log.Printf("Successfully listed data from peers: %s", peers)
+	}()
+
+	// forward results from one goroutine to the output channel
+	go func() {
+		// close resp channel once done so the subscribers can finish
+		defer close(respCh)
+
+		// forward data to response channel
 		for out := range outCh {
+			log.Printf("got out: %v", out)
 			respCh <- &routetypes.ListResponse_Item{
 				Labels:      out.Labels,
 				LabelCounts: out.LabelCounts,

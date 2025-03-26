@@ -41,7 +41,7 @@ type routeRemote struct {
 	notifyCh chan *handlerSync
 }
 
-func newRemote(ctx context.Context, storeAPI types.StoreAPI, opts types.APIOptions) (*routeRemote, error) {
+func newRemote(ctx context.Context, parentRouter types.RoutingAPI, storeAPI types.StoreAPI, opts types.APIOptions) (*routeRemote, error) {
 	// Create routing
 	routeAPI := &routeRemote{
 		storeAPI: storeAPI,
@@ -84,7 +84,7 @@ func newRemote(ctx context.Context, storeAPI types.StoreAPI, opts types.APIOptio
 	routeAPI.server = server
 
 	// Register RPC server
-	rpcService, err := rpc.New(ctx, server.Host(), storeAPI, routeAPI)
+	rpcService, err := rpc.New(ctx, server.Host(), storeAPI, parentRouter)
 	if err != nil {
 		defer server.Close()
 
@@ -123,19 +123,27 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ b
 func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
 	// list data from remote for a given peer
 	if req.GetPeer() != nil {
-		// force the peer to return its local data
-		//		req.Local = new(bool)
-		//		*req.Local = true
+		log.Printf("Listing data for peer %s, %+v", req.GetPeer().GetId(), req)
 
-		// TODO: handle error
-		// we dont do anythin with the error for now, it can only time out
-		resp, _ := r.service.List(ctx, []peer.ID{peer.ID(req.GetPeer().GetId())}, req)
+		// send request to peer
+		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.GetPeer().GetId())}, &routingtypes.ListRequest{
+			Peer:    nil,
+			Labels:  req.GetLabels(),
+			Record:  req.GetRecord(),
+			MaxHops: req.MaxHops,
+			Network: nil,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list data on remote: %w", err)
+		}
 
 		return resp, nil
 	}
 
 	// get specific agent from all remote peers hosting it
 	if req.GetRecord() != nil {
+		log.Printf("Listing data for a record %s", req.GetRecord().GetDigest())
+
 		// get object CID
 		cid, err := req.GetRecord().GetCID()
 		if err != nil {
