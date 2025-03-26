@@ -1,0 +1,111 @@
+{
+  "name": "research",
+  "version": "0.1.0",
+  "authors": [
+    "Agntcy"
+  ],
+  "annotations": {
+    "name": "research-agent",
+    "version": "0.1.0",
+    "type": "langgraph",
+    "owner": "agntcy"
+  },
+  "created_at": "2025-03-25T12:38:35Z",
+  "skills": [
+    {
+      "category_name": "Natural Language Understanding"
+    },
+    {
+      "category_name": "Natural Language Generation"
+    },
+    {
+      "category_name": "Information Retrieval and Synthesis"
+    },
+    {
+      "category_name": "Fact Extraction"
+    },
+    {
+      "category_name": "Knowledge Synthesis"
+    }
+  ],
+  "locators": [
+    {
+      "type": "source-code",
+      "url": "https://github.com/agntcy/csit/tree/main/samples/langgraph/research"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "oasf.agntcy.org/features/runtime/framework",
+      "version": "v0.0.0",
+      "data": {
+        "sbom": {
+          "name": "research",
+          "packages": [
+            {
+              "name": "langchain",
+              "version": "0.3.21"
+            },
+            {
+              "name": "langchain-ollama",
+              "version": "0.2.3"
+            },
+            {
+              "name": "langchain-openai",
+              "version": "0.3.10"
+            },
+            {
+              "name": "langgraph",
+              "version": "0.3.19"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/runtime/language",
+      "version": "v0.0.0",
+      "data": {
+        "type": "python",
+        "version": "\u003c4.0,\u003e=3.9"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/framework/orchestration",
+      "version": "v1.0.0",
+      "data": {
+        "type": "graph"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/runtime/io-mapper",
+      "version": "v1.0.0",
+      "data": {
+        "input_name": "topic",
+        "input_type": "string",
+        "output_description": "Create a detailed markdown report about {state['topic']} based on these research findings: {'\n'.join(state['research_findings'])}. Expand each finding into a full section, ensuring comprehensive coverage.",
+        "output_name": "report",
+        "output_type": "string"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/observability/logging",
+      "version": "v1.0.0",
+      "data": {
+        "format": "\u003cstring\u003e",
+        "type": "stdout"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/framework/llm",
+      "version": "v1.0.0",
+      "data": {
+        "max_retries": 2,
+        "max_tokens": null,
+        "model": "gpt-4o-mini",
+        "temperature": 0,
+        "timeout": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "name": "research_crew",
+  "version": "v0.1.18",
+  "authors": [
+    "Agntcy"
+  ],
+  "annotations": {
+    "name": "research-agent",
+    "version": "v0.1.18",
+    "type": "langgraph",
+    "owner": "agntcy"
+  },
+  "created_at": "2025-03-25T12:33:14Z",
+  "skills": [
+    {
+      "category_name": "Natural Language Understanding"
+    },
+    {
+      "category_name": "Natural Language Generation"
+    },
+    {
+      "category_name": "Information Retrieval and Synthesis"
+    },
+    {
+      "category_name": "Fact Extraction"
+    },
+    {
+      "category_name": "Knowledge Synthesis"
+    }
+  ],
+  "locators": [
+    {
+      "type": "source-code",
+      "url": "https://github.com/agntcy/csit/tree/main/samples/crewai/simple_crew"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "oasf.agntcy.org/features/runtime/framework",
+      "version": "v0.0.0",
+      "data": {
+        "sbom": {
+          "name": "simple_crew",
+          "packages": [
+            {
+              "name": "crewai",
+              "version": "0.108.0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/observability/logging",
+      "version": "v1.0.0",
+      "data": {
+        "format": "\u003cstring\u003e",
+        "type": "stdout"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/observability/metrics",
+      "version": "v1.0.0",
+      "data": {
+        "task_duration": "task_duration",
+        "token_usage": [
+          "total_tokens",
+          "prompt_tokens",
+          "cached_prompt_tokens",
+          "completion_tokens",
+          "successful_requests"
+        ]
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/framework/orchestration",
+      "version": "v1.0.0",
+      "data": {
+        "type": "sequential"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/framework/memory",
+      "version": "v1.0.0",
+      "data": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/runtime/language",
+      "version": "v0.0.0",
+      "data": {
+        "type": "python",
+        "version": "\u003c3.13,\u003e=3.10"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/runtime/io-mapper",
+      "version": "v1.0.0",
+      "data": {
+        "input_name": "topic",
+        "input_type": "string",
+        "output_description": "A fully fledge reports with the mains topics, each with a full section of information. Formatted as markdown without '```'",
+        "output_name": "report",
+        "output_type": "file"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/framework/llm",
+      "version": "v1.0.0",
+      "data": {
+        "base_url": "http://localhost:11434",
+        "model": "ollama/llama3.1"
+      }
+    },
+    {
+      "name": "oasf.agntcy.org/features/framework/evaluation",
+      "version": "v1.0.0",
+      "data": {
+        "provider": "local",
+        "type": "evaluator agent"
+      }
+    }
+  ]
+}

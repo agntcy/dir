@@ -39,39 +39,39 @@ This is to avoid stale data, as the data across the network has TTL.
 This API only works for the data already pushed to local store.
 
 ```bash
-  # Publish the data across the network.
-  # It is not guaranteed that this will succeed.
+  # Publish the data to your local routing table.
   dir publish <digest>
 
-  # Remove the data published to the network.
-  # This simply drops the auto-announce for the data from the local API.
-  # It may take upto TTL time for the record to be dropped by the network.
-  dir unpublish <digest>
+  # Publish the data across the network.
+  # It is not guaranteed that this will succeed.
+  dir publish <digest> --network
 ```
 
-Use `--local` to publish the data to the local routing table.
-Local data cannot be pulled by the network layer,
-while for published data, peers can reach out to request specific objects.
+Use `--network` to publish the data to the network.
+If not published to the network, the data cannot be discovered by other peers. 
+For published data, peers can reach out and request specific objects.
 
 ### Discover
 
 Search for the data across the network.
 This API supports both unicast- mode for routing to specific peers/objects,
-as well as multicast mode for attribute-based routing.
+and multicast mode for attribute-based matching and routing.
 
 ```bash
   # Get a list of peer addresses holding specific agents, ie. find the location of data.
-  dir list <digest> --peers
+  dir list --digest <digest>
+
+  # Get a list of labels that you currently have in your local routing table.
+  dir list info
 
   # Get a list of labels that a given peer can serve, ie. find the type of data.
   # Labels are defined by OASF.
-  dir list <peer-id> --labels
+  dir list info --peer <peer-id>
 
-  # Get a list of agent digests across the network that can satisfy the query.
-  dir list --labels skill=voice,skill=coding
+  # Get full data about the location and holders of data across the network that can satisfy our query.
+  dir list info /skill/voice /skill/coding --network
 ```
 
-Use `--local` to list data available on the local routing table.  
 Use `--max-hops` to limit the number of routing hops when traversing the network.  
 Use `--sync` to sync the discovered data into our local routing table.  
 Use `--pull` to pull the discovered data into our local storage layer.  

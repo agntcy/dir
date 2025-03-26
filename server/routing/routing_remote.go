@@ -138,11 +138,11 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 
 	// get specific agent from all remote peers hosting it
 	// this returns all the peers that are holding requested agent
-	if req.GetRecord() != nil {
-		log.Printf("Listing data for record %s", req.GetRecord().GetDigest())
+	if record := req.GetRecord(); record != nil {
+		log.Printf("Listing data for record %s", record.GetDigest())
 
 		// get object CID
-		cid, err := req.GetRecord().GetCID()
+		cid, err := record.GetCID()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get object CID: %w", err)
 		}
@@ -154,7 +154,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 		}
 
 		if len(provs) == 0 {
-			return nil, fmt.Errorf("no providers found for object: %s", cid)
+			return nil, fmt.Errorf("no providers found for object: %s", record.GetDigest())
 		}
 
 		// stream results back
@@ -195,7 +195,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 					},
 				}
 			}
-		}(provs, req.GetRecord())
+		}(provs, record)
 
 		return resCh, nil
 	}

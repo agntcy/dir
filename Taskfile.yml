@@ -178,7 +178,7 @@ tasks:
       - go run main.go
 
   server:network:
-    desc: Start Directory server with networking configured
+    desc: Start Directory server networking example
     dir: server/cmd
     deps:
       - task: cli:compile
@@ -188,67 +188,106 @@ tasks:
       TEST_NODE_ADDR: '/ip4/192.168.0.201/tcp/53675'
       TEST_NODE_P2ADDR: '/ip4/192.168.0.201/tcp/53675/p2p/12D3KooWGXVFEKy5VXYYkyogqTyyftdMPeA6Q4UBDmXb5bdhLs39'
       DIRCTL: '{{ .ROOT_DIR }}/bin/dirctl'
-      EXAMPLE: '{{ .ROOT_DIR }}/e2e/testdata'
-    cmd: |
-      # Create temp storages
-      mkdir -p /tmp/a /tmp/b tmp/c
-      
-      echo "Creating network..."
-      
-      # Bootstrap node
-      DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:0 \
-      DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
-      DIRECTORY_SERVER_ROUTING_KEY_PATH="{{.TEST_NODE_KEY}}" \
-      DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="" \
-      DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS="{{.TEST_NODE_ADDR}}" \
-      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/a \
-      go run main.go &
+      EXAMPLES_PATH: '{{ .ROOT_DIR }}/e2e/testdata/examples/'
+      LANGGRAPH_DIGEST: 'sha256:41b7b1c46198a6452e79fe082f68d89566347da9fe9954d7e73d23360dc60b32'
+      OUTPUT_LOG_FILE: '{{ .ROOT_DIR }}/bin/run.log'
+    cmds:
+      ## SUMMARY:
+      ##
+      ##  The goal of this script is provide a working example about various
+      ##  different operating and usage modes of the Directory services.
+      ##
+      ##  Workflow of the script:
+      ##    - Create an overlay network of 3 Directory server nodes and 1 client node
+      ##    - Publish a single unique agent per server node
+      ##    - Discover published models from the client node
+      ##    - List the stats on each server nodes from the client
+      ##    - List the data from the whole network
+      ##    - TODO: Synchronize a specific agent from server node into client node
+      ##
+      ##  Requirements:
+      ##    - Golang
+      ##    - Taskfile
+      ##
+      - defer: |
+          kill -9 $(lsof -t -i:5000)
+          kill -9 $(lsof -t -i:6000)
+          kill -9 $(lsof -t -i:7000)
+          kill -9 $(lsof -t -i:8000)
+          kill -9 $(lsof -t -i:8888)
+  
+      - cmd: |
+          rm -rf {{.OUTPUT_LOG_FILE}}
 
-      # Host A
-      DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:6000 \
-      DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:6001 \
-      DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
-      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/b \
-      go run main.go &
+      - cmd: |
+          echo "1. Deploying the network (bootstrap node, 3 server nodes, 1 client node)..."
+  
+          # Bootstrap node
+          mkdir -p /tmp/dir/bootstrap
+          DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:5000 \
+          DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
+          DIRECTORY_SERVER_ROUTING_KEY_PATH="{{.TEST_NODE_KEY}}" \
+          DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="" \
+          DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS="{{.TEST_NODE_ADDR}}" \
+          DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/dir/bootstrap \
+          go run main.go &
 
-      # Host B
-      DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
-      DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/c \
-      go run main.go &
+      - for:
+          matrix:
+            SERVER: [ ":6000", ":7000", ":8000" ]
+        cmd: |
+          mkdir -p /tmp/dir/{{.ITEM.SERVER}}
+          DIRECTORY_SERVER_LISTEN_ADDRESS={{.ITEM.SERVER}} \
+          DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
+          DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
+          DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/dir/{{.ITEM.SERVER}} \
+          go run main.go &
 
-      # wait for servers to start
-      sleep 10
+      - |
+        # Client node
+        mkdir -p /tmp/dir/client
+        DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
+        DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/dir/client \
+        go run main.go &
+ 
+      - |
+        echo "Wait for servers to start, it takes some time for autodiscovery..."
+        sleep 20
 
-      # print ready
-      echo "Directory network ready"
-      echo "Host A => 0.0.0.0:6000"
-      echo "Host B => 0.0.0.0:8888"
+      - for:
+          matrix:
+            SERVER: [":6000", ":7000", ":8000"]
+            EXAMPLE: ["crewai.agent.json", "langgraph.agent.json", "llama-index.agent.json"]
+        cmd: |
+          echo "Publishing {{.ITEM.EXAMPLE}} to {{.ITEM.SERVER}}..."
+          DIGEST=$({{.DIRCTL}} push {{.EXAMPLES_PATH}}/{{.ITEM.EXAMPLE}} --server-addr {{.ITEM.SERVER}}) >> {{.OUTPUT_LOG_FILE}}
+          {{.DIRCTL}} info $DIGEST --server-addr {{.ITEM.SERVER}}
+          {{.DIRCTL}} publish $DIGEST --network --server-addr {{.ITEM.SERVER}} >>  {{.OUTPUT_LOG_FILE}}
+          echo "" >>  {{.OUTPUT_LOG_FILE}}
 
-      # TODO: push and publish some content to both servers
+      - |
+        echo "Peers holding langgraph agent"   >>  {{.OUTPUT_LOG_FILE}}
+        {{.DIRCTL}} list --digest {{.LANGGRAPH_DIGEST}}   >>  {{.OUTPUT_LOG_FILE}}
 
-      # push data
-      # DIGEST=$({{.DIRCTL}} build {{.EXAMPLE}} | {{.DIRCTL}} push --stdin)
-      # {{.DIRCTL}} info $DIGEST
+      - |
+        echo "Search for RAG agents"   >>  {{.OUTPUT_LOG_FILE}}
+        {{.DIRCTL}} list "/skills/Information Retrieval and Synthesis" --network   >>  {{.OUTPUT_LOG_FILE}}
 
-      # publish data
-      # {{.DIRCTL}} publish $DIGEST              # on our node
-      # {{.DIRCTL}} publish $DIGEST --network    # broadcast to the network
+      - |
+        echo "Network statustics local"
+        {{.DIRCTL}} list info
 
-      # summary of published data
-      # {{.DIRCTL}} list info                               # on our node
-      # {{.DIRCTL}} list info --peer {{.TEST_PEER_ID}}    # on remote node
-      # {{.DIRCTL}} list info --network                   # on the whole network
-
-      # list the publish records for an object (finds all peers providing this object)
-      # {{.DIRCTL}} list --digest $DIGEST
-      
-      # list the data that matches our query (exact match across all labels)
-      # {{.DIRCTL}} list "/skills/Text Completion [10201]"                            # on our node
-      # {{.DIRCTL}} list "/skills/Text Completion [10201]" --peer {{.TEST_PEER_ID}}   # on remote node
-      # {{.DIRCTL}} list "/skills/Text Completion [10201]" --network                  # on the whole network
+        echo "Network statustics remote"
+        {{.DIRCTL}} list info --network
 
       # wait until canceled
-      sleep 100000000
+      - |
+        echo "Log is available in {{.OUTPUT_LOG_FILE}}, contents:"
+        echo ""
+        cat {{.OUTPUT_LOG_FILE}}
+        echo ""
+        echo "Press Ctrl+C to stop the network..."
+        sleep 100000000
 
   server:store:start:
     desc: Start local OCI registry server for storage
