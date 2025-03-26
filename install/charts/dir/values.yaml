@@ -4,7 +4,7 @@
 apiserver:
   image:
     repository: ghcr.io/agntcy/dir-apiserver
-    tag: latest
+    tag: 2a4e0c1
     pullPolicy: IfNotPresent
     pullSecrets:
       - name: regcred
@@ -13,127 +13,41 @@ apiserver:
     type: NodePort
 
   config:
-    # Content-addressable storage settings.
-    storage:
-      # Storage driver: local, oci
-      driver: oci
+    provider: "oci"
 
-      # OCI-backed store
-      oci:
-        # Cache dir for OCI data.
-        # Data is initially stored into cache directory.
-        # If disabled, data will be pushed directly to remote,
-        # Otherwise it will be pushed only once the buffer_size is reached.
-        # On application restart, cache is backed up/pushed again.
-        cache:
-          enabled: true
-          buffer_size: 100M
-          source: /tmp/agntcy-dir/store/oci
+    # OCI-backed store
+    oci:
+      # Path to a local directory that will be to hold data instead of remote.
+      # If this is set to non-empty value, only local store will be used.
+      # local_dir: ""
 
-        # If set to false, use cache as main source.
-        # Do not push to remote store at all.
-        enabled: false
-        # Registry to use on remote.
-        registry: ghcr.io
-        # All data will be stored under this repo.
-        # Objects are pushed as tags, manifests, and blobs.
-        repo: agntcy-dir
-        # Auth credentials to use.
-        auth:
-          access_token: access-token
-          refresh_token: refresh-token
+      # Registry address to connect to
+      registry_address: "agntcy-dir-zot.default.svc.cluster.local:5000"
+      # All data will be stored under this repo.
+      # Objects are pushed as tags, manifests, and blobs.
+      # repository_name: ""
 
-      # If you wish to use non-OCI backed store, use this.
-      # For example, you can mount an S3 as a volume.
-      local:
-        source: /tmp/agntcy-dir/store/local
+      # Auth credentials to use.
+      auth_config:
+        insecure: "true"
+        access_token: access-token
+        refresh_token: refresh-token
+
+
+    # localfs:
+    #   dir: ""
 
     # Routing settings for the peer-to-peer network.
     routing:
-      # Routing table filesystem backup.
-      # It is okay for the routing table to be deleted
-      # since items are rebroadcasted.
-      # This is just to speed up serving for future requests.
-      source: /tmp/agntcy-dir/routing
+      # Address to use for routing
+      # listen_address: ""
 
       # Path to private key file for peer ID.
-      # Ideally, this should be encrypted.
-      # TODO: add more auth providers for peer identification.
-      # TODO: allow passing ENV flags for decryption or setting auth data.
-      auth:
-        key: /tmp/agntcy-dir/node.privkey
-
-      # Use in server mode, otherwise this will only be a client node
-      # that is used to send requests to DHT, but not respond to them.
-      # DHT is exposed to: ie. /dir/dht/v1.0.0
-      server: true
-
-      # Use in private mode, ie. /dir/dht/lan/v1.0.0
-      private: true
+      # key_path: /tmp/agntcy-dir/node.privkey
 
       # Nodes to use for bootstrapping of the DHT.
       # We read initial routing tables here and get introduced
       # to the network.
-      bootstrap_peers:
-        - /ipv4/addr/port/p2p/node1
-        - /ipv4/addr/port/p2p/node2
-        - /ipv4/addr/port/p2p/node2
-
-      # Peers to add to local routing table on start.
-      # These form the initial overlay network for this peer.
-      peers:
-        - /ipv4/addr/port/p2p/hostA
-        - /ipv4/addr/port/p2p/hostB
-
-      # Serve and respond to the following labels on the network.
-      # We will be able to query this data locally.
-      # We should pick labels with good aggregation.
-      #
-      # For Discover API, we can use bloom filters
-      # https://hur.st/bloomfilter/?n=100000000&p=1.0E-7
-      #
-      # One PutValue request value to DHT can send 10KBs, ie
-      #   10240/256 (bytes per label) = 40 full-length labels
-      #
-      # We should limit to N different labels, for example
-      #   8 skills + 8 locators
-      #
-      # We can validate peer ID on receiving nodes to prevent bad actors from writing
-      # data on certain peers.
-      labels: |
-        # # By default, we participate in agent model content routing
-        # object/type/agent
-
-        # Agents with specific media skills
-        agent/skill/text
-        agent/skill/video
-        agent/skill/audio
-
-        # Agents for specific envs
-        agent/locator/binary
-        agent/locator/source-code
-
-        # Other app-specific keys, e.g. publishers
-        publisher/agntcy
-        publisher/cisco
-        object/type/my-type
-
-      # Republication process for data announced to the network.
-      # Newly published items are announced as part of the request.
-      republish_period: 4h
-
-      # Sync certain labels into storage our own store.
-      # Once we pull the data, we will inform the network
-      # that we are providing it (ie. publish announce for the model
-      # plus the data on about the labels).
-      # This can be used as a backup node for tagged data.
-      # In addition to the routing labels we are storing for routing,
-      # we will also append these labels to the list so that we can
-      # listen for the network requests.
-      sync:
-        # Labels must fully match (AND clause against label matching) to allow syncing.
-        - labels: |
-            # Sync all Cisco text-based agents
-            agent/skill/text
-            publisher/cisco
-            object/type/agent
+      # bootstrap_peers:
+      #   - /ip4/1.1.1.1/tcp/1
+      #   - /ip4/1.1.1.1/tcp/2
