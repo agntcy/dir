@@ -4,10 +4,15 @@
 version: "3"
 
 vars:
-  ## Image config
-  IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
+  ## Version
+  RELEASE_VERSION:
+    sh: grep 'version:' versions.yaml | awk '{print $2}'
   COMMIT_SHA:
     sh: git rev-parse --short HEAD
+  VERSION: '{{ .RELEASE_VERSION }}-{{ .COMMIT_SHA }}'
+
+  ## Image config
+  IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
   IMAGE_TAG: '{{ .IMAGE_TAG | default .COMMIT_SHA }}'
   IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}'
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
