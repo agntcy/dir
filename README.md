@@ -2,7 +2,7 @@
 
 The Agent Directory (dir) allows publication, exchange and discovery of information about AI agents over a distributed peer-to-peer network.
 It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provides a set of APIs and tools to build, store, publish and discover agents across the network by their attributes and constraints.
-Directory also leverages [CSIT](https://github.com/agntcy/oasf) for continious system integration testing across different versions, environments, and features.
+Directory also leverages [CSIT](https://github.com/agntcy/oasf) for continuous system integration and testing across different versions, environments, and features.
 
 ## Features
 
