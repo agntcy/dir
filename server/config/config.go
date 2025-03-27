@@ -116,7 +116,7 @@ func LoadConfig() (*Config, error) {
 	// Routing configuration
 	//
 	_ = v.BindEnv("routing.listen_address")
-	v.SetDefault("routing.listen_address", routing.DefaultListenddress)
+	v.SetDefault("routing.listen_address", routing.DefaultListenAddress)
 
 	_ = v.BindEnv("routing.bootstrap_peers")
 	v.SetDefault("routing.bootstrap_peers", strings.Join(routing.DefaultBootstrapPeers, ","))

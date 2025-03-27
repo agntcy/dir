@@ -17,17 +17,17 @@ import (
 var Command = &cobra.Command{
 	Use:   "info",
 	Short: "Get summary details about published data",
-	Long: `Usage example:
+	Long: `Get aggregated summary about the data held in your local
+data store or across the network.	
 
-	# List summary about our published data.
-   	dir list info
+Usage examples:
+
+1. List summary about locally published data:
+
+	dir list info
 	
-	# List summary about published data by a specific peer.
-   	dir list info --peer <peer-id>
-	
-	# List summary about published data by the whole network.
-	# NOTE: This starts a DHT walk, so it may take a while.
-	# NOTE: Results are not guaranteed to be complete and up-to-date.
+2. List summary about published data across the network:
+
    	dir list info --network
 	
 `,

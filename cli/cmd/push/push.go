@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:dupword
 package push
 
 import (
@@ -20,19 +21,25 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "push",
-	Short: "Push compiled agent model to Directory server",
-	Long: `Usage example:
+	Short: "Push agent data model to Directory server",
+	Long: `This command pushes the agent data model to local storage 
+layer via Directory API. 
+The data is stored into content-addressable object store.
 
-	# From file
+Usage examples:
+
+1. From agent data model file
+
 	dirctl push model.json
 
-	# From standard input. Useful for piping.
+2. Data from from standard input. Useful for piping
+
 	cat model.json | dirctl push --stdin
 
-	# Example with build
-	dirctl build <build-path> | dirctl push --stdin
+3. In combination with other commands such as build and pull:
 
-	# Example with pull
+	dirctl build | dirctl push --stdin
+
 	dirctl pull <digest> | dirctl push --stdin
 
 `,

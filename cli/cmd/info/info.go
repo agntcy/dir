@@ -17,9 +17,13 @@ import (
 var Command = &cobra.Command{
 	Use:   "info",
 	Short: "Check info about an object in Directory store",
-	Long: `Usage example:
+	Long: `Lookup and get basic metadata about an object
+pushed to the Directory store.
+
+Usage example:
 
 	dirctl info <digest>
+
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {

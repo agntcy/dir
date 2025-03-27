@@ -85,7 +85,7 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Routing: routing.Config{
-					ListenAddress:  routing.DefaultListenddress,
+					ListenAddress:  routing.DefaultListenAddress,
 					BootstrapPeers: routing.DefaultBootstrapPeers,
 				},
 			},

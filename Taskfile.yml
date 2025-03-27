@@ -62,6 +62,9 @@ tasks:
 
   build:
     desc: Build images for all components
+    deps:
+      - task: deps:tidy
+      - task: gen
     vars:
       GOARCH: '{{ .GOARCH | default ARCH }}'
     cmds:
@@ -186,120 +189,9 @@ tasks:
       - task: server:store:start
       - go run main.go
 
-  server:network:
-    desc: Start Directory server networking example
-    dir: server/cmd
-    deps:
-      - task: cli:compile
-    vars:
-      TEST_NODE_KEY: '{{ .ROOT_DIR }}/e2e/demo-hostkey'
-      TEST_PEER_ID: '12D3KooWGXVFEKy5VXYYkyogqTyyftdMPeA6Q4UBDmXb5bdhLs39'
-      TEST_NODE_ADDR: '/ip4/192.168.0.201/tcp/53675'
-      TEST_NODE_P2ADDR: '/ip4/192.168.0.201/tcp/53675/p2p/12D3KooWGXVFEKy5VXYYkyogqTyyftdMPeA6Q4UBDmXb5bdhLs39'
-      DIRCTL: '{{ .ROOT_DIR }}/bin/dirctl'
-      EXAMPLES_PATH: '{{ .ROOT_DIR }}/e2e/testdata/examples/'
-      LANGGRAPH_DIGEST: 'sha256:41b7b1c46198a6452e79fe082f68d89566347da9fe9954d7e73d23360dc60b32'
-      OUTPUT_LOG_FILE: '{{ .ROOT_DIR }}/bin/run.log'
-    cmds:
-      ## SUMMARY:
-      ##
-      ##  The goal of this script is provide a working example about various
-      ##  different operating and usage modes of the Directory services.
-      ##
-      ##  Workflow of the script:
-      ##    - Create an overlay network of 3 Directory server nodes and 1 client node
-      ##    - Publish a single unique agent per server node
-      ##    - Discover published models from the client node
-      ##    - List the stats on each server nodes from the client
-      ##    - List the data from the whole network
-      ##    - TODO: Synchronize a specific agent from server node into client node
-      ##
-      ##  Requirements:
-      ##    - Golang
-      ##    - Taskfile
-      ##
-      - defer: |
-          kill -9 $(lsof -t -i:5000)
-          kill -9 $(lsof -t -i:6000)
-          kill -9 $(lsof -t -i:7000)
-          kill -9 $(lsof -t -i:8000)
-          kill -9 $(lsof -t -i:8888)
-  
-      - cmd: |
-          rm -rf {{.OUTPUT_LOG_FILE}}
-
-      - cmd: |
-          echo "1. Deploying the network (bootstrap node, 3 server nodes, 1 client node)..."
-  
-          # Bootstrap node
-          mkdir -p /tmp/dir/bootstrap
-          DIRECTORY_SERVER_LISTEN_ADDRESS=0.0.0.0:5000 \
-          DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
-          DIRECTORY_SERVER_ROUTING_KEY_PATH="{{.TEST_NODE_KEY}}" \
-          DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="" \
-          DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS="{{.TEST_NODE_ADDR}}" \
-          DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/dir/bootstrap \
-          go run main.go &
-
-      - for:
-          matrix:
-            SERVER: [ ":6000", ":7000", ":8000" ]
-        cmd: |
-          mkdir -p /tmp/dir/{{.ITEM.SERVER}}
-          DIRECTORY_SERVER_LISTEN_ADDRESS={{.ITEM.SERVER}} \
-          DIRECTORY_SERVER_HEALTHCHECK_ADDRESS=0.0.0.0:0 \
-          DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
-          DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/dir/{{.ITEM.SERVER}} \
-          go run main.go &
-
-      - |
-        # Client node
-        mkdir -p /tmp/dir/client
-        DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS="{{.TEST_NODE_P2ADDR}}" \
-        DIRECTORY_SERVER_OCI_LOCAL_DIR=/tmp/dir/client \
-        go run main.go &
- 
-      - |
-        echo "Wait for servers to start, it takes some time for autodiscovery..."
-        sleep 20
-
-      - for:
-          matrix:
-            SERVER: [":6000", ":7000", ":8000"]
-            EXAMPLE: ["crewai.agent.json", "langgraph.agent.json", "llama-index.agent.json"]
-        cmd: |
-          echo "Publishing {{.ITEM.EXAMPLE}} to {{.ITEM.SERVER}}..."
-          DIGEST=$({{.DIRCTL}} push {{.EXAMPLES_PATH}}/{{.ITEM.EXAMPLE}} --server-addr {{.ITEM.SERVER}}) >> {{.OUTPUT_LOG_FILE}}
-          {{.DIRCTL}} info $DIGEST --server-addr {{.ITEM.SERVER}}
-          {{.DIRCTL}} publish $DIGEST --network --server-addr {{.ITEM.SERVER}} >>  {{.OUTPUT_LOG_FILE}}
-          echo "" >>  {{.OUTPUT_LOG_FILE}}
-
-      - |
-        echo "Peers holding langgraph agent"   >>  {{.OUTPUT_LOG_FILE}}
-        {{.DIRCTL}} list --digest {{.LANGGRAPH_DIGEST}}   >>  {{.OUTPUT_LOG_FILE}}
-
-      - |
-        echo "Search for RAG agents"   >>  {{.OUTPUT_LOG_FILE}}
-        {{.DIRCTL}} list "/skills/Information Retrieval and Synthesis" --network   >>  {{.OUTPUT_LOG_FILE}}
-
-      - |
-        echo "Network statustics local"
-        {{.DIRCTL}} list info
-
-        echo "Network statustics remote"
-        {{.DIRCTL}} list info --network
-
-      # wait until canceled
-      - |
-        echo "Log is available in {{.OUTPUT_LOG_FILE}}, contents:"
-        echo ""
-        cat {{.OUTPUT_LOG_FILE}}
-        echo ""
-        echo "Press Ctrl+C to stop the network..."
-        sleep 100000000
-
   server:store:start:
     desc: Start local OCI registry server for storage
+    internal: true
     vars:
       IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:v2.1.1
     cmds:
@@ -338,6 +230,7 @@ tasks:
 
   server:store:stop:
     desc: Stop local OCI registry node
+    internal: true
     cmds:
       - docker stop oci-registry
 

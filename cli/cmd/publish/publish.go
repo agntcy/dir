@@ -6,6 +6,7 @@ package publish
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -15,14 +16,19 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "publish",
-	Short: "Publish compiled agent model to the network, allowing content discovery",
-	Long: `Usage example:
+	Short: "Publish agent model to the network, allowing content discovery",
+	Long: `
+Publish the data to your local or rest of the network to allow content discovery.
+This command only works for the objects already pushed to store.
 
-   	# Publish the data only to the local routing table.
-    dirctl publish <digest>
+Usage examples:
 
-	# Publish the data across the network.
-  	# NOTE: It is not guaranteed that this will succeed.
+1. Publish the data to the local data store:
+
+	dirctl publish <digest>
+
+2. Publish the data across the network:
+
   	dirctl publish <digest> --network
 
 `,
@@ -55,6 +61,10 @@ func runCommand(cmd *cobra.Command, digest string) error {
 
 	// Start publishing
 	if err := c.Publish(cmd.Context(), meta, opts.Network); err != nil {
+		if strings.Contains(err.Error(), "failed to announce object") {
+			return errors.New("Failed to announce object, it will be retried in the background on the API server") //nolint:stylecheck
+		}
+
 		return fmt.Errorf("failed to publish: %w", err)
 	}
 

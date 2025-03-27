@@ -4,7 +4,7 @@
 package config
 
 var (
-	DefaultListenddress   = "/ip4/0.0.0.0/tcp/0"
+	DefaultListenAddress  = "/ip4/0.0.0.0/tcp/8999"
 	DefaultBootstrapPeers = []string{
 		// TODO: once we deploy our bootstrap nodes, we should update this
 	}

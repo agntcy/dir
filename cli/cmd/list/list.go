@@ -13,33 +13,36 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "list",
-	Short: "Search for published records across the network",
-	Long: `Usage example:
+	Short: "Search for published records locally or across the network",
+	Long: `Search for published data locally or across the network.
+This API supports both unicast- mode for routing to specific objects,
+and multicast mode for attribute-based matching and routing.
 
-	# List all peers that are providing a specific object
-   	dir list --digest <digest>
-	
-	# List published records on the local node
-   	dir list "/skills/Text Completion [10201]"
+There are two modes of operation, 
+	a) local mode where the data is queried from the local data store
+	b) network mode where the data is queried across the network
 
-	# List published records on a specific peer
-   	dir list "/skills/Text Completion [10201]" --peer <peer-id>
-	
-	# List published records by the whole network.
-	# NOTE: This starts a DHT walk, so it may take a while.
-	# NOTE: Results are not guaranteed to be complete and up-to-date.
-   	dir list "/skills/Text Completion [10201]" --network
-	
-	#
-	# NOTES:
-	#
-	# 	To search for specific records across the network, you must specify 
-	# 	matching labels passed as arguments. The matching is performed using
-	# 	exact set-membership rule, meaning that all labels must match.
-	#   Network search relies on naive guesses by relying on the summary data
-	#   to decide which peer to visit next. This may result in incomplete or
-	#   outdated results.
-   	#
+Usage examples:
+
+1. List all peers that are providing a specific object:
+
+	dirctl list --digest <digest>
+
+2. List published records on the local node:
+
+	dirctl list "/skills/Text Completion"
+
+3. List published records across the whole network:
+
+	dir list "/skills/Text Completion" --network
+
+---
+
+NOTES:
+
+To search for specific records across the network, you must specify 
+matching labels passed as arguments. The matching is performed using
+exact set-membership rule.
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic

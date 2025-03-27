@@ -22,20 +22,34 @@ const ConfigFile = "build.config.yml"
 var Command = &cobra.Command{
 	Use:   "build",
 	Short: "Build agent model to prepare for pushing",
-	Long: `Usage example:
+	Long: `
+This command handles the build process for agent data models
+from source code. It generates a JSON object that 
+describes an agent and satisfies the **Open Agent Schema Framework** specification.
 
-	When config is present under the agent source code
+Usage examples:
+
+1. When build config is present under the agent source code:
+
 	dirctl build ./path-to-agent
 
-	When config is either not present or we want to override config from path
+2. When build config is either not present or we want to override config from path:
+
 	dirctl build ./path-to-agent --config build.yml
+
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return errors.New("arg missing: must provide path to agent")
+		var path string
+		if len(args) == 0 {
+			path = "." //nolint:ineffassign
+		}
+		if len(args) == 1 {
+			path = args[0]
+		} else {
+			return errors.New("arg missing: only one path can be specified allowed")
 		}
 
-		return runCommand(cmd, args[0])
+		return runCommand(cmd, path)
 	},
 }
 

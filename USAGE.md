@@ -1,85 +1,129 @@
 # Usage
 
-This document defines a basic overview on how to use the project.
-To run the examples below, it is required to have an up-and-running Dir API instance.  
-Check [Deployment](DEPLOYMENT.md) guide on how to deploy the neccessary services.
+This document defines a basic overview of main Directory features, components, and usage scenarios.
 
 > Although the following example is shown for CLI-based usage scenario,
-there is an effort on exposing the same functionality via Golang and Python SDKs.
+there is an effort on exposing the same functionality via SDKs.
 
-## Storage API
+## Prerequisites
 
-This API enables interaction with the local storage layer.
-It is used as an blob store for Dir objects and serves both
-the networking and user-specific purposes.
+- Directory CLI client, distributed via [GitHub Releases](https://github.com/agntcy/dir/releases)
+- Directory API server, outlined in the [README/Deployment](README.md#deployment) section.
+
+### Build
+
+This example demonstrates the examples of a data model and how to build such models using provided tooling to prepare for publication.
+
+Generate an example agent that matches the data model schema defined in [Agent Data Model](api/core/v1alpha1/agent.proto) specification.
 
 ```bash
-  # build
-  dir build /path/to/source > model.json
-
-  # push
-  dir push model.json
-
-  # pull
-  dir pull <digest>
-
-  # lookup
-  dir info <digest>
+cat << EOF > model.json
+{
+  "name": "my-agent",
+  "skills": [
+    {"category_name": "Text Generation"},
+    {"category_name": "Fact Extraction"}
+  ]
+}
+EOF
 ```
 
-## Routing API
+Alternatively, build the same agent data model using the CLI client.
+The build process allows additional operations to be performed,
+which is useful for agent model enrichment and other custom use-cases.
 
-This API enables interaction with the networking layer.
+```bash
+# Define the build config
+cat << EOF > build.config.yml
+builder:
+  # Base agent model path
+  base-model: "model.json"
+
+  # Disable the LLMAnalyzer plugin
+  llmanalyzer: false
+
+  # Disable the runtime plugin
+  runtime: false
+EOF
+
+# Build the agent
+dirctl build . > built.model.json
+
+# Override above example
+mv built.model.json model.json
+```
+
+### Store
+
+This example demonstrates the interaction with the local storage layer.
+It is used as an content-addressable object store for Directory-specific models and serves both the local and network-based operations (if enabled).
+
+```bash
+# push and store content digest
+dirctl push model.json > model.digest
+DIGEST=$(cat model.digest)
+
+# pull
+dirctl pull $DIGEST
+
+# lookup
+dirctl info $DIGEST
+```
 
 ### Announce
 
-Broadcast the data to the network (DHT), allowing content discovery.
-The data will be republished to the network periodically by the API server.
-This is to avoid stale data, as the data across the network has TTL.
-This API only works for the data already pushed to local store.
+This examples demonstrates how to publish the data to allow content discovery.
+To avoid stale data, it is recommended to republish the data periodically
+as the data across the network has TTL.
+
+Note that this operation only works for the objects already pushed to local storage layer, ie.
+you must first push the data before being able to perform publication.
 
 ```bash
-  # Publish the data to your local routing table.
-  dir publish <digest>
+# Publish the data to your local data store.
+dirctl publish $DIGEST
 
-  # Publish the data across the network.
-  # It is not guaranteed that this will succeed.
-  dir publish <digest> --network
+# Publish the data across the network.
+dirctl publish $DIGEST --network
 ```
 
-Use `--network` to publish the data to the network.
-If not published to the network, the data cannot be discovered by other peers. 
-For published data, peers can reach out and request specific objects.
+If the data is not published to the network, it cannot be discovered by other peers.
+For published data, peers may try to reach out over network
+and request specific objects for verification and replication.
+Network publication may fail if you are not connected to any peers.
 
 ### Discover
 
-Search for the data across the network.
-This API supports both unicast- mode for routing to specific peers/objects,
+This examples demonstrates how to discover published data locally or across the network.
+This API supports both unicast- mode for routing to specific objects,
 and multicast mode for attribute-based matching and routing.
 
+There are two modes of operation, a) local mode where the data is queried from the local data store, and b) network mode where the data is queried across the network.
+
+Discovery is performed using full-set label matching, ie. the results always fully match the requested query.
+Note that it is not guaranteed that the data is available, valid, or up to date as results.
+
 ```bash
-  # Get a list of peer addresses holding specific agents, ie. find the location of data.
-  dir list --digest <digest>
+# Get a list of peers holding a specific agent data model
+dirctl list --digest $DIGEST
 
-  # Get a list of labels that you currently have in your local routing table.
-  dir list info
+# Discover the agent data models in your local data store that can fully satisfy your search query.
+dirctl list "/skills/Text Generation"
+dirctl list "/skills/Text Generation" "/skills/Fact Extraction"
 
-  # Get a list of labels that a given peer can serve, ie. find the type of data.
-  # Labels are defined by OASF.
-  dir list info --peer <peer-id>
-
-  # Get full data about the location and holders of data across the network that can satisfy our query.
-  dir list info /skill/voice /skill/coding --network
+# Discover the agent data models across the network that can fully satisfy your search query.
+dirctl list "/skills/Text Generation" --network
+dirctl list "/skills/Text Generation" "/skills/Fact Extraction" --network
 ```
 
-Use `--max-hops` to limit the number of routing hops when traversing the network.  
-Use `--sync` to sync the discovered data into our local routing table.  
-Use `--pull` to pull the discovered data into our local storage layer.  
-If pulling is used, use `--verify` to verify each received record.  
-Use one of `--allowed peerIDs`, `--blocked peerIds` to allow-list or block-list specific peers during network traversal.
+It is also possible to get an aggregated summary about the data held in your local data store or across the network.
+This is used for routing decisions when traversing the network.
+Note that for network search, you will not query your own data, but only the data of other peers.
 
-Notes:
+```bash
+# Get a list of labels and basic summary details about the data you currently have in your local data store.
+dirctl list info
 
-- It is not guaranteed that the data is available.
-- It is not guaranteed that the results are valid.
-- It is not guaranteed that the results are up-to-date.
+# Get a list of labels and basic summary details about the data you across the reachable network.
+dirctl list info --network
+```

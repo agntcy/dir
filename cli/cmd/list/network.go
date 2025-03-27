@@ -28,11 +28,10 @@ func listNetwork(cmd *cobra.Command, client *client.Client, labels []string) err
 	// Print the results
 	for item := range items {
 		presenter.Printf(cmd,
-			"Peer %v | %v | Labels: %v | Metadata: %v\n",
+			"Peer %s\n  Digest: %s\n  Labels: %s\n",
 			item.GetPeer().GetId(),
 			item.GetRecord().GetDigest(),
 			strings.Join(item.GetLabels(), ", "),
-			item.GetRecord().GetAnnotations(),
 		)
 	}
 

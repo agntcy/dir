@@ -17,13 +17,19 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "pull",
-	Short: "Pull compiled agent model from Directory",
-	Long: `Usage example:
+	Short: "Pull agent model from Directory server",
+	Long: `This command pulls the agent data model from Directory API. 
+The data can be validated against its hash, as the returned object
+is content-addressable.
 
-	# Pull by digest and output it
+Usage examples:
+
+1. Pull by digest and output
+
 	dirctl pull <digest>
 
-	# Pull in combination with other commands
+2. In combination with other commands such as build and push:
+
 	dirctl pull $(dirctl build | dirctl push --stdin)
 
 `,

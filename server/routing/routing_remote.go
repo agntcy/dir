@@ -29,7 +29,7 @@ var (
 	ProtocolRendezvous = "dir/connect"
 
 	// refresh interval for DHT routing tables.
-	refreshInterval = 5 * time.Second
+	refreshInterval = 30 * time.Second
 )
 
 // this interface handles routing across the network.
@@ -112,7 +112,7 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ b
 	// announce to DHT
 	err = r.server.DHT().Provide(ctx, cid, true)
 	if err != nil {
-		return fmt.Errorf("failed to announce object: %w", err)
+		return fmt.Errorf("failed to announce object %v, it will be retried in the background. Reason: %v", ref.GetDigest(), err)
 	}
 
 	log.Printf("Successfully announced agent %s to the network", ref.GetDigest())

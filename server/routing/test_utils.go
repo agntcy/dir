@@ -55,7 +55,7 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 				LocalDir: t.TempDir(),
 			},
 			Routing: routingconfig.Config{
-				ListenAddress:  routingconfig.DefaultListenddress,
+				ListenAddress:  "/ip4/0.0.0.0/tcp/0",
 				BootstrapPeers: bootPeers,
 			},
 		},

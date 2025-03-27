@@ -1,152 +1,127 @@
 # Agent Directory
 
-The Agent Directory (dir) allows publication and exchange of information about AI
-agents via standard data models on a distributed peer-to-peer network.
-It provides standard interfaces to perform publication, discovery based on queries about agent's
-attributes and constraints, and storage for the data models with security features such as
-provenance, integrity and ownership.
+The Agent Directory (dir) allows publication, exchange and discovery of information about AI agents over a distributed peer-to-peer network.
+It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provides a set of APIs and tools to build, store, publish and discover agents across the network by their attributes and constraints.
 
 ## Features
 
-- _Standards_ - Defines standard schema for data representation and exchange.
-- _Dev Kit_ - Tooling to facilitate API interaction and generation of agent data models from different sources.
-- _Plugins_ - Supports model schema and build plugins to enrich agent data models for custom use-cases.
-- _Announce_ - Enables publication of records to the network.
-- _Discover_ - Listen and retreive records published on the network.
-- _Search_ - Supports searching of records across the network that satisfy given attributes and constraints.
-- _Security_ - Relies on well-known security principles to provide data provenance, integrity and ownership.
-
-**NOTE**: This is an alpha version, some features may be missing and breaking changes are expected.
+- **Data Models** - Defines a standard schema for data representation and exchange.
+- **Dev Kit** - Provides CLI tooling to simplify development workflows and facilitate API interactions.
+- **Plugins** - Pluggable components to extend the build process of agent data models for custom use-cases.
+- **Announce** - Allows publication of agent data models to the network.
+- **Discover** - Listen, search, and retreive agents across the network by their attributes and constraints.
+- **Security** - Relies on well-known security principles to provide data provenance, integrity and ownership.
 
 ## Source tree
 
-Main software components:
-
-- [api](./api) - gRPC specification for models and services
-- [cli](./cli) - command line tooling for interacting with services
-- [cli/builder/plugins](./cli/builder/plugins) - schema specification and tooling for model plugins
-- [client](./client) - client SDK tooling for interacting with services
+- [api](./api) - gRPC specification for data models and services
+- [cli](./cli) - command line client for interacting with system components
+  - [builder](./cli/builder) - common data model build tools and plugins
+- [client](./client) - client SDK for development and API workflows
 - [e2e](./e2e) - end-to-end testing framework
-- [server](./server) - node implementation for distributed services that provide storage and networking capabilities
+- [server](./server) - API services to manage storage, routing, and networking operations
+
+## Usage
+
+Check the [USAGE](USAGE.md) file for full walkthrough of all the Directory features.
 
 ## Prerequisites
 
+To build the project and work with the code, you will need the following installed in your system
+
 - [Taskfile](https://taskfile.dev/)
 - [Docker](https://www.docker.com/)
-- Golang
+- [Golang](https://go.dev/doc/devel/release#go1.24.0)
 
-## Artifacts distribution
-
-### Golang Packages
-
-See [API package](https://pkg.go.dev/github.com/agntcy/dir/api), [Server package](https://pkg.go.dev/github.com/agntcy/dir/server) and [CLI package](https://pkg.go.dev/github.com/agntcy/dir/cli).
-
-### Binaries
-
-See https://github.com/agntcy/dir/releases
-
-### Container images
-
-```bash
-docker pull ghcr.io/agntcy/dir-ctl:latest
-docker pull ghcr.io/agntcy/dir-apiserver:latest
-```
-
-### Helm charts
-
-```bash
-helm pull ghcr.io/agntcy/dir/helm-charts/dir:latest
-```
+Make sure Docker is installed with Buildx.
 
 ## Development
 
 Use `Taskfile` for all related development operations such as testing, validating, deploying, and working with the project.
 
-To execute the test suite locally, run:
+### Clone the repository
 
 ```bash
-task gen
+git clone https://github.com/agntcy/dir
+cd dir
+```
+
+### Initialize the project
+
+This step will fetch all project dependencies and prepare the environment for development.
+
+```bash
+task deps
+```
+
+### Make changes
+
+Make the changes to the source code and rebuild for later testing.
+
+```bash
 task build
+```
+
+### Test changes
+
+The local testing pipeline relies on Golang to perform unit tests, and
+Docker to perform E2E tests in an isolated Kubernetes environment using Kind.
+
+```bash
 task test:unit
 task test:e2e
 ```
 
 ## Deployment
 
-To deploy the Directory, you can use the provided `Taskfile` commands to start the necessary services and deploy the Directory server. Alternatively, you can deploy from a GitHub Helm chart release.
+Directory API services can be deployed either using the `Taskfile` or directly via released Helm chart.
 
-### Local Deployment
+### Using Taskfile
 
-To start a local OCI registry server for storage and the Directory server, use the following commands:
+This will start the necessary components such as storage and API services.
 
 ```bash
-task server:store:start
 task server:start
 ```
 
-These commands will set up a local environment for development and testing purposes.
+### Using Helm chart
 
-### Remote Deployment
-
-To deploy the Directory into an existing Kubernetes cluster, use a released Helm chart from GitHub with the following commands:
+This will deploy Directory services into an existing Kubernetes cluster.
 
 ```bash
-helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.1.3
-helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.1.3
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
+helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
 ```
 
-These commands will pull the latest version of the Directory Helm chart from the GitHub Container Registry and install or upgrade the Directory in your Kubernetes cluster. Ensure that your Kubernetes cluster is properly configured and accessible before running these commands. The `helm upgrade --install` command will either upgrade an existing release or install a new release if it does not exist.
+## Artifacts distribution
 
-## Usage
+All artifact are tagged using the [Semantic Versioning](https://semver.org/) and follow the checked out source code tags.
+It is not advised to use artifacts with mismatching versions.
 
-The Directory CLI provides `build`, `push`, and `pull` commands to interact with the Directory server. Below are the details on how to run each command.
+### Container images
 
-To run these commands, you can either:
-* Download a released CLI binary with `curl -L -o dirctl https://github.com/agntcy/dir/releases/download/<release tag>/dirctl-$(uname | tr '[:upper:]' '[:lower:]')-$(uname -m)`
-* Use a binary compiled from source with `task cli:compile`
-* Use CLI module from source by navigating to the `cli` directory and running `go run cli.go <command> <args>`
+All container images are distributed via [GitHub Packages](https://github.com/orgs/agntcy/packages?repo_name=dir).
 
-### Build Command
-
-The `build` command is used to compile and build the agent data model.
-
-Usage:
 ```bash
-dirctl build [options]
+docker pull ghcr.io/agntcy/dir-ctl:v0.2.0
+docker pull ghcr.io/agntcy/dir-apiserver:v0.2.0
 ```
 
-Options:
-- `--config-file` : Path to the agent build configuration file. Please note that other flags will override the build configuration from the file. Supported formats: YAML. Example template: cli/build.config.yaml.
+### Helm charts
 
-### Push Command
+All helm charts are distributed as OCI artifacts via [GitHub Packages](https://github.com/agntcy/dir/pkgs/container/dir%2Fhelm-charts%2Fdir).
 
-The `push` command is used to publish the built agent data model to the store. The input data model should be JSON formatted.
-
-Usage:
 ```bash
-dirctl push [options]
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
 ```
 
-Options:
-- `--from-file` : Read compiled data from JSON file, reads from STDIN if empty.
-- `--server-addr`: Directory Server API address (default "0.0.0.0:8888")
+### Binaries
 
-Example usage with read from STDIN: `dirctl build <args> | dirctl push`.
+All release binaries are distributed via [GitHub Releases](https://github.com/agntcy/dir/releases).
 
-### Pull Command
+### SDKs
 
-The `pull` command is used to retrieve agent data model from the store. The output data model will be JSON formatted.
-
-Usage:
-```bash
-dirctl pull [options]
-```
-
-Options:
-- `--digest` : Digest of the agent to pull.
-- `--server-addr`: Directory Server API address (default "0.0.0.0:8888")
-
-Example usage in combination with other commands: `dirctl pull --digest $(dirctl build | dirctl push)`.
+- **Golang** - [github.com/agntcy/dir/api](https://pkg.go.dev/github.com/agntcy/dir/api), [github.com/agntcy/dir/cli](https://pkg.go.dev/github.com/agntcy/dir/cli), [github.com/agntcy/dir/server](https://pkg.go.dev/github.com/agntcy/dir/server)
 
 ## Copyright Notice
 

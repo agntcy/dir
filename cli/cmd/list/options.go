@@ -17,6 +17,7 @@ func init() {
 	flags.StringVar(&opts.Digest, "digest", "", "Get published records for a given object")
 	flags.StringVar(&opts.PeerID, "peer", "", "Get published records for a single peer")
 	flags.BoolVar(&opts.Network, "network", false, "Get published records for the network")
+	flags.MarkHidden("peer") //nolint:errcheck
 
 	Command.MarkFlagsMutuallyExclusive("digest", "peer", "network")
 }

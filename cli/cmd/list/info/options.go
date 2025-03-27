@@ -15,6 +15,7 @@ func init() {
 	flags := Command.Flags()
 	flags.StringVar(&opts.PeerID, "peer", "", "Get publication summary for a single peer")
 	flags.BoolVar(&opts.Network, "network", false, "Get publication summary for the network")
+	flags.MarkHidden("peer") //nolint:errcheck
 
 	Command.MarkFlagsMutuallyExclusive("peer", "network")
 }
