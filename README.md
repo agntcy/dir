@@ -9,7 +9,7 @@ It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provi
 - **Dev Kit** - Provides CLI tooling to simplify development workflows and facilitate API interactions.
 - **Plugins** - Pluggable components to extend the build process of agent data models for custom use-cases.
 - **Announce** - Allows publication of agent data models to the network.
-- **Discover** - Listen, search, and retreive agents across the network by their attributes and constraints.
+- **Discover** - Listen, search, and retrieve agents across the network by their attributes and constraints.
 - **Security** - Relies on well-known security principles to provide data provenance, integrity and ownership.
 
 ## Source tree
@@ -95,7 +95,7 @@ helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0
 
 ## Artifacts distribution
 
-All artifact are tagged using the [Semantic Versioning](https://semver.org/) and follow the checked out source code tags.
+All artifacts are tagged using the [Semantic Versioning](https://semver.org/) and follow the checked out source code tags.
 It is not advised to use artifacts with mismatching versions.
 
 ### Container images
