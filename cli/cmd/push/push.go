@@ -32,7 +32,7 @@ Usage examples:
 
 	dirctl push model.json
 
-2. Data from from standard input. Useful for piping
+2. Data from standard input. Useful for piping
 
 	cat model.json | dirctl push --stdin
 
