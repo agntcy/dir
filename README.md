@@ -73,27 +73,6 @@ task test:unit
 task test:e2e
 ```
 
-## Deployment
-
-Directory API services can be deployed either using the `Taskfile` or directly via released Helm chart.
-
-### Using Taskfile
-
-This will start the necessary components such as storage and API services.
-
-```bash
-task server:start
-```
-
-### Using Helm chart
-
-This will deploy Directory services into an existing Kubernetes cluster.
-
-```bash
-helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
-helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
-```
-
 ## Artifacts distribution
 
 All artifacts are tagged using the [Semantic Versioning](https://semver.org/) and follow the checked out source code tags.
@@ -123,6 +102,27 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 ### SDKs
 
 - **Golang** - [github.com/agntcy/dir/api](https://pkg.go.dev/github.com/agntcy/dir/api), [github.com/agntcy/dir/cli](https://pkg.go.dev/github.com/agntcy/dir/cli), [github.com/agntcy/dir/server](https://pkg.go.dev/github.com/agntcy/dir/server)
+
+## Deployment
+
+Directory API services can be deployed either using the `Taskfile` or directly via released Helm chart.
+
+### Using Taskfile
+
+This will start the necessary components such as storage and API services.
+
+```bash
+task server:start
+```
+
+### Using Helm chart
+
+This will deploy Directory services into an existing Kubernetes cluster.
+
+```bash
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
+helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
+```
 
 ## Copyright Notice
 
