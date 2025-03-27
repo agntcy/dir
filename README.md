@@ -12,6 +12,8 @@ It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provi
 - **Discover** - Listen, search, and retrieve agents across the network by their attributes and constraints.
 - **Security** - Relies on well-known security principles to provide data provenance, integrity and ownership.
 
+Check the [USAGE](USAGE.md) file for full walkthrough of all the Directory features.
+
 ## Source tree
 
 - [api](./api) - gRPC specification for data models and services
@@ -21,9 +23,6 @@ It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provi
 - [e2e](./e2e) - end-to-end testing framework
 - [server](./server) - API services to manage storage, routing, and networking operations
 
-## Usage
-
-Check the [USAGE](USAGE.md) file for full walkthrough of all the Directory features.
 
 ## Prerequisites
 
