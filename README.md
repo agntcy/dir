@@ -12,6 +12,8 @@ It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provi
 - **Discover** - Listen, search, and retrieve agents across the network by their attributes and constraints.
 - **Security** - Relies on well-known security principles to provide data provenance, integrity and ownership.
 
+## Usage
+
 Check the [USAGE](USAGE.md) file for full walkthrough of all the Directory features.
 
 ## Source tree
