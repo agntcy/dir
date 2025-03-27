@@ -9,9 +9,9 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.1.6
-	github.com/agntcy/dir/cli v0.1.6
-	github.com/agntcy/dir/client v0.1.6
+	github.com/agntcy/dir/api v0.2.0
+	github.com/agntcy/dir/cli v0.2.0
+	github.com/agntcy/dir/client v0.2.0
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.0
 	github.com/opencontainers/go-digest v1.0.0

@@ -10,8 +10,8 @@ replace (
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.7.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0
-	github.com/agntcy/dir/api v0.1.6
-	github.com/agntcy/dir/client v0.1.6
+	github.com/agntcy/dir/api v0.2.0
+	github.com/agntcy/dir/client v0.2.0
 	github.com/anchore/syft v1.19.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/opencontainers/go-digest v1.0.0
