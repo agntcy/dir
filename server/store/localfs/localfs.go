@@ -17,9 +17,12 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	fsconfig "github.com/agntcy/dir/server/store/localfs/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/afero"
 )
+
+var logger = logging.Logger("store/localfs")
 
 type store struct {
 	metaFs afero.Fs
@@ -27,6 +30,8 @@ type store struct {
 }
 
 func New(cfg fsconfig.Config) (types.StoreAPI, error) {
+	logger.Debug("Creating localfs store with config", "config", cfg)
+
 	parentFs := afero.NewOsFs()
 
 	dataDir := filepath.Join(cfg.Dir, "contents")
@@ -46,6 +51,8 @@ func New(cfg fsconfig.Config) (types.StoreAPI, error) {
 }
 
 func (c *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.Reader) (*coretypes.ObjectRef, error) {
+	logger.Debug("Pushing object to LocalFS store", "ref", ref)
+
 	// TODO: Chunking read/write needs to be moved to a util
 	// package as we will need to reuse it across providers
 	contentsFile, err := afero.TempFile(c.dataFs, ".", "*")
@@ -72,6 +79,8 @@ loop:
 		default:
 			n, err := contents.Read(chunk[:])
 			if errors.Is(err, io.EOF) {
+				logger.Info("Finished reading contents", "ref", ref)
+
 				break loop
 			}
 			if err != nil {
@@ -126,6 +135,8 @@ loop:
 }
 
 func (c *store) Lookup(_ context.Context, ref *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+	logger.Debug("Looking up object in LocalFS store", "ref", ref)
+
 	// Read metadata
 	metadataRaw, err := afero.ReadFile(c.metaFs, ref.GetDigest())
 	if err != nil {
@@ -142,6 +153,8 @@ func (c *store) Lookup(_ context.Context, ref *coretypes.ObjectRef) (*coretypes.
 }
 
 func (c *store) Pull(_ context.Context, ref *coretypes.ObjectRef) (io.ReadCloser, error) {
+	logger.Debug("Pulling object from LocalFS store", "ref", ref)
+
 	file, err := c.dataFs.Open(ref.GetDigest())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open contents: %w", err)
@@ -151,6 +164,8 @@ func (c *store) Pull(_ context.Context, ref *coretypes.ObjectRef) (io.ReadCloser
 }
 
 func (c *store) Delete(_ context.Context, ref *coretypes.ObjectRef) error {
+	logger.Debug("Deleting object from LocalFS store", "ref", ref)
+
 	// TODO: allow delete to be called even when the data is not found.
 	// if data removal succeeds but metadata removal fails,
 	// we should still be able to remove meta

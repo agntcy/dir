@@ -149,11 +149,12 @@ func loadRemoteStore(t *testing.T) types.StoreAPI {
 	t.Helper()
 
 	// create remote
-	store, err := New(ociconfig.Config{
-		RegistryAddress: testConfig.RegistryAddress,
-		RepositoryName:  testConfig.RepositoryName,
-		AuthConfig:      testConfig.AuthConfig,
-	})
+	store, err := New(
+		ociconfig.Config{
+			RegistryAddress: testConfig.RegistryAddress,
+			RepositoryName:  testConfig.RepositoryName,
+			AuthConfig:      testConfig.AuthConfig,
+		})
 	assert.NoErrorf(t, err, "failed to create remote store")
 
 	return store

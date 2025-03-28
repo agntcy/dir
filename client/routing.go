@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	"github.com/agntcy/dir/utils/logging"
 )
+
+var logger = logging.Logger("client")
 
 func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef, network bool) error {
 	_, err := c.RoutingServiceClient.Publish(ctx, &routingtypes.PublishRequest{
@@ -44,7 +46,7 @@ func (c *Client) List(ctx context.Context, req *routingtypes.ListRequest) (<-cha
 			}
 
 			if err != nil {
-				log.Printf("error receiving object: %v\n", err)
+				logger.Error("error receiving object", "error", err)
 
 				return
 			}

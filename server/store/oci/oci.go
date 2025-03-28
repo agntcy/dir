@@ -16,6 +16,7 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -31,11 +32,15 @@ const (
 	manifestDirObjectTypeKey   = manifestDirObjectKeyPrefix + "/type"
 )
 
+var logger = logging.Logger("store/oci")
+
 type store struct {
 	repo oras.GraphTarget
 }
 
 func New(cfg ociconfig.Config) (types.StoreAPI, error) {
+	logger.Debug("Creating OCI store with config", "config", cfg)
+
 	// if local dir used, return client for that local path.
 	// allows mounting of data via volumes
 	// allows S3 usage for backup store
@@ -71,7 +76,8 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 				Password:     cfg.Password,
 				RefreshToken: cfg.RefreshToken,
 				AccessToken:  cfg.AccessToken,
-			}),
+			},
+		),
 	}
 
 	return &store{
@@ -88,10 +94,12 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 //
 // Ref: https://github.com/oras-project/oras-go/blob/main/docs/Modeling-Artifacts.md
 func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.Reader) (*coretypes.ObjectRef, error) {
+	logger.Debug("Pushing object to OCI store", "ref", ref)
+
 	// push raw data
 	blobRef, blobDesc, err := s.pushData(ctx, ref, contents)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to push data: %w", err)
 	}
 
 	// set annotations for manifest
@@ -131,12 +139,16 @@ func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.
 
 // Lookup checks if the ref exists as a tagged object.
 func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+	logger.Debug("Looking up object in OCI store", "ref", ref)
+
 	// check if blob exists on remote
 	{
 		exists, err := s.repo.Exists(ctx, ocispec.Descriptor{Digest: ocidigest.Digest(ref.GetDigest())})
 		if err != nil {
-			return nil, err //nolint:wrapcheck
+			return nil, fmt.Errorf("failed to check if object exists: %w", err)
 		}
+
+		logger.Debug("Checked if object exists in OCI store", "exists", exists)
 
 		if !exists {
 			return nil, types.ErrDigestNotFound
@@ -151,6 +163,8 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 		// resolve manifest from remote tag
 		manifestDesc, err := s.repo.Resolve(ctx, shortRef)
 		if err != nil {
+			logger.Error("Failed to resolve manifest", "error", err)
+
 			// do not error here, as we may have a raw object stored but not tagged with
 			// the manifest. only agents are tagged with manifests
 			return ref, nil
@@ -161,18 +175,17 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 		// fetch manifest from remote
 		manifestRd, err := s.repo.Fetch(ctx, manifestDesc)
 		if err != nil {
-			// soft fail
 			return ref, fmt.Errorf("failed to fetch manifest: %w", err)
 		}
 
 		// read manifest
 		manifestData, err := io.ReadAll(manifestRd)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read manifest: %w", err)
 		}
 
 		if err := json.Unmarshal(manifestData, &manifest); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal manifest: %w", err)
 		}
 	}
 
@@ -198,13 +211,17 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 }
 
 func (s *store) Pull(ctx context.Context, ref *coretypes.ObjectRef) (io.ReadCloser, error) {
+	logger.Debug("Pulling object from OCI store", "ref", ref)
+
 	return s.repo.Fetch(ctx, ocispec.Descriptor{ //nolint:wrapcheck
 		Digest: ocidigest.Digest(ref.GetDigest()),
 		Size:   int64(ref.GetSize()), //nolint:gosec
 	})
 }
 
-func (s *store) Delete(_ context.Context, _ *coretypes.ObjectRef) error {
+func (s *store) Delete(_ context.Context, ref *coretypes.ObjectRef) error {
+	logger.Debug("Deleting object from OCI store", "ref", ref)
+
 	// todo: remove tag (or remove tag with cleanup)
 	// todo: remove manifest
 	// todo: remove blob
@@ -220,8 +237,12 @@ func (s *store) pushData(ctx context.Context, ref *coretypes.ObjectRef, rd io.Re
 		Size:      int64(ref.GetSize()),
 	}
 
+	logger.Debug("Pushing blob to OCI store", "ref", ref, "blobDesc", blobDesc)
+
 	err := s.repo.Push(ctx, blobDesc, rd)
 	if err != nil {
+		logger.Error("Failed to push blob to OCI store", "error", err)
+
 		// return only for non-valid errors
 		if !strings.Contains(err.Error(), "already exists") {
 			return nil, ocispec.Descriptor{}, err

@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -22,11 +21,15 @@ import (
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-var _ types.API = &Server{}
+var (
+	_      types.API = &Server{}
+	logger           = logging.Logger("server")
+)
 
 type Server struct {
 	options       types.APIOptions
@@ -39,23 +42,19 @@ type Server struct {
 func Run(ctx context.Context, cfg *config.Config) error {
 	errCh := make(chan error)
 
-	// Start server
 	server, err := New(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
 	defer server.Close()
 
-	log.Printf("Server started: %s, Version: %s", cfg.ListenAddress, version.String())
-
 	// Wait for deactivation
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	// Wait for context cancellation
 	select {
 	case <-ctx.Done():
-		return ctx.Err() //nolint:wrapcheck
+		return fmt.Errorf("stopping server due to context cancellation: %w", ctx.Err())
 	case sig := <-sigCh:
 		return fmt.Errorf("stopping server due to signal: %v", sig)
 	case err := <-errCh:
@@ -64,6 +63,8 @@ func Run(ctx context.Context, cfg *config.Config) error {
 }
 
 func New(ctx context.Context, cfg *config.Config) (*Server, error) {
+	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
+
 	// Create local datastore
 	dstore, err := datastore.New(cfg)
 	if err != nil {
@@ -138,8 +139,10 @@ func (s Server) start(ctx context.Context) error {
 		s.healthzServer.SetIsReady(true)
 		defer s.healthzServer.SetIsReady(false)
 
+		logger.Info("Server starting", "address", s.Options().Config().ListenAddress)
+
 		if err := s.grpcServer.Serve(listen); err != nil {
-			log.Fatalf("Failed to start server: %v", err)
+			logger.Error("Failed to start server", "error", err)
 		}
 	}()
 

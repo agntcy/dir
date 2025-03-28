@@ -9,16 +9,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"path"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	ocidigest "github.com/opencontainers/go-digest"
 )
+
+var localLogger = logging.Logger("routing/local")
 
 // operations performed locally
 type routeLocal struct {
@@ -34,6 +36,8 @@ func newLocal(store types.StoreAPI, dstore types.Datastore) *routeLocal {
 }
 
 func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bool) error {
+	localLogger.Debug("Called local routing's Publish method", "object", object)
+
 	ref := object.GetRef()
 	if ref == nil {
 		return fmt.Errorf("invalid object reference: %v", ref)
@@ -64,7 +68,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 		return fmt.Errorf("failed to check if agent exists: %w", err)
 	}
 	if agentExists {
-		log.Printf("Skipping republish as agent %s was already published", ref.GetDigest())
+		localLogger.Info("Skipping republish as agent %s was already published", "ref", ref)
 
 		return nil
 	}
@@ -97,12 +101,14 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 		return fmt.Errorf("failed to update metrics: %w", err)
 	}
 
-	log.Printf("Successfully published agent %s", ref.GetDigest())
+	localLogger.Info("Successfully published agent", "ref", ref)
 
 	return nil
 }
 
 func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
+	localLogger.Debug("Called local routing's List method", "req", req)
+
 	// dest to write the results on
 	outCh := make(chan *routingtypes.ListResponse_Item)
 
@@ -171,7 +177,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			// read agent digest from datastore key
 			digest, err := getAgentDigestFromKey(entry.Key)
 			if err != nil {
-				log.Printf("failed to get agent digest: %v", err)
+				localLogger.Error("failed to get agent digest", "error", err)
 
 				return
 			}
@@ -187,7 +193,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 				Digest: digest,
 			})
 			if err != nil {
-				log.Printf("failed to lookup agent: %v", err)
+				localLogger.Error("failed to lookup agent", "error", err)
 
 				continue
 			}
@@ -195,7 +201,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			// get agent from peer
 			object, err := r.store.Pull(ctx, ref)
 			if err != nil {
-				log.Printf("failed to pull agent: %v", err)
+				localLogger.Error("failed to pull agent", "error", err)
 
 				continue
 			}
@@ -203,15 +209,16 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			// read object data
 			data, err := io.ReadAll(object)
 			if err != nil {
-				log.Printf("failed to pull agent: %v", err)
+				localLogger.Error("failed to read object data", "error", err)
 
 				continue
 			}
 
-			// covnert to agent
+			// convert to agent
 			var agent *coretypes.Agent
 			if err := json.Unmarshal(data, &agent); err != nil {
-				log.Printf("failed to unmarshal agent: %v", err)
+				localLogger.Error("failed to unmarshal agent", "error", err)
+
 				continue
 			}
 
