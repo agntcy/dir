@@ -1,21 +1,21 @@
 # Agent Directory
 
-The Agent Directory (dir) allows publication, exchange and discovery of information about AI agents over a distributed peer-to-peer network.
-It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provides a set of APIs and tools to build, store, publish and discover agents across the network by their attributes and constraints.
+The Agent Directory (dir) allows publication, exchange, and discovery of information about AI agents over a distributed peer-to-peer network.
+It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provides a set of APIs and tools to build, store, publish, and discover agents across the network by their attributes and constraints.
 Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous system integration and testing across different versions, environments, and features.
 
 ## Features
 
 - **Data Models** - Defines a standard schema for data representation and exchange.
 - **Dev Kit** - Provides CLI tooling to simplify development workflows and facilitate API interactions.
-- **Plugins** - Pluggable components to extend the build process of agent data models for custom use-cases.
+- **Plugins** - Pluggable components to extend the build process of agent data models for custom use cases.
 - **Announce** - Allows publication of agent data models to the network.
 - **Discover** - Listen, search, and retrieve agents across the network by their attributes and constraints.
-- **Security** - Relies on well-known security principles to provide data provenance, integrity and ownership.
+- **Security** - Relies on well-known security principles to provide data provenance, integrity, and ownership.
 
 ## Usage
 
-Check the [USAGE](USAGE.md) file for full walkthrough of all the Directory features.
+Check the [USAGE](USAGE.md) file for a full walkthrough of all the Directory features.
 
 ## Source tree
 
@@ -75,8 +75,8 @@ task test:e2e
 
 ## Artifacts distribution
 
-All artifacts are tagged using the [Semantic Versioning](https://semver.org/) and follow the checked out source code tags.
-It is not advised to use artifacts with mismatching versions.
+All artifacts are tagged using the [Semantic Versioning](https://semver.org/) and follow the checked-out source code tags.
+It is not advised to use artifacts with mismatched versions.
 
 ### Container images
 
@@ -105,7 +105,7 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 ## Deployment
 
-Directory API services can be deployed either using the `Taskfile` or directly via released Helm chart.
+Directory API services can be deployed either using the `Taskfile` or directly via the released Helm chart.
 
 ### Using Taskfile
 
