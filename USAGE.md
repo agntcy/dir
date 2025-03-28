@@ -74,6 +74,7 @@ dirctl pull $DIGEST
 
 # Lookup basic metadata about the agent
 dirctl info $DIGEST
+
 #> {
 #>   "digest": "sha256:a8abbdd7403aed85abaa00e176effc212cd6b080cb161e0fac51399fd0e69c3f",
 #>   "type": "OBJECT_TYPE_AGENT",
@@ -116,6 +117,7 @@ Note that it is not guaranteed that the returned data is available, valid, or up
 ```bash
 # Get a list of peers holding a specific agent data model
 dirctl list --digest $DIGEST
+
 #> Peer 12D3KooWQffoFP8ePUxTeZ8AcfReTMo4oRPqTiN1caDeG5YW3gng
 #>   Digest: sha256:a8abbdd7403aed85abaa00e176effc212cd6b080cb161e0fac51399fd0e69c3f
 #>   Labels: /skills/Text Generation, /skills/Fact Extraction
@@ -123,6 +125,7 @@ dirctl list --digest $DIGEST
 # Discover the agent data models in your local data store
 dirctl list "/skills/Text Generation"
 dirctl list "/skills/Text Generation" "/skills/Fact Extraction"
+
 #> Peer HOST
 #>   Digest: sha256:a8abbdd7403aed85abaa00e176effc212cd6b080cb161e0fac51399fd0e69c3f
 #>   Labels: /skills/Text Generation, /skills/Fact Extraction
@@ -138,6 +141,7 @@ This is used for routing decisions when traversing the network.
 ```bash
 # Get label summary details in your local data store
 dirctl list info
+
 #> Peer HOST | Label: /skills/Text Generation | Total: 1
 #> Peer HOST | Label: /skills/Fact Extraction | Total: 1
 
