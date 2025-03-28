@@ -7,7 +7,6 @@ package oci
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"io"
 	"os"
 	"strconv"
@@ -46,12 +45,12 @@ func TestStore(t *testing.T) {
 	store := loadLocalStore(t)
 
 	// load agent
-	agentRaw, err := os.ReadFile(testAgentPath)
-	assert.NoErrorf(t, err, "failed to load test agent")
-
 	agent := &coretypes.Agent{}
-	err = json.Unmarshal(agentRaw, &agent)
-	assert.NoErrorf(t, err, "failed to parse test agent")
+
+	agentRaw, err := agent.LoadFromFile(testAgentPath)
+	if err != nil {
+		t.Fatalf("failed to load test agent: %v", err)
+	}
 
 	objRef := getRefForData(coretypes.ObjectType_OBJECT_TYPE_AGENT.String(), agentRaw, map[string]string{
 		"name":       agent.GetName(),

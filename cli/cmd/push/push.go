@@ -71,9 +71,11 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	}
 
 	// Unmarshal the content into an Agent struct.
-	agent, err := unmarshalAgent(source)
+	agent := &coretypes.Agent{}
+
+	_, err := agent.LoadFromReader(source)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal agent: %w", err)
+		return fmt.Errorf("failed to load agent: %w", err)
 	}
 
 	// Marshal the Agent struct back to bytes.
@@ -97,20 +99,6 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	presenter.Print(cmd, ref.GetDigest())
 
 	return nil
-}
-
-func unmarshalAgent(reader io.Reader) (*coretypes.Agent, error) {
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read data: %w", err)
-	}
-
-	var agent coretypes.Agent
-	if err := json.Unmarshal(data, &agent); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
-	}
-
-	return &agent, nil
 }
 
 func getReader(fpath string, fromFile bool) (io.ReadCloser, error) {

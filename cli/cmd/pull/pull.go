@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -59,16 +58,12 @@ func runCommand(cmd *cobra.Command, digest string) error {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}
 
-	// Read the data from the reader.
-	agentRaw, err := io.ReadAll(reader)
-	if err != nil {
-		return fmt.Errorf("failed to read data: %w", err)
-	}
+	// Load into an Agent struct for validation only
+	agent := &coretypes.Agent{}
 
-	// Unmarshal the data into an Agent struct for validation only
-	var agent coretypes.Agent
-	if err := json.Unmarshal(agentRaw, &agent); err != nil {
-		return fmt.Errorf("failed to unmarshal agent: %w", err)
+	agentRaw, err := agent.LoadFromReader(reader)
+	if err != nil {
+		return fmt.Errorf("failed to load agent from reader: %w", err)
 	}
 
 	// If raw format flag is set, print and exit

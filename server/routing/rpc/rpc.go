@@ -237,6 +237,7 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 	}
 
 	// convert to agent
+	// TODO
 	var agent *coretypes.Agent
 	if err := json.Unmarshal(resp.Data, &agent); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)

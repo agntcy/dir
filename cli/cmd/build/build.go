@@ -84,7 +84,7 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	agent := &coretypes.Agent{}
 	baseAgentPath := filepath.Join(filepath.Dir(configFile), cfg.Builder.BaseModelPath)
 
-	err = agent.LoadFromFile(baseAgentPath)
+	_, err = agent.LoadFromFile(baseAgentPath)
 	if err != nil {
 		return fmt.Errorf("failed to load agent from file %s: %w", baseAgentPath, err)
 	}

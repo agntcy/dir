@@ -6,9 +6,7 @@ package routing
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"path"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -206,18 +204,10 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 				continue
 			}
 
-			// read object data
-			data, err := io.ReadAll(object)
+			agent := &coretypes.Agent{}
+			_, err = agent.LoadFromReader(object)
 			if err != nil {
-				localLogger.Error("failed to read object data", "error", err)
-
-				continue
-			}
-
-			// convert to agent
-			var agent *coretypes.Agent
-			if err := json.Unmarshal(data, &agent); err != nil {
-				localLogger.Error("failed to unmarshal agent", "error", err)
+				localLogger.Error("failed to load agent", "error", err)
 
 				continue
 			}

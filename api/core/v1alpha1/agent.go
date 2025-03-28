@@ -74,23 +74,27 @@ func (x *Agent) Merge(other *Agent) {
 	}
 }
 
-func (x *Agent) LoadFromFile(path string) error {
-	reader, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
-	}
-
+func (x *Agent) LoadFromReader(reader io.Reader) ([]byte, error) {
 	data, err := io.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("failed to read data: %w", err)
+		return nil, fmt.Errorf("failed to read data: %w", err)
 	}
 
 	err = json.Unmarshal(data, x)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal data: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
-	return nil
+	return data, nil
+}
+
+func (x *Agent) LoadFromFile(path string) ([]byte, error) {
+	reader, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+
+	return x.LoadFromReader(reader)
 }
 
 func removeDuplicates[T comparable](slice []T) []T {

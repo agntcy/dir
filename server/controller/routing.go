@@ -5,10 +5,8 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -68,19 +66,16 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 		return nil, fmt.Errorf("failed to pull: %w", err)
 	}
 
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read data: %w", err)
-	}
+	agent := &coretypes.Agent{}
 
-	var agent coretypes.Agent
-	if err := json.Unmarshal(data, &agent); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
+	_, err = agent.LoadFromReader(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load agent: %w", err)
 	}
 
 	err = c.routing.Publish(ctx, &coretypes.Object{
 		Ref:   ref,
-		Agent: &agent,
+		Agent: agent,
 	}, req.GetNetwork())
 	if err != nil {
 		return nil, fmt.Errorf("failed to publish: %w", err)
