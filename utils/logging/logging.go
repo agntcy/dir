@@ -4,7 +4,6 @@
 package logging
 
 import (
-	"log"
 	"log/slog"
 	"os"
 	"strings"
@@ -54,7 +53,8 @@ func Logger(component string) *slog.Logger {
 func init() {
 	cfg, err := LoadConfig()
 	if err != nil {
-		log.Fatal("Failed to load config", err)
+		slog.Error("Failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	InitLogger(cfg)

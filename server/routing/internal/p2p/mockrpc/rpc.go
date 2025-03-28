@@ -6,9 +6,9 @@ package mockrpc
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
+	"github.com/agntcy/dir/utils/logging"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -19,6 +19,8 @@ const (
 	EchoService         = "EchoRPCAPI"
 	EchoServiceFuncEcho = "Echo"
 )
+
+var logger = logging.Logger("mockrpc")
 
 type EchoRPCAPI struct {
 	service *Service
@@ -108,9 +110,9 @@ func (s *Service) Echo(ctx context.Context, message string) {
 	// Check responses from peers
 	for i, err := range errs {
 		if err != nil {
-			log.Printf("Peer %s returned error: %-v\n", peers[i].String(), err)
+			logger.Error("Error calling Echo", "peer", peers[i].String(), "error", err)
 		} else {
-			log.Printf("Peer %s echoed: %s\n", peers[i].String(), replies[i].Message)
+			logger.Info("Echoed", "peer", peers[i].String(), "message", replies[i].Message)
 		}
 	}
 }

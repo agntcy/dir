@@ -6,12 +6,12 @@ package config
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	routing "github.com/agntcy/dir/server/routing/config"
 	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -32,6 +32,8 @@ const (
 	DefaultConfigType = "yml"
 	DefaultConfigPath = "/etc/agntcy/dir"
 )
+
+var logger = logging.Logger("config")
 
 type Config struct {
 	// API configuration
@@ -65,7 +67,7 @@ func LoadConfig() (*Config, error) {
 	if err := v.ReadInConfig(); err != nil {
 		fileNotFoundError := viper.ConfigFileNotFoundError{}
 		if errors.As(err, &fileNotFoundError) {
-			log.Print("Config file not found, use defaults.")
+			logger.Info("Config file not found, use defaults.")
 		} else {
 			return nil, fmt.Errorf("failed to read configuration file: %w", err)
 		}
