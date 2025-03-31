@@ -7,19 +7,24 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/agntcy/dir/cli/cmd/build"
 	"github.com/agntcy/dir/cli/cmd/delete"
+	"github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/network"
 	"github.com/agntcy/dir/cli/cmd/publish"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
+	"github.com/agntcy/dir/cli/secretstore"
+	contextUtil "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/cli/util/file"
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/version"
 	"github.com/agntcy/dir/cli/util"
 	"github.com/agntcy/dir/client"
-	"github.com/spf13/cobra"
 )
 
 var clientConfig = client.DefaultConfig
@@ -35,8 +40,13 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
 		}
+		ctx := contextUtil.SetDirClientForContext(cmd.Context(), c)
 
-		ctx := util.SetClientForContext(cmd.Context(), c)
+		// Set secret store via context for all requests
+		store := secretstore.NewFileSecretStore(file.GetSecretsFilePath())
+		ctx = contextUtil.SetSecretStoreForContext(ctx, store)
+
+		// Set context for all requests
 		cmd.SetContext(ctx)
 
 		return nil
@@ -60,6 +70,8 @@ func init() {
 		list.Command,
 		unpublish.Command,
 		network.Command,
+		// hub commands
+		hub.NewHubCommand(),
 	)
 }
 
@@ -67,6 +79,5 @@ func Run(ctx context.Context) error {
 	if err := RootCmd.ExecuteContext(ctx); err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
-
 	return nil
 }
