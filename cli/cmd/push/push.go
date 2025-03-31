@@ -13,7 +13,8 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/util"
+	"github.com/agntcy/dir/cli/util/context"
+
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 )
@@ -58,7 +59,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	defer source.Close()
 
 	// Get the client from the context.
-	c, ok := util.GetClientFromContext(cmd.Context())
+	c, ok := context.GetDirClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}

@@ -32,6 +32,9 @@ vars:
   LICENSEI_VERSION: '0.9.0'
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
 
+  HUB_API_VERSION: 'main'
+  HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
+
 tasks:
   ##
   ## General
@@ -524,6 +527,69 @@ tasks:
       - task: deps:kind
       - task: deps:protoc
       - task: deps:bufbuild
+
+  deps:hub:api:
+    desc: generate HUB API
+    dir: hub/api
+    cmds:
+      - task: deps:hub:api:clean
+      - task: deps:hub:api:dirs
+      - task: deps:hub:api:files
+      - task: deps:hub:api:gen
+      - cmd: cp -r saas/v1alpha1 .
+      - task: deps:hub:api:gen:cleanup
+      - cmd: go mod tidy
+
+  deps:hub:api:dirs:
+    desc: Create HUB API directories
+    dir: hub/api
+    cmds:
+      - mkdir -p saas/v1alpha1
+      - mkdir -p core/v1alpha1
+
+  deps:hub:api:files:
+    desc: Sync HUB proto files to the given version
+    vars:
+      HUB_API_VERSION: '{{ .HUB_API_VERSION }}'
+    dir: hub/api
+    cmd: |
+      mkdir -p .tmp
+      git clone {{.HUB_REPO_URL}} .tmp
+      git checkout {{.HUB_API_VERSION}}
+      cp -r \
+        .tmp/api/saas/v1alpha1/agent.proto \
+        .tmp/api/saas/v1alpha1/agent_id.proto \
+        .tmp/api/saas/v1alpha1/agent_id_response.proto \
+        .tmp/api/saas/v1alpha1/agent_service.proto \
+        .tmp/api/saas/v1alpha1/category.proto \
+        .tmp/api/saas/v1alpha1/locator.proto \
+        .tmp/api/saas/v1alpha1/repo_version_id.proto \
+        saas/v1alpha1
+      rm -rf .tmp
+      cp -r ../../api/core/v1alpha1/*.proto ./core/v1alpha1
+
+  deps:hub:api:gen:
+    desc: Generate HUB API stubs
+    deps:
+      - deps:bufbuild
+      - deps:hub:api:files
+    dir: hub/api
+    cmd: |
+      {{.BUFBUILD_BIN}} dep update
+      {{.BUFBUILD_BIN}} generate
+
+  deps:hub:api:gen:cleanup:
+    desc: Clean HUB API stubs
+    dir: hub/api
+    cmds:
+      - rm -rf core || true
+      - rm -rf saas || true
+
+  deps:hub:api:clean:
+    desc: Lint HUB API stubs
+    dir: hub/api
+    cmds:
+      - cmd: rm -rf v1alpha1
 
   deps:bin-dir:
     desc: Create bin directory
