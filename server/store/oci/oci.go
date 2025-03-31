@@ -219,12 +219,66 @@ func (s *store) Pull(ctx context.Context, ref *coretypes.ObjectRef) (io.ReadClos
 	})
 }
 
-func (s *store) Delete(_ context.Context, ref *coretypes.ObjectRef) error {
+func (s *store) Delete(ctx context.Context, ref *coretypes.ObjectRef) error {
 	logger.Debug("Deleting object from OCI store", "ref", ref)
 
-	// todo: remove tag (or remove tag with cleanup)
-	// todo: remove manifest
-	// todo: remove blob
+	switch repo := s.repo.(type) {
+	case *oci.Store:
+		return s.deleteFromOCIStore(ctx, repo, ref)
+	case *remote.Repository:
+		return s.deleteFromRemoteRepository(ctx, repo, ref)
+	default:
+		return fmt.Errorf("unsupported repo type: %T", s.repo)
+	}
+}
+
+// deleteFromOCIStore handles deletion of objects from an OCI store.
+func (s *store) deleteFromOCIStore(ctx context.Context, store *oci.Store, ref *coretypes.ObjectRef) error {
+	// Untag the manifest. Errors are logged but not returned because
+	// the object may exist without being tagged with a manifest.
+	if err := store.Untag(ctx, ref.GetShortRef()); err != nil {
+		logger.Debug("Failed to untag manifest", "error", err)
+	}
+
+	// Resolve and delete the manifest. Errors are logged but not returned
+	// for the same reason as above.
+	manifestDesc, err := s.repo.Resolve(ctx, ref.GetShortRef())
+	if err != nil {
+		logger.Debug("Failed to resolve manifest", "error", err)
+	} else if err := store.Delete(ctx, manifestDesc); err != nil {
+		return fmt.Errorf("failed to delete manifest: %w", err)
+	}
+
+	// Delete the blob associated with the descriptor.
+	blobDesc := ocispec.Descriptor{
+		Digest: ocidigest.Digest(ref.GetDigest()),
+	}
+	if err := store.Delete(ctx, blobDesc); err != nil {
+		return fmt.Errorf("failed to delete blob: %w", err)
+	}
+
+	return nil
+}
+
+// deleteFromRemoteRepo handles deletion of objects from a remote repository.
+func (s *store) deleteFromRemoteRepository(ctx context.Context, repo *remote.Repository, ref *coretypes.ObjectRef) error {
+	// Resolve and delete the manifest. Errors are logged but not returned because
+	// the object may exist without being tagged with a manifest.
+	manifestDesc, err := s.repo.Resolve(ctx, ref.GetShortRef())
+	if err != nil {
+		logger.Debug("Failed to resolve manifest", "error", err)
+	} else if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
+		return fmt.Errorf("failed to delete manifest: %w", err)
+	}
+
+	// Delete the blob associated with the descriptor.
+	blobDesc := ocispec.Descriptor{
+		Digest: ocidigest.Digest(ref.GetDigest()),
+	}
+	if err := repo.Blobs().Delete(ctx, blobDesc); err != nil {
+		return fmt.Errorf("failed to delete blob: %w", err)
+	}
+
 	return nil
 }
 

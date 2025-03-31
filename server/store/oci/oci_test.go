@@ -75,9 +75,13 @@ func TestStore(t *testing.T) {
 	assert.Equal(t, agentRaw, fetchedContents)
 
 	// delete op
-	// todo: verify delete op via lookup
 	err = store.Delete(testCtx, dgst)
 	assert.NoErrorf(t, err, "delete failed")
+
+	// lookup op
+	_, err = store.Lookup(testCtx, dgst)
+	assert.Error(t, err, "lookup should fail after delete")
+	assert.EqualError(t, err, "digest does not exist")
 }
 
 func BenchmarkLocalStore(b *testing.B) {
