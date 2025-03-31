@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/cmd/build"
+	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/publish"
@@ -49,6 +50,7 @@ func init() {
 		info.Command,
 		pull.Command,
 		push.Command,
+		delete.Command,
 		// routing commands
 		publish.Command,
 		list.Command,

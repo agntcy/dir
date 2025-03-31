@@ -88,3 +88,12 @@ func (c *Client) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretyp
 
 	return meta, nil
 }
+
+func (c *Client) Delete(ctx context.Context, ref *coretypes.ObjectRef) error {
+	_, err := c.StoreServiceClient.Delete(ctx, ref)
+	if err != nil {
+		return fmt.Errorf("failed to delete object: %w", err)
+	}
+
+	return nil
+}

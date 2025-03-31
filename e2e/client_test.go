@@ -130,4 +130,17 @@ var _ = ginkgo.Describe("client end-to-end tests", func() {
 			}
 		})
 	})
+
+	ginkgo.Context("agent delete", func() {
+		ginkgo.It("should delete an agent from store", func() {
+			err = c.Delete(ctx, ref)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.It("should not find deleted agent in store", func() {
+			reader, err := c.Pull(ctx, ref)
+			gomega.Expect(err).To(gomega.HaveOccurred())
+			gomega.Expect(reader).To(gomega.BeNil())
+		})
+	})
 })

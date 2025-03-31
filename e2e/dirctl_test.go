@@ -146,4 +146,34 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			gomega.Expect(err).To(gomega.HaveOccurred())
 		})
 	})
+
+	ginkgo.Context("agent delete", func() {
+		ginkgo.It("should delete an agent", func() {
+			var outputBuffer bytes.Buffer
+
+			deleteCmd := clicmd.RootCmd
+			deleteCmd.SetOut(&outputBuffer)
+			deleteCmd.SetArgs([]string{
+				"delete",
+				tempAgentDigest,
+			})
+
+			err := deleteCmd.Execute()
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.It("should fail to pull a deleted agent", func() {
+			var outputBuffer bytes.Buffer
+
+			pullCmd := clicmd.RootCmd
+			pullCmd.SetOut(&outputBuffer)
+			pullCmd.SetArgs([]string{
+				"pull",
+				tempAgentDigest,
+			})
+
+			err := pullCmd.Execute()
+			gomega.Expect(err).To(gomega.HaveOccurred())
+		})
+	})
 })
