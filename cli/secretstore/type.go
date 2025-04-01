@@ -12,9 +12,9 @@ type HubSecret struct {
 }
 
 type TokenSecret struct {
-	IdpToken     string `json:"idpToken"`
+	IdToken      string `json:"idToken"`
 	RefreshToken string `json:"refreshToken"`
-	AuthToken    string `json:"authToken"`
+	AccessToken  string `json:"accessToken"`
 }
 
 func (h *HubSecret) Validate() error {
@@ -31,14 +31,14 @@ func (h *HubSecret) Validate() error {
 		return ErrInvalidSecret
 	}
 
-	if h.TokenSecret.IdpToken == "" {
+	if h.TokenSecret.IdToken == "" {
 		return ErrInvalidSecret
 	}
 	if h.TokenSecret.RefreshToken == "" {
 		return ErrInvalidSecret
 	}
 
-	if h.TokenSecret.AuthToken == "" {
+	if h.TokenSecret.AccessToken == "" {
 		return ErrInvalidSecret
 	}
 

@@ -18,7 +18,7 @@ type HubOptions struct {
 	ServerAddress string
 }
 
-func NewOptions() *HubOptions {
+func NewHubOptions() *HubOptions {
 	return &HubOptions{
 		BaseOption: &BaseOption{},
 	}
