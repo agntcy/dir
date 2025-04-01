@@ -9,9 +9,9 @@ import (
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 
-	"github.com/agntcy/dir/cli/cmd/hub/login/webserver"
 	"github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/hub/auth"
+	"github.com/agntcy/dir/cli/hub/webserver"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/secretstore"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -96,8 +96,8 @@ func run(cmd *cobra.Command, frontendUrl string, opts *options.LoginOptions) err
 		ClientId:   authConfig.ClientId,
 		IdpAddress: authConfig.IdpAddress,
 		TokenSecret: &secretstore.TokenSecret{
-			AuthToken:    sessionStore.Tokens.AccessToken,
-			IdpToken:     sessionStore.Tokens.IdToken,
+			AccessToken:  sessionStore.Tokens.AccessToken,
+			IdToken:      sessionStore.Tokens.IdToken,
 			RefreshToken: sessionStore.Tokens.RefreshToken,
 		},
 	})
