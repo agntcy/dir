@@ -85,7 +85,7 @@ type idpClient struct {
 	BaseUrl string
 }
 
-func NewIdpClient(baseUrl string) *idpClient {
+func NewClient(baseUrl string) *idpClient {
 	return &idpClient{BaseUrl: baseUrl}
 }
 

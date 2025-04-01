@@ -15,7 +15,7 @@ var (
 	ErrSecretNotFoundForAddress = fmt.Errorf("No secret found for the given address. Please login first.")
 )
 
-func NewLogoutCommand(opts *options.HubOptions) *cobra.Command {
+func NewCommand(opts *options.HubOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "logout",
@@ -33,7 +33,7 @@ func NewLogoutCommand(opts *options.HubOptions) *cobra.Command {
 				return fmt.Errorf("failed to get secret store from context")
 			}
 
-			idpClient := idp.NewIdpClient(secret.IdpAddress)
+			idpClient := idp.NewClient(secret.IdpAddress)
 			resp, err := idpClient.Logout(&idp.LogoutRequest{IdToken: secret.IdToken})
 			if err != nil {
 				return fmt.Errorf("failed to logout: %w", err)
@@ -47,9 +47,10 @@ func NewLogoutCommand(opts *options.HubOptions) *cobra.Command {
 				return fmt.Errorf("failed to remove secret from secret store: %w", err)
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), "Successfully logged out")
+			fmt.Fprintln(cmd.OutOrStdout(), "Successfully logged out.")
 			return nil
 		},
+		TraverseChildren: true,
 	}
 
 	return cmd
