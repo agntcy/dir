@@ -9,7 +9,3 @@ func NewLoginOptions(hubOptions *HubOptions) *LoginOptions {
 		HubOptions: hubOptions,
 	}
 }
-
-func (o *LoginOptions) Complete() {
-	o.HubOptions.Complete()
-}

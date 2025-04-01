@@ -19,15 +19,9 @@ func NewFileSecretStore(path string) *FileSecretStore {
 }
 
 func (s *FileSecretStore) GetHubSecret(secretName string) (*HubSecret, error) {
-	file, err := os.Open(s.path)
+	secrets, err := s.getSecrets()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w: %s", ErrCouldNotOpenFile, err, s.path)
-	}
-	defer file.Close()
-
-	var secrets HubSecrets
-	if err := json.NewDecoder(file).Decode(&secrets); err != nil {
-		return nil, fmt.Errorf("could not decode json: %w", err)
+		return nil, err
 	}
 
 	secret, ok := secrets.HubSecrets[secretName]
@@ -79,4 +73,53 @@ func (s *FileSecretStore) SaveHubSecret(secretName string, secret *HubSecret) er
 	}
 
 	return nil
+}
+
+func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
+	secrets, file, err := s.getSecretsAndFile()
+	if err != nil {
+		return err
+	}
+	if file == nil {
+		return nil
+	}
+	defer file.Close()
+
+	if _, ok := secrets.HubSecrets[secretName]; !ok {
+		return nil
+	}
+
+	delete(secrets.HubSecrets, secretName)
+
+	file.Seek(0, 0)
+	file.Truncate(0)
+	if err = json.NewEncoder(file).Encode(&secrets); err != nil {
+		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
+	}
+
+	return nil
+}
+
+func (s *FileSecretStore) getSecretsAndFile() (*HubSecrets, *os.File, error) {
+	file, err := os.Open(s.path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &HubSecrets{}, nil, nil
+		}
+		return nil, nil, fmt.Errorf("%w: %w: %s", ErrCouldNotOpenFile, err, s.path)
+	}
+
+	var secrets *HubSecrets
+	if err = json.NewDecoder(file).Decode(&secrets); err != nil {
+		file.Close()
+		return nil, nil, fmt.Errorf("%w: %w", ErrMalformedSecretFile, err)
+	}
+
+	return secrets, file, nil
+}
+
+func (s *FileSecretStore) getSecrets() (*HubSecrets, error) {
+	secrets, file, err := s.getSecretsAndFile()
+	defer file.Close()
+	return secrets, err
 }
