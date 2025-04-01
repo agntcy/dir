@@ -24,6 +24,9 @@ service RoutingService {
   // List all the available items across the network.
   // TODO: maybe remove to search?
   rpc List(ListRequest) returns (stream ListResponse);
+  // Unpublish a given object.
+  // This will remove the object from the network.
+  rpc Unpublish(UnpublishRequest) returns (google.protobuf.Empty);
 }
 
 message PublishRequest {
@@ -78,4 +81,15 @@ message ListResponse {
 
   // Returned items that match a given request
   repeated Item items = 1;
+}
+
+message UnpublishRequest {
+  // Published record reference.
+  // On unpublish, we read from the local store and extract the neccessary labels.
+  core.v1alpha1.ObjectRef record = 1;
+
+  // Announce the publication to the network.
+  // This item will end up in the network
+  // and can be searched.
+  optional bool network = 2;
 }

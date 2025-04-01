@@ -28,4 +28,8 @@ type RoutingAPI interface {
 	// This reads from content datastore.
 	// Request can be assumed to be validated.
 	List(context.Context, *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error)
+
+	// Unpublish removes the object from the network.
+	// This removes the object from peer and content datastore.
+	Unpublish(ctx context.Context, object *coretypes.Object, network bool) error
 }

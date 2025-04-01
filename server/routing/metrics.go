@@ -36,6 +36,25 @@ func (m *Metrics) increment(label string) {
 	}
 }
 
+func (m *Metrics) decrement(label string) {
+	if _, ok := m.Data[label]; !ok {
+		return
+	}
+
+	currentTotal := m.Data[label].Total
+	if currentTotal > 0 {
+		m.Data[label] = LabelMetric{
+			Name:  label,
+			Total: currentTotal - 1,
+		}
+	}
+
+	// Remove the label from the map if the total is zero.
+	if m.Data[label].Total == 0 {
+		delete(m.Data, label)
+	}
+}
+
 func (m *Metrics) counts() map[string]uint64 {
 	counts := make(map[string]uint64)
 	for _, metric := range m.Data {

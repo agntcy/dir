@@ -232,6 +232,64 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 	return outCh, nil
 }
 
+func (r *routeLocal) Unpublish(ctx context.Context, object *coretypes.Object) error {
+	localLogger.Debug("Called local routing's Unpublish method", "object", object)
+
+	ref := object.GetRef()
+	if ref == nil {
+		return fmt.Errorf("invalid object reference: %v", ref)
+	}
+
+	agent := object.GetAgent()
+	if agent == nil {
+		return fmt.Errorf("invalid agent object: %v", agent)
+	}
+
+	// load metrics for the client
+	metrics, err := loadMetrics(ctx, r.dstore)
+	if err != nil {
+		return fmt.Errorf("failed to load metrics: %w", err)
+	}
+
+	batch, err := r.dstore.Batch(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create batch: %w", err)
+	}
+
+	// get agent key and remove agent
+	agentKey := datastore.NewKey(fmt.Sprintf("/agents/%s", ref.GetDigest()))
+	if err := batch.Delete(ctx, agentKey); err != nil {
+		return fmt.Errorf("failed to delete agent key: %w", err)
+	}
+
+	// keep track of all agent skills
+	skills := getAgentSkills(agent)
+	for _, skill := range skills {
+		// Delete key with digest
+		agentSkillKey := fmt.Sprintf("%s/%s", skill, ref.GetDigest())
+		if err := batch.Delete(ctx, datastore.NewKey(agentSkillKey)); err != nil {
+			return fmt.Errorf("failed to delete skill key: %w", err)
+		}
+
+		metrics.decrement(skill)
+	}
+
+	err = batch.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to commit batch: %w", err)
+	}
+
+	// sync metrics
+	err = metrics.update(ctx, r.dstore)
+	if err != nil {
+		return fmt.Errorf("failed to update metrics: %w", err)
+	}
+
+	localLogger.Info("Successfully unpublished agent", "ref", ref)
+
+	return nil
+}
+
 func getAgentDigestFromKey(k string) (string, error) {
 	// Check if digest is valid
 	digest := path.Base(k)

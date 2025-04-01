@@ -23,8 +23,9 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	RoutingService_Publish_FullMethodName = "/routing.v1alpha1.RoutingService/Publish"
-	RoutingService_List_FullMethodName    = "/routing.v1alpha1.RoutingService/List"
+	RoutingService_Publish_FullMethodName   = "/routing.v1alpha1.RoutingService/Publish"
+	RoutingService_List_FullMethodName      = "/routing.v1alpha1.RoutingService/List"
+	RoutingService_Unpublish_FullMethodName = "/routing.v1alpha1.RoutingService/Unpublish"
 )
 
 // RoutingServiceClient is the client API for RoutingService service.
@@ -45,6 +46,9 @@ type RoutingServiceClient interface {
 	// List all the available items across the network.
 	// TODO: maybe remove to search?
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (RoutingService_ListClient, error)
+	// Unpublish a given object.
+	// This will remove the object from the network.
+	Unpublish(ctx context.Context, in *UnpublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type routingServiceClient struct {
@@ -98,6 +102,16 @@ func (x *routingServiceListClient) Recv() (*ListResponse, error) {
 	return m, nil
 }
 
+func (c *routingServiceClient) Unpublish(ctx context.Context, in *UnpublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, RoutingService_Unpublish_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoutingServiceServer is the server API for RoutingService service.
 // All implementations should embed UnimplementedRoutingServiceServer
 // for forward compatibility.
@@ -116,6 +130,9 @@ type RoutingServiceServer interface {
 	// List all the available items across the network.
 	// TODO: maybe remove to search?
 	List(*ListRequest, RoutingService_ListServer) error
+	// Unpublish a given object.
+	// This will remove the object from the network.
+	Unpublish(context.Context, *UnpublishRequest) (*emptypb.Empty, error)
 }
 
 // UnimplementedRoutingServiceServer should be embedded to have
@@ -130,6 +147,9 @@ func (UnimplementedRoutingServiceServer) Publish(context.Context, *PublishReques
 }
 func (UnimplementedRoutingServiceServer) List(*ListRequest, RoutingService_ListServer) error {
 	return status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedRoutingServiceServer) Unpublish(context.Context, *UnpublishRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Unpublish not implemented")
 }
 func (UnimplementedRoutingServiceServer) testEmbeddedByValue() {}
 
@@ -190,6 +210,24 @@ func (x *routingServiceListServer) Send(m *ListResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _RoutingService_Unpublish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnpublishRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoutingServiceServer).Unpublish(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RoutingService_Unpublish_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoutingServiceServer).Unpublish(ctx, req.(*UnpublishRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoutingService_ServiceDesc is the grpc.ServiceDesc for RoutingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -200,6 +238,10 @@ var RoutingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Publish",
 			Handler:    _RoutingService_Publish_Handler,
+		},
+		{
+			MethodName: "Unpublish",
+			Handler:    _RoutingService_Unpublish_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

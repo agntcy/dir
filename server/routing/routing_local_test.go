@@ -190,6 +190,29 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 			}
 		})
 	}
+
+	// Unpublish second agent
+	err = r.Unpublish(t.Context(), &coretypes.Object{
+		Ref:   testRef2,
+		Agent: testAgent2,
+	}, false)
+	assert.NoError(t, err)
+
+	// Try to list second agent
+	refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
+		Network: toPtr(false),
+		Labels:  []string{"/skills/category2"},
+	})
+	assert.NoError(t, err)
+
+	// Collect items from the channel
+	var refs []*routingtypes.ListResponse_Item //nolint:prealloc
+	for ref := range refsChan {
+		refs = append(refs, ref)
+	}
+
+	// check no refs are present
+	assert.Len(t, refs, 0)
 }
 
 func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
