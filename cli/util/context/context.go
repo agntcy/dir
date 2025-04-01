@@ -13,9 +13,12 @@ import (
 
 type ContextKeyType string
 
-const DirClientContextKey ContextKeyType = "ContextDirClient"
-const HubClientContextKey ContextKeyType = "ContextHubClient"
-const SecretStoreContextKey ContextKeyType = "ContextSecretStore"
+const (
+	DirClientContextKey        ContextKeyType = "ContextDirClient"
+	HubClientContextKey        ContextKeyType = "ContextHubClient"
+	SecretStoreContextKey      ContextKeyType = "ContextSecretStore"
+	CurrentHubSecretContextKey ContextKeyType = "ContextCurrentHubSecret"
+)
 
 func SetDirClientForContext(ctx context.Context, c *client.Client) context.Context {
 	return setCliContext(ctx, DirClientContextKey, c)
@@ -39,6 +42,14 @@ func SetSecretStoreForContext(ctx context.Context, s secretstore.SecretStore) co
 
 func GetSecretStoreFromContext(ctx context.Context) (secretstore.SecretStore, bool) {
 	return getCliContext[secretstore.SecretStore](ctx, SecretStoreContextKey)
+}
+
+func SetCurrentHubSecretForContext(ctx context.Context, secret *secretstore.HubSecret) context.Context {
+	return setCliContext(ctx, CurrentHubSecretContextKey, secret)
+}
+
+func GetCurrentHubSecretFromContext(ctx context.Context) (*secretstore.HubSecret, bool) {
+	return getCliContext[*secretstore.HubSecret](ctx, CurrentHubSecretContextKey)
 }
 
 func setCliContext[T any](ctx context.Context, key ContextKeyType, c T) context.Context {
