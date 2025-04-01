@@ -131,6 +131,33 @@ var _ = ginkgo.Describe("client end-to-end tests", func() {
 		})
 	})
 
+	ginkgo.Context("agent unpublish", func() {
+		ginkgo.It("should unpublish an agent", func() {
+			err = c.Unpublish(ctx, &coretypes.ObjectRef{
+				Digest: ref.GetDigest(),
+				Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+			}, false)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.It("should not find unpublish agent", func() {
+			itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
+				Labels:  []string{"/skills/test-category-1/test-class-1"},
+				Network: Ptr(false),
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Collect items from the channel
+			var items []*routingv1alpha1.ListResponse_Item
+			for item := range itemsChan {
+				items = append(items, item)
+			}
+
+			// Validate the response
+			gomega.Expect(items).To(gomega.BeEmpty())
+		})
+	})
+
 	ginkgo.Context("agent delete", func() {
 		ginkgo.It("should delete an agent from store", func() {
 			err = c.Delete(ctx, ref)

@@ -34,7 +34,7 @@ Usage examples:
 
 3. List published records across the whole network:
 
-	dir list "/skills/Text Completion" --network
+	dirctl list "/skills/Text Completion" --network
 
 ---
 
