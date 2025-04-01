@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/cmd/hub/login"
+	"github.com/agntcy/dir/cli/cmd/hub/logout"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 )
@@ -37,12 +38,14 @@ func NewHubCommand() *cobra.Command {
 
 			return nil
 		},
+		TraverseChildren: true,
 	}
 
 	opts.Register(cmd)
 
 	cmd.AddCommand(
-		login.NewLoginCommand(opts),
+		login.NewCommand(opts),
+		logout.NewCommand(opts),
 	)
 
 	return cmd

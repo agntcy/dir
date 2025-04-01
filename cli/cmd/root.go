@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/publish"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
+	"github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/secretstore"
 	contextUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/file"
@@ -49,6 +51,8 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
+	cobra.EnableTraverseRunHooks = true
+	cobra.OnInitialize(initConfig)
 	RootCmd.AddCommand(
 		// local commands
 		// TODO: add version command
@@ -63,6 +67,13 @@ func init() {
 		// hub commands
 		hub.NewHubCommand(),
 	)
+}
+
+func initConfig() {
+	if err := config.LoadConfig(); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func Run(ctx context.Context) error {
