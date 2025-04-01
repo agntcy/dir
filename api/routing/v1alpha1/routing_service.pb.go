@@ -215,12 +215,12 @@ func (x *ListResponse) GetItems() []*ListResponse_Item {
 
 type UnpublishRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Published record reference.
-	// On unpublish, we read from the local store and extract the neccessary labels.
+	// Reference to the record to be unpublished.
+	// On unpublish, we read from the local store and remove the associated labels.
 	Record *v1alpha1.ObjectRef `protobuf:"bytes,1,opt,name=record,proto3" json:"record,omitempty"`
-	// Announce the publication to the network.
-	// This item will end up in the network
-	// and can be searched.
+	// Notify the network about the unpublication.
+	// This will remove the item from the network
+	// and make it no longer searchable.
 	Network       *bool `protobuf:"varint,2,opt,name=network,proto3,oneof" json:"network,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -84,12 +84,12 @@ message ListResponse {
 }
 
 message UnpublishRequest {
-  // Published record reference.
-  // On unpublish, we read from the local store and extract the neccessary labels.
+  // Reference to the record to be unpublished.
+  // On unpublish, we read from the local store and remove the associated labels.
   core.v1alpha1.ObjectRef record = 1;
 
-  // Announce the publication to the network.
-  // This item will end up in the network
-  // and can be searched.
+  // Notify the network about the unpublication.
+  // This will remove the item from the network
+  // and make it no longer searchable.
   optional bool network = 2;
 }
