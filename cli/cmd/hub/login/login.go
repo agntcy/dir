@@ -11,13 +11,14 @@ import (
 
 	"github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/hub/auth"
+	"github.com/agntcy/dir/cli/hub/idp"
 	"github.com/agntcy/dir/cli/hub/webserver"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/secretstore"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 )
 
-func NewLoginCommand(hubOptions *options.HubOptions) *cobra.Command {
+func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 	opts := options.NewLoginOptions(hubOptions)
 
 	cmd := &cobra.Command{
@@ -58,11 +59,15 @@ func run(cmd *cobra.Command, frontendUrl string, opts *options.LoginOptions) err
 	//// Init session store
 	sessionStore := &webserver.SessionStore{}
 
+	//// Init idp client
+	idpClient := idp.NewClient(authConfig.IdpAddress)
+
 	handler := webserver.NewHandler(&webserver.Config{
 		ClientId:           authConfig.ClientId,
 		FrontendUrl:        frontendUrl,
 		IdpUrl:             authConfig.IdpAddress,
 		LocalWebserverPort: config.LocalWebserverPort,
+		IdpClient:          idpClient,
 		SessionStore:       sessionStore,
 		ErrChan:            errCh,
 	})

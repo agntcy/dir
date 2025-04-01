@@ -101,7 +101,7 @@ func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
 }
 
 func (s *FileSecretStore) getSecretsAndFile() (*HubSecrets, *os.File, error) {
-	file, err := os.Open(s.path)
+	file, err := os.OpenFile(s.path, os.O_RDWR, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &HubSecrets{}, nil, nil
