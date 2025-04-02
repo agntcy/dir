@@ -66,9 +66,7 @@ func (s *FileSecretStore) SaveHubSecret(secretName string, secret *HubSecret) er
 	}
 	secrets.HubSecrets[secretName] = secret
 
-	file.Seek(0, 0)
-	file.Truncate(0)
-	if err = json.NewEncoder(file).Encode(&secrets); err != nil {
+	if err = rewritePrettyJsonFile(file, secrets); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
 	}
 
@@ -91,9 +89,7 @@ func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
 
 	delete(secrets.HubSecrets, secretName)
 
-	file.Seek(0, 0)
-	file.Truncate(0)
-	if err = json.NewEncoder(file).Encode(&secrets); err != nil {
+	if err = rewritePrettyJsonFile(file, secrets); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
 	}
 
@@ -122,4 +118,18 @@ func (s *FileSecretStore) getSecrets() (*HubSecrets, error) {
 	secrets, file, err := s.getSecretsAndFile()
 	defer file.Close()
 	return secrets, err
+}
+
+func rewritePrettyJsonFile(file *os.File, model any) error {
+	if file == nil {
+		return errors.New("file is nil")
+	}
+	file.Seek(0, 0)
+	file.Truncate(0)
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(model); err != nil {
+		return err
+	}
+	return nil
 }

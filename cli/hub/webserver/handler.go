@@ -25,7 +25,7 @@ type Config struct {
 	LocalWebserverPort int
 
 	SessionStore *SessionStore
-	IdpClient    idp.IdpClient
+	IdpClient    idp.Client
 	ErrChan      chan error
 }
 
@@ -37,7 +37,7 @@ type Handler struct {
 	localWebserverUrl  string
 
 	sessionStore *SessionStore
-	idpClient    idp.IdpClient
+	idpClient    idp.Client
 
 	Err chan error
 }
