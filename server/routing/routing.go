@@ -62,5 +62,6 @@ func (r *route) Unpublish(ctx context.Context, object *coretypes.Object, _ bool)
 	}
 
 	// no need to explicitly handle unpublishing from the network
+	// TODO clarify if network sync trigger is needed here
 	return nil
 }
