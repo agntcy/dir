@@ -1,20 +1,28 @@
 package options
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/spf13/cobra"
 )
 
+type RegisterFn func(cmd *cobra.Command) error
+type CompleteFn func()
+
 type BaseOption struct {
-	err error
+	isCompleted  bool
+	isRegistered bool
+	err          error
+
+	registerFns []RegisterFn
+	completeFns []CompleteFn
 }
 
-func (o *BaseOption) AddError(err error) {
-	if o.err == nil {
+func (o *BaseOption) addErr(err error) {
+	if err == nil {
 		o.err = err
 	} else {
-		o.err = fmt.Errorf("%w: %w", o.err, err)
+		o.err = errors.Join(o.err, err)
 	}
 }
 
@@ -23,9 +31,36 @@ func (o *BaseOption) CheckError() error {
 }
 
 func (o *BaseOption) Register(cmd *cobra.Command) {
-	panic("implement me")
+	if o.isRegistered {
+		return
+	}
+	defer func() {
+		o.isRegistered = true
+	}()
+	for _, fn := range o.registerFns {
+		if err := fn(cmd); err != nil {
+			o.addErr(err)
+			return
+		}
+	}
 }
 
 func (o *BaseOption) Complete() {
-	panic("implement me")
+	if o.isCompleted {
+		return
+	}
+	defer func() {
+		o.isCompleted = true
+	}()
+	for _, fn := range o.completeFns {
+		fn()
+	}
+}
+
+func (o *BaseOption) AddRegisterFns(fns []RegisterFn) {
+	o.registerFns = append(o.registerFns, fns...)
+}
+
+func (o *BaseOption) AddCompleteFn(fns []CompleteFn) {
+	o.completeFns = append(o.completeFns, fns...)
 }
