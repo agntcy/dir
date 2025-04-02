@@ -23,14 +23,24 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Login to the Phoenix SaaS hub",
+		Short: "Login to the Agent Hub",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Complete()
-			if err := opts.CheckError(); err != nil {
-				return err
+			// Get secret store from context
+			secretStore, ok := ctxUtils.GetSecretStoreFromContext(cmd.Context())
+			if !ok {
+				return fmt.Errorf("failed to get secret store from context")
 			}
 
-			return run(cmd, opts.ServerAddress, opts)
+			// Get auth config
+			authConfig, err := auth.FetchAuthConfig(opts.ServerAddress)
+			if err != nil {
+				return fmt.Errorf("failed to fetch auth config: %w", err)
+			}
+
+			// Init IDP client
+			idpClient := idp.NewClient(authConfig.IdpIssuerAddress)
+
+			return runCmd(cmd, opts, idpClient, authConfig, secretStore)
 		},
 		TraverseChildren: true,
 	}
@@ -38,34 +48,19 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func run(cmd *cobra.Command, frontendUrl string, opts *options.LoginOptions) error {
+func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client, authConfig *auth.AuthConfig, secretStore secretstore.SecretStore) error {
 
 	// Set up the webserver
 	//// Init the error channel
 	errCh := make(chan error, 1)
 
-	//// Get secret store from context
-	secretStore, ok := ctxUtils.GetSecretStoreFromContext(cmd.Context())
-	if !ok {
-		return fmt.Errorf("failed to get secret store from context")
-	}
-
-	//// Get auth config
-	authConfig, err := auth.FetchAuthConfig(frontendUrl)
-	if err != nil {
-		return err
-	}
-
 	//// Init session store
 	sessionStore := &webserver.SessionStore{}
 
-	//// Init idp client
-	idpClient := idp.NewClient(authConfig.IdpAddress)
-
 	handler := webserver.NewHandler(&webserver.Config{
 		ClientId:           authConfig.ClientId,
-		FrontendUrl:        frontendUrl,
-		IdpUrl:             authConfig.IdpAddress,
+		IdpFrontendUrl:     authConfig.IdpFrontendAddress,
+		IdpBackendUrl:      authConfig.IdpBackendAddress,
 		LocalWebserverPort: config.LocalWebserverPort,
 		IdpClient:          idpClient,
 		SessionStore:       sessionStore,
@@ -79,13 +74,14 @@ func run(cmd *cobra.Command, frontendUrl string, opts *options.LoginOptions) err
 	defer server.Shutdown(ctx)
 
 	// Open the browser
-	if err = openBrowser(); err != nil {
+	if err := openBrowser(); err != nil {
 		return err
 	}
 
 	// Wait for the server to start
 	time.Sleep(1 * time.Second)
 
+	var err error
 	select {
 	case err = <-errCh:
 	case <-ctx.Done():
@@ -97,9 +93,15 @@ func run(cmd *cobra.Command, frontendUrl string, opts *options.LoginOptions) err
 	}
 
 	// Get tokens
-	err = secretStore.SaveHubSecret(frontendUrl, &secretstore.HubSecret{
-		ClientId:   authConfig.ClientId,
-		IdpAddress: authConfig.IdpAddress,
+	err = secretStore.SaveHubSecret(opts.ServerAddress, &secretstore.HubSecret{
+		AuthConfig: &secretstore.AuthConfig{
+			ClientId:           authConfig.ClientId,
+			ProductId:          authConfig.IdpProductId,
+			IdpFrontendAddress: authConfig.IdpFrontendAddress,
+			IdpBackendAddress:  authConfig.IdpBackendAddress,
+			IdpIssuerAddress:   authConfig.IdpIssuerAddress,
+			HubBackendAddress:  authConfig.HubBackendAddress,
+		},
 		TokenSecret: &secretstore.TokenSecret{
 			AccessToken:  sessionStore.Tokens.AccessToken,
 			IdToken:      sessionStore.Tokens.IdToken,
@@ -110,7 +112,7 @@ func run(cmd *cobra.Command, frontendUrl string, opts *options.LoginOptions) err
 		return fmt.Errorf("failed to save tokens: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Phoenix SaaS hub\nAddress: %s\n", frontendUrl)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Agent Hub\nAddress: %s\n", opts.ServerAddress)
 	return nil
 }
 

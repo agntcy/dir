@@ -1,46 +1,24 @@
 package secretstore
 
-import "github.com/docker/docker/builder/remotecontext/urlutil"
-
 type HubSecrets struct {
 	HubSecrets map[string]*HubSecret `json:"hubSecrets"`
 }
 type HubSecret struct {
-	ClientId     string `json:"clientId"`
-	IdpAddress   string `json:"idpAddress"`
+	*AuthConfig  `json:"auth_config"`
 	*TokenSecret `json:"tokens"`
 }
 
 type TokenSecret struct {
-	IdToken      string `json:"idToken"`
-	RefreshToken string `json:"refreshToken"`
-	AccessToken  string `json:"accessToken"`
+	IdToken      string `json:"id_token"`
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
 }
 
-func (h *HubSecret) Validate() error {
-
-	if !urlutil.IsURL(h.IdpAddress) {
-		return ErrInvalidSecret
-	}
-
-	if h.ClientId == "" {
-		return ErrInvalidSecret
-	}
-
-	if h.TokenSecret == nil {
-		return ErrInvalidSecret
-	}
-
-	if h.TokenSecret.IdToken == "" {
-		return ErrInvalidSecret
-	}
-	if h.TokenSecret.RefreshToken == "" {
-		return ErrInvalidSecret
-	}
-
-	if h.TokenSecret.AccessToken == "" {
-		return ErrInvalidSecret
-	}
-
-	return nil
+type AuthConfig struct {
+	ClientId           string `json:"client_id"`
+	ProductId          string `json:"product_id"`
+	IdpFrontendAddress string `json:"idp_frontend"`
+	IdpBackendAddress  string `json:"idp_backend"`
+	IdpIssuerAddress   string `json:"idp_issuer"`
+	HubBackendAddress  string `json:"hub_backend"`
 }

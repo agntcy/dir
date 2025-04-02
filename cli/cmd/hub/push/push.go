@@ -18,83 +18,94 @@ import (
 	"github.com/agntcy/hub/api/v1alpha1"
 )
 
-func NewCommand(hubOpts *options.HubOptions, pushOpts *options.PushOptions) *cobra.Command {
-
-	opts := options.NewHubPushOptions(hubOpts, pushOpts)
+func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "push {<repository>:<version> | <repository_id>:<version>} {<model.json> | --stdin} ",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// Check if the user is logged in
-			secret, ok := context.GetCurrentHubSecretFromContext(cmd.Context())
-			if !ok {
-				return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
-			}
+		Use:   "push {<repository>:<version> | <repository_id>:<version>} {<model.json> | --stdin} ",
+		Short: "Push model to Agent Hub",
+	}
 
-			// Check if the access token is expired
-			idpClient, ok := context.GetIdpClientFromContext(cmd.Context())
-			if !ok {
-				return fmt.Errorf("failed to get IDP client from context")
-			}
+	opts := options.NewHubPushOptions(hubOpts, options.NewPushOptions(hubOpts.BaseOption, cmd))
 
-			ctx := cmd.Context()
-			newToken, isUpdated, err := token.RefreshTokenIfExpired(idpClient, secret.TokenSecret, secret.ClientId)
-			if err != nil {
-				return fmt.Errorf("Failed to refresh your expired access token. Use `dirctl hub login` command to login again.")
-			}
-			if isUpdated {
-				secret.TokenSecret = newToken
-				ctx = context.SetCurrentHubSecretForContext(cmd.Context(), secret)
-			}
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		// Check if the user is logged in
+		secret, ok := context.GetCurrentHubSecretFromContext(cmd.Context())
+		if !ok || secret.TokenSecret == nil {
+			return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
+		}
 
-			cmd.SetContext(ctx)
+		// Check if the access token is expired
+		idpClient, ok := context.GetIdpClientFromContext(cmd.Context())
+		if !ok {
+			return fmt.Errorf("failed to get IDP client from context")
+		}
 
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			secret, ok := context.GetCurrentHubSecretFromContext(cmd.Context())
-			if !ok {
-				return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
-			}
+		secretStore, ok := context.GetSecretStoreFromContext(cmd.Context())
+		if !ok {
+			return fmt.Errorf("failed to get secret store from context")
+		}
 
-			hc, err := hubClient.New(config.DefaultHubBackendAddress)
-			if err != nil {
-				return fmt.Errorf("failed to create hub client: %w", err)
-			}
+		serverAddr, ok := context.GetCurrentServerAddressFromContext(cmd.Context())
+		if !ok {
+			return fmt.Errorf("failed to get current server address")
+		}
 
-			if len(args) > 2 {
-				return errors.New("The following arguments could be given: <repository>:<version> [model.json]")
-			}
+		if err := token.RefreshTokenIfExpired(
+			cmd,
+			serverAddr,
+			secret,
+			secretStore,
+			idpClient,
+		); err != nil {
+			return fmt.Errorf("failed to refresh expired access token: %w", err)
+		}
 
-			fpath := ""
-			if len(args) == 2 {
-				fpath = args[1]
-			}
+		return nil
+	}
 
-			reader, err := agent.GetReader(fpath, opts.FromStdIn)
-			if err != nil {
-				return err
-			}
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		secret, ok := context.GetCurrentHubSecretFromContext(cmd.Context())
+		if !ok {
+			return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
+		}
 
-			agentBytes, err := agent.GetAgentBytes(reader)
-			if err != nil {
-				return err
-			}
+		hc, err := hubClient.New(config.DefaultHubBackendAddress)
+		if err != nil {
+			return fmt.Errorf("failed to create hub client: %w", err)
+		}
 
-			repoId, tag, err := parseRepoTagId(args[0])
-			if err != nil {
-				return err
-			}
+		if len(args) > 2 {
+			return errors.New("The following arguments could be given: <repository>:<version> [model.json]")
+		}
 
-			ctx := metadata.NewOutgoingContext(cmd.Context(), metadata.Pairs("authorization", fmt.Sprintf("Bearer %s", secret.AccessToken)))
-			resp, err := hc.PushAgent(ctx, agentBytes, repoId, tag)
-			if err != nil {
-				return fmt.Errorf("failed to push agent: %w", err)
-			}
+		fpath := ""
+		if len(args) == 2 {
+			fpath = args[1]
+		}
 
-			fmt.Fprintln(cmd.OutOrStdout(), resp.Id.Digest)
+		reader, err := agent.GetReader(fpath, opts.FromStdIn)
+		if err != nil {
+			return err
+		}
 
-			return nil
-		},
+		agentBytes, err := agent.GetAgentBytes(reader)
+		if err != nil {
+			return err
+		}
+
+		repoId, tag, err := parseRepoTagId(args[0])
+		if err != nil {
+			return err
+		}
+
+		ctx := metadata.NewOutgoingContext(cmd.Context(), metadata.Pairs("authorization", fmt.Sprintf("Bearer %s", secret.AccessToken)))
+		resp, err := hc.PushAgent(ctx, agentBytes, repoId, tag)
+		if err != nil {
+			return fmt.Errorf("failed to push agent: %w", err)
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), resp.Id.Digest)
+
+		return nil
 	}
 
 	return cmd

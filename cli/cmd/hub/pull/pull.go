@@ -19,12 +19,17 @@ import (
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull {<digest> | <repository>:<version> }",
-		Short: "Pull a resource from Directory",
+		Short: "Pull an agent from Agent Hub",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// TODO: Backend address should be fetched from the context
 			secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
 			if !ok {
-				return nil
+				return fmt.Errorf("could not get current hub secret from context")
+			}
+
+			secretStore, ok := contextUtils.GetSecretStoreFromContext(cmd.Context())
+			if !ok {
+				return fmt.Errorf("failed to get secret store from context")
 			}
 
 			idpClient, ok := contextUtils.GetIdpClientFromContext(cmd.Context())
@@ -32,13 +37,20 @@ func NewCommand() *cobra.Command {
 				return fmt.Errorf("failed to get IDP client from context")
 			}
 
-			newSecret, isUpdated, err := token.RefreshTokenIfExpired(idpClient, secret.TokenSecret, secret.ClientId)
+			serverAddr, ok := contextUtils.GetCurrentServerAddressFromContext(cmd.Context())
+			if !ok {
+				return fmt.Errorf("failed to get current server address")
+			}
+
+			err := token.RefreshTokenIfExpired(
+				cmd,
+				serverAddr,
+				secret,
+				secretStore,
+				idpClient,
+			)
 			if err != nil {
 				return fmt.Errorf("failed to refresh expired access token: %w", err)
-			}
-			if isUpdated {
-				secret.TokenSecret = newSecret
-				cmd.SetContext(contextUtils.SetCurrentHubSecretForContext(cmd.Context(), secret))
 			}
 
 			return nil

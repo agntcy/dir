@@ -2,11 +2,9 @@ package options
 
 import (
 	"errors"
-
-	"github.com/spf13/cobra"
 )
 
-type RegisterFn func(cmd *cobra.Command) error
+type RegisterFn func() error
 type CompleteFn func()
 
 type BaseOption struct {
@@ -15,7 +13,10 @@ type BaseOption struct {
 	err          error
 
 	registerFns []RegisterFn
-	completeFns []CompleteFn
+}
+
+func NewBaseOption() *BaseOption {
+	return &BaseOption{}
 }
 
 func (o *BaseOption) addErr(err error) {
@@ -30,37 +31,18 @@ func (o *BaseOption) CheckError() error {
 	return o.err
 }
 
-func (o *BaseOption) Register(cmd *cobra.Command) {
-	if o.isRegistered {
-		return
-	}
+func (o *BaseOption) Register() error {
 	defer func() {
 		o.isRegistered = true
 	}()
 	for _, fn := range o.registerFns {
-		if err := fn(cmd); err != nil {
-			o.addErr(err)
-			return
+		if err := fn(); err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
-func (o *BaseOption) Complete() {
-	if o.isCompleted {
-		return
-	}
-	defer func() {
-		o.isCompleted = true
-	}()
-	for _, fn := range o.completeFns {
-		fn()
-	}
-}
-
-func (o *BaseOption) AddRegisterFns(fns []RegisterFn) {
-	o.registerFns = append(o.registerFns, fns...)
-}
-
-func (o *BaseOption) AddCompleteFn(fns []CompleteFn) {
-	o.completeFns = append(o.completeFns, fns...)
+func (o *BaseOption) AddRegisterFns(fns RegisterFn) {
+	o.registerFns = append(o.registerFns, fns)
 }
