@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+import "saas/v1alpha1/category.proto";
+import "saas/v1alpha1/locator.proto";
+
+message Agent {
+  string id = 1;
+
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+
+  string name_ref = 4;
+  string name = 5;
+  string version = 6;
+  string digest = 7;
+  string blob_ref = 8;
+
+  map<string, string> annotations = 9;
+  map<string, google.protobuf.Any> security = 10;
+  map<string, google.protobuf.Any> framework = 11;
+
+  repeated Category categories = 13;
+  repeated Locator locators = 14;
+
+  optional string repository_id = 15;
+}
