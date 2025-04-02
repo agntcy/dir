@@ -8,9 +8,11 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/agntcy/dir/cli/config"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
+	"github.com/agntcy/dir/cli/secretstore"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/token"
 	"github.com/agntcy/hub/api/v1alpha1"
@@ -70,14 +72,23 @@ func NewCommand() *cobra.Command {
 				return fmt.Errorf("invalid agent id: %w", err)
 			}
 
-			return runCmd(cmd.Context(), hc, agentId)
+			secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
+			if !ok {
+				return fmt.Errorf("could not get current hub secret from context")
+			}
+
+			return runCmd(cmd.Context(), hc, agentId, secret)
 		},
 	}
 
 	return cmd
 }
 
-func runCmd(ctx context.Context, hc hubClient.Client, agentId *v1alpha1.AgentIdentifier) error {
+func runCmd(ctx context.Context, hc hubClient.Client, agentId *v1alpha1.AgentIdentifier, secret *secretstore.HubSecret) error {
+	if secret.TokenSecret != nil && secret.AccessToken != "" {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", fmt.Sprintf("Bearer %s", secret.TokenSecret.AccessToken)))
+	}
+
 	model, err := hc.PullAgent(ctx, &v1alpha1.PullAgentRequest{
 		Id: agentId,
 	})
