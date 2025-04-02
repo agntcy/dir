@@ -15,11 +15,12 @@ import (
 type ContextKeyType string
 
 const (
-	DirClientContextKey        ContextKeyType = "ContextDirClient"
-	HubClientContextKey        ContextKeyType = "ContextHubClient"
-	SecretStoreContextKey      ContextKeyType = "ContextSecretStore"
-	CurrentHubSecretContextKey ContextKeyType = "ContextCurrentHubSecret"
-	IdpClientContextKey        ContextKeyType = "ContextIdpClient"
+	DirClientContextKey            ContextKeyType = "ContextDirClient"
+	HubClientContextKey            ContextKeyType = "ContextHubClient"
+	SecretStoreContextKey          ContextKeyType = "ContextSecretStore"
+	CurrentHubSecretContextKey     ContextKeyType = "ContextCurrentHubSecret"
+	IdpClientContextKey            ContextKeyType = "ContextIdpClient"
+	CurrentServerAddressContextKey ContextKeyType = "ContextCurrentServerAddress"
 )
 
 func SetDirClientForContext(ctx context.Context, c *client.Client) context.Context {
@@ -60,6 +61,14 @@ func SetIdpClientForContext(ctx context.Context, c idp.Client) context.Context {
 
 func GetIdpClientFromContext(ctx context.Context) (idp.Client, bool) {
 	return getCliContext[idp.Client](ctx, IdpClientContextKey)
+}
+
+func SetCurrentServerAddressForContext(ctx context.Context, address string) context.Context {
+	return setCliContext(ctx, CurrentServerAddressContextKey, address)
+}
+
+func GetCurrentServerAddressFromContext(ctx context.Context) (string, bool) {
+	return getCliContext[string](ctx, CurrentServerAddressContextKey)
 }
 
 func setCliContext[T any](ctx context.Context, key ContextKeyType, c T) context.Context {
