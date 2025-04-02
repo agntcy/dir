@@ -21,6 +21,7 @@ const (
 	paramGrantType           = "grant_type"
 	paramCode                = "code"
 	paramCodeVerifier        = "code_verifier"
+	paramRefreshToken        = "refresh_token"
 
 	headerAccept       = "Accept"
 	headerContentType  = "Content-Type"
@@ -74,11 +75,29 @@ type LogoutResponse struct {
 	Response *http.Response
 }
 
-type IdpClient interface {
+type RefreshTokenRequest struct {
+	ClientId     string
+	RefreshToken string
+}
+
+type RefreshTokenResponse struct {
+	Response *http.Response
+	Body     []byte
+	Token    *Token
+	Error    *ErrorResponse
+}
+
+type ErrorResponse struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+}
+
+type Client interface {
 	AuthorizeUrl(r *AuthorizeRequest) string
 
 	RequestToken(request *RequestTokenRequest) (*RequestTokenResponse, error)
 	Logout(request *LogoutRequest) (*LogoutResponse, error)
+	RefreshToken(*RefreshTokenRequest) (*RefreshTokenResponse, error)
 }
 
 type idpClient struct {
@@ -117,16 +136,23 @@ func (i *idpClient) RequestToken(request *RequestTokenRequest) (*RequestTokenRes
 		return nil, ErrParsingResponse
 	}
 
-	var t *Token
-	err = json.Unmarshal(body, &t)
-	if err != nil {
-		return nil, ErrParsingResponse
+	if resp.StatusCode == http.StatusOK {
+		var t *Token
+		err = json.Unmarshal(body, &t)
+		if err != nil {
+			return nil, ErrParsingResponse
+		}
+
+		return &RequestTokenResponse{
+			Token:    t,
+			Body:     body,
+			Response: resp,
+		}, nil
 	}
 
 	return &RequestTokenResponse{
-		Token:    t,
-		Body:     body,
 		Response: resp,
+		Body:     body,
 	}, nil
 }
 
@@ -171,5 +197,64 @@ func (i *idpClient) Logout(request *LogoutRequest) (*LogoutResponse, error) {
 	return &LogoutResponse{
 		Body:     body,
 		Response: resp,
+	}, nil
+}
+
+func (i *idpClient) RefreshToken(req *RefreshTokenRequest) (*RefreshTokenResponse, error) {
+	data := url.Values{}
+	data.Set(paramGrantType, "refresh_token")
+	data.Set(paramClientId, req.ClientId)
+	data.Set(paramRefreshToken, req.RefreshToken)
+
+	tokenReq, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/v1/token", i.BaseUrl), strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("%w: token request", ErrRequestCreation)
+	}
+
+	tokenReq.Header.Add(headerAccept, "application/json")
+	tokenReq.Header.Add(headerContentType, "application/x-www-form-urlencoded")
+	tokenReq.Header.Add(headerCacheControl, "no-cache")
+
+	resp, err := http.DefaultClient.Do(tokenReq)
+	if err != nil {
+		return nil, fmt.Errorf("%w: token request", ErrRequestSending)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, ErrParsingResponse
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		var t *Token
+		err = json.Unmarshal(body, &t)
+		if err != nil {
+			return nil, ErrParsingResponse
+		}
+
+		return &RefreshTokenResponse{
+			Response: resp,
+			Body:     body,
+			Token:    t,
+		}, nil
+	}
+
+	if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusUnauthorized {
+		var e *ErrorResponse
+		err = json.Unmarshal(body, &e)
+		if err != nil {
+			return nil, ErrParsingResponse
+		}
+		return &RefreshTokenResponse{
+			Response: resp,
+			Body:     body,
+			Error:    e,
+		}, nil
+	}
+
+	return &RefreshTokenResponse{
+		Response: resp,
+		Body:     body,
 	}, nil
 }

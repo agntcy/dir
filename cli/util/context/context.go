@@ -6,6 +6,7 @@ package context
 import (
 	"context"
 
+	"github.com/agntcy/dir/cli/hub/idp"
 	"github.com/agntcy/dir/cli/secretstore"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/hub/api/v1alpha1"
@@ -18,6 +19,7 @@ const (
 	HubClientContextKey        ContextKeyType = "ContextHubClient"
 	SecretStoreContextKey      ContextKeyType = "ContextSecretStore"
 	CurrentHubSecretContextKey ContextKeyType = "ContextCurrentHubSecret"
+	IdpClientContextKey        ContextKeyType = "ContextIdpClient"
 )
 
 func SetDirClientForContext(ctx context.Context, c *client.Client) context.Context {
@@ -50,6 +52,14 @@ func SetCurrentHubSecretForContext(ctx context.Context, secret *secretstore.HubS
 
 func GetCurrentHubSecretFromContext(ctx context.Context) (*secretstore.HubSecret, bool) {
 	return getCliContext[*secretstore.HubSecret](ctx, CurrentHubSecretContextKey)
+}
+
+func SetIdpClientForContext(ctx context.Context, c idp.Client) context.Context {
+	return setCliContext(ctx, IdpClientContextKey, c)
+}
+
+func GetIdpClientFromContext(ctx context.Context) (idp.Client, bool) {
+	return getCliContext[idp.Client](ctx, IdpClientContextKey)
 }
 
 func setCliContext[T any](ctx context.Context, key ContextKeyType, c T) context.Context {
