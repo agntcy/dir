@@ -12,6 +12,8 @@ import (
 	"github.com/agntcy/dir/cli/cmd/build"
 	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
+	"github.com/agntcy/dir/cli/cmd/delete"
+	"github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/network"
