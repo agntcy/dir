@@ -6,36 +6,50 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/hub/idp"
 	"github.com/agntcy/dir/cli/secretstore"
+	ctxUtils "github.com/agntcy/dir/cli/util/context"
 )
 
-func RefreshTokenIfExpired(idpClient idp.Client, token *secretstore.TokenSecret, clientId string) (*secretstore.TokenSecret, bool, error) {
-	if isTokenExpired(token.AccessToken) {
-		if token.RefreshToken == "" {
-			return nil, false, fmt.Errorf("access token is expired and refresh token is empty")
+func RefreshTokenIfExpired(cmd *cobra.Command, addr string, secret *secretstore.HubSecret, secretStore secretstore.SecretStore, idpClient idp.Client) error {
+	if secret.AccessToken != "" && isTokenExpired(secret.AccessToken) {
+		if secret.RefreshToken == "" {
+			return fmt.Errorf("access token is expired and refresh token is empty")
 		}
 
 		resp, err := idpClient.RefreshToken(&idp.RefreshTokenRequest{
-			RefreshToken: token.RefreshToken,
-			ClientId:     clientId,
+			RefreshToken: secret.RefreshToken,
+			ClientId:     secret.ClientId,
 		})
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to refresh token: %w", err)
+			return fmt.Errorf("failed to refresh token: %w", err)
 		}
 		if resp.Response.StatusCode != http.StatusOK {
-			return nil, false, fmt.Errorf("failed to refresh token: %s", string(resp.Body))
+			return fmt.Errorf("failed to refresh token: %s", string(resp.Body))
 		}
 
-		return &secretstore.TokenSecret{
-			IdToken:      resp.Token.IdToken,
-			RefreshToken: resp.Token.RefreshToken,
+		newTokenSecret := &secretstore.TokenSecret{
 			AccessToken:  resp.Token.AccessToken,
-		}, true, nil
+			RefreshToken: resp.Token.RefreshToken,
+			IdToken:      resp.Token.IdToken,
+		}
+		secret.TokenSecret = newTokenSecret
+
+		// Update context with new token
+		newCtx := ctxUtils.SetCurrentHubSecretForContext(cmd.Context(), secret)
+		cmd.SetContext(newCtx)
+
+		// Update secret store with new token
+		if err = secretStore.SaveHubSecret(addr, secret); err != nil {
+			return fmt.Errorf("failed to save hub secret: %w", err)
+		}
+
+		return nil
 	}
 
-	return token, false, nil
+	return nil
 }
 
 func isTokenExpired(token string) bool {

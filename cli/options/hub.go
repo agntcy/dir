@@ -18,32 +18,22 @@ type HubOptions struct {
 	ServerAddress string
 }
 
-func NewHubOptions(bases ...*BaseOption) *HubOptions {
-	base := &BaseOption{}
-	if len(bases) > 0 {
-		base = bases[0]
-	}
-
+func NewHubOptions(base *BaseOption, cmd *cobra.Command) *HubOptions {
 	hubOpts := &HubOptions{
 		BaseOption: base,
 	}
 
-	hubOpts.AddRegisterFns([]RegisterFn{
-		func(cmd *cobra.Command) error {
+	hubOpts.AddRegisterFns(
+		func() error {
 			flags := cmd.Flags()
 			flags.String(hubAddressFlagName, config.DefaultHubAddress, "AgentHub address")
 			if err := viper.BindPFlag(hubAddressConfigPath, flags.Lookup(hubAddressFlagName)); err != nil {
 				return err
 			}
+			hubOpts.ServerAddress = viper.GetString(hubAddressConfigPath)
 			return nil
 		},
-	})
-
-	hubOpts.AddCompleteFn([]CompleteFn{
-		func() {
-			hubOpts.ServerAddress = viper.GetString(hubAddressConfigPath)
-		},
-	})
+	)
 
 	return hubOpts
 }

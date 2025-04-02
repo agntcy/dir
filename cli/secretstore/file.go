@@ -29,18 +29,10 @@ func (s *FileSecretStore) GetHubSecret(secretName string) (*HubSecret, error) {
 		return nil, fmt.Errorf("%w: %s", ErrSecretNotFound, secretName)
 	}
 
-	if err = secret.Validate(); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInvalidSecret, err)
-	}
-
 	return secret, nil
 }
 
 func (s *FileSecretStore) SaveHubSecret(secretName string, secret *HubSecret) error {
-	if err := secret.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidSecret, err)
-	}
-
 	file, err := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
