@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+message Locator {
+  string id = 1;
+  string agent_id = 2;
+  string location = 3;
+}
