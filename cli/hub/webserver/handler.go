@@ -20,8 +20,8 @@ type SessionStore struct {
 
 type Config struct {
 	ClientId           string
-	FrontendUrl        string
-	IdpUrl             string
+	IdpFrontendUrl     string
+	IdpBackendUrl      string
 	LocalWebserverPort int
 
 	SessionStore *SessionStore
@@ -52,8 +52,8 @@ func NewHandler(config *Config) *Handler {
 
 	return &Handler{
 		clientId:          config.ClientId,
-		frontendUrl:       config.FrontendUrl,
-		idpUrl:            config.IdpUrl,
+		frontendUrl:       config.IdpFrontendUrl,
+		idpUrl:            config.IdpBackendUrl,
 		localWebserverUrl: fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort),
 
 		sessionStore: config.SessionStore,

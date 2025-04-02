@@ -7,17 +7,15 @@ type PushOptions struct {
 	FromStdIn bool
 }
 
-func NewPushOptions() *PushOptions {
+func NewPushOptions(base *BaseOption, cmd *cobra.Command) *PushOptions {
 	opts := &PushOptions{
-		BaseOption: &BaseOption{},
+		BaseOption: base,
 	}
 
-	opts.AddRegisterFns([]RegisterFn{
-		func(cmd *cobra.Command) error {
-			flags := cmd.Flags()
-			flags.BoolVar(&opts.FromStdIn, "stdin", false, "Read from stdin")
-			return nil
-		},
+	opts.AddRegisterFns(func() error {
+		flags := cmd.Flags()
+		flags.BoolVar(&opts.FromStdIn, "stdin", false, "Read from stdin")
+		return nil
 	})
 
 	return opts

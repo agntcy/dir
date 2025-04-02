@@ -16,8 +16,12 @@ var (
 )
 
 type AuthConfig struct {
-	ClientId   string `json:"IAM_OIDC_CLIENT_ID"`
-	IdpAddress string `json:"IAM_OIDC_ISSUER"`
+	IdpProductId       string `json:"IAM_PRODUCT_ID"`
+	ClientId           string `json:"IAM_OIDC_CLIENT_ID"`
+	IdpIssuerAddress   string `json:"IAM_OIDC_ISSUER"`
+	IdpBackendAddress  string `json:"IAM_API"`
+	IdpFrontendAddress string `json:"IAM_UI"`
+	HubBackendAddress  string `json:"HUB_API"`
 }
 
 func FetchAuthConfig(frontedUrl string) (*AuthConfig, error) {
@@ -25,7 +29,7 @@ func FetchAuthConfig(frontedUrl string) (*AuthConfig, error) {
 		return nil, ErrInvalidFrontendURL
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/idp_config.json", frontedUrl), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/config.json", frontedUrl), nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}
