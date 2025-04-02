@@ -7,6 +7,10 @@ import (
 
 	"github.com/agntcy/dir/cli/cmd/hub/login"
 	"github.com/agntcy/dir/cli/cmd/hub/logout"
+	"github.com/agntcy/dir/cli/cmd/hub/pull"
+	"github.com/agntcy/dir/cli/cmd/hub/push"
+	"github.com/agntcy/dir/cli/hub/auth"
+	"github.com/agntcy/dir/cli/hub/idp"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 )
@@ -18,34 +22,44 @@ func NewHubCommand() *cobra.Command {
 		Use:   "hub",
 		Short: "Manage the Phoenix SaaS hub",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.Complete()
-			if err := opts.CheckError(); err != nil {
-				return err
-			}
-
 			secretStore, ok := ctxUtils.GetSecretStoreFromContext(cmd.Context())
 			if !ok {
 				return fmt.Errorf("failed to get secret store from context")
 			}
 
+			ctx := cmd.Context()
+			var idpAddress string
 			secret, err := secretStore.GetHubSecret(opts.ServerAddress)
-			if err != nil {
-				return nil
+			if err == nil {
+				ctx = ctxUtils.SetCurrentHubSecretForContext(ctx, secret)
+				if secret.IdpAddress != "" {
+					idpAddress = secret.IdpAddress
+				}
 			}
 
-			newCtx := ctxUtils.SetCurrentHubSecretForContext(cmd.Context(), secret)
-			cmd.SetContext(newCtx)
+			if idpAddress == "" {
+				authConfig, err := auth.FetchAuthConfig(opts.ServerAddress)
+				if err != nil {
+					return fmt.Errorf("failed to fetch auth config: %w", err)
+				}
+				idpAddress = authConfig.IdpAddress
+			}
+
+			idpClient := idp.NewClient(idpAddress)
+			ctx = ctxUtils.SetIdpClientForContext(ctx, idpClient)
+
+			cmd.SetContext(ctx)
 
 			return nil
 		},
 		TraverseChildren: true,
 	}
 
-	opts.Register(cmd)
-
 	cmd.AddCommand(
 		login.NewCommand(opts),
 		logout.NewCommand(opts),
+		push.NewCommand(opts, options.NewPushOptions()),
+		pull.NewCommand(),
 	)
 
 	return cmd
