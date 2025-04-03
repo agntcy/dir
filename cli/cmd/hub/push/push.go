@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/agntcy/dir/cli/config"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/agent"
@@ -68,7 +67,7 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 			return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
 		}
 
-		hc, err := hubClient.New(config.DefaultHubBackendAddress)
+		hc, err := hubClient.New(secret.HubBackendAddress)
 		if err != nil {
 			return fmt.Errorf("failed to create hub client: %w", err)
 		}

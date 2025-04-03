@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/agntcy/dir/cli/config"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/hub/secretstore"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
@@ -62,7 +61,12 @@ func NewCommand() *cobra.Command {
 				return fmt.Errorf("agent id is the only required argument")
 			}
 
-			hc, err := hubClient.New(config.DefaultHubBackendAddress)
+			secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
+			if !ok {
+				return fmt.Errorf("could not get current hub secret from context")
+			}
+
+			hc, err := hubClient.New(secret.HubBackendAddress)
 			if err != nil {
 				return fmt.Errorf("failed to create hub client: %w", err)
 			}
@@ -70,11 +74,6 @@ func NewCommand() *cobra.Command {
 			agentId, err := parseAgentId(args[0])
 			if err != nil {
 				return fmt.Errorf("invalid agent id: %w", err)
-			}
-
-			secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
-			if !ok {
-				return fmt.Errorf("could not get current hub secret from context")
 			}
 
 			return runCmd(cmd.Context(), hc, agentId, secret)
