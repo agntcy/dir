@@ -12,7 +12,7 @@ import (
 
 	"github.com/agntcy/dir/cli/config"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
-	"github.com/agntcy/dir/cli/secretstore"
+	"github.com/agntcy/dir/cli/hub/secretstore"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/token"
 	"github.com/agntcy/hub/api/v1alpha1"

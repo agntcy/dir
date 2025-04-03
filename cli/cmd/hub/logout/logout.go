@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/hub/idp"
+	secretstore2 "github.com/agntcy/dir/cli/hub/secretstore"
 	"github.com/agntcy/dir/cli/options"
-	"github.com/agntcy/dir/cli/secretstore"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 )
 
@@ -48,7 +48,7 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func runCmd(outStream io.Writer, opts *options.HubOptions, secret *secretstore.HubSecret, secretStore secretstore.SecretStore, idpClient idp.Client) error {
+func runCmd(outStream io.Writer, opts *options.HubOptions, secret *secretstore2.HubSecret, secretStore secretstore2.SecretStore, idpClient idp.Client) error {
 	resp, err := idpClient.Logout(&idp.LogoutRequest{IdToken: secret.IdToken})
 	if err != nil {
 		return fmt.Errorf("failed to logout: %w", err)
