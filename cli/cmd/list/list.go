@@ -7,15 +7,17 @@ import (
 	"errors"
 
 	"github.com/agntcy/dir/cli/cmd/list/info"
+	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/context"
 
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "list",
-	Short: "Search for published records locally or across the network",
-	Long: `Search for published data locally or across the network.
+func NewCommand(option *options.BaseOption) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "Search for published records locally or across the network",
+		Long: `Search for published data locally or across the network.
 This API supports both unicast- mode for routing to specific objects,
 and multicast mode for attribute-based matching and routing.
 
@@ -45,13 +47,20 @@ To search for specific records across the network, you must specify
 matching labels passed as arguments. The matching is performed using
 exact set-membership rule.
 
-`,
-	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
-		return runCommand(cmd, args)
-	},
+`}
+
+	opts := options.NewListOptions(option, cmd)
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error { //nolint:gocritic
+		return runCommand(cmd, opts, args)
+	}
+
+	cmd.AddCommand(info.NewCommand(option))
+
+	return cmd
 }
 
-func runCommand(cmd *cobra.Command, labels []string) error {
+func runCommand(cmd *cobra.Command, opts *options.ListOptions, labels []string) error {
 	// Get the client from the context.
 	client, ok := context.GetDirClientFromContext(cmd.Context())
 	if !ok {
@@ -73,17 +82,4 @@ func runCommand(cmd *cobra.Command, labels []string) error {
 	}
 
 	return listPeer(cmd, client, opts.PeerID, labels)
-}
-
-func init() {
-	// Common flags for all list subcommands
-	// TODO: enable the commands below and wire them in where needed.
-	//
-	// cmd.Flags().Int("max-hops", 0, "Limit the number of routing hops when traversing the network")
-	// cmd.Flags().Bool("sync", false, "Sync the discovered data into our local routing table")
-	// cmd.Flags().Bool("pull", false, "Pull the discovered data into our local storage layer")
-	// cmd.Flags().Bool("verify", false, "Verify each received record when pulling data")
-	// cmd.Flags().StringSlice("allowed", nil, "Allow-list specific peer IDs during network traversal")
-	// cmd.Flags().StringSlice("blocked", nil, "Block-list specific peer IDs during network traversal")
-	Command.AddCommand(info.Command)
 }

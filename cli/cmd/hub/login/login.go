@@ -10,11 +10,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/config"
-	"github.com/agntcy/dir/cli/hub/auth"
+	configUtils "github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/idp"
+	"github.com/agntcy/dir/cli/hub/secretstore"
 	"github.com/agntcy/dir/cli/hub/webserver"
 	"github.com/agntcy/dir/cli/options"
-	"github.com/agntcy/dir/cli/secretstore"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 )
 
@@ -32,7 +32,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 			}
 
 			// Get auth config
-			authConfig, err := auth.FetchAuthConfig(opts.ServerAddress)
+			authConfig, err := configUtils.FetchAuthConfig(opts.ServerAddress)
 			if err != nil {
 				return fmt.Errorf("failed to fetch auth config: %w", err)
 			}
@@ -48,7 +48,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client, authConfig *auth.AuthConfig, secretStore secretstore.SecretStore) error {
+func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client, authConfig *configUtils.AuthConfig, secretStore secretstore.SecretStore) error {
 
 	// Set up the webserver
 	//// Init the error channel

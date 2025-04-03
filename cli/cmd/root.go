@@ -21,8 +21,8 @@ import (
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/config"
+	"github.com/agntcy/dir/cli/hub/secretstore"
 	"github.com/agntcy/dir/cli/options"
-	"github.com/agntcy/dir/cli/secretstore"
 	contextUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/file"
 	"github.com/agntcy/dir/cli/cmd/unpublish"
@@ -61,18 +61,21 @@ func NewRootCommand(baseOption *options.BaseOption) *cobra.Command {
 	cobra.EnableTraverseRunHooks = true
 	rootCmd.AddCommand(
 		// local commands
-		version.Command,
-		build.Command,
+		build.NewCommand(baseOption),
+		version.NewCommand(),
 		// storage commands
-		info.Command,
-		pull.Command,
-		push.Command,
-		delete.Command,
+		info.NewCommand(),
+		pull.NewCommand(baseOption),
+		push.NewCommand(baseOption),
+		delete.NewCommand(),
 		// routing commands
 		publish.Command,
 		list.Command,
 		unpublish.Command,
 		network.Command,
+		publish.NewCommand(baseOption),
+		list.NewCommand(baseOption),
+		unpublish.NewCommand(baseOption),
 		// hub commands
 		hub.NewHubCommand(baseOption),
 	)

@@ -13,6 +13,7 @@ import (
 	"os"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util/context"
 
@@ -20,10 +21,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "push",
-	Short: "Push agent data model to Directory server",
-	Long: `This command pushes the agent data model to local storage 
+func NewCommand(baseOption *options.BaseOption) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "push",
+		Short: "Push agent data model to Directory server",
+		Long: `This command pushes the agent data model to local storage 
 layer via Directory API. 
 The data is stored into content-addressable object store.
 
@@ -44,7 +46,11 @@ Usage examples:
 	dirctl pull <digest> | dirctl push --stdin
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	}
+
+	opts := options.NewPushOptions(baseOption, cmd)
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		var fpath string
 		if len(args) > 1 {
 			return errors.New("only one file path is allowed")
@@ -53,13 +59,15 @@ Usage examples:
 		}
 
 		// get source
-		source, err := getReader(fpath, opts.FromStdin)
+		source, err := getReader(fpath, opts.FromStdIn)
 		if err != nil {
 			return err
 		}
 
 		return runCommand(cmd, source)
-	},
+	}
+
+	return cmd
 }
 
 func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
