@@ -13,23 +13,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete agent model from Directory store",
-	Long: `This command deletes an agent model from the Directory store.
+func NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "delete",
+		Short: "Delete agent model from Directory store",
+		Long: `This command deletes an agent model from the Directory store.
 
 Usage example:
 
 	dirctl delete <digest>
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return errors.New("digest is a required argument")
-		}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("digest is a required argument")
+			}
 
-		return runCommand(cmd, args[0])
-	},
+			return runCommand(cmd, args[0])
+		},
+	}
+
+	return cmd
 }
 
 func runCommand(cmd *cobra.Command, digest string) error {

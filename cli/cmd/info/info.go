@@ -15,24 +15,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "info",
-	Short: "Check info about an object in Directory store",
-	Long: `Lookup and get basic metadata about an object
+func NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "info",
+		Short: "Check info about an object in Directory store",
+		Long: `Lookup and get basic metadata about an object
 pushed to the Directory store.
 
 Usage example:
 
 	dirctl info <digest>
-
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return errors.New("digest is a required argument")
-		}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("digest is a required argument")
+			}
 
-		return runCommand(cmd, args[0])
-	},
+			return runCommand(cmd, args[0])
+		},
+	}
+
+	return cmd
 }
 
 func runCommand(cmd *cobra.Command, digest string) error {

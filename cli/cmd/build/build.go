@@ -10,36 +10,41 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	oasf "github.com/agntcy/dir/api/core/v1alpha1/oasf-validator"
 	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/builder/config"
+	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/spf13/cobra"
 )
 
 const ConfigFile = "build.config.yml"
 
-var Command = &cobra.Command{
-	Use:   "build",
-	Short: "Build agent model to prepare for pushing",
-	Long: `
+func NewCommand(baseOption *options.BaseOption) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "build",
+		Short: "Build agent model to prepare for pushing",
+		Long: `
 This command handles the build process for agent data models
 from source code. It generates a JSON object that 
 describes an agent and satisfies the **Open Agent Schema Framework** specification.
 
 Usage examples:
 
-1. When build config is present under the agent source code:
-
+	When config is present under the agent source code
 	dirctl build ./path-to-agent
 
-2. When build config is either not present or we want to override config from path:
-
+	When config is either not present or we want to override config from path
 	dirctl build ./path-to-agent --config build.yml
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	}
+
+	opts := options.NewBuildOptions(baseOption, cmd)
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		var path string
 		if len(args) == 0 {
 			path = "." //nolint:ineffassign
@@ -49,12 +54,13 @@ Usage examples:
 		} else {
 			return errors.New("arg missing: only one path can be specified allowed")
 		}
+		return runCommand(cmd, opts, path)
+	}
 
-		return runCommand(cmd, path)
-	},
+	return cmd
 }
 
-func runCommand(cmd *cobra.Command, agentPath string) error {
+func runCommand(cmd *cobra.Command, opts *options.BuildOptions, agentPath string) error {
 	// Get configuration file path
 	configFile := opts.ConfigFile
 	if configFile == "" {

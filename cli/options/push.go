@@ -14,7 +14,10 @@ func NewPushOptions(base *BaseOption, cmd *cobra.Command) *PushOptions {
 
 	opts.AddRegisterFns(func() error {
 		flags := cmd.Flags()
-		flags.BoolVar(&opts.FromStdIn, "stdin", false, "Read from stdin")
+		flags.BoolVar(&opts.FromStdIn, "stdin", false,
+			"Read compiled data from standard input. Useful for piping. Reads from file if empty. "+
+				"Ignored if file is provided as an argument.",
+		)
 		return nil
 	})
 

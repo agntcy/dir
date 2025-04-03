@@ -9,16 +9,18 @@ import (
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util/context"
 
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "pull",
-	Short: "Pull agent model from Directory server",
-	Long: `This command pulls the agent data model from Directory API. 
+func NewCommand(baseOption *options.BaseOption) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "pull",
+		Short: "Pull agent model from Directory server",
+		Long: `This command pulls the agent data model from Directory API. 
 The data can be validated against its hash, as the returned object
 is content-addressable.
 
@@ -32,17 +34,22 @@ Usage examples:
 
 	dirctl pull $(dirctl build | dirctl push --stdin)
 
-`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+`}
+
+	opts := options.NewPullOptions(baseOption, cmd)
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return errors.New("digest is a required argument")
 		}
 
-		return runCommand(cmd, args[0])
-	},
+		return runCommand(cmd, opts, args[0])
+	}
+
+	return cmd
 }
 
-func runCommand(cmd *cobra.Command, digest string) error {
+func runCommand(cmd *cobra.Command, opts *options.PullOptions, digest string) error {
 	// Get the client from the context.
 	c, ok := context.GetDirClientFromContext(cmd.Context())
 	if !ok {

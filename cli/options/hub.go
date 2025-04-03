@@ -25,7 +25,7 @@ func NewHubOptions(base *BaseOption, cmd *cobra.Command) *HubOptions {
 
 	hubOpts.AddRegisterFns(
 		func() error {
-			flags := cmd.Flags()
+			flags := cmd.PersistentFlags()
 			flags.String(hubAddressFlagName, config.DefaultHubAddress, "AgentHub address")
 			if err := viper.BindPFlag(hubAddressConfigPath, flags.Lookup(hubAddressFlagName)); err != nil {
 				return err
