@@ -1,11 +1,11 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-name: Demo
+name: Dir - Local Demo
 
 description: |
   This workflow demonstrates how to use the Dir CLI with a Kind cluster and Helm chart.
-  It includes steps for building, pushing, publishing, and listing images.
+  It includes steps for building, pushing, publishing, and listing agents.
 
 on:
   workflow_dispatch:
@@ -47,10 +47,6 @@ jobs:
       - name: Load image into Kind
         run: |
           kind load docker-image ${{ inputs.dir-apiserver-image }}:${{ inputs.dir-version }} --name dir-demo
-
-      - name: Login to OCI Registry
-        run: |
-          helm registry login ghcr.io -u notused -p ${{ secrets.GITHUB_TOKEN }}
 
       # TODO Remove values file once release with fix is available
       - name: Deploy Helm Chart
