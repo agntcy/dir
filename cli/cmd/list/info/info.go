@@ -9,35 +9,46 @@ import (
 	"fmt"
 
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util/context"
 
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "info",
-	Short: "Get summary details about published data",
-	Long: `Get aggregated summary about the data held in your local
+func NewCommand(baseOption *options.BaseOption) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "info",
+		Short: "Get summary details about published data",
+		Long: `Get aggregated summary about the data held in your local
 data store or across the network.	
 
 Usage examples:
 
-1. List summary about locally published data:
-
-	dir list info
+	# List summary about our published data.
+   	dir list info
 	
-2. List summary about published data across the network:
-
+	# List summary about published data by a specific peer.
+   	dir list info --peer <peer-id>
+	
+	# List summary about published data by the whole network.
+	# NOTE: This starts a DHT walk, so it may take a while.
+	# NOTE: Results are not guaranteed to be complete and up-to-date.
    	dir list info --network
 	
 `,
-	RunE: func(cmd *cobra.Command, _ []string) error { //nolint:gocritic
-		return runCommand(cmd)
-	},
+	}
+
+	opts := options.NewListInfoOptions(baseOption, cmd)
+
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error { //nolint:gocritic
+		return runCommand(cmd, opts)
+	}
+
+	return cmd
 }
 
-func runCommand(cmd *cobra.Command) error {
+func runCommand(cmd *cobra.Command, opts *options.ListInfoOptions) error {
 	// Get the client from the context.
 	c, ok := context.GetDirClientFromContext(cmd.Context())
 	if !ok {

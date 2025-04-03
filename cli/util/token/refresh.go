@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/hub/idp"
-	"github.com/agntcy/dir/cli/secretstore"
+	secretstore2 "github.com/agntcy/dir/cli/hub/secretstore"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 )
 
-func RefreshTokenIfExpired(cmd *cobra.Command, addr string, secret *secretstore.HubSecret, secretStore secretstore.SecretStore, idpClient idp.Client) error {
+func RefreshTokenIfExpired(cmd *cobra.Command, addr string, secret *secretstore2.HubSecret, secretStore secretstore2.SecretStore, idpClient idp.Client) error {
 	if secret.AccessToken != "" && isTokenExpired(secret.AccessToken) {
 		if secret.RefreshToken == "" {
 			return fmt.Errorf("access token is expired and refresh token is empty")
@@ -30,7 +30,7 @@ func RefreshTokenIfExpired(cmd *cobra.Command, addr string, secret *secretstore.
 			return fmt.Errorf("failed to refresh token: %s", string(resp.Body))
 		}
 
-		newTokenSecret := &secretstore.TokenSecret{
+		newTokenSecret := &secretstore2.TokenSecret{
 			AccessToken:  resp.Token.AccessToken,
 			RefreshToken: resp.Token.RefreshToken,
 			IdToken:      resp.Token.IdToken,

@@ -7,7 +7,7 @@ import (
 	"context"
 
 	"github.com/agntcy/dir/cli/hub/idp"
-	"github.com/agntcy/dir/cli/secretstore"
+	secretstore2 "github.com/agntcy/dir/cli/hub/secretstore"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/hub/api/v1alpha1"
 )
@@ -39,20 +39,20 @@ func GetHubClientFromContext(ctx context.Context) (v1alpha1.AgentServiceClient, 
 	return getCliContext[v1alpha1.AgentServiceClient](ctx, HubClientContextKey)
 }
 
-func SetSecretStoreForContext(ctx context.Context, s secretstore.SecretStore) context.Context {
+func SetSecretStoreForContext(ctx context.Context, s secretstore2.SecretStore) context.Context {
 	return setCliContext(ctx, SecretStoreContextKey, s)
 }
 
-func GetSecretStoreFromContext(ctx context.Context) (secretstore.SecretStore, bool) {
-	return getCliContext[secretstore.SecretStore](ctx, SecretStoreContextKey)
+func GetSecretStoreFromContext(ctx context.Context) (secretstore2.SecretStore, bool) {
+	return getCliContext[secretstore2.SecretStore](ctx, SecretStoreContextKey)
 }
 
-func SetCurrentHubSecretForContext(ctx context.Context, secret *secretstore.HubSecret) context.Context {
+func SetCurrentHubSecretForContext(ctx context.Context, secret *secretstore2.HubSecret) context.Context {
 	return setCliContext(ctx, CurrentHubSecretContextKey, secret)
 }
 
-func GetCurrentHubSecretFromContext(ctx context.Context) (*secretstore.HubSecret, bool) {
-	return getCliContext[*secretstore.HubSecret](ctx, CurrentHubSecretContextKey)
+func GetCurrentHubSecretFromContext(ctx context.Context) (*secretstore2.HubSecret, bool) {
+	return getCliContext[*secretstore2.HubSecret](ctx, CurrentHubSecretContextKey)
 }
 
 func SetIdpClientForContext(ctx context.Context, c idp.Client) context.Context {

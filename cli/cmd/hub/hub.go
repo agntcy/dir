@@ -10,10 +10,10 @@ import (
 	"github.com/agntcy/dir/cli/cmd/hub/logout"
 	"github.com/agntcy/dir/cli/cmd/hub/pull"
 	"github.com/agntcy/dir/cli/cmd/hub/push"
-	"github.com/agntcy/dir/cli/hub/auth"
+	"github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/idp"
+	secretstore2 "github.com/agntcy/dir/cli/hub/secretstore"
 	"github.com/agntcy/dir/cli/options"
-	"github.com/agntcy/dir/cli/secretstore"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 )
 
@@ -34,22 +34,22 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		}
 
 		ctx := cmd.Context()
-		var secret *secretstore.HubSecret
+		var secret *secretstore2.HubSecret
 		var err error
 
 		secret, err = secretStore.GetHubSecret(opts.ServerAddress)
-		if err != nil && !errors.Is(err, secretstore.ErrSecretNotFound) {
+		if err != nil && !errors.Is(err, secretstore2.ErrSecretNotFound) {
 			return err
 		}
 
 		if secret == nil {
-			var authConfig *auth.AuthConfig
-			authConfig, err = auth.FetchAuthConfig(opts.ServerAddress)
+			var authConfig *config.AuthConfig
+			authConfig, err = config.FetchAuthConfig(opts.ServerAddress)
 			if err != nil {
 				return fmt.Errorf("failed to fetch auth config: %w", err)
 			}
-			secret = &secretstore.HubSecret{
-				AuthConfig: &secretstore.AuthConfig{
+			secret = &secretstore2.HubSecret{
+				AuthConfig: &secretstore2.AuthConfig{
 					ClientId:           authConfig.ClientId,
 					ProductId:          authConfig.IdpProductId,
 					IdpFrontendAddress: authConfig.IdpFrontendAddress,
