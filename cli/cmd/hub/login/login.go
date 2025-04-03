@@ -74,7 +74,7 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client
 	defer server.Shutdown(ctx)
 
 	// Open the browser
-	if err := openBrowser(); err != nil {
+	if err := openBrowser(authConfig); err != nil {
 		return err
 	}
 
@@ -116,9 +116,9 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client
 	return nil
 }
 
-func openBrowser() error {
+func openBrowser(authConfig *configUtils.AuthConfig) error {
 	params := url.Values{}
 	params.Add("redirectUri", fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort))
-	loginPageWithRedirect := fmt.Sprintf("%s?%s", config.DefaultLoginPageAddress, params.Encode())
+	loginPageWithRedirect := fmt.Sprintf("%s/%s/login?%s", authConfig.IdpFrontendAddress, authConfig.IdpProductId, params.Encode())
 	return browser.OpenURL(loginPageWithRedirect)
 }
