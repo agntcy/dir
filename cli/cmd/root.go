@@ -9,6 +9,7 @@ import (
 
 	"github.com/agntcy/dir/cli/cmd/build"
 	"github.com/agntcy/dir/cli/cmd/delete"
+	"github.com/agntcy/dir/cli/cmd/generate"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/publish"
@@ -43,6 +44,8 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
+	generate.Command.Hidden = true
+
 	RootCmd.AddCommand(
 		// local commands
 		version.Command,
@@ -56,6 +59,7 @@ func init() {
 		publish.Command,
 		list.Command,
 		unpublish.Command,
+		generate.Command,
 	)
 }
 
