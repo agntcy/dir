@@ -1,6 +1,7 @@
 package push
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,7 +13,7 @@ import (
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/agent"
-	"github.com/agntcy/dir/cli/util/context"
+	contextUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/token"
 	"github.com/agntcy/hub/api/v1alpha1"
 )
@@ -27,23 +28,23 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		// Check if the user is logged in
-		secret, ok := context.GetCurrentHubSecretFromContext(cmd.Context())
+		secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
 		if !ok || secret.TokenSecret == nil {
 			return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
 		}
 
 		// Check if the access token is expired
-		idpClient, ok := context.GetIdpClientFromContext(cmd.Context())
+		idpClient, ok := contextUtils.GetIdpClientFromContext(cmd.Context())
 		if !ok {
 			return fmt.Errorf("failed to get IDP client from context")
 		}
 
-		secretStore, ok := context.GetSecretStoreFromContext(cmd.Context())
+		secretStore, ok := contextUtils.GetSecretStoreFromContext(cmd.Context())
 		if !ok {
 			return fmt.Errorf("failed to get secret store from context")
 		}
 
-		serverAddr, ok := context.GetCurrentServerAddressFromContext(cmd.Context())
+		serverAddr, ok := contextUtils.GetCurrentServerAddressFromContext(cmd.Context())
 		if !ok {
 			return fmt.Errorf("failed to get current server address")
 		}
@@ -62,7 +63,7 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 	}
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		secret, ok := context.GetCurrentHubSecretFromContext(cmd.Context())
+		secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
 		if !ok {
 			return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
 		}
@@ -96,7 +97,7 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 			return err
 		}
 
-		ctx := metadata.NewOutgoingContext(cmd.Context(), metadata.Pairs("authorization", fmt.Sprintf("Bearer %s", secret.AccessToken)))
+		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("authorization", fmt.Sprintf("Bearer %s", secret.AccessToken)))
 		resp, err := hc.PushAgent(ctx, agentBytes, repoId, tag)
 		if err != nil {
 			return fmt.Errorf("failed to push agent: %w", err)
