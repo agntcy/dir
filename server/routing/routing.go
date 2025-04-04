@@ -9,6 +9,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
 )
 
@@ -18,16 +19,28 @@ type route struct {
 }
 
 func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (types.RoutingAPI, error) {
-	mainRounter := &route{
-		local: newLocal(store, opts.Datastore()),
+	// Create main router
+	mainRounter := &route{}
+
+	// Create routing datastore
+	var dsOpts []datastore.Option
+	if dstoreDir := opts.Config().Routing.DatastoreDir; dstoreDir != "" {
+		dsOpts = append(dsOpts, datastore.WithFsProvider(dstoreDir))
 	}
 
-	remote, err := newRemote(ctx, mainRounter, store, opts)
+	dstore, err := datastore.New(dsOpts...)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
-	mainRounter.remote = remote
+	// Create local router
+	mainRounter.local = newLocal(store, dstore)
+
+	// Create remote router
+	mainRounter.remote, err = newRemote(ctx, mainRounter, store, dstore, opts)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
 
 	return mainRounter, nil
 }

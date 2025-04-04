@@ -20,4 +20,9 @@ type Config struct {
 
 	// Path to asymmetric private key
 	KeyPath string `json:"key_path,omitempty" mapstructure:"key_path"`
+
+	// Path to the routing datastore.
+	// If empty, the routing data will be stored in memory.
+	// If not empty, this dir will be used to store the routing data on disk.
+	DatastoreDir string `json:"datastore_dir,omitempty" mapstructure:"datastore_dir"`
 }

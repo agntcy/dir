@@ -100,6 +100,9 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("oci.local_dir")
 	v.SetDefault("oci.local_dir", "")
 
+	_ = v.BindEnv("oci.cache_dir")
+	v.SetDefault("oci.cache_dir", "")
+
 	_ = v.BindEnv("oci.registry_address")
 	v.SetDefault("oci.registry_address", oci.DefaultRegistryAddress)
 
@@ -125,6 +128,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("routing.key_path")
 	v.SetDefault("routing.key_path", "")
+
+	_ = v.BindEnv("routing.datastore_dir")
+	v.SetDefault("routing.datastore_dir", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

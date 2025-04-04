@@ -7,8 +7,7 @@ package routing.v1alpha1;
 
 import "google/protobuf/empty.proto";
 import "core/v1alpha1/object.proto";
-import "core/v1alpha1/agent.proto";
-import "routing/v1alpha1/routing.proto";
+import "routing/v1alpha1/peer.proto";
 
 // Defines an interface for publication and retrieval
 // of objects across interconnected network.

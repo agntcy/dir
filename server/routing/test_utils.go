@@ -16,7 +16,6 @@ import (
 	"github.com/agntcy/dir/server/store"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
-	"github.com/ipfs/go-datastore"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 )
@@ -59,7 +58,6 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 				BootstrapPeers: bootPeers,
 			},
 		},
-		datastore.NewMapDatastore(),
 	)
 
 	// create new store
