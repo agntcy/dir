@@ -6,10 +6,10 @@ package context
 import (
 	"context"
 
+	"github.com/agntcy/dir/api/hub/v1alpha1"
 	"github.com/agntcy/dir/cli/hub/idp"
 	secretstore2 "github.com/agntcy/dir/cli/hub/secretstore"
 	"github.com/agntcy/dir/client"
-	"github.com/agntcy/hub/api/v1alpha1"
 )
 
 type ContextKeyType string

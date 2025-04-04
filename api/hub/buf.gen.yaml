@@ -6,7 +6,7 @@ managed:
   override:
     - file_option: go_package
       path: saas/v1alpha1
-      value: github.com/cisco-eti/agntcy/hub/api/v1alpha1
+      value: github.com/cisco-eti/agntcy/api/hub/v1alpha1
     - file_option: go_package
       path: core/v1alpha1
       value: github.com/agntcy/dir/api/core/v1alpha1

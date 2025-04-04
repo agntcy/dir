@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package saas.v1alpha1;
-
-message RepoVersionId {
-  string repository_name = 1;
-  string version = 2;
-}

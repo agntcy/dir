@@ -10,12 +10,12 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/agent"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/token"
-	"github.com/agntcy/hub/api/v1alpha1"
 )
 
 func NewCommand(hubOpts *options.HubOptions) *cobra.Command {

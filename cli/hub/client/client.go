@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/hub/api/v1alpha1"
+	"github.com/agntcy/dir/api/hub/v1alpha1"
 )
 
 const chunkSize = 4096 // 4KB

@@ -10,9 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/cmd/build"
-	"github.com/agntcy/dir/cli/cmd/delete"
-	"github.com/agntcy/dir/cli/cmd/hub"
-	"github.com/agntcy/dir/cli/cmd/delete"
+	del "github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
@@ -27,9 +25,6 @@ import (
 	"github.com/agntcy/dir/cli/options"
 	contextUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/file"
-	"github.com/agntcy/dir/cli/cmd/unpublish"
-	"github.com/agntcy/dir/cli/cmd/version"
-	"github.com/agntcy/dir/cli/util"
 	"github.com/agntcy/dir/client"
 )
 
@@ -69,7 +64,7 @@ func NewRootCommand(baseOption *options.BaseOption) *cobra.Command {
 		info.NewCommand(),
 		pull.NewCommand(baseOption),
 		push.NewCommand(baseOption),
-		delete.NewCommand(),
+		del.NewCommand(),
 		// routing commands
 		publish.Command,
 		list.Command,

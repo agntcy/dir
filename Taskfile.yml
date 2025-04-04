@@ -41,7 +41,6 @@ vars:
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
   UV_VERSION: '0.6.1'
   UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
-
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
 
@@ -201,7 +200,7 @@ tasks:
     dir: ./client
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
-  
+
   client:test:python:
     desc: Unit test Python Client code
     deps:
@@ -800,7 +799,7 @@ tasks:
       - chmod +x {{.LICENSEI_BIN}}
     status:
       - test -x {{.LICENSEI_BIN}}
-  
+
   deps:uv:
     desc: Install uv
     internal: true
