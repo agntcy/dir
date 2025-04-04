@@ -17,7 +17,6 @@ import (
 
 	clicmd "github.com/agntcy/dir/cli/cmd"
 	"github.com/agntcy/dir/cli/options"
-
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/opencontainers/go-digest"

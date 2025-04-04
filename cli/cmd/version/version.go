@@ -10,7 +10,6 @@ import (
 )
 
 func NewCommand() *cobra.Command {
-
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the version of the application",

@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package secretstore
 
 import "errors"
@@ -8,5 +11,4 @@ var (
 	ErrMalformedSecret     = errors.New("malformed secret")
 	ErrMalformedSecretFile = errors.New("malformed secret file")
 	ErrSecretNotFound      = errors.New("secret not found")
-	ErrInvalidSecret       = errors.New("invalid secret")
 )

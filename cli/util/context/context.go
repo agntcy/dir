@@ -12,15 +12,15 @@ import (
 	"github.com/agntcy/dir/client"
 )
 
-type ContextKeyType string
+type KeyType string
 
 const (
-	DirClientContextKey            ContextKeyType = "ContextDirClient"
-	HubClientContextKey            ContextKeyType = "ContextHubClient"
-	SecretStoreContextKey          ContextKeyType = "ContextSecretStore"
-	CurrentHubSecretContextKey     ContextKeyType = "ContextCurrentHubSecret"
-	IdpClientContextKey            ContextKeyType = "ContextIdpClient"
-	CurrentServerAddressContextKey ContextKeyType = "ContextCurrentServerAddress"
+	DirClientContextKey            KeyType = "ContextDirClient"
+	HubClientContextKey            KeyType = "ContextHubClient"
+	SecretStoreContextKey          KeyType = "ContextSecretStore"
+	CurrentHubSecretContextKey     KeyType = "ContextCurrentHubSecret"
+	IdpClientContextKey            KeyType = "ContextIdpClient"
+	CurrentServerAddressContextKey KeyType = "ContextCurrentServerAddress"
 )
 
 func SetDirClientForContext(ctx context.Context, c *client.Client) context.Context {
@@ -71,11 +71,11 @@ func GetCurrentServerAddressFromContext(ctx context.Context) (string, bool) {
 	return getCliContext[string](ctx, CurrentServerAddressContextKey)
 }
 
-func setCliContext[T any](ctx context.Context, key ContextKeyType, c T) context.Context {
+func setCliContext[T any](ctx context.Context, key KeyType, c T) context.Context {
 	return context.WithValue(ctx, key, c)
 }
 
-func getCliContext[T any](ctx context.Context, key ContextKeyType) (T, bool) {
+func getCliContext[T any](ctx context.Context, key KeyType) (T, bool) {
 	cli, ok := ctx.Value(key).(T)
 
 	return cli, ok

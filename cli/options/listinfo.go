@@ -1,6 +1,13 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package options
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+)
 
 type ListInfoOptions struct {
 	*BaseOption
@@ -18,9 +25,11 @@ func NewListInfoOptions(baseOption *BaseOption, cmd *cobra.Command) *ListInfoOpt
 		flags := cmd.Flags()
 		flags.StringVar(&opts.PeerID, "peer", "", "Get publication summary for a single peer")
 		flags.BoolVar(&opts.Network, "network", false, "Get publication summary for the network")
+
 		if err := flags.MarkHidden("peer"); err != nil {
-			return err
+			return fmt.Errorf("unable to mark flag 'peer' as hidden: %w", err)
 		}
+
 		cmd.MarkFlagsMutuallyExclusive("peer", "network")
 
 		return nil

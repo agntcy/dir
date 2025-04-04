@@ -1,13 +1,14 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package login
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
-
-	"github.com/pkg/browser"
-	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/config"
 	configUtils "github.com/agntcy/dir/cli/hub/config"
@@ -16,7 +17,11 @@ import (
 	"github.com/agntcy/dir/cli/hub/webserver"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/pkg/browser"
+	"github.com/spf13/cobra"
 )
+
+const timeout = 60 * time.Second
 
 func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 	opts := options.NewLoginOptions(hubOptions)
@@ -24,11 +29,11 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login to the Agent Hub",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Get secret store from context
 			secretStore, ok := ctxUtils.GetSecretStoreFromContext(cmd.Context())
 			if !ok {
-				return fmt.Errorf("failed to get secret store from context")
+				return errors.New("failed to get secret store from context")
 			}
 
 			// Get auth config
@@ -49,7 +54,6 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 }
 
 func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client, authConfig *configUtils.AuthConfig, secretStore secretstore.SecretStore) error {
-
 	// Set up the webserver
 	//// Init the error channel
 	errCh := make(chan error, 1)
@@ -58,20 +62,20 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client
 	sessionStore := &webserver.SessionStore{}
 
 	handler := webserver.NewHandler(&webserver.Config{
-		ClientId:           authConfig.ClientId,
-		IdpFrontendUrl:     authConfig.IdpFrontendAddress,
-		IdpBackendUrl:      authConfig.IdpBackendAddress,
+		ClientID:           authConfig.ClientID,
+		IdpFrontendURL:     authConfig.IdpFrontendAddress,
+		IdpBackendURL:      authConfig.IdpBackendAddress,
 		LocalWebserverPort: config.LocalWebserverPort,
 		IdpClient:          idpClient,
 		SessionStore:       sessionStore,
 		ErrChan:            errCh,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	server := webserver.StartLocalServer(handler, config.LocalWebserverPort, errCh)
-	defer server.Shutdown(ctx)
+	defer server.Shutdown(ctx) //nolint:errcheck
 
 	// Open the browser
 	if err := openBrowser(authConfig); err != nil {
@@ -95,8 +99,8 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client
 	// Get tokens
 	err = secretStore.SaveHubSecret(opts.ServerAddress, &secretstore.HubSecret{
 		AuthConfig: &secretstore.AuthConfig{
-			ClientId:           authConfig.ClientId,
-			ProductId:          authConfig.IdpProductId,
+			ClientID:           authConfig.ClientID,
+			ProductID:          authConfig.IdpProductID,
 			IdpFrontendAddress: authConfig.IdpFrontendAddress,
 			IdpBackendAddress:  authConfig.IdpBackendAddress,
 			IdpIssuerAddress:   authConfig.IdpIssuerAddress,
@@ -104,7 +108,7 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client
 		},
 		TokenSecret: &secretstore.TokenSecret{
 			AccessToken:  sessionStore.Tokens.AccessToken,
-			IdToken:      sessionStore.Tokens.IdToken,
+			IDToken:      sessionStore.Tokens.IDToken,
 			RefreshToken: sessionStore.Tokens.RefreshToken,
 		},
 	})
@@ -113,12 +117,14 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client
 	}
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Agent Hub\nAddress: %s\n", opts.ServerAddress)
+
 	return nil
 }
 
 func openBrowser(authConfig *configUtils.AuthConfig) error {
 	params := url.Values{}
 	params.Add("redirectUri", fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort))
-	loginPageWithRedirect := fmt.Sprintf("%s/%s/login?%s", authConfig.IdpFrontendAddress, authConfig.IdpProductId, params.Encode())
-	return browser.OpenURL(loginPageWithRedirect)
+	loginPageWithRedirect := fmt.Sprintf("%s/%s/login?%s", authConfig.IdpFrontendAddress, authConfig.IdpProductID, params.Encode())
+
+	return browser.OpenURL(loginPageWithRedirect) //nolint:wrapcheck
 }
