@@ -1,30 +1,22 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package options
 
-import (
-	"errors"
+type (
+	RegisterFn func() error
+	CompleteFn func()
 )
 
-type RegisterFn func() error
-type CompleteFn func()
-
 type BaseOption struct {
-	isCompleted  bool
-	isRegistered bool
 	err          error
+	isRegistered bool
 
 	registerFns []RegisterFn
 }
 
 func NewBaseOption() *BaseOption {
 	return &BaseOption{}
-}
-
-func (o *BaseOption) addErr(err error) {
-	if err == nil {
-		o.err = err
-	} else {
-		o.err = errors.Join(o.err, err)
-	}
 }
 
 func (o *BaseOption) CheckError() error {
@@ -35,11 +27,15 @@ func (o *BaseOption) Register() error {
 	defer func() {
 		o.isRegistered = true
 	}()
-	for _, fn := range o.registerFns {
-		if err := fn(); err != nil {
-			return err
+
+	if o.isRegistered {
+		for _, fn := range o.registerFns {
+			if err := fn(); err != nil {
+				return err
+			}
 		}
 	}
+
 	return nil
 }
 

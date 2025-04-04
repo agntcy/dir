@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package webserver
 
 import (
@@ -19,9 +22,9 @@ type SessionStore struct {
 }
 
 type Config struct {
-	ClientId           string
-	IdpFrontendUrl     string
-	IdpBackendUrl      string
+	ClientID           string
+	IdpFrontendURL     string
+	IdpBackendURL      string
 	LocalWebserverPort int
 
 	SessionStore *SessionStore
@@ -30,11 +33,10 @@ type Config struct {
 }
 
 type Handler struct {
-	clientId           string
-	frontendUrl        string
-	idpUrl             string
-	localWebserverPort int
-	localWebserverUrl  string
+	clientID          string
+	frontendURL       string
+	idpURL            string
+	localWebserverURL string
 
 	sessionStore *SessionStore
 	idpClient    idp.Client
@@ -51,10 +53,10 @@ func NewHandler(config *Config) *Handler {
 	}
 
 	return &Handler{
-		clientId:          config.ClientId,
-		frontendUrl:       config.IdpFrontendUrl,
-		idpUrl:            config.IdpBackendUrl,
-		localWebserverUrl: fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort),
+		clientID:          config.ClientID,
+		frontendURL:       config.IdpFrontendURL,
+		idpURL:            config.IdpBackendURL,
+		localWebserverURL: fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort),
 
 		sessionStore: config.SessionStore,
 		idpClient:    config.IdpClient,
@@ -64,7 +66,7 @@ func NewHandler(config *Config) *Handler {
 }
 
 func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) {
-	requestId := r.URL.Query().Get("request")
+	requestID := r.URL.Query().Get("request")
 
 	var challenge string
 	h.sessionStore.verifier, challenge = utils.GenerateChallenge()
@@ -74,32 +76,35 @@ func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) 
 		h.handleError(w, err)
 	}
 
-	redirectUrl := h.idpClient.AuthorizeUrl(&idp.AuthorizeRequest{
-		ClientId:      h.clientId,
+	redirectURL := h.idpClient.AuthorizeURL(&idp.AuthorizeRequest{
+		ClientID:      h.clientID,
 		S256Challenge: challenge,
 		Nonce:         nonce,
-		RedirectUri:   h.localWebserverUrl,
-		RequestId:     requestId,
+		RedirectURI:   h.localWebserverURL,
+		RequestID:     requestID,
 	})
 
-	http.Redirect(w, r, redirectUrl, http.StatusFound)
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 func (h *Handler) HandleCodeRedirect(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 
 	resp, err := h.idpClient.RequestToken(&idp.RequestTokenRequest{
-		ClientId:    h.clientId,
-		RedirectUri: h.localWebserverUrl,
+		ClientID:    h.clientID,
+		RedirectURI: h.localWebserverURL,
 		Verifier:    h.sessionStore.verifier,
 		Code:        code,
 	})
 	if err != nil {
 		h.handleError(w, err)
+
 		return
 	}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		h.handleError(w, fmt.Errorf("unexpected status code: %d: %s", resp.Response.StatusCode, resp.Body))
+
 		return
 	}
 
@@ -110,12 +115,12 @@ func (h *Handler) HandleCodeRedirect(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte(failedLoginMessage))
+	w.Write([]byte(failedLoginMessage)) //nolint:errcheck
 	h.Err <- err
 }
 
 func (h *Handler) handleSuccess(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(successfulLoginMessage))
+	w.Write([]byte(successfulLoginMessage)) //nolint:errcheck
 	h.Err <- nil
 }

@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package options
 
 import "github.com/spf13/cobra"
@@ -18,6 +21,7 @@ func NewPushOptions(base *BaseOption, cmd *cobra.Command) *PushOptions {
 			"Read compiled data from standard input. Useful for piping. Reads from file if empty. "+
 				"Ignored if file is provided as an argument.",
 		)
+
 		return nil
 	})
 

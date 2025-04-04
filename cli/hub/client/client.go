@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package client
 
 import (
@@ -5,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -19,7 +23,7 @@ import (
 const chunkSize = 4096 // 4KB
 
 type Client interface {
-	PushAgent(ctx context.Context, agent []byte, repositoryId any, tag string) (*v1alpha1.PushAgentResponse, error)
+	PushAgent(ctx context.Context, agent []byte, repositoryID any, tag string) (*v1alpha1.PushAgentResponse, error)
 	PullAgent(ctx context.Context, request *v1alpha1.PullAgentRequest) ([]byte, error)
 }
 
@@ -27,11 +31,11 @@ type client struct {
 	v1alpha1.AgentServiceClient
 }
 
-func New(serverAddr string) (*client, error) {
+func New(serverAddr string) (*client, error) { //nolint:revive
 	// Create connection
 	conn, err := grpc.NewClient(
 		serverAddr,
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})),
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc client: %w", err)
@@ -67,7 +71,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any, 
 	for {
 		var n int
 		n, err = agentReader.Read(buf)
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("failed to read data: %w", err)
 		}
 
@@ -82,16 +86,16 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any, 
 			},
 		}
 
-		switch parsedRepositoryID := repositoryID.(type) {
+		switch parsedRepoID := repositoryID.(type) {
 		case *v1alpha1.PushAgentRequest_RepositoryName:
-			msg.Repository = parsedRepositoryID
+			msg.Repository = parsedRepoID
 		case *v1alpha1.PushAgentRequest_RepositoryId:
-			msg.Repository = parsedRepositoryID
+			msg.Repository = parsedRepoID
 		default:
 			return nil, fmt.Errorf("unknown repository type: %T", repositoryID)
 		}
 
-		if err = stream.Send(msg); err != nil && err != io.EOF {
+		if err = stream.Send(msg); err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("could not send object: %w", err)
 		}
 	}
@@ -114,14 +118,17 @@ func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullAgentReque
 
 	for {
 		var chunk *v1alpha1.PullAgentResponse
+
 		chunk, err = stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to receive chunk: %w", err)
 		}
-		buffer.Write(chunk.GetModel().Data)
+
+		buffer.Write(chunk.GetModel().GetData())
 	}
 
 	return buffer.Bytes(), nil
