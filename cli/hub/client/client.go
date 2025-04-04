@@ -12,18 +12,17 @@ import (
 	"fmt"
 	"io"
 
+	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/api/hub/v1alpha1"
 	"github.com/opencontainers/go-digest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
-	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/api/hub/v1alpha1"
 )
 
 const chunkSize = 4096 // 4KB
 
 type Client interface {
-	PushAgent(ctx context.Context, agent []byte, repositoryID any, tag string) (*v1alpha1.PushAgentResponse, error)
+	PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushAgentResponse, error)
 	PullAgent(ctx context.Context, request *v1alpha1.PullAgentRequest) ([]byte, error)
 }
 
@@ -44,7 +43,7 @@ func New(serverAddr string) (*client, error) { //nolint:revive
 	return &client{AgentServiceClient: v1alpha1.NewAgentServiceClient(conn)}, nil
 }
 
-func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any, tag string) (*v1alpha1.PushAgentResponse, error) {
+func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushAgentResponse, error) {
 	var parsedAgent *corev1alpha1.Agent
 	if err := json.Unmarshal(agent, &parsedAgent); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
@@ -70,6 +69,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any, 
 
 	for {
 		var n int
+
 		n, err = agentReader.Read(buf)
 		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("failed to read data: %w", err)
