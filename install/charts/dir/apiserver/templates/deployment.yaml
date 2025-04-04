@@ -34,7 +34,7 @@ spec:
         - name: {{ .Chart.Name }}
           env:
             - name: DIRECTORY_LOGGER_LOG_LEVEL
-              value: DEBUG
+              value: {{ .Values.log_level }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
