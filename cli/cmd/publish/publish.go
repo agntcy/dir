@@ -12,7 +12,6 @@ import (
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util/context"
-
 	"github.com/spf13/cobra"
 )
 

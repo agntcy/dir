@@ -1,10 +1,14 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package options
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"fmt"
 
 	"github.com/agntcy/dir/cli/config"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -27,10 +31,13 @@ func NewHubOptions(base *BaseOption, cmd *cobra.Command) *HubOptions {
 		func() error {
 			flags := cmd.PersistentFlags()
 			flags.String(hubAddressFlagName, config.DefaultHubAddress, "AgentHub address")
+
 			if err := viper.BindPFlag(hubAddressConfigPath, flags.Lookup(hubAddressFlagName)); err != nil {
-				return err
+				return fmt.Errorf("unable to bind flag %s: %w", hubAddressFlagName, err)
 			}
+
 			hubOpts.ServerAddress = viper.GetString(hubAddressConfigPath)
+
 			return nil
 		},
 	)

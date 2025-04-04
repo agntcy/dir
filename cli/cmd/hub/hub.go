@@ -1,10 +1,11 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package hub
 
 import (
 	"errors"
 	"fmt"
-
-	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/cmd/hub/login"
 	"github.com/agntcy/dir/cli/cmd/hub/logout"
@@ -12,9 +13,10 @@ import (
 	"github.com/agntcy/dir/cli/cmd/hub/push"
 	"github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/idp"
-	secretstore2 "github.com/agntcy/dir/cli/hub/secretstore"
+	"github.com/agntcy/dir/cli/hub/secretstore"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/spf13/cobra"
 )
 
 func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
@@ -27,31 +29,35 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 
 	opts := options.NewHubOptions(baseOption, cmd)
 
-	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 		secretStore, ok := ctxUtils.GetSecretStoreFromContext(cmd.Context())
 		if !ok {
-			return fmt.Errorf("failed to get secret store from context")
+			return errors.New("failed to get secret store from context")
 		}
 
 		ctx := cmd.Context()
-		var secret *secretstore2.HubSecret
+
+		var secret *secretstore.HubSecret
+
 		var err error
 
 		secret, err = secretStore.GetHubSecret(opts.ServerAddress)
-		if err != nil && !errors.Is(err, secretstore2.ErrSecretNotFound) {
-			return err
+		if err != nil && !errors.Is(err, secretstore.ErrSecretNotFound) {
+			return fmt.Errorf("failed to get hub secret: %w", err)
 		}
 
 		if secret == nil {
 			var authConfig *config.AuthConfig
+
 			authConfig, err = config.FetchAuthConfig(opts.ServerAddress)
 			if err != nil {
 				return fmt.Errorf("failed to fetch auth config: %w", err)
 			}
-			secret = &secretstore2.HubSecret{
-				AuthConfig: &secretstore2.AuthConfig{
-					ClientId:           authConfig.ClientId,
-					ProductId:          authConfig.IdpProductId,
+
+			secret = &secretstore.HubSecret{
+				AuthConfig: &secretstore.AuthConfig{
+					ClientID:           authConfig.ClientID,
+					ProductID:          authConfig.IdpProductID,
 					IdpFrontendAddress: authConfig.IdpFrontendAddress,
 					IdpBackendAddress:  authConfig.IdpBackendAddress,
 					IdpIssuerAddress:   authConfig.IdpIssuerAddress,
@@ -61,12 +67,13 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		}
 
 		if secret == nil {
-			return fmt.Errorf("failed to init auth config and secrets")
+			return errors.New("failed to init auth config and secrets")
 		}
 
 		ctx = ctxUtils.SetCurrentHubSecretForContext(ctx, secret)
+
 		if secret.IdpIssuerAddress == "" {
-			return fmt.Errorf("issuer address is empty")
+			return errors.New("issuer address is empty")
 		}
 
 		idpClient := idp.NewClient(secret.IdpIssuerAddress)

@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package dir
 
 import (
@@ -25,6 +28,7 @@ func GetHomeDir() string {
 	case OsMac:
 		return os.Getenv(EnvMacHome)
 	}
+
 	return ""
 }
 
