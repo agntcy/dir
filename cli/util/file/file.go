@@ -25,6 +25,6 @@ func CreateAll(path string) (*os.File, error) {
 	return file, nil
 }
 
-func GetSecretsFilePath() string {
-	return filepath.Join(dir.GetAppDir(), "secrets.json")
+func GetSessionFilePath() string {
+	return filepath.Join(dir.GetAppDir(), "session.json")
 }

@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package secretstore
+package sessionstore
 
 import (
 	"encoding/json"
@@ -21,25 +21,25 @@ type FileSecretStore struct {
 	path string
 }
 
-func NewFileSecretStore(path string) *FileSecretStore {
+func NewFileSessionStore(path string) *FileSecretStore {
 	return &FileSecretStore{path: path}
 }
 
-func (s *FileSecretStore) GetHubSecret(secretName string) (*HubSecret, error) {
-	secrets, err := s.getSecrets()
+func (s *FileSecretStore) GetHubSession(sessionKey string) (*HubSession, error) {
+	secrets, err := s.getSessions()
 	if err != nil {
 		return nil, err
 	}
 
-	secret, ok := secrets.HubSecrets[secretName]
+	secret, ok := secrets.HubSessions[sessionKey]
 	if !ok || secret == nil {
-		return nil, fmt.Errorf("%w: %s", ErrSecretNotFound, secretName)
+		return nil, fmt.Errorf("%w: %s", ErrSessionNotFound, sessionKey)
 	}
 
 	return secret, nil
 }
 
-func (s *FileSecretStore) SaveHubSecret(secretName string, secret *HubSecret) error {
+func (s *FileSecretStore) SaveHubSession(secretName string, secret *HubSession) error {
 	file, err := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE, ModeCurrentUserReadWrite)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -53,18 +53,18 @@ func (s *FileSecretStore) SaveHubSecret(secretName string, secret *HubSecret) er
 	}
 	defer file.Close()
 
-	var secrets HubSecrets
+	var secrets HubSessions
 	if err = json.NewDecoder(file).Decode(&secrets); err != nil {
 		if !errors.Is(err, io.EOF) {
 			return fmt.Errorf("%w: %w", ErrMalformedSecret, err)
 		}
 	}
 
-	if secrets.HubSecrets == nil {
-		secrets.HubSecrets = make(map[string]*HubSecret)
+	if secrets.HubSessions == nil {
+		secrets.HubSessions = make(map[string]*HubSession)
 	}
 
-	secrets.HubSecrets[secretName] = secret
+	secrets.HubSessions[secretName] = secret
 
 	if err = rewriteJSONFilePretty(file, secrets); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
@@ -73,8 +73,8 @@ func (s *FileSecretStore) SaveHubSecret(secretName string, secret *HubSecret) er
 	return nil
 }
 
-func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
-	secrets, file, err := s.getSecretsAndFile()
+func (s *FileSecretStore) RemoveHubSession(secretName string) error {
+	secrets, file, err := s.getSessionsAndFile()
 	if err != nil {
 		return err
 	}
@@ -85,11 +85,11 @@ func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
 
 	defer file.Close()
 
-	if _, ok := secrets.HubSecrets[secretName]; !ok {
+	if _, ok := secrets.HubSessions[secretName]; !ok {
 		return nil
 	}
 
-	delete(secrets.HubSecrets, secretName)
+	delete(secrets.HubSessions, secretName)
 
 	if err = rewriteJSONFilePretty(file, secrets); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
@@ -98,17 +98,17 @@ func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
 	return nil
 }
 
-func (s *FileSecretStore) getSecretsAndFile() (*HubSecrets, *os.File, error) {
+func (s *FileSecretStore) getSessionsAndFile() (*HubSessions, *os.File, error) {
 	file, err := os.OpenFile(s.path, os.O_RDWR, ModeCurrentUserReadWrite)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return &HubSecrets{}, nil, nil
+			return &HubSessions{}, nil, nil
 		}
 
 		return nil, nil, fmt.Errorf("%w: %w: %s", ErrCouldNotOpenFile, err, s.path)
 	}
 
-	var secrets *HubSecrets
+	var secrets *HubSessions
 	if err = json.NewDecoder(file).Decode(&secrets); err != nil {
 		file.Close()
 
@@ -118,8 +118,8 @@ func (s *FileSecretStore) getSecretsAndFile() (*HubSecrets, *os.File, error) {
 	return secrets, file, nil
 }
 
-func (s *FileSecretStore) getSecrets() (*HubSecrets, error) {
-	secrets, file, err := s.getSecretsAndFile()
+func (s *FileSecretStore) getSessions() (*HubSessions, error) {
+	secrets, file, err := s.getSessionsAndFile()
 	//nolint:errcheck
 	defer file.Close()
 

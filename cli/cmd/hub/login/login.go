@@ -13,7 +13,7 @@ import (
 	"github.com/agntcy/dir/cli/config"
 	configUtils "github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/idp"
-	"github.com/agntcy/dir/cli/hub/secretstore"
+	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/hub/webserver"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -31,7 +31,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		Short: "Login to the Agent Hub",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Get secret store from context
-			secretStore, ok := ctxUtils.GetSecretStoreFromContext(cmd.Context())
+			secretStore, ok := ctxUtils.GetSessionStoreFromContext(cmd.Context())
 			if !ok {
 				return errors.New("failed to get secret store from context")
 			}
@@ -53,7 +53,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client, authConfig *configUtils.AuthConfig, secretStore secretstore.SecretStore) error {
+func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client, authConfig *configUtils.AuthConfig, secretStore sessionstore.SessionStore) error {
 	// Set up the webserver
 	//// Init the error channel
 	errCh := make(chan error, 1)
@@ -97,16 +97,16 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client
 	}
 
 	// Get tokens
-	err = secretStore.SaveHubSecret(opts.ServerAddress, &secretstore.HubSecret{
-		AuthConfig: &secretstore.AuthConfig{
+	err = secretStore.SaveHubSession(opts.ServerAddress, &sessionstore.HubSession{
+		AuthConfig: &sessionstore.AuthConfig{
 			ClientID:           authConfig.ClientID,
-			ProductID:          authConfig.IdpProductID,
+			IdpProductID:       authConfig.IdpProductID,
 			IdpFrontendAddress: authConfig.IdpFrontendAddress,
 			IdpBackendAddress:  authConfig.IdpBackendAddress,
 			IdpIssuerAddress:   authConfig.IdpIssuerAddress,
 			HubBackendAddress:  authConfig.HubBackendAddress,
 		},
-		TokenSecret: &secretstore.TokenSecret{
+		Tokens: &sessionstore.Tokens{
 			AccessToken:  sessionStore.Tokens.AccessToken,
 			IDToken:      sessionStore.Tokens.IDToken,
 			RefreshToken: sessionStore.Tokens.RefreshToken,

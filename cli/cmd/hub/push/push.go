@@ -31,7 +31,7 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		// Check if the user is logged in
 		secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
-		if !ok || secret.TokenSecret == nil {
+		if !ok || secret.Tokens == nil {
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 
@@ -41,7 +41,7 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 			return errors.New("failed to get IDP client from context")
 		}
 
-		secretStore, ok := contextUtils.GetSecretStoreFromContext(cmd.Context())
+		secretStore, ok := contextUtils.GetSessionStoreFromContext(cmd.Context())
 		if !ok {
 			return errors.New("failed to get secret store from context")
 		}

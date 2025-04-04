@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/agntcy/dir/cli/cmd/build"
 	del "github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
@@ -19,12 +21,11 @@ import (
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/version"
 	"github.com/agntcy/dir/cli/config"
-	"github.com/agntcy/dir/cli/hub/secretstore"
+	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/options"
 	contextUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/file"
 	"github.com/agntcy/dir/client"
-	"github.com/spf13/cobra"
 )
 
 var clientConfig = client.DefaultConfig
@@ -44,8 +45,8 @@ func NewRootCommand(baseOption *options.BaseOption) *cobra.Command {
 			ctx := contextUtil.SetDirClientForContext(cmd.Context(), c)
 
 			// Set secret store via context for all requests
-			store := secretstore.NewFileSecretStore(file.GetSecretsFilePath())
-			ctx = contextUtil.SetSecretStoreForContext(ctx, store)
+			store := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
+			ctx = contextUtil.SetSessionStoreForContext(ctx, store)
 
 			// Set context for all requests
 			cmd.SetContext(ctx)

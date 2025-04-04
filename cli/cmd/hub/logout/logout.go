@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	"github.com/agntcy/dir/cli/hub/idp"
-	secretstore2 "github.com/agntcy/dir/cli/hub/secretstore"
+	secretstore2 "github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -30,7 +30,7 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 			}
 
 			// Get secret store from context
-			secretStore, ok := ctxUtils.GetSecretStoreFromContext(cmd.Context())
+			secretStore, ok := ctxUtils.GetSessionStoreFromContext(cmd.Context())
 			if !ok {
 				return errors.New("failed to get secret store from context")
 			}
@@ -48,7 +48,7 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func runCmd(outStream io.Writer, opts *options.HubOptions, secret *secretstore2.HubSecret, secretStore secretstore2.SecretStore, idpClient idp.Client) error {
+func runCmd(outStream io.Writer, opts *options.HubOptions, secret *secretstore2.HubSession, secretStore secretstore2.SessionStore, idpClient idp.Client) error {
 	resp, err := idpClient.Logout(&idp.LogoutRequest{IDToken: secret.IDToken})
 	if err != nil {
 		return fmt.Errorf("failed to logout: %w", err)
@@ -59,7 +59,7 @@ func runCmd(outStream io.Writer, opts *options.HubOptions, secret *secretstore2.
 	}
 
 	// Remove secret from secret store
-	if err = secretStore.RemoveHubSecret(opts.ServerAddress); err != nil {
+	if err = secretStore.RemoveHubSession(opts.ServerAddress); err != nil {
 		return fmt.Errorf("failed to remove secret from secret store: %w", err)
 	}
 
