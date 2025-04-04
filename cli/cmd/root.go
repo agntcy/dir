@@ -7,8 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/cmd/build"
 	del "github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
@@ -26,6 +24,7 @@ import (
 	contextUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/file"
 	"github.com/agntcy/dir/client"
+	"github.com/spf13/cobra"
 )
 
 var clientConfig = client.DefaultConfig
@@ -89,6 +88,7 @@ func initConfig() error {
 	if err := config.LoadConfig(); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
+
 	return nil
 }
 
@@ -110,5 +110,6 @@ func Run(ctx context.Context) error {
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
+
 	return nil
 }

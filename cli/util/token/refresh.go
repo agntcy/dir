@@ -1,31 +1,35 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package token
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/hub/idp"
 	secretstore2 "github.com/agntcy/dir/cli/hub/secretstore"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/cobra"
 )
 
 func RefreshTokenIfExpired(cmd *cobra.Command, addr string, secret *secretstore2.HubSecret, secretStore secretstore2.SecretStore, idpClient idp.Client) error {
 	if secret.AccessToken != "" && isTokenExpired(secret.AccessToken) {
 		if secret.RefreshToken == "" {
-			return fmt.Errorf("access token is expired and refresh token is empty")
+			return errors.New("access token is expired and refresh token is empty")
 		}
 
 		resp, err := idpClient.RefreshToken(&idp.RefreshTokenRequest{
 			RefreshToken: secret.RefreshToken,
-			ClientId:     secret.ClientId,
+			ClientID:     secret.ClientID,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to refresh token: %w", err)
 		}
+
 		if resp.Response.StatusCode != http.StatusOK {
 			return fmt.Errorf("failed to refresh token: %s", string(resp.Body))
 		}
@@ -33,7 +37,7 @@ func RefreshTokenIfExpired(cmd *cobra.Command, addr string, secret *secretstore2
 		newTokenSecret := &secretstore2.TokenSecret{
 			AccessToken:  resp.Token.AccessToken,
 			RefreshToken: resp.Token.RefreshToken,
-			IdToken:      resp.Token.IdToken,
+			IDToken:      resp.Token.IDToken,
 		}
 		secret.TokenSecret = newTokenSecret
 

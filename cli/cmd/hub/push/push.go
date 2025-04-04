@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package push
 
 import (
@@ -6,16 +9,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-
 	"github.com/agntcy/dir/api/hub/v1alpha1"
+	"github.com/agntcy/dir/cli/config"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/agent"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/token"
+	"github.com/google/uuid"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
@@ -26,27 +29,27 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 
 	opts := options.NewHubPushOptions(hubOpts, options.NewPushOptions(hubOpts.BaseOption, cmd))
 
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		// Check if the user is logged in
 		secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
 		if !ok || secret.TokenSecret == nil {
-			return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
+			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 
 		// Check if the access token is expired
 		idpClient, ok := contextUtils.GetIdpClientFromContext(cmd.Context())
 		if !ok {
-			return fmt.Errorf("failed to get IDP client from context")
+			return errors.New("failed to get IDP client from context")
 		}
 
 		secretStore, ok := contextUtils.GetSecretStoreFromContext(cmd.Context())
 		if !ok {
-			return fmt.Errorf("failed to get secret store from context")
+			return errors.New("failed to get secret store from context")
 		}
 
 		serverAddr, ok := contextUtils.GetCurrentServerAddressFromContext(cmd.Context())
 		if !ok {
-			return fmt.Errorf("failed to get current server address")
+			return errors.New("failed to get current server address")
 		}
 
 		if err := token.RefreshTokenIfExpired(
@@ -65,45 +68,53 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
 		if !ok {
-			return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
+			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 
-		hc, err := hubClient.New(secret.HubBackendAddress)
+		backendAddr := secret.HubBackendAddress
+		backendAddr = strings.TrimPrefix(backendAddr, "http://")
+		backendAddr = strings.TrimPrefix(backendAddr, "https://")
+		backendAddr = strings.TrimSuffix(backendAddr, "/")
+		backendAddr = strings.TrimSuffix(backendAddr, "/v1alpha1")
+		backendAddr = fmt.Sprintf("%s:%d", backendAddr, config.DefaultHubBackendGRPCPort)
+
+		hc, err := hubClient.New(backendAddr)
 		if err != nil {
 			return fmt.Errorf("failed to create hub client: %w", err)
 		}
 
-		if len(args) > 2 {
-			return errors.New("The following arguments could be given: <repository>:<version> [model.json]")
+		if len(args) > 2 { //nolint:mnd
+			return errors.New("the following arguments could be given: <repository>:<version> [model.json]")
 		}
 
 		fpath := ""
-		if len(args) == 2 {
+		if len(args) == 2 { //nolint:mnd
 			fpath = args[1]
 		}
 
 		reader, err := agent.GetReader(fpath, opts.FromStdIn)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get reader: %w", err)
 		}
 
 		agentBytes, err := agent.GetAgentBytes(reader)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get agent bytes: %w", err)
 		}
 
-		repoId, tag, err := parseRepoTagId(args[0])
+		repoID, tag, err := parseRepoTagID(args[0])
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse repo id: %w", err)
 		}
 
-		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("authorization", fmt.Sprintf("Bearer %s", secret.AccessToken)))
-		resp, err := hc.PushAgent(ctx, agentBytes, repoId, tag)
+		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("authorization", "Bearer "+secret.AccessToken))
+
+		resp, err := hc.PushAgent(ctx, agentBytes, repoID, tag)
 		if err != nil {
 			return fmt.Errorf("failed to push agent: %w", err)
 		}
 
-		fmt.Fprintln(cmd.OutOrStdout(), resp.Id.Digest)
+		fmt.Fprintln(cmd.OutOrStdout(), resp.GetId().GetDigest())
 
 		return nil
 	}
@@ -111,17 +122,18 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func parseRepoTagId(id string) (any, string, error) {
+func parseRepoTagID(id string) (any, string, error) {
 	parts := strings.Split(id, ":")
-	if len(parts) != 2 {
+	if len(parts) != 2 { //nolint:mnd
 		return nil, "", errors.New("invalid agent id format")
 	}
-	tag := parts[1]
-	repoId := parts[0]
 
-	if _, err := uuid.Parse(repoId); err == nil {
-		return &v1alpha1.PushAgentRequest_RepositoryId{RepositoryId: repoId}, tag, nil
-	} else {
-		return &v1alpha1.PushAgentRequest_RepositoryName{RepositoryName: repoId}, tag, nil
+	tag := parts[1]
+	repoID := parts[0]
+
+	if _, err := uuid.Parse(repoID); err == nil {
+		return &v1alpha1.PushAgentRequest_RepositoryId{RepositoryId: repoID}, tag, nil
 	}
+
+	return &v1alpha1.PushAgentRequest_RepositoryName{RepositoryName: repoID}, tag, nil
 }

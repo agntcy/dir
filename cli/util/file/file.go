@@ -1,6 +1,10 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package file
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -10,13 +14,14 @@ import (
 func CreateAll(path string) (*os.File, error) {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating directory: %w", err)
 	}
 
 	file, err := os.Create(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating file: %w", err)
 	}
+
 	return file, nil
 }
 

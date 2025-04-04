@@ -1,7 +1,12 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package config
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,26 +16,26 @@ import (
 )
 
 var (
-	ErrInvalidFrontendURL = fmt.Errorf("invalid frontend URL")
-	ErrFetchingConfig     = fmt.Errorf("error fetching config")
-	ErrorParsingConfig    = fmt.Errorf("error parsing config")
+	ErrInvalidFrontendURL = errors.New("invalid frontend URL")
+	ErrFetchingConfig     = errors.New("error fetching config")
+	ErrParsingConfig      = errors.New("error parsing config")
 )
 
 type AuthConfig struct {
-	IdpProductId       string `json:"IAM_PRODUCT_ID"`
-	ClientId           string `json:"IAM_OIDC_CLIENT_ID"`
+	IdpProductID       string `json:"IAM_PRODUCT_ID"`
+	ClientID           string `json:"IAM_OIDC_CLIENT_ID"`
 	IdpIssuerAddress   string `json:"IAM_OIDC_ISSUER"`
 	IdpBackendAddress  string `json:"IAM_API"`
 	IdpFrontendAddress string `json:"IAM_UI"`
 	HubBackendAddress  string `json:"HUB_API"`
 }
 
-func FetchAuthConfig(frontedUrl string) (*AuthConfig, error) {
-	if !urlutil.IsURL(frontedUrl) {
+func FetchAuthConfig(frontedURL string) (*AuthConfig, error) {
+	if !urlutil.IsURL(frontedURL) {
 		return nil, ErrInvalidFrontendURL
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/config.json", frontedUrl), nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, frontedURL+"/config.json", nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}
@@ -39,9 +44,11 @@ func FetchAuthConfig(frontedUrl string) (*AuthConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: %w: (%d) %s", ErrFetchingConfig, fmt.Errorf("unexpected status code"), resp.StatusCode, resp.Body)
+		return nil, fmt.Errorf("%w: %w: (%d) %s", ErrFetchingConfig, errors.New("unexpected status code"), resp.StatusCode, resp.Body)
 	}
+
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
@@ -51,7 +58,7 @@ func FetchAuthConfig(frontedUrl string) (*AuthConfig, error) {
 
 	var authConfig AuthConfig
 	if err = json.Unmarshal(body, &authConfig); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrorParsingConfig, err)
+		return nil, fmt.Errorf("%w: %w", ErrParsingConfig, err)
 	}
 
 	backendAddr := authConfig.HubBackendAddress

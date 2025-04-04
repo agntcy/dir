@@ -9,7 +9,6 @@ import (
 	"github.com/agntcy/dir/cli/cmd/list/info"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/context"
-
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +46,8 @@ To search for specific records across the network, you must specify
 matching labels passed as arguments. The matching is performed using
 exact set-membership rule.
 
-`}
+`,
+	}
 
 	opts := options.NewListOptions(option, cmd)
 

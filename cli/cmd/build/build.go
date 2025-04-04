@@ -10,14 +10,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
-
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	oasf "github.com/agntcy/dir/api/core/v1alpha1/oasf-validator"
 	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/presenter"
+	"github.com/spf13/cobra"
 )
 
 const ConfigFile = "build.config.yml"
@@ -47,13 +46,15 @@ Usage examples:
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		var path string
 		if len(args) == 0 {
-			path = "." //nolint:ineffassign
+			path = "." //nolint:wastedassign,ineffassign
 		}
+
 		if len(args) == 1 {
 			path = args[0]
 		} else {
 			return errors.New("arg missing: only one path can be specified allowed")
 		}
+
 		return runCommand(cmd, opts, path)
 	}
 

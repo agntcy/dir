@@ -16,7 +16,6 @@ import (
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util/context"
-
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 )
@@ -52,6 +51,7 @@ Usage examples:
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		var fpath string
+
 		if len(args) > 1 {
 			return errors.New("only one file path is allowed")
 		} else if len(args) == 1 {

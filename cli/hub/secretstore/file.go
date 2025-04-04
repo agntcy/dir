@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package secretstore
 
 import (
@@ -8,6 +11,10 @@ import (
 	"os"
 
 	fileUtils "github.com/agntcy/dir/cli/util/file"
+)
+
+const (
+	ModeCurrentUserReadWrite os.FileMode = 0o600
 )
 
 type FileSecretStore struct {
@@ -33,7 +40,7 @@ func (s *FileSecretStore) GetHubSecret(secretName string) (*HubSecret, error) {
 }
 
 func (s *FileSecretStore) SaveHubSecret(secretName string, secret *HubSecret) error {
-	file, err := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE, 0600)
+	file, err := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE, ModeCurrentUserReadWrite)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			var err error
@@ -56,9 +63,10 @@ func (s *FileSecretStore) SaveHubSecret(secretName string, secret *HubSecret) er
 	if secrets.HubSecrets == nil {
 		secrets.HubSecrets = make(map[string]*HubSecret)
 	}
+
 	secrets.HubSecrets[secretName] = secret
 
-	if err = rewritePrettyJsonFile(file, secrets); err != nil {
+	if err = rewriteJSONFilePretty(file, secrets); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
 	}
 
@@ -70,9 +78,11 @@ func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
 	if err != nil {
 		return err
 	}
+
 	if file == nil {
 		return nil
 	}
+
 	defer file.Close()
 
 	if _, ok := secrets.HubSecrets[secretName]; !ok {
@@ -81,7 +91,7 @@ func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
 
 	delete(secrets.HubSecrets, secretName)
 
-	if err = rewritePrettyJsonFile(file, secrets); err != nil {
+	if err = rewriteJSONFilePretty(file, secrets); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
 	}
 
@@ -89,17 +99,19 @@ func (s *FileSecretStore) RemoveHubSecret(secretName string) error {
 }
 
 func (s *FileSecretStore) getSecretsAndFile() (*HubSecrets, *os.File, error) {
-	file, err := os.OpenFile(s.path, os.O_RDWR, 0600)
+	file, err := os.OpenFile(s.path, os.O_RDWR, ModeCurrentUserReadWrite)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &HubSecrets{}, nil, nil
 		}
+
 		return nil, nil, fmt.Errorf("%w: %w: %s", ErrCouldNotOpenFile, err, s.path)
 	}
 
 	var secrets *HubSecrets
 	if err = json.NewDecoder(file).Decode(&secrets); err != nil {
 		file.Close()
+
 		return nil, nil, fmt.Errorf("%w: %w", ErrMalformedSecretFile, err)
 	}
 
@@ -108,20 +120,27 @@ func (s *FileSecretStore) getSecretsAndFile() (*HubSecrets, *os.File, error) {
 
 func (s *FileSecretStore) getSecrets() (*HubSecrets, error) {
 	secrets, file, err := s.getSecretsAndFile()
+	//nolint:errcheck
 	defer file.Close()
+
 	return secrets, err
 }
 
-func rewritePrettyJsonFile(file *os.File, model any) error {
+func rewriteJSONFilePretty(file *os.File, model any) error {
 	if file == nil {
 		return errors.New("file is nil")
 	}
+
+	//nolint:errcheck
 	file.Seek(0, 0)
+	//nolint:errcheck
 	file.Truncate(0)
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
+
 	if err := encoder.Encode(model); err != nil {
-		return err
+		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
 	}
+
 	return nil
 }

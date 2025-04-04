@@ -1,11 +1,14 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package config
 
 import (
 	"errors"
-
-	"github.com/spf13/viper"
+	"fmt"
 
 	"github.com/agntcy/dir/cli/util/dir"
+	"github.com/spf13/viper"
 )
 
 func LoadConfig() error {
@@ -18,9 +21,9 @@ func LoadConfig() error {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
 		if errors.As(err, &configFileNotFoundError) {
 			return nil
-		} else {
-			return err
 		}
+
+		return fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	return nil
