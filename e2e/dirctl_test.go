@@ -15,11 +15,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	clicmd "github.com/agntcy/dir/cli/cmd"
-	"github.com/agntcy/dir/cli/options"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/opencontainers/go-digest"
+
+	clicmd "github.com/agntcy/dir/cli/cmd"
+	"github.com/agntcy/dir/cli/options"
 )
 
 //go:embed testdata/agent.json
@@ -224,7 +225,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should generate a peer ID from a valid ED25519 key", func() {
 				var outputBuffer bytes.Buffer
 
-				infoCmd := clicmd.RootCmd
+				infoCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				infoCmd.SetOut(&outputBuffer)
 				infoCmd.SetArgs([]string{
 					"network",
@@ -243,7 +244,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should fail with non-existent key file", func() {
 				var outputBuffer bytes.Buffer
 
-				infoCmd := clicmd.RootCmd
+				infoCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				infoCmd.SetOut(&outputBuffer)
 				infoCmd.SetArgs([]string{
 					"network",
@@ -258,7 +259,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should fail with empty key path", func() {
 				var outputBuffer bytes.Buffer
 
-				infoCmd := clicmd.RootCmd
+				infoCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				infoCmd.SetOut(&outputBuffer)
 				infoCmd.SetArgs([]string{
 					"network",
@@ -275,7 +276,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should generate a new peer ID", func() {
 				var outputBuffer bytes.Buffer
 
-				initCmd := clicmd.RootCmd
+				initCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				initCmd.SetOut(&outputBuffer)
 				initCmd.SetArgs([]string{
 					"network",
@@ -309,7 +310,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should generate valid peer IDs", func() {
 				var outputBuffer bytes.Buffer
 
-				initCmd := clicmd.RootCmd
+				initCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				initCmd.SetOut(&outputBuffer)
 				initCmd.SetArgs([]string{
 					"network",
