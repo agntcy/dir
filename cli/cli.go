@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,7 +16,6 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGHUP, syscall.SIGTERM)
 
 	if err := cmd.Run(ctx); err != nil {
-		fmt.Println(err) //nolint:forbidigo
 		cancel()
 		os.Exit(1)
 	}

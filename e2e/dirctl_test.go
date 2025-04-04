@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	clicmd "github.com/agntcy/dir/cli/cmd"
+	"github.com/agntcy/dir/cli/options"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/opencontainers/go-digest"
@@ -38,7 +39,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should build an agent", func() {
 			var outputBuffer bytes.Buffer
 
-			compileCmd := clicmd.RootCmd
+			baseOption := options.NewBaseOption()
+			compileCmd := clicmd.NewRootCommand(baseOption)
 			compileCmd.SetOut(&outputBuffer)
 			compileCmd.SetArgs([]string{
 				"build",
@@ -65,7 +67,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should push an agent", func() {
 			var outputBuffer bytes.Buffer
 
-			pushCmd := clicmd.RootCmd
+			baseOption := options.NewBaseOption()
+			pushCmd := clicmd.NewRootCommand(baseOption)
 			pushCmd.SetOut(&outputBuffer)
 			pushCmd.SetArgs([]string{
 				"push",
@@ -85,7 +88,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should pull an existing agent", func() {
 			var outputBuffer bytes.Buffer
 
-			pullCmd := clicmd.RootCmd
+			baseOption := options.NewBaseOption()
+			pullCmd := clicmd.NewRootCommand(baseOption)
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
@@ -99,7 +103,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should push the same agent again and return the same digest", func() {
 			var outputBuffer bytes.Buffer
 
-			pushCmd := clicmd.RootCmd
+			baseOption := options.NewBaseOption()
+			pushCmd := clicmd.NewRootCommand(baseOption)
 			pushCmd.SetOut(&outputBuffer)
 			pushCmd.SetArgs([]string{
 				"push",
@@ -123,7 +128,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Push second agent
-			pushCmd2 := clicmd.RootCmd
+			baseOption := options.NewBaseOption()
+			pushCmd2 := clicmd.NewRootCommand(baseOption)
 			pushCmd2.SetOut(&outputBuffer)
 			pushCmd2.SetArgs([]string{
 				"push",
@@ -141,7 +147,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should pull a non-existent agent and return an error", func() {
 			var outputBuffer bytes.Buffer
 
-			pullCmd := clicmd.RootCmd
+			baseOption := options.NewBaseOption()
+			pullCmd := clicmd.NewRootCommand(baseOption)
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
@@ -157,7 +164,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should delete an agent", func() {
 			var outputBuffer bytes.Buffer
 
-			deleteCmd := clicmd.RootCmd
+			baseOption := options.NewBaseOption()
+			deleteCmd := clicmd.NewRootCommand(baseOption)
 			deleteCmd.SetOut(&outputBuffer)
 			deleteCmd.SetArgs([]string{
 				"delete",
@@ -171,7 +179,8 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 		ginkgo.It("should fail to pull a deleted agent", func() {
 			var outputBuffer bytes.Buffer
 
-			pullCmd := clicmd.RootCmd
+			baeOption := options.NewBaseOption()
+			pullCmd := clicmd.NewRootCommand(baeOption)
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
@@ -215,7 +224,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should generate a peer ID from a valid ED25519 key", func() {
 				var outputBuffer bytes.Buffer
 
-				infoCmd := clicmd.RootCmd
+				infoCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				infoCmd.SetOut(&outputBuffer)
 				infoCmd.SetArgs([]string{
 					"network",
@@ -234,7 +243,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should fail with non-existent key file", func() {
 				var outputBuffer bytes.Buffer
 
-				infoCmd := clicmd.RootCmd
+				infoCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				infoCmd.SetOut(&outputBuffer)
 				infoCmd.SetArgs([]string{
 					"network",
@@ -249,7 +258,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should fail with empty key path", func() {
 				var outputBuffer bytes.Buffer
 
-				infoCmd := clicmd.RootCmd
+				infoCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				infoCmd.SetOut(&outputBuffer)
 				infoCmd.SetArgs([]string{
 					"network",
@@ -266,7 +275,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should generate a new peer ID", func() {
 				var outputBuffer bytes.Buffer
 
-				initCmd := clicmd.RootCmd
+				initCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				initCmd.SetOut(&outputBuffer)
 				initCmd.SetArgs([]string{
 					"network",
@@ -300,7 +309,7 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			ginkgo.It("should generate valid peer IDs", func() {
 				var outputBuffer bytes.Buffer
 
-				initCmd := clicmd.RootCmd
+				initCmd := clicmd.NewRootCommand(options.NewBaseOption())
 				initCmd.SetOut(&outputBuffer)
 				initCmd.SetArgs([]string{
 					"network",
