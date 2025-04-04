@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/docker/docker/builder/remotecontext/urlutil"
 )
@@ -52,6 +53,14 @@ func FetchAuthConfig(frontedUrl string) (*AuthConfig, error) {
 	if err = json.Unmarshal(body, &authConfig); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrorParsingConfig, err)
 	}
+
+	backendAddr := authConfig.HubBackendAddress
+	backendAddr = strings.TrimPrefix(backendAddr, "http://")
+	backendAddr = strings.TrimPrefix(backendAddr, "https://")
+	backendAddr = strings.TrimSuffix(backendAddr, "/")
+	backendAddr = strings.TrimSuffix(backendAddr, "/v1alpha1")
+	backendAddr = fmt.Sprintf("%s:%d", backendAddr, 443)
+	authConfig.HubBackendAddress = backendAddr
 
 	return &authConfig, nil
 }

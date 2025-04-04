@@ -40,7 +40,7 @@ func New(serverAddr string) (*client, error) {
 	return &client{AgentServiceClient: v1alpha1.NewAgentServiceClient(conn)}, nil
 }
 
-func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryId any, tag string) (*v1alpha1.PushAgentResponse, error) {
+func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any, tag string) (*v1alpha1.PushAgentResponse, error) {
 	var parsedAgent *corev1alpha1.Agent
 	if err := json.Unmarshal(agent, &parsedAgent); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
@@ -76,20 +76,19 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryId any, 
 		}
 
 		msg := &v1alpha1.PushAgentRequest{
-			Tag: tag,
 			Model: &corev1alpha1.Object{
 				Data: buf[:n],
 				Ref:  ref,
 			},
 		}
 
-		switch repositoryId.(type) {
+		switch parsedRepositoryID := repositoryID.(type) {
 		case *v1alpha1.PushAgentRequest_RepositoryName:
-			msg.Repository = repositoryId.(*v1alpha1.PushAgentRequest_RepositoryName)
+			msg.Repository = parsedRepositoryID
 		case *v1alpha1.PushAgentRequest_RepositoryId:
-			msg.Repository = repositoryId.(*v1alpha1.PushAgentRequest_RepositoryId)
+			msg.Repository = parsedRepositoryID
 		default:
-			return nil, fmt.Errorf("unknown repository type: %T", repositoryId)
+			return nil, fmt.Errorf("unknown repository type: %T", repositoryID)
 		}
 
 		if err = stream.Send(msg); err != nil && err != io.EOF {
