@@ -68,7 +68,13 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 			return fmt.Errorf("You need to be logged in to push to the hub.\nUse `dirctl hub login` command to login.")
 		}
 
-		hc, err := hubClient.New(secret.HubBackendAddress)
+		backendAddr := secret.HubBackendAddress
+		backendAddr = strings.TrimPrefix(backendAddr, "http://")
+		backendAddr = strings.TrimPrefix(backendAddr, "https://")
+		backendAddr = strings.TrimSuffix(backendAddr, "/")
+		backendAddr = strings.TrimSuffix(backendAddr, "/v1alpha1")
+		backendAddr = fmt.Sprintf("%s:%d", backendAddr, 443)
+		hc, err := hubClient.New(backendAddr)
 		if err != nil {
 			return fmt.Errorf("failed to create hub client: %w", err)
 		}
