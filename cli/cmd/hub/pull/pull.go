@@ -120,6 +120,5 @@ func parseAgentID(agentID string) *v1alpha1.AgentIdentifier {
 		Id: &v1alpha1.AgentIdentifier_Digest{
 			Digest: agentID,
 		},
-		}
-		}
-
+	}
+}
