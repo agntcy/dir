@@ -30,7 +30,7 @@ Usage examples:
 
 1. Get peer id from a private key:
 
-	dirctl network info
+	dirctl network info <path_to_private_key>
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
