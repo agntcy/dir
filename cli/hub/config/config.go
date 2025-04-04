@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/agntcy/dir/cli/config"
 	"github.com/docker/docker/builder/remotecontext/urlutil"
 )
 
@@ -66,7 +67,7 @@ func FetchAuthConfig(frontedURL string) (*AuthConfig, error) {
 	backendAddr = strings.TrimPrefix(backendAddr, "https://")
 	backendAddr = strings.TrimSuffix(backendAddr, "/")
 	backendAddr = strings.TrimSuffix(backendAddr, "/v1alpha1")
-	backendAddr = fmt.Sprintf("%s:%d", backendAddr, 443)
+	backendAddr = fmt.Sprintf("%s:%d", backendAddr, config.DefaultHubBackendGRPCPort)
 	authConfig.HubBackendAddress = backendAddr
 
 	return &authConfig, nil
