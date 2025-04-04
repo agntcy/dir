@@ -13,4 +13,4 @@ breaking:
     - WIRE_JSON
 modules:
   - path: .
-    name: github.com/agntcy/hub
+    name: github.com/agntcy/dir
