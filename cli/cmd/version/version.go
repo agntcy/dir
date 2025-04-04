@@ -4,7 +4,7 @@
 package version
 
 import (
-	"github.com/agntcy/dir/api/core/v1alpha1/version"
+	"github.com/agntcy/dir/api/version"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )

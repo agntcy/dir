@@ -7,10 +7,10 @@ vars:
   ## Version
   RELEASE_VERSION:
     sh: grep 'version:' versions.yaml | awk '{print $2}'
-  RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/core/v1alpha1/version.Version={{ .RELEASE_VERSION }}'"
+  RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/version.Version={{ .RELEASE_VERSION }}'"
   COMMIT_SHA:
     sh: git rev-parse --short HEAD
-  COMMIT_SHA_LDFLAG: "-X 'github.com/agntcy/dir/api/core/v1alpha1/version.CommitHash={{ .COMMIT_SHA }}'"
+  COMMIT_SHA_LDFLAG: "-X 'github.com/agntcy/dir/api/version.CommitHash={{ .COMMIT_SHA }}'"
   VERSION_LDFLAGS: '{{ .RELEASE_VERSION_LDFLAG }} {{ .COMMIT_SHA_LDFLAG }}'
 
   ## Image config
