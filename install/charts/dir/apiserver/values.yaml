@@ -8,6 +8,8 @@
 nameOverride: ""
 fullnameOverride: ""
 
+log_level: INFO
+
 image:
   repository: ghcr.io/agntcy/dir-apiserver
   tag: latest

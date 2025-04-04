@@ -32,6 +32,9 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
+          env:
+            - name: DIRECTORY_LOGGER_LOG_LEVEL
+              value: {{ .Values.log_level }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -71,10 +74,24 @@ spec:
             - name: config-volume
               mountPath: /etc/agntcy/dir/server.config.yml
               subPath: server.config.yml
+            {{- if .Values.privKey }}
+            - name: secret-volume
+              mountPath: {{ .Values.config.routing.key_path }}
+              subPath: node.privkey
+              readOnly: true
+            {{- end }}
       volumes:
         - name: config-volume
           configMap:
             name: {{ include "chart.fullname" . }}
+        {{- if .Values.privKey }}
+        - name: secret-volume
+          secret:
+            secretName: {{ include "chart.fullname" . }}
+            items:
+              - key: node.privkey
+                path: node.privkey
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
