@@ -5,9 +5,15 @@ package e2e
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
 	_ "embed"
+	"encoding/pem"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	clicmd "github.com/agntcy/dir/cli/cmd"
 	"github.com/onsi/ginkgo/v2"
@@ -176,4 +182,163 @@ var _ = ginkgo.Describe("dirctl end-to-end tests", func() {
 			gomega.Expect(err).To(gomega.HaveOccurred())
 		})
 	})
+
+	ginkgo.Context("network commands", func() {
+		var (
+			tempKeyDir  string
+			tempKeyPath string
+		)
+
+		ginkgo.BeforeEach(func() {
+			// Create temporary directory for test keys
+			var err error
+			tempKeyDir, err = os.MkdirTemp("", "network-test")
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Generate OpenSSL-style ED25519 key
+			privateKey, err := generateED25519OpenSSLKey()
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Write the private key to a temporary file
+			tempKeyPath = filepath.Join(tempKeyDir, "test_key")
+			err = os.WriteFile(tempKeyPath, privateKey, 0o0600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.AfterEach(func() {
+			// Cleanup temporary directory
+			err := os.RemoveAll(tempKeyDir)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.Context("info command", func() {
+			ginkgo.It("should generate a peer ID from a valid ED25519 key", func() {
+				var outputBuffer bytes.Buffer
+
+				infoCmd := clicmd.RootCmd
+				infoCmd.SetOut(&outputBuffer)
+				infoCmd.SetArgs([]string{
+					"network",
+					"info",
+					tempKeyPath,
+				})
+
+				err := infoCmd.Execute()
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				// Verify that the output is not empty
+				output := strings.TrimSpace(outputBuffer.String())
+				gomega.Expect(output).NotTo(gomega.BeEmpty())
+			})
+
+			ginkgo.It("should fail with non-existent key file", func() {
+				var outputBuffer bytes.Buffer
+
+				infoCmd := clicmd.RootCmd
+				infoCmd.SetOut(&outputBuffer)
+				infoCmd.SetArgs([]string{
+					"network",
+					"info",
+					"non-existent-key-file",
+				})
+
+				err := infoCmd.Execute()
+				gomega.Expect(err).To(gomega.HaveOccurred())
+			})
+
+			ginkgo.It("should fail with empty key path", func() {
+				var outputBuffer bytes.Buffer
+
+				infoCmd := clicmd.RootCmd
+				infoCmd.SetOut(&outputBuffer)
+				infoCmd.SetArgs([]string{
+					"network",
+					"info",
+					"",
+				})
+
+				err := infoCmd.Execute()
+				gomega.Expect(err).To(gomega.HaveOccurred())
+			})
+		})
+
+		ginkgo.Context("init command", func() {
+			ginkgo.It("should generate a new peer ID", func() {
+				var outputBuffer bytes.Buffer
+
+				initCmd := clicmd.RootCmd
+				initCmd.SetOut(&outputBuffer)
+				initCmd.SetArgs([]string{
+					"network",
+					"init",
+				})
+
+				err := initCmd.Execute()
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				// Verify that the output is not empty
+				output := strings.TrimSpace(outputBuffer.String())
+				gomega.Expect(output).NotTo(gomega.BeEmpty())
+
+				// Store the first peer ID
+				firstPeerID := output
+
+				// Run the command again to verify we get a different peer ID
+				var secondBuffer bytes.Buffer
+				initCmd.SetOut(&secondBuffer)
+
+				err = initCmd.Execute()
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				secondPeerID := strings.TrimSpace(secondBuffer.String())
+				gomega.Expect(secondPeerID).NotTo(gomega.BeEmpty())
+
+				// Verify that we get different peer IDs each time
+				gomega.Expect(secondPeerID).NotTo(gomega.Equal(firstPeerID))
+			})
+
+			ginkgo.It("should generate valid peer IDs", func() {
+				var outputBuffer bytes.Buffer
+
+				initCmd := clicmd.RootCmd
+				initCmd.SetOut(&outputBuffer)
+				initCmd.SetArgs([]string{
+					"network",
+					"init",
+				})
+
+				err := initCmd.Execute()
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				output := strings.TrimSpace(outputBuffer.String())
+
+				// Verify the peer ID format
+				// Peer IDs typically start with "12D3" in base58 encoding
+				gomega.Expect(output).To(gomega.HavePrefix("12D3"))
+				gomega.Expect(len(output)).To(gomega.BeNumerically(">", 40)) // Peer IDs should be reasonably long
+			})
+		})
+	})
 })
+
+func generateED25519OpenSSLKey() ([]byte, error) {
+	// Generate ED25519 key pair
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate ED25519 key pair: %w", err)
+	}
+
+	// Marshal the private key to PKCS#8 format
+	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal private key: %w", err)
+	}
+
+	// Create PEM block
+	pemBlock := &pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privBytes,
+	}
+
+	return pem.EncodeToMemory(pemBlock), nil
+}

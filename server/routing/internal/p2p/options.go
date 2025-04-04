@@ -6,6 +6,7 @@ package p2p
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -71,7 +72,7 @@ func WithIdentityKeyPath(keyPath string) Option {
 		// Try to convert to ED25519 private key
 		ed25519Key, ok := key.(ed25519.PrivateKey)
 		if !ok {
-			return fmt.Errorf("key is not an ED25519 private key")
+			return errors.New("key is not an ED25519 private key")
 		}
 
 		// Generate random key
