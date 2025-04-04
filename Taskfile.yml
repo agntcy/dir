@@ -39,7 +39,6 @@ vars:
   GOLANGCI_LINT_BIN: '{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}'
   LICENSEI_VERSION: '0.9.0'
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
-
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
 
@@ -50,7 +49,6 @@ tasks:
   default:
     cmds:
       - task -l
-
   gen:
     desc: Generate code for all components
     cmds:
@@ -430,66 +428,67 @@ tasks:
       - task: deps:protoc
       - task: deps:bufbuild
 
-  deps:hub:api:
+  deps:api:hub:
     desc: generate HUB API
-    dir: hub/api
+    dir: api/hub
+    deps:
+      - task: deps:api:hub:clean
     cmds:
-      - task: deps:hub:api:clean
-      - task: deps:hub:api:dirs
-      - task: deps:hub:api:files
-      - task: deps:hub:api:gen
-      - cmd: cp -r saas/v1alpha1 .
-      - task: deps:hub:api:gen:cleanup
-      - cmd: go mod tidy
+      - defer: { task: deps:api:hub:gen:cleanup }
+      - task: deps:api:hub:gen:dirs
+      - task: deps:api:hub:gen:files
+      - task: deps:api:hub:gen
+      - cmd: cp -r saas/v1alpha1/* v1alpha1
+      - cmd: cd .. && go mod tidy
 
-  deps:hub:api:dirs:
-    desc: Create HUB API directories
-    dir: hub/api
+  deps:api:hub:gen:dirs:
+    desc: Create directories for HUB API stubs and generate
+    dir: api/hub
     cmds:
+      - mkdir -p v1alpha1
       - mkdir -p saas/v1alpha1
       - mkdir -p core/v1alpha1
 
-  deps:hub:api:files:
+
+  deps:api:hub:gen:files:
     desc: Sync HUB proto files to the given version
     vars:
       HUB_API_VERSION: '{{ .HUB_API_VERSION }}'
-    dir: hub/api
-    cmd: |
-      mkdir -p .tmp
-      git clone {{.HUB_REPO_URL}} .tmp
-      git checkout {{.HUB_API_VERSION}}
-      cp -r \
-        .tmp/api/saas/v1alpha1/agent.proto \
-        .tmp/api/saas/v1alpha1/agent_id.proto \
-        .tmp/api/saas/v1alpha1/agent_id_response.proto \
-        .tmp/api/saas/v1alpha1/agent_service.proto \
-        .tmp/api/saas/v1alpha1/category.proto \
-        .tmp/api/saas/v1alpha1/locator.proto \
-        .tmp/api/saas/v1alpha1/repo_version_id.proto \
-        saas/v1alpha1
-      rm -rf .tmp
-      cp -r ../../api/core/v1alpha1/*.proto ./core/v1alpha1
+    dir: api/hub
+    cmds:
+      - defer: rm -rf .tmp
+      - cmd: |
+          git clone {{.HUB_REPO_URL}} .tmp
+          cd .tmp && git checkout {{.HUB_API_VERSION}} && cd ..
+          cp -r \
+          .tmp/api/saas/v1alpha1/agent.proto \
+          .tmp/api/saas/v1alpha1/agent_id.proto \
+          .tmp/api/saas/v1alpha1/agent_id_response.proto \
+          .tmp/api/saas/v1alpha1/agent_service.proto \
+          .tmp/api/saas/v1alpha1/category.proto \
+          .tmp/api/saas/v1alpha1/repo_version_id.proto \
+          saas/v1alpha1
+          cp -r ../core/v1alpha1/* core/v1alpha1
 
-  deps:hub:api:gen:
+  deps:api:hub:gen:
     desc: Generate HUB API stubs
     deps:
       - deps:bufbuild
-      - deps:hub:api:files
-    dir: hub/api
+    dir: api/hub
     cmd: |
       {{.BUFBUILD_BIN}} dep update
-      {{.BUFBUILD_BIN}} generate
+      {{.BUFBUILD_BIN}} generate .
 
-  deps:hub:api:gen:cleanup:
+  deps:api:hub:gen:cleanup:
     desc: Clean HUB API stubs
-    dir: hub/api
+    dir: api/hub
     cmds:
       - rm -rf core || true
       - rm -rf saas || true
 
-  deps:hub:api:clean:
+  deps:api:hub:clean:
     desc: Lint HUB API stubs
-    dir: hub/api
+    dir: api/hub
     cmds:
       - cmd: rm -rf v1alpha1
 
