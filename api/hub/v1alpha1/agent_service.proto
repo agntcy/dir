@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+import "core/v1alpha1/object.proto";
+import "google/api/annotations.proto";
+import "saas/v1alpha1/agent.proto";
+import "saas/v1alpha1/agent_id.proto";
+import "saas/v1alpha1/agent_id_response.proto";
+
+message GetAgentRequest {
+  AgentIdentifier id = 1;
+}
+
+message GetAgentResponse {
+  Agent agent = 1;
+}
+
+message DeleteAgentRequest {
+  AgentIdentifier id = 1;
+}
+
+message DeleteAgentResponse {}
+
+message PushAgentRequest {
+  oneof repository {
+    string repository_id = 1;
+    string repository_name = 2;
+  }
+  string tag = 3;
+  core.v1alpha1.Object model = 4;
+}
+
+message PushAgentResponse {
+  AgentIdentifierResponse id = 1;
+}
+
+message PullAgentRequest {
+  AgentIdentifier id = 1;
+}
+
+message PullAgentResponse {
+  core.v1alpha1.Object model = 1;
+}
+
+message TagAgentRequest {
+  AgentIdentifier id = 1;
+  string tag = 2;
+}
+
+message TagAgentResponse {}
+
+service AgentService {
+  rpc GetAgent(GetAgentRequest) returns (GetAgentResponse) {
+    option (google.api.http) = {
+      get: "/v1alpha1/agents/ref/{id.digest}"
+      // additional_bindings: {get: "/v1alpha1/agents/{id.repo_version_id.repository_name}/{id.repo_version_id.version}"}
+    };
+  }
+
+  rpc DeleteAgent(DeleteAgentRequest) returns (DeleteAgentResponse) {
+    option (google.api.http) = {
+      delete: "/v1alpha1/agents/ref/{id.digest}"
+      // additional_bindings: {delete: "/v1alpha1/agents/{id.repo_version_id.repository_name}/{id.repo_version_id.version}"}
+    };
+  }
+
+  rpc PushAgent(stream PushAgentRequest) returns (PushAgentResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/agents/push"
+      body: "*"
+    };
+  }
+
+  rpc PullAgent(PullAgentRequest) returns (stream PullAgentResponse) {
+    option (google.api.http) = {
+      get: "/v1alpha1/agents/pull/ref/{id.digest}"
+      // additional_bindings: {get: "/v1alpha1/agents/pull/{id.repo_version_id.repository_name}/{id.repo_version_id.version}"}
+    };
+  }
+}
