@@ -55,6 +55,7 @@ func NewRootCommand(baseOption *options.BaseOption) *cobra.Command {
 	}
 
 	cobra.EnableTraverseRunHooks = true
+
 	rootCmd.AddCommand(
 		// local commands
 		build.NewCommand(baseOption),
@@ -65,9 +66,9 @@ func NewRootCommand(baseOption *options.BaseOption) *cobra.Command {
 		push.NewCommand(baseOption),
 		del.NewCommand(),
 		// routing commands
-		publish.Command,
-		list.Command,
-		unpublish.Command,
+		publish.NewCommand(baseOption),
+		list.NewCommand(baseOption),
+		unpublish.NewCommand(baseOption),
 		network.Command,
 		publish.NewCommand(baseOption),
 		list.NewCommand(baseOption),
@@ -81,7 +82,6 @@ func NewRootCommand(baseOption *options.BaseOption) *cobra.Command {
 
 func initCobra() {
 	cobra.EnableTraverseRunHooks = true
-	cobra.OnInitialize(initConfig)
 }
 
 func initConfig() error {
