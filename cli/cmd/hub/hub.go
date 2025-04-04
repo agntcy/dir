@@ -7,16 +7,17 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/agntcy/dir/cli/cmd/hub/login"
 	"github.com/agntcy/dir/cli/cmd/hub/logout"
 	"github.com/agntcy/dir/cli/cmd/hub/pull"
 	"github.com/agntcy/dir/cli/cmd/hub/push"
 	"github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/idp"
-	"github.com/agntcy/dir/cli/hub/secretstore"
+	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/spf13/cobra"
 )
 
 func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
@@ -30,53 +31,38 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 	opts := options.NewHubOptions(baseOption, cmd)
 
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
-		secretStore, ok := ctxUtils.GetSecretStoreFromContext(cmd.Context())
+		sessionStore, ok := ctxUtils.GetSessionStoreFromContext(cmd.Context())
 		if !ok {
-			return errors.New("failed to get secret store from context")
+			return errors.New("failed to get session store from context")
+		}
+
+		session, err := sessionStore.GetHubSession(opts.ServerAddress)
+		if err != nil && !errors.Is(err, sessionstore.ErrSessionNotFound) {
+			return fmt.Errorf("failed to get hub session: %w", err)
+		}
+
+		if session == nil {
+			session = &sessionstore.HubSession{}
+		}
+
+		authConfig, err := config.FetchAuthConfig(opts.ServerAddress)
+		if err != nil {
+			return fmt.Errorf("failed to fetch auth config: %w", err)
+		}
+
+		session.AuthConfig = &sessionstore.AuthConfig{
+			ClientID:           authConfig.ClientID,
+			IdpProductID:       authConfig.IdpProductID,
+			IdpFrontendAddress: authConfig.IdpFrontendAddress,
+			IdpBackendAddress:  authConfig.IdpBackendAddress,
+			IdpIssuerAddress:   authConfig.IdpIssuerAddress,
+			HubBackendAddress:  authConfig.HubBackendAddress,
 		}
 
 		ctx := cmd.Context()
+		ctx = ctxUtils.SetCurrentHubSessionForContext(ctx, session)
 
-		var secret *secretstore.HubSecret
-
-		var err error
-
-		secret, err = secretStore.GetHubSecret(opts.ServerAddress)
-		if err != nil && !errors.Is(err, secretstore.ErrSecretNotFound) {
-			return fmt.Errorf("failed to get hub secret: %w", err)
-		}
-
-		if secret == nil {
-			var authConfig *config.AuthConfig
-
-			authConfig, err = config.FetchAuthConfig(opts.ServerAddress)
-			if err != nil {
-				return fmt.Errorf("failed to fetch auth config: %w", err)
-			}
-
-			secret = &secretstore.HubSecret{
-				AuthConfig: &secretstore.AuthConfig{
-					ClientID:           authConfig.ClientID,
-					ProductID:          authConfig.IdpProductID,
-					IdpFrontendAddress: authConfig.IdpFrontendAddress,
-					IdpBackendAddress:  authConfig.IdpBackendAddress,
-					IdpIssuerAddress:   authConfig.IdpIssuerAddress,
-					HubBackendAddress:  authConfig.HubBackendAddress,
-				},
-			}
-		}
-
-		if secret == nil {
-			return errors.New("failed to init auth config and secrets")
-		}
-
-		ctx = ctxUtils.SetCurrentHubSecretForContext(ctx, secret)
-
-		if secret.IdpIssuerAddress == "" {
-			return errors.New("issuer address is empty")
-		}
-
-		idpClient := idp.NewClient(secret.IdpIssuerAddress)
+		idpClient := idp.NewClient(session.IdpIssuerAddress)
 		ctx = ctxUtils.SetIdpClientForContext(ctx, idpClient)
 
 		ctx = ctxUtils.SetCurrentServerAddressForContext(ctx, opts.ServerAddress)
