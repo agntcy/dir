@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/api/hub/v1alpha1"
-	"github.com/agntcy/dir/cli/config"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/agent"
@@ -71,14 +70,7 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 
-		backendAddr := secret.HubBackendAddress
-		backendAddr = strings.TrimPrefix(backendAddr, "http://")
-		backendAddr = strings.TrimPrefix(backendAddr, "https://")
-		backendAddr = strings.TrimSuffix(backendAddr, "/")
-		backendAddr = strings.TrimSuffix(backendAddr, "/v1alpha1")
-		backendAddr = fmt.Sprintf("%s:%d", backendAddr, config.DefaultHubBackendGRPCPort)
-
-		hc, err := hubClient.New(backendAddr)
+		hc, err := hubClient.New(secret.HubBackendAddress)
 		if err != nil {
 			return fmt.Errorf("failed to create hub client: %w", err)
 		}
@@ -102,14 +94,15 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 			return fmt.Errorf("failed to get agent bytes: %w", err)
 		}
 
-		repoID, tag, err := parseRepoTagID(args[0])
+		// TODO: Push based on repoName and version misleading
+		repoID, _, err := parseRepoTagID(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to parse repo id: %w", err)
 		}
 
 		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("authorization", "Bearer "+secret.AccessToken))
 
-		resp, err := hc.PushAgent(ctx, agentBytes, repoID, tag)
+		resp, err := hc.PushAgent(ctx, agentBytes, repoID)
 		if err != nil {
 			return fmt.Errorf("failed to push agent: %w", err)
 		}
