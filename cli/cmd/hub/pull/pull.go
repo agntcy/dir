@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
@@ -71,7 +70,7 @@ func NewCommand() *cobra.Command {
 				return fmt.Errorf("failed to create hub client: %w", err)
 			}
 
-			agentId, err := parseAgentId(args[0])
+			agentId := parseAgentId(args[0])
 			if err != nil {
 				return fmt.Errorf("invalid agent id: %w", err)
 			}
@@ -109,26 +108,12 @@ func runCmd(ctx context.Context, hc hubClient.Client, agentId *v1alpha1.AgentIde
 	return nil
 }
 
-func parseAgentId(agentId string) (*v1alpha1.AgentIdentifier, error) {
-	parts := strings.Split(agentId, ":")
-	if len(parts) > 2 {
-		return nil, fmt.Errorf("agent id should be in the format <repository>:<version> or <digest>")
-	}
-
-	if len(parts) == 1 {
-		return &v1alpha1.AgentIdentifier{
-			Id: &v1alpha1.AgentIdentifier_Digest{
-				Digest: parts[0],
-			},
-		}, nil
-	}
-
+func parseAgentId(agentID string) *v1alpha1.AgentIdentifier {
+	// TODO: support parsing <repository>:<tag> format
+	// Digest is also in the format of <algorithm>:<hash>
 	return &v1alpha1.AgentIdentifier{
-		Id: &v1alpha1.AgentIdentifier_RepoVersionId{
-			RepoVersionId: &v1alpha1.RepoVersionId{
-				RepositoryName: parts[0],
-				Version:        parts[1],
-			},
+		Id: &v1alpha1.AgentIdentifier_Digest{
+			Digest: agentID,
 		},
-	}, nil
+	}
 }
