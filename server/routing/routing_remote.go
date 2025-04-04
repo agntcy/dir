@@ -43,7 +43,12 @@ type routeRemote struct {
 	notifyCh chan *handlerSync
 }
 
-func newRemote(ctx context.Context, parentRouter types.RoutingAPI, storeAPI types.StoreAPI, opts types.APIOptions) (*routeRemote, error) {
+func newRemote(ctx context.Context,
+	parentRouter types.RoutingAPI,
+	storeAPI types.StoreAPI,
+	dstore types.Datastore,
+	opts types.APIOptions,
+) (*routeRemote, error) {
 	// Create routing
 	routeAPI := &routeRemote{
 		storeAPI: storeAPI,
@@ -60,14 +65,14 @@ func newRemote(ctx context.Context, parentRouter types.RoutingAPI, storeAPI type
 		p2p.WithCustomDHTOpts(
 			func(h host.Host) ([]dht.Option, error) {
 				// create provider manager
-				providerMgr, err := providers.NewProviderManager(h.ID(), h.Peerstore(), opts.Datastore())
+				providerMgr, err := providers.NewProviderManager(h.ID(), h.Peerstore(), dstore)
 				if err != nil {
 					return nil, err
 				}
 
 				// return custom opts for DHT
 				return []dht.Option{
-					dht.Datastore(opts.Datastore()),                 // custom DHT datastore
+					dht.Datastore(dstore),                           // custom DHT datastore
 					dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)), // custom DHT protocol prefix
 					dht.ProviderStore(&handler{
 						ProviderManager: providerMgr,

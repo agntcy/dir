@@ -28,7 +28,15 @@ require (
 	oras.land/oras-go/v2 v2.5.0
 )
 
-require github.com/libp2p/go-libp2p-record v0.3.1 // indirect
+require (
+	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
+	github.com/dgraph-io/badger v1.6.2 // indirect
+	github.com/dgraph-io/ristretto v0.0.2 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
+)
 
 require (
 	github.com/benbjohnson/clock v1.3.5 // indirect
@@ -60,6 +68,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/boxo v0.29.1 // indirect
 	github.com/ipfs/go-cid v0.5.0
+	github.com/ipfs/go-ds-badger v0.3.4
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/ipld/go-ipld-prime v0.21.0 // indirect

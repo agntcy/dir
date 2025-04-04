@@ -23,24 +23,16 @@ type API interface {
 type APIOptions interface {
 	// Config returns the config data. Read only! Unsafe to edit.
 	Config() *config.Config
-
-	// Datastore holds access to local datastore.
-	// Used as a local data source to serve routing, storage, and caching.
-	Datastore() Datastore
 }
 
 type options struct {
-	config    *config.Config
-	datastore Datastore
+	config *config.Config
 }
 
-func NewOptions(config *config.Config, ds Datastore) APIOptions {
+func NewOptions(config *config.Config) APIOptions {
 	return &options{
-		config:    config,
-		datastore: ds,
+		config: config,
 	}
 }
 
 func (o options) Config() *config.Config { return o.config }
-
-func (o options) Datastore() Datastore { return o.datastore }

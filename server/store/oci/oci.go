@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/server/datastore"
+	"github.com/agntcy/dir/server/store/cache"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -80,9 +82,25 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 		),
 	}
 
-	return &store{
+	// Create store API
+	store := &store{
 		repo: repo,
-	}, nil
+	}
+
+	// If no cache requested, return.
+	// Do not use in memory cache as it can get large.
+	if cfg.CacheDir == "" {
+		return store, nil
+	}
+
+	// Create cache datastore
+	cacheDS, err := datastore.New(datastore.WithFsProvider(cfg.CacheDir))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cache store: %w", err)
+	}
+
+	// Return cached store
+	return cache.Wrap(store, cacheDS), nil
 }
 
 // Push object to the OCI registry

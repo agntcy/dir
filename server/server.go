@@ -17,7 +17,6 @@ import (
 	"github.com/agntcy/dir/api/version"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
-	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
@@ -65,14 +64,8 @@ func Run(ctx context.Context, cfg *config.Config) error {
 func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
 
-	// Create local datastore
-	dstore, err := datastore.New(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create datastore: %w", err)
-	}
-
 	// Load API options
-	options := types.NewOptions(cfg, dstore)
+	options := types.NewOptions(cfg)
 
 	// Create APIs
 	storeAPI, err := store.New(options) //nolint:staticcheck
