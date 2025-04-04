@@ -3,13 +3,14 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 
 	"github.com/opencontainers/go-digest"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/api/hub/v1alpha1"
@@ -30,7 +31,7 @@ func New(serverAddr string) (*client, error) {
 	// Create connection
 	conn, err := grpc.NewClient(
 		serverAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc client: %w", err)
