@@ -12,7 +12,7 @@ import (
 
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
-	"github.com/agntcy/dir/cli/hub/secretstore"
+	"github.com/agntcy/dir/cli/hub/sessionstore"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/token"
 	"github.com/spf13/cobra"
@@ -30,7 +30,7 @@ func NewCommand() *cobra.Command {
 				return errors.New("could not get current hub secret from context")
 			}
 
-			secretStore, ok := contextUtils.GetSecretStoreFromContext(cmd.Context())
+			secretStore, ok := contextUtils.GetSessionStoreFromContext(cmd.Context())
 			if !ok {
 				return errors.New("failed to get secret store from context")
 			}
@@ -85,9 +85,9 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func runCmd(ctx context.Context, hc hubClient.Client, agentID *v1alpha1.AgentIdentifier, secret *secretstore.HubSecret) error {
-	if secret.TokenSecret != nil && secret.AccessToken != "" {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+secret.TokenSecret.AccessToken))
+func runCmd(ctx context.Context, hc hubClient.Client, agentID *v1alpha1.AgentIdentifier, secret *sessionstore.HubSession) error {
+	if secret.Tokens != nil && secret.AccessToken != "" {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+secret.Tokens.AccessToken))
 	}
 
 	model, err := hc.PullAgent(ctx, &v1alpha1.PullAgentRequest{

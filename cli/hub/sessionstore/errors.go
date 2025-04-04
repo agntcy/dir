@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package secretstore
+package sessionstore
 
 import "errors"
 
@@ -10,5 +10,5 @@ var (
 	ErrCouldNotWriteFile   = errors.New("could not write file")
 	ErrMalformedSecret     = errors.New("malformed secret")
 	ErrMalformedSecretFile = errors.New("malformed secret file")
-	ErrSecretNotFound      = errors.New("secret not found")
+	ErrSessionNotFound     = errors.New("secret not found")
 )
