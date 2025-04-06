@@ -14,14 +14,15 @@ import (
 	oasf "github.com/agntcy/dir/api/core/v1alpha1/oasf-validator"
 	"github.com/agntcy/dir/cli/builder"
 	"github.com/agntcy/dir/cli/builder/config"
-	"github.com/agntcy/dir/cli/options"
+	"github.com/agntcy/dir/cli/cmd/build/options"
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
 
 const ConfigFile = "build.config.yml"
 
-func NewCommand(baseOption *options.BaseOption) *cobra.Command {
+func NewCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "build",
 		Short: "Build agent model to prepare for pushing",

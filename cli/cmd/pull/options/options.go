@@ -3,15 +3,18 @@
 
 package options
 
-import "github.com/spf13/cobra"
+import (
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
+	"github.com/spf13/cobra"
+)
 
 type PullOptions struct {
-	*BaseOption
+	*commonOptions.BaseOption
 
 	FormatRaw bool
 }
 
-func NewPullOptions(baseOption *BaseOption, cmd *cobra.Command) *PullOptions {
+func NewPullOptions(baseOption *commonOptions.BaseOption, cmd *cobra.Command) *PullOptions {
 	opts := &PullOptions{
 		BaseOption: baseOption,
 	}

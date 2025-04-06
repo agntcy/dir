@@ -9,20 +9,22 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/spf13/cobra"
-
+	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
+	"github.com/agntcy/dir/cli/cmd/hub/tenants/options"
 	"github.com/agntcy/dir/cli/cmd/hub/tenantswitch"
 	"github.com/agntcy/dir/cli/hub/idp"
 	"github.com/agntcy/dir/cli/hub/token"
-	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/spf13/cobra"
 )
 
-const selectionMark = "*"
-const gapSize = 4
+const (
+	selectionMark = "*"
+	gapSize       = 4
+)
 
-func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
+func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tenants",
 		Short: "List tenants for logged in user",

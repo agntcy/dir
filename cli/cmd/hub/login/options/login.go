@@ -3,11 +3,15 @@
 
 package options
 
+import (
+	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
+)
+
 type LoginOptions struct {
-	*HubOptions
+	*hubOptions.HubOptions
 }
 
-func NewLoginOptions(hubOptions *HubOptions) *LoginOptions {
+func NewLoginOptions(hubOptions *hubOptions.HubOptions) *LoginOptions {
 	return &LoginOptions{
 		HubOptions: hubOptions,
 	}

@@ -6,6 +6,7 @@ package options
 import (
 	"fmt"
 
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -18,12 +19,12 @@ const (
 )
 
 type HubOptions struct {
-	*BaseOption
+	*commonOptions.BaseOption
 
 	ServerAddress string
 }
 
-func NewHubOptions(base *BaseOption, cmd *cobra.Command) *HubOptions {
+func NewHubOptions(base *commonOptions.BaseOption, cmd *cobra.Command) *HubOptions {
 	hubOpts := &HubOptions{
 		BaseOption: base,
 	}

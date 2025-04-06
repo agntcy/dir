@@ -3,15 +3,18 @@
 
 package options
 
-import "github.com/spf13/cobra"
+import (
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
+	"github.com/spf13/cobra"
+)
 
 type UnpublishOptions struct {
-	*BaseOption
+	*commonOptions.BaseOption
 
 	Network bool
 }
 
-func NewUnpublishOptions(baseOption *BaseOption, cmd *cobra.Command) *UnpublishOptions {
+func NewUnpublishOptions(baseOption *commonOptions.BaseOption, cmd *cobra.Command) *UnpublishOptions {
 	opts := &UnpublishOptions{
 		BaseOption: baseOption,
 	}
