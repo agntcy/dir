@@ -9,18 +9,19 @@ import (
 
 	"github.com/agntcy/dir/cli/cmd/hub/login"
 	"github.com/agntcy/dir/cli/cmd/hub/logout"
+	"github.com/agntcy/dir/cli/cmd/hub/options"
 	"github.com/agntcy/dir/cli/cmd/hub/pull"
 	"github.com/agntcy/dir/cli/cmd/hub/push"
 	"github.com/agntcy/dir/cli/cmd/hub/tenants"
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/okta"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
-	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
-func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
+func NewHubCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "hub",
 		Short: "Manage the Agent Hub",

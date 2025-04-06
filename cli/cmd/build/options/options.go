@@ -3,15 +3,18 @@
 
 package options
 
-import "github.com/spf13/cobra"
+import (
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
+	"github.com/spf13/cobra"
+)
 
 type BuildOptions struct {
-	*BaseOption
+	*commonOptions.BaseOption
 
 	ConfigFile string
 }
 
-func NewBuildOptions(base *BaseOption, cmd *cobra.Command) *BuildOptions {
+func NewBuildOptions(base *commonOptions.BaseOption, cmd *cobra.Command) *BuildOptions {
 	opts := &BuildOptions{
 		BaseOption: base,
 	}
