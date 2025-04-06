@@ -6,17 +6,18 @@ package options
 import (
 	"fmt"
 
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/spf13/cobra"
 )
 
 type ListInfoOptions struct {
-	*BaseOption
+	*commonOptions.BaseOption
 
 	PeerID  string
 	Network bool
 }
 
-func NewListInfoOptions(baseOption *BaseOption, cmd *cobra.Command) *ListInfoOptions {
+func NewListInfoOptions(baseOption *commonOptions.BaseOption, cmd *cobra.Command) *ListInfoOptions {
 	opts := &ListInfoOptions{
 		BaseOption: baseOption,
 	}

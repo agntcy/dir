@@ -8,13 +8,14 @@ import (
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/options"
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
+	"github.com/agntcy/dir/cli/cmd/unpublish/options"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(baseOption *options.BaseOption) *cobra.Command {
+func NewCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unpublish",
 		Short: "Unpublish agent model from the network",

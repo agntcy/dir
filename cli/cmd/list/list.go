@@ -7,12 +7,13 @@ import (
 	"errors"
 
 	"github.com/agntcy/dir/cli/cmd/list/info"
-	"github.com/agntcy/dir/cli/options"
+	"github.com/agntcy/dir/cli/cmd/list/options"
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(option *options.BaseOption) *cobra.Command {
+func NewCommand(option *commonOptions.BaseOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Search for published records locally or across the network",

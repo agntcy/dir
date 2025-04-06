@@ -9,13 +9,14 @@ import (
 	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/cli/options"
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
+	"github.com/agntcy/dir/cli/cmd/publish/options"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(baseOption *options.BaseOption) *cobra.Command {
+func NewCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "publish",
 		Short: "Publish agent model to the network, allowing content discovery",

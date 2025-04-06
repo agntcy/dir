@@ -11,16 +11,17 @@ import (
 	"os"
 
 	"github.com/agntcy/dir/api/hub/v1alpha1"
+	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
+	"github.com/agntcy/dir/cli/cmd/hub/pull/options"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/hub/token"
-	"github.com/agntcy/dir/cli/options"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
 
-func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
+func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	opts := options.NewHubPullOptions(hubOpts)
 
 	cmd := &cobra.Command{

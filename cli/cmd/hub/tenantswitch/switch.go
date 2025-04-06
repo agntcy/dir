@@ -12,6 +12,8 @@ import (
 	"slices"
 	"time"
 
+	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
+	"github.com/agntcy/dir/cli/cmd/hub/tenantswitch/options"
 	"github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/hub/browser"
 	"github.com/agntcy/dir/cli/hub/idp"
@@ -19,7 +21,6 @@ import (
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/hub/token"
 	"github.com/agntcy/dir/cli/hub/webserver"
-	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -27,7 +28,7 @@ import (
 
 const timeout = 60 * time.Second
 
-func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
+func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "switch [flags]",
 		Short: "Switch between tenants of logged-in user",
@@ -38,7 +39,7 @@ tenant. In any other case, tenant could be selected from an interactive list.
 `,
 	}
 
-	opts := options.NewTenantSwitchOptions(hubOpts, options.NewTenantOptions(hubOpts.BaseOption, cmd))
+	opts := options.NewTenantSwitchOptions(hubOpts, cmd)
 
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		// Token is checked and refreshed and authorized in the persistent prerun of tenants command

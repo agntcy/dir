@@ -3,14 +3,17 @@
 
 package options
 
-import "github.com/spf13/cobra"
+import (
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
+	"github.com/spf13/cobra"
+)
 
 type PushOptions struct {
-	*BaseOption
+	*commonOptions.BaseOption
 	FromStdIn bool
 }
 
-func NewPushOptions(base *BaseOption, cmd *cobra.Command) *PushOptions {
+func NewPushOptions(base *commonOptions.BaseOption, cmd *cobra.Command) *PushOptions {
 	opts := &PushOptions{
 		BaseOption: base,
 	}

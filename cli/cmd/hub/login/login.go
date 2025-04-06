@@ -9,20 +9,21 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/agntcy/dir/cli/cmd/hub/login/options"
+	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
 	"github.com/agntcy/dir/cli/config"
 	hubBrowser "github.com/agntcy/dir/cli/hub/browser"
 	"github.com/agntcy/dir/cli/hub/okta"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/hub/token"
 	"github.com/agntcy/dir/cli/hub/webserver"
-	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
 const timeout = 60 * time.Second
 
-func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
+func NewCommand(hubOptions *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "login",
 		Short:            "Login to the Agent Hub",

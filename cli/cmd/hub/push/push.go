@@ -10,9 +10,11 @@ import (
 	"strings"
 
 	"github.com/agntcy/dir/api/hub/v1alpha1"
+	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
+	pushOptions "github.com/agntcy/dir/cli/cmd/hub/push/options"
+	"github.com/agntcy/dir/cli/cmd/push/options"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/hub/token"
-	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/agent"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/google/uuid"
@@ -20,13 +22,13 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
+func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "push {<repository>:<version> | <repository_id>:<version>} {<model.json> | --stdin} ",
 		Short: "Push model to Agent Hub",
 	}
 
-	opts := options.NewHubPushOptions(hubOpts, options.NewPushOptions(hubOpts.BaseOption, cmd))
+	opts := pushOptions.NewHubPushOptions(hubOpts, options.NewPushOptions(hubOpts.BaseOption, cmd))
 
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		// Check if the user is logged in

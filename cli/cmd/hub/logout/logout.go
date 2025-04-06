@@ -9,9 +9,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/agntcy/dir/cli/cmd/hub/options"
 	"github.com/agntcy/dir/cli/hub/okta"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
-	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
