@@ -57,7 +57,7 @@ func FetchAuthConfig(frontedURL string) (*AuthConfig, error) {
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}
 
-	var authConfig AuthConfig
+	var authConfig *AuthConfig
 	if err = json.Unmarshal(body, &authConfig); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrParsingConfig, err)
 	}
@@ -70,5 +70,10 @@ func FetchAuthConfig(frontedURL string) (*AuthConfig, error) {
 	backendAddr = fmt.Sprintf("%s:%d", backendAddr, config.DefaultHubBackendGRPCPort)
 	authConfig.HubBackendAddress = backendAddr
 
-	return &authConfig, nil
+	idpBackendAddr := authConfig.IdpBackendAddress
+	idpBackendAddr = strings.TrimSuffix(idpBackendAddr, "/")
+	idpBackendAddr = strings.TrimSuffix(idpBackendAddr, "/v1alpha1")
+	authConfig.IdpBackendAddress = idpBackendAddr
+
+	return authConfig, nil
 }

@@ -39,7 +39,7 @@ func (s *FileSecretStore) GetHubSession(sessionKey string) (*HubSession, error) 
 	return secret, nil
 }
 
-func (s *FileSecretStore) SaveHubSession(secretName string, secret *HubSession) error {
+func (s *FileSecretStore) SaveHubSession(sessionKey string, session *HubSession) error {
 	file, err := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE, ModeCurrentUserReadWrite)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -53,45 +53,44 @@ func (s *FileSecretStore) SaveHubSession(secretName string, secret *HubSession) 
 	}
 	defer file.Close()
 
-	var secrets HubSessions
-	if err = json.NewDecoder(file).Decode(&secrets); err != nil {
+	var sessions HubSessions
+	if err = json.NewDecoder(file).Decode(&sessions); err != nil {
 		if !errors.Is(err, io.EOF) {
 			return fmt.Errorf("%w: %w", ErrMalformedSecret, err)
 		}
 	}
 
-	if secrets.HubSessions == nil {
-		secrets.HubSessions = make(map[string]*HubSession)
+	if sessions.HubSessions == nil {
+		sessions.HubSessions = make(map[string]*HubSession)
 	}
 
-	secrets.HubSessions[secretName] = secret
+	sessions.HubSessions[sessionKey] = session
 
-	if err = rewriteJSONFilePretty(file, secrets); err != nil {
+	// TODO: Remove if auth config is cached in the session
+	session.AuthConfig = nil
+
+	if err = rewriteJSONFilePretty(file, sessions); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
 	}
 
 	return nil
 }
 
-func (s *FileSecretStore) RemoveHubSession(secretName string) error {
-	secrets, file, err := s.getSessionsAndFile()
+func (s *FileSecretStore) RemoveSession(sessionKey string) error {
+	sessions, file, err := s.getSessionsAndFile()
 	if err != nil {
 		return err
 	}
 
-	if file == nil {
+	if file == nil || sessions == nil {
 		return nil
 	}
 
 	defer file.Close()
 
-	if _, ok := secrets.HubSessions[secretName]; !ok {
-		return nil
-	}
+	delete(sessions.HubSessions, sessionKey)
 
-	delete(secrets.HubSessions, secretName)
-
-	if err = rewriteJSONFilePretty(file, secrets); err != nil {
+	if err = rewriteJSONFilePretty(file, sessions); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
 	}
 

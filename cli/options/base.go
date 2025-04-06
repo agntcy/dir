@@ -29,10 +29,12 @@ func (o *BaseOption) Register() error {
 	}()
 
 	if o.isRegistered {
-		for _, fn := range o.registerFns {
-			if err := fn(); err != nil {
-				return err
-			}
+		return nil
+	}
+
+	for _, fn := range o.registerFns {
+		if err := fn(); err != nil {
+			return err
 		}
 	}
 

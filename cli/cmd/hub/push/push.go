@@ -11,10 +11,10 @@ import (
 
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
+	"github.com/agntcy/dir/cli/hub/token"
 	"github.com/agntcy/dir/cli/options"
 	"github.com/agntcy/dir/cli/util/agent"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/agntcy/dir/cli/util/token"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
@@ -30,13 +30,13 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 
 	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
 		// Check if the user is logged in
-		secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
+		secret, ok := contextUtils.GetCurrentHubSessionFromContext(cmd.Context())
 		if !ok || secret.Tokens == nil {
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 
 		// Check if the access token is expired
-		idpClient, ok := contextUtils.GetIdpClientFromContext(cmd.Context())
+		idpClient, ok := contextUtils.GetOktaClientFromContext(cmd.Context())
 		if !ok {
 			return errors.New("failed to get IDP client from context")
 		}
@@ -46,14 +46,9 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 			return errors.New("failed to get secret store from context")
 		}
 
-		serverAddr, ok := contextUtils.GetCurrentServerAddressFromContext(cmd.Context())
-		if !ok {
-			return errors.New("failed to get current server address")
-		}
-
 		if err := token.RefreshTokenIfExpired(
 			cmd,
-			serverAddr,
+			opts.ServerAddress,
 			secret,
 			secretStore,
 			idpClient,
@@ -65,12 +60,12 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 	}
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
+		session, ok := contextUtils.GetCurrentHubSessionFromContext(cmd.Context())
 		if !ok {
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 
-		hc, err := hubClient.New(secret.HubBackendAddress)
+		hc, err := hubClient.New(session.HubBackendAddress)
 		if err != nil {
 			return fmt.Errorf("failed to create hub client: %w", err)
 		}
@@ -100,7 +95,7 @@ func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 			return fmt.Errorf("failed to parse repo id: %w", err)
 		}
 
-		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("authorization", "Bearer "+secret.AccessToken))
+		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("authorization", "Bearer "+session.Tokens[session.CurrentTenant].AccessToken))
 
 		resp, err := hc.PushAgent(ctx, agentBytes, repoID)
 		if err != nil {

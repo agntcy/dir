@@ -6,5 +6,5 @@ package sessionstore
 type SessionStore interface {
 	GetHubSession(string) (*HubSession, error)
 	SaveHubSession(string, *HubSession) error
-	RemoveHubSession(string) error
+	RemoveSession(string) error
 }

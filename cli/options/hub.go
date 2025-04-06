@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	hubAddressFlagName   = "server-address"
+	hubAddressFlagName = "server-address"
+
 	hubAddressConfigPath = "hub.server-address"
 )
 
