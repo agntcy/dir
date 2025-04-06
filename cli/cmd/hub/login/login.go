@@ -7,85 +7,89 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/agntcy/dir/cli/config"
-	configUtils "github.com/agntcy/dir/cli/hub/config"
-	"github.com/agntcy/dir/cli/hub/idp"
+	hubBrowser "github.com/agntcy/dir/cli/hub/browser"
+	"github.com/agntcy/dir/cli/hub/okta"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
+	"github.com/agntcy/dir/cli/hub/token"
 	"github.com/agntcy/dir/cli/hub/webserver"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
 
 const timeout = 60 * time.Second
 
 func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:              "login",
+		Short:            "Login to the Agent Hub",
+		TraverseChildren: true,
+	}
+
 	opts := options.NewLoginOptions(hubOptions)
 
-	cmd := &cobra.Command{
-		Use:   "login",
-		Short: "Login to the Agent Hub",
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			// Get secret store from context
-			secretStore, ok := ctxUtils.GetSessionStoreFromContext(cmd.Context())
-			if !ok {
-				return errors.New("failed to get secret store from context")
-			}
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		// Get secret store from context
+		sessionStore, ok := ctxUtils.GetSessionStoreFromContext(cmd.Context())
+		if !ok {
+			return errors.New("failed to get session store from context")
+		}
 
-			// Get auth config
-			authConfig, err := configUtils.FetchAuthConfig(opts.ServerAddress)
-			if err != nil {
-				return fmt.Errorf("failed to fetch auth config: %w", err)
-			}
+		// Get current session from session store
+		currentSession, ok := ctxUtils.GetCurrentHubSessionFromContext(cmd.Context())
+		if !ok {
+			return errors.New("failed to get current session from context")
+		}
 
-			// Init IDP client
-			idpClient := idp.NewClient(authConfig.IdpIssuerAddress)
+		// Init IDP client
+		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress)
 
-			return runCmd(cmd, opts, idpClient, authConfig, secretStore)
-		},
-		TraverseChildren: true,
+		return runCmd(cmd, opts, oktaClient, sessionStore, currentSession)
 	}
 
 	return cmd
 }
 
-func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client, authConfig *configUtils.AuthConfig, secretStore sessionstore.SessionStore) error {
+func runCmd(cmd *cobra.Command, opts *options.LoginOptions, oktaClient okta.Client, sessionStore sessionstore.SessionStore, currentSession *sessionstore.HubSession) error {
 	// Set up the webserver
 	//// Init the error channel
 	errCh := make(chan error, 1)
 
 	//// Init session store
-	sessionStore := &webserver.SessionStore{}
+	webserverSession := &webserver.SessionStore{}
 
 	handler := webserver.NewHandler(&webserver.Config{
-		ClientID:           authConfig.ClientID,
-		IdpFrontendURL:     authConfig.IdpFrontendAddress,
-		IdpBackendURL:      authConfig.IdpBackendAddress,
+		ClientID:           currentSession.AuthConfig.ClientID,
+		IdpFrontendURL:     currentSession.AuthConfig.IdpFrontendAddress,
+		IdpBackendURL:      currentSession.AuthConfig.IdpBackendAddress,
 		LocalWebserverPort: config.LocalWebserverPort,
-		IdpClient:          idpClient,
-		SessionStore:       sessionStore,
+		OktaClient:         oktaClient,
+		SessionStore:       webserverSession,
 		ErrChan:            errCh,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	server := webserver.StartLocalServer(handler, config.LocalWebserverPort, errCh)
+	server, err := webserver.StartLocalServer(handler, config.LocalWebserverPort, errCh)
+	if err != nil {
+		var errChanError error
+		if len(errCh) > 0 {
+			errChanError = <-errCh
+		}
+
+		return fmt.Errorf("failed to start local webserver: %w. error from webserver: %w", err, errChanError)
+	}
 	defer server.Shutdown(ctx) //nolint:errcheck
 
 	// Open the browser
-	if err := openBrowser(authConfig); err != nil {
-		return err
+	if err := hubBrowser.OpenBrowserForLogin(currentSession.AuthConfig); err != nil {
+		return fmt.Errorf("could not open browser for login: %w", err)
 	}
 
-	// Wait for the server to start
-	time.Sleep(1 * time.Second)
-
-	var err error
 	select {
 	case err = <-errCh:
 	case <-ctx.Done():
@@ -96,35 +100,37 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, idpClient idp.Client
 		return fmt.Errorf("failed to fetch tokens: %w", err)
 	}
 
+	// Get tenant
+	tName, err := token.GetTenantNameFromToken(webserverSession.Tokens.AccessToken)
+	if err != nil {
+		return fmt.Errorf("failed to get tenant id: %w", err)
+	}
+
+	// Get username from token
+	user, err := token.GetUserFromToken(webserverSession.Tokens.AccessToken)
+	if err != nil {
+		return fmt.Errorf("failed to get user from token: %w", err)
+	}
+
+	currentSession.Tokens = make(map[string]*sessionstore.Tokens)
+	// Set current tenant
+	currentSession.CurrentTenant = tName
+	// Set user
+	currentSession.User = user
+	// Set tokens
+	currentSession.Tokens[tName] = &sessionstore.Tokens{
+		AccessToken:  webserverSession.Tokens.AccessToken,
+		RefreshToken: webserverSession.Tokens.RefreshToken,
+		IDToken:      webserverSession.Tokens.IDToken,
+	}
+
 	// Get tokens
-	err = secretStore.SaveHubSession(opts.ServerAddress, &sessionstore.HubSession{
-		AuthConfig: &sessionstore.AuthConfig{
-			ClientID:           authConfig.ClientID,
-			IdpProductID:       authConfig.IdpProductID,
-			IdpFrontendAddress: authConfig.IdpFrontendAddress,
-			IdpBackendAddress:  authConfig.IdpBackendAddress,
-			IdpIssuerAddress:   authConfig.IdpIssuerAddress,
-			HubBackendAddress:  authConfig.HubBackendAddress,
-		},
-		Tokens: &sessionstore.Tokens{
-			AccessToken:  sessionStore.Tokens.AccessToken,
-			IDToken:      sessionStore.Tokens.IDToken,
-			RefreshToken: sessionStore.Tokens.RefreshToken,
-		},
-	})
+	err = sessionStore.SaveHubSession(opts.ServerAddress, currentSession)
 	if err != nil {
 		return fmt.Errorf("failed to save tokens: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Agent Hub\nAddress: %s\n", opts.ServerAddress)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Agent Hub\nAddress: %s\nUser: %s\nTenant: %s\n", opts.ServerAddress, user, tName)
 
 	return nil
-}
-
-func openBrowser(authConfig *configUtils.AuthConfig) error {
-	params := url.Values{}
-	params.Add("redirectUri", fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort))
-	loginPageWithRedirect := fmt.Sprintf("%s/%s/login?%s", authConfig.IdpFrontendAddress, authConfig.IdpProductID, params.Encode())
-
-	return browser.OpenURL(loginPageWithRedirect) //nolint:wrapcheck
 }

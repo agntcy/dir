@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/agntcy/dir/cli/hub/idp"
+	"github.com/agntcy/dir/cli/hub/okta"
 	"github.com/agntcy/dir/cli/hub/webserver/utils"
 )
 
@@ -18,7 +18,7 @@ const (
 
 type SessionStore struct {
 	verifier string
-	Tokens   *idp.Token
+	Tokens   *okta.Token
 }
 
 type Config struct {
@@ -28,7 +28,7 @@ type Config struct {
 	LocalWebserverPort int
 
 	SessionStore *SessionStore
-	IdpClient    idp.Client
+	OktaClient   okta.Client
 	ErrChan      chan error
 }
 
@@ -39,7 +39,7 @@ type Handler struct {
 	localWebserverURL string
 
 	sessionStore *SessionStore
-	idpClient    idp.Client
+	idpClient    okta.Client
 
 	Err chan error
 }
@@ -59,10 +59,15 @@ func NewHandler(config *Config) *Handler {
 		localWebserverURL: fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort),
 
 		sessionStore: config.SessionStore,
-		idpClient:    config.IdpClient,
+		idpClient:    config.OktaClient,
 
 		Err: errChan,
 	}
+}
+
+func (h *Handler) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK")) //nolint:errcheck
 }
 
 func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +81,7 @@ func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) 
 		h.handleError(w, err)
 	}
 
-	redirectURL := h.idpClient.AuthorizeURL(&idp.AuthorizeRequest{
+	redirectURL := h.idpClient.AuthorizeURL(&okta.AuthorizeRequest{
 		ClientID:      h.clientID,
 		S256Challenge: challenge,
 		Nonce:         nonce,
@@ -90,7 +95,7 @@ func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleCodeRedirect(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 
-	resp, err := h.idpClient.RequestToken(&idp.RequestTokenRequest{
+	resp, err := h.idpClient.RequestToken(&okta.RequestTokenRequest{
 		ClientID:    h.clientID,
 		RedirectURI: h.localWebserverURL,
 		Verifier:    h.sessionStore.verifier,

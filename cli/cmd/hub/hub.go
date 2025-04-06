@@ -7,17 +7,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/cmd/hub/login"
 	"github.com/agntcy/dir/cli/cmd/hub/logout"
 	"github.com/agntcy/dir/cli/cmd/hub/pull"
 	"github.com/agntcy/dir/cli/cmd/hub/push"
+	"github.com/agntcy/dir/cli/cmd/hub/tenants"
 	"github.com/agntcy/dir/cli/hub/config"
-	"github.com/agntcy/dir/cli/hub/idp"
+	"github.com/agntcy/dir/cli/hub/okta"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/options"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/spf13/cobra"
 )
 
 func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
@@ -62,10 +62,8 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		ctx := cmd.Context()
 		ctx = ctxUtils.SetCurrentHubSessionForContext(ctx, session)
 
-		idpClient := idp.NewClient(session.IdpIssuerAddress)
-		ctx = ctxUtils.SetIdpClientForContext(ctx, idpClient)
-
-		ctx = ctxUtils.SetCurrentServerAddressForContext(ctx, opts.ServerAddress)
+		idpClient := okta.NewClient(session.IdpIssuerAddress)
+		ctx = ctxUtils.SetOktaClientForContext(ctx, idpClient)
 
 		cmd.SetContext(ctx)
 
@@ -76,7 +74,8 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		login.NewCommand(opts),
 		logout.NewCommand(opts),
 		push.NewCommand(opts),
-		pull.NewCommand(),
+		pull.NewCommand(opts),
+		tenants.NewCommand(opts),
 	)
 
 	return cmd
