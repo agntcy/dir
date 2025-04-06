@@ -4,6 +4,7 @@
 package webserver
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,10 +12,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const readHeaderTimeout = 5 * time.Second
+const (
+	readHeaderTimeout = 5 * time.Second
+	numRetries        = 5
+)
 
-func StartLocalServer(h *Handler, port int, errCh chan error) *http.Server {
+func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, error) {
 	r := mux.NewRouter()
+	r.HandleFunc("/healthz", h.HandleHealthz).Methods(http.MethodGet)
 	r.HandleFunc("/", h.HandleRequestRedirect).Methods(http.MethodGet).Queries("request", "{request}")
 	r.HandleFunc("/", h.HandleCodeRedirect).Methods(http.MethodGet).Queries("code", "{code}")
 
@@ -28,5 +33,33 @@ func StartLocalServer(h *Handler, port int, errCh chan error) *http.Server {
 		errCh <- server.ListenAndServe()
 	}()
 
-	return server
+	var err error
+
+	for range 5 {
+		var req *http.Request
+
+		req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("http://localhost:%d/healthz", port), nil)
+		if err != nil {
+			continue
+		}
+
+		var resp *http.Response
+
+		resp, err = http.DefaultClient.Do(req)
+		if err != nil {
+			continue
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			err = fmt.Errorf("server returned unexpected status code: %d", resp.StatusCode)
+
+			continue
+		}
+
+		return server, err
+	}
+
+	return nil, fmt.Errorf("failed to start server after %d retries: %w", numRetries, err)
 }

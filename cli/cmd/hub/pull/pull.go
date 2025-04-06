@@ -13,19 +13,22 @@ import (
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubClient "github.com/agntcy/dir/cli/hub/client"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
+	"github.com/agntcy/dir/cli/hub/token"
+	"github.com/agntcy/dir/cli/options"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/agntcy/dir/cli/util/token"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 )
 
-func NewCommand() *cobra.Command {
+func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
+	opts := options.NewHubPullOptions(hubOpts)
+
 	cmd := &cobra.Command{
 		Use:   "pull {<digest> | <repository>:<version> }",
 		Short: "Pull an agent from Agent Hub",
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			// TODO: Backend address should be fetched from the context
-			secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
+			secret, ok := contextUtils.GetCurrentHubSessionFromContext(cmd.Context())
 			if !ok {
 				return errors.New("could not get current hub secret from context")
 			}
@@ -35,19 +38,14 @@ func NewCommand() *cobra.Command {
 				return errors.New("failed to get secret store from context")
 			}
 
-			idpClient, ok := contextUtils.GetIdpClientFromContext(cmd.Context())
+			idpClient, ok := contextUtils.GetOktaClientFromContext(cmd.Context())
 			if !ok {
 				return errors.New("failed to get IDP client from context")
 			}
 
-			serverAddr, ok := contextUtils.GetCurrentServerAddressFromContext(cmd.Context())
-			if !ok {
-				return errors.New("failed to get current server address")
-			}
-
 			err := token.RefreshTokenIfExpired(
 				cmd,
-				serverAddr,
+				opts.ServerAddress,
 				secret,
 				secretStore,
 				idpClient,
@@ -63,7 +61,7 @@ func NewCommand() *cobra.Command {
 				return errors.New("agent id is the only required argument")
 			}
 
-			secret, ok := contextUtils.GetCurrentHubSecretFromContext(cmd.Context())
+			secret, ok := contextUtils.GetCurrentHubSessionFromContext(cmd.Context())
 			if !ok {
 				return errors.New("could not get current hub secret from context")
 			}
@@ -85,9 +83,9 @@ func NewCommand() *cobra.Command {
 	return cmd
 }
 
-func runCmd(ctx context.Context, hc hubClient.Client, agentID *v1alpha1.AgentIdentifier, secret *sessionstore.HubSession) error {
-	if secret.Tokens != nil && secret.AccessToken != "" {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+secret.Tokens.AccessToken))
+func runCmd(ctx context.Context, hc hubClient.Client, agentID *v1alpha1.AgentIdentifier, session *sessionstore.HubSession) error {
+	if session.Tokens != nil && session.Tokens[session.CurrentTenant].AccessToken != "" {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+session.Tokens[session.CurrentTenant].AccessToken))
 	}
 
 	model, err := hc.PullAgent(ctx, &v1alpha1.PullAgentRequest{

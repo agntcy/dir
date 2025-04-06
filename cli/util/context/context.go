@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/agntcy/dir/cli/hub/idp"
+	"github.com/agntcy/dir/cli/hub/okta"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/client"
 )
@@ -14,12 +15,11 @@ import (
 type KeyType string
 
 const (
-	DirClientContextKey            KeyType = "ContextDirClient"
-	HubClientContextKey            KeyType = "ContextHubClient"
-	SecretStoreContextKey          KeyType = "ContextSecretStore"
-	CurrentHubSecretContextKey     KeyType = "ContextCurrentHubSecret"
-	IdpClientContextKey            KeyType = "ContextIdpClient"
-	CurrentServerAddressContextKey KeyType = "ContextCurrentServerAddress"
+	DirClientContextKey        KeyType = "ContextDirClient"
+	SecretStoreContextKey      KeyType = "ContextSecretStore"
+	CurrentHubSecretContextKey KeyType = "ContextCurrentHubSecret"
+	OktaClientContextKey       KeyType = "ContextIdpClient"
+	UserTenantsContextKey      KeyType = "ContextUserTenants"
 )
 
 func SetDirClientForContext(ctx context.Context, c *client.Client) context.Context {
@@ -42,24 +42,24 @@ func SetCurrentHubSessionForContext(ctx context.Context, secret *sessionstore.Hu
 	return setCliContext(ctx, CurrentHubSecretContextKey, secret)
 }
 
-func GetCurrentHubSecretFromContext(ctx context.Context) (*sessionstore.HubSession, bool) {
+func GetCurrentHubSessionFromContext(ctx context.Context) (*sessionstore.HubSession, bool) {
 	return getCliContext[*sessionstore.HubSession](ctx, CurrentHubSecretContextKey)
 }
 
-func SetIdpClientForContext(ctx context.Context, c idp.Client) context.Context {
-	return setCliContext(ctx, IdpClientContextKey, c)
+func SetOktaClientForContext(ctx context.Context, c okta.Client) context.Context {
+	return setCliContext(ctx, OktaClientContextKey, c)
 }
 
-func GetIdpClientFromContext(ctx context.Context) (idp.Client, bool) {
-	return getCliContext[idp.Client](ctx, IdpClientContextKey)
+func GetOktaClientFromContext(ctx context.Context) (okta.Client, bool) {
+	return getCliContext[okta.Client](ctx, OktaClientContextKey)
 }
 
-func SetCurrentServerAddressForContext(ctx context.Context, address string) context.Context {
-	return setCliContext(ctx, CurrentServerAddressContextKey, address)
+func SetUserTenantsForContext(ctx context.Context, tenants []*idp.TenantResponse) context.Context {
+	return setCliContext(ctx, UserTenantsContextKey, tenants)
 }
 
-func GetCurrentServerAddressFromContext(ctx context.Context) (string, bool) {
-	return getCliContext[string](ctx, CurrentServerAddressContextKey)
+func GetUserTenantsFromContext(ctx context.Context) ([]*idp.TenantResponse, bool) {
+	return getCliContext[[]*idp.TenantResponse](ctx, UserTenantsContextKey)
 }
 
 func setCliContext[T any](ctx context.Context, key KeyType, c T) context.Context {

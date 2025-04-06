@@ -7,8 +7,10 @@ type HubSessions struct {
 	HubSessions map[string]*HubSession `json:"hub_sessions"`
 }
 type HubSession struct {
-	Tokens      map[string]*Tokens `json:"tokens"`
-	*AuthConfig `json:"auth_config"`
+	Tokens        map[string]*Tokens `json:"tokens"`
+	CurrentTenant string             `json:"current_tenant"`
+	User          string             `json:"user"`
+	*AuthConfig   `json:"auth_config,omitempty"`
 }
 
 type Tokens struct {
