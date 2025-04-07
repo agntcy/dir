@@ -8,10 +8,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
 	pushOptions "github.com/agntcy/dir/cli/cmd/hub/push/options"
@@ -20,6 +16,9 @@ import (
 	"github.com/agntcy/dir/cli/hub/token"
 	"github.com/agntcy/dir/cli/util/agent"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/google/uuid"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
