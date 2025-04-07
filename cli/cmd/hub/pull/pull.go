@@ -10,9 +10,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
 	"github.com/agntcy/dir/cli/cmd/hub/pull/options"
@@ -20,6 +17,8 @@ import (
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/hub/token"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
