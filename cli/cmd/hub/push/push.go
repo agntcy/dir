@@ -92,10 +92,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		}
 
 		// TODO: Push based on repoName and version misleading
-		repoID, err := parseRepoTagID(args[0])
-		if err != nil {
-			return fmt.Errorf("failed to parse repo id: %w", err)
-		}
+		repoID := parseRepoTagID(args[0])
 
 		ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("authorization", "Bearer "+session.Tokens[session.CurrentTenant].AccessToken))
 
@@ -112,10 +109,10 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func parseRepoTagID(id string) (any, error) {
+func parseRepoTagID(id string) any {
 	if _, err := uuid.Parse(id); err == nil {
-		return &v1alpha1.PushAgentRequest_RepositoryId{RepositoryId: id}, nil
+		return &v1alpha1.PushAgentRequest_RepositoryId{RepositoryId: id}
 	}
 
-	return &v1alpha1.PushAgentRequest_RepositoryName{RepositoryName: id}, nil
+	return &v1alpha1.PushAgentRequest_RepositoryName{RepositoryName: id}
 }
