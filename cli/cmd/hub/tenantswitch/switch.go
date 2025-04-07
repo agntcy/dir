@@ -12,9 +12,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/manifoldco/promptui"
-	"github.com/spf13/cobra"
-
 	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
 	"github.com/agntcy/dir/cli/cmd/hub/tenantswitch/options"
 	"github.com/agntcy/dir/cli/config"
@@ -25,6 +22,8 @@ import (
 	"github.com/agntcy/dir/cli/hub/token"
 	"github.com/agntcy/dir/cli/hub/webserver"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/manifoldco/promptui"
+	"github.com/spf13/cobra"
 )
 
 const timeout = 60 * time.Second
