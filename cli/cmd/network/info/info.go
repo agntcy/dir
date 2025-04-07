@@ -10,14 +10,11 @@ import (
 	"os"
 
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/utils/logging"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
 )
-
-var logger = logging.Logger("cli/network/info")
 
 var Command = &cobra.Command{
 	Use:   "info",
@@ -47,8 +44,6 @@ Usage examples:
 }
 
 func runCommand(cmd *cobra.Command, path string) error {
-	logger.Info("Generating peer ID from key on the filesystem path", "path", path)
-
 	// Read the SSH key file
 	keyBytes, err := os.ReadFile(path)
 	if err != nil {
