@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
+
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	oasf "github.com/agntcy/dir/api/core/v1alpha1/oasf-validator"
 	"github.com/agntcy/dir/cli/builder"
@@ -17,7 +19,6 @@ import (
 	"github.com/agntcy/dir/cli/cmd/build/options"
 	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/spf13/cobra"
 )
 
 const ConfigFile = "build.config.yml"
@@ -33,10 +34,12 @@ describes an agent and satisfies the **Open Agent Schema Framework** specificati
 
 Usage examples:
 
-	When config is present under the agent source code
+1. When build config is present under the agent source code:
+
 	dirctl build ./path-to-agent
 
-	When config is either not present or we want to override config from path
+2. When build config is either not present or we want to override config from path:
+	
 	dirctl build ./path-to-agent --config build.yml
 
 `,
