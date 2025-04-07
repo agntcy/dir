@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
+
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
 	"github.com/agntcy/dir/cli/cmd/hub/pull/options"
@@ -17,15 +20,13 @@ import (
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/hub/token"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
 )
 
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	opts := options.NewHubPullOptions(hubOpts)
 
 	cmd := &cobra.Command{
-		Use:   "pull {<digest> | <repository>:<version> }",
+		Use:   "pull <digest>",
 		Short: "Pull an agent from Agent Hub",
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			// TODO: Backend address should be fetched from the context

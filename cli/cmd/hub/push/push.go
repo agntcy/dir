@@ -7,7 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
+
+	"github.com/google/uuid"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
@@ -17,14 +20,11 @@ import (
 	"github.com/agntcy/dir/cli/hub/token"
 	"github.com/agntcy/dir/cli/util/agent"
 	contextUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/google/uuid"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
 )
 
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "push {<repository>:<version> | <repository_id>:<version>} {<model.json> | --stdin} ",
+		Use:   "push {<repository> | <repository_id>} {<model.json> | --stdin} ",
 		Short: "Push model to Agent Hub",
 	}
 
@@ -92,7 +92,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		}
 
 		// TODO: Push based on repoName and version misleading
-		repoID, _, err := parseRepoTagID(args[0])
+		repoID, err := parseRepoTagID(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to parse repo id: %w", err)
 		}
@@ -112,18 +112,10 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func parseRepoTagID(id string) (any, string, error) {
-	parts := strings.Split(id, ":")
-	if len(parts) != 2 { //nolint:mnd
-		return nil, "", errors.New("invalid agent id format")
+func parseRepoTagID(id string) (any, error) {
+	if _, err := uuid.Parse(id); err == nil {
+		return &v1alpha1.PushAgentRequest_RepositoryId{RepositoryId: id}, nil
 	}
 
-	tag := parts[1]
-	repoID := parts[0]
-
-	if _, err := uuid.Parse(repoID); err == nil {
-		return &v1alpha1.PushAgentRequest_RepositoryId{RepositoryId: repoID}, tag, nil
-	}
-
-	return &v1alpha1.PushAgentRequest_RepositoryName{RepositoryName: repoID}, tag, nil
+	return &v1alpha1.PushAgentRequest_RepositoryName{RepositoryName: id}, nil
 }
