@@ -66,9 +66,6 @@ func (s *FileSecretStore) SaveHubSession(sessionKey string, session *HubSession)
 
 	sessions.HubSessions[sessionKey] = session
 
-	// TODO: Remove if auth config is cached in the session
-	session.AuthConfig = nil
-
 	if err = rewriteJSONFilePretty(file, sessions); err != nil {
 		return fmt.Errorf("%w: %w", ErrCouldNotWriteFile, err)
 	}
