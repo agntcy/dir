@@ -12,6 +12,9 @@ import (
 	"slices"
 	"time"
 
+	"github.com/manifoldco/promptui"
+	"github.com/spf13/cobra"
+
 	hubOptions "github.com/agntcy/dir/cli/cmd/hub/options"
 	"github.com/agntcy/dir/cli/cmd/hub/tenantswitch/options"
 	"github.com/agntcy/dir/cli/config"
@@ -22,8 +25,6 @@ import (
 	"github.com/agntcy/dir/cli/hub/token"
 	"github.com/agntcy/dir/cli/hub/webserver"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/manifoldco/promptui"
-	"github.com/spf13/cobra"
 )
 
 const timeout = 60 * time.Second
@@ -155,6 +156,15 @@ func switchTenant( //nolint:cyclop
 
 	if err != nil {
 		return "", fmt.Errorf("failed to get tokens: %w", err)
+	}
+
+	newTenant, err := token.GetTenantNameFromToken(webserverSession.Tokens.AccessToken)
+	if err != nil {
+		return "", fmt.Errorf("failed to get tenant name from token: %w", err)
+	}
+
+	if newTenant != selectedTenant {
+		return "", fmt.Errorf("tenant name from token (%s) does not match selected tenant (%s). it could happen because you logged in another account then the one that has the requested tenant", newTenant, selectedTenant)
 	}
 
 	currentSession.CurrentTenant = selectedTenant
