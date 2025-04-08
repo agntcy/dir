@@ -6,11 +6,10 @@ package options
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/config"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 const (
