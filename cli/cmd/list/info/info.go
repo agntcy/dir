@@ -8,13 +8,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/cli/cmd/list/info/options"
 	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/cli/util/context"
+	"github.com/spf13/cobra"
 )
 
 func NewCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
