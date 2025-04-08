@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/agntcy/dir/cli/cmd/hub/login"
 	"github.com/agntcy/dir/cli/cmd/hub/logout"
 	"github.com/agntcy/dir/cli/cmd/hub/options"
@@ -18,7 +20,6 @@ import (
 	"github.com/agntcy/dir/cli/hub/okta"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/spf13/cobra"
 )
 
 func NewHubCommand(baseOption *commonOptions.BaseOption) *cobra.Command {

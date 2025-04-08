@@ -7,6 +7,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/agntcy/dir/cli/cmd/build"
 	del "github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
@@ -24,7 +27,6 @@ import (
 	contextUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/file"
 	"github.com/agntcy/dir/client"
-	"github.com/spf13/cobra"
 )
 
 var clientConfig = client.DefaultConfig
@@ -35,6 +37,9 @@ func NewRootCommand(baseOption *options.BaseOption) *cobra.Command {
 		Short: "CLI tool to interact with Directory",
 		Long:  ``,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			// Merge config values and flag values: complete the options
+			baseOption.Complete()
+
 			// Set client via context for all requests
 			// TODO: make client config configurable via CLI args
 			c, err := client.New(client.WithConfig(&clientConfig))
@@ -103,6 +108,8 @@ func Run(ctx context.Context) error {
 
 	rootCmd := NewRootCommand(baseOption)
 
+	fmt.Println(viper.GetString("hub.server-address"))
+
 	if err := baseOption.Register(); err != nil {
 		return fmt.Errorf("failed to register options: %w", err)
 	}
@@ -110,6 +117,8 @@ func Run(ctx context.Context) error {
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
+
+	fmt.Println(viper.GetString("hub.server-address"))
 
 	return nil
 }
