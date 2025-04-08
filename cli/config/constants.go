@@ -4,7 +4,7 @@
 package config
 
 const (
-	LocalWebserverPort = 3000
+	LocalWebserverPort = 48043
 
 	DefaultHubAddress         = "https://phoenix.dev.outshift.ai"
 	DefaultHubBackendGRPCPort = 443
