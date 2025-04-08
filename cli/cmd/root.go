@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/agntcy/dir/cli/cmd/build"
 	del "github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
@@ -24,7 +26,6 @@ import (
 	contextUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/file"
 	"github.com/agntcy/dir/client"
-	"github.com/spf13/cobra"
 )
 
 var clientConfig = client.DefaultConfig
@@ -71,10 +72,7 @@ func NewRootCommand(baseOption *options.BaseOption) *cobra.Command { //nolint:co
 		// routing commands
 		publish.NewCommand(baseOption),
 		list.NewCommand(baseOption),
-		unpublish.NewCommand(baseOption),
 		network.Command,
-		publish.NewCommand(baseOption),
-		list.NewCommand(baseOption),
 		unpublish.NewCommand(baseOption),
 		// hub commands
 		hub.NewHubCommand(baseOption),
