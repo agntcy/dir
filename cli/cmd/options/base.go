@@ -47,9 +47,11 @@ func (o *BaseOption) Complete() {
 	if o.isCompleted {
 		return
 	}
+
 	defer func() {
 		o.isCompleted = true
 	}()
+
 	for _, fn := range o.completeFns {
 		fn()
 	}

@@ -7,9 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	"github.com/agntcy/dir/cli/cmd/build"
 	del "github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
@@ -27,11 +24,12 @@ import (
 	contextUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/file"
 	"github.com/agntcy/dir/client"
+	"github.com/spf13/cobra"
 )
 
 var clientConfig = client.DefaultConfig
 
-func NewRootCommand(baseOption *options.BaseOption) *cobra.Command {
+func NewRootCommand(baseOption *options.BaseOption) *cobra.Command { //nolint:contextcheck
 	rootCmd := &cobra.Command{
 		Use:   "dirctl",
 		Short: "CLI tool to interact with Directory",
@@ -106,9 +104,7 @@ func Run(ctx context.Context) error {
 
 	baseOption := options.NewBaseOption()
 
-	rootCmd := NewRootCommand(baseOption)
-
-	fmt.Println(viper.GetString("hub.server-address"))
+	rootCmd := NewRootCommand(baseOption) //nolint:contextcheck
 
 	if err := baseOption.Register(); err != nil {
 		return fmt.Errorf("failed to register options: %w", err)
@@ -117,8 +113,6 @@ func Run(ctx context.Context) error {
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
-
-	fmt.Println(viper.GetString("hub.server-address"))
 
 	return nil
 }
