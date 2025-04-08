@@ -6,10 +6,11 @@ package options
 import (
 	"fmt"
 
-	commonOptions "github.com/agntcy/dir/cli/cmd/options"
-	"github.com/agntcy/dir/cli/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
+	"github.com/agntcy/dir/cli/config"
 )
 
 const (
@@ -38,11 +39,13 @@ func NewHubOptions(base *commonOptions.BaseOption, cmd *cobra.Command) *HubOptio
 				return fmt.Errorf("unable to bind flag %s: %w", hubAddressFlagName, err)
 			}
 
-			hubOpts.ServerAddress = viper.GetString(hubAddressConfigPath)
-
 			return nil
 		},
 	)
+
+	hubOpts.AddCompleteFns(func() {
+		hubOpts.ServerAddress = viper.GetString(hubAddressConfigPath)
+	})
 
 	return hubOpts
 }
