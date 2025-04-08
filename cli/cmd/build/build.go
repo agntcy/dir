@@ -10,8 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
-
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	oasf "github.com/agntcy/dir/api/core/v1alpha1/oasf-validator"
 	"github.com/agntcy/dir/cli/builder"
@@ -19,6 +17,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/build/options"
 	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/presenter"
+	"github.com/spf13/cobra"
 )
 
 const ConfigFile = "build.config.yml"
