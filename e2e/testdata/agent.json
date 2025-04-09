@@ -52,6 +52,13 @@
         "type": "python",
         "version": "\u003e=3.11,\u003c3.13"
       }
+    },
+    {
+      "name": "schema.oasf.agntcy.org/domains/research",
+      "version": "v1.0.0",
+      "data": {
+        "description": "Research agent for Cisco's marketing strategy."
+      }
     }
   ]
 }

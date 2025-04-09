@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
@@ -77,15 +78,15 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 	}
 
 	// keep track of all agent skills
-	skills := getAgentSkills(agent)
-	for _, skill := range skills {
+	labels := getLabels(agent)
+	for _, label := range labels {
 		// Add key with digest
-		agentSkillKey := fmt.Sprintf("%s/%s", skill, ref.GetDigest())
-		if err := batch.Put(ctx, datastore.NewKey(agentSkillKey), nil); err != nil {
+		agentLabelKey := fmt.Sprintf("%s/%s", label, ref.GetDigest())
+		if err := batch.Put(ctx, datastore.NewKey(agentLabelKey), nil); err != nil {
 			return fmt.Errorf("failed to put skill key: %w", err)
 		}
 
-		metrics.increment(skill)
+		metrics.increment(label)
 	}
 
 	err = batch.Commit(ctx)
@@ -212,12 +213,11 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 				continue
 			}
 
-			// get agent skills
-			skills := getAgentSkills(agent)
+			labels := getLabels(agent)
 
 			// forward results back
 			outCh <- &routingtypes.ListResponse_Item{
-				Labels: skills,
+				Labels: labels,
 				Peer: &routingtypes.Peer{
 					Id: "HOST",
 				},
@@ -262,16 +262,17 @@ func (r *routeLocal) Unpublish(ctx context.Context, object *coretypes.Object) er
 		return fmt.Errorf("failed to delete agent key: %w", err)
 	}
 
-	// keep track of all agent skills
-	skills := getAgentSkills(agent)
-	for _, skill := range skills {
+	// keep track of all agent labels
+	labels := getLabels(agent)
+
+	for _, label := range labels {
 		// Delete key with digest
-		agentSkillKey := fmt.Sprintf("%s/%s", skill, ref.GetDigest())
-		if err := batch.Delete(ctx, datastore.NewKey(agentSkillKey)); err != nil {
+		agentLabelKey := fmt.Sprintf("%s/%s", label, ref.GetDigest())
+		if err := batch.Delete(ctx, datastore.NewKey(agentLabelKey)); err != nil {
 			return fmt.Errorf("failed to delete skill key: %w", err)
 		}
 
-		metrics.decrement(skill)
+		metrics.decrement(label)
 	}
 
 	err = batch.Commit(ctx)
@@ -324,4 +325,48 @@ func getAgentSkills(agent *coretypes.Agent) []string {
 	}
 
 	return skills
+}
+
+func getAgentDomains(agent *coretypes.Agent) []string {
+	prefix := "schema.oasf.agntcy.org/domains/"
+	var domains []string
+	for _, ext := range agent.GetExtensions() {
+		if strings.HasPrefix(ext.GetName(), prefix) {
+			domain := ext.GetName()[len(prefix):]
+			domains = append(domains, "/domains/"+domain)
+		}
+	}
+
+	return domains
+}
+
+func getAgentFeatures(agent *coretypes.Agent) []string {
+	prefix := "schema.oasf.agntcy.org/features/"
+	var features []string
+	for _, ext := range agent.GetExtensions() {
+		if strings.HasPrefix(ext.GetName(), prefix) {
+			feature := ext.GetName()[len(prefix):]
+			features = append(features, "/features/"+feature)
+		}
+	}
+
+	return features
+}
+
+func getLabels(agent *coretypes.Agent) []string {
+	var labels []string
+
+	// get agent skills
+	skills := getAgentSkills(agent)
+	labels = append(labels, skills...)
+
+	// get agent domains
+	domains := getAgentDomains(agent)
+	labels = append(labels, domains...)
+
+	// get agent features
+	features := getAgentFeatures(agent)
+	labels = append(labels, features...)
+
+	return labels
 }

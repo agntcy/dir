@@ -39,6 +39,18 @@ var _ = ginkgo.Describe("client end-to-end tests", func() {
 				ClassName:    Ptr("test-class-2"),
 			},
 		},
+		Extensions: []*coretypes.Extension{
+			{
+				Name:    "schema.oasf.agntcy.org/domains/domain-1",
+				Version: "v1",
+				Data:    nil,
+			},
+			{
+				Name:    "schema.oasf.agntcy.org/features/feature-1",
+				Version: "v1",
+				Data:    nil,
+			},
+		},
 	}
 
 	// Marshal the Agent struct back to bytes.
@@ -127,6 +139,29 @@ var _ = ginkgo.Describe("client end-to-end tests", func() {
 			for _, item := range items {
 				gomega.Expect(item).NotTo(gomega.BeNil())
 				gomega.Expect(item.GetRecord().GetDigest()).To(gomega.Equal(ref.GetDigest()))
+			}
+		})
+
+		ginkgo.It("should list published agent by feature and domain labels", func() {
+			labels := []string{
+				"/domains/domain-1",
+				"/features/feature-1",
+			}
+			for _, label := range labels {
+				itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
+					Labels:  []string{label},
+					Network: Ptr(false),
+				})
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				// Collect items from the channel
+				var items []*routingv1alpha1.ListResponse_Item
+				for item := range itemsChan {
+					items = append(items, item)
+				}
+
+				// Validate the response
+				gomega.Expect(items).To(gomega.HaveLen(1))
 			}
 		})
 	})

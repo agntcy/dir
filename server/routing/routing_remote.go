@@ -186,7 +186,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 
 				// get agent
 				agent := object.GetAgent()
-				skills := getAgentSkills(agent)
+				labels := getLabels(agent)
 
 				// peer addrs to string
 				var addrs []string
@@ -194,12 +194,12 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 					addrs = append(addrs, addr.String())
 				}
 
-				remoteLogger.Info("Found an announced agent", "ref", ref, "peer", prov.ID, "skills", strings.Join(skills, ", "))
+				remoteLogger.Info("Found an announced agent", "ref", ref, "peer", prov.ID, "labels", strings.Join(labels, ", "), "addrs", strings.Join(addrs, ", "))
 
 				// send back to caller
 				resCh <- &routingtypes.ListResponse_Item{
 					Record: object.GetRef(),
-					Labels: skills,
+					Labels: labels,
 					Peer: &routingtypes.Peer{
 						Id:    prov.ID.String(),
 						Addrs: addrs,
@@ -296,14 +296,14 @@ procLoop:
 			}
 			agent := object.GetAgent()
 
-			// extract skills
-			skills := getAgentSkills(agent)
+			// extract labels
+			labels := getLabels(agent)
 
 			// TODO: we can perform validation and data synchronization here.
 			// Depending on the server configuration, we can decide if we want to
 			// pull this model into our own cache, rebroadcast it, or ignore it.
 
-			remoteLogger.Info("Successfully processed agent", "meta", meta, "skills", strings.Join(skills, ", "))
+			remoteLogger.Info("Successfully processed agent", "meta", meta, "labels", strings.Join(labels, ", "), "peer", notif.Peer.ID)
 		}
 	}
 }
