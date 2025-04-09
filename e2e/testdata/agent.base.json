@@ -38,7 +38,7 @@
       }
     },
     {
-      "name": "oasf.agntcy.org/features/runtime/framework",
+      "name": "schema.oasf.agntcy.org/features/runtime/framework",
       "version": "v0.0.0",
       "data": {
         "name": "crewai",
@@ -46,7 +46,7 @@
       }
     },
     {
-      "name": "oasf.agntcy.org/features/runtime/language",
+      "name": "schema.oasf.agntcy.org/features/runtime/language",
       "version": "v0.0.0",
       "data": {
         "type": "python",

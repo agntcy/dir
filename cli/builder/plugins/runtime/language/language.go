@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	ExtensionName    = "oasf.agntcy.org/features/runtime/language"
+	ExtensionName    = "schema.oasf.agntcy.org/features/runtime/language"
 	ExtensionVersion = "v0.0.0"
 )
 
