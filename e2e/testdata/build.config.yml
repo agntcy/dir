@@ -12,3 +12,6 @@ builder:
 
   # Enable or disable the runtime plugin
   runtime: false
+
+  # Enable or disable OASF validation
+  oasf-validation: true

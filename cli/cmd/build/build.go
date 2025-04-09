@@ -100,10 +100,12 @@ func runCommand(cmd *cobra.Command, agentPath string) error {
 	// User model will override plugin model
 	agent.Merge(builderAgent)
 
-	// Validate skills
-	err = oasf.ValidateSkills(agent.GetSkills())
-	if err != nil {
-		return fmt.Errorf("failed to validate skills: %w", err)
+	if cfg.Builder.OASFValidation {
+		// Validate skills
+		err = oasf.ValidateSkills(agent.GetSkills())
+		if err != nil {
+			return fmt.Errorf("failed to validate skills: %w", err)
+		}
 	}
 
 	// Construct output

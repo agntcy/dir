@@ -49,6 +49,12 @@ builder:
 
  # Disable the runtime plugin
  runtime: false
+
+ # Enable OASF validation
+ oasf-validation: true
+
+ # Skip
+ 
 EOF
 
 # Build the agent
