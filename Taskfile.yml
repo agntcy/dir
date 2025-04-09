@@ -197,7 +197,7 @@ tasks:
     cmds:
       - |
         # mount config
-        cat > /tmp/zot-config.json <<EOF
+        cat > /tmp/config.json <<EOF
         {
           "distSpecVersion": "1.1.1",
           "storage": {
