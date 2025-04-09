@@ -11,7 +11,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingv1alpha1 "github.com/agntcy/dir/api/routing/v1alpha1"
-	"github.com/agntcy/dir/client"
+	"github.com/agntcy/dir/client/go"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/opencontainers/go-digest"
