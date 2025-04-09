@@ -6,7 +6,7 @@ package util
 import (
 	"context"
 
-	"github.com/agntcy/dir/client"
+	"github.com/agntcy/dir/client/go"
 )
 
 type ClientContextKeyType string

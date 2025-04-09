@@ -125,7 +125,7 @@ tasks:
     desc: Clean generated API stubs
     dir: ./api
     cmds:
-      - find . \( -name "*.pb.go" -o -name "*_grpc.pb.go" -o -name "*.pb.gw.go" \) -type f -delete
+      - find . \( -name "*.pb.go" -o -name "*_grpc.pb.go" -o -name "*.pb.gw.go" -o -name "*_pb2.py" -o -name "*_grpc.py" \) -type f -delete
 
   api:test:
     desc: Unit test API code
