@@ -9,36 +9,44 @@ import (
 	"fmt"
 
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	"github.com/agntcy/dir/cli/cmd/list/info/options"
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/util"
+	"github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "info",
-	Short: "Get summary details about published data",
-	Long: `Get aggregated summary about the data held in your local
+func NewCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "info",
+		Short: "Get summary details about published data",
+		Long: `Get aggregated summary about the data held in your local
 data store or across the network.	
 
 Usage examples:
 
 1. List summary about locally published data:
 
-	dir list info
+   	dir list info
 	
 2. List summary about published data across the network:
 
    	dir list info --network
-	
 `,
-	RunE: func(cmd *cobra.Command, _ []string) error { //nolint:gocritic
-		return runCommand(cmd)
-	},
+	}
+
+	opts := options.NewListInfoOptions(baseOption, cmd)
+
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error { //nolint:gocritic
+		return runCommand(cmd, opts)
+	}
+
+	return cmd
 }
 
-func runCommand(cmd *cobra.Command) error {
+func runCommand(cmd *cobra.Command, opts *options.ListInfoOptions) error {
 	// Get the client from the context.
-	c, ok := util.GetClientFromContext(cmd.Context())
+	c, ok := context.GetDirClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}

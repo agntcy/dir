@@ -8,15 +8,18 @@ import (
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	commonOptions "github.com/agntcy/dir/cli/cmd/options"
+	"github.com/agntcy/dir/cli/cmd/unpublish/options"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/util"
+	ctxUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "unpublish",
-	Short: "Unpublish agent model from the network",
-	Long: `
+func NewCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "unpublish",
+		Short: "Unpublish agent model from the network",
+		Long: `
 Unpublish the data from your local or rest of the network to disallow content discovery.
 This command only works for the objects that are available in the store.
 
@@ -31,18 +34,24 @@ Usage examples:
   	dirctl unpublish <digest> --network
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
+	}
+
+	opts := options.NewUnpublishOptions(baseOption, cmd)
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error { //nolint:gocritic
 		if len(args) != 1 {
 			return errors.New("digest is a required argument")
 		}
 
-		return runCommand(cmd, args[0])
-	},
+		return runCommand(cmd, opts, args[0])
+	}
+
+	return cmd
 }
 
-func runCommand(cmd *cobra.Command, digest string) error {
+func runCommand(cmd *cobra.Command, opts *options.UnpublishOptions, digest string) error {
 	// Get the client from the context.
-	c, ok := util.GetClientFromContext(cmd.Context())
+	c, ok := ctxUtil.GetDirClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
