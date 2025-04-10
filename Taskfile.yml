@@ -169,7 +169,7 @@ tasks:
   ##
   client:test:
     desc: Unit test Client code
-    dir: ./client
+    dir: ./client/go
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
@@ -220,7 +220,7 @@ tasks:
           }
         }
         EOF
-  
+
         # run docker with attached volume
         docker run \
               -it \
