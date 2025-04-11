@@ -143,10 +143,10 @@ tasks:
       GOOS: '{{ .GOOS | default OS }}'
       GOARCH: '{{ .GOARCH | default ARCH }}'
       BINARY_NAME: '{{ .BINARY_NAME | default "dirctl" }}'
-      OUT_DIR: '{{ .ROOT_DIR }}/bin'
+      OUT_BINARY: '{{ if eq OS "windows" }}{{ .ROOT_DIR }}\\bin\\{{ .BINARY_NAME }}.exe{{ else }}{{ .ROOT_DIR }}/bin/{{ .BINARY_NAME }}{{ end }}'
       LDFLAGS: '-s -w -extldflags -static {{ .VERSION_LDFLAGS }}'
     cmds:
-      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o {{.OUT_DIR}}/{{.BINARY_NAME}} cli.go
+      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o "{{.OUT_BINARY}}" cli.go
 
   cli:compile:all:
     desc: Compile CLI client binaries for multiple platforms
@@ -154,9 +154,15 @@ tasks:
     cmds:
       - for:
           matrix:
-            OS: ["linux", "darwin"]
+            OS: ["linux", "darwin", "windows"]
             ARCH: ["amd64", "arm64"]
-        cmd: GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dirctl-{{.ITEM.OS}}-{{.ITEM.ARCH}} task cli:compile
+        cmd: |
+          # Skip unsupported combinations (e.g., Windows ARM64)
+          if [ "{{.ITEM.OS}}" = "windows" ] && [ "{{.ITEM.ARCH}}" = "arm64" ]; then
+            echo "Skipping unsupported platform: {{.ITEM.OS}}/{{.ITEM.ARCH}}"
+          else
+            GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dirctl-{{.ITEM.OS}}-{{.ITEM.ARCH}} task cli:compile
+          fi
 
   cli:test:
     desc: Unit test CLI code
