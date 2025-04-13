@@ -7,7 +7,7 @@ module-sets:
     modules:
       - github.com/agntcy/dir/api
       - github.com/agntcy/dir/cli
-      - github.com/agntcy/dir/client/go
+      - github.com/agntcy/dir/client
       - github.com/agntcy/dir/server
       - github.com/agntcy/dir/e2e
       - github.com/agntcy/dir/utils

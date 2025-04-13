@@ -5,14 +5,14 @@ go 1.24.1
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/cli => ../cli
-	github.com/agntcy/dir/client/go => ../client/go
+	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
 )
 
 require (
 	github.com/agntcy/dir/api v0.2.1
 	github.com/agntcy/dir/cli v0.2.1
-	github.com/agntcy/dir/client/go v0.2.1
+	github.com/agntcy/dir/client v0.2.1
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
 	github.com/opencontainers/go-digest v1.0.0

@@ -9,7 +9,7 @@ import (
 
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/client/go"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 

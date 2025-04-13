@@ -18,7 +18,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/version"
 	"github.com/agntcy/dir/cli/util"
-	"github.com/agntcy/dir/client/go"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 

@@ -175,7 +175,7 @@ tasks:
   ##
   client:test:
     desc: Unit test Client code
-    dir: ./client/go
+    dir: ./client
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 

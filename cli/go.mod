@@ -4,7 +4,7 @@ go 1.24.1
 
 replace (
 	github.com/agntcy/dir/api => ../api
-	github.com/agntcy/dir/client/go => ../client/go
+	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
 )
 
@@ -13,8 +13,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0
 	github.com/agntcy/dir/api v0.2.1
 	github.com/agntcy/dir/client v0.2.1
-	github.com/agntcy/dir/api v0.2.1
-	github.com/agntcy/dir/client/go v0.2.1
 	github.com/anchore/syft v1.19.0
 	github.com/libp2p/go-libp2p v0.41.1
 	github.com/mitchellh/mapstructure v1.5.0

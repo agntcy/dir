@@ -4,7 +4,7 @@ go 1.24.1
 
 replace (
 	github.com/agntcy/dir/api => ../api
-	github.com/agntcy/dir/client/go => ../client
+	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
 )
 
