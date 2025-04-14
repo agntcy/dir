@@ -137,7 +137,7 @@ tasks:
 
   api:clean:python:
     desc: Clean generated python API stubs
-    dir: ./client/python/proto
+    dir: ./client/python/client/proto
     cmds:
       - find . \( -name "*_pb2_grpc.py" -o -name "*_pb2.py" -o -name "*_pb2.pyi" \) -type f -delete
 
@@ -203,9 +203,9 @@ tasks:
     desc: Unit test Python Client code
     deps:
       - deps:uv
-    dir: ./client/python
+    dir: ./client/python/tests
     env:
-      PYTHONPATH: '{{ .ROOT_DIR }}/client/python/proto'
+      PYTHONPATH: '{{ .ROOT_DIR }}/client/python/client/proto'
     cmds:
       - '{{.UV_BIN}} run pytest test_client.py'
 
