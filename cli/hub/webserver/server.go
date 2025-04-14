@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	readHeaderTimeout = 5 * time.Second
-	numRetries        = 5
+	readHeaderTimeout  = 5 * time.Second
+	numRetries         = 5
+	timeBetweenRetries = 1 * time.Second
 )
 
 func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, error) {
@@ -35,7 +36,9 @@ func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, err
 
 	var err error
 
-	for range 5 {
+	for range numRetries {
+		time.Sleep(timeBetweenRetries)
+
 		var req *http.Request
 
 		req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("http://localhost:%d/healthz", port), nil)
@@ -54,7 +57,6 @@ func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, err
 
 		if resp.StatusCode != http.StatusOK {
 			err = fmt.Errorf("server returned unexpected status code: %d", resp.StatusCode)
-
 			continue
 		}
 

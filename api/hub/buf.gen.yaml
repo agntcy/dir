@@ -11,12 +11,9 @@ managed:
       path: core/v1alpha1
       value: github.com/agntcy/dir/api/core/v1alpha1
 inputs:
-  - proto_file: saas/v1alpha1/agent_service.proto
+  - proto_file: saas/v1alpha1/agent_dir_service.proto
   - proto_file: saas/v1alpha1/agent_id.proto
   - proto_file: saas/v1alpha1/agent_id_response.proto
-  - proto_file: saas/v1alpha1/agent.proto
-  - proto_file: saas/v1alpha1/category.proto
-  - proto_file: saas/v1alpha1/locator.proto
   - proto_file: saas/v1alpha1/repo_version_id.proto
 plugins:
   - remote: buf.build/grpc/go:v1.5.1
