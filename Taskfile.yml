@@ -593,11 +593,9 @@ tasks:
           git clone {{.HUB_REPO_URL}} .tmp
           cd .tmp && git checkout {{.HUB_API_VERSION}} && cd ..
           cp -r \
-          .tmp/api/saas/v1alpha1/agent.proto \
           .tmp/api/saas/v1alpha1/agent_id.proto \
           .tmp/api/saas/v1alpha1/agent_id_response.proto \
-          .tmp/api/saas/v1alpha1/agent_service.proto \
-          .tmp/api/saas/v1alpha1/category.proto \
+          .tmp/api/saas/v1alpha1/agent_dir_service.proto \
           .tmp/api/saas/v1alpha1/repo_version_id.proto \
           saas/v1alpha1
           cp -r ../core/v1alpha1/* core/v1alpha1

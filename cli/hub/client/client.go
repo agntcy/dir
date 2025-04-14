@@ -12,11 +12,12 @@ import (
 	"fmt"
 	"io"
 
-	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/api/hub/v1alpha1"
 	"github.com/opencontainers/go-digest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/api/hub/v1alpha1"
 )
 
 const chunkSize = 4096 // 4KB
@@ -27,7 +28,7 @@ type Client interface {
 }
 
 type client struct {
-	v1alpha1.AgentServiceClient
+	v1alpha1.AgentDirServiceClient
 }
 
 func New(serverAddr string) (*client, error) { //nolint:revive
@@ -40,7 +41,7 @@ func New(serverAddr string) (*client, error) { //nolint:revive
 		return nil, fmt.Errorf("failed to create grpc client: %w", err)
 	}
 
-	return &client{AgentServiceClient: v1alpha1.NewAgentServiceClient(conn)}, nil
+	return &client{AgentDirServiceClient: v1alpha1.NewAgentDirServiceClient(conn)}, nil
 }
 
 func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushAgentResponse, error) {
@@ -59,7 +60,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) 
 		Annotations: parsedAgent.GetAnnotations(),
 	}
 
-	stream, err := c.AgentServiceClient.PushAgent(ctx)
+	stream, err := c.AgentDirServiceClient.PushAgent(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create push stream: %w", err)
 	}
@@ -109,7 +110,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) 
 }
 
 func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullAgentRequest) ([]byte, error) {
-	stream, err := c.AgentServiceClient.PullAgent(ctx, request)
+	stream, err := c.AgentDirServiceClient.PullAgent(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pull stream: %w", err)
 	}
