@@ -258,6 +258,10 @@ tasks:
   deploy:kubernetes:setup-cluster:
     internal: true
     desc: Create a kind cluster and load Docker images
+    deps:
+      - deps:helm
+      - deps:kubectl
+      - deps:kind
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
@@ -276,12 +280,10 @@ tasks:
           {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
 
-  deploy:kubernetes:setup:
-    desc: Setup Kubernetes environment
+  deploy:kubernetes:local:
+    aliases: [deploy:local]
+    desc: Deploy a local Directory server in Kubernetes
     deps:
-      - deps:helm
-      - deps:kubectl
-      - deps:kind
       - deploy:kubernetes:setup-cluster
     vars:
       # Kind args
@@ -310,60 +312,80 @@ tasks:
 
       # Port-forward dependency services
       - |
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver  8888:8888   -n {{ .HELM_NAMESPACE }} &
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
 
       # Delay to ensure services are online
       - sleep 10
 
-  deploy:kubernetes:cleanup:
-    desc: Cleanup Kubernetes environment
+  deploy:kubernetes:local:cleanup:
+    aliases: [deploy:local:cleanup]
+    desc: Cleanup Kubernetes environment for local deployment
     deps:
       - deps:kind
     vars:
       # Kind args
-      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
     cmds:
       - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
 
-  test-env:bootstrap:deploy:
-    desc: Deploy Directory network peers
+  deploy:kubernetes:network:bootstrap:
+    internal: true
+    desc: Deploy a bootstrap Directory server in Kubernetes
     deps:
-      - download:dirctl-bin
-    env:
-      DIRECTORY_LOGGER_LOG_LEVEL: ERROR
+      - deploy:kubernetes:setup-cluster
+    vars:
+      # Helm args
+      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
     cmds:
+      # Generate private key if it doesn't exist
       - |
         test -f /tmp/node.privkey || openssl genpkey -algorithm ED25519 -out /tmp/node.privkey
-        bootstrap_peerid=$({{ .DIRCTL_BIN_PATH }}/dirctl network info /tmp/node.privkey)
+
+      # Generate the bootstrap peer ID and export it to the environment file
+      - |
+        bootstrap_peerid=$({{ .BIN_DIR }}/dirctl network info /tmp/node.privkey)
         echo "PEER ID: ${bootstrap_peerid}"
         echo BOOTSTRAP_PEER_ID="${bootstrap_peerid}" > .env
-        helm upgrade agntcy-dir \
-          oci://{{ .IMAGE_REPO }}/dir/helm-charts/dir \
-          --version {{ .DIRECTORY_CHART_TAG }} \
-          --set apiserver.image.tag="{{ .DIRECTORY_IMAGE_TAG }}" \
+
+      # Deploy the bootstrap server using Helm
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade agntcy-dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
           --set apiserver.privKey="$(cat /tmp/node.privkey)" \
-          -f ./components/config/bootstrap.yaml \
-          --namespace bootstrap \
+          --set apiserver.config.routing.key_path="/etc/agntcy/dir/node.privkey" \
+          --set apiserver.config.routing.listen_address="/ip4/0.0.0.0/tcp/8999" \
+          --set apiserver.config.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
+          --namespace "bootstrap" \
           --create-namespace \
           --install \
           --wait \
           --wait-for-jobs \
           --timeout "15m"
 
-  test-env:network:deploy:
-    desc: Deploy Directory network peers
+  deploy:kubernetes:network:
+    aliases: [deploy:network]
+    desc: Deploy a network of Directory servers in Kubernetes (1 bootstrap + 3 peers)
     deps:
-      - test-env:bootstrap:deploy
+      - deploy:kubernetes:network:bootstrap
+    vars:
+      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
     cmds:
+      # Deploy the peer servers using Helm
       - for:
           matrix:
             PEER: ['peer1', 'peer2', 'peer3']
         cmd: |
           export $(cat .env)
-          helm upgrade agntcy-dir \
-           oci://{{ .IMAGE_REPO }}/dir/helm-charts/dir \
-            --version {{ .DIRECTORY_CHART_TAG }} \
-            --set apiserver.image.tag="{{ .DIRECTORY_IMAGE_TAG }}" \
+          {{ .HELM_BIN }} upgrade agntcy-dir \
+            {{ .HELM_CHART_PATH }} \
+            -f {{ .HELM_VALUES_PATH }} \
+            --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+            --set apiserver.config.oci.registry_address="agntcy-dir-zot.{{ .ITEM.PEER }}.svc.cluster.local:5000" \
             --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
@@ -372,14 +394,30 @@ tasks:
             --wait-for-jobs \
             --timeout "15m"
 
-  test-env:network:cleanup:
-    desc: Remove Directory network peers
+      # Set up port-forwarding for the peers
+      - kubectl port-forward svc/agntcy-dir-apiserver -n peer1 8890:8888 &
+      - kubectl port-forward svc/agntcy-dir-apiserver -n peer2 8891:8888 &
+      - kubectl port-forward svc/agntcy-dir-apiserver -n peer3 8892:8888 &
+      - sleep 1
+
+  deploy:kubernetes:network:cleanup:
+    aliases: [deploy:network:cleanup]
+    desc: Cleanup Kubernetes environment for network deployment
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
     cmds:
+      # Kill any existing port-forward processes for the agntcy-dir-apiserver service
+      - kill -9 $(ps aux | grep port-forward | grep agntcy-dir-apiserver | awk '{print $2}') || true
+
+      # Delete helm releases
       - for:
           matrix:
             PEER: ['bootstrap', 'peer1', 'peer2', 'peer3']
         cmd: |
-          helm delete --namespace {{ .ITEM.PEER }} agntcy-dir
+          {{ .HELM_BIN }} delete --namespace {{ .ITEM.PEER }} agntcy-dir
+
+      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
 
   ##
   ## Test
@@ -424,7 +462,7 @@ tasks:
       - defer: { task: deploy:kubernetes:cleanup }
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
-      - task: deploy:kubernetes:setup
+      - task: deploy:kubernetes:local
       - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
 
   ##
