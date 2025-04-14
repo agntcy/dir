@@ -123,9 +123,21 @@ tasks:
 
   api:clean:
     desc: Clean generated API stubs
+    deps:
+      - api:clean:go
+      - api:clean:python
+
+  api:clean:go:
+    desc: Clean generated golang API stubs
     dir: ./api
     cmds:
-      - find . \( -name "*.pb.go" -o -name "*_grpc.pb.go" -o -name "*.pb.gw.go" -o -name "*_pb2.py" -o -name "*_grpc.py" \) -type f -delete
+      - find . \( -name "*.pb.go" -o -name "*.pb.gw.go" \) -type f -delete
+
+  api:clean:python:
+    desc: Clean generated python API stubs
+    dir: ./client/python/proto
+    cmds:
+      - find . \( -name "*_pb2_grpc.py" -o -name "*_pb2.py" -o -name "*_pb2.pyi" \) -type f -delete
 
   api:test:
     desc: Unit test API code
