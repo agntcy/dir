@@ -41,4 +41,6 @@ message Agent {
   // List of extensions that describe this agent and its capabilities
   // and constraints more in depth.
   repeated Extension extensions = 9;
+  // Description of the agent.
+  string description = 10;
 }

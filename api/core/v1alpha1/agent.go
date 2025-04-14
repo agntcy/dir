@@ -19,6 +19,7 @@ func (x *Agent) Merge(other *Agent) {
 	// Only use other's scalar fields if receiver doesn't have them set
 	x.Name = firstNonEmptyString(x.GetName(), other.GetName())
 	x.Version = firstNonEmptyString(x.GetVersion(), other.GetVersion())
+	x.Description = firstNonEmptyString(x.GetDescription(), other.GetDescription())
 
 	if x.GetCreatedAt() == "" {
 		x.CreatedAt = other.GetCreatedAt()
