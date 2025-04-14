@@ -1,6 +1,7 @@
 {
   "name": "research",
   "version": "0.1.0",
+  "description": "A research agent that can generate a report based on a given topic.",
   "authors": [
     "Agntcy"
   ],
