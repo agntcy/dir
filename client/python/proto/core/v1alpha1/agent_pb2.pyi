@@ -10,7 +10,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Agent(_message.Message):
-    __slots__ = ("name", "version", "authors", "created_at", "annotations", "skills", "locators", "extensions")
+    __slots__ = ("name", "version", "authors", "created_at", "annotations", "skills", "locators", "extensions", "description")
     class AnnotationsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -26,6 +26,7 @@ class Agent(_message.Message):
     SKILLS_FIELD_NUMBER: _ClassVar[int]
     LOCATORS_FIELD_NUMBER: _ClassVar[int]
     EXTENSIONS_FIELD_NUMBER: _ClassVar[int]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     name: str
     version: str
     authors: _containers.RepeatedScalarFieldContainer[str]
@@ -34,4 +35,5 @@ class Agent(_message.Message):
     skills: _containers.RepeatedCompositeFieldContainer[_skill_pb2.Skill]
     locators: _containers.RepeatedCompositeFieldContainer[_locator_pb2.Locator]
     extensions: _containers.RepeatedCompositeFieldContainer[_extension_pb2.Extension]
-    def __init__(self, name: _Optional[str] = ..., version: _Optional[str] = ..., authors: _Optional[_Iterable[str]] = ..., created_at: _Optional[str] = ..., annotations: _Optional[_Mapping[str, str]] = ..., skills: _Optional[_Iterable[_Union[_skill_pb2.Skill, _Mapping]]] = ..., locators: _Optional[_Iterable[_Union[_locator_pb2.Locator, _Mapping]]] = ..., extensions: _Optional[_Iterable[_Union[_extension_pb2.Extension, _Mapping]]] = ...) -> None: ...
+    description: str
+    def __init__(self, name: _Optional[str] = ..., version: _Optional[str] = ..., authors: _Optional[_Iterable[str]] = ..., created_at: _Optional[str] = ..., annotations: _Optional[_Mapping[str, str]] = ..., skills: _Optional[_Iterable[_Union[_skill_pb2.Skill, _Mapping]]] = ..., locators: _Optional[_Iterable[_Union[_locator_pb2.Locator, _Mapping]]] = ..., extensions: _Optional[_Iterable[_Union[_extension_pb2.Extension, _Mapping]]] = ..., description: _Optional[str] = ...) -> None: ...
