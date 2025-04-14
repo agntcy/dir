@@ -325,6 +325,62 @@ tasks:
     cmds:
       - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
 
+  test-env:bootstrap:deploy:
+    desc: Deploy Directory network peers
+    deps:
+      - download:dirctl-bin
+    env:
+      DIRECTORY_LOGGER_LOG_LEVEL: ERROR
+    cmds:
+      - |
+        test -f /tmp/node.privkey || openssl genpkey -algorithm ED25519 -out /tmp/node.privkey
+        bootstrap_peerid=$({{ .DIRCTL_BIN_PATH }}/dirctl network info /tmp/node.privkey)
+        echo "PEER ID: ${bootstrap_peerid}"
+        echo BOOTSTRAP_PEER_ID="${bootstrap_peerid}" > .env
+        helm upgrade agntcy-dir \
+          oci://{{ .IMAGE_REPO }}/dir/helm-charts/dir \
+          --version {{ .DIRECTORY_CHART_TAG }} \
+          --set apiserver.image.tag="{{ .DIRECTORY_IMAGE_TAG }}" \
+          --set apiserver.privKey="$(cat /tmp/node.privkey)" \
+          -f ./components/config/bootstrap.yaml \
+          --namespace bootstrap \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+  test-env:network:deploy:
+    desc: Deploy Directory network peers
+    deps:
+      - test-env:bootstrap:deploy
+    cmds:
+      - for:
+          matrix:
+            PEER: ['peer1', 'peer2', 'peer3']
+        cmd: |
+          export $(cat .env)
+          helm upgrade agntcy-dir \
+           oci://{{ .IMAGE_REPO }}/dir/helm-charts/dir \
+            --version {{ .DIRECTORY_CHART_TAG }} \
+            --set apiserver.image.tag="{{ .DIRECTORY_IMAGE_TAG }}" \
+            --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
+            --namespace "{{ .ITEM.PEER }}" \
+            --create-namespace \
+            --install \
+            --wait \
+            --wait-for-jobs \
+            --timeout "15m"
+
+  test-env:network:cleanup:
+    desc: Remove Directory network peers
+    cmds:
+      - for:
+          matrix:
+            PEER: ['bootstrap', 'peer1', 'peer2', 'peer3']
+        cmd: |
+          helm delete --namespace {{ .ITEM.PEER }} agntcy-dir
+
   ##
   ## Test
   ##
