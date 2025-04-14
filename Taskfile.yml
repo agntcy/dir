@@ -201,6 +201,8 @@ tasks:
   
   client:test:python:
     desc: Unit test Python Client code
+    deps:
+      - deps:uv
     dir: ./client/python
     env:
       PYTHONPATH: '{{ .ROOT_DIR }}/client/python/proto'
