@@ -39,6 +39,8 @@ vars:
   GOLANGCI_LINT_BIN: '{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}'
   LICENSEI_VERSION: '0.9.0'
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
+  UV_VERSION: '0.6.1'
+  UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
 
 tasks:
   ##
@@ -203,7 +205,7 @@ tasks:
     env:
       PYTHONPATH: '{{ .ROOT_DIR }}/client/python/proto'
     cmds:
-      - uv run pytest test_client.py
+      - '{{.UV_BIN}} run pytest test_client.py'
 
   ##
   ## Server
@@ -726,6 +728,21 @@ tasks:
       - chmod +x {{.LICENSEI_BIN}}
     status:
       - test -x {{.LICENSEI_BIN}}
+  
+  deps:uv:
+    desc: Install uv
+    internal: true
+    deps:
+      - deps:bin-dir
+    env:
+      UV_INSTALL_DIR: '{{ .BIN_DIR }}'
+    cmds:
+      - curl -sfL https://astral.sh/uv/{{.UV_VERSION}}/install.sh | sh
+      - mv {{.BIN_DIR}}/uv {{.UV_BIN}}
+      - chmod +x {{.UV_BIN}}
+      - rm {{.BIN_DIR}}/uvx
+    status:
+      - test -x {{.BIN_DIR}}/uv
 
   ##
   ## Helm
