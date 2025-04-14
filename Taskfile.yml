@@ -253,7 +253,80 @@ tasks:
       - go -C . test -bench=. ./...
 
   ##
-  ## Testing
+  ## Deploy
+  ##
+  deploy:kubernetes:setup-cluster:
+    internal: true
+    desc: Create a kind cluster and load Docker images
+    vars:
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+    cmds:
+      # Create ephemeral cluster
+      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
+      - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
+
+      # Check cluster status
+      - '{{ .KUBECTL_BIN }} cluster-info'
+
+      # Import images
+      - |
+        images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
+        done
+
+  deploy:kubernetes:setup:
+    desc: Setup Kubernetes environment
+    deps:
+      - deps:helm
+      - deps:kubectl
+      - deps:kind
+      - deploy:kubernetes:setup-cluster
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS:   '{{ .KIND_CREATE_OPTS | default "" }}'
+      # Helm args
+      HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
+    cmds:
+      # TODO: make logic idempotent so that running functional tests does not change previous contexts
+
+      # Deploy chart
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --namespace {{ .HELM_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+      # Port-forward dependency services
+      - |
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver  8888:8888   -n {{ .HELM_NAMESPACE }} &
+
+      # Delay to ensure services are online
+      - sleep 10
+
+  deploy:kubernetes:cleanup:
+    desc: Cleanup Kubernetes environment
+    deps:
+      - deps:kind
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+    cmds:
+      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
+
+  ##
+  ## Test
   ##
   test:unit:
     desc: Run unit tests on codebase
@@ -292,75 +365,11 @@ tasks:
     desc: Run end-to-end tests
     aliases: [e2e]
     cmds:
-      - defer: { task: test:kubernetes-env:cleanup }
+      - defer: { task: deploy:kubernetes:cleanup }
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
-      - task: test:kubernetes-env:bootstrap
+      - task: deploy:kubernetes:setup
       - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
-
-  test:kubernetes-env:bootstrap:
-    internal: true
-    desc: Bootstrap Kubernetes environment
-    deps:
-      - deps:helm
-      - deps:kubectl
-      - deps:kind
-    vars:
-      # Kind args
-      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
-      KIND_CREATE_OPTS:   '{{ .KIND_CREATE_OPTS | default "" }}'
-      # Helm args
-      HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
-      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
-      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
-    cmds:
-      # TODO: make logic idempotent so that running functional tests does not change previous contexts
-
-      # Create ephemeral cluster
-      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
-      - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
-
-      # Check cluster status
-      - '{{ .KUBECTL_BIN }} cluster-info'
-
-      # Import images
-      - |
-        images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-        echo "$images" | while read image; do
-          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
-        done
-
-      # Deploy chart
-      - |
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dir \
-          {{ .HELM_CHART_PATH }} \
-          -f {{ .HELM_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
-          --namespace {{ .HELM_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Port-forward dependency services
-      - |
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver  8888:8888   -n {{ .HELM_NAMESPACE }} &
-
-      # Delay to ensure services are online
-      - sleep 10
-
-  test:kubernetes-env:cleanup:
-    internal: true
-    desc: Cleanup Kubernetes environment
-    deps:
-      - deps:kind
-    vars:
-      # Kind args
-      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
-    cmds:
-      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
 
   ##
   ## Linters
