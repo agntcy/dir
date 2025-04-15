@@ -6,6 +6,9 @@ import io
 import logging
 import grpc
 from typing import Optional, List, Iterator, BinaryIO, Tuple
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../api/python")))
 
 from core.v1alpha1 import object_pb2
 from routing.v1alpha1 import routing_service_pb2

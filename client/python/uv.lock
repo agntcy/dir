@@ -13,18 +13,25 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agntcy-dir-proto-stubs", git = "https://github.com/agntcy/dir.git?subdirectory=api%2Fpython&rev=feat%2Fpython-client-sdk" },
+    { name = "agntcy-dir-proto-stubs", virtual = "../../api/python" },
     { name = "pytest" },
 ]
 
 [[package]]
 name = "agntcy-dir-proto-stubs"
 version = "0.1.0"
-source = { git = "https://github.com/agntcy/dir.git?subdirectory=api%2Fpython&rev=feat%2Fpython-client-sdk#65d476b7cb692f96869e5a28d6ba3e14efdf5359" }
+source = { virtual = "../../api/python" }
 dependencies = [
     { name = "grpcio" },
     { name = "grpcio-tools" },
     { name = "protobuf" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "grpcio", specifier = ">=1.71.0" },
+    { name = "grpcio-tools", specifier = ">=1.71.0" },
+    { name = "protobuf", specifier = ">=5.29.3" },
 ]
 
 [[package]]
