@@ -188,6 +188,14 @@ jobs:
     needs: [ release ]
     uses: ./.github/workflows/brew-formula-update.yaml
 
+  test-integration:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+    needs: [ release ]
+    steps:
+      - name: Trigger CSIT integration CI
+        uses: ./.github/actions/trigger-integrations
+
   success:
     name: Success
     # https://github.com/actions/runner/issues/2566
