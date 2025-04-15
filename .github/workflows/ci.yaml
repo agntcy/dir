@@ -101,7 +101,7 @@ jobs:
       - name: Setup Taskfile
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-  
+
       - name: Generate api
         run: |
           task gen
@@ -182,6 +182,11 @@ jobs:
       image_repo: ghcr.io/agntcy
       release_tag: ${{ needs.prepare-build.outputs.release_tag }}
       bake_targets: ${{ needs.prepare-build.outputs.targets }}
+
+  update-brew-formula:
+    name: Update brew formula
+    needs: [ release ]
+    uses: ./.github/workflows/brew-formula-update.yaml
 
   success:
     name: Success

@@ -1,0 +1,94 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Brew formula update
+
+description: |
+  This workflow automatize the brew formula file update process with replacing the version number to the latest,
+  recalculate all hash for the binaries and create a new PR with the changes.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+    brew-formula-update:
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
+
+            - name: Download latest binary releases
+              id: release-infos
+              run: |
+                LATEST_VERSION=$(gh release list --limit 1 --json tagName --jq '.[] | .tagName')
+                echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_OUTPUT
+
+                gh release download $LATEST_VERSION
+
+                echo "DIRCTL_HASH_DARWIN_ARM=$(sha256sum ./dirctl-darwin-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+                echo "DIRCTL_HASH_DARWIN_AMD=$(sha256sum ./dirctl-darwin-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+                echo "DIRCTL_HASH_LINUX_ARM=$(sha256sum ./dirctl-linux-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+                echo "DIRCTL_HASH_LINUX_AMD=$(sha256sum ./dirctl-linux-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+
+                echo "DIRCTL_HUB_HASH_DARWIN_ARM=$(sha256sum ./dirctl-hub-darwin-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+                echo "DIRCTL_HUB_HASH_DARWIN_AMD=$(sha256sum ./dirctl-hub-darwin-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+                echo "DIRCTL_HUB_HASH_LINUX_ARM=$(sha256sum ./dirctl-hub-linux-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+                echo "DIRCTL_HUB_HASH_LINUX_AMD=$(sha256sum ./dirctl-hub-linux-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+
+            - name: Update Brew formula
+              id: brew-formula
+              run: |
+                    # Note: the following account information will not work on GHES
+                    git config user.name "github-actions[bot]"
+                    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+                    git checkout -B chore/brew-formula-update
+
+                    # Replace version
+                    sed -i "s/version "v*.*.*"/version "${{ steps.release-infos.outputs.LATEST_VERSION }}"/" HomebrewFormula/dirctl.rb
+
+                    # Replace hashes
+                    sed -i "/url \".*\/dirctl-darwin-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
+                    sed -i "/url \".*\/dirctl-darwin-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
+                    sed -i "/url \".*\/dirctl-linux-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
+                    sed -i "/url \".*\/dirctl-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
+
+                    sed -i "/url \".*\/dirctl-hub-darwin-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_DARWIN_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
+                    sed -i "/url \".*\/dirctl-hub-darwin-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_DARWIN_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
+                    sed -i "/url \".*\/dirctl-hub-linux-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_LINUX_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
+                    sed -i "/url \".*\/dirctl-hub-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
+
+                    $DIFF_FOUND=$(git diff --exit-code)
+                    echo "DIFF_FOUND=$DIFF_FOUND" >> $GITHUB_OUTPUT
+
+                    if [ $DIFF_FOUND ]; then
+                      git commit ./HomebrewFormula/dirctl.rb -m "chore: update brew formula version" --signoff
+                      git push
+                    fi
+
+            - name: Test new formula
+              if: ${{ steps.brew-formula.outputs.DIFF_FOUND }}
+              run: |
+                  apt update && apt install curl git -y
+
+                  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+                  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+                  brew install --build-from-source ./HomebrewFormula/dirctl.rb --verbose
+
+                  dirctl --help
+
+            - name: Create PR
+              if: ${{ steps.brew-formula.outputs.DIFF_FOUND }}
+              run: |
+                    gh pr create --title "chore: update brew formula by ci"
+
+
+
+
