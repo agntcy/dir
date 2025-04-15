@@ -1,7 +1,12 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package options
 
-type RegisterFn func() error
-type CompleteFn func()
+type (
+	RegisterFn func() error
+	CompleteFn func()
+)
 
 type BaseOption struct {
 	isRegistered bool
@@ -19,14 +24,17 @@ func (o *BaseOption) Register() error {
 	if o.isRegistered {
 		return nil
 	}
+
 	defer func() {
 		o.isRegistered = true
 	}()
+
 	for _, fn := range o.registerFns {
 		if err := fn(); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -34,9 +42,11 @@ func (o *BaseOption) Complete() {
 	if o.isCompleted {
 		return
 	}
+
 	defer func() {
 		o.isCompleted = true
 	}()
+
 	for _, fn := range o.completeFns {
 		fn()
 	}

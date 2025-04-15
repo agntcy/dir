@@ -1,12 +1,14 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package token
 
 import (
 	"errors"
 
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/cli/hub/utils/context"
+	"github.com/spf13/cobra"
 )
 
 func ValidateAccessTokenFromContext(cmd *cobra.Command) error {

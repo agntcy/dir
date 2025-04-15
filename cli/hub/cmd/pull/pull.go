@@ -10,15 +10,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubClient "github.com/agntcy/dir/cli/hub/client/hub"
 	hubOptions "github.com/agntcy/dir/cli/hub/cmd/options"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/cli/hub/utils/context"
 	"github.com/agntcy/dir/cli/hub/utils/token"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
@@ -31,6 +30,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 			if err := token.RefreshContextTokenIfExpired(cmd, opts.HubOptions); err != nil {
 				return fmt.Errorf("failed to refresh expired access token: %w", err)
 			}
+
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

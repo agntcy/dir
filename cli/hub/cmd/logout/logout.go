@@ -9,12 +9,11 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/hub/client/okta"
 	"github.com/agntcy/dir/cli/hub/cmd/options"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/cli/hub/utils/context"
+	"github.com/spf13/cobra"
 )
 
 var ErrSecretNotFoundForAddress = errors.New("no active session found for the address. please login first")

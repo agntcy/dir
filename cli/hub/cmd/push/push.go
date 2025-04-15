@@ -8,16 +8,15 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
-	"github.com/spf13/cobra"
-	"google.golang.org/grpc/metadata"
-
 	"github.com/agntcy/dir/api/hub/v1alpha1"
 	hubClient "github.com/agntcy/dir/cli/hub/client/hub"
 	hubOptions "github.com/agntcy/dir/cli/hub/cmd/options"
 	ctxUtils "github.com/agntcy/dir/cli/hub/utils/context"
 	"github.com/agntcy/dir/cli/hub/utils/token"
 	"github.com/agntcy/dir/cli/util/agent"
+	"github.com/google/uuid"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc/metadata"
 )
 
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
@@ -32,6 +31,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		if err := token.ValidateAccessTokenFromContext(cmd); err != nil {
 			return fmt.Errorf("failed to validate access token: %w", err)
 		}
+
 		if err := token.RefreshContextTokenIfExpired(cmd, opts.HubOptions); err != nil {
 			return fmt.Errorf("failed to refresh expired access token: %w", err)
 		}

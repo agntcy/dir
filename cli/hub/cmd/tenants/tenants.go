@@ -9,14 +9,13 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/hub/client/idp"
 	hubOptions "github.com/agntcy/dir/cli/hub/cmd/options"
 	"github.com/agntcy/dir/cli/hub/cmd/tenantswitch"
 	ctxUtils "github.com/agntcy/dir/cli/hub/utils/context"
 	"github.com/agntcy/dir/cli/hub/utils/token"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -36,6 +35,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		if err := token.ValidateAccessTokenFromContext(cmd); err != nil {
 			return errors.New("failed to validate access token")
 		}
+
 		if err := token.RefreshContextTokenIfExpired(cmd, opts.HubOptions); err != nil {
 			return fmt.Errorf("failed to refresh expired access token: %w", err)
 		}
@@ -55,7 +55,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		}
 
 		if tenantsResp.Response.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to get list of tenants")
+			return errors.New("failed to get list of tenants")
 		}
 
 		if ok = ctxUtils.SetTenantListForContext(cmd, tenantsResp.TenantList.Tenants); !ok {

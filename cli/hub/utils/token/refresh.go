@@ -8,13 +8,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/hub/client/okta"
 	"github.com/agntcy/dir/cli/hub/cmd/options"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/agntcy/dir/cli/hub/utils/context"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -88,7 +87,7 @@ func refreshTokenIfExpired(cmd *cobra.Command, sessionKey string, session *sessi
 
 	// Update context with new token
 	if ok := context.SetCurrentHubSessionForContext(cmd, session); !ok {
-		return fmt.Errorf("failed to set current hub session for context")
+		return errors.New("failed to set current hub session for context")
 	}
 
 	// Update tokens store with new token

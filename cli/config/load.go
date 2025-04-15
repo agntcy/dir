@@ -7,9 +7,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/spf13/viper"
-
 	"github.com/agntcy/dir/cli/hub/utils/dir"
+	"github.com/spf13/viper"
 )
 
 func LoadConfig() error {
