@@ -12,11 +12,12 @@ import (
 )
 
 type Builder struct {
-	BaseModelPath  string   `yaml:"base-model"`
-	SourceIgnore   []string `yaml:"source-ignore"`
-	LLMAnalyzer    bool     `yaml:"llmanalyzer"`
-	Runtime        bool     `yaml:"runtime"`
-	OASFValidation bool     `yaml:"oasf-validation"`
+	BaseModelPath   string   `yaml:"base-model"`
+	SourceIgnore    []string `yaml:"source-ignore"`
+	LLMAnalyzer     bool     `yaml:"llmanalyzer"`
+	Runtime         bool     `yaml:"runtime"`
+	OASFValidation  bool     `yaml:"oasf-validation"`
+	PyprojectParser bool     `yaml:"pyprojectparser"`
 }
 
 type Config struct {

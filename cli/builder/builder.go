@@ -11,6 +11,7 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/plugins/llmanalyzer"
+	"github.com/agntcy/dir/cli/builder/plugins/pyprojectparser"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime"
 	clitypes "github.com/agntcy/dir/cli/types"
 )
@@ -41,6 +42,10 @@ func (b *Builder) RegisterPlugins() error {
 
 	if b.cfg.Builder.Runtime {
 		b.plugins = append(b.plugins, runtime.New(b.source))
+	}
+
+	if b.cfg.Builder.PyprojectParser {
+		b.plugins = append(b.plugins, pyprojectparser.New(b.source))
 	}
 
 	return nil

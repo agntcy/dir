@@ -1,0 +1,10 @@
+[tool.poetry]
+name = "example-project"
+version = "1.0.0"
+description = "An example project for testing."
+authors = ["Author One", "Author Two"]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+crewai = "^0.83.0"
+report = {path = "../../../integrations/report/template/python"}

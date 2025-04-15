@@ -11,6 +11,7 @@ replace (
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.7.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.0
+	github.com/BurntSushi/toml v1.4.0
 	github.com/agntcy/dir/api v0.2.1
 	github.com/agntcy/dir/client v0.2.1
 	github.com/anchore/syft v1.19.0
@@ -32,7 +33,6 @@ require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
-	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/CycloneDX/cyclonedx-go v0.9.2 // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect

@@ -23,7 +23,7 @@ func TestNewRuntime(t *testing.T) {
 func TestBuildRuntime(t *testing.T) {
 	expectedSBOM := map[string]interface{}{
 		"name": "testdata",
-		"packages": []map[string]interface{}{
+		"packages": []interface{}{
 			map[string]interface{}{"name": "crewai", "version": "0.83.0"},
 			map[string]interface{}{"name": "langchain", "version": "0.3.14"},
 			map[string]interface{}{"name": "langchain-openai", "version": "0.2.14"},
@@ -35,10 +35,10 @@ func TestBuildRuntime(t *testing.T) {
 	ret, err := r.Build(t.Context())
 	assert.NoError(t, err)
 
-	frameworkData := ret.Extensions[0].Data.AsMap()["sbom"]
+	frameworkData := ret.GetExtensions()[0].GetData().AsMap()["sbom"]
 	assert.Equal(t, expectedSBOM, frameworkData)
 
-	languageData := ret.Extensions[1].Data.AsMap()
+	languageData := ret.GetExtensions()[1].GetData().AsMap()
 	assert.Equal(t, string(analyzer.Python), languageData["type"])
 	assert.Equal(t, expectedVersion, languageData["version"])
 }
