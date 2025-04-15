@@ -9,18 +9,15 @@ import (
 	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	commonOptions "github.com/agntcy/dir/cli/cmd/options"
-	"github.com/agntcy/dir/cli/cmd/publish/options"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/util/context"
+	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "publish",
-		Short: "Publish agent model to the network, allowing content discovery",
-		Long: `
+var Command = &cobra.Command{
+	Use:   "publish",
+	Short: "Publish agent model to the network, allowing content discovery",
+	Long: `
 Publish the data to your local or rest of the network to allow content discovery.
 This command only works for the objects already pushed to store.
 
@@ -35,24 +32,18 @@ Usage examples:
   	dirctl publish <digest> --network
 
 `,
-	}
-
-	opts := options.NewPublishOptions(baseOption, cmd)
-
-	cmd.RunE = func(cmd *cobra.Command, args []string) error { //nolint:gocritic
+	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
 		if len(args) != 1 {
 			return errors.New("digest is a required argument")
 		}
 
-		return runCommand(cmd, opts, args[0])
-	}
-
-	return cmd
+		return runCommand(cmd, args[0])
+	},
 }
 
-func runCommand(cmd *cobra.Command, opts *options.PublishOptions, digest string) error {
+func runCommand(cmd *cobra.Command, digest string) error {
 	// Get the client from the context.
-	c, ok := context.GetDirClientFromContext(cmd.Context())
+	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}

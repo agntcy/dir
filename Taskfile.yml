@@ -562,7 +562,7 @@ tasks:
 
   deps:api:hub:
     desc: generate HUB API
-    dir: api/hub
+    dir: hub/api
     deps:
       - task: deps:api:hub:clean
     cmds:
@@ -575,7 +575,7 @@ tasks:
 
   deps:api:hub:gen:dirs:
     desc: Create directories for HUB API stubs and generate
-    dir: api/hub
+    dir: hub/api
     cmds:
       - mkdir -p v1alpha1
       - mkdir -p saas/v1alpha1
@@ -586,7 +586,7 @@ tasks:
     desc: Sync HUB proto files to the given version
     vars:
       HUB_API_VERSION: '{{ .HUB_API_VERSION }}'
-    dir: api/hub
+    dir: hub/api
     cmds:
       - defer: rm -rf .tmp
       - cmd: |
@@ -604,21 +604,21 @@ tasks:
     desc: Generate HUB API stubs
     deps:
       - deps:bufbuild
-    dir: api/hub
+    dir: hub/api
     cmd: |
       {{.BUFBUILD_BIN}} dep update
       {{.BUFBUILD_BIN}} generate .
 
   deps:api:hub:gen:cleanup:
     desc: Clean HUB API stubs
-    dir: api/hub
+    dir: hub/api
     cmds:
       - rm -rf core || true
       - rm -rf saas || true
 
   deps:api:hub:clean:
     desc: Lint HUB API stubs
-    dir: api/hub
+    dir: hub/api
     cmds:
       - cmd: rm -rf v1alpha1
 

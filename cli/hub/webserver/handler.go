@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/agntcy/dir/cli/hub/okta"
+	"github.com/agntcy/dir/cli/hub/client/okta"
 	"github.com/agntcy/dir/cli/hub/webserver/utils"
 )
 

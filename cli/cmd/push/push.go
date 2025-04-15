@@ -13,19 +13,16 @@ import (
 	"os"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	commonOptions "github.com/agntcy/dir/cli/cmd/options"
-	"github.com/agntcy/dir/cli/cmd/push/options"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/util/context"
+	ctxUtil "github.com/agntcy/dir/cli/util/context"
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(baseOption *commonOptions.BaseOption) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "push",
-		Short: "Push agent data model to Directory server",
-		Long: `This command pushes the agent data model to local storage 
+var Command = &cobra.Command{
+	Use:   "push",
+	Short: "Push agent data model to Directory server",
+	Long: `This command pushes the agent data model to local storage 
 layer via Directory API. 
 The data is stored into content-addressable object store.
 
@@ -46,13 +43,8 @@ Usage examples:
 	dirctl pull <digest> | dirctl push --stdin
 
 `,
-	}
-
-	opts := options.NewPushOptions(baseOption, cmd)
-
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var fpath string
-
 		if len(args) > 1 {
 			return errors.New("only one file path is allowed")
 		} else if len(args) == 1 {
@@ -60,22 +52,20 @@ Usage examples:
 		}
 
 		// get source
-		source, err := getReader(fpath, opts.FromStdIn)
+		source, err := getReader(fpath, opts.FromStdin)
 		if err != nil {
 			return err
 		}
 
 		return runCommand(cmd, source)
-	}
-
-	return cmd
+	},
 }
 
 func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	defer source.Close()
 
 	// Get the client from the context.
-	c, ok := context.GetDirClientFromContext(cmd.Context())
+	c, ok := ctxUtil.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}

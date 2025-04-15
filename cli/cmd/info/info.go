@@ -10,36 +10,34 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/util/context"
+	util "github.com/agntcy/dir/cli/util/context"
+
 	"github.com/spf13/cobra"
 )
 
-func NewCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "info",
-		Short: "Check info about an object in Directory store",
-		Long: `Lookup and get basic metadata about an object
+var Command = &cobra.Command{
+	Use:   "info",
+	Short: "Check info about an object in Directory store",
+	Long: `Lookup and get basic metadata about an object
 pushed to the Directory store.
 
 Usage example:
 
 	dirctl info <digest>
+
 `,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return errors.New("digest is a required argument")
-			}
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return errors.New("digest is a required argument")
+		}
 
-			return runCommand(cmd, args[0])
-		},
-	}
-
-	return cmd
+		return runCommand(cmd, args[0])
+	},
 }
 
 func runCommand(cmd *cobra.Command, digest string) error {
 	// Get the client from the context.
-	c, ok := context.GetDirClientFromContext(cmd.Context())
+	c, ok := util.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}

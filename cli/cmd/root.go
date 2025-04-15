@@ -10,105 +10,65 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/agntcy/dir/cli/cmd/build"
-	del "github.com/agntcy/dir/cli/cmd/delete"
+	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/network"
-	"github.com/agntcy/dir/cli/cmd/options"
 	"github.com/agntcy/dir/cli/cmd/publish"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/version"
-	"github.com/agntcy/dir/cli/config"
-	"github.com/agntcy/dir/cli/hub/sessionstore"
-	contextUtil "github.com/agntcy/dir/cli/util/context"
-	"github.com/agntcy/dir/cli/util/file"
+	hubImpl "github.com/agntcy/dir/cli/hub"
+	util "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
 )
 
 var clientConfig = client.DefaultConfig
 
-func NewRootCommand(baseOption *options.BaseOption) *cobra.Command { //nolint:contextcheck
-	rootCmd := &cobra.Command{
-		Use:   "dirctl",
-		Short: "CLI tool to interact with Directory",
-		Long:  ``,
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			// Merge config values and flag values: complete the options
-			baseOption.Complete()
+var RootCmd = &cobra.Command{
+	Use:   "dirctl",
+	Short: "CLI tool to interact with Directory",
+	Long:  ``,
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		// Set client via context for all requests
+		// TODO: make client config configurable via CLI args
+		c, err := client.New(client.WithConfig(&clientConfig))
+		if err != nil {
+			return fmt.Errorf("failed to create client: %w", err)
+		}
 
-			// Set client via context for all requests
-			// TODO: make client config configurable via CLI args
-			c, err := client.New(client.WithConfig(&clientConfig))
-			if err != nil {
-				return fmt.Errorf("failed to create client: %w", err)
-			}
-			ctx := contextUtil.SetDirClientForContext(cmd.Context(), c)
+		ctx := util.SetClientForContext(cmd.Context(), c)
+		cmd.SetContext(ctx)
 
-			// Set secret store via context for all requests
-			store := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
-			ctx = contextUtil.SetSessionStoreForContext(ctx, store)
+		return nil
+	},
+}
 
-			// Set context for all requests
-			cmd.SetContext(ctx)
+func init() {
+	network.Command.Hidden = true
 
-			return nil
-		},
-	}
-
-	cobra.EnableTraverseRunHooks = true
-
-	rootCmd.AddCommand(
+	RootCmd.AddCommand(
 		// local commands
-		build.NewCommand(baseOption),
-		version.NewCommand(),
+		version.Command,
+		build.Command,
 		// storage commands
-		info.NewCommand(),
-		pull.NewCommand(baseOption),
-		push.NewCommand(baseOption),
-		del.NewCommand(),
+		info.Command,
+		pull.Command,
+		push.Command,
+		delete.Command,
 		// routing commands
-		publish.NewCommand(baseOption),
-		list.NewCommand(baseOption),
+		publish.Command,
+		list.Command,
+		unpublish.Command,
 		network.Command,
-		unpublish.NewCommand(baseOption),
-		// hub commands
-		hub.NewHubCommand(baseOption),
+		hub.NewCommand(hubImpl.NewCiscoHub()),
 	)
-
-	return rootCmd
-}
-
-func initCobra() {
-	cobra.EnableTraverseRunHooks = true
-}
-
-func initConfig() error {
-	if err := config.LoadConfig(); err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	return nil
 }
 
 func Run(ctx context.Context) error {
-	initCobra()
-
-	if err := initConfig(); err != nil {
-		return fmt.Errorf("failed to initialize config: %w", err)
-	}
-
-	baseOption := options.NewBaseOption()
-
-	rootCmd := NewRootCommand(baseOption) //nolint:contextcheck
-
-	if err := baseOption.Register(); err != nil {
-		return fmt.Errorf("failed to register options: %w", err)
-	}
-
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
+	if err := RootCmd.ExecuteContext(ctx); err != nil {
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
 

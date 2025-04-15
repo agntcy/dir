@@ -8,37 +8,34 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	ctxUtil "github.com/agntcy/dir/cli/util/context"
-	"github.com/spf13/cobra"
 )
 
-func NewCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "Delete agent model from Directory store",
-		Long: `This command deletes an agent model from the Directory store.
+var Command = &cobra.Command{
+	Use:   "delete",
+	Short: "Delete agent model from Directory store",
+	Long: `This command deletes an agent model from the Directory store.
 
 Usage example:
 
 	dirctl delete <digest>
 
 `,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return errors.New("digest is a required argument")
-			}
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return errors.New("digest is a required argument")
+		}
 
-			return runCommand(cmd, args[0])
-		},
-	}
-
-	return cmd
+		return runCommand(cmd, args[0])
+	},
 }
 
 func runCommand(cmd *cobra.Command, digest string) error {
 	// Get the client from the context.
-	c, ok := ctxUtil.GetDirClientFromContext(cmd.Context())
+	c, ok := ctxUtil.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
