@@ -47,26 +47,18 @@ func (b *Builder) RegisterPlugins() error {
 }
 
 func (b *Builder) BuildAgent(ctx context.Context) (*coretypes.Agent, error) {
-	var APIExtensions []*coretypes.Extension
-
-	for _, plugin := range b.plugins {
-		extensions, err := plugin.Build(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build extension: %w", err)
-		}
-
-		for _, extension := range extensions {
-			APIExtension, err := extension.ToAPIExtension()
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert extension to API extension: %w", err)
-			}
-
-			APIExtensions = append(APIExtensions, &APIExtension)
-		}
+	agent := &coretypes.Agent{
+		CreatedAt: time.Now().Format(time.RFC3339),
 	}
 
-	return &coretypes.Agent{
-		CreatedAt:  time.Now().Format(time.RFC3339),
-		Extensions: APIExtensions,
-	}, nil
+	for _, plugin := range b.plugins {
+		pluginAgent, err := plugin.Build(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build plugin: %w", err)
+		}
+
+		agent.Merge(pluginAgent)
+	}
+
+	return agent, nil
 }

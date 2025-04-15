@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer/python"
 	"github.com/agntcy/dir/cli/types"
@@ -26,10 +27,6 @@ const (
 	Langchain  Type = "langchain"
 )
 
-type ExtensionData struct {
-	SBOM any `json:"sbom,omitempty"`
-}
-
 type Framework struct {
 	source        string
 	typeAnalyzers map[analyzer.LanguageType]analyzer.Analyzer
@@ -44,17 +41,22 @@ func New(source string) *Framework {
 	}
 }
 
-func (fw *Framework) Build(_ context.Context) (*types.AgentExtension, error) {
+func (fw *Framework) Build(_ context.Context) (*coretypes.Extension, error) {
 	sbom, err := fw.typeAnalyzers[analyzer.Python].SBOM(fw.source)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get SBOM: %w", err)
 	}
 
-	return &types.AgentExtension{
+	strct, err := types.ToStruct(map[string]any{
+		"sbom": sbom,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert data to struct: %w", err)
+	}
+
+	return &coretypes.Extension{
 		Name:    ExtensionName,
 		Version: ExtensionVersion,
-		Data: ExtensionData{
-			SBOM: sbom,
-		},
+		Data:    strct,
 	}, nil
 }
