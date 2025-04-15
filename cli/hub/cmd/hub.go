@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/hub/client/okta"
 	"github.com/agntcy/dir/cli/hub/cmd/login"
 	"github.com/agntcy/dir/cli/hub/cmd/logout"
@@ -20,6 +18,7 @@ import (
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/cli/hub/utils/context"
 	"github.com/agntcy/dir/cli/hub/utils/file"
+	"github.com/spf13/cobra"
 )
 
 func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
@@ -59,12 +58,12 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		}
 
 		if ok := ctxUtils.SetCurrentHubSessionForContext(cmd, currentSession); !ok {
-			return fmt.Errorf("failed to set current hub session for context")
+			return errors.New("failed to set current hub session for context")
 		}
 
 		oktaClient := okta.NewClient(authConfig.IdpIssuerAddress)
 		if ok := ctxUtils.SetOktaClientForContext(cmd, oktaClient); !ok {
-			return fmt.Errorf("failed to set okta client for context")
+			return errors.New("failed to set okta client for context")
 		}
 
 		return nil

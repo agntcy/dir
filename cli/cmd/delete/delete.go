@@ -8,10 +8,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	ctxUtil "github.com/agntcy/dir/cli/util/context"
+	"github.com/spf13/cobra"
 )
 
 var Command = &cobra.Command{

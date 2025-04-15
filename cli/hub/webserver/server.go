@@ -57,6 +57,7 @@ func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, err
 
 		if resp.StatusCode != http.StatusOK {
 			err = fmt.Errorf("server returned unexpected status code: %d", resp.StatusCode)
+
 			continue
 		}
 

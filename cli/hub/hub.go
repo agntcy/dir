@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package hub
 
 import (
@@ -9,12 +12,13 @@ import (
 
 type ciscoHub struct{}
 
-func NewCiscoHub() *ciscoHub {
+func NewCiscoHub() *ciscoHub { //nolint:revive
 	return &ciscoHub{}
 }
 
 func (h *ciscoHub) Run(ctx context.Context, args []string) error {
 	c := cmd.NewHubCommand(options.NewBaseOption())
 	c.SetArgs(args)
-	return c.ExecuteContext(ctx)
+
+	return c.ExecuteContext(ctx) //nolint: wrapcheck
 }

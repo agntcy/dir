@@ -18,6 +18,7 @@ func NewHubPushOptions(hubOptions *HubOptions, cmd *cobra.Command) *HubPushOptio
 
 	opts.AddRegisterFn(func() error {
 		cmd.Flags().BoolVar(&opts.FromStdIn, "stdin", false, "Read from stdin")
+
 		return nil
 	})
 

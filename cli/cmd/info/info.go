@@ -11,7 +11,6 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
 	util "github.com/agntcy/dir/cli/util/context"
-
 	"github.com/spf13/cobra"
 )
 

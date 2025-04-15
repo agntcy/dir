@@ -6,10 +6,9 @@ package options
 import (
 	"fmt"
 
+	"github.com/agntcy/dir/cli/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/agntcy/dir/cli/config"
 )
 
 const (

@@ -7,8 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/cli/cmd/build"
 	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/hub"
@@ -23,6 +21,7 @@ import (
 	hubImpl "github.com/agntcy/dir/cli/hub"
 	util "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
+	"github.com/spf13/cobra"
 )
 
 var clientConfig = client.DefaultConfig
