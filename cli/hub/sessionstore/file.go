@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	fileUtils "github.com/agntcy/dir/cli/util/file"
+	fileUtils "github.com/agntcy/dir/cli/hub/utils/file"
 )
 
 const (
