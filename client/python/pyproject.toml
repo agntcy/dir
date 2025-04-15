@@ -1,5 +1,5 @@
 [project]
-name = "dir-client-sdk"
+name = "agntcy-dir-client-sdk"
 version = "0.1.0"
 description = "Directory client SDK"
 requires-python = ">=3.12"
