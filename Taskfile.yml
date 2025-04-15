@@ -310,12 +310,24 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
+  deploy:kubernetes:local:port-forward:
+    desc: Set up port-forwarding for the local deployment
+    vars:
+      # Helm args
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
+    cmds:
       # Port-forward dependency services
       - |
         {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
 
       # Delay to ensure services are online
       - sleep 10
+
+  deploy:kubernetes:local:port-forward:cleanup:
+    desc: Cleanup port-forwarding processes
+    cmds:
+      # Kill any existing port-forward processes for the dir-apiserver service
+      - kill -9 $(ps aux | grep port-forward | grep dir-apiserver | awk '{print $2}') || true
 
   deploy:kubernetes:local:cleanup:
     aliases: [deploy:local:cleanup]
@@ -394,11 +406,22 @@ tasks:
             --wait-for-jobs \
             --timeout "15m"
 
-      # Set up port-forwarding for the peers
-      - kubectl port-forward svc/agntcy-dir-apiserver -n peer1 8890:8888 &
-      - kubectl port-forward svc/agntcy-dir-apiserver -n peer2 8891:8888 &
-      - kubectl port-forward svc/agntcy-dir-apiserver -n peer3 8892:8888 &
-      - sleep 1
+  deploy:kubernetes:network:port-forward:
+    desc: Set up port-forwarding for the peers
+    cmds:
+      # Port-forward dependency services
+      - '{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer1 8890:8888 &'
+      - '{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer2 8891:8888 &'
+      - '{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer3 8892:8888 &'
+
+      # Delay to ensure services are online
+      - sleep 10
+
+  deploy:kubernetes:network:port-forward:cleanup:
+    desc: Cleanup port-forwarding processes
+    cmds:
+      # Kill any existing port-forward processes for the agntcy-dir-apiserver service
+      - kill -9 $(ps aux | grep port-forward | grep agntcy-dir-apiserver | awk '{print $2}') || true
 
   deploy:kubernetes:network:cleanup:
     aliases: [deploy:network:cleanup]
@@ -407,9 +430,6 @@ tasks:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
     cmds:
-      # Kill any existing port-forward processes for the agntcy-dir-apiserver service
-      - kill -9 $(ps aux | grep port-forward | grep agntcy-dir-apiserver | awk '{print $2}') || true
-
       # Delete helm releases
       - for:
           matrix:
@@ -459,10 +479,13 @@ tasks:
     desc: Run end-to-end tests
     aliases: [e2e]
     cmds:
-      - defer: { task: deploy:kubernetes:cleanup }
+      - defer: { task: deploy:kubernetes:local:cleanup }
+      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
       - task: deploy:kubernetes:local
+      - task: deploy:kubernetes:local:port-forward
+      # Run tests
       - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
 
   ##
