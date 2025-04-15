@@ -32,6 +32,8 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 	opts := options.NewHubOptions(baseOption, cmd)
 
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
+		opts.Complete()
+
 		sessionStore := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
 
 		currentSession, err := sessionStore.GetHubSession(opts.ServerAddress)
@@ -55,6 +57,10 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 			IdpBackendAddress:  authConfig.IdpBackendAddress,
 			IdpIssuerAddress:   authConfig.IdpIssuerAddress,
 			HubBackendAddress:  authConfig.HubBackendAddress,
+		}
+
+		if ok := ctxUtils.SetSessionStoreForContext(cmd, sessionStore); !ok {
+			return errors.New("failed to set session store for context")
 		}
 
 		if ok := ctxUtils.SetCurrentHubSessionForContext(cmd, currentSession); !ok {
