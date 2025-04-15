@@ -33,7 +33,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 		if err := token.ValidateAccessTokenFromContext(cmd); err != nil {
-			return errors.New("failed to validate access token")
+			return errors.New("failed to validate access token. please login first or login again")
 		}
 
 		if err := token.RefreshContextTokenIfExpired(cmd, opts.HubOptions); err != nil {
