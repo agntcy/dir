@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/agntcy/dir/api/hub/v1alpha1"
+	"github.com/agntcy/dir/cli/hub/api/v1alpha1"
 	hubClient "github.com/agntcy/dir/cli/hub/client/hub"
 	hubOptions "github.com/agntcy/dir/cli/hub/cmd/options"
 	"github.com/agntcy/dir/cli/hub/sessionstore"

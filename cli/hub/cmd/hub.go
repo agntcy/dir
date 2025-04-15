@@ -14,8 +14,8 @@ import (
 	"github.com/agntcy/dir/cli/hub/cmd/pull"
 	"github.com/agntcy/dir/cli/hub/cmd/push"
 	"github.com/agntcy/dir/cli/hub/cmd/tenants"
-	"github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
+	"github.com/agntcy/dir/cli/hub/utils"
 	ctxUtils "github.com/agntcy/dir/cli/hub/utils/context"
 	"github.com/agntcy/dir/cli/hub/utils/file"
 	"github.com/spf13/cobra"
@@ -43,7 +43,7 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 			currentSession = &sessionstore.HubSession{}
 		}
 
-		authConfig, err := config.FetchAuthConfig(opts.ServerAddress)
+		authConfig, err := utils.FetchAuthConfig(opts.ServerAddress)
 		if err != nil {
 			return fmt.Errorf("failed to fetch auth config: %w", err)
 		}
