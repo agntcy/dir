@@ -12,5 +12,3 @@ breaking:
 modules:
   - path: .
     name: github.com/agntcy/dir
-    excludes:
-      - hub
