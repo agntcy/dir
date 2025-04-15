@@ -7,3 +7,8 @@ dependencies = []
 
 [tool.setuptools.packages]
 find = { include = ["core", "store", "routing"] }
+
+[tool.setuptools.package-data]
+"core" = ["**/*.py", "**/*.pyi"]
+"store" = ["**/*.py", "**/*.pyi"]
+"routing" = ["**/*.py", "**/*.pyi"]
