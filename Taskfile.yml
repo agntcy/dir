@@ -137,7 +137,7 @@ tasks:
 
   api:clean:python:
     desc: Clean generated python API stubs
-    dir: ./client/python/client/proto
+    dir: ./api/python
     cmds:
       - find . \( -name "*_pb2_grpc.py" -o -name "*_pb2.py" -o -name "*_pb2.pyi" \) -type f -delete
 

@@ -24,11 +24,11 @@ plugins:
       - use_generic_streams_experimental=false
   # Stubs for Python
   - remote: buf.build/protocolbuffers/python:v29.3
-    out: ../client/python/client/proto
+    out: python
   - remote: buf.build/grpc/python:v1.71.0
-    out: ../client/python/client/proto
+    out: python
   - remote: buf.build/protocolbuffers/pyi:v30.2
-    out: ../client/python/client/proto
+    out: python
   # Stubs for the gateway
   - remote: buf.build/grpc-ecosystem/gateway:v2.26.3
     out: .
