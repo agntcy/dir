@@ -13,7 +13,7 @@ import (
 	"io"
 
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/api/hub/v1alpha1"
+	"github.com/agntcy/dir/cli/hub/api/v1alpha1"
 	"github.com/opencontainers/go-digest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

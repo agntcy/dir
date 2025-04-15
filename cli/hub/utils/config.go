@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package config
+package utils
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/agntcy/dir/cli/config"
+	"github.com/agntcy/dir/cli/hub/config"
 	"github.com/docker/docker/builder/remotecontext/urlutil"
 )
 

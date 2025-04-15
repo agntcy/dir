@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/agntcy/dir/cli/config"
+	"github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	"github.com/pkg/browser"
 )

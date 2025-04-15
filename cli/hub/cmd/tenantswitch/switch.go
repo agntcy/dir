@@ -12,11 +12,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/agntcy/dir/cli/config"
 	"github.com/agntcy/dir/cli/hub/browser"
 	"github.com/agntcy/dir/cli/hub/client/idp"
 	"github.com/agntcy/dir/cli/hub/client/okta"
 	"github.com/agntcy/dir/cli/hub/cmd/options"
+	"github.com/agntcy/dir/cli/hub/config"
 	"github.com/agntcy/dir/cli/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/cli/hub/utils/context"
 	"github.com/agntcy/dir/cli/hub/utils/token"
