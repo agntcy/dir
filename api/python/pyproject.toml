@@ -4,3 +4,7 @@ version = "0.1.0"
 description = "This module contains the proto bindings in python."
 requires-python = ">=3.12"
 dependencies = []
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
