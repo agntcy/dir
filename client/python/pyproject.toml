@@ -4,14 +4,13 @@ version = "0.1.0"
 description = "Directory client SDK"
 requires-python = ">=3.12"
 dependencies = [
-    "grpcio>=1.71.0",
-    "grpcio-tools>=1.71.0",
-    "pydantic>=2.11.3",
-    "protobuf==5.29.3",
+    "agntcy-dir-proto-stubs",
     "pytest",
-    "pytest-cov",
 ]
 
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.uv.sources]
+agntcy-dir-proto-stubs = { git = "https://github.com/agntcy/dir.git", subdirectory = "api/python", rev = "feat/python-client-sdk" }

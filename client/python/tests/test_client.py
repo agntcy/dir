@@ -4,8 +4,8 @@ import hashlib
 from unittest.mock import patch, MagicMock
 
 from client.client import Client, Config
-from client.proto.core.v1alpha1 import object_pb2, agent_pb2, skill_pb2
-from client.proto.routing.v1alpha1 import routing_service_pb2 as routingtypes
+from core.v1alpha1 import object_pb2, agent_pb2, skill_pb2
+from routing.v1alpha1 import routing_service_pb2 as routingtypes
 
 class TestClient(unittest.TestCase):
     def setUp(self):
@@ -44,8 +44,8 @@ class TestClient(unittest.TestCase):
         )
 
         # Create patch targets for gRPC clients
-        self.store_client_patch = patch('client.proto.store.v1alpha1.store_service_pb2_grpc.StoreServiceStub')
-        self.routing_client_patch = patch('client.proto.routing.v1alpha1.routing_service_pb2_grpc.RoutingServiceStub')
+        self.store_client_patch = patch('store.v1alpha1.store_service_pb2_grpc.StoreServiceStub')
+        self.routing_client_patch = patch('routing.v1alpha1.routing_service_pb2_grpc.RoutingServiceStub')
 
         # Start patches
         self.mock_store_client = self.store_client_patch.start()
