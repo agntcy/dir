@@ -341,6 +341,7 @@ tasks:
           --timeout "15m"
 
   deploy:kubernetes:local:port-forward:
+    aliases: [deploy:local:port-forward]
     desc: Set up port-forwarding for the local deployment
     vars:
       # Helm args
@@ -354,6 +355,7 @@ tasks:
       - sleep 10
 
   deploy:kubernetes:local:port-forward:cleanup:
+    aliases: [deploy:local:port-forward:cleanup]
     desc: Cleanup port-forwarding processes
     cmds:
       # Kill any existing port-forward processes for the dir-apiserver service
@@ -437,6 +439,7 @@ tasks:
             --timeout "15m"
 
   deploy:kubernetes:network:port-forward:
+    aliases: [deploy:network:port-forward]
     desc: Set up port-forwarding for the peers
     cmds:
       # Port-forward dependency services
@@ -448,6 +451,7 @@ tasks:
       - sleep 10
 
   deploy:kubernetes:network:port-forward:cleanup:
+    aliases: [deploy:network:port-forward:cleanup]
     desc: Cleanup port-forwarding processes
     cmds:
       # Kill any existing port-forward processes for the agntcy-dir-apiserver service

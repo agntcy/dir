@@ -1,0 +1,157 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Dir - Demo
+
+description: |
+  This workflow demonstrates how to use the Dir CLI with a Kind cluster and Helm chart.
+  It can be run in either local mode or network mode.
+  It includes steps for building, pushing, publishing, listing and pulling agents.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dir-apiserver-image:
+        required: true
+        type: string
+        default: "ghcr.io/agntcy/dir-apiserver"
+      dir-ctl-image:
+        required: true
+        type: string
+        default: "ghcr.io/agntcy/dir-ctl"
+      dir-helm-chart:
+        required: true
+        type: string
+        default: "oci://ghcr.io/agntcy/dir/helm-charts/dir"
+      dir-version:
+        required: true
+        type: string
+        default: "v0.2.1"
+      network:
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Taskfile
+        shell: bash
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      - name: Setup Dirctl
+        run: |
+          mkdir -p bin
+          curl -L -o bin/dirctl https://github.com/agntcy/dir/releases/download/${{ inputs.dir-version }}/dirctl-linux-amd64
+          chmod +x bin/dirctl
+
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          version: v0.24.0
+          cluster_name: dir-demo
+          install_only: true
+
+      - name: Pull Docker image
+        run: |
+          docker pull ${{ inputs.dir-apiserver-image }}:${{ inputs.dir-version }}
+          docker pull ${{ inputs.dir-ctl-image }}:${{ inputs.dir-version }}
+
+      - name: Deploy Dir
+        run: |
+          if [ ${{ inputs.network }} = "true" ]; then
+            echo "Using network mode"
+            IMAGE_TAG=${{ inputs.dir-version }} task deploy:network
+            task deploy:network:port-forward
+          else
+            echo "Using local mode"
+            IMAGE_TAG=${{ inputs.dir-version }} task deploy:local
+            task deploy:local:port-forward
+          fi
+
+      - name: Run build command
+        run: |
+          echo "Running dir build command"
+          bin/dirctl build e2e/testdata > agent.json
+          echo "Built agent.json:"
+          cat agent.json
+
+      - name: Run push command
+        run: |
+          if [ "${{ inputs.network }}" = "true" ]; then
+            echo "Running dir push command on Peer 1"
+            bin/dirctl push agent.json --server-addr 127.0.0.1:8890 > digest.txt
+          else
+            echo "Running dir push command"
+            bin/dirctl push agent.json > digest.txt
+          fi
+          echo "Pushed image digest:"
+          cat digest.txt
+
+      - name: Run publish command
+        run: |
+          
+          if [ "${{ inputs.network }}" = "true" ]; then
+            echo "Running dir publish command on Peer 1"
+            bin/dirctl publish $(cat digest.txt) --server-addr 127.0.0.1:8890 --network
+            echo "Waiting for publish to complete"
+            sleep 120
+          else
+            echo "Running dir publish command"
+            bin/dirctl publish $(cat digest.txt)
+          fi
+
+      - name: Run list info command
+        continue-on-error: true
+        run: |
+          if [ "${{ inputs.network }}" = "true" ]; then
+            echo "Running dir list info command on Peer 1"
+            bin/dirctl list info --server-addr 127.0.0.1:8890 --network
+            echo "Running dir list info command on Peer 2"
+            bin/dirctl list info --server-addr 127.0.0.1:8891 --network
+            echo "Running dir list info command on Peer 3"
+            bin/dirctl list info --server-addr 127.0.0.1:8892 --network
+          else
+            echo "Running dir list info command"
+            bin/dirctl list info
+          fi
+
+      - name: Run list search by skill command
+        continue-on-error: true
+        run: |
+          if [ "${{ inputs.network }}" = "true" ]; then
+            echo "Running dir list search by skill command on Peer 1"
+            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8890 --network
+            echo "Running dir list search by skill command on Peer 2"
+            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8891 --network
+            echo "Running dir list search by skill command on Peer 3"
+            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8892 --network
+          else
+            echo "Running dir list search by skill command"
+            bin/dirctl list "/skills/Natural Language Processing"
+          fi
+
+      - name: Run pull command
+        run: |
+          if [ "${{ inputs.network }}" = "true" ]; then
+            echo "Running dir pull command on Peer 1"
+            bin/dirctl pull $(cat digest.txt) --server-addr 127.0.0.1:8890
+          else
+            echo "Running dir pull command"
+            bin/dirctl pull $(cat digest.txt)
+          fi
+
+      - name: Clean up
+        run: |
+          echo "Cleaning up"
+          if [ "${{ inputs.network }}" = "true" ]; then
+            task deploy:network:port-forward:cleanup
+            task deploy:network:cleanup
+          else
+            task deploy:local:port-forward:cleanup
+            task deploy:local:cleanup
+          fi
