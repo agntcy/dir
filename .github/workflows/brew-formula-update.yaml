@@ -50,9 +50,11 @@ jobs:
                     git config user.name "github-actions[bot]"
                     git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+                    git remote set-url origin https://github.com/agntcy/dir.git
+
                     git push origin --delete chore/brew-formula-update
 
-                    git checkout -B chore/brew-formula-update
+                    git checkout -B chore/brew-formula-update origin/main
 
                     # Replace version
                     sed -i "s/version \"v*.*.*\"/version \""${{ steps.release-infos.outputs.LATEST_VERSION }}"\"/" HomebrewFormula/dirctl.rb
@@ -81,7 +83,6 @@ jobs:
                     if [ $DIFF_FOUND -eq 1 ]; then
                       git commit ./HomebrewFormula/dirctl.rb -m "chore: update brew formula version" --signoff
 
-                      git remote set-url origin https://github.com/agntcy/dir.git
                       git push --set-upstream origin chore/brew-formula-update
                     fi
 
