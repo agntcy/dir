@@ -101,7 +101,7 @@ jobs:
             - name: Create PR
               if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 }}
               run: |
-                    gh pr create --title "chore: update brew formula by ci"
+                    gh pr create --title "chore: update brew formula to ${{ steps.release-infos.outputs.LATEST_VERSION }}" --body "This PR is created by `brew-formula-update` workflow."
 
 
 
