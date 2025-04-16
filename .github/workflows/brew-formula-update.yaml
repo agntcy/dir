@@ -55,7 +55,7 @@ jobs:
                     git checkout -B chore/brew-formula-update
 
                     # Replace version
-                    sed -i "s/version "v*.*.*"/version \""${{ steps.release-infos.outputs.LATEST_VERSION }}"\"/" HomebrewFormula/dirctl.rb
+                    sed -i "s/version \"v*.*.*\"/version \""${{ steps.release-infos.outputs.LATEST_VERSION }}"\"/" HomebrewFormula/dirctl.rb
 
                     # Replace hashes
                     sed -i "/url \".*\/dirctl-darwin-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
@@ -69,6 +69,8 @@ jobs:
                     sed -i "/url \".*\/dirctl-hub-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
 
                     DIFF_FOUND=0
+
+                    git diff
 
                     if ! git diff --exit-code; then
                       DIFF_FOUND=1
