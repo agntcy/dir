@@ -35,10 +35,10 @@ class Dirctl < Formula
 
         if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
             if build.with? "hub"
-                url "#{url}/#{version}/dirctl-hub-darwin-amd64"
+                url "#{url}/dirctl-hub-darwin-amd64"
                 sha256 "0a356a09102cd18bba193a8835b0a562f8786be32c4998c87505c2ab56450f77"
             else
-                url "#{url}/#{version}/dirctl-darwin-amd64"
+                url "#{url}/dirctl-darwin-amd64"
                 sha256 "a7e803a1ca0c485615be9f116ba8ea945d0015f1387ee6157adceb583e86f4b1"
             end
 
@@ -58,10 +58,10 @@ class Dirctl < Formula
     on_linux do
         if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
             if build.with? "hub"
-                url "#{url}/#{version}/dirctl-hub-linux-arm64"
+                url "#{url}/dirctl-hub-linux-arm64"
                 sha256 "8cf32863438315910c680b27e63c315eda4987a84ffe356ea741d723b0a0a4f3"
             else
-                url "#{url}/#{version}/dirctl-linux-arm64"
+                url "#{url}/dirctl-linux-arm64"
                 sha256 "dbf563888c626b09b40001b2555bc2e2fccd84a4d69ef9b6fdf693fdcfb7a519"
             end
             def install
@@ -78,10 +78,10 @@ class Dirctl < Formula
 
         if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
             if build.with? "hub"
-                url "#{url}/#{version}/dirctl-hub-linux-amd64"
+                url "#{url}/dirctl-hub-linux-amd64"
                 sha256 "80d74b602c9f724c444a4ef28d5460a2108a3f20711b425e293db0369045f015"
             else
-                url "#{url}/#{version}/dirctl-linux-amd64"
+                url "#{url}/dirctl-linux-amd64"
                 sha256 "816a70fb0a70015665df4d23c43c776e0afc1eca9ade0901a9f69fdf9dddd3ce"
             end
 
