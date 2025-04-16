@@ -53,7 +53,7 @@ jobs:
                     git checkout -B chore/brew-formula-update
 
                     # Replace version
-                    sed -i "s/version "v*.*.*"/version "${{ steps.release-infos.outputs.LATEST_VERSION }}"/" HomebrewFormula/dirctl.rb
+                    sed -i "s/version "v*.*.*"/version \""${{ steps.release-infos.outputs.LATEST_VERSION }}"\"/" HomebrewFormula/dirctl.rb
 
                     # Replace hashes
                     sed -i "/url \".*\/dirctl-darwin-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
