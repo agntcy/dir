@@ -80,6 +80,13 @@ spec:
               subPath: node.privkey
               readOnly: true
             {{- end }}
+            {{- if .Values.pvc.create }}
+            - name: routing-data
+              mountPath: {{ .Values.config.routing.datastore_dir }}
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{ toYaml . | indent 12 }}
+            {{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -91,6 +98,14 @@ spec:
             items:
               - key: node.privkey
                 path: node.privkey
+        {{- end }}
+        {{- if .Values.pvc.create }}
+        - name: routing-data
+          persistentVolumeClaim:
+            claimName: {{ include "chart.fullname" . }}-pvc
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{ toYaml . | indent 8 }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
