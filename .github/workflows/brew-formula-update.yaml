@@ -52,38 +52,32 @@ jobs:
                     # Replace version
                     sed -i "s/version "v*.*.*"/version "${{ steps.release-infos.outputs.LATEST_VERSION }}"/" HomebrewFormula/dirctl.rb
 
-                    echo "First replace"
-
                     # Replace hashes
                     sed -i "/url \".*\/dirctl-darwin-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
                     sed -i "/url \".*\/dirctl-darwin-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_DARWIN_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
                     sed -i "/url \".*\/dirctl-linux-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
                     sed -i "/url \".*\/dirctl-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
 
-                    echo "Second replace"
-
                     sed -i "/url \".*\/dirctl-hub-darwin-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_DARWIN_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
                     sed -i "/url \".*\/dirctl-hub-darwin-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_DARWIN_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
                     sed -i "/url \".*\/dirctl-hub-linux-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_LINUX_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
                     sed -i "/url \".*\/dirctl-hub-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
 
-                    echo "Third replace"
+                    DIFF_FOUND=0
 
-                    DIFF_FOUND=$(git diff --exit-code)
+                    if ! git diff --exit-code; then
+                      DIFF_FOUND=1
+                    fi
+
                     echo "DIFF_FOUND=$DIFF_FOUND" >> $GITHUB_OUTPUT
 
-                    echo "Diff command"
-
-                    if [ $DIFF_FOUND ]; then
+                    if [ $DIFF_FOUND -eq 1 ]; then
                       git commit ./HomebrewFormula/dirctl.rb -m "chore: update brew formula version" --signoff
-                      echo "Commit command"
                       git push
-
-                      echo "Push command"
                     fi
 
             - name: Test new formula
-              if: ${{ steps.brew-formula.outputs.DIFF_FOUND }}
+              if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 }}
               run: |
                   apt update && apt install curl git -y
 
@@ -96,7 +90,7 @@ jobs:
                   dirctl --help
 
             - name: Create PR
-              if: ${{ steps.brew-formula.outputs.DIFF_FOUND }}
+              if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 }}
               run: |
                     gh pr create --title "chore: update brew formula by ci"
 
