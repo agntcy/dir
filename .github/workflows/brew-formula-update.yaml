@@ -56,7 +56,7 @@ jobs:
 
                     git push origin --delete chore/brew-formula-update || true
 
-                    git checkout -B chore/brew-formula-update origin/main
+                    git checkout -B chore/brew-formula-update # origin/main
 
                     # Replace version
                     sed -i "s/version \"v*.*.*\"/version \""${{ steps.release-infos.outputs.LATEST_VERSION }}"\"/" HomebrewFormula/dirctl.rb
