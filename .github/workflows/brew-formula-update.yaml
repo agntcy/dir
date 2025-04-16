@@ -72,8 +72,6 @@ jobs:
 
                     DIFF_FOUND=0
 
-                    git diff
-
                     if ! git diff --exit-code; then
                       DIFF_FOUND=1
                     fi
