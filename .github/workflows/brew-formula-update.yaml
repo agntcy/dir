@@ -63,7 +63,7 @@ jobs:
                     sed -i "/url \".*\/dirctl-hub-linux-arm64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_LINUX_ARM }}\"/}" ./HomebrewFormula/dirctl.rb
                     sed -i "/url \".*\/dirctl-hub-linux-amd64\"/ {N;s/sha256 \".*\"/sha256 \"${{ steps.release-infos.outputs.DIRCTL_HUB_HASH_LINUX_AMD }}\"/}" ./HomebrewFormula/dirctl.rb
 
-                    $DIFF_FOUND=$(git diff --exit-code)
+                    DIFF_FOUND=$(git diff --exit-code)
                     echo "DIFF_FOUND=$DIFF_FOUND" >> $GITHUB_OUTPUT
 
                     if [ $DIFF_FOUND ]; then
