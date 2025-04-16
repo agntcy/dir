@@ -52,7 +52,7 @@ jobs:
 
                     git remote set-url origin https://github.com/agntcy/dir.git
 
-                    git push origin --delete chore/brew-formula-update
+                    git push origin --delete chore/brew-formula-update || true
 
                     git checkout -B chore/brew-formula-update origin/main
 
