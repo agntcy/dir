@@ -73,7 +73,9 @@ jobs:
 
                     if [ $DIFF_FOUND -eq 1 ]; then
                       git commit ./HomebrewFormula/dirctl.rb -m "chore: update brew formula version" --signoff
-                      git push
+
+                      git remote set-url origin https://github.com/agntcy/dir.git
+                      git push --set-upstream origin chore/brew-formula-update
                     fi
 
             - name: Test new formula
