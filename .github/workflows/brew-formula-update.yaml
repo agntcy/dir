@@ -12,7 +12,9 @@ on:
   workflow_dispatch:
 
 
-permissions: write-all
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
     brew-formula-update:
