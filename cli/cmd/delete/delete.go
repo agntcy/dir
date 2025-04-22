@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	ctxUtil "github.com/agntcy/dir/cli/util/context"
+	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ Usage example:
 
 func runCommand(cmd *cobra.Command, digest string) error {
 	// Get the client from the context.
-	c, ok := ctxUtil.GetClientFromContext(cmd.Context())
+	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}

@@ -18,8 +18,8 @@ import (
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/version"
-	hubImpl "github.com/agntcy/dir/cli/hub"
-	util "github.com/agntcy/dir/cli/util/context"
+	hubImpl "github.com/agntcy/dir/hub"
+	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +38,7 @@ var RootCmd = &cobra.Command{
 			return fmt.Errorf("failed to create client: %w", err)
 		}
 
-		ctx := util.SetClientForContext(cmd.Context(), c)
+		ctx := ctxUtils.SetClientForContext(cmd.Context(), c)
 		cmd.SetContext(ctx)
 
 		return nil
