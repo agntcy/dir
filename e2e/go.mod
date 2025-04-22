@@ -6,6 +6,7 @@ replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/cli => ../cli
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/hub => ../hub
 	github.com/agntcy/dir/utils => ../utils
 )
 
@@ -38,6 +39,7 @@ require (
 	github.com/acobaugh/osrelease v0.1.0 // indirect
 	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
+	github.com/agntcy/dir/hub v0.0.0-00010101000000-000000000000 // indirect
 	github.com/agntcy/dir/utils v0.2.1 // indirect
 	github.com/anchore/archiver/v3 v3.5.3-0.20241210171143-5b1d8d1c7c51 // indirect
 	github.com/anchore/clio v0.0.0-20241115144204-29e89f9fa837 // indirect

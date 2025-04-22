@@ -9,9 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
-
 	httpUtils "github.com/agntcy/dir/hub/utils/http"
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -50,7 +49,7 @@ func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, err
 
 		var resp *http.Response
 
-		resp, err = httpUtils.CreateSecureHttpClient().Do(req)
+		resp, err = httpUtils.CreateSecureHTTPClient().Do(req)
 		if err != nil {
 			continue
 		}

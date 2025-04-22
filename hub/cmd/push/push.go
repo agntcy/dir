@@ -9,12 +9,11 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/util/agent"
-	
 	"github.com/agntcy/dir/hub/api/v1alpha1"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
 	hubOptions "github.com/agntcy/dir/hub/cmd/options"
 	ctxUtils "github.com/agntcy/dir/hub/utils/context"
-	"github.com/agntcy/dir/cli/util/agent"
+	"github.com/agntcy/dir/hub/utils/token"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"

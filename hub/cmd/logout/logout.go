@@ -9,12 +9,11 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/hub/client/okta"
 	"github.com/agntcy/dir/hub/cmd/options"
 	"github.com/agntcy/dir/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/hub/utils/context"
+	"github.com/spf13/cobra"
 )
 
 var ErrSecretNotFoundForAddress = errors.New("no active session found for the address. please login first")
@@ -49,7 +48,7 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 	return cmd
 }
 
-func runCmd(outStream io.Writer, opts *options.HubOptions, currentSession *sessionstore.HubSession, sessionStore sessionstore.SessionStore, oktaClient okta.Client) (errOut error) {
+func runCmd(outStream io.Writer, opts *options.HubOptions, currentSession *sessionstore.HubSession, sessionStore sessionstore.SessionStore, oktaClient okta.Client) error {
 	if err := logout(currentSession, oktaClient); err != nil {
 		return fmt.Errorf("failed to logout: %w", err)
 	}
@@ -59,6 +58,7 @@ func runCmd(outStream io.Writer, opts *options.HubOptions, currentSession *sessi
 	}
 
 	fmt.Fprintln(outStream, "Successfully logged out from Agent Hub")
+
 	return nil
 }
 

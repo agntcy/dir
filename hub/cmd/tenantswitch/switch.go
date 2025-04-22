@@ -19,6 +19,7 @@ import (
 	"github.com/agntcy/dir/hub/config"
 	"github.com/agntcy/dir/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/hub/utils/context"
+	httpUtils "github.com/agntcy/dir/hub/utils/http"
 	"github.com/agntcy/dir/hub/utils/token"
 	"github.com/agntcy/dir/hub/webserver"
 	"github.com/manifoldco/promptui"
@@ -57,7 +58,7 @@ tenant. In any other case, tenant could be selected from an interactive list.
 			return errors.New("could not get current hub session")
 		}
 
-		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress)
+		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
 
 		tenant, err := switchTenant(opts, tenants, currentSession, sessionStore, oktaClient)
 

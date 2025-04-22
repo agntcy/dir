@@ -113,7 +113,6 @@ type idpClient struct {
 
 //nolint:revive
 func NewClient(baseURL string, httpClient *http.Client) *idpClient {
-
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}

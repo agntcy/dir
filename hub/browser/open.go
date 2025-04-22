@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/pkg/browser"
-
 	"github.com/agntcy/dir/hub/config"
 	"github.com/agntcy/dir/hub/sessionstore"
+	"github.com/pkg/browser"
 )
 
 const (

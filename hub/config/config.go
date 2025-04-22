@@ -32,7 +32,6 @@ type AuthConfig struct {
 }
 
 func FetchAuthConfig(frontedURL string) (*AuthConfig, error) {
-
 	if err := url.ValidateSecureURL(frontedURL); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidFrontendURL, err)
 	}
@@ -42,7 +41,7 @@ func FetchAuthConfig(frontedURL string) (*AuthConfig, error) {
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}
 
-	resp, err := httpUtils.CreateSecureHttpClient().Do(req)
+	resp, err := httpUtils.CreateSecureHTTPClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}

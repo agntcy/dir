@@ -10,11 +10,10 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/hub/cmd"
 	"github.com/agntcy/dir/hub/cmd/options"
 	"github.com/agntcy/dir/hub/config"
+	"github.com/spf13/cobra"
 )
 
 type ciscoHub struct{}

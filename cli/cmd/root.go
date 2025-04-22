@@ -18,9 +18,9 @@ import (
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/version"
-	hubImpl "github.com/agntcy/dir/hub"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
+	hubImpl "github.com/agntcy/dir/hub"
 	"github.com/spf13/cobra"
 )
 

@@ -9,15 +9,14 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/spf13/cobra"
-
 	"github.com/agntcy/dir/hub/client/idp"
 	hubOptions "github.com/agntcy/dir/hub/cmd/options"
 	"github.com/agntcy/dir/hub/cmd/tenantswitch"
 	ctxUtils "github.com/agntcy/dir/hub/utils/context"
 	httpUtils "github.com/agntcy/dir/hub/utils/http"
 	"github.com/agntcy/dir/hub/utils/token"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -47,7 +46,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 			return errors.New("no current session found. please login first")
 		}
 
-		idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHttpClient())
+		idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient())
 
 		accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken
 
