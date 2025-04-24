@@ -64,6 +64,7 @@ config:
     # Datastore to use for routing persistance.
     # datastore_dir: ""
 
+# create PVC for routing data
 pvc:
   create: false
   storageClassName: gp2
