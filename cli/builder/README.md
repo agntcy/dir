@@ -12,3 +12,4 @@ The plugins can be registered through Golang interfaces.
 
 - [llmanalyzer](./plugins/llmanalyzer/) - Extract semantic details from source code
 - [runtime](./plugins/runtime/) - Extract runtime details from source code
+- [pyprojectparse](./plugins/pyprojectparse) - Parse and extract metadata from pyproject.toml

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/framework"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/language"
 	"github.com/agntcy/dir/cli/types"
@@ -24,7 +25,7 @@ func New(source string) types.Builder {
 	}
 }
 
-func (c *runtime) Build(ctx context.Context) ([]*types.AgentExtension, error) {
+func (c *runtime) Build(ctx context.Context) (*coretypes.Agent, error) {
 	frameworkExtension, err := c.framework.Build(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get framework: %w", err)
@@ -35,8 +36,10 @@ func (c *runtime) Build(ctx context.Context) ([]*types.AgentExtension, error) {
 		return nil, fmt.Errorf("failed to get language: %w", err)
 	}
 
-	return []*types.AgentExtension{
-		frameworkExtension,
-		languageExtension,
+	return &coretypes.Agent{
+		Extensions: []*coretypes.Extension{
+			frameworkExtension,
+			languageExtension,
+		},
 	}, nil
 }

@@ -10,7 +10,7 @@ import (
 
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/util"
+	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +38,7 @@ Usage examples:
 
 func runCommand(cmd *cobra.Command) error {
 	// Get the client from the context.
-	c, ok := util.GetClientFromContext(cmd.Context())
+	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}

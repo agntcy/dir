@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
-	"github.com/agntcy/dir/cli/builder/plugins/runtime/framework"
-	"github.com/agntcy/dir/cli/builder/plugins/runtime/language"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,12 +21,12 @@ func TestNewRuntime(t *testing.T) {
 }
 
 func TestBuildRuntime(t *testing.T) {
-	expectedSBOM := analyzer.SBOM{
-		Name: "testdata",
-		Packages: []analyzer.Package{
-			{Name: "crewai", Version: "0.83.0"},
-			{Name: "langchain", Version: "0.3.14"},
-			{Name: "langchain-openai", Version: "0.2.14"},
+	expectedSBOM := map[string]interface{}{
+		"name": "testdata",
+		"packages": []interface{}{
+			map[string]interface{}{"name": "crewai", "version": "0.83.0"},
+			map[string]interface{}{"name": "langchain", "version": "0.3.14"},
+			map[string]interface{}{"name": "langchain-openai", "version": "0.2.14"},
 		},
 	}
 	expectedVersion := ">=3.11,<3.13"
@@ -37,14 +35,12 @@ func TestBuildRuntime(t *testing.T) {
 	ret, err := r.Build(t.Context())
 	assert.NoError(t, err)
 
-	frameworkData, ok := ret[0].Data.(framework.ExtensionData)
-	assert.True(t, ok)
-	assert.Equal(t, expectedSBOM, frameworkData.SBOM)
+	frameworkData := ret.GetExtensions()[0].GetData().AsMap()["sbom"]
+	assert.Equal(t, expectedSBOM, frameworkData)
 
-	languageData, ok := ret[1].Data.(language.ExtensionData)
-	assert.True(t, ok)
-	assert.Equal(t, analyzer.Python, languageData.Type)
-	assert.Equal(t, expectedVersion, languageData.Version)
+	languageData := ret.GetExtensions()[1].GetData().AsMap()
+	assert.Equal(t, string(analyzer.Python), languageData["type"])
+	assert.Equal(t, expectedVersion, languageData["version"])
 }
 
 func TestBuildRuntimeWithInvalidSource(t *testing.T) {

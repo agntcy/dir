@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer/python"
 	"github.com/agntcy/dir/cli/types"
@@ -16,11 +17,6 @@ const (
 	ExtensionName    = "schema.oasf.agntcy.org/features/runtime/language"
 	ExtensionVersion = "v0.0.0"
 )
-
-type ExtensionData struct {
-	Type    analyzer.LanguageType `json:"type,omitempty"`
-	Version string                `json:"version,omitempty"`
-}
 
 type Language struct {
 	source        string
@@ -36,18 +32,23 @@ func New(source string) *Language {
 	}
 }
 
-func (l *Language) Build(_ context.Context) (*types.AgentExtension, error) {
+func (l *Language) Build(_ context.Context) (*coretypes.Extension, error) {
 	runtimeInfo, err := l.typeAnalyzers[analyzer.Python].RuntimeVersion(l.source)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get runtime version: %w", err)
 	}
 
-	return &types.AgentExtension{
+	strct, err := types.ToStruct(map[string]any{
+		"type":    runtimeInfo.Language,
+		"version": runtimeInfo.Version,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert data to struct: %w", err)
+	}
+
+	return &coretypes.Extension{
 		Name:    ExtensionName,
 		Version: ExtensionVersion,
-		Data: ExtensionData{
-			Type:    runtimeInfo.Language,
-			Version: runtimeInfo.Version,
-		},
+		Data:    strct,
 	}, nil
 }

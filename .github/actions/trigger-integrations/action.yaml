@@ -1,0 +1,39 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+---
+name: Trigger integrations
+description: Run the integration tests in CSIT repository
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get latest tags and versions
+      id: tags
+      shell: bash
+      run: |
+        VERSION_TAG=$(git tag --sort=-creatordate --list 'v*.*.*' | head -1)
+
+        echo "CHART_TAG=$VERSION_TAG" >> $GITHUB_OUTPUT
+        echo "IMAGE_TAG=$VERSION_TAG" >> $GITHUB_OUTPUT
+
+    - name: Trigger integration tests
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.actions.createWorkflowDispatch({
+              owner: 'agntcy',
+              repo: 'csit',
+              workflow_id: 'test-integrations.yaml',
+              ref: 'main',
+              inputs: {
+                  skip_gateway_test: true,
+                  override_directory_image_tag: '${{ steps.tags.outputs.IMAGE_TAG }}',
+                  override_directory_chart_tag: '${{ steps.tags.outputs.CHART_TAG }}',
+              },
+          });

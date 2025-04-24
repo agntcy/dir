@@ -39,6 +39,10 @@ vars:
   GOLANGCI_LINT_BIN: '{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}'
   LICENSEI_VERSION: '0.9.0'
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
+  UV_VERSION: '0.6.1'
+  UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
+  HUB_API_VERSION: 'main'
+  HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
 
 tasks:
   ##
@@ -123,9 +127,21 @@ tasks:
 
   api:clean:
     desc: Clean generated API stubs
+    deps:
+      - api:clean:go
+      - api:clean:python
+
+  api:clean:go:
+    desc: Clean generated golang API stubs
     dir: ./api
     cmds:
-      - find . \( -name "*.pb.go" -o -name "*_grpc.pb.go" -o -name "*.pb.gw.go" \) -type f -delete
+      - find . \( -name "*.pb.go" -o -name "*.pb.gw.go" \) -type f -delete
+
+  api:clean:python:
+    desc: Clean generated python API stubs
+    dir: ./api/python
+    cmds:
+      - find . \( -name "*_pb2_grpc.py" -o -name "*_pb2.py" -o -name "*_pb2.pyi" \) -type f -delete
 
   api:test:
     desc: Unit test API code
@@ -175,9 +191,25 @@ tasks:
   ##
   client:test:
     desc: Unit test Client code
+    deps:
+      - task: client:test:go
+      - task: client:test:python
+
+  client:test:go:
+    desc: Unit test Go Client code
     dir: ./client
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
+
+  client:test:python:
+    desc: Unit test Python Client code
+    deps:
+      - deps:uv
+    dir: ./client/python/tests
+    env:
+      PYTHONPATH: '{{ .ROOT_DIR }}/client/python/client/proto'
+    cmds:
+      - '{{.UV_BIN}} run pytest test_client.py'
 
   ##
   ## Server
@@ -226,7 +258,7 @@ tasks:
           }
         }
         EOF
-  
+
         # run docker with attached volume
         docker run \
               -it \
@@ -253,7 +285,198 @@ tasks:
       - go -C . test -bench=. ./...
 
   ##
-  ## Testing
+  ## Deploy
+  ##
+  deploy:kubernetes:setup-cluster:
+    internal: true
+    desc: Create a kind cluster and load Docker images
+    deps:
+      - deps:helm
+      - deps:kubectl
+      - deps:kind
+    vars:
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+    cmds:
+      # Create ephemeral cluster
+      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
+      - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
+
+      # Check cluster status
+      - '{{ .KUBECTL_BIN }} cluster-info'
+
+      # Import images
+      - |
+        images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        echo "$images" | while read image; do
+          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
+        done
+
+  deploy:kubernetes:local:
+    aliases: [deploy:local]
+    desc: Deploy a local Directory server in Kubernetes
+    deps:
+      - deploy:kubernetes:setup-cluster
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS:   '{{ .KIND_CREATE_OPTS | default "" }}'
+      # Helm args
+      HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
+    cmds:
+      # TODO: make logic idempotent so that running functional tests does not change previous contexts
+
+      # Deploy chart
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --namespace {{ .HELM_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+  deploy:kubernetes:local:port-forward:
+    aliases: [deploy:local:port-forward]
+    desc: Set up port-forwarding for the local deployment
+    vars:
+      # Helm args
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
+    cmds:
+      # Port-forward dependency services
+      - |
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
+
+      # Delay to ensure services are online
+      - sleep 10
+
+  deploy:kubernetes:local:port-forward:cleanup:
+    aliases: [deploy:local:port-forward:cleanup]
+    desc: Cleanup port-forwarding processes
+    cmds:
+      # Kill any existing port-forward processes for the dir-apiserver service
+      - kill -9 $(ps aux | grep port-forward | grep dir-apiserver | awk '{print $2}') || true
+
+  deploy:kubernetes:local:cleanup:
+    aliases: [deploy:local:cleanup]
+    desc: Cleanup Kubernetes environment for local deployment
+    deps:
+      - deps:kind
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+    cmds:
+      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
+
+  deploy:kubernetes:network:bootstrap:
+    internal: true
+    desc: Deploy a bootstrap Directory server in Kubernetes
+    deps:
+      - deploy:kubernetes:setup-cluster
+    vars:
+      # Helm args
+      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+    cmds:
+      # Generate private key if it doesn't exist
+      - |
+        test -f /tmp/node.privkey || openssl genpkey -algorithm ED25519 -out /tmp/node.privkey
+
+      # Generate the bootstrap peer ID and export it to the environment file
+      - |
+        bootstrap_peerid=$({{ .BIN_DIR }}/dirctl network info /tmp/node.privkey)
+        echo "PEER ID: ${bootstrap_peerid}"
+        echo BOOTSTRAP_PEER_ID="${bootstrap_peerid}" > .env
+
+      # Deploy the bootstrap server using Helm
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade agntcy-dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --set apiserver.privKey="$(cat /tmp/node.privkey)" \
+          --set apiserver.config.routing.key_path="/etc/agntcy/dir/node.privkey" \
+          --set apiserver.config.routing.listen_address="/ip4/0.0.0.0/tcp/8999" \
+          --set apiserver.config.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
+          --namespace "bootstrap" \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+  deploy:kubernetes:network:
+    aliases: [deploy:network]
+    desc: Deploy a network of Directory servers in Kubernetes (1 bootstrap + 3 peers)
+    deps:
+      - deploy:kubernetes:network:bootstrap
+    vars:
+      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+    cmds:
+      # Deploy the peer servers using Helm
+      - for:
+          matrix:
+            PEER: ['peer1', 'peer2', 'peer3']
+        cmd: |
+          export $(cat .env)
+          {{ .HELM_BIN }} upgrade agntcy-dir \
+            {{ .HELM_CHART_PATH }} \
+            -f {{ .HELM_VALUES_PATH }} \
+            --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+            --set apiserver.config.oci.registry_address="agntcy-dir-zot.{{ .ITEM.PEER }}.svc.cluster.local:5000" \
+            --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
+            --namespace "{{ .ITEM.PEER }}" \
+            --create-namespace \
+            --install \
+            --wait \
+            --wait-for-jobs \
+            --timeout "15m"
+
+  deploy:kubernetes:network:port-forward:
+    aliases: [deploy:network:port-forward]
+    desc: Set up port-forwarding for the peers
+    cmds:
+      # Port-forward dependency services
+      - '{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer1 8890:8888 &'
+      - '{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer2 8891:8888 &'
+      - '{{ .KUBECTL_BIN }} port-forward svc/agntcy-dir-apiserver -n peer3 8892:8888 &'
+
+      # Delay to ensure services are online
+      - sleep 10
+
+  deploy:kubernetes:network:port-forward:cleanup:
+    aliases: [deploy:network:port-forward:cleanup]
+    desc: Cleanup port-forwarding processes
+    cmds:
+      # Kill any existing port-forward processes for the agntcy-dir-apiserver service
+      - kill -9 $(ps aux | grep port-forward | grep agntcy-dir-apiserver | awk '{print $2}') || true
+
+  deploy:kubernetes:network:cleanup:
+    aliases: [deploy:network:cleanup]
+    desc: Cleanup Kubernetes environment for network deployment
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+    cmds:
+      # Delete helm releases
+      - for:
+          matrix:
+            PEER: ['bootstrap', 'peer1', 'peer2', 'peer3']
+        cmd: |
+          {{ .HELM_BIN }} delete --namespace {{ .ITEM.PEER }} agntcy-dir
+
+      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
+
+  ##
+  ## Test
   ##
   test:unit:
     desc: Run unit tests on codebase
@@ -292,75 +515,14 @@ tasks:
     desc: Run end-to-end tests
     aliases: [e2e]
     cmds:
-      - defer: { task: test:kubernetes-env:cleanup }
+      - defer: { task: deploy:kubernetes:local:cleanup }
+      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
-      - task: test:kubernetes-env:bootstrap
+      - task: deploy:kubernetes:local
+      - task: deploy:kubernetes:local:port-forward
+      # Run tests
       - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
-
-  test:kubernetes-env:bootstrap:
-    internal: true
-    desc: Bootstrap Kubernetes environment
-    deps:
-      - deps:helm
-      - deps:kubectl
-      - deps:kind
-    vars:
-      # Kind args
-      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
-      KIND_CREATE_OPTS:   '{{ .KIND_CREATE_OPTS | default "" }}'
-      # Helm args
-      HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
-      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
-      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
-    cmds:
-      # TODO: make logic idempotent so that running functional tests does not change previous contexts
-
-      # Create ephemeral cluster
-      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
-      - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
-
-      # Check cluster status
-      - '{{ .KUBECTL_BIN }} cluster-info'
-
-      # Import images
-      - |
-        images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-        echo "$images" | while read image; do
-          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
-        done
-
-      # Deploy chart
-      - |
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dir \
-          {{ .HELM_CHART_PATH }} \
-          -f {{ .HELM_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
-          --namespace {{ .HELM_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Port-forward dependency services
-      - |
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver  8888:8888   -n {{ .HELM_NAMESPACE }} &
-
-      # Delay to ensure services are online
-      - sleep 10
-
-  test:kubernetes-env:cleanup:
-    internal: true
-    desc: Cleanup Kubernetes environment
-    deps:
-      - deps:kind
-    vars:
-      # Kind args
-      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "test-agntcy-cluster" }}'
-    cmds:
-      - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
 
   ##
   ## Linters
@@ -432,6 +594,69 @@ tasks:
       - task: deps:kind
       - task: deps:protoc
       - task: deps:bufbuild
+
+  deps:hub:api:
+    desc: generate HUB API
+    dir: hub/api
+    cmds:
+      - task: deps:hub:api:clean
+      - task: deps:hub:api:dirs
+      - task: deps:hub:api:files
+      - task: deps:hub:api:gen
+      - cmd: cp -r saas/v1alpha1 .
+      - task: deps:hub:api:gen:cleanup
+      - cmd: go mod tidy
+
+  deps:hub:api:dirs:
+    desc: Create HUB API directories
+    dir: hub/api
+    cmds:
+      - mkdir -p saas/v1alpha1
+      - mkdir -p core/v1alpha1
+
+  deps:hub:api:files:
+    desc: Sync HUB proto files to the given version
+    vars:
+      HUB_API_VERSION: '{{ .HUB_API_VERSION }}'
+    dir: hub/api
+    cmd: |
+      mkdir -p .tmp
+      git clone {{.HUB_REPO_URL}} .tmp
+      git checkout {{.HUB_API_VERSION}}
+      cp -r \
+        .tmp/api/saas/v1alpha1/agent.proto \
+        .tmp/api/saas/v1alpha1/agent_id.proto \
+        .tmp/api/saas/v1alpha1/agent_id_response.proto \
+        .tmp/api/saas/v1alpha1/agent_service.proto \
+        .tmp/api/saas/v1alpha1/category.proto \
+        .tmp/api/saas/v1alpha1/locator.proto \
+        .tmp/api/saas/v1alpha1/repo_version_id.proto \
+        saas/v1alpha1
+      rm -rf .tmp
+      cp -r ../../api/core/v1alpha1/*.proto ./core/v1alpha1
+
+  deps:hub:api:gen:
+    desc: Generate HUB API stubs
+    deps:
+      - deps:bufbuild
+      - deps:hub:api:files
+    dir: hub/api
+    cmd: |
+      {{.BUFBUILD_BIN}} dep update
+      {{.BUFBUILD_BIN}} generate
+
+  deps:hub:api:gen:cleanup:
+    desc: Clean HUB API stubs
+    dir: hub/api
+    cmds:
+      - rm -rf core || true
+      - rm -rf saas || true
+
+  deps:hub:api:clean:
+    desc: Lint HUB API stubs
+    dir: hub/api
+    cmds:
+      - cmd: rm -rf v1alpha1
 
   deps:bin-dir:
     desc: Create bin directory
@@ -574,6 +799,21 @@ tasks:
       - chmod +x {{.LICENSEI_BIN}}
     status:
       - test -x {{.LICENSEI_BIN}}
+
+  deps:uv:
+    desc: Install uv
+    internal: true
+    deps:
+      - deps:bin-dir
+    env:
+      UV_INSTALL_DIR: '{{ .BIN_DIR }}'
+    cmds:
+      - curl -sfL https://astral.sh/uv/{{.UV_VERSION}}/install.sh | sh
+      - mv {{.BIN_DIR}}/uv {{.UV_BIN}}
+      - chmod +x {{.UV_BIN}}
+      - rm {{.BIN_DIR}}/uvx
+    status:
+      - test -x {{.BIN_DIR}}/uv
 
   ##
   ## Helm

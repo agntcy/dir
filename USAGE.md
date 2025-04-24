@@ -50,6 +50,9 @@ builder:
  # Disable the runtime plugin
  runtime: false
 
+ # Disable the pyprojectparser plugin
+ pyprojectparser: false
+
  # Enable OASF validation
  oasf-validation: true
 

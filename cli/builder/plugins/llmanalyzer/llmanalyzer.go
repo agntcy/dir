@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/types"
 )
 
@@ -82,7 +83,7 @@ func New(fsPath string, ignorePaths []string) (types.Builder, error) {
 	}, nil
 }
 
-func (l *llmanalyzer) Build(ctx context.Context) ([]*types.AgentExtension, error) {
+func (l *llmanalyzer) Build(ctx context.Context) (*coretypes.Agent, error) {
 	filesContent, err := concatenateFiles(l.fsPath, l.ignorePaths, []string{".py", ".yml", ".yaml"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to concatenate files: %w", err)
@@ -120,11 +121,18 @@ func (l *llmanalyzer) Build(ctx context.Context) ([]*types.AgentExtension, error
 		return nil, fmt.Errorf("failed to unmarshal output after %d attempts: %w", maxRetries, lastErr)
 	}
 
-	return []*types.AgentExtension{
-		{
-			Name:    PluginName,
-			Version: PluginVersion,
-			Data:    exData,
+	strct, err := types.ToStruct(exData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert data to struct: %w", err)
+	}
+
+	return &coretypes.Agent{
+		Extensions: []*coretypes.Extension{
+			{
+				Name:    PluginName,
+				Version: PluginVersion,
+				Data:    strct,
+			},
 		},
 	}, nil
 }

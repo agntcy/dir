@@ -9,6 +9,7 @@ import (
 
 	"github.com/agntcy/dir/cli/cmd/build"
 	"github.com/agntcy/dir/cli/cmd/delete"
+	"github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/network"
@@ -17,8 +18,9 @@ import (
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/version"
-	"github.com/agntcy/dir/cli/util"
+	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
+	hubImpl "github.com/agntcy/dir/hub"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +38,7 @@ var RootCmd = &cobra.Command{
 			return fmt.Errorf("failed to create client: %w", err)
 		}
 
-		ctx := util.SetClientForContext(cmd.Context(), c)
+		ctx := ctxUtils.SetClientForContext(cmd.Context(), c)
 		cmd.SetContext(ctx)
 
 		return nil
@@ -60,6 +62,7 @@ func init() {
 		list.Command,
 		unpublish.Command,
 		network.Command,
+		hub.NewCommand(hubImpl.NewCiscoHub()),
 	)
 }
 

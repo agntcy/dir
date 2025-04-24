@@ -1,0 +1,18 @@
+[project]
+name = "agntcy-dir-proto-stubs"
+version = "0.1.0"
+description = "This package contains the python bindings for the proto stubs."
+requires-python = ">=3.12"
+dependencies = [
+    "grpcio>=1.71.0",
+    "grpcio-tools>=1.71.0",
+    "protobuf>=5.29.3",
+]
+
+[tool.setuptools.packages]
+find = { include = ["core", "store", "routing"] }
+
+[tool.setuptools.package-data]
+"core" = ["**/*.py", "**/*.pyi"]
+"store" = ["**/*.py", "**/*.pyi"]
+"routing" = ["**/*.py", "**/*.pyi"]

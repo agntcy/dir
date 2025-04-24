@@ -1,0 +1,6 @@
+[project]
+name = "example-project"
+version = "1.0.0"
+description = "An example project for testing."
+authors = ["Author One", "Author Two"]
+dependencies = []

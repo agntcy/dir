@@ -7,7 +7,7 @@ import (
 	"errors"
 
 	"github.com/agntcy/dir/cli/cmd/list/info"
-	"github.com/agntcy/dir/cli/util"
+	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +52,7 @@ exact set-membership rule.
 
 func runCommand(cmd *cobra.Command, labels []string) error {
 	// Get the client from the context.
-	client, ok := util.GetClientFromContext(cmd.Context())
+	client, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}

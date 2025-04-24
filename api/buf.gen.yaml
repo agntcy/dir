@@ -14,10 +14,22 @@ plugins:
   # Stubs for Golang
   - remote: buf.build/protocolbuffers/go:v1.36.5
     out: .
-    opt: paths=source_relative
+    opt:
+      - paths=source_relative
   - remote: buf.build/grpc/go:v1.5.1
     out: .
-    opt: paths=source_relative,require_unimplemented_servers=false,use_generic_streams_experimental=false
+    opt:
+      - paths=source_relative
+      - require_unimplemented_servers=false
+      - use_generic_streams_experimental=false
+  # Stubs for Python
+  - remote: buf.build/protocolbuffers/python:v29.3
+    out: python
+  - remote: buf.build/grpc/python:v1.71.0
+    out: python
+  - remote: buf.build/protocolbuffers/pyi:v30.2
+    out: python
+  # Stubs for the gateway
   - remote: buf.build/grpc-ecosystem/gateway:v2.26.3
     out: .
     opt:

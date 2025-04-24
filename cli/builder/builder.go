@@ -11,6 +11,7 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/plugins/llmanalyzer"
+	"github.com/agntcy/dir/cli/builder/plugins/pyprojectparser"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime"
 	clitypes "github.com/agntcy/dir/cli/types"
 )
@@ -43,30 +44,26 @@ func (b *Builder) RegisterPlugins() error {
 		b.plugins = append(b.plugins, runtime.New(b.source))
 	}
 
+	if b.cfg.Builder.PyprojectParser {
+		b.plugins = append(b.plugins, pyprojectparser.New(b.source))
+	}
+
 	return nil
 }
 
 func (b *Builder) BuildAgent(ctx context.Context) (*coretypes.Agent, error) {
-	var APIExtensions []*coretypes.Extension
-
-	for _, plugin := range b.plugins {
-		extensions, err := plugin.Build(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to build extension: %w", err)
-		}
-
-		for _, extension := range extensions {
-			APIExtension, err := extension.ToAPIExtension()
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert extension to API extension: %w", err)
-			}
-
-			APIExtensions = append(APIExtensions, &APIExtension)
-		}
+	agent := &coretypes.Agent{
+		CreatedAt: time.Now().Format(time.RFC3339),
 	}
 
-	return &coretypes.Agent{
-		CreatedAt:  time.Now().Format(time.RFC3339),
-		Extensions: APIExtensions,
-	}, nil
+	for _, plugin := range b.plugins {
+		pluginAgent, err := plugin.Build(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build plugin: %w", err)
+		}
+
+		agent.Merge(pluginAgent)
+	}
+
+	return agent, nil
 }

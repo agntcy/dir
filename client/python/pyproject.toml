@@ -1,0 +1,16 @@
+[project]
+name = "agntcy-dir-client-sdk"
+version = "0.1.0"
+description = "Directory client SDK"
+requires-python = ">=3.12"
+dependencies = [
+    "agntcy-dir-proto-stubs",
+    "pytest",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.uv.sources]
+agntcy-dir-proto-stubs = { path = "../../api/python" }
