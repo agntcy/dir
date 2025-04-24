@@ -67,7 +67,7 @@ config:
 # create PVC for routing data
 pvc:
   create: false
-  storageClassName: gp2
+  storageClassName: standard
   size: 1G
 
 # service exposes gRPC server api
