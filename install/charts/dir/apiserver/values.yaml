@@ -66,6 +66,7 @@ config:
 
 pvc:
   create: false
+  storageClassName: gp2
   size: 1G
 
 # service exposes gRPC server api
