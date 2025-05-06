@@ -124,6 +124,15 @@ helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
 helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v0.2.0
 ```
 
+### Using Docker Compose
+
+This will deploy Directory services using Docker Compose:
+
+```bash
+cd install/docker
+docker-compose up -d
+```
+
 ## Copyright Notice
 
 [Copyright Notice and License](./LICENSE.md)

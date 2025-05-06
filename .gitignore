@@ -27,3 +27,6 @@ agent_model.json
 
 # Licensei
 .licensei.cache
+
+# Volumes
+install/docker/data/
