@@ -8,7 +8,7 @@ services:
     ports:
       - 8888:8888
     volumes:
-      - ./data/apiserver/store:/store
+      - apiserver-localfs-store:/store
     deploy:
       mode: replicated
       replicas: 1
@@ -18,6 +18,10 @@ services:
       test: wget --no-verbose --tries=1 --spider http://127.0.0.1:8889/healthz/ready || exit 1
       interval: 10s
       retries: 60
+
+volumes:
+  apiserver-localfs-store:
+    driver: local
 
 networks:
   default:
