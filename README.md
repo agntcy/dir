@@ -130,7 +130,14 @@ This will deploy Directory services using Docker Compose:
 
 ```bash
 cd install/docker
-docker-compose up -d
+docker compose up -d
+```
+
+To use an OCI store instead of local filesystem store, update the value of `DIRECTORY_SERVER_PROVIDER` in install/docker/apiserver.env to `oci`, then deploy with:
+
+```bash
+cd install/docker
+docker compose --profile oci up -d
 ```
 
 ## Copyright Notice
