@@ -16,7 +16,7 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	t.Skip("Skipping flaky test temporarily for investigationg")
+	t.Skip("Skipping flaky test temporarily for investigation")
 
 	// set context
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
