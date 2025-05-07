@@ -7,10 +7,10 @@ vars:
   ## Version
   RELEASE_VERSION:
     sh: grep 'version:' versions.yaml | awk '{print $2}'
-  RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/version.Version={{ .RELEASE_VERSION }}'"
+  RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/go/version.Version={{ .RELEASE_VERSION }}'"
   COMMIT_SHA:
     sh: git rev-parse --short HEAD
-  COMMIT_SHA_LDFLAG: "-X 'github.com/agntcy/dir/api/version.CommitHash={{ .COMMIT_SHA }}'"
+  COMMIT_SHA_LDFLAG: "-X 'github.com/agntcy/dir/api/go/version.CommitHash={{ .COMMIT_SHA }}'"
   VERSION_LDFLAGS: '{{ .RELEASE_VERSION_LDFLAG }} {{ .COMMIT_SHA_LDFLAG }}'
 
   ## Image config
@@ -133,9 +133,9 @@ tasks:
 
   api:clean:go:
     desc: Clean generated golang API stubs
-    dir: ./api
+    dir: ./api/go
     cmds:
-      - find . \( -name "*.pb.go" -o -name "*.pb.gw.go" \) -type f -delete
+      - find . \( -name "*.pb.go" \) -type f -delete
 
   api:clean:python:
     desc: Clean generated python API stubs
@@ -145,7 +145,12 @@ tasks:
 
   api:test:
     desc: Unit test API code
-    dir: ./api
+    deps:
+      - task: api:test:go
+
+  api:test:go:
+    desc: Unit test Go API code
+    dir: ./api/go
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 

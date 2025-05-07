@@ -15,7 +15,7 @@ there is an effort to expose the same functionality via language-specific SDKs.
 
 This example demonstrates how to define an agent data model and build such models using provided tooling to prepare for publication.
 
-To start, generate an example agent that matches the data model schema defined in [Agent Data Model](api/core/v1alpha1/agent.proto) specification.
+To start, generate an example agent that matches the data model schema defined in [Agent Data Model](api/proto/core/v1alpha1/agent.proto) specification.
 
 ```bash
 # Generate an example data model
