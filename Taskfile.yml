@@ -202,7 +202,7 @@ tasks:
 
   client:test:go:
     desc: Unit test Go Client code
-    dir: ./client
+    dir: ./client/go
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
