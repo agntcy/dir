@@ -26,7 +26,7 @@ func TestAgent_Merge(t *testing.T) {
 		Authors:     []string{"Author1"},
 		Annotations: map[string]string{"key1": "value1"},
 		Locators:    []*Locator{{Type: "type1", Url: "url1"}},
-		Extensions:  []*Extension{{Name: "ext1", Version: "v1"}},
+		Extensions:  []*Extension{{Name: "ext1", Version: Ptr("v1")}},
 		Skills:      []*Skill{{CategoryUid: "categoryuid1", ClassUid: "classuid1", CategoryName: Ptr("name1"), ClassName: Ptr("class1")}},
 	}
 
@@ -37,7 +37,7 @@ func TestAgent_Merge(t *testing.T) {
 		Authors:     []string{"Author2", "Author1"},
 		Annotations: map[string]string{"key2": "value2"},
 		Locators:    []*Locator{{Type: "type2", Url: "url2"}},
-		Extensions:  []*Extension{{Name: "ext2", Version: "v2"}},
+		Extensions:  []*Extension{{Name: "ext2", Version: Ptr("v2")}},
 		Skills:      []*Skill{{CategoryUid: "categoryuid2", ClassUid: "classuid2", CategoryName: Ptr("name2"), ClassName: Ptr("class2")}},
 	}
 

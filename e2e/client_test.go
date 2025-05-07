@@ -49,12 +49,12 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		Extensions: []*coretypes.Extension{
 			{
 				Name:    "schema.oasf.agntcy.org/domains/domain-1",
-				Version: "v1",
+				Version: Ptr("v1"),
 				Data:    nil,
 			},
 			{
 				Name:    "schema.oasf.agntcy.org/features/feature-1",
-				Version: "v1",
+				Version: Ptr("v1"),
 				Data:    nil,
 			},
 		},

@@ -46,9 +46,11 @@ func (l *Language) Build(_ context.Context) (*coretypes.Extension, error) {
 		return nil, fmt.Errorf("failed to convert data to struct: %w", err)
 	}
 
+	extensionVersion := ExtensionVersion
+
 	return &coretypes.Extension{
 		Name:    ExtensionName,
-		Version: ExtensionVersion,
+		Version: &extensionVersion,
 		Data:    strct,
 	}, nil
 }
