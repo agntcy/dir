@@ -262,20 +262,13 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 	// reserve reasonable buffer size for output results
 	respCh := make(chan *routetypes.ListResponse_Item, 10000)
 
-	// these are the peers we are interested in
-	// does not allow self-querying as it will create an infinite loop
-	reqPeers := filterPeers(s.host.ID(), peers)
-	if len(reqPeers) == 0 {
-		return nil, errors.New("no peers to list from")
-	}
-
 	// run processing in the background
 	outCh := make(chan *ListResponse, 10000) // used as intermediary forwarding channel
 	go func() {
 		// run logic in the background
 		// prepare inputs for each call
-		inCh := make(chan *ListRequest, len(reqPeers)+1)
-		for _, peer := range reqPeers {
+		inCh := make(chan *ListRequest, len(peers)+1)
+		for _, peer := range peers {
 			inCh <- &ListRequest{
 				Peer:   peer.String(),
 				Labels: req.Labels,
@@ -285,7 +278,7 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 
 		// run async
 		errs := s.rpcClient.MultiStream(ctx,
-			reqPeers,
+			peers,
 			DirService,
 			DirServiceFuncList,
 			inCh,
@@ -326,16 +319,4 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 	}()
 
 	return respCh, nil
-}
-
-func filterPeers(self peer.ID, peers []peer.ID) peer.IDSlice {
-	var filtered peer.IDSlice
-
-	for _, pID := range peers {
-		if pID != self {
-			filtered = append(filtered, pID)
-		}
-	}
-
-	return filtered
 }
