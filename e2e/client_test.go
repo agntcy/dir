@@ -12,12 +12,19 @@ import (
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingv1alpha1 "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/client"
+	"github.com/agntcy/dir/e2e/config"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/opencontainers/go-digest"
 )
 
-var _ = ginkgo.Describe("client end-to-end tests", func() {
+var _ = ginkgo.Describe("Running client end-to-end tests using a local single node deployment", func() {
+	ginkgo.BeforeEach(func() {
+		if cfg.DeploymentMode != config.DeploymentModeLocal {
+			ginkgo.Skip("Skipping test, not in local mode")
+		}
+	})
+
 	var err error
 	ctx := context.Background()
 
