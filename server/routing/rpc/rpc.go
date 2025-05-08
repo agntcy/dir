@@ -147,7 +147,7 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<
 	for in := range inCh {
 		logger.Debug("P2p RPC: Executing List request on remote peer", "peer", r.service.host.ID())
 
-		// list
+		// local list
 		listCh, err := r.service.route.List(ctx, &routetypes.ListRequest{
 			Labels: in.Labels,
 		})
@@ -160,7 +160,7 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<
 			result := &ListResponse{
 				Labels:      item.Labels,
 				LabelCounts: item.LabelCounts,
-				Peer:        in.Peer,
+				Peer:        r.service.host.ID().String(), // remote peer where local list was called
 			}
 
 			if record := item.Record; record != nil {
@@ -300,8 +300,20 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 		// close resp channel once done so the subscribers can finish
 		defer close(respCh)
 
+		// remove duplicate outputs to avoid redundant entries
+		// this can happen when multiple peers are connected to the same peer that holds the object
+		seenPeerAgents := make(map[string]struct{})
+
 		// forward data to response channel
 		for out := range outCh {
+			uniqueKey := out.Peer + out.Digest
+
+			// check if we have already seen this peer
+			if _, ok := seenPeerAgents[uniqueKey]; ok {
+				continue
+			}
+
+			seenPeerAgents[uniqueKey] = struct{}{}
 			respCh <- &routetypes.ListResponse_Item{
 				Labels:      out.Labels,
 				LabelCounts: out.LabelCounts,
