@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// nolint
+//nolint:revive
 package rpc
 
 import (
@@ -87,7 +87,7 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *Looku
 		Digest:      meta.GetDigest(),
 		Type:        meta.GetType(),
 		Size:        meta.GetSize(),
-		Annotations: meta.Annotations,
+		Annotations: meta.GetAnnotations(),
 	}
 
 	return nil
@@ -135,7 +135,7 @@ func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *PullRes
 		Type:        meta.GetType(),
 		Size:        meta.GetSize(),
 		Data:        data,
-		Annotations: meta.Annotations,
+		Annotations: meta.GetAnnotations(),
 	}
 
 	return nil
@@ -158,16 +158,16 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<
 		// resolve response before forwarding
 		for item := range listCh {
 			result := &ListResponse{
-				Labels:      item.Labels,
-				LabelCounts: item.LabelCounts,
+				Labels:      item.GetLabels(),
+				LabelCounts: item.GetLabelCounts(),
 				Peer:        r.service.host.ID().String(), // remote peer where local list was called
 			}
 
-			if record := item.Record; record != nil {
-				result.Annotations = record.Annotations
-				result.Size = record.Size
-				result.Digest = record.Digest
-				result.Type = record.Type
+			if record := item.GetRecord(); record != nil {
+				result.Annotations = record.GetAnnotations()
+				result.Size = record.GetSize()
+				result.Digest = record.GetDigest()
+				result.Type = record.GetType()
 			}
 
 			// forward data
@@ -215,7 +215,7 @@ func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *coretypes.Objec
 
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncLookup, req, &resp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to call remote peer: %w", err)
 	}
 
 	return &coretypes.ObjectRef{
@@ -233,7 +233,7 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncPull, req, &resp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to call remote peer: %w", err)
 	}
 
 	// convert to agent
@@ -256,6 +256,8 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 
 // range over the result channel, then read the error after the loop.
 // this is done in best effort mode.
+//
+//nolint:mnd
 func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.ListResponse_Item, error) {
 	logger.Debug("P2p RPC: Executing List request on remote peers", "peers", peers, "req", req)
 
@@ -271,9 +273,10 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 		for _, peer := range peers {
 			inCh <- &ListRequest{
 				Peer:   peer.String(),
-				Labels: req.Labels,
+				Labels: req.GetLabels(),
 			}
 		}
+
 		close(inCh)
 
 		// run async

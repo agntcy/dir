@@ -1,11 +1,11 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// nolint
 package routing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -21,7 +21,7 @@ import (
 
 var localLogger = logging.Logger("routing/local")
 
-// operations performed locally
+// operations performed locally.
 type routeLocal struct {
 	store  types.StoreAPI
 	dstore types.Datastore
@@ -58,7 +58,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 	}
 
 	// the key where we will save the agent
-	agentKey := datastore.NewKey(fmt.Sprintf("/agents/%s", ref.GetDigest()))
+	agentKey := datastore.NewKey("/agents/" + ref.GetDigest())
 
 	// check if we have the agent already
 	// this is useful to avoid updating metrics and running the same operation multiple times
@@ -66,6 +66,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 	if err != nil {
 		return fmt.Errorf("failed to check if agent exists: %w", err)
 	}
+
 	if agentExists {
 		localLogger.Info("Skipping republish as agent %s was already published", "ref", ref)
 
@@ -105,6 +106,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 	return nil
 }
 
+//nolint:cyclop
 func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
 	localLogger.Debug("Called local routing's List method", "req", req)
 
@@ -136,17 +138,19 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 
 	// validate request
 	if len(req.GetLabels()) == 0 {
-		return nil, fmt.Errorf("no labels provided")
+		return nil, errors.New("no labels provided")
 	}
 
 	// get filters for not least common labels
 	var filters []query.Filter
+
 	leastCommonLabel := req.GetLabels()[0]
 	for _, label := range req.GetLabels() {
 		if metrics.Data[label].Total < metrics.Data[leastCommonLabel].Total {
 			leastCommonLabel = label
 		}
 	}
+
 	for _, label := range req.GetLabels() {
 		if label != leastCommonLabel {
 			filters = append(filters, &labelFilter{
@@ -184,6 +188,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			if _, ok := processedAgentDigests[digest]; ok {
 				continue
 			}
+
 			processedAgentDigests[digest] = struct{}{}
 
 			// lookup agent
@@ -206,6 +211,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			}
 
 			agent := &coretypes.Agent{}
+
 			_, err = agent.LoadFromReader(object)
 			if err != nil {
 				localLogger.Error("failed to load agent", "error", err)
@@ -257,7 +263,7 @@ func (r *routeLocal) Unpublish(ctx context.Context, object *coretypes.Object) er
 	}
 
 	// get agent key and remove agent
-	agentKey := datastore.NewKey(fmt.Sprintf("/agents/%s", ref.GetDigest()))
+	agentKey := datastore.NewKey("/agents/" + ref.GetDigest())
 	if err := batch.Delete(ctx, agentKey); err != nil {
 		return fmt.Errorf("failed to delete agent key: %w", err)
 	}
@@ -319,7 +325,7 @@ func (s *labelFilter) Filter(e query.Entry) bool {
 }
 
 func getAgentSkills(agent *coretypes.Agent) []string {
-	var skills []string
+	skills := make([]string, 0, len(agent.GetSkills()))
 	for _, skill := range agent.GetSkills() {
 		skills = append(skills, "/skills/"+skill.Key())
 	}
@@ -329,7 +335,9 @@ func getAgentSkills(agent *coretypes.Agent) []string {
 
 func getAgentDomains(agent *coretypes.Agent) []string {
 	prefix := "schema.oasf.agntcy.org/domains/"
+
 	var domains []string
+
 	for _, ext := range agent.GetExtensions() {
 		if strings.HasPrefix(ext.GetName(), prefix) {
 			domain := ext.GetName()[len(prefix):]
@@ -342,7 +350,9 @@ func getAgentDomains(agent *coretypes.Agent) []string {
 
 func getAgentFeatures(agent *coretypes.Agent) []string {
 	prefix := "schema.oasf.agntcy.org/features/"
+
 	var features []string
+
 	for _, ext := range agent.GetExtensions() {
 		if strings.HasPrefix(ext.GetName(), prefix) {
 			feature := ext.GetName()[len(prefix):]

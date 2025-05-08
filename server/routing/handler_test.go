@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// nolint
+//nolint:testifylint
 package routing
 
 import (
@@ -43,8 +43,9 @@ func TestHandler(t *testing.T) {
 	assert.NoError(t, err)
 
 	// push the data
-	data, _ := json.Marshal(testAgent)
-	testRef, err = secondNode.remote.storeAPI.Push(t.Context(), testRef, bytes.NewReader(data))
+	data, err := json.Marshal(testAgent)
+	assert.NoError(t, err)
+	_, err = secondNode.remote.storeAPI.Push(t.Context(), testRef, bytes.NewReader(data))
 	assert.NoError(t, err)
 
 	// announce the key

@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// nolint
+//nolint:testifylint
 package routing
 
 import (
@@ -35,6 +35,7 @@ func toPtr[T any](v T) *T {
 	return &v
 }
 
+//nolint:revive
 func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route {
 	t.Helper()
 
@@ -68,5 +69,9 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 	r, err := New(ctx, s, opts)
 	assert.NoError(t, err)
 
-	return r.(*route)
+	// check the type assertion
+	routeInstance, ok := r.(*route)
+	assert.True(t, ok, "expected r to be of type *route")
+
+	return routeInstance
 }

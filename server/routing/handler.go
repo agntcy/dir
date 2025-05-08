@@ -1,11 +1,11 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// nolint
 package routing
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -39,16 +39,26 @@ func (h *handler) AddProvider(ctx context.Context, key []byte, prov peer.AddrInf
 		handlerLogger.Error("Failed to handle announce", "error", err)
 	}
 
-	return h.ProviderManager.AddProvider(ctx, key, prov)
+	if err := h.ProviderManager.AddProvider(ctx, key, prov); err != nil {
+		return fmt.Errorf("failed to add provider: %w", err)
+	}
+
+	return nil
 }
 
 func (h *handler) GetProviders(ctx context.Context, key []byte) ([]peer.AddrInfo, error) {
-	return h.ProviderManager.GetProviders(ctx, key)
+	providers, err := h.ProviderManager.GetProviders(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get providers: %w", err)
+	}
+
+	return providers, nil
 }
 
 // handleAnnounce tries to parse the data from provider in order to update the local routing data
 // about the content and peer.
-func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.AddrInfo) error {
+// nolint:unparam
+func (h *handler) handleAnnounce(_ context.Context, key []byte, prov peer.AddrInfo) error {
 	handlerLogger.Debug("Received announcement event", "key", key, "provider", prov)
 
 	// validete if the provider is not the same as the host

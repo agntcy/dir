@@ -1,7 +1,6 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// nolint
 package routing
 
 import (
@@ -35,7 +34,7 @@ var (
 )
 
 // this interface handles routing across the network.
-// TODO: we shoud add caching here
+// TODO: we shoud add caching here.
 type routeRemote struct {
 	storeAPI types.StoreAPI
 	server   *p2p.Server
@@ -43,6 +42,7 @@ type routeRemote struct {
 	notifyCh chan *handlerSync
 }
 
+//nolint:mnd
 func newRemote(ctx context.Context,
 	parentRouter types.RoutingAPI,
 	storeAPI types.StoreAPI,
@@ -67,7 +67,7 @@ func newRemote(ctx context.Context,
 				// create provider manager
 				providerMgr, err := providers.NewProviderManager(h.ID(), h.Peerstore(), dstore)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("failed to create provider manager: %w", err)
 				}
 
 				// return custom opts for DHT
@@ -95,7 +95,7 @@ func newRemote(ctx context.Context,
 	if err != nil {
 		defer server.Close()
 
-		return nil, err
+		return nil, fmt.Errorf("failed to create RPC service: %w", err)
 	}
 
 	// update service
@@ -121,7 +121,7 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ b
 	// announce to DHT
 	err = r.server.DHT().Provide(ctx, cid, true)
 	if err != nil {
-		return fmt.Errorf("failed to announce object %v, it will be retried in the background. Reason: %v", ref.GetDigest(), err)
+		return fmt.Errorf("failed to announce object %v, it will be retried in the background. Reason: %w", ref.GetDigest(), err)
 	}
 
 	remoteLogger.Debug("Successfully announced object to the network", "ref", ref)
@@ -129,6 +129,7 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ b
 	return nil
 }
 
+//nolint:mnd
 func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
 	remoteLogger.Debug("Called remote routing's List method", "req", req)
 
@@ -219,8 +220,10 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	if req.GetMaxHops() > 20 {
 		return nil, errors.New("max hops exceeded")
 	}
+
+	//nolint:protogetter
 	if req.MaxHops != nil && *req.MaxHops > 0 {
-		*req.MaxHops -= 1
+		*req.MaxHops--
 	}
 
 	// run in the background
@@ -233,7 +236,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 			Peer:    req.GetPeer(),
 			Labels:  req.GetLabels(),
 			Record:  req.GetRecord(),
-			MaxHops: req.MaxHops,
+			MaxHops: req.MaxHops, //nolint:protogetter
 			Network: toPtr(false),
 		})
 		if err != nil {
@@ -242,13 +245,13 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 			return
 		}
 
+		// TODO: crawl by continuing the walk based on hop count
+		// IMPORTANT: do we really want to use other nodes as hops or our peers are enough?
+
 		// pass the results back
 		for item := range resp {
 			resCh <- item
 		}
-
-		// TODO: crawl by continuing the walk based on hop count
-		// IMPORTANT: do we really want to use other nodes as hops or our peers are enough?
 	}(ctx, req)
 
 	return resCh, nil
