@@ -39,5 +39,5 @@ FROM gcr.io/distroless/static:nonroot
 
 COPY --from=builder ["/bin/apiserver", "/bin/apiserver"]
 
-USER nonroot:nonroot
+USER 65532:65532
 ENTRYPOINT ["/bin/apiserver", "run"]
