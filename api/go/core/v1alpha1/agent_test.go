@@ -27,7 +27,7 @@ func TestAgent_Merge(t *testing.T) {
 		Annotations: map[string]string{"key1": "value1"},
 		Locators:    []*Locator{{Type: "type1", Url: "url1"}},
 		Extensions:  []*Extension{{Name: "ext1", Version: "v1"}},
-		Skills:      []*Skill{{CategoryUid: "categoryuid1", ClassUid: "classuid1", CategoryName: Ptr("name1"), ClassName: Ptr("class1")}},
+		Skills:      []*Skill{{CategoryUid: 1, ClassUid: 10101, CategoryName: Ptr("name1"), ClassName: Ptr("class1")}},
 	}
 
 	agent2 := &Agent{
@@ -38,7 +38,7 @@ func TestAgent_Merge(t *testing.T) {
 		Annotations: map[string]string{"key2": "value2"},
 		Locators:    []*Locator{{Type: "type2", Url: "url2"}},
 		Extensions:  []*Extension{{Name: "ext2", Version: "v2"}},
-		Skills:      []*Skill{{CategoryUid: "categoryuid2", ClassUid: "classuid2", CategoryName: Ptr("name2"), ClassName: Ptr("class2")}},
+		Skills:      []*Skill{{CategoryUid: 2, ClassUid: 20101, CategoryName: Ptr("name2"), ClassName: Ptr("class2")}},
 	}
 
 	agent1.Merge(agent2)
@@ -87,7 +87,7 @@ func TestAgent_Merge(t *testing.T) {
 		return agent1.GetSkills()[i].GetCategoryUid() < agent1.GetSkills()[j].GetCategoryUid()
 	})
 
-	if agent1.GetSkills()[0].GetCategoryUid() != "categoryuid1" || agent1.GetSkills()[1].GetCategoryUid() != "categoryuid2" {
+	if agent1.GetSkills()[0].GetCategoryUid() != 1 || agent1.GetSkills()[1].GetCategoryUid() != 2 {
 		t.Errorf("Merge failed for Skills: got %v", agent1.GetSkills())
 	}
 }
