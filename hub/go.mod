@@ -53,3 +53,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.0 // indirect
 )
+
+replace (
+	github.com/agntcy/dir/api => ../api/go
+	github.com/agntcy/dir/client => ../client
+)
