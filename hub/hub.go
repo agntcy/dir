@@ -16,13 +16,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type ciscoHub struct{}
+type hub struct{}
 
-func NewCiscoHub() *ciscoHub { //nolint:revive
-	return &ciscoHub{}
+func NewHub() *hub { //nolint:revive
+	return &hub{}
 }
 
-func (h *ciscoHub) Run(ctx context.Context, args []string) error {
+func (h *hub) Run(ctx context.Context, args []string) error {
 	cobra.EnableTraverseRunHooks = true
 
 	err := config.LoadConfig()

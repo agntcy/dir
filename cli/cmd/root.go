@@ -9,7 +9,7 @@ import (
 
 	"github.com/agntcy/dir/cli/cmd/build"
 	"github.com/agntcy/dir/cli/cmd/delete"
-	"github.com/agntcy/dir/cli/cmd/hub"
+	hubCmd "github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/network"
@@ -20,7 +20,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/version"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
-	hubImpl "github.com/agntcy/dir/hub"
+	"github.com/agntcy/dir/hub"
 	"github.com/spf13/cobra"
 )
 
@@ -62,7 +62,7 @@ func init() {
 		list.Command,
 		unpublish.Command,
 		network.Command,
-		hub.NewCommand(hubImpl.NewCiscoHub()),
+		hubCmd.NewCommand(hub.NewHub()),
 	)
 }
 
