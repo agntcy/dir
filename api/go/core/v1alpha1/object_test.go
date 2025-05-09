@@ -41,6 +41,14 @@ func TestObjectRef_CIDConversion(t *testing.T) {
 			wantErr:  true,
 			errMsg:   "invalid digest format",
 		},
+		{
+			name:     "empty digest",
+			objType:  ObjectType_OBJECT_TYPE_RAW.String(),
+			digest:   "",
+			shortRef: "",
+			wantErr:  true,
+			errMsg:   "invalid digest format",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -71,6 +79,46 @@ func TestObjectRef_CIDConversion(t *testing.T) {
 			assert.Equal(t, orig.GetType(), converted.GetType())
 			assert.Equal(t, orig.GetDigest(), converted.GetDigest())
 			assert.Equal(t, orig.GetShortRef(), tc.shortRef)
+		})
+	}
+}
+
+func TestObjectRef_GetShortRef(t *testing.T) {
+	testCases := []struct {
+		name     string
+		objType  string
+		digest   string
+		expected string
+	}{
+		{
+			name:     "valid short ref",
+			objType:  ObjectType_OBJECT_TYPE_RAW.String(),
+			digest:   "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			expected: "QmVz2CRrxr7uyYtoQo1Qszvihd7JY1w7Yyth5F5AgmXPG6",
+		},
+		{
+			name:     "invalid digest",
+			objType:  ObjectType_OBJECT_TYPE_RAW.String(),
+			digest:   "invalid-digest",
+			expected: "QmQhccv56aQstABUBBxYQVafG2Den7YqG1oQKwkmNaZ5ii", // TODO Implement a proper check for invalid digest
+		},
+		{
+			name:     "empty digest",
+			objType:  ObjectType_OBJECT_TYPE_RAW.String(),
+			digest:   "",
+			expected: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			obj := &ObjectRef{
+				Type:   tc.objType,
+				Digest: tc.digest,
+			}
+
+			shortRef := obj.GetShortRef()
+			assert.Equal(t, tc.expected, shortRef)
 		})
 	}
 }

@@ -84,6 +84,10 @@ func (x *ObjectRef) FromCID(c cid.Cid) error {
 // The actual ObjectRef data (annotations, size, type) is not encoded.
 // This is used for storage references.
 func (x *ObjectRef) GetShortRef() string {
+	if x.GetDigest() == "" {
+		return ""
+	}
+
 	digestHash, _ := mh.Sum([]byte(x.GetDigest()), mh.SHA2_256, -1)
 
 	return digestHash.B58String()
