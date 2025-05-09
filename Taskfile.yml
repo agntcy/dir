@@ -145,11 +145,15 @@ tasks:
 
   api:test:
     desc: Unit test API code
-    deps:
-      - task: api:test:go
+    vars:
+      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
+    cmds:
+      - EXTRA_ARGS="{{.EXTRA_ARGS}}" task api:test:go 
 
   api:test:go:
     desc: Unit test Go API code
+    vars:
+      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     dir: ./api/go
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
@@ -196,13 +200,17 @@ tasks:
   ##
   client:test:
     desc: Unit test Client code
-    deps:
-      - task: client:test:go
-      - task: client:test:python
+    vars:
+      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
+    cmds:
+      - EXTRA_ARGS="{{.EXTRA_ARGS}}" task client:test:go
+      - task client:test:python
 
   client:test:go:
     desc: Unit test Go Client code
     dir: ./client/go
+    vars:
+      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
