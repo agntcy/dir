@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/dirctl
 
-FROM gcr.io/distroless/static:nonroot
+FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc
 
 COPY --from=builder ["/bin/dirctl", "/bin/dirctl"]
 
