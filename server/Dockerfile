@@ -35,12 +35,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/apiserver
 
-FROM alpine:3.20@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
-
-RUN apk add --update --no-cache \
-    ca-certificates \
-    libc6-compat
+FROM gcr.io/distroless/static:nonroot
 
 COPY --from=builder ["/bin/apiserver", "/bin/apiserver"]
 
+USER nonroot:nonroot
 ENTRYPOINT ["/bin/apiserver", "run"]
