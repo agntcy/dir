@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1d\x63ore/v1alpha1/extension.proto\x12\rcore.v1alpha1\x1a\x1cgoogle/protobuf/struct.proto\"\x81\x02\n\tExtension\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12K\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32).core.v1alpha1.Extension.AnnotationsEntryR\x0b\x61nnotations\x12\x30\n\x04\x64\x61ta\x18\x04 \x01(\x0b\x32\x17.google.protobuf.StructH\x00R\x04\x64\x61ta\x88\x01\x01\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x07\n\x05_dataB\xae\x01\n\x11\x63om.core.v1alpha1B\x0e\x45xtensionProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha1\xca\x02\rCore\\V1alpha1\xe2\x02\x19\x43ore\\V1alpha1\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1d\x63ore/v1alpha1/extension.proto\x12\rcore.v1alpha1\x1a\x1cgoogle/protobuf/struct.proto\"\x92\x02\n\tExtension\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n\x07version\x18\x02 \x01(\tH\x00R\x07version\x88\x01\x01\x12K\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32).core.v1alpha1.Extension.AnnotationsEntryR\x0b\x61nnotations\x12\x30\n\x04\x64\x61ta\x18\x04 \x01(\x0b\x32\x17.google.protobuf.StructH\x01R\x04\x64\x61ta\x88\x01\x01\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\n\n\x08_versionB\x07\n\x05_dataB\xae\x01\n\x11\x63om.core.v1alpha1B\x0e\x45xtensionProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha1\xca\x02\rCore\\V1alpha1\xe2\x02\x19\x43ore\\V1alpha1\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,7 +36,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_EXTENSION_ANNOTATIONSENTRY']._loaded_options = None
   _globals['_EXTENSION_ANNOTATIONSENTRY']._serialized_options = b'8\001'
   _globals['_EXTENSION']._serialized_start=79
-  _globals['_EXTENSION']._serialized_end=336
-  _globals['_EXTENSION_ANNOTATIONSENTRY']._serialized_start=265
-  _globals['_EXTENSION_ANNOTATIONSENTRY']._serialized_end=327
+  _globals['_EXTENSION']._serialized_end=353
+  _globals['_EXTENSION_ANNOTATIONSENTRY']._serialized_start=270
+  _globals['_EXTENSION_ANNOTATIONSENTRY']._serialized_end=332
 # @@protoc_insertion_point(module_scope)

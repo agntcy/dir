@@ -5,9 +5,9 @@ syntax = "proto3";
 
 package core.v1alpha1;
 
-import "core/v1alpha1/skill.proto";
-import "core/v1alpha1/locator.proto";
 import "core/v1alpha1/extension.proto";
+import "core/v1alpha1/locator.proto";
+import "core/v1alpha1/skill.proto";
 
 // Data model defines a schema for versioned AI agent content representation.
 // The schema provides a way to describe features, constraints, artifact
@@ -23,24 +23,26 @@ import "core/v1alpha1/extension.proto";
 // Max size: 4 MB (or to fully fit in a single request)
 // https://opencontainers.org/posts/blog/2024-03-13-image-and-distribution-1-1/#manifest-maximum-size
 message Agent {
+  // Schema version of the agent.
+  string schema_version = 1;
   // Name of the agent.
-  string name = 1;
+  string name = 2;
   // Version of the agent.
-  string version = 2;
+  string version = 3;
+  // Description of the agent.
+  string description = 4;
   // List of agent’s authors in the form of `author-name <author-email>`.
-  repeated string authors = 3;
+  repeated string authors = 5;
   // Creation timestamp of the agent in the RFC3339 format.
   // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
-  string created_at = 4;
+  string created_at = 6;
   // Additional metadata associated with this agent.
-  map<string, string> annotations = 5;
+  map<string, string> annotations = 7;
   // List of skills that this agent can perform.
-  repeated Skill skills = 7;
+  repeated Skill skills = 8;
   // List of source locators where this agent can be found or used from.
-  repeated Locator locators = 8;
+  repeated Locator locators = 9;
   // List of extensions that describe this agent and its capabilities
   // and constraints more in depth.
-  repeated Extension extensions = 9;
-  // Description of the agent.
-  string description = 10;
+  repeated Extension extensions = 10;
 }

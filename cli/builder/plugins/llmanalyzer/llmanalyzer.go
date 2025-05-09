@@ -126,11 +126,13 @@ func (l *llmanalyzer) Build(ctx context.Context) (*coretypes.Agent, error) {
 		return nil, fmt.Errorf("failed to convert data to struct: %w", err)
 	}
 
+	pluginVersion := PluginVersion
+
 	return &coretypes.Agent{
 		Extensions: []*coretypes.Extension{
 			{
 				Name:    PluginName,
-				Version: PluginVersion,
+				Version: &pluginVersion,
 				Data:    strct,
 			},
 		},

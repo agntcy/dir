@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19\x63ore/v1alpha1/skill.proto\x12\rcore.v1alpha1\"\xd9\x02\n\x05Skill\x12\x18\n\x07version\x18\x01 \x01(\tR\x07version\x12!\n\x0c\x63\x61tegory_uid\x18\x02 \x01(\tR\x0b\x63\x61tegoryUid\x12\x1b\n\tclass_uid\x18\x03 \x01(\tR\x08\x63lassUid\x12G\n\x0b\x61nnotations\x18\x04 \x03(\x0b\x32%.core.v1alpha1.Skill.AnnotationsEntryR\x0b\x61nnotations\x12(\n\rcategory_name\x18\x05 \x01(\tH\x00R\x0c\x63\x61tegoryName\x88\x01\x01\x12\"\n\nclass_name\x18\x06 \x01(\tH\x01R\tclassName\x88\x01\x01\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x10\n\x0e_category_nameB\r\n\x0b_class_nameB\xaa\x01\n\x11\x63om.core.v1alpha1B\nSkillProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha1\xca\x02\rCore\\V1alpha1\xe2\x02\x19\x43ore\\V1alpha1\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19\x63ore/v1alpha1/skill.proto\x12\rcore.v1alpha1\"\xbf\x02\n\x05Skill\x12G\n\x0b\x61nnotations\x18\x01 \x03(\x0b\x32%.core.v1alpha1.Skill.AnnotationsEntryR\x0b\x61nnotations\x12!\n\x0c\x63\x61tegory_uid\x18\x02 \x01(\x04R\x0b\x63\x61tegoryUid\x12\x1b\n\tclass_uid\x18\x03 \x01(\x04R\x08\x63lassUid\x12(\n\rcategory_name\x18\x04 \x01(\tH\x00R\x0c\x63\x61tegoryName\x88\x01\x01\x12\"\n\nclass_name\x18\x05 \x01(\tH\x01R\tclassName\x88\x01\x01\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x10\n\x0e_category_nameB\r\n\x0b_class_nameB\xaa\x01\n\x11\x63om.core.v1alpha1B\nSkillProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha1\xca\x02\rCore\\V1alpha1\xe2\x02\x19\x43ore\\V1alpha1\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,7 +35,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SKILL_ANNOTATIONSENTRY']._loaded_options = None
   _globals['_SKILL_ANNOTATIONSENTRY']._serialized_options = b'8\001'
   _globals['_SKILL']._serialized_start=45
-  _globals['_SKILL']._serialized_end=390
-  _globals['_SKILL_ANNOTATIONSENTRY']._serialized_start=295
-  _globals['_SKILL_ANNOTATIONSENTRY']._serialized_end=357
+  _globals['_SKILL']._serialized_end=364
+  _globals['_SKILL_ANNOTATIONSENTRY']._serialized_start=269
+  _globals['_SKILL_ANNOTATIONSENTRY']._serialized_end=331
 # @@protoc_insertion_point(module_scope)
