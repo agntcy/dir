@@ -14,33 +14,33 @@ import (
 
 func TestSkillValidator_HasSkill(t *testing.T) {
 	validator := &SkillValidator{
-		skills: map[string]*corev1alpha1.Skill{
-			"1": {ClassUid: "1"},
+		skills: map[uint64]*corev1alpha1.Skill{
+			1: {ClassUid: 1},
 		},
 		mu: sync.RWMutex{},
 	}
 
-	assert.True(t, validator.HasSkill("1"))
-	assert.False(t, validator.HasSkill("2"))
+	assert.True(t, validator.HasSkill(1))
+	assert.False(t, validator.HasSkill(2))
 }
 
 func TestSkillValidator_GetSkill(t *testing.T) {
 	validator := &SkillValidator{
-		skills: map[string]*corev1alpha1.Skill{
-			"1": {ClassUid: "1"},
+		skills: map[uint64]*corev1alpha1.Skill{
+			1: {ClassUid: 1},
 		},
 		mu: sync.RWMutex{},
 	}
 
-	assert.NotNil(t, validator.GetSkill("1"))
-	assert.Nil(t, validator.GetSkill("2"))
+	assert.NotNil(t, validator.GetSkill(1))
+	assert.Nil(t, validator.GetSkill(2))
 }
 
 func TestSkillValidator_GetSkillByName(t *testing.T) {
 	className := "Skill1"
 	validator := &SkillValidator{
-		skills: map[string]*corev1alpha1.Skill{
-			"1": {ClassUid: "1", ClassName: &className},
+		skills: map[uint64]*corev1alpha1.Skill{
+			1: {ClassUid: 1, ClassName: &className},
 		},
 		mu: sync.RWMutex{},
 	}
@@ -52,15 +52,15 @@ func TestSkillValidator_GetSkillByName(t *testing.T) {
 func TestSkillValidator_Validate(t *testing.T) {
 	className := "Skill1"
 	validator := &SkillValidator{
-		skills: map[string]*corev1alpha1.Skill{
-			"1": {ClassUid: "1", ClassName: &className},
+		skills: map[uint64]*corev1alpha1.Skill{
+			1: {ClassUid: 1, ClassName: &className},
 		},
 		mu: sync.RWMutex{},
 	}
 
 	t.Run("Valid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: "1"},
+			{ClassUid: 1},
 		}
 
 		err := validator.Validate(skills)
@@ -69,7 +69,7 @@ func TestSkillValidator_Validate(t *testing.T) {
 
 	t.Run("Invalid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: "2"},
+			{ClassUid: 2},
 		}
 
 		err := validator.Validate(skills)
@@ -90,13 +90,13 @@ func TestSkillValidator_Validate(t *testing.T) {
 
 func TestValidateSkills(t *testing.T) {
 	className := "Skill1"
-	Validator.skills = map[string]*corev1alpha1.Skill{
-		"1": {ClassUid: "1", ClassName: &className},
+	Validator.skills = map[uint64]*corev1alpha1.Skill{
+		1: {ClassUid: 1, ClassName: &className},
 	}
 
 	t.Run("Valid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: "1"},
+			{ClassUid: 1},
 		}
 
 		err := ValidateSkills(skills)
@@ -105,7 +105,7 @@ func TestValidateSkills(t *testing.T) {
 
 	t.Run("Invalid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: "2"},
+			{ClassUid: 2},
 		}
 
 		err := ValidateSkills(skills)
