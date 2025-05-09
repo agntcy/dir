@@ -101,7 +101,7 @@ tasks:
     deps:
       - task: deps:multimod-bin
     cmds:
-      - '{{ .BAKE_ENV }} verify'
+      - '{{ .MULTIMOD_BIN }} verify'
 
   release:prepare:
     desc: Prepare release
