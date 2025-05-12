@@ -23,6 +23,23 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "push {<repository> | <repository_id>} {<model.json> | --stdin} ",
 		Short: "Push model to Agent Hub",
+		Long: `Push a model to the Agent Hub.
+
+Parameters:
+  <repository>    Repository name in the format of '<owner>/<name>'
+  <repository_id> UUID of an existing repository
+  <model.json>    Path to the model file (optional)
+  --stdin         Read model from standard input (optional)
+
+Examples:
+  # Push model to a repository by name
+  dirctl hub push owner/repo-name model.json
+
+  # Push model to a repository by ID
+  dirctl hub push 123e4567-e89b-12d3-a456-426614174000 model.json
+
+  # Push model from stdin
+  dirctl hub push owner/repo-name --stdin < model.json`,
 	}
 
 	opts := hubOptions.NewHubPushOptions(hubOpts, cmd)

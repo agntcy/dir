@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/agntcy/dir/hub/api/v1alpha1"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
@@ -24,8 +25,21 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	opts := hubOptions.NewHubPullOptions(hubOpts)
 
 	cmd := &cobra.Command{
-		Use:   "pull <digest>",
+		Use:   "pull <agent_id>",
 		Short: "Pull an agent from Agent Hub",
+		Long: `Pull an agent from the Agent Hub.
+
+Parameters:
+  <agent_id>    Agent identifier in one of the following formats:
+                - sha256:<hash>    : Pull by digest
+                - <repo>:<version> : Pull by repository and version
+
+Examples:
+  # Pull agent by digest
+  dirctl hub pull sha256:1234567890abcdef...
+
+  # Pull agent by repository and version
+  dirctl hub pull owner/repo-name:v1.0.0`,
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			if err := token.RefreshContextTokenIfExpired(cmd, opts.HubOptions); err != nil {
 				return fmt.Errorf("failed to refresh expired access token: %w", err)
@@ -48,7 +62,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 				return fmt.Errorf("failed to create hub client: %w", err)
 			}
 
-			agentID := parseAgentID(args[0])
+			agentID, err := parseAgentID(args[0])
 			if err != nil {
 				return fmt.Errorf("invalid agent id: %w", err)
 			}
@@ -89,12 +103,28 @@ func runCmd(ctx context.Context, hc hubClient.Client, agentID *v1alpha1.AgentIde
 	return nil
 }
 
-func parseAgentID(agentID string) *v1alpha1.AgentIdentifier {
-	// TODO: support parsing <repository>:<tag> format
-	// Digest is also in the format of <algorithm>:<hash>
-	return &v1alpha1.AgentIdentifier{
-		Id: &v1alpha1.AgentIdentifier_Digest{
-			Digest: agentID,
-		},
+func parseAgentID(agentID string) (*v1alpha1.AgentIdentifier, error) {
+	// If the agentID starts with "sha256", treat it as a digest
+	if strings.HasPrefix(agentID, "sha256:") {
+		return &v1alpha1.AgentIdentifier{
+			Id: &v1alpha1.AgentIdentifier_Digest{
+				Digest: agentID,
+			},
+		}, nil
 	}
+
+	// Try to split by ":" for repository:version format
+	parts := strings.Split(agentID, ":")
+	if len(parts) == 2 && parts[0] != "" && parts[1] != "" {
+		return &v1alpha1.AgentIdentifier{
+			Id: &v1alpha1.AgentIdentifier_RepoVersionId{
+				RepoVersionId: &v1alpha1.RepoVersionId{
+					RepositoryName: parts[0],
+					Version:        parts[1],
+				},
+			},
+		}, nil
+	}
+
+	return nil, fmt.Errorf("invalid agent ID format: %s. Expected format is either 'sha256:<hash>' or '<repository>:<version>'", agentID)
 }
