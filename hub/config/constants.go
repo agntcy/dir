@@ -6,6 +6,6 @@ package config
 const (
 	LocalWebserverPort = 48043
 
-	DefaultHubAddress         = "https://phoenix.dev.outshift.ai"
+	DefaultHubAddress         = "https://hub.agntcy.org"
 	DefaultHubBackendGRPCPort = 443
 )
