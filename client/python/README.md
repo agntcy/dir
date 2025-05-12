@@ -35,7 +35,7 @@ uv add git+https://github.com/agntcy/dir.git@v0.2.2#subdirectory=client/python
 To start the Directory server, you can deploy your instance or use Taskfile as below.
 
 ```bash
-$ task server start
+task server:start
 ```
 
 ### Initializing the Client
