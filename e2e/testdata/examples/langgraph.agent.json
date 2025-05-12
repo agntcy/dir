@@ -1,10 +1,9 @@
 {
   "name": "research",
   "version": "0.1.0",
+  "schema_version": "v0.1.0",
   "description": "A research agent that can generate a report based on a given topic.",
-  "authors": [
-    "Agntcy"
-  ],
+  "authors": ["Agntcy"],
   "annotations": {
     "name": "research-agent",
     "version": "0.1.0",
@@ -15,15 +14,15 @@
   "skills": [
     {
       "category_name": "Natural Language Processing",
-      "category_uid": "1",
+      "category_uid": 1,
       "class_name": "Text Completion",
-      "class_uid": "10201"
+      "class_uid": 10201
     },
     {
       "category_name": "Natural Language Processing",
-      "category_uid": "1",
+      "category_uid": 1,
       "class_name": "Problem Solving",
-      "class_uid": "10702"
+      "class_uid": 10702
     }
   ],
   "locators": [

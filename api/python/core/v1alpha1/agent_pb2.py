@@ -22,12 +22,12 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from core.v1alpha1 import skill_pb2 as core_dot_v1alpha1_dot_skill__pb2
-from core.v1alpha1 import locator_pb2 as core_dot_v1alpha1_dot_locator__pb2
 from core.v1alpha1 import extension_pb2 as core_dot_v1alpha1_dot_extension__pb2
+from core.v1alpha1 import locator_pb2 as core_dot_v1alpha1_dot_locator__pb2
+from core.v1alpha1 import skill_pb2 as core_dot_v1alpha1_dot_skill__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19\x63ore/v1alpha1/agent.proto\x12\rcore.v1alpha1\x1a\x19\x63ore/v1alpha1/skill.proto\x1a\x1b\x63ore/v1alpha1/locator.proto\x1a\x1d\x63ore/v1alpha1/extension.proto\"\xb5\x03\n\x05\x41gent\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12\x18\n\x07\x61uthors\x18\x03 \x03(\tR\x07\x61uthors\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x12G\n\x0b\x61nnotations\x18\x05 \x03(\x0b\x32%.core.v1alpha1.Agent.AnnotationsEntryR\x0b\x61nnotations\x12,\n\x06skills\x18\x07 \x03(\x0b\x32\x14.core.v1alpha1.SkillR\x06skills\x12\x32\n\x08locators\x18\x08 \x03(\x0b\x32\x16.core.v1alpha1.LocatorR\x08locators\x12\x38\n\nextensions\x18\t \x03(\x0b\x32\x18.core.v1alpha1.ExtensionR\nextensions\x12 \n\x0b\x64\x65scription\x18\n \x01(\tR\x0b\x64\x65scription\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\xaa\x01\n\x11\x63om.core.v1alpha1B\nAgentProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha1\xca\x02\rCore\\V1alpha1\xe2\x02\x19\x43ore\\V1alpha1\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19\x63ore/v1alpha1/agent.proto\x12\rcore.v1alpha1\x1a\x1d\x63ore/v1alpha1/extension.proto\x1a\x1b\x63ore/v1alpha1/locator.proto\x1a\x19\x63ore/v1alpha1/skill.proto\"\xdc\x03\n\x05\x41gent\x12%\n\x0eschema_version\x18\x01 \x01(\tR\rschemaVersion\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n\x07version\x18\x03 \x01(\tR\x07version\x12 \n\x0b\x64\x65scription\x18\x04 \x01(\tR\x0b\x64\x65scription\x12\x18\n\x07\x61uthors\x18\x05 \x03(\tR\x07\x61uthors\x12\x1d\n\ncreated_at\x18\x06 \x01(\tR\tcreatedAt\x12G\n\x0b\x61nnotations\x18\x07 \x03(\x0b\x32%.core.v1alpha1.Agent.AnnotationsEntryR\x0b\x61nnotations\x12,\n\x06skills\x18\x08 \x03(\x0b\x32\x14.core.v1alpha1.SkillR\x06skills\x12\x32\n\x08locators\x18\t \x03(\x0b\x32\x16.core.v1alpha1.LocatorR\x08locators\x12\x38\n\nextensions\x18\n \x03(\x0b\x32\x18.core.v1alpha1.ExtensionR\nextensions\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\xaa\x01\n\x11\x63om.core.v1alpha1B\nAgentProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha1\xca\x02\rCore\\V1alpha1\xe2\x02\x19\x43ore\\V1alpha1\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -38,7 +38,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_AGENT_ANNOTATIONSENTRY']._loaded_options = None
   _globals['_AGENT_ANNOTATIONSENTRY']._serialized_options = b'8\001'
   _globals['_AGENT']._serialized_start=132
-  _globals['_AGENT']._serialized_end=569
-  _globals['_AGENT_ANNOTATIONSENTRY']._serialized_start=507
-  _globals['_AGENT_ANNOTATIONSENTRY']._serialized_end=569
+  _globals['_AGENT']._serialized_end=608
+  _globals['_AGENT_ANNOTATIONSENTRY']._serialized_start=546
+  _globals['_AGENT_ANNOTATIONSENTRY']._serialized_end=608
 # @@protoc_insertion_point(module_scope)

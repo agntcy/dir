@@ -7,7 +7,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Skill(_message.Message):
-    __slots__ = ("version", "category_uid", "class_uid", "annotations", "category_name", "class_name")
+    __slots__ = ("annotations", "category_uid", "class_uid", "category_name", "class_name")
     class AnnotationsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -15,16 +15,14 @@ class Skill(_message.Message):
         key: str
         value: str
         def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
-    VERSION_FIELD_NUMBER: _ClassVar[int]
+    ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
     CATEGORY_UID_FIELD_NUMBER: _ClassVar[int]
     CLASS_UID_FIELD_NUMBER: _ClassVar[int]
-    ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
     CATEGORY_NAME_FIELD_NUMBER: _ClassVar[int]
     CLASS_NAME_FIELD_NUMBER: _ClassVar[int]
-    version: str
-    category_uid: str
-    class_uid: str
     annotations: _containers.ScalarMap[str, str]
+    category_uid: int
+    class_uid: int
     category_name: str
     class_name: str
-    def __init__(self, version: _Optional[str] = ..., category_uid: _Optional[str] = ..., class_uid: _Optional[str] = ..., annotations: _Optional[_Mapping[str, str]] = ..., category_name: _Optional[str] = ..., class_name: _Optional[str] = ...) -> None: ...
+    def __init__(self, annotations: _Optional[_Mapping[str, str]] = ..., category_uid: _Optional[int] = ..., class_uid: _Optional[int] = ..., category_name: _Optional[str] = ..., class_name: _Optional[str] = ...) -> None: ...

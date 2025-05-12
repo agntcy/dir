@@ -22,11 +22,11 @@ import (
 const OASFEndpoint = "https://schema.oasf.agntcy.org/api/skills"
 
 var Validator = &SkillValidator{
-	skills: make(map[string]*corev1alpha1.Skill),
+	skills: make(map[uint64]*corev1alpha1.Skill),
 }
 
 type SkillValidator struct {
-	skills map[string]*corev1alpha1.Skill
+	skills map[uint64]*corev1alpha1.Skill
 	loaded bool
 	mu     sync.RWMutex
 }
@@ -98,8 +98,8 @@ func (sv *SkillValidator) fetchSkills() error {
 		}
 
 		skill := corev1alpha1.Skill{
-			ClassUid:     fmt.Sprintf("%v", uid),
-			CategoryUid:  fmt.Sprintf("%v", categoryUid),
+			ClassUid:     uint64(uid),
+			CategoryUid:  uint64(categoryUid),
 			CategoryName: &categoryName,
 			ClassName:    &className,
 		}
@@ -112,7 +112,7 @@ func (sv *SkillValidator) fetchSkills() error {
 	return nil
 }
 
-func (sv *SkillValidator) HasSkill(classUid string) bool {
+func (sv *SkillValidator) HasSkill(classUid uint64) bool {
 	sv.mu.RLock()
 	defer sv.mu.RUnlock()
 	_, exists := sv.skills[classUid]
@@ -120,7 +120,7 @@ func (sv *SkillValidator) HasSkill(classUid string) bool {
 	return exists
 }
 
-func (sv *SkillValidator) GetSkill(classUid string) *corev1alpha1.Skill {
+func (sv *SkillValidator) GetSkill(classUid uint64) *corev1alpha1.Skill {
 	sv.mu.RLock()
 	defer sv.mu.RUnlock()
 
@@ -143,7 +143,7 @@ func (sv *SkillValidator) Validate(skills []*corev1alpha1.Skill) error {
 	var errorMessages []string
 
 	for _, skill := range skills {
-		if skill.GetClassUid() == "" {
+		if skill.GetClassUid() == 0 {
 			errorMessages = append(errorMessages, fmt.Sprintf("'class_uid' is required for skill %+v.", skill))
 			continue
 		}
