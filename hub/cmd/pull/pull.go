@@ -25,12 +25,12 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	opts := hubOptions.NewHubPullOptions(hubOpts)
 
 	cmd := &cobra.Command{
-		Use:   "pull <agent_id>",
+		Use:   "pull <agent_ref>",
 		Short: "Pull an agent from Agent Hub",
 		Long: `Pull an agent from the Agent Hub.
 
 Parameters:
-  <agent_id>    Agent identifier in one of the following formats:
+  <agent_ref>    Agent reference in one of the following formats:
                 - sha256:<hash>    : Pull by digest
                 - <repo>:<version> : Pull by repository and version
 
