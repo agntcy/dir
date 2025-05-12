@@ -136,26 +136,30 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [linux, darwin]
+        os: [linux, darwin, windows]
         arch: [amd64, arm64]
     steps:
       - name: Checkout code
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
         with:
           fetch-depth: 0
 
       - name: Download artifacts
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
         uses: actions/download-artifact@v4.1.8
         with:
           name: artifacts
           path: bin
 
       - name: Verify file
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
         run: |
           ls -l bin
           file bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Upload Release Asset
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
