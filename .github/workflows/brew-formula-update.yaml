@@ -10,6 +10,8 @@ description: |
 on:
   workflow_call:
   workflow_dispatch:
+  release:
+    types: [released]
 
 permissions:
   contents: write

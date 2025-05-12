@@ -184,15 +184,10 @@ jobs:
       release_tag: ${{ needs.prepare-build.outputs.release_tag }}
       bake_targets: ${{ needs.prepare-build.outputs.targets }}
 
-  update-brew-formula:
-    name: Update brew formula
-    needs: [ release ]
-    uses: ./.github/workflows/brew-formula-update.yaml
-
   test-integration:
     name: Run integration tests
     runs-on: ubuntu-latest
-    needs: [ release ]
+    needs: [release]
     steps:
       - name: Trigger CSIT integration CI
         uses: ./.github/actions/trigger-integrations
