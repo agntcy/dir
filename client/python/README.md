@@ -30,7 +30,7 @@ uv add git+https://github.com/agntcy/dir.git@v0.2.2#subdirectory=client/python
 
 ## Usage
 
-### Starting the AGNTCY Server
+### Starting the Directory Server
 
 To start the Directory server, you can deploy your instance or use Taskfile as below.
 
