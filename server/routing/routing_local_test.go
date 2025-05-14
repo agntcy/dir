@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -316,7 +315,7 @@ func newInMemoryDatastore(b *testing.B) types.Datastore {
 func Benchmark_RouteLocal(b *testing.B) {
 	store := newMockStore()
 	badgerDatastore := newBadgerDatastore(b)
-	inMemoryDatastore := newInMemoryDatastore()
+	inMemoryDatastore := newInMemoryDatastore(b)
 	localLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	badgerRouter := newLocal(store, badgerDatastore)
