@@ -13,14 +13,14 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agntcy-dir-proto-stubs", virtual = "../../api/python" },
+    { name = "agntcy-dir-proto-stubs", virtual = "../api" },
     { name = "pytest" },
 ]
 
 [[package]]
 name = "agntcy-dir-proto-stubs"
 version = "0.1.0"
-source = { virtual = "../../api/python" }
+source = { virtual = "../api" }
 dependencies = [
     { name = "grpcio" },
     { name = "grpcio-tools" },

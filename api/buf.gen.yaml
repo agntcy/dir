@@ -13,19 +13,19 @@ managed:
 plugins:
   # Stubs for Golang
   - remote: buf.build/protocolbuffers/go:v1.36.5
-    out: go
+    out: .
     opt:
       - paths=source_relative
   - remote: buf.build/grpc/go:v1.5.1
-    out: go
+    out: .
     opt:
       - paths=source_relative
       - require_unimplemented_servers=false
       - use_generic_streams_experimental=false
   # Stubs for Python
   - remote: buf.build/protocolbuffers/python:v29.3
-    out: python
+    out: ../tools/python/api
   - remote: buf.build/grpc/python:v1.71.0
-    out: python
+    out: ../tools/python/api
   - remote: buf.build/protocolbuffers/pyi:v30.2
-    out: python
+    out: ../tools/python/api

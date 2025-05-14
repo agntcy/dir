@@ -13,4 +13,4 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.uv.sources]
-agntcy-dir-proto-stubs = { path = "../../api/python" }
+agntcy-dir-proto-stubs = { path = "../api" }

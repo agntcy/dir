@@ -7,10 +7,10 @@ vars:
   ## Version
   RELEASE_VERSION:
     sh: grep 'version:' versions.yaml | awk '{print $2}'
-  RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/go/version.Version={{ .RELEASE_VERSION }}'"
+  RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/version.Version={{ .RELEASE_VERSION }}'"
   COMMIT_SHA:
     sh: git rev-parse --short HEAD
-  COMMIT_SHA_LDFLAG: "-X 'github.com/agntcy/dir/api/go/version.CommitHash={{ .COMMIT_SHA }}'"
+  COMMIT_SHA_LDFLAG: "-X 'github.com/agntcy/dir/api/version.CommitHash={{ .COMMIT_SHA }}'"
   VERSION_LDFLAGS: '{{ .RELEASE_VERSION_LDFLAG }} {{ .COMMIT_SHA_LDFLAG }}'
 
   ## Image config
@@ -133,13 +133,13 @@ tasks:
 
   api:clean:go:
     desc: Clean generated golang API stubs
-    dir: ./api/go
+    dir: ./api
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 
   api:clean:python:
     desc: Clean generated python API stubs
-    dir: ./api/python
+    dir: ./tools/python
     cmds:
       - find . \( -name "*_pb2_grpc.py" -o -name "*_pb2.py" -o -name "*_pb2.pyi" \) -type f -delete
 
@@ -154,7 +154,7 @@ tasks:
     desc: Unit test Go API code
     vars:
       EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    dir: ./api/go
+    dir: ./api
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
@@ -208,7 +208,7 @@ tasks:
 
   client:test:go:
     desc: Unit test Go Client code
-    dir: ./client/go
+    dir: ./client
     vars:
       EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
@@ -218,9 +218,9 @@ tasks:
     desc: Unit test Python Client code
     deps:
       - deps:uv
-    dir: ./client/python/tests
+    dir: ./tools/python/client/tests
     env:
-      PYTHONPATH: '{{ .ROOT_DIR }}/client/python/client/proto'
+      PYTHONPATH: '{{ .ROOT_DIR }}/tools/client/python/client/proto'
     cmds:
       - '{{.UV_BIN}} run pytest test_client.py'
 

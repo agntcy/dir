@@ -3,8 +3,8 @@ module github.com/agntcy/dir/client
 go 1.24.1
 
 replace (
-	github.com/agntcy/dir/api => ../../api/go
-	github.com/agntcy/dir/utils => ../../utils
+	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/utils => ../utils
 )
 
 require (

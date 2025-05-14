@@ -25,7 +25,7 @@ uv init
 
 add the SDK to your project:
 ```bash
-uv add git+https://github.com/agntcy/dir.git@v0.2.2#subdirectory=client/python
+uv add git+https://github.com/agntcy/dir.git@v0.2.2#subdirectory=tools/python/client
 ```
 
 ## Usage

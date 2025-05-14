@@ -2,7 +2,11 @@ module github.com/agntcy/dir/hub
 
 go 1.24.1
 
-replace github.com/agntcy/dir/cli => ../cli
+replace (
+	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/cli => ../cli
+	github.com/agntcy/dir/client => ../client
+)
 
 require (
 	github.com/agntcy/dir/api v0.2.2
@@ -52,9 +56,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.0 // indirect
-)
-
-replace (
-	github.com/agntcy/dir/api => ../api/go
-	github.com/agntcy/dir/client => ../client
 )
