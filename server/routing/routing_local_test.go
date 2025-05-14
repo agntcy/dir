@@ -10,11 +10,17 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
+	"os"
 	"testing"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	"github.com/agntcy/dir/server/datastore"
+	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
+	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -273,4 +279,99 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 		// check if expected ref is present
 		assert.Equal(t, testRef.GetDigest(), refs[0].GetRecord().GetDigest())
 	})
+}
+
+func newBadgerDatastore(b *testing.B) types.Datastore {
+	b.Helper()
+
+	dsOpts := []datastore.Option{
+		datastore.WithFsProvider("/tmp/test-datastore"), // Use a temporary directory
+	}
+
+	dstore, err := datastore.New(dsOpts...)
+	if err != nil {
+		b.Fatalf("failed to create badger datastore: %v", err)
+	}
+
+	b.Cleanup(func() {
+		_ = dstore.Close()
+		_ = os.RemoveAll("/tmp/test-datastore")
+	})
+
+	return dstore
+}
+
+func newInMemoryDatastore(b *testing.B) types.Datastore {
+	b.Helper()
+
+	dstore, err := datastore.New()
+	if err != nil {
+		b.Fatalf("failed to create in-memory datastore: %v", err)
+	}
+
+	return dstore
+}
+
+func Benchmark_RouteLocal(b *testing.B) {
+	store := newMockStore()
+	badgerDatastore := newBadgerDatastore(b)
+	inMemoryDatastore := newInMemoryDatastore(b)
+	localLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	badgerRouter := newLocal(store, badgerDatastore)
+	inMemoryRouter := newLocal(store, inMemoryDatastore)
+
+	agent := &coretypes.Agent{
+		Skills: []*coretypes.Skill{
+			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+		},
+	}
+	ref := getObjectRef(agent)
+	object := &coretypes.Object{Ref: ref, Agent: agent}
+
+	agentData, err := json.Marshal(agent)
+	assert.NoError(b, err)
+
+	_, err = store.Push(b.Context(), ref, bytes.NewReader(agentData))
+	assert.NoError(b, err)
+
+	b.Run("Badger DB Publish and Unpublish", func(b *testing.B) {
+		for b.Loop() {
+			_ = badgerRouter.Publish(b.Context(), object, false)
+			err := badgerRouter.Unpublish(b.Context(), object)
+			assert.NoError(b, err)
+		}
+	})
+
+	b.Run("Badger DB List", func(b *testing.B) {
+		_ = badgerRouter.Publish(b.Context(), object, false)
+		for b.Loop() {
+			_, err := badgerRouter.List(b.Context(), &routingtypes.ListRequest{
+				Labels: []string{"/skills/category1/class1"},
+			})
+			assert.NoError(b, err)
+		}
+	})
+
+	b.Run("In memory DB Publish and Unpublish", func(b *testing.B) {
+		for b.Loop() {
+			_ = inMemoryRouter.Publish(b.Context(), object, false)
+			err := inMemoryRouter.Unpublish(b.Context(), object)
+			assert.NoError(b, err)
+		}
+	})
+
+	b.Run("In memory DB List", func(b *testing.B) {
+		_ = inMemoryRouter.Publish(b.Context(), object, false)
+		for b.Loop() {
+			_, err := inMemoryRouter.List(b.Context(), &routingtypes.ListRequest{
+				Labels: []string{"/skills/category1/class1"},
+			})
+			assert.NoError(b, err)
+		}
+	})
+
+	_ = badgerDatastore.Delete(b.Context(), ipfsdatastore.NewKey("/"))   // Delete all keys
+	_ = inMemoryDatastore.Delete(b.Context(), ipfsdatastore.NewKey("/")) // Delete all keys
+	localLogger = logging.Logger("routing/local")
 }
