@@ -295,7 +295,7 @@ tasks:
     desc: Benchmark Directory server code
     dir: ./server
     cmds:
-      - go -C . test -bench=. ./...
+      - go -C . test -run=^$ -bench=. ./...
 
   ##
   ## Deploy
