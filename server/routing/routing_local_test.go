@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/agntcy/dir/utils/logging"
-	ipfsdatastore "github.com/ipfs/go-datastore"
 	"io"
 	"log/slog"
 	"os"
@@ -22,6 +20,8 @@ import (
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/logging"
+	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -283,13 +283,15 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 }
 
 func newBadgerDatastore(b *testing.B) types.Datastore {
+	b.Helper()
+
 	dsOpts := []datastore.Option{
 		datastore.WithFsProvider("/tmp/test-datastore"), // Use a temporary directory
 	}
 
 	dstore, err := datastore.New(dsOpts...)
 	if err != nil {
-		b.Fatalf("failed to initialize datastore: %v", err)
+		b.Fatalf("failed to create badger datastore: %v", err)
 	}
 
 	b.Cleanup(func() {
@@ -300,11 +302,14 @@ func newBadgerDatastore(b *testing.B) types.Datastore {
 	return dstore
 }
 
-func newInMemoryDatastore() types.Datastore {
+func newInMemoryDatastore(b *testing.B) types.Datastore {
+	b.Helper()
+
 	dstore, err := datastore.New()
 	if err != nil {
-		panic(fmt.Sprintf("failed to create in-memory datastore: %v", err))
+		b.Fatalf("failed to create in-memory datastore: %v", err)
 	}
+
 	return dstore
 }
 
@@ -367,7 +372,7 @@ func Benchmark_RouteLocal(b *testing.B) {
 		}
 	})
 
-	_ = badgerDatastore.Delete(context.Background(), ipfsdatastore.NewKey("/"))   // Delete all keys
-	_ = inMemoryDatastore.Delete(context.Background(), ipfsdatastore.NewKey("/")) // Delete all keys
+	_ = badgerDatastore.Delete(b.Context(), ipfsdatastore.NewKey("/"))   // Delete all keys
+	_ = inMemoryDatastore.Delete(b.Context(), ipfsdatastore.NewKey("/")) // Delete all keys
 	localLogger = logging.Logger("routing/local")
 }
