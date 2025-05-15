@@ -6,6 +6,21 @@ from client.client import Client, Config
 from core.v1alpha1 import object_pb2, agent_pb2, skill_pb2, extension_pb2
 from routing.v1alpha1 import routing_service_pb2 as routingtypes
 
+def convert_uint64_fields_to_int(d):
+    """
+    Recursively convert specific fields known to be uint64 from string to int.
+    """
+    if isinstance(d, dict):
+        for key, value in d.items():
+            if key in ("category_uid", "class_uid") and isinstance(value, str) and value.isdigit():
+                d[key] = int(value)
+            elif isinstance(value, dict):
+                convert_uint64_fields_to_int(value)
+            elif isinstance(value, list):
+                for item in value:
+                    convert_uint64_fields_to_int(item)
+    return d
+
 # Initialize the client
 client = Client(Config())
 
@@ -16,9 +31,9 @@ agent = agent_pb2.Agent(
     skills=[
         skill_pb2.Skill(
             category_name="Natural Language Processing",
-            category_uid="1",
+            category_uid=1,
             class_name="Text Completion",
-            class_uid="10201",
+            class_uid=10201,
         ),
     ],
     extensions=[
@@ -30,6 +45,7 @@ agent = agent_pb2.Agent(
 )
 
 agent_dict = MessageToDict(agent, preserving_proto_field_name=True)
+agent_dict = convert_uint64_fields_to_int(agent_dict)
 
 # Convert the agent object to a JSON string
 agent_json = json.dumps(agent_dict).encode('utf-8')
