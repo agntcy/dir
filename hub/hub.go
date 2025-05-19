@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
 
 	"github.com/agntcy/dir/hub/cmd"
 	"github.com/agntcy/dir/hub/cmd/options"
@@ -44,18 +43,14 @@ func (h *hub) Run(ctx context.Context, args []string) error {
 	c.SetOut(outBuf)
 	c.SetArgs(args)
 
-	var outStr string
-
 	if err = c.ExecuteContext(ctx); err != nil {
-		r := regexp.MustCompile("(\n\\s*)hub")
-		outStr = r.ReplaceAllString(outStr, "\n dirctl hub")
-
-		fmt.Fprintln(os.Stderr, errBuf.String())
-	} else {
-		outStr = outBuf.String()
+		return fmt.Errorf("%w", err)
 	}
 
-	fmt.Fprintln(os.Stdout, outStr)
+	outStr := outBuf.String()
+	if outStr != "" {
+		fmt.Fprintln(os.Stdout, outStr)
+	}
 
 	return nil
 }

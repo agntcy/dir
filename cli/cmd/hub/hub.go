@@ -11,10 +11,11 @@ func NewCommand(hub Hub) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "hub",
 		Short: "CLI tool to interact with Agent Hub implementation",
-		Run: func(cmd *cobra.Command, args []string) {
-			_ = hub.Run(cmd.Context(), args)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return hub.Run(cmd.Context(), args)
 		},
 		DisableFlagParsing: true,
+		SilenceUsage:       true,
 	}
 
 	return cmd
