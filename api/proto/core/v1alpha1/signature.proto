@@ -9,11 +9,11 @@ message Signature {
   // The signature algorithm used (e.g., "ECDSA_P256_SHA256")
   string algorithm = 1;
   
+  // Base64-encoded signing certificate
+  string certificate = 2;
+
   // Base64-encoded signature
-  string signature = 2;
-  
-  // Public key or certificate used for verification
-  string key_id = 3;
+  string signature = 3;
   
   // Optional URL to a transparency log entry
   optional string tlog_url = 4;

@@ -17,8 +17,8 @@ export COSIGN_EXPERIMENTAL=1
 
 ## 0. FIX MODEL
 cat agent.json | jq . > agent.json.tmp
-rm -rf agent.json
-mv agent.json.tmp agent.json
+cat agent.json.tmp | jq 'del(.signature)' > agent.json
+rm -rf agent.json.tmp
 
 ## 1. Sign agent
 echo -e "\n\nSigning agent locally..."
@@ -58,12 +58,20 @@ read -p "Press enter to continue"
 # 1. Upload the signature to Dir storage
 # 2. Append the signature link to the agent model
 # 3. Pull agent model
-# 4. Set the signature field to nil
+# 4. Extract signature from pulled agent model
+# 4. Set the signature field to nil on pulled agent model
 # 5. Verify the signature
 echo -e "\n\nVerifying blob signature..."
 cosign verify-blob \
  --rekor-url=$REKOR_URL \
  --bundle 'pulled.agent.sig' \
  --certificate-identity=rpolic@cisco.com \
+ --certificate-oidc-issuer=https://github.com/login/oauth \
+ ./pulled.agent.json
+
+cosign verify-blob \
+ --rekor-url=$REKOR_URL \
+ --bundle 'pulled.agent.sig' \
+ --certificate-identity=rpolic2@cisco.com \
  --certificate-oidc-issuer=https://github.com/login/oauth \
  ./pulled.agent.json
