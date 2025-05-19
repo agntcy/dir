@@ -103,7 +103,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 
 func getReader(fpath string, fromFile bool) (io.ReadCloser, error) {
 	if fpath == "" && !fromFile {
-		return nil, errors.New("reqired file path or --stdin flag")
+		return nil, errors.New("required file path or --stdin flag")
 	}
 
 	if fpath != "" {
