@@ -5,7 +5,7 @@ syntax = "proto3";
 
 package core.v1alpha1;
 
-message SignatureInfo {
+message Signature {
   // The signature algorithm used (e.g., "ECDSA_P256_SHA256")
   string algorithm = 1;
   
