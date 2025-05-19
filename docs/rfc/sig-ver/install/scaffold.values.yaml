@@ -1,0 +1,53 @@
+copySecretJob:
+  enabled: true
+
+rekor:
+  server:
+    attestation_storage:
+      enabled: false
+      persistence:
+        enabled: false
+    ingress:
+      className: nginx
+      hosts:
+        - host: rekor.sigstore.local
+          path: /
+      tls:
+        - secretName: rekor-tls
+          hosts:
+            - rekor.sigstore.local
+fulcio:
+  createcerts:
+    enabled: true
+  server:
+    ingress:
+      className: nginx
+      http:
+        hosts:
+          - host: fulcio.sigstore.local
+            path: /
+      tls:
+        - secretName: fulcio-tls
+          hosts:
+            - fulcio.sigstore.local
+  config:
+    contents:
+      OIDCIssuers:
+        https://oauth2.sigstore.dev/auth:
+          IssuerURL: https://oauth2.sigstore.dev/auth
+          ClientID: sigstore
+          Type: email
+          IssuerClaim: $.federated_claims.connector_id
+
+tuf:
+  enabled: true
+  ingress:
+    className: nginx
+    http:
+      hosts:
+        - host: tuf.sigstore.local
+          path: /
+    tls:
+      - secretName: tuf-tls
+        hosts:
+          - "tuf.sigstore.local"
