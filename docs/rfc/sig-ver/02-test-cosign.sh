@@ -15,8 +15,13 @@ REKOR_URL=https://rekor.sigstore.dev
 FULCIO_URL=https://fulcio.sigstore.dev
 export COSIGN_EXPERIMENTAL=1
 
-## Sign blob
-echo -e "\n\nSigning blob..."
+## 0. FIX MODEL
+cat agent.json | jq . > agent.json.tmp
+rm -rf agent.json
+mv agent.json.tmp agent.json
+
+## 1. Sign agent
+echo -e "\n\nSigning agent locally..."
 cosign sign-blob \
  --fulcio-url=$FULCIO_URL \
  --rekor-url=$REKOR_URL \
@@ -25,7 +30,23 @@ cosign sign-blob \
  --bundle='agent.sig' \
  ./agent.json
 
-## Verify blob
+# Append signature to agent model
+echo -e "\n\nGenerating signed agent locally..."
+cat agent.json | jq ".signature += $(cat agent.sig | jq .)" > pushed.agent.json
+
+## 2. Push signed agent
+echo -e "\n\nPushing signed agent..."
+# dirctl push pushed.agent.json
+
+## 3. Pull signed agent
+echo -e "\n\nPulling signed agent..."
+# dirctl pull $DIGEST
+
+## 4. Extract signature
+cat pushed.agent.json | jq '.signature' > pulled.agent.sig
+cat pushed.agent.json | jq 'del(.signature)' > pulled.agent.json
+
+## 5. Verify agent
 # NOTE: the implementation can happen in the following steps:
 # 1. Upload the signature to Dir storage
 # 2. Append the signature link to the agent model
@@ -35,7 +56,7 @@ cosign sign-blob \
 echo -e "\n\nVerifying blob signature..."
 cosign verify-blob \
  --rekor-url=$REKOR_URL \
- --bundle 'agent.sig' \
- --certificate-identity=ramiz.polic@hotmail.com \
+ --bundle 'pulled.agent.sig' \
+ --certificate-identity=rpolic@cisco.com \
  --certificate-oidc-issuer=https://github.com/login/oauth \
- ./agent.json
+ ./pulled.agent.json
