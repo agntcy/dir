@@ -30,9 +30,14 @@ cosign sign-blob \
  --bundle='agent.sig' \
  ./agent.json
 
+read -p "Press enter to continue"
+
 # Append signature to agent model
 echo -e "\n\nGenerating signed agent locally..."
 cat agent.json | jq ".signature += $(cat agent.sig | jq .)" > pushed.agent.json
+
+
+read -p "Press enter to continue"
 
 ## 2. Push signed agent
 echo -e "\n\nPushing signed agent..."
@@ -45,6 +50,8 @@ echo -e "\n\nPulling signed agent..."
 ## 4. Extract signature
 cat pushed.agent.json | jq '.signature' > pulled.agent.sig
 cat pushed.agent.json | jq 'del(.signature)' > pulled.agent.json
+
+read -p "Press enter to continue"
 
 ## 5. Verify agent
 # NOTE: the implementation can happen in the following steps:
