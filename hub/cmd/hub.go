@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/hub/client/okta"
+	"github.com/agntcy/dir/hub/cmd/initialize"
 	"github.com/agntcy/dir/hub/cmd/login"
 	"github.com/agntcy/dir/hub/cmd/logout"
 	"github.com/agntcy/dir/hub/cmd/options"
@@ -82,6 +83,7 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		push.NewCommand(opts),
 		pull.NewCommand(opts),
 		tenants.NewCommand(opts),
+		initialize.NewCommand(opts),
 	)
 
 	return cmd
