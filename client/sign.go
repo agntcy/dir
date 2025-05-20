@@ -17,6 +17,7 @@ import (
 const (
 	DefaultFulcioURL       = "https://fulcio.sigstage.dev"
 	DefaultRekorURL        = "https://rekor.sigstage.dev"
+	DefaultTimestampURL    = "https://timestamp.sigstage.dev/api/v1/timestamp"
 	DefaultOIDCProviderURL = "https://oauth2.sigstage.dev/auth"
 	DefaultOIDCClientID    = "sigstore"
 )
@@ -67,7 +68,14 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			root.ServiceConfiguration{
 				Selector: v1.ServiceSelector_ANY,
 			},
-			[]root.Service{},
+			[]root.Service{
+				{
+					URL:                 DefaultTimestampURL,
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
 			root.ServiceConfiguration{
 				Selector: v1.ServiceSelector_ANY,
 			},
@@ -89,6 +97,21 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		signOpts.CertificateProvider = sign.NewFulcio(fulcioOpts)
 		signOpts.CertificateProviderOptions = &sign.CertificateProviderOptions{
 			IDToken: idToken,
+		}
+
+		// Use timestamp authortiy to sign the agent.
+		tsaURLs, err := root.SelectServices(signingConfig.TimestampAuthorityURLs(),
+			signingConfig.TimestampAuthorityURLsConfig(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select timestamp authority URL: %w", err)
+		}
+		for _, tsaURL := range tsaURLs {
+			tsaOpts := &sign.TimestampAuthorityOptions{
+				URL:     tsaURL,
+				Timeout: time.Duration(30 * time.Second),
+				Retries: 1,
+			}
+			signOpts.TimestampAuthorities = append(signOpts.TimestampAuthorities, sign.NewTimestampAuthority(tsaOpts))
 		}
 
 		// Use rekor to sign the agent.
@@ -144,7 +167,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		Signature:     base64.StdEncoding.EncodeToString(sigData.GetSignature()),
 		Certificate:   base64.StdEncoding.EncodeToString(certData.GetCertificate().GetRawBytes()),
 		ContentType:   sigBundle.GetMediaType(),
-		ContentBundle: string(sigBundleJSON),
+		ContentBundle: base64.StdEncoding.EncodeToString(sigBundleJSON),
 		SignedAt:      time.Now().Format(time.RFC3339),
 	}
 

@@ -34,7 +34,7 @@ type Signature struct {
 	Certificate string `protobuf:"bytes,3,opt,name=certificate,proto3" json:"certificate,omitempty"`
 	// Type of the signature content bundle.
 	ContentType string `protobuf:"bytes,4,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	// Signature bundle produced by the signer.
+	// Base64-encoded signature bundle produced by the signer.
 	// It is up to the client to interpret the content of the bundle.
 	ContentBundle string `protobuf:"bytes,5,opt,name=content_bundle,json=contentBundle,proto3" json:"content_bundle,omitempty"`
 	// Timestamp when signing occurred

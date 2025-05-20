@@ -18,7 +18,7 @@ message Signature {
   // Type of the signature content bundle.
   string content_type = 4;
 
-  // Signature bundle produced by the signer.
+  // Base64-encoded signature bundle produced by the signer.
   // It is up to the client to interpret the content of the bundle.
   string content_bundle = 5;
   
