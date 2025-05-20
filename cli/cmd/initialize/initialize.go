@@ -9,7 +9,7 @@ import (
 )
 
 var Command = &cobra.Command{
-	Use:   "initialize",
+	Use:   "init",
 	Short: "CLI tool to initialize different components",
 	Long:  ``,
 }
