@@ -42,16 +42,17 @@ helm upgrade \
  sigstore/scaffold \
  -n sigstore \
  --create-namespace \
- --values ./install/scaffold.values.yaml
+ --values ./scaffold.values.yaml
 
 # Wait for sigstore to be ready
 kubectl rollout status deployment scaffold-tuf-tuf -n tuf-system --timeout=300s
 
-## Create TLS certificates for sigstore components
-# TODO for you: add ca.cert.pem to trust store and configure explicit trust
-for service_name in rekor fulcio tuf; do
-    kubectl create secret tls $service_name-tls \
-        --namespace=$service_name-system \
-        --cert=./install/$service_name.signed.cert.pem \
-        --key=./install/$service_name.private.pem
-done
+### Create TLS certificates for sigstore components
+### TODO: generate certificates, add to trust store, configure explicit trust
+
+# for service_name in rekor fulcio tuf; do
+#     kubectl create secret tls $service_name-tls \
+#         --namespace=$service_name-system \
+#         --cert=./install/$service_name.signed.cert.pem \
+#         --key=./install/$service_name.private.pem
+# done
