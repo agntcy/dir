@@ -14,15 +14,13 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	buildconfig "github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 var Command = &cobra.Command{
 	Use:   "repo",
-	Short: "Initialize a new agent.json and build.config.yml file",
+	Short: "Initialize a new agent.json file",
 	Long: `
 
 `,
@@ -150,30 +148,7 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to write agent.json: %w", err)
 	}
 
-	// Write to build.config.yml
-	config := buildconfig.Config{
-		Builder: buildconfig.Builder{
-			BaseModelPath:   "agent.base.json",
-			SourceIgnore:    []string{".venv/"},
-			LLMAnalyzer:     false,
-			Runtime:         false,
-			PyprojectParser: true,
-			OASFValidation:  true,
-		},
-	}
-
-	file, err = os.Create("build.config.yml")
-	if err != nil {
-		return fmt.Errorf("failed to create build.config.yml: %w", err)
-	}
-	defer file.Close()
-
-	YAMLEncoder := yaml.NewEncoder(file)
-	if err := YAMLEncoder.Encode(config); err != nil {
-		return fmt.Errorf("failed to write build.config.yml: %w", err)
-	}
-
-	presenter.Print(cmd, "agent.json and build.config.yml files created\n")
+	presenter.Print(cmd, "agent.json file created\n")
 
 	return nil
 }
