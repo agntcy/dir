@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -16,24 +15,13 @@ import (
 
 // SignRequest represents the request to sign an agent.
 type SignRequest struct {
-	Agent           *coretypes.Agent
-	RekorURL        string
-	FulcioURL       string
-	OIDCProviderURL string
-	OIDCJwtToken    string
+	Agent       *coretypes.Agent
+	OIDCIDToken string // OIDC flow against Sigstore Fulcio performed/passed by the caller
 }
 
 func (r *SignRequest) Validate() error {
 	if r.Agent == nil {
 		return fmt.Errorf("agent is required")
-	}
-
-	if r.RekorURL == "" {
-		return fmt.Errorf("rekor URL is required")
-	}
-
-	if r.FulcioURL == "" {
-		return fmt.Errorf("fulcio URL is required")
 	}
 
 	return nil
@@ -112,7 +100,7 @@ func (c *Client) Sign(ctx context.Context, req *SignRequest) (*coretypes.Agent, 
 	}
 	opts.CertificateProvider = sign.NewFulcio(fulcioOpts)
 	opts.CertificateProviderOptions = &sign.CertificateProviderOptions{
-		IDToken: req.OIDCJwtToken,
+		IDToken: req.OIDCIDToken,
 	}
 
 	// Use rekor to sign the agent.
@@ -136,7 +124,7 @@ func (c *Client) Sign(ctx context.Context, req *SignRequest) (*coretypes.Agent, 
 		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
 	}
 
-	// Sign the data
+	// Sign the data.
 	bundle, err := sign.Bundle(&sign.PlainData{Data: agentData}, keypair, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign agent: %w", err)
@@ -145,7 +133,7 @@ func (c *Client) Sign(ctx context.Context, req *SignRequest) (*coretypes.Agent, 
 	// Extract data from the bundle.
 	bundleJSON, err := protojson.Marshal(bundle)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to marshal bundle: %w", err)
 	}
 
 	// Update the agent with the signature.
