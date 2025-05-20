@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1d\x63ore/v1alpha1/signature.proto\x12\rcore.v1alpha1\"\xb3\x01\n\tSignature\x12\x1c\n\talgorithm\x18\x01 \x01(\tR\talgorithm\x12 \n\x0b\x63\x65rtificate\x18\x02 \x01(\tR\x0b\x63\x65rtificate\x12\x1c\n\tsignature\x18\x03 \x01(\tR\tsignature\x12\x1e\n\x08tlog_url\x18\x04 \x01(\tH\x00R\x07tlogUrl\x88\x01\x01\x12\x1b\n\tsigned_at\x18\x05 \x01(\tR\x08signedAtB\x0b\n\t_tlog_urlB\xae\x01\n\x11\x63om.core.v1alpha1B\x0eSignatureProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha1\xca\x02\rCore\\V1alpha1\xe2\x02\x19\x43ore\\V1alpha1\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1d\x63ore/v1alpha1/signature.proto\x12\rcore.v1alpha1\"\xd0\x01\n\tSignature\x12\x1c\n\talgorithm\x18\x01 \x01(\tR\talgorithm\x12\x1c\n\tsignature\x18\x02 \x01(\tR\tsignature\x12 \n\x0b\x63\x65rtificate\x18\x03 \x01(\tR\x0b\x63\x65rtificate\x12!\n\x0c\x63ontent_type\x18\x04 \x01(\tR\x0b\x63ontentType\x12%\n\x0e\x63ontent_bundle\x18\x05 \x01(\tR\rcontentBundle\x12\x1b\n\tsigned_at\x18\x06 \x01(\tR\x08signedAtB\xae\x01\n\x11\x63om.core.v1alpha1B\x0eSignatureProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha1\xca\x02\rCore\\V1alpha1\xe2\x02\x19\x43ore\\V1alpha1\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,5 +33,5 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\021com.core.v1alpha1B\016SignatureProtoP\001Z4github.com/agntcy/dir/api/core/v1alpha1;corev1alpha1\242\002\003CXX\252\002\rCore.V1alpha1\312\002\rCore\\V1alpha1\342\002\031Core\\V1alpha1\\GPBMetadata\352\002\016Core::V1alpha1'
   _globals['_SIGNATURE']._serialized_start=49
-  _globals['_SIGNATURE']._serialized_end=228
+  _globals['_SIGNATURE']._serialized_end=257
 # @@protoc_insertion_point(module_scope)

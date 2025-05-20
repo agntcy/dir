@@ -12,9 +12,7 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
-	"github.com/agntcy/dir/hub/config"
-	"github.com/agntcy/dir/hub/sessionstore"
-	"github.com/agntcy/dir/hub/utils/file"
+	"github.com/sigstore/sigstore/pkg/oauthflow"
 	"github.com/spf13/cobra"
 )
 
@@ -45,44 +43,31 @@ func runCommand(cmd *cobra.Command, pathToAgent string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Get the OIDC token for session.
-	// TODO: we need an auth flow here to get IDToken from Fulcio.
-	// TODO: this is already implemented in the hub via sessionstore.
-	sessionStore := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
-	currentSession, err := sessionStore.GetHubSession(config.DefaultHubAddress)
-	if err != nil {
-		return fmt.Errorf("failed to get hub session: %w", err)
-	}
-	if currentSession == nil || currentSession.Tokens == nil {
-		return errors.New("no session found, please login to hub first")
-	}
-	oidcSession, ok := currentSession.Tokens[currentSession.CurrentTenant]
-	if currentSession == nil {
-		return errors.New("no session found, please login to hub first")
-	}
-
 	// Load into an Agent struct
 	agent := &coretypes.Agent{}
-	_, err = agent.LoadFromFile(pathToAgent)
+	_, err := agent.LoadFromFile(pathToAgent)
 	if err != nil {
 		return fmt.Errorf("failed to load agent from file: %w", err)
 	}
 
-	// Sign the agent
-	agentSigned, err := c.Sign(cmd.Context(), &client.SignRequest{
-		Agent:       agent,
-		OIDCIDToken: oidcSession.IDToken,
-	})
+	// Retreive the token from the OIDC provider
+	tok, err := oauthflow.OIDConnect(client.DefaultOIDCProviderURL, client.DefaultOIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
+	if err != nil {
+		return fmt.Errorf("failed to get OIDC token: %w", err)
+	}
+
+	// Sign the agent using the OIDC provider
+	agentSigned, err := c.SignOIDC(cmd.Context(), agent, tok.RawString)
 	if err != nil {
 		return fmt.Errorf("failed to sign agent: %w", err)
 	}
 
 	// Print agent
-	agentJSON, err := json.MarshalIndent(agentSigned, "", "  ")
+	signedAgentRaw, err := json.MarshalIndent(agentSigned, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
-	presenter.Print(cmd, agentJSON)
+	presenter.Print(cmd, string(signedAgentRaw))
 
 	return nil
 }

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -13,132 +14,138 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// SignRequest represents the request to sign an agent.
-type SignRequest struct {
-	Agent       *coretypes.Agent
-	OIDCIDToken string // OIDC flow against Sigstore Fulcio performed/passed by the caller
-}
+const (
+	DefaultFulcioURL       = "https://fulcio.sigstage.dev"
+	DefaultRekorURL        = "https://rekor.sigstage.dev"
+	DefaultOIDCProviderURL = "https://oauth2.sigstage.dev/auth"
+	DefaultOIDCClientID    = "sigstore"
+)
 
-func (r *SignRequest) Validate() error {
-	if r.Agent == nil {
-		return fmt.Errorf("agent is required")
+// SignOIDC signs the agent using keyless OIDC service-based signing.
+// The OIDC ID Token must be provided by the caller.
+func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken string) (*coretypes.Agent, error) {
+	// Validate request.
+	if agent == nil {
+		return nil, fmt.Errorf("agent must be set")
 	}
 
-	return nil
-}
+	// Load signing options.
+	var signOpts sign.BundleOptions
+	var signKeypair sign.Keypair
+	{
+		// Define config to use for signing.
+		signingConfig, err := root.NewSigningConfig(
+			root.SigningConfigMediaType02,
+			// Fulcio URLs
+			[]root.Service{
+				{
+					URL:                 DefaultFulcioURL,
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			// OIDC Provider URLs
+			// Usage and requirements: https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/
+			[]root.Service{
+				{
+					URL:                 DefaultOIDCProviderURL,
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			// Rekor URLs
+			[]root.Service{
+				{
+					URL:                 DefaultRekorURL,
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			root.ServiceConfiguration{
+				Selector: v1.ServiceSelector_ANY,
+			},
+			[]root.Service{},
+			root.ServiceConfiguration{
+				Selector: v1.ServiceSelector_ANY,
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create signing config: %w", err)
+		}
 
-// Sign takes in the signature request details and returns the signed agent.
-func (c *Client) Sign(ctx context.Context, req *SignRequest) (*coretypes.Agent, error) {
-	if err := req.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid sign request: %w", err)
+		// Use fulcio to sign the agent.
+		fulcioURL, err := root.SelectService(signingConfig.FulcioCertificateAuthorityURLs(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select fulcio URL: %w", err)
+		}
+		fulcioOpts := &sign.FulcioOptions{
+			BaseURL: fulcioURL,
+			Timeout: time.Duration(30 * time.Second),
+			Retries: 1,
+		}
+		signOpts.CertificateProvider = sign.NewFulcio(fulcioOpts)
+		signOpts.CertificateProviderOptions = &sign.CertificateProviderOptions{
+			IDToken: idToken,
+		}
+
+		// Use rekor to sign the agent.
+		rekorURLs, err := root.SelectServices(signingConfig.RekorLogURLs(),
+			signingConfig.RekorLogURLsConfig(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select rekor URL: %w", err)
+		}
+		for _, rekorURL := range rekorURLs {
+			rekorOpts := &sign.RekorOptions{
+				BaseURL: rekorURL,
+				Timeout: time.Duration(90 * time.Second),
+				Retries: 1,
+			}
+			signOpts.TransparencyLogs = append(signOpts.TransparencyLogs, sign.NewRekor(rekorOpts))
+		}
+
+		// Generate an ephemeral keypair for signing.
+		signKeypair, err = sign.NewEphemeralKeypair(nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
+		}
 	}
 
 	// Reset the signature field in the agent.
-	agent := req.Agent
+	// This is required as the agent may have been signed before,
+	// but also because this ensures signing idempotency.
 	agent.Signature = nil
 
 	// Convert the agent to JSON.
-	agentData, err := json.Marshal(agent)
+	agentJSON, err := json.Marshal(agent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal agent: %w", err)
 	}
 
-	// Define config to use for signing.
-	signingConfig, err := root.NewSigningConfig(
-		root.SigningConfigMediaType02,
-		// Fulcio URLs
-		[]root.Service{
-			{
-				URL:                 "https://fulcio.sigstage.dev",
-				MajorAPIVersion:     1,
-				ValidityPeriodStart: time.Now().Add(-time.Hour),
-				ValidityPeriodEnd:   time.Now().Add(time.Hour),
-			},
-		},
-		// OIDC Provider URLs
-		[]root.Service{
-			{
-				URL:                 "https://oauth2.sigstage.dev/auth",
-				MajorAPIVersion:     1,
-				ValidityPeriodStart: time.Now().Add(-time.Hour),
-				ValidityPeriodEnd:   time.Now().Add(time.Hour),
-			},
-		},
-		// Rekor URLs
-		[]root.Service{
-			{
-				URL:                 "https://rekor.sigstage.dev",
-				MajorAPIVersion:     1,
-				ValidityPeriodStart: time.Now().Add(-time.Hour),
-				ValidityPeriodEnd:   time.Now().Add(time.Hour),
-			},
-		},
-		root.ServiceConfiguration{
-			Selector: v1.ServiceSelector_ANY,
-		},
-		[]root.Service{},
-		root.ServiceConfiguration{
-			Selector: v1.ServiceSelector_ANY,
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create signing config: %w", err)
-	}
-
-	// Define signing options from the config.
-	opts := sign.BundleOptions{}
-
-	// Use fulcio to sign the agent.
-	fulcioURL, err := root.SelectService(signingConfig.FulcioCertificateAuthorityURLs(), []uint32{1}, time.Now())
-	if err != nil {
-		return nil, fmt.Errorf("failed to select fulcio URL: %w", err)
-	}
-	fulcioOpts := &sign.FulcioOptions{
-		BaseURL: fulcioURL,
-		Timeout: time.Duration(30 * time.Second),
-		Retries: 1,
-	}
-	opts.CertificateProvider = sign.NewFulcio(fulcioOpts)
-	opts.CertificateProviderOptions = &sign.CertificateProviderOptions{
-		IDToken: req.OIDCIDToken,
-	}
-
-	// Use rekor to sign the agent.
-	rekorURLs, err := root.SelectServices(signingConfig.RekorLogURLs(),
-		signingConfig.RekorLogURLsConfig(), []uint32{1}, time.Now())
-	if err != nil {
-		return nil, fmt.Errorf("failed to select rekor URL: %w", err)
-	}
-	for _, rekorURL := range rekorURLs {
-		rekorOpts := &sign.RekorOptions{
-			BaseURL: rekorURL,
-			Timeout: time.Duration(90 * time.Second),
-			Retries: 1,
-		}
-		opts.TransparencyLogs = append(opts.TransparencyLogs, sign.NewRekor(rekorOpts))
-	}
-
-	// Generate a keypair for signing.
-	keypair, err := sign.NewEphemeralKeypair(nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
-	}
-
-	// Sign the data.
-	bundle, err := sign.Bundle(&sign.PlainData{Data: agentData}, keypair, opts)
+	// Sign the agent JSON data.
+	sigBundle, err := sign.Bundle(&sign.PlainData{Data: agentJSON}, signKeypair, signOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign agent: %w", err)
 	}
 
-	// Extract data from the bundle.
-	bundleJSON, err := protojson.Marshal(bundle)
+	// Extract data from the signature bundle.
+	certData := sigBundle.GetVerificationMaterial()
+	sigData := sigBundle.GetMessageSignature()
+	sigBundleJSON, err := protojson.Marshal(sigBundle)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal bundle: %w", err)
 	}
 
-	// Update the agent with the signature.
+	// Update the agent with the signature details.
 	agent.Signature = &coretypes.Signature{
-		Signature: string(bundleJSON),
+		Algorithm:     sigData.GetMessageDigest().GetAlgorithm().String(),
+		Signature:     base64.StdEncoding.EncodeToString(sigData.GetSignature()),
+		Certificate:   base64.StdEncoding.EncodeToString(certData.GetCertificate().GetRawBytes()),
+		ContentType:   sigBundle.GetMediaType(),
+		ContentBundle: string(sigBundleJSON),
+		SignedAt:      time.Now().Format(time.RFC3339),
 	}
 
 	return agent, nil
