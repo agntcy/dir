@@ -22,9 +22,18 @@ const (
 	DefaultOIDCClientID    = "sigstore"
 )
 
+type SignOpts struct {
+	FulcioURL       string
+	RekorURL        string
+	TimestampURL    string
+	OIDCProviderURL string
+	OIDCClientID    string
+}
+
 // SignOIDC signs the agent using keyless OIDC service-based signing.
 // The OIDC ID Token must be provided by the caller.
-func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken string) (*coretypes.Agent, error) {
+// An ephemeral keypair is generated for signing.
+func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken string, options SignOpts) (*coretypes.Agent, error) {
 	// Validate request.
 	if agent == nil {
 		return nil, fmt.Errorf("agent must be set")
@@ -40,7 +49,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			// Fulcio URLs
 			[]root.Service{
 				{
-					URL:                 DefaultFulcioURL,
+					URL:                 options.FulcioURL,
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -50,7 +59,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			// Usage and requirements: https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/
 			[]root.Service{
 				{
-					URL:                 DefaultOIDCProviderURL,
+					URL:                 options.OIDCProviderURL,
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -59,7 +68,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			// Rekor URLs
 			[]root.Service{
 				{
-					URL:                 DefaultRekorURL,
+					URL:                 options.RekorURL,
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -70,7 +79,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			},
 			[]root.Service{
 				{
-					URL:                 DefaultTimestampURL,
+					URL:                 options.TimestampURL,
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),

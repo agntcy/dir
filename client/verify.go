@@ -50,7 +50,7 @@ func (c *Client) VerifyOIDC(ctx context.Context, expectedIssuer, expectedSigner 
 	var identityPolicy verify.PolicyOption
 	{
 		// Create OIDC identity matcher for verification.
-		certID, err := verify.NewShortCertificateIdentity(expectedIssuer, expectedIssuer, expectedSigner, expectedSigner)
+		certID, err := verify.NewShortCertificateIdentity("", expectedIssuer, "", expectedSigner)
 		if err != nil {
 			return fmt.Errorf("failed to create certificate identity: %w", err)
 		}
@@ -62,12 +62,14 @@ func (c *Client) VerifyOIDC(ctx context.Context, expectedIssuer, expectedSigner 
 	var trustedMaterial root.TrustedMaterialCollection
 	{
 		// Get staging TUF trusted root.
+		// TODO: allow switching between TUF environments.
 		fetcher := fetcher.NewDefaultFetcher()
 		fetcher.SetHTTPUserAgent(util.ConstructUserAgent())
 		tufOptions := &tuf.Options{
 			Root:              tuf.StagingRoot(),
 			RepositoryBaseURL: tuf.StagingMirror,
 			Fetcher:           fetcher,
+			DisableLocalCache: true, // read-only mode; prevent from pulling root CA to local dir
 		}
 		tufClient, err := tuf.New(tufOptions)
 		if err != nil {
@@ -93,13 +95,10 @@ func (c *Client) VerifyOIDC(ctx context.Context, expectedIssuer, expectedSigner 
 	}
 
 	// Run verification
-	status, err := sev.Verify(sigBundle, verify.NewPolicy(verify.WithArtifact(bytes.NewReader(agentJSON)), identityPolicy))
+	_, err = sev.Verify(sigBundle, verify.NewPolicy(verify.WithArtifact(bytes.NewReader(agentJSON)), identityPolicy))
 	if err != nil {
 		return fmt.Errorf("failed to verify signature: %w", err)
 	}
-
-	// Print verification status.
-	fmt.Println(status)
 
 	// Verify the signature.
 	return nil

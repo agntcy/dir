@@ -10,8 +10,8 @@ import (
 	"os"
 )
 
-func GetReader(fpath string, fromFile bool) (io.ReadCloser, error) {
-	if fpath == "" && !fromFile {
+func GetReader(fpath string, fromStdin bool) (io.ReadCloser, error) {
+	if fpath == "" && !fromStdin {
 		return nil, errors.New("if no path defined --stdin flag must be set")
 	}
 
