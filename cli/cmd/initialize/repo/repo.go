@@ -1,42 +1,46 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package initialize
+package repo
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	"github.com/agntcy/dir/hub/cmd/options"
+	buildconfig "github.com/agntcy/dir/cli/builder/config"
+	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(_ *options.HubOptions) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "initialize",
-		Short: "Initialize a new agent.json file",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runInitializeCommand()
-		},
-	}
+var Command = &cobra.Command{
+	Use:   "repo",
+	Short: "Initialize a new agent.json and build.config.yml file",
+	Long: `
 
-	return cmd
+`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runCommand(cmd)
+	},
 }
 
-func runInitializeCommand() error {
+func runCommand(cmd *cobra.Command) error {
+	reader := bufio.NewReader(os.Stdin)
 	agent := coretypes.Agent{}
 
 	// Agent Name
 	fmt.Print("Enter agent name: ")
-	_, err := fmt.Scanln(&agent.Name)
+	name, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("failed to read agent name: %w", err)
 	}
+	agent.Name = strings.TrimSpace(name)
 
 	// Agent Version
 	fmt.Print("Enter agent version: ")
@@ -47,10 +51,11 @@ func runInitializeCommand() error {
 
 	// Agent Description
 	fmt.Print("Enter description: ")
-	_, err = fmt.Scanln(&agent.Description)
+	description, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("failed to read description: %w", err)
 	}
+	agent.Description = strings.TrimSpace(description)
 
 	// Agent Authors
 	fmt.Print("Enter author(s) (comma-separated): ")
@@ -65,14 +70,14 @@ func runInitializeCommand() error {
 	agent.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	// Agent Skills
-	fmt.Print("Enter skill class_uid(s) (comma-separated) (https://schema.oasf.agntcy.org/skillsInput): ")
+	fmt.Print("Enter skill class_uid(s) (comma-separated) (https://schema.oasf.agntcy.org/skills): ")
 	var skillsInput string
 	_, err = fmt.Scanln(&skillsInput)
 	if err != nil {
 		return fmt.Errorf("failed to read skills: %w", err)
 	}
 
-	classUIDs := strings.Split(authorsInput, ",")
+	classUIDs := strings.Split(skillsInput, ",")
 	var skills []*coretypes.Skill
 	for _, UIDString := range classUIDs {
 		UID, err := strconv.ParseUint(UIDString, 10, 64)
@@ -121,12 +126,36 @@ func runInitializeCommand() error {
 	}
 	defer file.Close()
 
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(&agent); err != nil {
+	JSONEncoder := json.NewEncoder(file)
+	JSONEncoder.SetIndent("", "  ")
+	if err := JSONEncoder.Encode(&agent); err != nil {
 		return fmt.Errorf("failed to write agent.json: %w", err)
 	}
 
-	fmt.Println("agent.json has been successfully created.")
+	// Write to build.config.yml
+	config := buildconfig.Config{
+		Builder: buildconfig.Builder{
+			BaseModelPath:   "agent.base.json",
+			SourceIgnore:    []string{".venv/"},
+			LLMAnalyzer:     false,
+			Runtime:         false,
+			PyprojectParser: true,
+			OASFValidation:  true,
+		},
+	}
+
+	file, err = os.Create("build.config.yml")
+	if err != nil {
+		return fmt.Errorf("failed to create build.config.yml: %w", err)
+	}
+	defer file.Close()
+
+	YAMLEncoder := yaml.NewEncoder(file)
+	if err := YAMLEncoder.Encode(config); err != nil {
+		return fmt.Errorf("failed to write build.config.yml: %w", err)
+	}
+
+	presenter.Print(cmd, "agent.json and build.config.yml files created\n")
+
 	return nil
 }

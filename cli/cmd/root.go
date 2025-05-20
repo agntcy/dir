@@ -11,6 +11,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/delete"
 	hubCmd "github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
+	"github.com/agntcy/dir/cli/cmd/initialize"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/network"
 	"github.com/agntcy/dir/cli/cmd/publish"
@@ -52,6 +53,7 @@ func init() {
 		// local commands
 		version.Command,
 		build.Command,
+		initialize.Command,
 		// storage commands
 		info.Command,
 		pull.Command,
