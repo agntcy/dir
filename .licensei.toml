@@ -19,5 +19,6 @@ ignored = [
   
   "google.golang.org/protobuf", # BSD-3-Clause
   "github.com/xi2/xz", # Public Domain https://github.com/xi2/xz/blob/master/LICENSE
-  "github.com/libp2p/go-libp2p-gorpc" # MIT https://github.com/libp2p/go-libp2p-gorpc?tab=readme-ov-file#license
+  "github.com/libp2p/go-libp2p-gorpc", # MIT https://github.com/libp2p/go-libp2p-gorpc/blob/master/LICENSE-MIT
+  "go.mongodb.org/mongo-driver" # Apache License 2.0 https://github.com/mongodb/mongo-go-driver/blob/master/LICENSE
 ]
