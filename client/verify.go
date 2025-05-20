@@ -1,3 +1,7 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+//nolint:mnd,wsl
 package client
 
 import (
@@ -5,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -17,20 +22,21 @@ import (
 )
 
 // Verify verifies the signature of the agent using OIDC.
-func (c *Client) VerifyOIDC(ctx context.Context, expectedIssuer, expectedSigner string, agent *coretypes.Agent) error {
+func (c *Client) VerifyOIDC(_ context.Context, expectedIssuer, expectedSigner string, agent *coretypes.Agent) error {
 	// Validate request.
 	if agent == nil {
-		return fmt.Errorf("agent must be set")
+		return errors.New("agent must be set")
 	}
-	if agent.Signature == nil {
-		return fmt.Errorf("agent has no signature")
+	if agent.GetSignature() == nil {
+		return errors.New("agent has no signature")
 	}
 
 	// Extract signature data from the agent.
-	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(agent.Signature.ContentBundle)
+	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(agent.GetSignature().GetContentBundle())
 	if err != nil {
 		return fmt.Errorf("failed to decode signature: %w", err)
 	}
+
 	sigBundle := &bundle.Bundle{}
 	if err := sigBundle.UnmarshalJSON(sigBundleRawJSON); err != nil {
 		return fmt.Errorf("failed to unmarshal signature bundle: %w", err)
@@ -38,12 +44,14 @@ func (c *Client) VerifyOIDC(ctx context.Context, expectedIssuer, expectedSigner 
 
 	// Get agent JSON data without the signature.
 	// We need to remove the signature from the agent before verifying.
-	agentSignature := agent.Signature
+	agentSignature := agent.GetSignature()
 	agent.Signature = nil
+
 	agentJSON, err := json.Marshal(agent)
 	if err != nil {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
+
 	agent.Signature = agentSignature
 
 	// Load identity verification options.

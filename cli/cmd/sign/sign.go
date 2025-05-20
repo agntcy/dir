@@ -52,7 +52,7 @@ Usage examples:
 		// get source
 		source, err := agentUtils.GetReader(fpath, opts.FromStdin)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		return runCommand(cmd, source)
@@ -68,12 +68,11 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 
 	// Load into an Agent struct
 	agent := &coretypes.Agent{}
-	_, err := agent.LoadFromReader(source)
-	if err != nil {
+	if _, err := agent.LoadFromReader(source); err != nil {
 		return fmt.Errorf("failed to load agent: %w", err)
 	}
 
-	// Retreive the token from the OIDC provider
+	// Retrieve the token from the OIDC provider
 	token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
 	if err != nil {
 		return fmt.Errorf("failed to get OIDC token: %w", err)
@@ -90,6 +89,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
+
 	presenter.Print(cmd, string(signedAgentJSON))
 
 	return nil

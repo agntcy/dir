@@ -1,9 +1,14 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+//nolint:mnd,wsl
 package client
 
 import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,15 +38,14 @@ type SignOpts struct {
 // SignOIDC signs the agent using keyless OIDC service-based signing.
 // The OIDC ID Token must be provided by the caller.
 // An ephemeral keypair is generated for signing.
-func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken string, options SignOpts) (*coretypes.Agent, error) {
+func (c *Client) SignOIDC(_ context.Context, agent *coretypes.Agent, idToken string, options SignOpts) (*coretypes.Agent, error) {
 	// Validate request.
 	if agent == nil {
-		return nil, fmt.Errorf("agent must be set")
+		return nil, errors.New("agent must be set")
 	}
 
 	// Load signing options.
 	var signOpts sign.BundleOptions
-	var signKeypair sign.Keypair
 	{
 		// Define config to use for signing.
 		signingConfig, err := root.NewSigningConfig(
@@ -100,7 +104,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		}
 		fulcioOpts := &sign.FulcioOptions{
 			BaseURL: fulcioURL,
-			Timeout: time.Duration(30 * time.Second),
+			Timeout: 30 * time.Second,
 			Retries: 1,
 		}
 		signOpts.CertificateProvider = sign.NewFulcio(fulcioOpts)
@@ -117,7 +121,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		for _, tsaURL := range tsaURLs {
 			tsaOpts := &sign.TimestampAuthorityOptions{
 				URL:     tsaURL,
-				Timeout: time.Duration(30 * time.Second),
+				Timeout: 30 * time.Second,
 				Retries: 1,
 			}
 			signOpts.TimestampAuthorities = append(signOpts.TimestampAuthorities, sign.NewTimestampAuthority(tsaOpts))
@@ -132,17 +136,17 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		for _, rekorURL := range rekorURLs {
 			rekorOpts := &sign.RekorOptions{
 				BaseURL: rekorURL,
-				Timeout: time.Duration(90 * time.Second),
+				Timeout: 90 * time.Second,
 				Retries: 1,
 			}
 			signOpts.TransparencyLogs = append(signOpts.TransparencyLogs, sign.NewRekor(rekorOpts))
 		}
+	}
 
-		// Generate an ephemeral keypair for signing.
-		signKeypair, err = sign.NewEphemeralKeypair(nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
-		}
+	// Generate an ephemeral keypair for signing.
+	signKeypair, err := sign.NewEphemeralKeypair(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
 	}
 
 	// Reset the signature field in the agent.
@@ -161,10 +165,10 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign agent: %w", err)
 	}
-
-	// Extract data from the signature bundle.
 	certData := sigBundle.GetVerificationMaterial()
 	sigData := sigBundle.GetMessageSignature()
+
+	// Extract data from the signature bundle.
 	sigBundleJSON, err := protojson.Marshal(sigBundle)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal bundle: %w", err)

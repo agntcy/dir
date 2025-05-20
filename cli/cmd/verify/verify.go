@@ -44,7 +44,7 @@ Usage examples:
 		// get source
 		source, err := agentUtils.GetReader(fpath, opts.FromStdin)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		return runCommand(cmd, source)
@@ -60,13 +60,12 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 
 	// Load into an Agent struct
 	agent := &coretypes.Agent{}
-	_, err := agent.LoadFromReader(source)
-	if err != nil {
+	if _, err := agent.LoadFromReader(source); err != nil {
 		return fmt.Errorf("failed to load agent: %w", err)
 	}
 
 	// Verify the agent using the OIDC provider
-	err = c.VerifyOIDC(cmd.Context(), opts.OIDCIssuer, opts.OIDCIdentity, agent)
+	err := c.VerifyOIDC(cmd.Context(), opts.OIDCIssuer, opts.OIDCIdentity, agent)
 	if err != nil {
 		return fmt.Errorf("failed to verify agent: %w", err)
 	}
