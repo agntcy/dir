@@ -6,8 +6,8 @@ package repo
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"os"
 	"strconv"
 	"strings"
@@ -17,6 +17,7 @@ import (
 	buildconfig "github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 var Command = &cobra.Command{
@@ -25,60 +26,72 @@ var Command = &cobra.Command{
 	Long: `
 
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runCommand(cmd)
 	},
 }
 
+// nolint:cyclop
 func runCommand(cmd *cobra.Command) error {
 	reader := bufio.NewReader(os.Stdin)
 	agent := coretypes.Agent{}
 
 	// Agent Name
-	fmt.Print("Enter agent name: ")
+	presenter.Print(cmd, "Enter agent name: ")
+
 	name, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("failed to read agent name: %w", err)
 	}
+
 	agent.Name = strings.TrimSpace(name)
 
 	// Agent Version
-	fmt.Print("Enter agent version: ")
+	presenter.Print(cmd, "Enter agent version: ")
+
 	_, err = fmt.Scanln(&agent.Version)
 	if err != nil {
 		return fmt.Errorf("failed to read agent version: %w", err)
 	}
 
 	// Agent Description
-	fmt.Print("Enter description: ")
+	presenter.Print(cmd, "Enter description: ")
+
 	description, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("failed to read description: %w", err)
 	}
+
 	agent.Description = strings.TrimSpace(description)
 
 	// Agent Authors
-	fmt.Print("Enter author(s) (comma-separated): ")
+	presenter.Print(cmd, "Enter author(s) (comma-separated): ")
+
 	var authorsInput string
+
 	_, err = fmt.Scanln(&authorsInput)
 	if err != nil {
 		return fmt.Errorf("failed to read authors: %w", err)
 	}
+
 	agent.Authors = strings.Split(authorsInput, ",")
 
 	// Agent CreatedAt
 	agent.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 
 	// Agent Skills
-	fmt.Print("Enter skill class_uid(s) (comma-separated) (https://schema.oasf.agntcy.org/skills): ")
+	presenter.Print(cmd, "Enter skill class_uid(s) (comma-separated) (https://schema.oasf.agntcy.org/skills): ")
+
 	var skillsInput string
+
 	_, err = fmt.Scanln(&skillsInput)
 	if err != nil {
 		return fmt.Errorf("failed to read skills: %w", err)
 	}
 
 	classUIDs := strings.Split(skillsInput, ",")
-	var skills []*coretypes.Skill
+	skills := make([]*coretypes.Skill, 0, len(classUIDs))
+
 	for _, UIDString := range classUIDs {
 		UID, err := strconv.ParseUint(UIDString, 10, 64)
 		if err != nil {
@@ -89,11 +102,14 @@ func runCommand(cmd *cobra.Command) error {
 			ClassUid: UID,
 		})
 	}
+
 	agent.Skills = skills
 
 	// Agent Locators
-	fmt.Print("Enter locator(s) (type1=url1,type2=url2) (https://schema.oasf.agntcy.org/objects/locator): ")
+	presenter.Print(cmd, "Enter locator(s) (type1=url1,type2=url2) (https://schema.oasf.agntcy.org/objects/locator): ")
+
 	var locatorsInput string
+
 	_, err = fmt.Scanln(&locatorsInput)
 	if err != nil {
 		return fmt.Errorf("failed to read locators: %w", err)
@@ -102,6 +118,7 @@ func runCommand(cmd *cobra.Command) error {
 	locators := strings.Split(locatorsInput, ",")
 	for _, locator := range locators {
 		parts := strings.Split(locator, "=")
+		//nolint:mnd
 		if len(parts) != 2 {
 			return fmt.Errorf("invalid locator format: %s", locator)
 		}
@@ -110,7 +127,7 @@ func runCommand(cmd *cobra.Command) error {
 		locatorURL := strings.TrimSpace(parts[1])
 
 		if locatorType == "" || locatorURL == "" {
-			return fmt.Errorf("locator type or URL cannot be empty")
+			return errors.New("locator type or URL cannot be empty")
 		}
 
 		agent.Locators = append(agent.Locators, &coretypes.Locator{
@@ -128,6 +145,7 @@ func runCommand(cmd *cobra.Command) error {
 
 	JSONEncoder := json.NewEncoder(file)
 	JSONEncoder.SetIndent("", "  ")
+
 	if err := JSONEncoder.Encode(&agent); err != nil {
 		return fmt.Errorf("failed to write agent.json: %w", err)
 	}
