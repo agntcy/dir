@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package tenants
+package orgs
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/agntcy/dir/hub/client/idp"
 	hubOptions "github.com/agntcy/dir/hub/cmd/options"
-	"github.com/agntcy/dir/hub/cmd/tenantswitch"
+	"github.com/agntcy/dir/hub/cmd/orgswitch"
 	ctxUtils "github.com/agntcy/dir/hub/utils/context"
 	httpUtils "github.com/agntcy/dir/hub/utils/http"
 	"github.com/agntcy/dir/hub/utils/token"
@@ -26,8 +26,9 @@ const (
 
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "tenants",
-		Short: "List tenants for logged in user",
+		Use:     "orgs",
+		Aliases: []string{"tenants"},
+		Short:   "List organizations for logged in user",
 	}
 
 	opts := hubOptions.NewListTenantsOptions(hubOpts)
@@ -52,25 +53,25 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 
 		tenantsResp, err := idpClient.GetTenantsInProduct(currentSession.AuthConfig.IdpProductID, idp.WithBearerToken(accessToken))
 		if err != nil {
-			return fmt.Errorf("failed to get list of tenants: %w", err)
+			return fmt.Errorf("failed to get list of orgs: %w", err)
 		}
 
 		if tenantsResp.Response.StatusCode != http.StatusOK {
-			return errors.New("failed to get list of tenants")
+			return errors.New("failed to get list of orgs")
 		}
 
 		if ok = ctxUtils.SetTenantListForContext(cmd, tenantsResp.TenantList.Tenants); !ok {
-			return errors.New("failed to set tenant list in context")
+			return errors.New("failed to set orgs list in context")
 		}
 
 		return nil
 	}
 
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		// Get the tenant list from context
-		tenants, ok := ctxUtils.GetUserTenantsFromContext(cmd)
+		// Get the orgs list from context
+		orgs, ok := ctxUtils.GetUserTenantsFromContext(cmd)
 		if !ok {
-			return errors.New("failed to get tenant list from context")
+			return errors.New("failed to get orgs list from context")
 		}
 
 		currentSession, ok := ctxUtils.GetCurrentHubSessionFromContext(cmd)
@@ -78,11 +79,11 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 			return errors.New("no current session found. please login first")
 		}
 
-		return runCmd(cmd, tenants, currentSession.CurrentTenant)
+		return runCmd(cmd, orgs, currentSession.CurrentTenant)
 	}
 
 	cmd.AddCommand(
-		tenantswitch.NewCommand(hubOpts),
+		orgswitch.NewCommand(hubOpts),
 	)
 
 	return cmd

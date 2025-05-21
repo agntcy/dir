@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package tenantswitch
+package orgswitch
 
 import (
 	"context"
@@ -31,11 +31,11 @@ const timeout = 60 * time.Second
 func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "switch [flags]",
-		Short: "Switch between tenants of logged-in user",
+		Short: "Switch between organizations of logged-in user",
 		Long: `
-This command help switching between logged-in user's tenants. You need to log in first with
-'dirctl hub login' command. If --tenant flag is specified user will be logged in to the specified
-tenant. In any other case, tenant could be selected from an interactive list.
+This command help switching between logged-in user's orgs. You need to log in first with
+'dirctl hub login' command. If --org flag is specified user will be logged in to the specified
+organization. In any other case, org could be selected from an interactive list.
 `,
 	}
 
@@ -45,7 +45,7 @@ tenant. In any other case, tenant could be selected from an interactive list.
 		// Token is checked and refreshed and authorized in the persistent prerun of tenants command
 		tenants, ok := ctxUtils.GetUserTenantsFromContext(cmd)
 		if !ok {
-			return errors.New("could not get user tenants")
+			return errors.New("could not get user orgs")
 		}
 
 		sessionStore, ok := ctxUtils.GetSessionStoreFromContext(cmd)
@@ -77,14 +77,14 @@ func switchTenant( //nolint:cyclop
 ) (string, error) {
 	// If no tenant specified, show selector
 	var selectedTenant string
-	if opts.Tenant != "" {
-		selectedTenant = opts.Tenant
+	if opts.Org != "" {
+		selectedTenant = opts.Org
 	}
 
 	tenantsMap := tenantsToMap(tenants)
 	if selectedTenant == "" {
 		s := promptui.Select{
-			Label: "Tenants",
+			Label: "Organizations",
 			Items: slices.Collect(maps.Keys(tenantsMap)),
 		}
 
@@ -159,11 +159,11 @@ func switchTenant( //nolint:cyclop
 
 	newTenant, err := token.GetTenantNameFromToken(webserverSession.Tokens.AccessToken)
 	if err != nil {
-		return "", fmt.Errorf("failed to get tenant name from token: %w", err)
+		return "", fmt.Errorf("failed to get org name from token: %w", err)
 	}
 
 	if newTenant != selectedTenant {
-		return "", fmt.Errorf("tenant name from token (%s) does not match selected tenant (%s). it could happen because you logged in another account then the one that has the requested tenant", newTenant, selectedTenant)
+		return "", fmt.Errorf("org name from token (%s) does not match selected org (%s). it could happen because you logged in another account then the one that has the requested org", newTenant, selectedTenant)
 	}
 
 	currentSession.CurrentTenant = selectedTenant
@@ -196,7 +196,7 @@ func handleOutput(stdin io.Writer, stdout io.Writer, selectedTenant string, err 
 		return nil
 	}
 
-	fmt.Fprintf(stdout, "An error occoured during tenant switch. Try to call `dirctl hub login` to solve the issue.\nError details: \n")
+	fmt.Fprintf(stdout, "An error occoured during org switch. Try to call `dirctl hub login` to solve the issue.\nError details: \n")
 
 	return err
 }

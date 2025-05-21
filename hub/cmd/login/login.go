@@ -106,7 +106,7 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, oktaClient okta.Clie
 	// Get tenant
 	tName, err := token.GetTenantNameFromToken(webserverSession.Tokens.AccessToken)
 	if err != nil {
-		return fmt.Errorf("failed to get tenant id: %w", err)
+		return fmt.Errorf("failed to get org id: %w", err)
 	}
 
 	// Get username from token
@@ -133,7 +133,7 @@ func runCmd(cmd *cobra.Command, opts *options.LoginOptions, oktaClient okta.Clie
 		return fmt.Errorf("failed to save tokens: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Agent Hub\nAddress: %s\nUser: %s\nTenant: %s\n", opts.ServerAddress, user, tName)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Agent Hub\nAddress: %s\nUser: %s\nOrganization: %s\n", opts.ServerAddress, user, tName)
 
 	return nil
 }

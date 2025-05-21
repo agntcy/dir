@@ -8,7 +8,7 @@ import "github.com/spf13/cobra"
 type TenantOption struct {
 	*HubOptions
 
-	Tenant string
+	Org string
 }
 
 func NewTenantOption(hubOpts *HubOptions, cmd *cobra.Command) *TenantOption {
@@ -17,7 +17,7 @@ func NewTenantOption(hubOpts *HubOptions, cmd *cobra.Command) *TenantOption {
 	}
 
 	opt.AddRegisterFn(func() error {
-		cmd.Flags().StringVarP(&opt.Tenant, "tenant", "t", "", "Tenant name")
+		cmd.Flags().StringVarP(&opt.Org, "org", "o", "", "Organization name")
 
 		return nil
 	})

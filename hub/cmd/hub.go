@@ -11,9 +11,9 @@ import (
 	"github.com/agntcy/dir/hub/cmd/login"
 	"github.com/agntcy/dir/hub/cmd/logout"
 	"github.com/agntcy/dir/hub/cmd/options"
+	"github.com/agntcy/dir/hub/cmd/orgs"
 	"github.com/agntcy/dir/hub/cmd/pull"
 	"github.com/agntcy/dir/hub/cmd/push"
-	"github.com/agntcy/dir/hub/cmd/tenants"
 	"github.com/agntcy/dir/hub/config"
 	"github.com/agntcy/dir/hub/sessionstore"
 	ctxUtils "github.com/agntcy/dir/hub/utils/context"
@@ -81,7 +81,7 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		logout.NewCommand(opts),
 		push.NewCommand(opts),
 		pull.NewCommand(opts),
-		tenants.NewCommand(opts),
+		orgs.NewCommand(opts),
 	)
 
 	return cmd
