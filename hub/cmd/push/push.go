@@ -93,6 +93,7 @@ Examples:
 		if _, err = agentModel.LoadFromReader(bytes.NewReader(agentBytes)); err != nil {
 			return fmt.Errorf("failed to load agent: %w", err)
 		}
+
 		if agentModel.GetSignature() == nil {
 			return errors.New("agent must be signed, use `dirctl sign` to sign the agent")
 		}
