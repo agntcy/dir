@@ -7,6 +7,7 @@ package controller
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -91,9 +92,7 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 
 	// Read input
 	agent := &coretypes.Agent{}
-
-	agentJSON, err := agent.LoadFromReader(pr)
-	if err != nil {
+	if _, err := agent.LoadFromReader(pr); err != nil {
 		return fmt.Errorf("failed to process agent: %w", err)
 	}
 
@@ -102,6 +101,12 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 	// NOTE: we can still push agents with bogus signatures, but we will not be able to verify them.
 	if agent.GetSignature() == nil {
 		return errors.New("agent signature is required")
+	}
+
+	// Convert agent to JSON to drop additional fields
+	agentJSON, err := json.Marshal(agent)
+	if err != nil {
+		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
 
 	// Push to underlying store
