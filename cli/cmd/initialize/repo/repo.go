@@ -29,7 +29,6 @@ var Command = &cobra.Command{
 	},
 }
 
-// nolint:cyclop
 func runCommand(cmd *cobra.Command) error {
 	reader := bufio.NewReader(os.Stdin)
 	agent := coretypes.Agent{
