@@ -4,10 +4,12 @@
 package push
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 
+	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/util/agent"
 	"github.com/agntcy/dir/hub/api/v1alpha1"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
@@ -84,6 +86,15 @@ Examples:
 		agentBytes, err := agent.GetAgentBytes(reader)
 		if err != nil {
 			return fmt.Errorf("failed to get agent bytes: %w", err)
+		}
+
+		// Validate agent.
+		agentModel := coretypes.Agent{}
+		if _, err = agentModel.LoadFromReader(bytes.NewReader(agentBytes)); err != nil {
+			return fmt.Errorf("failed to load agent: %w", err)
+		}
+		if agentModel.GetSignature() == nil {
+			return errors.New("agent must be signed, use `dirctl sign` to sign the agent")
 		}
 
 		// TODO: Push based on repoName and version misleading
