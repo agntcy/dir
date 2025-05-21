@@ -5,6 +5,7 @@
 package controller
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -88,8 +89,23 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		}
 	}()
 
-	// push
-	ref, err = s.store.Push(stream.Context(), firstMessage.GetRef(), pr)
+	// Read input
+	agent := &coretypes.Agent{}
+
+	agentJSON, err := agent.LoadFromReader(pr)
+	if err != nil {
+		return fmt.Errorf("failed to process agent: %w", err)
+	}
+
+	// Validate agent
+	// This does not validate the signature itself, but only checks if it is set.
+	// NOTE: we can still push agents with bogus signatures, but we will not be able to verify them.
+	if agent.GetSignature() == nil {
+		return errors.New("agent signature is required")
+	}
+
+	// Push to underlying store
+	ref, err = s.store.Push(stream.Context(), firstMessage.GetRef(), bytes.NewReader(agentJSON))
 	if err != nil {
 		return fmt.Errorf("failed to push: %w", err)
 	}

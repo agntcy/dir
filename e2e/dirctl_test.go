@@ -120,7 +120,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Modify the agent file to create a different agent
 			tempAgentPath2 := filepath.Join(tempAgentDir, "agent2.json")
-			err := os.WriteFile(tempAgentPath2, []byte(`{"name": "different-agent"}`), 0o600)
+			err := os.WriteFile(tempAgentPath2, []byte(`{"name": "different-agent", "signature": {}}`), 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Push second agent

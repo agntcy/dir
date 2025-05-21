@@ -58,6 +58,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				Data:    nil,
 			},
 		},
+		Signature: &coretypes.Signature{},
 	}
 
 	// Marshal the Agent struct back to bytes.
