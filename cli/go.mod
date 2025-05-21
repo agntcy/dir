@@ -13,9 +13,9 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.7.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
 	github.com/BurntSushi/toml v1.4.0
-	github.com/agntcy/dir/api v0.2.4
-	github.com/agntcy/dir/client v0.2.4
-	github.com/agntcy/dir/hub v0.2.4
+	github.com/agntcy/dir/api v0.2.5
+	github.com/agntcy/dir/client v0.2.5
+	github.com/agntcy/dir/hub v0.2.5
 	github.com/anchore/syft v1.19.0
 	github.com/libp2p/go-libp2p v0.41.1
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
@@ -48,7 +48,7 @@ require (
 	github.com/acobaugh/osrelease v0.1.0 // indirect
 	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
-	github.com/agntcy/dir/utils v0.2.4 // indirect
+	github.com/agntcy/dir/utils v0.2.5 // indirect
 	github.com/anchore/archiver/v3 v3.5.3-0.20241210171143-5b1d8d1c7c51 // indirect
 	github.com/anchore/clio v0.0.0-20241115144204-29e89f9fa837 // indirect
 	github.com/anchore/fangs v0.0.0-20250326231402-da263204d38e // indirect
