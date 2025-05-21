@@ -54,10 +54,7 @@ builder:
  pyprojectparser: false
 
  # Enable OASF validation
- oasf-validation: true
-
- # Skip
- 
+ oasf-validation: true 
 EOF
 
 # Build the agent
@@ -65,6 +62,34 @@ dirctl build . > model.json
 
 # Preview built agent
 cat model.json
+```
+
+### Signing and Verification
+
+This process relies on attaching signature to the agent data model using identity-based OIDC signing flow which can be verified by other clients.
+The signing process opens a browser window to authenticate the user
+with an OIDC identity provider.
+The verification process validates the agent signature against the identity provider and signature transparency services.
+These operations are implemented using [Sigstore](https://www.sigstore.dev/).
+
+```bash
+## Sign the agent data model
+cat model.json | dirctl sign --stdin > signed.model.json
+
+## Verify agent data models
+cat model.json | dirctl verify --stdin
+cat signed.model.json | dirctl verify --stdin
+
+## Verify signature using custom parameters:
+# 1. Only trust users with "cisco.com" addresses
+# 2. Only trust issuers from "github.com"
+dirctl verify signed.model.json \
+   --oidc-identity "(.*)@cisco.com" \
+   --oidc-issuer "(.*)github.com(.*)"
+
+## Replace the base agent model with a signed one
+rm -rf model.json
+mv signed.model.json model.json
 ```
 
 ### Store
@@ -85,7 +110,7 @@ dirctl pull $DIGEST
 dirctl info $DIGEST
 
 #> {
-#>   "digest": "sha256:a8abbdd7403aed85abaa00e176effc212cd6b080cb161e0fac51399fd0e69c3f",
+#>   "digest": "sha256:<hash>",
 #>   "type": "OBJECT_TYPE_AGENT",
 #>   "size": 143
 #> }
@@ -128,7 +153,7 @@ Note that it is not guaranteed that the returned data is available, valid, or up
 dirctl list --digest $DIGEST
 
 #> Peer 12D3KooWQffoFP8ePUxTeZ8AcfReTMo4oRPqTiN1caDeG5YW3gng
-#>   Digest: sha256:a8abbdd7403aed85abaa00e176effc212cd6b080cb161e0fac51399fd0e69c3f
+#>   Digest: sha256:<hash>
 #>   Labels: /skills/Text Generation, /skills/Fact Extraction
 
 # Discover the agent data models in your local data store
@@ -136,7 +161,7 @@ dirctl list "/skills/Text Generation"
 dirctl list "/skills/Text Generation" "/skills/Fact Extraction"
 
 #> Peer HOST
-#>   Digest: sha256:a8abbdd7403aed85abaa00e176effc212cd6b080cb161e0fac51399fd0e69c3f
+#>   Digest: sha256:<hash>
 #>   Labels: /skills/Text Generation, /skills/Fact Extraction
 
 # Discover the agent data models across the network
