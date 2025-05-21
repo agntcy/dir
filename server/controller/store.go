@@ -19,6 +19,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+const (
+	maxAgentSize = 1024 * 1024 * 4 // 4MB
+)
+
 var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
@@ -96,17 +100,23 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		return fmt.Errorf("failed to process agent: %w", err)
 	}
 
+	// Convert agent to JSON to drop additional fields
+	agentJSON, err := json.Marshal(agent)
+	if err != nil {
+		return fmt.Errorf("failed to marshal agent: %w", err)
+	}
+
 	// Validate agent
+	// Signature validation
 	// This does not validate the signature itself, but only checks if it is set.
 	// NOTE: we can still push agents with bogus signatures, but we will not be able to verify them.
 	if agent.GetSignature() == nil {
 		return errors.New("agent signature is required")
 	}
 
-	// Convert agent to JSON to drop additional fields
-	agentJSON, err := json.Marshal(agent)
-	if err != nil {
-		return fmt.Errorf("failed to marshal agent: %w", err)
+	// Size validation
+	if len(agentJSON) > maxAgentSize {
+		return fmt.Errorf("agent size exceeds maximum size of %d bytes", maxAgentSize)
 	}
 
 	// Push to underlying store
