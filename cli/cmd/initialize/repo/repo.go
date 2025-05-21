@@ -98,7 +98,7 @@ func setVersion(cmd *cobra.Command, agent *coretypes.Agent) error {
 }
 
 func setDescription(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agent) error {
-	presenter.Print(cmd, "Description (Research agent for a specific task.): ")
+	presenter.Print(cmd, "Description (Research agent for a specific task): ")
 
 	description, err := reader.ReadString('\n')
 	if err != nil {
@@ -111,7 +111,7 @@ func setDescription(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.A
 }
 
 func setAuthors(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agent) error {
-	presenter.Print(cmd, "Enter author(s) (comma-separated) (John Doe, Jane Doe): ")
+	presenter.Print(cmd, "Enter authors (John Doe, Jane Doe): ")
 
 	authorsInput, err := reader.ReadString('\n')
 	if err != nil {
@@ -131,7 +131,7 @@ func setAuthors(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agent
 }
 
 func setSkills(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agent) error {
-	presenter.Print(cmd, "Enter skill class_uid(s) (comma-separated) (https://schema.oasf.agntcy.org/skills) (50204,10205): ")
+	presenter.Print(cmd, "Enter skill class_uid(s), https://schema.oasf.agntcy.org/skills (50204,10205): ")
 
 	skillsInput, err := reader.ReadString('\n')
 	if err != nil {
@@ -158,9 +158,7 @@ func setSkills(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agent)
 }
 
 func setLocators(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agent) error {
-	presenter.Print(cmd,
-		"Enter locator(s) (type1=url1,type2=url2) (https://schema.oasf.agntcy.org/objects/locator) (docker-image=https://ghcr.io/path/docker-image,source-code=https://github.com/organization/repository/path-to-source): ",
-	)
+	presenter.Print(cmd, "Enter locator(s), https://schema.oasf.agntcy.org/objects/locator (docker-image=<link>,source-code=<link>): ")
 
 	locatorsInput, err := reader.ReadString('\n')
 	if err != nil {
