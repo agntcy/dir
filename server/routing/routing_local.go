@@ -68,7 +68,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 	}
 
 	if agentExists {
-		localLogger.Info("Skipping republish as agent %s was already published", "ref", ref)
+		localLogger.Info("Skipping republish as agent was already published", "ref", ref)
 
 		return nil
 	}

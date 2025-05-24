@@ -17,8 +17,7 @@ import (
 var Command = &cobra.Command{
 	Use:   "publish",
 	Short: "Publish agent model to the network, allowing content discovery",
-	Long: `
-Publish the data to your local or rest of the network to allow content discovery.
+	Long: `Publish the data to your local or rest of the network to allow content discovery.
 This command only works for the objects already pushed to store.
 
 Usage examples:
@@ -57,12 +56,12 @@ func runCommand(cmd *cobra.Command, digest string) error {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	presenter.Printf(cmd, "Publishing agent: %v\n", meta)
+	presenter.Printf(cmd, "Publishing agent with digest: %s\n", meta.GetDigest())
 
 	// Start publishing
 	if err := c.Publish(cmd.Context(), meta, opts.Network); err != nil {
 		if strings.Contains(err.Error(), "failed to announce object") {
-			return errors.New("Failed to announce object, it will be retried in the background on the API server") //nolint:stylecheck
+			return errors.New("failed to announce object, it will be retried in the background on the API server")
 		}
 
 		return fmt.Errorf("failed to publish: %w", err)

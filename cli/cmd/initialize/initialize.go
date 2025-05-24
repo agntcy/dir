@@ -11,7 +11,10 @@ import (
 var Command = &cobra.Command{
 	Use:   "init",
 	Short: "CLI tool to initialize different components",
-	Long:  ``,
+	Long: `This command initializes different components of the Directory system. Currently, it supports initializing
+a new agent.json file.
+
+`,
 }
 
 func init() {

@@ -75,14 +75,5 @@ func runCommand(cmd *cobra.Command, labels []string) error {
 }
 
 func init() {
-	// Common flags for all list subcommands
-	// TODO: enable the commands below and wire them in where needed.
-	//
-	// cmd.Flags().Int("max-hops", 0, "Limit the number of routing hops when traversing the network")
-	// cmd.Flags().Bool("sync", false, "Sync the discovered data into our local routing table")
-	// cmd.Flags().Bool("pull", false, "Pull the discovered data into our local storage layer")
-	// cmd.Flags().Bool("verify", false, "Verify each received record when pulling data")
-	// cmd.Flags().StringSlice("allowed", nil, "Allow-list specific peer IDs during network traversal")
-	// cmd.Flags().StringSlice("blocked", nil, "Block-list specific peer IDs during network traversal")
 	Command.AddCommand(info.Command)
 }

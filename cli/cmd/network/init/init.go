@@ -21,8 +21,7 @@ import (
 var Command = &cobra.Command{
 	Use:   "init",
 	Short: "Generates the peer id from a newly generated private key, enabling connection to the DHT network",
-	Long: `
-This command generates a peer id from a newly generated private key. From this key
+	Long: `This command generates a peer id from a newly generated private key. From this key
 a peer id will be generated that is needed for the host to connect to the network.
 
 Usage examples:
@@ -79,7 +78,7 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to generate peer ID from public key: %w", err)
 	}
 
-	presenter.Print(cmd, ID)
+	presenter.Printf(cmd, "%s\n", ID)
 
 	return nil
 }

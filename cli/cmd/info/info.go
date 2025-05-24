@@ -17,8 +17,7 @@ import (
 var Command = &cobra.Command{
 	Use:   "info",
 	Short: "Check info about an object in Directory store",
-	Long: `Lookup and get basic metadata about an object
-pushed to the Directory store.
+	Long: `Lookup and get basic metadata about an object pushed to the Directory store.
 
 Usage example:
 
@@ -27,7 +26,7 @@ Usage example:
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.New("digest is a required argument")
+			return errors.New("exactly one argument is required which is the digest of the object")
 		}
 
 		return runCommand(cmd, args[0])

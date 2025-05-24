@@ -22,17 +22,16 @@ import (
 var Command = &cobra.Command{
 	Use:   "push",
 	Short: "Push agent data model to Directory server",
-	Long: `This command pushes the agent data model to local storage 
-layer via Directory API. 
-The data is stored into content-addressable object store.
+	Long: `This command pushes the agent data model to local storage layer via Directory API. The data is stored into
+content-addressable object store.
 
 Usage examples:
 
-1. From agent data model file
+1. From agent data model file:
 
 	dirctl push model.json
 
-2. Data from standard input. Useful for piping
+2. Data from standard input. Useful for piping:
 
 	cat model.json | dirctl push --stdin
 
@@ -44,15 +43,15 @@ Usage examples:
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var fpath string
+		var path string
 		if len(args) > 1 {
 			return errors.New("only one file path is allowed")
 		} else if len(args) == 1 {
-			fpath = args[0]
+			path = args[0]
 		}
 
 		// get source
-		source, err := getReader(fpath, opts.FromStdin)
+		source, err := getReader(path, opts.FromStdin)
 		if err != nil {
 			return err
 		}
@@ -95,7 +94,6 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return fmt.Errorf("failed to push data: %w", err)
 	}
 
-	// Print digest to output
 	presenter.Print(cmd, ref.GetDigest())
 
 	return nil
