@@ -34,15 +34,15 @@ Usage examples:
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var fpath string
+		var path string
 		if len(args) > 1 {
 			return errors.New("only one file path is allowed")
 		} else if len(args) == 1 {
-			fpath = args[0]
+			path = args[0]
 		}
 
 		// get source
-		source, err := agentUtils.GetReader(fpath, opts.FromStdin)
+		source, err := agentUtils.GetReader(path, opts.FromStdin)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
@@ -71,7 +71,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	}
 
 	// Print success message
-	presenter.Print(cmd, "Verification OK!")
+	presenter.Print(cmd, "Agent signature verified successfully!", nil)
 
 	return nil
 }

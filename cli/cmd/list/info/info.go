@@ -71,8 +71,6 @@ func runCommand(cmd *cobra.Command) error {
 
 		// in case we have nothing for that host, skip
 		if len(item.GetLabelCounts()) == 0 {
-			// presenter.Printf(cmd, "Peer %s | <empty>\n", peerName)
-
 			continue
 		}
 

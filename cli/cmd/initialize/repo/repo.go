@@ -21,7 +21,8 @@ import (
 var Command = &cobra.Command{
 	Use:   "repo",
 	Short: "Initialize a new agent.json file",
-	Long: `
+	Long: `This command initializes a new agent.json file for an agent. It prompts the user for various details about
+the agent.
 
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {

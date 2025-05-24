@@ -90,6 +90,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
 
+	presenter.Print(cmd, "Model has been signed successfully.\n")
 	presenter.Print(cmd, string(signedAgentJSON))
 
 	return nil

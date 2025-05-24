@@ -16,8 +16,7 @@ import (
 var Command = &cobra.Command{
 	Use:   "unpublish",
 	Short: "Unpublish agent model from the network",
-	Long: `
-Unpublish the data from your local or rest of the network to disallow content discovery.
+	Long: `Unpublish the data from your local or rest of the network to disallow content discovery.
 This command only works for the objects that are available in the store.
 
 Usage examples:
@@ -56,7 +55,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	presenter.Printf(cmd, "Unpublishing agent: %v\n", meta)
+	presenter.Printf(cmd, "Unpublishing agent with digest: %s\n", meta.GetDigest())
 
 	if err := c.Unpublish(cmd.Context(), meta, opts.Network); err != nil {
 		return fmt.Errorf("failed to unpublish: %w", err)

@@ -12,7 +12,7 @@ import (
 var Command = &cobra.Command{
 	Use:   "network",
 	Short: "CLI tool to interact with routing network",
-	Long:  ``,
+	Long:  `This command provides a set of subcommands to interact with the routing network.`,
 }
 
 func init() {

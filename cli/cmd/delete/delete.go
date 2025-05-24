@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
@@ -46,8 +47,10 @@ func runCommand(cmd *cobra.Command, digest string) error {
 		Annotations: nil,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to delete object: %w", err)
+		return fmt.Errorf("failed to delete agent model: %w", err)
 	}
+
+	presenter.Printf(cmd, "Deleted agent model with digest: %s\n", digest)
 
 	return nil
 }

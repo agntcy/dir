@@ -76,7 +76,7 @@ func (p *pyprojectparser) Build(_ context.Context) (*coretypes.Agent, error) {
 		return nil, fmt.Errorf("error decoding pyproject.toml: %w", err)
 	}
 
-	// If empty, return try decode with poetry metadata
+	// If empty, try to parse it as a Poetry project
 	if metadata.Project.Name == "" && metadata.Project.Version == "" && metadata.Project.Description == "" {
 		var poetryMetadata PoetryMetadata
 		if _, err := toml.DecodeFile(pyprojectPath, &poetryMetadata); err != nil {
