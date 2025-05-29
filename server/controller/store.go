@@ -14,6 +14,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
+	searchtypes "github.com/agntcy/dir/server/search/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -27,13 +28,15 @@ var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
 	storetypes.UnimplementedStoreServiceServer
-	store types.StoreAPI
+	store  types.StoreAPI
+	search searchtypes.SearchAPI
 }
 
-func NewStoreController(store types.StoreAPI) storetypes.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, search searchtypes.SearchAPI) storetypes.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storetypes.UnimplementedStoreServiceServer{},
 		store:                           store,
+		search:                          search,
 	}
 }
 
@@ -123,6 +126,11 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 	ref, err = s.store.Push(stream.Context(), firstMessage.GetRef(), bytes.NewReader(agentJSON))
 	if err != nil {
 		return fmt.Errorf("failed to push: %w", err)
+	}
+
+	err = s.search.AddAgent(agent)
+	if err != nil {
+		return fmt.Errorf("failed to add agent to search index: %w", err)
 	}
 
 	return stream.SendAndClose(ref)

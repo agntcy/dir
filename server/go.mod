@@ -24,6 +24,8 @@ require (
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
+	gorm.io/driver/sqlite v1.5.7
+	gorm.io/gorm v1.30.0
 	oras.land/oras-go/v2 v2.5.0
 )
 
@@ -34,7 +36,10 @@ require (
 	github.com/dgraph-io/ristretto v0.0.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
+	github.com/mattn/go-sqlite3 v1.14.28 // indirect
 )
 
 require (
