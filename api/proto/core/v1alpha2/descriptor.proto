@@ -1,0 +1,24 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1alpha2;
+
+import "google/protobuf/struct.proto";
+
+// Descriptors provide a generic way to attach additional information
+// to an agent. For example, application-specific data can be provided
+// using a descriptor.
+message AgentDescriptor {
+  // Name of the descriptor.
+  // Can be used as a fully qualified name.
+  // For example, "org.agntcy.oasf.schema/features/<feature-name>".
+  string name = 1;
+
+  // Metadata associated with the descriptor.
+  map<string, string> annotations = 2;
+
+  // Data attached to the descriptor.
+  google.protobuf.Struct data = 3;
+}

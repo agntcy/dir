@@ -1,0 +1,72 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1alpha2;
+
+import "core/v1alpha2/descriptor.proto";
+import "core/v1alpha2/locator.proto";
+import "core/v1alpha2/skill.proto";
+import "core/v1alpha2/signature.proto";
+
+// Record defines a schema for versioned AI agent content representation.
+// The schema provides a way to describe an agent in a structured format.
+//
+// This is a versioned gRPC-based OASF schema.
+//
+// Max size: 4 MB (or to fully fit in a single request)
+// It may be required to allow larger size in the future.
+//
+// Records are stored in a content-addressable store.
+// Records can be indexed for quick lookups and searches
+// to avoid unnecessary data transfer.
+message AgentRecord {
+  // Name of the agent.
+  string name = 1;
+
+  // Version of the agent.
+  string version = 2;
+
+  // Description of the agent.
+  string description = 3;
+
+  // List of agent’s authors, e.g. in the form of `author-name <author-email>`.
+  repeated string authors = 4;
+
+  // Additional metadata associated with the agent.
+  map<string, string> annotations = 5;
+
+  // Creation timestamp of the agent in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string created_at = 6;
+  
+  // List of skills that the agent can perform.
+  repeated AgentSkill skills = 7;
+
+  // List of source locators where the agent can be found or used from.
+  repeated AgentLocator locators = 8;
+
+  // Additional information attached to the agent.
+  // Descriptors are used to generically extend the agent's functionality.
+  repeated AgentDescriptor descriptors = 9;
+
+  // Security signature of the agent.
+  AgentSignature signature = 10;
+
+  // Reference to the previous agent record, if any.
+  // Used to link the agent record to its previous versions.
+  // Field number is explicitly reserved for extenability.
+  optional AgentRecordRef prev_ref = 99;
+}
+
+// Reference to an agent record.
+// Links an agent record with a CID.
+// Can be used across different systems to identify the same record.
+message AgentRecordRef {
+  // Globally-unique content identifier (CID) of the record.
+  // Encodes both the type and version of the schema.
+  // Ensures backward and forward compatibility.
+  // Specs: https://github.com/multiformats/cid
+  string cid = 1;
+}
