@@ -131,9 +131,9 @@ func (s *SQLiteDB) GetManyAgentsByFilters(filters searchtypes.QueryFilters) ([]*
 		return nil, fmt.Errorf("failed to query agents: %w", err)
 	}
 
-	coreAgents, agents, err := convertToCoreAgents(dbAgents)
+	coreAgents, err := convertToCoreAgents(dbAgents)
 	if err != nil {
-		return agents, fmt.Errorf("failed to convert agents: %w", err)
+		return nil, fmt.Errorf("failed to convert agents: %w", err)
 	}
 
 	return coreAgents, nil
@@ -202,5 +202,6 @@ func convertToCoreAgents(dbAgents []searchtypes.Agent) ([]*coretypes.Agent, erro
 
 		coreAgents = append(coreAgents, coreAgent)
 	}
+
 	return coreAgents, nil
 }
