@@ -1,0 +1,68 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package store.v1alpha2;
+
+import "core/v1alpha1/agent.proto";
+import "core/v1alpha2/record.proto";
+
+// Reference to a content-addressable object.
+message ObjectRef {
+  // Globally-unique content identifier (CID) of the object.
+  // Specs: https://github.com/multiformats/cid
+  string cid = 1;
+}
+
+// Object is a generic data structure that can hold
+// arbitrary data. It is used to store and associate
+// objects in a content-addressable store.
+message Object {
+  // Globally-unique content identifier of the object.
+  // Specs: https://github.com/multiformats/cid
+  string cid = 1;
+
+  // Metadata associated with the object.
+  map<string, string> annotations = 2;
+
+  // Schema type of the object.
+  // Can be used to identify the format of the data.
+  string schema_type = 3;
+
+  // Schema version of the object.
+  // This is used to ensure backward and forward compatibility.
+  string schema_version = 4;
+
+  // Opaque data held by this object.
+  // Clients can use schema details to handle processing.
+  ObjectData object_data = 5;
+}
+
+// ObjectSchemaType defines a list of supported schema types.
+// Serves as a placeholder for required schema types
+// that can be used to identify the format of the data.
+// Across APIs it is only used in a string format.
+enum ObjectSchemaType {
+  OBJECT_SCHEMA_TYPE_UNSPECIFIED = 0; // ""
+  OBJECT_SCHEMA_TYPE_RAW = 1;         // "raw"
+  OBJECT_SCHEMA_TYPE_RECORD = 2;      // "oasf.agntcy.oasf.schema/objects/record"
+}
+
+// ObjectData is a wrapper for the data held by an object.
+// This allows for flexibility in how data is stored and retrieved.
+message ObjectData {
+  oneof data {
+    bytes raw = 1; // Raw binary data, used for unstructured data.
+    RecordObjectData record = 2; // Record data, used for structured agent records.
+  }
+}
+
+// Unifies different versions of agent records data into a single message.
+// Handles compatibility for different versions of the agent record schema.
+message RecordObjectData {
+  oneof record {
+    core.v1alpha1.Agent   record_v1alpha1 = 1;
+    core.v1alpha2.Record  record_v1alpha2 = 2;
+  }
+}

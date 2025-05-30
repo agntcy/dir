@@ -1,0 +1,36 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package store.v1alpha2;
+
+import "google/protobuf/empty.proto";
+import "store/v1alpha2/object.proto";
+
+// Defines an interface for content-addressable storage
+// service for arbitrary objects such as blobs, files, etc.
+// It may also store metadata for pushed objects.
+//
+// Store service can be implemented by various storage backends,
+// such as local file system, OCI registry, etc.
+//
+// Middleware should be used to control who can perform these RPCs.
+// Policies for the middleware can be handled via separate service.
+service StoreService {
+  // Push performs streamed write operation for the provided object.
+  // Raw object must be sent in chunks if larger than 4MB.
+  // All fields on the Object must be set, excluding the CID.
+  rpc Push(stream Object) returns (ObjectRef);
+
+  // Pull performs streamed read operation for the requested object.
+  // Raw object is sent back in chunks if larger than 4MB.
+  rpc Pull(ObjectRef) returns (stream Object);
+
+  // Lookup resolves basic metadata for the object.
+  // It does not return the object data.
+  rpc Lookup(ObjectRef) returns (Object);
+  
+  // Remove performs delete operation for the requested object.
+  rpc Delete(ObjectRef) returns (google.protobuf.Empty);
+}

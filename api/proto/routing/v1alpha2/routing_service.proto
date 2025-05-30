@@ -1,0 +1,103 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package routing.v1alpha2;
+
+import "google/protobuf/empty.proto";
+import "routing/v1alpha2/peer.proto";
+import "routing/v1alpha2/record_query.proto";
+
+// Defines an interface for announcement and discovery
+// of records across interconnected network.
+//
+// Middleware should be used to control who can perform these RPCs.
+// Policies for the middleware can be handled via separate service.
+service RoutingService {
+  // Announce to the network that this peer is providing a given record.
+  // This enables other peers to discover this record and retrieve it
+  // from this peer. Listeners can use this event to perform custom operations,
+  // for example by cloning the record.
+  //
+  // Items need to be periodically republished (eg. 24h) to the network
+  // to avoid stale data. Republication should be done in the background.
+  rpc Publish(PublishRequest) returns (google.protobuf.Empty);
+
+  // Stop serving this record to the network. If other peers try 
+  // to retrieve this record, the peer will refuse the request.
+  rpc Unpublish(UnpublishRequest) returns (google.protobuf.Empty);
+
+  // Search records based on the request across the network.
+  // This will search the network for the record with the given parameters.
+  //
+  // It is possible that the records are stale or that they do not exist.
+  // Some records may be provided by multiple peers.
+  //
+  // Results from the search can be used as an input
+  // to Pull operation to retrieve the records.
+  rpc Search(SearchRequest) returns (stream SearchResponse);
+
+  // List all records that this peer is currently providing
+  // that match the given parameters.
+  // This operation does not interact with the network.
+  rpc List(ListRequest) returns (stream ListResponse);
+}
+
+message PublishRequest {
+  // Reference to the agent record to be published.
+  string record_cid = 1;
+}
+
+message UnpublishRequest {
+  // Reference to the agent record to be unpublished.
+  string record_cid = 1;
+}
+
+message SearchRequest {
+  // List of queries to match against the records.
+  repeated RecordQuery queries = 1;
+
+  // Minimal target query match score.
+  // For example, if min_match_score=2, it will return records that match
+  // at least two of the queries.
+  // If not set, it will return records that match at least one query.
+  optional uint32 min_match_score = 2;
+
+  // Limit the number of results returned.
+  // If not set, it will return all discovered records.
+  // Note that this is a soft limit, as the search may return more results
+  // than the limit if there are multiple peers providing the same record.
+  optional uint32 limit = 3;
+
+  // TODO: we may want to add a way to filter results by peer.
+}
+
+message SearchResponse {
+  // The record that matches the search query.
+  string record_cid = 1;
+
+  // The peer that provided the record.
+  Peer peer = 2;
+
+  // The queries that were matched.
+  repeated RecordQuery match_queries = 3;
+
+  // The score of the search match.
+  uint32 match_score = 4;
+}
+
+message ListRequest {
+  // List of queries to match against the records.
+  // If set, all queries must match for the record to be returned.
+  repeated RecordQuery queries = 1;
+
+  // Limit the number of results returned.
+  // If not set, it will return all records that this peer is providing.
+  optional uint32 limit = 2;
+}
+
+message ListResponse {
+  // The record that matches the list queries.
+  string record_cid = 1;
+}
