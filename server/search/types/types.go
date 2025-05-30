@@ -33,8 +33,8 @@ type SearchAPI interface {
 	// AddAgent adds an object to the search database.
 	AddAgent(agent *coretypes.Agent) error
 
-	// QueryAgents queries agents from the search database.
-	QueryAgents(filters QueryFilters) ([]*coretypes.Agent, error)
+	// GetManyAgentsByFilters queries agents from the search database.
+	GetManyAgentsByFilters(filters QueryFilters) ([]*coretypes.Agent, error)
 }
 
 type Agent struct {
@@ -45,6 +45,11 @@ type Agent struct {
 	Description   string `gorm:"not null"`
 	Authors       string `gorm:"not null"`
 	Annotations   string `gorm:"not null"`
+
+	Skills     []Skill     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
+	Locators   []Locator   `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
+	Extensions []Extension `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
+	Signature  Signature   `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
 }
 
 func (a *Agent) FromCoreAgent(coreAgent *coretypes.Agent) error {
