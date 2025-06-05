@@ -1,7 +1,7 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-version: "3"
+version: '3'
 
 vars:
   ## Version
@@ -148,7 +148,7 @@ tasks:
     vars:
       EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
-      - EXTRA_ARGS="{{.EXTRA_ARGS}}" task api:test:go 
+      - EXTRA_ARGS="{{.EXTRA_ARGS}}" task api:test:go
 
   api:test:go:
     desc: Unit test Go API code
@@ -179,8 +179,8 @@ tasks:
     cmds:
       - for:
           matrix:
-            OS: ["linux", "darwin", "windows"]
-            ARCH: ["amd64", "arm64"]
+            OS: ['linux', 'darwin', 'windows']
+            ARCH: ['amd64', 'arm64']
         cmd: |
           # Skip unsupported combinations (e.g., Windows ARM64)
           if [ "{{.ITEM.OS}}" = "windows" ] && [ "{{.ITEM.ARCH}}" = "arm64" ]; then
@@ -332,11 +332,11 @@ tasks:
       - deploy:kubernetes:setup-cluster
     vars:
       # Kind args
-      KIND_CLUSTER_NAME:  '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
-      KIND_CREATE_OPTS:   '{{ .KIND_CREATE_OPTS | default "" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # Helm args
-      HELM_NAMESPACE:   '{{ .HELM_NAMESPACE | default "default" }}'
-      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
@@ -392,9 +392,10 @@ tasks:
     desc: Deploy a bootstrap Directory server in Kubernetes
     deps:
       - deploy:kubernetes:setup-cluster
+      - deps:dirctl-bin
     vars:
       # Helm args
-      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
     cmds:
       # Generate private key if it doesn't exist
@@ -431,7 +432,7 @@ tasks:
     deps:
       - deploy:kubernetes:network:bootstrap
     vars:
-      HELM_CHART_PATH:  '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
     cmds:
       # Deploy the peer servers using Helm
@@ -507,16 +508,16 @@ tasks:
     deps:
       - task: cli:test
         vars:
-          EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-cli.out -json > {{.ROOT_DIR}}/test-report-dir-cli.json"
+          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-cli.out -json > {{.ROOT_DIR}}/test-report-dir-cli.json'
       - task: api:test
         vars:
-          EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-api.out -json > {{.ROOT_DIR}}/test-report-dir-api.json"
+          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-api.out -json > {{.ROOT_DIR}}/test-report-dir-api.json'
       - task: client:test
         vars:
-          EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-client.out -json > {{.ROOT_DIR}}/test-report-dir-client.json"
+          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-client.out -json > {{.ROOT_DIR}}/test-report-dir-client.json'
       - task: server:test
         vars:
-          EXTRA_ARGS: "-coverprofile {{.ROOT_DIR}}/coverage-dir-server.out -json > {{.ROOT_DIR}}/test-report-dir-server.json"
+          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-server.out -json > {{.ROOT_DIR}}/test-report-dir-server.json'
 
   bench:
     desc: Run bench tests on codebase
@@ -700,6 +701,15 @@ tasks:
     cmd: mkdir -p {{.BIN_DIR}}
     status:
       - test -d {{.BIN_DIR}}
+
+  deps:dirctl-bin:
+    desc: Compile dirctl binary
+    internal: true
+    run: once
+    cmds:
+      - task: cli:compile
+    status:
+      - test -f {{.BIN_DIR}}/dirctl
 
   deps:helm:
     desc: Ensure supported Helm version is installed
