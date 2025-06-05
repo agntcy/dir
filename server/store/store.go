@@ -24,7 +24,7 @@ func New(opts types.APIOptions) (types.StoreAPI, error) {
 	case LocalFS:
 		store, err := localfs.New(opts.Config().LocalFS)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create OCI store: %w", err)
+			return nil, fmt.Errorf("failed to create localfs store: %w", err)
 		}
 
 		return store, nil

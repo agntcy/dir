@@ -5,13 +5,10 @@ package types
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 )
-
-var ErrDigestNotFound = errors.New("digest does not exist")
 
 // StoreAPI handles management of content-addressable object storage.
 type StoreAPI interface {
