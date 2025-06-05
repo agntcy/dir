@@ -43,7 +43,8 @@ message ValidateRecordResponse {
 
 // Defines the types of objects that can be used to map between
 // stored objects and AgentRecord.
+// Reserved IDs must be always the same across all versions of the schema.
 enum AgentRecordObjectType {
   AGENT_RECORD_OBJECT_TYPE_UNSPECIFIED = 0; // ""
-  AGENT_RECORD_OBJECT_TYPE_OASF_AGNTCY_AGENT_V0_3_JSON = 1; // "org.agntcy.oasf.schema/agent/v0.3/json"
+  AGENT_RECORD_OBJECT_TYPE_OASF_AGNTCY_AGENT_V0_3_JSON = 0x70; // "org.agntcy.oasf.schema/agent/v0.3/json"
 }
