@@ -1,0 +1,59 @@
+from google.protobuf import empty_pb2 as _empty_pb2
+from core.v1alpha2 import record_pb2 as _record_pb2
+from routing.v1alpha2 import peer_pb2 as _peer_pb2
+from routing.v1alpha2 import query_pb2 as _query_pb2
+from google.protobuf.internal import containers as _containers
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class PublishRequest(_message.Message):
+    __slots__ = ("record_ref",)
+    RECORD_REF_FIELD_NUMBER: _ClassVar[int]
+    record_ref: _record_pb2.AgentRecordRef
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.AgentRecordRef, _Mapping]] = ...) -> None: ...
+
+class UnpublishRequest(_message.Message):
+    __slots__ = ("record_ref",)
+    RECORD_REF_FIELD_NUMBER: _ClassVar[int]
+    record_ref: _record_pb2.AgentRecordRef
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.AgentRecordRef, _Mapping]] = ...) -> None: ...
+
+class SearchRequest(_message.Message):
+    __slots__ = ("queries", "min_match_score", "limit")
+    QUERIES_FIELD_NUMBER: _ClassVar[int]
+    MIN_MATCH_SCORE_FIELD_NUMBER: _ClassVar[int]
+    LIMIT_FIELD_NUMBER: _ClassVar[int]
+    queries: _containers.RepeatedCompositeFieldContainer[_query_pb2.AgentRecordQuery]
+    min_match_score: int
+    limit: int
+    def __init__(self, queries: _Optional[_Iterable[_Union[_query_pb2.AgentRecordQuery, _Mapping]]] = ..., min_match_score: _Optional[int] = ..., limit: _Optional[int] = ...) -> None: ...
+
+class SearchResponse(_message.Message):
+    __slots__ = ("record_ref", "peer", "match_queries", "match_score")
+    RECORD_REF_FIELD_NUMBER: _ClassVar[int]
+    PEER_FIELD_NUMBER: _ClassVar[int]
+    MATCH_QUERIES_FIELD_NUMBER: _ClassVar[int]
+    MATCH_SCORE_FIELD_NUMBER: _ClassVar[int]
+    record_ref: _record_pb2.AgentRecordRef
+    peer: _peer_pb2.Peer
+    match_queries: _containers.RepeatedCompositeFieldContainer[_query_pb2.AgentRecordQuery]
+    match_score: int
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.AgentRecordRef, _Mapping]] = ..., peer: _Optional[_Union[_peer_pb2.Peer, _Mapping]] = ..., match_queries: _Optional[_Iterable[_Union[_query_pb2.AgentRecordQuery, _Mapping]]] = ..., match_score: _Optional[int] = ...) -> None: ...
+
+class ListRequest(_message.Message):
+    __slots__ = ("queries", "limit")
+    QUERIES_FIELD_NUMBER: _ClassVar[int]
+    LIMIT_FIELD_NUMBER: _ClassVar[int]
+    queries: _containers.RepeatedCompositeFieldContainer[_query_pb2.AgentRecordQuery]
+    limit: int
+    def __init__(self, queries: _Optional[_Iterable[_Union[_query_pb2.AgentRecordQuery, _Mapping]]] = ..., limit: _Optional[int] = ...) -> None: ...
+
+class ListResponse(_message.Message):
+    __slots__ = ("record_ref",)
+    RECORD_REF_FIELD_NUMBER: _ClassVar[int]
+    record_ref: _record_pb2.AgentRecordRef
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.AgentRecordRef, _Mapping]] = ...) -> None: ...
