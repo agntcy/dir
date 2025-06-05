@@ -81,7 +81,7 @@ func TestStore(t *testing.T) {
 	// lookup op
 	_, err = store.Lookup(testCtx, dgst)
 	assert.Error(t, err, "lookup should fail after delete")
-	assert.EqualError(t, err, "digest does not exist")
+	assert.ErrorContains(t, err, "object not found")
 }
 
 func BenchmarkLocalStore(b *testing.B) {
