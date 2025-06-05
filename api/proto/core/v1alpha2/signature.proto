@@ -14,7 +14,7 @@ message AgentSignature {
   string type = 1;
 
   // Base64-encoded signature data produced by the signer.
-  string data = 2;
+  string signature_data = 2;
   
   // Metadata associated with the signature.
   map<string, string> annotations = 3;

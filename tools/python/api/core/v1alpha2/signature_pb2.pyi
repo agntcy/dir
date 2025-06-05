@@ -15,7 +15,7 @@ AGENT_SIGNATURE_TYPE_UNSPECIFIED: AgentSignatureType
 AGENT_SIGNATURE_TYPE_SIGSTORE: AgentSignatureType
 
 class AgentSignature(_message.Message):
-    __slots__ = ("type", "data", "annotations", "signed_at")
+    __slots__ = ("type", "signature_data", "annotations", "signed_at")
     class AnnotationsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -24,11 +24,11 @@ class AgentSignature(_message.Message):
         value: str
         def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
     TYPE_FIELD_NUMBER: _ClassVar[int]
-    DATA_FIELD_NUMBER: _ClassVar[int]
+    SIGNATURE_DATA_FIELD_NUMBER: _ClassVar[int]
     ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
     SIGNED_AT_FIELD_NUMBER: _ClassVar[int]
     type: str
-    data: str
+    signature_data: str
     annotations: _containers.ScalarMap[str, str]
     signed_at: str
-    def __init__(self, type: _Optional[str] = ..., data: _Optional[str] = ..., annotations: _Optional[_Mapping[str, str]] = ..., signed_at: _Optional[str] = ...) -> None: ...
+    def __init__(self, type: _Optional[str] = ..., signature_data: _Optional[str] = ..., annotations: _Optional[_Mapping[str, str]] = ..., signed_at: _Optional[str] = ...) -> None: ...

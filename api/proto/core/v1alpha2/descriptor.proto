@@ -20,5 +20,5 @@ message AgentDescriptor {
   map<string, string> annotations = 2;
 
   // Data attached to the descriptor.
-  google.protobuf.Struct data = 3;
+  google.protobuf.Struct descriptor_data = 3;
 }
