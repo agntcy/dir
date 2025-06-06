@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
@@ -19,6 +18,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var logger = logging.Logger("rpc")
@@ -73,13 +74,15 @@ func (r *RPCAPI) Lookup(ctx context.Context, in *coretypes.ObjectRef, out *Looku
 
 	// validate request
 	if in == nil || out == nil {
-		return errors.New("invalid request: nil request/response")
+		return status.Error(codes.InvalidArgument, "invalid request: nil request/response") //nolint:wrapcheck
 	}
 
 	// handle lookup
 	meta, err := r.service.store.Lookup(ctx, in)
 	if err != nil {
-		return fmt.Errorf("failed to lookup: %w", err)
+		st := status.Convert(err)
+
+		return status.Errorf(st.Code(), "failed to lookup: %s", st.Message())
 	}
 
 	// write result
@@ -98,35 +101,39 @@ func (r *RPCAPI) Pull(ctx context.Context, in *coretypes.ObjectRef, out *PullRes
 
 	// validate request
 	if in == nil || out == nil {
-		return errors.New("invalid request: nil request/response")
+		return status.Error(codes.InvalidArgument, "invalid request: nil request/response") //nolint:wrapcheck
 	}
 
 	// lookup
 	meta, err := r.service.store.Lookup(ctx, in)
 	if err != nil {
-		return fmt.Errorf("failed to lookup: %w", err)
+		st := status.Convert(err)
+
+		return status.Errorf(st.Code(), "failed to lookup: %s", st.Message())
 	}
 
 	// validate lookup before pull
 	if meta.GetType() != coretypes.ObjectType_OBJECT_TYPE_AGENT.String() {
-		return errors.New("can only pull agent object")
+		return status.Errorf(codes.Internal, "can only pull agent object")
 	}
 
 	if meta.GetSize() > MaxPullSize {
-		return fmt.Errorf("object too large to pull: %d bytes", meta.GetSize())
+		return status.Errorf(codes.Internal, "object too large to pull: %d bytes", meta.GetSize())
 	}
 
 	// pull data
 	reader, err := r.service.store.Pull(ctx, meta)
 	if err != nil {
-		return fmt.Errorf("failed to pull: %w", err)
+		st := status.Convert(err)
+
+		return status.Errorf(st.Code(), "failed to pull: %s", st.Message())
 	}
 	defer reader.Close()
 
 	// read result from reader
 	data, err := io.ReadAll(io.LimitReader(reader, MaxPullSize))
 	if err != nil {
-		return fmt.Errorf("failed to read: %w", err)
+		return status.Errorf(codes.Internal, "failed to read data: %v", err)
 	}
 
 	// set output
@@ -152,7 +159,9 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<
 			Labels: in.Labels,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to lookup: %w", err)
+			st := status.Convert(err)
+
+			return status.Errorf(st.Code(), "failed to list: %s", st.Message())
 		}
 
 		// resolve response before forwarding
@@ -215,7 +224,7 @@ func (s *Service) Lookup(ctx context.Context, peer peer.ID, req *coretypes.Objec
 
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncLookup, req, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call remote peer: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to call remote peer: %v", err)
 	}
 
 	return &coretypes.ObjectRef{
@@ -233,14 +242,14 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 
 	err := s.rpcClient.CallContext(ctx, peer, DirService, DirServiceFuncPull, req, &resp)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call remote peer: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to call remote peer: %v", err)
 	}
 
 	// convert to agent
 	// TODO
 	var agent *coretypes.Agent
 	if err := json.Unmarshal(resp.Data, &agent); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to unmarshal agent data: %v", err)
 	}
 
 	return &coretypes.Object{

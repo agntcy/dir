@@ -34,7 +34,7 @@ func TestPublish_InvalidObject(t *testing.T) {
 		}, true)
 
 		assert.Error(t, err)
-		assert.Equal(t, "invalid object reference: <nil>", err.Error())
+		assert.ErrorContains(t, err, "invalid object reference")
 	})
 }
 
