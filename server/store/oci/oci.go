@@ -7,7 +7,6 @@ package oci
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,6 +20,8 @@ import (
 	"github.com/agntcy/dir/utils/logging"
 	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry/remote"
@@ -117,7 +118,9 @@ func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.
 	// push raw data
 	blobRef, blobDesc, err := s.pushData(ctx, ref, contents)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push data: %w", err)
+		st := status.Convert(err)
+
+		return nil, status.Errorf(st.Code(), "failed to push data: %s", st.Message())
 	}
 
 	// set annotations for manifest
@@ -163,13 +166,17 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 	{
 		exists, err := s.repo.Exists(ctx, ocispec.Descriptor{Digest: ocidigest.Digest(ref.GetDigest())})
 		if err != nil {
-			return nil, fmt.Errorf("failed to check if object exists: %w", err)
+			if strings.Contains(err.Error(), "invalid reference") {
+				return nil, status.Errorf(codes.InvalidArgument, "invalid object reference: %s", ref.GetDigest())
+			}
+
+			return nil, status.Errorf(codes.Internal, "failed to check if object exists: %v", err)
 		}
 
 		logger.Debug("Checked if object exists in OCI store", "exists", exists)
 
 		if !exists {
-			return nil, types.ErrDigestNotFound
+			return nil, status.Errorf(codes.NotFound, "object not found: %s", ref.GetDigest())
 		}
 	}
 
@@ -193,17 +200,17 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 		// fetch manifest from remote
 		manifestRd, err := s.repo.Fetch(ctx, manifestDesc)
 		if err != nil {
-			return ref, fmt.Errorf("failed to fetch manifest: %w", err)
+			return ref, status.Errorf(codes.Internal, "failed to fetch manifest: %v", err)
 		}
 
 		// read manifest
 		manifestData, err := io.ReadAll(manifestRd)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read manifest: %w", err)
+			return nil, status.Errorf(codes.Internal, "failed to read manifest: %v", err)
 		}
 
 		if err := json.Unmarshal(manifestData, &manifest); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal manifest: %w", err)
+			return nil, status.Errorf(codes.Internal, "failed to unmarshal manifest: %v", err)
 		}
 	}
 
@@ -216,7 +223,7 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 	// read object type from manifest metadata
 	objectType, ok := manifest.Annotations[manifestDirObjectTypeKey]
 	if !ok {
-		return nil, errors.New("not a dir-specific object")
+		return nil, status.Errorf(codes.Internal, "object type not found in manifest annotations: %s", manifestDirObjectTypeKey)
 	}
 
 	// return clean ref
@@ -246,7 +253,7 @@ func (s *store) Delete(ctx context.Context, ref *coretypes.ObjectRef) error {
 	case *remote.Repository:
 		return s.deleteFromRemoteRepository(ctx, repo, ref)
 	default:
-		return fmt.Errorf("unsupported repo type: %T", s.repo)
+		return status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
 	}
 }
 
@@ -264,7 +271,7 @@ func (s *store) deleteFromOCIStore(ctx context.Context, store *oci.Store, ref *c
 	if err != nil {
 		logger.Debug("Failed to resolve manifest", "error", err)
 	} else if err := store.Delete(ctx, manifestDesc); err != nil {
-		return fmt.Errorf("failed to delete manifest: %w", err)
+		return status.Errorf(codes.Internal, "failed to delete manifest: %v", err)
 	}
 
 	// Delete the blob associated with the descriptor.
@@ -272,7 +279,7 @@ func (s *store) deleteFromOCIStore(ctx context.Context, store *oci.Store, ref *c
 		Digest: ocidigest.Digest(ref.GetDigest()),
 	}
 	if err := store.Delete(ctx, blobDesc); err != nil {
-		return fmt.Errorf("failed to delete blob: %w", err)
+		return status.Errorf(codes.Internal, "failed to delete blob: %v", err)
 	}
 
 	return nil
@@ -286,7 +293,7 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, repo *remote.Rep
 	if err != nil {
 		logger.Debug("Failed to resolve manifest", "error", err)
 	} else if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
-		return fmt.Errorf("failed to delete manifest: %w", err)
+		return status.Errorf(codes.Internal, "failed to delete manifest: %v", err)
 	}
 
 	// Delete the blob associated with the descriptor.
@@ -294,7 +301,7 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, repo *remote.Rep
 		Digest: ocidigest.Digest(ref.GetDigest()),
 	}
 	if err := repo.Blobs().Delete(ctx, blobDesc); err != nil {
-		return fmt.Errorf("failed to delete blob: %w", err)
+		return status.Errorf(codes.Internal, "failed to delete blob: %v", err)
 	}
 
 	return nil
@@ -317,7 +324,7 @@ func (s *store) pushData(ctx context.Context, ref *coretypes.ObjectRef, rd io.Re
 
 		// return only for non-valid errors
 		if !strings.Contains(err.Error(), "already exists") {
-			return nil, ocispec.Descriptor{}, err
+			return nil, ocispec.Descriptor{}, status.Errorf(codes.Internal, "failed to push blob: %v", err)
 		}
 	}
 
