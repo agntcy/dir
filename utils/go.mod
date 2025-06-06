@@ -5,6 +5,7 @@ go 1.24.1
 require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/spf13/viper v1.20.1
+	google.golang.org/protobuf v1.36.1
 )
 
 require (
