@@ -1,0 +1,31 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1alpha2;
+
+// Signature provides the signing and verification
+// details of the agent's author.
+message AgentSignature {
+  // Type of the signature.
+  // Supports custom types.
+  // Native types are defined in the AgentSignatureType.
+  string type = 1;
+
+  // Base64-encoded signature data produced by the signer.
+  string signature_data = 2;
+  
+  // Metadata associated with the signature.
+  map<string, string> annotations = 3;
+
+  // Timestamp when signing occurred.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string signed_at = 4;
+}
+
+// AgentSignatureType defines native types of agent signatures.
+enum AgentSignatureType {
+  AGENT_SIGNATURE_TYPE_UNSPECIFIED = 0; // ""
+  AGENT_SIGNATURE_TYPE_SIGSTORE = 1;    // "sigstore"
+}

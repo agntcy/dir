@@ -1,0 +1,25 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package routing.v1alpha2;
+
+// A query to match the agent record against during discovery.
+// For example:
+//  { type: TYPE_SKILL, value: "Natural Language Processing" }
+//  { type: TYPE_LOCATOR, value: "helm-chart" }
+message AgentRecordQuery {
+  // List of supported query types.
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_SKILL = 1;
+    TYPE_LOCATOR = 2;
+  }
+
+  // The type of the query to match against.
+  Type type = 1;
+
+  // The query value to match against.
+  string value = 2;
+}

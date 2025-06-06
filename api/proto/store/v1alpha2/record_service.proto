@@ -1,0 +1,50 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package store.v1alpha2;
+
+import "core/v1alpha2/record.proto";
+import "store/v1alpha2/object.proto";
+
+// Defines an interface for handling AgentRecord from stored object.
+// This enables a consistent way to handle records irrespective of the
+// the object type (e.g., different encodings or versions).
+// This service must only be used on the client side.
+//
+// This interface tries to address two things:
+// 1. Enable compatibility between different types of 
+//    stored objects and latest AgentRecord schema.
+// 2. Ability to extract data from the object relevant for
+//    Directory APIs either in full or partial form
+//    (e.g., full AgentRecord or some form of a compact object).
+service RecordHandlerService {
+  // Converts a stored object to an AgentRecord.
+  // Supported objects can be any of AgentRecordObjectType.
+  rpc ConvertObjectToRecord(Object) returns (core.v1alpha2.AgentRecord);
+
+  // Converts an AgentRecord to a stored object.
+  // Returned object will have the lastest AgentRecordObjectType.
+  rpc ConvertRecordToObject(core.v1alpha2.AgentRecord) returns (Object);
+
+  // Validates the AgentRecord against the schema requirements.
+  // Throws an error if the record is invalid.
+  rpc ValidateRecord(core.v1alpha2.AgentRecord) returns (ValidateRecordResponse);
+}
+
+message ValidateRecordResponse {
+  // Indicates whether the record is valid or not.
+  bool is_valid = 1;
+
+  // If the record is invalid, this field contains the error message.
+  string error_message = 2;
+}
+
+// Defines the types of objects that can be used to map between
+// stored objects and AgentRecord.
+// Reserved IDs must be always the same across all versions of the schema.
+enum AgentRecordObjectType {
+  AGENT_RECORD_OBJECT_TYPE_UNSPECIFIED = 0; // ""
+  AGENT_RECORD_OBJECT_TYPE_OASF_AGNTCY_AGENT_V0_3_JSON = 0x70; // "org.agntcy.oasf.schema/agent/v0.3/json"
+}

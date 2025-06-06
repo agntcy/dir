@@ -1,0 +1,38 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package store.v1alpha2;
+
+// Object is a generic data structure that can hold
+// arbitrary data. It is used to store and associate
+// objects in a content-addressable store.
+message Object {
+  // Globally-unique content identifier of the object.
+  // Specs: https://github.com/multiformats/cid
+  string cid = 1;
+
+  // Type of the object.
+  // Can be used to identify the format or schema of the data.
+  // For example, it can be a MIME type or a custom type identifier.
+  string type = 2;
+
+  // Size of the object.
+  uint64 size = 3;
+
+  // Metadata associated with the object.
+  map<string, string> annotations = 4;
+
+  // Opaque data held by this object.
+  // Clients can use {type} property to handle processing.
+  bytes data = 5;
+}
+
+// Reference to a content-addressable typed object.
+message ObjectRef {
+  // Globally-unique content identifier (CID) of the object.
+  // Encodes both the type and version of the object schema.
+  // Specs: https://github.com/multiformats/cid
+  string cid = 1;
+}
