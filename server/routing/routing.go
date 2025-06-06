@@ -11,6 +11,7 @@ import (
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
+	"google.golang.org/grpc/status"
 )
 
 type route struct {
@@ -30,7 +31,7 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 
 	dstore, err := datastore.New(dsOpts...)
 	if err != nil {
-		return nil, err //nolint:wrapcheck
+		return nil, fmt.Errorf("failed to create routing datastore: %w", err)
 	}
 
 	// Create local router
@@ -39,7 +40,7 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 	// Create remote router
 	mainRounter.remote, err = newRemote(ctx, mainRounter, store, dstore, opts)
 	if err != nil {
-		return nil, err //nolint:wrapcheck
+		return nil, fmt.Errorf("failed to create remote routing: %w", err)
 	}
 
 	return mainRounter, nil
@@ -49,7 +50,9 @@ func (r *route) Publish(ctx context.Context, object *coretypes.Object, network b
 	// always publish data locally for archival/querying
 	err := r.local.Publish(ctx, object, network)
 	if err != nil {
-		return fmt.Errorf("failed to publish locally: %w", err)
+		st := status.Convert(err)
+
+		return status.Errorf(st.Code(), "failed to publish locally: %s", st.Message())
 	}
 
 	// publish to the network if requested
@@ -71,7 +74,9 @@ func (r *route) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan
 func (r *route) Unpublish(ctx context.Context, object *coretypes.Object, _ bool) error {
 	err := r.local.Unpublish(ctx, object)
 	if err != nil {
-		return fmt.Errorf("failed to unpublish locally: %w", err)
+		st := status.Convert(err)
+
+		return status.Errorf(st.Code(), "failed to unpublish locally: %s", st.Message())
 	}
 
 	// no need to explicitly handle unpublishing from the network

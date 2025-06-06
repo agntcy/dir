@@ -17,6 +17,8 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	ocidigest "github.com/opencontainers/go-digest"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var localLogger = logging.Logger("routing/local")
@@ -39,22 +41,22 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 
 	ref := object.GetRef()
 	if ref == nil {
-		return fmt.Errorf("invalid object reference: %v", ref)
+		return status.Errorf(codes.InvalidArgument, "invalid object reference: %v", ref)
 	}
 
 	agent := object.GetAgent()
 	if agent == nil {
-		return fmt.Errorf("invalid agent object: %v", agent)
+		return status.Errorf(codes.InvalidArgument, "invalid agent object: %v", agent)
 	}
 
 	metrics, err := loadMetrics(ctx, r.dstore)
 	if err != nil {
-		return fmt.Errorf("failed to load metrics: %w", err)
+		return status.Errorf(codes.Internal, "failed to load metrics: %v", err)
 	}
 
 	batch, err := r.dstore.Batch(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create batch: %w", err)
+		return status.Errorf(codes.Internal, "failed to create batch: %v", err)
 	}
 
 	// the key where we will save the agent
@@ -64,7 +66,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 	// this is useful to avoid updating metrics and running the same operation multiple times
 	agentExists, err := r.dstore.Has(ctx, agentKey)
 	if err != nil {
-		return fmt.Errorf("failed to check if agent exists: %w", err)
+		return status.Errorf(codes.Internal, "failed to check if agent exists: %v", err)
 	}
 
 	if agentExists {
@@ -75,7 +77,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 
 	// store agent for later lookup
 	if err := batch.Put(ctx, agentKey, nil); err != nil {
-		return fmt.Errorf("failed to put agent key: %w", err)
+		return status.Errorf(codes.Internal, "failed to put agent key: %v", err)
 	}
 
 	// keep track of all agent skills
@@ -84,7 +86,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 		// Add key with digest
 		agentLabelKey := fmt.Sprintf("%s/%s", label, ref.GetDigest())
 		if err := batch.Put(ctx, datastore.NewKey(agentLabelKey), nil); err != nil {
-			return fmt.Errorf("failed to put skill key: %w", err)
+			return status.Errorf(codes.Internal, "failed to put skill key: %v", err)
 		}
 
 		metrics.increment(label)
@@ -92,13 +94,13 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 
 	err = batch.Commit(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to commit batch: %w", err)
+		return status.Errorf(codes.Internal, "failed to commit batch: %v", err)
 	}
 
 	// sync metrics
 	err = metrics.update(ctx, r.dstore)
 	if err != nil {
-		return fmt.Errorf("failed to update metrics: %w", err)
+		return status.Errorf(codes.Internal, "failed to update metrics: %v", err)
 	}
 
 	localLogger.Info("Successfully published agent", "ref", ref)
@@ -116,7 +118,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 	// load metrics for the client
 	metrics, err := loadMetrics(ctx, r.dstore)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load metrics: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to load metrics: %v", err)
 	}
 
 	// if we sent an empty request, return us stats for the current peer
@@ -167,7 +169,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 		Filters: filters,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to query datastore: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to query datastore: %v", err)
 	}
 
 	// process items in the background, done in best effort mode
@@ -243,29 +245,29 @@ func (r *routeLocal) Unpublish(ctx context.Context, object *coretypes.Object) er
 
 	ref := object.GetRef()
 	if ref == nil {
-		return fmt.Errorf("invalid object reference: %v", ref)
+		return status.Errorf(codes.InvalidArgument, "invalid object reference: %v", ref)
 	}
 
 	agent := object.GetAgent()
 	if agent == nil {
-		return fmt.Errorf("invalid agent object: %v", agent)
+		return status.Errorf(codes.InvalidArgument, "invalid agent object: %v", agent)
 	}
 
 	// load metrics for the client
 	metrics, err := loadMetrics(ctx, r.dstore)
 	if err != nil {
-		return fmt.Errorf("failed to load metrics: %w", err)
+		return status.Errorf(codes.Internal, "failed to load metrics: %v", err)
 	}
 
 	batch, err := r.dstore.Batch(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create batch: %w", err)
+		return status.Errorf(codes.Internal, "failed to create batch: %v", err)
 	}
 
 	// get agent key and remove agent
 	agentKey := datastore.NewKey("/agents/" + ref.GetDigest())
 	if err := batch.Delete(ctx, agentKey); err != nil {
-		return fmt.Errorf("failed to delete agent key: %w", err)
+		return status.Errorf(codes.Internal, "failed to delete agent key: %v", err)
 	}
 
 	// keep track of all agent labels
@@ -275,7 +277,7 @@ func (r *routeLocal) Unpublish(ctx context.Context, object *coretypes.Object) er
 		// Delete key with digest
 		agentLabelKey := fmt.Sprintf("%s/%s", label, ref.GetDigest())
 		if err := batch.Delete(ctx, datastore.NewKey(agentLabelKey)); err != nil {
-			return fmt.Errorf("failed to delete skill key: %w", err)
+			return status.Errorf(codes.Internal, "failed to delete skill key: %v", err)
 		}
 
 		metrics.decrement(label)
@@ -283,13 +285,13 @@ func (r *routeLocal) Unpublish(ctx context.Context, object *coretypes.Object) er
 
 	err = batch.Commit(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to commit batch: %w", err)
+		return status.Errorf(codes.Internal, "failed to commit batch: %v", err)
 	}
 
 	// sync metrics
 	err = metrics.update(ctx, r.dstore)
 	if err != nil {
-		return fmt.Errorf("failed to update metrics: %w", err)
+		return status.Errorf(codes.Internal, "failed to update metrics: %v", err)
 	}
 
 	localLogger.Info("Successfully unpublished agent", "ref", ref)

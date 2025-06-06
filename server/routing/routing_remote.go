@@ -21,6 +21,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -115,13 +117,13 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ b
 	// get object CID
 	cid, err := ref.GetCID()
 	if err != nil {
-		return fmt.Errorf("failed to get object CID: %w", err)
+		return status.Errorf(codes.InvalidArgument, "failed to get object CID: %v", err)
 	}
 
 	// announce to DHT
 	err = r.server.DHT().Provide(ctx, cid, true)
 	if err != nil {
-		return fmt.Errorf("failed to announce object %v, it will be retried in the background. Reason: %w", ref.GetDigest(), err)
+		return status.Errorf(codes.Internal, "failed to announce object %v, it will be retried in the background. Reason: %v", ref.GetDigest(), err)
 	}
 
 	remoteLogger.Debug("Successfully announced object to the network", "ref", ref)
@@ -142,7 +144,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 			Labels: req.GetLabels(),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to list data on remote: %w", err)
+			return nil, status.Errorf(codes.Internal, "failed to list data on remote: %v", err)
 		}
 
 		return resp, nil
@@ -156,17 +158,17 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 		// get object CID
 		cid, err := record.GetCID()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get object CID: %w", err)
+			return nil, status.Errorf(codes.InvalidArgument, "failed to get object CID: %v", err)
 		}
 
 		// find using the DHT
 		provs, err := r.server.DHT().FindProviders(ctx, cid)
 		if err != nil {
-			return nil, fmt.Errorf("failed to find object providers: %w", err)
+			return nil, status.Errorf(codes.Internal, "failed to find object providers: %v", err)
 		}
 
 		if len(provs) == 0 {
-			return nil, fmt.Errorf("no providers found for object: %s", record.GetDigest())
+			return nil, status.Errorf(codes.NotFound, "no providers found for object: %s", record.GetDigest())
 		}
 
 		// stream results back
