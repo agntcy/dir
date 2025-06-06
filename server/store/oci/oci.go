@@ -253,7 +253,7 @@ func (s *store) Delete(ctx context.Context, ref *coretypes.ObjectRef) error {
 	case *remote.Repository:
 		return s.deleteFromRemoteRepository(ctx, repo, ref)
 	default:
-		return status.Errorf(codes.Unimplemented, "unsupported repo type: %T", s.repo)
+		return status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
 	}
 }
 
