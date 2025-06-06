@@ -182,3 +182,15 @@ dirctl list info
 # Get label summary details across the network
 dirctl list info --network
 ```
+
+### gRPC Error Codes
+
+The following table lists the gRPC error codes returned by the server APIs, along with a description of when each code is used:
+
+| Error Code                | Description                                                                                                                 |
+|---------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| `codes.InvalidArgument`   | Returned when the client provides an invalid or malformed argument, such as a missing or invalid object reference or agent. |
+| `codes.NotFound`          | Returned when the requested object does not exist in the local store or across the network.                                 |
+| `codes.FailedPrecondition`| Returned when the server environment or configuration is not in the required state (e.g., failed to create a directory or temp file, unsupported provider in config). |
+| `codes.Internal`          | Returned for unexpected internal errors, such as I/O failures, serialization errors, or other server-side issues.           |
+| `codes.Canceled`          | Returned when the operation is canceled by the client or context expires.                                                   |
