@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"io"
 	"time"
 
 	"maps"
@@ -23,47 +22,35 @@ import (
 
 const switchTimeout = 60 * time.Second
 
-func SwitchTenant(
-	out io.Writer,
-	opts *options.TenantSwitchOptions,
-	tenants []*idp.TenantResponse,
+func selectTenant(tenantsMap map[string]string, opts *options.TenantSwitchOptions) (string, error) {
+	if opts.Org != "" {
+		return opts.Org, nil
+	}
+	s := promptui.Select{
+		Label: "Organizations",
+		Items: slices.Collect(maps.Keys(tenantsMap)),
+	}
+	_, selectedTenant, err := s.Run()
+	if err != nil {
+		return "", fmt.Errorf("interactive selection error: %w", err)
+	}
+	return selectedTenant, nil
+}
+
+func canReuseToken(currentSession *sessionstore.HubSession, selectedTenant string) bool {
+	tokenData, ok := currentSession.Tokens[selectedTenant]
+	if !ok {
+		return false
+	}
+
+	return !token.IsTokenExpired(tokenData.AccessToken)
+}
+
+func performOAuthSwitch(
 	currentSession *sessionstore.HubSession,
 	oktaClient okta.Client,
-) (*sessionstore.HubSession, error) {
-	var selectedTenant string
-	if opts.Org != "" {
-		selectedTenant = opts.Org
-	}
-
-	tenantsMap := tenantsToMap(tenants)
-	if selectedTenant == "" {
-		s := promptui.Select{
-			Label: "Organizations",
-			Items: slices.Collect(maps.Keys(tenantsMap)),
-		}
-
-		var err error
-
-		_, selectedTenant, err = s.Run()
-		if err != nil {
-			return nil, fmt.Errorf("interactive selection error: %w", err)
-		}
-	}
-
-	if selectedTenant == currentSession.CurrentTenant {
-		fmt.Fprintf(out, "Already on tenant: %s\n", selectedTenant)
-
-		return currentSession, nil
-	}
-
-	if _, ok := currentSession.Tokens[selectedTenant]; ok {
-		if !token.IsTokenExpired(currentSession.Tokens[selectedTenant].AccessToken) {
-			currentSession.CurrentTenant = selectedTenant
-			fmt.Fprintf(out, "Switched to tenant: %s\n", selectedTenant)
-			return currentSession, nil
-		}
-	}
-
+	selectedTenantID string,
+) (*webserver.SessionStore, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), switchTimeout)
 	defer cancel()
 
@@ -85,7 +72,6 @@ func SwitchTenant(
 		if len(errChan) > 0 {
 			errChanErr = <-errChan
 		}
-
 		if server != nil {
 			server.Shutdown(ctx) //nolint:errcheck
 		}
@@ -93,7 +79,6 @@ func SwitchTenant(
 	}
 	defer server.Shutdown(ctx) //nolint:errcheck
 
-	selectedTenantID := tenantsMap[selectedTenant]
 	if err = browser.OpenBrowserForSwitch(currentSession.AuthConfig, selectedTenantID); err != nil {
 		return nil, fmt.Errorf("could not open browser: %w", err)
 	}
@@ -108,24 +93,60 @@ func SwitchTenant(
 		return nil, fmt.Errorf("failed to get tokens: %w", err)
 	}
 
+	return webserverSession, nil
+}
+
+func updateSessionWithNewTokens(currentSession *sessionstore.HubSession, selectedTenant string, tokens *okta.Token) {
+	currentSession.CurrentTenant = selectedTenant
+	currentSession.Tokens[selectedTenant] = &sessionstore.Tokens{
+		IDToken:      tokens.IDToken,
+		RefreshToken: tokens.RefreshToken,
+		AccessToken:  tokens.AccessToken,
+	}
+}
+
+func SwitchTenant(
+	opts *options.TenantSwitchOptions,
+	tenants []*idp.TenantResponse,
+	currentSession *sessionstore.HubSession,
+	oktaClient okta.Client,
+) (*sessionstore.HubSession, string, error) {
+	// Map tenants
+	tenantsMap := tenantsToMap(tenants)
+
+	// Select tenant
+	selectedTenant, err := selectTenant(tenantsMap, opts)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if selectedTenant == currentSession.CurrentTenant {
+		return currentSession, "Already on tenant: " + selectedTenant, nil
+	}
+
+	if canReuseToken(currentSession, selectedTenant) {
+		currentSession.CurrentTenant = selectedTenant
+		return currentSession, "Switched to tenant: " + selectedTenant, nil
+	}
+
+	selectedTenantID := tenantsMap[selectedTenant]
+	webserverSession, err := performOAuthSwitch(currentSession, oktaClient, selectedTenantID)
+	if err != nil {
+		return nil, "", err
+	}
+
 	newTenant, err := token.GetTenantNameFromToken(webserverSession.Tokens.AccessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get org name from token: %w", err)
+		return nil, "", fmt.Errorf("failed to get org name from token: %w", err)
 	}
 
 	if newTenant != selectedTenant {
-		return nil, fmt.Errorf("org name from token (%s) does not match selected org (%s). it could happen because you logged in another account then the one that has the requested org", newTenant, selectedTenant)
+		return nil, "", fmt.Errorf("org name from token (%s) does not match selected org (%s). it could happen because you logged in another account then the one that has the requested org", newTenant, selectedTenant)
 	}
 
-	currentSession.CurrentTenant = selectedTenant
-	currentSession.Tokens[selectedTenant] = &sessionstore.Tokens{
-		IDToken:      webserverSession.Tokens.IDToken,
-		RefreshToken: webserverSession.Tokens.RefreshToken,
-		AccessToken:  webserverSession.Tokens.AccessToken,
-	}
+	updateSessionWithNewTokens(currentSession, selectedTenant, webserverSession.Tokens)
 
-	fmt.Fprintf(out, "Successfully switched to %s\n", selectedTenant)
-	return currentSession, nil //nolint:wrapcheck
+	return currentSession, "Successfully switched to " + selectedTenant, nil //nolint:wrapcheck
 }
 
 func tenantsToMap(tenants []*idp.TenantResponse) map[string]string {
@@ -133,6 +154,7 @@ func tenantsToMap(tenants []*idp.TenantResponse) map[string]string {
 	for _, tenant := range tenants {
 		m[tenant.Name] = tenant.ID
 	}
+
 	return m
 }
 
@@ -140,12 +162,15 @@ func FetchUserTenants(currentSession *sessionstore.HubSession) ([]*idp.TenantRes
 	idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient())
 	accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken
 	productID := currentSession.AuthConfig.IdpProductID
+
 	idpResp, err := idpClient.GetTenantsInProduct(productID, idp.WithBearerToken(accessToken))
 	if err != nil {
 		return nil, err
 	}
+
 	if idpResp.TenantList == nil {
 		return nil, fmt.Errorf("no tenants found")
 	}
+
 	return idpResp.TenantList.Tenants, nil
 }

@@ -67,7 +67,7 @@ organization. In any other case, org could be selected from an interactive list.
 
 		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
 
-		updatedSession, err := auth.SwitchTenant(cmd.OutOrStdout(), opts, tenants, currentSession, oktaClient)
+		updatedSession, msg, err := auth.SwitchTenant(opts, tenants, currentSession, oktaClient)
 		if err != nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "An error occurred during org switch. Try to call `dirctl hub login` to solve the issue.\nError details: %v\n", err)
 
@@ -78,7 +78,9 @@ organization. In any other case, org could be selected from an interactive list.
 			return fmt.Errorf("could not save session to session store: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Successfully switched to %s\n", updatedSession.CurrentTenant)
+		if msg != "" {
+			fmt.Fprintln(cmd.OutOrStdout(), msg)
+		}
 
 		return nil
 	}
