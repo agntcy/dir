@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/agntcy/dir/hub/auth/internal/webserver/utils"
 	"github.com/agntcy/dir/hub/client/okta"
-	"github.com/agntcy/dir/hub/webserver/utils"
 )
 
 const (

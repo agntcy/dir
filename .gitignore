@@ -27,3 +27,5 @@ agent_model.json
 
 # Licensei
 .licensei.cache
+
+tmp/

@@ -7,14 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 
+	auth "github.com/agntcy/dir/hub/auth"
 	"github.com/agntcy/dir/hub/client/idp"
 	hubOptions "github.com/agntcy/dir/hub/cmd/options"
 	"github.com/agntcy/dir/hub/cmd/orgswitch"
-	ctxUtils "github.com/agntcy/dir/hub/utils/context"
-	httpUtils "github.com/agntcy/dir/hub/utils/http"
-	"github.com/agntcy/dir/hub/utils/token"
+	"github.com/agntcy/dir/hub/sessionstore"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
@@ -31,55 +29,24 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		Short:   "List organizations for logged in user",
 	}
 
-	opts := hubOptions.NewListTenantsOptions(hubOpts)
-
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
-		if err := token.ValidateAccessTokenFromContext(cmd); err != nil {
-			return errors.New("failed to validate access token. please login first or login again")
-		}
-
-		if err := token.RefreshContextTokenIfExpired(cmd, opts.HubOptions); err != nil {
-			return fmt.Errorf("failed to refresh expired access token: %w", err)
-		}
-
-		currentSession, ok := ctxUtils.GetCurrentHubSessionFromContext(cmd)
-		if !ok {
-			return errors.New("no current session found. please login first")
-		}
-
-		idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient())
-
-		accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken
-
-		tenantsResp, err := idpClient.GetTenantsInProduct(currentSession.AuthConfig.IdpProductID, idp.WithBearerToken(accessToken))
-		if err != nil {
-			return fmt.Errorf("failed to get list of orgs: %w", err)
-		}
-
-		if tenantsResp.Response.StatusCode != http.StatusOK {
-			return errors.New("failed to get list of orgs")
-		}
-
-		if ok = ctxUtils.SetTenantListForContext(cmd, tenantsResp.TenantList.Tenants); !ok {
-			return errors.New("failed to set orgs list in context")
-		}
-
+		// No-op: session is loaded and refreshed by the root command
 		return nil
 	}
 
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
-		// Get the orgs list from context
-		orgs, ok := ctxUtils.GetUserTenantsFromContext(cmd)
-		if !ok {
-			return errors.New("failed to get orgs list from context")
-		}
-
-		currentSession, ok := ctxUtils.GetCurrentHubSessionFromContext(cmd)
-		if !ok {
+		// Retrieve session from context
+		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
+		currentSession, ok := ctxSession.(*sessionstore.HubSession)
+		if !ok || currentSession == nil {
 			return errors.New("no current session found. please login first")
 		}
-
-		return runCmd(cmd, orgs, currentSession.CurrentTenant)
+		orgs, err := auth.FetchUserTenants(currentSession)
+		if err != nil {
+			return fmt.Errorf("failed to get orgs list: %w", err)
+		}
+		renderList(cmd.OutOrStdout(), orgs, currentSession.CurrentTenant)
+		return nil
 	}
 
 	cmd.AddCommand(
@@ -87,13 +54,6 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	)
 
 	return cmd
-}
-
-func runCmd(cmd *cobra.Command, tenants []*idp.TenantResponse, currentTenant string) error {
-	// Print the list of tenants
-	renderList(cmd.OutOrStdout(), tenants, currentTenant)
-
-	return nil
 }
 
 type renderFn func(int, int) string

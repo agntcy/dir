@@ -3,6 +3,11 @@
 
 package sessionstore
 
+// SessionContextKey is the key for storing/retrieving session in cmd.Context()
+type ContextKey string
+
+var SessionContextKey ContextKey = "session"
+
 type HubSessions struct {
 	HubSessions map[string]*HubSession `json:"hub_sessions"`
 }

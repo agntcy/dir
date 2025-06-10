@@ -7,18 +7,7 @@ import (
 	"errors"
 
 	"github.com/agntcy/dir/hub/sessionstore"
-	ctxUtils "github.com/agntcy/dir/hub/utils/context"
-	"github.com/spf13/cobra"
 )
-
-func ValidateAccessTokenFromContext(cmd *cobra.Command) error {
-	session, ok := ctxUtils.GetCurrentHubSessionFromContext(cmd)
-	if !ok {
-		return errors.New("could not get current hub session from context")
-	}
-
-	return ValidateAccessToken(session)
-}
 
 func ValidateAccessToken(session *sessionstore.HubSession) error {
 	if session == nil || session.CurrentTenant == "" || session.Tokens == nil {

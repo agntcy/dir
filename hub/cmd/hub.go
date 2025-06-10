@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -16,9 +17,9 @@ import (
 	"github.com/agntcy/dir/hub/cmd/push"
 	"github.com/agntcy/dir/hub/config"
 	"github.com/agntcy/dir/hub/sessionstore"
-	ctxUtils "github.com/agntcy/dir/hub/utils/context"
 	"github.com/agntcy/dir/hub/utils/file"
 	httpUtils "github.com/agntcy/dir/hub/utils/http"
+	"github.com/agntcy/dir/hub/utils/token"
 	"github.com/spf13/cobra"
 )
 
@@ -60,18 +61,19 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 			HubBackendAddress:  authConfig.HubBackendAddress,
 		}
 
-		if ok := ctxUtils.SetSessionStoreForContext(cmd, sessionStore); !ok {
-			return errors.New("failed to set session store for context")
-		}
-
-		if ok := ctxUtils.SetCurrentHubSessionForContext(cmd, currentSession); !ok {
-			return errors.New("failed to set current hub session for context")
-		}
-
+		// Construct Okta client for token refresh
 		oktaClient := okta.NewClient(authConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
-		if ok := ctxUtils.SetOktaClientForContext(cmd, oktaClient); !ok {
-			return errors.New("failed to set okta client for context")
+		if err := token.RefreshTokenIfExpired(opts.ServerAddress, currentSession, sessionStore, oktaClient); err != nil {
+			return fmt.Errorf("failed to refresh expired access token: %w", err)
 		}
+
+		if err := sessionStore.SaveHubSession(opts.ServerAddress, currentSession); err != nil {
+			return fmt.Errorf("failed to save updated session with auth config: %w", err)
+		}
+
+		// Attach the session to cmd.Context()
+		ctx := context.WithValue(cmd.Context(), sessionstore.SessionContextKey, currentSession)
+		cmd.SetContext(ctx)
 
 		return nil
 	}
