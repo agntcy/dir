@@ -36,8 +36,10 @@ organization. In any other case, org could be selected from an interactive list.
 		// Retrieve session from context
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
+
 		if !ok || currentSession == nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "Could not get current session\n")
+
 			return fmt.Errorf("could not get current session")
 		}
 		// Load session store for saving
@@ -47,15 +49,20 @@ organization. In any other case, org could be selected from an interactive list.
 		idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient())
 		accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken
 		productID := currentSession.AuthConfig.IdpProductID
+
 		idpResp, err := idpClient.GetTenantsInProduct(productID, idp.WithBearerToken(accessToken))
 		if err != nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "Could not fetch tenants: %v\n", err)
+
 			return err
 		}
+
 		if idpResp.TenantList == nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "No tenants found for this user.\n")
+
 			return fmt.Errorf("no tenants found")
 		}
+
 		tenants := idpResp.TenantList.Tenants
 
 		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
@@ -63,8 +70,10 @@ organization. In any other case, org could be selected from an interactive list.
 		_, err = auth.SwitchTenant(cmd.OutOrStdout(), opts, tenants, currentSession, sessionStore, oktaClient)
 		if err != nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "An error occurred during org switch. Try to call `dirctl hub login` to solve the issue.\nError details: %v\n", err)
+
 			return err
 		}
+
 		return nil
 	}
 

@@ -13,6 +13,16 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+// addAuthToContext adds the authorization header to the context if an access token is available.
+func addAuthToContext(ctx context.Context, session *sessionstore.HubSession) context.Context {
+	if session != nil && session.Tokens != nil && session.CurrentTenant != "" {
+		if t, ok := session.Tokens[session.CurrentTenant]; ok && t != nil && t.AccessToken != "" {
+			return metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+t.AccessToken))
+		}
+	}
+	return ctx
+}
+
 // PullAgent pulls an agent from the hub and returns the pretty-printed JSON.
 func PullAgent(
 	ctx context.Context,
@@ -20,11 +30,7 @@ func PullAgent(
 	agentID *v1alpha1.AgentIdentifier,
 	session *sessionstore.HubSession,
 ) ([]byte, error) {
-	if session != nil && session.Tokens != nil && session.CurrentTenant != "" {
-		if t, ok := session.Tokens[session.CurrentTenant]; ok && t != nil && t.AccessToken != "" {
-			ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+session.Tokens[session.CurrentTenant].AccessToken))
-		}
-	}
+	ctx = addAuthToContext(ctx, session)
 
 	model, err := hc.PullAgent(ctx, &v1alpha1.PullAgentRequest{
 		Id: agentID,
@@ -89,11 +95,7 @@ func PushAgent(
 	repoID any,
 	session *sessionstore.HubSession,
 ) (*v1alpha1.PushAgentResponse, error) {
-	if session != nil && session.Tokens != nil && session.CurrentTenant != "" {
-		if t, ok := session.Tokens[session.CurrentTenant]; ok && t != nil && t.AccessToken != "" {
-			ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+session.Tokens[session.CurrentTenant].AccessToken))
-		}
-	}
+	ctx = addAuthToContext(ctx, session)
 	resp, err := hc.PushAgent(ctx, agentBytes, repoID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to push agent: %w", err)

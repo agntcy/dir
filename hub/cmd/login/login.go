@@ -31,6 +31,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		// Retrieve session from context
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
+
 		if !ok || currentSession == nil {
 			return fmt.Errorf("failed to get current session from context")
 		}
@@ -39,7 +40,18 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		// Construct Okta client
 		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, http.CreateSecureHTTPClient())
 		// Call auth.Login with loaded objects
-		return auth.Login(cmd.OutOrStdout(), opts, oktaClient, sessionStore, currentSession)
+		updatedSession, err := auth.Login(opts, oktaClient, sessionStore, currentSession)
+		if err != nil {
+			return err
+		}
+
+		if err := sessionStore.SaveHubSession(opts.ServerAddress, updatedSession); err != nil {
+			return fmt.Errorf("failed to save tokens: %w", err)
+		}
+
+		fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Agent Hub\nAddress: %s\nUser: %s\nOrganization: %s\n", opts.ServerAddress, updatedSession.User, updatedSession.CurrentTenant)
+
+		return nil
 	}
 
 	return cmd

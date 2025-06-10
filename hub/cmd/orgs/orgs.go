@@ -29,23 +29,22 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		Short:   "List organizations for logged in user",
 	}
 
-	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
-		// No-op: session is loaded and refreshed by the root command
-		return nil
-	}
-
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		// Retrieve session from context
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
+
 		if !ok || currentSession == nil {
 			return errors.New("no current session found. please login first")
 		}
+
 		orgs, err := auth.FetchUserTenants(currentSession)
 		if err != nil {
 			return fmt.Errorf("failed to get orgs list: %w", err)
 		}
+
 		renderList(cmd.OutOrStdout(), orgs, currentSession.CurrentTenant)
+
 		return nil
 	}
 

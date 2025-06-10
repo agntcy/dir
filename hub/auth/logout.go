@@ -2,7 +2,6 @@ package auth
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/agntcy/dir/hub/client/okta"
@@ -11,7 +10,6 @@ import (
 )
 
 func Logout(
-	outStream io.Writer,
 	opts *options.HubOptions,
 	currentSession *sessionstore.HubSession,
 	sessionStore sessionstore.SessionStore,
@@ -25,7 +23,6 @@ func Logout(
 		return fmt.Errorf("failed to remove session: %w", err)
 	}
 
-	fmt.Fprintln(outStream, "Successfully logged out from Agent Hub")
 	return nil
 }
 

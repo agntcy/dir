@@ -5,6 +5,7 @@ package logout
 
 import (
 	"errors"
+	"fmt"
 
 	auth "github.com/agntcy/dir/hub/auth"
 	"github.com/agntcy/dir/hub/client/okta"
@@ -25,13 +26,21 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 			// Retrieve session from context
 			ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 			currentSession, ok := ctxSession.(*sessionstore.HubSession)
+
 			if !ok || currentSession == nil {
 				return ErrSecretNotFoundForAddress
 			}
 			// Load session store for removal
 			sessionStore := sessionstore.NewFileSessionStore(fileUtils.GetSessionFilePath())
 			oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
-			return auth.Logout(cmd.OutOrStdout(), opts, currentSession, sessionStore, oktaClient)
+
+			err := auth.Logout(opts, currentSession, sessionStore, oktaClient)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "Successfully logged out from Agent Hub")
+
+			return nil
 		},
 		TraverseChildren: true,
 	}
