@@ -61,10 +61,12 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 			HubBackendAddress:  authConfig.HubBackendAddress,
 		}
 
-		// Construct Okta client for token refresh
-		oktaClient := okta.NewClient(authConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
-		if err := token.RefreshTokenIfExpired(opts.ServerAddress, currentSession, sessionStore, oktaClient); err != nil {
-			return fmt.Errorf("failed to refresh expired access token: %w", err)
+		// Only refresh token if not running login or logout
+		if cmd.Name() != "login" && cmd.Name() != "logout" {
+			oktaClient := okta.NewClient(authConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
+			if err := token.RefreshTokenIfExpired(opts.ServerAddress, currentSession, sessionStore, oktaClient); err != nil {
+				return fmt.Errorf("failed to refresh expired access token: %w", err)
+			}
 		}
 
 		if err := sessionStore.SaveHubSession(opts.ServerAddress, currentSession); err != nil {

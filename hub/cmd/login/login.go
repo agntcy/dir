@@ -40,7 +40,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		// Construct Okta client
 		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, http.CreateSecureHTTPClient())
 		// Call auth.Login with loaded objects
-		updatedSession, err := auth.Login(opts, oktaClient, sessionStore, currentSession)
+		updatedSession, err := auth.Login(opts, oktaClient, currentSession)
 		if err != nil {
 			return err
 		}

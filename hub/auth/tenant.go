@@ -28,9 +28,8 @@ func SwitchTenant(
 	opts *options.TenantSwitchOptions,
 	tenants []*idp.TenantResponse,
 	currentSession *sessionstore.HubSession,
-	sessionStore sessionstore.SessionStore,
 	oktaClient okta.Client,
-) (string, error) {
+) (*sessionstore.HubSession, error) {
 	var selectedTenant string
 	if opts.Org != "" {
 		selectedTenant = opts.Org
@@ -44,25 +43,24 @@ func SwitchTenant(
 		}
 
 		var err error
+
 		_, selectedTenant, err = s.Run()
 		if err != nil {
-			return "", fmt.Errorf("interactive selection error: %w", err)
+			return nil, fmt.Errorf("interactive selection error: %w", err)
 		}
 	}
 
 	if selectedTenant == currentSession.CurrentTenant {
 		fmt.Fprintf(out, "Already on tenant: %s\n", selectedTenant)
-		return selectedTenant, nil
+
+		return currentSession, nil
 	}
 
 	if _, ok := currentSession.Tokens[selectedTenant]; ok {
 		if !token.IsTokenExpired(currentSession.Tokens[selectedTenant].AccessToken) {
 			currentSession.CurrentTenant = selectedTenant
-			if err := sessionStore.SaveHubSession(opts.ServerAddress, currentSession); err != nil {
-				return "", fmt.Errorf("could not save session: %w", err)
-			}
 			fmt.Fprintf(out, "Switched to tenant: %s\n", selectedTenant)
-			return selectedTenant, nil
+			return currentSession, nil
 		}
 	}
 
@@ -87,16 +85,17 @@ func SwitchTenant(
 		if len(errChan) > 0 {
 			errChanErr = <-errChan
 		}
+
 		if server != nil {
 			server.Shutdown(ctx) //nolint:errcheck
 		}
-		return "", fmt.Errorf("could not start local webserver: %w. error from webserver: %w", err, errChanErr)
+		return nil, fmt.Errorf("could not start local webserver: %w. error from webserver: %w", err, errChanErr)
 	}
 	defer server.Shutdown(ctx) //nolint:errcheck
 
 	selectedTenantID := tenantsMap[selectedTenant]
 	if err = browser.OpenBrowserForSwitch(currentSession.AuthConfig, selectedTenantID); err != nil {
-		return "", fmt.Errorf("could not open browser: %w", err)
+		return nil, fmt.Errorf("could not open browser: %w", err)
 	}
 
 	select {
@@ -106,16 +105,16 @@ func SwitchTenant(
 	}
 
 	if err != nil {
-		return "", fmt.Errorf("failed to get tokens: %w", err)
+		return nil, fmt.Errorf("failed to get tokens: %w", err)
 	}
 
 	newTenant, err := token.GetTenantNameFromToken(webserverSession.Tokens.AccessToken)
 	if err != nil {
-		return "", fmt.Errorf("failed to get org name from token: %w", err)
+		return nil, fmt.Errorf("failed to get org name from token: %w", err)
 	}
 
 	if newTenant != selectedTenant {
-		return "", fmt.Errorf("org name from token (%s) does not match selected org (%s). it could happen because you logged in another account then the one that has the requested org", newTenant, selectedTenant)
+		return nil, fmt.Errorf("org name from token (%s) does not match selected org (%s). it could happen because you logged in another account then the one that has the requested org", newTenant, selectedTenant)
 	}
 
 	currentSession.CurrentTenant = selectedTenant
@@ -125,12 +124,8 @@ func SwitchTenant(
 		AccessToken:  webserverSession.Tokens.AccessToken,
 	}
 
-	if err = sessionStore.SaveHubSession(opts.ServerAddress, currentSession); err != nil {
-		return "", fmt.Errorf("could not save session to session store: %w", err)
-	}
-
 	fmt.Fprintf(out, "Successfully switched to %s\n", selectedTenant)
-	return selectedTenant, nil //nolint:wrapcheck
+	return currentSession, nil //nolint:wrapcheck
 }
 
 func tenantsToMap(tenants []*idp.TenantResponse) map[string]string {

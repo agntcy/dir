@@ -19,7 +19,6 @@ const timeout = 60 * time.Second
 func Login(
 	opts *options.LoginOptions,
 	oktaClient okta.Client,
-	sessionStore sessionstore.SessionStore,
 	currentSession *sessionstore.HubSession,
 ) (*sessionstore.HubSession, error) {
 	// Set up the webserver
