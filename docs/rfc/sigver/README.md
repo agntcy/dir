@@ -8,7 +8,6 @@
     - [Verification Process](#verification-process)
       - [High-Level Overview](#high-level-overview-1)
       - [Detailed Step-by-Step Flow](#detailed-step-by-step-flow-1)
-    - [Verification Flow](#verification-flow)
     - [API Calls](#api-calls)
       - [Fulcio (Certificate Authority)](#fulcio-certificate-authority)
       - [Rekor (Transparency Log)](#rekor-transparency-log)
@@ -110,8 +109,6 @@ sequenceDiagram
 
 
 #### Detailed Step-by-Step Flow
-
-### Verification Flow
 
 ```mermaid
 sequenceDiagram
