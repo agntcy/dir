@@ -45,6 +45,11 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
+
+	// Start server
+	if err := server.start(ctx); err != nil {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
 	defer server.Close()
 
 	// Wait for deactivation
@@ -93,11 +98,6 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 
 	// Register server
 	reflection.Register(server.grpcServer)
-
-	// Start server
-	if err := server.start(ctx); err != nil {
-		return nil, fmt.Errorf("failed to start server: %w", err)
-	}
 
 	return server, nil
 }
