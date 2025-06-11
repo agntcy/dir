@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
