@@ -5,9 +5,6 @@ syntax = "proto3";
 
 package store.v1alpha2;
 
-import "core/v1alpha1/agent.proto";
-import "core/v1alpha2/record.proto";
-
 // Reference to a content-addressable object.
 message ObjectRef {
   // Globally-unique content identifier (CID) of the object.
@@ -20,49 +17,38 @@ message ObjectRef {
 // objects in a content-addressable store.
 message Object {
   // Globally-unique content identifier of the object.
+  // Encodes fully-qualified type of the object as part of "codec".
   // Specs: https://github.com/multiformats/cid
   string cid = 1;
 
+  // Type of the object.
+  // Can be extracted from CID.
+  ObjectType type = 2;
+
   // Metadata associated with the object.
-  map<string, string> annotations = 2;
+  map<string, string> annotations = 3;
 
-  // Schema type of the object.
-  // Can be used to identify the format of the data.
-  string schema_type = 3;
+  // Creation timestamp of the object in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string created_at = 4;
 
-  // Schema version of the object.
-  // This is used to ensure backward and forward compatibility.
-  string schema_version = 4;
+  // Size of the object in bytes.
+  uint64 size = 5;
 
   // Opaque data held by this object.
-  // Clients can use schema details to handle processing.
-  ObjectData object_data = 5;
+  // Clients can use {type} to handle processing.
+  optional bytes data = 6;
 }
 
-// ObjectSchemaType defines a list of supported schema types.
-// Serves as a placeholder for required schema types
-// that can be used to identify the format of the data.
-// Across APIs it is only used in a string format.
-enum ObjectSchemaType {
-  OBJECT_SCHEMA_TYPE_UNSPECIFIED = 0; // ""
-  OBJECT_SCHEMA_TYPE_RAW = 1;         // "raw"
-  OBJECT_SCHEMA_TYPE_RECORD = 2;      // "oasf.agntcy.oasf.schema/objects/record"
-}
+// Defines a list of supported object data types.
+// Some values may be reserved for future use.
+// These types are used as a "codec" in the CID.
+enum ObjectType {
+  OBJECT_TYPE_UNSPECIFIED = 0; // invalid type, should not be used
 
-// ObjectData is a wrapper for the data held by an object.
-// This allows for flexibility in how data is stored and retrieved.
-message ObjectData {
-  oneof data {
-    bytes raw = 1; // Raw binary data, used for unstructured data.
-    RecordObjectData record = 2; // Record data, used for structured agent records.
-  }
-}
+  // Common Object Types
+  OBJECT_TYPE_RAW = 1;
 
-// Unifies different versions of agent records data into a single message.
-// Handles compatibility for different versions of the agent record schema.
-message RecordObjectData {
-  oneof record {
-    core.v1alpha1.Agent   record_v1alpha1 = 1;
-    core.v1alpha2.Record  record_v1alpha2 = 2;
-  }
+  // OASF Record Types (reserved)
+  reserved 1000 to 10000;
 }

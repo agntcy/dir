@@ -11,17 +11,18 @@ import "google/protobuf/struct.proto";
 // about an agent to the record. For example, application-specific 
 // details can be provided using an extension.
 message Extension {
+  // Metadata associated with the extension.
+  map<string, string> annotations = 1;
+
   // Name of the extension.
   // Can be used as a fully qualified name.
   // For example, "org.agntcy.oasf.schema/features/<feature-name>"
-  string name = 1;
+  string name = 2;
 
   // Version of the extension.
-  optional string version = 2;
-
-  // Metadata associated with the extension.
-  map<string, string> annotations = 3;
+  string version = 3;
 
   // Data attached to the extension.
-  google.protobuf.Struct extension_data = 4;
+  // Usually a JSON-embedded object.
+  google.protobuf.Struct data = 4;
 }

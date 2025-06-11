@@ -22,11 +22,9 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from core.v1alpha1 import agent_pb2 as core_dot_v1alpha1_dot_agent__pb2
-from core.v1alpha2 import record_pb2 as core_dot_v1alpha2_dot_record__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bstore/v1alpha2/object.proto\x12\x0estore.v1alpha2\x1a\x19\x63ore/v1alpha1/agent.proto\x1a\x1a\x63ore/v1alpha2/record.proto\"\x1d\n\tObjectRef\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xaa\x02\n\x06Object\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\x12I\n\x0b\x61nnotations\x18\x02 \x03(\x0b\x32\'.store.v1alpha2.Object.AnnotationsEntryR\x0b\x61nnotations\x12\x1f\n\x0bschema_type\x18\x03 \x01(\tR\nschemaType\x12%\n\x0eschema_version\x18\x04 \x01(\tR\rschemaVersion\x12;\n\x0bobject_data\x18\x05 \x01(\x0b\x32\x1a.store.v1alpha2.ObjectDataR\nobjectData\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"d\n\nObjectData\x12\x12\n\x03raw\x18\x01 \x01(\x0cH\x00R\x03raw\x12:\n\x06record\x18\x02 \x01(\x0b\x32 .store.v1alpha2.RecordObjectDataH\x00R\x06recordB\x06\n\x04\x64\x61ta\"\x9f\x01\n\x10RecordObjectData\x12?\n\x0frecord_v1alpha1\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentH\x00R\x0erecordV1alpha1\x12@\n\x0frecord_v1alpha2\x18\x02 \x01(\x0b\x32\x15.core.v1alpha2.RecordH\x00R\x0erecordV1alpha2B\x08\n\x06record*q\n\x10ObjectSchemaType\x12\"\n\x1eOBJECT_SCHEMA_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n\x16OBJECT_SCHEMA_TYPE_RAW\x10\x01\x12\x1d\n\x19OBJECT_SCHEMA_TYPE_RECORD\x10\x02\x42\xb2\x01\n\x12\x63om.store.v1alpha2B\x0bObjectProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha2\xca\x02\x0eStore\\V1alpha2\xe2\x02\x1aStore\\V1alpha2\\GPBMetadata\xea\x02\x0fStore::V1alpha2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bstore/v1alpha2/object.proto\x12\x0estore.v1alpha2\"\x1d\n\tObjectRef\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xaa\x02\n\x06Object\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\x12.\n\x04type\x18\x02 \x01(\x0e\x32\x1a.store.v1alpha2.ObjectTypeR\x04type\x12I\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32\'.store.v1alpha2.Object.AnnotationsEntryR\x0b\x61nnotations\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x12\x12\n\x04size\x18\x05 \x01(\x04R\x04size\x12\x17\n\x04\x64\x61ta\x18\x06 \x01(\x0cH\x00R\x04\x64\x61ta\x88\x01\x01\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x07\n\x05_data*F\n\nObjectType\x12\x1b\n\x17OBJECT_TYPE_UNSPECIFIED\x10\x00\x12\x13\n\x0fOBJECT_TYPE_RAW\x10\x01\"\x06\x08\xe8\x07\x10\x90NB\xb2\x01\n\x12\x63om.store.v1alpha2B\x0bObjectProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha2\xca\x02\x0eStore\\V1alpha2\xe2\x02\x1aStore\\V1alpha2\\GPBMetadata\xea\x02\x0fStore::V1alpha2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,16 +34,12 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._serialized_options = b'\n\022com.store.v1alpha2B\013ObjectProtoP\001Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\242\002\003SXX\252\002\016Store.V1alpha2\312\002\016Store\\V1alpha2\342\002\032Store\\V1alpha2\\GPBMetadata\352\002\017Store::V1alpha2'
   _globals['_OBJECT_ANNOTATIONSENTRY']._loaded_options = None
   _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_options = b'8\001'
-  _globals['_OBJECTSCHEMATYPE']._serialized_start=698
-  _globals['_OBJECTSCHEMATYPE']._serialized_end=811
-  _globals['_OBJECTREF']._serialized_start=102
-  _globals['_OBJECTREF']._serialized_end=131
-  _globals['_OBJECT']._serialized_start=134
-  _globals['_OBJECT']._serialized_end=432
-  _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_start=370
-  _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_end=432
-  _globals['_OBJECTDATA']._serialized_start=434
-  _globals['_OBJECTDATA']._serialized_end=534
-  _globals['_RECORDOBJECTDATA']._serialized_start=537
-  _globals['_RECORDOBJECTDATA']._serialized_end=696
+  _globals['_OBJECTTYPE']._serialized_start=379
+  _globals['_OBJECTTYPE']._serialized_end=449
+  _globals['_OBJECTREF']._serialized_start=47
+  _globals['_OBJECTREF']._serialized_end=76
+  _globals['_OBJECT']._serialized_start=79
+  _globals['_OBJECT']._serialized_end=377
+  _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_start=306
+  _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_end=368
 # @@protoc_insertion_point(module_scope)

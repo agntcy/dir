@@ -8,7 +8,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Extension(_message.Message):
-    __slots__ = ("name", "version", "annotations", "extension_data")
+    __slots__ = ("annotations", "name", "version", "data")
     class AnnotationsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -16,12 +16,12 @@ class Extension(_message.Message):
         key: str
         value: str
         def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     VERSION_FIELD_NUMBER: _ClassVar[int]
-    ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
-    EXTENSION_DATA_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    annotations: _containers.ScalarMap[str, str]
     name: str
     version: str
-    annotations: _containers.ScalarMap[str, str]
-    extension_data: _struct_pb2.Struct
-    def __init__(self, name: _Optional[str] = ..., version: _Optional[str] = ..., annotations: _Optional[_Mapping[str, str]] = ..., extension_data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    data: _struct_pb2.Struct
+    def __init__(self, annotations: _Optional[_Mapping[str, str]] = ..., name: _Optional[str] = ..., version: _Optional[str] = ..., data: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...

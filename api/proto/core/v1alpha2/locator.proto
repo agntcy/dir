@@ -8,17 +8,17 @@ package core.v1alpha2;
 // Locator points to the source where agent can be found at.
 // For example, a locator can be a link to a helm chart.
 message Locator {
+  // Metadata associated with the locator.
+  map<string, string> annotations = 1;
+
   // Type of the locator.
   // Supports custom types.
   // Native types are defined in the LocatorType.
-  string type = 1;
+  string type = 2;
   
   // Location where the source can be found at.
   // Specs: https://datatracker.ietf.org/doc/html/rfc1738
-  string url = 2;
-
-  // Metadata associated with the locator.
-  map<string, string> annotations = 3;
+  string url = 3;
 
   // Size of the source in bytes pointed by the {url} property.
   optional uint64 size = 4;

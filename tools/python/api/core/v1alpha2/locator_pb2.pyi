@@ -23,7 +23,7 @@ LOCATOR_TYPE_SOURCE_CODE: LocatorType
 LOCATOR_TYPE_BINARY: LocatorType
 
 class Locator(_message.Message):
-    __slots__ = ("type", "url", "annotations", "size", "digest")
+    __slots__ = ("annotations", "type", "url", "size", "digest")
     class AnnotationsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -31,14 +31,14 @@ class Locator(_message.Message):
         key: str
         value: str
         def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
     TYPE_FIELD_NUMBER: _ClassVar[int]
     URL_FIELD_NUMBER: _ClassVar[int]
-    ANNOTATIONS_FIELD_NUMBER: _ClassVar[int]
     SIZE_FIELD_NUMBER: _ClassVar[int]
     DIGEST_FIELD_NUMBER: _ClassVar[int]
+    annotations: _containers.ScalarMap[str, str]
     type: str
     url: str
-    annotations: _containers.ScalarMap[str, str]
     size: int
     digest: str
-    def __init__(self, type: _Optional[str] = ..., url: _Optional[str] = ..., annotations: _Optional[_Mapping[str, str]] = ..., size: _Optional[int] = ..., digest: _Optional[str] = ...) -> None: ...
+    def __init__(self, annotations: _Optional[_Mapping[str, str]] = ..., type: _Optional[str] = ..., url: _Optional[str] = ..., size: _Optional[int] = ..., digest: _Optional[str] = ...) -> None: ...

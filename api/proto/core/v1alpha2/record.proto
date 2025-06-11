@@ -25,20 +25,20 @@ import "core/v1alpha2/signature.proto";
 // All records are referenced by a globally-unique content identifier (CID).
 // Specs: https://github.com/multiformats/cid
 message Record {
+  // Metadata associated with the record.
+  map<string, string> annotations = 1;
+
   // Name of the agent.
-  string name = 1;
+  string name = 2;
 
   // Version of the agent.
-  string version = 2;
+  string version = 3;
 
   // Description of the agent.
-  string description = 3;
+  string description = 4;
 
   // List of agent’s authors, e.g. in the form of `author-name <author-email>`.
-  repeated string authors = 4;
-
-  // Additional metadata associated with the agent.
-  map<string, string> annotations = 5;
+  repeated string authors = 5;
 
   // Creation timestamp of the agent in the RFC3339 format.
   // Specs: https://www.rfc-editor.org/rfc/rfc3339.html

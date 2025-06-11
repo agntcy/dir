@@ -8,12 +8,12 @@ package core.v1alpha2;
 // A specific skills that an agent is capable of performing.
 // Supported skills: https://schema.oasf.agntcy.org/skills
 message Skill {
+  // Metadata associated with the skill.
+  map<string, string> annotations = 1;
+
   // Unique identifier of the skill.
-  uint32 id = 1;
+  uint32 id = 2;
 
   // Human-readable name of the skill.
-  string name = 2;
-  
-  // Additional metadata associated with the skill.
-  map<string, string> annotations = 3;
+  string name = 3;
 }

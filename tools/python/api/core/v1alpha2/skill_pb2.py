@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19\x63ore/v1alpha2/skill.proto\x12\rcore.v1alpha2\"\xb4\x01\n\x05Skill\x12\x0e\n\x02id\x18\x01 \x01(\rR\x02id\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12G\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32%.core.v1alpha2.Skill.AnnotationsEntryR\x0b\x61nnotations\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\xaa\x01\n\x11\x63om.core.v1alpha2B\nSkillProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha2;corev1alpha2\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha2\xca\x02\rCore\\V1alpha2\xe2\x02\x19\x43ore\\V1alpha2\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19\x63ore/v1alpha2/skill.proto\x12\rcore.v1alpha2\"\xb4\x01\n\x05Skill\x12G\n\x0b\x61nnotations\x18\x01 \x03(\x0b\x32%.core.v1alpha2.Skill.AnnotationsEntryR\x0b\x61nnotations\x12\x0e\n\x02id\x18\x02 \x01(\rR\x02id\x12\x12\n\x04name\x18\x03 \x01(\tR\x04name\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\xaa\x01\n\x11\x63om.core.v1alpha2B\nSkillProtoP\x01Z4github.com/agntcy/dir/api/core/v1alpha2;corev1alpha2\xa2\x02\x03\x43XX\xaa\x02\rCore.V1alpha2\xca\x02\rCore\\V1alpha2\xe2\x02\x19\x43ore\\V1alpha2\\GPBMetadata\xea\x02\x0e\x43ore::V1alpha2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
