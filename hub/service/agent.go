@@ -24,6 +24,7 @@ func addAuthToContext(ctx context.Context, session *sessionstore.HubSession) con
 			return metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+t.AccessToken))
 		}
 	}
+
 	return ctx
 }
 
@@ -91,6 +92,7 @@ func ParseRepoTagID(id string) any {
 	if _, err := uuid.Parse(id); err == nil {
 		return &v1alpha1.PushAgentRequest_RepositoryId{RepositoryId: id}
 	}
+
 	return &v1alpha1.PushAgentRequest_RepositoryName{RepositoryName: id}
 }
 
@@ -108,5 +110,6 @@ func PushAgent(
 	if err != nil {
 		return nil, fmt.Errorf("failed to push agent: %w", err)
 	}
+
 	return resp, nil
 }

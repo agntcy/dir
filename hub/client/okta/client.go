@@ -122,27 +122,27 @@ type Client interface {
 	RefreshToken(*RefreshTokenRequest) (*RefreshTokenResponse, error)
 }
 
-// idpClient implements the Client interface for Okta.
-type idpClient struct {
+// IdpClient implements the Client interface for Okta.
+type IdpClient struct {
 	BaseURL string
 
 	httpClient *http.Client
 }
 
 // NewClient creates a new Okta client with the given base URL and HTTP client.
-func NewClient(baseURL string, httpClient *http.Client) *idpClient {
+func NewClient(baseURL string, httpClient *http.Client) *IdpClient {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 
-	return &idpClient{
+	return &IdpClient{
 		BaseURL:    baseURL,
 		httpClient: httpClient,
 	}
 }
 
 // RequestToken exchanges an authorization code for tokens.
-func (i *idpClient) RequestToken(request *RequestTokenRequest) (*RequestTokenResponse, error) {
+func (i *IdpClient) RequestToken(request *RequestTokenRequest) (*RequestTokenResponse, error) {
 	data := url.Values{}
 	data.Set(paramGrantType, "authorization_code")
 	data.Set(paramClientID, request.ClientID)
@@ -192,7 +192,7 @@ func (i *idpClient) RequestToken(request *RequestTokenRequest) (*RequestTokenRes
 }
 
 // AuthorizeURL constructs the authorization URL for the OAuth flow.
-func (i *idpClient) AuthorizeURL(r *AuthorizeRequest) string {
+func (i *IdpClient) AuthorizeURL(r *AuthorizeRequest) string {
 	params := url.Values{}
 	params.Add(paramClientID, r.ClientID)
 	params.Add(paramCodeChallenge, r.S256Challenge)
@@ -207,7 +207,7 @@ func (i *idpClient) AuthorizeURL(r *AuthorizeRequest) string {
 }
 
 // Logout revokes the current session's ID token.
-func (i *idpClient) Logout(request *LogoutRequest) (*LogoutResponse, error) {
+func (i *IdpClient) Logout(request *LogoutRequest) (*LogoutResponse, error) {
 	data := url.Values{}
 	data.Set("id_token_hint", request.IDToken)
 
@@ -238,7 +238,7 @@ func (i *idpClient) Logout(request *LogoutRequest) (*LogoutResponse, error) {
 }
 
 // RefreshToken exchanges a refresh token for new tokens.
-func (i *idpClient) RefreshToken(req *RefreshTokenRequest) (*RefreshTokenResponse, error) {
+func (i *IdpClient) RefreshToken(req *RefreshTokenRequest) (*RefreshTokenResponse, error) {
 	data := url.Values{}
 	data.Set(paramGrantType, "refresh_token")
 	data.Set(paramClientID, req.ClientID)

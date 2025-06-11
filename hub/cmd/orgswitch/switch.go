@@ -7,7 +7,6 @@ package orgswitch
 
 import (
 	"fmt"
-	"time"
 
 	auth "github.com/agntcy/dir/hub/auth"
 	idp "github.com/agntcy/dir/hub/client/idp"
@@ -18,8 +17,6 @@ import (
 	httpUtils "github.com/agntcy/dir/hub/utils/http"
 	"github.com/spf13/cobra"
 )
-
-const timeout = 60 * time.Second
 
 // NewCommand creates the "switch" subcommand for switching between organizations (tenants).
 // It enables the user to select or specify an organization to switch to, updates the session, and saves it.

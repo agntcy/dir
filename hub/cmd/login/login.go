@@ -6,7 +6,6 @@ package login
 
 import (
 	"fmt"
-	"time"
 
 	auth "github.com/agntcy/dir/hub/auth"
 	"github.com/agntcy/dir/hub/client/okta"
@@ -16,8 +15,6 @@ import (
 	"github.com/agntcy/dir/hub/utils/http"
 	"github.com/spf13/cobra"
 )
-
-const timeout = 60 * time.Second
 
 // NewCommand creates the "login" command for the Agent Hub CLI.
 // It handles user authentication, session creation, and token storage.
@@ -44,7 +41,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		// Construct Okta client
 		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, http.CreateSecureHTTPClient())
 		// Call auth.Login with loaded objects
-		updatedSession, err := auth.Login(opts, oktaClient, currentSession)
+		updatedSession, err := auth.Login(oktaClient, currentSession)
 		if err != nil {
 			return err
 		}

@@ -7,10 +7,9 @@ package auth
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"maps"
 	"slices"
+	"time"
 
 	"github.com/agntcy/dir/hub/auth/internal/browser"
 	"github.com/agntcy/dir/hub/auth/internal/webserver"
@@ -31,14 +30,17 @@ func selectTenant(tenantsMap map[string]string, opts *options.TenantSwitchOption
 	if opts.Org != "" {
 		return opts.Org, nil
 	}
+
 	s := promptui.Select{
 		Label: "Organizations",
 		Items: slices.Collect(maps.Keys(tenantsMap)),
 	}
+
 	_, selectedTenant, err := s.Run()
 	if err != nil {
 		return "", fmt.Errorf("interactive selection error: %w", err)
 	}
+
 	return selectedTenant, nil
 }
 
@@ -79,9 +81,11 @@ func performOAuthSwitch(
 		if len(errChan) > 0 {
 			errChanErr = <-errChan
 		}
+
 		if server != nil {
 			server.Shutdown(ctx) //nolint:errcheck
 		}
+
 		return nil, fmt.Errorf("could not start local webserver: %w. error from webserver: %w", err, errChanErr)
 	}
 	defer server.Shutdown(ctx) //nolint:errcheck
@@ -138,10 +142,12 @@ func SwitchTenant(
 
 	if canReuseToken(currentSession, selectedTenant) {
 		currentSession.CurrentTenant = selectedTenant
+
 		return currentSession, "Switched to tenant: " + selectedTenant, nil
 	}
 
 	selectedTenantID := tenantsMap[selectedTenant]
+
 	webserverSession, err := performOAuthSwitch(currentSession, oktaClient, selectedTenantID)
 	if err != nil {
 		return nil, "", err
@@ -184,6 +190,7 @@ func FetchUserTenants(currentSession *sessionstore.HubSession) ([]*idp.TenantRes
 	}
 
 	if idpResp.TenantList == nil {
+
 		return nil, fmt.Errorf("no tenants found")
 	}
 

@@ -52,7 +52,7 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 			currentSession = &sessionstore.HubSession{}
 		}
 
-		authConfig, err := config.FetchAuthConfig(opts.ServerAddress)
+		authConfig, err := config.FetchAuthConfig(cmd.Context(), opts.ServerAddress)
 		if err != nil {
 			return fmt.Errorf("failed to fetch auth config: %w", err)
 		}
@@ -89,7 +89,7 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		login.NewCommand(opts),
 		logout.NewCommand(opts),
 		push.NewCommand(opts),
-		pull.NewCommand(opts),
+		pull.NewCommand(),
 		orgs.NewCommand(opts),
 	)
 

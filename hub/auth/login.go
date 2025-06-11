@@ -12,7 +12,6 @@ import (
 	hubBrowser "github.com/agntcy/dir/hub/auth/internal/browser"
 	"github.com/agntcy/dir/hub/auth/internal/webserver"
 	"github.com/agntcy/dir/hub/client/okta"
-	"github.com/agntcy/dir/hub/cmd/options"
 	"github.com/agntcy/dir/hub/config"
 	"github.com/agntcy/dir/hub/sessionstore"
 	"github.com/agntcy/dir/hub/utils/token"
@@ -25,7 +24,6 @@ const timeout = 60 * time.Second
 // exchanges the authorization code for tokens, and updates the provided session with the authenticated user and tokens.
 // Returns the updated session or an error if the login process fails.
 func Login(
-	opts *options.LoginOptions,
 	oktaClient okta.Client,
 	currentSession *sessionstore.HubSession,
 ) (*sessionstore.HubSession, error) {
@@ -52,8 +50,10 @@ func Login(
 		if len(errCh) > 0 {
 			errChanError = <-errCh
 		}
+
 		return nil, fmt.Errorf("failed to start local webserver: %w. error from webserver: %w", err, errChanError)
 	}
+
 	defer server.Shutdown(ctx) //nolint:errcheck
 
 	// Open the browser
