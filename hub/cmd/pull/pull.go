@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package pull provides the CLI command for pulling agents from the Agent Hub.
 package pull
 
 import (
@@ -15,6 +16,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates the "pull" command for the Agent Hub CLI.
+// It pulls an agent from the hub by digest or repository:version and prints the result.
+// Returns the configured *cobra.Command.
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull <agent_ref>",

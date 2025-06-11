@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package sessionstore provides session and token storage for the Agent Hub CLI and related applications.
 package sessionstore
 
 import (
@@ -14,17 +15,21 @@ import (
 )
 
 const (
+	// ModeCurrentUserReadWrite is the file mode for user-only read/write access.
 	ModeCurrentUserReadWrite os.FileMode = 0o600
 )
 
+// FileSecretStore implements SessionStore using a local file for storage.
 type FileSecretStore struct {
 	path string
 }
 
+// NewFileSessionStore creates a new FileSecretStore with the given file path.
 func NewFileSessionStore(path string) *FileSecretStore {
 	return &FileSecretStore{path: path}
 }
 
+// GetHubSession retrieves a session by key from the file store.
 func (s *FileSecretStore) GetHubSession(sessionKey string) (*HubSession, error) {
 	secrets, err := s.getSessions()
 	if err != nil {
@@ -39,6 +44,7 @@ func (s *FileSecretStore) GetHubSession(sessionKey string) (*HubSession, error) 
 	return secret, nil
 }
 
+// SaveHubSession saves a session by key to the file store.
 func (s *FileSecretStore) SaveHubSession(sessionKey string, session *HubSession) error {
 	file, err := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE, ModeCurrentUserReadWrite)
 	if err != nil {
@@ -73,6 +79,7 @@ func (s *FileSecretStore) SaveHubSession(sessionKey string, session *HubSession)
 	return nil
 }
 
+// RemoveSession deletes a session by key from the file store.
 func (s *FileSecretStore) RemoveSession(sessionKey string) error {
 	sessions, file, err := s.getSessionsAndFile()
 	if err != nil {
@@ -94,6 +101,7 @@ func (s *FileSecretStore) RemoveSession(sessionKey string) error {
 	return nil
 }
 
+// getSessionsAndFile returns the sessions and open file handle for internal use.
 func (s *FileSecretStore) getSessionsAndFile() (*HubSessions, *os.File, error) {
 	file, err := os.OpenFile(s.path, os.O_RDWR, ModeCurrentUserReadWrite)
 	if err != nil {
@@ -114,6 +122,7 @@ func (s *FileSecretStore) getSessionsAndFile() (*HubSessions, *os.File, error) {
 	return secrets, file, nil
 }
 
+// getSessions returns the sessions for internal use.
 func (s *FileSecretStore) getSessions() (*HubSessions, error) {
 	secrets, file, err := s.getSessionsAndFile()
 	//nolint:errcheck
@@ -122,6 +131,7 @@ func (s *FileSecretStore) getSessions() (*HubSessions, error) {
 	return secrets, err
 }
 
+// rewriteJSONFilePretty rewrites the file with pretty-printed JSON.
 func rewriteJSONFilePretty(file *os.File, model any) error {
 	if file == nil {
 		return errors.New("file is nil")

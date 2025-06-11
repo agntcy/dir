@@ -1,6 +1,8 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package orgswitch provides the CLI subcommand for switching between organizations (tenants) for the logged-in user.
+// This command is intended to be used as "orgs switch" to enable switching, not listing.
 package orgswitch
 
 import (
@@ -19,6 +21,10 @@ import (
 
 const timeout = 60 * time.Second
 
+// NewCommand creates the "switch" subcommand for switching between organizations (tenants).
+// It enables the user to select or specify an organization to switch to, updates the session, and saves it.
+// This command is intended to be used as "orgs switch" and does not list organizations.
+// Returns the configured *cobra.Command.
 func NewCommand(hubOpts *options.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "switch [flags]",

@@ -1,3 +1,7 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+// Package service provides reusable business logic for agent operations in the Agent Hub CLI and related applications.
 package service
 
 import (
@@ -24,6 +28,7 @@ func addAuthToContext(ctx context.Context, session *sessionstore.HubSession) con
 }
 
 // PullAgent pulls an agent from the hub and returns the pretty-printed JSON.
+// It uses the provided session for authentication.
 func PullAgent(
 	ctx context.Context,
 	hc hubClient.Client,
@@ -53,6 +58,7 @@ func PullAgent(
 }
 
 // ParseAgentID parses a string into an AgentIdentifier.
+// Accepts either a digest (sha256:<hash>) or repository:version format.
 func ParseAgentID(agentID string) (*v1alpha1.AgentIdentifier, error) {
 	// If the agentID starts with "sha256", treat it as a digest
 	if strings.HasPrefix(agentID, "sha256:") {
@@ -80,6 +86,7 @@ func ParseAgentID(agentID string) (*v1alpha1.AgentIdentifier, error) {
 }
 
 // ParseRepoTagID parses a repository tag or ID string into the appropriate PushAgentRequest field.
+// Returns a RepositoryId if the string is a UUID, otherwise a RepositoryName.
 func ParseRepoTagID(id string) any {
 	if _, err := uuid.Parse(id); err == nil {
 		return &v1alpha1.PushAgentRequest_RepositoryId{RepositoryId: id}
@@ -88,6 +95,7 @@ func ParseRepoTagID(id string) any {
 }
 
 // PushAgent pushes an agent to the hub and returns the response.
+// It uses the provided session for authentication.
 func PushAgent(
 	ctx context.Context,
 	hc hubClient.Client,

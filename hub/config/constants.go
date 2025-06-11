@@ -1,11 +1,15 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package config provides configuration management for the Agent Hub CLI and related applications.
 package config
 
 const (
+	// LocalWebserverPort is the default port for the local OAuth webserver.
 	LocalWebserverPort = 48043
 
-	DefaultHubAddress         = "https://hub.agntcy.org"
+	// DefaultHubAddress is the default URL for the Agent Hub service.
+	DefaultHubAddress = "https://hub.agntcy.org"
+	// DefaultHubBackendGRPCPort is the default gRPC port for the Agent Hub backend.
 	DefaultHubBackendGRPCPort = 443
 )

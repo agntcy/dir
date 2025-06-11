@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package okta provides a client for interacting with the Okta identity provider, including OAuth flows, token management, and logout operations.
 package okta
 
 import (
@@ -39,6 +40,7 @@ var (
 	ErrParsingResponse = errors.New("failed to parse response")
 )
 
+// RequestTokenRequest contains parameters for exchanging an authorization code for tokens.
 type RequestTokenRequest struct {
 	ClientID    string
 	RedirectURI string
@@ -46,23 +48,28 @@ type RequestTokenRequest struct {
 	Code        string
 }
 
+// Token represents OAuth tokens returned by Okta.
 type Token struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	IDToken      string `json:"id_token"`
 }
+
+// RequestTokenResponse contains the response from the token endpoint.
 type RequestTokenResponse struct {
 	Token    *Token
 	Body     []byte
 	Response *http.Response
 }
 
+// ChallengeMethod represents the PKCE challenge method type.
 type ChallengeMethod string
 
 const (
 	ChallengeMethodS256 ChallengeMethod = "S256"
 )
 
+// AuthorizeRequest contains parameters for building the authorization URL.
 type AuthorizeRequest struct {
 	ClientID      string
 	S256Challenge string
@@ -71,20 +78,24 @@ type AuthorizeRequest struct {
 	RequestID     string
 }
 
+// LogoutRequest contains parameters for logging out of Okta.
 type LogoutRequest struct {
 	IDToken string
 }
 
+// LogoutResponse contains the response from the logout endpoint.
 type LogoutResponse struct {
 	Body     []byte
 	Response *http.Response
 }
 
+// RefreshTokenRequest contains parameters for refreshing tokens.
 type RefreshTokenRequest struct {
 	ClientID     string
 	RefreshToken string
 }
 
+// RefreshTokenResponse contains the response from the refresh token endpoint.
 type RefreshTokenResponse struct {
 	Response *http.Response
 	Body     []byte
@@ -92,26 +103,33 @@ type RefreshTokenResponse struct {
 	Error    *ErrorResponse
 }
 
+// ErrorResponse represents an error returned by Okta.
 type ErrorResponse struct {
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
 }
 
+// Client defines the interface for interacting with Okta for OAuth and token operations.
 type Client interface {
+	// AuthorizeURL constructs the authorization URL for the OAuth flow.
 	AuthorizeURL(r *AuthorizeRequest) string
 
+	// RequestToken exchanges an authorization code for tokens.
 	RequestToken(request *RequestTokenRequest) (*RequestTokenResponse, error)
+	// Logout revokes the current session's ID token.
 	Logout(request *LogoutRequest) (*LogoutResponse, error)
+	// RefreshToken exchanges a refresh token for new tokens.
 	RefreshToken(*RefreshTokenRequest) (*RefreshTokenResponse, error)
 }
 
+// idpClient implements the Client interface for Okta.
 type idpClient struct {
 	BaseURL string
 
 	httpClient *http.Client
 }
 
-//nolint:revive
+// NewClient creates a new Okta client with the given base URL and HTTP client.
 func NewClient(baseURL string, httpClient *http.Client) *idpClient {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
@@ -123,6 +141,7 @@ func NewClient(baseURL string, httpClient *http.Client) *idpClient {
 	}
 }
 
+// RequestToken exchanges an authorization code for tokens.
 func (i *idpClient) RequestToken(request *RequestTokenRequest) (*RequestTokenResponse, error) {
 	data := url.Values{}
 	data.Set(paramGrantType, "authorization_code")
@@ -172,6 +191,7 @@ func (i *idpClient) RequestToken(request *RequestTokenRequest) (*RequestTokenRes
 	}, nil
 }
 
+// AuthorizeURL constructs the authorization URL for the OAuth flow.
 func (i *idpClient) AuthorizeURL(r *AuthorizeRequest) string {
 	params := url.Values{}
 	params.Add(paramClientID, r.ClientID)
@@ -186,6 +206,7 @@ func (i *idpClient) AuthorizeURL(r *AuthorizeRequest) string {
 	return fmt.Sprintf("%s/v1/authorize?%s", i.BaseURL, params.Encode())
 }
 
+// Logout revokes the current session's ID token.
 func (i *idpClient) Logout(request *LogoutRequest) (*LogoutResponse, error) {
 	data := url.Values{}
 	data.Set("id_token_hint", request.IDToken)
@@ -216,6 +237,7 @@ func (i *idpClient) Logout(request *LogoutRequest) (*LogoutResponse, error) {
 	}, nil
 }
 
+// RefreshToken exchanges a refresh token for new tokens.
 func (i *idpClient) RefreshToken(req *RefreshTokenRequest) (*RefreshTokenResponse, error) {
 	data := url.Values{}
 	data.Set(paramGrantType, "refresh_token")

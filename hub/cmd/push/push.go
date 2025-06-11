@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package push provides the CLI command for pushing models to the Agent Hub.
 package push
 
 import (
@@ -15,6 +16,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates the "push" command for the Agent Hub CLI.
+// It pushes a model to the hub by repository name or ID, reading the model from a file or stdin.
+// Returns the configured *cobra.Command.
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "push {<repository> | <repository_id>} {<model.json> | --stdin} ",

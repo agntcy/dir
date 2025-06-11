@@ -1,6 +1,8 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package orgs provides the CLI command for listing organizations (tenants) for the logged-in user.
+// The orgs command only lists organizations/tenants. To switch between organizations, use the "orgs switch" subcommand.
 package orgs
 
 import (
@@ -22,6 +24,9 @@ const (
 	gapSize       = 4
 )
 
+// NewCommand creates the "orgs" command for the Agent Hub CLI.
+// It lists organizations (tenants) for the logged-in user. To switch organizations, use the "orgs switch" subcommand.
+// Returns the configured *cobra.Command.
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "orgs",

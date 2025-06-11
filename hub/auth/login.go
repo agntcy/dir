@@ -1,3 +1,7 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+// Package auth provides authentication and session management logic for the Agent Hub CLI and related applications.
 package auth
 
 import (
@@ -16,6 +20,10 @@ import (
 
 const timeout = 60 * time.Second
 
+// Login performs the OAuth login flow for the Agent Hub CLI.
+// It starts a local webserver to handle the OAuth redirect, opens the browser for user authentication,
+// exchanges the authorization code for tokens, and updates the provided session with the authenticated user and tokens.
+// Returns the updated session or an error if the login process fails.
 func Login(
 	opts *options.LoginOptions,
 	oktaClient okta.Client,

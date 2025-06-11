@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package cmd provides the CLI commands for the Agent Hub, including login, logout, push, pull, and org management.
 package cmd
 
 import (
@@ -23,6 +24,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewHubCommand creates the root "hub" command for the Agent Hub CLI.
+// It sets up persistent pre-run logic for session/config loading and token refresh,
+// attaches the session to the command context, and adds all subcommands (login, logout, push, pull, orgs).
+// Returns the configured *cobra.Command.
 func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "hub",

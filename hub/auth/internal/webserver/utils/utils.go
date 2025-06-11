@@ -1,6 +1,8 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package utils provides cryptographic and encoding utilities for PKCE and OAuth flows
+// used by the internal webserver in the Agent Hub CLI and related applications.
 package utils
 
 import (
@@ -19,6 +21,7 @@ const (
 	challengeVerifierLength = 43
 )
 
+// RandStringBytes generates a random byte slice of the given length using a secure random source.
 func RandStringBytes(n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
@@ -35,6 +38,8 @@ func RandStringBytes(n int) []byte {
 	return b
 }
 
+// GenerateChallenge creates a PKCE code verifier and its corresponding S256 challenge.
+// Returns the verifier and the base64-url-encoded challenge string.
 func GenerateChallenge() (string, string) {
 	verifier := RandStringBytes(challengeVerifierLength)
 
@@ -45,6 +50,7 @@ func GenerateChallenge() (string, string) {
 	return string(verifier), challenge
 }
 
+// GenerateNonce generates a random base64-url-encoded nonce string for use in OAuth flows.
 func GenerateNonce() (string, error) {
 	nonceBytes := make([]byte, nonceLength)
 

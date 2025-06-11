@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package login provides the CLI command for logging in to the Agent Hub.
 package login
 
 import (
@@ -18,6 +19,9 @@ import (
 
 const timeout = 60 * time.Second
 
+// NewCommand creates the "login" command for the Agent Hub CLI.
+// It handles user authentication, session creation, and token storage.
+// Returns the configured *cobra.Command.
 func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:              "login",

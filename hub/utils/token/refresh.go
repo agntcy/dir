@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package token provides utilities for working with JWT tokens, including validation, refresh, and claim extraction.
 package token
 
 import (
@@ -18,6 +19,9 @@ const (
 	userClaim       = "sub"
 )
 
+// RefreshTokenIfExpired refreshes the access token for the current session if it is expired.
+// It uses the provided Okta client and session store to update the session and persist the new tokens.
+// Returns an error if the refresh or save fails.
 func RefreshTokenIfExpired(sessionKey string, session *sessionstore.HubSession, secretStore sessionstore.SessionStore, oktaClient okta.Client) error {
 	if session == nil ||
 		session.Tokens == nil ||
@@ -65,14 +69,17 @@ func RefreshTokenIfExpired(sessionKey string, session *sessionstore.HubSession, 
 	return nil
 }
 
+// GetTenantNameFromToken extracts the tenant name from the given JWT access token.
 func GetTenantNameFromToken(token string) (string, error) {
 	return getClaimFromToken(token, tenantNameClaim)
 }
 
+// GetUserFromToken extracts the user (subject) from the given JWT access token.
 func GetUserFromToken(token string) (string, error) {
 	return getClaimFromToken(token, userClaim)
 }
 
+// getClaimFromToken extracts a string claim from the given JWT access token.
 func getClaimFromToken(token, claim string) (string, error) {
 	claims := jwt.MapClaims{}
 	if _, _, err := jwt.NewParser().ParseUnverified(token, &claims); err != nil {

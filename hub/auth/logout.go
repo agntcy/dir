@@ -1,3 +1,7 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+// Package auth provides authentication and session management logic for the Agent Hub CLI and related applications.
 package auth
 
 import (
@@ -9,6 +13,9 @@ import (
 	"github.com/agntcy/dir/hub/sessionstore"
 )
 
+// Logout logs the user out of the Agent Hub by revoking the current session's tokens and removing the session from the session store.
+// It uses the provided Okta client to perform the logout operation and cleans up the session data.
+// Returns an error if the logout or session removal fails.
 func Logout(
 	opts *options.HubOptions,
 	currentSession *sessionstore.HubSession,
@@ -26,6 +33,8 @@ func Logout(
 	return nil
 }
 
+// doLogout revokes the current session's tokens using the Okta client.
+// Returns an error if the logout request fails or the response status is not OK.
 func doLogout(session *sessionstore.HubSession, oktaClient okta.Client) error {
 	if session == nil || session.CurrentTenant == "" || session.Tokens == nil {
 		return nil

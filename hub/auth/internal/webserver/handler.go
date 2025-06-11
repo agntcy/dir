@@ -16,11 +16,13 @@ const (
 	successfulLoginMessage = "Successfully logged in. You can close this tab."
 )
 
+// SessionStore holds the PKCE verifier and the resulting tokens from the OAuth flow.
 type SessionStore struct {
 	verifier string
 	Tokens   *okta.Token
 }
 
+// Config contains the configuration for the local webserver and OAuth handler.
 type Config struct {
 	ClientID           string
 	IdpFrontendURL     string
@@ -32,6 +34,7 @@ type Config struct {
 	ErrChan      chan error
 }
 
+// Handler implements the HTTP handlers for the OAuth flow, including redirects and token exchange.
 type Handler struct {
 	clientID          string
 	frontendURL       string
@@ -44,6 +47,7 @@ type Handler struct {
 	Err chan error
 }
 
+// NewHandler creates a new Handler with the given configuration.
 func NewHandler(config *Config) *Handler {
 	var errChan chan error
 	if config.ErrChan == nil {
@@ -65,11 +69,13 @@ func NewHandler(config *Config) *Handler {
 	}
 }
 
+// HandleHealthz responds to health check requests.
 func (h *Handler) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK")) //nolint:errcheck
 }
 
+// HandleRequestRedirect handles the initial OAuth redirect, generating a PKCE challenge and redirecting to the IdP.
 func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) {
 	requestID := r.URL.Query().Get("request")
 
@@ -92,6 +98,7 @@ func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
+// HandleCodeRedirect handles the redirect from the IdP with the authorization code, exchanges it for tokens, and stores them.
 func (h *Handler) HandleCodeRedirect(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 
@@ -118,12 +125,14 @@ func (h *Handler) HandleCodeRedirect(w http.ResponseWriter, r *http.Request) {
 	h.handleSuccess(w)
 }
 
+// handleError writes an error message to the response and sends the error to the error channel.
 func (h *Handler) handleError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte(failedLoginMessage)) //nolint:errcheck
 	h.Err <- err
 }
 
+// handleSuccess writes a success message to the response and signals success on the error channel.
 func (h *Handler) handleSuccess(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(successfulLoginMessage)) //nolint:errcheck

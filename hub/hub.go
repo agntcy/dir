@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package hub provides the entry point for running the Agent Hub CLI application.
 package hub
 
 import (
@@ -15,12 +16,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// hub is the main struct for running the Agent Hub CLI application.
 type hub struct{}
 
+// NewHub creates a new hub instance for running the CLI application.
 func NewHub() *hub { //nolint:revive
 	return &hub{}
 }
 
+// Run executes the Agent Hub CLI with the given context and arguments.
+// It loads configuration, sets up command options, and runs the root command.
+// Output and errors are buffered and printed to stdout as appropriate.
+// Returns an error if command execution fails.
 func (h *hub) Run(ctx context.Context, args []string) error {
 	cobra.EnableTraverseRunHooks = true
 

@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package logout provides the CLI command for logging out of the Agent Hub.
 package logout
 
 import (
@@ -18,6 +19,9 @@ import (
 
 var ErrSecretNotFoundForAddress = errors.New("no active session found for the address. please login first")
 
+// NewCommand creates the "logout" command for the Agent Hub CLI.
+// It handles user logout, session removal, and token revocation.
+// Returns the configured *cobra.Command.
 func NewCommand(opts *options.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logout",

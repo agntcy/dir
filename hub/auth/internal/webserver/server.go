@@ -1,6 +1,8 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package webserver provides a local HTTP server and handlers to facilitate OAuth authentication flows
+// for the Agent Hub CLI and related applications. It manages browser redirects, token exchange, and session storage.
 package webserver
 
 import (
@@ -19,6 +21,9 @@ const (
 	timeBetweenRetries = 1 * time.Second
 )
 
+// StartLocalServer starts a local HTTP server with the provided handler and port.
+// It returns the server instance or an error if the server could not be started.
+// The server is used for handling OAuth redirects and token exchange during authentication flows.
 func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, error) {
 	r := mux.NewRouter()
 	r.HandleFunc("/healthz", h.HandleHealthz).Methods(http.MethodGet)

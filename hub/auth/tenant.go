@@ -1,3 +1,7 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+// Package auth provides authentication and session management logic for the Agent Hub CLI and related applications.
 package auth
 
 import (
@@ -22,6 +26,7 @@ import (
 
 const switchTimeout = 60 * time.Second
 
+// selectTenant prompts the user to select a tenant or uses the provided org option.
 func selectTenant(tenantsMap map[string]string, opts *options.TenantSwitchOptions) (string, error) {
 	if opts.Org != "" {
 		return opts.Org, nil
@@ -37,6 +42,7 @@ func selectTenant(tenantsMap map[string]string, opts *options.TenantSwitchOption
 	return selectedTenant, nil
 }
 
+// canReuseToken checks if a valid, non-expired token exists for the selected tenant.
 func canReuseToken(currentSession *sessionstore.HubSession, selectedTenant string) bool {
 	tokenData, ok := currentSession.Tokens[selectedTenant]
 	if !ok {
@@ -46,6 +52,7 @@ func canReuseToken(currentSession *sessionstore.HubSession, selectedTenant strin
 	return !token.IsTokenExpired(tokenData.AccessToken)
 }
 
+// performOAuthSwitch runs the OAuth flow for switching tenants, including starting a local webserver and opening the browser.
 func performOAuthSwitch(
 	currentSession *sessionstore.HubSession,
 	oktaClient okta.Client,
@@ -96,6 +103,7 @@ func performOAuthSwitch(
 	return webserverSession, nil
 }
 
+// updateSessionWithNewTokens updates the session with new tokens for the selected tenant.
 func updateSessionWithNewTokens(currentSession *sessionstore.HubSession, selectedTenant string, tokens *okta.Token) {
 	currentSession.CurrentTenant = selectedTenant
 	currentSession.Tokens[selectedTenant] = &sessionstore.Tokens{
@@ -105,6 +113,10 @@ func updateSessionWithNewTokens(currentSession *sessionstore.HubSession, selecte
 	}
 }
 
+// SwitchTenant performs the tenant switch flow for the Agent Hub CLI.
+// It prompts the user to select a tenant (if not provided), checks for reusable tokens,
+// runs the OAuth flow if needed, and updates the session with new tokens.
+// Returns the updated session, a status message, or an error if the switch fails.
 func SwitchTenant(
 	opts *options.TenantSwitchOptions,
 	tenants []*idp.TenantResponse,
@@ -149,6 +161,7 @@ func SwitchTenant(
 	return currentSession, "Successfully switched to " + selectedTenant, nil //nolint:wrapcheck
 }
 
+// tenantsToMap converts a slice of TenantResponse to a map of name to ID.
 func tenantsToMap(tenants []*idp.TenantResponse) map[string]string {
 	m := make(map[string]string, len(tenants))
 	for _, tenant := range tenants {
@@ -158,6 +171,8 @@ func tenantsToMap(tenants []*idp.TenantResponse) map[string]string {
 	return m
 }
 
+// FetchUserTenants retrieves the list of tenants for the current user session from the IDP.
+// Returns a slice of TenantResponse or an error if the request fails.
 func FetchUserTenants(currentSession *sessionstore.HubSession) ([]*idp.TenantResponse, error) {
 	idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient())
 	accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken

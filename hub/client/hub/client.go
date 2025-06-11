@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package hub provides a client for interacting with the Agent Hub backend API, including agent management and related operations.
 package hub
 
 import (
@@ -21,15 +22,21 @@ import (
 
 const chunkSize = 4096 // 4KB
 
+// Client defines the interface for interacting with the Agent Hub backend for agent operations.
 type Client interface {
+	// PushAgent uploads an agent to the hub and returns the response or an error.
 	PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushAgentResponse, error)
+	// PullAgent downloads an agent from the hub and returns the agent data or an error.
 	PullAgent(ctx context.Context, request *v1alpha1.PullAgentRequest) ([]byte, error)
 }
 
+// client implements the Client interface for the Agent Hub backend.
 type client struct {
 	v1alpha1.AgentDirServiceClient
 }
 
+// New creates a new Agent Hub client for the given server address.
+// Returns the client or an error if the connection could not be established.
 func New(serverAddr string) (*client, error) { //nolint:revive
 	// Create connection
 	conn, err := grpc.NewClient(
@@ -43,6 +50,7 @@ func New(serverAddr string) (*client, error) { //nolint:revive
 	return &client{AgentDirServiceClient: v1alpha1.NewAgentDirServiceClient(conn)}, nil
 }
 
+// PushAgent uploads an agent to the hub in chunks and returns the response or an error.
 func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushAgentResponse, error) {
 	var parsedAgent *corev1alpha1.Agent
 	if err := json.Unmarshal(agent, &parsedAgent); err != nil {
@@ -108,6 +116,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) 
 	return resp, nil
 }
 
+// PullAgent downloads an agent from the hub in chunks and returns the agent data or an error.
 func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullAgentRequest) ([]byte, error) {
 	stream, err := c.AgentDirServiceClient.PullAgent(ctx, request)
 	if err != nil {
