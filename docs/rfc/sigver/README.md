@@ -204,29 +204,35 @@ sequenceDiagram
 
 ```json
 {
-    "name": "marinesky/optillm",
-    "version": "v498c7e97",
-    "description": "Optimizing inference proxy for LLMs\r",
-    "skills": [
-        {
-            "category_uid": 1,
-            "class_uid": 10101
-        }
-    ],
-    "locators": [
-        {
-            "type": "source-code",
-            "url": "https://github.com/codelion/optillm"
-        }
-    ],
-    "signature": {
-        "algorithm": "SHA2_256",
-        "signature": "<content-signature>",
-        "certificate": "<signing-cert>",
-        "content_type": "application/vnd.dev.sigstore.bundle.v0.3+json",
-        "content_bundle": "<signature-bundle>",
-        "signed_at": "2025-06-06T18:06:04-07:00"
-    }
+   "name": "directory.agntcy.org/cisco/marketing-strategy",
+   "version": "v1.0.0",
+   "description": "Research agent for Cisco's marketing strategy.",
+   "authors": [
+      "Cisco Systems"
+   ],
+   "created_at": "2025-03-19T17:06:37Z",
+   "skills": [
+      {
+         "category_uid": 1,
+         "class_uid": 10201,
+         "category_name": "Natural Language Processing",
+         "class_name": "Text Completion"
+      }
+   ],
+   "locators": [
+      {
+         "type": "docker-image",
+         "url": "https://ghcr.io/agntcy/marketing-strategy"
+      }
+   ],
+   "signature": {
+      "algorithm": "SHA2_256",
+      "signature": "<content-signature>",
+      "certificate": "<signing-cert>",
+      "content_type": "application/vnd.dev.sigstore.bundle.v0.3+json",
+      "content_bundle": "<signature-bundle>",
+      "signed_at": "2025-06-06T18:06:04-07:00"
+   }
 }
 ```
 
