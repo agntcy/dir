@@ -5,22 +5,25 @@ package sqlite
 
 import (
 	"fmt"
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	searchtypes "github.com/agntcy/dir/server/search/types"
+	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
 	"gorm.io/gorm"
 )
 
-func (s *SQLiteDB) AddSignatureTx(tx *gorm.DB, coreSignature *coretypes.Signature, agentID uint) (uint, error) {
-	signature := &searchtypes.Signature{}
-	if err := signature.FromCoreSignature(coreSignature, agentID); err != nil {
-		return 0, fmt.Errorf("failed to convert core signature to search signature: %w", err)
+type SignatureObject interface {
+	ToSQLiteSignature(agentID uint) (*coretypesv2.SQLiteSignature, error)
+}
+
+func (s *SQLiteDB) addSignatureTx(tx *gorm.DB, signature SignatureObject, agentID uint) (uint, error) {
+	SQLSignature, err := signature.ToSQLiteSignature(agentID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert signature to SQLite signature: %w", err)
 	}
 
-	if err := tx.Create(signature).Error; err != nil {
+	if err := tx.Create(SQLSignature).Error; err != nil {
 		return 0, fmt.Errorf("failed to add signature to SQLite search database: %w", err)
 	}
 
-	logger.Info("Added signature to SQLite search database", "agentID", agentID)
+	logger.Info("Added signature to SQLite search database", "agent_id", agentID, "SQLSignature_ID", SQLSignature.ID)
 
-	return signature.ID, nil
+	return SQLSignature.ID, nil
 }

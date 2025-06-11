@@ -6,7 +6,8 @@ package sqlite
 import (
 	"fmt"
 
-	searchtypes "github.com/agntcy/dir/server/search/types"
+	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
+
 	"github.com/agntcy/dir/utils/logging"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -26,11 +27,11 @@ func New() (*SQLiteDB, error) {
 
 	// Migrate the schema
 	if err := db.AutoMigrate(
-		searchtypes.Agent{},
-		searchtypes.Extension{},
-		searchtypes.Locator{},
-		searchtypes.Signature{},
-		searchtypes.Skill{},
+		coretypesv2.Record{},
+		coretypesv2.Extension{},
+		coretypesv2.Locator{},
+		coretypesv2.Signature{},
+		coretypesv2.Skill{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate schema: %w", err)
 	}

@@ -5,22 +5,25 @@ package sqlite
 
 import (
 	"fmt"
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	searchtypes "github.com/agntcy/dir/server/search/types"
+	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
 	"gorm.io/gorm"
 )
 
-func (s *SQLiteDB) AddSkillTx(tx *gorm.DB, coreSkill *coretypes.Skill, agentID uint) (uint, error) {
-	skill := &searchtypes.Skill{}
-	if err := skill.FromCoreSkill(coreSkill, agentID); err != nil {
-		return 0, fmt.Errorf("failed to convert core skill to search skill: %w", err)
+type SkillObject interface {
+	ToSQLiteSkill(agentID uint) (*coretypesv2.SQLiteSkill, error)
+}
+
+func (s *SQLiteDB) addSkillTx(tx *gorm.DB, skill SkillObject, agentID uint) (uint, error) {
+	SQLSkill, err := skill.ToSQLiteSkill(agentID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert skill to SQLite skill: %w", err)
 	}
 
-	if err := tx.Create(skill).Error; err != nil {
+	if err := tx.Create(SQLSkill).Error; err != nil {
 		return 0, fmt.Errorf("failed to add skill to SQLite search database: %w", err)
 	}
 
-	logger.Info("Added skill to SQLite search database", "category name", skill.CategoryName, "class name", skill.ClassName, "agentID", agentID)
+	logger.Info("Added skill to SQLite search database", "agent_id", agentID, "SQLSkill_ID", SQLSkill.ID)
 
-	return skill.ID, nil
+	return SQLSkill.ID, nil
 }
