@@ -59,9 +59,10 @@ Examples:
 
 			prettyModel, err := service.PullAgent(cmd.Context(), hc, agentID, currentSession)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to pull agent: %w", err)
 			}
 			fmt.Fprintf(os.Stdout, "%s\n", string(prettyModel))
+
 			return nil
 		},
 	}

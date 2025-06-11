@@ -24,6 +24,7 @@ const timeout = 60 * time.Second
 // exchanges the authorization code for tokens, and updates the provided session with the authenticated user and tokens.
 // Returns the updated session or an error if the login process fails.
 func Login(
+	ctx context.Context,
 	oktaClient okta.Client,
 	currentSession *sessionstore.HubSession,
 ) (*sessionstore.HubSession, error) {
@@ -41,10 +42,10 @@ func Login(
 		ErrChan:            errCh,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	server, err := webserver.StartLocalServer(handler, config.LocalWebserverPort, errCh)
+	server, err := webserver.StartLocalServer(ctx, handler, config.LocalWebserverPort, errCh)
 	if err != nil {
 		var errChanError error
 		if len(errCh) > 0 {

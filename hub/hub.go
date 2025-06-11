@@ -37,7 +37,7 @@ func (h *hub) Run(ctx context.Context, args []string) error {
 	}
 
 	opts := options.NewBaseOption()
-	c := cmd.NewHubCommand(opts)
+	c := cmd.NewHubCommand(ctx, opts)
 
 	if err = opts.Register(); err != nil {
 		return fmt.Errorf("failed to register hub options: %w", err)

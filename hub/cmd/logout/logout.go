@@ -40,7 +40,7 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 
 			err := auth.Logout(opts, currentSession, sessionStore, oktaClient)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to logout: %w", err)
 			}
 			fmt.Fprintln(cmd.OutOrStdout(), "Successfully logged out from Agent Hub")
 

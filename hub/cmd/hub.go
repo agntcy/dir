@@ -28,7 +28,7 @@ import (
 // It sets up persistent pre-run logic for session/config loading and token refresh,
 // attaches the session to the command context, and adds all subcommands (login, logout, push, pull, orgs).
 // Returns the configured *cobra.Command.
-func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
+func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "hub",
 		Short: "Manage the Agent Hub",
@@ -36,8 +36,11 @@ func NewHubCommand(baseOption *options.BaseOption) *cobra.Command {
 		TraverseChildren: true,
 	}
 
+	cmd.SetContext(ctx)
+
 	opts := options.NewHubOptions(baseOption, cmd)
 
+	//nolint:contextcheck // context is set via cmd.SetContext(ctx) and accessed via cmd.Context()
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 		opts.Complete()
 

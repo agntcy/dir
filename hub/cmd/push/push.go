@@ -47,6 +47,7 @@ Examples:
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		// Retrieve session from context
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
+
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
 		if !ok || currentSession == nil {
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
@@ -81,7 +82,7 @@ Examples:
 
 		resp, err := service.PushAgent(cmd.Context(), hc, agentBytes, repoID, currentSession)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to push agent: %w", err)
 		}
 
 		fmt.Fprintln(cmd.OutOrStdout(), resp.GetId().GetDigest())

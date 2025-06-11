@@ -43,7 +43,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 			return errors.New("no current session found. please login first")
 		}
 
-		orgs, err := auth.FetchUserTenants(currentSession)
+		orgs, err := auth.FetchUserTenants(cmd.Context(), currentSession)
 		if err != nil {
 			return fmt.Errorf("failed to get orgs list: %w", err)
 		}

@@ -24,7 +24,7 @@ const (
 // StartLocalServer starts a local HTTP server with the provided handler and port.
 // It returns the server instance or an error if the server could not be started.
 // The server is used for handling OAuth redirects and token exchange during authentication flows.
-func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, error) {
+func StartLocalServer(ctx context.Context, h *Handler, port int, errCh chan error) (*http.Server, error) {
 	r := mux.NewRouter()
 	r.HandleFunc("/healthz", h.HandleHealthz).Methods(http.MethodGet)
 	r.HandleFunc("/", h.HandleRequestRedirect).Methods(http.MethodGet).Queries("request", "{request}")
@@ -47,7 +47,7 @@ func StartLocalServer(h *Handler, port int, errCh chan error) (*http.Server, err
 
 		var req *http.Request
 
-		req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, fmt.Sprintf("http://localhost:%d/healthz", port), nil)
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://localhost:%d/healthz", port), nil)
 		if err != nil {
 			continue
 		}

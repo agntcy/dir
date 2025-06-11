@@ -106,6 +106,7 @@ func PushAgent(
 	session *sessionstore.HubSession,
 ) (*v1alpha1.PushAgentResponse, error) {
 	ctx = addAuthToContext(ctx, session)
+
 	resp, err := hc.PushAgent(ctx, agentBytes, repoID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to push agent: %w", err)

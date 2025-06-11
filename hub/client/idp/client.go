@@ -48,7 +48,7 @@ func WithBearerToken(token string) RequestModifier {
 // Client defines the interface for interacting with the IDP API.
 type Client interface {
 	// GetTenantsInProduct retrieves the list of tenants for a given product ID.
-	GetTenantsInProduct(productID string, modifier ...RequestModifier) (*GetTenantsInProductResponse, error)
+	GetTenantsInProduct(ctx context.Context, productID string, modifier ...RequestModifier) (*GetTenantsInProductResponse, error)
 }
 
 // client implements the Client interface for the IDP API.
@@ -72,7 +72,7 @@ func NewClient(baseURL string, httpClient *http.Client) Client {
 // GetTenantsInProduct retrieves the list of tenants for the specified product ID from the IDP API.
 // It applies any provided request modifiers (e.g., for authentication).
 // Returns the response or an error if the request fails.
-func (c *client) GetTenantsInProduct(productID string, modifiers ...RequestModifier) (*GetTenantsInProductResponse, error) {
+func (c *client) GetTenantsInProduct(ctx context.Context, productID string, modifiers ...RequestModifier) (*GetTenantsInProductResponse, error) {
 	const path = "/v1alpha1/tenant"
 
 	params := url.Values{}
@@ -80,7 +80,7 @@ func (c *client) GetTenantsInProduct(productID string, modifiers ...RequestModif
 
 	requestURL := fmt.Sprintf("%s%s?%s", c.baseURL, path, params.Encode())
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, requestURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

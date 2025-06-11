@@ -6,6 +6,7 @@
 package orgswitch
 
 import (
+	"errors"
 	"fmt"
 
 	auth "github.com/agntcy/dir/hub/auth"
@@ -43,7 +44,7 @@ organization. In any other case, org could be selected from an interactive list.
 		if !ok || currentSession == nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "Could not get current session\n")
 
-			return fmt.Errorf("could not get current session")
+			return errors.New("could not get current session")
 		}
 		// Load session store for saving
 		sessionStore := sessionstore.NewFileSessionStore(fileUtils.GetSessionFilePath())
@@ -53,28 +54,28 @@ organization. In any other case, org could be selected from an interactive list.
 		accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken
 		productID := currentSession.AuthConfig.IdpProductID
 
-		idpResp, err := idpClient.GetTenantsInProduct(productID, idp.WithBearerToken(accessToken))
+		idpResp, err := idpClient.GetTenantsInProduct(cmd.Context(), productID, idp.WithBearerToken(accessToken))
 		if err != nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "Could not fetch tenants: %v\n", err)
 
-			return err
+			return fmt.Errorf("could not fetch tenants: %w", err)
 		}
 
 		if idpResp.TenantList == nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "No tenants found for this user.\n")
 
-			return fmt.Errorf("no tenants found")
+			return errors.New("no tenants found")
 		}
 
 		tenants := idpResp.TenantList.Tenants
 
 		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
 
-		updatedSession, msg, err := auth.SwitchTenant(opts, tenants, currentSession, oktaClient)
+		updatedSession, msg, err := auth.SwitchTenant(cmd.Context(), opts, tenants, currentSession, oktaClient)
 		if err != nil {
 			fmt.Fprintf(cmd.OutOrStderr(), "An error occurred during org switch. Try to call `dirctl hub login` to solve the issue.\nError details: %v\n", err)
 
-			return err
+			return fmt.Errorf("failed to switch tenant: %w", err)
 		}
 
 		if err := sessionStore.SaveHubSession(opts.ServerAddress, updatedSession); err != nil {

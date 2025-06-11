@@ -6,6 +6,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -56,11 +57,12 @@ func canReuseToken(currentSession *sessionstore.HubSession, selectedTenant strin
 
 // performOAuthSwitch runs the OAuth flow for switching tenants, including starting a local webserver and opening the browser.
 func performOAuthSwitch(
+	ctx context.Context,
 	currentSession *sessionstore.HubSession,
 	oktaClient okta.Client,
 	selectedTenantID string,
 ) (*webserver.SessionStore, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), switchTimeout)
+	ctx, cancel := context.WithTimeout(ctx, switchTimeout)
 	defer cancel()
 
 	webserverSession := &webserver.SessionStore{}
@@ -75,7 +77,7 @@ func performOAuthSwitch(
 		ErrChan:            errChan,
 	})
 
-	server, err := webserver.StartLocalServer(h, config.LocalWebserverPort, errChan)
+	server, err := webserver.StartLocalServer(ctx, h, config.LocalWebserverPort, errChan)
 	if err != nil {
 		var errChanErr error
 		if len(errChan) > 0 {
@@ -122,6 +124,7 @@ func updateSessionWithNewTokens(currentSession *sessionstore.HubSession, selecte
 // runs the OAuth flow if needed, and updates the session with new tokens.
 // Returns the updated session, a status message, or an error if the switch fails.
 func SwitchTenant(
+	ctx context.Context,
 	opts *options.TenantSwitchOptions,
 	tenants []*idp.TenantResponse,
 	currentSession *sessionstore.HubSession,
@@ -148,7 +151,7 @@ func SwitchTenant(
 
 	selectedTenantID := tenantsMap[selectedTenant]
 
-	webserverSession, err := performOAuthSwitch(currentSession, oktaClient, selectedTenantID)
+	webserverSession, err := performOAuthSwitch(ctx, currentSession, oktaClient, selectedTenantID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -179,19 +182,18 @@ func tenantsToMap(tenants []*idp.TenantResponse) map[string]string {
 
 // FetchUserTenants retrieves the list of tenants for the current user session from the IDP.
 // Returns a slice of TenantResponse or an error if the request fails.
-func FetchUserTenants(currentSession *sessionstore.HubSession) ([]*idp.TenantResponse, error) {
+func FetchUserTenants(ctx context.Context, currentSession *sessionstore.HubSession) ([]*idp.TenantResponse, error) {
 	idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient())
 	accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken
 	productID := currentSession.AuthConfig.IdpProductID
 
-	idpResp, err := idpClient.GetTenantsInProduct(productID, idp.WithBearerToken(accessToken))
+	idpResp, err := idpClient.GetTenantsInProduct(ctx, productID, idp.WithBearerToken(accessToken))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch user tenants: %w", err)
 	}
 
 	if idpResp.TenantList == nil {
-
-		return nil, fmt.Errorf("no tenants found")
+		return nil, errors.New("no tenants found")
 	}
 
 	return idpResp.TenantList.Tenants, nil
