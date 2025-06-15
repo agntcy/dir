@@ -1,0 +1,34 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package sqlite
+
+import (
+	"fmt"
+
+	"github.com/agntcy/dir/utils/logging"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+var logger = logging.Logger("store/oci")
+
+type DB struct {
+	gormDB *gorm.DB
+}
+
+func New(path string) (*DB, error) {
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
+	}
+
+	// Migrate the schema
+	if err := db.AutoMigrate(Record{}, Extension{}, Locator{}, Skill{}); err != nil {
+		return nil, fmt.Errorf("failed to migrate schema: %w", err)
+	}
+
+	return &DB{
+		gormDB: db,
+	}, nil
+}

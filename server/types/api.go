@@ -17,6 +17,9 @@ type API interface {
 
 	// Routing returns an implementation of the RoutingAPI
 	Routing() RoutingAPI
+
+	// Search returns an implementation of the SearchAPI
+	Search() SearchAPI
 }
 
 // APIOptions collects internal dependencies for all API services.

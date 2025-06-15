@@ -12,3 +12,15 @@ func (skill *Skill) Key() string {
 
 	return fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName())
 }
+
+func (skill *Skill) GetName() string {
+	if skill.GetClassName() == "" {
+		return skill.GetCategoryName()
+	}
+
+	return fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName())
+}
+
+func (skill *Skill) GetID() uint32 {
+	return 0
+}

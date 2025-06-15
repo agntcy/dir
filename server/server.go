@@ -18,6 +18,7 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/routing"
+	"github.com/agntcy/dir/server/search"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -34,6 +35,7 @@ type Server struct {
 	options       types.APIOptions
 	store         types.StoreAPI
 	routing       types.RoutingAPI
+	search        types.SearchAPI
 	healthzServer *healthz.Server
 	grpcServer    *grpc.Server
 }
@@ -83,17 +85,23 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
 
+	searchAPI, err := search.New(options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search API: %w", err)
+	}
+
 	// Create server
 	server := &Server{
 		options:       options,
 		store:         storeAPI,
 		routing:       routingAPI,
+		search:        searchAPI,
 		healthzServer: healthz.NewHealthServer(cfg.HealthCheckAddress),
 		grpcServer:    grpc.NewServer(),
 	}
 
 	// Register APIs
-	storetypes.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI))
+	storetypes.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI, searchAPI))
 	routingtypes.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
 
 	// Register server
@@ -107,6 +115,8 @@ func (s Server) Options() types.APIOptions { return s.options }
 func (s Server) Store() types.StoreAPI { return s.store }
 
 func (s Server) Routing() types.RoutingAPI { return s.routing }
+
+func (s Server) Search() types.SearchAPI { return s.search }
 
 func (s Server) Close() {
 	s.grpcServer.GracefulStop()
