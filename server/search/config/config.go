@@ -9,5 +9,8 @@ const (
 
 type Config struct {
 	// DBType is the type of the search database.
-	DB string `json:"db_type,omitempty" mapstructure:"db_type"`
+	DBType string `json:"db_type,omitempty" mapstructure:"db_type"`
+
+	// SQLiteDBPath is the path to the SQLite database file.
+	SQLiteDBPath string `json:"sqlite_db_path,omitempty" mapstructure:"sqlite_db_path"`
 }

@@ -142,6 +142,8 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("search.db_type")
 	v.SetDefault("search.db_type", search.DefaultDBType)
 
+	_ = v.BindEnv("search.sqlite_db_path")
+
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
 		mapstructure.TextUnmarshallerHookFunc(),

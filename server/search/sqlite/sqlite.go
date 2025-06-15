@@ -6,8 +6,6 @@ package sqlite
 import (
 	"fmt"
 
-	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
-
 	"github.com/agntcy/dir/utils/logging"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -15,28 +13,22 @@ import (
 
 var logger = logging.Logger("store/oci")
 
-type SQLiteDB struct {
+type DB struct {
 	gormDB *gorm.DB
 }
 
-func New() (*SQLiteDB, error) {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+func New(path string) (*DB, error) {
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
 	}
 
 	// Migrate the schema
-	if err := db.AutoMigrate(
-		coretypesv2.Record{},
-		coretypesv2.Extension{},
-		coretypesv2.Locator{},
-		coretypesv2.Signature{},
-		coretypesv2.Skill{},
-	); err != nil {
+	if err := db.AutoMigrate(Record{}, Extension{}, Locator{}, Skill{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate schema: %w", err)
 	}
 
-	return &SQLiteDB{
+	return &DB{
 		gormDB: db,
 	}, nil
 }

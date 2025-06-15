@@ -5,25 +5,38 @@ package sqlite
 
 import (
 	"fmt"
-	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
+
+	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
-type LocatorObject interface {
-	ToSQLiteLocator(agentID uint) (*coretypesv2.SQLiteLocator, error)
+type Locator struct {
+	gorm.Model
+	AgentID uint   `gorm:"not null;index"`
+	Type    string `gorm:"not null"`
+	URL     string `gorm:"not null"`
 }
 
-func (s *SQLiteDB) addLocatorTx(tx *gorm.DB, locator LocatorObject, agentID uint) (uint, error) {
-	SQLLocator, err := locator.ToSQLiteLocator(agentID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to convert locator to SQLite locator: %w", err)
+func (locator *Locator) GetType() string {
+	return locator.Type
+}
+
+func (locator *Locator) GetURL() string {
+	return locator.URL
+}
+
+func (d *DB) addLocatorTx(tx *gorm.DB, locatorObject types.LocatorObject, agentID uint) (uint, error) {
+	locator := &Locator{
+		AgentID: agentID,
+		Type:    locatorObject.GetType(),
+		URL:     locatorObject.GetURL(),
 	}
 
-	if err := tx.Create(SQLLocator).Error; err != nil {
+	if err := tx.Create(locator).Error; err != nil {
 		return 0, fmt.Errorf("failed to add locator to SQLite search database: %w", err)
 	}
 
-	logger.Info("Added locator to SQLite search database", "agent_id", agentID, "SQLLocator_ID", SQLLocator.ID)
+	logger.Info("Added locator to SQLite search database", "agent_id", agentID, "locator_id", locator.ID)
 
-	return SQLLocator.ID, nil
+	return locator.ID, nil
 }

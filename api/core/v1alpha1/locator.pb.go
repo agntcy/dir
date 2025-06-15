@@ -144,7 +144,7 @@ func (x *Locator) GetType() string {
 	return ""
 }
 
-func (x *Locator) GetUrl() string {
+func (x *Locator) GetURL() string {
 	if x != nil {
 		return x.Url
 	}

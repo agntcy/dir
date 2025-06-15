@@ -14,7 +14,7 @@ import (
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
-	searchtypes "github.com/agntcy/dir/server/search/types"
+	"github.com/agntcy/dir/server/search/v1alpha1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -31,10 +31,10 @@ var storeLogger = logging.Logger("controller/store")
 type storeCtrl struct {
 	storetypes.UnimplementedStoreServiceServer
 	store  types.StoreAPI
-	search searchtypes.SearchAPI
+	search types.SearchAPI
 }
 
-func NewStoreController(store types.StoreAPI, search searchtypes.SearchAPI) storetypes.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, search types.SearchAPI) storetypes.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storetypes.UnimplementedStoreServiceServer{},
 		store:                           store,
@@ -132,7 +132,7 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		return status.Errorf(st.Code(), "failed to push object to store: %s", st.Message())
 	}
 
-	err = s.search.AddAgent(agent)
+	err = s.search.AddRecord(v1alpha1.NewAgentAdapter(agent))
 	if err != nil {
 		return fmt.Errorf("failed to add agent to search index: %w", err)
 	}

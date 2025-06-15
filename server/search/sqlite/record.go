@@ -4,68 +4,100 @@
 package sqlite
 
 import (
+	"errors"
 	"fmt"
-	"gorm.io/gorm"
 
-	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
+	"github.com/agntcy/dir/server/types"
+	"gorm.io/gorm"
 )
 
-type RecordObject interface {
-	ToSQLiteRecord() (*coretypesv2.SQLiteRecord, error)
-	GetSignature() *coretypesv2.Signature
-	GetExtensions() []*coretypesv2.Extension
-	GetLocators() []*coretypesv2.Locator
-	GetSkills() []*coretypesv2.Skill
+type Record struct {
+	gorm.Model
+	Name    string `gorm:"not null"`
+	Version string `gorm:"not null"`
+
+	Skills     []Skill     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
+	Locators   []Locator   `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
+	Extensions []Extension `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
 }
 
-func (s *SQLiteDB) addRecordTx(tx *gorm.DB, record RecordObject) (uint, error) {
-	SQLRecord, err := record.ToSQLiteRecord()
-	if err != nil {
-		return 0, fmt.Errorf("failed to convert record to SQLite record: %w", err)
+func (r *Record) GetName() string {
+	return r.Name
+}
+
+func (r *Record) GetVersion() string {
+	return r.Version
+}
+
+func (r *Record) GetSkillObjects() []types.SkillObject {
+	skills := make([]types.SkillObject, len(r.Skills))
+	for i, skill := range r.Skills {
+		skills[i] = &skill
 	}
 
-	if err := tx.Create(SQLRecord).Error; err != nil {
+	return skills
+}
+
+func (r *Record) GetLocatorObjects() []types.LocatorObject {
+	locators := make([]types.LocatorObject, len(r.Locators))
+	for i, locator := range r.Locators {
+		locators[i] = &locator
+	}
+
+	return locators
+}
+
+func (r *Record) GetExtensionObjects() []types.ExtensionObject {
+	extensions := make([]types.ExtensionObject, len(r.Extensions))
+	for i, extension := range r.Extensions {
+		extensions[i] = &extension
+	}
+
+	return extensions
+}
+
+func (d *DB) addRecordTx(tx *gorm.DB, recordObject types.RecordObject) (uint, error) {
+	record := &Record{
+		Name:    recordObject.GetName(),
+		Version: recordObject.GetVersion(),
+	}
+
+	if err := tx.Create(record).Error; err != nil {
 		return 0, fmt.Errorf("failed to add record to SQLite search database: %w", err)
 	}
 
-	logger.Info("Added record to SQLite search database", "record_id", SQLRecord.ID)
+	logger.Info("Added record to SQLite search database", "record_id", record.ID)
 
-	return SQLRecord.ID, nil
+	return record.ID, nil
 }
 
-func (s *SQLiteDB) AddRecord(record RecordObject) error {
-	err := s.gormDB.Transaction(func(tx *gorm.DB) error {
-		id, err := s.addRecordTx(tx, record)
+func (d *DB) AddRecord(record types.RecordObject) error {
+	err := d.gormDB.Transaction(func(tx *gorm.DB) error {
+		id, err := d.addRecordTx(tx, record)
 		if err != nil {
 			return fmt.Errorf("failed to add record to search index: %w", err)
 		}
 
-		_, err = s.addSignatureTx(tx, record.GetSignature(), id)
-		if err != nil {
-			return fmt.Errorf("failed to add signature to search index: %w", err)
-		}
-
-		for _, extension := range record.GetExtensions() {
-			if _, err = s.addExtensionTx(tx, extension, id); err != nil {
+		for _, extension := range record.GetExtensionObjects() {
+			if _, err = d.addExtensionTx(tx, extension, id); err != nil {
 				return fmt.Errorf("failed to add extension to search index: %w", err)
 			}
 		}
 
-		for _, locator := range record.GetLocators() {
-			if _, err = s.addLocatorTx(tx, locator, id); err != nil {
+		for _, locator := range record.GetLocatorObjects() {
+			if _, err = d.addLocatorTx(tx, locator, id); err != nil {
 				return fmt.Errorf("failed to add locator to search index: %w", err)
 			}
 		}
 
-		for _, skill := range record.GetSkills() {
-			if _, err = s.addSkillTx(tx, skill, id); err != nil {
+		for _, skill := range record.GetSkillObjects() {
+			if _, err = d.addSkillTx(tx, skill, id); err != nil {
 				return fmt.Errorf("failed to add skill to search index: %w", err)
 			}
 		}
 
 		return nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to add record: %w", err)
 	}
@@ -73,141 +105,88 @@ func (s *SQLiteDB) AddRecord(record RecordObject) error {
 	return nil
 }
 
-//func (s *SQLiteDB) GetManyAgentsByFilters(filters searchtypes.QueryFilters) ([]*coretypes.Agent, error) {
-//	var dbAgents []searchtypes.Agent
-//	query := s.gormDB.Model(&searchtypes.Agent{})
-//
-//	// Apply basic filters
-//	if filters.Name != "" {
-//		query = query.Where("agents.name LIKE ?", "%"+filters.Name+"%")
-//	}
-//	if filters.Version != "" {
-//		query = query.Where("agents.version = ?", filters.Version)
-//	}
-//	if filters.Description != "" {
-//		query = query.Where("agents.description LIKE ?", "%"+filters.Description+"%")
-//	}
-//
-//	// Filter by authors
-//	if len(filters.Authors) > 0 {
-//		for _, author := range filters.Authors {
-//			query = query.Where("agents.authors LIKE ?", "%"+author+"%")
-//		}
-//	}
-//
-//	// Filter by skills
-//	if len(filters.SkillNames) > 0 || len(filters.SkillCategories) > 0 {
-//		query = query.Joins("JOIN skills ON skills.agent_id = agents.id")
-//
-//		if len(filters.SkillNames) > 0 {
-//			query = query.Where("skills.class_name IN ?", filters.SkillNames)
-//		}
-//
-//		if len(filters.SkillCategories) > 0 {
-//			query = query.Where("skills.category_name IN ?", filters.SkillCategories)
-//		}
-//	}
-//
-//	// Filter by locator types
-//	if len(filters.LocatorTypes) > 0 {
-//		query = query.Joins("JOIN locators ON locators.agent_id = agents.id")
-//		query = query.Where("locators.type IN ?", filters.LocatorTypes)
-//	}
-//
-//	// Filter by extension names and versions
-//	if len(filters.ExtensionNames) > 0 || len(filters.ExtensionVersions) > 0 {
-//		query = query.Joins("JOIN extensions ON extensions.agent_id = agents.id")
-//
-//		if len(filters.ExtensionNames) > 0 {
-//			query = query.Where("extensions.name IN ?", filters.ExtensionNames)
-//		}
-//
-//		if len(filters.ExtensionVersions) > 0 {
-//			query = query.Where("extensions.version IN ?", filters.ExtensionVersions)
-//		}
-//	}
-//
-//	// Make query distinct when using joins to avoid duplicate agents
-//	if len(filters.SkillNames) > 0 || len(filters.SkillCategories) > 0 ||
-//		len(filters.LocatorTypes) > 0 || len(filters.ExtensionNames) > 0 ||
-//		len(filters.ExtensionVersions) > 0 {
-//		query = query.Distinct()
-//	}
-//
-//	// Apply pagination
-//	if filters.Limit > 0 {
-//		query = query.Limit(filters.Limit)
-//	}
-//	if filters.Offset > 0 {
-//		query = query.Offset(filters.Offset)
-//	}
-//
-//	// Preload all related entities to avoid N+1 queries
-//	query = query.Preload("Skills").
-//		Preload("Locators").
-//		Preload("Extensions").
-//		Preload("Signature")
-//
-//	// Execute the query with all preloaded relations
-//	if err := query.Find(&dbAgents).Error; err != nil {
-//		return nil, fmt.Errorf("failed to query agents: %w", err)
-//	}
-//
-//	coreAgents, agents, err := convertToCoreAgents(dbAgents)
-//	if err != nil {
-//		return agents, fmt.Errorf("failed to convert agents: %w", err)
-//	}
-//
-//	return coreAgents, nil
-//}
-//
-//func convertToCoreAgents(dbAgents []searchtypes.Agent) ([]*coretypes.Agent, error) {
-//	// Convert DB agents to core agents
-//	coreAgents := make([]*coretypes.Agent, 0, len(dbAgents))
-//	for _, dbAgent := range dbAgents {
-//		// Convert the agent
-//		coreAgent, err := dbAgent.ToCoreAgent()
-//		if err != nil {
-//			return nil, fmt.Errorf("failed to convert DB agent to core agent: %w", err)
-//		}
-//
-//		// Convert preloaded skills
-//		coreSkills := make([]*coretypes.Skill, 0, len(dbAgent.Skills))
-//		for _, skill := range dbAgent.Skills {
-//			coreSkill, err := skill.ToCoreSkill()
-//			if err != nil {
-//				return nil, fmt.Errorf("failed to convert skill: %w", err)
-//			}
-//			coreSkills = append(coreSkills, coreSkill)
-//		}
-//		coreAgent.Skills = coreSkills
-//
-//		// Convert preloaded extensions
-//		coreExtensions := make([]*coretypes.Extension, 0, len(dbAgent.Extensions))
-//		for _, ext := range dbAgent.Extensions {
-//			coreExt, err := ext.ToCoreExtension()
-//			if err != nil {
-//				return nil, fmt.Errorf("failed to convert extension: %w", err)
-//			}
-//			coreExtensions = append(coreExtensions, coreExt)
-//		}
-//		coreAgent.Extensions = coreExtensions
-//
-//		// Convert preloaded locators
-//		coreLocators := make([]*coretypes.Locator, 0, len(dbAgent.Locators))
-//		for _, locator := range dbAgent.Locators {
-//			coreLocator, err := locator.ToCoreLocator()
-//			if err != nil {
-//				return nil, fmt.Errorf("failed to convert locator: %w", err)
-//			}
-//			coreLocators = append(coreLocators, coreLocator)
-//		}
-//		coreAgent.Locators = coreLocators
-//
-//		// Convert signature
-//		coreAgent.Signature = dbAgent.Signature.ToCoreSignature()
-//
-//		coreAgents = append(coreAgents, coreAgent)
-//	}
-//	return coreAgents, nil
-//}
+// GetRecords retrieves agent records based on the provided options.
+func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.RecordObject, error) { //nolint:cyclop
+	// Create default configuration.
+	cfg := &types.Filters{}
+
+	// Apply all options.
+	for _, opt := range opts {
+		if opt == nil {
+			return nil, errors.New("nil option provided")
+		}
+
+		opt(cfg)
+	}
+
+	// Start with the base query for records.
+	query := d.gormDB.Model(&Record{})
+
+	// Apply pagination.
+	if cfg.Limit > 0 {
+		query = query.Limit(cfg.Limit)
+	}
+
+	if cfg.Offset > 0 {
+		query = query.Offset(cfg.Offset)
+	}
+
+	// Apply record-level filters.
+	if cfg.Name != "" {
+		query = query.Where("records.name LIKE ?", "%"+cfg.Name+"%")
+	}
+
+	if cfg.Version != "" {
+		query = query.Where("records.version = ?", cfg.Version)
+	}
+
+	// Handle skill filters.
+	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
+		query = query.Joins("JOIN skills ON skills.agent_id = records.id")
+		if len(cfg.SkillIDs) > 0 {
+			query = query.Where("skills.skill_id IN ?", cfg.SkillIDs)
+		}
+
+		if len(cfg.SkillNames) > 0 {
+			query = query.Where("skills.name IN ?", cfg.SkillNames)
+		}
+	}
+
+	// Handle locator filters.
+	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
+		query = query.Joins("JOIN locators ON locators.agent_id = records.id")
+		if len(cfg.LocatorTypes) > 0 {
+			query = query.Where("locators.type IN ?", cfg.LocatorTypes)
+		}
+
+		if len(cfg.LocatorURLs) > 0 {
+			query = query.Where("locators.url IN ?", cfg.LocatorURLs)
+		}
+	}
+
+	// Handle extension filters.
+	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
+		query = query.Joins("JOIN extensions ON extensions.agent_id = records.id")
+		if len(cfg.ExtensionNames) > 0 {
+			query = query.Where("extensions.name IN ?", cfg.ExtensionNames)
+		}
+
+		if len(cfg.ExtensionVersions) > 0 {
+			query = query.Where("extensions.version IN ?", cfg.ExtensionVersions)
+		}
+	}
+
+	// Execute the query to get records.
+	var dbRecords []Record
+	if err := query.Preload("Skills").Preload("Locators").Preload("Extensions").Find(&dbRecords).Error; err != nil {
+		return nil, fmt.Errorf("failed to query records: %w", err)
+	}
+
+	// Convert to RecordObject interfaces.
+	result := make([]types.RecordObject, len(dbRecords))
+	for i := range dbRecords {
+		result[i] = &dbRecords[i]
+	}
+
+	return result, nil
+}

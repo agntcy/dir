@@ -5,25 +5,38 @@ package sqlite
 
 import (
 	"fmt"
-	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
+
+	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
-type ExtensionObject interface {
-	ToSQLiteExtension(agentID uint) (*coretypesv2.SQLiteExtension, error)
+type Extension struct {
+	gorm.Model
+	AgentID uint   `gorm:"not null;index"`
+	Name    string `gorm:"not null"`
+	Version string `gorm:"not null"`
 }
 
-func (s *SQLiteDB) addExtensionTx(tx *gorm.DB, extension ExtensionObject, agentID uint) (uint, error) {
-	SQLExtension, err := extension.ToSQLiteExtension(agentID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to convert core extension to SQLite extension: %w", err)
+func (extension *Extension) GetName() string {
+	return extension.Name
+}
+
+func (extension *Extension) GetVersion() string {
+	return extension.Version
+}
+
+func (d *DB) addExtensionTx(tx *gorm.DB, extensionObject types.ExtensionObject, agentID uint) (uint, error) {
+	extension := &Extension{
+		AgentID: agentID,
+		Name:    extensionObject.GetName(),
+		Version: extensionObject.GetVersion(),
 	}
 
-	if err := tx.Create(SQLExtension).Error; err != nil {
+	if err := tx.Create(extension).Error; err != nil {
 		return 0, fmt.Errorf("failed to add extension to SQLite search database: %w", err)
 	}
 
-	logger.Info("Added extension to SQLite search database", "agent_id", agentID, "SQLExtension_ID", SQLExtension.ID)
+	logger.Info("Added extension to SQLite search database", "agent_id", agentID, "extension_id", extension.ID)
 
-	return SQLExtension.ID, nil
+	return extension.ID, nil
 }

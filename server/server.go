@@ -19,7 +19,6 @@ import (
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/search"
-	searchtypes "github.com/agntcy/dir/server/search/types"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -36,7 +35,7 @@ type Server struct {
 	options       types.APIOptions
 	store         types.StoreAPI
 	routing       types.RoutingAPI
-	search        searchtypes.SearchAPI
+	search        types.SearchAPI
 	healthzServer *healthz.Server
 	grpcServer    *grpc.Server
 }
@@ -117,7 +116,7 @@ func (s Server) Store() types.StoreAPI { return s.store }
 
 func (s Server) Routing() types.RoutingAPI { return s.routing }
 
-func (s Server) Search() searchtypes.SearchAPI { return s.search }
+func (s Server) Search() types.SearchAPI { return s.search }
 
 func (s Server) Close() {
 	s.grpcServer.GracefulStop()

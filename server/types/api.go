@@ -5,7 +5,6 @@ package types
 
 import (
 	"github.com/agntcy/dir/server/config"
-	"github.com/agntcy/dir/server/search/types"
 )
 
 // TODO: Extend with cleaning and garbage collection support.
@@ -20,7 +19,7 @@ type API interface {
 	Routing() RoutingAPI
 
 	// Search returns an implementation of the SearchAPI
-	Search() types.SearchAPI
+	Search() SearchAPI
 }
 
 // APIOptions collects internal dependencies for all API services.

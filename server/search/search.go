@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/server/search/sqlite"
-	searchtypes "github.com/agntcy/dir/server/search/types"
 	"github.com/agntcy/dir/server/types"
 )
 
@@ -17,10 +16,10 @@ const (
 	SQLite DB = "sqlite"
 )
 
-func New(opts types.APIOptions) (searchtypes.SearchAPI, error) {
-	switch db := DB(opts.Config().Search.DB); db {
+func New(opts types.APIOptions) (types.SearchAPI, error) {
+	switch db := DB(opts.Config().Search.DBType); db {
 	case SQLite:
-		sqliteDB, err := sqlite.New()
+		sqliteDB, err := sqlite.New(opts.Config().Search.SQLiteDBPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create SQLite search database: %w", err)
 		}
