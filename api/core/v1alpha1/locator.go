@@ -28,5 +28,5 @@ func init() {
 }
 
 func (l *Locator) Key() string {
-	return fmt.Sprintf("%s/%s", l.GetType(), l.GetURL())
+	return fmt.Sprintf("%s/%s", l.GetType(), l.GetUrl())
 }
