@@ -10,7 +10,7 @@ type SkillObject interface {
 
 type LocatorObject interface {
 	GetType() string
-	GetURL() string
+	GetUrl() string
 }
 
 type ExtensionObject interface {

@@ -21,7 +21,7 @@ func (locator *Locator) GetType() string {
 	return locator.Type
 }
 
-func (locator *Locator) GetURL() string {
+func (locator *Locator) GetUrl() string { //nolint:revive,stylecheck
 	return locator.URL
 }
 
@@ -29,7 +29,7 @@ func (d *DB) addLocatorTx(tx *gorm.DB, locatorObject types.LocatorObject, agentI
 	locator := &Locator{
 		AgentID: agentID,
 		Type:    locatorObject.GetType(),
-		URL:     locatorObject.GetURL(),
+		URL:     locatorObject.GetUrl(),
 	}
 
 	if err := tx.Create(locator).Error; err != nil {
