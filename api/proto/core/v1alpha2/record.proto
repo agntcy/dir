@@ -57,10 +57,6 @@ message Record {
   // Security signature of the agent.
   Signature signature = 10;
 
-  // List of tags associated with the agent.
-  // Tags can be used for categorization, search, and filtering.
-  repeated string tags = 11;
-
   // Reference to the previous agent record, if any.
   // Used to link the agent record to its previous versions.
   // Field number is explicitly reserved for extenability.

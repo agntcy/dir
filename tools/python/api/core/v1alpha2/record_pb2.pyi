@@ -11,7 +11,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Record(_message.Message):
-    __slots__ = ("annotations", "name", "version", "description", "authors", "created_at", "skills", "locators", "extensions", "signature", "tags", "previous_record_cid")
+    __slots__ = ("annotations", "name", "version", "description", "authors", "created_at", "skills", "locators", "extensions", "signature", "previous_record_cid")
     class AnnotationsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -29,7 +29,6 @@ class Record(_message.Message):
     LOCATORS_FIELD_NUMBER: _ClassVar[int]
     EXTENSIONS_FIELD_NUMBER: _ClassVar[int]
     SIGNATURE_FIELD_NUMBER: _ClassVar[int]
-    TAGS_FIELD_NUMBER: _ClassVar[int]
     PREVIOUS_RECORD_CID_FIELD_NUMBER: _ClassVar[int]
     annotations: _containers.ScalarMap[str, str]
     name: str
@@ -41,6 +40,5 @@ class Record(_message.Message):
     locators: _containers.RepeatedCompositeFieldContainer[_locator_pb2.Locator]
     extensions: _containers.RepeatedCompositeFieldContainer[_extension_pb2.Extension]
     signature: _signature_pb2.Signature
-    tags: _containers.RepeatedScalarFieldContainer[str]
     previous_record_cid: str
-    def __init__(self, annotations: _Optional[_Mapping[str, str]] = ..., name: _Optional[str] = ..., version: _Optional[str] = ..., description: _Optional[str] = ..., authors: _Optional[_Iterable[str]] = ..., created_at: _Optional[str] = ..., skills: _Optional[_Iterable[_Union[_skill_pb2.Skill, _Mapping]]] = ..., locators: _Optional[_Iterable[_Union[_locator_pb2.Locator, _Mapping]]] = ..., extensions: _Optional[_Iterable[_Union[_extension_pb2.Extension, _Mapping]]] = ..., signature: _Optional[_Union[_signature_pb2.Signature, _Mapping]] = ..., tags: _Optional[_Iterable[str]] = ..., previous_record_cid: _Optional[str] = ...) -> None: ...
+    def __init__(self, annotations: _Optional[_Mapping[str, str]] = ..., name: _Optional[str] = ..., version: _Optional[str] = ..., description: _Optional[str] = ..., authors: _Optional[_Iterable[str]] = ..., created_at: _Optional[str] = ..., skills: _Optional[_Iterable[_Union[_skill_pb2.Skill, _Mapping]]] = ..., locators: _Optional[_Iterable[_Union[_locator_pb2.Locator, _Mapping]]] = ..., extensions: _Optional[_Iterable[_Union[_extension_pb2.Extension, _Mapping]]] = ..., signature: _Optional[_Union[_signature_pb2.Signature, _Mapping]] = ..., previous_record_cid: _Optional[str] = ...) -> None: ...
