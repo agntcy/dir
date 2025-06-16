@@ -96,7 +96,8 @@ func TestConfig(t *testing.T) {
 					BootstrapPeers: routing.DefaultBootstrapPeers,
 				},
 				Search: search.Config{
-					DBType: search.DefaultDBType,
+					DBType:       search.DefaultDBType,
+					SQLiteDBPath: search.DefaultSQLiteDBPath,
 				},
 			},
 		},

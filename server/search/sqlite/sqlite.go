@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/utils/logging"
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
