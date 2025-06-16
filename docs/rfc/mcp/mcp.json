@@ -1,0 +1,26 @@
+{
+  "inputs": [
+    {
+      "description": "GitHub Personal Access Token",
+      "id": "github_token",
+      "password": true,
+      "type": "promptString"
+    }
+  ],
+  "servers": {
+    "github": {
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "command": "docker",
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
+      }
+    }
+  }
+}
