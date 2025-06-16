@@ -1,0 +1,154 @@
+{
+  "name": "poc/mcp-agent",
+  "version": "v1.0.0",
+  "description": "Agent with MCP support example",
+  "authors": [
+    "Cisco Systems"
+  ],
+  "created_at": "2025-03-19T17:06:37Z",
+  "skills": [
+    {
+      "category_uid": 1,
+      "class_uid": 10201,
+      "category_name": "Natural Language Processing",
+      "class_name": "Text Completion"
+    }
+  ],
+  "locators": [
+    {
+      "type": "docker-image",
+      "url": "https://ghcr.io/agntcy/mcp-example"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "mcp-server",
+      "version": "v1.0.0",
+      "data": {
+        "inputs": [
+          {
+            "description": "GitHub Personal Access Token",
+            "id": "github_token",
+            "password": true,
+            "type": "promptString"
+          }
+        ],
+        "servers": {
+          "github": {
+            "args": [
+              "run",
+              "-i",
+              "--rm",
+              "-e",
+              "GITHUB_PERSONAL_ACCESS_TOKEN",
+              "ghcr.io/github/github-mcp-server"
+            ],
+            "command": "docker",
+            "env": {
+              "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "llm_info": [
+    {
+      "provider": "openai",
+      "version": "2024-03",
+      "model_name": "gpt-4-turbo-preview",
+      "annotations": {
+        "environment": "production",
+        "tier": "premium"
+      },
+      "config": {
+        "temperature": 0.7,
+        "max_tokens": 4096,
+        "stop_sequences": [
+          "\n\n"
+        ],
+        "top_p": 0.95,
+        "response_format": "json",
+        "seed": 42
+      },
+      "endpoint": {
+        "base_url": "https://api.openai.com/v1",
+        "api_version": "2024-03-01",
+        "headers": {
+          "OpenAI-Beta": "assistants=v1"
+        }
+      },
+      "capabilities": {
+        "max_context_tokens": 128000,
+        "max_response_tokens": 4096,
+        "features": [
+          "streaming",
+          "function-calling",
+          "json-mode",
+          "parallel-requests"
+        ],
+        "supported_formats": [
+          "json",
+          "text",
+          "markdown"
+        ],
+        "specializations": [
+          "coding",
+          "analysis",
+          "creative-writing"
+        ],
+        "cost_per_1k_prompt_tokens": 10,
+        "cost_per_1k_completion_tokens": 30
+      }
+    },
+    {
+      "provider": "azure",
+      "version": "2024-03",
+      "model_name": "gpt-4",
+      "annotations": {
+        "deployment": "prod-gpt4",
+        "environment": "production"
+      },
+      "config": {
+        "temperature": 0.3,
+        "max_tokens": 4000,
+        "stop_sequences": [
+          "\n\n"
+        ],
+        "top_p": 0.9,
+        "response_format": "text",
+        "provider_config": {
+          "deployment_name": "prod-gpt4",
+          "resource_name": "my-azure-openai"
+        }
+      },
+      "endpoint": {
+        "base_url": "https://my-azure-openai.openai.azure.com",
+        "api_version": "2024-03-01-preview",
+        "headers": {
+          "api-key": "env:API_KEY_REF"
+        }
+      },
+      "capabilities": {
+        "max_context_tokens": 128000,
+        "max_response_tokens": 4000,
+        "features": [
+          "streaming",
+          "function-calling",
+          "azure-mgmt-api"
+        ],
+        "supported_formats": [
+          "text",
+          "json"
+        ],
+        "specializations": [
+          "enterprise",
+          "compliance",
+          "security"
+        ],
+        "cost_per_1k_prompt_tokens": 9,
+        "cost_per_1k_completion_tokens": 27
+      }
+    }
+  ]
+}

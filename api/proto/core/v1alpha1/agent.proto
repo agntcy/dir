@@ -9,6 +9,7 @@ import "core/v1alpha1/extension.proto";
 import "core/v1alpha1/locator.proto";
 import "core/v1alpha1/skill.proto";
 import "core/v1alpha1/signature.proto";
+import "core/v1alpha1/llm.proto";
 
 // Data model defines a schema for versioned AI agent content representation.
 // The schema provides a way to describe features, constraints, artifact
@@ -48,4 +49,9 @@ message Agent {
   repeated Extension extensions = 10;
   // Signature attached to this agent.
   optional Signature signature = 11;
+  
+  // LLM information for this agent.
+  // This usually embeds what LLMs (Large Language Models) this agent is
+  // capable of using, including their configurations and capabilities.
+  repeated LLMInfo llm_info = 12;
 }
