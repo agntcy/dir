@@ -1,0 +1,55 @@
+{
+    "name": "poc/mcp-agent",
+    "version": "v1.0.0",
+    "description": "Agent with MCP support example",
+    "authors": [
+        "Cisco Systems"
+    ],
+    "created_at": "2025-03-19T17:06:37Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        }
+    ],
+    "locators": [
+        {
+            "type": "docker-image",
+            "url": "https://ghcr.io/agntcy/mcp-example"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "mcp-server",
+            "version": "v1.0.0",
+            "data": {
+                "inputs": [
+                    {
+                        "type": "promptString",
+                        "id": "github_token",
+                        "description": "GitHub Personal Access Token",
+                        "password": true
+                    }
+                ],
+                "servers": {
+                    "github-poc": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "GITHUB_PERSONAL_ACCESS_TOKEN",
+                            "ghcr.io/github/github-mcp-server"
+                        ],
+                        "env": {
+                            "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
