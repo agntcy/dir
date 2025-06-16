@@ -71,7 +71,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	}
 
 	// Print success message
-	presenter.Print(cmd, "Agent signature verified successfully!", nil)
+	presenter.Print(cmd, "Agent signature verified successfully!")
 
 	return nil
 }
