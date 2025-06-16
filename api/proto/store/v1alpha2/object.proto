@@ -50,5 +50,10 @@ enum ObjectType {
   OBJECT_TYPE_RAW = 1;
 
   // OASF Record Types (reserved)
-  reserved 1000 to 10000;
+  // For example, v1alpha1 JSON, v1alpha2 Protobuf, etc.
+  reserved 1000 to 9999;
+
+  // OASF Object Types (reserved)
+  // For example, signatures, extensions, etc.
+  reserved 10000 to 19999;
 }

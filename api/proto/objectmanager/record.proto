@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-package store.v1alpha2;
+package objectmanager;
 
 import "store/v1alpha2/object.proto";
 import "core/v1alpha1/agent.proto";
@@ -27,13 +27,16 @@ message RecordObject {
 
 // Converts Object to an RecordObject and vice versa.
 // This is client-side service only.
-service RecordObjectService {
+service RecordObjectConverter {
   // Converts an Object to a RecordObject.
-  rpc ConvertToRecordObject(Object) returns (RecordObject);
+  rpc ConvertToRecordObject(store.v1alpha2.Object) returns (RecordObject);
 
   // Converts a RecordObject to an Object.
-  rpc ConvertFromRecordObject(RecordObject) returns (Object);
+  rpc ConvertFromRecordObject(RecordObject) returns (store.v1alpha2.Object);
 }
+
+// 1001: bahuqoerayw3ftbu5asenuyogvtmboajnthwawvc5354wvxpeewp32fbxhsia
+// 1002: bahvaoerayw3ftbu5asenuyogvtmboajnthwawvc5354wvxpeewp32fbxhsia
 
 enum RecordObjectType {
   RECORD_OBJECT_TYPE_UNSPECIFIED = 0; // invalid type, should not be used

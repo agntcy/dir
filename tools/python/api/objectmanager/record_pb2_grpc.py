@@ -2,11 +2,11 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
+from objectmanager import record_pb2 as objectmanager_dot_record__pb2
 from store.v1alpha2 import object_pb2 as store_dot_v1alpha2_dot_object__pb2
-from store.v1alpha2 import record_pb2 as store_dot_v1alpha2_dot_record__pb2
 
 
-class RecordObjectServiceStub(object):
+class RecordObjectConverterStub(object):
     """Converts Object to an RecordObject and vice versa.
     This is client-side service only.
     """
@@ -18,18 +18,18 @@ class RecordObjectServiceStub(object):
             channel: A grpc.Channel.
         """
         self.ConvertToRecordObject = channel.unary_unary(
-                '/store.v1alpha2.RecordObjectService/ConvertToRecordObject',
+                '/objectmanager.RecordObjectConverter/ConvertToRecordObject',
                 request_serializer=store_dot_v1alpha2_dot_object__pb2.Object.SerializeToString,
-                response_deserializer=store_dot_v1alpha2_dot_record__pb2.RecordObject.FromString,
+                response_deserializer=objectmanager_dot_record__pb2.RecordObject.FromString,
                 _registered_method=True)
         self.ConvertFromRecordObject = channel.unary_unary(
-                '/store.v1alpha2.RecordObjectService/ConvertFromRecordObject',
-                request_serializer=store_dot_v1alpha2_dot_record__pb2.RecordObject.SerializeToString,
+                '/objectmanager.RecordObjectConverter/ConvertFromRecordObject',
+                request_serializer=objectmanager_dot_record__pb2.RecordObject.SerializeToString,
                 response_deserializer=store_dot_v1alpha2_dot_object__pb2.Object.FromString,
                 _registered_method=True)
 
 
-class RecordObjectServiceServicer(object):
+class RecordObjectConverterServicer(object):
     """Converts Object to an RecordObject and vice versa.
     This is client-side service only.
     """
@@ -49,27 +49,27 @@ class RecordObjectServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_RecordObjectServiceServicer_to_server(servicer, server):
+def add_RecordObjectConverterServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'ConvertToRecordObject': grpc.unary_unary_rpc_method_handler(
                     servicer.ConvertToRecordObject,
                     request_deserializer=store_dot_v1alpha2_dot_object__pb2.Object.FromString,
-                    response_serializer=store_dot_v1alpha2_dot_record__pb2.RecordObject.SerializeToString,
+                    response_serializer=objectmanager_dot_record__pb2.RecordObject.SerializeToString,
             ),
             'ConvertFromRecordObject': grpc.unary_unary_rpc_method_handler(
                     servicer.ConvertFromRecordObject,
-                    request_deserializer=store_dot_v1alpha2_dot_record__pb2.RecordObject.FromString,
+                    request_deserializer=objectmanager_dot_record__pb2.RecordObject.FromString,
                     response_serializer=store_dot_v1alpha2_dot_object__pb2.Object.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'store.v1alpha2.RecordObjectService', rpc_method_handlers)
+            'objectmanager.RecordObjectConverter', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('store.v1alpha2.RecordObjectService', rpc_method_handlers)
+    server.add_registered_method_handlers('objectmanager.RecordObjectConverter', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class RecordObjectService(object):
+class RecordObjectConverter(object):
     """Converts Object to an RecordObject and vice versa.
     This is client-side service only.
     """
@@ -88,9 +88,9 @@ class RecordObjectService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/store.v1alpha2.RecordObjectService/ConvertToRecordObject',
+            '/objectmanager.RecordObjectConverter/ConvertToRecordObject',
             store_dot_v1alpha2_dot_object__pb2.Object.SerializeToString,
-            store_dot_v1alpha2_dot_record__pb2.RecordObject.FromString,
+            objectmanager_dot_record__pb2.RecordObject.FromString,
             options,
             channel_credentials,
             insecure,
@@ -115,8 +115,8 @@ class RecordObjectService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/store.v1alpha2.RecordObjectService/ConvertFromRecordObject',
-            store_dot_v1alpha2_dot_record__pb2.RecordObject.SerializeToString,
+            '/objectmanager.RecordObjectConverter/ConvertFromRecordObject',
+            objectmanager_dot_record__pb2.RecordObject.SerializeToString,
             store_dot_v1alpha2_dot_object__pb2.Object.FromString,
             options,
             channel_credentials,

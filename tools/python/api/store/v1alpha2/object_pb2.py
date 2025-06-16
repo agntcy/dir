@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bstore/v1alpha2/object.proto\x12\x0estore.v1alpha2\"\x1d\n\tObjectRef\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xaa\x02\n\x06Object\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\x12.\n\x04type\x18\x02 \x01(\x0e\x32\x1a.store.v1alpha2.ObjectTypeR\x04type\x12I\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32\'.store.v1alpha2.Object.AnnotationsEntryR\x0b\x61nnotations\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x12\x12\n\x04size\x18\x05 \x01(\x04R\x04size\x12\x17\n\x04\x64\x61ta\x18\x06 \x01(\x0cH\x00R\x04\x64\x61ta\x88\x01\x01\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x07\n\x05_data*F\n\nObjectType\x12\x1b\n\x17OBJECT_TYPE_UNSPECIFIED\x10\x00\x12\x13\n\x0fOBJECT_TYPE_RAW\x10\x01\"\x06\x08\xe8\x07\x10\x90NB\xb2\x01\n\x12\x63om.store.v1alpha2B\x0bObjectProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha2\xca\x02\x0eStore\\V1alpha2\xe2\x02\x1aStore\\V1alpha2\\GPBMetadata\xea\x02\x0fStore::V1alpha2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bstore/v1alpha2/object.proto\x12\x0estore.v1alpha2\"\x1d\n\tObjectRef\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xaa\x02\n\x06Object\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\x12.\n\x04type\x18\x02 \x01(\x0e\x32\x1a.store.v1alpha2.ObjectTypeR\x04type\x12I\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32\'.store.v1alpha2.Object.AnnotationsEntryR\x0b\x61nnotations\x12\x1d\n\ncreated_at\x18\x04 \x01(\tR\tcreatedAt\x12\x12\n\x04size\x18\x05 \x01(\x04R\x04size\x12\x17\n\x04\x64\x61ta\x18\x06 \x01(\x0cH\x00R\x04\x64\x61ta\x88\x01\x01\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\x07\n\x05_data*O\n\nObjectType\x12\x1b\n\x17OBJECT_TYPE_UNSPECIFIED\x10\x00\x12\x13\n\x0fOBJECT_TYPE_RAW\x10\x01\"\x06\x08\xe8\x07\x10\x8fN\"\x07\x08\x90N\x10\x9f\x9c\x01\x42\xb2\x01\n\x12\x63om.store.v1alpha2B\x0bObjectProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha2\xca\x02\x0eStore\\V1alpha2\xe2\x02\x1aStore\\V1alpha2\\GPBMetadata\xea\x02\x0fStore::V1alpha2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,7 +35,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_OBJECT_ANNOTATIONSENTRY']._loaded_options = None
   _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_options = b'8\001'
   _globals['_OBJECTTYPE']._serialized_start=379
-  _globals['_OBJECTTYPE']._serialized_end=449
+  _globals['_OBJECTTYPE']._serialized_end=458
   _globals['_OBJECTREF']._serialized_start=47
   _globals['_OBJECTREF']._serialized_end=76
   _globals['_OBJECT']._serialized_start=79
