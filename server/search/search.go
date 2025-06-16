@@ -19,7 +19,7 @@ const (
 func New(opts types.APIOptions) (types.SearchAPI, error) {
 	switch db := DB(opts.Config().Search.DBType); db {
 	case SQLite:
-		sqliteDB, err := sqlite.New(opts.Config().Search.SQLiteDBPath)
+		sqliteDB, err := sqlite.New(opts.Config().Search.SQLite.DBPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create SQLite search database: %w", err)
 		}

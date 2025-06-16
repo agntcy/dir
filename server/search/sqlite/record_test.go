@@ -4,7 +4,6 @@
 package sqlite
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/agntcy/dir/server/types"
@@ -17,8 +16,7 @@ import (
 func setupTestDB(t *testing.T) *DB {
 	t.Helper()
 
-	dbName := fmt.Sprintf("file:%s:memory:?cache=shared", t.Name())
-	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
 	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Extension{})

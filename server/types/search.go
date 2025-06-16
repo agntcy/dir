@@ -27,7 +27,7 @@ type RecordObject interface {
 	GetExtensionObjects() []ExtensionObject
 }
 
-type Filters struct {
+type RecordFilters struct {
 	Limit             int
 	Offset            int
 	Name              string
@@ -40,74 +40,74 @@ type Filters struct {
 	ExtensionVersions []string
 }
 
-type FilterOption func(*Filters)
+type FilterOption func(*RecordFilters)
 
 // WithLimit sets the maximum number of records to return.
 func WithLimit(limit int) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.Limit = limit
 	}
 }
 
 // WithOffset sets pagination offset.
 func WithOffset(offset int) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.Offset = offset
 	}
 }
 
-// WithName Filters records by name (partial match).
+// WithName RecordFilters records by name (partial match).
 func WithName(name string) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.Name = name
 	}
 }
 
-// WithVersion Filters records by exact version.
+// WithVersion RecordFilters records by exact version.
 func WithVersion(version string) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.Version = version
 	}
 }
 
-// WithSkillIDs Filters records by skill IDs.
+// WithSkillIDs RecordFilters records by skill IDs.
 func WithSkillIDs(ids ...uint32) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.SkillIDs = ids
 	}
 }
 
-// WithSkillNames Filters records by skill names.
+// WithSkillNames RecordFilters records by skill names.
 func WithSkillNames(names ...string) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.SkillNames = names
 	}
 }
 
-// WithLocatorTypes Filters records by locator types.
+// WithLocatorTypes RecordFilters records by locator types.
 func WithLocatorTypes(types ...string) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.LocatorTypes = types
 	}
 }
 
-// WithLocatorURLs Filters records by locator URLs.
+// WithLocatorURLs RecordFilters records by locator URLs.
 func WithLocatorURLs(urls ...string) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.LocatorURLs = urls
 	}
 }
 
-// WithExtensionNames Filters records by extension names.
+// WithExtensionNames RecordFilters records by extension names.
 func WithExtensionNames(names ...string) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.ExtensionNames = names
 	}
 }
 
-// WithExtensionVersions Filters records by extension versions.
+// WithExtensionVersions RecordFilters records by extension versions.
 func WithExtensionVersions(versions ...string) FilterOption {
-	return func(sc *Filters) {
+	return func(sc *RecordFilters) {
 		sc.ExtensionVersions = versions
 	}
 }
@@ -116,6 +116,6 @@ type SearchAPI interface {
 	// AddRecord adds a new agent record to the search database.
 	AddRecord(record RecordObject) error
 
-	// GetRecords retrieves agent records based on the provided Filters.
+	// GetRecords retrieves agent records based on the provided RecordFilters.
 	GetRecords(opts ...FilterOption) ([]RecordObject, error)
 }

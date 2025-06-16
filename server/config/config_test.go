@@ -9,6 +9,7 @@ import (
 
 	routing "github.com/agntcy/dir/server/routing/config"
 	search "github.com/agntcy/dir/server/search/config"
+	sqliteconfig "github.com/agntcy/dir/server/search/sqlite/config"
 	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
@@ -69,8 +70,10 @@ func TestConfig(t *testing.T) {
 					KeyPath: "/path/to/key",
 				},
 				Search: search.Config{
-					DBType:       "sqlite",
-					SQLiteDBPath: "sqlite.db",
+					DBType: "sqlite",
+					SQLite: sqliteconfig.Config{
+						DBPath: "sqlite.db",
+					},
 				},
 			},
 		},
@@ -96,8 +99,10 @@ func TestConfig(t *testing.T) {
 					BootstrapPeers: routing.DefaultBootstrapPeers,
 				},
 				Search: search.Config{
-					DBType:       search.DefaultDBType,
-					SQLiteDBPath: search.DefaultSQLiteDBPath,
+					DBType: search.DefaultDBType,
+					SQLite: sqliteconfig.Config{
+						DBPath: sqliteconfig.DefaultSQLiteDBPath,
+					},
 				},
 			},
 		},

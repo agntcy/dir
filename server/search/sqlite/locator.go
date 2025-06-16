@@ -36,7 +36,7 @@ func (d *DB) addLocatorTx(tx *gorm.DB, locatorObject types.LocatorObject, agentI
 		return 0, fmt.Errorf("failed to add locator to SQLite search database: %w", err)
 	}
 
-	logger.Info("Added locator to SQLite search database", "agent_id", agentID, "locator_id", locator.ID)
+	logger.Debug("Added locator to SQLite search database", "agent_id", agentID, "locator_id", locator.ID)
 
 	return locator.ID, nil
 }

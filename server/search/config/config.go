@@ -3,15 +3,18 @@
 
 package config
 
+import (
+	sqliteconfig "github.com/agntcy/dir/server/search/sqlite/config"
+)
+
 const (
-	DefaultDBType       = "sqlite"
-	DefaultSQLiteDBPath = "/data/search.db"
+	DefaultDBType = "sqlite"
 )
 
 type Config struct {
 	// DBType is the type of the search database.
 	DBType string `json:"db_type,omitempty" mapstructure:"db_type"`
 
-	// SQLiteDBPath is the path to the SQLite database file.
-	SQLiteDBPath string `json:"sqlite_db_path,omitempty" mapstructure:"sqlite_db_path"`
+	// Config for SQLite database.
+	SQLite sqliteconfig.Config `json:"sqlite,omitempty" mapstructure:"sqlite"`
 }

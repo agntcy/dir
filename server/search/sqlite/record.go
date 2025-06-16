@@ -66,7 +66,7 @@ func (d *DB) addRecordTx(tx *gorm.DB, recordObject types.RecordObject) (uint, er
 		return 0, fmt.Errorf("failed to add record to SQLite search database: %w", err)
 	}
 
-	logger.Info("Added record to SQLite search database", "record_id", record.ID)
+	logger.Debug("Added record to SQLite search database", "record_id", record.ID)
 
 	return record.ID, nil
 }
@@ -108,7 +108,7 @@ func (d *DB) AddRecord(record types.RecordObject) error {
 // GetRecords retrieves agent records based on the provided options.
 func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.RecordObject, error) { //nolint:cyclop
 	// Create default configuration.
-	cfg := &types.Filters{}
+	cfg := &types.RecordFilters{}
 
 	// Apply all options.
 	for _, opt := range opts {

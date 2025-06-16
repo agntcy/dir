@@ -10,6 +10,7 @@ import (
 
 	routing "github.com/agntcy/dir/server/routing/config"
 	search "github.com/agntcy/dir/server/search/config"
+	sqliteconfig "github.com/agntcy/dir/server/search/sqlite/config"
 	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
@@ -142,8 +143,8 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("search.db_type")
 	v.SetDefault("search.db_type", search.DefaultDBType)
 
-	_ = v.BindEnv("search.sqlite_db_path")
-	v.SetDefault("search.sqlite_db_path", search.DefaultSQLiteDBPath)
+	_ = v.BindEnv("search.sqlite.db_path")
+	v.SetDefault("search.sqlite.db_path", sqliteconfig.DefaultSQLiteDBPath)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

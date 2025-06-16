@@ -36,7 +36,7 @@ func (d *DB) addSkillTx(tx *gorm.DB, skillObject types.SkillObject, agentID uint
 		return 0, fmt.Errorf("failed to add skill to SQLite search database: %w", err)
 	}
 
-	logger.Info("Added skill to SQLite search database", "agent_id", agentID, "skill_id", skill.ID)
+	logger.Debug("Added skill to SQLite search database", "agent_id", agentID, "skill_id", skill.ID)
 
 	return skill.ID, nil
 }
