@@ -24,26 +24,30 @@ import (
 )
 
 func main() {
-	// Define the generic record object with a specific schema/version/format
-	recordType := 1002 // RECORD_OBJECT_TYPE_OASF_V1ALPHA2_JSON
-	recordData := []byte(`{"name": "my-record"}`)
+	// Step 1: Define the generic object
+	// CID codec embeds a specific object schema, version, and format
+	// Data that needs to be e.g. stored, validated, or parsed for a specific object
+	objectType := 1002                            // RECORD_OBJECT_TYPE_OASF_V1ALPHA2_JSON
+	objectData := []byte(`{"name": "my-record"}`) // Record object
 
-	// Create a cid manually (embeds the object type via codec)
-	pref := cid.Prefix{
+	// Step 2: Create a CID for the object (embed the object type via codec)
+	cidPref := cid.Prefix{
 		Version:  1,
-		Codec:    uint64(recordType),
+		Codec:    uint64(objectType),
 		MhType:   mh.SHA2_256,
-		MhLength: -1, // default length
+		MhLength: -1,
 	}
 
-	// Create the typed CID from the data
-	c, err := pref.Sum(recordData)
+	objectCID, err := cidPref.Sum(objectData)
 	if err != nil {
 		panic(err)
 	}
 
-    // Print the CID
-	fmt.Printf("Record CID(type=%d): %v", recordType, c)
-    // Record CID(type=1002): bahvaoerathi53pba7x3sdjchhk4kl5mwgbqex5a2m4yfdbxqvyaixyrnjcha
+	// Step 3: Print the object CID
+	fmt.Printf("Object CID(type=%d): %v", objectType, objectCID)
+
+	// Step 4: Extract the object type from CID
+	// Step 5: Parse the data depending on the object type
+	// Step 6: Concrete object available
 }
 ```
