@@ -115,10 +115,9 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 	// Signature validation
 	// This does not validate the signature itself, but only checks if it is set.
 	// NOTE: we can still push agents with bogus signatures, but we will not be able to verify them.
-	// TODO(ramizpolic): REMOVE THE TEMPORARY DISABLED CODE FOR SIGNATURE VALIDATION
-	// if agent.GetSignature() == nil {
-	// 	return status.Error(codes.InvalidArgument, "agent signature is required")
-	// }
+	if agent.GetSignature() == nil {
+		return status.Error(codes.InvalidArgument, "agent signature is required")
+	}
 
 	// Size validation
 	if len(agentJSON) > maxAgentSize {
