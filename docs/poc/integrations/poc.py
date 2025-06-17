@@ -8,7 +8,7 @@
 ##
 ## Usage: 
 ##
-##    ./poc.py -record=record.json -vscode_path=./../../../.vscode -continue_path=./../../../.continue/assistants
+##    poc.py -record=./record.json -vscode_path=./.vscode -continue_path=./.continue/assistants
 ##
 ##############################################################################
 
