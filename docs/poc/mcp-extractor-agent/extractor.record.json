@@ -1,7 +1,7 @@
 {
-    "name": "poc/integrations-agent-example",
+    "name": "poc/mcp-oasf-extractor-agent",
     "version": "v1.0.0",
-    "description": "An example agent with IDE integrations support",
+    "description": "An agent that scans MCP server registries and generates OASF records for each MCP server.",
     "authors": [
         "Ramiz Polic <rpolic@cisco.com>"
     ],
@@ -17,7 +17,7 @@
     "locators": [
         {
             "type": "docker-image",
-            "url": "https://ghcr.io/agntcy/dir/integrations-agent-example"
+            "url": "https://ghcr.io/agntcy/dir/mcp-oasf-extractor-agent"
         }
     ],
     "extensions": [
@@ -44,42 +44,10 @@
             }
         },
         {
-            "name": "schema.oasf.agntcy.org/features/runtime/a2a",
-            "version": "v1.0.0",
-            "data": {
-                "name": "example-agent",
-                "description": "An agent that performs web searches and extracts information.",
-                "url": "http://localhost:8000",
-                "capabilities": {
-                    "streaming": true,
-                    "pushNotifications": false
-                },
-                "defaultInputModes": [
-                    "text"
-                ],
-                "defaultOutputModes": [
-                    "text"
-                ],
-                "skills": [
-                    {
-                        "id": "browser",
-                        "name": "browser automation",
-                        "description": "Performs web searches to retrieve information."
-                    }
-                ]
-            }
-        },
-        {
             "name": "schema.oasf.agntcy.org/features/runtime/model",
             "version": "v1.0.0",
             "data": {
                 "models": [
-                    {
-                        "model": "deepseek-r1:1.5b",
-                        "provider": "ollama",
-                        "api_base": "http://localhost:11434",
-                        "prompt": "You are an expert software developer. Your task is to assist with software development tasks, including code generation, debugging, and providing explanations for code snippets. Use the provided context to generate relevant and accurate responses."
-                    },
                     {
                         "model": "gpt-4o",
                         "provider": "azure",
@@ -91,7 +59,7 @@
                             "apply"
                         ],
                         "completion_options": {
-                            "context_length": 128000,
+                            "context_length": 500000,
                             "max_tokens": 16384
                         }
                     }
@@ -104,9 +72,9 @@
             "data": {
                 "prompts": [
                     {
-                        "name": "PR Summary",
-                        "description": "Provide an in-depth summary of the pull request.",
-                        "prompt": "Summarize the pull request in detail, including its purpose, changes made, and any relevant context. Focus on the technical aspects and implications of the changes. Use the provided link to access the GitHub pull request"
+                        "name": "MCP to OASF extractor",
+                        "description": "Scan MCP registry and extract OASF records",
+                        "prompt": "You are an scanner and extractor agent. You use GitHub repo https://github.com/modelcontextprotocol/servers to fetch the MCP server data once. Only focus on Official Integrations and ignore all other servers. You must convert fetched MCP data into appropriate OASF records. The schema for the OASF record is defined as an example record at @https://raw.githubusercontent.com/agntcy/dir/refs/heads/poc/mcp-support/docs/poc/mcp-extractor-agent/context/example.record.json. You must follow this schema and should not add any new property names to it. You return records in JSON format. You must fill each field in the record with the appropriate data extracted about the MCP server. You should pick between 2 and 5 best skills that describe the record. Make sure that all selected skills defined in @https://raw.githubusercontent.com/agntcy/dir/refs/heads/poc/mcp-support/docs/poc/mcp-extractor-agent/context/skills.json always match valid names and IDs. You should only include source-code locator for each agent that matches the extracted name. You should include both extensions regarding prompt and MCP server as part of the OASF record. Ignore all inputs for each MCP server. The environment variables for the MCP server extension should always follow ${input:ENV_VARIABLE_NAME naming convention. Store all the records with appropriate names using {mcp-server-name}.record.json under the `./extracted-records` directory. Extract OASF schema for top 10 MCP servers you think are popular."
                     }
                 ]
             }

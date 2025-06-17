@@ -1,7 +1,7 @@
 {
-    "name": "poc/integrations-agent-example",
+    "name": "poc/mcp-oasf-validator",
     "version": "v1.0.0",
-    "description": "An example agent with IDE integrations support",
+    "description": "An agent that reads OASF MCP records and fixes their schema based on requirements.",
     "authors": [
         "Ramiz Polic <rpolic@cisco.com>"
     ],
@@ -17,7 +17,7 @@
     "locators": [
         {
             "type": "docker-image",
-            "url": "https://ghcr.io/agntcy/dir/integrations-agent-example"
+            "url": "https://ghcr.io/agntcy/dir/mcp-oasf-validator"
         }
     ],
     "extensions": [
@@ -44,42 +44,10 @@
             }
         },
         {
-            "name": "schema.oasf.agntcy.org/features/runtime/a2a",
-            "version": "v1.0.0",
-            "data": {
-                "name": "example-agent",
-                "description": "An agent that performs web searches and extracts information.",
-                "url": "http://localhost:8000",
-                "capabilities": {
-                    "streaming": true,
-                    "pushNotifications": false
-                },
-                "defaultInputModes": [
-                    "text"
-                ],
-                "defaultOutputModes": [
-                    "text"
-                ],
-                "skills": [
-                    {
-                        "id": "browser",
-                        "name": "browser automation",
-                        "description": "Performs web searches to retrieve information."
-                    }
-                ]
-            }
-        },
-        {
             "name": "schema.oasf.agntcy.org/features/runtime/model",
             "version": "v1.0.0",
             "data": {
                 "models": [
-                    {
-                        "model": "deepseek-r1:1.5b",
-                        "provider": "ollama",
-                        "api_base": "http://localhost:11434",
-                        "prompt": "You are an expert software developer. Your task is to assist with software development tasks, including code generation, debugging, and providing explanations for code snippets. Use the provided context to generate relevant and accurate responses."
-                    },
                     {
                         "model": "gpt-4o",
                         "provider": "azure",
@@ -91,7 +59,7 @@
                             "apply"
                         ],
                         "completion_options": {
-                            "context_length": 128000,
+                            "context_length": 500000,
                             "max_tokens": 16384
                         }
                     }
@@ -104,9 +72,9 @@
             "data": {
                 "prompts": [
                     {
-                        "name": "PR Summary",
-                        "description": "Provide an in-depth summary of the pull request.",
-                        "prompt": "Summarize the pull request in detail, including its purpose, changes made, and any relevant context. Focus on the technical aspects and implications of the changes. Use the provided link to access the GitHub pull request"
+                        "name": "OAFS MCP Record Validator",
+                        "description": "An agent that validates and fixes OASF MCP records.",
+                        "prompt": "You are an validator agent. You must validate all skills for each record from valid skills file @https://raw.githubusercontent.com/agntcy/dir/refs/heads/poc/mcp-support/docs/poc/mcp-extractor-agent/context/skills.json. You must ensure that all the IDs and names are valid as specified in the full skills list. You perform no additinal changes apart from skills. You fix all the files available in `./extracted-records` directory."
                     }
                 ]
             }

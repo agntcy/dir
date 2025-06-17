@@ -1,0 +1,87 @@
+{
+    "name": "Azure/azure-mcp-server",
+    "version": "1.0.0",
+    "description": "Official Azure MCP server that provides access to Microsoft Azure cloud services, including Azure VMs, Storage, Functions, and other cloud resources.",
+    "authors": [
+        "Microsoft Corporation <azure-support@microsoft.com>"
+    ],
+    "created_at": "2023-09-25T13:40:00Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Question Answering",
+            "class_uid": 10302
+        },
+        {
+            "category_name": "Analytical skills",
+            "category_uid": 5,
+            "class_name": "Coding Skills",
+            "class_uid": 502
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Problem Solving",
+            "class_uid": 10702
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://github.com/Azure/azure-mcp-server"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "azure": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "AZURE_SUBSCRIPTION_ID",
+                            "-e",
+                            "AZURE_TENANT_ID",
+                            "-e",
+                            "AZURE_CLIENT_ID",
+                            "-e",
+                            "AZURE_CLIENT_SECRET",
+                            "ghcr.io/Azure/azure-mcp-server"
+                        ],
+                        "env": {
+                            "AZURE_SUBSCRIPTION_ID": "${input:AZURE_SUBSCRIPTION_ID}",
+                            "AZURE_TENANT_ID": "${input:AZURE_TENANT_ID}",
+                            "AZURE_CLIENT_ID": "${input:AZURE_CLIENT_ID}",
+                            "AZURE_CLIENT_SECRET": "${input:AZURE_CLIENT_SECRET}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "Azure Cloud Assistant",
+                        "description": "Azure cloud services assistant",
+                        "prompt": "You are an Azure cloud assistant. Help users deploy and manage Azure resources, troubleshoot cloud services, and implement Azure solutions."
+                    }
+                ]
+            }
+        }
+    ]
+}

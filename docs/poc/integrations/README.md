@@ -45,7 +45,32 @@ If needed, extractor/transformer interface can be used on the `dirctl` CLI for d
 
 In summary, this demonstrates the usage of OASF and ADS to easily add out-of-box support for third-party tools and services.
 
-## Steps to reproduce
+## Usage
 
-- 
-- Install Continue VS Code extension
+### Requirements
+
+- *VSC Copilot-based workflow*: Login to Copilot from VSCode
+- *Continue-based workflow*: Install https://www.continue.dev/ VSCode extension
+- *Python3 with virtual environment installed*
+
+### Steps
+
+1. Run `task poc:integration` - This step generates artifacts for both workflow-types (VSC + Continue).
+   It saves them to workflow-specific directory for the current VS Code project, ie. `.vscode/` and `.continue/assistants`.
+
+2. Run `cp docs/poc/integrations/.env.example .env` - This step sets up ENV-var inputs for Continue-based workflow. Fill the env vars after setup.
+   This is required for Continue as it does not support prompt inputs.
+   VSC Copilot will ask for all the necessary inputs via prompts when we start interacting with it.
+
+3. *VSC Copilot-based workflow* - Open the chat console. Switch to LLM such as Claude. Switch to Agent mode.
+
+4. *Continue-based workflow* - Open the chat console. Refresh the Assistants tab to load our Assistant created from OASF record. Switch to Azure GPT-4o LLM. Switch to Agent mode.
+
+5. Run the following prompt:
+
+```text
+Summarize the pull request in detail, including its purpose, changes made, and any relevant context. Focus on the technical aspects and implications of the changes. Use the provided link to access the GitHub pull request.
+Run for this PR: https://github.com/agntcy/dir/pull/179
+```
+
+This prompt will use configured MCP GitHub server to fetch the required context and will create a detailed summary about the PR.

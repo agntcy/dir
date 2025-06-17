@@ -1,0 +1,84 @@
+{
+    "name": "atlassian/jira-mcp-server",
+    "version": "1.0.0",
+    "description": "Official Jira MCP server that provides access to Jira issue tracking, project management, agile boards, and other Jira features.",
+    "authors": [
+        "Atlassian Pty Ltd <support@atlassian.com>"
+    ],
+    "created_at": "2023-11-05T12:30:00Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Question Answering",
+            "class_uid": 10302
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Information Retrieval and Synthesis",
+            "class_uid": 103
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Summarization",
+            "class_uid": 10202
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://github.com/atlassian/jira-mcp-server"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "jira": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "JIRA_URL",
+                            "-e",
+                            "JIRA_USERNAME",
+                            "-e",
+                            "JIRA_API_TOKEN",
+                            "ghcr.io/atlassian/jira-mcp-server"
+                        ],
+                        "env": {
+                            "JIRA_URL": "${input:JIRA_URL}",
+                            "JIRA_USERNAME": "${input:JIRA_USERNAME}",
+                            "JIRA_API_TOKEN": "${input:JIRA_API_TOKEN}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "Jira Project Assistant",
+                        "description": "Jira project management assistant",
+                        "prompt": "You are a Jira assistant. Help users manage issues, projects, sprint planning, and other Jira workflows."
+                    }
+                ]
+            }
+        }
+    ]
+}
