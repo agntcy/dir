@@ -1,0 +1,72 @@
+{
+    "name": "figma/figma-mcp-server",
+    "version": "1.0.0",
+    "description": "Official Figma MCP server that provides access to Figma design files, projects, teams, and collaborative design features.",
+    "authors": [
+        "Figma, Inc. <support@figma.com>"
+    ],
+    "created_at": "2023-12-03T11:15:00Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Question Answering",
+            "class_uid": 10302
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Information Retrieval and Synthesis",
+            "class_uid": 103
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://github.com/figma/figma-mcp-server"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "figma": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "FIGMA_ACCESS_TOKEN",
+                            "ghcr.io/figma/figma-mcp-server"
+                        ],
+                        "env": {
+                            "FIGMA_ACCESS_TOKEN": "${input:FIGMA_ACCESS_TOKEN}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "Figma Design Assistant",
+                        "description": "Figma design platform assistant",
+                        "prompt": "You are a Figma assistant. Help users manage design files, collaborate on projects, and utilize Figma design platform features."
+                    }
+                ]
+            }
+        }
+    ]
+}

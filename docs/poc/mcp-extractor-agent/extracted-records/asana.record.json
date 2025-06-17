@@ -1,0 +1,75 @@
+{
+    "name": "asana/asana-mcp-server",
+    "version": "1.0.0",
+    "description": "Official Asana MCP server that provides access to Asana tasks, projects, portfolios, and other work management features.",
+    "authors": [
+        "Asana, Inc. <support@asana.com>"
+    ],
+    "created_at": "2023-11-08T13:20:00Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Question Answering",
+            "class_uid": 10302
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Summarization",
+            "class_uid": 10202
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://github.com/asana/asana-mcp-server"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "asana": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "ASANA_ACCESS_TOKEN",
+                            "-e",
+                            "ASANA_WORKSPACE_GID",
+                            "ghcr.io/asana/asana-mcp-server"
+                        ],
+                        "env": {
+                            "ASANA_ACCESS_TOKEN": "${input:ASANA_ACCESS_TOKEN}",
+                            "ASANA_WORKSPACE_GID": "${input:ASANA_WORKSPACE_GID}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "Asana Project Assistant",
+                        "description": "Asana project management assistant",
+                        "prompt": "You are an Asana assistant. Help users manage tasks, projects, and coordinate work in their Asana workspace."
+                    }
+                ]
+            }
+        }
+    ]
+}
