@@ -44,3 +44,8 @@ This can be verified via `poc.py` script.
 If needed, extractor/transformer interface can be used on the `dirctl` CLI for different tools which can be easily implemented given the list of integrations to support.
 
 In summary, this demonstrates the usage of OASF and ADS to easily add out-of-box support for third-party tools and services.
+
+## Steps to reproduce
+
+- 
+- Install Continue VS Code extension
