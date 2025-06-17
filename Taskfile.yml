@@ -620,6 +620,27 @@ tasks:
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
 
   ##
+  ## Various proof-of-concept tasks
+  ##
+  poc:integration:
+    desc: Run Integration POC with other services. This might overwrite your VSCode and Continue workspace settings.
+    dir: ./docs/poc/integrations
+    cmd: |
+        # Prepare Python environment
+        python3 -m venv venv
+        . ./venv/bin/activate
+        python3 -m pip install pyyaml
+
+        # Run script
+        python3 ./poc.py \
+          -record=./record.json \
+          -vscode_path={{.ROOT_DIR}}/.vscode \
+          -continue_path={{.ROOT_DIR}}/.continue/assistants
+
+        # Print env requirements
+        cat .env.example
+
+  ##
   ## Dependencies
   ##
   deps:
