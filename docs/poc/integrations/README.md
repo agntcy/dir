@@ -12,7 +12,7 @@ This documents outlines research details of ADS integration support options with
 
 ## Methodology
 
-All workflows try encapsulate two important aspecs in order to support this goal.
+All workflows try encapsulate three important aspecs in order to support this goal.
 
 - **Schema Extensions** - Focus only on the data, its contents and structure, e.g. LLMs, A2A, MCP servers. Use the findings to provide an example OASF record, given as `record.json`
 - **Data Extractors and Transformers** - Provide logic that reads, extracts, and transforms the data into service-specific artifacts that can be used with existing services (ie. VSCode Copilot MCP server support).
@@ -23,9 +23,9 @@ Use OASF records as a data carriers.
 
 The integration support was carried out in the following way:
 
-1. Gather common agentic workflows used by AI developers. Outcome: devs mainly use plain LLMs with MCP servers.
-2. Gather common tools used by AI developers. Outcome: devs mainly use IDEs (VSCode) with mentioned workflows.
-3. Attach Agent-specific data to OASF records. Settle for LLM data, MCP servers, and A2A card details.
+1. Gather common agentic workflows used by AI developers. Outcome: *devs mainly use plain LLMs with MCP servers*.
+2. Gather common tools used by AI developers. Outcome: *devs mainly use IDEs (VSCode) with mentioned workflows*.
+3. Attach common agentic data to OASF records. Settle for **LLMs, MCP servers, and A2A card details**.
 4. Provide a script that uses data from 3. to support 1. and 2.
 
 Focus on the following integrations in the initial PoC:
