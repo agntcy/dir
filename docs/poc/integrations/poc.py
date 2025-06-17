@@ -149,12 +149,31 @@ def extract_continue_model_data(record_data):
                 'contextLength': model['completion_options'].get('context_length'),
                 'maxTokens': model['completion_options'].get('max_tokens')
             }
-            if 'use_legacy_completions_endpoint' in model['completion_options']:
-                transformed_model['useLegacyCompletionsEndpoint'] = model['completion_options']['use_legacy_completions_endpoint']
 
         transformed_models.append(transformed_model)
     
     return transformed_models
+
+def extract_continue_prompt_data(record_data):
+    # Find the model extension
+    model_extension = None
+    for extension in record_data.get('extensions', []):
+        if extension['name'] == 'schema.oasf.agntcy.org/features/runtime/prompt':
+            model_extension = extension
+            break
+    
+    if not model_extension or 'prompts' not in model_extension['data']:
+        return []
+
+    transformed_prompts = []
+    for prompt in model_extension['data']['prompts']:
+        transformed_prompts.append({
+            'name': prompt['name'],
+            'description': prompt['description'],
+            'prompt': prompt['prompt']
+        })
+    
+    return transformed_prompts
 
 def extract_continue_mcp_data(record_data):
     # Find the MCP extension
@@ -207,6 +226,11 @@ def extract_continue_data(record_data):
     mcp_servers = extract_continue_mcp_data(record_data)
     if mcp_servers:
         continue_data['mcpServers'] = mcp_servers
+    
+    # Get prompt data
+    prompt_data = extract_continue_prompt_data(record_data)
+    if prompt_data:
+        continue_data['prompts'] = prompt_data
     
     return continue_data
 

@@ -92,9 +92,21 @@
                         ],
                         "completion_options": {
                             "context_length": 128000,
-                            "max_tokens": 16384,
-                            "use_legacy_completions_endpoint": false
+                            "max_tokens": 16384
                         }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "PR Summary",
+                        "description": "Provide an in-depth summary of the pull request.",
+                        "prompt": "Summarize the pull request in detail, including its purpose, changes made, and any relevant context. Focus on the technical aspects and implications of the changes. Use the provided link to access the GitHub pull request"
                     }
                 ]
             }
