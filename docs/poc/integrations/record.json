@@ -25,14 +25,6 @@
             "name": "schema.oasf.agntcy.org/features/runtime/mcp",
             "version": "v1.0.0",
             "data": {
-                "inputs": [
-                    {
-                        "type": "promptString",
-                        "id": "github_token",
-                        "description": "GitHub Personal Access Token",
-                        "password": true
-                    }
-                ],
                 "servers": {
                     "github": {
                         "command": "docker",
@@ -45,7 +37,7 @@
                             "ghcr.io/github/github-mcp-server"
                         ],
                         "env": {
-                            "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github_token}"
+                            "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:GITHUB_PERSONAL_ACCESS_TOKEN}"
                         }
                     }
                 }
@@ -89,17 +81,18 @@
                         "prompt": "You are an expert software developer. You give helpful and concise responses. You use typescript and react with next js 14. You prefer arrow functions and more functional programmer."
                     },
                     {
-                        "model": "gpt-4.1-2025-04-14",
-                        "provider": "openai",
-                        "api_key": "${secret:OPENAI_API_KEY}",
+                        "model": "gpt-4o",
+                        "provider": "azure",
+                        "api_key": "${input:AZURE_OPENAI_API_KEY}",
+                        "api_base": "${input:AZURE_OPENAI_API_BASE}",
                         "roles": [
                             "chat",
                             "edit",
                             "apply"
                         ],
                         "completion_options": {
-                            "context_length": 1047576,
-                            "max_tokens": 32768,
+                            "context_length": 128000,
+                            "max_tokens": 16384,
                             "use_legacy_completions_endpoint": false
                         }
                     }

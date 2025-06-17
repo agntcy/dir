@@ -79,8 +79,34 @@ def extract_vscode_data(record_data):
         print("Warning: No MCP extension found in the record")
         return {}
     
-    # Return the MCP data
-    return mcp_extension['data']
+    # Extract servers data from the MCP extension
+    if 'data' not in mcp_extension or 'servers' not in mcp_extension['data']:
+        print("Warning: No servers data found in the MCP extension")
+        return {}
+    
+    mcp_server_data = mcp_extension['data']['servers']
+
+    # Extract inputs data from the MCP servers
+    server_inputs = {}  # Use a set to avoid duplicates
+    for server_name, server_data in mcp_server_data.items():
+        if 'env' in server_data:
+            for env_key, env_value in server_data['env'].items():
+                # Check if the value is a reference to an environment variable
+                if isinstance(env_value, str) and env_value.startswith('${input:'):
+                    # Extract the env var name from ${env:NAME}
+                    env_name = env_value.replace('${input:', '').replace('}', '')
+                    server_inputs[env_name] = {
+                        'id': env_name,
+                        'type': 'promptString',
+                        'password': True,
+                        'description': f"Secret value for {env_name}",
+                    }
+
+    # Return MCP data
+    return {
+        'servers': mcp_server_data,
+        'inputs': list(server_inputs.values()),
+    }
 
 def extract_continue_model_data(record_data):
     # Find the model extension
@@ -105,10 +131,13 @@ def extract_continue_model_data(record_data):
         if 'api_key' in model:
             transformed_model['apiKey'] = model['api_key']\
                 .replace(' ', '')\
-                .replace('${secret:', '${{secrets.')\
+                .replace('${input:', '${{secrets.')\
                 .replace('}', '}}')
         if 'api_base' in model:
-            transformed_model['apiBase'] = model['api_base']
+            transformed_model['apiBase'] = model['api_base']\
+                .replace(' ', '')\
+                .replace('${input:', '${{secrets.')\
+                .replace('}', '}}')
         
         # Add roles if present
         if 'roles' in model:
@@ -149,7 +178,7 @@ def extract_continue_mcp_data(record_data):
         # Transform environment variables to match Continue's format
         if 'env' in server_data:
             transformed_server['env'] = {
-                key: value.replace('${input:', '${{inputs.').replace('}', '}}')
+                key: value.replace('${input:', '${{secrets.').replace('}', '}}')
                 for key, value in server_data['env'].items()
             }
 
