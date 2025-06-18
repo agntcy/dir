@@ -15,6 +15,7 @@ type Record struct {
 	gorm.Model
 	Name    string `gorm:"not null"`
 	Version string `gorm:"not null"`
+	CID     string `gorm:"unique;not null"`
 
 	Skills     []Skill     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
 	Locators   []Locator   `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
@@ -27,6 +28,10 @@ func (r *Record) GetName() string {
 
 func (r *Record) GetVersion() string {
 	return r.Version
+}
+
+func (r *Record) GetCID() string {
+	return r.CID
 }
 
 func (r *Record) GetSkillObjects() []types.SkillObject {
@@ -60,6 +65,7 @@ func (d *DB) addRecordTx(tx *gorm.DB, recordObject types.RecordObject) (uint, er
 	record := &Record{
 		Name:    recordObject.GetName(),
 		Version: recordObject.GetVersion(),
+		CID:     recordObject.GetCID(),
 	}
 
 	if err := tx.Create(record).Error; err != nil {

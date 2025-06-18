@@ -4,7 +4,7 @@
 package types
 
 type SkillObject interface {
-	GetID() uint32
+	GetID() uint64
 	GetName() string
 }
 
@@ -21,6 +21,7 @@ type ExtensionObject interface {
 type RecordObject interface {
 	GetName() string
 	GetVersion() string
+	GetCID() string
 
 	GetSkillObjects() []SkillObject
 	GetLocatorObjects() []LocatorObject
@@ -32,7 +33,7 @@ type RecordFilters struct {
 	Offset            int
 	Name              string
 	Version           string
-	SkillIDs          []uint32
+	SkillIDs          []uint64
 	SkillNames        []string
 	LocatorTypes      []string
 	LocatorURLs       []string
@@ -71,7 +72,7 @@ func WithVersion(version string) FilterOption {
 }
 
 // WithSkillIDs RecordFilters records by skill IDs.
-func WithSkillIDs(ids ...uint32) FilterOption {
+func WithSkillIDs(ids ...uint64) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.SkillIDs = ids
 	}

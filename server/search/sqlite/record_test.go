@@ -34,6 +34,7 @@ func createTestData(t *testing.T, db *DB) {
 		{
 			Name:    "agent1",
 			Version: "1.0.0",
+			CID:     "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
 			Skills: []Skill{
 				{SkillID: 101, Name: "skill1"},
 				{SkillID: 102, Name: "skill2"},
@@ -48,6 +49,7 @@ func createTestData(t *testing.T, db *DB) {
 		{
 			Name:    "agent2",
 			Version: "2.0.0",
+			CID:     "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
 			Skills: []Skill{
 				{SkillID: 103, Name: "skill3"},
 			},
@@ -62,6 +64,7 @@ func createTestData(t *testing.T, db *DB) {
 		{
 			Name:    "test-agent",
 			Version: "1.0.0",
+			CID:     "sha256:fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321",
 			Skills: []Skill{
 				{SkillID: 104, Name: "skill4"},
 			},
