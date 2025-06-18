@@ -132,7 +132,7 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		return status.Errorf(st.Code(), "failed to push object to store: %s", st.Message())
 	}
 
-	err = s.search.AddRecord(v1alpha1.NewAgentAdapter(agent))
+	err = s.search.AddRecord(v1alpha1.NewAgentAdapter(agent, ref.GetDigest()))
 	if err != nil {
 		return fmt.Errorf("failed to add agent to search index: %w", err)
 	}
