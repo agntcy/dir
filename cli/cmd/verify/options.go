@@ -27,7 +27,5 @@ func init() {
 	flags.StringVar(&opts.OIDCIdentity, "oidc-identity", ".*",
 		"OIDC Identity to compare against. Accepts regular expressions.")
 	flags.StringVar(&opts.Key, "key", "",
-		"Public Key to use for verification, e.g., 'env://COSIGN_PUBLIC_KEY'")
-	flags.StringVar(&opts.Key, "key", "",
 		"Path to the public key file to use for verification (e.g., a Cosign public key). Use this option to verify signatures created with a self-managed keypair instead of OIDC identity-based verification.")
 }
