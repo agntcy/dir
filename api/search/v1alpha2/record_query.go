@@ -15,7 +15,7 @@ func init() {
 		3: "skill-id",
 		4: "skill-name",
 		5: "locator",
-		7: "extension",
+		6: "extension",
 	}
 	RecordQueryType_value = map[string]int32{
 		"":              0,
