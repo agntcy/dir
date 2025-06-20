@@ -153,15 +153,15 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 	return c.Sign(ctx, agent, signKeypair, signOpts)
 }
 
-func (c *Client) SignWithKey(ctx context.Context, key []byte, agent *coretypes.Agent) (*coretypes.Agent, error) {
-	if len(key) == 0 {
+func (c *Client) SignWithKey(ctx context.Context, privKey []byte, agent *coretypes.Agent) (*coretypes.Agent, error) {
+	if len(privKey) == 0 {
 		return nil, errors.New("key must not be empty")
 	}
 
 	// Generate an ephemeral keypair using the provided key as a hint.
 	// This allows the hint to be used later for verification.
 	signKeypair, err := sign.NewEphemeralKeypair(&sign.EphemeralKeypairOptions{
-		Hint: key,
+		Hint: privKey,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)

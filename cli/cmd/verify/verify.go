@@ -70,13 +70,13 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	//nolint:nestif
 	if opts.Key != "" {
 		// Load the public key from file
-		raw, err := os.ReadFile(filepath.Clean(opts.Key))
+		rawPubKey, err := os.ReadFile(filepath.Clean(opts.Key))
 		if err != nil {
 			return fmt.Errorf("failed to read key file: %w", err)
 		}
 
 		// Verify the agent using the provided key
-		err = c.VerifyWithKey(cmd.Context(), raw, agent)
+		err = c.VerifyWithKey(cmd.Context(), rawPubKey, agent)
 		if err != nil {
 			return fmt.Errorf("failed to verify agent: %w", err)
 		}

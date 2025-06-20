@@ -81,13 +81,13 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	//nolint:nestif
 	if opts.Key != "" {
 		// Load the key from file
-		raw, err := os.ReadFile(filepath.Clean(opts.Key))
+		rawKey, err := os.ReadFile(filepath.Clean(opts.Key))
 		if err != nil {
 			return fmt.Errorf("failed to read key file: %w", err)
 		}
 
 		// Sign the agent using the provided key
-		agentSigned, err = c.SignWithKey(cmd.Context(), raw, agent)
+		agentSigned, err = c.SignWithKey(cmd.Context(), rawKey, agent)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent with key: %w", err)
 		}
