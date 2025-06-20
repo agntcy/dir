@@ -31,7 +31,7 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 			ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 			currentSession, ok := ctxSession.(*sessionstore.HubSession)
 
-			if !ok || !auth.IsLoggedIn(currentSession) {
+			if !ok || !auth.HasLoginCreds(currentSession) {
 				return ErrSecretNotFoundForAddress
 			}
 			// Load session store for removal

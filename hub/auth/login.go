@@ -99,7 +99,7 @@ func Login(
 	return currentSession, nil
 }
 
-func IsLoggedIn(currentSession *sessionstore.HubSession) bool {
+func HasLoginCreds(currentSession *sessionstore.HubSession) bool {
 	if currentSession == nil || currentSession.AuthConfig == nil {
 		return false
 	}

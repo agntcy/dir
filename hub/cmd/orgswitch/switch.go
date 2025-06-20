@@ -41,7 +41,7 @@ organization. In any other case, org could be selected from an interactive list.
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
 
-		if !ok || !auth.IsLoggedIn(currentSession) {
+		if !ok || !auth.HasLoginCreds(currentSession) {
 			fmt.Fprintf(cmd.OutOrStderr(), "Could not get current session\n")
 
 			return errors.New("no current session found. please login first")

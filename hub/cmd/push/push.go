@@ -50,7 +50,7 @@ Examples:
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
-		if !ok || !auth.IsLoggedIn(currentSession) {
+		if !ok || !auth.HasLoginCreds(currentSession) {
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 

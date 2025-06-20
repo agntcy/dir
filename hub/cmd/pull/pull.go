@@ -44,7 +44,7 @@ Examples:
 			// Retrieve session from context
 			ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 			currentSession, ok := ctxSession.(*sessionstore.HubSession)
-			if !ok || !auth.IsLoggedIn(currentSession) {
+			if !ok || !auth.HasLoginCreds(currentSession) {
 				return errors.New("could not get current hub session")
 			}
 
