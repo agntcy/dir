@@ -66,6 +66,8 @@ cat model.json
 
 ### Signing and Verification
 
+#### Method 1: OIDC-based Signing (Interactive)
+
 This process relies on attaching signature to the agent data model using identity-based OIDC signing flow which can be verified by other clients.
 The signing process opens a browser window to authenticate the user
 with an OIDC identity provider.
@@ -88,6 +90,26 @@ dirctl verify signed.model.json \
    --oidc-issuer "(.*)github.com(.*)"
 
 ## Replace the base agent model with a signed one
+rm -rf model.json
+mv signed.model.json model.json
+```
+
+#### Method 2: Non-OIDC Signing (Self-Managed Key, Non-Interactive)
+
+This method is suitable for non-interactive use cases, such as CI/CD pipelines, where browser-based authentication is not possible or desired. Instead of OIDC, a signing keypair is generated (e.g., with Cosign), and the private key is used to sign the agent model. The corresponding public key is then required to verify the agent, therefore, it must be distributed to any party that needs to verify signed agent models.
+
+```bash
+# Generate a key-pair for signing
+# This creates 'cosign.key' (private) and 'cosign.pub' (public)
+cosign generate-key-pair
+
+# Sign the agent data model using the private key:
+cat model.json | dirctl sign --stdin --key cosign.key > signed.model.json
+
+# Verify the signed agent using the public key:
+cat signed.model.json | dirctl verify --stdin --key cosign.pub
+
+# (Optional) Replace the base agent model with the signed one:
 rm -rf model.json
 mv signed.model.json model.json
 ```

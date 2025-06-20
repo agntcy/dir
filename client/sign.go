@@ -154,23 +154,17 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 }
 
 func (c *Client) SignWithKey(ctx context.Context, privKey []byte, agent *coretypes.Agent) (*coretypes.Agent, error) {
-	if len(privKey) == 0 {
-		return nil, errors.New("key must not be empty")
-	}
-
-	// Generate an ephemeral keypair using the provided key as a hint.
-	// This allows the hint to be used later for verification.
-	signKeypair, err := sign.NewEphemeralKeypair(&sign.EphemeralKeypairOptions{
-		Hint: privKey,
-	})
+	// Generate a keypair from the provided private key bytes.
+	// The keypair hint is derived from the public key and will be used for verification.
+	signKeypair, err := NewKeypair(privKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
+		return nil, fmt.Errorf("failed to create keypair: %w", err)
 	}
 
 	return c.Sign(ctx, agent, signKeypair, sign.BundleOptions{})
 }
 
-func (c *Client) Sign(_ context.Context, agent *coretypes.Agent, signKeypair *sign.EphemeralKeypair, signOpts sign.BundleOptions) (*coretypes.Agent, error) {
+func (c *Client) Sign(_ context.Context, agent *coretypes.Agent, signKeypair sign.Keypair, signOpts sign.BundleOptions) (*coretypes.Agent, error) {
 	// Reset the signature field in the agent.
 	// This is required as the agent may have been signed before,
 	// but also because this ensures signing idempotency.
