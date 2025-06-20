@@ -175,19 +175,15 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"--query",
 				"skill-name:Natural Language Processing/Text Completion",
 				"--query",
-				"locator-type:docker-image",
+				"locator:docker-image:https://ghcr.io/agntcy/marketing-strategy",
 				"--query",
-				"locator-url:https://ghcr.io/agntcy/marketing-strategy",
-				"--query",
-				"extension-name:schema.oasf.agntcy.org/features/runtime/framework",
-				"--query",
-				"extension-version:v0.0.0",
+				"extension:schema.oasf.agntcy.org/features/runtime/framework:v0.0.0",
 			})
 
 			err := searchCmd.Execute()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Check if the output contains the expected agent name
+			// Check if the output contains the expected CID
 			gomega.Expect(outputBuffer.String()).To(gomega.Equal("sha256:1beb8653b5bf888274c1e2c3754e096b0242ceee8518c330be3239fa88a4fc80"))
 		})
 	})

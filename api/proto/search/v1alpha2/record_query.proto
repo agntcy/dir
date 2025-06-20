@@ -8,7 +8,7 @@ package search.v1alpha2;
 // A query to match the record against during discovery.
 // For example:
 //  { type: RECORD_QUERY_TYPE_SKILL_NAME, value: "Natural Language Processing" }
-//  { type: RECORD_QUERY_TYPE_LOCATOR_TYPE, value: "helm-chart" }
+//  { type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://example.com/docker-image" }
 message RecordQuery {
   // The type of the query to match against.
   RecordQueryType type = 1;
@@ -34,15 +34,9 @@ enum RecordQueryType {
   // Query for a skill name.
   RECORD_QUERY_TYPE_SKILL_NAME = 4;
 
-  // Query for a locator type.
-  RECORD_QUERY_TYPE_LOCATOR_TYPE = 5;
+  // Query for a locator.
+  RECORD_QUERY_TYPE_LOCATOR = 5;
 
-  // Query for a locator URL.
-  RECORD_QUERY_TYPE_LOCATOR_URL = 6;
-
-  // Query for an extension name.
-  RECORD_QUERY_TYPE_EXTENSION_NAME = 7;
-
-  // Query for an extension version.
-  RECORD_QUERY_TYPE_EXTENSION_VERSION = 8;
+  // Query for an extension.
+  RECORD_QUERY_TYPE_EXTENSION = 6;
 }

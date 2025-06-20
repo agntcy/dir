@@ -4,7 +4,7 @@
 package config
 
 const (
-	DefaultSQLiteDBPath = "/data/search.db"
+	DefaultSQLiteDBPath = "/tmp/search.db"
 )
 
 type Config struct {
