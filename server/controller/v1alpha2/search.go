@@ -6,6 +6,7 @@ package v1alpha2
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	searchtypes "github.com/agntcy/dir/api/search/v1alpha2"
 	"github.com/agntcy/dir/server/types"
@@ -48,7 +49,7 @@ func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.Sear
 	return nil
 }
 
-func createGetRecordsParams(req *searchtypes.SearchRequest) ([]types.FilterOption, error) {
+func createGetRecordsParams(req *searchtypes.SearchRequest) ([]types.FilterOption, error) { //nolint:gocognit,cyclop
 	params := []types.FilterOption{
 		types.WithLimit(int(req.GetLimit())),
 		types.WithOffset(int(req.GetOffset())),
@@ -58,10 +59,13 @@ func createGetRecordsParams(req *searchtypes.SearchRequest) ([]types.FilterOptio
 		switch query.GetType() {
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
 			logger.Warn("Unspecified query type, skipping", "query", query)
+
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_AGENT_NAME:
 			params = append(params, types.WithName(query.GetValue()))
+
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_AGENT_VERSION:
 			params = append(params, types.WithVersion(query.GetValue()))
+
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID:
 			u64, err := strconv.ParseUint(query.GetValue(), 10, 64)
 			if err != nil {
@@ -69,16 +73,48 @@ func createGetRecordsParams(req *searchtypes.SearchRequest) ([]types.FilterOptio
 			}
 
 			params = append(params, types.WithSkillIDs(u64))
+
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
 			params = append(params, types.WithSkillNames(query.GetValue()))
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR_TYPE:
-			params = append(params, types.WithLocatorTypes(query.GetValue()))
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR_URL:
-			params = append(params, types.WithLocatorURLs(query.GetValue()))
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION_NAME:
-			params = append(params, types.WithExtensionNames(query.GetValue()))
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION_VERSION:
-			params = append(params, types.WithExtensionVersions(query.GetValue()))
+
+		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
+			l := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
+
+			if len(l) == 1 && strings.TrimSpace(l[0]) != "" {
+				params = append(params, types.WithLocatorTypes(l[0]))
+
+				break
+			}
+
+			if len(l) == 2 { //nolint:mnd
+				if strings.TrimSpace(l[0]) != "" {
+					params = append(params, types.WithLocatorTypes(l[0]))
+				}
+
+				if strings.TrimSpace(l[1]) != "" {
+					params = append(params, types.WithLocatorURLs(l[1]))
+				}
+			}
+
+		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
+			e := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
+
+			if len(e) == 1 && strings.TrimSpace(e[0]) != "" {
+				params = append(params, types.WithExtensionNames(e[0]))
+
+				break
+			}
+
+			if len(e) == 2 { //nolint:mnd
+				if strings.TrimSpace(e[0]) != "" {
+					params = append(params, types.WithExtensionNames(e[0]))
+				}
+
+				if strings.TrimSpace(e[1]) != "" {
+					params = append(params, types.WithExtensionVersions(e[1]))
+				}
+			}
+
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())
 		}

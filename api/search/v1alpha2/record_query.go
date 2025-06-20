@@ -4,6 +4,8 @@
 //nolint:mnd
 package searchv1alpha2
 
+const ValidQueryTypes = "agent-name,agent-version,skill-id,skill-name,locator,extension"
+
 func init() {
 	// Override allowed names for RecordQueryType
 	RecordQueryType_name = map[int32]string{
@@ -12,21 +14,17 @@ func init() {
 		2: "agent-version",
 		3: "skill-id",
 		4: "skill-name",
-		5: "locator-type",
-		6: "locator-url",
-		7: "extension-name",
-		8: "extension-version",
+		5: "locator",
+		7: "extension",
 	}
 	RecordQueryType_value = map[string]int32{
-		"":                  0,
-		"unspecified":       0,
-		"agent-name":        1,
-		"agent-version":     2,
-		"skill-id":          3,
-		"skill-name":        4,
-		"locator-type":      5,
-		"locator-url":       6,
-		"extension-name":    7,
-		"extension-version": 8,
+		"":              0,
+		"unspecified":   0,
+		"agent-name":    1,
+		"agent-version": 2,
+		"skill-id":      3,
+		"skill-name":    4,
+		"locator":       5,
+		"extension":     6,
 	}
 }
