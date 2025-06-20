@@ -52,14 +52,11 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.8.2
 
-      - name: Write Cosign keys
+      - name: Generate Cosign keys
         run: |
-          echo "Writing Cosign private and public keys"
-          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
-          chmod 600 cosign.key
-          chmod 644 cosign.pub
-          echo "Cosign private and public keys written successfully"
+          echo "Generating Cosign keys"
+          cosign generate-key-pair
+          echo "Cosign keys generated successfully"
 
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@v1.12.0
