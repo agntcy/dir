@@ -10,10 +10,14 @@ import (
 
 type AgentAdapter struct {
 	*coretypes.Agent
+	cid string
 }
 
-func NewAgentAdapter(agent *coretypes.Agent) *AgentAdapter {
-	return &AgentAdapter{Agent: agent}
+func NewAgentAdapter(agent *coretypes.Agent, cid string) *AgentAdapter {
+	return &AgentAdapter{
+		Agent: agent,
+		cid:   cid,
+	}
 }
 
 func (a *AgentAdapter) GetName() string {
@@ -22,6 +26,10 @@ func (a *AgentAdapter) GetName() string {
 
 func (a *AgentAdapter) GetVersion() string {
 	return a.Agent.GetVersion()
+}
+
+func (a *AgentAdapter) GetCID() string {
+	return a.cid
 }
 
 func (a *AgentAdapter) GetSkillObjects() []types.SkillObject {

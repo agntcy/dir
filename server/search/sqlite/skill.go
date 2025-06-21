@@ -13,11 +13,11 @@ import (
 type Skill struct {
 	gorm.Model
 	AgentID uint   `gorm:"not null;index"`
-	SkillID uint32 `gorm:"not null"`
+	SkillID uint64 `gorm:"not null"`
 	Name    string `gorm:"not null"`
 }
 
-func (skill *Skill) GetID() uint32 {
+func (skill *Skill) GetID() uint64 {
 	return skill.SkillID
 }
 

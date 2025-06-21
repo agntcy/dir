@@ -17,6 +17,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/publish"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
+	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/verify"
@@ -69,6 +70,8 @@ func init() {
 		unpublish.Command,
 		network.Command,
 		hubCmd.NewCommand(hub.NewHub()),
+		// search commands
+		search.Command,
 	)
 }
 
