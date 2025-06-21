@@ -6,7 +6,7 @@ package types
 import (
 	"context"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	objectmanager "github.com/agntcy/dir/api/objectmanager"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -22,7 +22,7 @@ type RoutingAPI interface {
 	// TODO: find a better sync mechanism (buffered sync).
 	// Request can be assumed to be validated.
 	// We are only intersted in agent objects. Data on this object should be empty.
-	Publish(ctx context.Context, object *coretypes.Object, network bool) error
+	Publish(ctx context.Context, object *objectmanager.RecordObject, network bool) error
 
 	// Search to network with a given request.
 	// This reads from content datastore.
@@ -31,5 +31,5 @@ type RoutingAPI interface {
 
 	// Unpublish removes the object from the network.
 	// This removes the object from peer and content datastore.
-	Unpublish(ctx context.Context, object *coretypes.Object, network bool) error
+	Unpublish(ctx context.Context, object *objectmanager.RecordObject, network bool) error
 }
