@@ -620,6 +620,36 @@ tasks:
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
 
   ##
+  ## Various proof-of-concept tasks
+  ##
+  poc:integration:
+    desc: Run Integration POC with other services. This might overwrite your VSCode and Continue workspace settings.
+    dir: ./docs/poc/integrations
+    vars:
+      RECORD_FILE: '{{ .RECORD_FILE | default "docs/poc/integrations/record.json" }}'
+    cmd: |
+        # Prepare Python environment
+        python3 -m venv venv
+        . ./venv/bin/activate
+        python3 -m pip install pyyaml
+
+        # Run script
+        python3 ./poc.py \
+          -record={{.ROOT_DIR}}/{{.RECORD_FILE}} \
+          -vscode_path={{.ROOT_DIR}}/.vscode \
+          -continue_path={{.ROOT_DIR}}/.continue/assistants
+
+        # Print env requirements
+        cat .env.example
+
+  poc:extractor:
+    desc: Import Extractor agent into the current workspace.
+    cmds:
+      - task: poc:integration
+        vars:
+          RECORD_FILE: 'docs/poc/mcp-extractor-agent/extractor.record.json'
+     
+  ##
   ## Dependencies
   ##
   deps:

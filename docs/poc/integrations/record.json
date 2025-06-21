@@ -1,0 +1,116 @@
+{
+    "name": "poc/integrations-agent-example",
+    "version": "v1.0.0",
+    "description": "An example agent with IDE integrations support",
+    "authors": [
+        "Ramiz Polic <rpolic@cisco.com>"
+    ],
+    "created_at": "2025-06-16T17:06:37Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        }
+    ],
+    "locators": [
+        {
+            "type": "docker-image",
+            "url": "https://ghcr.io/agntcy/dir/integrations-agent-example"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "github": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "GITHUB_PERSONAL_ACCESS_TOKEN",
+                            "ghcr.io/github/github-mcp-server"
+                        ],
+                        "env": {
+                            "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:GITHUB_PERSONAL_ACCESS_TOKEN}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/a2a",
+            "version": "v1.0.0",
+            "data": {
+                "name": "example-agent",
+                "description": "An agent that performs web searches and extracts information.",
+                "url": "http://localhost:8000",
+                "capabilities": {
+                    "streaming": true,
+                    "pushNotifications": false
+                },
+                "defaultInputModes": [
+                    "text"
+                ],
+                "defaultOutputModes": [
+                    "text"
+                ],
+                "skills": [
+                    {
+                        "id": "browser",
+                        "name": "browser automation",
+                        "description": "Performs web searches to retrieve information."
+                    }
+                ]
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/model",
+            "version": "v1.0.0",
+            "data": {
+                "models": [
+                    {
+                        "model": "deepseek-r1:1.5b",
+                        "provider": "ollama",
+                        "api_base": "http://localhost:11434",
+                        "prompt": "You are an expert software developer. Your task is to assist with software development tasks, including code generation, debugging, and providing explanations for code snippets. Use the provided context to generate relevant and accurate responses."
+                    },
+                    {
+                        "model": "gpt-4o",
+                        "provider": "azure",
+                        "api_key": "${input:AZURE_OPENAI_API_KEY}",
+                        "api_base": "${input:AZURE_OPENAI_API_BASE}",
+                        "roles": [
+                            "chat",
+                            "edit",
+                            "apply"
+                        ],
+                        "completion_options": {
+                            "context_length": 128000,
+                            "max_tokens": 16384
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "PR Summary",
+                        "description": "Provide an in-depth summary of the pull request.",
+                        "prompt": "Summarize the pull request in detail, including its purpose, changes made, and any relevant context. Focus on the technical aspects and implications of the changes. Use the provided link to access the GitHub pull request"
+                    }
+                ]
+            }
+        }
+    ],
+    "signature": {}
+}

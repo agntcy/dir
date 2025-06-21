@@ -1,0 +1,84 @@
+{
+    "name": "poc/mcp-oasf-extractor-agent",
+    "version": "v1.0.0",
+    "description": "An agent that scans MCP server registries and generates OASF records for each MCP server.",
+    "authors": [
+        "Ramiz Polic <rpolic@cisco.com>"
+    ],
+    "created_at": "2025-06-16T17:06:37Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        }
+    ],
+    "locators": [
+        {
+            "type": "docker-image",
+            "url": "https://ghcr.io/agntcy/dir/mcp-oasf-extractor-agent"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "github": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "GITHUB_PERSONAL_ACCESS_TOKEN",
+                            "ghcr.io/github/github-mcp-server"
+                        ],
+                        "env": {
+                            "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:GITHUB_PERSONAL_ACCESS_TOKEN}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/model",
+            "version": "v1.0.0",
+            "data": {
+                "models": [
+                    {
+                        "model": "gpt-4o",
+                        "provider": "azure",
+                        "api_key": "${input:AZURE_OPENAI_API_KEY}",
+                        "api_base": "${input:AZURE_OPENAI_API_BASE}",
+                        "roles": [
+                            "chat",
+                            "edit",
+                            "apply"
+                        ],
+                        "completion_options": {
+                            "context_length": 500000,
+                            "max_tokens": 16384
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "MCP to OASF extractor",
+                        "description": "Scan MCP registry and extract OASF records",
+                        "prompt": "You are an scanner and extractor agent. You use GitHub repo https://github.com/modelcontextprotocol/servers to fetch the MCP server data once. Only focus on Official Integrations and ignore all other servers. You must convert fetched MCP data into appropriate OASF records. The schema for the OASF record is defined as an example record at @https://raw.githubusercontent.com/agntcy/dir/refs/heads/poc/mcp-support/docs/poc/mcp-extractor-agent/context/example.record.json. You must follow this schema and should not add any new property names to it. You return records in JSON format. You must fill each field in the record with the appropriate data extracted about the MCP server. You should pick between 2 and 5 best skills that describe the record. Make sure that all selected skills defined in @https://raw.githubusercontent.com/agntcy/dir/refs/heads/poc/mcp-support/docs/poc/mcp-extractor-agent/context/skills.json always match valid names and IDs. You should only include source-code locator for each agent that matches the extracted name. You should include both extensions regarding prompt and MCP server as part of the OASF record. Ignore all inputs for each MCP server. The environment variables for the MCP server extension should always follow ${input:ENV_VARIABLE_NAME naming convention. Store all the records with appropriate names using {mcp-server-name}.record.json under the `./extracted-records` directory. Extract OASF schema for top 10 MCP servers you think are popular."
+                    }
+                ]
+            }
+        }
+    ],
+    "signature": {}
+}

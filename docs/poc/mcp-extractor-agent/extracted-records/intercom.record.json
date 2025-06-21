@@ -1,0 +1,72 @@
+{
+    "name": "intercom/intercom-mcp-server",
+    "version": "1.0.0",
+    "description": "Official Intercom MCP server that provides access to Intercom messaging, chat, customer support, and engagement features.",
+    "authors": [
+        "Intercom, Inc. <team@intercom.io>"
+    ],
+    "created_at": "2023-11-18T14:10:00Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Dialogue Generation",
+            "class_uid": 10204
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Question Answering",
+            "class_uid": 10302
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://github.com/intercom/intercom-mcp-server"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "intercom": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "INTERCOM_ACCESS_TOKEN",
+                            "ghcr.io/intercom/intercom-mcp-server"
+                        ],
+                        "env": {
+                            "INTERCOM_ACCESS_TOKEN": "${input:INTERCOM_ACCESS_TOKEN}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "Intercom Customer Support Assistant",
+                        "description": "Intercom customer messaging assistant",
+                        "prompt": "You are an Intercom assistant. Help users manage customer conversations, support tickets, and engagement campaigns."
+                    }
+                ]
+            }
+        }
+    ]
+}

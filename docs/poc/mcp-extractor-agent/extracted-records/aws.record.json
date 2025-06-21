@@ -1,0 +1,84 @@
+{
+    "name": "awslabs/aws-mcp-server",
+    "version": "1.0.0",
+    "description": "Official AWS MCP server that provides access to Amazon Web Services including EC2, S3, Lambda, and other cloud services.",
+    "authors": [
+        "Amazon Web Services <aws-support@amazon.com>"
+    ],
+    "created_at": "2023-08-17T09:15:00Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Question Answering",
+            "class_uid": 10302
+        },
+        {
+            "category_name": "Analytical skills",
+            "category_uid": 5,
+            "class_name": "Coding Skills",
+            "class_uid": 502
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Problem Solving",
+            "class_uid": 10702
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://github.com/awslabs/aws-mcp-server"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "aws": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "AWS_ACCESS_KEY_ID",
+                            "-e",
+                            "AWS_SECRET_ACCESS_KEY",
+                            "-e",
+                            "AWS_REGION",
+                            "ghcr.io/awslabs/aws-mcp-server"
+                        ],
+                        "env": {
+                            "AWS_ACCESS_KEY_ID": "${input:AWS_ACCESS_KEY_ID}",
+                            "AWS_SECRET_ACCESS_KEY": "${input:AWS_SECRET_ACCESS_KEY}",
+                            "AWS_REGION": "${input:AWS_REGION}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "AWS Cloud Assistant",
+                        "description": "AWS cloud services assistant",
+                        "prompt": "You are an AWS cloud assistant. Help users manage AWS resources, design cloud architectures, and troubleshoot AWS service issues."
+                    }
+                ]
+            }
+        }
+    ]
+}

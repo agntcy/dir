@@ -1,0 +1,72 @@
+{
+    "name": "github/github-mcp-server",
+    "version": "1.0.0",
+    "description": "Official GitHub MCP server that provides access to GitHub repositories, issues, pull requests, and other GitHub API functionality.",
+    "authors": [
+        "GitHub Inc. <support@github.com>"
+    ],
+    "created_at": "2023-09-12T14:30:00Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Question Answering",
+            "class_uid": 10302
+        },
+        {
+            "category_name": "Analytical skills",
+            "category_uid": 5,
+            "class_name": "Coding Skills",
+            "class_uid": 502
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://github.com/github/github-mcp-server"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "github": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "GITHUB_PERSONAL_ACCESS_TOKEN",
+                            "ghcr.io/github/github-mcp-server"
+                        ],
+                        "env": {
+                            "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:GITHUB_PERSONAL_ACCESS_TOKEN}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "GitHub Assistant",
+                        "description": "GitHub operations assistant",
+                        "prompt": "You are a GitHub assistant. Use the GitHub MCP Server to interact with repositories, issues, pull requests, and other GitHub features."
+                    }
+                ]
+            }
+        }
+    ]
+}
