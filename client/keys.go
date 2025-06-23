@@ -7,16 +7,15 @@ import (
 	"context"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	_ "crypto/sha512" // if user chooses SHA2-384 or SHA2-512 for hash
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"fmt"
 
-	"github.com/secure-systems-lab/go-securesystemslib/encrypted"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	protocommon "github.com/sigstore/protobuf-specs/gen/pb-go/common/v1"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
@@ -28,7 +27,7 @@ type KeypairOptions struct {
 
 type Keypair struct {
 	options       *KeypairOptions
-	privateKey    *ecdsa.PrivateKey
+	privateKey    crypto.Signer
 	hashAlgorithm protocommon.HashAlgorithm
 }
 
@@ -37,25 +36,12 @@ func NewKeypair(privateKeyBytes []byte) (*Keypair, error) {
 		return nil, errors.New("private key bytes cannot be empty")
 	}
 
-	// Decode the PEM-encoded private key
-	p, _ := pem.Decode(privateKeyBytes)
-	if p == nil {
-		return nil, errors.New("failed to decode PEM block containing private key")
-	}
-
-	if p.Type != cosign.CosignPrivateKeyPemType && p.Type != cosign.SigstorePrivateKeyPemType {
-		return nil, fmt.Errorf("unsupported pem type: %s", p.Type)
-	}
-
-	// Decrypt the private key if it is encrypted and parse it
-	x509Encoded, err := encrypted.Decrypt(p.Bytes, nil)
+	privateKey, err := cryptoutils.UnmarshalPEMToPrivateKey(
+		privateKeyBytes,
+		cryptoutils.StaticPasswordFunc([]byte("")), // TODO handle password-protected keys
+	)
 	if err != nil {
-		return nil, fmt.Errorf("decrypt: %w", err)
-	}
-
-	privateKey, err := x509.ParsePKCS8PrivateKey(x509Encoded)
-	if err != nil {
-		return nil, fmt.Errorf("parsing private key: %w", err)
+		return nil, fmt.Errorf("unmarshal PEM to private key: %w", err)
 	}
 
 	// Get public key from the private key
@@ -70,7 +56,7 @@ func NewKeypair(privateKeyBytes []byte) (*Keypair, error) {
 	}
 
 	// Derive the hint from the public key
-	pubKeyBytes, err := x509.MarshalPKIXPublicKey(pubKey)
+	pubKeyBytes, err := cryptoutils.MarshalPublicKeyToDER(pubKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal public key: %w", err)
 	}
@@ -79,15 +65,14 @@ func NewKeypair(privateKeyBytes []byte) (*Keypair, error) {
 		Hint: GenerateHintFromPublicKey(pubKeyBytes),
 	}
 
-	// Ensure the private key is of type *ecdsa.PrivateKey
-	ecdsaPrivKey, ok := privateKey.(*ecdsa.PrivateKey)
+	signer, ok := privateKey.(crypto.Signer)
 	if !ok {
-		return nil, errors.New("private key is not of type *ecdsa.PrivateKey")
+		return nil, errors.New("private key does not implement crypto.Signer")
 	}
 
 	return &Keypair{
 		options:       opts,
-		privateKey:    ecdsaPrivKey,
+		privateKey:    signer,
 		hashAlgorithm: protocommon.HashAlgorithm_SHA2_256,
 	}, nil
 }
@@ -101,7 +86,25 @@ func (e *Keypair) GetHint() []byte {
 }
 
 func (e *Keypair) GetKeyAlgorithm() string {
-	return "ECDSA"
+	switch pubKey := e.privateKey.Public().(type) {
+	case *rsa.PublicKey:
+		return "RSA"
+	case *ecdsa.PublicKey:
+		switch pubKey.Curve.Params().Name {
+		case "P-256":
+			return "ECDSA-P256"
+		case "P-384":
+			return "ECDSA-P384"
+		case "P-521":
+			return "ECDSA-P521"
+		default:
+			return "ECDSA"
+		}
+	case ed25519.PublicKey:
+		return "Ed25519"
+	default:
+		return "Unknown"
+	}
 }
 
 func (e *Keypair) GetPublicKeyPem() (string, error) {

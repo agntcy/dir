@@ -11,7 +11,6 @@ require (
 	github.com/agntcy/dir/api v0.2.5
 	github.com/agntcy/dir/utils v0.2.5
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
-	github.com/secure-systems-lab/go-securesystemslib v0.9.0
 	github.com/sigstore/cosign/v2 v2.5.2
 	github.com/sigstore/protobuf-specs v0.4.3
 	github.com/sigstore/sigstore v1.9.5
@@ -69,6 +68,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sassoftware/relic v7.2.1+incompatible // indirect
+	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
 	github.com/sigstore/rekor v1.3.10 // indirect
