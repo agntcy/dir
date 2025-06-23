@@ -30,7 +30,7 @@ func NewSearchController(search types.SearchAPI) searchtypes.SearchServiceServer
 func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.SearchService_SearchServer) error {
 	logger.Debug("Called search controller's Search method", "req", req)
 
-	filterOptions, err := createGetRecordsParams(req)
+	filterOptions, err := queryToFilters(req)
 	if err != nil {
 		return fmt.Errorf("failed to create filter options: %w", err)
 	}
@@ -49,7 +49,7 @@ func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.Sear
 	return nil
 }
 
-func createGetRecordsParams(req *searchtypes.SearchRequest) ([]types.FilterOption, error) { //nolint:gocognit,cyclop
+func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error) { //nolint:gocognit,cyclop
 	params := []types.FilterOption{
 		types.WithLimit(int(req.GetLimit())),
 		types.WithOffset(int(req.GetOffset())),
@@ -78,7 +78,7 @@ func createGetRecordsParams(req *searchtypes.SearchRequest) ([]types.FilterOptio
 			params = append(params, types.WithSkillNames(query.GetValue()))
 
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
-			l := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
+			l := strings.SplitN(query.GetValue(), "=", 2) //nolint:mnd
 
 			if len(l) == 1 && strings.TrimSpace(l[0]) != "" {
 				params = append(params, types.WithLocatorTypes(l[0]))
@@ -97,7 +97,7 @@ func createGetRecordsParams(req *searchtypes.SearchRequest) ([]types.FilterOptio
 			}
 
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
-			e := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
+			e := strings.SplitN(query.GetValue(), "=", 2) //nolint:mnd
 
 			if len(e) == 1 && strings.TrimSpace(e[0]) != "" {
 				params = append(params, types.WithExtensionNames(e[0]))

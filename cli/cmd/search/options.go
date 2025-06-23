@@ -9,7 +9,7 @@ type options struct {
 	Limit  uint32
 	Offset uint32
 
-	Query []string
+	Query Query
 }
 
 func init() {
@@ -18,5 +18,5 @@ func init() {
 	flags.Uint32Var(&opts.Limit, "limit", 100, "Maximum number of results to return (default: 100)") //nolint:mnd
 	flags.Uint32Var(&opts.Offset, "offset", 0, "Pagination offset (default: 0)")
 
-	flags.StringSliceVar(&opts.Query, "query", nil, "Search query terms")
+	flags.Var(&opts.Query, "query", "Search query terms")
 }

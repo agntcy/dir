@@ -20,7 +20,7 @@ const (
 type Client struct {
 	storetypes.StoreServiceClient
 	routingtypes.RoutingServiceClient
-	SearchServiceClientV1alpha2 searchtypesv1alpha2.SearchServiceClient
+	searchtypesv1alpha2.SearchServiceClient
 }
 
 type options struct {
@@ -65,8 +65,8 @@ func New(opts ...Option) (*Client, error) {
 	}
 
 	return &Client{
-		StoreServiceClient:          storetypes.NewStoreServiceClient(client),
-		RoutingServiceClient:        routingtypes.NewRoutingServiceClient(client),
-		SearchServiceClientV1alpha2: searchtypesv1alpha2.NewSearchServiceClient(client),
+		StoreServiceClient:   storetypes.NewStoreServiceClient(client),
+		RoutingServiceClient: routingtypes.NewRoutingServiceClient(client),
+		SearchServiceClient:  searchtypesv1alpha2.NewSearchServiceClient(client),
 	}, nil
 }

@@ -167,17 +167,17 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"--offset",
 				"0",
 				"--query",
-				"agent-name:directory.agntcy.org/cisco/marketing-strategy",
+				"name=directory.agntcy.org/cisco/marketing-strategy",
 				"--query",
-				"agent-version:v1.0.0",
+				"version=v1.0.0",
 				"--query",
-				"skill-id:10201",
+				"skill-id=10201",
 				"--query",
-				"skill-name:Natural Language Processing/Text Completion",
+				"skill-name=Natural Language Processing/Text Completion",
 				"--query",
-				"locator:docker-image:https://ghcr.io/agntcy/marketing-strategy",
+				"locator=docker-image=https://ghcr.io/agntcy/marketing-strategy",
 				"--query",
-				"extension:schema.oasf.agntcy.org/features/runtime/framework:v0.0.0",
+				"extension=schema.oasf.agntcy.org/features/runtime/framework=v0.0.0",
 			})
 
 			err := searchCmd.Execute()
