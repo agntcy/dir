@@ -623,10 +623,14 @@ tasks:
   ## Various proof-of-concept tasks
   ##
   poc:integration:
-    desc: Run Integration POC with other services. This might overwrite your VSCode and Continue workspace settings.
+    desc: Run integration against VS Code and Continue proof-of-concept.
     dir: ./docs/poc/integrations
+    prompt:
+      - |
+        Are you sure you want to run integration proof-of-concept?
+        This will overwrite your local workspace VSCode and Continue configuration.
     vars:
-      RECORD_FILE: '{{ .RECORD_FILE | default "docs/poc/integrations/record.json" }}'
+      RECORD_FILE: '{{ .RECORD_FILE | default "docs/poc/integrations/demo.record.json" }}'
     cmd: |
         # Prepare Python environment
         python3 -m venv venv
@@ -634,7 +638,7 @@ tasks:
         python3 -m pip install pyyaml
 
         # Run script
-        python3 ./poc.py \
+        python3 ./importer.py \
           -record={{.ROOT_DIR}}/{{.RECORD_FILE}} \
           -vscode_path={{.ROOT_DIR}}/.vscode \
           -continue_path={{.ROOT_DIR}}/.continue/assistants
@@ -642,13 +646,13 @@ tasks:
         # Print env requirements
         cat .env.example
 
-  poc:extractor:
-    desc: Import Extractor agent into the current workspace.
+  poc:mcp-to-oasf:
+    desc: Import MCP-to-OASF Exporter Agent into the current workspace.
     cmds:
       - task: poc:integration
         vars:
-          RECORD_FILE: 'docs/poc/mcp-extractor-agent/extractor.record.json'
-     
+          RECORD_FILE: 'docs/poc/integrations/mcp-to-oasf-agent/extractor.record.json'
+
   ##
   ## Dependencies
   ##
