@@ -66,7 +66,7 @@ cat model.json
 
 ### Signing and Verification
 
-#### Method 1: OIDC-based Signing (Interactive)
+#### Method 1: OIDC-based Interactive
 
 This process relies on attaching signature to the agent data model using identity-based OIDC signing flow which can be verified by other clients.
 The signing process opens a browser window to authenticate the user
@@ -94,7 +94,32 @@ rm -rf model.json
 mv signed.model.json model.json
 ```
 
-#### Method 2: Non-OIDC Signing (Self-Managed Key, Non-Interactive)
+#### Method 2: OIDC-based Non-Interactive
+
+This method is designed for automated environments such as CI/CD pipelines where browser-based authentication is not available. It uses OIDC tokens provided by the execution environment (like GitHub Actions) to sign agent data models. The signing process uses a pre-obtained OIDC token along with provider-specific configuration to establish identity without user interaction. The verification process validates the agent signature against the specified OIDC issuer and identity pattern.
+
+```
+      - name: Run sign command
+        run: |
+          echo "Running dir sign command"
+          bin/dirctl sign agent.json \
+            --oidc-token ${{ steps.oidc-token.outputs.token }} \
+            --oidc-provider-url "https://token.actions.githubusercontent.com" \
+            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}" \
+            --stdin > signed.model.json
+          echo "Signed agent.json to signed.model.json"
+          cat signed.model.json
+          mv signed.model.json agent.json
+
+      - name: Run verify command
+        run: |
+          echo "Running dir verify command"
+          bin/dirctl verify agent.json \
+            --oidc-issuer "https://token.actions.githubusercontent.com" \
+            --oidc-identity "https://github.com/${{ github.repository }}-custom/.github/workflows/demo.yaml@${{ github.ref }}"
+```
+
+#### Method 3: Self-Managed Keys
 
 This method is suitable for non-interactive use cases, such as CI/CD pipelines, where browser-based authentication is not possible or desired. Instead of OIDC, a signing keypair is generated (e.g., with Cosign), and the private key is used to sign the agent model. The corresponding public key is then required to verify the agent, therefore, it must be distributed to any party that needs to verify signed agent models.
 
