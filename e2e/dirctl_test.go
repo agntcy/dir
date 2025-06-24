@@ -175,7 +175,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"--query",
 				"skill-name=Natural Language Processing/Text Completion",
 				"--query",
-				"locator=*:https://ghcr.io/agntcy/marketing-strategy",
+				"locator=.*:https://ghcr.io/agntcy/marketing-strategy",
 				"--query",
 				"extension=.*\\.oasf\\.agntcy\\.org/features/runtime/framework:v0.0.0",
 			})
