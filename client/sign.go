@@ -33,6 +33,7 @@ type SignOpts struct {
 	TimestampURL    string
 	OIDCProviderURL string
 	OIDCClientID    string
+	OIDCToken       string
 	Key             string
 }
 

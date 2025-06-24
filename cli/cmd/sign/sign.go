@@ -91,6 +91,12 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		if err != nil {
 			return fmt.Errorf("failed to sign agent with key: %w", err)
 		}
+	} else if opts.OIDCToken != "" {
+		// Sign the agent using the OIDC provider
+		agentSigned, err = c.SignOIDC(cmd.Context(), agent, opts.OIDCToken, opts.SignOpts)
+		if err != nil {
+			return fmt.Errorf("failed to sign agent: %w", err)
+		}
 	} else {
 		// Retrieve the token from the OIDC provider
 		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
