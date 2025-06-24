@@ -139,46 +139,49 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.RecordObject, error
 
 	// Apply record-level filters.
 	if cfg.Name != "" {
-		query = query.Where("records.name LIKE ?", "%"+cfg.Name+"%")
+		query = query.Where("records.name REGEXP ?", cfg.Name)
 	}
 
 	if cfg.Version != "" {
-		query = query.Where("records.version = ?", cfg.Version)
+		query = query.Where("records.version REGEXP ?", cfg.Version)
 	}
 
 	// Handle skill filters.
 	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
 		query = query.Joins("JOIN skills ON skills.agent_id = records.id")
+
 		if len(cfg.SkillIDs) > 0 {
 			query = query.Where("skills.skill_id IN ?", cfg.SkillIDs)
 		}
 
-		if len(cfg.SkillNames) > 0 {
-			query = query.Where("skills.name IN ?", cfg.SkillNames)
+		for _, skillName := range cfg.SkillNames {
+			query = query.Where("skills.name REGEXP ?", skillName)
 		}
 	}
 
 	// Handle locator filters.
 	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
 		query = query.Joins("JOIN locators ON locators.agent_id = records.id")
-		if len(cfg.LocatorTypes) > 0 {
-			query = query.Where("locators.type IN ?", cfg.LocatorTypes)
+
+		for _, locatorType := range cfg.LocatorTypes {
+			query = query.Where("locators.type REGEXP ?", locatorType)
 		}
 
-		if len(cfg.LocatorURLs) > 0 {
-			query = query.Where("locators.url IN ?", cfg.LocatorURLs)
+		for _, locatorURL := range cfg.LocatorURLs {
+			query = query.Where("locators.url REGEXP ?", locatorURL)
 		}
 	}
 
 	// Handle extension filters.
 	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
 		query = query.Joins("JOIN extensions ON extensions.agent_id = records.id")
-		if len(cfg.ExtensionNames) > 0 {
-			query = query.Where("extensions.name IN ?", cfg.ExtensionNames)
+
+		for _, extName := range cfg.ExtensionNames {
+			query = query.Where("extensions.name REGEXP ?", extName)
 		}
 
-		if len(cfg.ExtensionVersions) > 0 {
-			query = query.Where("extensions.version IN ?", cfg.ExtensionVersions)
+		for _, extVersion := range cfg.ExtensionVersions {
+			query = query.Where("extensions.version REGEXP ?", extVersion)
 		}
 	}
 

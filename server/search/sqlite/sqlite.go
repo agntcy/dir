@@ -4,10 +4,13 @@
 package sqlite
 
 import (
+	"database/sql"
 	"fmt"
+	"regexp"
 
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/glebarez/sqlite"
+	"github.com/mattn/go-sqlite3"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -18,7 +21,29 @@ type DB struct {
 }
 
 func New(path string) (*DB, error) {
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
+	// Register REGEXP with sqlite3 driver
+	sql.Register("custom_sqlite3", &sqlite3.SQLiteDriver{
+		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+			return conn.RegisterFunc("regexp", func(re, s string) (bool, error) {
+				r, err := regexp.Compile(re)
+				if err != nil {
+					logger.Debug("Invalid regex pattern", "pattern", re, "error", err)
+
+					// Instead of returning error, return false for invalid regex
+					return false, nil
+				}
+
+				return r.MatchString(s), nil
+			}, true)
+		},
+	})
+
+	sqldb, err := sql.Open("custom_sqlite3", path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open SQLite database: %w", err)
+	}
+
+	db, err := gorm.Open(sqlite.Dialector{Conn: sqldb}, &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
 	}

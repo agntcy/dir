@@ -5,10 +5,11 @@ package v1alpha2
 
 import (
 	"fmt"
+	"strconv"
+
 	searchtypes "github.com/agntcy/dir/api/search/v1alpha2"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-	"strconv"
 )
 
 var logger = logging.Logger("controller/search")

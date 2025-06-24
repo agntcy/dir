@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:mnd
 package search
 
 import (
@@ -40,6 +41,7 @@ func (q *Query) Set(value string) error {
 	for _, queryType := range searchtypesv1alpha2.ValidQueryTypes {
 		if parts[0] == queryType {
 			validQueryType = true
+
 			break
 		}
 	}
@@ -67,7 +69,7 @@ func (q *Query) ToAPIQueries() []*searchtypesv1alpha2.RecordQuery {
 	for _, item := range *q {
 		parts := strings.Split(item, "=")
 
-		switch searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[parts[0]]) {
+		switch searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[parts[0]]) { //nolint:exhaustive
 		case searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
 			if len(parts) >= 2 {
 				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
