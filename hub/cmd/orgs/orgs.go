@@ -39,7 +39,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
 
-		if !ok || currentSession == nil {
+		if !ok || !auth.HasLoginCreds(currentSession) {
 			return errors.New("no current session found. please login first")
 		}
 

@@ -33,12 +33,13 @@ type SignOpts struct {
 	TimestampURL    string
 	OIDCProviderURL string
 	OIDCClientID    string
+	Key             string
 }
 
 // SignOIDC signs the agent using keyless OIDC service-based signing.
 // The OIDC ID Token must be provided by the caller.
 // An ephemeral keypair is generated for signing.
-func (c *Client) SignOIDC(_ context.Context, agent *coretypes.Agent, idToken string, options SignOpts) (*coretypes.Agent, error) {
+func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken string, options SignOpts) (*coretypes.Agent, error) {
 	// Validate request.
 	if agent == nil {
 		return nil, errors.New("agent must be set")
@@ -149,6 +150,27 @@ func (c *Client) SignOIDC(_ context.Context, agent *coretypes.Agent, idToken str
 		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
 	}
 
+	return c.Sign(ctx, agent, signKeypair, signOpts)
+}
+
+func (c *Client) SignWithKey(ctx context.Context, privKey []byte, agent *coretypes.Agent) (*coretypes.Agent, error) {
+	if len(privKey) == 0 {
+		return nil, errors.New("key must not be empty")
+	}
+
+	// Generate an ephemeral keypair using the provided key as a hint.
+	// This allows the hint to be used later for verification.
+	signKeypair, err := sign.NewEphemeralKeypair(&sign.EphemeralKeypairOptions{
+		Hint: privKey,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
+	}
+
+	return c.Sign(ctx, agent, signKeypair, sign.BundleOptions{})
+}
+
+func (c *Client) Sign(_ context.Context, agent *coretypes.Agent, signKeypair *sign.EphemeralKeypair, signOpts sign.BundleOptions) (*coretypes.Agent, error) {
 	// Reset the signature field in the agent.
 	// This is required as the agent may have been signed before,
 	// but also because this ensures signing idempotency.

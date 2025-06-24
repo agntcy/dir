@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/agntcy/dir/hub/auth"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
 	service "github.com/agntcy/dir/hub/service"
 	"github.com/agntcy/dir/hub/sessionstore"
@@ -43,7 +44,7 @@ Examples:
 			// Retrieve session from context
 			ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 			currentSession, ok := ctxSession.(*sessionstore.HubSession)
-			if !ok || currentSession == nil {
+			if !ok || !auth.HasLoginCreds(currentSession) {
 				return errors.New("could not get current hub session")
 			}
 

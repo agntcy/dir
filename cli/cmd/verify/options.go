@@ -11,6 +11,7 @@ type options struct {
 	// Verification options
 	OIDCIssuer   string
 	OIDCIdentity string
+	Key          string // Key to use for verification, e.g., 'env://COSIGN_PUBLIC_KEY'
 }
 
 func init() {
@@ -25,4 +26,6 @@ func init() {
 		"OIDC Issuer to check against. Accepts regular expressions.")
 	flags.StringVar(&opts.OIDCIdentity, "oidc-identity", ".*",
 		"OIDC Identity to compare against. Accepts regular expressions.")
+	flags.StringVar(&opts.Key, "key", "",
+		"Path to the public key file to use for verification (e.g., a Cosign public key). Use this option to verify signatures created with a self-managed keypair instead of OIDC identity-based verification.")
 }

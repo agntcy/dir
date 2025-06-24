@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/util/agent"
+	"github.com/agntcy/dir/hub/auth"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
 	hubOptions "github.com/agntcy/dir/hub/cmd/options"
 	"github.com/agntcy/dir/hub/service"
@@ -49,7 +50,7 @@ Examples:
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
-		if !ok || currentSession == nil {
+		if !ok || !auth.HasLoginCreds(currentSession) {
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 

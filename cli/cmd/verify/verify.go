@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -51,6 +53,7 @@ Usage examples:
 	},
 }
 
+// nolint:mnd
 func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	// Get the client from the context
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
@@ -64,14 +67,29 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return fmt.Errorf("failed to load agent: %w", err)
 	}
 
-	// Verify the agent using the OIDC provider
-	err := c.VerifyOIDC(cmd.Context(), opts.OIDCIssuer, opts.OIDCIdentity, agent)
-	if err != nil {
-		return fmt.Errorf("failed to verify agent: %w", err)
+	//nolint:nestif
+	if opts.Key != "" {
+		// Load the public key from file
+		rawPubKey, err := os.ReadFile(filepath.Clean(opts.Key))
+		if err != nil {
+			return fmt.Errorf("failed to read key file: %w", err)
+		}
+
+		// Verify the agent using the provided key
+		err = c.VerifyWithKey(cmd.Context(), rawPubKey, agent)
+		if err != nil {
+			return fmt.Errorf("failed to verify agent: %w", err)
+		}
+	} else {
+		// Verify the agent using the OIDC provider
+		err := c.VerifyOIDC(cmd.Context(), opts.OIDCIssuer, opts.OIDCIdentity, agent)
+		if err != nil {
+			return fmt.Errorf("failed to verify agent: %w", err)
+		}
 	}
 
 	// Print success message
-	presenter.Print(cmd, "Agent signature verified successfully!", nil)
+	presenter.Print(cmd, "Agent signature verified successfully!")
 
 	return nil
 }

@@ -98,3 +98,20 @@ func Login(
 
 	return currentSession, nil
 }
+
+func HasLoginCreds(currentSession *sessionstore.HubSession) bool {
+	if currentSession == nil || currentSession.AuthConfig == nil {
+		return false
+	}
+
+	if currentSession.CurrentTenant == "" || len(currentSession.Tokens) == 0 {
+		return false
+	}
+
+	tokens, ok := currentSession.Tokens[currentSession.CurrentTenant]
+	if !ok || tokens == nil {
+		return false
+	}
+
+	return tokens.AccessToken != "" && tokens.IDToken != "" && tokens.RefreshToken != ""
+}

@@ -111,3 +111,43 @@ func (c *Client) VerifyOIDC(_ context.Context, expectedIssuer, expectedSigner st
 	// Verify the signature.
 	return nil
 }
+
+func (c *Client) VerifyWithKey(_ context.Context, key []byte, agent *coretypes.Agent) error {
+	// Validate request.
+	if len(key) == 0 {
+		return errors.New("key must not be empty")
+	}
+	if agent == nil {
+		return errors.New("agent must be set")
+	}
+	if agent.GetSignature() == nil {
+		return errors.New("agent has no signature")
+	}
+
+	// Extract signature data from the agent.
+	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(agent.GetSignature().GetContentBundle())
+	if err != nil {
+		return fmt.Errorf("failed to decode signature: %w", err)
+	}
+
+	sigBundle := &bundle.Bundle{}
+	if err := sigBundle.UnmarshalJSON(sigBundleRawJSON); err != nil {
+		return fmt.Errorf("failed to unmarshal signature bundle: %w", err)
+	}
+
+	// Get the public key from the signature bundle and compare it with the provided key.
+	sigBundleVerificationMaterial := sigBundle.VerificationMaterial
+	if sigBundleVerificationMaterial == nil {
+		return errors.New("signature bundle has no verification material")
+	}
+	pubKey := sigBundleVerificationMaterial.GetPublicKey()
+	if pubKey == nil {
+		return errors.New("signature bundle verification material has no public key")
+	}
+
+	if pubKey.GetHint() != string(key) {
+		return fmt.Errorf("public key hint mismatch: expected %s, got %s", key, pubKey.GetHint())
+	}
+
+	return nil
+}

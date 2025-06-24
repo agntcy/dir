@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -72,16 +74,35 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return fmt.Errorf("failed to load agent: %w", err)
 	}
 
-	// Retrieve the token from the OIDC provider
-	token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
-	if err != nil {
-		return fmt.Errorf("failed to get OIDC token: %w", err)
-	}
+	var err error
 
-	// Sign the agent using the OIDC provider
-	agentSigned, err := c.SignOIDC(cmd.Context(), agent, token.RawString, opts.SignOpts)
-	if err != nil {
-		return fmt.Errorf("failed to sign agent: %w", err)
+	var agentSigned *coretypes.Agent
+
+	//nolint:nestif
+	if opts.Key != "" {
+		// Load the key from file
+		rawKey, err := os.ReadFile(filepath.Clean(opts.Key))
+		if err != nil {
+			return fmt.Errorf("failed to read key file: %w", err)
+		}
+
+		// Sign the agent using the provided key
+		agentSigned, err = c.SignWithKey(cmd.Context(), rawKey, agent)
+		if err != nil {
+			return fmt.Errorf("failed to sign agent with key: %w", err)
+		}
+	} else {
+		// Retrieve the token from the OIDC provider
+		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
+		if err != nil {
+			return fmt.Errorf("failed to get OIDC token: %w", err)
+		}
+
+		// Sign the agent using the OIDC provider
+		agentSigned, err = c.SignOIDC(cmd.Context(), agent, token.RawString, opts.SignOpts)
+		if err != nil {
+			return fmt.Errorf("failed to sign agent: %w", err)
+		}
 	}
 
 	// Print signed agent
