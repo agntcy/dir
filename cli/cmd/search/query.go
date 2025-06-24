@@ -11,18 +11,10 @@ import (
 	searchtypesv1alpha2 "github.com/agntcy/dir/api/search/v1alpha2"
 )
 
-type Query []*searchtypesv1alpha2.RecordQuery
+type Query []string
 
 func (q *Query) String() string {
-	queryStrings := make([]string, 0, len(*q))
-
-	for _, query := range *q {
-		queryStrings = append(queryStrings,
-			fmt.Sprintf("%s=%s", searchtypesv1alpha2.RecordQueryType_name[int32(query.GetType())], query.GetValue()),
-		)
-	}
-
-	return strings.Join(queryStrings, " ")
+	return strings.Join(*q, " ")
 }
 
 func (q *Query) Set(value string) error {
@@ -30,30 +22,37 @@ func (q *Query) Set(value string) error {
 		return errors.New("empty query not allowed")
 	}
 
-	parts := strings.SplitN(value, "=", 2) //nolint:mnd
-	if len(parts) != 2 {                   //nolint:mnd
+	parts := strings.Split(value, "=")
+	for i, part := range parts {
+		parts[i] = strings.TrimSpace(part)
+
+		if part == "" {
+			return errors.New("invalid query format, empty field or value")
+		}
+	}
+
+	if len(parts) < 2 {
 		return errors.New("invalid query format, expected 'field=value'")
 	}
 
-	if _, ok := searchtypesv1alpha2.RecordQueryType_value[parts[0]]; !ok {
+	validQueryType := false
+
+	for _, queryType := range searchtypesv1alpha2.ValidQueryTypes {
+		if parts[0] == queryType {
+			validQueryType = true
+			break
+		}
+	}
+
+	if !validQueryType {
 		return fmt.Errorf(
 			"invalid query type: %s, valid types are: %v",
 			parts[0],
-			searchtypesv1alpha2.ValidQueryTypes,
+			strings.Join(searchtypesv1alpha2.ValidQueryTypes, ","),
 		)
 	}
 
-	queryType := parts[0]
-	queryValues := parts[1]
-
-	if queryType == "" {
-		return fmt.Errorf("invalid query type: %s", queryType)
-	}
-
-	*q = append(*q, &searchtypesv1alpha2.RecordQuery{
-		Type:  searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[queryType]),
-		Value: queryValues,
-	})
+	*q = append(*q, value)
 
 	return nil
 }
@@ -62,10 +61,48 @@ func (q *Query) Type() string {
 	return "query"
 }
 
-func (q *Query) ToQuery() []*searchtypesv1alpha2.RecordQuery {
-	if q == nil {
-		return nil
+func (q *Query) ToQueries() []*searchtypesv1alpha2.RecordQuery {
+	var queries []*searchtypesv1alpha2.RecordQuery
+
+	for _, item := range *q {
+		parts := strings.Split(item, "=")
+
+		switch searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[parts[0]]) {
+		case searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
+			if len(parts) >= 2 {
+				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
+					Type:  searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION_NAME,
+					Value: parts[1],
+				})
+			}
+
+			if len(parts) == 3 {
+				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
+					Type:  searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION_VERSION,
+					Value: parts[2],
+				})
+			}
+		case searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
+			if len(parts) >= 2 {
+				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
+					Type:  searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR_TYPE,
+					Value: parts[1],
+				})
+			}
+
+			if len(parts) == 3 {
+				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
+					Type:  searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR_URL,
+					Value: parts[2],
+				})
+			}
+		default:
+			queries = append(queries, &searchtypesv1alpha2.RecordQuery{
+				Type:  searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[parts[0]]),
+				Value: parts[1],
+			})
+		}
 	}
 
-	return *q
+	return queries
 }

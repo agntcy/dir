@@ -46,23 +46,19 @@ func runCommand(cmd *cobra.Command) error {
 	ch, err := c.Search(cmd.Context(), &searchtypesv1alpha2.SearchRequest{
 		Limit:   &opts.Limit,
 		Offset:  &opts.Offset,
-		Queries: opts.Query.ToQuery(),
+		Queries: opts.Query.ToQueries(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to search: %w", err)
 	}
-
-	var data []byte
 
 	for recordCid := range ch {
 		if recordCid == "" {
 			continue
 		}
 
-		data = append(data, []byte(recordCid)...)
+		presenter.Print(cmd, recordCid)
 	}
-
-	presenter.Print(cmd, string(data))
 
 	return nil
 }

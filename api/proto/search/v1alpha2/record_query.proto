@@ -23,10 +23,10 @@ enum RecordQueryType {
   RECORD_QUERY_TYPE_UNSPECIFIED = 0;
 
   // Query for an agent name.
-  RECORD_QUERY_TYPE_AGENT_NAME = 1;
+  RECORD_QUERY_TYPE_NAME = 1;
 
   // Query for an agent version.
-  RECORD_QUERY_TYPE_AGENT_VERSION = 2;
+  RECORD_QUERY_TYPE_VERSION = 2;
 
   // Query for a skill ID.
   RECORD_QUERY_TYPE_SKILL_ID = 3;
@@ -37,6 +37,18 @@ enum RecordQueryType {
   // Query for a locator.
   RECORD_QUERY_TYPE_LOCATOR = 5;
 
+  // Query for a locator type.
+  RECORD_QUERY_TYPE_LOCATOR_TYPE = 6;
+
+  // Query for a locator URL.
+  RECORD_QUERY_TYPE_LOCATOR_URL = 7;
+
   // Query for an extension.
-  RECORD_QUERY_TYPE_EXTENSION = 6;
+  RECORD_QUERY_TYPE_EXTENSION = 8;
+
+  // Query for an extension name.
+  RECORD_QUERY_TYPE_EXTENSION_NAME = 9;
+
+  // Query for an extension version.
+  RECORD_QUERY_TYPE_EXTENSION_VERSION = 10;
 }

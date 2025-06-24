@@ -8,19 +8,27 @@ DESCRIPTOR: _descriptor.FileDescriptor
 class RecordQueryType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     RECORD_QUERY_TYPE_UNSPECIFIED: _ClassVar[RecordQueryType]
-    RECORD_QUERY_TYPE_AGENT_NAME: _ClassVar[RecordQueryType]
-    RECORD_QUERY_TYPE_AGENT_VERSION: _ClassVar[RecordQueryType]
+    RECORD_QUERY_TYPE_NAME: _ClassVar[RecordQueryType]
+    RECORD_QUERY_TYPE_VERSION: _ClassVar[RecordQueryType]
     RECORD_QUERY_TYPE_SKILL_ID: _ClassVar[RecordQueryType]
     RECORD_QUERY_TYPE_SKILL_NAME: _ClassVar[RecordQueryType]
     RECORD_QUERY_TYPE_LOCATOR: _ClassVar[RecordQueryType]
+    RECORD_QUERY_TYPE_LOCATOR_TYPE: _ClassVar[RecordQueryType]
+    RECORD_QUERY_TYPE_LOCATOR_URL: _ClassVar[RecordQueryType]
     RECORD_QUERY_TYPE_EXTENSION: _ClassVar[RecordQueryType]
+    RECORD_QUERY_TYPE_EXTENSION_NAME: _ClassVar[RecordQueryType]
+    RECORD_QUERY_TYPE_EXTENSION_VERSION: _ClassVar[RecordQueryType]
 RECORD_QUERY_TYPE_UNSPECIFIED: RecordQueryType
-RECORD_QUERY_TYPE_AGENT_NAME: RecordQueryType
-RECORD_QUERY_TYPE_AGENT_VERSION: RecordQueryType
+RECORD_QUERY_TYPE_NAME: RecordQueryType
+RECORD_QUERY_TYPE_VERSION: RecordQueryType
 RECORD_QUERY_TYPE_SKILL_ID: RecordQueryType
 RECORD_QUERY_TYPE_SKILL_NAME: RecordQueryType
 RECORD_QUERY_TYPE_LOCATOR: RecordQueryType
+RECORD_QUERY_TYPE_LOCATOR_TYPE: RecordQueryType
+RECORD_QUERY_TYPE_LOCATOR_URL: RecordQueryType
 RECORD_QUERY_TYPE_EXTENSION: RecordQueryType
+RECORD_QUERY_TYPE_EXTENSION_NAME: RecordQueryType
+RECORD_QUERY_TYPE_EXTENSION_VERSION: RecordQueryType
 
 class RecordQuery(_message.Message):
     __slots__ = ("type", "value")

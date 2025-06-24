@@ -5,12 +5,10 @@ package v1alpha2
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
-
 	searchtypes "github.com/agntcy/dir/api/search/v1alpha2"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"strconv"
 )
 
 var logger = logging.Logger("controller/search")
@@ -60,10 +58,10 @@ func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
 			logger.Warn("Unspecified query type, skipping", "query", query)
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_AGENT_NAME:
+		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_NAME:
 			params = append(params, types.WithName(query.GetValue()))
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_AGENT_VERSION:
+		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_VERSION:
 			params = append(params, types.WithVersion(query.GetValue()))
 
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID:
@@ -77,43 +75,17 @@ func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
 			params = append(params, types.WithSkillNames(query.GetValue()))
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
-			l := strings.SplitN(query.GetValue(), "=", 2) //nolint:mnd
+		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR_TYPE:
+			params = append(params, types.WithLocatorTypes(query.GetValue()))
 
-			if len(l) == 1 && strings.TrimSpace(l[0]) != "" {
-				params = append(params, types.WithLocatorTypes(l[0]))
+		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR_URL:
+			params = append(params, types.WithLocatorURLs(query.GetValue()))
 
-				break
-			}
+		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION_NAME:
+			params = append(params, types.WithExtensionNames(query.GetValue()))
 
-			if len(l) == 2 { //nolint:mnd
-				if strings.TrimSpace(l[0]) != "" {
-					params = append(params, types.WithLocatorTypes(l[0]))
-				}
-
-				if strings.TrimSpace(l[1]) != "" {
-					params = append(params, types.WithLocatorURLs(l[1]))
-				}
-			}
-
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
-			e := strings.SplitN(query.GetValue(), "=", 2) //nolint:mnd
-
-			if len(e) == 1 && strings.TrimSpace(e[0]) != "" {
-				params = append(params, types.WithExtensionNames(e[0]))
-
-				break
-			}
-
-			if len(e) == 2 { //nolint:mnd
-				if strings.TrimSpace(e[0]) != "" {
-					params = append(params, types.WithExtensionNames(e[0]))
-				}
-
-				if strings.TrimSpace(e[1]) != "" {
-					params = append(params, types.WithExtensionVersions(e[1]))
-				}
-			}
+		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION_VERSION:
+			params = append(params, types.WithExtensionVersions(query.GetValue()))
 
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())
