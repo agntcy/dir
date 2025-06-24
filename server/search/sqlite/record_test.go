@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/agntcy/dir/server/types"
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 

@@ -25,7 +25,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 ARG BUILD_OPTS
 ARG EXTRA_LDFLAGS
 
-ENV CGO_ENABLED=1
+# TODO(adamtagscherer): Currently we don't need C libraries but in the future we may need to turn this on once we add
+# security libraries, etc.
+ENV CGO_ENABLED=0
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
