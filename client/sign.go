@@ -13,6 +13,7 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/utils/cosign"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/sign"
@@ -154,10 +155,10 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 	return c.Sign(ctx, agent, signKeypair, signOpts)
 }
 
-func (c *Client) SignWithKey(ctx context.Context, privKey []byte, agent *coretypes.Agent) (*coretypes.Agent, error) {
+func (c *Client) SignWithKey(ctx context.Context, privKey []byte, pw []byte, agent *coretypes.Agent) (*coretypes.Agent, error) {
 	// Generate a keypair from the provided private key bytes.
 	// The keypair hint is derived from the public key and will be used for verification.
-	signKeypair, err := NewKeypair(privKey)
+	signKeypair, err := cosign.LoadKeypair(privKey, pw)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keypair: %w", err)
 	}

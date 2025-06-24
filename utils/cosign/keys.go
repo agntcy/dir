@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package client
+package cosign
 
 import (
 	"context"
@@ -15,9 +15,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/sigstore/cosign/v2/pkg/cosign/env"
 	protocommon "github.com/sigstore/protobuf-specs/gen/pb-go/common/v1"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 )
@@ -32,24 +34,21 @@ type Keypair struct {
 	hashAlgorithm protocommon.HashAlgorithm
 }
 
-func NewKeypair(privateKeyBytes []byte) (*Keypair, error) {
+func LoadKeypair(privateKeyBytes []byte, pw []byte) (*Keypair, error) {
 	if len(privateKeyBytes) == 0 {
 		return nil, errors.New("private key bytes cannot be empty")
 	}
 
-	// Read password from environment variable
-	pw := os.Getenv("COSIGN_PASSWORD")
-
 	privateKey, err := cryptoutils.UnmarshalPEMToPrivateKey(
 		privateKeyBytes,
-		cryptoutils.StaticPasswordFunc([]byte(pw)),
+		cryptoutils.StaticPasswordFunc(pw),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal PEM to private key: %w", err)
 	}
 
 	// Get public key from the private key
-	v, err := cosign.LoadPrivateKey(privateKeyBytes, []byte(pw))
+	v, err := cosign.LoadPrivateKey(privateKeyBytes, pw)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
 	}
@@ -137,4 +136,23 @@ func GenerateHintFromPublicKey(pubKey []byte) []byte {
 	hashedBytes := sha256.Sum256(pubKey)
 
 	return []byte(base64.StdEncoding.EncodeToString(hashedBytes[:]))
+}
+
+func ReadPrivateKeyPassword() func() ([]byte, error) {
+	pw, ok := env.LookupEnv(env.VariablePassword)
+	switch {
+	case ok:
+		return func() ([]byte, error) {
+			return []byte(pw), nil
+		}
+	case cosign.IsTerminal():
+		return func() ([]byte, error) {
+			return cosign.GetPassFromTerm(true)
+		}
+	// Handle piped in passwords.
+	default:
+		return func() ([]byte, error) {
+			return io.ReadAll(os.Stdin)
+		}
+	}
 }

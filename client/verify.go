@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/tuf"
@@ -154,7 +155,7 @@ func (c *Client) VerifyWithKey(_ context.Context, key []byte, agent *coretypes.A
 	if p.Type != "PUBLIC KEY" {
 		return fmt.Errorf("unexpected PEM type: %s", p.Type)
 	}
-	expectedHint := string(GenerateHintFromPublicKey(p.Bytes))
+	expectedHint := string(cosign.GenerateHintFromPublicKey(p.Bytes))
 
 	if pubKey.GetHint() != expectedHint {
 		return fmt.Errorf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())

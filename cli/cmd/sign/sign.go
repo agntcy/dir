@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore/pkg/oauthflow"
 	"github.com/spf13/cobra"
 )
@@ -86,8 +87,14 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read key file: %w", err)
 		}
 
+		// Read password from environment variable
+		pw, err := cosign.ReadPrivateKeyPassword()()
+		if err != nil {
+			return fmt.Errorf("failed to read password: %w", err)
+		}
+
 		// Sign the agent using the provided key
-		agentSigned, err = c.SignWithKey(cmd.Context(), rawKey, agent)
+		agentSigned, err = c.SignWithKey(cmd.Context(), rawKey, pw, agent)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent with key: %w", err)
 		}

@@ -11,9 +11,7 @@ require (
 	github.com/agntcy/dir/api v0.2.5
 	github.com/agntcy/dir/utils v0.2.5
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
-	github.com/sigstore/cosign/v2 v2.5.2
 	github.com/sigstore/protobuf-specs v0.4.3
-	github.com/sigstore/sigstore v1.9.5
 	github.com/spf13/viper v1.20.1
 	github.com/theupdateframework/go-tuf/v2 v2.1.1
 	google.golang.org/grpc v1.73.0
@@ -71,7 +69,9 @@ require (
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
+	github.com/sigstore/cosign/v2 v2.5.2 // indirect
 	github.com/sigstore/rekor v1.3.10 // indirect
+	github.com/sigstore/sigstore v1.9.5 // indirect
 	github.com/sigstore/timestamp-authority v1.2.8 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
