@@ -38,7 +38,7 @@ runs:
               workflow_id: 'test-integrations.yaml',
               ref: 'main',
               inputs: {
-                  skip_gateway_test: true,
+                  skip_slim_test: true,
                   override_directory_image_tag: '${{ steps.tags.outputs.IMAGE_TAG }}',
                   override_directory_chart_tag: '${{ steps.tags.outputs.CHART_TAG }}',
               },
