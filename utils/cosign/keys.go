@@ -140,6 +140,7 @@ func GenerateHintFromPublicKey(pubKey []byte) []byte {
 
 func ReadPrivateKeyPassword() func() ([]byte, error) {
 	pw, ok := env.LookupEnv(env.VariablePassword)
+
 	switch {
 	case ok:
 		return func() ([]byte, error) {

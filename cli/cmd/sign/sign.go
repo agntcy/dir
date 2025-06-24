@@ -79,7 +79,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 
 	var agentSigned *coretypes.Agent
 
-	//nolint:nestif
+	//nolint:nestif,gocritic
 	if opts.Key != "" {
 		// Load the key from file
 		rawKey, err := os.ReadFile(filepath.Clean(opts.Key))
