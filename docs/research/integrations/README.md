@@ -55,7 +55,7 @@ This step generates artifacts for both workflow-types, including VSCode Copilot 
 
 The artifacts are saved under workflow-specific directory for the given tool, ie. `.vscode/` and `.continue/assistants/`.
 
-2. Run `cp docs/poc/integrations/.env.example .env`
+2. Run `cp docs/research/integrations/.env.example .env`
 
 This step sets up ENV-var inputs for Continue-based workflow. Fill the env vars after setup.
 This is required for Continue as it does not support prompt inputs.

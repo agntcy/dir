@@ -624,13 +624,13 @@ tasks:
   ##
   poc:integration:
     desc: Run integration against VS Code and Continue proof-of-concept.
-    dir: ./docs/poc/integrations
+    dir: ./docs/research/integrations
     prompt:
       - |
         Are you sure you want to run integration proof-of-concept?
         This will overwrite your local workspace VSCode and Continue configuration.
     vars:
-      RECORD_FILE: '{{ .RECORD_FILE | default "docs/poc/integrations/demo.record.json" }}'
+      RECORD_FILE: '{{ .RECORD_FILE | default "docs/research/integrations/demo.record.json" }}'
     cmd: |
         # Prepare Python environment
         python3 -m venv venv
@@ -651,7 +651,7 @@ tasks:
     cmds:
       - task: poc:integration
         vars:
-          RECORD_FILE: 'docs/poc/integrations/mcp-to-oasf-agent/extractor.record.json'
+          RECORD_FILE: 'docs/research/integrations/mcp-to-oasf-agent/extractor.record.json'
 
   ##
   ## Dependencies
