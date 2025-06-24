@@ -154,6 +154,40 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		})
 	})
 
+	ginkgo.Context("agent search", func() {
+		ginkgo.It("should search for an agent with filters and return the cid", func() {
+			var outputBuffer bytes.Buffer
+
+			searchCmd := clicmd.RootCmd
+			searchCmd.SetOut(&outputBuffer)
+			searchCmd.SetArgs([]string{
+				"search",
+				"--limit",
+				"10",
+				"--offset",
+				"0",
+				"--query",
+				"name=directory.agntcy.org/cisco/marketing-strategy",
+				"--query",
+				"version=v1.0.0",
+				"--query",
+				"skill-id=10201",
+				"--query",
+				"skill-name=Natural Language Processing/Text Completion",
+				"--query",
+				"locator=docker-image:https://ghcr.io/agntcy/marketing-strategy",
+				"--query",
+				"extension=schema.oasf.agntcy.org/features/runtime/framework:v0.0.0",
+			})
+
+			err := searchCmd.Execute()
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Check if the output contains the expected CID
+			gomega.Expect(outputBuffer.String()).To(gomega.Equal("sha256:1beb8653b5bf888274c1e2c3754e096b0242ceee8518c330be3239fa88a4fc80"))
+		})
+	})
+
 	ginkgo.Context("agent delete", func() {
 		ginkgo.It("should successfully delete an agent", func() {
 			var outputBuffer bytes.Buffer

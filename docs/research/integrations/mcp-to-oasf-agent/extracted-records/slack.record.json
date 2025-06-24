@@ -1,0 +1,78 @@
+{
+    "name": "slackapi/slack-mcp-server",
+    "version": "1.0.0",
+    "description": "Official Slack MCP server that provides access to Slack messaging, channels, workspaces, and other Slack platform features.",
+    "authors": [
+        "Slack Technologies, LLC <api@slack.com>"
+    ],
+    "created_at": "2023-10-20T15:25:00Z",
+    "skills": [
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Completion",
+            "class_uid": 10201
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Dialogue Generation",
+            "class_uid": 10204
+        },
+        {
+            "category_name": "Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Text Summarization",
+            "class_uid": 10202
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://github.com/slackapi/slack-mcp-server"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "slack": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "SLACK_BOT_TOKEN",
+                            "-e",
+                            "SLACK_APP_TOKEN",
+                            "-e",
+                            "SLACK_SIGNING_SECRET",
+                            "ghcr.io/slackapi/slack-mcp-server"
+                        ],
+                        "env": {
+                            "SLACK_BOT_TOKEN": "${input:SLACK_BOT_TOKEN}",
+                            "SLACK_APP_TOKEN": "${input:SLACK_APP_TOKEN}",
+                            "SLACK_SIGNING_SECRET": "${input:SLACK_SIGNING_SECRET}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "Slack Messaging Assistant",
+                        "description": "Slack messaging platform assistant",
+                        "prompt": "You are a Slack assistant. Help users send messages, manage channels, integrate with workflows, and use Slack platform features."
+                    }
+                ]
+            }
+        }
+    ]
+}

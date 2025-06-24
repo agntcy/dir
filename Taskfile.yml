@@ -620,6 +620,40 @@ tasks:
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
 
   ##
+  ## Various proof-of-concept tasks
+  ##
+  poc:integration:
+    desc: Run integration against VS Code and Continue proof-of-concept.
+    dir: ./docs/research/integrations
+    prompt:
+      - |
+        Are you sure you want to run integration proof-of-concept?
+        This will overwrite your local workspace VSCode and Continue configuration.
+    vars:
+      RECORD_FILE: '{{ .RECORD_FILE | default "docs/research/integrations/demo.record.json" }}'
+    cmd: |
+        # Prepare Python environment
+        python3 -m venv venv
+        . ./venv/bin/activate
+        python3 -m pip install pyyaml
+
+        # Run script
+        python3 ./importer.py \
+          -record={{.ROOT_DIR}}/{{.RECORD_FILE}} \
+          -vscode_path={{.ROOT_DIR}}/.vscode \
+          -continue_path={{.ROOT_DIR}}/.continue/assistants
+
+        # Print env requirements
+        cat .env.example
+
+  poc:mcp-to-oasf:
+    desc: Import MCP-to-OASF Exporter Agent into the current workspace.
+    cmds:
+      - task: poc:integration
+        vars:
+          RECORD_FILE: 'docs/research/integrations/mcp-to-oasf-agent/extractor.record.json'
+
+  ##
   ## Dependencies
   ##
   deps:

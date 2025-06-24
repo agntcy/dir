@@ -15,6 +15,7 @@ type Record struct {
 	gorm.Model
 	Name    string `gorm:"not null"`
 	Version string `gorm:"not null"`
+	CID     string `gorm:"unique;not null"`
 
 	Skills     []Skill     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
 	Locators   []Locator   `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
@@ -27,6 +28,10 @@ func (r *Record) GetName() string {
 
 func (r *Record) GetVersion() string {
 	return r.Version
+}
+
+func (r *Record) GetCID() string {
+	return r.CID
 }
 
 func (r *Record) GetSkillObjects() []types.SkillObject {
@@ -60,6 +65,7 @@ func (d *DB) addRecordTx(tx *gorm.DB, recordObject types.RecordObject) (uint, er
 	record := &Record{
 		Name:    recordObject.GetName(),
 		Version: recordObject.GetVersion(),
+		CID:     recordObject.GetCID(),
 	}
 
 	if err := tx.Create(record).Error; err != nil {
@@ -143,6 +149,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.RecordObject, error
 	// Handle skill filters.
 	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
 		query = query.Joins("JOIN skills ON skills.agent_id = records.id")
+
 		if len(cfg.SkillIDs) > 0 {
 			query = query.Where("skills.skill_id IN ?", cfg.SkillIDs)
 		}
@@ -155,6 +162,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.RecordObject, error
 	// Handle locator filters.
 	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
 		query = query.Joins("JOIN locators ON locators.agent_id = records.id")
+
 		if len(cfg.LocatorTypes) > 0 {
 			query = query.Where("locators.type IN ?", cfg.LocatorTypes)
 		}
@@ -167,6 +175,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.RecordObject, error
 	// Handle extension filters.
 	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
 		query = query.Joins("JOIN extensions ON extensions.agent_id = records.id")
+
 		if len(cfg.ExtensionNames) > 0 {
 			query = query.Where("extensions.name IN ?", cfg.ExtensionNames)
 		}

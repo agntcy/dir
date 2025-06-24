@@ -24,6 +24,7 @@ Check the [USAGE](USAGE.md) file for a full walkthrough of all the Directory fea
   - [builder](./cli/builder) - common data model build tools and plugins
 - [client](./client) - client SDK for development and API workflows
 - [e2e](./e2e) - end-to-end testing framework
+- [docs](./docs) - research details and documentation around the project
 - [server](./server) - API services to manage storage, routing, and networking operations
 
 ## Prerequisites

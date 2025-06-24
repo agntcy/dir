@@ -1,0 +1,89 @@
+{
+    "name": "organization/agent-name",
+    "version": "version",
+    "description": "Full description of the MCP agent, less than 200 characters.",
+    "authors": [
+        "Author/Org name <email address>"
+    ],
+    "created_at": "current timestamp in RFC 3339 format",
+    "skills": [
+        {
+            "category_name": "Category name, e.g., Natural Language Processing",
+            "category_uid": 1,
+            "class_name": "Class name, e.g., Text Completion",
+            "class_uid": 10201
+        }
+    ],
+    "locators": [
+        {
+            "type": "source-code",
+            "url": "https://ghcr.io/agntcy/dir/agent-name"
+        }
+    ],
+    "extensions": [
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/mcp",
+            "version": "v1.0.0",
+            "data": {
+                "servers": {
+                    "github": {
+                        "command": "docker",
+                        "args": [
+                            "run",
+                            "-i",
+                            "--rm",
+                            "-e",
+                            "GITHUB_PERSONAL_ACCESS_TOKEN",
+                            "ghcr.io/github/github-mcp-server"
+                        ],
+                        "env": {
+                            "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:GITHUB_PERSONAL_ACCESS_TOKEN}"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/model",
+            "version": "v1.0.0",
+            "data": {
+                "models": [
+                    {
+                        "model": "deepseek-r1:1.5b",
+                        "provider": "ollama",
+                        "api_base": "http://localhost:11434",
+                        "prompt": "You are an expert software developer. You give helpful and concise responses. You use typescript and react with next js 14. You prefer arrow functions and more functional programmer."
+                    },
+                    {
+                        "model": "gpt-4o",
+                        "provider": "azure",
+                        "api_key": "${input:AZURE_OPENAI_API_KEY}",
+                        "api_base": "${input:AZURE_OPENAI_API_BASE}",
+                        "roles": [
+                            "chat",
+                            "edit",
+                            "apply"
+                        ],
+                        "completion_options": {
+                            "context_length": 128000,
+                            "max_tokens": 16384
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "schema.oasf.agntcy.org/features/runtime/prompt",
+            "version": "v1.0.0",
+            "data": {
+                "prompts": [
+                    {
+                        "name": "Prompt name",
+                        "description": "Prompt summary",
+                        "prompt": "Full example prompt, less than 200 characters."
+                    }
+                ]
+            }
+        }
+    ]
+}

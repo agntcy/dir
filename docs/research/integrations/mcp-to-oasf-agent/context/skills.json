@@ -1,0 +1,823 @@
+{
+    "nlp": {
+      "name": "nlp",
+      "description": "Natural Language Processing (NLP) tasks are the application of computational techniques to the analysis and synthesis of natural language and speech.",
+      "uid": 1,
+      "classes": {
+        "entity_recognition": {
+          "name": "entity_recognition",
+          "family": "skill",
+          "description": "Identifying and categorizing key entities within the text, such as names, dates, or locations.",
+          "uid": 10103,
+          "extends": "nlu",
+          "category_uid": 1,
+          "caption": "Entity Recognition"
+        },
+        "ethical_interaction": {
+          "name": "ethical_interaction",
+          "family": "skill",
+          "description": "Capabilities for ensuring ethical, unbiased, and safe content generation and interaction.",
+          "uid": 108,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Ethical and Safe Interaction"
+        },
+        "named_entity_recognition": {
+          "name": "named_entity_recognition",
+          "family": "skill",
+          "description": "Task to recognize names as entity, for example, people, locations, buildings, and so on.",
+          "uid": 11101,
+          "extends": "token_classification",
+          "category_uid": 1,
+          "caption": "Named Entity Recognition"
+        },
+        "summarization": {
+          "name": "summarization",
+          "family": "skill",
+          "description": "Condensing longer texts into concise summaries while preserving essential information and maintaining coherence.",
+          "uid": 10202,
+          "extends": "natural_language_generation",
+          "category_uid": 1,
+          "caption": "Text Summarization"
+        },
+        "token_classification": {
+          "name": "token_classification",
+          "family": "skill",
+          "description": "Capabilities for classifying individual tokens or words within text.",
+          "uid": 111,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Token Classification"
+        },
+        "paraphrasing": {
+          "name": "paraphrasing",
+          "family": "skill",
+          "description": "Rewriting text to express the same ideas using different words and structures while maintaining the original meaning.",
+          "uid": 10203,
+          "extends": "natural_language_generation",
+          "category_uid": 1,
+          "caption": "Text Paraphrasing"
+        },
+        "pos_tagging": {
+          "name": "pos_tagging",
+          "family": "skill",
+          "description": "Tagging each part of a sentence as nouns, adjectives, verbs, and so on.",
+          "uid": 11102,
+          "extends": "token_classification",
+          "category_uid": 1,
+          "caption": "Part-of-Speech Tagging"
+        },
+        "dialogue_generation": {
+          "name": "dialogue_generation",
+          "family": "skill",
+          "description": "Producing conversational responses that are contextually relevant and engaging within a dialogue context.",
+          "uid": 10204,
+          "extends": "natural_language_generation",
+          "category_uid": 1,
+          "caption": "Dialogue Generation"
+        },
+        "personalization": {
+          "name": "personalization",
+          "family": "skill",
+          "description": "Capabilities for adapting and personalizing content based on user context and preferences.",
+          "uid": 106,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Personalisation and Adaptation"
+        },
+        "multilingual_understanding": {
+          "name": "multilingual_understanding",
+          "family": "skill",
+          "description": "Recognizing and processing text in multiple languages.",
+          "uid": 10502,
+          "extends": "language_translation",
+          "category_uid": 1,
+          "caption": "Multilingual Understanding"
+        },
+        "question_generation": {
+          "name": "question_generation",
+          "family": "skill",
+          "description": "Automatically generating relevant and meaningful questions from a given text or context.",
+          "uid": 10205,
+          "extends": "natural_language_generation",
+          "category_uid": 1,
+          "caption": "Question Generation"
+        },
+        "nlu": {
+          "name": "nlu",
+          "family": "skill",
+          "description": "Natural Language Understanding (NLU) focuses on the ability to interpret and comprehend human language, including understanding context, semantics, and identifying key entities within text.",
+          "uid": 101,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Natural Language Understanding"
+        },
+        "knowledge_synthesis": {
+          "name": "knowledge_synthesis",
+          "family": "skill",
+          "description": "Capability to aggregate and combine information from multiple sources, creating comprehensive and coherent responses while maintaining context and relevance.",
+          "uid": 10303,
+          "extends": "information_retrieval_synthesis",
+          "category_uid": 1,
+          "caption": "Knowledge Synthesis"
+        },
+        "storytelling": {
+          "name": "storytelling",
+          "family": "skill",
+          "description": "Creating narratives, stories, or fictional content with creativity and coherence.",
+          "uid": 10401,
+          "extends": "creative_content",
+          "category_uid": 1,
+          "caption": "Storytelling"
+        },
+        "creative_content": {
+          "name": "creative_content",
+          "family": "skill",
+          "description": "Capabilities for generating various forms of creative content, including narratives, poetry, and other creative writing forms.",
+          "uid": 104,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Creative Content Generation"
+        },
+        "feature_extraction": {
+          "name": "feature_extraction",
+          "family": "skill",
+          "description": "Capabilities for extracting and representing textual features as vectors for downstream tasks.",
+          "uid": 110,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Feature Extraction"
+        },
+        "bias_mitigation": {
+          "name": "bias_mitigation",
+          "family": "skill",
+          "description": "Reducing or eliminating biased language and ensuring fair and unbiased output.",
+          "uid": 10801,
+          "extends": "ethical_interaction",
+          "category_uid": 1,
+          "caption": "Bias Mitigation"
+        },
+        "natural_language_inference": {
+          "name": "natural_language_inference",
+          "family": "skill",
+          "description": "Classifying the relation between two texts, like a contradiction, entailment, and others.",
+          "uid": 10903,
+          "extends": "text_classification",
+          "category_uid": 1,
+          "caption": "Natural Language Inference"
+        },
+        "text_completion": {
+          "name": "text_completion",
+          "family": "skill",
+          "description": "Continuing a given text prompt in a coherent and contextually appropriate manner to generate fluent and contextually relevant content.",
+          "uid": 10201,
+          "extends": "natural_language_generation",
+          "category_uid": 1,
+          "caption": "Text Completion"
+        },
+        "sentiment_analysis": {
+          "name": "sentiment_analysis",
+          "family": "skill",
+          "description": "Classify the sentiment of a text, that is, a positive movie review.",
+          "uid": 10902,
+          "extends": "text_classification",
+          "category_uid": 1,
+          "caption": "Sentiment Analysis"
+        },
+        "content_moderation_skill": {
+          "name": "content_moderation_skill",
+          "family": "skill",
+          "description": "Avoiding the generation of harmful, inappropriate, or sensitive content.",
+          "uid": 10802,
+          "extends": "ethical_interaction",
+          "category_uid": 1,
+          "caption": "Content Moderation"
+        },
+        "inference_deduction": {
+          "name": "inference_deduction",
+          "family": "skill",
+          "description": "Making logical inferences based on provided information.",
+          "uid": 10701,
+          "extends": "analytical_reasoning",
+          "category_uid": 1,
+          "caption": "Inference and Deduction"
+        },
+        "fact_extraction": {
+          "name": "fact_extraction",
+          "family": "skill",
+          "description": "Capability to identify and extract factual information from text documents or knowledge bases, including entities, relationships, and key data points.",
+          "uid": 10301,
+          "extends": "information_retrieval_synthesis",
+          "category_uid": 1,
+          "caption": "Fact Extraction"
+        },
+        "information_retrieval_synthesis_search": {
+          "name": "information_retrieval_synthesis_search",
+          "family": "skill",
+          "description": "Capability to perform efficient and accurate searches within large textual databases based on various criteria, including keywords, semantic meaning, or complex queries.",
+          "uid": 10306,
+          "extends": "information_retrieval_synthesis",
+          "category_uid": 1,
+          "caption": "Search"
+        },
+        "style_adjustment": {
+          "name": "style_adjustment",
+          "family": "skill",
+          "description": "Modifying the tone or style of generated text to suit specific audiences or purposes.",
+          "uid": 10602,
+          "extends": "personalization",
+          "category_uid": 1,
+          "caption": "Tone and Style Adjustment"
+        },
+        "question_answering": {
+          "name": "question_answering",
+          "family": "skill",
+          "description": "System capability to understand questions and provide accurate, relevant answers by analyzing available information sources.",
+          "uid": 10302,
+          "extends": "information_retrieval_synthesis",
+          "category_uid": 1,
+          "caption": "Question Answering"
+        },
+        "model_feature_extraction": {
+          "name": "model_feature_extraction",
+          "family": "skill",
+          "description": "Representing parts of text with vectors to be used as input to other tasks.",
+          "uid": 11001,
+          "extends": "feature_extraction",
+          "category_uid": 1,
+          "caption": "Model Feature Extraction"
+        },
+        "story_generation": {
+          "name": "story_generation",
+          "family": "skill",
+          "description": "Generating a piece of text given a description or a first sentence to complete.",
+          "uid": 10207,
+          "extends": "natural_language_generation",
+          "category_uid": 1,
+          "caption": "Story Generation"
+        },
+        "language_translation": {
+          "name": "language_translation",
+          "family": "skill",
+          "description": "Capabilities for handling multiple languages, including translation and multilingual text processing.",
+          "uid": 105,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Language Translation and Multilingual Support"
+        },
+        "topic_labeling": {
+          "name": "topic_labeling",
+          "family": "skill",
+          "description": "Classifying a text as belong to one of several topics, which can be used to tag a text.",
+          "uid": 10901,
+          "extends": "text_classification",
+          "category_uid": 1,
+          "caption": "Topic Labelling and Tagging"
+        },
+        "document_passage_retrieval": {
+          "name": "document_passage_retrieval",
+          "family": "skill",
+          "description": "Capability to identify and retrieve relevant documents or text passages based on specific criteria or queries from a larger collection of texts.",
+          "uid": 10305,
+          "extends": "information_retrieval_synthesis",
+          "category_uid": 1,
+          "caption": "Document and Passage Retrieval"
+        },
+        "problem_solving": {
+          "name": "problem_solving",
+          "family": "skill",
+          "description": "Assisting with solving problems by generating potential solutions or strategies.",
+          "uid": 10702,
+          "extends": "analytical_reasoning",
+          "category_uid": 1,
+          "caption": "Problem Solving"
+        },
+        "poetry_writing": {
+          "name": "poetry_writing",
+          "family": "skill",
+          "description": "Composing poems, prose, or other forms of creative literature.",
+          "uid": 10402,
+          "extends": "creative_content",
+          "category_uid": 1,
+          "caption": "Poetry and Creative Writing"
+        },
+        "information_retrieval_synthesis": {
+          "name": "information_retrieval_synthesis",
+          "family": "skill",
+          "description": "Capabilities for retrieving relevant information from various sources and synthesizing it into coherent, contextually appropriate responses. This includes searching, extracting, combining, and presenting information in a meaningful way.",
+          "uid": 103,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Information Retrieval and Synthesis"
+        },
+        "text_classification": {
+          "name": "text_classification",
+          "family": "skill",
+          "description": "Capabilities for classifying and categorizing text into predefined categories or labels.",
+          "uid": 109,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Text Classification"
+        },
+        "translation": {
+          "name": "translation",
+          "family": "skill",
+          "description": "Converting text from one language to another while maintaining meaning and context.",
+          "uid": 10501,
+          "extends": "language_translation",
+          "category_uid": 1,
+          "caption": "Translation"
+        },
+        "analytical_reasoning": {
+          "name": "analytical_reasoning",
+          "family": "skill",
+          "description": "Capabilities for performing logical analysis, inference, and problem-solving tasks.",
+          "uid": 107,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Analytical and Logical Reasoning"
+        },
+        "contextual_comprehension": {
+          "name": "contextual_comprehension",
+          "family": "skill",
+          "description": "Understanding the context and nuances of text input to provide relevant responses.",
+          "uid": 10101,
+          "extends": "nlu",
+          "category_uid": 1,
+          "caption": "Contextual Comprehension"
+        },
+        "natural_language_generation": {
+          "name": "natural_language_generation",
+          "family": "skill",
+          "description": "Natural Language Generation (NLG) describes the ability to generate human-like text from structured data or other inputs.",
+          "uid": 102,
+          "extends": "nlp",
+          "category_uid": 1,
+          "caption": "Natural Language Generation"
+        },
+        "user_adaptation": {
+          "name": "user_adaptation",
+          "family": "skill",
+          "description": "Tailoring responses based on user preferences, history, or context.",
+          "uid": 10601,
+          "extends": "personalization",
+          "category_uid": 1,
+          "caption": "User Adaptation"
+        },
+        "semantic_understanding": {
+          "name": "semantic_understanding",
+          "family": "skill",
+          "description": "Grasping the meaning and intent behind words and phrases.",
+          "uid": 10102,
+          "extends": "nlu",
+          "category_uid": 1,
+          "caption": "Semantic Understanding"
+        },
+        "style_transfer": {
+          "name": "style_transfer",
+          "family": "skill",
+          "description": "Rewriting text to match the style of a given reference text while preserving the original content.",
+          "uid": 10206,
+          "extends": "natural_language_generation",
+          "category_uid": 1,
+          "caption": "Text Style Transfer"
+        },
+        "sentence_similarity": {
+          "name": "sentence_similarity",
+          "family": "skill",
+          "description": "Capability to analyze and determine the semantic similarity between sentences, supporting tasks like search, matching, and content comparison.",
+          "uid": 10304,
+          "extends": "information_retrieval_synthesis",
+          "category_uid": 1,
+          "caption": "Sentence Similarity"
+        },
+        "fact_verification": {
+          "name": "fact_verification",
+          "family": "skill",
+          "description": "Verifying facts and claims given a reference text.",
+          "uid": 10703,
+          "extends": "analytical_reasoning",
+          "category_uid": 1,
+          "caption": "Fact and Claim Verification"
+        }
+      },
+      "caption": "Natural Language Processing"
+    },
+    "images_computer_vision": {
+      "name": "images_computer_vision",
+      "description": "Images / Computer Vision tasks are the application of computational techniques to the analysis and synthesis of images.",
+      "uid": 2,
+      "classes": {
+        "depth_estimation": {
+          "name": "depth_estimation",
+          "family": "skill",
+          "description": "Predicting the distance or depth of objects within a scene from a single image or multiple images.",
+          "uid": 207,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Depth Estimation"
+        },
+        "image_classification": {
+          "name": "image_classification",
+          "family": "skill",
+          "description": "Assigning labels or categories to images based on their visual content.",
+          "uid": 203,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Image Classification"
+        },
+        "image_feature_extraction": {
+          "name": "image_feature_extraction",
+          "family": "skill",
+          "description": "Identifying and isolating key characteristics or patterns from an image to aid in tasks like classification or recognition.",
+          "uid": 208,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Image Feature Extraction"
+        },
+        "image_generation": {
+          "name": "image_generation",
+          "family": "skill",
+          "description": "Creating new images from learned patterns or data using machine learning models.",
+          "uid": 206,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Image Generation"
+        },
+        "image_segmentation": {
+          "name": "image_segmentation",
+          "family": "skill",
+          "description": "Assigning labels or categories to images based on their visual content.",
+          "uid": 201,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Image Segmentation"
+        },
+        "image_to_3d": {
+          "name": "image_to_3d",
+          "family": "skill",
+          "description": "The process of converting a 2D image into a 3D representation or model, often by inferring depth and spatial relationships.",
+          "uid": 211,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Image-to-3D"
+        },
+        "image_to_image": {
+          "name": "image_to_image",
+          "family": "skill",
+          "description": "Transforming one image into another using a learned mapping, often for tasks like style transfer, colorization, or image enhancement.",
+          "uid": 210,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Image-to-Image"
+        },
+        "keypoint_detection": {
+          "name": "keypoint_detection",
+          "family": "skill",
+          "description": "Identifying and locating specific points of interest within an image or object.",
+          "uid": 205,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Keypoint Detection"
+        },
+        "mask_generation": {
+          "name": "mask_generation",
+          "family": "skill",
+          "description": "Producing segmented regions in an image to highlight specific areas or objects, typically represented as separate layers or overlays.",
+          "uid": 209,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Mask Generation"
+        },
+        "object_detection": {
+          "name": "object_detection",
+          "family": "skill",
+          "description": "Identifying and locating specific objects within an image or video, often by drawing bounding boxes around them.",
+          "uid": 204,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Object Detection"
+        },
+        "video_classification": {
+          "name": "video_classification",
+          "family": "skill",
+          "description": "Assigning labels or categories to entire videos or segments based on their visual and audio content.",
+          "uid": 202,
+          "extends": "images_computer_vision",
+          "category_uid": 2,
+          "caption": "Video Classification"
+        }
+      },
+      "caption": "Images / Computer Vision"
+    },
+    "audio": {
+      "name": "audio",
+      "description": "Audio tasks are the application of computational techniques to the analysis and synthesis of audio data.",
+      "uid": 3,
+      "classes": {
+        "audio_classification": {
+          "name": "audio_classification",
+          "family": "skill",
+          "description": "Assigning labels or classes to audio content based on its characteristics.",
+          "uid": 301,
+          "extends": "audio",
+          "category_uid": 3,
+          "caption": "Audio Classification"
+        },
+        "audio_to_audio": {
+          "name": "audio_to_audio",
+          "family": "skill",
+          "description": "Transforming audio through various manipulations including cutting, filtering, and mixing.",
+          "uid": 302,
+          "extends": "audio",
+          "category_uid": 3,
+          "caption": "Audio to Audio"
+        }
+      },
+      "caption": "Audio"
+    },
+    "tabular_text": {
+      "name": "tabular_text",
+      "description": "Tabular / Text tasks are the application of computational techniques to the analysis and synthesis of tabular data and text.",
+      "uid": 4,
+      "classes": {
+        "tabular_classification": {
+          "name": "tabular_classification",
+          "family": "skill",
+          "description": "Classifying data based on attributes using classical machine learning approaches.",
+          "uid": 401,
+          "extends": "tabular_text",
+          "category_uid": 4,
+          "caption": "Tabular Classification"
+        },
+        "tabular_regression": {
+          "name": "tabular_regression",
+          "family": "skill",
+          "description": "Predicting numerical values based on tabular attributes and features.",
+          "uid": 402,
+          "extends": "tabular_text",
+          "category_uid": 4,
+          "caption": "Tabular Regression"
+        }
+      },
+      "caption": "Tabular / Text"
+    },
+    "analytical_skills": {
+      "name": "analytical_skills",
+      "description": "Analytical skills encompass a range of capabilities that involve logical reasoning, problem-solving, and the ability to process and interpret complex data.",
+      "uid": 5,
+      "classes": {
+        "code_optimization": {
+          "name": "code_optimization",
+          "family": "skill",
+          "description": "Rewriting and optimizing existing code through refactoring techniques.",
+          "uid": 50204,
+          "extends": "coding_skills",
+          "category_uid": 5,
+          "caption": "Code Refactoring and Optimization"
+        },
+        "code_templates": {
+          "name": "code_templates",
+          "family": "skill",
+          "description": "Automatically filling in code templates with appropriate content.",
+          "uid": 50203,
+          "extends": "coding_skills",
+          "category_uid": 5,
+          "caption": "Code Template Filling"
+        },
+        "code_to_docstrings": {
+          "name": "code_to_docstrings",
+          "family": "skill",
+          "description": "Generating natural language documentation for code segments.",
+          "uid": 50202,
+          "extends": "coding_skills",
+          "category_uid": 5,
+          "caption": "Code to Docstrings"
+        },
+        "coding_skills": {
+          "name": "coding_skills",
+          "family": "skill",
+          "description": "Capabilities for code generation, documentation, and optimization.",
+          "uid": 502,
+          "extends": "analytical_skills",
+          "category_uid": 5,
+          "caption": "Coding Skills"
+        },
+        "text_to_code": {
+          "name": "text_to_code",
+          "family": "skill",
+          "description": "Translating natural language instructions into executable code.",
+          "uid": 50201,
+          "extends": "coding_skills",
+          "category_uid": 5,
+          "caption": "Text to Code"
+        },
+        "geometry": {
+          "name": "geometry",
+          "family": "skill",
+          "description": "Solving geometric problems and spatial reasoning tasks.",
+          "uid": 50103,
+          "extends": "mathematical_reasoning",
+          "category_uid": 5,
+          "caption": "Geometry"
+        },
+        "math_word_problems": {
+          "name": "math_word_problems",
+          "family": "skill",
+          "description": "Solving mathematical exercises presented in natural language format.",
+          "uid": 50102,
+          "extends": "mathematical_reasoning",
+          "category_uid": 5,
+          "caption": "Math Word Problems"
+        },
+        "mathematical_reasoning": {
+          "name": "mathematical_reasoning",
+          "family": "skill",
+          "description": "Capabilities for solving mathematical problems and proving theorems.",
+          "uid": 501,
+          "extends": "analytical_skills",
+          "category_uid": 5,
+          "caption": "Mathematical Reasoning"
+        },
+        "pure_math_operations": {
+          "name": "pure_math_operations",
+          "family": "skill",
+          "description": "Executing pure mathematical operations, such as arithmetic calculations.",
+          "uid": 50101,
+          "extends": "mathematical_reasoning",
+          "category_uid": 5,
+          "caption": "Pure Mathematical Operations"
+        },
+        "theorem_proving": {
+          "name": "theorem_proving",
+          "family": "skill",
+          "description": "Proving mathematical theorems using computational methods.",
+          "uid": 50104,
+          "extends": "mathematical_reasoning",
+          "category_uid": 5,
+          "caption": "Automated Theorem Proving"
+        }
+      },
+      "caption": "Analytical skills"
+    },
+    "retrieval_augmented_generation": {
+      "name": "retrieval_augmented_generation",
+      "description": "Retrieval Augmented Generation tasks are the application of computational techniques to the analysis and synthesis of data from multiple modalities.",
+      "uid": 6,
+      "classes": {
+        "document_or_database_question_answering": {
+          "name": "document_or_database_question_answering",
+          "family": "skill",
+          "description": "Document or database question answering is the process of retrieving and using information from a document or database to answer a specific question.",
+          "uid": 602,
+          "extends": "retrieval_augmented_generation",
+          "category_uid": 6,
+          "caption": "Document or Database Question Answering"
+        },
+        "generation_of_any": {
+          "name": "generation_of_any",
+          "family": "skill",
+          "description": "Generation of any is augmenting the creation of text, images, audio, or other media by incorporating retrieved information to improve or guide the generation process.",
+          "uid": 603,
+          "extends": "retrieval_augmented_generation",
+          "category_uid": 6,
+          "caption": "Generation of Any"
+        },
+        "document_retrieval": {
+          "name": "document_retrieval",
+          "family": "skill",
+          "description": "Document retrieval is the process of retrieving relevant documents from a collection based on a specific query, typically through indexing and search techniques.",
+          "uid": 60103,
+          "extends": "retrieval_of_information",
+          "category_uid": 6,
+          "caption": "Document Retrieval"
+        },
+        "indexing": {
+          "name": "indexing",
+          "family": "skill",
+          "description": "Depth estimations the task of predicting the distance or depth of objects within a scene from a single image or multiple images.",
+          "uid": 60101,
+          "extends": "retrieval_of_information",
+          "category_uid": 6,
+          "caption": "Indexing"
+        },
+        "retrieval_of_information": {
+          "name": "retrieval_of_information",
+          "family": "skill",
+          "description": "Retrieval of information is the process of fetching relevant data or documents from a large dataset or database based on a specific query or input.",
+          "uid": 601,
+          "extends": "retrieval_augmented_generation",
+          "category_uid": 6,
+          "caption": "Retrieval of information"
+        },
+        "retrieval_of_information_search": {
+          "name": "retrieval_of_information_search",
+          "family": "skill",
+          "description": "Search is the process of exploring a dataset or index to find relevant information or results based on a given query.",
+          "uid": 60102,
+          "extends": "retrieval_of_information",
+          "category_uid": 6,
+          "caption": "Search"
+        }
+      },
+      "caption": "Retrieval Augmented Generation"
+    },
+    "multi_modal": {
+      "name": "multi_modal",
+      "description": "Multi-modal tasks are the application of computational techniques to the analysis and synthesis of data from multiple modalities.",
+      "uid": 7,
+      "classes": {
+        "any_to_any": {
+          "name": "any_to_any",
+          "family": "skill",
+          "description": "Converting between any supported modalities (text, image, audio, video, or 3D).",
+          "uid": 703,
+          "extends": "multi_modal",
+          "category_uid": 7,
+          "caption": "Any to Any Transformation"
+        },
+        "audio_processing": {
+          "name": "audio_processing",
+          "family": "skill",
+          "description": "Capabilities for processing audio, including speech synthesis and recognition.",
+          "uid": 702,
+          "extends": "multi_modal",
+          "category_uid": 7,
+          "caption": "Audio Processing"
+        },
+        "speech_recognition": {
+          "name": "speech_recognition",
+          "family": "skill",
+          "description": "Converting spoken language into written text.",
+          "uid": 70202,
+          "extends": "audio_processing",
+          "category_uid": 7,
+          "caption": "Automatic Speech Recognition"
+        },
+        "text_to_speech": {
+          "name": "text_to_speech",
+          "family": "skill",
+          "description": "Converting text into natural-sounding speech audio.",
+          "uid": 70201,
+          "extends": "audio_processing",
+          "category_uid": 7,
+          "caption": "Text to Speech"
+        },
+        "image_processing": {
+          "name": "image_processing",
+          "family": "skill",
+          "description": "Capabilities for processing and generating images from various inputs and generating textual descriptions of visual content.",
+          "uid": 701,
+          "extends": "multi_modal",
+          "category_uid": 7,
+          "caption": "Image Processing"
+        },
+        "image_to_text": {
+          "name": "image_to_text",
+          "family": "skill",
+          "description": "Generating textual descriptions or captions for images.",
+          "uid": 70101,
+          "extends": "image_processing",
+          "category_uid": 7,
+          "caption": "Image to Text"
+        },
+        "text_to_3d": {
+          "name": "text_to_3d",
+          "family": "skill",
+          "description": "Generating 3D objects or scenes based on textual descriptions.",
+          "uid": 70104,
+          "extends": "image_processing",
+          "category_uid": 7,
+          "caption": "Text to 3D"
+        },
+        "text_to_image": {
+          "name": "text_to_image",
+          "family": "skill",
+          "description": "Generating images based on textual descriptions or instructions.",
+          "uid": 70102,
+          "extends": "image_processing",
+          "category_uid": 7,
+          "caption": "Text to Image"
+        },
+        "text_to_video": {
+          "name": "text_to_video",
+          "family": "skill",
+          "description": "Generating video content based on textual descriptions or instructions.",
+          "uid": 70103,
+          "extends": "image_processing",
+          "category_uid": 7,
+          "caption": "Text to Video"
+        },
+        "visual_qa": {
+          "name": "visual_qa",
+          "family": "skill",
+          "description": "Answering questions about images using natural language.",
+          "uid": 70105,
+          "extends": "image_processing",
+          "category_uid": 7,
+          "caption": "Visual Question Answering"
+        }
+      },
+      "caption": "Multi-modal"
+    }
+}

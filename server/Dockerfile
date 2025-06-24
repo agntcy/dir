@@ -39,8 +39,6 @@ RUN xx-verify /bin/apiserver
 
 FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc
 
-WORKDIR /data
-
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver

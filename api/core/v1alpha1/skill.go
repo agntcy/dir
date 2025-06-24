@@ -21,6 +21,6 @@ func (skill *Skill) GetName() string {
 	return fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName())
 }
 
-func (skill *Skill) GetID() uint32 {
-	return 0
+func (skill *Skill) GetID() uint64 {
+	return skill.GetClassUid()
 }

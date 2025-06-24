@@ -9,10 +9,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/tuf"
@@ -145,8 +147,18 @@ func (c *Client) VerifyWithKey(_ context.Context, key []byte, agent *coretypes.A
 		return errors.New("signature bundle verification material has no public key")
 	}
 
-	if pubKey.GetHint() != string(key) {
-		return fmt.Errorf("public key hint mismatch: expected %s, got %s", key, pubKey.GetHint())
+	// Decode the PEM-encoded public key and generate the expected hint.
+	p, _ := pem.Decode(key)
+	if p == nil {
+		return errors.New("failed to decode PEM block containing public key")
+	}
+	if p.Type != "PUBLIC KEY" {
+		return fmt.Errorf("unexpected PEM type: %s", p.Type)
+	}
+	expectedHint := string(cosign.GenerateHintFromPublicKey(p.Bytes))
+
+	if pubKey.GetHint() != expectedHint {
+		return fmt.Errorf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
 	}
 
 	return nil

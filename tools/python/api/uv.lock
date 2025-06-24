@@ -16,7 +16,7 @@ dependencies = [
 requires-dist = [
     { name = "grpcio", specifier = ">=1.71.0" },
     { name = "grpcio-tools", specifier = ">=1.71.0" },
-    { name = "protobuf", specifier = ">=5.29.4" },
+    { name = "protobuf", specifier = ">=5.29.3" },
 ]
 
 [[package]]

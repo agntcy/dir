@@ -32,6 +32,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  id-token: write   # Required for OIDC token generation
+  contents: read    # Required for repository access
+
 jobs:
   demo:
     runs-on: ubuntu-latest
@@ -48,18 +52,6 @@ jobs:
           mkdir -p bin
           curl -L -o bin/dirctl https://github.com/agntcy/dir/releases/download/${{ inputs.dir-version }}/dirctl-linux-amd64
           chmod +x bin/dirctl
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.8.2
-
-      - name: Write Cosign keys
-        run: |
-          echo "Writing Cosign private and public keys"
-          echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
-          echo "${{ secrets.COSIGN_PUBLIC_KEY }}" > cosign.pub
-          chmod 600 cosign.key
-          chmod 644 cosign.pub
-          echo "Cosign private and public keys written successfully"
 
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@v1.12.0
@@ -91,19 +83,6 @@ jobs:
           bin/dirctl build e2e/testdata > agent.json
           echo "Built agent.json:"
           cat agent.json
-
-      - name: Run sign command
-        run: |
-          echo "Running dir sign command"
-          bin/dirctl sign agent.json --key cosign.key --stdin > signed.model.json
-          echo "Signed agent.json:"
-          cat signed.model.json
-          mv signed.model.json agent.json
-
-      - name: Run verify command
-        run: |
-          echo "Running dir verify command"
-          bin/dirctl verify agent.json --key cosign.pub
 
       - name: Run push command
         run: |
@@ -180,3 +159,96 @@ jobs:
             task deploy:local:port-forward:cleanup
             task deploy:local:cleanup
           fi
+
+  sign-and-verify-with-oidc:
+      # This job demonstrates how to sign and verify a record using OIDC tokens.
+      # It requires the `id-token` permission to generate OIDC tokens.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Dirctl
+        run: |
+          mkdir -p bin
+          curl -L -o bin/dirctl https://github.com/agntcy/dir/releases/download/${{ inputs.dir-version }}/dirctl-linux-amd64
+          chmod +x bin/dirctl
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.2
+
+      - name: Run build command
+        run: |
+          echo "Running dir build command"
+          bin/dirctl build e2e/testdata > agent.json
+          echo "Built agent.json:"
+          cat agent.json
+
+      - name: Get Github OIDC token
+        id: oidc-token
+        run: |
+          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+          echo "::add-mask::$OIDC_TOKEN"
+          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Run sign command
+        run: |
+          echo "Running dir sign command"
+          bin/dirctl sign agent.json \
+            --oidc-token ${{ steps.oidc-token.outputs.token }} \
+            --oidc-provider-url "https://token.actions.githubusercontent.com" \
+            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}" \
+            --stdin > signed.model.json
+          echo "Signed agent.json to signed.model.json"
+          cat signed.model.json
+          mv signed.model.json agent.json
+
+      - name: Run verify command
+        run: |
+          echo "Running dir verify command"
+          bin/dirctl verify agent.json \
+            --oidc-issuer "https://token.actions.githubusercontent.com" \
+            --oidc-identity "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
+
+  sign-and-verify-with-key:
+      # This job demonstrates how to sign and verify a record using Cosign keys.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Dirctl
+        run: |
+          mkdir -p bin
+          curl -L -o bin/dirctl https://github.com/agntcy/dir/releases/download/${{ inputs.dir-version }}/dirctl-linux-amd64
+          chmod +x bin/dirctl
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.2
+
+      - name: Generate Cosign keys
+        run: |
+          echo "Generating Cosign keys"
+          cosign generate-key-pair
+          echo "Cosign keys generated successfully"
+
+      - name: Run build command
+        run: |
+          echo "Running dir build command"
+          bin/dirctl build e2e/testdata > agent.json
+          echo "Built agent.json:"
+          cat agent.json
+
+      - name: Run sign command
+        run: |
+          echo "Running dir sign command"
+          bin/dirctl sign agent.json --key cosign.key --stdin > signed.model.json
+          echo "Signed agent.json:"
+          cat signed.model.json
+          mv signed.model.json agent.json
+
+      - name: Run verify command
+        run: |
+          echo "Running dir verify command"
+          bin/dirctl verify agent.json --key cosign.pub
