@@ -175,9 +175,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"--query",
 				"skill-name=Natural Language Processing/Text Completion",
 				"--query",
-				"locator=docker-image=https://ghcr.io/agntcy/marketing-strategy",
+				"locator=*:https://ghcr.io/agntcy/marketing-strategy",
 				"--query",
-				"extension=.*\\.oasf\\.agntcy\\.org/features/runtime/framework=v0.0.0",
+				"extension=.*\\.oasf\\.agntcy\\.org/features/runtime/framework:v0.0.0",
 			})
 
 			err := searchCmd.Execute()

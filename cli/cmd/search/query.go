@@ -64,48 +64,15 @@ func (q *Query) Type() string {
 }
 
 func (q *Query) ToAPIQueries() []*searchtypesv1alpha2.RecordQuery {
-	var queries []*searchtypesv1alpha2.RecordQuery
+	queries := []*searchtypesv1alpha2.RecordQuery{}
 
 	for _, item := range *q {
-		parts := strings.Split(item, "=")
+		parts := strings.SplitN(item, "=", 2)
 
-		switch searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[parts[0]]) { //nolint:exhaustive
-		case searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
-			if len(parts) >= 2 {
-				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
-					Type:  searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION_NAME,
-					Value: parts[1],
-				})
-			}
-
-			if len(parts) == 3 {
-				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
-					Type:  searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION_VERSION,
-					Value: parts[2],
-				})
-			}
-
-		case searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
-			if len(parts) >= 2 {
-				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
-					Type:  searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR_TYPE,
-					Value: parts[1],
-				})
-			}
-
-			if len(parts) == 3 {
-				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
-					Type:  searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR_URL,
-					Value: parts[2],
-				})
-			}
-
-		default:
-			queries = append(queries, &searchtypesv1alpha2.RecordQuery{
-				Type:  searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[parts[0]]),
-				Value: parts[1],
-			})
-		}
+		queries = append(queries, &searchtypesv1alpha2.RecordQuery{
+			Type:  searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[parts[0]]),
+			Value: parts[1],
+		})
 	}
 
 	return queries

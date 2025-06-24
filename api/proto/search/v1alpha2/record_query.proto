@@ -37,18 +37,6 @@ enum RecordQueryType {
   // Query for a locator.
   RECORD_QUERY_TYPE_LOCATOR = 5;
 
-  // Query for a locator type.
-  RECORD_QUERY_TYPE_LOCATOR_TYPE = 6;
-
-  // Query for a locator URL.
-  RECORD_QUERY_TYPE_LOCATOR_URL = 7;
-
   // Query for an extension.
-  RECORD_QUERY_TYPE_EXTENSION = 8;
-
-  // Query for an extension name.
-  RECORD_QUERY_TYPE_EXTENSION_NAME = 9;
-
-  // Query for an extension version.
-  RECORD_QUERY_TYPE_EXTENSION_VERSION = 10;
+  RECORD_QUERY_TYPE_EXTENSION = 6;
 }

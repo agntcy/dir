@@ -28,8 +28,8 @@ Usage examples:
 		--query "version=v1.0.0" \
 		--query "skill-id=10201" \
 		--query "skill-name=Text Completion" \
-		--query "locator=docker-image=https://example.com/docker-image" \
-		--query "extension=my-custom-extension-name=v1.0.0" 
+		--query "locator=docker-image:https://example.com/docker-image" \
+		--query "extension=my-custom-extension-name:v1.0.0" 
 
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -46,7 +46,7 @@ func runCommand(cmd *cobra.Command) error {
 	ch, err := c.Search(cmd.Context(), &searchtypesv1alpha2.SearchRequest{
 		Limit:   &opts.Limit,
 		Offset:  &opts.Offset,
-		Queries: opts.Query.ToQueries(),
+		Queries: opts.Query.ToAPIQueries(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to search: %w", err)
