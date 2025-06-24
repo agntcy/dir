@@ -18,5 +18,5 @@ func init() {
 	flags.Uint32Var(&opts.Limit, "limit", 100, "Maximum number of results to return (default: 100)") //nolint:mnd
 	flags.Uint32Var(&opts.Offset, "offset", 0, "Pagination offset (default: 0)")
 
-	flags.StringSliceVarP(&opts.Query, "query", "q", []string{}, "Search query terms")
+	flags.VarP(&opts.Query, "query", "q", "Search query terms")
 }

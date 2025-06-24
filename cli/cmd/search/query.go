@@ -14,7 +14,7 @@ import (
 type Query []string
 
 func (q *Query) String() string {
-	return strings.Join(*q, " ")
+	return strings.Join(*q, ", ")
 }
 
 func (q *Query) Set(value string) error {
@@ -22,7 +22,7 @@ func (q *Query) Set(value string) error {
 		return errors.New("empty query not allowed")
 	}
 
-	parts := strings.Split(value, "=")
+	parts := strings.SplitN(value, "=", 2)
 	for i, part := range parts {
 		parts[i] = strings.TrimSpace(part)
 
@@ -48,7 +48,7 @@ func (q *Query) Set(value string) error {
 		return fmt.Errorf(
 			"invalid query type: %s, valid types are: %v",
 			parts[0],
-			strings.Join(searchtypesv1alpha2.ValidQueryTypes, ","),
+			strings.Join(searchtypesv1alpha2.ValidQueryTypes, ", "),
 		)
 	}
 
@@ -61,7 +61,7 @@ func (q *Query) Type() string {
 	return "query"
 }
 
-func (q *Query) ToQueries() []*searchtypesv1alpha2.RecordQuery {
+func (q *Query) ToAPIQueries() []*searchtypesv1alpha2.RecordQuery {
 	var queries []*searchtypesv1alpha2.RecordQuery
 
 	for _, item := range *q {
@@ -82,6 +82,7 @@ func (q *Query) ToQueries() []*searchtypesv1alpha2.RecordQuery {
 					Value: parts[2],
 				})
 			}
+
 		case searchtypesv1alpha2.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
 			if len(parts) >= 2 {
 				queries = append(queries, &searchtypesv1alpha2.RecordQuery{
@@ -96,6 +97,7 @@ func (q *Query) ToQueries() []*searchtypesv1alpha2.RecordQuery {
 					Value: parts[2],
 				})
 			}
+
 		default:
 			queries = append(queries, &searchtypesv1alpha2.RecordQuery{
 				Type:  searchtypesv1alpha2.RecordQueryType(searchtypesv1alpha2.RecordQueryType_value[parts[0]]),
