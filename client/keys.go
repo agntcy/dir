@@ -15,6 +15,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	protocommon "github.com/sigstore/protobuf-specs/gen/pb-go/common/v1"
@@ -36,16 +37,19 @@ func NewKeypair(privateKeyBytes []byte) (*Keypair, error) {
 		return nil, errors.New("private key bytes cannot be empty")
 	}
 
+	// Read password from environment variable
+	pw := os.Getenv("COSIGN_PASSWORD")
+
 	privateKey, err := cryptoutils.UnmarshalPEMToPrivateKey(
 		privateKeyBytes,
-		cryptoutils.StaticPasswordFunc([]byte("")), // TODO handle password-protected keys
+		cryptoutils.StaticPasswordFunc([]byte(pw)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal PEM to private key: %w", err)
 	}
 
 	// Get public key from the private key
-	v, err := cosign.LoadPrivateKey(privateKeyBytes, nil)
+	v, err := cosign.LoadPrivateKey(privateKeyBytes, []byte(pw))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
 	}
