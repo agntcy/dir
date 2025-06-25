@@ -37,7 +37,7 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 
 	ref, agent, err := c.getAgent(ctx, req.GetRecord())
 	if err != nil {
-		st := status.Convert(err)
+		st := status.Convert(err).WithDetails(ToApiError(err))
 
 		return nil, status.Errorf(st.Code(), "failed to get agent: %s", st.Message())
 	}
@@ -48,6 +48,7 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 	}, req.GetNetwork())
 	if err != nil {
 		st := status.Convert(err)
+		st.WithDetails(&errdetails.ErrorInfo{{})
 
 		return nil, status.Errorf(st.Code(), "failed to publish: %s", st.Message())
 	}
