@@ -4,42 +4,24 @@
 package customerror
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 )
-
-type Component uint32
-
-const (
-	ComponentAPI = iota + 1
-	ComponentCLI
-	ComponentHub
-)
-
-func (c Component) String() string {
-	switch c {
-	case ComponentAPI:
-		return "API"
-	case ComponentCLI:
-		return "CLI"
-	case ComponentHub:
-		return "Hub"
-	default:
-		return "Unknown"
-	}
-}
 
 type ComponentError struct {
 	Err error `json:"-"`
 
-	Component Component         `json:"component"`
+	Component string            `json:"component"`
 	Metadata  map[string]string `json:"metadata,omitempty"`
 	Message   string            `json:"message"`
 }
 
-func NewComponentError(component Component, message string) *ComponentError {
+func NewComponentError(err error, component string, message ...string) *ComponentError {
 	return &ComponentError{
+		Err:       err,
 		Component: component,
-		Message:   message,
+		Message:   strings.Join(message, ". "),
 	}
 }
 
@@ -47,7 +29,7 @@ func (e *ComponentError) Error() string {
 	return e.Message
 }
 
-func (e *ComponentError) IsComponent(component Component) bool {
+func (e *ComponentError) IsComponent(component string) bool {
 	return e.Component == component
 }
 
@@ -80,7 +62,7 @@ func exampleErrHandler() error {
 
 	// my operation failed (OP: 1)
 	// NON-FATAL ERROR
-	e.WithMetadata(map[string]string{
+	return e.WithMetadata(map[string]string{
 		"request_id": "12345",
 		"user_id":    "67890",
 		"operation":  "1",
