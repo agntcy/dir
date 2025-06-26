@@ -126,7 +126,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.RecordObject, error
 	}
 
 	// Start with the base query for records.
-	query := d.gormDB.Model(&Record{})
+	query := d.gormDB.Model(&Record{}).Distinct()
 
 	// Apply pagination.
 	if cfg.Limit > 0 {

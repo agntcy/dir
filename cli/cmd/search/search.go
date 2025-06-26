@@ -57,7 +57,7 @@ func runCommand(cmd *cobra.Command) error {
 			continue
 		}
 
-		presenter.Print(cmd, recordCid)
+		presenter.Print(cmd, recordCid+"\n")
 	}
 
 	return nil

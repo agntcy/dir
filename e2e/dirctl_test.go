@@ -155,7 +155,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 	})
 
 	ginkgo.Context("agent search", func() {
-		ginkgo.It("should search for an agent with filters and return the cid", func() {
+		ginkgo.It("should search for records with every filter and return their CID", func() {
 			var outputBuffer bytes.Buffer
 
 			searchCmd := clicmd.RootCmd
@@ -184,7 +184,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Check if the output contains the expected CID
-			gomega.Expect(outputBuffer.String()).To(gomega.Equal("sha256:1beb8653b5bf888274c1e2c3754e096b0242ceee8518c330be3239fa88a4fc80"))
+			gomega.Expect(outputBuffer.String()).To(gomega.Equal("sha256:1beb8653b5bf888274c1e2c3754e096b0242ceee8518c330be3239fa88a4fc80\n"))
 		})
 	})
 
