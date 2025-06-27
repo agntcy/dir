@@ -1,0 +1,19 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core;
+
+import "core/object.proto";
+import "core/record.proto";
+
+// Converts Object to an RecordObject and vice versa.
+// This is client-side service only.
+service RecordObjectManager {
+  // Converts an Object to a RecordObject.
+  rpc ConvertToRecordObject(Object) returns (RecordObject);
+
+  // Converts a RecordObject to an Object.
+  rpc ConvertFromRecordObject(RecordObject) returns (Object);
+}

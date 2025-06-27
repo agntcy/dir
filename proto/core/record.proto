@@ -1,0 +1,43 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core;
+
+import "core/object.proto";
+import "oasf/v1alpha1/agent.proto";
+import "oasf/v1alpha2/record.proto";
+
+// Unifies different agent records into a single object.
+// Allows to handle different versions of record objects
+// in a single way, without worrying about the schema.
+//
+// RecordObject and Object are composable types.
+message RecordObject {
+  // CID of the record.
+  string cid = 1;
+
+  // Type of the record.
+  RecordObjectType type = 2;
+
+  // Schema version of the record.
+  string schema_version = 3;
+
+  // Data of the record.
+  RecordObjectData record = 4;
+}
+
+enum RecordObjectType {
+  RECORD_OBJECT_TYPE_UNSPECIFIED = 0; // invalid type, should not be used
+  
+  RECORD_OBJECT_TYPE_OASF_V1ALPHA1_JSON = 1001;
+  RECORD_OBJECT_TYPE_OASF_V1ALPHA2_JSON = 1002;
+}
+
+message RecordObjectData {
+  oneof data {
+    oasf.v1alpha1.Agent record_v1alpha1 = 1;
+    oasf.v1alpha2.Record record_v1alpha2 = 2;
+  }
+}
