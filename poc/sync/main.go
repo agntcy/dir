@@ -207,6 +207,13 @@ func main() {
 	}
 	fmt.Println("Second sync completed successfully (idempotency confirmed)")
 
+	// Sync object 1 again to check what happens
+	fmt.Println("HERE! Syncing object 1 again to check what happens...")
+	if err := syncObject(ctx, repo1, repo2, object1Ref.GetShortRef()); err != nil {
+		log.Fatalf("Failed to sync object 1 again: %v", err)
+	}
+	fmt.Println("Object 1 synced again successfully")
+
 	// Step 9: Start a continuous sync pipe
 	fmt.Println("Starting continuous sync pipe...")
 	go func() {
@@ -240,6 +247,7 @@ func main() {
 	}
 	fmt.Println("Found synced new object in registry 2", "type", syncedNewRef.Type)
 
+	// TODO check if remote changed by computing hash of all tags
 }
 
 // syncPipe creates a continuous sync pipe between two repositories
