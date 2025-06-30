@@ -1,0 +1,138 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package store.v1alpha2;
+
+import "google/protobuf/empty.proto";
+import "store/v1alpha2/object.proto";
+
+// SyncService provides functionality for synchronizing objects between Directory nodes.
+// 
+// This service enables one-way synchronization from a remote Directory node to the local node,
+// allowing distributed Directory instances to share and replicate objects. The service supports
+// both on-demand synchronization and tracking of sync operations through their lifecycle.
+service SyncService {
+  // CreateSync initiates a new synchronization operation from a remote Directory node.
+  //
+  // The operation is non-blocking and returns immediately with a sync ID that can be used
+  // to track progress and manage the sync operation.
+  //
+  // Returns: A unique sync ID string for tracking the operation
+  rpc CreateSync(CreateSyncRequest) returns (CreateSyncResponse);
+
+  // ListSyncs returns a stream of all sync operations known to the system.
+  //
+  // This includes active, completed, and failed synchronizations.
+  //
+  // Returns: A stream of sync IDs for all known synchronizations
+  rpc ListSyncs(google.protobuf.Empty) returns (stream ListSyncItem);
+
+  // GetSync retrieves detailed status information for a specific synchronization.
+  //
+  // Args: sync_id - The unique identifier of the sync operation
+  // Returns: Detailed status information for the specified sync
+  rpc GetSync(GetSyncRequest) returns (GetSyncResponse);
+
+  // DeleteSync removes a synchronization operation from the system.
+  //
+  // Args: sync_id - The unique identifier of the sync operation to delete
+  rpc DeleteSync(DeleteSyncRequest) returns (google.protobuf.Empty);
+}
+
+// CreateSyncResponse contains the result of creating a new synchronization operation.
+message CreateSyncResponse {
+  // Unique identifier for the created synchronization operation.
+  // This ID can be used with other SyncService RPCs to monitor and manage the sync.
+  string sync_id = 1;
+}
+
+// ListSyncItem represents a single synchronization in the list of all syncs.
+message ListSyncItem {
+  // Unique identifier of the synchronization operation.
+  string sync_id = 1;
+  
+  // Brief status of the sync (e.g., "in_progress", "completed", "failed").
+  string status = 2;
+  
+  // URL of the remote Directory being synchronized from.
+  string remote_directory = 3;
+}
+
+// GetSyncRequest specifies which synchronization status to retrieve.
+message GetSyncRequest {
+  // Unique identifier of the synchronization operation to query.
+  string sync_id = 1;
+}
+
+// DeleteSyncRequest specifies which synchronization to delete.
+message DeleteSyncRequest {
+  // Unique identifier of the synchronization operation to delete.
+  string sync_id = 1;
+}
+
+// GetSyncResponse provides detailed information about a specific synchronization operation.
+message GetSyncResponse {
+  // Unique identifier of the synchronization operation.
+  string id = 1;
+
+  // Current status of the synchronization operation.
+  SyncStatus status = 2;
+
+    // URL of the remote Directory node being synchronized from.
+  string remote_directory = 3;
+
+  // Timestamp when the synchronization operation was created in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string created_time = 4;
+
+  // Timestamp of the most recent status update for this synchronization in the RFC3339 format.
+  string last_update_time = 5;
+}
+
+// CreateSyncRequest defines the parameters for creating a new synchronization operation.
+//
+// Currently supports basic synchronization of all objects from a remote Directory.
+// Future versions may include additional options for filtering, authentication,
+// and scheduling capabilities.
+message CreateSyncRequest {
+  // URL of the remote Directory node to synchronize from.
+  //
+  // This should be a complete URL including protocol and port if non-standard.
+  // Examples:
+  // - "https://directory.example.com"
+  // - "http://localhost:8080"
+  // - "https://directory.example.com:9443"
+  string remote_directory = 1;
+
+  // TODO: Future enhancement - Authentication credentials for the remote Directory.
+  // This will be added once node authentication is implemented.
+  // AuthConfig auth_config = 2;
+
+  // TODO: Future enhancement - Filtering options for selective synchronization.
+  // This may include filtering by object type, annotations, etc.
+  // SyncFilter filter = 3;
+
+  // TODO: Future enhancement - Scheduling options for periodic synchronization.
+  // This will allow setting up recurring sync operations.
+  // SyncSchedule schedule = 4;
+}
+
+// SyncStatus enumeration defines the possible states of a synchronization operation.
+enum SyncStatus {
+  // Default/unset status - should not be used in practice
+  SYNC_STATUS_UNSPECIFIED = 0;
+  
+  // Sync operation has been created but not yet started
+  SYNC_STATUS_PENDING = 1;
+  
+  // Sync operation is actively discovering and transferring objects
+  SYNC_STATUS_IN_PROGRESS = 2;
+  
+  // Sync operation completed successfully with all objects transferred
+  SYNC_STATUS_COMPLETED = 3;
+  
+  // Sync operation encountered an error and stopped
+  SYNC_STATUS_FAILED = 4;
+}
