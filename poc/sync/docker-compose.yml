@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  registry1:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    environment:
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_HTTP_ADDR: "0.0.0.0:5000"
+    volumes:
+      - registry1_data:/var/lib/registry
+    restart: unless-stopped
+
+  registry2:
+    image: registry:2
+    ports:
+      - "5001:5000"
+    environment:
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_HTTP_ADDR: "0.0.0.0:5000"
+    volumes:
+      - registry2_data:/var/lib/registry
+    restart: unless-stopped
+
+volumes:
+  registry1_data:
+  registry2_data:
