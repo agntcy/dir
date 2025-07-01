@@ -51,7 +51,7 @@ type SyncServiceClient interface {
 	// This includes active, completed, and failed synchronizations.
 	//
 	// Returns: A stream of sync IDs for all known synchronizations
-	ListSyncs(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (SyncService_ListSyncsClient, error)
+	ListSyncs(ctx context.Context, in *ListSyncsRequest, opts ...grpc.CallOption) (SyncService_ListSyncsClient, error)
 	// GetSync retrieves detailed status information for a specific synchronization.
 	//
 	// Args: sync_id - The unique identifier of the sync operation
@@ -81,7 +81,7 @@ func (c *syncServiceClient) CreateSync(ctx context.Context, in *CreateSyncReques
 	return out, nil
 }
 
-func (c *syncServiceClient) ListSyncs(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (SyncService_ListSyncsClient, error) {
+func (c *syncServiceClient) ListSyncs(ctx context.Context, in *ListSyncsRequest, opts ...grpc.CallOption) (SyncService_ListSyncsClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &SyncService_ServiceDesc.Streams[0], SyncService_ListSyncs_FullMethodName, cOpts...)
 	if err != nil {
@@ -156,7 +156,7 @@ type SyncServiceServer interface {
 	// This includes active, completed, and failed synchronizations.
 	//
 	// Returns: A stream of sync IDs for all known synchronizations
-	ListSyncs(*emptypb.Empty, SyncService_ListSyncsServer) error
+	ListSyncs(*ListSyncsRequest, SyncService_ListSyncsServer) error
 	// GetSync retrieves detailed status information for a specific synchronization.
 	//
 	// Args: sync_id - The unique identifier of the sync operation
@@ -178,7 +178,7 @@ type UnimplementedSyncServiceServer struct{}
 func (UnimplementedSyncServiceServer) CreateSync(context.Context, *CreateSyncRequest) (*CreateSyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateSync not implemented")
 }
-func (UnimplementedSyncServiceServer) ListSyncs(*emptypb.Empty, SyncService_ListSyncsServer) error {
+func (UnimplementedSyncServiceServer) ListSyncs(*ListSyncsRequest, SyncService_ListSyncsServer) error {
 	return status.Errorf(codes.Unimplemented, "method ListSyncs not implemented")
 }
 func (UnimplementedSyncServiceServer) GetSync(context.Context, *GetSyncRequest) (*GetSyncResponse, error) {
@@ -226,7 +226,7 @@ func _SyncService_CreateSync_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _SyncService_ListSyncs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(emptypb.Empty)
+	m := new(ListSyncsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}

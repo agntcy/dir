@@ -27,7 +27,7 @@ class SyncServiceStub(object):
                 _registered_method=True)
         self.ListSyncs = channel.unary_stream(
                 '/store.v1alpha2.SyncService/ListSyncs',
-                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                request_serializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsRequest.SerializeToString,
                 response_deserializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncItem.FromString,
                 _registered_method=True)
         self.GetSync = channel.unary_unary(
@@ -102,7 +102,7 @@ def add_SyncServiceServicer_to_server(servicer, server):
             ),
             'ListSyncs': grpc.unary_stream_rpc_method_handler(
                     servicer.ListSyncs,
-                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    request_deserializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsRequest.FromString,
                     response_serializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncItem.SerializeToString,
             ),
             'GetSync': grpc.unary_unary_rpc_method_handler(
@@ -173,7 +173,7 @@ class SyncService(object):
             request,
             target,
             '/store.v1alpha2.SyncService/ListSyncs',
-            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsRequest.SerializeToString,
             store_dot_v1alpha2_dot_sync__service__pb2.ListSyncItem.FromString,
             options,
             channel_credentials,
