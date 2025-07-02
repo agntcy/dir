@@ -112,11 +112,3 @@ func WithExtensionVersions(versions ...string) FilterOption {
 		sc.ExtensionVersions = versions
 	}
 }
-
-type SearchAPI interface {
-	// AddRecord adds a new agent record to the search database.
-	AddRecord(record RecordObject) error
-
-	// GetRecords retrieves agent records based on the provided RecordFilters.
-	GetRecords(opts ...FilterOption) ([]RecordObject, error)
-}
