@@ -17,13 +17,13 @@ var logger = logging.Logger("controller/search")
 
 type searchCtlr struct {
 	searchtypes.UnimplementedSearchServiceServer
-	search types.SearchAPI
+	db types.DatabaseAPI
 }
 
-func NewSearchController(search types.SearchAPI) searchtypes.SearchServiceServer {
+func NewSearchController(db types.DatabaseAPI) searchtypes.SearchServiceServer {
 	return &searchCtlr{
 		UnimplementedSearchServiceServer: searchtypes.UnimplementedSearchServiceServer{},
-		search:                           search,
+		db:                               db,
 	}
 }
 
@@ -35,7 +35,7 @@ func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.Sear
 		return fmt.Errorf("failed to create filter options: %w", err)
 	}
 
-	records, err := c.search.GetRecords(filterOptions...)
+	records, err := c.db.GetRecords(filterOptions...)
 	if err != nil {
 		return fmt.Errorf("failed to get records: %w", err)
 	}

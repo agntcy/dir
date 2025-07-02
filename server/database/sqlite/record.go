@@ -115,10 +115,10 @@ func (d *DB) addRecordTx(tx *gorm.DB, record types.Record) (uint, error) {
 	}
 
 	if err := tx.Create(sqliteRecord).Error; err != nil {
-		return 0, fmt.Errorf("failed to add record to SQLite search database: %w", err)
+		return 0, fmt.Errorf("failed to add record to SQLite database: %w", err)
 	}
 
-	logger.Debug("Added record to SQLite search database", "record_id", sqliteRecord.ID)
+	logger.Debug("Added record to SQLite database", "record_id", sqliteRecord.ID)
 
 	return sqliteRecord.ID, nil
 }

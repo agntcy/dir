@@ -19,8 +19,8 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	v1alpha2controller "github.com/agntcy/dir/server/controller/v1alpha2"
+	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/routing"
-	"github.com/agntcy/dir/server/search"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -37,7 +37,7 @@ type Server struct {
 	options       types.APIOptions
 	store         types.StoreAPI
 	routing       types.RoutingAPI
-	search        types.SearchAPI
+	database      types.DatabaseAPI
 	healthzServer *healthz.Server
 	grpcServer    *grpc.Server
 }
@@ -87,9 +87,9 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
 
-	searchAPI, err := search.New(options)
+	databaseAPI, err := database.New(options)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create search API: %w", err)
+		return nil, fmt.Errorf("failed to create database API: %w", err)
 	}
 
 	// Create server
@@ -97,15 +97,15 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		options:       options,
 		store:         storeAPI,
 		routing:       routingAPI,
-		search:        searchAPI,
+		database:      databaseAPI,
 		healthzServer: healthz.NewHealthServer(cfg.HealthCheckAddress),
 		grpcServer:    grpc.NewServer(),
 	}
 
 	// Register APIs
-	storetypes.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI, searchAPI))
+	storetypes.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
 	routingtypes.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
-	v1alpha2searchtypes.RegisterSearchServiceServer(server.grpcServer, v1alpha2controller.NewSearchController(searchAPI))
+	v1alpha2searchtypes.RegisterSearchServiceServer(server.grpcServer, v1alpha2controller.NewSearchController(databaseAPI))
 
 	// Register server
 	reflection.Register(server.grpcServer)
@@ -119,7 +119,7 @@ func (s Server) Store() types.StoreAPI { return s.store }
 
 func (s Server) Routing() types.RoutingAPI { return s.routing }
 
-func (s Server) Search() types.SearchAPI { return s.search }
+func (s Server) Database() types.DatabaseAPI { return s.database }
 
 func (s Server) Close() {
 	s.grpcServer.GracefulStop()

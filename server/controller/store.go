@@ -26,15 +26,15 @@ var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
 	storetypes.UnimplementedStoreServiceServer
-	store  types.StoreAPI
-	search types.SearchAPI
+	store types.StoreAPI
+	db    types.DatabaseAPI
 }
 
-func NewStoreController(store types.StoreAPI, search types.SearchAPI) storetypes.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI) storetypes.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storetypes.UnimplementedStoreServiceServer{},
 		store:                           store,
-		search:                          search,
+		db:                              db,
 	}
 }
 
@@ -109,7 +109,7 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		// Add record to search index for discoverability
 		// Use the adapter pattern to convert corev1.Record to types.Record
 		recordAdapter := adapters.NewRecordAdapter(record)
-		if err := s.search.AddRecord(recordAdapter); err != nil {
+		if err := s.db.AddRecord(recordAdapter); err != nil {
 			// Log error but don't fail the push operation
 			storeLogger.Error("Failed to add record to search index", "error", err, "cid", recordCID)
 		} else {

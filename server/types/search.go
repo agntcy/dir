@@ -87,11 +87,3 @@ func WithExtensionVersions(versions ...string) FilterOption {
 		sc.ExtensionVersions = versions
 	}
 }
-
-type SearchAPI interface {
-	// AddRecord adds a new record to the search database.
-	AddRecord(record Record) error
-
-	// GetRecords retrieves records based on the provided RecordFilters.
-	GetRecords(opts ...FilterOption) ([]Record, error)
-}
