@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-var logger = logging.Logger("store/oci")
+var logger = logging.Logger("database/sqlite")
 
 type DB struct {
 	gormDB *gorm.DB
@@ -23,9 +23,14 @@ func New(path string) (*DB, error) {
 		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
 	}
 
-	// Migrate the schema
+	// Migrate record-related schema
 	if err := db.AutoMigrate(Record{}, Extension{}, Locator{}, Skill{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate schema: %w", err)
+		return nil, fmt.Errorf("failed to migrate record schema: %w", err)
+	}
+
+	// Migrate sync-related schema
+	if err := db.AutoMigrate(Sync{}); err != nil {
+		return nil, fmt.Errorf("failed to migrate sync schema: %w", err)
 	}
 
 	return &DB{
