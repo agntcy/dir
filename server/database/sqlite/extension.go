@@ -33,10 +33,10 @@ func (d *DB) addExtensionTx(tx *gorm.DB, extensionObject types.ExtensionObject, 
 	}
 
 	if err := tx.Create(extension).Error; err != nil {
-		return 0, fmt.Errorf("failed to add extension to SQLite search database: %w", err)
+		return 0, fmt.Errorf("failed to add extension to SQLite database: %w", err)
 	}
 
-	logger.Debug("Added extension to SQLite search database", "agent_id", agentID, "extension_id", extension.ID)
+	logger.Debug("Added extension to SQLite database", "agent_id", agentID, "extension_id", extension.ID)
 
 	return extension.ID, nil
 }
