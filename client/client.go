@@ -9,6 +9,7 @@ import (
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	searchtypesv1alpha2 "github.com/agntcy/dir/api/search/v1alpha2"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
+	synctypes "github.com/agntcy/dir/api/store/v1alpha2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -21,6 +22,7 @@ type Client struct {
 	storetypes.StoreServiceClient
 	routingtypes.RoutingServiceClient
 	searchtypesv1alpha2.SearchServiceClient
+	synctypes.SyncServiceClient
 }
 
 type options struct {
@@ -68,5 +70,6 @@ func New(opts ...Option) (*Client, error) {
 		StoreServiceClient:   storetypes.NewStoreServiceClient(client),
 		RoutingServiceClient: routingtypes.NewRoutingServiceClient(client),
 		SearchServiceClient:  searchtypesv1alpha2.NewSearchServiceClient(client),
+		SyncServiceClient:    synctypes.NewSyncServiceClient(client),
 	}, nil
 }
