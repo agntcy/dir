@@ -154,7 +154,7 @@ func setupTestDB(t *testing.T) *DB {
 	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
 	require.NoError(t, err)
 
-	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Extension{})
+	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Extension{}, &Sync{})
 	require.NoError(t, err)
 
 	return &DB{

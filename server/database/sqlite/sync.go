@@ -29,10 +29,10 @@ func (sync *Sync) GetStatus() string {
 	return sync.Status
 }
 
-func (d *DB) CreateSync(syncObject types.SyncObject) (string, error) {
+func (d *DB) CreateSync(remoteURL string) (string, error) {
 	sync := &Sync{
 		ID:                 uuid.NewString(),
-		RemoteDirectoryURL: syncObject.GetRemoteDirectoryURL(),
+		RemoteDirectoryURL: remoteURL,
 		Status:             storev1alpha2.SyncStatus_name[int32(storev1alpha2.SyncStatus_SYNC_STATUS_PENDING)],
 	}
 
@@ -61,9 +61,9 @@ func (d *DB) GetSyncs() ([]types.SyncObject, error) {
 	}
 
 	// convert to types.SyncObject
-	var syncObjects []types.SyncObject
-	for _, sync := range syncs {
-		syncObjects = append(syncObjects, &sync)
+	syncObjects := make([]types.SyncObject, len(syncs))
+	for i, sync := range syncs {
+		syncObjects[i] = &sync
 	}
 
 	return syncObjects, nil
