@@ -1,0 +1,60 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package sign.v1alpha1;
+
+import "core/v1alpha1/agent.proto";
+import "google/protobuf/empty.proto";
+
+service SignService {
+  // Sign agents using one of the auth methods
+  rpc SignOIDC(SignOIDCRequest) returns (SignOIDCResponse);
+  rpc SignWithKey(SignWithKeyRequest) returns (SignWithKeyResponse);
+
+  // Verify signed agents using on of the auth methods
+  rpc VerifyOIDC(VerifyOIDCRequest) returns (google.protobuf.Empty);
+  rpc VerifyWithKey(VerifyWithKeyRequest) returns (google.protobuf.Empty);
+}
+
+message SignOIDCRequest {
+  message SignOpts {
+    string fulcio_url = 1;
+    string rekor_url = 2;
+    string timestamp_url = 3;
+    string oidc_provider_url = 4;
+    string oidc_client_id = 5;
+    string oidc_token = 6;
+    string key = 7;
+  }
+
+  core.v1alpha1.Agent agent = 1;
+  string id_token = 2;
+  SignOpts options = 3;
+}
+
+message SignWithKeyRequest {
+  core.v1alpha1.Agent agent = 1;
+  bytes private_key = 2;
+  bytes password = 3;
+}
+
+message SignOIDCResponse {
+  core.v1alpha1.Agent agent = 1;
+}
+
+message SignWithKeyResponse {
+  core.v1alpha1.Agent agent = 1;
+}
+
+message VerifyOIDCRequest {
+  core.v1alpha1.Agent agent = 1;
+  string expected_issuer = 2;
+  string expected_signer = 3;
+}
+
+message VerifyWithKeyRequest {
+  core.v1alpha1.Agent agent = 1;
+  bytes public_key = 2;
+}
