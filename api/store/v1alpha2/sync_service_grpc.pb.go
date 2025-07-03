@@ -14,7 +14,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -60,7 +59,7 @@ type SyncServiceClient interface {
 	// DeleteSync removes a synchronization operation from the system.
 	//
 	// Args: sync_id - The unique identifier of the sync operation to delete
-	DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*DeleteSyncResponse, error)
 }
 
 type syncServiceClient struct {
@@ -98,7 +97,7 @@ func (c *syncServiceClient) ListSyncs(ctx context.Context, in *ListSyncsRequest,
 }
 
 type SyncService_ListSyncsClient interface {
-	Recv() (*ListSyncItem, error)
+	Recv() (*ListSyncsItem, error)
 	grpc.ClientStream
 }
 
@@ -106,8 +105,8 @@ type syncServiceListSyncsClient struct {
 	grpc.ClientStream
 }
 
-func (x *syncServiceListSyncsClient) Recv() (*ListSyncItem, error) {
-	m := new(ListSyncItem)
+func (x *syncServiceListSyncsClient) Recv() (*ListSyncsItem, error) {
+	m := new(ListSyncsItem)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -124,9 +123,9 @@ func (c *syncServiceClient) GetSync(ctx context.Context, in *GetSyncRequest, opt
 	return out, nil
 }
 
-func (c *syncServiceClient) DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *syncServiceClient) DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*DeleteSyncResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(DeleteSyncResponse)
 	err := c.cc.Invoke(ctx, SyncService_DeleteSync_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -165,7 +164,7 @@ type SyncServiceServer interface {
 	// DeleteSync removes a synchronization operation from the system.
 	//
 	// Args: sync_id - The unique identifier of the sync operation to delete
-	DeleteSync(context.Context, *DeleteSyncRequest) (*emptypb.Empty, error)
+	DeleteSync(context.Context, *DeleteSyncRequest) (*DeleteSyncResponse, error)
 }
 
 // UnimplementedSyncServiceServer should be embedded to have
@@ -184,7 +183,7 @@ func (UnimplementedSyncServiceServer) ListSyncs(*ListSyncsRequest, SyncService_L
 func (UnimplementedSyncServiceServer) GetSync(context.Context, *GetSyncRequest) (*GetSyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSync not implemented")
 }
-func (UnimplementedSyncServiceServer) DeleteSync(context.Context, *DeleteSyncRequest) (*emptypb.Empty, error) {
+func (UnimplementedSyncServiceServer) DeleteSync(context.Context, *DeleteSyncRequest) (*DeleteSyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteSync not implemented")
 }
 func (UnimplementedSyncServiceServer) testEmbeddedByValue() {}
@@ -234,7 +233,7 @@ func _SyncService_ListSyncs_Handler(srv interface{}, stream grpc.ServerStream) e
 }
 
 type SyncService_ListSyncsServer interface {
-	Send(*ListSyncItem) error
+	Send(*ListSyncsItem) error
 	grpc.ServerStream
 }
 
@@ -242,7 +241,7 @@ type syncServiceListSyncsServer struct {
 	grpc.ServerStream
 }
 
-func (x *syncServiceListSyncsServer) Send(m *ListSyncItem) error {
+func (x *syncServiceListSyncsServer) Send(m *ListSyncsItem) error {
 	return x.ServerStream.SendMsg(m)
 }
 

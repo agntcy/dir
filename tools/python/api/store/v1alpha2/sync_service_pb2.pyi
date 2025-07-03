@@ -21,10 +21,10 @@ SYNC_STATUS_COMPLETED: SyncStatus
 SYNC_STATUS_FAILED: SyncStatus
 
 class CreateSyncRequest(_message.Message):
-    __slots__ = ("remote_directory",)
-    REMOTE_DIRECTORY_FIELD_NUMBER: _ClassVar[int]
-    remote_directory: str
-    def __init__(self, remote_directory: _Optional[str] = ...) -> None: ...
+    __slots__ = ("remote_directory_url",)
+    REMOTE_DIRECTORY_URL_FIELD_NUMBER: _ClassVar[int]
+    remote_directory_url: str
+    def __init__(self, remote_directory_url: _Optional[str] = ...) -> None: ...
 
 class CreateSyncResponse(_message.Message):
     __slots__ = ("sync_id",)
@@ -40,15 +40,15 @@ class ListSyncsRequest(_message.Message):
     offset: int
     def __init__(self, limit: _Optional[int] = ..., offset: _Optional[int] = ...) -> None: ...
 
-class ListSyncItem(_message.Message):
-    __slots__ = ("sync_id", "status", "remote_directory")
+class ListSyncsItem(_message.Message):
+    __slots__ = ("sync_id", "status", "remote_directory_url")
     SYNC_ID_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
-    REMOTE_DIRECTORY_FIELD_NUMBER: _ClassVar[int]
+    REMOTE_DIRECTORY_URL_FIELD_NUMBER: _ClassVar[int]
     sync_id: str
     status: str
-    remote_directory: str
-    def __init__(self, sync_id: _Optional[str] = ..., status: _Optional[str] = ..., remote_directory: _Optional[str] = ...) -> None: ...
+    remote_directory_url: str
+    def __init__(self, sync_id: _Optional[str] = ..., status: _Optional[str] = ..., remote_directory_url: _Optional[str] = ...) -> None: ...
 
 class GetSyncRequest(_message.Message):
     __slots__ = ("sync_id",)
@@ -57,21 +57,25 @@ class GetSyncRequest(_message.Message):
     def __init__(self, sync_id: _Optional[str] = ...) -> None: ...
 
 class GetSyncResponse(_message.Message):
-    __slots__ = ("id", "status", "remote_directory", "created_time", "last_update_time")
-    ID_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ("sync_id", "status", "remote_directory_url", "created_time", "last_update_time")
+    SYNC_ID_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
-    REMOTE_DIRECTORY_FIELD_NUMBER: _ClassVar[int]
+    REMOTE_DIRECTORY_URL_FIELD_NUMBER: _ClassVar[int]
     CREATED_TIME_FIELD_NUMBER: _ClassVar[int]
     LAST_UPDATE_TIME_FIELD_NUMBER: _ClassVar[int]
-    id: str
+    sync_id: str
     status: SyncStatus
-    remote_directory: str
+    remote_directory_url: str
     created_time: str
     last_update_time: str
-    def __init__(self, id: _Optional[str] = ..., status: _Optional[_Union[SyncStatus, str]] = ..., remote_directory: _Optional[str] = ..., created_time: _Optional[str] = ..., last_update_time: _Optional[str] = ...) -> None: ...
+    def __init__(self, sync_id: _Optional[str] = ..., status: _Optional[_Union[SyncStatus, str]] = ..., remote_directory_url: _Optional[str] = ..., created_time: _Optional[str] = ..., last_update_time: _Optional[str] = ...) -> None: ...
 
 class DeleteSyncRequest(_message.Message):
     __slots__ = ("sync_id",)
     SYNC_ID_FIELD_NUMBER: _ClassVar[int]
     sync_id: str
     def __init__(self, sync_id: _Optional[str] = ...) -> None: ...
+
+class DeleteSyncResponse(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...

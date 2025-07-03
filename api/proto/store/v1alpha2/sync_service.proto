@@ -27,7 +27,7 @@ service SyncService {
   // This includes active, completed, and failed synchronizations.
   //
   // Returns: A stream of sync IDs for all known synchronizations
-  rpc ListSyncs(ListSyncsRequest) returns (stream ListSyncItem);
+  rpc ListSyncs(ListSyncsRequest) returns (stream ListSyncsItem);
 
   // GetSync retrieves detailed status information for a specific synchronization.
   //
@@ -38,7 +38,7 @@ service SyncService {
   // DeleteSync removes a synchronization operation from the system.
   //
   // Args: sync_id - The unique identifier of the sync operation to delete
-  rpc DeleteSync(DeleteSyncRequest) returns (google.protobuf.Empty);
+  rpc DeleteSync(DeleteSyncRequest) returns (DeleteSyncResponse);
 }
 
 // CreateSyncRequest defines the parameters for creating a new synchronization operation.
@@ -54,7 +54,7 @@ message CreateSyncRequest {
   // - "https://directory.example.com"
   // - "http://localhost:8080"
   // - "https://directory.example.com:9443"
-  string remote_directory = 1;
+  string remote_directory_url = 1;
 
   // TODO: Future enhancement - Authentication credentials for the remote Directory.
   // This will be added once node authentication is implemented.
@@ -86,7 +86,7 @@ message ListSyncsRequest {
 }
 
 // ListSyncItem represents a single synchronization in the list of all syncs.
-message ListSyncItem {
+message ListSyncsItem {
   // Unique identifier of the synchronization operation.
   string sync_id = 1;
   
@@ -94,7 +94,7 @@ message ListSyncItem {
   string status = 2;
   
   // URL of the remote Directory being synchronized from.
-  string remote_directory = 3;
+  string remote_directory_url = 3;
 }
 
 // GetSyncRequest specifies which synchronization status to retrieve.
@@ -106,13 +106,13 @@ message GetSyncRequest {
 // GetSyncResponse provides detailed information about a specific synchronization operation.
 message GetSyncResponse {
   // Unique identifier of the synchronization operation.
-  string id = 1;
+  string sync_id = 1;
 
   // Current status of the synchronization operation.
   SyncStatus status = 2;
 
     // URL of the remote Directory node being synchronized from.
-  string remote_directory = 3;
+  string remote_directory_url = 3;
 
   // Timestamp when the synchronization operation was created in the RFC3339 format.
   // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
@@ -126,6 +126,10 @@ message GetSyncResponse {
 message DeleteSyncRequest {
   // Unique identifier of the synchronization operation to delete.
   string sync_id = 1;
+}
+
+// DeleteSyncResponse
+message DeleteSyncResponse {
 }
 
 

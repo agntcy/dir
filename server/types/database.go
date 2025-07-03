@@ -11,7 +11,7 @@ type DatabaseAPI interface {
 	GetRecords(opts ...FilterOption) ([]RecordObject, error)
 
 	// CreateSync creates a new sync object in the database.
-	CreateSync(syncObject SyncObject) (string, error)
+	CreateSync(remoteURL string) (string, error)
 
 	// GetSyncByID retrieves a sync object by its ID.
 	GetSyncByID(syncID string) (SyncObject, error)

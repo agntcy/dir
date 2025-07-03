@@ -2,7 +2,6 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from store.v1alpha2 import sync_service_pb2 as store_dot_v1alpha2_dot_sync__service__pb2
 
 
@@ -28,7 +27,7 @@ class SyncServiceStub(object):
         self.ListSyncs = channel.unary_stream(
                 '/store.v1alpha2.SyncService/ListSyncs',
                 request_serializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsRequest.SerializeToString,
-                response_deserializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncItem.FromString,
+                response_deserializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsItem.FromString,
                 _registered_method=True)
         self.GetSync = channel.unary_unary(
                 '/store.v1alpha2.SyncService/GetSync',
@@ -38,7 +37,7 @@ class SyncServiceStub(object):
         self.DeleteSync = channel.unary_unary(
                 '/store.v1alpha2.SyncService/DeleteSync',
                 request_serializer=store_dot_v1alpha2_dot_sync__service__pb2.DeleteSyncRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                response_deserializer=store_dot_v1alpha2_dot_sync__service__pb2.DeleteSyncResponse.FromString,
                 _registered_method=True)
 
 
@@ -103,7 +102,7 @@ def add_SyncServiceServicer_to_server(servicer, server):
             'ListSyncs': grpc.unary_stream_rpc_method_handler(
                     servicer.ListSyncs,
                     request_deserializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsRequest.FromString,
-                    response_serializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncItem.SerializeToString,
+                    response_serializer=store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsItem.SerializeToString,
             ),
             'GetSync': grpc.unary_unary_rpc_method_handler(
                     servicer.GetSync,
@@ -113,7 +112,7 @@ def add_SyncServiceServicer_to_server(servicer, server):
             'DeleteSync': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteSync,
                     request_deserializer=store_dot_v1alpha2_dot_sync__service__pb2.DeleteSyncRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                    response_serializer=store_dot_v1alpha2_dot_sync__service__pb2.DeleteSyncResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -174,7 +173,7 @@ class SyncService(object):
             target,
             '/store.v1alpha2.SyncService/ListSyncs',
             store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsRequest.SerializeToString,
-            store_dot_v1alpha2_dot_sync__service__pb2.ListSyncItem.FromString,
+            store_dot_v1alpha2_dot_sync__service__pb2.ListSyncsItem.FromString,
             options,
             channel_credentials,
             insecure,
@@ -228,7 +227,7 @@ class SyncService(object):
             target,
             '/store.v1alpha2.SyncService/DeleteSync',
             store_dot_v1alpha2_dot_sync__service__pb2.DeleteSyncRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            store_dot_v1alpha2_dot_sync__service__pb2.DeleteSyncResponse.FromString,
             options,
             channel_credentials,
             insecure,
