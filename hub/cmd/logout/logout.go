@@ -36,7 +36,8 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 			}
 			// Load session store for removal
 			sessionStore := sessionstore.NewFileSessionStore(fileUtils.GetSessionFilePath())
-			oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
+			insecure := false
+			oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient(insecure))
 
 			err := auth.Logout(opts, currentSession, sessionStore, oktaClient)
 			if err != nil {

@@ -54,7 +54,7 @@ Examples:
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 
-		hc, err := hubClient.New(currentSession.HubBackendAddress)
+		hc, err := hubClient.New(currentSession.HubBackendAddress, hubOpts.Insecure)
 		if err != nil {
 			return fmt.Errorf("failed to create hub client: %w", err)
 		}

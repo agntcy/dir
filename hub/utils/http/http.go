@@ -16,13 +16,13 @@ const (
 	httpClientIdleConnTimeout     = 90 * time.Second
 )
 
-func CreateSecureHTTPClient() *http.Client {
+func CreateSecureHTTPClient(insecure bool) *http.Client {
 	return &http.Client{
 		Timeout: httpClientTimeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				MinVersion:         tls.VersionTLS12,
-				InsecureSkipVerify: false,
+				InsecureSkipVerify: insecure, // #nosec G402
 			},
 			MaxIdleConns:        httpClientMaxIdleConns,
 			MaxIdleConnsPerHost: httpClientMaxIdleConnsPerHost,

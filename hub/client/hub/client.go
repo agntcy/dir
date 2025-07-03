@@ -37,11 +37,14 @@ type client struct {
 
 // New creates a new Agent Hub client for the given server address.
 // Returns the client or an error if the connection could not be established.
-func New(serverAddr string) (*client, error) { //nolint:revive
+func New(serverAddr string, insecure bool) (*client, error) { //nolint:revive
 	// Create connection
 	conn, err := grpc.NewClient(
 		serverAddr,
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})),
+		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: insecure, // #nosec G402
+		})),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create grpc client: %w", err)

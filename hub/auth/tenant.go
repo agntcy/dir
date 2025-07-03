@@ -183,7 +183,8 @@ func tenantsToMap(tenants []*idp.TenantResponse) map[string]string {
 // FetchUserTenants retrieves the list of tenants for the current user session from the IDP.
 // Returns a slice of TenantResponse or an error if the request fails.
 func FetchUserTenants(ctx context.Context, currentSession *sessionstore.HubSession) ([]*idp.TenantResponse, error) {
-	idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient())
+	insecure := false
+	idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient(insecure))
 	accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken
 	productID := currentSession.AuthConfig.IdpProductID
 
