@@ -11,10 +11,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	httpUtils "github.com/agntcy/dir/hub/utils/http"
-	"github.com/agntcy/dir/hub/utils/url"
+	urlutils "github.com/agntcy/dir/hub/utils/url"
 )
 
 var (
@@ -36,12 +37,17 @@ type AuthConfig struct {
 // FetchAuthConfig retrieves and parses the AuthConfig from the given frontend URL.
 // It validates the URL, fetches the config.json, and normalizes backend addresses.
 // Returns the AuthConfig or an error if the operation fails.
-func FetchAuthConfig(ctx context.Context, frontedURL string) (*AuthConfig, error) {
-	if err := url.ValidateSecureURL(frontedURL); err != nil {
+func FetchAuthConfig(ctx context.Context, frontendURL string) (*AuthConfig, error) {
+	if err := urlutils.ValidateSecureURL(frontendURL); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidFrontendURL, err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, frontedURL+"/config.json", nil)
+	configJSONURL, err := url.JoinPath(frontendURL, "config.json")
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidFrontendURL, err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, configJSONURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}
