@@ -13,7 +13,7 @@ import (
 	"github.com/agntcy/dir/utils/logging"
 )
 
-var logger = logging.Logger("controller/search")
+var searchLogger = logging.Logger("controller/search")
 
 type searchCtlr struct {
 	searchtypes.UnimplementedSearchServiceServer
@@ -28,7 +28,7 @@ func NewSearchController(db types.DatabaseAPI) searchtypes.SearchServiceServer {
 }
 
 func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.SearchService_SearchServer) error {
-	logger.Debug("Called search controller's Search method", "req", req)
+	searchLogger.Debug("Called search controller's Search method", "req", req)
 
 	filterOptions, err := queryToFilters(req)
 	if err != nil {
@@ -58,7 +58,7 @@ func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error
 	for _, query := range req.GetQueries() {
 		switch query.GetType() {
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
-			logger.Warn("Unspecified query type, skipping", "query", query)
+			searchLogger.Warn("Unspecified query type, skipping", "query", query)
 
 		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_NAME:
 			params = append(params, types.WithName(query.GetValue()))
@@ -116,7 +116,7 @@ func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error
 			}
 
 		default:
-			logger.Warn("Unknown query type", "type", query.GetType())
+			searchLogger.Warn("Unknown query type", "type", query.GetType())
 		}
 	}
 
