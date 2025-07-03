@@ -16,6 +16,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/push"
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/cmd/sign"
+	"github.com/agntcy/dir/cli/cmd/sync"
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/verify"
 	"github.com/agntcy/dir/cli/cmd/version"
@@ -68,6 +69,8 @@ func init() {
 		// hubCmd.NewCommand(hub.NewHub()), // REMOVED: Hub functionality
 		// search commands
 		search.Command,
+		// sync commands
+		sync.Command,
 	)
 }
 
