@@ -23,8 +23,18 @@ cat << EOF > model.json
 {
  "name": "my-agent",
  "skills": [
-    {"category_name": "Text Generation"},
-    {"category_name": "Fact Extraction"}
+    {
+      "category_name": "Natural Language Processing",
+      "category_uid": 1,
+      "class_name": "Text Completion",
+      "class_uid": 10201
+    },
+    {
+      "category_name": "Natural Language Processing",
+      "category_uid": 1,
+      "class_name": "Fact Extraction",
+      "class_uid": 10201
+    }
  ]
 }
 EOF
@@ -54,7 +64,7 @@ builder:
  pyprojectparser: false
 
  # Enable OASF validation
- oasf-validation: true 
+ oasf-validation: true
 EOF
 
 # Build the agent
@@ -128,6 +138,7 @@ This method is suitable for non-interactive use cases, such as CI/CD pipelines, 
 # This creates 'cosign.key' (private) and 'cosign.pub' (public)
 cosign generate-key-pair
 
+# Set COSIGN_PASSWORD shell variable if password protected the private key
 # Sign the agent data model using the private key:
 cat model.json | dirctl sign --stdin --key cosign.key > signed.model.json
 
@@ -234,10 +245,10 @@ dirctl list info --network
 
 The following table lists the gRPC error codes returned by the server APIs, along with a description of when each code is used:
 
-| Error Code                | Description                                                                                                                 |
-|---------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| `codes.InvalidArgument`   | Returned when the client provides an invalid or malformed argument, such as a missing or invalid object reference or agent. |
-| `codes.NotFound`          | Returned when the requested object does not exist in the local store or across the network.                                 |
-| `codes.FailedPrecondition`| Returned when the server environment or configuration is not in the required state (e.g., failed to create a directory or temp file, unsupported provider in config). |
-| `codes.Internal`          | Returned for unexpected internal errors, such as I/O failures, serialization errors, or other server-side issues.           |
-| `codes.Canceled`          | Returned when the operation is canceled by the client or context expires.                                                   |
+| Error Code                 | Description                                                                                                                                                           |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codes.InvalidArgument`    | Returned when the client provides an invalid or malformed argument, such as a missing or invalid object reference or agent.                                           |
+| `codes.NotFound`           | Returned when the requested object does not exist in the local store or across the network.                                                                           |
+| `codes.FailedPrecondition` | Returned when the server environment or configuration is not in the required state (e.g., failed to create a directory or temp file, unsupported provider in config). |
+| `codes.Internal`           | Returned for unexpected internal errors, such as I/O failures, serialization errors, or other server-side issues.                                                     |
+| `codes.Canceled`           | Returned when the operation is canceled by the client or context expires.                                                                                             |
