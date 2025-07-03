@@ -12,8 +12,6 @@ var opts = &options{}
 type options struct {
 	FromStdin bool
 
-	Experimental bool
-
 	// Signing options
 	client.SignOpts
 }
@@ -39,5 +37,4 @@ func init() {
 		"OIDC Token for non-interactive signing. ")
 	flags.StringVar(&opts.Key, "key", "",
 		"Path to the private key file to use for signing (e.g., a Cosign key generated with a GitHub token). Use this option to sign with a self-managed keypair instead of OIDC identity-based signing.")
-	flags.BoolVar(&opts.Experimental, "experimental", false, "Use experimental v1alpha2 gRPC definition")
 }

@@ -11,8 +11,7 @@ import (
 	"path/filepath"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
-	signv1alpha2 "github.com/agntcy/dir/api/sign/v1alpha2"
+	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -64,18 +63,10 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	}
 
 	agent := &coretypes.Agent{}
-	record := &coretypesv2.Record{}
 
-	if opts.Experimental {
-		// Load into an Record struct
-		if _, err := record.LoadFromReader(source); err != nil {
-			return fmt.Errorf("failed to load record: %w", err)
-		}
-	} else {
-		// Load into an Agent struct
-		if _, err := agent.LoadFromReader(source); err != nil {
-			return fmt.Errorf("failed to load agent: %w", err)
-		}
+	// Load into an Agent struct
+	if _, err := agent.LoadFromReader(source); err != nil {
+		return fmt.Errorf("failed to load agent: %w", err)
 	}
 
 	//nolint:nestif
@@ -86,51 +77,32 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read key file: %w", err)
 		}
 
-		if opts.Experimental {
-			// Verify the record using the provided key
-			req := &signv1alpha2.VerifyWithKeyRequest{
-				Record:    record,
-				PublicKey: rawPubKey,
-			}
+		req := &signv1alpha1.VerifyWithKeyRequest{
+			Agent:     agent,
+			PublicKey: rawPubKey,
+		}
 
-			_, err = c.VerifyWithKeyv2(cmd.Context(), req)
-			if err != nil {
-				return fmt.Errorf("failed to verify record: %w", err)
-			}
-		} else {
-			// Verify the agent using the provided key
-			err = c.VerifyWithKey(cmd.Context(), rawPubKey, agent)
-			if err != nil {
-				return fmt.Errorf("failed to verify agent: %w", err)
-			}
+		// Verify the agent using the provided key
+		_, err = c.VerifyWithKey(cmd.Context(), req)
+		if err != nil {
+			return fmt.Errorf("failed to verify agent: %w", err)
 		}
 	} else {
-		if opts.Experimental {
-			// Verify the record using the OIDC provider
-			req := &signv1alpha2.VerifyOIDCRequest{
-				Record:         record,
-				ExpectedIssuer: opts.OIDCIssuer,
-				ExpectedSigner: opts.OIDCIdentity,
-			}
+		req := &signv1alpha1.VerifyOIDCRequest{
+			Agent:          agent,
+			ExpectedIssuer: opts.OIDCIssuer,
+			ExpectedSigner: opts.OIDCIdentity,
+		}
 
-			_, err := c.VerifyOIDCv2(cmd.Context(), req)
-			if err != nil {
-				return fmt.Errorf("failed to verify record: %w", err)
-			}
-
-			// Print success message
-			presenter.Print(cmd, "Record signature verified successfully!")
-		} else {
-			// Verify the agent using the OIDC provider
-			err := c.VerifyOIDC(cmd.Context(), opts.OIDCIssuer, opts.OIDCIdentity, agent)
-			if err != nil {
-				return fmt.Errorf("failed to verify agent: %w", err)
-			}
-
-			// Print success message
-			presenter.Print(cmd, "Agent signature verified successfully!")
+		// Verify the agent using the OIDC provider
+		_, err := c.VerifyOIDC(cmd.Context(), req)
+		if err != nil {
+			return fmt.Errorf("failed to verify agent: %w", err)
 		}
 	}
+
+	// Print success message
+	presenter.Print(cmd, "Agent signature verified successfully!")
 
 	return nil
 }
