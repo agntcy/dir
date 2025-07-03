@@ -8,8 +8,6 @@ var opts = &options{}
 type options struct {
 	FromStdin bool
 
-	Experimental bool
-
 	// Verification options
 	OIDCIssuer   string
 	OIDCIdentity string
@@ -30,5 +28,4 @@ func init() {
 		"OIDC Identity to compare against. Accepts regular expressions.")
 	flags.StringVar(&opts.Key, "key", "",
 		"Path to the public key file to use for verification (e.g., a Cosign public key). Use this option to verify signatures created with a self-managed keypair instead of OIDC identity-based verification.")
-	flags.BoolVar(&opts.Experimental, "experimental", false, "Use experimental v1alpha2 gRPC definition")
 }

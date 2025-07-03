@@ -12,8 +12,7 @@ import (
 	"path/filepath"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	coretypesv2 "github.com/agntcy/dir/api/core/v1alpha2"
-	signv1alpha2 "github.com/agntcy/dir/api/sign/v1alpha2"
+	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -72,25 +71,15 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	}
 
 	agent := &coretypes.Agent{}
-	record := &coretypesv2.Record{}
 
-	if opts.Experimental {
-		// Load into an Record struct
-		if _, err := record.LoadFromReader(source); err != nil {
-			return fmt.Errorf("failed to load record: %w", err)
-		}
-	} else {
-		// Load into an Agent struct
-		if _, err := agent.LoadFromReader(source); err != nil {
-			return fmt.Errorf("failed to load agent: %w", err)
-		}
+	// Load into an Agent struct
+	if _, err := agent.LoadFromReader(source); err != nil {
+		return fmt.Errorf("failed to load agent: %w", err)
 	}
 
 	var (
-		err error
-
-		agentSigned  *coretypes.Agent
-		recordSigned *coretypesv2.Record
+		err         error
+		agentSigned *coretypes.Agent
 	)
 
 	//nolint:nestif,gocritic
@@ -107,57 +96,41 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
 
-		if opts.Experimental {
-			req := &signv1alpha2.SignWithKeyRequest{
-				Record:     record,
-				PrivateKey: rawKey,
-				Password:   pw,
-			}
-
-			// Sign the record using the provided key
-			response, err := c.SignWithKeyv2(cmd.Context(), req)
-			if err != nil {
-				return fmt.Errorf("failed to sign record with key: %w", err)
-			}
-
-			recordSigned = response.GetRecord()
-		} else {
-			// Sign the agent using the provided key
-			agentSigned, err = c.SignWithKey(cmd.Context(), rawKey, pw, agent)
-			if err != nil {
-				return fmt.Errorf("failed to sign agent with key: %w", err)
-			}
+		req := &signv1alpha1.SignWithKeyRequest{
+			Agent:      agent,
+			PrivateKey: rawKey,
+			Password:   pw,
 		}
+
+		// Sign the agent using the provided key
+		response, err := c.SignWithKey(cmd.Context(), req)
+		if err != nil {
+			return fmt.Errorf("failed to sign agent with key: %w", err)
+		}
+
+		agentSigned = response.GetAgent()
 	} else if opts.OIDCToken != "" {
-		if opts.Experimental {
-			req := &signv1alpha2.SignOIDCRequest{
-				Record:  record,
-				IdToken: opts.OIDCToken,
-				Options: &signv1alpha2.SignOIDCRequest_SignOpts{
-					FulcioUrl:       opts.SignOpts.FulcioURL,
-					RekorUrl:        opts.RekorURL,
-					TimestampUrl:    opts.TimestampURL,
-					OidcProviderUrl: opts.OIDCProviderURL,
-					OidcClientId:    opts.OIDCClientID,
-					OidcToken:       opts.OIDCToken,
-					Key:             opts.Key,
-				},
-			}
-
-			// Sign the record using the OIDC provider
-			response, err := c.SignOIDCv2(cmd.Context(), req)
-			if err != nil {
-				return fmt.Errorf("failed to sign record: %w", err)
-			}
-
-			recordSigned = response.GetRecord()
-		} else {
-			// Sign the agent using the OIDC provider
-			agentSigned, err = c.SignOIDC(cmd.Context(), agent, opts.OIDCToken, opts.SignOpts)
-			if err != nil {
-				return fmt.Errorf("failed to sign agent: %w", err)
-			}
+		req := &signv1alpha1.SignOIDCRequest{
+			Agent:   agent,
+			IdToken: opts.OIDCToken,
+			Options: &signv1alpha1.SignOIDCRequest_SignOpts{
+				FulcioUrl:       opts.FulcioURL,
+				RekorUrl:        opts.RekorURL,
+				TimestampUrl:    opts.TimestampURL,
+				OidcProviderUrl: opts.OIDCProviderURL,
+				OidcClientId:    opts.OIDCClientID,
+				OidcToken:       opts.OIDCToken,
+				Key:             opts.Key,
+			},
 		}
+
+		// Sign the agent using the OIDC provider
+		response, err := c.SignOIDC(cmd.Context(), req)
+		if err != nil {
+			return fmt.Errorf("failed to sign agent: %w", err)
+		}
+
+		agentSigned = response.GetAgent()
 	} else {
 		// Retrieve the token from the OIDC provider
 		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
@@ -165,54 +138,36 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to get OIDC token: %w", err)
 		}
 
-		if opts.Experimental {
-			req := &signv1alpha2.SignOIDCRequest{
-				Record:  record,
-				IdToken: token.RawString,
-				Options: &signv1alpha2.SignOIDCRequest_SignOpts{
-					FulcioUrl:       opts.SignOpts.FulcioURL,
-					RekorUrl:        opts.RekorURL,
-					TimestampUrl:    opts.TimestampURL,
-					OidcProviderUrl: opts.OIDCProviderURL,
-					OidcClientId:    opts.OIDCClientID,
-					OidcToken:       opts.OIDCToken,
-					Key:             opts.Key,
-				},
-			}
-
-			// Sign the record using the OIDC provider
-			response, err := c.SignOIDCv2(cmd.Context(), req)
-			if err != nil {
-				return fmt.Errorf("failed to sign record: %w", err)
-			}
-
-			recordSigned = response.GetRecord()
-		} else {
-			// Sign the agent using the OIDC provider
-			agentSigned, err = c.SignOIDC(cmd.Context(), agent, token.RawString, opts.SignOpts)
-			if err != nil {
-				return fmt.Errorf("failed to sign agent: %w", err)
-			}
+		req := &signv1alpha1.SignOIDCRequest{
+			Agent:   agent,
+			IdToken: token.RawString,
+			Options: &signv1alpha1.SignOIDCRequest_SignOpts{
+				FulcioUrl:       opts.FulcioURL,
+				RekorUrl:        opts.RekorURL,
+				TimestampUrl:    opts.TimestampURL,
+				OidcProviderUrl: opts.OIDCProviderURL,
+				OidcClientId:    opts.OIDCClientID,
+				OidcToken:       opts.OIDCToken,
+				Key:             opts.Key,
+			},
 		}
+
+		// Sign the agent using the OIDC provider
+		response, err := c.SignOIDC(cmd.Context(), req)
+		if err != nil {
+			return fmt.Errorf("failed to sign agent: %w", err)
+		}
+
+		agentSigned = response.GetAgent()
 	}
 
-	if opts.Experimental {
-		// Print signed record
-		signedRecordJSON, err := json.MarshalIndent(recordSigned, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal record: %w", err)
-		}
-
-		presenter.Print(cmd, string(signedRecordJSON))
-	} else {
-		// Print signed agent
-		signedAgentJSON, err := json.MarshalIndent(agentSigned, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal agent: %w", err)
-		}
-
-		presenter.Print(cmd, string(signedAgentJSON))
+	// Print signed agent
+	signedAgentJSON, err := json.MarshalIndent(agentSigned, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
+
+	presenter.Print(cmd, string(signedAgentJSON))
 
 	return nil
 }
