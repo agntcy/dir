@@ -15,6 +15,7 @@ import (
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	v1alpha2searchtypes "github.com/agntcy/dir/api/search/v1alpha2"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
+	v1alpha2storetypes "github.com/agntcy/dir/api/store/v1alpha2"
 	"github.com/agntcy/dir/api/version"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
@@ -106,6 +107,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	storetypes.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
 	routingtypes.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
 	v1alpha2searchtypes.RegisterSearchServiceServer(server.grpcServer, v1alpha2controller.NewSearchController(databaseAPI))
+	v1alpha2storetypes.RegisterSyncServiceServer(server.grpcServer, v1alpha2controller.NewSyncController(databaseAPI))
 
 	// Register server
 	reflection.Register(server.grpcServer)
