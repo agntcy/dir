@@ -33,11 +33,13 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SignServiceClient interface {
-	// Sign agents using one of the auth methods
+	// Sign agents using keyless OIDC based provider
 	SignOIDC(ctx context.Context, in *SignOIDCRequest, opts ...grpc.CallOption) (*SignOIDCResponse, error)
+	// Sign agents using PEM-encoded private key encrypted with an optional passphrase
 	SignWithKey(ctx context.Context, in *SignWithKeyRequest, opts ...grpc.CallOption) (*SignWithKeyResponse, error)
-	// Verify signed agents using on of the auth methods
+	// Verify signed agents using keyless OIDC based provider
 	VerifyOIDC(ctx context.Context, in *VerifyOIDCRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Verify signed agents using PEM-encoded formatted PEM public key encrypted
 	VerifyWithKey(ctx context.Context, in *VerifyWithKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -93,11 +95,13 @@ func (c *signServiceClient) VerifyWithKey(ctx context.Context, in *VerifyWithKey
 // All implementations should embed UnimplementedSignServiceServer
 // for forward compatibility.
 type SignServiceServer interface {
-	// Sign agents using one of the auth methods
+	// Sign agents using keyless OIDC based provider
 	SignOIDC(context.Context, *SignOIDCRequest) (*SignOIDCResponse, error)
+	// Sign agents using PEM-encoded private key encrypted with an optional passphrase
 	SignWithKey(context.Context, *SignWithKeyRequest) (*SignWithKeyResponse, error)
-	// Verify signed agents using on of the auth methods
+	// Verify signed agents using keyless OIDC based provider
 	VerifyOIDC(context.Context, *VerifyOIDCRequest) (*emptypb.Empty, error)
+	// Verify signed agents using PEM-encoded formatted PEM public key encrypted
 	VerifyWithKey(context.Context, *VerifyWithKeyRequest) (*emptypb.Empty, error)
 }
 

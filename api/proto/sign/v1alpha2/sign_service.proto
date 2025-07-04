@@ -9,32 +9,36 @@ import "core/v1alpha2/record.proto";
 import "google/protobuf/empty.proto";
 
 service SignService {
-  // Sign agent records using one of the auth methods
+  // Sign record using keyless OIDC based provider
   rpc SignOIDC(SignOIDCRequest) returns (SignOIDCResponse);
+
+  // Sign record using PEM-encoded private key encrypted with an optional passphrase
   rpc SignWithKey(SignWithKeyRequest) returns (SignWithKeyResponse);
 
-  // Verify signed agent records using on of the auth methods
+  // Verify record agents using keyless OIDC based provider
   rpc VerifyOIDC(VerifyOIDCRequest) returns (google.protobuf.Empty);
+
+  // Verify record agents using PEM-encoded formatted PEM public key encrypted
   rpc VerifyWithKey(VerifyWithKeyRequest) returns (google.protobuf.Empty);
 }
 
 message SignOIDCRequest {
   // List of sign options for OIDC
   message SignOpts {
-    // Fulcio authority access URL
-    string fulcio_url = 1;
+    // Fulcio authority access URL (default value: https://fulcio.sigstage.dev)
+    optional string fulcio_url = 1;
 
-    // Rekor validator access URL
-    string rekor_url = 2;
+    // Rekor validator access URL (default value: https://rekor.sigstage.dev)
+    optional string rekor_url = 2;
 
-    // Timestamp authority access URL
-    string timestamp_url = 3;
+    // Timestamp authority access URL (default value: https://timestamp.sigstage.dev/api/v1/timestamp)
+    optional string timestamp_url = 3;
 
-    // OIDC provider access URL
-    string oidc_provider_url = 4;
+    // OIDC provider access URL (default value: https://oauth2.sigstage.dev/auth)
+    optional string oidc_provider_url = 4;
 
-    // Client identity for signing with OIDC
-    string oidc_client_id = 5;
+    // Client identity for signing with OIDC (default value: sigstore)
+    optional string oidc_client_id = 5;
 
     // Client token for signing with OIDC
     string oidc_token = 6;
@@ -61,7 +65,7 @@ message SignWithKeyRequest {
   bytes private_key = 2;
 
   // Password to unlock the private key
-  bytes password = 3;
+  optional bytes password = 3;
 }
 
 message SignOIDCResponse {

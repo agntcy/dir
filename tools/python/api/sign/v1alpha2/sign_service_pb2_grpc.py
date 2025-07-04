@@ -41,27 +41,29 @@ class SignServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def SignOIDC(self, request, context):
-        """Sign agent records using one of the auth methods
+        """Sign record using keyless OIDC based provider
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def SignWithKey(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Sign record using PEM-encoded private key encrypted with an optional passphrase
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def VerifyOIDC(self, request, context):
-        """Verify signed agent records using on of the auth methods
+        """Verify record agents using keyless OIDC based provider
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def VerifyWithKey(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Verify record agents using PEM-encoded formatted PEM public key encrypted
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
