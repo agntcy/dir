@@ -90,8 +90,8 @@ message ListSyncsItem {
   // Unique identifier of the synchronization operation.
   string sync_id = 1;
   
-  // Brief status of the sync (e.g., "in_progress", "completed", "failed").
-  string status = 2;
+  // Current status of the synchronization operation.
+  SyncStatus status = 2;
   
   // URL of the remote Directory being synchronized from.
   string remote_directory_url = 3;

@@ -46,9 +46,9 @@ class ListSyncsItem(_message.Message):
     STATUS_FIELD_NUMBER: _ClassVar[int]
     REMOTE_DIRECTORY_URL_FIELD_NUMBER: _ClassVar[int]
     sync_id: str
-    status: str
+    status: SyncStatus
     remote_directory_url: str
-    def __init__(self, sync_id: _Optional[str] = ..., status: _Optional[str] = ..., remote_directory_url: _Optional[str] = ...) -> None: ...
+    def __init__(self, sync_id: _Optional[str] = ..., status: _Optional[_Union[SyncStatus, str]] = ..., remote_directory_url: _Optional[str] = ...) -> None: ...
 
 class GetSyncRequest(_message.Message):
     __slots__ = ("sync_id",)

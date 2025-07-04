@@ -26,7 +26,7 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from store.v1alpha2 import object_pb2 as store_dot_v1alpha2_dot_object__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n!store/v1alpha2/sync_service.proto\x12\x0estore.v1alpha2\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bstore/v1alpha2/object.proto\"E\n\x11\x43reateSyncRequest\x12\x30\n\x14remote_directory_url\x18\x01 \x01(\tR\x12remoteDirectoryUrl\"-\n\x12\x43reateSyncResponse\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\"_\n\x10ListSyncsRequest\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06offset\x18\x03 \x01(\rH\x01R\x06offset\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_offset\"r\n\rListSyncsItem\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\x12\x30\n\x14remote_directory_url\x18\x03 \x01(\tR\x12remoteDirectoryUrl\")\n\x0eGetSyncRequest\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\"\xdd\x01\n\x0fGetSyncResponse\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\x12\x32\n\x06status\x18\x02 \x01(\x0e\x32\x1a.store.v1alpha2.SyncStatusR\x06status\x12\x30\n\x14remote_directory_url\x18\x03 \x01(\tR\x12remoteDirectoryUrl\x12!\n\x0c\x63reated_time\x18\x04 \x01(\tR\x0b\x63reatedTime\x12(\n\x10last_update_time\x18\x05 \x01(\tR\x0elastUpdateTime\",\n\x11\x44\x65leteSyncRequest\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\"\x14\n\x12\x44\x65leteSyncResponse*\x92\x01\n\nSyncStatus\x12\x1b\n\x17SYNC_STATUS_UNSPECIFIED\x10\x00\x12\x17\n\x13SYNC_STATUS_PENDING\x10\x01\x12\x1b\n\x17SYNC_STATUS_IN_PROGRESS\x10\x02\x12\x19\n\x15SYNC_STATUS_COMPLETED\x10\x03\x12\x16\n\x12SYNC_STATUS_FAILED\x10\x04\x32\xd3\x02\n\x0bSyncService\x12S\n\nCreateSync\x12!.store.v1alpha2.CreateSyncRequest\x1a\".store.v1alpha2.CreateSyncResponse\x12N\n\tListSyncs\x12 .store.v1alpha2.ListSyncsRequest\x1a\x1d.store.v1alpha2.ListSyncsItem0\x01\x12J\n\x07GetSync\x12\x1e.store.v1alpha2.GetSyncRequest\x1a\x1f.store.v1alpha2.GetSyncResponse\x12S\n\nDeleteSync\x12!.store.v1alpha2.DeleteSyncRequest\x1a\".store.v1alpha2.DeleteSyncResponseB\xb7\x01\n\x12\x63om.store.v1alpha2B\x10SyncServiceProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha2\xca\x02\x0eStore\\V1alpha2\xe2\x02\x1aStore\\V1alpha2\\GPBMetadata\xea\x02\x0fStore::V1alpha2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n!store/v1alpha2/sync_service.proto\x12\x0estore.v1alpha2\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bstore/v1alpha2/object.proto\"E\n\x11\x43reateSyncRequest\x12\x30\n\x14remote_directory_url\x18\x01 \x01(\tR\x12remoteDirectoryUrl\"-\n\x12\x43reateSyncResponse\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\"_\n\x10ListSyncsRequest\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06offset\x18\x03 \x01(\rH\x01R\x06offset\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_offset\"\x8e\x01\n\rListSyncsItem\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\x12\x32\n\x06status\x18\x02 \x01(\x0e\x32\x1a.store.v1alpha2.SyncStatusR\x06status\x12\x30\n\x14remote_directory_url\x18\x03 \x01(\tR\x12remoteDirectoryUrl\")\n\x0eGetSyncRequest\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\"\xdd\x01\n\x0fGetSyncResponse\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\x12\x32\n\x06status\x18\x02 \x01(\x0e\x32\x1a.store.v1alpha2.SyncStatusR\x06status\x12\x30\n\x14remote_directory_url\x18\x03 \x01(\tR\x12remoteDirectoryUrl\x12!\n\x0c\x63reated_time\x18\x04 \x01(\tR\x0b\x63reatedTime\x12(\n\x10last_update_time\x18\x05 \x01(\tR\x0elastUpdateTime\",\n\x11\x44\x65leteSyncRequest\x12\x17\n\x07sync_id\x18\x01 \x01(\tR\x06syncId\"\x14\n\x12\x44\x65leteSyncResponse*\x92\x01\n\nSyncStatus\x12\x1b\n\x17SYNC_STATUS_UNSPECIFIED\x10\x00\x12\x17\n\x13SYNC_STATUS_PENDING\x10\x01\x12\x1b\n\x17SYNC_STATUS_IN_PROGRESS\x10\x02\x12\x19\n\x15SYNC_STATUS_COMPLETED\x10\x03\x12\x16\n\x12SYNC_STATUS_FAILED\x10\x04\x32\xd3\x02\n\x0bSyncService\x12S\n\nCreateSync\x12!.store.v1alpha2.CreateSyncRequest\x1a\".store.v1alpha2.CreateSyncResponse\x12N\n\tListSyncs\x12 .store.v1alpha2.ListSyncsRequest\x1a\x1d.store.v1alpha2.ListSyncsItem0\x01\x12J\n\x07GetSync\x12\x1e.store.v1alpha2.GetSyncRequest\x1a\x1f.store.v1alpha2.GetSyncResponse\x12S\n\nDeleteSync\x12!.store.v1alpha2.DeleteSyncRequest\x1a\".store.v1alpha2.DeleteSyncResponseB\xb7\x01\n\x12\x63om.store.v1alpha2B\x10SyncServiceProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha2\xca\x02\x0eStore\\V1alpha2\xe2\x02\x1aStore\\V1alpha2\\GPBMetadata\xea\x02\x0fStore::V1alpha2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,24 +34,24 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'store.v1alpha2.sync_service
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\022com.store.v1alpha2B\020SyncServiceProtoP\001Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\242\002\003SXX\252\002\016Store.V1alpha2\312\002\016Store\\V1alpha2\342\002\032Store\\V1alpha2\\GPBMetadata\352\002\017Store::V1alpha2'
-  _globals['_SYNCSTATUS']._serialized_start=778
-  _globals['_SYNCSTATUS']._serialized_end=924
+  _globals['_SYNCSTATUS']._serialized_start=807
+  _globals['_SYNCSTATUS']._serialized_end=953
   _globals['_CREATESYNCREQUEST']._serialized_start=111
   _globals['_CREATESYNCREQUEST']._serialized_end=180
   _globals['_CREATESYNCRESPONSE']._serialized_start=182
   _globals['_CREATESYNCRESPONSE']._serialized_end=227
   _globals['_LISTSYNCSREQUEST']._serialized_start=229
   _globals['_LISTSYNCSREQUEST']._serialized_end=324
-  _globals['_LISTSYNCSITEM']._serialized_start=326
-  _globals['_LISTSYNCSITEM']._serialized_end=440
-  _globals['_GETSYNCREQUEST']._serialized_start=442
-  _globals['_GETSYNCREQUEST']._serialized_end=483
-  _globals['_GETSYNCRESPONSE']._serialized_start=486
-  _globals['_GETSYNCRESPONSE']._serialized_end=707
-  _globals['_DELETESYNCREQUEST']._serialized_start=709
-  _globals['_DELETESYNCREQUEST']._serialized_end=753
-  _globals['_DELETESYNCRESPONSE']._serialized_start=755
-  _globals['_DELETESYNCRESPONSE']._serialized_end=775
-  _globals['_SYNCSERVICE']._serialized_start=927
-  _globals['_SYNCSERVICE']._serialized_end=1266
+  _globals['_LISTSYNCSITEM']._serialized_start=327
+  _globals['_LISTSYNCSITEM']._serialized_end=469
+  _globals['_GETSYNCREQUEST']._serialized_start=471
+  _globals['_GETSYNCREQUEST']._serialized_end=512
+  _globals['_GETSYNCRESPONSE']._serialized_start=515
+  _globals['_GETSYNCRESPONSE']._serialized_end=736
+  _globals['_DELETESYNCREQUEST']._serialized_start=738
+  _globals['_DELETESYNCREQUEST']._serialized_end=782
+  _globals['_DELETESYNCRESPONSE']._serialized_start=784
+  _globals['_DELETESYNCRESPONSE']._serialized_end=804
+  _globals['_SYNCSERVICE']._serialized_start=956
+  _globals['_SYNCSERVICE']._serialized_end=1295
 # @@protoc_insertion_point(module_scope)
