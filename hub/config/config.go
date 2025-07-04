@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	httpUtils "github.com/agntcy/dir/hub/utils/http"
-	urlutils "github.com/agntcy/dir/hub/utils/url"
+	urlUtils "github.com/agntcy/dir/hub/utils/url"
 )
 
 var (
@@ -37,8 +37,8 @@ type AuthConfig struct {
 // FetchAuthConfig retrieves and parses the AuthConfig from the given frontend URL.
 // It validates the URL, fetches the config.json, and normalizes backend addresses.
 // Returns the AuthConfig or an error if the operation fails.
-func FetchAuthConfig(ctx context.Context, frontendURL string) (*AuthConfig, error) {
-	if err := urlutils.ValidateSecureURL(frontendURL); err != nil {
+func FetchAuthConfig(ctx context.Context, frontendURL string, insecure bool) (*AuthConfig, error) {
+	if err := urlUtils.ValidateSecureURL(frontendURL); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidFrontendURL, err)
 	}
 
@@ -52,7 +52,7 @@ func FetchAuthConfig(ctx context.Context, frontendURL string) (*AuthConfig, erro
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}
 
-	resp, err := httpUtils.CreateSecureHTTPClient().Do(req)
+	resp, err := httpUtils.CreateSecureHTTPClient(insecure).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrFetchingConfig, err)
 	}

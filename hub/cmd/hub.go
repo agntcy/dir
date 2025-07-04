@@ -44,6 +44,10 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 		opts.Complete()
 
+		if opts.Insecure {
+			fmt.Fprintln(cmd.ErrOrStderr(), "Warning: SSL certificate verification is disabled. This is not recommended for production use.")
+		}
+
 		sessionStore := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
 
 		currentSession, err := sessionStore.GetHubSession(opts.ServerAddress)
@@ -55,7 +59,7 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 			currentSession = &sessionstore.HubSession{}
 		}
 
-		authConfig, err := config.FetchAuthConfig(cmd.Context(), opts.ServerAddress)
+		authConfig, err := config.FetchAuthConfig(cmd.Context(), opts.ServerAddress, opts.Insecure)
 		if err != nil {
 			return fmt.Errorf("failed to fetch auth config: %w", err)
 		}
@@ -71,7 +75,9 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 
 		// Only refresh token if not running login or logout
 		if cmd.Name() != "login" && cmd.Name() != "logout" {
-			oktaClient := okta.NewClient(authConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
+			insecure := false
+			oktaClient := okta.NewClient(authConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient(insecure))
+
 			if err := token.RefreshTokenIfExpired(opts.ServerAddress, currentSession, sessionStore, oktaClient); err != nil {
 				return fmt.Errorf("failed to refresh expired access token: %w", err)
 			}
@@ -92,7 +98,7 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 		login.NewCommand(opts),
 		logout.NewCommand(opts),
 		push.NewCommand(opts),
-		pull.NewCommand(),
+		pull.NewCommand(opts),
 		orgs.NewCommand(opts),
 	)
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/agntcy/dir/hub/auth"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
+	hubOptions "github.com/agntcy/dir/hub/cmd/options"
 	service "github.com/agntcy/dir/hub/service"
 	"github.com/agntcy/dir/hub/sessionstore"
 	"github.com/spf13/cobra"
@@ -19,7 +20,7 @@ import (
 // NewCommand creates the "pull" command for the Agent Hub CLI.
 // It pulls an agent from the hub by digest or repository:version and prints the result.
 // Returns the configured *cobra.Command.
-func NewCommand() *cobra.Command {
+func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull <agent_ref>",
 		Short: "Pull an agent from Agent Hub",
@@ -48,7 +49,7 @@ Examples:
 				return errors.New("could not get current hub session")
 			}
 
-			hc, err := hubClient.New(currentSession.HubBackendAddress)
+			hc, err := hubClient.New(currentSession.HubBackendAddress, hubOpts.Insecure)
 			if err != nil {
 				return fmt.Errorf("failed to create hub client: %w", err)
 			}
