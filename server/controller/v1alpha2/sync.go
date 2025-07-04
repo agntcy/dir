@@ -89,7 +89,7 @@ func (c *syncCtlr) GetSync(_ context.Context, req *storetypes.GetSyncRequest) (*
 	return &storetypes.GetSyncResponse{
 		SyncId:             syncObj.GetID(),
 		RemoteDirectoryUrl: syncObj.GetRemoteDirectoryURL(),
-		Status:             storetypes.SyncStatus(storetypes.SyncStatus_value[syncObj.GetStatus()]),
+		Status:             syncObj.GetStatus(),
 	}, nil
 }
 
