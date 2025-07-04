@@ -23,28 +23,30 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+var emptyResponse = &emptypb.Empty{}
+
 // Verify verifies the signature of the agent using OIDC.
 func (c *Client) VerifyOIDC(_ context.Context, req *signtypes.VerifyOIDCRequest) (*emptypb.Empty, error) {
 	agent := req.GetAgent()
 
 	// Validate request.
 	if agent == nil {
-		return &emptypb.Empty{}, errors.New("agent must be set")
+		return nil, errors.New("agent must be set")
 	}
 
 	if agent.GetSignature() == nil {
-		return &emptypb.Empty{}, errors.New("agent has no signature")
+		return nil, errors.New("agent has no signature")
 	}
 
 	// Extract signature data from the agent.
 	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(agent.GetSignature().GetContentBundle())
 	if err != nil {
-		return &emptypb.Empty{}, fmt.Errorf("failed to decode signature: %w", err)
+		return nil, fmt.Errorf("failed to decode signature: %w", err)
 	}
 
 	sigBundle := &bundle.Bundle{}
 	if err := sigBundle.UnmarshalJSON(sigBundleRawJSON); err != nil {
-		return &emptypb.Empty{}, fmt.Errorf("failed to unmarshal signature bundle: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal signature bundle: %w", err)
 	}
 
 	// Get agent JSON data without the signature.
@@ -54,7 +56,7 @@ func (c *Client) VerifyOIDC(_ context.Context, req *signtypes.VerifyOIDCRequest)
 
 	agentJSON, err := json.Marshal(agent)
 	if err != nil {
-		return &emptypb.Empty{}, fmt.Errorf("failed to marshal agent: %w", err)
+		return nil, fmt.Errorf("failed to marshal agent: %w", err)
 	}
 
 	agent.Signature = agentSignature
@@ -65,7 +67,7 @@ func (c *Client) VerifyOIDC(_ context.Context, req *signtypes.VerifyOIDCRequest)
 		// Create OIDC identity matcher for verification.
 		certID, err := verify.NewShortCertificateIdentity("", req.GetExpectedIssuer(), "", req.GetExpectedSigner())
 		if err != nil {
-			return &emptypb.Empty{}, fmt.Errorf("failed to create certificate identity: %w", err)
+			return nil, fmt.Errorf("failed to create certificate identity: %w", err)
 		}
 
 		identityPolicy = verify.WithCertificateIdentity(certID)
@@ -87,12 +89,12 @@ func (c *Client) VerifyOIDC(_ context.Context, req *signtypes.VerifyOIDCRequest)
 
 		tufClient, err := tuf.New(tufOptions)
 		if err != nil {
-			return &emptypb.Empty{}, fmt.Errorf("failed to create TUF client: %w", err)
+			return nil, fmt.Errorf("failed to create TUF client: %w", err)
 		}
 
 		trustedRoot, err := root.GetTrustedRoot(tufClient)
 		if err != nil {
-			return &emptypb.Empty{}, fmt.Errorf("failed to get trusted root: %w", err)
+			return nil, fmt.Errorf("failed to get trusted root: %w", err)
 		}
 
 		trustedMaterial = append(trustedMaterial, trustedRoot)
@@ -105,70 +107,70 @@ func (c *Client) VerifyOIDC(_ context.Context, req *signtypes.VerifyOIDCRequest)
 		verify.WithTransparencyLog(1),
 	)
 	if err != nil {
-		return &emptypb.Empty{}, fmt.Errorf("failed to create verifier: %w", err)
+		return nil, fmt.Errorf("failed to create verifier: %w", err)
 	}
 
 	// Run verification
 	_, err = sev.Verify(sigBundle, verify.NewPolicy(verify.WithArtifact(bytes.NewReader(agentJSON)), identityPolicy))
 	if err != nil {
-		return &emptypb.Empty{}, fmt.Errorf("failed to verify signature: %w", err)
+		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
 
 	// Verify the signature.
-	return &emptypb.Empty{}, nil
+	return emptyResponse, nil
 }
 
 func (c *Client) VerifyWithKey(_ context.Context, req *signtypes.VerifyWithKeyRequest) (*emptypb.Empty, error) {
 	// Validate request.
 	if len(req.GetPublicKey()) == 0 {
-		return &emptypb.Empty{}, errors.New("key must not be empty")
+		return nil, errors.New("key must not be empty")
 	}
 
 	if req.GetAgent() == nil {
-		return &emptypb.Empty{}, errors.New("agent must be set")
+		return nil, errors.New("agent must be set")
 	}
 
 	if req.GetAgent().GetSignature() == nil {
-		return &emptypb.Empty{}, errors.New("agent has no signature")
+		return nil, errors.New("agent has no signature")
 	}
 
 	// Extract signature data from the agent.
 	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(req.GetAgent().GetSignature().GetContentBundle())
 	if err != nil {
-		return &emptypb.Empty{}, fmt.Errorf("failed to decode signature: %w", err)
+		return nil, fmt.Errorf("failed to decode signature: %w", err)
 	}
 
 	sigBundle := &bundle.Bundle{}
 	if err := sigBundle.UnmarshalJSON(sigBundleRawJSON); err != nil {
-		return &emptypb.Empty{}, fmt.Errorf("failed to unmarshal signature bundle: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal signature bundle: %w", err)
 	}
 
 	// Get the public key from the signature bundle and compare it with the provided key.
 	sigBundleVerificationMaterial := sigBundle.VerificationMaterial
 	if sigBundleVerificationMaterial == nil {
-		return &emptypb.Empty{}, errors.New("signature bundle has no verification material")
+		return nil, errors.New("signature bundle has no verification material")
 	}
 
 	pubKey := sigBundleVerificationMaterial.GetPublicKey()
 	if pubKey == nil {
-		return &emptypb.Empty{}, errors.New("signature bundle verification material has no public key")
+		return nil, errors.New("signature bundle verification material has no public key")
 	}
 
 	// Decode the PEM-encoded public key and generate the expected hint.
 	p, _ := pem.Decode(req.GetPublicKey())
 	if p == nil {
-		return &emptypb.Empty{}, errors.New("failed to decode PEM block containing public key")
+		return nil, errors.New("failed to decode PEM block containing public key")
 	}
 
 	if p.Type != "PUBLIC KEY" {
-		return &emptypb.Empty{}, fmt.Errorf("unexpected PEM type: %s", p.Type)
+		return nil, fmt.Errorf("unexpected PEM type: %s", p.Type)
 	}
 
 	expectedHint := string(cosign.GenerateHintFromPublicKey(p.Bytes))
 
 	if pubKey.GetHint() != expectedHint {
-		return &emptypb.Empty{}, fmt.Errorf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
+		return nil, fmt.Errorf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
 	}
 
-	return &emptypb.Empty{}, nil
+	return emptyResponse, nil
 }
