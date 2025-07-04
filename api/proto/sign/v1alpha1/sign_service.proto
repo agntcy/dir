@@ -19,42 +19,76 @@ service SignService {
 }
 
 message SignOIDCRequest {
+  // List of sign options for OIDC
   message SignOpts {
+    // Fulcio authority access URL
     string fulcio_url = 1;
+
+    // Rekor validator access URL
     string rekor_url = 2;
+
+    // Timestamp authority access URL
     string timestamp_url = 3;
+
+    // OIDC provider access URL
     string oidc_provider_url = 4;
+
+    // Client identity for signing with OIDC
     string oidc_client_id = 5;
+
+    // Client token for signing with OIDC
     string oidc_token = 6;
+
+    // Private key for signing with OIDC
     string key = 7;
   }
 
+  // Agent data for signing
   core.v1alpha1.Agent agent = 1;
+
+  // Token for OIDC provider
   string id_token = 2;
+
+  // Signing options for OIDC
   SignOpts options = 3;
 }
 
 message SignWithKeyRequest {
+  // Agent data for signing
   core.v1alpha1.Agent agent = 1;
+
+  // Private key used for signing
   bytes private_key = 2;
+
+  // Password to unlock the private key
   bytes password = 3;
 }
 
 message SignOIDCResponse {
+  // Signed agent data
   core.v1alpha1.Agent agent = 1;
 }
 
 message SignWithKeyResponse {
+  // Signed agent data
   core.v1alpha1.Agent agent = 1;
 }
 
 message VerifyOIDCRequest {
+  // Signed agent data
   core.v1alpha1.Agent agent = 1;
+
+  // Expected issuer in the signed agent
   string expected_issuer = 2;
+
+  // Expected signer in the signed agent
   string expected_signer = 3;
 }
 
 message VerifyWithKeyRequest {
+  // Signed agent data
   core.v1alpha1.Agent agent = 1;
+
+  // Public key to validate the signed agent
   bytes public_key = 2;
 }
