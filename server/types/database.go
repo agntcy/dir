@@ -3,6 +3,8 @@
 
 package types
 
+import storev1alpha2 "github.com/agntcy/dir/api/store/v1alpha2"
+
 type DatabaseAPI interface {
 	SearchDatabaseAPI
 	SyncDatabaseAPI
@@ -26,8 +28,11 @@ type SyncDatabaseAPI interface {
 	// GetSyncs retrieves all sync objects.
 	GetSyncs() ([]SyncObject, error)
 
-	// UpdateSync updates an existing sync object in the database.
-	UpdateSync(syncObject SyncObject) error
+	// GetSyncsByStatus retrieves all sync objects by their status.
+	GetSyncsByStatus(status storev1alpha2.SyncStatus) ([]SyncObject, error)
+
+	// UpdateSyncStatus updates an existing sync object in the database.
+	UpdateSyncStatus(syncID string, status storev1alpha2.SyncStatus) error
 
 	// DeleteSync deletes a sync object by its ID.
 	DeleteSync(syncID string) error

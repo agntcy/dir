@@ -23,6 +23,7 @@ import (
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
+	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc"
@@ -39,6 +40,7 @@ type Server struct {
 	store         types.StoreAPI
 	routing       types.RoutingAPI
 	database      types.DatabaseAPI
+	syncService   *sync.Service
 	healthzServer *healthz.Server
 	grpcServer    *grpc.Server
 }
@@ -93,12 +95,16 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create database API: %w", err)
 	}
 
+	// Create sync service
+	syncService := sync.New(databaseAPI, storeAPI, options)
+
 	// Create server
 	server := &Server{
 		options:       options,
 		store:         storeAPI,
 		routing:       routingAPI,
 		database:      databaseAPI,
+		syncService:   syncService,
 		healthzServer: healthz.NewHealthServer(cfg.HealthCheckAddress),
 		grpcServer:    grpc.NewServer(),
 	}
@@ -124,6 +130,13 @@ func (s Server) Routing() types.RoutingAPI { return s.routing }
 func (s Server) Database() types.DatabaseAPI { return s.database }
 
 func (s Server) Close() {
+	// Stop sync service if running
+	if s.syncService != nil {
+		if err := s.syncService.Stop(); err != nil {
+			logger.Error("Failed to stop sync service", "error", err)
+		}
+	}
+
 	s.grpcServer.GracefulStop()
 }
 
@@ -131,6 +144,15 @@ func (s Server) start(ctx context.Context) error {
 	// Bootstrap
 	if err := s.bootstrap(ctx); err != nil {
 		return fmt.Errorf("failed to bootstrap server: %w", err)
+	}
+
+	// Start sync service
+	if s.syncService != nil {
+		if err := s.syncService.Start(ctx); err != nil {
+			return fmt.Errorf("failed to start sync service: %w", err)
+		}
+
+		logger.Info("Sync service started")
 	}
 
 	// Create a listener on TCP port
