@@ -5,7 +5,7 @@ syntax = "proto3";
 
 package routing.v1alpha2;
 
-import "google/protobuf/empty.proto";
+import "core/v1/object.proto";
 import "routing/v1alpha2/peer.proto";
 import "routing/v1alpha2/record_query.proto";
 
@@ -22,11 +22,11 @@ service RoutingService {
   //
   // Items need to be periodically republished (eg. 24h) to the network
   // to avoid stale data. Republication should be done in the background.
-  rpc Publish(PublishRequest) returns (google.protobuf.Empty);
+  rpc Publish(PublishRequest) returns (PublishResponse);
 
   // Stop serving this record to the network. If other peers try 
   // to retrieve this record, the peer will refuse the request.
-  rpc Unpublish(UnpublishRequest) returns (google.protobuf.Empty);
+  rpc Unpublish(UnpublishRequest) returns (UnpublishResponse);
 
   // Search records based on the request across the network.
   // This will search the network for the record with the given parameters.
@@ -46,12 +46,18 @@ service RoutingService {
 
 message PublishRequest {
   // Reference to the agent record to be published.
-  string record_cid = 1;
+  core.v1.ObjectRef record_ref = 1;
+}
+
+message PublishResponse {
 }
 
 message UnpublishRequest {
   // Reference to the agent record to be unpublished.
-  string record_cid = 1;
+  core.v1.ObjectRef record_ref = 1;
+}
+
+message UnpublishResponse {
 }
 
 message SearchRequest {
@@ -75,7 +81,7 @@ message SearchRequest {
 
 message SearchResponse {
   // The record that matches the search query.
-  string record_cid = 1;
+  core.v1.ObjectRef record_ref = 1;
 
   // The peer that provided the record.
   Peer peer = 2;
@@ -99,5 +105,5 @@ message ListRequest {
 
 message ListResponse {
   // The record that matches the list queries.
-  string record_cid = 1;
+  core.v1.ObjectRef record_ref = 1;
 }

@@ -22,11 +22,10 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from store.v1alpha2 import object_pb2 as store_dot_v1alpha2_dot_object__pb2
+from core.v1 import object_pb2 as core_dot_v1_dot_object__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\"store/v1alpha2/store_service.proto\x12\x0estore.v1alpha2\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bstore/v1alpha2/object.proto2\x82\x02\n\x0cStoreService\x12;\n\x04Push\x12\x16.store.v1alpha2.Object\x1a\x19.store.v1alpha2.ObjectRef(\x01\x12;\n\x04Pull\x12\x19.store.v1alpha2.ObjectRef\x1a\x16.store.v1alpha2.Object0\x01\x12;\n\x06Lookup\x12\x19.store.v1alpha2.ObjectRef\x1a\x16.store.v1alpha2.Object\x12;\n\x06\x44\x65lete\x12\x19.store.v1alpha2.ObjectRef\x1a\x16.google.protobuf.EmptyB\xb8\x01\n\x12\x63om.store.v1alpha2B\x11StoreServiceProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha2\xca\x02\x0eStore\\V1alpha2\xe2\x02\x1aStore\\V1alpha2\\GPBMetadata\xea\x02\x0fStore::V1alpha2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\"store/v1alpha2/store_service.proto\x12\x0estore.v1alpha2\x1a\x14\x63ore/v1/object.proto\"\xcc\x02\n\x10PushRequestChunk\x12\x36\n\nobject_ref\x18\x01 \x01(\x0b\x32\x12.core.v1.ObjectRefH\x00R\tobjectRef\x88\x01\x01\x12\x34\n\x0bobject_type\x18\x02 \x01(\x0e\x32\x13.core.v1.ObjectTypeR\nobjectType\x12S\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32\x31.store.v1alpha2.PushRequestChunk.AnnotationsEntryR\x0b\x61nnotations\x12\x12\n\x04size\x18\x04 \x01(\x04R\x04size\x12\x12\n\x04\x64\x61ta\x18\x05 \x01(\x0cR\x04\x64\x61ta\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\r\n\x0b_object_ref\"A\n\x0cPushResponse\x12\x31\n\nobject_ref\x18\x01 \x01(\x0b\x32\x12.core.v1.ObjectRefR\tobjectRef\"@\n\x0bPullRequest\x12\x31\n\nobject_ref\x18\x01 \x01(\x0b\x32\x12.core.v1.ObjectRefR\tobjectRef\";\n\x11PullResponseChunk\x12\x12\n\x04\x64\x61ta\x18\x01 \x01(\x0cR\x04\x64\x61ta\x12\x12\n\x04size\x18\x02 \x01(\x04R\x04size\"B\n\rLookupRequest\x12\x31\n\nobject_ref\x18\x01 \x01(\x0b\x32\x12.core.v1.ObjectRefR\tobjectRef\"9\n\x0eLookupResponse\x12\'\n\x06object\x18\x01 \x01(\x0b\x32\x0f.core.v1.ObjectR\x06object\"B\n\rDeleteRequest\x12\x31\n\nobject_ref\x18\x01 \x01(\x0b\x32\x12.core.v1.ObjectRefR\tobjectRef\"\x10\n\x0e\x44\x65leteResponse2\xb4\x02\n\x0cStoreService\x12H\n\x04Push\x12 .store.v1alpha2.PushRequestChunk\x1a\x1c.store.v1alpha2.PushResponse(\x01\x12H\n\x04Pull\x12\x1b.store.v1alpha2.PullRequest\x1a!.store.v1alpha2.PullResponseChunk0\x01\x12G\n\x06Lookup\x12\x1d.store.v1alpha2.LookupRequest\x1a\x1e.store.v1alpha2.LookupResponse\x12G\n\x06\x44\x65lete\x12\x1d.store.v1alpha2.DeleteRequest\x1a\x1e.store.v1alpha2.DeleteResponseB\xb8\x01\n\x12\x63om.store.v1alpha2B\x11StoreServiceProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha2\xca\x02\x0eStore\\V1alpha2\xe2\x02\x1aStore\\V1alpha2\\GPBMetadata\xea\x02\x0fStore::V1alpha2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,6 +33,26 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'store.v1alpha2.store_servic
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\022com.store.v1alpha2B\021StoreServiceProtoP\001Z6github.com/agntcy/dir/api/store/v1alpha2;storev1alpha2\242\002\003SXX\252\002\016Store.V1alpha2\312\002\016Store\\V1alpha2\342\002\032Store\\V1alpha2\\GPBMetadata\352\002\017Store::V1alpha2'
-  _globals['_STORESERVICE']._serialized_start=113
-  _globals['_STORESERVICE']._serialized_end=371
+  _globals['_PUSHREQUESTCHUNK_ANNOTATIONSENTRY']._loaded_options = None
+  _globals['_PUSHREQUESTCHUNK_ANNOTATIONSENTRY']._serialized_options = b'8\001'
+  _globals['_PUSHREQUESTCHUNK']._serialized_start=77
+  _globals['_PUSHREQUESTCHUNK']._serialized_end=409
+  _globals['_PUSHREQUESTCHUNK_ANNOTATIONSENTRY']._serialized_start=332
+  _globals['_PUSHREQUESTCHUNK_ANNOTATIONSENTRY']._serialized_end=394
+  _globals['_PUSHRESPONSE']._serialized_start=411
+  _globals['_PUSHRESPONSE']._serialized_end=476
+  _globals['_PULLREQUEST']._serialized_start=478
+  _globals['_PULLREQUEST']._serialized_end=542
+  _globals['_PULLRESPONSECHUNK']._serialized_start=544
+  _globals['_PULLRESPONSECHUNK']._serialized_end=603
+  _globals['_LOOKUPREQUEST']._serialized_start=605
+  _globals['_LOOKUPREQUEST']._serialized_end=671
+  _globals['_LOOKUPRESPONSE']._serialized_start=673
+  _globals['_LOOKUPRESPONSE']._serialized_end=730
+  _globals['_DELETEREQUEST']._serialized_start=732
+  _globals['_DELETEREQUEST']._serialized_end=798
+  _globals['_DELETERESPONSE']._serialized_start=800
+  _globals['_DELETERESPONSE']._serialized_end=816
+  _globals['_STORESERVICE']._serialized_start=819
+  _globals['_STORESERVICE']._serialized_end=1127
 # @@protoc_insertion_point(module_scope)

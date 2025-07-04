@@ -5,8 +5,8 @@ syntax = "proto3";
 
 package routing.v1alpha1;
 
-import "google/protobuf/empty.proto";
 import "core/v1alpha1/object.proto";
+import "google/protobuf/empty.proto";
 import "routing/v1alpha1/peer.proto";
 
 // Defines an interface for publication and retrieval
@@ -20,9 +20,11 @@ service RoutingService {
   // It is the API responsibility to fully construct the routing details,
   // these are minimal details needed for us to publish the request.
   rpc Publish(PublishRequest) returns (google.protobuf.Empty);
+
   // List all the available items across the network.
   // TODO: maybe remove to search?
   rpc List(ListRequest) returns (stream ListResponse);
+  
   // Unpublish a given object.
   // This will remove the object from the network.
   rpc Unpublish(UnpublishRequest) returns (google.protobuf.Empty);

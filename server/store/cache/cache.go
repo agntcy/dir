@@ -10,7 +10,7 @@ import (
 	"errors"
 	"io"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	storetypes "github.com/agntcy/dir/server/store/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
 )
@@ -32,7 +32,7 @@ func Wrap(source types.StoreAPI, cache types.Datastore) types.StoreAPI {
 	}
 }
 
-func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, reader io.Reader) (*coretypes.ObjectRef, error) {
+func (s *store) Push(ctx context.Context, ref types.Object, reader io.Reader) (types.Object, error) {
 	// push data
 	ref, err := s.source.Push(ctx, ref, reader)
 	if err != nil {
@@ -45,11 +45,11 @@ func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, reader io.Re
 	return ref, nil
 }
 
-func (s *store) Pull(ctx context.Context, ref *coretypes.ObjectRef) (io.ReadCloser, error) {
+func (s *store) Pull(ctx context.Context, ref types.ObjectRef) (io.ReadCloser, error) {
 	return s.source.Pull(ctx, ref)
 }
 
-func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+func (s *store) Lookup(ctx context.Context, ref types.ObjectRef) (types.Object, error) {
 	// read cache
 	found, cachedRef, _ := s.cacheRead(ctx, ref)
 	if found {
@@ -68,7 +68,7 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 	return sourceRef, nil
 }
 
-func (s *store) Delete(ctx context.Context, ref *coretypes.ObjectRef) error {
+func (s *store) Delete(ctx context.Context, ref types.ObjectRef) error {
 	// delete
 	if err := s.source.Delete(ctx, ref); err != nil {
 		return err
@@ -80,7 +80,7 @@ func (s *store) Delete(ctx context.Context, ref *coretypes.ObjectRef) error {
 	return nil
 }
 
-func (s *store) cacheRead(ctx context.Context, ref *coretypes.ObjectRef) (bool, *coretypes.ObjectRef, error) {
+func (s *store) cacheRead(ctx context.Context, ref types.ObjectRef) (bool, types.Object, error) {
 	cacheKey := getCacheKey(ref)
 
 	// check cache
@@ -100,7 +100,7 @@ func (s *store) cacheRead(ctx context.Context, ref *coretypes.ObjectRef) (bool, 
 	}
 
 	// convert object
-	cachedRef := &coretypes.ObjectRef{}
+	cachedRef := &storetypes.Object{}
 	if err := json.Unmarshal(cachedData, &cachedRef); err != nil {
 		return false, nil, err
 	}
@@ -109,7 +109,7 @@ func (s *store) cacheRead(ctx context.Context, ref *coretypes.ObjectRef) (bool, 
 	return true, cachedRef, nil
 }
 
-func (s *store) cacheWrite(ctx context.Context, ref *coretypes.ObjectRef) error {
+func (s *store) cacheWrite(ctx context.Context, ref types.Object) error {
 	// convert object
 	toCache, err := json.Marshal(ref)
 	if err != nil {
@@ -127,6 +127,6 @@ func (s *store) cacheWrite(ctx context.Context, ref *coretypes.ObjectRef) error 
 	return nil
 }
 
-func getCacheKey(ref *coretypes.ObjectRef) datastore.Key {
-	return datastore.KeyWithNamespaces([]string{"store", ref.GetDigest()})
+func getCacheKey(ref types.ObjectRef) datastore.Key {
+	return datastore.KeyWithNamespaces([]string{"store", ref.CID()})
 }

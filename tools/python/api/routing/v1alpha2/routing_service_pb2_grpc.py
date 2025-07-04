@@ -2,7 +2,6 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from routing.v1alpha2 import routing_service_pb2 as routing_dot_v1alpha2_dot_routing__service__pb2
 
 
@@ -23,12 +22,12 @@ class RoutingServiceStub(object):
         self.Publish = channel.unary_unary(
                 '/routing.v1alpha2.RoutingService/Publish',
                 request_serializer=routing_dot_v1alpha2_dot_routing__service__pb2.PublishRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                response_deserializer=routing_dot_v1alpha2_dot_routing__service__pb2.PublishResponse.FromString,
                 _registered_method=True)
         self.Unpublish = channel.unary_unary(
                 '/routing.v1alpha2.RoutingService/Unpublish',
                 request_serializer=routing_dot_v1alpha2_dot_routing__service__pb2.UnpublishRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                response_deserializer=routing_dot_v1alpha2_dot_routing__service__pb2.UnpublishResponse.FromString,
                 _registered_method=True)
         self.Search = channel.unary_stream(
                 '/routing.v1alpha2.RoutingService/Search',
@@ -100,12 +99,12 @@ def add_RoutingServiceServicer_to_server(servicer, server):
             'Publish': grpc.unary_unary_rpc_method_handler(
                     servicer.Publish,
                     request_deserializer=routing_dot_v1alpha2_dot_routing__service__pb2.PublishRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                    response_serializer=routing_dot_v1alpha2_dot_routing__service__pb2.PublishResponse.SerializeToString,
             ),
             'Unpublish': grpc.unary_unary_rpc_method_handler(
                     servicer.Unpublish,
                     request_deserializer=routing_dot_v1alpha2_dot_routing__service__pb2.UnpublishRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                    response_serializer=routing_dot_v1alpha2_dot_routing__service__pb2.UnpublishResponse.SerializeToString,
             ),
             'Search': grpc.unary_stream_rpc_method_handler(
                     servicer.Search,
@@ -149,7 +148,7 @@ class RoutingService(object):
             target,
             '/routing.v1alpha2.RoutingService/Publish',
             routing_dot_v1alpha2_dot_routing__service__pb2.PublishRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            routing_dot_v1alpha2_dot_routing__service__pb2.PublishResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -176,7 +175,7 @@ class RoutingService(object):
             target,
             '/routing.v1alpha2.RoutingService/Unpublish',
             routing_dot_v1alpha2_dot_routing__service__pb2.UnpublishRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            routing_dot_v1alpha2_dot_routing__service__pb2.UnpublishResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -22,10 +22,11 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from core.v1 import object_pb2 as core_dot_v1_dot_object__pb2
 from search.v1alpha2 import record_query_pb2 as search_dot_v1alpha2_dot_record__query__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n$search/v1alpha2/search_service.proto\x12\x0fsearch.v1alpha2\x1a\"search/v1alpha2/record_query.proto\"\x94\x01\n\rSearchRequest\x12\x36\n\x07queries\x18\x01 \x03(\x0b\x32\x1c.search.v1alpha2.RecordQueryR\x07queries\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06offset\x18\x03 \x01(\rH\x01R\x06offset\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_offset\"/\n\x0eSearchResponse\x12\x1d\n\nrecord_cid\x18\x01 \x01(\tR\trecordCid2\\\n\rSearchService\x12K\n\x06Search\x12\x1e.search.v1alpha2.SearchRequest\x1a\x1f.search.v1alpha2.SearchResponse0\x01\x42\xc0\x01\n\x13\x63om.search.v1alpha2B\x12SearchServiceProtoP\x01Z8github.com/agntcy/dir/api/search/v1alpha2;searchv1alpha2\xa2\x02\x03SXX\xaa\x02\x0fSearch.V1alpha2\xca\x02\x0fSearch\\V1alpha2\xe2\x02\x1bSearch\\V1alpha2\\GPBMetadata\xea\x02\x10Search::V1alpha2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n$search/v1alpha2/search_service.proto\x12\x0fsearch.v1alpha2\x1a\x14\x63ore/v1/object.proto\x1a\"search/v1alpha2/record_query.proto\"\x94\x01\n\rSearchRequest\x12\x36\n\x07queries\x18\x01 \x03(\x0b\x32\x1c.search.v1alpha2.RecordQueryR\x07queries\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06offset\x18\x03 \x01(\rH\x01R\x06offset\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_offset\"C\n\x0eSearchResponse\x12\x31\n\nrecord_ref\x18\x01 \x01(\x0b\x32\x12.core.v1.ObjectRefR\trecordRef2\\\n\rSearchService\x12K\n\x06Search\x12\x1e.search.v1alpha2.SearchRequest\x1a\x1f.search.v1alpha2.SearchResponse0\x01\x42\xc0\x01\n\x13\x63om.search.v1alpha2B\x12SearchServiceProtoP\x01Z8github.com/agntcy/dir/api/search/v1alpha2;searchv1alpha2\xa2\x02\x03SXX\xaa\x02\x0fSearch.V1alpha2\xca\x02\x0fSearch\\V1alpha2\xe2\x02\x1bSearch\\V1alpha2\\GPBMetadata\xea\x02\x10Search::V1alpha2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,10 +34,10 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'search.v1alpha2.search_serv
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\023com.search.v1alpha2B\022SearchServiceProtoP\001Z8github.com/agntcy/dir/api/search/v1alpha2;searchv1alpha2\242\002\003SXX\252\002\017Search.V1alpha2\312\002\017Search\\V1alpha2\342\002\033Search\\V1alpha2\\GPBMetadata\352\002\020Search::V1alpha2'
-  _globals['_SEARCHREQUEST']._serialized_start=94
-  _globals['_SEARCHREQUEST']._serialized_end=242
-  _globals['_SEARCHRESPONSE']._serialized_start=244
-  _globals['_SEARCHRESPONSE']._serialized_end=291
-  _globals['_SEARCHSERVICE']._serialized_start=293
-  _globals['_SEARCHSERVICE']._serialized_end=385
+  _globals['_SEARCHREQUEST']._serialized_start=116
+  _globals['_SEARCHREQUEST']._serialized_end=264
+  _globals['_SEARCHRESPONSE']._serialized_start=266
+  _globals['_SEARCHRESPONSE']._serialized_end=333
+  _globals['_SEARCHSERVICE']._serialized_start=335
+  _globals['_SEARCHSERVICE']._serialized_end=427
 # @@protoc_insertion_point(module_scope)

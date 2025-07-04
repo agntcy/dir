@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package search.v1alpha2;
 
+import "core/v1/object.proto";
 import "search/v1alpha2/record_query.proto";
 
 service SearchService {
@@ -26,5 +27,5 @@ message SearchRequest {
 
 message SearchResponse {
   // The CID of the record that matches the search criteria.
-  string record_cid = 1;
+  core.v1.ObjectRef record_ref = 1;
 }

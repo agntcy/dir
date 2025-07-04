@@ -14,10 +14,13 @@ import "core/v1alpha1/object.proto";
 service StoreService {
   // Push performs streamed write operation for provided object.
   rpc Push(stream core.v1alpha1.Object) returns (core.v1alpha1.ObjectRef);
+
   // Pull performs streamed read operation for the requested object.
   rpc Pull(core.v1alpha1.ObjectRef) returns (stream core.v1alpha1.Object);
+
   // Lookup resolves ref data from digest only.
   rpc Lookup(core.v1alpha1.ObjectRef) returns (core.v1alpha1.ObjectRef);
+  
   // Remove performs delete operation for the requested object.
   rpc Delete(core.v1alpha1.ObjectRef) returns (google.protobuf.Empty);
 }

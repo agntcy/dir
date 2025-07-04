@@ -14,7 +14,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -46,10 +45,10 @@ type RoutingServiceClient interface {
 	//
 	// Items need to be periodically republished (eg. 24h) to the network
 	// to avoid stale data. Republication should be done in the background.
-	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*PublishResponse, error)
 	// Stop serving this record to the network. If other peers try
 	// to retrieve this record, the peer will refuse the request.
-	Unpublish(ctx context.Context, in *UnpublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Unpublish(ctx context.Context, in *UnpublishRequest, opts ...grpc.CallOption) (*UnpublishResponse, error)
 	// Search records based on the request across the network.
 	// This will search the network for the record with the given parameters.
 	//
@@ -73,9 +72,9 @@ func NewRoutingServiceClient(cc grpc.ClientConnInterface) RoutingServiceClient {
 	return &routingServiceClient{cc}
 }
 
-func (c *routingServiceClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *routingServiceClient) Publish(ctx context.Context, in *PublishRequest, opts ...grpc.CallOption) (*PublishResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(PublishResponse)
 	err := c.cc.Invoke(ctx, RoutingService_Publish_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -83,9 +82,9 @@ func (c *routingServiceClient) Publish(ctx context.Context, in *PublishRequest, 
 	return out, nil
 }
 
-func (c *routingServiceClient) Unpublish(ctx context.Context, in *UnpublishRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *routingServiceClient) Unpublish(ctx context.Context, in *UnpublishRequest, opts ...grpc.CallOption) (*UnpublishResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(UnpublishResponse)
 	err := c.cc.Invoke(ctx, RoutingService_Unpublish_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -176,10 +175,10 @@ type RoutingServiceServer interface {
 	//
 	// Items need to be periodically republished (eg. 24h) to the network
 	// to avoid stale data. Republication should be done in the background.
-	Publish(context.Context, *PublishRequest) (*emptypb.Empty, error)
+	Publish(context.Context, *PublishRequest) (*PublishResponse, error)
 	// Stop serving this record to the network. If other peers try
 	// to retrieve this record, the peer will refuse the request.
-	Unpublish(context.Context, *UnpublishRequest) (*emptypb.Empty, error)
+	Unpublish(context.Context, *UnpublishRequest) (*UnpublishResponse, error)
 	// Search records based on the request across the network.
 	// This will search the network for the record with the given parameters.
 	//
@@ -202,10 +201,10 @@ type RoutingServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedRoutingServiceServer struct{}
 
-func (UnimplementedRoutingServiceServer) Publish(context.Context, *PublishRequest) (*emptypb.Empty, error) {
+func (UnimplementedRoutingServiceServer) Publish(context.Context, *PublishRequest) (*PublishResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
 }
-func (UnimplementedRoutingServiceServer) Unpublish(context.Context, *UnpublishRequest) (*emptypb.Empty, error) {
+func (UnimplementedRoutingServiceServer) Unpublish(context.Context, *UnpublishRequest) (*UnpublishResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unpublish not implemented")
 }
 func (UnimplementedRoutingServiceServer) Search(*SearchRequest, RoutingService_SearchServer) error {

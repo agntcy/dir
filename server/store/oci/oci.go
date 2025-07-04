@@ -12,12 +12,14 @@ import (
 	"net/http"
 	"strings"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/store/cache"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	storetypes "github.com/agntcy/dir/server/store/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	cid "github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
 	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
@@ -112,7 +114,7 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 // Note that metadata can be stored in a different store and only wrap this store.
 //
 // Ref: https://github.com/oras-project/oras-go/blob/main/docs/Modeling-Artifacts.md
-func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.Reader) (*coretypes.ObjectRef, error) {
+func (s *store) Push(ctx context.Context, ref types.Object, contents io.Reader) (types.Object, error) {
 	logger.Debug("Pushing object to OCI store", "ref", ref)
 
 	// push raw data
@@ -124,8 +126,8 @@ func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.
 	}
 
 	// set annotations for manifest
-	annotations := cleanMeta(ref.GetAnnotations())
-	annotations[manifestDirObjectTypeKey] = ref.GetType()
+	annotations := cleanMeta(ref.Annotations())
+	annotations[manifestDirObjectTypeKey] = ref.Type()
 
 	// push manifest
 	manifestDesc, err := oras.PackManifest(ctx, s.repo, oras.PackManifestVersion1_1, ocispec.MediaTypeImageManifest,
@@ -144,30 +146,35 @@ func (s *store) Push(ctx context.Context, ref *coretypes.ObjectRef, contents io.
 	// tag => resolves manifest to object which can be looked up (lookup)
 	// tag => allows to pull object directly (pull)
 	// tag => allows listing and filtering tags (list)
-	_, err = oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), ref.GetShortRef())
+	_, err = oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), ref.CID())
 	if err != nil {
 		return nil, err
 	}
 
 	// return clean ref
-	return &coretypes.ObjectRef{
-		Digest:      blobRef.GetDigest(),
-		Type:        ref.GetType(),
-		Size:        ref.GetSize(),
-		Annotations: cleanMeta(ref.GetAnnotations()),
+	return &storetypes.Object{
+		CIDVal:         blobRef.CID(),
+		TypeVal:        ref.Type(),
+		SizeVal:        ref.Size(),
+		AnnotationsVal: cleanMeta(ref.Annotations()),
 	}, nil
 }
 
 // Lookup checks if the ref exists as a tagged object.
-func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretypes.ObjectRef, error) {
+func (s *store) Lookup(ctx context.Context, ref types.ObjectRef) (types.Object, error) {
 	logger.Debug("Looking up object in OCI store", "ref", ref)
+
+	ociDigest, err := getDigestFromCID(ref.CID())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid object reference: %s", ref.CID())
+	}
 
 	// check if blob exists on remote
 	{
-		exists, err := s.repo.Exists(ctx, ocispec.Descriptor{Digest: ocidigest.Digest(ref.GetDigest())})
+		exists, err := s.repo.Exists(ctx, ocispec.Descriptor{Digest: ociDigest})
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid reference") {
-				return nil, status.Errorf(codes.InvalidArgument, "invalid object reference: %s", ref.GetDigest())
+				return nil, status.Errorf(codes.InvalidArgument, "invalid object reference: %s", ref.CID())
 			}
 
 			return nil, status.Errorf(codes.Internal, "failed to check if object exists: %v", err)
@@ -176,23 +183,21 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 		logger.Debug("Checked if object exists in OCI store", "exists", exists)
 
 		if !exists {
-			return nil, status.Errorf(codes.NotFound, "object not found: %s", ref.GetDigest())
+			return nil, status.Errorf(codes.NotFound, "object not found: %s", ref.CID())
 		}
 	}
 
 	// read manifest data from remote
 	var manifest ocispec.Manifest
 	{
-		shortRef := ref.GetShortRef()
-
 		// resolve manifest from remote tag
-		manifestDesc, err := s.repo.Resolve(ctx, shortRef)
+		manifestDesc, err := s.repo.Resolve(ctx, ref.CID())
 		if err != nil {
 			logger.Error("Failed to resolve manifest", "error", err)
 
 			// do not error here, as we may have a raw object stored but not tagged with
 			// the manifest. only agents are tagged with manifests
-			return ref, nil
+			return nil, nil
 		}
 
 		// TODO: validate manifest by size
@@ -200,7 +205,7 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 		// fetch manifest from remote
 		manifestRd, err := s.repo.Fetch(ctx, manifestDesc)
 		if err != nil {
-			return ref, status.Errorf(codes.Internal, "failed to fetch manifest: %v", err)
+			return nil, status.Errorf(codes.Internal, "failed to fetch manifest: %v", err)
 		}
 
 		// read manifest
@@ -227,24 +232,30 @@ func (s *store) Lookup(ctx context.Context, ref *coretypes.ObjectRef) (*coretype
 	}
 
 	// return clean ref
-	return &coretypes.ObjectRef{
-		Digest:      ref.GetDigest(),
-		Type:        objectType,
-		Size:        objectSize,
-		Annotations: cleanMeta(manifest.Annotations),
+	return &storetypes.Object{
+		CIDVal:         ref.CID(),
+		TypeVal:        objectType,
+		SizeVal:        objectSize,
+		AnnotationsVal: cleanMeta(manifest.Annotations),
 	}, nil
 }
 
-func (s *store) Pull(ctx context.Context, ref *coretypes.ObjectRef) (io.ReadCloser, error) {
+func (s *store) Pull(ctx context.Context, ref types.ObjectRef) (io.ReadCloser, error) {
 	logger.Debug("Pulling object from OCI store", "ref", ref)
 
+	ociDigest, err := getDigestFromCID(ref.CID())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid object reference: %s", ref.CID())
+	}
+
 	return s.repo.Fetch(ctx, ocispec.Descriptor{ //nolint:wrapcheck
-		Digest: ocidigest.Digest(ref.GetDigest()),
-		Size:   int64(ref.GetSize()), //nolint:gosec
+		Digest: ociDigest,
+		// TODO: do we need Size here?
+		// Size:   int64(ref.GetSize()), //nolint:gosec
 	})
 }
 
-func (s *store) Delete(ctx context.Context, ref *coretypes.ObjectRef) error {
+func (s *store) Delete(ctx context.Context, ref types.ObjectRef) error {
 	logger.Debug("Deleting object from OCI store", "ref", ref)
 
 	switch repo := s.repo.(type) {
@@ -258,16 +269,16 @@ func (s *store) Delete(ctx context.Context, ref *coretypes.ObjectRef) error {
 }
 
 // deleteFromOCIStore handles deletion of objects from an OCI store.
-func (s *store) deleteFromOCIStore(ctx context.Context, store *oci.Store, ref *coretypes.ObjectRef) error {
+func (s *store) deleteFromOCIStore(ctx context.Context, store *oci.Store, ref types.ObjectRef) error {
 	// Untag the manifest. Errors are logged but not returned because
 	// the object may exist without being tagged with a manifest.
-	if err := store.Untag(ctx, ref.GetShortRef()); err != nil {
+	if err := store.Untag(ctx, ref.CID()); err != nil {
 		logger.Debug("Failed to untag manifest", "error", err)
 	}
 
 	// Resolve and delete the manifest. Errors are logged but not returned
 	// for the same reason as above.
-	manifestDesc, err := s.repo.Resolve(ctx, ref.GetShortRef())
+	manifestDesc, err := s.repo.Resolve(ctx, ref.CID())
 	if err != nil {
 		logger.Debug("Failed to resolve manifest", "error", err)
 	} else if err := store.Delete(ctx, manifestDesc); err != nil {
@@ -275,8 +286,12 @@ func (s *store) deleteFromOCIStore(ctx context.Context, store *oci.Store, ref *c
 	}
 
 	// Delete the blob associated with the descriptor.
+	ociDigest, err := getDigestFromCID(ref.CID())
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get digest from CID: %v", err)
+	}
 	blobDesc := ocispec.Descriptor{
-		Digest: ocidigest.Digest(ref.GetDigest()),
+		Digest: ociDigest,
 	}
 	if err := store.Delete(ctx, blobDesc); err != nil {
 		return status.Errorf(codes.Internal, "failed to delete blob: %v", err)
@@ -286,10 +301,10 @@ func (s *store) deleteFromOCIStore(ctx context.Context, store *oci.Store, ref *c
 }
 
 // deleteFromRemoteRepo handles deletion of objects from a remote repository.
-func (s *store) deleteFromRemoteRepository(ctx context.Context, repo *remote.Repository, ref *coretypes.ObjectRef) error {
+func (s *store) deleteFromRemoteRepository(ctx context.Context, repo *remote.Repository, ref types.ObjectRef) error {
 	// Resolve and delete the manifest. Errors are logged but not returned because
 	// the object may exist without being tagged with a manifest.
-	manifestDesc, err := s.repo.Resolve(ctx, ref.GetShortRef())
+	manifestDesc, err := s.repo.Resolve(ctx, ref.CID())
 	if err != nil {
 		logger.Debug("Failed to resolve manifest", "error", err)
 	} else if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
@@ -297,8 +312,12 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, repo *remote.Rep
 	}
 
 	// Delete the blob associated with the descriptor.
+	ociDigest, err := getDigestFromCID(ref.CID())
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to get digest from CID: %v", err)
+	}
 	blobDesc := ocispec.Descriptor{
-		Digest: ocidigest.Digest(ref.GetDigest()),
+		Digest: ociDigest,
 	}
 	if err := repo.Blobs().Delete(ctx, blobDesc); err != nil {
 		return status.Errorf(codes.Internal, "failed to delete blob: %v", err)
@@ -308,17 +327,22 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, repo *remote.Rep
 }
 
 // pushData pushes raw data to OCI.
-func (s *store) pushData(ctx context.Context, ref *coretypes.ObjectRef, rd io.Reader) (*coretypes.ObjectRef, ocispec.Descriptor, error) {
+func (s *store) pushData(ctx context.Context, ref types.Object, rd io.Reader) (types.Object, ocispec.Descriptor, error) {
+	ociDigest, err := getDigestFromCID(ref.CID())
+	if err != nil {
+		return nil, ocispec.Descriptor{}, err
+	}
+
 	// push blob
 	blobDesc := ocispec.Descriptor{
 		MediaType: "application/octet-stream",
-		Digest:    ocidigest.Digest(ref.GetDigest()),
-		Size:      int64(ref.GetSize()),
+		Digest:    ociDigest,
+		Size:      int64(ref.Size()),
 	}
 
 	logger.Debug("Pushing blob to OCI store", "ref", ref, "blobDesc", blobDesc)
 
-	err := s.repo.Push(ctx, blobDesc, rd)
+	err = s.repo.Push(ctx, blobDesc, rd)
 	if err != nil {
 		logger.Error("Failed to push blob to OCI store", "error", err)
 
@@ -329,10 +353,11 @@ func (s *store) pushData(ctx context.Context, ref *coretypes.ObjectRef, rd io.Re
 	}
 
 	// return ref
-	return &coretypes.ObjectRef{
-		Digest: ref.GetDigest(),
-		Type:   ref.GetType(),
-		Size:   uint64(blobDesc.Size),
+	return &storetypes.Object{
+		CIDVal:         ref.CID(),
+		TypeVal:        ref.Type(),
+		SizeVal:        uint64(blobDesc.Size),
+		AnnotationsVal: cleanMeta(ref.Annotations()),
 	}, blobDesc, nil
 }
 
@@ -350,4 +375,20 @@ func cleanMeta(meta map[string]string) map[string]string {
 	// TODO: clean all with dir prefix
 
 	return meta
+}
+
+func getDigestFromCID(cidString string) (ocidigest.Digest, error) {
+	c, err := cid.Decode(cidString)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to decode CID: %v", err)
+	}
+	h := c.Hash()
+	decoded, err := mh.Decode(h)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to decode multihash: %v", err)
+	}
+	digestBytes := decoded.Digest
+	ociDigest := ocidigest.NewDigestFromBytes(ocidigest.SHA256, digestBytes)
+
+	return ociDigest, nil
 }
