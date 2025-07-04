@@ -27,9 +27,12 @@ const (
 )
 
 type SignOIDCRequest struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Agent         *v1alpha1.Agent           `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
-	IdToken       string                    `protobuf:"bytes,2,opt,name=id_token,json=idToken,proto3" json:"id_token,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Agent data for signing
+	Agent *v1alpha1.Agent `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
+	// Token for OIDC provider
+	IdToken string `protobuf:"bytes,2,opt,name=id_token,json=idToken,proto3" json:"id_token,omitempty"`
+	// Signing options for OIDC
 	Options       *SignOIDCRequest_SignOpts `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -87,10 +90,13 @@ func (x *SignOIDCRequest) GetOptions() *SignOIDCRequest_SignOpts {
 }
 
 type SignWithKeyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Agent         *v1alpha1.Agent        `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
-	PrivateKey    []byte                 `protobuf:"bytes,2,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
-	Password      []byte                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Agent data for signing
+	Agent *v1alpha1.Agent `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
+	// Private key used for signing
+	PrivateKey []byte `protobuf:"bytes,2,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
+	// Password to unlock the private key
+	Password      []byte `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -147,8 +153,9 @@ func (x *SignWithKeyRequest) GetPassword() []byte {
 }
 
 type SignOIDCResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Agent         *v1alpha1.Agent        `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Signed agent data
+	Agent         *v1alpha1.Agent `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -191,8 +198,9 @@ func (x *SignOIDCResponse) GetAgent() *v1alpha1.Agent {
 }
 
 type SignWithKeyResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Agent         *v1alpha1.Agent        `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Signed agent data
+	Agent         *v1alpha1.Agent `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -235,10 +243,13 @@ func (x *SignWithKeyResponse) GetAgent() *v1alpha1.Agent {
 }
 
 type VerifyOIDCRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Agent          *v1alpha1.Agent        `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
-	ExpectedIssuer string                 `protobuf:"bytes,2,opt,name=expected_issuer,json=expectedIssuer,proto3" json:"expected_issuer,omitempty"`
-	ExpectedSigner string                 `protobuf:"bytes,3,opt,name=expected_signer,json=expectedSigner,proto3" json:"expected_signer,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Signed agent data
+	Agent *v1alpha1.Agent `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
+	// Expected issuer in the signed agent
+	ExpectedIssuer string `protobuf:"bytes,2,opt,name=expected_issuer,json=expectedIssuer,proto3" json:"expected_issuer,omitempty"`
+	// Expected signer in the signed agent
+	ExpectedSigner string `protobuf:"bytes,3,opt,name=expected_signer,json=expectedSigner,proto3" json:"expected_signer,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -295,9 +306,11 @@ func (x *VerifyOIDCRequest) GetExpectedSigner() string {
 }
 
 type VerifyWithKeyRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Agent         *v1alpha1.Agent        `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
-	PublicKey     []byte                 `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Signed agent data
+	Agent *v1alpha1.Agent `protobuf:"bytes,1,opt,name=agent,proto3" json:"agent,omitempty"`
+	// Public key to validate the signed agent
+	PublicKey     []byte `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -346,17 +359,25 @@ func (x *VerifyWithKeyRequest) GetPublicKey() []byte {
 	return nil
 }
 
+// List of sign options for OIDC
 type SignOIDCRequest_SignOpts struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	FulcioUrl       string                 `protobuf:"bytes,1,opt,name=fulcio_url,json=fulcioUrl,proto3" json:"fulcio_url,omitempty"`
-	RekorUrl        string                 `protobuf:"bytes,2,opt,name=rekor_url,json=rekorUrl,proto3" json:"rekor_url,omitempty"`
-	TimestampUrl    string                 `protobuf:"bytes,3,opt,name=timestamp_url,json=timestampUrl,proto3" json:"timestamp_url,omitempty"`
-	OidcProviderUrl string                 `protobuf:"bytes,4,opt,name=oidc_provider_url,json=oidcProviderUrl,proto3" json:"oidc_provider_url,omitempty"`
-	OidcClientId    string                 `protobuf:"bytes,5,opt,name=oidc_client_id,json=oidcClientId,proto3" json:"oidc_client_id,omitempty"`
-	OidcToken       string                 `protobuf:"bytes,6,opt,name=oidc_token,json=oidcToken,proto3" json:"oidc_token,omitempty"`
-	Key             string                 `protobuf:"bytes,7,opt,name=key,proto3" json:"key,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fulcio authority access URL
+	FulcioUrl string `protobuf:"bytes,1,opt,name=fulcio_url,json=fulcioUrl,proto3" json:"fulcio_url,omitempty"`
+	// Rekor validator access URL
+	RekorUrl string `protobuf:"bytes,2,opt,name=rekor_url,json=rekorUrl,proto3" json:"rekor_url,omitempty"`
+	// Timestamp authority access URL
+	TimestampUrl string `protobuf:"bytes,3,opt,name=timestamp_url,json=timestampUrl,proto3" json:"timestamp_url,omitempty"`
+	// OIDC provider access URL
+	OidcProviderUrl string `protobuf:"bytes,4,opt,name=oidc_provider_url,json=oidcProviderUrl,proto3" json:"oidc_provider_url,omitempty"`
+	// Client identity for signing with OIDC
+	OidcClientId string `protobuf:"bytes,5,opt,name=oidc_client_id,json=oidcClientId,proto3" json:"oidc_client_id,omitempty"`
+	// Client token for signing with OIDC
+	OidcToken string `protobuf:"bytes,6,opt,name=oidc_token,json=oidcToken,proto3" json:"oidc_token,omitempty"`
+	// Private key for signing with OIDC
+	Key           string `protobuf:"bytes,7,opt,name=key,proto3" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SignOIDCRequest_SignOpts) Reset() {
