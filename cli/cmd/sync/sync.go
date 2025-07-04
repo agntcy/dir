@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	storev1alpha2 "github.com/agntcy/dir/api/store/v1alpha2"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -141,7 +142,7 @@ func runGetSyncStatus(cmd *cobra.Command, syncID string) error {
 	presenter.Printf(cmd,
 		"ID %s Status %s RemoteDirectoryUrl %s\n",
 		sync.GetSyncId(),
-		sync.GetStatus(),
+		storev1alpha2.SyncStatus_name[int32(sync.GetStatus())],
 		sync.GetRemoteDirectoryUrl(),
 	)
 

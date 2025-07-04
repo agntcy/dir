@@ -12,9 +12,9 @@ import (
 
 type Sync struct {
 	gorm.Model
-	ID                 string `gorm:"not null;index"`
-	RemoteDirectoryURL string `gorm:"not null"`
-	Status             string `gorm:"not null"`
+	ID                 string                   `gorm:"not null;index"`
+	RemoteDirectoryURL string                   `gorm:"not null"`
+	Status             storev1alpha2.SyncStatus `gorm:"not null"`
 }
 
 func (sync *Sync) GetID() string {
@@ -25,7 +25,7 @@ func (sync *Sync) GetRemoteDirectoryURL() string {
 	return sync.RemoteDirectoryURL
 }
 
-func (sync *Sync) GetStatus() string {
+func (sync *Sync) GetStatus() storev1alpha2.SyncStatus {
 	return sync.Status
 }
 
@@ -33,7 +33,7 @@ func (d *DB) CreateSync(remoteURL string) (string, error) {
 	sync := &Sync{
 		ID:                 uuid.NewString(),
 		RemoteDirectoryURL: remoteURL,
-		Status:             storev1alpha2.SyncStatus_name[int32(storev1alpha2.SyncStatus_SYNC_STATUS_PENDING)],
+		Status:             storev1alpha2.SyncStatus_SYNC_STATUS_PENDING,
 	}
 
 	if err := d.gormDB.Create(sync).Error; err != nil {
@@ -69,8 +69,23 @@ func (d *DB) GetSyncs() ([]types.SyncObject, error) {
 	return syncObjects, nil
 }
 
-func (d *DB) UpdateSync(syncObject types.SyncObject) error {
-	syncObj, err := d.GetSyncByID(syncObject.GetID())
+func (d *DB) GetSyncsByStatus(status storev1alpha2.SyncStatus) ([]types.SyncObject, error) {
+	var syncs []Sync
+	if err := d.gormDB.Where("status = ?", status).Find(&syncs).Error; err != nil {
+		return nil, err
+	}
+
+	// convert to types.SyncObject
+	syncObjects := make([]types.SyncObject, len(syncs))
+	for i, sync := range syncs {
+		syncObjects[i] = &sync
+	}
+
+	return syncObjects, nil
+}
+
+func (d *DB) UpdateSyncStatus(syncID string, status storev1alpha2.SyncStatus) error {
+	syncObj, err := d.GetSyncByID(syncID)
 	if err != nil {
 		return err
 	}
@@ -80,7 +95,7 @@ func (d *DB) UpdateSync(syncObject types.SyncObject) error {
 		return gorm.ErrInvalidData
 	}
 
-	sync.Status = syncObject.GetStatus()
+	sync.Status = status
 
 	if err := d.gormDB.Save(sync).Error; err != nil {
 		return err
