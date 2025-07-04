@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -30,7 +31,7 @@ along with a local ephemeral signing key and OIDC identity.
 Verification data is attached to the signed agent model,
 and the transparency log is pushed to Sigstore Rekor.
 
-This command opens a browser window to authenticate the user 
+This command opens a browser window to authenticate the user
 with the default OIDC provider.
 
 Usage examples:
@@ -69,15 +70,17 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Load into an Agent struct
 	agent := &coretypes.Agent{}
+
+	// Load into an Agent struct
 	if _, err := agent.LoadFromReader(source); err != nil {
 		return fmt.Errorf("failed to load agent: %w", err)
 	}
 
-	var err error
-
-	var agentSigned *coretypes.Agent
+	var (
+		err         error
+		agentSigned *coretypes.Agent
+	)
 
 	//nolint:nestif,gocritic
 	if opts.Key != "" {
@@ -93,17 +96,41 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
 
+		req := &signv1alpha1.SignWithKeyRequest{
+			Agent:      agent,
+			PrivateKey: rawKey,
+			Password:   pw,
+		}
+
 		// Sign the agent using the provided key
-		agentSigned, err = c.SignWithKey(cmd.Context(), rawKey, pw, agent)
+		response, err := c.SignWithKey(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent with key: %w", err)
 		}
+
+		agentSigned = response.GetAgent()
 	} else if opts.OIDCToken != "" {
+		req := &signv1alpha1.SignOIDCRequest{
+			Agent:   agent,
+			IdToken: opts.OIDCToken,
+			Options: &signv1alpha1.SignOIDCRequest_SignOpts{
+				FulcioUrl:       &opts.FulcioURL,
+				RekorUrl:        &opts.RekorURL,
+				TimestampUrl:    &opts.TimestampURL,
+				OidcProviderUrl: &opts.OIDCProviderURL,
+				OidcClientId:    &opts.OIDCClientID,
+				OidcToken:       opts.OIDCToken,
+				Key:             opts.Key,
+			},
+		}
+
 		// Sign the agent using the OIDC provider
-		agentSigned, err = c.SignOIDC(cmd.Context(), agent, opts.OIDCToken, opts.SignOpts)
+		response, err := c.SignOIDC(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent: %w", err)
 		}
+
+		agentSigned = response.GetAgent()
 	} else {
 		// Retrieve the token from the OIDC provider
 		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
@@ -111,11 +138,27 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to get OIDC token: %w", err)
 		}
 
+		req := &signv1alpha1.SignOIDCRequest{
+			Agent:   agent,
+			IdToken: token.RawString,
+			Options: &signv1alpha1.SignOIDCRequest_SignOpts{
+				FulcioUrl:       &opts.FulcioURL,
+				RekorUrl:        &opts.RekorURL,
+				TimestampUrl:    &opts.TimestampURL,
+				OidcProviderUrl: &opts.OIDCProviderURL,
+				OidcClientId:    &opts.OIDCClientID,
+				OidcToken:       opts.OIDCToken,
+				Key:             opts.Key,
+			},
+		}
+
 		// Sign the agent using the OIDC provider
-		agentSigned, err = c.SignOIDC(cmd.Context(), agent, token.RawString, opts.SignOpts)
+		response, err := c.SignOIDC(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent: %w", err)
 		}
+
+		agentSigned = response.GetAgent()
 	}
 
 	// Print signed agent

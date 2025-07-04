@@ -1,7 +1,6 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-//nolint:mnd,wsl
 package client
 
 import (
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	signtypes "github.com/agntcy/dir/api/sign/v1alpha1"
 	"github.com/agntcy/dir/utils/cosign"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
 	"github.com/sigstore/sigstore-go/pkg/root"
@@ -26,6 +26,10 @@ const (
 	DefaultTimestampURL    = "https://timestamp.sigstage.dev/api/v1/timestamp"
 	DefaultOIDCProviderURL = "https://oauth2.sigstage.dev/auth"
 	DefaultOIDCClientID    = "sigstore"
+
+	DefaultFulcioTimeout             = 30 * time.Second
+	DefaultTimestampAuthorityTimeout = 30 * time.Second
+	DefaultRekorTimeout              = 90 * time.Second
 )
 
 type SignOpts struct {
@@ -41,9 +45,9 @@ type SignOpts struct {
 // SignOIDC signs the agent using keyless OIDC service-based signing.
 // The OIDC ID Token must be provided by the caller.
 // An ephemeral keypair is generated for signing.
-func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken string, options SignOpts) (*coretypes.Agent, error) {
+func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (*signtypes.SignOIDCResponse, error) {
 	// Validate request.
-	if agent == nil {
+	if req.GetAgent() == nil {
 		return nil, errors.New("agent must be set")
 	}
 
@@ -56,7 +60,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			// Fulcio URLs
 			[]root.Service{
 				{
-					URL:                 options.FulcioURL,
+					URL:                 req.GetOptions().GetFulcioUrl(),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -66,7 +70,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			// Usage and requirements: https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/
 			[]root.Service{
 				{
-					URL:                 options.OIDCProviderURL,
+					URL:                 req.GetOptions().GetOidcProviderUrl(),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -75,7 +79,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			// Rekor URLs
 			[]root.Service{
 				{
-					URL:                 options.RekorURL,
+					URL:                 req.GetOptions().GetRekorUrl(),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -86,7 +90,7 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 			},
 			[]root.Service{
 				{
-					URL:                 options.TimestampURL,
+					URL:                 req.GetOptions().GetTimestampUrl(),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -105,14 +109,15 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		if err != nil {
 			return nil, fmt.Errorf("failed to select fulcio URL: %w", err)
 		}
+
 		fulcioOpts := &sign.FulcioOptions{
 			BaseURL: fulcioURL,
-			Timeout: 30 * time.Second,
+			Timeout: DefaultFulcioTimeout,
 			Retries: 1,
 		}
 		signOpts.CertificateProvider = sign.NewFulcio(fulcioOpts)
 		signOpts.CertificateProviderOptions = &sign.CertificateProviderOptions{
-			IDToken: idToken,
+			IDToken: req.GetIdToken(),
 		}
 
 		// Use timestamp authortiy to sign the agent.
@@ -121,10 +126,11 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		if err != nil {
 			return nil, fmt.Errorf("failed to select timestamp authority URL: %w", err)
 		}
+
 		for _, tsaURL := range tsaURLs {
 			tsaOpts := &sign.TimestampAuthorityOptions{
 				URL:     tsaURL,
-				Timeout: 30 * time.Second,
+				Timeout: DefaultTimestampAuthorityTimeout,
 				Retries: 1,
 			}
 			signOpts.TimestampAuthorities = append(signOpts.TimestampAuthorities, sign.NewTimestampAuthority(tsaOpts))
@@ -136,10 +142,11 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		if err != nil {
 			return nil, fmt.Errorf("failed to select rekor URL: %w", err)
 		}
+
 		for _, rekorURL := range rekorURLs {
 			rekorOpts := &sign.RekorOptions{
 				BaseURL: rekorURL,
-				Timeout: 90 * time.Second,
+				Timeout: DefaultRekorTimeout,
 				Retries: 1,
 			}
 			signOpts.TransparencyLogs = append(signOpts.TransparencyLogs, sign.NewRekor(rekorOpts))
@@ -152,18 +159,30 @@ func (c *Client) SignOIDC(ctx context.Context, agent *coretypes.Agent, idToken s
 		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
 	}
 
-	return c.Sign(ctx, agent, signKeypair, signOpts)
+	signedAgent, err := c.Sign(ctx, req.GetAgent(), signKeypair, signOpts)
+
+	response := signtypes.SignOIDCResponse{
+		Agent: signedAgent,
+	}
+
+	return &response, err
 }
 
-func (c *Client) SignWithKey(ctx context.Context, privKey []byte, pw []byte, agent *coretypes.Agent) (*coretypes.Agent, error) {
+func (c *Client) SignWithKey(ctx context.Context, req *signtypes.SignWithKeyRequest) (*signtypes.SignWithKeyResponse, error) {
 	// Generate a keypair from the provided private key bytes.
 	// The keypair hint is derived from the public key and will be used for verification.
-	signKeypair, err := cosign.LoadKeypair(privKey, pw)
+	signKeypair, err := cosign.LoadKeypair(req.GetPrivateKey(), req.GetPassword())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keypair: %w", err)
 	}
 
-	return c.Sign(ctx, agent, signKeypair, sign.BundleOptions{})
+	signedAgent, err := c.Sign(ctx, req.GetAgent(), signKeypair, sign.BundleOptions{})
+
+	response := signtypes.SignWithKeyResponse{
+		Agent: signedAgent,
+	}
+
+	return &response, err
 }
 
 func (c *Client) Sign(_ context.Context, agent *coretypes.Agent, signKeypair sign.Keypair, signOpts sign.BundleOptions) (*coretypes.Agent, error) {
@@ -183,6 +202,7 @@ func (c *Client) Sign(_ context.Context, agent *coretypes.Agent, signKeypair sig
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign agent: %w", err)
 	}
+
 	certData := sigBundle.GetVerificationMaterial()
 	sigData := sigBundle.GetMessageSignature()
 

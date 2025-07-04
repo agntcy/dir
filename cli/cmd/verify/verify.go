@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -21,7 +22,7 @@ var Command = &cobra.Command{
 	Use:   "verify",
 	Short: "Verify agent model signature against identity-based OIDC signing",
 	Long: `This command verifies the agent data model signature against
-identity-based OIDC signing process. 
+identity-based OIDC signing process.
 It relies on Sigstore Rekor for signature verification.
 
 Usage examples:
@@ -61,8 +62,9 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Load into an Agent struct
 	agent := &coretypes.Agent{}
+
+	// Load into an Agent struct
 	if _, err := agent.LoadFromReader(source); err != nil {
 		return fmt.Errorf("failed to load agent: %w", err)
 	}
@@ -75,14 +77,25 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read key file: %w", err)
 		}
 
+		req := &signv1alpha1.VerifyWithKeyRequest{
+			Agent:     agent,
+			PublicKey: rawPubKey,
+		}
+
 		// Verify the agent using the provided key
-		err = c.VerifyWithKey(cmd.Context(), rawPubKey, agent)
+		_, err = c.VerifyWithKey(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to verify agent: %w", err)
 		}
 	} else {
+		req := &signv1alpha1.VerifyOIDCRequest{
+			Agent:          agent,
+			ExpectedIssuer: opts.OIDCIssuer,
+			ExpectedSigner: opts.OIDCIdentity,
+		}
+
 		// Verify the agent using the OIDC provider
-		err := c.VerifyOIDC(cmd.Context(), opts.OIDCIssuer, opts.OIDCIdentity, agent)
+		_, err := c.VerifyOIDC(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to verify agent: %w", err)
 		}
