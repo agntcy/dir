@@ -5,11 +5,16 @@ package v1alpha2
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 
 	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var syncLogger = logging.Logger("controller/sync")
@@ -28,6 +33,11 @@ func NewSyncController(db types.DatabaseAPI) storetypes.SyncServiceServer {
 
 func (c *syncCtlr) CreateSync(_ context.Context, req *storetypes.CreateSyncRequest) (*storetypes.CreateSyncResponse, error) {
 	syncLogger.Debug("Called sync controller's CreateSync method")
+
+	// Validate the remote directory URL
+	if err := validateRemoteDirectoryURL(req.GetRemoteDirectoryUrl()); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid remote directory URL: %v", err)
+	}
 
 	id, err := c.db.CreateSync(req.GetRemoteDirectoryUrl())
 	if err != nil {
@@ -93,4 +103,39 @@ func (c *syncCtlr) DeleteSync(_ context.Context, req *storetypes.DeleteSyncReque
 	syncLogger.Debug("Sync deleted successfully", "sync_id", req.GetSyncId())
 
 	return &storetypes.DeleteSyncResponse{}, nil
+}
+
+// validateRemoteDirectoryURL validates the format of a remote directory URL.
+func validateRemoteDirectoryURL(rawURL string) error {
+	if rawURL == "" {
+		return errors.New("remote directory URL is required")
+	}
+
+	// If the URL doesn't have a scheme, treat it as a raw host:port
+	if !strings.Contains(rawURL, "://") {
+		// Validate that it looks like host:port
+		if !strings.Contains(rawURL, ":") {
+			return errors.New("URL must include port (e.g., 'host:port' or 'http://host:port')")
+		}
+
+		return nil
+	}
+
+	// Parse as full URL
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	// Only allow http and https schemes
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return fmt.Errorf("unsupported scheme '%s', only 'http' and 'https' are supported", parsedURL.Scheme)
+	}
+
+	// Validate hostname
+	if parsedURL.Hostname() == "" {
+		return errors.New("URL must include a hostname")
+	}
+
+	return nil
 }
