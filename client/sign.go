@@ -60,7 +60,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 			// Fulcio URLs
 			[]root.Service{
 				{
-					URL:                 req.GetOptions().GetFulcioUrl(),
+					URL:                 setOrDefault(req.GetOptions().GetFulcioUrl(), DefaultFulcioURL),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -70,7 +70,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 			// Usage and requirements: https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/
 			[]root.Service{
 				{
-					URL:                 req.GetOptions().GetOidcProviderUrl(),
+					URL:                 setOrDefault(req.GetOptions().GetOidcProviderUrl(), DefaultOIDCProviderURL),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -79,7 +79,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 			// Rekor URLs
 			[]root.Service{
 				{
-					URL:                 req.GetOptions().GetRekorUrl(),
+					URL:                 setOrDefault(req.GetOptions().GetRekorUrl(), DefaultRekorURL),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -90,7 +90,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 			},
 			[]root.Service{
 				{
-					URL:                 req.GetOptions().GetTimestampUrl(),
+					URL:                 setOrDefault(req.GetOptions().GetTimestampUrl(), DefaultTimestampURL),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -223,4 +223,12 @@ func (c *Client) Sign(_ context.Context, agent *coretypes.Agent, signKeypair sig
 	}
 
 	return agent, nil
+}
+
+func setOrDefault(value string, defaultValue string) string {
+	if value == "" {
+		value = defaultValue
+	}
+
+	return value
 }
