@@ -11,6 +11,7 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.autoscaling.replicaCount }}
   {{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   selector:
     matchLabels:
       {{- include "chart.selectorLabels" . | nindent 6 }}

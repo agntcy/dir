@@ -149,3 +149,5 @@ extraVolumeMounts: []
   # Example:
   # - name: datastore
   #   mountPath: /etc/datastore
+
+revisionHistoryLimit: 2
