@@ -130,7 +130,7 @@ func (w *Worker) performSync(ctx context.Context, item WorkItem) error {
 			return fmt.Errorf("failed to lookup record: %w", err)
 		}
 
-		logger.Debug("Record found locally, skipping", "worker_id", w.id, "sync_id", item.SyncID, "record_cid", cid)
+		logger.Debug("Record found locally, skipping sync", "worker_id", w.id, "sync_id", item.SyncID, "record_cid", cid)
 	}
 
 	logger.Debug("Sync operation completed", "worker_id", w.id, "sync_id", item.SyncID)
