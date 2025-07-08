@@ -104,6 +104,8 @@ func (w *Worker) performSync(ctx context.Context, item WorkItem) error {
 	}
 
 	// Get all records from the remote directory
+	// TODO Since this search is on remote, we can leverage search filters to only get records that signed
+	// or that match a certain skill/locator/extension
 	records, err := w.searchAllRemoteRecords(ctx, remoteClient)
 	if err != nil {
 		return fmt.Errorf("failed to search records: %w", err)

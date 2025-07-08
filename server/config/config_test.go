@@ -6,12 +6,14 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
+	sync "github.com/agntcy/dir/server/sync/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,6 +43,9 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_ROUTING_KEY_PATH":              "/path/to/key",
 				"DIRECTORY_SERVER_DATABASE_DB_TYPE":              "sqlite",
 				"DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH":       "sqlite.db",
+				"DIRECTORY_SERVER_SYNC_SCHEDULER_INTERVAL":       "1s",
+				"DIRECTORY_SERVER_SYNC_WORKER_COUNT":             "1",
+				"DIRECTORY_SERVER_SYNC_WORKER_TIMEOUT":           "10s",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress:      "example.com:8889",
@@ -75,6 +80,11 @@ func TestConfig(t *testing.T) {
 						DBPath: "sqlite.db",
 					},
 				},
+				Sync: sync.Config{
+					SchedulerInterval: 1 * time.Second,
+					WorkerCount:       1,
+					WorkerTimeout:     10 * time.Second,
+				},
 			},
 		},
 		{
@@ -103,6 +113,11 @@ func TestConfig(t *testing.T) {
 					SQLite: sqliteconfig.Config{
 						DBPath: sqliteconfig.DefaultSQLiteDBPath,
 					},
+				},
+				Sync: sync.Config{
+					SchedulerInterval: sync.DefaultSyncSchedulerInterval,
+					WorkerCount:       sync.DefaultSyncWorkerCount,
+					WorkerTimeout:     sync.DefaultSyncWorkerTimeout,
 				},
 			},
 		},
