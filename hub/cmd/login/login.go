@@ -40,7 +40,8 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		// Load session store for saving
 		sessionStore := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
 		// Construct Okta client
-		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, http.CreateSecureHTTPClient())
+		insecure := false
+		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, http.CreateSecureHTTPClient(insecure))
 		// Call auth.Login with loaded objects
 		updatedSession, err := auth.Login(cmd.Context(), oktaClient, currentSession)
 		if err != nil {

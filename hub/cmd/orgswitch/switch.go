@@ -50,7 +50,8 @@ organization. In any other case, org could be selected from an interactive list.
 		sessionStore := sessionstore.NewFileSessionStore(fileUtils.GetSessionFilePath())
 
 		// Load tenants directly using idp client
-		idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient())
+		insecure := false
+		idpClient := idp.NewClient(currentSession.AuthConfig.IdpBackendAddress, httpUtils.CreateSecureHTTPClient(insecure))
 		accessToken := currentSession.Tokens[currentSession.CurrentTenant].AccessToken
 		productID := currentSession.AuthConfig.IdpProductID
 
@@ -69,7 +70,7 @@ organization. In any other case, org could be selected from an interactive list.
 
 		tenants := idpResp.TenantList.Tenants
 
-		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
+		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient(insecure))
 
 		updatedSession, msg, err := auth.SwitchTenant(cmd.Context(), opts, tenants, currentSession, oktaClient)
 		if err != nil {
