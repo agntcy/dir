@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package componenterror
+package err
 
 import (
 	"errors"
@@ -14,9 +14,9 @@ import (
 type ComponentError struct {
 	Err error `json:"-"`
 
-	Component string            `json:"component"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
-	Message   string            `json:"message"`
+	Component   string            `json:"component"`
+	Annotations map[string]string `json:"annotations,omitempty"`
+	Message     string            `json:"message"`
 }
 
 func NewComponentError(err error, component string) *ComponentError {
@@ -32,16 +32,17 @@ func NewComponentError(err error, component string) *ComponentError {
 	return cErr
 }
 
+// TODO: decide how we want to format the component error message in the future, e.g. do we want to include annotations or not.
 func (e *ComponentError) Error() string {
 	return e.Message
 }
 
-func (e *ComponentError) WithMetadata(metadata map[string]string) *ComponentError {
-	if e.Metadata == nil {
-		e.Metadata = make(map[string]string)
+func (e *ComponentError) WithAnnotations(annotations map[string]string) *ComponentError {
+	if e.Annotations == nil {
+		e.Annotations = make(map[string]string)
 	}
 
-	maps.Copy(e.Metadata, metadata)
+	maps.Copy(e.Annotations, annotations)
 
 	return e
 }
@@ -67,12 +68,12 @@ func (e *ComponentError) ToAPIError() *errdetails.ErrorInfo {
 	return &errdetails.ErrorInfo{
 		Reason:   e.Message,
 		Domain:   e.Component,
-		Metadata: e.Metadata,
+		Metadata: e.Annotations,
 	}
 }
 
 func FromAPIError(apiError *errdetails.ErrorInfo) *ComponentError {
 	return NewComponentError(nil, apiError.GetDomain()).
 		WithMessage(apiError.GetReason()).
-		WithMetadata(apiError.GetMetadata())
+		WithAnnotations(apiError.GetMetadata())
 }
