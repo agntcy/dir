@@ -4,13 +4,17 @@
 package client
 
 import (
+	"context"
 	"fmt"
 
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	searchtypesv1alpha2 "github.com/agntcy/dir/api/search/v1alpha2"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
+	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
+	"github.com/spiffe/go-spiffe/v2/spiffeid"
+	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
+	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -21,6 +25,8 @@ type Client struct {
 	storetypes.StoreServiceClient
 	routingtypes.RoutingServiceClient
 	searchtypesv1alpha2.SearchServiceClient
+
+	closeFn func() error
 }
 
 type options struct {
@@ -46,6 +52,14 @@ func WithConfig(config *Config) Option {
 	}
 }
 
+func (c *Client) Close() error {
+	if c.closeFn == nil {
+		return nil
+	}
+
+	return c.closeFn()
+}
+
 func New(opts ...Option) (*Client, error) {
 	// Load options
 	options := &options{}
@@ -55,12 +69,26 @@ func New(opts ...Option) (*Client, error) {
 		}
 	}
 
+	// Create a `workloadapi.X509Source`, it will connect to Workload API using provided socket path
+	// If socket path is not defined using `workloadapi.SourceOption`, value from environment variable `SPIFFE_ENDPOINT_SOCKET` is used.
+	source, err := workloadapi.NewX509Source(context.Background(), workloadapi.WithClientOptions(workloadapi.WithAddr(options.config.SpiffeWorkloadAddress)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to create X509Source: %w", err)
+	}
+
+	// Allowed SPIFFE ID
+	clientDomain := spiffeid.RequireTrustDomainFromString("spiffe://example.org")
+
 	// Create client
 	client, err := grpc.NewClient(
 		options.config.ServerAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(
+			grpccredentials.MTLSClientCredentials(source, source, tlsconfig.AuthorizeMemberOf(clientDomain)),
+		),
 	)
 	if err != nil {
+		defer source.Close()
+
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
 
@@ -68,5 +96,6 @@ func New(opts ...Option) (*Client, error) {
 		StoreServiceClient:   storetypes.NewStoreServiceClient(client),
 		RoutingServiceClient: routingtypes.NewRoutingServiceClient(client),
 		SearchServiceClient:  searchtypesv1alpha2.NewSearchServiceClient(client),
+		closeFn:              source.Close,
 	}, nil
 }
