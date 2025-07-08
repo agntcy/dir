@@ -1,5 +1,4 @@
 from core.v1alpha2 import record_pb2 as _record_pb2
-from google.protobuf import empty_pb2 as _empty_pb2
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from collections.abc import Mapping as _Mapping
@@ -8,23 +7,29 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class SignRequest(_message.Message):
+    __slots__ = ("record", "provider")
+    RECORD_FIELD_NUMBER: _ClassVar[int]
+    PROVIDER_FIELD_NUMBER: _ClassVar[int]
+    record: _record_pb2.Record
+    provider: SignRequestProvider
+    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ..., provider: _Optional[_Union[SignRequestProvider, _Mapping]] = ...) -> None: ...
+
+class SignRequestProvider(_message.Message):
     __slots__ = ("oidc", "key")
     OIDC_FIELD_NUMBER: _ClassVar[int]
     KEY_FIELD_NUMBER: _ClassVar[int]
-    oidc: SignOIDCRequest
-    key: SignWithKeyRequest
-    def __init__(self, oidc: _Optional[_Union[SignOIDCRequest, _Mapping]] = ..., key: _Optional[_Union[SignWithKeyRequest, _Mapping]] = ...) -> None: ...
+    oidc: SignWithOIDC
+    key: SignWithKey
+    def __init__(self, oidc: _Optional[_Union[SignWithOIDC, _Mapping]] = ..., key: _Optional[_Union[SignWithKey, _Mapping]] = ...) -> None: ...
 
 class SignResponse(_message.Message):
-    __slots__ = ("oidc", "key")
-    OIDC_FIELD_NUMBER: _ClassVar[int]
-    KEY_FIELD_NUMBER: _ClassVar[int]
-    oidc: SignOIDCResponse
-    key: SignWithKeyResponse
-    def __init__(self, oidc: _Optional[_Union[SignOIDCResponse, _Mapping]] = ..., key: _Optional[_Union[SignWithKeyResponse, _Mapping]] = ...) -> None: ...
+    __slots__ = ("record",)
+    RECORD_FIELD_NUMBER: _ClassVar[int]
+    record: _record_pb2.Record
+    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ...) -> None: ...
 
-class SignOIDCRequest(_message.Message):
-    __slots__ = ("record", "id_token", "options")
+class SignWithOIDC(_message.Message):
+    __slots__ = ("id_token", "options")
     class SignOpts(_message.Message):
         __slots__ = ("fulcio_url", "rekor_url", "timestamp_url", "oidc_provider_url")
         FULCIO_URL_FIELD_NUMBER: _ClassVar[int]
@@ -36,58 +41,52 @@ class SignOIDCRequest(_message.Message):
         timestamp_url: str
         oidc_provider_url: str
         def __init__(self, fulcio_url: _Optional[str] = ..., rekor_url: _Optional[str] = ..., timestamp_url: _Optional[str] = ..., oidc_provider_url: _Optional[str] = ...) -> None: ...
-    RECORD_FIELD_NUMBER: _ClassVar[int]
     ID_TOKEN_FIELD_NUMBER: _ClassVar[int]
     OPTIONS_FIELD_NUMBER: _ClassVar[int]
-    record: _record_pb2.Record
     id_token: str
-    options: SignOIDCRequest.SignOpts
-    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ..., id_token: _Optional[str] = ..., options: _Optional[_Union[SignOIDCRequest.SignOpts, _Mapping]] = ...) -> None: ...
+    options: SignWithOIDC.SignOpts
+    def __init__(self, id_token: _Optional[str] = ..., options: _Optional[_Union[SignWithOIDC.SignOpts, _Mapping]] = ...) -> None: ...
 
-class SignWithKeyRequest(_message.Message):
-    __slots__ = ("record", "private_key", "password")
-    RECORD_FIELD_NUMBER: _ClassVar[int]
+class SignWithKey(_message.Message):
+    __slots__ = ("private_key", "password")
     PRIVATE_KEY_FIELD_NUMBER: _ClassVar[int]
     PASSWORD_FIELD_NUMBER: _ClassVar[int]
-    record: _record_pb2.Record
     private_key: bytes
     password: bytes
-    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ..., private_key: _Optional[bytes] = ..., password: _Optional[bytes] = ...) -> None: ...
-
-class SignOIDCResponse(_message.Message):
-    __slots__ = ("record",)
-    RECORD_FIELD_NUMBER: _ClassVar[int]
-    record: _record_pb2.Record
-    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ...) -> None: ...
-
-class SignWithKeyResponse(_message.Message):
-    __slots__ = ("record",)
-    RECORD_FIELD_NUMBER: _ClassVar[int]
-    record: _record_pb2.Record
-    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ...) -> None: ...
+    def __init__(self, private_key: _Optional[bytes] = ..., password: _Optional[bytes] = ...) -> None: ...
 
 class VerifyRequest(_message.Message):
+    __slots__ = ("record", "provider")
+    RECORD_FIELD_NUMBER: _ClassVar[int]
+    PROVIDER_FIELD_NUMBER: _ClassVar[int]
+    record: _record_pb2.Record
+    provider: VerifyRequestProvider
+    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ..., provider: _Optional[_Union[VerifyRequestProvider, _Mapping]] = ...) -> None: ...
+
+class VerifyRequestProvider(_message.Message):
     __slots__ = ("oidc", "key")
     OIDC_FIELD_NUMBER: _ClassVar[int]
     KEY_FIELD_NUMBER: _ClassVar[int]
-    oidc: VerifyOIDCRequest
-    key: VerifyWithKeyRequest
-    def __init__(self, oidc: _Optional[_Union[VerifyOIDCRequest, _Mapping]] = ..., key: _Optional[_Union[VerifyWithKeyRequest, _Mapping]] = ...) -> None: ...
+    oidc: VerifyWithOIDC
+    key: VerifyWithKey
+    def __init__(self, oidc: _Optional[_Union[VerifyWithOIDC, _Mapping]] = ..., key: _Optional[_Union[VerifyWithKey, _Mapping]] = ...) -> None: ...
 
-class VerifyOIDCRequest(_message.Message):
-    __slots__ = ("record", "expected_issuer", "expected_signer")
-    RECORD_FIELD_NUMBER: _ClassVar[int]
+class VerifyWithOIDC(_message.Message):
+    __slots__ = ("expected_issuer", "expected_signer")
     EXPECTED_ISSUER_FIELD_NUMBER: _ClassVar[int]
     EXPECTED_SIGNER_FIELD_NUMBER: _ClassVar[int]
-    record: _record_pb2.Record
     expected_issuer: str
     expected_signer: str
-    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ..., expected_issuer: _Optional[str] = ..., expected_signer: _Optional[str] = ...) -> None: ...
+    def __init__(self, expected_issuer: _Optional[str] = ..., expected_signer: _Optional[str] = ...) -> None: ...
 
-class VerifyWithKeyRequest(_message.Message):
-    __slots__ = ("record", "public_key")
-    RECORD_FIELD_NUMBER: _ClassVar[int]
+class VerifyWithKey(_message.Message):
+    __slots__ = ("public_key",)
     PUBLIC_KEY_FIELD_NUMBER: _ClassVar[int]
-    record: _record_pb2.Record
     public_key: bytes
-    def __init__(self, record: _Optional[_Union[_record_pb2.Record, _Mapping]] = ..., public_key: _Optional[bytes] = ...) -> None: ...
+    def __init__(self, public_key: _Optional[bytes] = ...) -> None: ...
+
+class VerifyResponse(_message.Message):
+    __slots__ = ("success",)
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    def __init__(self, success: bool = ...) -> None: ...

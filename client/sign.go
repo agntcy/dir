@@ -42,41 +42,16 @@ type SignOpts struct {
 	Key             string
 }
 
-func (c *Client) Sign(ctx context.Context, req *signtypes.SignRequest) (*signtypes.SignResponse, error) {
-	switch req.GetRequest().(type) {
-	case *signtypes.SignRequest_Oidc:
-		respOIDC, err := c.SignOIDC(ctx, req.GetOidc())
-
-		resp := &signtypes.SignResponse{
-			Response: &signtypes.SignResponse_Oidc{
-				Oidc: respOIDC,
-			},
-		}
-
-		return resp, err
-	case *signtypes.SignRequest_Key:
-		respKey, err := c.SignWithKey(ctx, req.GetKey())
-
-		resp := &signtypes.SignResponse{
-			Response: &signtypes.SignResponse_Key{
-				Key: respKey,
-			},
-		}
-
-		return resp, err
-	default:
-		return nil, errors.New("not definied sign method was provided")
-	}
-}
-
 // SignOIDC signs the agent using keyless OIDC service-based signing.
 // The OIDC ID Token must be provided by the caller.
 // An ephemeral keypair is generated for signing.
-func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (*signtypes.SignOIDCResponse, error) {
+func (c *Client) SignWithOIDC(ctx context.Context, req *signtypes.SignRequest) (*signtypes.SignResponse, error) {
 	// Validate request.
 	if req.GetAgent() == nil {
 		return nil, errors.New("agent must be set")
 	}
+
+	oidcSigner := req.GetProvider().GetOidc()
 
 	// Load signing options.
 	var signOpts sign.BundleOptions
@@ -87,7 +62,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 			// Fulcio URLs
 			[]root.Service{
 				{
-					URL:                 setOrDefault(req.GetOptions().GetFulcioUrl(), DefaultFulcioURL),
+					URL:                 setOrDefault(oidcSigner.GetOptions().GetFulcioUrl(), DefaultFulcioURL),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -97,7 +72,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 			// Usage and requirements: https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/
 			[]root.Service{
 				{
-					URL:                 setOrDefault(req.GetOptions().GetOidcProviderUrl(), DefaultOIDCProviderURL),
+					URL:                 setOrDefault(oidcSigner.GetOptions().GetOidcProviderUrl(), DefaultOIDCProviderURL),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -106,7 +81,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 			// Rekor URLs
 			[]root.Service{
 				{
-					URL:                 setOrDefault(req.GetOptions().GetRekorUrl(), DefaultRekorURL),
+					URL:                 setOrDefault(oidcSigner.GetOptions().GetRekorUrl(), DefaultRekorURL),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -117,7 +92,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 			},
 			[]root.Service{
 				{
-					URL:                 setOrDefault(req.GetOptions().GetTimestampUrl(), DefaultTimestampURL),
+					URL:                 setOrDefault(oidcSigner.GetOptions().GetTimestampUrl(), DefaultTimestampURL),
 					MajorAPIVersion:     1,
 					ValidityPeriodStart: time.Now().Add(-time.Hour),
 					ValidityPeriodEnd:   time.Now().Add(time.Hour),
@@ -144,7 +119,7 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 		}
 		signOpts.CertificateProvider = sign.NewFulcio(fulcioOpts)
 		signOpts.CertificateProviderOptions = &sign.CertificateProviderOptions{
-			IDToken: req.GetIdToken(),
+			IDToken: oidcSigner.GetIdToken(),
 		}
 
 		// Use timestamp authortiy to sign the agent.
@@ -188,24 +163,26 @@ func (c *Client) SignOIDC(ctx context.Context, req *signtypes.SignOIDCRequest) (
 
 	signedAgent, err := c.sign(ctx, req.GetAgent(), signKeypair, signOpts)
 
-	response := signtypes.SignOIDCResponse{
+	response := signtypes.SignResponse{
 		Agent: signedAgent,
 	}
 
 	return &response, err
 }
 
-func (c *Client) SignWithKey(ctx context.Context, req *signtypes.SignWithKeyRequest) (*signtypes.SignWithKeyResponse, error) {
+func (c *Client) SignWithKey(ctx context.Context, req *signtypes.SignRequest) (*signtypes.SignResponse, error) {
+	keySigner := req.GetProvider().GetKey()
+
 	// Generate a keypair from the provided private key bytes.
 	// The keypair hint is derived from the public key and will be used for verification.
-	signKeypair, err := cosign.LoadKeypair(req.GetPrivateKey(), req.GetPassword())
+	signKeypair, err := cosign.LoadKeypair(keySigner.GetPrivateKey(), keySigner.GetPassword())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keypair: %w", err)
 	}
 
 	signedAgent, err := c.sign(ctx, req.GetAgent(), signKeypair, sign.BundleOptions{})
 
-	response := signtypes.SignWithKeyResponse{
+	response := signtypes.SignResponse{
 		Agent: signedAgent,
 	}
 

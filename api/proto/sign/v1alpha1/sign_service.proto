@@ -6,31 +6,36 @@ syntax = "proto3";
 package sign.v1alpha1;
 
 import "core/v1alpha1/agent.proto";
-import "google/protobuf/empty.proto";
 
 service SignService {
   // Sign agents using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
   rpc Sign(SignRequest) returns (SignResponse);
 
   // Verify signed agents using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
-  rpc Verify(VerifyRequest) returns (google.protobuf.Empty);
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
 }
 
 message SignRequest {
-  oneof request {
-    SignOIDCRequest oidc = 1;
-    SignWithKeyRequest key = 2;
+  // Agent to be signed
+  core.v1alpha1.Agent agent = 1;
+
+  // Signing provider to use
+  SignRequestProvider provider = 2;
+}
+
+message SignRequestProvider {
+  oneof provider {
+    SignWithOIDC oidc = 1;
+    SignWithKey key = 2;
   }
 }
 
 message SignResponse {
-  oneof response {
-    SignOIDCResponse oidc = 1;
-    SignWithKeyResponse key = 2;
-  }
+  // Signed agent
+  core.v1alpha1.Agent agent = 1;
 }
 
-message SignOIDCRequest {
+message SignWithOIDC {
   // List of sign options for OIDC
   message SignOpts {
     // Fulcio authority access URL (default value: https://fulcio.sigstage.dev)
@@ -46,59 +51,50 @@ message SignOIDCRequest {
     optional string oidc_provider_url = 4;
   }
 
-  // Agent data for signing
-  core.v1alpha1.Agent agent = 1;
-
   // Token for OIDC provider
-  string id_token = 2;
+  string id_token = 1;
 
   // Signing options for OIDC
-  SignOpts options = 3;
+  SignOpts options = 2;
 }
 
-message SignWithKeyRequest {
-  // Agent data for signing
-  core.v1alpha1.Agent agent = 1;
-
+message SignWithKey {
   // Private key used for signing
-  bytes private_key = 2;
+  bytes private_key = 1;
 
   // Password to unlock the private key
-  optional bytes password = 3;
-}
-
-message SignOIDCResponse {
-  // Signed agent data
-  core.v1alpha1.Agent agent = 1;
-}
-
-message SignWithKeyResponse {
-  // Signed agent data
-  core.v1alpha1.Agent agent = 1;
+  optional bytes password = 2;
 }
 
 message VerifyRequest {
-  oneof request {
-    VerifyOIDCRequest oidc = 1;
-    VerifyWithKeyRequest key = 2;
+  // Signed agent to be verified
+  core.v1alpha1.Agent agent = 1;
+
+  // Verification provider to use
+  VerifyRequestProvider provider = 2;
+}
+
+message VerifyRequestProvider {
+  oneof provider {
+    VerifyWithOIDC oidc = 1;
+    VerifyWithKey key = 2;
   }
 }
 
-message VerifyOIDCRequest {
-  // Signed agent data
-  core.v1alpha1.Agent agent = 1;
-
+message VerifyWithOIDC {
   // Expected issuer in the signed agent
-  string expected_issuer = 2;
+  string expected_issuer = 1;
 
   // Expected signer in the signed agent
-  string expected_signer = 3;
+  string expected_signer = 2;
 }
 
-message VerifyWithKeyRequest {
-  // Signed agent data
-  core.v1alpha1.Agent agent = 1;
-
+message VerifyWithKey {
   // Public key to validate the signed agent
-  bytes public_key = 2;
+  bytes public_key = 1;
+}
+
+message VerifyResponse {
+  // The verify process result
+  bool success = 1;
 }

@@ -23,10 +23,9 @@ _sym_db = _symbol_database.Default()
 
 
 from core.v1alpha1 import agent_pb2 as core_dot_v1alpha1_dot_agent__pb2
-from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n sign/v1alpha1/sign_service.proto\x12\rsign.v1alpha1\x1a\x19\x63ore/v1alpha1/agent.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x85\x01\n\x0bSignRequest\x12\x34\n\x04oidc\x18\x01 \x01(\x0b\x32\x1e.sign.v1alpha1.SignOIDCRequestH\x00R\x04oidc\x12\x35\n\x03key\x18\x02 \x01(\x0b\x32!.sign.v1alpha1.SignWithKeyRequestH\x00R\x03keyB\t\n\x07request\"\x89\x01\n\x0cSignResponse\x12\x35\n\x04oidc\x18\x01 \x01(\x0b\x32\x1f.sign.v1alpha1.SignOIDCResponseH\x00R\x04oidc\x12\x36\n\x03key\x18\x02 \x01(\x0b\x32\".sign.v1alpha1.SignWithKeyResponseH\x00R\x03keyB\n\n\x08response\"\x8e\x03\n\x0fSignOIDCRequest\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\x12\x19\n\x08id_token\x18\x02 \x01(\tR\x07idToken\x12\x41\n\x07options\x18\x03 \x01(\x0b\x32\'.sign.v1alpha1.SignOIDCRequest.SignOptsR\x07options\x1a\xf0\x01\n\x08SignOpts\x12\"\n\nfulcio_url\x18\x01 \x01(\tH\x00R\tfulcioUrl\x88\x01\x01\x12 \n\trekor_url\x18\x02 \x01(\tH\x01R\x08rekorUrl\x88\x01\x01\x12(\n\rtimestamp_url\x18\x03 \x01(\tH\x02R\x0ctimestampUrl\x88\x01\x01\x12/\n\x11oidc_provider_url\x18\x04 \x01(\tH\x03R\x0foidcProviderUrl\x88\x01\x01\x42\r\n\x0b_fulcio_urlB\x0c\n\n_rekor_urlB\x10\n\x0e_timestamp_urlB\x14\n\x12_oidc_provider_url\"\x8f\x01\n\x12SignWithKeyRequest\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\x12\x1f\n\x0bprivate_key\x18\x02 \x01(\x0cR\nprivateKey\x12\x1f\n\x08password\x18\x03 \x01(\x0cH\x00R\x08password\x88\x01\x01\x42\x0b\n\t_password\">\n\x10SignOIDCResponse\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\"A\n\x13SignWithKeyResponse\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\"\x8b\x01\n\rVerifyRequest\x12\x36\n\x04oidc\x18\x01 \x01(\x0b\x32 .sign.v1alpha1.VerifyOIDCRequestH\x00R\x04oidc\x12\x37\n\x03key\x18\x02 \x01(\x0b\x32#.sign.v1alpha1.VerifyWithKeyRequestH\x00R\x03keyB\t\n\x07request\"\x91\x01\n\x11VerifyOIDCRequest\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\x12\'\n\x0f\x65xpected_issuer\x18\x02 \x01(\tR\x0e\x65xpectedIssuer\x12\'\n\x0f\x65xpected_signer\x18\x03 \x01(\tR\x0e\x65xpectedSigner\"a\n\x14VerifyWithKeyRequest\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\x12\x1d\n\npublic_key\x18\x02 \x01(\x0cR\tpublicKey2\x8e\x01\n\x0bSignService\x12?\n\x04Sign\x12\x1a.sign.v1alpha1.SignRequest\x1a\x1b.sign.v1alpha1.SignResponse\x12>\n\x06Verify\x12\x1c.sign.v1alpha1.VerifyRequest\x1a\x16.google.protobuf.EmptyB\xb0\x01\n\x11\x63om.sign.v1alpha1B\x10SignServiceProtoP\x01Z4github.com/agntcy/dir/api/sign/v1alpha1;signv1alpha1\xa2\x02\x03SXX\xaa\x02\rSign.V1alpha1\xca\x02\rSign\\V1alpha1\xe2\x02\x19Sign\\V1alpha1\\GPBMetadata\xea\x02\x0eSign::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n sign/v1alpha1/sign_service.proto\x12\rsign.v1alpha1\x1a\x19\x63ore/v1alpha1/agent.proto\"y\n\x0bSignRequest\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\x12>\n\x08provider\x18\x02 \x01(\x0b\x32\".sign.v1alpha1.SignRequestProviderR\x08provider\"\x84\x01\n\x13SignRequestProvider\x12\x31\n\x04oidc\x18\x01 \x01(\x0b\x32\x1b.sign.v1alpha1.SignWithOIDCH\x00R\x04oidc\x12.\n\x03key\x18\x02 \x01(\x0b\x32\x1a.sign.v1alpha1.SignWithKeyH\x00R\x03keyB\n\n\x08provider\":\n\x0cSignResponse\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\"\xdc\x02\n\x0cSignWithOIDC\x12\x19\n\x08id_token\x18\x01 \x01(\tR\x07idToken\x12>\n\x07options\x18\x02 \x01(\x0b\x32$.sign.v1alpha1.SignWithOIDC.SignOptsR\x07options\x1a\xf0\x01\n\x08SignOpts\x12\"\n\nfulcio_url\x18\x01 \x01(\tH\x00R\tfulcioUrl\x88\x01\x01\x12 \n\trekor_url\x18\x02 \x01(\tH\x01R\x08rekorUrl\x88\x01\x01\x12(\n\rtimestamp_url\x18\x03 \x01(\tH\x02R\x0ctimestampUrl\x88\x01\x01\x12/\n\x11oidc_provider_url\x18\x04 \x01(\tH\x03R\x0foidcProviderUrl\x88\x01\x01\x42\r\n\x0b_fulcio_urlB\x0c\n\n_rekor_urlB\x10\n\x0e_timestamp_urlB\x14\n\x12_oidc_provider_url\"\\\n\x0bSignWithKey\x12\x1f\n\x0bprivate_key\x18\x01 \x01(\x0cR\nprivateKey\x12\x1f\n\x08password\x18\x02 \x01(\x0cH\x00R\x08password\x88\x01\x01\x42\x0b\n\t_password\"}\n\rVerifyRequest\x12*\n\x05\x61gent\x18\x01 \x01(\x0b\x32\x14.core.v1alpha1.AgentR\x05\x61gent\x12@\n\x08provider\x18\x02 \x01(\x0b\x32$.sign.v1alpha1.VerifyRequestProviderR\x08provider\"\x8a\x01\n\x15VerifyRequestProvider\x12\x33\n\x04oidc\x18\x01 \x01(\x0b\x32\x1d.sign.v1alpha1.VerifyWithOIDCH\x00R\x04oidc\x12\x30\n\x03key\x18\x02 \x01(\x0b\x32\x1c.sign.v1alpha1.VerifyWithKeyH\x00R\x03keyB\n\n\x08provider\"b\n\x0eVerifyWithOIDC\x12\'\n\x0f\x65xpected_issuer\x18\x01 \x01(\tR\x0e\x65xpectedIssuer\x12\'\n\x0f\x65xpected_signer\x18\x02 \x01(\tR\x0e\x65xpectedSigner\".\n\rVerifyWithKey\x12\x1d\n\npublic_key\x18\x01 \x01(\x0cR\tpublicKey\"*\n\x0eVerifyResponse\x12\x18\n\x07success\x18\x01 \x01(\x08R\x07success2\x95\x01\n\x0bSignService\x12?\n\x04Sign\x12\x1a.sign.v1alpha1.SignRequest\x1a\x1b.sign.v1alpha1.SignResponse\x12\x45\n\x06Verify\x12\x1c.sign.v1alpha1.VerifyRequest\x1a\x1d.sign.v1alpha1.VerifyResponseB\xb0\x01\n\x11\x63om.sign.v1alpha1B\x10SignServiceProtoP\x01Z4github.com/agntcy/dir/api/sign/v1alpha1;signv1alpha1\xa2\x02\x03SXX\xaa\x02\rSign.V1alpha1\xca\x02\rSign\\V1alpha1\xe2\x02\x19Sign\\V1alpha1\\GPBMetadata\xea\x02\x0eSign::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,26 +33,28 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'sign.v1alpha1.sign_service_
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\021com.sign.v1alpha1B\020SignServiceProtoP\001Z4github.com/agntcy/dir/api/sign/v1alpha1;signv1alpha1\242\002\003SXX\252\002\rSign.V1alpha1\312\002\rSign\\V1alpha1\342\002\031Sign\\V1alpha1\\GPBMetadata\352\002\016Sign::V1alpha1'
-  _globals['_SIGNREQUEST']._serialized_start=108
-  _globals['_SIGNREQUEST']._serialized_end=241
-  _globals['_SIGNRESPONSE']._serialized_start=244
-  _globals['_SIGNRESPONSE']._serialized_end=381
-  _globals['_SIGNOIDCREQUEST']._serialized_start=384
-  _globals['_SIGNOIDCREQUEST']._serialized_end=782
-  _globals['_SIGNOIDCREQUEST_SIGNOPTS']._serialized_start=542
-  _globals['_SIGNOIDCREQUEST_SIGNOPTS']._serialized_end=782
-  _globals['_SIGNWITHKEYREQUEST']._serialized_start=785
-  _globals['_SIGNWITHKEYREQUEST']._serialized_end=928
-  _globals['_SIGNOIDCRESPONSE']._serialized_start=930
-  _globals['_SIGNOIDCRESPONSE']._serialized_end=992
-  _globals['_SIGNWITHKEYRESPONSE']._serialized_start=994
-  _globals['_SIGNWITHKEYRESPONSE']._serialized_end=1059
-  _globals['_VERIFYREQUEST']._serialized_start=1062
-  _globals['_VERIFYREQUEST']._serialized_end=1201
-  _globals['_VERIFYOIDCREQUEST']._serialized_start=1204
-  _globals['_VERIFYOIDCREQUEST']._serialized_end=1349
-  _globals['_VERIFYWITHKEYREQUEST']._serialized_start=1351
-  _globals['_VERIFYWITHKEYREQUEST']._serialized_end=1448
-  _globals['_SIGNSERVICE']._serialized_start=1451
-  _globals['_SIGNSERVICE']._serialized_end=1593
+  _globals['_SIGNREQUEST']._serialized_start=78
+  _globals['_SIGNREQUEST']._serialized_end=199
+  _globals['_SIGNREQUESTPROVIDER']._serialized_start=202
+  _globals['_SIGNREQUESTPROVIDER']._serialized_end=334
+  _globals['_SIGNRESPONSE']._serialized_start=336
+  _globals['_SIGNRESPONSE']._serialized_end=394
+  _globals['_SIGNWITHOIDC']._serialized_start=397
+  _globals['_SIGNWITHOIDC']._serialized_end=745
+  _globals['_SIGNWITHOIDC_SIGNOPTS']._serialized_start=505
+  _globals['_SIGNWITHOIDC_SIGNOPTS']._serialized_end=745
+  _globals['_SIGNWITHKEY']._serialized_start=747
+  _globals['_SIGNWITHKEY']._serialized_end=839
+  _globals['_VERIFYREQUEST']._serialized_start=841
+  _globals['_VERIFYREQUEST']._serialized_end=966
+  _globals['_VERIFYREQUESTPROVIDER']._serialized_start=969
+  _globals['_VERIFYREQUESTPROVIDER']._serialized_end=1107
+  _globals['_VERIFYWITHOIDC']._serialized_start=1109
+  _globals['_VERIFYWITHOIDC']._serialized_end=1207
+  _globals['_VERIFYWITHKEY']._serialized_start=1209
+  _globals['_VERIFYWITHKEY']._serialized_end=1255
+  _globals['_VERIFYRESPONSE']._serialized_start=1257
+  _globals['_VERIFYRESPONSE']._serialized_end=1299
+  _globals['_SIGNSERVICE']._serialized_start=1302
+  _globals['_SIGNSERVICE']._serialized_end=1451
 # @@protoc_insertion_point(module_scope)

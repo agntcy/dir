@@ -14,7 +14,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -34,7 +33,7 @@ type SignServiceClient interface {
 	// Sign agents using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
 	Sign(ctx context.Context, in *SignRequest, opts ...grpc.CallOption) (*SignResponse, error)
 	// Verify signed agents using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
-	Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error)
 }
 
 type signServiceClient struct {
@@ -55,9 +54,9 @@ func (c *signServiceClient) Sign(ctx context.Context, in *SignRequest, opts ...g
 	return out, nil
 }
 
-func (c *signServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *signServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(VerifyResponse)
 	err := c.cc.Invoke(ctx, SignService_Verify_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -72,7 +71,7 @@ type SignServiceServer interface {
 	// Sign agents using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
 	Sign(context.Context, *SignRequest) (*SignResponse, error)
 	// Verify signed agents using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
-	Verify(context.Context, *VerifyRequest) (*emptypb.Empty, error)
+	Verify(context.Context, *VerifyRequest) (*VerifyResponse, error)
 }
 
 // UnimplementedSignServiceServer should be embedded to have
@@ -85,7 +84,7 @@ type UnimplementedSignServiceServer struct{}
 func (UnimplementedSignServiceServer) Sign(context.Context, *SignRequest) (*SignResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Sign not implemented")
 }
-func (UnimplementedSignServiceServer) Verify(context.Context, *VerifyRequest) (*emptypb.Empty, error) {
+func (UnimplementedSignServiceServer) Verify(context.Context, *VerifyRequest) (*VerifyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Verify not implemented")
 }
 func (UnimplementedSignServiceServer) testEmbeddedByValue() {}

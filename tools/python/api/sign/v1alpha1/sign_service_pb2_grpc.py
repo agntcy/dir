@@ -2,7 +2,6 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 from sign.v1alpha1 import sign_service_pb2 as sign_dot_v1alpha1_dot_sign__service__pb2
 
 
@@ -23,7 +22,7 @@ class SignServiceStub(object):
         self.Verify = channel.unary_unary(
                 '/sign.v1alpha1.SignService/Verify',
                 request_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                response_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyResponse.FromString,
                 _registered_method=True)
 
 
@@ -55,7 +54,7 @@ def add_SignServiceServicer_to_server(servicer, server):
             'Verify': grpc.unary_unary_rpc_method_handler(
                     servicer.Verify,
                     request_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                    response_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -111,7 +110,7 @@ class SignService(object):
             target,
             '/sign.v1alpha1.SignService/Verify',
             sign_dot_v1alpha1_dot_sign__service__pb2.VerifyRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            sign_dot_v1alpha1_dot_sign__service__pb2.VerifyResponse.FromString,
             options,
             channel_credentials,
             insecure,

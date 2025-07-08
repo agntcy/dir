@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 
-	signtypes "github.com/agntcy/dir/api/sign/v1alpha1"
+	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
@@ -20,13 +20,10 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/util"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 	"github.com/theupdateframework/go-tuf/v2/metadata/fetcher"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-var emptyResponse = &emptypb.Empty{}
-
 // Verify verifies the signature of the agent using OIDC.
-func (c *Client) VerifyOIDC(_ context.Context, req *signtypes.VerifyOIDCRequest) (*emptypb.Empty, error) {
+func (c *Client) VerifyWithOIDC(_ context.Context, req *signv1alpha1.VerifyRequest) (*signv1alpha1.VerifyResponse, error) {
 	agent := req.GetAgent()
 
 	// Validate request.
@@ -61,11 +58,13 @@ func (c *Client) VerifyOIDC(_ context.Context, req *signtypes.VerifyOIDCRequest)
 
 	agent.Signature = agentSignature
 
+	oidcVerifier := req.GetProvider().GetOidc()
+
 	// Load identity verification options.
 	var identityPolicy verify.PolicyOption
 	{
 		// Create OIDC identity matcher for verification.
-		certID, err := verify.NewShortCertificateIdentity("", req.GetExpectedIssuer(), "", req.GetExpectedSigner())
+		certID, err := verify.NewShortCertificateIdentity("", oidcVerifier.GetExpectedIssuer(), "", oidcVerifier.GetExpectedSigner())
 		if err != nil {
 			return nil, fmt.Errorf("failed to create certificate identity: %w", err)
 		}
@@ -116,13 +115,19 @@ func (c *Client) VerifyOIDC(_ context.Context, req *signtypes.VerifyOIDCRequest)
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
 
+	response := &signv1alpha1.VerifyResponse{
+		Success: err == nil,
+	}
+
 	// Verify the signature.
-	return emptyResponse, nil
+	return response, nil
 }
 
-func (c *Client) VerifyWithKey(_ context.Context, req *signtypes.VerifyWithKeyRequest) (*emptypb.Empty, error) {
+func (c *Client) VerifyWithKey(_ context.Context, req *signv1alpha1.VerifyRequest) (*signv1alpha1.VerifyResponse, error) {
+	keyVerifier := req.GetProvider().GetKey()
+
 	// Validate request.
-	if len(req.GetPublicKey()) == 0 {
+	if len(keyVerifier.GetPublicKey()) == 0 {
 		return nil, errors.New("key must not be empty")
 	}
 
@@ -157,7 +162,7 @@ func (c *Client) VerifyWithKey(_ context.Context, req *signtypes.VerifyWithKeyRe
 	}
 
 	// Decode the PEM-encoded public key and generate the expected hint.
-	p, _ := pem.Decode(req.GetPublicKey())
+	p, _ := pem.Decode(keyVerifier.GetPublicKey())
 	if p == nil {
 		return nil, errors.New("failed to decode PEM block containing public key")
 	}
@@ -172,5 +177,9 @@ func (c *Client) VerifyWithKey(_ context.Context, req *signtypes.VerifyWithKeyRe
 		return nil, fmt.Errorf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
 	}
 
-	return emptyResponse, nil
+	response := &signv1alpha1.VerifyResponse{
+		Success: err == nil,
+	}
+
+	return response, nil
 }

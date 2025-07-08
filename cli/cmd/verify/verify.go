@@ -77,9 +77,15 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read key file: %w", err)
 		}
 
-		req := &signv1alpha1.VerifyWithKeyRequest{
-			Agent:     agent,
-			PublicKey: rawPubKey,
+		req := &signv1alpha1.VerifyRequest{
+			Agent: agent,
+			Provider: &signv1alpha1.VerifyRequestProvider{
+				Provider: &signv1alpha1.VerifyRequestProvider_Key{
+					Key: &signv1alpha1.VerifyWithKey{
+						PublicKey: rawPubKey,
+					},
+				},
+			},
 		}
 
 		// Verify the agent using the provided key
@@ -88,14 +94,20 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to verify agent: %w", err)
 		}
 	} else {
-		req := &signv1alpha1.VerifyOIDCRequest{
-			Agent:          agent,
-			ExpectedIssuer: opts.OIDCIssuer,
-			ExpectedSigner: opts.OIDCIdentity,
+		req := &signv1alpha1.VerifyRequest{
+			Agent: agent,
+			Provider: &signv1alpha1.VerifyRequestProvider{
+				Provider: &signv1alpha1.VerifyRequestProvider_Oidc{
+					Oidc: &signv1alpha1.VerifyWithOIDC{
+						ExpectedIssuer: opts.OIDCIssuer,
+						ExpectedSigner: opts.OIDCIdentity,
+					},
+				},
+			},
 		}
 
 		// Verify the agent using the OIDC provider
-		_, err := c.VerifyOIDC(cmd.Context(), req)
+		_, err := c.VerifyWithOIDC(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to verify agent: %w", err)
 		}
