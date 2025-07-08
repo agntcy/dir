@@ -12,9 +12,6 @@ import (
 	"syscall"
 
 	"github.com/Portshift/go-utils/healthz"
-	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	searchv1 "github.com/agntcy/dir/api/search/v1"
-	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/api/version"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
@@ -24,6 +21,10 @@ import (
 	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
+	"github.com/spiffe/go-spiffe/v2/spiffeid"
+	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
+	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -96,8 +97,31 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Create sync service
 	syncService := sync.New(databaseAPI, storeAPI, options)
 
-	// Create server
-	server := &Server{
+	// Create a `workloadapi.X509Source`, it will connect to Workload API using provided socket path
+	source, err := workloadapi.NewX509Source(ctx, workloadapi.WithClientOptions(workloadapi.WithAddr(cfg.SpiffeWorkloadAddress)))
+	if err != nil {
+		return nil, fmt.Errorf("unable to create X509Source: %w", err)
+	}
+	defer source.Close()
+
+	// Allowed SPIFFE ID
+	clientDomain := spiffeid.RequireTrustDomainFromString("spiffe://example.org")
+
+	// Create a server with credentials that do mTLS and verify that the presented certificate has SPIFFE ID `spiffe://example.org/client`
+	grpcServer := grpc.NewServer(grpc.Creds(
+		grpccredentials.MTLSServerCredentials(source, source, tlsconfig.AuthorizeMemberOf(clientDomain)),
+	))
+
+	// Register APIs
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
+	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
+	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI))
+	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
+
+	// Register server
+	reflection.Register(grpcServer)
+
+	return &Server{
 		options:       options,
 		store:         storeAPI,
 		routing:       routingAPI,
@@ -105,18 +129,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		syncService:   syncService,
 		healthzServer: healthz.NewHealthServer(cfg.HealthCheckAddress),
 		grpcServer:    grpc.NewServer(),
-	}
-
-	// Register APIs
-	storev1.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
-	routingv1.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
-	searchv1.RegisterSearchServiceServer(server.grpcServer, controller.NewSearchController(databaseAPI))
-	storev1.RegisterSyncServiceServer(server.grpcServer, controller.NewSyncController(databaseAPI, options))
-
-	// Register server
-	reflection.Register(server.grpcServer)
-
-	return server, nil
+	}, nil
 }
 
 func (s Server) Options() types.APIOptions { return s.options }

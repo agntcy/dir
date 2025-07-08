@@ -14,15 +14,18 @@ import (
 const (
 	DefaultEnvPrefix = "DIRECTORY_CLIENT"
 
-	DefaultServerAddress = "0.0.0.0:8888"
+	DefaultServerAddress         = "0.0.0.0:8888"
+	DefaultSpiffeWorkloadAddress = "tcp://0.0.0.0:8081"
 )
 
 var DefaultConfig = Config{
-	ServerAddress: DefaultServerAddress,
+	ServerAddress:         DefaultServerAddress,
+	SpiffeWorkloadAddress: DefaultSpiffeWorkloadAddress,
 }
 
 type Config struct {
-	ServerAddress string `json:"server_address,omitempty" mapstructure:"server_address"`
+	ServerAddress         string `json:"server_address,omitempty" mapstructure:"server_address"`
+	SpiffeWorkloadAddress string `json:"spiffe_workload_address,omitempty" mapstructure:"spiffe_workload_address"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -37,6 +40,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("server_address")
 	v.SetDefault("server_address", DefaultServerAddress)
+
+	_ = v.BindEnv("spiffe_workload_address")
+	v.SetDefault("spiffe_workload_address", DefaultSpiffeWorkloadAddress)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
