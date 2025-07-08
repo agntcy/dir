@@ -36,15 +36,6 @@ message SignOIDCRequest {
 
     // OIDC provider access URL (default value: https://oauth2.sigstage.dev/auth)
     optional string oidc_provider_url = 4;
-
-    // Client identity for signing with OIDC (default value: sigstore)
-    optional string oidc_client_id = 5;
-
-    // Client token for signing with OIDC
-    string oidc_token = 6;
-
-    // Private key for signing with OIDC
-    string key = 7;
   }
 
   // Record data for signing

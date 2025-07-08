@@ -10,22 +10,16 @@ DESCRIPTOR: _descriptor.FileDescriptor
 class SignOIDCRequest(_message.Message):
     __slots__ = ("agent", "id_token", "options")
     class SignOpts(_message.Message):
-        __slots__ = ("fulcio_url", "rekor_url", "timestamp_url", "oidc_provider_url", "oidc_client_id", "oidc_token", "key")
+        __slots__ = ("fulcio_url", "rekor_url", "timestamp_url", "oidc_provider_url")
         FULCIO_URL_FIELD_NUMBER: _ClassVar[int]
         REKOR_URL_FIELD_NUMBER: _ClassVar[int]
         TIMESTAMP_URL_FIELD_NUMBER: _ClassVar[int]
         OIDC_PROVIDER_URL_FIELD_NUMBER: _ClassVar[int]
-        OIDC_CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
-        OIDC_TOKEN_FIELD_NUMBER: _ClassVar[int]
-        KEY_FIELD_NUMBER: _ClassVar[int]
         fulcio_url: str
         rekor_url: str
         timestamp_url: str
         oidc_provider_url: str
-        oidc_client_id: str
-        oidc_token: str
-        key: str
-        def __init__(self, fulcio_url: _Optional[str] = ..., rekor_url: _Optional[str] = ..., timestamp_url: _Optional[str] = ..., oidc_provider_url: _Optional[str] = ..., oidc_client_id: _Optional[str] = ..., oidc_token: _Optional[str] = ..., key: _Optional[str] = ...) -> None: ...
+        def __init__(self, fulcio_url: _Optional[str] = ..., rekor_url: _Optional[str] = ..., timestamp_url: _Optional[str] = ..., oidc_provider_url: _Optional[str] = ...) -> None: ...
     AGENT_FIELD_NUMBER: _ClassVar[int]
     ID_TOKEN_FIELD_NUMBER: _ClassVar[int]
     OPTIONS_FIELD_NUMBER: _ClassVar[int]

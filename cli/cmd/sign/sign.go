@@ -118,9 +118,6 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 				RekorUrl:        &opts.RekorURL,
 				TimestampUrl:    &opts.TimestampURL,
 				OidcProviderUrl: &opts.OIDCProviderURL,
-				OidcClientId:    &opts.OIDCClientID,
-				OidcToken:       opts.OIDCToken,
-				Key:             opts.Key,
 			},
 		}
 
@@ -146,9 +143,6 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 				RekorUrl:        &opts.RekorURL,
 				TimestampUrl:    &opts.TimestampURL,
 				OidcProviderUrl: &opts.OIDCProviderURL,
-				OidcClientId:    &opts.OIDCClientID,
-				OidcToken:       opts.OIDCToken,
-				Key:             opts.Key,
 			},
 		}
 
