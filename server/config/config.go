@@ -24,8 +24,9 @@ const (
 
 	// API configuration.
 
-	DefaultListenAddress      = "0.0.0.0:8888"
-	DefaultHealthCheckAddress = "0.0.0.0:8889"
+	DefaultListenAddress         = "0.0.0.0:8888"
+	DefaultHealthCheckAddress    = "0.0.0.0:8889"
+	DefaultSpiffeWorkloadAddress = "tcp://0.0.0.0:8081"
 
 	// Provider configuration.
 
@@ -40,8 +41,9 @@ var logger = logging.Logger("config")
 
 type Config struct {
 	// API configuration
-	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
-	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
+	ListenAddress         string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
+	HealthCheckAddress    string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
+	SpiffeWorkloadAddress string `json:"spiffe_workload_address,omitempty" mapstructure:"spiffe_workload_address"`
 
 	// Provider configuration
 	Provider string         `json:"provider,omitempty" mapstructure:"provider"`
@@ -90,6 +92,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("healthcheck_address")
 	v.SetDefault("healthcheck_address", DefaultHealthCheckAddress)
+
+	_ = v.BindEnv("spiffe_workload_address")
+	v.SetDefault("spiffe_workload_address", DefaultSpiffeWorkloadAddress)
 
 	//
 	// Provider configuration
