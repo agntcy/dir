@@ -7,6 +7,22 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class SignRequest(_message.Message):
+    __slots__ = ("oidc", "key")
+    OIDC_FIELD_NUMBER: _ClassVar[int]
+    KEY_FIELD_NUMBER: _ClassVar[int]
+    oidc: SignOIDCRequest
+    key: SignWithKeyRequest
+    def __init__(self, oidc: _Optional[_Union[SignOIDCRequest, _Mapping]] = ..., key: _Optional[_Union[SignWithKeyRequest, _Mapping]] = ...) -> None: ...
+
+class SignResponse(_message.Message):
+    __slots__ = ("oidc", "key")
+    OIDC_FIELD_NUMBER: _ClassVar[int]
+    KEY_FIELD_NUMBER: _ClassVar[int]
+    oidc: SignOIDCResponse
+    key: SignWithKeyResponse
+    def __init__(self, oidc: _Optional[_Union[SignOIDCResponse, _Mapping]] = ..., key: _Optional[_Union[SignWithKeyResponse, _Mapping]] = ...) -> None: ...
+
 class SignOIDCRequest(_message.Message):
     __slots__ = ("agent", "id_token", "options")
     class SignOpts(_message.Message):
@@ -49,6 +65,14 @@ class SignWithKeyResponse(_message.Message):
     AGENT_FIELD_NUMBER: _ClassVar[int]
     agent: _agent_pb2.Agent
     def __init__(self, agent: _Optional[_Union[_agent_pb2.Agent, _Mapping]] = ...) -> None: ...
+
+class VerifyRequest(_message.Message):
+    __slots__ = ("oidc", "key")
+    OIDC_FIELD_NUMBER: _ClassVar[int]
+    KEY_FIELD_NUMBER: _ClassVar[int]
+    oidc: VerifyOIDCRequest
+    key: VerifyWithKeyRequest
+    def __init__(self, oidc: _Optional[_Union[VerifyOIDCRequest, _Mapping]] = ..., key: _Optional[_Union[VerifyWithKeyRequest, _Mapping]] = ...) -> None: ...
 
 class VerifyOIDCRequest(_message.Message):
     __slots__ = ("agent", "expected_issuer", "expected_signer")

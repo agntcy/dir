@@ -23,24 +23,18 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SignService_SignOIDC_FullMethodName      = "/sign.v1alpha2.SignService/SignOIDC"
-	SignService_SignWithKey_FullMethodName   = "/sign.v1alpha2.SignService/SignWithKey"
-	SignService_VerifyOIDC_FullMethodName    = "/sign.v1alpha2.SignService/VerifyOIDC"
-	SignService_VerifyWithKey_FullMethodName = "/sign.v1alpha2.SignService/VerifyWithKey"
+	SignService_Sign_FullMethodName   = "/sign.v1alpha2.SignService/Sign"
+	SignService_Verify_FullMethodName = "/sign.v1alpha2.SignService/Verify"
 )
 
 // SignServiceClient is the client API for SignService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SignServiceClient interface {
-	// Sign record using keyless OIDC based provider
-	SignOIDC(ctx context.Context, in *SignOIDCRequest, opts ...grpc.CallOption) (*SignOIDCResponse, error)
-	// Sign record using PEM-encoded private key encrypted with an optional passphrase
-	SignWithKey(ctx context.Context, in *SignWithKeyRequest, opts ...grpc.CallOption) (*SignWithKeyResponse, error)
-	// Verify record agents using keyless OIDC based provider
-	VerifyOIDC(ctx context.Context, in *VerifyOIDCRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Verify record agents using PEM-encoded formatted PEM public key encrypted
-	VerifyWithKey(ctx context.Context, in *VerifyWithKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+	Sign(ctx context.Context, in *SignRequest, opts ...grpc.CallOption) (*SignResponse, error)
+	// Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+	Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type signServiceClient struct {
@@ -51,40 +45,20 @@ func NewSignServiceClient(cc grpc.ClientConnInterface) SignServiceClient {
 	return &signServiceClient{cc}
 }
 
-func (c *signServiceClient) SignOIDC(ctx context.Context, in *SignOIDCRequest, opts ...grpc.CallOption) (*SignOIDCResponse, error) {
+func (c *signServiceClient) Sign(ctx context.Context, in *SignRequest, opts ...grpc.CallOption) (*SignResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SignOIDCResponse)
-	err := c.cc.Invoke(ctx, SignService_SignOIDC_FullMethodName, in, out, cOpts...)
+	out := new(SignResponse)
+	err := c.cc.Invoke(ctx, SignService_Sign_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *signServiceClient) SignWithKey(ctx context.Context, in *SignWithKeyRequest, opts ...grpc.CallOption) (*SignWithKeyResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SignWithKeyResponse)
-	err := c.cc.Invoke(ctx, SignService_SignWithKey_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *signServiceClient) VerifyOIDC(ctx context.Context, in *VerifyOIDCRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *signServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, SignService_VerifyOIDC_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *signServiceClient) VerifyWithKey(ctx context.Context, in *VerifyWithKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, SignService_VerifyWithKey_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, SignService_Verify_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -95,14 +69,10 @@ func (c *signServiceClient) VerifyWithKey(ctx context.Context, in *VerifyWithKey
 // All implementations should embed UnimplementedSignServiceServer
 // for forward compatibility.
 type SignServiceServer interface {
-	// Sign record using keyless OIDC based provider
-	SignOIDC(context.Context, *SignOIDCRequest) (*SignOIDCResponse, error)
-	// Sign record using PEM-encoded private key encrypted with an optional passphrase
-	SignWithKey(context.Context, *SignWithKeyRequest) (*SignWithKeyResponse, error)
-	// Verify record agents using keyless OIDC based provider
-	VerifyOIDC(context.Context, *VerifyOIDCRequest) (*emptypb.Empty, error)
-	// Verify record agents using PEM-encoded formatted PEM public key encrypted
-	VerifyWithKey(context.Context, *VerifyWithKeyRequest) (*emptypb.Empty, error)
+	// Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+	Sign(context.Context, *SignRequest) (*SignResponse, error)
+	// Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+	Verify(context.Context, *VerifyRequest) (*emptypb.Empty, error)
 }
 
 // UnimplementedSignServiceServer should be embedded to have
@@ -112,17 +82,11 @@ type SignServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSignServiceServer struct{}
 
-func (UnimplementedSignServiceServer) SignOIDC(context.Context, *SignOIDCRequest) (*SignOIDCResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SignOIDC not implemented")
+func (UnimplementedSignServiceServer) Sign(context.Context, *SignRequest) (*SignResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Sign not implemented")
 }
-func (UnimplementedSignServiceServer) SignWithKey(context.Context, *SignWithKeyRequest) (*SignWithKeyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SignWithKey not implemented")
-}
-func (UnimplementedSignServiceServer) VerifyOIDC(context.Context, *VerifyOIDCRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VerifyOIDC not implemented")
-}
-func (UnimplementedSignServiceServer) VerifyWithKey(context.Context, *VerifyWithKeyRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VerifyWithKey not implemented")
+func (UnimplementedSignServiceServer) Verify(context.Context, *VerifyRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Verify not implemented")
 }
 func (UnimplementedSignServiceServer) testEmbeddedByValue() {}
 
@@ -144,74 +108,38 @@ func RegisterSignServiceServer(s grpc.ServiceRegistrar, srv SignServiceServer) {
 	s.RegisterService(&SignService_ServiceDesc, srv)
 }
 
-func _SignService_SignOIDC_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SignOIDCRequest)
+func _SignService_Sign_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SignServiceServer).SignOIDC(ctx, in)
+		return srv.(SignServiceServer).Sign(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SignService_SignOIDC_FullMethodName,
+		FullMethod: SignService_Sign_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SignServiceServer).SignOIDC(ctx, req.(*SignOIDCRequest))
+		return srv.(SignServiceServer).Sign(ctx, req.(*SignRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SignService_SignWithKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SignWithKeyRequest)
+func _SignService_Verify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SignServiceServer).SignWithKey(ctx, in)
+		return srv.(SignServiceServer).Verify(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SignService_SignWithKey_FullMethodName,
+		FullMethod: SignService_Verify_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SignServiceServer).SignWithKey(ctx, req.(*SignWithKeyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SignService_VerifyOIDC_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VerifyOIDCRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SignServiceServer).VerifyOIDC(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SignService_VerifyOIDC_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SignServiceServer).VerifyOIDC(ctx, req.(*VerifyOIDCRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SignService_VerifyWithKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VerifyWithKeyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SignServiceServer).VerifyWithKey(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: SignService_VerifyWithKey_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SignServiceServer).VerifyWithKey(ctx, req.(*VerifyWithKeyRequest))
+		return srv.(SignServiceServer).Verify(ctx, req.(*VerifyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -224,20 +152,12 @@ var SignService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SignServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SignOIDC",
-			Handler:    _SignService_SignOIDC_Handler,
+			MethodName: "Sign",
+			Handler:    _SignService_Sign_Handler,
 		},
 		{
-			MethodName: "SignWithKey",
-			Handler:    _SignService_SignWithKey_Handler,
-		},
-		{
-			MethodName: "VerifyOIDC",
-			Handler:    _SignService_VerifyOIDC_Handler,
-		},
-		{
-			MethodName: "VerifyWithKey",
-			Handler:    _SignService_VerifyWithKey_Handler,
+			MethodName: "Verify",
+			Handler:    _SignService_Verify_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

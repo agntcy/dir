@@ -15,24 +15,14 @@ class SignServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.SignOIDC = channel.unary_unary(
-                '/sign.v1alpha1.SignService/SignOIDC',
-                request_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignOIDCRequest.SerializeToString,
-                response_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignOIDCResponse.FromString,
+        self.Sign = channel.unary_unary(
+                '/sign.v1alpha1.SignService/Sign',
+                request_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignRequest.SerializeToString,
+                response_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignResponse.FromString,
                 _registered_method=True)
-        self.SignWithKey = channel.unary_unary(
-                '/sign.v1alpha1.SignService/SignWithKey',
-                request_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignWithKeyRequest.SerializeToString,
-                response_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignWithKeyResponse.FromString,
-                _registered_method=True)
-        self.VerifyOIDC = channel.unary_unary(
-                '/sign.v1alpha1.SignService/VerifyOIDC',
-                request_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyOIDCRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                _registered_method=True)
-        self.VerifyWithKey = channel.unary_unary(
-                '/sign.v1alpha1.SignService/VerifyWithKey',
-                request_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyWithKeyRequest.SerializeToString,
+        self.Verify = channel.unary_unary(
+                '/sign.v1alpha1.SignService/Verify',
+                request_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
 
@@ -40,29 +30,15 @@ class SignServiceStub(object):
 class SignServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def SignOIDC(self, request, context):
-        """Sign agents using keyless OIDC based provider
+    def Sign(self, request, context):
+        """Sign agents using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def SignWithKey(self, request, context):
-        """Sign agents using PEM-encoded private key encrypted with an optional passphrase
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def VerifyOIDC(self, request, context):
-        """Verify signed agents using keyless OIDC based provider
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def VerifyWithKey(self, request, context):
-        """Verify signed agents using PEM-encoded formatted PEM public key encrypted
+    def Verify(self, request, context):
+        """Verify signed agents using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -71,24 +47,14 @@ class SignServiceServicer(object):
 
 def add_SignServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'SignOIDC': grpc.unary_unary_rpc_method_handler(
-                    servicer.SignOIDC,
-                    request_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignOIDCRequest.FromString,
-                    response_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignOIDCResponse.SerializeToString,
+            'Sign': grpc.unary_unary_rpc_method_handler(
+                    servicer.Sign,
+                    request_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignRequest.FromString,
+                    response_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignResponse.SerializeToString,
             ),
-            'SignWithKey': grpc.unary_unary_rpc_method_handler(
-                    servicer.SignWithKey,
-                    request_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignWithKeyRequest.FromString,
-                    response_serializer=sign_dot_v1alpha1_dot_sign__service__pb2.SignWithKeyResponse.SerializeToString,
-            ),
-            'VerifyOIDC': grpc.unary_unary_rpc_method_handler(
-                    servicer.VerifyOIDC,
-                    request_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyOIDCRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            ),
-            'VerifyWithKey': grpc.unary_unary_rpc_method_handler(
-                    servicer.VerifyWithKey,
-                    request_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyWithKeyRequest.FromString,
+            'Verify': grpc.unary_unary_rpc_method_handler(
+                    servicer.Verify,
+                    request_deserializer=sign_dot_v1alpha1_dot_sign__service__pb2.VerifyRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -103,7 +69,7 @@ class SignService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def SignOIDC(request,
+    def Sign(request,
             target,
             options=(),
             channel_credentials=None,
@@ -116,9 +82,9 @@ class SignService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/sign.v1alpha1.SignService/SignOIDC',
-            sign_dot_v1alpha1_dot_sign__service__pb2.SignOIDCRequest.SerializeToString,
-            sign_dot_v1alpha1_dot_sign__service__pb2.SignOIDCResponse.FromString,
+            '/sign.v1alpha1.SignService/Sign',
+            sign_dot_v1alpha1_dot_sign__service__pb2.SignRequest.SerializeToString,
+            sign_dot_v1alpha1_dot_sign__service__pb2.SignResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -130,7 +96,7 @@ class SignService(object):
             _registered_method=True)
 
     @staticmethod
-    def SignWithKey(request,
+    def Verify(request,
             target,
             options=(),
             channel_credentials=None,
@@ -143,62 +109,8 @@ class SignService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/sign.v1alpha1.SignService/SignWithKey',
-            sign_dot_v1alpha1_dot_sign__service__pb2.SignWithKeyRequest.SerializeToString,
-            sign_dot_v1alpha1_dot_sign__service__pb2.SignWithKeyResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def VerifyOIDC(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/sign.v1alpha1.SignService/VerifyOIDC',
-            sign_dot_v1alpha1_dot_sign__service__pb2.VerifyOIDCRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def VerifyWithKey(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/sign.v1alpha1.SignService/VerifyWithKey',
-            sign_dot_v1alpha1_dot_sign__service__pb2.VerifyWithKeyRequest.SerializeToString,
+            '/sign.v1alpha1.SignService/Verify',
+            sign_dot_v1alpha1_dot_sign__service__pb2.VerifyRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,

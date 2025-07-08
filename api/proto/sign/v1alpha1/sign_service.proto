@@ -9,16 +9,25 @@ import "core/v1alpha1/agent.proto";
 import "google/protobuf/empty.proto";
 
 service SignService {
-  // Sign agents using keyless OIDC based provider
-  rpc SignOIDC(SignOIDCRequest) returns (SignOIDCResponse);
-  // Sign agents using PEM-encoded private key encrypted with an optional passphrase
-  rpc SignWithKey(SignWithKeyRequest) returns (SignWithKeyResponse);
+  // Sign agents using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+  rpc Sign(SignRequest) returns (SignResponse);
 
-  // Verify signed agents using keyless OIDC based provider
-  rpc VerifyOIDC(VerifyOIDCRequest) returns (google.protobuf.Empty);
+  // Verify signed agents using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+  rpc Verify(VerifyRequest) returns (google.protobuf.Empty);
+}
 
-  // Verify signed agents using PEM-encoded formatted PEM public key encrypted
-  rpc VerifyWithKey(VerifyWithKeyRequest) returns (google.protobuf.Empty);
+message SignRequest {
+  oneof request {
+    SignOIDCRequest oidc = 1;
+    SignWithKeyRequest key = 2;
+  }
+}
+
+message SignResponse {
+  oneof response {
+    SignOIDCResponse oidc = 1;
+    SignWithKeyResponse key = 2;
+  }
 }
 
 message SignOIDCRequest {
@@ -66,6 +75,13 @@ message SignOIDCResponse {
 message SignWithKeyResponse {
   // Signed agent data
   core.v1alpha1.Agent agent = 1;
+}
+
+message VerifyRequest {
+  oneof request {
+    VerifyOIDCRequest oidc = 1;
+    VerifyWithKeyRequest key = 2;
+  }
 }
 
 message VerifyOIDCRequest {

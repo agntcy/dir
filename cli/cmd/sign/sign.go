@@ -96,38 +96,46 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
 
-		req := &signv1alpha1.SignWithKeyRequest{
-			Agent:      agent,
-			PrivateKey: rawKey,
-			Password:   pw,
+		req := &signv1alpha1.SignRequest{
+			Request: &signv1alpha1.SignRequest_Key{
+				Key: &signv1alpha1.SignWithKeyRequest{
+					Agent:      agent,
+					PrivateKey: rawKey,
+					Password:   pw,
+				},
+			},
 		}
 
 		// Sign the agent using the provided key
-		response, err := c.SignWithKey(cmd.Context(), req)
+		response, err := c.Sign(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent with key: %w", err)
 		}
 
-		agentSigned = response.GetAgent()
+		agentSigned = response.GetKey().GetAgent()
 	} else if opts.OIDCToken != "" {
-		req := &signv1alpha1.SignOIDCRequest{
-			Agent:   agent,
-			IdToken: opts.OIDCToken,
-			Options: &signv1alpha1.SignOIDCRequest_SignOpts{
-				FulcioUrl:       &opts.FulcioURL,
-				RekorUrl:        &opts.RekorURL,
-				TimestampUrl:    &opts.TimestampURL,
-				OidcProviderUrl: &opts.OIDCProviderURL,
+		req := &signv1alpha1.SignRequest{
+			Request: &signv1alpha1.SignRequest_Oidc{
+				Oidc: &signv1alpha1.SignOIDCRequest{
+					Agent:   agent,
+					IdToken: opts.OIDCToken,
+					Options: &signv1alpha1.SignOIDCRequest_SignOpts{
+						FulcioUrl:       &opts.FulcioURL,
+						RekorUrl:        &opts.RekorURL,
+						TimestampUrl:    &opts.TimestampURL,
+						OidcProviderUrl: &opts.OIDCProviderURL,
+					},
+				},
 			},
 		}
 
 		// Sign the agent using the OIDC provider
-		response, err := c.SignOIDC(cmd.Context(), req)
+		response, err := c.Sign(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent: %w", err)
 		}
 
-		agentSigned = response.GetAgent()
+		agentSigned = response.GetOidc().GetAgent()
 	} else {
 		// Retrieve the token from the OIDC provider
 		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
@@ -135,24 +143,28 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to get OIDC token: %w", err)
 		}
 
-		req := &signv1alpha1.SignOIDCRequest{
-			Agent:   agent,
-			IdToken: token.RawString,
-			Options: &signv1alpha1.SignOIDCRequest_SignOpts{
-				FulcioUrl:       &opts.FulcioURL,
-				RekorUrl:        &opts.RekorURL,
-				TimestampUrl:    &opts.TimestampURL,
-				OidcProviderUrl: &opts.OIDCProviderURL,
+		req := &signv1alpha1.SignRequest{
+			Request: &signv1alpha1.SignRequest_Oidc{
+				Oidc: &signv1alpha1.SignOIDCRequest{
+					Agent:   agent,
+					IdToken: token.RawString,
+					Options: &signv1alpha1.SignOIDCRequest_SignOpts{
+						FulcioUrl:       &opts.FulcioURL,
+						RekorUrl:        &opts.RekorURL,
+						TimestampUrl:    &opts.TimestampURL,
+						OidcProviderUrl: &opts.OIDCProviderURL,
+					},
+				},
 			},
 		}
 
 		// Sign the agent using the OIDC provider
-		response, err := c.SignOIDC(cmd.Context(), req)
+		response, err := c.Sign(cmd.Context(), req)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent: %w", err)
 		}
 
-		agentSigned = response.GetAgent()
+		agentSigned = response.GetOidc().GetAgent()
 	}
 
 	// Print signed agent
