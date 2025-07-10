@@ -43,6 +43,8 @@ vars:
   UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
+  REGSYNC_VERSION: '0.9.0'
+  REGSYNC_BIN: '{{ .BIN_DIR }}/regsync-{{.REGSYNC_VERSION}}'
 
 tasks:
   ##
@@ -893,6 +895,16 @@ tasks:
       - rm {{.BIN_DIR}}/uvx
     status:
       - test -x {{.BIN_DIR}}/uv
+
+  deps:regsync:
+    desc: Install regsync
+    deps:
+      - deps:bin-dir
+    cmds:
+      - curl -sfL https://github.com/regclient/regclient/releases/download/v{{.REGSYNC_VERSION}}/regsync-{{OS}}-{{ARCH}} -o {{.REGSYNC_BIN}}
+      - chmod +x {{.REGSYNC_BIN}}
+    status:
+      - test -x {{.REGSYNC_BIN}}
 
   ##
   ## Helm
