@@ -1,0 +1,13 @@
+version: 1
+creds:
+  - registry: localhost:5000
+    tls: disabled
+  - registry: localhost:5001
+    tls: disabled
+defaults:
+  parallel: 2
+  interval: 60m
+sync:
+  - source: localhost:5000/demo
+    target: localhost:5001/demo
+    type: repository 

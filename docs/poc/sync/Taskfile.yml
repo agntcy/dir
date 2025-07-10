@@ -1,0 +1,36 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: '3'
+
+vars:
+  BIN_DIR: '{{ .ROOT_DIR }}/bin'
+  REGSYNC_VERSION: '0.9.0'
+  REGSYNC_BIN: '{{ .BIN_DIR }}/regsync-{{.REGSYNC_VERSION}}'
+
+tasks:
+  deps:bin-dir:
+    desc: Create bin directory
+    internal: true
+    run: once
+    cmd: mkdir -p {{.BIN_DIR}}
+    status:
+      - test -d {{.BIN_DIR}}
+
+  deps:regsync:
+    desc: Install regsync
+    deps:
+      - deps:bin-dir
+    cmds:
+      - curl -sfL https://github.com/regclient/regclient/releases/download/v{{.REGSYNC_VERSION}}/regsync-{{OS}}-{{ARCH}} -o {{.REGSYNC_BIN}}
+      - chmod +x {{.REGSYNC_BIN}}
+    status:
+      - test -x {{.REGSYNC_BIN}}
+
+  sync-poc:
+    deps:
+      - task: deps:regsync
+    cmds:
+      - docker compose up -d
+      - go run main.go
+      - docker compose down -v
