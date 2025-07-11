@@ -115,7 +115,7 @@ tasks:
   ##
   api:gen:
     desc: Generates API stubs
-    dir: ./api
+    dir: ./api/proto
     deps:
       - task: deps:protoc
       - task: deps:bufbuild
