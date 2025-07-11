@@ -67,7 +67,7 @@ func main() {
 	// TODO: Sync artifacts to dest registry
 	syncType := "zot"
 	switch syncType {
-	case "regclient":
+	case "regsync":
 		err := regsync.Sync(sourceRegistry, targetRegistry, sourceRepo, targetRepo)
 		if err != nil {
 			fmt.Printf("failed to sync artifacts: %v\n", err)
