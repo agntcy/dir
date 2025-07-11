@@ -34,3 +34,4 @@ tasks:
       - docker compose up -d
       - go run main.go
       - docker compose down -v
+      - git checkout -- zot-target-config.json

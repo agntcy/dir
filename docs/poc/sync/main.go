@@ -11,6 +11,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 
 	"regsync-poc/regsync"
+	"regsync-poc/zot"
 )
 
 // Connect to two zot registries with oras
@@ -64,15 +65,21 @@ func main() {
 	}
 
 	// TODO: Sync artifacts to dest registry
-	syncType := "regclient"
+	syncType := "zot"
 	switch syncType {
 	case "regclient":
 		err := regsync.Sync(sourceRegistry, targetRegistry, sourceRepo, targetRepo)
 		if err != nil {
 			fmt.Printf("failed to sync artifacts: %v\n", err)
 		}
-		// case "zot":
-		// 	sync := zot.Sync()
+	case "zot":
+		err := zot.Sync(sourceRegistry, targetRegistry, sourceRepo, targetRepo)
+		if err != nil {
+			fmt.Printf("failed to sync artifacts: %v\n", err)
+		}
+	default:
+		fmt.Printf("invalid sync type: %s\n", syncType)
+		return
 	}
 
 	// Verify artifacts exist in source registry
