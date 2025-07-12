@@ -6,7 +6,7 @@ syntax = "proto3";
 package routing.v1alpha1;
 
 import "google/protobuf/empty.proto";
-import "core/v1alpha1/object.proto";
+import "core/v1/record.proto";
 import "routing/v1alpha1/peer.proto";
 
 // Defines an interface for publication and retrieval
@@ -20,9 +20,11 @@ service RoutingService {
   // It is the API responsibility to fully construct the routing details,
   // these are minimal details needed for us to publish the request.
   rpc Publish(PublishRequest) returns (google.protobuf.Empty);
+
   // List all the available items across the network.
   // TODO: maybe remove to search?
   rpc List(ListRequest) returns (stream ListResponse);
+  
   // Unpublish a given object.
   // This will remove the object from the network.
   rpc Unpublish(UnpublishRequest) returns (google.protobuf.Empty);
@@ -31,7 +33,7 @@ service RoutingService {
 message PublishRequest {
   // Published record reference.
   // On publish, we read from the local store and extract the neccessary labels.
-  core.v1alpha1.ObjectRef record = 1;
+  core.v1.RecordRef record_ref = 1;
 
   // Announce the publication to the network.
   // This item will end up in the network
@@ -51,7 +53,7 @@ message ListRequest {
 
   // Target object, if any.
   // If set, it will return only the object with the given reference.
-  optional core.v1alpha1.ObjectRef record = 3;
+  optional core.v1.RecordRef record_ref = 3;
 
   // Max routing depth.
   optional uint32 max_hops = 4;
@@ -75,7 +77,7 @@ message ListResponse {
 
     // Found object if any.
     // If empty, then only the labels are important.
-    optional core.v1alpha1.ObjectRef record = 4;
+    optional core.v1.RecordRef record_ref = 4;
   }
 
   // Returned items that match a given request
@@ -85,7 +87,7 @@ message ListResponse {
 message UnpublishRequest {
   // Reference to the record to be unpublished.
   // On unpublish, we read from the local store and remove the associated labels.
-  core.v1alpha1.ObjectRef record = 1;
+  core.v1.RecordRef record_ref = 1;
 
   // Notify the network about the unpublication.
   // This will remove the item from the network

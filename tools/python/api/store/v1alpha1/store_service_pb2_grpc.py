@@ -2,8 +2,8 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from core.v1alpha1 import object_pb2 as core_dot_v1alpha1_dot_object__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+from store.v1alpha1 import object_pb2 as store_dot_v1alpha1_dot_object__pb2
 
 
 class StoreServiceStub(object):
@@ -20,22 +20,22 @@ class StoreServiceStub(object):
         """
         self.Push = channel.stream_unary(
                 '/store.v1alpha1.StoreService/Push',
-                request_serializer=core_dot_v1alpha1_dot_object__pb2.Object.SerializeToString,
-                response_deserializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
+                request_serializer=store_dot_v1alpha1_dot_object__pb2.Object.SerializeToString,
+                response_deserializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
                 _registered_method=True)
         self.Pull = channel.unary_stream(
                 '/store.v1alpha1.StoreService/Pull',
-                request_serializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
-                response_deserializer=core_dot_v1alpha1_dot_object__pb2.Object.FromString,
+                request_serializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
+                response_deserializer=store_dot_v1alpha1_dot_object__pb2.Object.FromString,
                 _registered_method=True)
         self.Lookup = channel.unary_unary(
                 '/store.v1alpha1.StoreService/Lookup',
-                request_serializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
-                response_deserializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
+                request_serializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
+                response_deserializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
                 _registered_method=True)
         self.Delete = channel.unary_unary(
                 '/store.v1alpha1.StoreService/Delete',
-                request_serializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
+                request_serializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
 
@@ -79,22 +79,22 @@ def add_StoreServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Push': grpc.stream_unary_rpc_method_handler(
                     servicer.Push,
-                    request_deserializer=core_dot_v1alpha1_dot_object__pb2.Object.FromString,
-                    response_serializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
+                    request_deserializer=store_dot_v1alpha1_dot_object__pb2.Object.FromString,
+                    response_serializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
             ),
             'Pull': grpc.unary_stream_rpc_method_handler(
                     servicer.Pull,
-                    request_deserializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
-                    response_serializer=core_dot_v1alpha1_dot_object__pb2.Object.SerializeToString,
+                    request_deserializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
+                    response_serializer=store_dot_v1alpha1_dot_object__pb2.Object.SerializeToString,
             ),
             'Lookup': grpc.unary_unary_rpc_method_handler(
                     servicer.Lookup,
-                    request_deserializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
-                    response_serializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
+                    request_deserializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
+                    response_serializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
             ),
             'Delete': grpc.unary_unary_rpc_method_handler(
                     servicer.Delete,
-                    request_deserializer=core_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
+                    request_deserializer=store_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -126,8 +126,8 @@ class StoreService(object):
             request_iterator,
             target,
             '/store.v1alpha1.StoreService/Push',
-            core_dot_v1alpha1_dot_object__pb2.Object.SerializeToString,
-            core_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
+            store_dot_v1alpha1_dot_object__pb2.Object.SerializeToString,
+            store_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
             options,
             channel_credentials,
             insecure,
@@ -153,8 +153,8 @@ class StoreService(object):
             request,
             target,
             '/store.v1alpha1.StoreService/Pull',
-            core_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
-            core_dot_v1alpha1_dot_object__pb2.Object.FromString,
+            store_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
+            store_dot_v1alpha1_dot_object__pb2.Object.FromString,
             options,
             channel_credentials,
             insecure,
@@ -180,8 +180,8 @@ class StoreService(object):
             request,
             target,
             '/store.v1alpha1.StoreService/Lookup',
-            core_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
-            core_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
+            store_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
+            store_dot_v1alpha1_dot_object__pb2.ObjectRef.FromString,
             options,
             channel_credentials,
             insecure,
@@ -207,7 +207,7 @@ class StoreService(object):
             request,
             target,
             '/store.v1alpha1.StoreService/Delete',
-            core_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
+            store_dot_v1alpha1_dot_object__pb2.ObjectRef.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,

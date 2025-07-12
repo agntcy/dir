@@ -1,3 +1,4 @@
+from core.v1 import record_pb2 as _record_pb2
 from search.v1alpha2 import record_query_pb2 as _record_query_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
@@ -18,7 +19,7 @@ class SearchRequest(_message.Message):
     def __init__(self, queries: _Optional[_Iterable[_Union[_record_query_pb2.RecordQuery, _Mapping]]] = ..., limit: _Optional[int] = ..., offset: _Optional[int] = ...) -> None: ...
 
 class SearchResponse(_message.Message):
-    __slots__ = ("record_cid",)
-    RECORD_CID_FIELD_NUMBER: _ClassVar[int]
-    record_cid: str
-    def __init__(self, record_cid: _Optional[str] = ...) -> None: ...
+    __slots__ = ("record_ref",)
+    RECORD_REF_FIELD_NUMBER: _ClassVar[int]
+    record_ref: _record_pb2.RecordRef
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ...) -> None: ...

@@ -10,9 +10,8 @@ import (
 	"os"
 	"testing"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/server/store/localfs/config"
-	"github.com/opencontainers/go-digest"
+	"github.com/agntcy/dir/server/store/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,39 +23,31 @@ func TestStore(t *testing.T) {
 	assert.NoError(t, err, "failed to create store")
 
 	// Define testing object
-	objContents := []byte("example!")
-	objRef := &coretypes.ObjectRef{
-		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
-		Digest: digest.FromBytes(objContents).String(),
-		Size:   uint64(len(objContents)),
-		Annotations: map[string]string{
-			"name":       "name",
-			"version":    "version",
-			"created_at": "created_at",
-		},
-	}
+	data := []byte("test")
+	object, err := testutil.CreateTestObjectWithDefaults(data)
+	assert.NoError(t, err, "failed to create test object")
 
 	// Push
-	digest, err := store.Push(ctx, objRef, bytes.NewReader(objContents))
+	pushedObject, err := store.Push(ctx, object, bytes.NewReader(data))
 	assert.NoError(t, err, "push failed")
 
 	// Lookup
-	fetchedMeta, err := store.Lookup(ctx, digest)
+	fetchedMeta, err := store.Lookup(ctx, pushedObject)
 	assert.NoError(t, err, "lookup failed")
-	assert.Equal(t, objRef.GetDigest(), fetchedMeta.GetDigest())
-	assert.Equal(t, objRef.GetType(), fetchedMeta.GetType())
-	assert.Equal(t, objRef.GetSize(), fetchedMeta.GetSize())
-	assert.Equal(t, objRef.GetAnnotations(), fetchedMeta.GetAnnotations())
+	assert.Equal(t, pushedObject.CID(), fetchedMeta.CID())
+	assert.Equal(t, pushedObject.Type(), fetchedMeta.Type())
+	assert.Equal(t, pushedObject.Size(), fetchedMeta.Size())
+	assert.Equal(t, pushedObject.Annotations(), fetchedMeta.Annotations())
 
 	// Pull
-	fetchedReader, err := store.Pull(ctx, digest)
+	fetchedReader, err := store.Pull(ctx, pushedObject)
 	assert.NoErrorf(t, err, "pull failed")
 
 	fetchedContents, _ := io.ReadAll(fetchedReader)
 	// TODO: fix chunking and sizing issues
-	assert.Equal(t, objContents, fetchedContents[:len(objContents)])
+	assert.Equal(t, data, fetchedContents[:len(data)])
 
 	// Delete
-	err = store.Delete(ctx, digest)
+	err = store.Delete(ctx, pushedObject)
 	assert.NoErrorf(t, err, "delete failed")
 }

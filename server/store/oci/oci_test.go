@@ -12,18 +12,17 @@ import (
 	"strconv"
 	"testing"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	coretypes "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/server/store/testutil"
 	"github.com/agntcy/dir/server/types"
-	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 )
 
 // TODO: this should be configurable to unified Storage API test flow.
 var (
 	// test config.
-	testAgentPath = "./testdata/agent.json"
-	testConfig    = ociconfig.Config{
+	testConfig = ociconfig.Config{
 		LocalDir:        os.TempDir(),                         // used for local test/bench
 		RegistryAddress: "localhost:5000",                     // used for remote test/bench
 		RepositoryName:  "test-store",                         // used for remote test/bench
@@ -37,49 +36,45 @@ var (
 	testCtx = context.Background()
 
 	// common bench.
-	benchObjectType = coretypes.ObjectType_OBJECT_TYPE_AGENT // for object type to create
-	benchChunk      = bytes.Repeat([]byte{1}, 4096)          // for checking chunking efficiency based on size
+	benchObjectType = coretypes.ObjectType_OBJECT_TYPE_RAW // for object type to create
+	benchChunk      = bytes.Repeat([]byte{1}, 4096)        // for checking chunking efficiency based on size
 )
 
-func TestStore(t *testing.T) {
+func TestStorePushLookupPullDelete(t *testing.T) {
 	store := loadLocalStore(t)
 
-	// load agent
-	agent := &coretypes.Agent{}
+	data := []byte("test")
+	object, err := testutil.CreateTestObjectWithDefaults(data)
+	assert.NoErrorf(t, err, "failed to create test object")
 
-	agentRaw, err := agent.LoadFromFile(testAgentPath)
-	if err != nil {
-		t.Fatalf("failed to load test agent: %v", err)
-	}
-
-	objRef := getRefForData(coretypes.ObjectType_OBJECT_TYPE_AGENT.String(), agentRaw, map[string]string{
-		"name":       agent.GetName(),
-		"version":    agent.GetVersion(),
-		"created_at": agent.GetCreatedAt(),
-	})
-
-	// push op
-	dgst, err := store.Push(testCtx, objRef, bytes.NewReader(agentRaw))
+	objRef, err := store.Push(testCtx, object, bytes.NewReader(data))
 	assert.NoErrorf(t, err, "push failed")
+	assert.Equal(t, object.CID(), objRef.CID())
+	assert.Equal(t, object.Type(), objRef.Type())
+	assert.Equal(t, object.Size(), objRef.Size())
+	assert.Equal(t, object.Annotations(), objRef.Annotations())
 
 	// lookup op
-	fetchedRef, err := store.Lookup(testCtx, dgst)
+	fetchedObject, err := store.Lookup(testCtx, objRef)
 	assert.NoErrorf(t, err, "lookup failed")
-	assert.Equal(t, *objRef, *fetchedRef) //nolint:govet
+	assert.Equal(t, object.CID(), fetchedObject.CID())
+	assert.Equal(t, object.Type(), fetchedObject.Type())
+	assert.Equal(t, object.Size(), fetchedObject.Size())
+	assert.Equal(t, object.Annotations(), fetchedObject.Annotations())
 
 	// pull op
-	fetchedReader, err := store.Pull(testCtx, dgst)
+	fetchedReader, err := store.Pull(testCtx, objRef)
 	assert.NoErrorf(t, err, "pull failed")
 
 	fetchedContents, _ := io.ReadAll(fetchedReader)
-	assert.Equal(t, agentRaw, fetchedContents)
+	assert.Equal(t, data, fetchedContents)
 
 	// delete op
-	err = store.Delete(testCtx, dgst)
+	err = store.Delete(testCtx, objRef)
 	assert.NoErrorf(t, err, "delete failed")
 
 	// lookup op
-	_, err = store.Lookup(testCtx, dgst)
+	_, err = store.Lookup(testCtx, objRef)
 	assert.Error(t, err, "lookup should fail after delete")
 	assert.ErrorContains(t, err, "object not found")
 }
@@ -91,7 +86,7 @@ func BenchmarkLocalStore(b *testing.B) {
 
 	store := loadLocalStore(&testing.T{})
 	for step := range b.N {
-		benchmarkStep(store, benchObjectType.String(), append(benchChunk, []byte(strconv.Itoa(step))...))
+		benchmarkStep(store, benchObjectType, append(benchChunk, []byte(strconv.Itoa(step))...))
 	}
 }
 
@@ -102,11 +97,11 @@ func BenchmarkRemoteStore(b *testing.B) {
 
 	store := loadRemoteStore(&testing.T{})
 	for step := range b.N {
-		benchmarkStep(store, benchObjectType.String(), append(benchChunk, []byte(strconv.Itoa(step))...))
+		benchmarkStep(store, benchObjectType, append(benchChunk, []byte(strconv.Itoa(step))...))
 	}
 }
 
-func benchmarkStep(store types.StoreAPI, objectType string, objectData []byte) {
+func benchmarkStep(store types.StoreAPI, objectType coretypes.ObjectType, objectData []byte) {
 	// data to push
 	objectRef := getRefForData(objectType, objectData, nil)
 
@@ -123,7 +118,7 @@ func benchmarkStep(store types.StoreAPI, objectType string, objectData []byte) {
 	}
 
 	// assert equal
-	if pushedRef.GetDigest() != fetchedRef.GetDigest() || pushedRef.GetType() != fetchedRef.GetType() || pushedRef.GetSize() != fetchedRef.GetSize() {
+	if pushedRef.CID() != fetchedRef.CID() || pushedRef.Type() != fetchedRef.Type() || pushedRef.Size() != fetchedRef.Size() {
 		panic("not equal lookup")
 	}
 }
@@ -163,11 +158,15 @@ func loadRemoteStore(t *testing.T) types.StoreAPI {
 	return store
 }
 
-func getRefForData(objType string, data []byte, meta map[string]string) *coretypes.ObjectRef {
-	return &coretypes.ObjectRef{
-		Type:        objType,
-		Digest:      digest.FromBytes(data).String(),
-		Size:        uint64(len(data)),
+func getRefForData(objType coretypes.ObjectType, data []byte, meta map[string]string) types.Object {
+	object, err := testutil.CreateTestObject(testutil.TestObjectOptions{
+		ObjectType:  objType,
+		Data:        data,
 		Annotations: meta,
+	})
+	if err != nil {
+		panic(err)
 	}
+
+	return object
 }

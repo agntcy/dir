@@ -23,10 +23,10 @@ _sym_db = _symbol_database.Default()
 
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from core.v1alpha1 import object_pb2 as core_dot_v1alpha1_dot_object__pb2
+from store.v1alpha1 import object_pb2 as store_dot_v1alpha1_dot_object__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\"store/v1alpha1/store_service.proto\x12\x0estore.v1alpha1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1a\x63ore/v1alpha1/object.proto2\xfe\x01\n\x0cStoreService\x12\x39\n\x04Push\x12\x15.core.v1alpha1.Object\x1a\x18.core.v1alpha1.ObjectRef(\x01\x12\x39\n\x04Pull\x12\x18.core.v1alpha1.ObjectRef\x1a\x15.core.v1alpha1.Object0\x01\x12<\n\x06Lookup\x12\x18.core.v1alpha1.ObjectRef\x1a\x18.core.v1alpha1.ObjectRef\x12:\n\x06\x44\x65lete\x12\x18.core.v1alpha1.ObjectRef\x1a\x16.google.protobuf.EmptyB\xb8\x01\n\x12\x63om.store.v1alpha1B\x11StoreServiceProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha1;storev1alpha1\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha1\xca\x02\x0eStore\\V1alpha1\xe2\x02\x1aStore\\V1alpha1\\GPBMetadata\xea\x02\x0fStore::V1alpha1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\"store/v1alpha1/store_service.proto\x12\x0estore.v1alpha1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1bstore/v1alpha1/object.proto2\x85\x02\n\x0cStoreService\x12;\n\x04Push\x12\x16.store.v1alpha1.Object\x1a\x19.store.v1alpha1.ObjectRef(\x01\x12;\n\x04Pull\x12\x19.store.v1alpha1.ObjectRef\x1a\x16.store.v1alpha1.Object0\x01\x12>\n\x06Lookup\x12\x19.store.v1alpha1.ObjectRef\x1a\x19.store.v1alpha1.ObjectRef\x12;\n\x06\x44\x65lete\x12\x19.store.v1alpha1.ObjectRef\x1a\x16.google.protobuf.EmptyB\xb8\x01\n\x12\x63om.store.v1alpha1B\x11StoreServiceProtoP\x01Z6github.com/agntcy/dir/api/store/v1alpha1;storev1alpha1\xa2\x02\x03SXX\xaa\x02\x0eStore.V1alpha1\xca\x02\x0eStore\\V1alpha1\xe2\x02\x1aStore\\V1alpha1\\GPBMetadata\xea\x02\x0fStore::V1alpha1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,6 +34,6 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'store.v1alpha1.store_servic
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\022com.store.v1alpha1B\021StoreServiceProtoP\001Z6github.com/agntcy/dir/api/store/v1alpha1;storev1alpha1\242\002\003SXX\252\002\016Store.V1alpha1\312\002\016Store\\V1alpha1\342\002\032Store\\V1alpha1\\GPBMetadata\352\002\017Store::V1alpha1'
-  _globals['_STORESERVICE']._serialized_start=112
-  _globals['_STORESERVICE']._serialized_end=366
+  _globals['_STORESERVICE']._serialized_start=113
+  _globals['_STORESERVICE']._serialized_end=374
 # @@protoc_insertion_point(module_scope)
