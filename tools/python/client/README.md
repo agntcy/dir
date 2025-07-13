@@ -7,8 +7,6 @@ It allows developers to integrate directory functionality into their Python appl
 
 ## Features
 
-- **Model Bindings**: The SDK includes pre-generated Python proto stubs for all API endpoints, making it
-easy to call the API without needing to manually define the request and response structures.
 - **Store API**: The SDK includes a store API that allows developers to push the agent data model to the store and
 retrieve it from the store.
 - **Routing API**: The SDK provides a routing API that allows developers to publish and retrieve agents to and from the
