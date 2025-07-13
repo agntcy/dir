@@ -4,7 +4,8 @@ version = "0.1.0"
 description = "Directory client SDK"
 requires-python = ">=3.12"
 dependencies = [
-    "agntcy-dir-proto-stubs",
+    "agntcy-dir-grpc-python==1.73.1.1.20250711144851+8778230438be",
+    "agntcy-dir-protocolbuffers-python==31.1.0.1.20250711144851+8778230438be",
     "pytest",
 ]
 
@@ -12,5 +13,5 @@ dependencies = [
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.uv.sources]
-agntcy-dir-proto-stubs = { path = "../api" }
+[[tool.uv.index]]
+url = "https://buf.build/gen/python"

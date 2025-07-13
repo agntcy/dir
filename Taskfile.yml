@@ -129,19 +129,12 @@ tasks:
     desc: Clean generated API stubs
     deps:
       - api:clean:go
-      - api:clean:python
 
   api:clean:go:
     desc: Clean generated golang API stubs
     dir: ./api
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
-
-  api:clean:python:
-    desc: Clean generated python API stubs
-    dir: ./tools/python
-    cmds:
-      - find . \( -name "*_pb2_grpc.py" -o -name "*_pb2.py" -o -name "*_pb2.pyi" \) -type f -delete
 
   api:test:
     desc: Unit test API code

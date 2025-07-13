@@ -4,8 +4,8 @@ import hashlib
 from unittest.mock import patch, MagicMock
 
 from client.client import Client, Config
-from core.v1alpha1 import object_pb2, agent_pb2, skill_pb2
-from routing.v1alpha1 import routing_service_pb2 as routingtypes
+from core.v1alpha1 import object_pb2, agent_pb2, skill_pb2, signature_pb2
+from routing.v1alpha1 import routing_service_pb2
 
 class TestClient(unittest.TestCase):
     def setUp(self):
@@ -26,8 +26,10 @@ class TestClient(unittest.TestCase):
             annotations={
                 "lorem": "ipsum",
                 "dolor": "sit"
-            }
+            },
+            signature=signature_pb2.Signature()
         )
+
 
         # Marshal the Agent struct to bytes
         self.agent_data = self.agent.SerializeToString()
@@ -175,12 +177,12 @@ class TestClient(unittest.TestCase):
     def test_list(self):
         """Test listing objects."""
         # Create a list request
-        list_request = routingtypes.ListRequest()
+        list_request = routing_service_pb2.ListRequest()
 
         # Create mock items for the response
         mock_items = [
-            routingtypes.ListResponse.Item(record=self.ref),
-            routingtypes.ListResponse.Item(record=object_pb2.ObjectRef(
+            routing_service_pb2.ListResponse.Item(record=self.ref),
+            routing_service_pb2.ListResponse.Item(record=object_pb2.ObjectRef(
                 digest="sha256:another_digest",
                 type=self.ref.type,
                 size=1024
@@ -188,7 +190,7 @@ class TestClient(unittest.TestCase):
         ]
 
         # Create a mock response with the items
-        mock_response = routingtypes.ListResponse(items=mock_items)
+        mock_response = routing_service_pb2.ListResponse(items=mock_items)
 
         # Set up the mock stream to return the response
         mock_stream = MagicMock()
