@@ -51,6 +51,7 @@ agent_dict = convert_uint64_fields_to_int(agent_dict)
 
 # Convert the agent object to a JSON string
 agent_json = json.dumps(agent_dict, separators=(',', ':')).encode('utf-8')
+print(agent_json)
 
 # Create a reference for the object
 ref = object_pb2.ObjectRef(
