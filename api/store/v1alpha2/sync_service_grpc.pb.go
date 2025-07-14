@@ -14,7 +14,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -23,10 +22,11 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SyncService_CreateSync_FullMethodName = "/store.v1alpha2.SyncService/CreateSync"
-	SyncService_ListSyncs_FullMethodName  = "/store.v1alpha2.SyncService/ListSyncs"
-	SyncService_GetSync_FullMethodName    = "/store.v1alpha2.SyncService/GetSync"
-	SyncService_DeleteSync_FullMethodName = "/store.v1alpha2.SyncService/DeleteSync"
+	SyncService_CreateSync_FullMethodName                 = "/store.v1alpha2.SyncService/CreateSync"
+	SyncService_ListSyncs_FullMethodName                  = "/store.v1alpha2.SyncService/ListSyncs"
+	SyncService_GetSync_FullMethodName                    = "/store.v1alpha2.SyncService/GetSync"
+	SyncService_DeleteSync_FullMethodName                 = "/store.v1alpha2.SyncService/DeleteSync"
+	SyncService_RequestRegistryCredentials_FullMethodName = "/store.v1alpha2.SyncService/RequestRegistryCredentials"
 )
 
 // SyncServiceClient is the client API for SyncService service.
@@ -43,24 +43,20 @@ type SyncServiceClient interface {
 	//
 	// The operation is non-blocking and returns immediately with a sync ID that can be used
 	// to track progress and manage the sync operation.
-	//
-	// Returns: A unique sync ID string for tracking the operation
 	CreateSync(ctx context.Context, in *CreateSyncRequest, opts ...grpc.CallOption) (*CreateSyncResponse, error)
 	// ListSyncs returns a stream of all sync operations known to the system.
 	//
 	// This includes active, completed, and failed synchronizations.
-	//
-	// Returns: A stream of sync IDs for all known synchronizations
 	ListSyncs(ctx context.Context, in *ListSyncsRequest, opts ...grpc.CallOption) (SyncService_ListSyncsClient, error)
 	// GetSync retrieves detailed status information for a specific synchronization.
-	//
-	// Args: sync_id - The unique identifier of the sync operation
-	// Returns: Detailed status information for the specified sync
 	GetSync(ctx context.Context, in *GetSyncRequest, opts ...grpc.CallOption) (*GetSyncResponse, error)
 	// DeleteSync removes a synchronization operation from the system.
+	DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*DeleteSyncResponse, error)
+	// RequestRegistryCredentials requests registry credentials between two Directory nodes.
 	//
-	// Args: sync_id - The unique identifier of the sync operation to delete
-	DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// This RPC allows a requesting node to authenticate with this node and obtain
+	// temporary registry credentials for secure Zot-based synchronization.
+	RequestRegistryCredentials(ctx context.Context, in *RequestRegistryCredentialsRequest, opts ...grpc.CallOption) (*RequestRegistryCredentialsResponse, error)
 }
 
 type syncServiceClient struct {
@@ -98,7 +94,7 @@ func (c *syncServiceClient) ListSyncs(ctx context.Context, in *ListSyncsRequest,
 }
 
 type SyncService_ListSyncsClient interface {
-	Recv() (*ListSyncItem, error)
+	Recv() (*ListSyncsItem, error)
 	grpc.ClientStream
 }
 
@@ -106,8 +102,8 @@ type syncServiceListSyncsClient struct {
 	grpc.ClientStream
 }
 
-func (x *syncServiceListSyncsClient) Recv() (*ListSyncItem, error) {
-	m := new(ListSyncItem)
+func (x *syncServiceListSyncsClient) Recv() (*ListSyncsItem, error) {
+	m := new(ListSyncsItem)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -124,10 +120,20 @@ func (c *syncServiceClient) GetSync(ctx context.Context, in *GetSyncRequest, opt
 	return out, nil
 }
 
-func (c *syncServiceClient) DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *syncServiceClient) DeleteSync(ctx context.Context, in *DeleteSyncRequest, opts ...grpc.CallOption) (*DeleteSyncResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(DeleteSyncResponse)
 	err := c.cc.Invoke(ctx, SyncService_DeleteSync_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *syncServiceClient) RequestRegistryCredentials(ctx context.Context, in *RequestRegistryCredentialsRequest, opts ...grpc.CallOption) (*RequestRegistryCredentialsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RequestRegistryCredentialsResponse)
+	err := c.cc.Invoke(ctx, SyncService_RequestRegistryCredentials_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -148,24 +154,20 @@ type SyncServiceServer interface {
 	//
 	// The operation is non-blocking and returns immediately with a sync ID that can be used
 	// to track progress and manage the sync operation.
-	//
-	// Returns: A unique sync ID string for tracking the operation
 	CreateSync(context.Context, *CreateSyncRequest) (*CreateSyncResponse, error)
 	// ListSyncs returns a stream of all sync operations known to the system.
 	//
 	// This includes active, completed, and failed synchronizations.
-	//
-	// Returns: A stream of sync IDs for all known synchronizations
 	ListSyncs(*ListSyncsRequest, SyncService_ListSyncsServer) error
 	// GetSync retrieves detailed status information for a specific synchronization.
-	//
-	// Args: sync_id - The unique identifier of the sync operation
-	// Returns: Detailed status information for the specified sync
 	GetSync(context.Context, *GetSyncRequest) (*GetSyncResponse, error)
 	// DeleteSync removes a synchronization operation from the system.
+	DeleteSync(context.Context, *DeleteSyncRequest) (*DeleteSyncResponse, error)
+	// RequestRegistryCredentials requests registry credentials between two Directory nodes.
 	//
-	// Args: sync_id - The unique identifier of the sync operation to delete
-	DeleteSync(context.Context, *DeleteSyncRequest) (*emptypb.Empty, error)
+	// This RPC allows a requesting node to authenticate with this node and obtain
+	// temporary registry credentials for secure Zot-based synchronization.
+	RequestRegistryCredentials(context.Context, *RequestRegistryCredentialsRequest) (*RequestRegistryCredentialsResponse, error)
 }
 
 // UnimplementedSyncServiceServer should be embedded to have
@@ -184,8 +186,11 @@ func (UnimplementedSyncServiceServer) ListSyncs(*ListSyncsRequest, SyncService_L
 func (UnimplementedSyncServiceServer) GetSync(context.Context, *GetSyncRequest) (*GetSyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSync not implemented")
 }
-func (UnimplementedSyncServiceServer) DeleteSync(context.Context, *DeleteSyncRequest) (*emptypb.Empty, error) {
+func (UnimplementedSyncServiceServer) DeleteSync(context.Context, *DeleteSyncRequest) (*DeleteSyncResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteSync not implemented")
+}
+func (UnimplementedSyncServiceServer) RequestRegistryCredentials(context.Context, *RequestRegistryCredentialsRequest) (*RequestRegistryCredentialsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestRegistryCredentials not implemented")
 }
 func (UnimplementedSyncServiceServer) testEmbeddedByValue() {}
 
@@ -234,7 +239,7 @@ func _SyncService_ListSyncs_Handler(srv interface{}, stream grpc.ServerStream) e
 }
 
 type SyncService_ListSyncsServer interface {
-	Send(*ListSyncItem) error
+	Send(*ListSyncsItem) error
 	grpc.ServerStream
 }
 
@@ -242,7 +247,7 @@ type syncServiceListSyncsServer struct {
 	grpc.ServerStream
 }
 
-func (x *syncServiceListSyncsServer) Send(m *ListSyncItem) error {
+func (x *syncServiceListSyncsServer) Send(m *ListSyncsItem) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -282,6 +287,24 @@ func _SyncService_DeleteSync_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SyncService_RequestRegistryCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestRegistryCredentialsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SyncServiceServer).RequestRegistryCredentials(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SyncService_RequestRegistryCredentials_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SyncServiceServer).RequestRegistryCredentials(ctx, req.(*RequestRegistryCredentialsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SyncService_ServiceDesc is the grpc.ServiceDesc for SyncService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -300,6 +323,10 @@ var SyncService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteSync",
 			Handler:    _SyncService_DeleteSync_Handler,
+		},
+		{
+			MethodName: "RequestRegistryCredentials",
+			Handler:    _SyncService_RequestRegistryCredentials_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
