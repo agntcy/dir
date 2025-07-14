@@ -20,5 +20,14 @@ func Sync(sourceRegistry, sourceRepo, targetRegistry, targetRepo string) error {
 	// Wait for zot to sync
 	time.Sleep(1 * time.Minute)
 
+	// Get sync logs from zot-target
+	command = fmt.Sprintf("docker compose logs zot-target | grep -i zotregistry.dev/zot/pkg/extensions/sync")
+	output, err := exec.Command("sh", "-c", command).Output()
+	if err != nil {
+		return fmt.Errorf("failed to get sync logs: %w", err)
+	}
+	// Print sync logs
+	fmt.Println(string(output))
+
 	return nil
 }
