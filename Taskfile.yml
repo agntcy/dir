@@ -41,6 +41,7 @@ vars:
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
   UV_VERSION: '0.6.1'
   UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
+  UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
 
@@ -216,6 +217,49 @@ tasks:
       PYTHONPATH: '{{ .ROOT_DIR }}/tools/client/python/client/proto'
     cmds:
       - '{{.UV_BIN}} run pytest test_client.py'
+
+  sdk:build:all:
+    desc: Build all client SDK package
+    cmds:
+      - task: sdk:build:javascript
+      - task: sdk:build:python
+
+  sdk:build:python:
+    desc: Build python client SDK package
+    dir: ./sdk/python
+    cmds:
+      - '{{.UV_BIN}} build'
+
+  sdk:build:javascript:
+    desc: Build javascript client SDK package
+    dir: ./sdk/javascript
+    cmds:
+      - npm ci
+
+  sdk:release:all:
+    desc: Release all client SDK package
+    env:
+      UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN }}'
+      NODE_AUTH_TOKEN: '{{ .NODE_AUTH_TOKEN }}'
+    cmds:
+      - task: sdk:release:javascript
+      - task: sdk:release:python
+
+  sdk:release:python:
+    desc: Release python client SDK package
+    dir: ./sdk/python
+    env:
+      UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN }}'
+    cmds:
+      - '{{.UV_BIN}} publish'
+
+  sdk:release:javascript:
+    desc: Release javascript client SDK package
+    dir: ./sdk/javascript
+    env:
+      NODE_AUTH_TOKEN: '{{ .NODE_AUTH_TOKEN }}'
+    cmds:
+      - npm publish --scope=@agntcy --access public
 
   ##
   ## Server
@@ -625,19 +669,19 @@ tasks:
     vars:
       RECORD_FILE: '{{ .RECORD_FILE | default "docs/research/integrations/demo.record.json" }}'
     cmd: |
-        # Prepare Python environment
-        python3 -m venv venv
-        . ./venv/bin/activate
-        python3 -m pip install pyyaml
+      # Prepare Python environment
+      python3 -m venv venv
+      . ./venv/bin/activate
+      python3 -m pip install pyyaml
 
-        # Run script
-        python3 ./importer.py \
-          -record={{.ROOT_DIR}}/{{.RECORD_FILE}} \
-          -vscode_path={{.ROOT_DIR}}/.vscode \
-          -continue_path={{.ROOT_DIR}}/.continue/assistants
+      # Run script
+      python3 ./importer.py \
+        -record={{.ROOT_DIR}}/{{.RECORD_FILE}} \
+        -vscode_path={{.ROOT_DIR}}/.vscode \
+        -continue_path={{.ROOT_DIR}}/.continue/assistants
 
-        # Print env requirements
-        cat .env.example
+      # Print env requirements
+      cat .env.example
 
   poc:mcp-to-oasf:
     desc: Import MCP-to-OASF Exporter Agent into the current workspace.
@@ -657,6 +701,7 @@ tasks:
       - task: deps:kind
       - task: deps:protoc
       - task: deps:bufbuild
+      - task: deps:uv
 
   deps:hub:api:
     desc: generate HUB API
