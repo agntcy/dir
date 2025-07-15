@@ -30,6 +30,12 @@ service SyncService {
 
   // DeleteSync removes a synchronization operation from the system.
   rpc DeleteSync(DeleteSyncRequest) returns (DeleteSyncResponse);
+
+  // RequestRegistryCredentials requests registry credentials between two Directory nodes.
+  //
+  // This RPC allows a requesting node to authenticate with this node and obtain
+  // temporary registry credentials for secure Zot-based synchronization.
+  rpc RequestRegistryCredentials(RequestRegistryCredentialsRequest) returns (RequestRegistryCredentialsResponse);
 }
 
 // CreateSyncRequest defines the parameters for creating a new synchronization operation.
@@ -117,6 +123,36 @@ message DeleteSyncRequest {
 // DeleteSyncResponse
 message DeleteSyncResponse {
 }
+
+message RequestRegistryCredentialsRequest {
+  // Identity of the requesting node
+  // For example: spiffe://example.org/service/foo
+  string requesting_node_id = 1;
+}
+
+message RequestRegistryCredentialsResponse {
+  // Success status of the credential negotiation
+  bool success = 1;
+
+  // Error message if negotiation failed
+  string error_message = 2;
+
+  // URL of the remote Registry being synchronized from.
+  string remote_registry_url = 3;
+
+  // Registry credentials (oneof based on credential type)
+  oneof credentials {
+    BasicAuthCredentials basic_auth = 4;
+    // CertificateCredentials certificate = 5;
+  }
+}
+
+// Supporting credential type definitions
+message BasicAuthCredentials {
+  string username = 1;
+  string password = 2;
+}
+
 // SyncStatus enumeration defines the possible states of a synchronization operation.
 enum SyncStatus {
   // Default/unset status - should not be used in practice
