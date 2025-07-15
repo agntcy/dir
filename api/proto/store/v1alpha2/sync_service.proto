@@ -18,34 +18,24 @@ service SyncService {
   //
   // The operation is non-blocking and returns immediately with a sync ID that can be used
   // to track progress and manage the sync operation.
-  //
-  // Returns: A unique sync ID string for tracking the operation
   rpc CreateSync(CreateSyncRequest) returns (CreateSyncResponse);
 
   // ListSyncs returns a stream of all sync operations known to the system.
   //
   // This includes active, completed, and failed synchronizations.
-  //
-  // Returns: A stream of sync IDs for all known synchronizations
-  rpc ListSyncs(ListSyncsRequest) returns (stream ListSyncItem);
+  rpc ListSyncs(ListSyncsRequest) returns (stream ListSyncsItem);
 
   // GetSync retrieves detailed status information for a specific synchronization.
-  //
-  // Args: sync_id - The unique identifier of the sync operation
-  // Returns: Detailed status information for the specified sync
   rpc GetSync(GetSyncRequest) returns (GetSyncResponse);
 
   // DeleteSync removes a synchronization operation from the system.
-  //
-  // Args: sync_id - The unique identifier of the sync operation to delete
-  rpc DeleteSync(DeleteSyncRequest) returns (google.protobuf.Empty);
+  rpc DeleteSync(DeleteSyncRequest) returns (DeleteSyncResponse);
 }
 
 // CreateSyncRequest defines the parameters for creating a new synchronization operation.
 //
 // Currently supports basic synchronization of all objects from a remote Directory.
-// Future versions may include additional options for filtering, authentication,
-// and scheduling capabilities.
+// Future versions may include additional options for filtering and scheduling capabilities.
 message CreateSyncRequest {
   // URL of the remote Directory node to synchronize from.
   //
@@ -54,19 +44,15 @@ message CreateSyncRequest {
   // - "https://directory.example.com"
   // - "http://localhost:8080"
   // - "https://directory.example.com:9443"
-  string remote_directory = 1;
-
-  // TODO: Future enhancement - Authentication credentials for the remote Directory.
-  // This will be added once node authentication is implemented.
-  // AuthConfig auth_config = 2;
+  string remote_directory_url = 1;
 
   // TODO: Future enhancement - Filtering options for selective synchronization.
   // This may include filtering by object type, annotations, etc.
-  // SyncFilter filter = 3;
+  // SyncFilter filter = 2;
 
   // TODO: Future enhancement - Scheduling options for periodic synchronization.
   // This will allow setting up recurring sync operations.
-  // SyncSchedule schedule = 4;
+  // SyncSchedule schedule = 3;
 }
 
 // CreateSyncResponse contains the result of creating a new synchronization operation.
@@ -86,15 +72,15 @@ message ListSyncsRequest {
 }
 
 // ListSyncItem represents a single synchronization in the list of all syncs.
-message ListSyncItem {
+message ListSyncsItem {
   // Unique identifier of the synchronization operation.
   string sync_id = 1;
   
-  // Brief status of the sync (e.g., "in_progress", "completed", "failed").
-  string status = 2;
+  // Current status of the synchronization operation.
+  SyncStatus status = 2;
   
   // URL of the remote Directory being synchronized from.
-  string remote_directory = 3;
+  string remote_directory_url = 3;
 }
 
 // GetSyncRequest specifies which synchronization status to retrieve.
@@ -106,13 +92,13 @@ message GetSyncRequest {
 // GetSyncResponse provides detailed information about a specific synchronization operation.
 message GetSyncResponse {
   // Unique identifier of the synchronization operation.
-  string id = 1;
+  string sync_id = 1;
 
   // Current status of the synchronization operation.
   SyncStatus status = 2;
 
-    // URL of the remote Directory node being synchronized from.
-  string remote_directory = 3;
+  // URL of the remote Directory node being synchronized from.
+  string remote_directory_url = 3;
 
   // Timestamp when the synchronization operation was created in the RFC3339 format.
   // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
@@ -128,7 +114,9 @@ message DeleteSyncRequest {
   string sync_id = 1;
 }
 
-
+// DeleteSyncResponse
+message DeleteSyncResponse {
+}
 // SyncStatus enumeration defines the possible states of a synchronization operation.
 enum SyncStatus {
   // Default/unset status - should not be used in practice
