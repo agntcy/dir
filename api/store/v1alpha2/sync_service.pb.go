@@ -92,7 +92,7 @@ func (SyncStatus) EnumDescriptor() ([]byte, []int) {
 // Future versions may include additional options for filtering and scheduling capabilities.
 type CreateSyncRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// URL of the remote Directory node to synchronize from.
+	// URL of the remote Registry to synchronize from.
 	//
 	// This should be a complete URL including protocol and port if non-standard.
 	// Examples:
