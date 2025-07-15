@@ -241,6 +241,28 @@ dirctl list info
 dirctl list info --network
 ```
 
+### Sync
+
+This example demonstrates how to synchronize records between remote directories and your local instance.
+The sync feature allows you to pull records from remote directories and replicate them locally, enabling distributed content sharing and backup scenarios.
+
+```bash
+# Create a sync operation to pull from a remote directory
+dirctl sync create https://remote-directory.example.com:8888
+
+# List all sync operations
+dirctl sync list
+
+# Check the status of a specific sync operation
+dirctl sync status <sync id>
+
+# Once sync is complete, verify the records were synced
+dirctl search --limit 10
+
+# Delete a sync operation (stops if running, removes from history)
+dirctl sync delete <sync id>
+```
+
 ### gRPC Error Codes
 
 The following table lists the gRPC error codes returned by the server APIs, along with a description of when each code is used:
