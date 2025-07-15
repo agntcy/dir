@@ -43,7 +43,7 @@ service SyncService {
 // Currently supports basic synchronization of all objects from a remote Directory.
 // Future versions may include additional options for filtering and scheduling capabilities.
 message CreateSyncRequest {
-  // URL of the remote Directory node to synchronize from.
+  // URL of the remote Registry to synchronize from.
   //
   // This should be a complete URL including protocol and port if non-standard.
   // Examples:
