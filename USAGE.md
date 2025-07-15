@@ -62,9 +62,6 @@ builder:
 
  # Disable the pyprojectparser plugin
  pyprojectparser: false
-
- # Enable OASF validation
- oasf-validation: true
 EOF
 
 # Build the agent

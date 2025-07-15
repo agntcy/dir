@@ -15,6 +15,3 @@ builder:
 
   # Enable or disable the pyprojectparser plugin
   pyprojectparser: false
-
-  # Enable or disable OASF validation
-  oasf-validation: true
