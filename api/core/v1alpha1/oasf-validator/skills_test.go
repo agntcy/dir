@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +16,7 @@ import (
 func TestSkillValidator_HasSkill(t *testing.T) {
 	validator := &SkillValidator{
 		skills: map[uint64]*corev1alpha1.Skill{
-			1: {ClassUid: 1},
+			1: {Skill: &objectsv1.Skill{ClassUid: 1}},
 		},
 		mu: sync.RWMutex{},
 	}
@@ -27,7 +28,7 @@ func TestSkillValidator_HasSkill(t *testing.T) {
 func TestSkillValidator_GetSkill(t *testing.T) {
 	validator := &SkillValidator{
 		skills: map[uint64]*corev1alpha1.Skill{
-			1: {ClassUid: 1},
+			1: {Skill: &objectsv1.Skill{ClassUid: 1}},
 		},
 		mu: sync.RWMutex{},
 	}
@@ -40,7 +41,7 @@ func TestSkillValidator_GetSkillByName(t *testing.T) {
 	className := "Skill1"
 	validator := &SkillValidator{
 		skills: map[uint64]*corev1alpha1.Skill{
-			1: {ClassUid: 1, ClassName: &className},
+			1: {Skill: &objectsv1.Skill{ClassUid: 1, ClassName: &className}},
 		},
 		mu: sync.RWMutex{},
 	}
@@ -53,14 +54,14 @@ func TestSkillValidator_Validate(t *testing.T) {
 	className := "Skill1"
 	validator := &SkillValidator{
 		skills: map[uint64]*corev1alpha1.Skill{
-			1: {ClassUid: 1, ClassName: &className},
+			1: {Skill: &objectsv1.Skill{ClassUid: 1, ClassName: &className}},
 		},
 		mu: sync.RWMutex{},
 	}
 
 	t.Run("Valid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: 1},
+			{Skill: &objectsv1.Skill{ClassUid: 1}},
 		}
 
 		err := validator.Validate(skills)
@@ -69,7 +70,7 @@ func TestSkillValidator_Validate(t *testing.T) {
 
 	t.Run("Invalid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: 2},
+			{Skill: &objectsv1.Skill{ClassUid: 2}},
 		}
 
 		err := validator.Validate(skills)
@@ -91,12 +92,12 @@ func TestSkillValidator_Validate(t *testing.T) {
 func TestValidateSkills(t *testing.T) {
 	className := "Skill1"
 	Validator.skills = map[uint64]*corev1alpha1.Skill{
-		1: {ClassUid: 1, ClassName: &className},
+		1: {Skill: &objectsv1.Skill{ClassUid: 1, ClassName: &className}},
 	}
 
 	t.Run("Valid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: 1},
+			{Skill: &objectsv1.Skill{ClassUid: 1}},
 		}
 
 		err := ValidateSkills(skills)
@@ -105,7 +106,7 @@ func TestValidateSkills(t *testing.T) {
 
 	t.Run("Invalid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: 2},
+			{Skill: &objectsv1.Skill{ClassUid: 2}},
 		}
 
 		err := ValidateSkills(skills)

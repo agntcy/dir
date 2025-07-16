@@ -189,7 +189,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 
 				// get agent
 				agent := object.GetAgent()
-				labels := getLabels(agent)
+				labels := getLabels(&coretypes.Agent{Agent: agent})
 
 				// peer addrs to string
 				var addrs []string
@@ -302,7 +302,7 @@ procLoop:
 			agent := object.GetAgent()
 
 			// extract labels
-			labels := getLabels(agent)
+			labels := getLabels(&coretypes.Agent{Agent: agent})
 
 			// TODO: we can perform validation and data synchronization here.
 			// Depending on the server configuration, we can decide if we want to

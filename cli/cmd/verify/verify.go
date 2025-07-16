@@ -78,7 +78,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		req := &signv1alpha1.VerifyRequest{
-			Agent: agent,
+			Agent: agent.Agent,
 			Provider: &signv1alpha1.VerifyRequestProvider{
 				Provider: &signv1alpha1.VerifyRequestProvider_Key{
 					Key: &signv1alpha1.VerifyWithKey{
@@ -95,7 +95,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 	} else {
 		req := &signv1alpha1.VerifyRequest{
-			Agent: agent,
+			Agent: agent.Agent,
 			Provider: &signv1alpha1.VerifyRequestProvider{
 				Provider: &signv1alpha1.VerifyRequestProvider_Oidc{
 					Oidc: &signv1alpha1.VerifyWithOIDC{

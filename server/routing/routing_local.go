@@ -81,7 +81,7 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bo
 	}
 
 	// keep track of all agent skills
-	labels := getLabels(agent)
+	labels := getLabels(&coretypes.Agent{Agent: agent})
 	for _, label := range labels {
 		// Add key with digest
 		agentLabelKey := fmt.Sprintf("%s/%s", label, ref.GetDigest())
@@ -271,7 +271,7 @@ func (r *routeLocal) Unpublish(ctx context.Context, object *coretypes.Object) er
 	}
 
 	// keep track of all agent labels
-	labels := getLabels(agent)
+	labels := getLabels(&coretypes.Agent{Agent: agent})
 
 	for _, label := range labels {
 		// Delete key with digest

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,11 +21,13 @@ import (
 func TestHandler(t *testing.T) {
 	// Test data
 	testAgent := &coretypes.Agent{
-		Skills: []*coretypes.Skill{
-			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-		},
-		Locators: []*coretypes.Locator{
-			{Type: "type1", Url: "url1"},
+		Agent: &objectsv1.Agent{
+			Skills: []*objectsv1.Skill{
+				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+			},
+			Locators: []*objectsv1.Locator{
+				{Type: "type1", Url: "url1"},
+			},
 		},
 	}
 	testRef := getObjectRef(testAgent)

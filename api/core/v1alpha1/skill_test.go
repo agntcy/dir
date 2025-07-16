@@ -6,6 +6,7 @@ package corev1alpha1
 import (
 	"testing"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,8 +41,10 @@ func TestSkill_Key(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create a Skill instance with test data
 			skill := &Skill{
-				CategoryName: &tc.categoryName,
-				ClassName:    &tc.className,
+				&objectsv1.Skill{
+					CategoryName: &tc.categoryName,
+					ClassName:    &tc.className,
+				},
 			}
 
 			// Call the Key method

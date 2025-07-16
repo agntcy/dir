@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"time"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	signtypes "github.com/agntcy/dir/api/sign/v1alpha1"
 	"github.com/agntcy/dir/utils/cosign"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
@@ -189,7 +189,7 @@ func (c *Client) SignWithKey(ctx context.Context, req *signtypes.SignRequest) (*
 	return &response, err
 }
 
-func (c *Client) sign(_ context.Context, agent *coretypes.Agent, signKeypair sign.Keypair, signOpts sign.BundleOptions) (*coretypes.Agent, error) {
+func (c *Client) sign(_ context.Context, agent *objectsv1.Agent, signKeypair sign.Keypair, signOpts sign.BundleOptions) (*objectsv1.Agent, error) {
 	// Reset the signature field in the agent.
 	// This is required as the agent may have been signed before,
 	// but also because this ensures signing idempotency.
@@ -217,7 +217,7 @@ func (c *Client) sign(_ context.Context, agent *coretypes.Agent, signKeypair sig
 	}
 
 	// Update the agent with the signature details.
-	agent.Signature = &coretypes.Signature{
+	agent.Signature = &objectsv1.Signature{
 		Algorithm:     sigData.GetMessageDigest().GetAlgorithm().String(),
 		Signature:     base64.StdEncoding.EncodeToString(sigData.GetSignature()),
 		Certificate:   base64.StdEncoding.EncodeToString(certData.GetCertificate().GetRawBytes()),

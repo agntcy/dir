@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/types"
@@ -247,7 +248,7 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 
 	// convert to agent
 	// TODO
-	var agent *coretypes.Agent
+	var agent *objectsv1.Agent
 	if err := json.Unmarshal(resp.Data, &agent); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unmarshal agent data: %v", err)
 	}

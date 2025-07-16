@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/config"
 	"github.com/agntcy/dir/cli/builder/plugins/llmanalyzer"
@@ -53,7 +54,9 @@ func (b *Builder) RegisterPlugins() error {
 
 func (b *Builder) BuildAgent(ctx context.Context) (*coretypes.Agent, error) {
 	agent := &coretypes.Agent{
-		CreatedAt: time.Now().Format(time.RFC3339),
+		Agent: &objectsv1.Agent{
+			CreatedAt: time.Now().Format(time.RFC3339),
+		},
 	}
 
 	for _, plugin := range b.plugins {

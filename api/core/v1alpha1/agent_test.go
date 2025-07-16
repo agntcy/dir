@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 )
 
 func Ptr[T any](v T) *T {
@@ -20,25 +22,29 @@ func Ptr[T any](v T) *T {
 //nolint:cyclop
 func TestAgent_Merge(t *testing.T) {
 	agent1 := &Agent{
-		Name:        "Agent1",
-		Version:     "",
-		Description: "Description1",
-		Authors:     []string{"Author1"},
-		Annotations: map[string]string{"key1": "value1"},
-		Locators:    []*Locator{{Type: "type1", Url: "url1"}},
-		Extensions:  []*Extension{{Name: "ext1", Version: "v1"}},
-		Skills:      []*Skill{{CategoryUid: 1, ClassUid: 10101, CategoryName: Ptr("name1"), ClassName: Ptr("class1")}},
+		&objectsv1.Agent{
+			Name:        "Agent1",
+			Version:     "",
+			Description: "Description1",
+			Authors:     []string{"Author1"},
+			Annotations: map[string]string{"key1": "value1"},
+			Locators:    []*objectsv1.Locator{{Type: "type1", Url: "url1"}},
+			Extensions:  []*objectsv1.Extension{{Name: "ext1", Version: "v1"}},
+			Skills:      []*objectsv1.Skill{{CategoryUid: 1, ClassUid: 10101, CategoryName: Ptr("name1"), ClassName: Ptr("class1")}},
+		},
 	}
 
 	agent2 := &Agent{
-		Name:        "",
-		Version:     "v2",
-		Description: "Description2",
-		Authors:     []string{"Author2", "Author1"},
-		Annotations: map[string]string{"key2": "value2"},
-		Locators:    []*Locator{{Type: "type2", Url: "url2"}},
-		Extensions:  []*Extension{{Name: "ext2", Version: "v2"}},
-		Skills:      []*Skill{{CategoryUid: 2, ClassUid: 20101, CategoryName: Ptr("name2"), ClassName: Ptr("class2")}},
+		&objectsv1.Agent{
+			Name:        "",
+			Version:     "v2",
+			Description: "Description2",
+			Authors:     []string{"Author2", "Author1"},
+			Annotations: map[string]string{"key2": "value2"},
+			Locators:    []*objectsv1.Locator{{Type: "type2", Url: "url2"}},
+			Extensions:  []*objectsv1.Extension{{Name: "ext2", Version: "v2"}},
+			Skills:      []*objectsv1.Skill{{CategoryUid: 2, ClassUid: 20101, CategoryName: Ptr("name2"), ClassName: Ptr("class2")}},
+		},
 	}
 
 	agent1.Merge(agent2)
@@ -59,8 +65,8 @@ func TestAgent_Merge(t *testing.T) {
 		t.Errorf("Merge failed for Locators: expected 2, got %d", len(agent1.GetLocators()))
 	}
 
-	sort.Slice(agent1.GetLocators(), func(i, j int) bool {
-		return agent1.GetLocators()[i].GetType() < agent1.GetLocators()[j].GetType()
+	sort.Slice(agent1.Agent.GetLocators(), func(i, j int) bool {
+		return agent1.Agent.GetLocators()[i].GetType() < agent1.Agent.GetLocators()[j].GetType()
 	})
 
 	if agent1.GetLocators()[0].GetType() != "type1" || agent1.GetLocators()[1].GetType() != "type2" {
@@ -71,8 +77,8 @@ func TestAgent_Merge(t *testing.T) {
 		t.Errorf("Merge failed for Extensions: expected 2, got %d", len(agent1.GetExtensions()))
 	}
 
-	sort.Slice(agent1.GetExtensions(), func(i, j int) bool {
-		return agent1.GetExtensions()[i].GetName() < agent1.GetExtensions()[j].GetName()
+	sort.Slice(agent1.Agent.GetExtensions(), func(i, j int) bool {
+		return agent1.Agent.GetExtensions()[i].GetName() < agent1.Agent.GetExtensions()[j].GetName()
 	})
 
 	if agent1.GetExtensions()[0].GetName() != "ext1" || agent1.GetExtensions()[1].GetName() != "ext2" {
@@ -83,8 +89,8 @@ func TestAgent_Merge(t *testing.T) {
 		t.Errorf("Merge failed for Skills: expected 2, got %d", len(agent1.GetSkills()))
 	}
 
-	sort.Slice(agent1.GetSkills(), func(i, j int) bool {
-		return agent1.GetSkills()[i].GetCategoryUid() < agent1.GetSkills()[j].GetCategoryUid()
+	sort.Slice(agent1.Agent.GetSkills(), func(i, j int) bool {
+		return agent1.Agent.GetSkills()[i].GetCategoryUid() < agent1.Agent.GetSkills()[j].GetCategoryUid()
 	})
 
 	if agent1.GetSkills()[0].GetCategoryUid() != 1 || agent1.GetSkills()[1].GetCategoryUid() != 2 {
@@ -181,9 +187,9 @@ func TestFirstNonEmptyString(t *testing.T) {
 
 // Test mergeItems.
 func TestMergeItems(t *testing.T) {
-	item1 := &Locator{Type: "type1", Url: "url1"}
-	item2 := &Locator{Type: "type2", Url: "url2"}
-	item3 := &Locator{Type: "type1", Url: "url1"} // Duplicate of item1
+	item1 := &Locator{&objectsv1.Locator{Type: "type1", Url: "url1"}}
+	item2 := &Locator{&objectsv1.Locator{Type: "type2", Url: "url2"}}
+	item3 := &Locator{&objectsv1.Locator{Type: "type1", Url: "url1"}} // Duplicate of item1
 
 	receiverItems := []*Locator{item1}
 	otherItems := []*Locator{item2, item3}

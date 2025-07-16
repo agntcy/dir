@@ -3,24 +3,40 @@
 
 package corev1alpha1
 
-import "fmt"
+import (
+	"fmt"
 
-func (skill *Skill) Key() string {
-	if skill.GetClassName() == "" {
-		return skill.GetCategoryName()
-	}
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+)
 
-	return fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName())
+type Skill struct {
+	*objectsv1.Skill
 }
 
-func (skill *Skill) GetName() string {
-	if skill.GetClassName() == "" {
-		return skill.GetCategoryName()
+func (s *Skill) Key() string {
+	if s.GetClassName() == "" {
+		return s.GetCategoryName()
 	}
 
-	return fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName())
+	return fmt.Sprintf("%s/%s", s.GetCategoryName(), s.GetClassName())
 }
 
-func (skill *Skill) GetID() uint64 {
-	return skill.GetClassUid()
+func (s *Skill) ToOASFSchema() *objectsv1.Skill {
+	if s == nil || s.Skill == nil {
+		return nil
+	}
+
+	return s.Skill
+}
+
+func (s *Skill) GetName() string {
+	if s.GetClassName() == "" {
+		return s.GetCategoryName()
+	}
+
+	return fmt.Sprintf("%s/%s", s.GetCategoryName(), s.GetClassName())
+}
+
+func (s *Skill) GetID() uint64 {
+	return s.GetClassUid()
 }

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -79,7 +80,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 
 	var (
 		err         error
-		agentSigned *coretypes.Agent
+		agentSigned *objectsv1.Agent
 	)
 
 	//nolint:nestif,gocritic
@@ -97,7 +98,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		req := &signv1alpha1.SignRequest{
-			Agent: agent,
+			Agent: agent.Agent,
 			Provider: &signv1alpha1.SignRequestProvider{
 				Provider: &signv1alpha1.SignRequestProvider_Key{
 					Key: &signv1alpha1.SignWithKey{
@@ -117,7 +118,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		agentSigned = response.GetAgent()
 	} else if opts.OIDCToken != "" {
 		req := &signv1alpha1.SignRequest{
-			Agent: agent,
+			Agent: agent.Agent,
 			Provider: &signv1alpha1.SignRequestProvider{
 				Provider: &signv1alpha1.SignRequestProvider_Oidc{
 					Oidc: &signv1alpha1.SignWithOIDC{
@@ -148,7 +149,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		req := &signv1alpha1.SignRequest{
-			Agent: agent,
+			Agent: agent.Agent,
 			Provider: &signv1alpha1.SignRequestProvider{
 				Provider: &signv1alpha1.SignRequestProvider_Oidc{
 					Oidc: &signv1alpha1.SignWithOIDC{

@@ -5,7 +5,7 @@ syntax = "proto3";
 
 package core.v1alpha1;
 
-import "core/v1alpha1/agent.proto";
+import "objects/v1/agent.proto";
 
 // Reference to a typed object in the content store.
 message ObjectRef {
@@ -31,7 +31,7 @@ message Object {
   optional ObjectRef ref = 2;
   // In case ref is pointing to an agent model, this can be set.
   // This is only set on pull.
-  optional Agent agent = 3;
+  optional objects.v1.Agent agent = 3;
 }
 
 // ObjectType defines a list of native types.

@@ -8,7 +8,15 @@ managed:
     - module: buf.build/googleapis/googleapis
   override:
     # Overrides for Golang package stubs
+#    - file_option: go_package_prefix
+#      value: github.com/agntcy/dir/api
     - file_option: go_package_prefix
+      value: buf.build/gen/go/agntcy/oasf/protocolbuffers/go
+    - file_option: go_package_prefix
+      path: store
+      value: github.com/agntcy/dir/api
+    - file_option: go_package_prefix
+      path: core
       value: github.com/agntcy/dir/api
 plugins:
   # Stubs for Golang

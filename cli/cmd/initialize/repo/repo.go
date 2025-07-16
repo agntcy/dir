@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
@@ -33,7 +34,9 @@ the agent.
 func runCommand(cmd *cobra.Command) error {
 	reader := bufio.NewReader(os.Stdin)
 	agent := coretypes.Agent{
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		Agent: &objectsv1.Agent{
+			CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		},
 	}
 
 	err := setName(cmd, reader, &agent)
@@ -140,7 +143,7 @@ func setSkills(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agent)
 	}
 
 	classUIDs := strings.Split(skillsInput, ",")
-	skills := make([]*coretypes.Skill, 0, len(classUIDs))
+	skills := make([]*objectsv1.Skill, 0, len(classUIDs))
 
 	for _, UIDString := range classUIDs {
 		UID, err := strconv.ParseUint(strings.TrimSpace(UIDString), 10, 64)
@@ -148,7 +151,7 @@ func setSkills(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agent)
 			return fmt.Errorf("failed to parse class_uid %s: %w", UIDString, err)
 		}
 
-		skills = append(skills, &coretypes.Skill{
+		skills = append(skills, &objectsv1.Skill{
 			ClassUid: UID,
 		})
 	}
@@ -180,7 +183,7 @@ func setLocators(cmd *cobra.Command, reader *bufio.Reader, agent *coretypes.Agen
 			return errors.New("locator type or URL cannot be empty")
 		}
 
-		agent.Locators = append(agent.Locators, &coretypes.Locator{
+		agent.Locators = append(agent.Locators, &objectsv1.Locator{
 			Type: locatorType,
 			Url:  locatorURL,
 		})

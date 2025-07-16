@@ -11,6 +11,7 @@ replace (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.6-20250714145403-2a698bed604a.1
 	github.com/agntcy/dir/api v0.2.6
 	github.com/agntcy/dir/cli v0.2.6
 	github.com/agntcy/dir/client v0.2.6

@@ -5,7 +5,7 @@ syntax = "proto3";
 
 package sign.v1alpha1;
 
-import "core/v1alpha1/agent.proto";
+import "objects/v1/agent.proto";
 
 service SignService {
   // Sign agents using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
@@ -17,7 +17,7 @@ service SignService {
 
 message SignRequest {
   // Agent to be signed
-  core.v1alpha1.Agent agent = 1;
+  objects.v1.Agent agent = 1;
 
   // Signing provider to use
   SignRequestProvider provider = 2;
@@ -32,7 +32,7 @@ message SignRequestProvider {
 
 message SignResponse {
   // Signed agent
-  core.v1alpha1.Agent agent = 1;
+  objects.v1.Agent agent = 1;
 }
 
 message SignWithOIDC {
@@ -68,7 +68,7 @@ message SignWithKey {
 
 message VerifyRequest {
   // Signed agent to be verified
-  core.v1alpha1.Agent agent = 1;
+  objects.v1.Agent agent = 1;
 
   // Verification provider to use
   VerifyRequestProvider provider = 2;

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/framework"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/language"
@@ -37,9 +38,11 @@ func (c *runtime) Build(ctx context.Context) (*coretypes.Agent, error) {
 	}
 
 	return &coretypes.Agent{
-		Extensions: []*coretypes.Extension{
-			frameworkExtension,
-			languageExtension,
+		Agent: &objectsv1.Agent{
+			Extensions: []*objectsv1.Extension{
+				frameworkExtension,
+				languageExtension,
+			},
 		},
 	}, nil
 }

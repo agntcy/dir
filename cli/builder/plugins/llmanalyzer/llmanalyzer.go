@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	"github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -127,11 +128,13 @@ func (l *llmanalyzer) Build(ctx context.Context) (*coretypes.Agent, error) {
 	}
 
 	return &coretypes.Agent{
-		Extensions: []*coretypes.Extension{
-			{
-				Name:    PluginName,
-				Version: PluginVersion,
-				Data:    strct,
+		Agent: &objectsv1.Agent{
+			Extensions: []*objectsv1.Extension{
+				{
+					Name:    PluginName,
+					Version: PluginVersion,
+					Data:    strct,
+				},
 			},
 		},
 	}, nil

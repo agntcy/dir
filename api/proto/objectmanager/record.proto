@@ -5,9 +5,9 @@ syntax = "proto3";
 
 package objectmanager;
 
+import "objects/v1/agent.proto";
+import "objects/v2/agent_record.proto";
 import "store/v1alpha2/object.proto";
-import "core/v1alpha1/agent.proto";
-import "core/v1alpha2/record.proto";
 
 // Unifies different agent records into a single object.
 // Allows to handle different versions of record objects
@@ -44,7 +44,7 @@ enum RecordObjectType {
 
 message RecordObjectData {
   oneof data {
-    core.v1alpha1.Agent   record_v1alpha1 = 1;
-    core.v1alpha2.Record  record_v1alpha2 = 2;
+    objects.v1.Agent        record_v1alpha1 = 1;
+    objects.v2.AgentRecord  record_v1alpha2 = 2;
   }
 }

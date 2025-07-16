@@ -8,80 +8,161 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 )
 
+type Agent struct {
+	*objectsv1.Agent
+}
+
+func (a *Agent) GetLocators() []*Locator {
+	if a.Agent == nil {
+		return nil
+	}
+
+	locators := make([]*Locator, len(a.Agent.GetLocators()))
+	for i, locator := range a.Agent.GetLocators() {
+		locators[i] = &Locator{Locator: locator}
+	}
+
+	return locators
+}
+
+func (a *Agent) GetExtensions() []*Extension {
+	if a.Agent == nil {
+		return nil
+	}
+
+	extensions := make([]*Extension, len(a.Agent.GetExtensions()))
+	for i, extension := range a.Agent.GetExtensions() {
+		extensions[i] = &Extension{Extension: extension}
+	}
+
+	return extensions
+}
+
+func (a *Agent) GetSkills() []*Skill {
+	if a.Agent == nil {
+		return nil
+	}
+
+	skills := make([]*Skill, len(a.Agent.GetSkills()))
+	for i, skill := range a.Agent.GetSkills() {
+		skills[i] = &Skill{Skill: skill}
+	}
+
+	return skills
+}
+
 //nolint:gocognit,cyclop
-func (x *Agent) Merge(other *Agent) {
+func (a *Agent) Merge(other *Agent) {
 	if other == nil {
 		return
 	}
 
 	// Only use other's scalar fields if receiver doesn't have them set
-	x.Name = firstNonEmptyString(x.GetName(), other.GetName())
-	x.Version = firstNonEmptyString(x.GetVersion(), other.GetVersion())
-	x.Description = firstNonEmptyString(x.GetDescription(), other.GetDescription())
+	a.Name = firstNonEmptyString(a.GetName(), other.GetName())
+	a.Version = firstNonEmptyString(a.GetVersion(), other.GetVersion())
+	a.Description = firstNonEmptyString(a.GetDescription(), other.GetDescription())
 
-	if x.GetCreatedAt() == "" {
-		x.CreatedAt = other.GetCreatedAt()
+	if a.GetCreatedAt() == "" {
+		a.CreatedAt = other.GetCreatedAt()
 	}
 
 	// Merge slices without duplicates, keeping receiver's values first
 	if len(other.GetAuthors()) > 0 {
-		x.Authors = removeDuplicates(append(other.GetAuthors(), x.GetAuthors()...))
+		a.Authors = removeDuplicates(append(other.GetAuthors(), a.GetAuthors()...))
 	}
 
 	// Merge annotations, keeping receiver's values when keys conflict
-	if x.GetAnnotations() == nil {
-		x.Annotations = make(map[string]string)
+	if a.GetAnnotations() == nil {
+		a.Annotations = make(map[string]string)
 	}
 
 	for k, v := range other.GetAnnotations() {
-		if _, exists := x.GetAnnotations()[k]; !exists {
-			x.Annotations[k] = v
+		if _, exists := a.GetAnnotations()[k]; !exists {
+			a.Annotations[k] = v
 		}
 	}
 
 	// Merge Locators, keeping receiver's values when "type/url" conflict
 	if len(other.GetLocators()) > 0 {
-		x.Locators = mergeItems(
-			x.GetLocators(),
+		wrappedLocators := mergeItems(
+			a.GetLocators(),
 			other.GetLocators(),
 			func(locator *Locator) string {
 				return locator.Key()
 			},
 		)
+
+		locators := make([]*objectsv1.Locator, len(wrappedLocators))
+
+		for i, locator := range wrappedLocators {
+			if locator == nil {
+				continue
+			}
+
+			locators[i] = locator.ToOASFSchema()
+		}
+
+		a.Locators = locators
 	}
 
 	// Merge Extensions, keeping receiver's values when "name/version" conflict
 	if len(other.GetExtensions()) > 0 {
-		x.Extensions = mergeItems(
-			x.GetExtensions(),
+		wrappedExtensions := mergeItems(
+			a.GetExtensions(),
 			other.GetExtensions(),
 			func(extension *Extension) string {
 				return extension.Key()
 			},
 		)
+
+		extensions := make([]*objectsv1.Extension, len(wrappedExtensions))
+
+		for i, extension := range wrappedExtensions {
+			if extension == nil {
+				continue
+			}
+
+			extensions[i] = extension.ToOASFSchema()
+		}
+
+		a.Extensions = extensions
 	}
 
 	// Merge skills, keeping receiver's values when "key" conflict
 	if len(other.GetSkills()) > 0 {
-		x.Skills = mergeItems(
-			x.GetSkills(),
+		wrappedSkills := mergeItems(
+			a.GetSkills(),
 			other.GetSkills(),
 			func(skill *Skill) string {
 				return skill.Key()
 			},
 		)
+
+		skills := make([]*objectsv1.Skill, len(wrappedSkills))
+
+		for i, skill := range wrappedSkills {
+			if skill == nil {
+				continue
+			}
+
+			skills[i] = skill.ToOASFSchema()
+		}
+
+		a.Skills = skills
 	}
 }
 
-func (x *Agent) LoadFromReader(reader io.Reader) ([]byte, error) {
+func (a *Agent) LoadFromReader(reader io.Reader) ([]byte, error) {
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data: %w", err)
 	}
 
-	err = json.Unmarshal(data, x)
+	err = json.Unmarshal(data, a)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal data: %w", err)
 	}
@@ -89,13 +170,13 @@ func (x *Agent) LoadFromReader(reader io.Reader) ([]byte, error) {
 	return data, nil
 }
 
-func (x *Agent) LoadFromFile(path string) ([]byte, error) {
+func (a *Agent) LoadFromFile(path string) ([]byte, error) {
 	reader, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 
-	return x.LoadFromReader(reader)
+	return a.LoadFromReader(reader)
 }
 
 func removeDuplicates[T comparable](slice []T) []T {

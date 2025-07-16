@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer/python"
 	"github.com/agntcy/dir/cli/types"
@@ -41,7 +41,7 @@ func New(source string) *Framework {
 	}
 }
 
-func (fw *Framework) Build(_ context.Context) (*coretypes.Extension, error) {
+func (fw *Framework) Build(_ context.Context) (*objectsv1.Extension, error) {
 	sbom, err := fw.typeAnalyzers[analyzer.Python].SBOM(fw.source)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get SBOM: %w", err)
@@ -54,7 +54,7 @@ func (fw *Framework) Build(_ context.Context) (*coretypes.Extension, error) {
 		return nil, fmt.Errorf("failed to convert data to struct: %w", err)
 	}
 
-	return &coretypes.Extension{
+	return &objectsv1.Extension{
 		Name:    ExtensionName,
 		Version: ExtensionVersion,
 		Data:    strct,

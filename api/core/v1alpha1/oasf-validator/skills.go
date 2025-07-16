@@ -16,10 +16,11 @@ import (
 	"sync"
 	"time"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
 )
 
-const OASFEndpoint = "https://schema.oasf.agntcy.org/api/skills"
+const OASFEndpoint = "https://schema.oasf.agntcy.org/0.3.1/api/skills"
 
 var Validator = &SkillValidator{
 	skills: make(map[uint64]*corev1alpha1.Skill),
@@ -98,10 +99,12 @@ func (sv *SkillValidator) fetchSkills() error {
 		}
 
 		skill := corev1alpha1.Skill{
-			ClassUid:     uint64(uid),
-			CategoryUid:  uint64(categoryUid),
-			CategoryName: &categoryName,
-			ClassName:    &className,
+			Skill: &objectsv1.Skill{
+				ClassUid:     uint64(uid),
+				CategoryUid:  uint64(categoryUid),
+				CategoryName: &categoryName,
+				ClassName:    &className,
+			},
 		}
 
 		sv.mu.Lock()

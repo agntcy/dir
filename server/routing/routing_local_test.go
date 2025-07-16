@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/server/datastore"
@@ -56,7 +57,7 @@ func (m *mockStore) Push(_ context.Context, ref *coretypes.ObjectRef, contents i
 
 	m.data[ref.GetDigest()] = &coretypes.Object{
 		Ref:   ref,
-		Agent: &coretypes.Agent{},
+		Agent: &objectsv1.Agent{},
 		Data:  b,
 	}
 
@@ -88,14 +89,18 @@ func (m *mockStore) Delete(_ context.Context, ref *coretypes.ObjectRef) error {
 func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	var (
 		testAgent = &coretypes.Agent{
-			Skills: []*coretypes.Skill{
-				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+			Agent: &objectsv1.Agent{
+				Skills: []*objectsv1.Skill{
+					{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+				},
 			},
 		}
 		testAgent2 = &coretypes.Agent{
-			Skills: []*coretypes.Skill{
-				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
+			Agent: &objectsv1.Agent{
+				Skills: []*objectsv1.Skill{
+					{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+					{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
+				},
 			},
 		}
 
@@ -151,14 +156,14 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	// Publish first agent
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef,
-		Agent: testAgent,
+		Agent: testAgent.Agent,
 	}, false)
 	assert.NoError(t, err)
 
 	// Publish second agent
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef2,
-		Agent: testAgent2,
+		Agent: testAgent2.Agent,
 	}, false)
 	assert.NoError(t, err)
 
@@ -200,7 +205,7 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	// Unpublish second agent
 	err = r.Unpublish(t.Context(), &coretypes.Object{
 		Ref:   testRef2,
-		Agent: testAgent2,
+		Agent: testAgent2.Agent,
 	}, false)
 	assert.NoError(t, err)
 
@@ -225,9 +230,11 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	// Test data
 	var (
 		testAgent = &coretypes.Agent{
-			Skills: []*coretypes.Skill{
-				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
+			Agent: &objectsv1.Agent{
+				Skills: []*objectsv1.Skill{
+					{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+					{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
+				},
 			},
 		}
 
@@ -255,7 +262,7 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	// Publish first agent
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef,
-		Agent: testAgent,
+		Agent: testAgent.Agent,
 	}, true)
 	assert.NoError(t, err)
 
@@ -322,12 +329,14 @@ func Benchmark_RouteLocal(b *testing.B) {
 	inMemoryRouter := newLocal(store, inMemoryDatastore)
 
 	agent := &coretypes.Agent{
-		Skills: []*coretypes.Skill{
-			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+		Agent: &objectsv1.Agent{
+			Skills: []*objectsv1.Skill{
+				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+			},
 		},
 	}
 	ref := getObjectRef(agent)
-	object := &coretypes.Object{Ref: ref, Agent: agent}
+	object := &coretypes.Object{Ref: ref, Agent: agent.Agent}
 
 	agentData, err := json.Marshal(agent)
 	assert.NoError(b, err)

@@ -1,3 +1,5 @@
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.6-20250714145403-2a698bed604a.1 h1:rdvPmFqAFs/bbxCwWzxWlHD91723l5GF/76NRvxb25w=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.6-20250714145403-2a698bed604a.1/go.mod h1:w4lcaDiAqlWYZXGZHfHk5YwjAbXPzeSkA7Ouut6mTzE=
 cloud.google.com/go v0.121.1 h1:S3kTQSydxmu1JfLRLpKtxRPA7rSrYPRPEUmL/PavVUw=
 cloud.google.com/go v0.121.1/go.mod h1:nRFlrHq39MNVWu+zESP2PosMWA0ryJw8KUBZ2iZpxbw=
 cloud.google.com/go/auth v0.16.2 h1:QvBAGFPLrDeoiNjyfVunhQ10HKNYuOwZ5noee0M5df4=

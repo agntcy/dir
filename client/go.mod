@@ -8,6 +8,7 @@ replace (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.6-20250714145403-2a698bed604a.1
 	github.com/agntcy/dir/api v0.2.6
 	github.com/agntcy/dir/utils v0.2.6
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c

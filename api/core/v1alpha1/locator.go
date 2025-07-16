@@ -4,29 +4,24 @@
 //nolint:mnd
 package corev1alpha1
 
-import "fmt"
+import (
+	"fmt"
 
-func init() {
-	// Override allowed names for locator types
-	LocatorType_name = map[int32]string{
-		0: "unspecified",
-		1: "helm-chart",
-		2: "docker-image",
-		3: "python-package",
-		4: "source-code",
-		5: "binary",
-	}
-	LocatorType_value = map[string]int32{
-		"":               0,
-		"unspecified":    0,
-		"helm-chart":     1,
-		"docker-image":   2,
-		"python-package": 3,
-		"source-code":    4,
-		"binary":         5,
-	}
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+)
+
+type Locator struct {
+	*objectsv1.Locator
 }
 
 func (l *Locator) Key() string {
 	return fmt.Sprintf("%s/%s", l.GetType(), l.GetUrl())
+}
+
+func (l *Locator) ToOASFSchema() *objectsv1.Locator {
+	if l == nil || l.Locator == nil {
+		return nil
+	}
+
+	return l.Locator
 }

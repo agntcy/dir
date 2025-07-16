@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer"
 	"github.com/agntcy/dir/cli/builder/plugins/runtime/analyzer/python"
 	"github.com/agntcy/dir/cli/types"
@@ -32,7 +32,7 @@ func New(source string) *Language {
 	}
 }
 
-func (l *Language) Build(_ context.Context) (*coretypes.Extension, error) {
+func (l *Language) Build(_ context.Context) (*objectsv1.Extension, error) {
 	runtimeInfo, err := l.typeAnalyzers[analyzer.Python].RuntimeVersion(l.source)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get runtime version: %w", err)
@@ -46,7 +46,7 @@ func (l *Language) Build(_ context.Context) (*coretypes.Extension, error) {
 		return nil, fmt.Errorf("failed to convert data to struct: %w", err)
 	}
 
-	return &coretypes.Extension{
+	return &objectsv1.Extension{
 		Name:    ExtensionName,
 		Version: ExtensionVersion,
 		Data:    strct,

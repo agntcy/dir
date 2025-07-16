@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	"github.com/BurntSushi/toml"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	"github.com/agntcy/dir/cli/types"
@@ -89,9 +90,11 @@ func (p *pyprojectparser) Build(_ context.Context) (*coretypes.Agent, error) {
 	}
 
 	return &coretypes.Agent{
-		Name:        metadata.Project.Name,
-		Version:     metadata.Project.Version,
-		Description: metadata.Project.Description,
-		Authors:     metadata.Project.Authors,
+		Agent: &objectsv1.Agent{
+			Name:        metadata.Project.Name,
+			Version:     metadata.Project.Version,
+			Description: metadata.Project.Description,
+			Authors:     metadata.Project.Authors,
+		},
 	}, nil
 }

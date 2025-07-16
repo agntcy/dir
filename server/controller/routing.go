@@ -44,7 +44,7 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 
 	err = c.routing.Publish(ctx, &coretypes.Object{
 		Ref:   ref,
-		Agent: agent,
+		Agent: agent.Agent,
 	}, req.GetNetwork())
 	if err != nil {
 		st := status.Convert(err)
@@ -89,7 +89,7 @@ func (c *routingCtlr) Unpublish(ctx context.Context, req *routingtypes.Unpublish
 
 	err = c.routing.Unpublish(ctx, &coretypes.Object{
 		Ref:   ref,
-		Agent: agent,
+		Agent: agent.Agent,
 	}, req.GetNetwork())
 	if err != nil {
 		st := status.Convert(err)

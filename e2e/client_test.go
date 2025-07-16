@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"io"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
 	routingv1alpha1 "github.com/agntcy/dir/api/routing/v1alpha1"
 	"github.com/agntcy/dir/client"
@@ -34,31 +35,33 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 	// Create agent object
 	agent := &coretypes.Agent{
-		Name:    "test-agent",
-		Version: "v1",
-		Skills: []*coretypes.Skill{
-			{
-				CategoryName: Ptr("test-category-1"),
-				ClassName:    Ptr("test-class-1"),
+		Agent: &objectsv1.Agent{
+			Name:    "test-agent",
+			Version: "v1",
+			Skills: []*objectsv1.Skill{
+				{
+					CategoryName: Ptr("test-category-1"),
+					ClassName:    Ptr("test-class-1"),
+				},
+				{
+					CategoryName: Ptr("test-category-2"),
+					ClassName:    Ptr("test-class-2"),
+				},
 			},
-			{
-				CategoryName: Ptr("test-category-2"),
-				ClassName:    Ptr("test-class-2"),
+			Extensions: []*objectsv1.Extension{
+				{
+					Name:    "schema.oasf.agntcy.org/domains/domain-1",
+					Version: "v1",
+					Data:    nil,
+				},
+				{
+					Name:    "schema.oasf.agntcy.org/features/feature-1",
+					Version: "v1",
+					Data:    nil,
+				},
 			},
+			Signature: &objectsv1.Signature{},
 		},
-		Extensions: []*coretypes.Extension{
-			{
-				Name:    "schema.oasf.agntcy.org/domains/domain-1",
-				Version: "v1",
-				Data:    nil,
-			},
-			{
-				Name:    "schema.oasf.agntcy.org/features/feature-1",
-				Version: "v1",
-				Data:    nil,
-			},
-		},
-		Signature: &coretypes.Signature{},
 	}
 
 	// Marshal the Agent struct back to bytes.
