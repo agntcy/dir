@@ -284,8 +284,8 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 		inCh := make(chan *ListRequest, len(peers)+1)
 		for _, peer := range peers {
 			inCh <- &ListRequest{
-					Peer:   peer.String(),
-					Labels: req.GetLegacyListRequest().GetLabels(),
+				Peer:   peer.String(),
+				Labels: req.GetLegacyListRequest().GetLabels(),
 			}
 		}
 

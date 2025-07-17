@@ -111,15 +111,15 @@ func newRemote(ctx context.Context,
 
 func (r *routeRemote) hasPeersInRoutingTable() bool {
 	// Check if we have any peers in the DHT routing table
-	// This is more accurate than checking peerstore as it verifies active DHT connections
 	rt := r.server.DHT().RoutingTable()
+
 	return rt.Size() > 0
 }
 
 func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object) error {
 	remoteLogger.Debug("Called remote routing's Publish method", "object", object)
 
-	// Skip if no peers are connected
+	// Check if we have peers connected for DHT operations i.e. if directory running in network mode.
 	if !r.hasPeersInRoutingTable() {
 		remoteLogger.Debug("No peers in DHT routing table, returning empty channel")
 
@@ -145,28 +145,29 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object) err
 	return nil
 }
 
-//nolint:mnd
+//nolint:mnd,cyclop
 func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.LegacyListResponse_Item, error) {
 	remoteLogger.Debug("Called remote routing's List method", "req", req)
 
-	// Check if we have peers connected for DHT operations
+	// Check if we have peers connected for DHT operations i.e. if directory running in network mode.
 	if !r.hasPeersInRoutingTable() {
 		remoteLogger.Debug("No peers in DHT routing table, returning empty channel")
 
 		// Return empty channel
 		emptyCh := make(chan *routingtypes.LegacyListResponse_Item)
 		close(emptyCh)
+
 		return emptyCh, nil
 	}
 
 	// list data from remote for a given peer.
 	// this returns all the records that fully match our query.
-	if req.LegacyListRequest.GetPeer() != nil {
+	if req.GetLegacyListRequest().GetPeer() != nil {
 		remoteLogger.Info("Listing data for peer", "req", req)
 
-		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.LegacyListRequest.GetPeer().GetId())}, &routingtypes.ListRequest{
+		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.GetLegacyListRequest().GetPeer().GetId())}, &routingtypes.ListRequest{
 			LegacyListRequest: &routingtypes.LegacyListRequest{
-				Labels: req.LegacyListRequest.GetLabels(),
+				Labels: req.GetLegacyListRequest().GetLabels(),
 			},
 		})
 		if err != nil {
@@ -178,7 +179,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 
 	// get specific agent from all remote peers hosting it
 	// this returns all the peers that are holding requested agent
-	if record := req.LegacyListRequest.GetRecord(); record != nil {
+	if record := req.GetLegacyListRequest().GetRecord(); record != nil {
 		remoteLogger.Info("Listing data for record", "record", record)
 
 		// get object CID
@@ -245,7 +246,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	remoteLogger.Info("Listing data for all peers", "req", req)
 
 	// resolve hops
-	if req.LegacyListRequest.GetMaxHops() > 20 {
+	if req.GetLegacyListRequest().GetMaxHops() > 20 {
 		return nil, errors.New("max hops exceeded")
 	}
 
@@ -262,9 +263,9 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 		// get data from peers (list what each of our connected peers has)
 		resp, err := r.service.List(ctx, r.server.Host().Peerstore().Peers(), &routingtypes.ListRequest{
 			LegacyListRequest: &routingtypes.LegacyListRequest{
-				Peer:    req.LegacyListRequest.GetPeer(),
-				Labels:  req.LegacyListRequest.GetLabels(),
-				Record:  req.LegacyListRequest.GetRecord(),
+				Peer:    req.GetLegacyListRequest().GetPeer(),
+				Labels:  req.GetLegacyListRequest().GetLabels(),
+				Record:  req.GetLegacyListRequest().GetRecord(),
 				MaxHops: req.LegacyListRequest.MaxHops, //nolint:protogetter
 			},
 		})
