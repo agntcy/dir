@@ -54,8 +54,8 @@ func StartLocalServer(ctx context.Context, h *Handler, port int, errCh chan erro
 
 		var resp *http.Response
 
-		resp, err = httpUtils.CreateSecureHTTPClient().Do(req)
-		if err != nil {
+		insecure := false
+		if resp, err = httpUtils.CreateSecureHTTPClient(insecure).Do(req); err != nil {
 			continue
 		}
 
