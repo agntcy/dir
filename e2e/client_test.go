@@ -11,7 +11,7 @@ import (
 
 	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	routingv1alpha1 "github.com/agntcy/dir/api/routing/v1alpha1"
+	routingv1alpha1 "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/e2e/config"
 	"github.com/onsi/ginkgo/v2"
@@ -113,12 +113,14 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 		ginkgo.It("should list published agent by one label", func() {
 			itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
-				Labels:  []string{"/skills/test-category-1/test-class-1"},
+				LegacyListRequest: &routingv1alpha1.LegacyListRequest{
+					Labels: []string{"/skills/test-category-1/test-class-1"},
+				},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Collect items from the channel
-			var items []*routingv1alpha1.ListResponse_Item
+			var items []*routingv1alpha1.LegacyListResponse_Item
 			for item := range itemsChan {
 				items = append(items, item)
 			}
@@ -133,12 +135,14 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 		ginkgo.It("should list published agent by multiple labels", func() {
 			itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
-				Labels:  []string{"/skills/test-category-1/test-class-1", "/skills/test-category-2/test-class-2"},
+				LegacyListRequest: &routingv1alpha1.LegacyListRequest{
+					Labels: []string{"/skills/test-category-1/test-class-1", "/skills/test-category-2/test-class-2"},
+				},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Collect items from the channel
-			var items []*routingv1alpha1.ListResponse_Item
+			var items []*routingv1alpha1.LegacyListResponse_Item
 			for item := range itemsChan {
 				items = append(items, item)
 			}
@@ -158,12 +162,14 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			}
 			for _, label := range labels {
 				itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
-					Labels:  []string{label},
+					LegacyListRequest: &routingv1alpha1.LegacyListRequest{
+						Labels: []string{label},
+					},
 				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Collect items from the channel
-				var items []*routingv1alpha1.ListResponse_Item
+				var items []*routingv1alpha1.LegacyListResponse_Item
 				for item := range itemsChan {
 					items = append(items, item)
 				}
@@ -185,12 +191,14 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 		ginkgo.It("should not find unpublish agent", func() {
 			itemsChan, err := c.List(ctx, &routingv1alpha1.ListRequest{
-				Labels:  []string{"/skills/test-category-1/test-class-1"},
+				LegacyListRequest: &routingv1alpha1.LegacyListRequest{
+					Labels: []string{"/skills/test-category-1/test-class-1"},
+				},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Collect items from the channel
-			var items []*routingv1alpha1.ListResponse_Item
+			var items []*routingv1alpha1.LegacyListResponse_Item
 			for item := range itemsChan {
 				items = append(items, item)
 			}

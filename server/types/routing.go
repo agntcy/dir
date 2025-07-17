@@ -7,7 +7,7 @@ import (
 	"context"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -27,7 +27,7 @@ type RoutingAPI interface {
 	// Search to network with a given request.
 	// This reads from content datastore.
 	// Request can be assumed to be validated.
-	List(context.Context, *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error)
+	List(context.Context, *routingtypes.ListRequest) (<-chan *routingtypes.LegacyListResponse_Item, error)
 
 	// Unpublish removes the object from the network.
 	// This removes the object from peer and content datastore.

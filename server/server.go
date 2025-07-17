@@ -12,7 +12,7 @@ import (
 	"syscall"
 
 	"github.com/Portshift/go-utils/healthz"
-	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	v1alpha2searchtypes "github.com/agntcy/dir/api/search/v1alpha2"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha1"
 	"github.com/agntcy/dir/api/version"

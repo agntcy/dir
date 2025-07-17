@@ -7,7 +7,7 @@ import (
 	"context"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/opencontainers/go-digest"
@@ -35,7 +35,10 @@ func NewRoutingController(routing types.RoutingAPI, store types.StoreAPI) routin
 func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequest) (*emptypb.Empty, error) {
 	routingLogger.Debug("Called routing controller's Publish method", "req", req)
 
-	ref, agent, err := c.getAgent(ctx, req.GetRecord())
+	ref, agent, err := c.getAgent(ctx, &coretypes.ObjectRef{
+		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+		Digest: req.GetRecordCid(),
+	})
 	if err != nil {
 		st := status.Convert(err)
 
@@ -65,12 +68,16 @@ func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.Routi
 		return status.Errorf(st.Code(), "failed to list: %s", st.Message())
 	}
 
-	items := []*routingtypes.ListResponse_Item{}
+	items := []*routingtypes.LegacyListResponse_Item{}
 	for i := range itemChan {
 		items = append(items, i)
 	}
 
-	if err := srv.Send(&routingtypes.ListResponse{Items: items}); err != nil {
+	if err := srv.Send(&routingtypes.ListResponse{
+		LegacyListResponse: &routingtypes.LegacyListResponse{
+			Items: items,
+		},
+	}); err != nil {
 		return status.Errorf(codes.Internal, "failed to send list response: %v", err)
 	}
 
@@ -80,7 +87,10 @@ func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.Routi
 func (c *routingCtlr) Unpublish(ctx context.Context, req *routingtypes.UnpublishRequest) (*emptypb.Empty, error) {
 	routingLogger.Debug("Called routing controller's Unpublish method", "req", req)
 
-	ref, agent, err := c.getAgent(ctx, req.GetRecord())
+	ref, agent, err := c.getAgent(ctx, &coretypes.ObjectRef{
+		Type:   coretypes.ObjectType_OBJECT_TYPE_AGENT.String(),
+		Digest: req.GetRecordCid(),
+	})
 	if err != nil {
 		st := status.Convert(err)
 

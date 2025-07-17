@@ -11,7 +11,7 @@ import (
 	"time"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/rpc"
 	"github.com/agntcy/dir/server/types"
@@ -146,7 +146,7 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object) err
 }
 
 //nolint:mnd
-func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
+func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.LegacyListResponse_Item, error) {
 	remoteLogger.Debug("Called remote routing's List method", "req", req)
 
 	// Check if we have peers connected for DHT operations
@@ -154,18 +154,20 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 		remoteLogger.Debug("No peers in DHT routing table, returning empty channel")
 
 		// Return empty channel
-		emptyCh := make(chan *routingtypes.ListResponse_Item)
+		emptyCh := make(chan *routingtypes.LegacyListResponse_Item)
 		close(emptyCh)
 		return emptyCh, nil
 	}
 
 	// list data from remote for a given peer.
 	// this returns all the records that fully match our query.
-	if req.GetPeer() != nil {
+	if req.LegacyListRequest.GetPeer() != nil {
 		remoteLogger.Info("Listing data for peer", "req", req)
 
-		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.GetPeer().GetId())}, &routingtypes.ListRequest{
-			Labels: req.GetLabels(),
+		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.LegacyListRequest.GetPeer().GetId())}, &routingtypes.ListRequest{
+			LegacyListRequest: &routingtypes.LegacyListRequest{
+				Labels: req.LegacyListRequest.GetLabels(),
+			},
 		})
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to list data on remote: %v", err)
@@ -176,7 +178,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 
 	// get specific agent from all remote peers hosting it
 	// this returns all the peers that are holding requested agent
-	if record := req.GetRecord(); record != nil {
+	if record := req.LegacyListRequest.GetRecord(); record != nil {
 		remoteLogger.Info("Listing data for record", "record", record)
 
 		// get object CID
@@ -196,7 +198,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 		}
 
 		// stream results back
-		resCh := make(chan *routingtypes.ListResponse_Item, 100)
+		resCh := make(chan *routingtypes.LegacyListResponse_Item, 100)
 		go func(provs []peer.AddrInfo, ref *coretypes.ObjectRef) {
 			defer close(resCh)
 
@@ -224,7 +226,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 				remoteLogger.Info("Found an announced agent", "ref", ref, "peer", prov.ID, "labels", strings.Join(labels, ", "), "addrs", strings.Join(addrs, ", "))
 
 				// send back to caller
-				resCh <- &routingtypes.ListResponse_Item{
+				resCh <- &routingtypes.LegacyListResponse_Item{
 					Record: object.GetRef(),
 					Labels: labels,
 					Peer: &routingtypes.Peer{
@@ -243,26 +245,28 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	remoteLogger.Info("Listing data for all peers", "req", req)
 
 	// resolve hops
-	if req.GetMaxHops() > 20 {
+	if req.LegacyListRequest.GetMaxHops() > 20 {
 		return nil, errors.New("max hops exceeded")
 	}
 
 	//nolint:protogetter
-	if req.MaxHops != nil && *req.MaxHops > 0 {
-		*req.MaxHops--
+	if req.LegacyListRequest.MaxHops != nil && *req.LegacyListRequest.MaxHops > 0 {
+		*req.LegacyListRequest.MaxHops--
 	}
 
 	// run in the background
-	resCh := make(chan *routingtypes.ListResponse_Item, 100)
+	resCh := make(chan *routingtypes.LegacyListResponse_Item, 100)
 	go func(ctx context.Context, req *routingtypes.ListRequest) {
 		defer close(resCh)
 
 		// get data from peers (list what each of our connected peers has)
 		resp, err := r.service.List(ctx, r.server.Host().Peerstore().Peers(), &routingtypes.ListRequest{
-			Peer:    req.GetPeer(),
-			Labels:  req.GetLabels(),
-			Record:  req.GetRecord(),
-			MaxHops: req.MaxHops, //nolint:protogetter
+			LegacyListRequest: &routingtypes.LegacyListRequest{
+				Peer:    req.LegacyListRequest.GetPeer(),
+				Labels:  req.LegacyListRequest.GetLabels(),
+				Record:  req.LegacyListRequest.GetRecord(),
+				MaxHops: req.LegacyListRequest.MaxHops, //nolint:protogetter
+			},
 		})
 		if err != nil {
 			remoteLogger.Error("failed to list from peer over the network", "error", err)

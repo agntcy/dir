@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
 	"google.golang.org/grpc/status"
@@ -65,11 +65,11 @@ func (r *route) Publish(ctx context.Context, object *coretypes.Object) error {
 	return nil
 }
 
-func (r *route) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
+func (r *route) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.LegacyListResponse_Item, error) {
 	// Use remote routing when:
 	// 1. Looking for a specific record (digest) - to find providers across the network
 	// 2. MaxHops is set - indicates network traversal
-	if req.GetRecord() != nil || req.GetMaxHops() > 0 {
+	if req.GetLegacyListRequest().GetRecord() != nil || req.GetLegacyListRequest().GetMaxHops() > 0 {
 		return r.remote.List(ctx, req)
 	}
 

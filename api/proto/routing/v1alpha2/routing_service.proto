@@ -8,6 +8,7 @@ package routing.v1alpha2;
 import "google/protobuf/empty.proto";
 import "routing/v1alpha2/peer.proto";
 import "routing/v1alpha2/record_query.proto";
+import "core/v1alpha1/object.proto"; // TODO replace with record
 
 // Defines an interface for announcement and discovery
 // of records across interconnected network.
@@ -95,9 +96,57 @@ message ListRequest {
   // Limit the number of results returned.
   // If not set, it will return all records that this peer is providing.
   optional uint32 limit = 2;
+
+  // Legacy list request.
+  // TODO Remove when new announce and discovery design is implemented
+  optional LegacyListRequest legacy_list_request = 3;
+}
+
+message LegacyListRequest {
+  // Target peer.
+  // If selected, it returns the skill details for this peer.
+  // It may use labels to only return selected labels.
+  optional Peer peer = 1;
+
+  // Target labels.
+  // For example, labels={"skill=text", "skill=text/rag"}
+  repeated string labels = 2;
+
+  // Target object, if any.
+  // If set, it will return only the object with the given reference.
+  optional core.v1alpha1.ObjectRef record = 3;
+
+  // Max routing depth.
+  optional uint32 max_hops = 4;
 }
 
 message ListResponse {
   // The record that matches the list queries.
   string record_cid = 1;
+
+  // Legacy list response.
+  // TODO Remove when new announce and discovery design is implemented
+  optional LegacyListResponse legacy_list_response = 2;
+}
+
+message LegacyListResponse {
+  message Item {
+    // Labels associated with a given object
+    repeated string labels = 1;
+
+    // Optionally sends count details about individual skill.
+    // This is only set when querying labels or our own current peer.
+    // For record requests, only returns the data about that record.
+    map<string, uint64> label_counts = 2;
+
+    // Peer that returned this object.
+    Peer peer = 3;
+
+    // Found object if any.
+    // If empty, then only the labels are important.
+    optional core.v1alpha1.ObjectRef record = 4;
+  }
+
+  // Returned items that match a given request
+  repeated Item items = 1;
 }

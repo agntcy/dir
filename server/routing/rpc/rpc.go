@@ -12,7 +12,7 @@ import (
 
 	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routetypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
@@ -157,7 +157,9 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<
 
 		// local list
 		listCh, err := r.service.route.List(ctx, &routetypes.ListRequest{
-			Labels: in.Labels,
+			LegacyListRequest: &routetypes.LegacyListRequest{
+				Labels: in.Labels,
+			},
 		})
 		if err != nil {
 			st := status.Convert(err)
@@ -268,11 +270,11 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *coretypes.ObjectR
 // this is done in best effort mode.
 //
 //nolint:mnd
-func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.ListResponse_Item, error) {
+func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.LegacyListResponse_Item, error) {
 	logger.Debug("P2p RPC: Executing List request on remote peers", "peers", peers, "req", req)
 
 	// reserve reasonable buffer size for output results
-	respCh := make(chan *routetypes.ListResponse_Item, 10000)
+	respCh := make(chan *routetypes.LegacyListResponse_Item, 10000)
 
 	// run processing in the background
 	outCh := make(chan *ListResponse, 10000) // used as intermediary forwarding channel
@@ -282,8 +284,8 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 		inCh := make(chan *ListRequest, len(peers)+1)
 		for _, peer := range peers {
 			inCh <- &ListRequest{
-				Peer:   peer.String(),
-				Labels: req.GetLabels(),
+					Peer:   peer.String(),
+					Labels: req.GetLegacyListRequest().GetLabels(),
 			}
 		}
 
@@ -327,7 +329,7 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 			}
 
 			seenPeerAgents[uniqueKey] = struct{}{}
-			respCh <- &routetypes.ListResponse_Item{
+			respCh <- &routetypes.LegacyListResponse_Item{
 				Labels:      out.Labels,
 				LabelCounts: out.LabelCounts,
 				Peer: &routetypes.Peer{

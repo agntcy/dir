@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routetypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
@@ -16,8 +16,10 @@ import (
 
 func listDigest(cmd *cobra.Command, client *client.Client, digest string) error {
 	items, err := client.List(cmd.Context(), &routetypes.ListRequest{
-		Record: &coretypes.ObjectRef{
-			Digest: digest,
+		LegacyListRequest: &routetypes.LegacyListRequest{
+			Record: &coretypes.ObjectRef{
+				Digest: digest,
+			},
 		},
 	})
 	if err != nil {

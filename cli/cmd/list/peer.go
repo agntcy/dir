@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	routetypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routetypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
@@ -25,8 +25,10 @@ func listPeer(cmd *cobra.Command, client *client.Client, peerID string, labels [
 
 	// Start the list request
 	items, err := client.List(cmd.Context(), &routetypes.ListRequest{
-		Peer:    peer,
-		Labels:  labels,
+		LegacyListRequest: &routetypes.LegacyListRequest{
+			Peer:   peer,
+			Labels: labels,
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list peer records: %w", err)

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1alpha1"
+	routingtypes "github.com/agntcy/dir/api/routing/v1alpha2"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-datastore"
@@ -109,11 +109,11 @@ func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object) erro
 }
 
 //nolint:cyclop
-func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
+func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.LegacyListResponse_Item, error) {
 	localLogger.Debug("Called local routing's List method", "req", req)
 
 	// dest to write the results on
-	outCh := make(chan *routingtypes.ListResponse_Item)
+	outCh := make(chan *routingtypes.LegacyListResponse_Item)
 
 	// load metrics for the client
 	metrics, err := loadMetrics(ctx, r.dstore)
@@ -122,11 +122,11 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 	}
 
 	// if we sent an empty request, return us stats for the current peer
-	if req.GetRecord() == nil && len(req.GetLabels()) == 0 {
+	if req.GetLegacyListRequest().GetRecord() == nil && len(req.GetLegacyListRequest().GetLabels()) == 0 {
 		go func(labels []string) {
 			defer close(outCh)
 
-			outCh <- &routingtypes.ListResponse_Item{
+			outCh <- &routingtypes.LegacyListResponse_Item{
 				Labels: labels,
 				Peer: &routingtypes.Peer{
 					Id: "HOST",
@@ -139,21 +139,21 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 	}
 
 	// validate request
-	if len(req.GetLabels()) == 0 {
+	if len(req.GetLegacyListRequest().GetLabels()) == 0 {
 		return nil, errors.New("no labels provided")
 	}
 
 	// get filters for not least common labels
 	var filters []query.Filter
 
-	leastCommonLabel := req.GetLabels()[0]
-	for _, label := range req.GetLabels() {
+	leastCommonLabel := req.GetLegacyListRequest().GetLabels()[0]
+	for _, label := range req.GetLegacyListRequest().GetLabels() {
 		if metrics.Data[label].Total < metrics.Data[leastCommonLabel].Total {
 			leastCommonLabel = label
 		}
 	}
 
-	for _, label := range req.GetLabels() {
+	for _, label := range req.GetLegacyListRequest().GetLabels() {
 		if label != leastCommonLabel {
 			filters = append(filters, &labelFilter{
 				dstore: r.dstore,
@@ -224,7 +224,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			labels := getLabels(agent)
 
 			// forward results back
-			outCh <- &routingtypes.ListResponse_Item{
+			outCh <- &routingtypes.LegacyListResponse_Item{
 				Labels: labels,
 				Peer: &routingtypes.Peer{
 					Id: "HOST",
