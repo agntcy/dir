@@ -32,7 +32,7 @@ func TestPublish_InvalidObject(t *testing.T) {
 		err := r.Publish(t.Context(), &coretypes.Object{
 			Ref:   nil,
 			Agent: nil,
-		}, true)
+		})
 
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "invalid object reference")
@@ -157,21 +157,20 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef,
 		Agent: testAgent.Agent,
-	}, false)
+	})
 	assert.NoError(t, err)
 
 	// Publish second agent
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef2,
 		Agent: testAgent2.Agent,
-	}, false)
+	})
 	assert.NoError(t, err)
 
 	for k, v := range validQueriesWithExpectedObjectRef {
 		t.Run("Valid query: "+k, func(t *testing.T) {
 			// list
 			refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
-				Network: toPtr(false),
 				Labels:  []string{k},
 			})
 			assert.NoError(t, err)
@@ -206,12 +205,11 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	err = r.Unpublish(t.Context(), &coretypes.Object{
 		Ref:   testRef2,
 		Agent: testAgent2.Agent,
-	}, false)
+	})
 	assert.NoError(t, err)
 
 	// Try to list second agent
 	refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
-		Network: toPtr(false),
 		Labels:  []string{"/skills/category2"},
 	})
 	assert.NoError(t, err)
@@ -263,13 +261,12 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	err = r.Publish(t.Context(), &coretypes.Object{
 		Ref:   testRef,
 		Agent: testAgent.Agent,
-	}, true)
+	})
 	assert.NoError(t, err)
 
 	t.Run("Valid multi skill query", func(t *testing.T) {
 		// list
 		refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
-			Network: toPtr(false),
 			Labels:  []string{"/skills/category1/class1", "/skills/category2/class2"},
 		})
 		assert.NoError(t, err)
@@ -346,14 +343,14 @@ func Benchmark_RouteLocal(b *testing.B) {
 
 	b.Run("Badger DB Publish and Unpublish", func(b *testing.B) {
 		for b.Loop() {
-			_ = badgerRouter.Publish(b.Context(), object, false)
+			_ = badgerRouter.Publish(b.Context(), object)
 			err := badgerRouter.Unpublish(b.Context(), object)
 			assert.NoError(b, err)
 		}
 	})
 
 	b.Run("Badger DB List", func(b *testing.B) {
-		_ = badgerRouter.Publish(b.Context(), object, false)
+		_ = badgerRouter.Publish(b.Context(), object)
 		for b.Loop() {
 			_, err := badgerRouter.List(b.Context(), &routingtypes.ListRequest{
 				Labels: []string{"/skills/category1/class1"},
@@ -364,14 +361,14 @@ func Benchmark_RouteLocal(b *testing.B) {
 
 	b.Run("In memory DB Publish and Unpublish", func(b *testing.B) {
 		for b.Loop() {
-			_ = inMemoryRouter.Publish(b.Context(), object, false)
+			_ = inMemoryRouter.Publish(b.Context(), object)
 			err := inMemoryRouter.Unpublish(b.Context(), object)
 			assert.NoError(b, err)
 		}
 	})
 
 	b.Run("In memory DB List", func(b *testing.B) {
-		_ = inMemoryRouter.Publish(b.Context(), object, false)
+		_ = inMemoryRouter.Publish(b.Context(), object)
 		for b.Loop() {
 			_, err := inMemoryRouter.List(b.Context(), &routingtypes.ListRequest{
 				Labels: []string{"/skills/category1/class1"},

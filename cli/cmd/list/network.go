@@ -15,11 +15,8 @@ import (
 
 func listNetwork(cmd *cobra.Command, client *client.Client, labels []string) error {
 	// Start the list request
-	networkList := true
-
 	items, err := client.List(cmd.Context(), &routetypes.ListRequest{
 		Labels:  labels,
-		Network: &networkList,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list network records: %w", err)

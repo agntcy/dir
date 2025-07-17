@@ -15,11 +15,7 @@ import (
 )
 
 func listDigest(cmd *cobra.Command, client *client.Client, digest string) error {
-	// Start the list request
-	networkList := true
-
 	items, err := client.List(cmd.Context(), &routetypes.ListRequest{
-		Network: &networkList,
 		Record: &coretypes.ObjectRef{
 			Digest: digest,
 		},

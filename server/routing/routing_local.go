@@ -36,7 +36,7 @@ func newLocal(store types.StoreAPI, dstore types.Datastore) *routeLocal {
 	}
 }
 
-func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object, _ bool) error {
+func (r *routeLocal) Publish(ctx context.Context, object *coretypes.Object) error {
 	localLogger.Debug("Called local routing's Publish method", "object", object)
 
 	ref := object.GetRef()

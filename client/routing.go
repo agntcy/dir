@@ -16,10 +16,9 @@ import (
 
 var logger = logging.Logger("client")
 
-func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef, network bool) error {
+func (c *Client) Publish(ctx context.Context, ref *coretypes.ObjectRef) error {
 	_, err := c.RoutingServiceClient.Publish(ctx, &routingtypes.PublishRequest{
 		Record:  ref,
-		Network: &network,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to publish object: %w", err)
@@ -61,10 +60,9 @@ func (c *Client) List(ctx context.Context, req *routingtypes.ListRequest) (<-cha
 	return resCh, nil
 }
 
-func (c *Client) Unpublish(ctx context.Context, ref *coretypes.ObjectRef, network bool) error {
+func (c *Client) Unpublish(ctx context.Context, ref *coretypes.ObjectRef) error {
 	_, err := c.RoutingServiceClient.Unpublish(ctx, &routingtypes.UnpublishRequest{
 		Record:  ref,
-		Network: &network,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to unpublish object: %w", err)

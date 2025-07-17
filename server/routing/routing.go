@@ -46,32 +46,38 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 	return mainRounter, nil
 }
 
-func (r *route) Publish(ctx context.Context, object *coretypes.Object, network bool) error {
+func (r *route) Publish(ctx context.Context, object *coretypes.Object) error {
 	// always publish data locally for archival/querying
-	err := r.local.Publish(ctx, object, network)
+	err := r.local.Publish(ctx, object)
 	if err != nil {
 		st := status.Convert(err)
 
 		return status.Errorf(st.Code(), "failed to publish locally: %s", st.Message())
 	}
 
-	// publish to the network if requested
-	if network {
-		return r.remote.Publish(ctx, object, network)
+	err = r.remote.Publish(ctx, object)
+	if err != nil {
+		st := status.Convert(err)
+
+		return status.Errorf(st.Code(), "failed to publish to the network: %s", st.Message())
 	}
 
 	return nil
 }
 
 func (r *route) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
-	if !req.GetNetwork() {
-		return r.local.List(ctx, req)
+	// Use remote routing when:
+	// 1. Looking for a specific record (digest) - to find providers across the network
+	// 2. MaxHops is set - indicates network traversal
+	if req.GetRecord() != nil || req.GetMaxHops() > 0 {
+		return r.remote.List(ctx, req)
 	}
 
-	return r.remote.List(ctx, req)
+	// Otherwise use local routing
+	return r.local.List(ctx, req)
 }
 
-func (r *route) Unpublish(ctx context.Context, object *coretypes.Object, _ bool) error {
+func (r *route) Unpublish(ctx context.Context, object *coretypes.Object) error {
 	err := r.local.Unpublish(ctx, object)
 	if err != nil {
 		st := status.Convert(err)

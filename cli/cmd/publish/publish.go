@@ -59,7 +59,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 	presenter.Printf(cmd, "Publishing agent with digest: %s\n", meta.GetDigest())
 
 	// Start publishing
-	if err := c.Publish(cmd.Context(), meta, opts.Network); err != nil {
+	if err := c.Publish(cmd.Context(), meta); err != nil {
 		if strings.Contains(err.Error(), "failed to announce object") {
 			return errors.New("failed to announce object, it will be retried in the background on the API server")
 		}

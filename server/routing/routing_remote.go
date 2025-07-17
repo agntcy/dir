@@ -109,8 +109,22 @@ func newRemote(ctx context.Context,
 	return routeAPI, nil
 }
 
-func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ bool) error {
+func (r *routeRemote) hasPeersInRoutingTable() bool {
+	// Check if we have any peers in the DHT routing table
+	// This is more accurate than checking peerstore as it verifies active DHT connections
+	rt := r.server.DHT().RoutingTable()
+	return rt.Size() > 0
+}
+
+func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object) error {
 	remoteLogger.Debug("Called remote routing's Publish method", "object", object)
+
+	// Skip if no peers are connected
+	if !r.hasPeersInRoutingTable() {
+		remoteLogger.Debug("No peers in DHT routing table, returning empty channel")
+
+		return nil
+	}
 
 	ref := object.GetRef()
 
@@ -134,6 +148,16 @@ func (r *routeRemote) Publish(ctx context.Context, object *coretypes.Object, _ b
 //nolint:mnd
 func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.ListResponse_Item, error) {
 	remoteLogger.Debug("Called remote routing's List method", "req", req)
+
+	// Check if we have peers connected for DHT operations
+	if !r.hasPeersInRoutingTable() {
+		remoteLogger.Debug("No peers in DHT routing table, returning empty channel")
+
+		// Return empty channel
+		emptyCh := make(chan *routingtypes.ListResponse_Item)
+		close(emptyCh)
+		return emptyCh, nil
+	}
 
 	// list data from remote for a given peer.
 	// this returns all the records that fully match our query.
@@ -239,7 +263,6 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 			Labels:  req.GetLabels(),
 			Record:  req.GetRecord(),
 			MaxHops: req.MaxHops, //nolint:protogetter
-			Network: toPtr(false),
 		})
 		if err != nil {
 			remoteLogger.Error("failed to list from peer over the network", "error", err)

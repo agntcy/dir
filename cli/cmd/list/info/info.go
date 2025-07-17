@@ -53,13 +53,11 @@ func runCommand(cmd *cobra.Command) error {
 
 	// Set max hops when searching the network
 	maxHops := uint32(10) //nolint:mnd
-	networkList := opts.Network || peer != nil
 
 	// Start the list request
 	items, err := c.List(cmd.Context(), &routetypes.ListRequest{
 		Peer:    peer,
 		MaxHops: &maxHops,
-		Network: &networkList,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list peers: %w", err)

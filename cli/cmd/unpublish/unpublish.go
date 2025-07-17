@@ -57,7 +57,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 
 	presenter.Printf(cmd, "Unpublishing agent with digest: %s\n", meta.GetDigest())
 
-	if err := c.Unpublish(cmd.Context(), meta, opts.Network); err != nil {
+	if err := c.Unpublish(cmd.Context(), meta); err != nil {
 		return fmt.Errorf("failed to unpublish: %w", err)
 	}
 

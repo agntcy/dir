@@ -23,14 +23,10 @@ func listPeer(cmd *cobra.Command, client *client.Client, peerID string, labels [
 		}
 	}
 
-	// in case we are not listing a remote peer, specify that we are listing local records
-	networkList := peer != nil
-
 	// Start the list request
 	items, err := client.List(cmd.Context(), &routetypes.ListRequest{
 		Peer:    peer,
 		Labels:  labels,
-		Network: &networkList,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to list peer records: %w", err)

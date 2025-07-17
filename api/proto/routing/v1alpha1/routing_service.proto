@@ -36,7 +36,7 @@ message PublishRequest {
   // Announce the publication to the network.
   // This item will end up in the network
   // and can be searched.
-  optional bool network = 2;
+  // optional bool network = 2;
 }
 
 message ListRequest {
@@ -57,7 +57,7 @@ message ListRequest {
   optional uint32 max_hops = 4;
 
   // Run a networked query.
-  optional bool network = 5;
+  // optional bool network = 5;
 }
 
 message ListResponse {
@@ -90,5 +90,5 @@ message UnpublishRequest {
   // Notify the network about the unpublication.
   // This will remove the item from the network
   // and make it no longer searchable.
-  optional bool network = 2;
+  // optional bool network = 2;
 }
