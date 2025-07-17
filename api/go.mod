@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/api
 
-go 1.24.1
+go 1.24.5
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.6-20250714145403-2a698bed604a.1
