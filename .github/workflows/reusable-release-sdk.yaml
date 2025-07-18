@@ -55,11 +55,10 @@ jobs:
 
       - name: Setup Node env
         uses: actions/setup-node@v4
-        env:
-          NPM_CONFIG_USERCONFIG: ./sdk/javascript/.npmrc
         with:
           node-version: '22.x'
-          registry-url: 'https://npm.pkg.github.com'
+          registry-url: https://npm.pkg.github.com/
+          scope: "@agntcy"
 
       - name: Build the Python package
         if: ${{ inputs.python-release == true || inputs.python-release == 'true' || false }}
