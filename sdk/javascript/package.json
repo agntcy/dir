@@ -1,0 +1,27 @@
+{
+  "name": "@agntcy/agntcy-dir-sdk",
+  "version": "0.1.1",
+  "description": "Directory client SDK",
+  "homepage": "https://github.com/agntcy/dir#readme",
+  "bugs": {
+    "url": "https://github.com/agntcy/dir/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agntcy/dir.git"
+  },
+  "license": "Apache-2.0",
+  "author": "",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "@buf/agntcy_dir.grpc_web": "^1.5.0-20250717171342-3851590f3fa5.1",
+    "@grpc/grpc-js": "^1.13.4"
+  },
+  "devDependencies": {
+    "jest": "^30.0.4"
+  }
+}
