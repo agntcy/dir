@@ -4,18 +4,20 @@
 name: Release SDK
 
 on:
+  push:
+    branches: [feat/release-sdk-packages]
   workflow_dispatch:
     inputs:
       javascript-release:
         required: false
         type: boolean
         description: "Make a javascript SDK release."
-        default: true
+        default: false
       python-release:
         required: false
         type: boolean
         description: "Make a python SDK release."
-        default: true
+        default: false
   workflow_call:
     inputs:
       javascript-release:
@@ -27,7 +29,7 @@ on:
         required: false
         type: boolean
         description: "Make a python SDK release."
-        default: true
+        default: false
 
 jobs:
   sdk:
@@ -53,27 +55,28 @@ jobs:
 
       - name: Setup Node env
         uses: actions/setup-node@v4
+        env:
+          NPM_CONFIG_USERCONFIG: ./sdk/javascript/.npmrc
         with:
           node-version: '22.x'
           registry-url: 'https://npm.pkg.github.com'
-          scope: '@octocat'
 
       - name: Build the Python package
-        if: ${{ inputs.python-release == true || inputs.python-release == 'true' }}
+        if: ${{ inputs.python-release == true || inputs.python-release == 'true' || false }}
         run: |
           task sdk:build:python
 
       - name: Build the Javascript package
-        if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' }}
+        if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' || true }}
         run: |
           task sdk:build:javascript
 
       - name: Publish the Python SDK
-        if: ${{ inputs.python-release == true || inputs.python-release == 'true' }}
+        if: ${{ inputs.python-release == true || inputs.python-release == 'true' || false }}
         run: |
           task sdk:release:python UV_PUBLISH_TOKEN=${{ secrets.PYPI_API_TOKEN }}
 
       - name: Publish the Javascript SDK
-        if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' }}
+        if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' || true }}
         run: |
           task sdk:release:javascript NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
