@@ -3,6 +3,9 @@
 
 name: Release SDK
 
+env:
+  NODE_AUTH_TOKEN: ${{secrets.NPMJS_TOKEN}}
+
 on:
   workflow_dispatch:
     inputs:
@@ -10,24 +13,24 @@ on:
         required: false
         type: boolean
         description: "Make a javascript SDK release."
-        default: true
+        default: false
       python-release:
         required: false
         type: boolean
         description: "Make a python SDK release."
-        default: true
+        default: false
   workflow_call:
     inputs:
       javascript-release:
         required: false
         type: boolean
         description: "Make a javascript SDK release."
-        default: true
+        default: false
       python-release:
         required: false
         type: boolean
         description: "Make a python SDK release."
-        default: true
+        default: false
 
 jobs:
   sdk:
@@ -35,7 +38,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
@@ -55,8 +57,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@octocat'
+          registry-url: https://registry.npmjs.org/
+          scope: "@agntcy"
 
       - name: Build the Python package
         if: ${{ inputs.python-release == true || inputs.python-release == 'true' }}
@@ -76,4 +78,4 @@ jobs:
       - name: Publish the Javascript SDK
         if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' }}
         run: |
-          task sdk:release:javascript NODE_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          task sdk:release:javascript NODE_AUTH_TOKEN=${{ secrets.NPMJS_TOKEN }}
