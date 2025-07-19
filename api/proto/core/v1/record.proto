@@ -1,0 +1,42 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package core.v1;
+
+import "objects/v1/agent.proto";
+import "objects/v3/record.proto";
+
+// Defines a reference or a globally unique content identifier of a record.
+message RecordRef {
+  // Globally-unique content identifier (CID) of the record.
+  // Specs: https://github.com/multiformats/cid
+  string cid = 1;
+}
+
+// Defines metadata about a record.
+message RecordMeta {
+  // CID of the record.
+  string cid = 1;
+
+  // Annotations attached to the record.
+  map<string, string> annotations = 2;
+
+  // Schema version of the record.
+  string schema_version = 3;
+
+  // Creation timestamp of the record in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string created_at = 4;
+}
+
+// Record unifies different versions of records into a single message.
+// It allows for backward compatibility and easier handling of different
+// record versions in the same service or application.
+message Record {
+  oneof data {
+    objects.v1.Agent v1 = 1;
+    objects.v3.Record v3 = 2;
+  }
+}

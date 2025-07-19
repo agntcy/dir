@@ -10,7 +10,7 @@
 package corev1alpha1
 
 import (
-	v1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+	v1 "github.com/agntcy/dir/api/objects/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

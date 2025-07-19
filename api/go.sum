@@ -1,5 +1,3 @@
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.6-20250714145403-2a698bed604a.1 h1:rdvPmFqAFs/bbxCwWzxWlHD91723l5GF/76NRvxb25w=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.6-20250714145403-2a698bed604a.1/go.mod h1:w4lcaDiAqlWYZXGZHfHk5YwjAbXPzeSkA7Ouut6mTzE=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

@@ -4,7 +4,7 @@
 package v1alpha1
 
 import (
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	coretypes "github.com/agntcy/dir/api/objects/v1"
 	"github.com/agntcy/dir/server/types"
 )
 

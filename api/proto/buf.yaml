@@ -9,8 +9,8 @@ lint:
 breaking:
   use:
     - WIRE_JSON
-modules:
-  - path: .
-    name: buf.build/agntcy/dir
 deps:
   - buf.build/agntcy/oasf
+modules:
+  - path: .
+    name: github.com/agntcy/dir
