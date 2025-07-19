@@ -7,26 +7,28 @@ managed:
   disable:
     - module: buf.build/googleapis/googleapis
   override:
-    # Overrides for Golang package stubs
-#    - file_option: go_package_prefix
-#      value: github.com/agntcy/dir/api
+    # Override for local proto files (core, etc.)
     - file_option: go_package_prefix
-      value: buf.build/gen/go/agntcy/oasf/protocolbuffers/go
-    - file_option: go_package_prefix
-      path: store
       value: github.com/agntcy/dir/api
+      module: github.com/agntcy/dir
+    # Override for OASF module to generate into api/oasf/
     - file_option: go_package_prefix
-      path: core
       value: github.com/agntcy/dir/api
+      module: buf.build/agntcy/oasf
+inputs:
+  - module: buf.build/agntcy/oasf
+  - directory: .
 plugins:
   # Stubs for Golang
   - remote: buf.build/protocolbuffers/go:v1.36.5
     out: ../
     opt:
       - paths=source_relative
+    include_imports: true
   - remote: buf.build/grpc/go:v1.5.1
     out: ../
     opt:
       - paths=source_relative
       - require_unimplemented_servers=false
       - use_generic_streams_experimental=false
+    include_imports: true

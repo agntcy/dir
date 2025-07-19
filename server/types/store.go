@@ -5,26 +5,25 @@ package types
 
 import (
 	"context"
-	"io"
 
-	coretypes "github.com/agntcy/dir/api/core/v1alpha1"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 )
 
 // StoreAPI handles management of content-addressable object storage.
 type StoreAPI interface {
-	// Push object to content store
-	Push(context.Context, *coretypes.ObjectRef, io.Reader) (*coretypes.ObjectRef, error)
+	// Push record to content store
+	Push(context.Context, *corev1.Record) (*corev1.RecordRef, error)
 
-	// Pull object from content store
-	Pull(context.Context, *coretypes.ObjectRef) (io.ReadCloser, error)
+	// Pull record from content store
+	Pull(context.Context, *corev1.RecordRef) (*corev1.Record, error)
 
-	// Lookup metadata about the object from digest
-	Lookup(context.Context, *coretypes.ObjectRef) (*coretypes.ObjectRef, error)
+	// Lookup metadata about the record from reference
+	Lookup(context.Context, *corev1.RecordRef) (*corev1.RecordMeta, error)
 
-	// Delete the object
-	Delete(context.Context, *coretypes.ObjectRef) error
+	// Delete the record
+	Delete(context.Context, *corev1.RecordRef) error
 
-	// List all available objects
+	// List all available records
 	// Needed for bootstrapping
-	// List(context.Context, func(*coretypes.ObjectRef) error) error
+	// List(context.Context, func(*corev1.RecordRef) error) error
 }

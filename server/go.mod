@@ -43,6 +43,7 @@ require (
 	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	go.opentelemetry.io/otel/sdk v1.36.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
 	modernc.org/libc v1.22.5 // indirect
