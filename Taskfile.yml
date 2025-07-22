@@ -374,9 +374,14 @@ tasks:
       # Helm args
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
-      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-test.yaml'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
+
+      # Create zot configuration using helper task
+      - task: deploy:zot:config
+        vars:
+          ZOT_CONFIG_DIR: /opt/zot-config
 
       # Deploy chart
       - |
@@ -445,6 +450,11 @@ tasks:
         echo "PEER ID: ${bootstrap_peerid}"
         echo BOOTSTRAP_PEER_ID="${bootstrap_peerid}" > .env
 
+      # Create zot configuration using helper task for bootstrap
+      - task: deploy:zot:config
+        vars:
+          ZOT_CONFIG_DIR: /opt/zot-config-bootstrap
+
       # Deploy the bootstrap server using Helm
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
@@ -456,6 +466,8 @@ tasks:
           --set apiserver.config.routing.key_path="/etc/agntcy/dir/node.privkey" \
           --set apiserver.config.routing.listen_address="/ip4/0.0.0.0/tcp/8999" \
           --set apiserver.config.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
+          --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
+          --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -472,6 +484,14 @@ tasks:
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
     cmds:
+      # Create zot configuration for each peer using helper task
+      - for:
+          matrix:
+            PEER: ['peer1', 'peer2', 'peer3']
+        task: deploy:zot:config
+        vars:
+          ZOT_CONFIG_DIR: /opt/zot-config-{{ .ITEM.PEER }}
+
       # Deploy the peer servers using Helm
       - for:
           matrix:
@@ -484,6 +504,8 @@ tasks:
             --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
             --set apiserver.config.oci.registry_address="agntcy-dir-zot.{{ .ITEM.PEER }}.svc.cluster.local:5000" \
             --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
+            --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
+            --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \
@@ -525,6 +547,44 @@ tasks:
           {{ .HELM_BIN }} delete --namespace {{ .ITEM.PEER }} agntcy-dir
 
       - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
+
+  deploy:zot:config:
+    internal: true
+    desc: Create zot configuration directory and file
+    vars:
+      ZOT_CONFIG_DIR: '{{ .ZOT_CONFIG_DIR | default "/opt/zot-config" }}'
+    cmds:
+      # Create host directory for zot configuration hot reload
+      - |
+        if ! {{ .KUBECTL_BIN }} get nodes -o jsonpath='{.items[0].metadata.name}' | xargs -I {} \
+        docker exec {} mkdir -p {{ .ZOT_CONFIG_DIR }}; then
+          echo "Failed to create zot config directory: {{ .ZOT_CONFIG_DIR }}"
+          exit 1
+        fi
+
+      # Create zot configuration file with proper permissions
+      - |
+        if ! {{ .KUBECTL_BIN }} get nodes -o jsonpath='{.items[0].metadata.name}' | xargs -I {} \
+        docker exec {} sh -c 'cat > {{ .ZOT_CONFIG_DIR }}/config.json << "EOF"
+        {
+          "distSpecVersion": "1.1.1",
+          "storage": {
+            "rootDirectory": "/var/lib/registry"
+          },
+          "http": {
+            "address": "0.0.0.0",
+            "port": "5000"
+          },
+          "log": {
+            "level": "info"
+          }
+        }
+        EOF
+        chmod 666 {{ .ZOT_CONFIG_DIR }}/config.json
+        chmod 777 {{ .ZOT_CONFIG_DIR }}'; then
+          echo "Failed to create zot config file: {{ .ZOT_CONFIG_DIR }}/config.json"
+          exit 1
+        fi
 
   ##
   ## Test

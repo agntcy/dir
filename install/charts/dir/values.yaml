@@ -55,3 +55,38 @@ apiserver:
       # bootstrap_peers:
       #   - /ip4/1.1.1.1/tcp/1
       #   - /ip4/1.1.1.1/tcp/2
+
+  # Extra volume mounts for the apiserver container
+  extraVolumeMounts: 
+  - name: zot-config-storage
+    mountPath: /etc/zot
+
+  # Extra volumes - shared between apiserver and zot for config hot reload
+  extraVolumes: 
+  - name: zot-config-storage
+    hostPath:
+      path: /opt/zot-config
+      type: DirectoryOrCreate
+
+  # Zot registry configuration (subchart)
+  zot:
+    # Disable default config mounting to use shared volume
+    mountConfig: false
+    mountSecret: false
+    
+    # Share the same volume with apiserver for hot reload
+    extraVolumeMounts:
+      - name: zot-config-storage
+        mountPath: /etc/zot
+    
+    # Use the same hostPath for true volume sharing
+    extraVolumes:
+      - name: zot-config-storage
+        hostPath:
+          path: /opt/zot-config
+          type: DirectoryOrCreate
+    
+    # Configure zot to use the config file from the shared mounted volume
+    extraArgs:
+      - "serve"
+      - "/etc/zot/config.json"

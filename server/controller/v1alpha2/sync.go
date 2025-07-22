@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
+	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -19,15 +20,18 @@ import (
 
 var syncLogger = logging.Logger("controller/sync")
 
+// syncCtlr implements the SyncService gRPC interface.
 type syncCtlr struct {
 	storetypes.UnimplementedSyncServiceServer
-	db types.DatabaseAPI
+	db   types.DatabaseAPI
+	opts types.APIOptions
 }
 
-func NewSyncController(db types.DatabaseAPI) storetypes.SyncServiceServer {
+// NewSyncController creates a new sync controller.
+func NewSyncController(db types.DatabaseAPI, opts types.APIOptions) storetypes.SyncServiceServer {
 	return &syncCtlr{
-		UnimplementedSyncServiceServer: storetypes.UnimplementedSyncServiceServer{},
-		db:                             db,
+		db:   db,
+		opts: opts,
 	}
 }
 
@@ -103,6 +107,35 @@ func (c *syncCtlr) DeleteSync(_ context.Context, req *storetypes.DeleteSyncReque
 	syncLogger.Debug("Sync deleted successfully", "sync_id", req.GetSyncId())
 
 	return &storetypes.DeleteSyncResponse{}, nil
+}
+
+// RequestRegistryCredentials handles requests for registry authentication credentials.
+func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storetypes.RequestRegistryCredentialsRequest) (*storetypes.RequestRegistryCredentialsResponse, error) {
+	syncLogger.Debug("Called sync controller's RequestRegistryCredentials method", "req", req)
+
+	// Validate requesting node ID
+	if req.GetRequestingNodeId() == "" {
+		return &storetypes.RequestRegistryCredentialsResponse{
+			Success:      false,
+			ErrorMessage: "requesting node ID is required",
+		}, nil
+	}
+
+	// Get OCI configuration to determine registry details
+	ociConfig := c.opts.Config().OCI
+
+	// Build registry URL based on configuration
+	registryURL := ociConfig.RegistryAddress
+	if registryURL == "" {
+		registryURL = ociconfig.DefaultRegistryAddress
+	}
+
+	// TODO Skip credentials generation for now
+	return &storetypes.RequestRegistryCredentialsResponse{
+		Success:           true,
+		RemoteRegistryUrl: registryURL,
+		Credentials:       nil,
+	}, nil
 }
 
 // validateRemoteDirectoryURL validates the format of a remote directory URL.

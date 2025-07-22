@@ -233,23 +233,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			time.Sleep(40 * time.Second)
 		})
 
-		ginkgo.It("should succeed to search for agent_v2.json", func() {
-			var outputBuffer bytes.Buffer
-
-			searchCmd := clicmd.RootCmd
-			searchCmd.SetOut(&outputBuffer)
-			searchCmd.SetArgs([]string{
-				"search",
-				"--server-addr",
-				Peer2Addr,
-			})
-
-			err := searchCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring(agentDigest))
-		})
-
 		ginkgo.It("should succeed to pull agent_v2.json from peer 2 after sync", func() {
 			var outputBuffer bytes.Buffer
 

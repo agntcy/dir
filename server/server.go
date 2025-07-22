@@ -113,7 +113,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	storetypes.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
 	routingtypes.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
 	v1alpha2searchtypes.RegisterSearchServiceServer(server.grpcServer, v1alpha2controller.NewSearchController(databaseAPI))
-	v1alpha2storetypes.RegisterSyncServiceServer(server.grpcServer, v1alpha2controller.NewSyncController(databaseAPI))
+	v1alpha2storetypes.RegisterSyncServiceServer(server.grpcServer, v1alpha2controller.NewSyncController(databaseAPI, options))
 
 	// Register server
 	reflection.Register(server.grpcServer)
