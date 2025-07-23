@@ -243,8 +243,11 @@ dirctl list info --network
 
 ### Sync
 
+The sync feature enables one-way synchronization of records and other objects between remote Directory instances and your local node. This feature supports distributed AI agent ecosystems by allowing you to replicate content from multiple remote directories, creating local mirrors for offline access, backup, and cross-network collaboration.
+
+**How Sync Works with Zot**: Directory leverages [Zot](https://zotregistry.dev/), a cloud-native OCI registry, as the underlying synchronization engine. When you create a sync operation, the system dynamically configures Zot's sync extension to pull content from remote registries. Objects are stored as OCI artifacts (manifests, blobs, and tags), enabling container-native synchronization with automatic polling, retry mechanisms, and secure credential exchange between Directory nodes.
+
 This example demonstrates how to synchronize records between remote directories and your local instance.
-The sync feature allows you to pull records from remote directories and replicate them locally, enabling distributed content sharing and backup scenarios.
 
 ```bash
 # Create a sync operation to pull from a remote directory
@@ -256,7 +259,7 @@ dirctl sync list
 # Check the status of a specific sync operation
 dirctl sync status <sync id>
 
-# Delete a sync operation (stops if running, removes from history)
+# Delete a sync operation
 dirctl sync delete <sync id>
 ```
 
