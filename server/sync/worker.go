@@ -18,6 +18,7 @@ import (
 	"github.com/agntcy/dir/server/sync/monitor"
 	synctypes "github.com/agntcy/dir/server/sync/types"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/htpasswd"
 	zotconfig "github.com/agntcy/dir/utils/zot"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -138,13 +139,13 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	logger.Debug("Starting sync operation", "worker_id", w.id, "sync_id", item.SyncID, "remote_url", item.RemoteDirectoryURL)
 
 	// Negotiate credentials with remote node using RequestRegistryCredentials RPC
-	remoteRegistryURL, err := w.negotiateCredentials(ctx, item.RemoteDirectoryURL)
+	credentials, remoteRegistryURL, err := w.negotiateCredentials(ctx, item.RemoteDirectoryURL)
 	if err != nil {
 		return fmt.Errorf("failed to negotiate credentials: %w", err)
 	}
 
 	// Store credentials for later use in sync process
-	logger.Debug("Credentials negotiated successfully", "worker_id", w.id, "sync_id", item.SyncID)
+	logger.Debug("Credentials negotiated successfully", "worker_id", w.id, "sync_id", item.SyncID, "username", credentials.Username)
 
 	// Update sync object with remote registry URL
 	if err := w.db.UpdateSyncRemoteRegistry(item.SyncID, remoteRegistryURL); err != nil {
@@ -152,7 +153,7 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	}
 
 	// Update zot configuration with sync extension to trigger sync
-	if err := w.addRegistryToZotSync(ctx, remoteRegistryURL); err != nil {
+	if err := w.addRegistryToZotSync(ctx, remoteRegistryURL, credentials); err != nil {
 		return fmt.Errorf("failed to add registry to zot sync: %w", err)
 	}
 
@@ -167,7 +168,7 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 }
 
 // negotiateCredentials negotiates registry credentials with the remote Directory node.
-func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL string) (string, error) {
+func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL string) (*htpasswd.Credentials, string, error) {
 	logger.Debug("Starting credential negotiation", "worker_id", w.id, "remote_url", remoteDirectoryURL)
 
 	// Create gRPC connection to the remote Directory node
@@ -176,7 +177,7 @@ func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL st
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to create gRPC connection to remote node %s: %w", remoteDirectoryURL, err)
+		return nil, "", fmt.Errorf("failed to create gRPC connection to remote node %s: %w", remoteDirectoryURL, err)
 	}
 	defer conn.Close()
 
@@ -191,18 +192,26 @@ func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL st
 		RequestingNodeId: requestingNodeID,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to request registry credentials from %s: %w", remoteDirectoryURL, err)
+		return nil, "", fmt.Errorf("failed to request registry credentials from %s: %w", remoteDirectoryURL, err)
 	}
 
 	// Check if the negotiation was successful
 	if !resp.GetSuccess() {
-		return "", fmt.Errorf("credential negotiation failed: %s", resp.GetErrorMessage())
+		return nil, "", fmt.Errorf("credential negotiation failed: %s", resp.GetErrorMessage())
+	}
+
+	// Extract basic auth credentials
+	basicAuth := resp.GetBasicAuth()
+	if basicAuth == nil {
+		return nil, "", errors.New("no basic auth credentials provided in response")
 	}
 
 	logger.Info("Successfully negotiated registry credentials", "worker_id", w.id, "remote_url", remoteDirectoryURL, "registry_url", resp.GetRemoteRegistryUrl())
 
-	// TODO: Get credentials from the response
-	return resp.GetRemoteRegistryUrl(), nil
+	return &htpasswd.Credentials{
+		Username: basicAuth.GetUsername(),
+		Password: basicAuth.GetPassword(),
+	}, resp.GetRemoteRegistryUrl(), nil
 }
 
 // readZotConfig reads and parses the zot configuration file.
@@ -237,7 +246,7 @@ func (w *Worker) writeZotConfig(zotConfig *zotconfig.Config) error {
 }
 
 // addRegistryToZotSync adds a registry to the zot sync configuration.
-func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL string) error {
+func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL string, credentials *htpasswd.Credentials) error {
 	logger.Debug("Adding registry to zot sync", "worker_id", w.id, "remote_url", remoteDirectoryURL)
 
 	// Validate input
@@ -264,6 +273,14 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 	}
 
 	syncConfig.Enable = toPtr(true)
+
+	// Create credentials file
+	credentialsFilePath := "/etc/zot/sync-credentials.json" //nolint:gosec
+	if err := w.updateCredentialsFile(credentialsFilePath, remoteDirectoryURL, credentials); err != nil {
+		return fmt.Errorf("failed to create credentials file: %w", err)
+	}
+
+	syncConfig.CredentialsFile = credentialsFilePath
 
 	// Create registry configuration with credentials if provided
 	// Add http:// scheme if not present for zot sync
@@ -373,6 +390,62 @@ func (w *Worker) removeRegistryFromZotSync(_ context.Context, remoteRegistryURL 
 	}
 
 	logger.Info("Successfully removed registry from zot sync", "worker_id", w.id)
+
+	return nil
+}
+
+func (w *Worker) updateCredentialsFile(path string, remoteRegistryURL string, credentials *htpasswd.Credentials) error {
+	logger.Debug("Creating credentials file", "worker_id", w.id, "remote_url", remoteRegistryURL)
+
+	// Load credentials file if it exists
+	credentialsFile, err := os.ReadFile(path)
+	if err != nil {
+		logger.Error("Failed to read credentials file, creating new one", "worker_id", w.id, "error", err)
+
+		// Create new credentials file
+		credentialsFile = []byte("{}")
+	}
+
+	var credentialsData zotconfig.CredentialsFile
+	if err := json.Unmarshal(credentialsFile, &credentialsData); err != nil {
+		logger.Error("Failed to unmarshal credentials file", "worker_id", w.id, "error", err)
+	}
+
+	// Add new credentials for multiple URL formats that zot might use
+	// Zot sync expects credentials to match the exact URL format it uses
+	baseURL := strings.TrimPrefix(remoteRegistryURL, "http://")
+	baseURL = strings.TrimPrefix(baseURL, "https://")
+
+	// Store credentials under multiple URL formats to ensure compatibility
+	credentialsData[remoteRegistryURL] = zotconfig.Credentials{
+		Username: credentials.Username,
+		Password: credentials.Password,
+	}
+	credentialsData[baseURL] = zotconfig.Credentials{
+		Username: credentials.Username,
+		Password: credentials.Password,
+	}
+	// Also add credentials for the URL with repository name appended (which zot uses in practice)
+	credentialsData[remoteRegistryURL+"/dir"] = zotconfig.Credentials{
+		Username: credentials.Username,
+		Password: credentials.Password,
+	}
+	credentialsData[baseURL+"/dir"] = zotconfig.Credentials{
+		Username: credentials.Username,
+		Password: credentials.Password,
+	}
+
+	credentialsJSON, err := json.MarshalIndent(credentialsData, "", "  ")
+	if err != nil {
+		logger.Error("Failed to marshal credentials", "worker_id", w.id, "error", err)
+	}
+
+	// Write credentials file
+	if err := os.WriteFile(path, credentialsJSON, 0o600); err != nil { //nolint:mnd
+		logger.Error("Failed to write credentials file", "worker_id", w.id, "error", err)
+
+		return fmt.Errorf("failed to write credentials file: %w", err)
+	}
 
 	return nil
 }

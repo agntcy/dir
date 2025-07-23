@@ -482,6 +482,9 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
+          --set apiserver.zot.authHeader="aGVhbHRoY2hlY2s6aGVhbHRocGFzcw==" \
+          --set apiserver.config.oci.auth_config.username="apiclient" \
+          --set apiserver.config.oci.auth_config.password="apipass" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -648,6 +651,9 @@ tasks:
           --set apiserver.config.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
           --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
           --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
+          --set apiserver.zot.authHeader="aGVhbHRoY2hlY2s6aGVhbHRocGFzcw==" \
+          --set apiserver.config.oci.auth_config.username="apiclient" \
+          --set apiserver.config.oci.auth_config.password="apipass" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -687,6 +693,9 @@ tasks:
             --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
             --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
             --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
+            --set apiserver.zot.authHeader="aGVhbHRoY2hlY2s6aGVhbHRocGFzcw==" \
+            --set apiserver.config.oci.auth_config.username="apiclient" \
+            --set apiserver.config.oci.auth_config.password="apipass" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \
@@ -754,7 +763,12 @@ tasks:
           },
           "http": {
             "address": "0.0.0.0",
-            "port": "5000"
+            "port": "5000",
+            "auth": {
+              "htpasswd": {
+                "path": "/etc/zot/htpasswd"
+              }
+            }
           },
           "log": {
             "level": "info"
@@ -771,7 +785,11 @@ tasks:
           }
         }
         EOF
+        # Create htpasswd with health check user and API client user
+        echo "healthcheck:\$2y\$05\$0f1Yia5SQTghNbCSGasxYOPkr.aqZ5tMu.E8x5xdfnuIufkJOm/a2" > {{ .ZOT_CONFIG_DIR }}/htpasswd
+        echo "apiclient:\$2y\$05\$cZc2WmabcIRp5M28eQEthObDrw48KMxw7qwlHlZzGJiAE92Ntc.qS" >> {{ .ZOT_CONFIG_DIR }}/htpasswd
         chmod 666 {{ .ZOT_CONFIG_DIR }}/config.json
+        chmod 666 {{ .ZOT_CONFIG_DIR }}/htpasswd
         chmod 777 {{ .ZOT_CONFIG_DIR }}'; then
           echo "Failed to create zot config file: {{ .ZOT_CONFIG_DIR }}/config.json"
           exit 1

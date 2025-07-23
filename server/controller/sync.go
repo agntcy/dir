@@ -13,6 +13,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/htpasswd"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -139,11 +140,38 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 		registryURL = ociconfig.DefaultRegistryAddress
 	}
 
-	// TODO Skip credentials generation for now
+	// TODO When SPIFFE is implemented, check if the requesting node is a trusted node
+	// For now, accept all credential requests
+	syncLogger.Debug("Generating registry credentials for requesting node", "node_id", req.GetRequestingNodeId())
+
+	// TODO Make credentials temporary
+	// Generate credentials using htpasswd utils
+	htpasswdManager := htpasswd.NewManager("/etc/zot/htpasswd")
+
+	creds, err := htpasswdManager.GenerateCredentials(req.GetRequestingNodeId())
+	if err != nil {
+		syncLogger.Error("Failed to generate credentials", "error", err)
+
+		return &storev1.RequestRegistryCredentialsResponse{
+			Success:      false,
+			ErrorMessage: "failed to generate credentials",
+		}, nil
+	}
+
+	syncLogger.Debug("Successfully generated registry credentials",
+		"node_id", req.GetRequestingNodeId(),
+		"registry_url", registryURL,
+		"username", creds.Username)
+
 	return &storev1.RequestRegistryCredentialsResponse{
 		Success:           true,
 		RemoteRegistryUrl: registryURL,
-		Credentials:       nil,
+		Credentials: &storev1.RequestRegistryCredentialsResponse_BasicAuth{
+			BasicAuth: &storev1.BasicAuthCredentials{
+				Username: creds.Username,
+				Password: creds.Password,
+			},
+		},
 	}, nil
 }
 
