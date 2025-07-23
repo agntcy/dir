@@ -58,5 +58,22 @@ type SyncExtensions struct {
 }
 
 type Config struct {
-	Extensions *SyncExtensions `json:"extensions,omitempty"`
+	DistSpecVersion string          `json:"distSpecVersion"      mapstructure:"distSpecVersion"`
+	Storage         StorageConfig   `json:"storage"              mapstructure:"storage"`
+	HTTP            HTTPConfig      `json:"http"                 mapstructure:"http"`
+	Log             *LogConfig      `json:"log,omitempty"        mapstructure:"log"`
+	Extensions      *SyncExtensions `json:"extensions,omitempty"`
+}
+
+type StorageConfig struct {
+	RootDirectory string `json:"rootDirectory" mapstructure:"rootDirectory"`
+}
+
+type HTTPConfig struct {
+	Address string `json:"address" mapstructure:"address"`
+	Port    string `json:"port"    mapstructure:"port"`
+}
+
+type LogConfig struct {
+	Level string `json:"level" mapstructure:"level"`
 }
