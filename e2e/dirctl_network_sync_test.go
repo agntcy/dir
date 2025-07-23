@@ -126,7 +126,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			}
 		})
 
-		ginkgo.It("should not list the deleted sync", func() {
+		ginkgo.It("should return deleted status", func() {
 			var outputBuffer bytes.Buffer
 
 			listCmd := clicmd.RootCmd
@@ -139,11 +139,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			})
 
 			err := listCmd.Execute()
-			if err != nil {
-				gomega.Expect(err.Error()).NotTo(gomega.ContainSubstring("required"))
-			}
-
-			gomega.Expect(outputBuffer.String()).NotTo(gomega.ContainSubstring(syncID))
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring("DELETE"))
 		})
 	})
 
@@ -227,10 +224,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring(syncID))
 			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring(Peer1InternalAddr))
 			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring("PENDING"))
+		})
 
-			// Wait for sync to complete
+		// Wait for sync to complete
+		ginkgo.It("should wait for sync to complete", func() {
 			ginkgo.GinkgoWriter.Printf("Waiting for sync to complete\n")
-			time.Sleep(40 * time.Second)
+			time.Sleep(60 * time.Second)
 		})
 
 		ginkgo.It("should succeed to pull agent_v2.json from peer 2 after sync", func() {
@@ -252,6 +251,76 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			equal, err := compareJSONAgents(outputBuffer.Bytes(), expectedAgentV2JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
+		})
+
+		// Delete sync from peer 2
+		ginkgo.It("should delete sync from peer 2", func() {
+			var outputBuffer bytes.Buffer
+
+			deleteCmd := clicmd.RootCmd
+			deleteCmd.SetOut(&outputBuffer)
+			deleteCmd.SetArgs([]string{
+				"sync",
+				"delete",
+				syncID,
+				"--server-addr",
+				Peer2Addr,
+			})
+
+			err := deleteCmd.Execute()
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		// Wait for sync to complete
+		ginkgo.It("should wait for delete to complete", func() {
+			ginkgo.GinkgoWriter.Printf("Waiting for delete to complete\n")
+			time.Sleep(60 * time.Second)
+		})
+
+		// Push agent_v3.json to peer 1
+		ginkgo.It("should push agent_v3.json to peer 1", func() {
+			var outputBuffer bytes.Buffer
+
+			pushCmd := clicmd.RootCmd
+			pushCmd.SetOut(&outputBuffer)
+			pushCmd.SetArgs([]string{
+				"push",
+				"./testdata/agent_v3.json",
+				"--server-addr",
+				Peer1Addr,
+			})
+
+			err := pushCmd.Execute()
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			agentDigest = strings.TrimSpace(outputBuffer.String())
+
+			// Ensure the digest is valid
+			_, err = digest.Parse(agentDigest)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		// Wait for sync to complete
+		ginkgo.It("should wait for sync period to complete", func() {
+			ginkgo.GinkgoWriter.Printf("Waiting for sync period to complete\n")
+			time.Sleep(60 * time.Second)
+		})
+
+		// Pull agent_v3.json from peer 2
+		ginkgo.It("should fail to pull agent_v3.json from peer 2", func() {
+			var outputBuffer bytes.Buffer
+
+			pullCmd := clicmd.RootCmd
+			pullCmd.SetOut(&outputBuffer)
+			pullCmd.SetArgs([]string{
+				"pull",
+				agentDigest,
+				"--server-addr",
+				Peer2Addr,
+			})
+
+			err := pullCmd.Execute()
+			gomega.Expect(err).To(gomega.HaveOccurred())
 		})
 	})
 })

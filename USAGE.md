@@ -256,9 +256,6 @@ dirctl sync list
 # Check the status of a specific sync operation
 dirctl sync status <sync id>
 
-# Once sync is complete, verify the records were synced
-dirctl search --limit 10
-
 # Delete a sync operation (stops if running, removes from history)
 dirctl sync delete <sync id>
 ```

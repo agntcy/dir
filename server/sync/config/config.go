@@ -7,7 +7,7 @@ import "time"
 
 const (
 	DefaultSyncSchedulerInterval = 30 * time.Second
-	DefaultSyncWorkerCount       = 3
+	DefaultSyncWorkerCount       = 1
 	DefaultSyncWorkerTimeout     = 10 * time.Minute
 )
 

@@ -164,9 +164,12 @@ enum SyncStatus {
   // Sync operation is actively discovering and transferring objects
   SYNC_STATUS_IN_PROGRESS = 2;
   
-  // Sync operation completed successfully with all objects transferred
-  SYNC_STATUS_COMPLETED = 3;
-  
   // Sync operation encountered an error and stopped
-  SYNC_STATUS_FAILED = 4;
+  SYNC_STATUS_FAILED = 3;
+  
+  // Sync operation has been marked for deletion but cleanup not yet started
+  SYNC_STATUS_DELETE_PENDING = 4;
+  
+  // Sync operation has been successfully deleted and cleaned up
+  SYNC_STATUS_DELETED = 5;
 }

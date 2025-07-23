@@ -14,6 +14,7 @@ type Sync struct {
 	gorm.Model
 	ID                 string                   `gorm:"not null;index"`
 	RemoteDirectoryURL string                   `gorm:"not null"`
+	RemoteRegistryURL  string                   `gorm:"not null"`
 	Status             storev1alpha2.SyncStatus `gorm:"not null"`
 }
 
@@ -23,6 +24,10 @@ func (sync *Sync) GetID() string {
 
 func (sync *Sync) GetRemoteDirectoryURL() string {
 	return sync.RemoteDirectoryURL
+}
+
+func (sync *Sync) GetRemoteRegistryURL() string {
+	return sync.RemoteRegistryURL
 }
 
 func (sync *Sync) GetStatus() storev1alpha2.SyncStatus {
@@ -104,6 +109,42 @@ func (d *DB) UpdateSyncStatus(syncID string, status storev1alpha2.SyncStatus) er
 	logger.Debug("Updated sync in SQLite database", "sync_id", sync.GetID(), "status", sync.GetStatus())
 
 	return nil
+}
+
+func (d *DB) UpdateSyncRemoteRegistry(syncID string, remoteRegistry string) error {
+	syncObj, err := d.GetSyncByID(syncID)
+	if err != nil {
+		return err
+	}
+
+	sync, ok := syncObj.(*Sync)
+	if !ok {
+		return gorm.ErrInvalidData
+	}
+
+	sync.RemoteRegistryURL = remoteRegistry
+
+	if err := d.gormDB.Save(sync).Error; err != nil {
+		return err
+	}
+
+	logger.Debug("Updated sync in SQLite database", "sync_id", sync.GetID(), "remote_registry", sync.GetRemoteRegistryURL())
+
+	return nil
+}
+
+func (d *DB) GetSyncRemoteRegistry(syncID string) (string, error) {
+	syncObj, err := d.GetSyncByID(syncID)
+	if err != nil {
+		return "", err
+	}
+
+	sync, ok := syncObj.(*Sync)
+	if !ok {
+		return "", gorm.ErrInvalidData
+	}
+
+	return sync.GetRemoteRegistryURL(), nil
 }
 
 func (d *DB) DeleteSync(syncID string) error {

@@ -70,33 +70,61 @@ func (w *Worker) processWorkItem(ctx context.Context, item synctypes.WorkItem) {
 	workCtx, cancel := context.WithTimeout(ctx, w.timeout)
 	defer cancel()
 
-	// TODO Check if store is oci and zot. If not, fail
-	err := w.performSync(workCtx, item)
-
-	// Update sync status based on result
 	var finalStatus storetypes.SyncStatus
 
-	if err != nil {
-		logger.Error("Sync failed", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
+	switch item.Type {
+	case synctypes.WorkItemTypeSyncCreate:
+		// TODO Check if store is oci and zot. If not, fail
+		err := w.addSync(workCtx, item)
+		if err != nil {
+			logger.Error("Sync failed", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
 
-		finalStatus = storetypes.SyncStatus_SYNC_STATUS_FAILED
-	} else {
-		logger.Info("Sync completed successfully", "worker_id", w.id, "sync_id", item.SyncID)
+			finalStatus = storetypes.SyncStatus_SYNC_STATUS_FAILED
+		} else {
+			finalStatus = storetypes.SyncStatus_SYNC_STATUS_IN_PROGRESS
+		}
 
-		finalStatus = storetypes.SyncStatus_SYNC_STATUS_COMPLETED
+	case synctypes.WorkItemTypeSyncDelete:
+		err := w.deleteSync(workCtx, item)
+		if err != nil {
+			logger.Error("Sync delete failed", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
+
+			finalStatus = storetypes.SyncStatus_SYNC_STATUS_FAILED
+		} else {
+			finalStatus = storetypes.SyncStatus_SYNC_STATUS_DELETED
+		}
+
+	default:
+		logger.Error("Unknown work item type", "worker_id", w.id, "sync_id", item.SyncID, "type", item.Type)
 	}
 
 	// Update status in database
-
 	if err := w.db.UpdateSyncStatus(item.SyncID, finalStatus); err != nil {
 		logger.Error("Failed to update sync status", "worker_id", w.id, "sync_id", item.SyncID, "status", finalStatus, "error", err)
 	}
 }
 
-// performSync implements the core synchronization logic.
+func (w *Worker) deleteSync(workCtx context.Context, item synctypes.WorkItem) error {
+	logger.Debug("Starting sync delete operation", "worker_id", w.id, "sync_id", item.SyncID, "remote_url", item.RemoteDirectoryURL)
+
+	// Get remote registry URL from sync object
+	remoteRegistryURL, err := w.db.GetSyncRemoteRegistry(item.SyncID)
+	if err != nil {
+		return fmt.Errorf("failed to get remote registry URL: %w", err)
+	}
+
+	// Remove registry from zot configuration
+	if err := w.removeRegistryFromZotSync(workCtx, remoteRegistryURL); err != nil {
+		return fmt.Errorf("failed to remove registry from zot sync: %w", err)
+	}
+
+	return nil
+}
+
+// addSync implements the core synchronization logic.
 //
 //nolint:unparam
-func (w *Worker) performSync(ctx context.Context, item synctypes.WorkItem) error {
+func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	logger.Debug("Starting sync operation", "worker_id", w.id, "sync_id", item.SyncID, "remote_url", item.RemoteDirectoryURL)
 
 	// Negotiate credentials with remote node using RequestRegistryCredentials RPC
@@ -108,9 +136,14 @@ func (w *Worker) performSync(ctx context.Context, item synctypes.WorkItem) error
 	// Store credentials for later use in sync process
 	logger.Debug("Credentials negotiated successfully", "worker_id", w.id, "sync_id", item.SyncID)
 
+	// Update sync object with remote registry URL
+	if err := w.db.UpdateSyncRemoteRegistry(item.SyncID, remoteRegistryURL); err != nil {
+		return fmt.Errorf("failed to update sync remote registry: %w", err)
+	}
+
 	// Update zot configuration with sync extension to trigger sync
-	if err := w.updateZotConfig(ctx, remoteRegistryURL); err != nil {
-		return fmt.Errorf("failed to update zot config: %w", err)
+	if err := w.addRegistryToZotSync(ctx, remoteRegistryURL); err != nil {
+		return fmt.Errorf("failed to add registry to zot sync: %w", err)
 	}
 
 	logger.Debug("Sync operation completed", "worker_id", w.id, "sync_id", item.SyncID)
@@ -157,25 +190,50 @@ func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL st
 	return resp.GetRemoteRegistryUrl(), nil
 }
 
-func (w *Worker) updateZotConfig(_ context.Context, remoteDirectoryURL string) error {
-	logger.Debug("Updating zot config", "worker_id", w.id, "remote_url", remoteDirectoryURL)
+// readZotConfig reads and parses the zot configuration file.
+func (w *Worker) readZotConfig() (*zotconfig.Config, error) {
+	config, err := os.ReadFile(zotconfig.DefaultZotConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read zot config file %s: %w", zotconfig.DefaultZotConfigPath, err)
+	}
+
+	logger.Debug("Read zot config file", "worker_id", w.id, "file", string(config))
+
+	var zotConfig zotconfig.Config
+	if err := json.Unmarshal(config, &zotConfig); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal zot config: %w", err)
+	}
+
+	return &zotConfig, nil
+}
+
+// writeZotConfig marshals and writes the zot configuration file.
+func (w *Worker) writeZotConfig(zotConfig *zotconfig.Config) error {
+	updatedConfig, err := json.MarshalIndent(zotConfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated zot config: %w", err)
+	}
+
+	if err := os.WriteFile(zotconfig.DefaultZotConfigPath, updatedConfig, 0o644); err != nil { //nolint:gosec,mnd
+		return fmt.Errorf("failed to write updated zot config: %w", err)
+	}
+
+	return nil
+}
+
+// addRegistryToZotSync adds a registry to the zot sync configuration.
+func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL string) error {
+	logger.Debug("Adding registry to zot sync", "worker_id", w.id, "remote_url", remoteDirectoryURL)
 
 	// Validate input
 	if remoteDirectoryURL == "" {
 		return errors.New("remote directory URL cannot be empty")
 	}
 
-	// Load zot config file from /etc/zot in zot's pod
-	config, err := os.ReadFile(zotconfig.DefaultZotConfigPath)
+	// Read current zot config
+	zotConfig, err := w.readZotConfig()
 	if err != nil {
-		return fmt.Errorf("failed to read zot config file %s: %w", zotconfig.DefaultZotConfigPath, err)
-	}
-
-	logger.Debug("Zot config file", "worker_id", w.id, "remote_url", remoteDirectoryURL, "file", string(config))
-
-	var zotConfig zotconfig.Config
-	if err := json.Unmarshal(config, &zotConfig); err != nil {
-		return fmt.Errorf("failed to unmarshal zot config: %w", err)
+		return err
 	}
 
 	// Initialize extensions if nil
@@ -199,6 +257,17 @@ func (w *Worker) updateZotConfig(_ context.Context, remoteDirectoryURL string) e
 		return fmt.Errorf("failed to normalize registry URL: %w", err)
 	}
 
+	// Check if registry already exists
+	for _, existingRegistry := range syncConfig.Registries {
+		for _, existingURL := range existingRegistry.URLs {
+			if existingURL == registryURL {
+				logger.Debug("Registry already exists in zot config", "worker_id", w.id, "registry_url", registryURL)
+
+				return nil
+			}
+		}
+	}
+
 	registry := zotconfig.SyncRegistryConfig{
 		URLs:         []string{registryURL},
 		OnDemand:     false, // Disable OnDemand for proactive sync
@@ -214,19 +283,81 @@ func (w *Worker) updateZotConfig(_ context.Context, remoteDirectoryURL string) e
 	}
 	syncConfig.Registries = append(syncConfig.Registries, registry)
 
-	logger.Debug("Zot config updated", "worker_id", w.id, "remote_url", remoteDirectoryURL, "config", zotConfig)
+	logger.Debug("Registry added to zot sync", "worker_id", w.id, "remote_url", remoteDirectoryURL, "registry_url", registryURL)
 
 	// Write the updated config back to the file
-	updatedConfig, err := json.MarshalIndent(zotConfig, "", "  ")
+	if err := w.writeZotConfig(zotConfig); err != nil {
+		return err
+	}
+
+	logger.Info("Successfully added registry to zot sync", "worker_id", w.id, "remote_url", remoteDirectoryURL)
+
+	return nil
+}
+
+// removeRegistryFromZotSync removes a registry from the zot sync configuration.
+func (w *Worker) removeRegistryFromZotSync(_ context.Context, remoteRegistryURL string) error {
+	logger.Debug("Removing registry from zot sync", "worker_id", w.id, "remote_registry_url", remoteRegistryURL)
+
+	// Validate input
+	if remoteRegistryURL == "" {
+		return errors.New("remote directory URL cannot be empty")
+	}
+
+	// Read current zot config
+	zotConfig, err := w.readZotConfig()
 	if err != nil {
-		return fmt.Errorf("failed to marshal updated zot config: %w", err)
+		return err
 	}
 
-	if err := os.WriteFile(zotconfig.DefaultZotConfigPath, updatedConfig, 0o644); err != nil { //nolint:gosec,mnd
-		return fmt.Errorf("failed to write updated zot config: %w", err)
+	// Check if sync config exists
+	if zotConfig.Extensions == nil || zotConfig.Extensions.Sync == nil {
+		logger.Debug("No sync configuration found", "worker_id", w.id)
+
+		return nil
 	}
 
-	logger.Info("Successfully updated zot config", "worker_id", w.id, "remote_url", remoteDirectoryURL)
+	syncConfig := zotConfig.Extensions.Sync
+
+	// Normalize the URL to match what would be stored
+	registryURL, err := w.normalizeRegistryURL(remoteRegistryURL)
+	if err != nil {
+		return fmt.Errorf("failed to normalize registry URL: %w", err)
+	}
+
+	// Find and remove the registry
+	var filteredRegistries []zotconfig.SyncRegistryConfig
+
+	for _, registry := range syncConfig.Registries {
+		found := false
+
+		for _, url := range registry.URLs {
+			if url == registryURL {
+				found = true
+
+				break
+			}
+		}
+
+		if !found {
+			filteredRegistries = append(filteredRegistries, registry)
+		}
+	}
+
+	if len(filteredRegistries) == len(syncConfig.Registries) {
+		logger.Debug("Registry not found in zot config", "worker_id", w.id, "registry_url", registryURL)
+
+		return nil
+	}
+
+	syncConfig.Registries = filteredRegistries
+
+	// Write the updated config back to the file
+	if err := w.writeZotConfig(zotConfig); err != nil {
+		return err
+	}
+
+	logger.Info("Successfully removed registry from zot sync", "worker_id", w.id)
 
 	return nil
 }

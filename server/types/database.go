@@ -34,6 +34,12 @@ type SyncDatabaseAPI interface {
 	// UpdateSyncStatus updates an existing sync object in the database.
 	UpdateSyncStatus(syncID string, status storev1alpha2.SyncStatus) error
 
+	// UpdateSyncRemoteRegistry updates the remote registry of a sync object.
+	UpdateSyncRemoteRegistry(syncID string, remoteRegistry string) error
+
+	// GetSyncRemoteRegistry retrieves the remote registry of a sync object.
+	GetSyncRemoteRegistry(syncID string) (string, error)
+
 	// DeleteSync deletes a sync object by its ID.
 	DeleteSync(syncID string) error
 }

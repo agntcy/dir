@@ -100,11 +100,22 @@ func (c *syncCtlr) GetSync(_ context.Context, req *storetypes.GetSyncRequest) (*
 func (c *syncCtlr) DeleteSync(_ context.Context, req *storetypes.DeleteSyncRequest) (*storetypes.DeleteSyncResponse, error) {
 	syncLogger.Debug("Called sync controller's DeleteSync method", "req", req)
 
-	if err := c.db.DeleteSync(req.GetSyncId()); err != nil {
-		return nil, fmt.Errorf("failed to delete sync: %w", err)
+	// Get the sync to check its current status
+	syncObj, err := c.db.GetSyncByID(req.GetSyncId())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sync: %w", err)
 	}
 
-	syncLogger.Debug("Sync deleted successfully", "sync_id", req.GetSyncId())
+	if syncObj.GetStatus() == storetypes.SyncStatus_SYNC_STATUS_DELETED {
+		return nil, status.Errorf(codes.NotFound, "sync has already been deleted")
+	}
+
+	// Mark sync for deletion - the scheduler will pick this up
+	if err := c.db.UpdateSyncStatus(req.GetSyncId(), storetypes.SyncStatus_SYNC_STATUS_DELETE_PENDING); err != nil {
+		return nil, fmt.Errorf("failed to mark sync for deletion: %w", err)
+	}
+
+	syncLogger.Debug("Sync marked for deletion", "sync_id", req.GetSyncId())
 
 	return &storetypes.DeleteSyncResponse{}, nil
 }
