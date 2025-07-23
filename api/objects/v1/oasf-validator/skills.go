@@ -19,7 +19,7 @@ import (
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
 )
 
-const OASFEndpoint = "https://schema.oasf.agntcy.org/api/skills"
+const OASFEndpoint = "https://schema.oasf.outshift.com/0.3.1/api/skills"
 
 var Validator = &SkillValidator{
 	skills: make(map[uint64]*objectsv1.Skill),
