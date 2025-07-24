@@ -212,11 +212,9 @@ tasks:
     desc: Unit test Python Client code
     deps:
       - deps:uv
-    dir: ./tools/python/client/tests
-    env:
-      PYTHONPATH: '{{ .ROOT_DIR }}/tools/client/python/client/proto'
+    dir: ./sdk/python
     cmds:
-      - '{{.UV_BIN}} run pytest test_client.py'
+      - '{{.UV_BIN}} run python -m unittest'
 
   sdk:build:all:
     desc: Build all client SDK package
