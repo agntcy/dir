@@ -8,21 +8,11 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"google.golang.org/protobuf/proto"
-)
-
-const (
-	maxRecordSize = 4 * 1024 * 1024 // 4MB - max record size as per v1alpha2 spec
 )
 
 // Push sends a complete record to the store and returns a record reference.
 // The record must be ≤4MB as per the v1alpha2 store service specification.
 func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
-	// Validate record size (optional but recommended)
-	if size := proto.Size(record); size > maxRecordSize {
-		return nil, fmt.Errorf("record too large: %d bytes (max 4MB)", size)
-	}
-
 	// Create streaming client
 	stream, err := c.StoreServiceClient.Push(ctx)
 	if err != nil {
@@ -127,6 +117,8 @@ func (c *Client) Delete(ctx context.Context, recordRef *corev1.RecordRef) error 
 
 // PushBatch sends multiple records in a single stream for efficiency.
 // This takes advantage of the streaming interface for batch operations.
+//
+//nolint:dupl // Similar structure to PullBatch but semantically different operations
 func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*corev1.RecordRef, error) {
 	if len(records) == 0 {
 		return nil, nil
@@ -140,11 +132,6 @@ func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*co
 
 	// Send all records
 	for i, record := range records {
-		// Validate record size
-		if size := proto.Size(record); size > maxRecordSize {
-			return nil, fmt.Errorf("record %d too large: %d bytes (max 4MB)", i, size)
-		}
-
 		if err := stream.Send(record); err != nil {
 			return nil, fmt.Errorf("failed to send record %d: %w", i, err)
 		}
@@ -171,6 +158,8 @@ func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*co
 }
 
 // PullBatch retrieves multiple records in a single stream for efficiency.
+//
+//nolint:dupl // Similar structure to PushBatch but semantically different operations
 func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
 	if len(recordRefs) == 0 {
 		return nil, nil
