@@ -23,28 +23,38 @@ func (c *Client) CreateSync(ctx context.Context, remoteURL string) (string, erro
 	return meta.GetSyncId(), nil
 }
 
-func (c *Client) ListSyncs(ctx context.Context) ([]*synctypes.ListSyncsItem, error) {
-	stream, err := c.SyncServiceClient.ListSyncs(ctx, &synctypes.ListSyncsRequest{})
+func (c *Client) ListSyncs(ctx context.Context, req *synctypes.ListSyncsRequest) (<-chan *synctypes.ListSyncsItem, error) {
+	stream, err := c.SyncServiceClient.ListSyncs(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list syncs: %w", err)
+		return nil, fmt.Errorf("failed to create list syncs stream: %w", err)
 	}
 
-	var items []*synctypes.ListSyncsItem
+	resultCh := make(chan *synctypes.ListSyncsItem)
 
-	for {
-		item, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			break
+	go func() {
+		defer close(resultCh)
+
+		for {
+			item, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			if err != nil {
+				logger.Error("failed to receive list syncs response", "error", err)
+
+				break
+			}
+
+			select {
+			case resultCh <- item:
+			case <-ctx.Done():
+				return
+			}
 		}
+	}()
 
-		if err != nil {
-			return nil, fmt.Errorf("failed to list syncs: %w", err)
-		}
-
-		items = append(items, item)
-	}
-
-	return items, nil
+	return resultCh, nil
 }
 
 func (c *Client) GetSync(ctx context.Context, syncID string) (*synctypes.GetSyncResponse, error) {

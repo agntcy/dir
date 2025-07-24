@@ -250,7 +250,7 @@ The sync feature enables one-way synchronization of records and other objects be
 This example demonstrates how to synchronize records between remote directories and your local instance.
 
 ```bash
-# Create a sync operation to pull from a remote directory
+# Create a sync operation to start periodic poll from remote
 dirctl sync create https://remote-directory.example.com:8888
 
 # List all sync operations
@@ -259,7 +259,7 @@ dirctl sync list
 # Check the status of a specific sync operation
 dirctl sync status <sync id>
 
-# Delete a sync operation
+# Delete a sync operation to stop periodic poll from remote
 dirctl sync delete <sync id>
 ```
 

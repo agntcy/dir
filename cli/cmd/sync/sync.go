@@ -41,7 +41,10 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all synchronization operations",
 	Long: `List displays all sync operations known to the system, including active, 
-completed, and failed synchronizations.`,
+completed, and failed synchronizations.
+
+Pagination can be controlled using --limit and --offset flags:
+  dir sync list --limit 10 --offset 20`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runListSyncs(cmd)
 	},
@@ -106,21 +109,32 @@ func runListSyncs(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	syncs, err := client.ListSyncs(cmd.Context())
+	itemCh, err := client.ListSyncs(cmd.Context(), &storev1alpha2.ListSyncsRequest{
+		Limit:  &opts.Limit,
+		Offset: &opts.Offset,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to list syncs: %w", err)
 	}
 
-	for _, sync := range syncs {
-		presenter.Printf(cmd,
-			"ID %s Status %s RemoteDirectoryUrl %s\n",
-			sync.GetSyncId(),
-			sync.GetStatus(),
-			sync.GetRemoteDirectoryUrl(),
-		)
-	}
+	for {
+		select {
+		case sync, ok := <-itemCh:
+			if !ok {
+				// Channel closed, all items received
+				return nil
+			}
 
-	return nil
+			presenter.Printf(cmd,
+				"ID %s Status %s RemoteDirectoryUrl %s\n",
+				sync.GetSyncId(),
+				sync.GetStatus(),
+				sync.GetRemoteDirectoryUrl(),
+			)
+		case <-cmd.Context().Done():
+			return fmt.Errorf("context cancelled while listing syncs: %w", cmd.Context().Err())
+		}
+	}
 }
 
 func runGetSyncStatus(cmd *cobra.Command, syncID string) error {
