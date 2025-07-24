@@ -72,7 +72,13 @@ class Client:
             Exception: If publishing fails
         """
 
-
+        try:
+            self.routing_client.Publish(
+                routing_types.PublishRequest(record=ref, network=network),
+                metadata=metadata,
+            )
+        except Exception as e:
+            raise Exception(f"Failed to publish object: {e}")
 
     def list(self, req: routing_types.ListRequest, metadata: Optional[List[Tuple[str, str]]] = None) -> Iterator[routing_types.ListResponse.Item]:
         """List objects matching the criteria.
@@ -88,7 +94,17 @@ class Client:
             Exception: If list operation fails
         """
 
-        raise NotImplementedError
+        try:
+            # List is a server-streaming RPC - single request, stream of responses
+            stream = self.routing_client.List(req, metadata=metadata)
+
+            # Yield each item from the stream
+            for response in stream:
+                for item in response.items:
+                    yield item
+        except Exception as e:
+            logger.error(f"Error receiving objects: {e}")
+            raise Exception(f"Failed to list objects: {e}")
 
     def unpublish(self, ref: core.object_pb2.ObjectRef, network: bool = False, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
         """Unpublish an object from the routing service.
@@ -102,7 +118,13 @@ class Client:
             Exception: If unpublishing fails
         """
 
-        raise NotImplementedError
+        try:
+            self.routing_client.Unpublish(
+                routing_types.UnpublishRequest(record=ref, network=network),
+                metadata=metadata
+            )
+        except Exception as e:
+            raise Exception(f"Failed to unpublish object: {e}")
 
     def push(self, ref: core.object_pb2.ObjectRef, reader: BinaryIO, metadata: Optional[List[Tuple[str, str]]] = None) -> core.object_pb2.ObjectRef:
         """Push an object to the store.
@@ -119,7 +141,22 @@ class Client:
             Exception: If push operation fails
         """
 
-        raise NotImplementedError
+        try:
+            # Push is a client-streaming RPC - stream of requests, single response
+            def request_iterator():
+                while True:
+                    data = reader.read(CHUNK_SIZE)
+                    if not data:
+                        break
+
+                    obj = core.object_pb2.Object(ref=ref, data=data)
+                    yield obj
+
+            # Call the Push method with the request iterator
+            response = self.store_client.Push(request_iterator(), metadata=metadata)
+            return response
+        except Exception as e:
+            raise Exception(f"Failed to push object: {e}")
 
     def pull(self, ref: core.object_pb2.ObjectRef, metadata: Optional[List[Tuple[str, str]]] = None) -> io.BytesIO:
         """Pull an object from the store.
@@ -135,7 +172,18 @@ class Client:
             Exception: If pull operation fails
         """
 
-        raise NotImplementedError
+        try:
+            # Pull is a server-streaming RPC - single request, stream of responses
+            stream = self.store_client.Pull(ref, metadata=metadata)
+
+            buffer = io.BytesIO()
+            for obj in stream:
+                buffer.write(obj.data)
+
+            buffer.seek(0)
+            return buffer
+        except Exception as e:
+            raise Exception(f"Failed to pull object: {e}")
 
     def lookup(self, ref: core.object_pb2.ObjectRef, metadata: Optional[List[Tuple[str, str]]] = None) -> core.object_pb2.ObjectRef:
         """Look up an object in the store.
@@ -151,7 +199,11 @@ class Client:
             Exception: If lookup fails
         """
 
-        raise NotImplementedError
+        try:
+            # Lookup is a unary RPC - single request, single response
+            return self.store_client.Lookup(ref, metadata=metadata)
+        except Exception as e:
+            raise Exception(f"Failed to lookup object: {e}")
 
     def delete(self, ref: core.object_pb2.ObjectRef, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
         """Delete an object from the store.
@@ -164,11 +216,8 @@ class Client:
             Exception: If delete operation fails
         """
 
-        raise NotImplementedError
-
-
-    def sign(self, req: sign_types.SignRequest) -> sign_types.SignResponse:
-        raise NotImplementedError
-
-    def verify(self, req: sign_types.VerifyRequest) -> sign_types.VerifyResponse:
-        raise NotImplementedError
+        try:
+            # Delete is a unary RPC - single request, single response
+            self.store_client.Delete(ref, metadata=metadata)
+        except Exception as e:
+            raise Exception(f"Failed to delete object: {e}")

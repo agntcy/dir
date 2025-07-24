@@ -3,7 +3,7 @@ import io
 import hashlib
 from unittest.mock import patch, MagicMock
 
-from client.client import Client, Config
+from .client import Client, Config
 from core.v1alpha1 import object_pb2, agent_pb2, skill_pb2, signature_pb2
 from routing.v1alpha1 import routing_service_pb2
 
