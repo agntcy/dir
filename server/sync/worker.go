@@ -25,14 +25,14 @@ import (
 // Worker processes sync work items.
 type Worker struct {
 	id        int
-	db        types.DatabaseAPI
+	db        types.SyncDatabaseAPI
 	store     types.StoreAPI
 	workQueue <-chan synctypes.WorkItem
 	timeout   time.Duration
 }
 
 // NewWorker creates a new worker instance.
-func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration) *Worker {
+func NewWorker(id int, db types.SyncDatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration) *Worker {
 	return &Worker{
 		id:        id,
 		db:        db,
@@ -65,6 +65,7 @@ func (w *Worker) Run(ctx context.Context, stopCh <-chan struct{}) {
 // processWorkItem handles a single sync work item.
 func (w *Worker) processWorkItem(ctx context.Context, item synctypes.WorkItem) {
 	logger.Info("Processing sync work item", "worker_id", w.id, "sync_id", item.SyncID, "remote_url", item.RemoteDirectoryURL)
+	// TODO Check if store is oci and zot. If not, fail
 
 	// Create timeout context for this work item
 	workCtx, cancel := context.WithTimeout(ctx, w.timeout)
@@ -74,24 +75,23 @@ func (w *Worker) processWorkItem(ctx context.Context, item synctypes.WorkItem) {
 
 	switch item.Type {
 	case synctypes.WorkItemTypeSyncCreate:
-		// TODO Check if store is oci and zot. If not, fail
+		finalStatus = storetypes.SyncStatus_SYNC_STATUS_IN_PROGRESS
+
 		err := w.addSync(workCtx, item)
 		if err != nil {
 			logger.Error("Sync failed", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
 
 			finalStatus = storetypes.SyncStatus_SYNC_STATUS_FAILED
-		} else {
-			finalStatus = storetypes.SyncStatus_SYNC_STATUS_IN_PROGRESS
 		}
 
 	case synctypes.WorkItemTypeSyncDelete:
+		finalStatus = storetypes.SyncStatus_SYNC_STATUS_DELETED
+
 		err := w.deleteSync(workCtx, item)
 		if err != nil {
 			logger.Error("Sync delete failed", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
 
 			finalStatus = storetypes.SyncStatus_SYNC_STATUS_FAILED
-		} else {
-			finalStatus = storetypes.SyncStatus_SYNC_STATUS_DELETED
 		}
 
 	default:
@@ -248,7 +248,7 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 		zotConfig.Extensions.Sync = syncConfig
 	}
 
-	syncConfig.Enable = Ptr(true)
+	syncConfig.Enable = toPtr(true)
 
 	// Create registry configuration with credentials if provided
 	// Add http:// scheme if not present for zot sync
@@ -274,7 +274,7 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 		PollInterval: zotconfig.DefaultPollInterval,
 		MaxRetries:   zotconfig.DefaultMaxRetries,
 		RetryDelay:   zotconfig.DefaultRetryDelay,
-		TLSVerify:    Ptr(false),
+		TLSVerify:    toPtr(false),
 		Content: []zotconfig.SyncContent{
 			{
 				Prefix: ociconfig.DefaultRepositoryName,
@@ -381,6 +381,6 @@ func (w *Worker) normalizeRegistryURL(rawURL string) (string, error) {
 	return rawURL, nil
 }
 
-func Ptr[T any](v T) *T {
+func toPtr[T any](v T) *T {
 	return &v
 }

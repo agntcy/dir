@@ -13,7 +13,6 @@ import (
 	"github.com/agntcy/dir/e2e/config"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/opencontainers/go-digest"
 )
 
 const (
@@ -145,7 +144,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 	})
 
 	ginkgo.Context("sync functionality", func() {
-		var agentDigest string
+		var agentCID string
 
 		ginkgo.It("should push agent_v2.json to peer 1", func() {
 			var outputBuffer bytes.Buffer
@@ -162,11 +161,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			err := pushCmd.Execute()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			agentDigest = strings.TrimSpace(outputBuffer.String())
-
-			// Ensure the digest is valid
-			_, err = digest.Parse(agentDigest)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			agentCID = strings.TrimSpace(outputBuffer.String())
 		})
 
 		ginkgo.It("should fail to pull agent_v2.json from peer 2", func() {
@@ -176,7 +171,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
-				agentDigest,
+				agentCID,
 				"--server-addr",
 				Peer2Addr,
 			})
@@ -259,7 +254,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
-				agentDigest,
+				agentCID,
 				"--server-addr",
 				Peer2Addr,
 			})
@@ -333,11 +328,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			err := pushCmd.Execute()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			agentDigest = strings.TrimSpace(outputBuffer.String())
-
-			// Ensure the digest is valid
-			_, err = digest.Parse(agentDigest)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			agentCID = strings.TrimSpace(outputBuffer.String())
 		})
 
 		// Pull agent_v3.json from peer 2
@@ -348,7 +339,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			pullCmd.SetOut(&outputBuffer)
 			pullCmd.SetArgs([]string{
 				"pull",
-				agentDigest,
+				agentCID,
 				"--server-addr",
 				Peer2Addr,
 			})

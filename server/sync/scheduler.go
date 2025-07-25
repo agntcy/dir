@@ -16,13 +16,13 @@ import (
 
 // Scheduler monitors the database for pending sync operations.
 type Scheduler struct {
-	db        types.DatabaseAPI
+	db        types.SyncDatabaseAPI
 	workQueue chan<- synctypes.WorkItem
 	interval  time.Duration
 }
 
 // NewScheduler creates a new scheduler instance.
-func NewScheduler(db types.DatabaseAPI, workQueue chan<- synctypes.WorkItem, interval time.Duration) *Scheduler {
+func NewScheduler(db types.SyncDatabaseAPI, workQueue chan<- synctypes.WorkItem, interval time.Duration) *Scheduler {
 	return &Scheduler{
 		db:        db,
 		workQueue: workQueue,

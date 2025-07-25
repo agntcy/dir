@@ -59,9 +59,17 @@ func (d *DB) GetSyncByID(syncID string) (types.SyncObject, error) {
 	return &sync, nil
 }
 
-func (d *DB) GetSyncs() ([]types.SyncObject, error) {
+func (d *DB) GetSyncs(offset, limit int) ([]types.SyncObject, error) {
 	var syncs []Sync
-	if err := d.gormDB.Find(&syncs).Error; err != nil {
+
+	query := d.gormDB.Offset(offset)
+
+	// Only apply limit if it's greater than 0
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Find(&syncs).Error; err != nil {
 		return nil, err
 	}
 

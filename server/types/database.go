@@ -26,7 +26,7 @@ type SyncDatabaseAPI interface {
 	GetSyncByID(syncID string) (SyncObject, error)
 
 	// GetSyncs retrieves all sync objects.
-	GetSyncs() ([]SyncObject, error)
+	GetSyncs(offset, limit int) ([]SyncObject, error)
 
 	// GetSyncsByStatus retrieves all sync objects by their status.
 	GetSyncsByStatus(status storev1alpha2.SyncStatus) ([]SyncObject, error)

@@ -58,21 +58,19 @@ func (c *syncCtlr) CreateSync(_ context.Context, req *storetypes.CreateSyncReque
 func (c *syncCtlr) ListSyncs(req *storetypes.ListSyncsRequest, srv storetypes.SyncService_ListSyncsServer) error {
 	syncLogger.Debug("Called sync controller's ListSyncs method", "req", req)
 
-	syncs, err := c.db.GetSyncs()
+	syncs, err := c.db.GetSyncs(int(req.GetOffset()), int(req.GetLimit()))
 	if err != nil {
 		return fmt.Errorf("failed to list syncs: %w", err)
 	}
 
 	for _, sync := range syncs {
-		resp := &storetypes.ListSyncsItem{
+		syncLogger.Debug("Sending sync object", "sync_id", sync.GetID(), "status", sync.GetStatus())
+
+		if err := srv.Send(&storetypes.ListSyncsItem{
 			SyncId:             sync.GetID(),
 			RemoteDirectoryUrl: sync.GetRemoteDirectoryURL(),
 			Status:             sync.GetStatus(),
-		}
-
-		syncLogger.Debug("Sending sync object", "sync_id", sync.GetID(), "status", sync.GetStatus())
-
-		if err := srv.Send(resp); err != nil {
+		}); err != nil {
 			return fmt.Errorf("failed to send sync object: %w", err)
 		}
 	}

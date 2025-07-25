@@ -17,7 +17,7 @@ var logger = logging.Logger("sync")
 
 // Service manages the synchronization operations.
 type Service struct {
-	db     types.DatabaseAPI
+	db     types.SyncDatabaseAPI
 	store  types.StoreAPI
 	config config.Config
 
@@ -29,7 +29,7 @@ type Service struct {
 }
 
 // New creates a new sync service.
-func New(db types.DatabaseAPI, store types.StoreAPI, opts types.APIOptions) *Service {
+func New(db types.SyncDatabaseAPI, store types.StoreAPI, opts types.APIOptions) *Service {
 	return &Service{
 		db:     db,
 		store:  store,
