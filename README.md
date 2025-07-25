@@ -26,6 +26,7 @@ Check the [USAGE](USAGE.md) file for a full walkthrough of all the Directory fea
 - [e2e](./e2e) - end-to-end testing framework
 - [docs](./docs) - research details and documentation around the project
 - [server](./server) - API services to manage storage, routing, and networking operations
+- [sdk](./sdk) - client SDK implementations in different languages for development
 
 ## Prerequisites
 
@@ -103,6 +104,10 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 ### SDKs
 
 - **Golang** - [github.com/agntcy/dir/api](https://pkg.go.dev/github.com/agntcy/dir/api), [github.com/agntcy/dir/cli](https://pkg.go.dev/github.com/agntcy/dir/cli), [github.com/agntcy/dir/server](https://pkg.go.dev/github.com/agntcy/dir/server)
+
+- **Python** - [github.com/agntcy/dir/sdk/python](https://pkg.go.dev/github.com/agntcy/dir/sdk/python)
+
+- **Javascript** - [github.com/agntcy/dir/sdk/javascript](https://pkg.go.dev/github.com/agntcy/dir/sdk/javascript)
 
 ## Deployment
 
