@@ -19,12 +19,12 @@ func TestRecord_GetCid(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "v1alpha1 agent record",
+			name: "v0.3.1 agent record",
 			record: &Record{
 				Data: &Record_V1{
 					V1: &objectsv1.Agent{
 						Name:          "test-agent",
-						SchemaVersion: "v1alpha1",
+						SchemaVersion: "v0.3.1",
 						Description:   "A test agent",
 					},
 				},
@@ -32,13 +32,13 @@ func TestRecord_GetCid(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "v1alpha2 record",
+			name: "v0.5.0 record",
 			record: &Record{
 				Data: &Record_V3{
 					V3: &objectsv3.Record{
 						Name:          "test-agent-v2",
-						SchemaVersion: "v1alpha2",
-						Description:   "A test agent in v1alpha2 record",
+						SchemaVersion: "v0.5.0",
+						Description:   "A test agent in v0.5.0 record",
 						Version:       "1.0.0",
 						Extensions: []*objectsv3.Extension{
 							{
@@ -59,7 +59,7 @@ func TestRecord_GetCid(t *testing.T) {
 		{
 			name:    "empty record",
 			record:  &Record{},
-			wantErr: false,
+			wantErr: true, // Empty record should fail - no OASF data to marshal
 		},
 	}
 
@@ -86,10 +86,10 @@ func TestRecord_GetCid(t *testing.T) {
 }
 
 func TestRecord_GetCid_Consistency(t *testing.T) {
-	// Create two identical v1alpha1 records.
+	// Create two identical v0.3.1 records.
 	agent := &objectsv1.Agent{
 		Name:          "test-agent",
-		SchemaVersion: "v1alpha1",
+		SchemaVersion: "v0.3.1",
 		Description:   "A test agent",
 	}
 
@@ -103,7 +103,7 @@ func TestRecord_GetCid_Consistency(t *testing.T) {
 		Data: &Record_V1{
 			V1: &objectsv1.Agent{
 				Name:          "test-agent",
-				SchemaVersion: "v1alpha1",
+				SchemaVersion: "v0.3.1",
 				Description:   "A test agent",
 			},
 		},
@@ -113,17 +113,17 @@ func TestRecord_GetCid_Consistency(t *testing.T) {
 	cid1 := record1.GetCid()
 	cid2 := record2.GetCid()
 
-	assert.Equal(t, cid1, cid2, "Identical v1alpha1 records should have identical CIDs")
+	assert.Equal(t, cid1, cid2, "Identical v0.3.1 records should have identical CIDs")
 }
 
-func TestRecord_GetCid_V1Alpha2_Consistency(t *testing.T) {
-	// Create two identical v1alpha2 records.
-	v1alpha2Record1 := &Record{
+func TestRecord_GetCid_V0_5_0_Consistency(t *testing.T) {
+	// Create two identical v0.5.0 records.
+	v0_5_0Record1 := &Record{
 		Data: &Record_V3{
 			V3: &objectsv3.Record{
 				Name:          "test-agent-v2",
-				SchemaVersion: "v1alpha2",
-				Description:   "A test agent in v1alpha2 record",
+				SchemaVersion: "v0.5.0",
+				Description:   "A test agent in v0.5.0 record",
 				Version:       "1.0.0",
 				Extensions: []*objectsv3.Extension{
 					{
@@ -135,12 +135,12 @@ func TestRecord_GetCid_V1Alpha2_Consistency(t *testing.T) {
 		},
 	}
 
-	v1alpha2Record2 := &Record{
+	v0_5_0Record2 := &Record{
 		Data: &Record_V3{
 			V3: &objectsv3.Record{
 				Name:          "test-agent-v2",
-				SchemaVersion: "v1alpha2",
-				Description:   "A test agent in v1alpha2 record",
+				SchemaVersion: "v0.5.0",
+				Description:   "A test agent in v0.5.0 record",
 				Version:       "1.0.0",
 				Extensions: []*objectsv3.Extension{
 					{
@@ -153,37 +153,37 @@ func TestRecord_GetCid_V1Alpha2_Consistency(t *testing.T) {
 	}
 
 	// Both records should have the same CID.
-	cid1 := v1alpha2Record1.GetCid()
-	cid2 := v1alpha2Record2.GetCid()
+	cid1 := v0_5_0Record1.GetCid()
+	cid2 := v0_5_0Record2.GetCid()
 
-	assert.Equal(t, cid1, cid2, "Identical v1alpha2 records should have identical CIDs")
+	assert.Equal(t, cid1, cid2, "Identical v0.5.0 records should have identical CIDs")
 }
 
 func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
 	// Create similar but different version records - they should have different CIDs.
-	v1alpha1Record := &Record{
+	v0_3_1Record := &Record{
 		Data: &Record_V1{
 			V1: &objectsv1.Agent{
 				Name:          "test-agent",
-				SchemaVersion: "v1alpha1",
+				SchemaVersion: "v0.3.1",
 				Description:   "A test agent",
 			},
 		},
 	}
 
-	v1alpha2Record := &Record{
+	v0_5_0Record := &Record{
 		Data: &Record_V3{
 			V3: &objectsv3.Record{
 				Name:          "test-agent",
-				SchemaVersion: "v1alpha2",
+				SchemaVersion: "v0.5.0",
 				Description:   "A test agent",
 				Version:       "1.0.0",
 			},
 		},
 	}
 
-	cid1 := v1alpha1Record.GetCid()
-	cid2 := v1alpha2Record.GetCid()
+	cid1 := v0_3_1Record.GetCid()
+	cid2 := v0_5_0Record.GetCid()
 
 	assert.NotEqual(t, cid1, cid2, "Different record versions should have different CIDs")
 }
@@ -193,7 +193,7 @@ func TestRecord_MustGetCid(t *testing.T) {
 		Data: &Record_V1{
 			V1: &objectsv1.Agent{
 				Name:          "test-agent",
-				SchemaVersion: "v1alpha1",
+				SchemaVersion: "v0.3.1",
 				Description:   "A test agent",
 			},
 		},
@@ -205,20 +205,20 @@ func TestRecord_MustGetCid(t *testing.T) {
 		assert.NotEmpty(t, cid)
 	})
 
-	// Test with v1alpha2 record.
-	v1alpha2Record := &Record{
+	// Test with v0.5.0 record.
+	v0_5_0Record := &Record{
 		Data: &Record_V3{
 			V3: &objectsv3.Record{
 				Name:          "test-agent-v2",
-				SchemaVersion: "v1alpha2",
-				Description:   "A test agent in v1alpha2 record",
+				SchemaVersion: "v0.5.0",
+				Description:   "A test agent in v0.5.0 record",
 				Version:       "1.0.0",
 			},
 		},
 	}
 
 	assert.NotPanics(t, func() {
-		cid := v1alpha2Record.MustGetCid()
+		cid := v0_5_0Record.MustGetCid()
 		assert.NotEmpty(t, cid)
 	})
 
@@ -227,5 +227,12 @@ func TestRecord_MustGetCid(t *testing.T) {
 
 	assert.Panics(t, func() {
 		nilRecord.MustGetCid()
+	})
+
+	// MustGetCid should panic for empty record (no OASF data).
+	emptyRecord := &Record{}
+
+	assert.Panics(t, func() {
+		emptyRecord.MustGetCid()
 	})
 }

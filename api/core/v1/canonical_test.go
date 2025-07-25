@@ -20,12 +20,12 @@ func TestRecord_MarshalCanonical(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "v1alpha1 agent record",
+			name: "v0.3.1 agent record",
 			record: &Record{
 				Data: &Record_V1{
 					V1: &objectsv1.Agent{
 						Name:          "test-agent",
-						SchemaVersion: "v1alpha1",
+						SchemaVersion: "v0.3.1",
 						Description:   "A test agent",
 					},
 				},
@@ -33,13 +33,13 @@ func TestRecord_MarshalCanonical(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "v1alpha2 record",
+			name: "v0.5.0 record",
 			record: &Record{
 				Data: &Record_V3{
 					V3: &objectsv3.Record{
 						Name:          "test-agent-v2",
-						SchemaVersion: "v1alpha2",
-						Description:   "A test agent in v1alpha2 record",
+						SchemaVersion: "v0.5.0",
+						Description:   "A test agent in v0.5.0 record",
 						Version:       "1.0.0",
 						Extensions: []*objectsv3.Extension{
 							{
@@ -60,7 +60,7 @@ func TestRecord_MarshalCanonical(t *testing.T) {
 		{
 			name:    "empty record",
 			record:  &Record{},
-			wantErr: false,
+			wantErr: true, // Empty record should fail - no data to marshal
 		},
 		{
 			name: "record with complex nested data",
@@ -68,7 +68,7 @@ func TestRecord_MarshalCanonical(t *testing.T) {
 				Data: &Record_V3{
 					V3: &objectsv3.Record{
 						Name:          "complex-agent",
-						SchemaVersion: "v1alpha2",
+						SchemaVersion: "v0.5.0",
 						Description:   "A complex test agent",
 						Version:       "2.1.0",
 						Extensions: []*objectsv3.Extension{
@@ -124,13 +124,77 @@ func TestRecord_MarshalCanonical(t *testing.T) {
 	}
 }
 
+func TestRecord_MarshalCanonical_ReturnsOASFJSON(t *testing.T) {
+	// Test that MarshalCanonical returns pure OASF JSON, not Record wrapper
+	tests := []struct {
+		name        string
+		record      *Record
+		contains    []string // substrings that should be present in the output
+		notContains []string // substrings that should NOT be present
+	}{
+		{
+			name: "v1 agent returns OASF JSON",
+			record: &Record{
+				Data: &Record_V1{
+					V1: &objectsv1.Agent{
+						Name:          "test-agent",
+						SchemaVersion: "v0.3.1",
+						Description:   "A test agent",
+					},
+				},
+			},
+			contains:    []string{`"name":"test-agent"`, `"schema_version":"v0.3.1"`},
+			notContains: []string{`"v1":`, `"data":`, `"V1":`}, // Should not contain Record wrapper
+		},
+		{
+			name: "v3 record returns OASF JSON",
+			record: &Record{
+				Data: &Record_V3{
+					V3: &objectsv3.Record{
+						Name:          "test-record",
+						SchemaVersion: "v0.5.0",
+						Description:   "A test record",
+						Version:       "1.0.0",
+					},
+				},
+			},
+			contains:    []string{`"name":"test-record"`, `"schema_version":"v0.5.0"`, `"version":"1.0.0"`},
+			notContains: []string{`"v3":`, `"data":`, `"V3":`}, // Should not contain Record wrapper
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.record.MarshalCanonical()
+			require.NoError(t, err)
+
+			gotStr := string(got)
+
+			// Check that expected content is present
+			for _, expected := range tt.contains {
+				assert.Contains(t, gotStr, expected, "Output should contain: %s", expected)
+			}
+
+			// Check that Record wrapper content is NOT present
+			for _, notExpected := range tt.notContains {
+				assert.NotContains(t, gotStr, notExpected, "Output should NOT contain Record wrapper: %s", notExpected)
+			}
+
+			// Verify it's valid JSON
+			var jsonData interface{}
+			err = json.Unmarshal(got, &jsonData)
+			require.NoError(t, err, "Output should be valid JSON")
+		})
+	}
+}
+
 func TestRecord_MarshalCanonical_Deterministic(t *testing.T) {
 	// Test that marshaling the same record multiple times produces identical output
 	record := &Record{
 		Data: &Record_V1{
 			V1: &objectsv1.Agent{
 				Name:          "deterministic-test",
-				SchemaVersion: "v1alpha1",
+				SchemaVersion: "v0.3.1",
 				Description:   "Testing deterministic marshaling",
 			},
 		},
@@ -158,7 +222,7 @@ func TestRecord_MarshalCanonical_KeyOrdering(t *testing.T) {
 		Data: &Record_V3{
 			V3: &objectsv3.Record{
 				Name:          "key-order-test",
-				SchemaVersion: "v1alpha2",
+				SchemaVersion: "v0.5.0",
 				Description:   "Testing key ordering",
 				Version:       "1.0.0",
 				Extensions: []*objectsv3.Extension{
@@ -189,24 +253,36 @@ func TestRecord_MarshalCanonical_KeyOrdering(t *testing.T) {
 
 func TestUnmarshalCanonical(t *testing.T) {
 	tests := []struct {
-		name    string
-		data    []byte
-		wantErr bool
+		name     string
+		data     []byte
+		wantErr  bool
+		expectV1 bool
+		expectV2 bool
+		expectV3 bool
 	}{
 		{
-			name:    "valid v1alpha1 json",
-			data:    []byte(`{"v1":{"name":"test-agent","schema_version":"v1alpha1","description":"A test agent"}}`),
-			wantErr: false,
+			name:     "valid v0.3.1 OASF json",
+			data:     []byte(`{"name":"test-agent","schema_version":"v0.3.1","description":"A test agent"}`),
+			wantErr:  false,
+			expectV1: true,
 		},
 		{
-			name:    "valid v1alpha2 json",
-			data:    []byte(`{"v3":{"name":"test-agent","schema_version":"v1alpha2","description":"A test agent","version":"1.0.0"}}`),
-			wantErr: false,
+			name:     "valid v0.4.0 OASF json",
+			data:     []byte(`{"name":"test-agent","schema_version":"v0.4.0","description":"A test agent","version":"1.0.0"}`),
+			wantErr:  false,
+			expectV2: true,
 		},
 		{
-			name:    "empty json",
-			data:    []byte(`{}`),
-			wantErr: false,
+			name:     "valid v0.5.0 OASF json",
+			data:     []byte(`{"name":"test-record","schema_version":"v0.5.0","description":"A test record","version":"1.0.0"}`),
+			wantErr:  false,
+			expectV3: true,
+		},
+		{
+			name:     "no schema_version defaults to v0.3.1",
+			data:     []byte(`{"name":"test-agent","description":"A test agent"}`),
+			wantErr:  false,
+			expectV1: true,
 		},
 		{
 			name:    "invalid json",
@@ -214,8 +290,8 @@ func TestUnmarshalCanonical(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "null json",
-			data:    []byte(`null`),
+			name:    "unsupported version",
+			data:    []byte(`{"name":"test","schema_version":"v0.6.0"}`),
 			wantErr: true,
 		},
 		{
@@ -237,7 +313,33 @@ func TestUnmarshalCanonical(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.NotNil(t, got)
+			require.NotNil(t, got)
+
+			// Verify the correct version variant was created
+			switch data := got.GetData().(type) {
+			case *Record_V1:
+				if !tt.expectV1 {
+					t.Errorf("Expected V1=%v, but got V1 data", tt.expectV1)
+				}
+
+				assert.NotNil(t, data.V1, "Should have V1 data")
+			case *Record_V2:
+				if !tt.expectV2 {
+					t.Errorf("Expected V2=%v, but got V2 data", tt.expectV2)
+				}
+
+				assert.NotNil(t, data.V2, "Should have V2 data")
+			case *Record_V3:
+				if !tt.expectV3 {
+					t.Errorf("Expected V3=%v, but got V3 data", tt.expectV3)
+				}
+
+				assert.NotNil(t, data.V3, "Should have V3 data")
+			case nil:
+				t.Error("Unexpected nil data in record")
+			default:
+				t.Errorf("Unexpected record data type: %T", data)
+			}
 		})
 	}
 }
@@ -248,25 +350,25 @@ func TestMarshalUnmarshal_RoundTrip(t *testing.T) {
 		record *Record
 	}{
 		{
-			name: "v1alpha1 agent",
+			name: "v0.3.1 agent",
 			record: &Record{
 				Data: &Record_V1{
 					V1: &objectsv1.Agent{
 						Name:          "roundtrip-test",
-						SchemaVersion: "v1alpha1",
+						SchemaVersion: "v0.3.1",
 						Description:   "Testing roundtrip marshaling",
 					},
 				},
 			},
 		},
 		{
-			name: "v1alpha2 record with extensions",
+			name: "v0.5.0 record with extensions",
 			record: &Record{
 				Data: &Record_V3{
 					V3: &objectsv3.Record{
 						Name:          "roundtrip-v2",
-						SchemaVersion: "v1alpha2",
-						Description:   "Testing v1alpha2 roundtrip",
+						SchemaVersion: "v0.5.0",
+						Description:   "Testing v0.5.0 roundtrip",
 						Version:       "1.5.0",
 						Extensions: []*objectsv3.Extension{
 							{
@@ -277,10 +379,6 @@ func TestMarshalUnmarshal_RoundTrip(t *testing.T) {
 					},
 				},
 			},
-		},
-		{
-			name:   "empty record",
-			record: &Record{},
 		},
 	}
 
@@ -312,6 +410,89 @@ func TestMarshalUnmarshal_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestMarshalUnmarshal_RoundTripWithOASFFormat(t *testing.T) {
+	// Test that the refactored canonical format works correctly:
+	// Record → MarshalCanonical (OASF JSON) → UnmarshalCanonical → Record
+	testCases := []struct {
+		name   string
+		record *Record
+	}{
+		{
+			name: "v0.3.1 agent round-trip",
+			record: &Record{
+				Data: &Record_V1{
+					V1: &objectsv1.Agent{
+						Name:          "roundtrip-v1",
+						SchemaVersion: "v0.3.1",
+						Description:   "Testing v0.3.1 round-trip",
+						Version:       "1.0.0",
+					},
+				},
+			},
+		},
+		{
+			name: "v0.5.0 record round-trip",
+			record: &Record{
+				Data: &Record_V3{
+					V3: &objectsv3.Record{
+						Name:          "roundtrip-v3",
+						SchemaVersion: "v0.5.0",
+						Description:   "Testing v0.5.0 round-trip",
+						Version:       "2.0.0",
+						Extensions: []*objectsv3.Extension{
+							{
+								Name:    "test-extension",
+								Version: "1.0.0",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// 1. Marshal to OASF JSON
+			oasfBytes, err := tc.record.MarshalCanonical()
+			require.NoError(t, err)
+
+			// 2. Verify it's pure OASF JSON (contains schema_version, not Record wrapper)
+			oasfStr := string(oasfBytes)
+			assert.Contains(t, oasfStr, `"schema_version"`, "Should contain OASF schema_version")
+			assert.NotContains(t, oasfStr, `"v1":`, "Should not contain Record wrapper")
+			assert.NotContains(t, oasfStr, `"v3":`, "Should not contain Record wrapper")
+
+			// 3. Unmarshal back to Record
+			reconstructed, err := UnmarshalCanonical(oasfBytes)
+			require.NoError(t, err)
+
+			// 4. Verify the version wrapper is correctly reconstructed
+			switch tc.record.GetData().(type) {
+			case *Record_V1:
+				assert.NotNil(t, reconstructed.GetV1(), "Should reconstruct V1 wrapper")
+				assert.Nil(t, reconstructed.GetV2(), "Should not have V2")
+				assert.Nil(t, reconstructed.GetV3(), "Should not have V3")
+			case *Record_V3:
+				assert.Nil(t, reconstructed.GetV1(), "Should not have V1")
+				assert.Nil(t, reconstructed.GetV2(), "Should not have V2")
+				assert.NotNil(t, reconstructed.GetV3(), "Should reconstruct V3 wrapper")
+			}
+
+			// 5. Verify CIDs are identical (this tests the core refactor goal)
+			originalCID := tc.record.GetCid()
+			reconstructedCID := reconstructed.GetCid()
+			assert.Equal(t, originalCID, reconstructedCID, "CIDs should be identical after round-trip")
+			assert.NotEmpty(t, originalCID, "CID should not be empty")
+
+			// 6. Verify marshaling again produces identical bytes (idempotent)
+			secondMarshal, err := reconstructed.MarshalCanonical()
+			require.NoError(t, err)
+			assert.Equal(t, oasfBytes, secondMarshal, "Second marshal should be identical")
+		})
+	}
+}
+
 func TestMarshalCanonical_ConsistentAcrossIdenticalRecords(t *testing.T) {
 	// Create two identical records separately to ensure they marshal identically
 	createRecord := func() *Record {
@@ -319,7 +500,7 @@ func TestMarshalCanonical_ConsistentAcrossIdenticalRecords(t *testing.T) {
 			Data: &Record_V3{
 				V3: &objectsv3.Record{
 					Name:          "consistency-test",
-					SchemaVersion: "v1alpha2",
+					SchemaVersion: "v0.5.0",
 					Description:   "Testing marshaling consistency",
 					Version:       "1.0.0",
 					Extensions: []*objectsv3.Extension{
@@ -359,25 +540,24 @@ func TestUnmarshalCanonical_InvalidInputs(t *testing.T) {
 			data: []byte(`{"unclosed": "object"`),
 		},
 		{
-			name: "invalid protobuf structure",
-			data: []byte(`{"invalid_field": "value"}`),
+			name: "unsupported schema version",
+			data: []byte(`{"name": "test", "schema_version": "v9.9.9"}`),
 		},
 		{
 			name: "wrong data type",
 			data: []byte(`"just a string"`),
+		},
+		{
+			name: "array instead of object",
+			data: []byte(`[{"name": "test"}]`),
 		},
 	}
 
 	for _, tc := range invalidInputs {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := UnmarshalCanonical(tc.data)
-			// Some of these might not error depending on protobuf's tolerance,
-			// but they should either error or return a valid (possibly empty) record
-			if err != nil {
-				assert.Nil(t, result)
-			} else {
-				assert.NotNil(t, result)
-			}
+			require.Error(t, err, "Should error on invalid input")
+			assert.Nil(t, result, "Should return nil on error")
 		})
 	}
 }

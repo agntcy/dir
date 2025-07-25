@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/cli/types"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -61,7 +61,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	}
 
 	// Load OASF data (supports v1, v2, v3) into a Record
-	record, err := types.LoadOASFFromReader(source)
+	record, err := corev1.LoadOASFFromReader(source)
 	if err != nil {
 		return fmt.Errorf("failed to load OASF: %w", err)
 	}

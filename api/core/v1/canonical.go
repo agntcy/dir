@@ -3,62 +3,32 @@
 
 package corev1
 
-import (
-	"encoding/json"
-	"fmt"
+import "errors"
 
-	"google.golang.org/protobuf/encoding/protojson"
-)
-
-// MarshalCanonical marshals the record using canonical JSON serialization.
+// MarshalCanonical marshals the OASF object inside the record using canonical JSON serialization.
 // This ensures deterministic, cross-language compatible byte representation.
-// The output is used for both CID calculation and storage to maintain consistency.
+// The output represents the pure OASF object data and is used for both CID calculation and storage.
 func (r *Record) MarshalCanonical() ([]byte, error) {
 	if r == nil {
 		return nil, nil
 	}
 
-	// Step 1: Convert protobuf to JSON with proper protobuf semantics.
-	jsonBytes, err := protojson.MarshalOptions{
-		Multiline:       false, // Single line
-		Indent:          "",    // No indentation
-		AllowPartial:    false, // Require all required fields
-		UseProtoNames:   true,  // Use proto field names (snake_case) for consistency
-		UseEnumNumbers:  true,  // Use enum numbers instead of names for stability
-		EmitUnpopulated: false, // Don't emit zero/empty values
-	}.Marshal(r)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal record to protobuf JSON: %w", err)
+	// Extract the OASF object based on version and marshal it canonically
+	// Use regular JSON marshaling to match the format users work with
+	switch data := r.GetData().(type) {
+	case *Record_V1:
+		return marshalOASFCanonical(data.V1)
+	case *Record_V2:
+		return marshalOASFCanonical(data.V2)
+	case *Record_V3:
+		return marshalOASFCanonical(data.V3)
+	default:
+		return nil, errors.New("unsupported record type")
 	}
-
-	// Step 2: Parse and re-marshal to ensure deterministic map key ordering.
-	// This is critical - maps must have consistent key order for deterministic results.
-	var normalized interface{}
-	if err := json.Unmarshal(jsonBytes, &normalized); err != nil {
-		return nil, fmt.Errorf("failed to normalize JSON for canonical ordering: %w", err)
-	}
-
-	// Step 3: Marshal with sorted keys for deterministic output.
-	// encoding/json.Marshal sorts map keys alphabetically.
-	canonicalBytes, err := json.Marshal(normalized)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal normalized JSON with sorted keys: %w", err)
-	}
-
-	return canonicalBytes, nil
 }
 
-// UnmarshalCanonical unmarshals canonical JSON bytes back to a Record.
+// UnmarshalCanonical unmarshals canonical OASF object JSON bytes to a Record.
+// This function detects the OASF version from the data and constructs the appropriate Record wrapper.
 func UnmarshalCanonical(data []byte) (*Record, error) {
-	var record Record
-
-	err := protojson.UnmarshalOptions{
-		AllowPartial:   false,
-		DiscardUnknown: false,
-	}.Unmarshal(data, &record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal canonical JSON to record: %w", err)
-	}
-
-	return &record, nil
+	return LoadOASFFromBytes(data)
 }
