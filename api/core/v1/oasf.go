@@ -5,6 +5,7 @@ package corev1
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 
@@ -14,7 +15,7 @@ import (
 )
 
 // DetectOASFVersion detects the OASF schema version from JSON data.
-func DetectOASFVersion(data []byte) (string, error) {
+func detectOASFVersion(data []byte) (string, error) {
 	// VersionDetector is used to detect OASF schema version from JSON data.
 	type VersionDetector struct {
 		SchemaVersion string `json:"schema_version"`
@@ -42,13 +43,13 @@ func LoadOASFFromReader(reader io.Reader) (*Record, error) {
 		return nil, fmt.Errorf("failed to read data: %w", err)
 	}
 
-	return LoadOASFFromBytes(data)
+	return loadOASFFromBytes(data)
 }
 
 // LoadOASFFromBytes loads OASF data from bytes and returns a Record with proper version detection.
 // This is the core function used by the new UnmarshalCanonical implementation.
-func LoadOASFFromBytes(data []byte) (*Record, error) {
-	version, err := DetectOASFVersion(data)
+func loadOASFFromBytes(data []byte) (*Record, error) {
+	version, err := detectOASFVersion(data)
 	if err != nil {
 		return nil, err
 	}
@@ -118,4 +119,32 @@ func marshalOASFCanonical(oasfObject interface{}) ([]byte, error) {
 	}
 
 	return canonicalBytes, nil
+}
+
+// MarshalCanonical marshals the OASF object inside the record using canonical JSON serialization.
+// This ensures deterministic, cross-language compatible byte representation.
+// The output represents the pure OASF object data and is used for both CID calculation and storage.
+func (r *Record) MarshalOASF() ([]byte, error) {
+	if r == nil {
+		return nil, nil
+	}
+
+	// Extract the OASF object based on version and marshal it canonically
+	// Use regular JSON marshaling to match the format users work with
+	switch data := r.GetData().(type) {
+	case *Record_V1:
+		return marshalOASFCanonical(data.V1)
+	case *Record_V2:
+		return marshalOASFCanonical(data.V2)
+	case *Record_V3:
+		return marshalOASFCanonical(data.V3)
+	default:
+		return nil, errors.New("unsupported record type")
+	}
+}
+
+// UnmarshalCanonical unmarshals canonical OASF object JSON bytes to a Record.
+// This function detects the OASF version from the data and constructs the appropriate Record wrapper.
+func UnmarshalOASF(data []byte) (*Record, error) {
+	return loadOASFFromBytes(data)
 }

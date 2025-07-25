@@ -29,7 +29,7 @@ func (s *store) pushData(ctx context.Context, record *corev1.Record) (ocispec.De
 
 	// Marshal the record using canonical JSON marshaling
 	// This ensures the stored content matches the CID calculation
-	recordBytes, err := record.MarshalCanonical()
+	recordBytes, err := record.MarshalOASF()
 	if err != nil {
 		return ocispec.Descriptor{}, status.Errorf(codes.Internal, "failed to marshal record: %v", err)
 	}

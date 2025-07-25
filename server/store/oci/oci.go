@@ -293,7 +293,7 @@ func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record
 	}
 
 	// Unmarshal canonical JSON data back to Record
-	record, err := corev1.UnmarshalCanonical(recordData)
+	record, err := corev1.UnmarshalOASF(recordData)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unmarshal record: %v", err)
 	}
