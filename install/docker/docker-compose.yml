@@ -2,13 +2,16 @@ name: dir
 
 services:
   apiserver:
-    image: ghcr.io/agntcy/dir-apiserver:latest
+    build:
+      context: ../../
+      dockerfile: server/Dockerfile
     env_file:
       - ./apiserver.env
     ports:
       - 8888:8888
-    volumes:
-      - apiserver-localfs-store:/store
+      - 8889:8889
+    depends_on:
+      - zot
     deploy:
       mode: replicated
       replicas: 1
@@ -18,21 +21,22 @@ services:
       test: wget --no-verbose --tries=1 --spider http://127.0.0.1:8889/healthz/ready || exit 1
       interval: 10s
       retries: 60
+      start_period: 10s
 
   zot:
     image: ghcr.io/project-zot/zot:v2.1.2
-    profiles: ["oci"]
     ports:
-      - 5000:5000
+      - 5555:5000
     deploy:
       mode: replicated
       replicas: 1
       restart_policy:
         condition: on-failure
-
-volumes:
-  apiserver-localfs-store:
-    driver: local
+    healthcheck:
+      test: curl -f http://localhost:5000/v2/ || exit 1
+      interval: 5s
+      retries: 60
+      start_period: 15s
 
 networks:
   default:

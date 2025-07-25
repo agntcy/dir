@@ -5,17 +5,17 @@ The OCI (Open Container Initiative) storage implementation provides a robust, sc
 ## Overview
 
 The OCI storage system enables:
-- **Storage of agent records** in OCI-compliant registries (local or remote)
+- **Storage of OASF objects** in OCI-compliant registries (local or remote)
 - **Rich metadata annotations** for discovery and filtering
 - **Multiple discovery tags** for enhanced browsability
-- **Content-addressable storage** using CIDs (Content Identifiers)
+- **Content-addressable storage** using CIDs based on OASF content
 - **Version-agnostic record handling** across OASF v0.3.1, v0.4.0, and v0.5.0
 
 ## Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Agent Record  │───▶│  OCI Manifest   │───▶│  OCI Registry   │
+│   OASF Object   │───▶│  OCI Manifest   │───▶│  OCI Registry   │
 │     (JSON)      │    │  + Annotations  │    │   (Storage)     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
@@ -38,7 +38,7 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 
 **Workflow:**
 1. **Validate record CID** - Ensures content addressing integrity
-2. **Create blob descriptor** - Stores the JSON record data
+2. **Create blob descriptor** - Stores the canonical OASF JSON data
 3. **Extract manifest annotations** - Rich metadata for discovery
 4. **Generate discovery tags** - Multiple tags for browsability
 5. **Push manifest with tags** - Links everything together
@@ -55,7 +55,7 @@ func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record
 **Workflow:**
 1. **Resolve manifest** using CID as tag
 2. **Fetch blob data** from manifest layers
-3. **Unmarshal canonical JSON** back to Record
+3. **Unmarshal canonical OASF JSON** back to Record
 4. **Return complete record** with all metadata
 
 ### 3. Lookup Operation
@@ -126,7 +126,7 @@ Technical metadata stored in blob descriptors:
 // Example descriptor annotations
 annotations := map[string]string{
     "org.agntcy.dir/encoding":      "json",
-    "org.agntcy.dir/blob-type":     "oasf-record",
+    "org.agntcy.dir/blob-type":     "oasf-object",
     "org.agntcy.dir/schema":        "oasf.v0.5.0.Record",
     "org.agntcy.dir/compression":   "none",
     "org.agntcy.dir/content-cid":   "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
@@ -331,9 +331,9 @@ Supports multiple authentication methods:
 ## Storage Features
 
 ### Content Addressability
-- **CID-based identification** - Immutable content addressing
+- **CID-based identification** - Immutable content addressing based on OASF data
 - **Integrity verification** - Automatic content validation
-- **Deduplication** - Identical content stored once
+- **Deduplication** - Identical OASF content stored once
 
 ### Rich Metadata
 - **Structured annotations** - Searchable metadata
