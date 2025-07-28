@@ -35,13 +35,13 @@ func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.Sear
 		return fmt.Errorf("failed to create filter options: %w", err)
 	}
 
-	records, err := c.db.GetRecords(filterOptions...)
+	recordRefs, err := c.db.GetRecordRefs(filterOptions...)
 	if err != nil {
-		return fmt.Errorf("failed to get records: %w", err)
+		return fmt.Errorf("failed to get record references: %w", err)
 	}
 
-	for _, r := range records {
-		if err := srv.Send(&searchtypes.SearchResponse{RecordCid: r.GetCid()}); err != nil {
+	for _, ref := range recordRefs {
+		if err := srv.Send(&searchtypes.SearchResponse{RecordCid: ref.GetCid()}); err != nil {
 			return fmt.Errorf("failed to send record: %w", err)
 		}
 	}

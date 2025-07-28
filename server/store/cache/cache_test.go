@@ -129,6 +129,8 @@ func TestCachedStore_Pull_CacheHit(t *testing.T) {
 	}
 
 	recordCID := record.GetCid()
+	require.NotEmpty(t, recordCID, "record should have a CID")
+
 	ref := &corev1.RecordRef{Cid: recordCID}
 
 	// Create mock store and cache

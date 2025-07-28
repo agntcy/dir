@@ -4,6 +4,7 @@ go 1.24.5
 
 require (
 	github.com/multiformats/go-multihash v0.2.3
+	github.com/opencontainers/go-digest v1.0.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
 )

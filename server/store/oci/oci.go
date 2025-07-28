@@ -6,11 +6,9 @@ package oci
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/datastore"
@@ -108,12 +106,39 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
 	logger.Debug("Pushing record to OCI store", "record", record)
 
-	recordCID := record.GetCid()
-	if recordCID == "" {
-		return nil, status.Error(codes.InvalidArgument, "record CID is required")
+	// Marshal the record using canonical JSON marshaling first
+	// This ensures consistent bytes for both CID calculation and storage
+	recordBytes, err := record.MarshalOASF()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to marshal record: %v", err)
 	}
 
-	logger.Debug("Using CID from record", "cid", recordCID)
+	// Step 1: Use oras.PushBytes to push the record data and get Layer Descriptor
+	layerDesc, err := oras.PushBytes(ctx, s.repo, "application/json", recordBytes)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to push record bytes: %v", err)
+	}
+
+	// Step 2: Calculate CID from Layer Descriptor's digest using our new utility function
+	recordCID, err := corev1.ConvertDigestToCID(layerDesc.Digest)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to convert digest to CID: %v", err)
+	}
+
+	// Validate consistency: CID from ORAS digest should match CID from record
+	expectedCID := record.GetCid()
+	if recordCID != expectedCID {
+		return nil, status.Errorf(codes.Internal,
+			"CID mismatch: ORAS digest CID (%s) != Record CID (%s)",
+			recordCID, expectedCID)
+	}
+
+	logger.Debug("CID validation successful",
+		"cid", recordCID,
+		"digest", layerDesc.Digest.String(),
+		"validation", "ORAS digest CID matches Record CID")
+
+	logger.Debug("Calculated CID from ORAS digest", "cid", recordCID, "digest", layerDesc.Digest.String())
 
 	// Create record reference
 	recordRef := &corev1.RecordRef{Cid: recordCID}
@@ -125,21 +150,17 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 		return recordRef, nil
 	}
 
-	// Push the record data using the private pushData method
-	blobDesc, err := s.pushData(ctx, record)
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract rich manifest annotations for discovery using our helper function
+	// Step 3: Construct manifest annotations and add CID to annotations
 	manifestAnnotations := extractManifestAnnotations(record)
+	// Add the calculated CID to manifest annotations for discovery
+	manifestAnnotations[ManifestKeyCid] = recordCID
 
-	// Push manifest
+	// Step 4: Pack manifest (in-memory only)
 	manifestDesc, err := oras.PackManifest(ctx, s.repo, oras.PackManifestVersion1_1, ocispec.MediaTypeImageManifest,
 		oras.PackManifestOptions{
 			ManifestAnnotations: manifestAnnotations,
 			Layers: []ocispec.Descriptor{
-				blobDesc,
+				layerDesc,
 			},
 		},
 	)
@@ -147,11 +168,11 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 		return nil, status.Errorf(codes.Internal, "failed to pack manifest: %v", err)
 	}
 
-	// Generate multiple discovery tags for enhanced browsability
+	// Step 5: Generate discovery tags for enhanced browsability
 	discoveryTags := generateDiscoveryTags(record, DefaultTagStrategy)
 	logger.Debug("Generated discovery tags", "cid", recordCID, "tags", discoveryTags, "count", len(discoveryTags))
 
-	// Push manifest with multiple tags
+	// Step 6: Tag the manifest with multiple tags
 	// => resolve manifest to record which can be looked up (lookup)
 	// tags => allow to pull record directly (pull)
 	// tags => allow listing and filtering tags (list)
@@ -168,67 +189,24 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 
 // Lookup checks if the ref exists as a tagged record.
 func (s *store) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
-	logger.Debug("Looking up record in OCI store", "ref", ref)
+	// Input validation using shared helper
+	if err := validateRecordRef(ref); err != nil {
+		return nil, err
+	}
 
-	ociDigest, err := getDigestFromCID(ref.GetCid())
+	logger.Debug("Starting record lookup", "cid", ref.GetCid())
+
+	// Use shared helper to fetch and parse manifest (eliminates code duplication)
+	manifest, _, err := s.fetchAndParseManifest(ctx, ref.GetCid())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid record reference: %s", ref.GetCid())
+		return nil, err // Error already has proper context from helper
 	}
 
-	// check if blob exists on remote
-	{
-		exists, err := s.repo.Exists(ctx, ocispec.Descriptor{Digest: ociDigest})
-		if err != nil {
-			if strings.Contains(err.Error(), "invalid reference") {
-				return nil, status.Errorf(codes.InvalidArgument, "invalid record reference: %s", ref.GetCid())
-			}
-
-			return nil, status.Errorf(codes.Internal, "failed to check if record exists: %v", err)
-		}
-
-		logger.Debug("Checked if record exists in OCI store", "exists", exists)
-
-		if !exists {
-			return nil, status.Errorf(codes.NotFound, "record not found: %s", ref.GetCid())
-		}
-	}
-
-	// read manifest data from remote
-	var manifest ocispec.Manifest
-	{
-		// resolve manifest from remote tag
-		manifestDesc, err := s.repo.Resolve(ctx, ref.GetCid())
-		if err != nil {
-			logger.Error("Failed to resolve manifest", "error", err)
-
-			// do not error here, as we may have a raw record stored but not tagged with
-			// the manifest. only agents are tagged with manifests
-			return nil, status.Errorf(codes.NotFound, "manifest not found: %s", ref.GetCid())
-		}
-
-		// TODO: validate manifest by size
-
-		// fetch manifest from remote
-		manifestRd, err := s.repo.Fetch(ctx, manifestDesc)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to fetch manifest: %v", err)
-		}
-
-		// read manifest
-		manifestData, err := io.ReadAll(manifestRd)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to read manifest: %v", err)
-		}
-
-		if err := json.Unmarshal(manifestData, &manifest); err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to unmarshal manifest: %v", err)
-		}
-	}
-
-	// Extract record type from manifest metadata
+	// Extract and validate record type from manifest metadata
 	recordType, ok := manifest.Annotations[manifestDirObjectTypeKey]
 	if !ok {
-		return nil, status.Errorf(codes.Internal, "record type not found in manifest annotations: %s", manifestDirObjectTypeKey)
+		return nil, status.Errorf(codes.Internal, "record type not found in manifest annotations for CID %s: missing key %s",
+			ref.GetCid(), manifestDirObjectTypeKey)
 	}
 
 	// Extract comprehensive metadata from manifest annotations using our enhanced parser
@@ -237,68 +215,89 @@ func (s *store) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.Reco
 	// Set the CID from the request (this is the primary identifier)
 	recordMeta.Cid = ref.GetCid()
 
-	logger.Debug("Record metadata retrieved successfully", "cid", ref.GetCid(), "type", recordType)
+	logger.Debug("Record metadata retrieved successfully",
+		"cid", ref.GetCid(),
+		"type", recordType,
+		"annotationCount", len(manifest.Annotations))
 
 	return recordMeta, nil
 }
 
 func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {
-	logger.Debug("Pulling record from OCI store", "ref", ref)
+	// Input validation using shared helper
+	if err := validateRecordRef(ref); err != nil {
+		return nil, err
+	}
 
-	// First resolve the manifest using the CID as a tag (same as Lookup)
-	manifestDesc, err := s.repo.Resolve(ctx, ref.GetCid())
+	logger.Debug("Starting record pull", "cid", ref.GetCid())
+
+	// Use shared helper to fetch and parse manifest (eliminates code duplication)
+	manifest, manifestDesc, err := s.fetchAndParseManifest(ctx, ref.GetCid())
 	if err != nil {
-		logger.Error("Failed to resolve manifest for pull", "cid", ref.GetCid(), "error", err)
-
-		return nil, status.Errorf(codes.NotFound, "record not found: %s", ref.GetCid())
+		return nil, err // Error already has proper context from helper
 	}
 
-	// Fetch the manifest to get the blob descriptor
-	manifestReader, err := s.repo.Fetch(ctx, manifestDesc)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch manifest: %v", err)
-	}
-	defer manifestReader.Close()
-
-	// Read and parse the manifest
-	manifestData, err := io.ReadAll(manifestReader)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read manifest: %v", err)
-	}
-
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(manifestData, &manifest); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unmarshal manifest: %v", err)
-	}
-
-	// Get the blob descriptor from the manifest layers
+	// Validate manifest has layers
 	if len(manifest.Layers) == 0 {
-		return nil, status.Errorf(codes.Internal, "manifest has no layers")
+		return nil, status.Errorf(codes.Internal, "manifest has no layers for CID %s", ref.GetCid())
 	}
 
-	// Use the first layer as the record blob
+	// Handle multiple layers with warning
+	if len(manifest.Layers) > 1 {
+		logger.Warn("Manifest has multiple layers, using first layer",
+			"cid", ref.GetCid(),
+			"layerCount", len(manifest.Layers))
+	}
+
+	// Get the blob descriptor from the first layer
 	blobDesc := manifest.Layers[0]
+
+	// Validate layer media type
+	if blobDesc.MediaType != "application/json" {
+		logger.Warn("Unexpected blob media type",
+			"cid", ref.GetCid(),
+			"expected", "application/json",
+			"actual", blobDesc.MediaType)
+	}
+
+	logger.Debug("Fetching record blob",
+		"cid", ref.GetCid(),
+		"blobDigest", blobDesc.Digest.String(),
+		"blobSize", blobDesc.Size,
+		"mediaType", blobDesc.MediaType)
 
 	// Fetch the record data using the correct blob descriptor from the manifest
 	reader, err := s.repo.Fetch(ctx, blobDesc)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "record blob not found: %s", ref.GetCid())
+		return nil, status.Errorf(codes.NotFound, "record blob not found for CID %s: %v", ref.GetCid(), err)
 	}
 	defer reader.Close()
 
 	// Read all data from the reader
 	recordData, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read record data: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to read record data for CID %s: %v", ref.GetCid(), err)
+	}
+
+	// Validate blob size matches descriptor
+	if blobDesc.Size > 0 && int64(len(recordData)) != blobDesc.Size {
+		logger.Warn("Blob size mismatch",
+			"cid", ref.GetCid(),
+			"expected", blobDesc.Size,
+			"actual", len(recordData))
 	}
 
 	// Unmarshal canonical JSON data back to Record
 	record, err := corev1.UnmarshalOASF(recordData)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unmarshal record: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to unmarshal record for CID %s: %v", ref.GetCid(), err)
 	}
 
-	logger.Debug("Record pulled successfully", "cid", ref.GetCid(), "size", len(recordData))
+	logger.Debug("Record pulled successfully",
+		"cid", ref.GetCid(),
+		"blobSize", len(recordData),
+		"blobDigest", blobDesc.Digest.String(),
+		"manifestDigest", manifestDesc.Digest.String())
 
 	return record, nil
 }
@@ -306,9 +305,9 @@ func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record
 func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 	logger.Debug("Deleting record from OCI store", "ref", ref)
 
-	// Validate input
-	if ref.GetCid() == "" {
-		return status.Error(codes.InvalidArgument, "record CID is required")
+	// Input validation using shared helper
+	if err := validateRecordRef(ref); err != nil {
+		return err
 	}
 
 	switch s.repo.(type) {

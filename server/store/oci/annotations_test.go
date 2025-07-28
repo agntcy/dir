@@ -5,7 +5,6 @@ package oci
 
 import (
 	"testing"
-	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
@@ -206,97 +205,6 @@ func TestExtractManifestAnnotations(t *testing.T) {
 
 			// Always should have the type key
 			assert.Equal(t, "record", result[manifestDirObjectTypeKey])
-		})
-	}
-}
-
-func TestCreateDescriptorAnnotations(t *testing.T) {
-	tests := []struct {
-		name     string
-		record   *corev1.Record
-		contains map[string]string
-	}{
-		{
-			name: "V1Alpha1 record",
-			record: &corev1.Record{
-				Data: &corev1.Record_V1{
-					V1: &objectsv1.Agent{
-						Name: "test-agent",
-					},
-				},
-			},
-			contains: map[string]string{
-				DescriptorKeyBlobType:    "oasf-record",
-				DescriptorKeyEncoding:    "json",
-				DescriptorKeyCompression: "none",
-				DescriptorKeySchema:      "oasf.v0.3.1.Agent",
-				// DescriptorKeyContentCid is verified separately using record.GetCid()
-				DescriptorKeySigned:       "false",
-				DescriptorKeyStoreVersion: "v1",
-			},
-		},
-		{
-			name: "V1Alpha2 record",
-			record: &corev1.Record{
-				Data: &corev1.Record_V3{
-					V3: &objectsv3.Record{
-						Name: "test-record-v2",
-					},
-				},
-			},
-			contains: map[string]string{
-				DescriptorKeyBlobType: "oasf-record",
-				DescriptorKeyEncoding: "json",
-				DescriptorKeySchema:   "oasf.v0.5.0.Record",
-				DescriptorKeySigned:   "false",
-			},
-		},
-		{
-			name: "Record with signature",
-			record: &corev1.Record{
-				Data: &corev1.Record_V1{
-					V1: &objectsv1.Agent{
-						Name: "signed-agent",
-						Signature: &objectsv1.Signature{
-							Signature: "signature-data",
-						},
-					},
-				},
-			},
-			contains: map[string]string{
-				DescriptorKeySigned: "true",
-			},
-		},
-		{
-			name:   "Record with no data",
-			record: &corev1.Record{},
-			contains: map[string]string{
-				DescriptorKeyBlobType: "oasf-record",
-				DescriptorKeyEncoding: "json",
-				DescriptorKeySchema:   "unknown",
-				DescriptorKeySigned:   "false",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := createDescriptorAnnotations(tt.record)
-
-			// Check that all expected keys are present with correct values
-			for key, expectedValue := range tt.contains {
-				assert.Equal(t, expectedValue, result[key], "Key %s should have correct value", key)
-			}
-
-			// Verify that ContentCID matches the record's computed CID
-			expectedCID := tt.record.GetCid()
-			assert.Equal(t, expectedCID, result[DescriptorKeyContentCid], "ContentCID should match record's computed CID")
-
-			// Verify timestamp format (should be valid RFC3339)
-			if storedAt, exists := result[DescriptorKeyStoredAt]; exists {
-				_, err := time.Parse(time.RFC3339, storedAt)
-				assert.NoError(t, err, "StoredAt should be valid RFC3339 timestamp")
-			}
 		})
 	}
 }

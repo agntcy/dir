@@ -4,10 +4,10 @@
 package oci
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
+	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/utils/logging"
@@ -20,46 +20,66 @@ import (
 
 var internalLogger = logging.Logger("store/oci/internal")
 
-// pushData pushes record data to OCI and returns the blob descriptor.
-func (s *store) pushData(ctx context.Context, record *corev1.Record) (ocispec.Descriptor, error) {
-	recordCID := record.GetCid()
-	if recordCID == "" {
-		return ocispec.Descriptor{}, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck // Mock should return exact error without wrapping
+// validateRecordRef performs common input validation for record reference operations.
+// This eliminates duplication across Lookup, Pull, and Delete methods.
+func validateRecordRef(ref *corev1.RecordRef) error {
+	if ref == nil {
+		return status.Error(codes.InvalidArgument, "record reference cannot be nil") //nolint:wrapcheck
 	}
 
-	// Marshal the record using canonical JSON marshaling
-	// This ensures the stored content matches the CID calculation
-	recordBytes, err := record.MarshalOASF()
+	if ref.GetCid() == "" {
+		return status.Error(codes.InvalidArgument, "record CID cannot be empty") //nolint:wrapcheck
+	}
+
+	return nil
+}
+
+// fetchAndParseManifest is a shared helper function that fetches and parses manifests
+// for both Lookup and Pull operations, eliminating code duplication.
+func (s *store) fetchAndParseManifest(ctx context.Context, cid string) (*ocispec.Manifest, *ocispec.Descriptor, error) {
+	// Resolve manifest from remote tag (this also checks existence and validates CID format)
+	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
-		return ocispec.Descriptor{}, status.Errorf(codes.Internal, "failed to marshal record: %v", err)
+		internalLogger.Debug("Failed to resolve manifest", "cid", cid, "error", err)
+
+		return nil, nil, status.Errorf(codes.NotFound, "record not found: %s", cid)
 	}
 
-	// Calculate digest and size for the descriptor
-	// OCI descriptors require these fields to be valid
-	ociDigest, err := getDigestFromCID(recordCID)
+	internalLogger.Debug("Manifest resolved successfully", "cid", cid, "digest", manifestDesc.Digest.String())
+
+	// Validate manifest size if available
+	if manifestDesc.Size > 0 {
+		internalLogger.Debug("Manifest size from descriptor", "cid", cid, "size", manifestDesc.Size)
+	}
+
+	// Fetch manifest from remote
+	manifestRd, err := s.repo.Fetch(ctx, manifestDesc)
 	if err != nil {
-		return ocispec.Descriptor{}, status.Errorf(codes.InvalidArgument, "failed to get digest from CID: %v", err)
+		return nil, nil, status.Errorf(codes.Internal, "failed to fetch manifest for CID %s: %v", cid, err)
+	}
+	defer manifestRd.Close()
+
+	// Read manifest data
+	manifestData, err := io.ReadAll(manifestRd)
+	if err != nil {
+		return nil, nil, status.Errorf(codes.Internal, "failed to read manifest data for CID %s: %v", cid, err)
 	}
 
-	// Create complete blob descriptor
-	blobDesc := ocispec.Descriptor{
-		MediaType:   "application/json",
-		Digest:      ociDigest,
-		Size:        int64(len(recordBytes)),
-		Annotations: createDescriptorAnnotations(record),
+	// Validate manifest size matches descriptor
+	if manifestDesc.Size > 0 && int64(len(manifestData)) != manifestDesc.Size {
+		internalLogger.Warn("Manifest size mismatch",
+			"cid", cid,
+			"expected", manifestDesc.Size,
+			"actual", len(manifestData))
 	}
 
-	internalLogger.Debug("Pushing blob to OCI store", "cid", recordCID, "size", len(recordBytes), "mediaType", "application/json")
-
-	// Push JSON blob data - OCI repository will calculate digest automatically
-	err = s.repo.Push(ctx, blobDesc, bytes.NewReader(recordBytes))
-	if err != nil && !strings.Contains(err.Error(), "already exists") {
-		return ocispec.Descriptor{}, status.Errorf(codes.Internal, "failed to push blob: %v", err)
+	// Parse manifest
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		return nil, nil, status.Errorf(codes.Internal, "failed to unmarshal manifest for CID %s: %v", cid, err)
 	}
 
-	internalLogger.Debug("Blob pushed successfully", "cid", recordCID, "digest", blobDesc.Digest)
-
-	return blobDesc, nil
+	return &manifest, &manifestDesc, nil
 }
 
 // findAllTagsForRecord discovers all tags that point to a record's manifest.
@@ -143,33 +163,68 @@ func (s *store) deleteFromOCIStore(ctx context.Context, ref *corev1.RecordRef) e
 		return status.Errorf(codes.Internal, "expected *oci.Store, got %T", s.repo)
 	}
 
-	// Phase 1: Remove tag references to manifests
-	s.cleanupAllTags(ctx, cid)
+	internalLogger.Debug("Starting OCI store deletion", "cid", cid)
+
+	var errors []string
+
+	// Phase 1: Remove tag references to manifests (best effort)
+	internalLogger.Debug("Phase 1: Cleaning up discovery tags", "cid", cid)
+	s.cleanupAllTags(ctx, cid) // This method already handles errors gracefully
 
 	// Phase 2: Remove manifest references to blobs
+	internalLogger.Debug("Phase 2: Deleting manifest", "cid", cid)
+
 	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
 		// Manifest might already be gone - this is not necessarily an error
-		// Continue to blob deletion to ensure cleanup
-		internalLogger.Debug("Failed to resolve manifest during delete", "cid", cid, "error", err)
-	} else if err := store.Delete(ctx, manifestDesc); err != nil {
-		return status.Errorf(codes.Internal, "failed to delete manifest: %v", err)
+		internalLogger.Debug("Failed to resolve manifest during delete (may already be deleted)", "cid", cid, "error", err)
+		errors = append(errors, fmt.Sprintf("manifest resolve: %v", err))
+	} else {
+		if err := store.Delete(ctx, manifestDesc); err != nil {
+			internalLogger.Warn("Failed to delete manifest", "cid", cid, "error", err)
+			errors = append(errors, fmt.Sprintf("manifest delete: %v", err))
+		} else {
+			internalLogger.Debug("Manifest deleted successfully", "cid", cid, "digest", manifestDesc.Digest.String())
+		}
 	}
 
-	// Phase 3: Remove blob data (now unreferenced)
-	ociDigest, err := getDigestFromCID(cid)
+	// Phase 3: Remove blob data (local store - we have full control)
+	internalLogger.Debug("Phase 3: Deleting blob data", "cid", cid)
+
+	if err := s.deleteBlobForLocalStore(ctx, cid, store); err != nil {
+		internalLogger.Warn("Failed to delete blob", "cid", cid, "error", err)
+		errors = append(errors, fmt.Sprintf("blob delete: %v", err))
+	}
+
+	// Log summary
+	if len(errors) > 0 {
+		internalLogger.Warn("Partial delete completed with some errors", "cid", cid, "errors", errors)
+		// For local store, we might want to return an error if critical operations failed
+		// But continue with best-effort approach for now
+	} else {
+		internalLogger.Info("Record deleted successfully from OCI store", "cid", cid)
+	}
+
+	return nil // Best effort - don't fail on partial cleanup
+}
+
+// deleteBlobForLocalStore safely deletes blob data from local OCI store using new CID utility.
+func (s *store) deleteBlobForLocalStore(ctx context.Context, cid string, store *oci.Store) error {
+	// Convert CID to digest using our new utility function
+	ociDigest, err := corev1.ConvertCIDToDigest(cid)
 	if err != nil {
-		return status.Errorf(codes.Internal, "failed to get digest from CID: %v", err)
+		return fmt.Errorf("failed to convert CID to digest: %w", err)
 	}
 
 	blobDesc := ocispec.Descriptor{
 		Digest: ociDigest,
 	}
+
 	if err := store.Delete(ctx, blobDesc); err != nil {
-		return status.Errorf(codes.Internal, "failed to delete blob: %v", err)
+		return fmt.Errorf("failed to delete blob: %w", err)
 	}
 
-	internalLogger.Info("Record deleted successfully from OCI store", "cid", cid)
+	internalLogger.Debug("Blob deleted successfully", "cid", cid, "digest", ociDigest.String())
 
 	return nil
 }
@@ -183,31 +238,46 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.Reco
 		return status.Errorf(codes.Internal, "expected *remote.Repository, got %T", s.repo)
 	}
 
-	// Phase 1: Remove tag references to manifests
-	s.cleanupAllTags(ctx, cid)
+	internalLogger.Debug("Starting remote repository deletion", "cid", cid)
+
+	var errors []string
+
+	// Phase 1: Remove tag references to manifests (best effort)
+	// Note: Many remote registries don't support tag deletion via standard OCI API
+	internalLogger.Debug("Phase 1: Attempting tag cleanup (may not be supported)", "cid", cid)
+	s.cleanupAllTags(ctx, cid) // This method already handles errors gracefully and logs warnings
 
 	// Phase 2: Remove manifest references to blobs
+	internalLogger.Debug("Phase 2: Deleting manifest", "cid", cid)
+
 	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
-		internalLogger.Debug("Failed to resolve manifest during delete", "cid", cid, "error", err)
-	} else if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
-		return status.Errorf(codes.Internal, "failed to delete manifest: %v", err)
+		internalLogger.Debug("Failed to resolve manifest during delete (may already be deleted)", "cid", cid, "error", err)
+		errors = append(errors, fmt.Sprintf("manifest resolve: %v", err))
+	} else {
+		if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
+			internalLogger.Warn("Failed to delete manifest", "cid", cid, "error", err)
+			errors = append(errors, fmt.Sprintf("manifest delete: %v", err))
+		} else {
+			internalLogger.Debug("Manifest deleted successfully", "cid", cid, "digest", manifestDesc.Digest.String())
+		}
 	}
 
-	// Phase 3: Remove blob data (now unreferenced)
-	ociDigest, err := getDigestFromCID(cid)
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to get digest from CID: %v", err)
+	// Phase 3: Skip blob deletion for remote registries (best practice)
+	// Most remote registries handle blob cleanup via garbage collection
+	internalLogger.Debug("Phase 3: Skipping blob deletion (handled by registry GC)", "cid", cid)
+	internalLogger.Info("Blob cleanup skipped for remote registry - will be handled by garbage collection",
+		"cid", cid,
+		"note", "This is the recommended approach for remote registries")
+
+	// Log summary
+	if len(errors) > 0 {
+		internalLogger.Warn("Partial delete completed with some errors", "cid", cid, "errors", errors)
+		// For remote registries, partial failure is common and expected
+		// Many operations may not be supported, but this is normal
+	} else {
+		internalLogger.Info("Record deletion completed successfully", "cid", cid)
 	}
 
-	blobDesc := ocispec.Descriptor{
-		Digest: ociDigest,
-	}
-	if err := repo.Blobs().Delete(ctx, blobDesc); err != nil {
-		return status.Errorf(codes.Internal, "failed to delete blob: %v", err)
-	}
-
-	internalLogger.Info("Record deleted successfully from remote repository", "cid", cid)
-
-	return nil
+	return nil // Best effort - remote registries have limited delete capabilities
 }

@@ -10,6 +10,7 @@ import (
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
 	objectsv3 "github.com/agntcy/dir/api/objects/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Helper function to create string pointers.
@@ -383,13 +384,14 @@ func TestGenerateDiscoveryTags(t *testing.T) {
 		},
 	}
 
+	// Get the actual CID for testing
+	actualCID := record.GetCid()
+	require.NotEmpty(t, actualCID, "Record should have a valid CID")
+
+	// Generate tags with the record
 	tags := generateDiscoveryTags(record, DefaultTagStrategy)
 
 	assert.NotEmpty(t, tags, "Should generate tags for valid record")
-
-	// Get the actual CID for testing
-	actualCID := record.GetCid()
-	assert.NotEmpty(t, actualCID, "Record should have a valid CID")
 
 	// Check that CID tag exists (normalized to lowercase)
 	normalizedCID := normalizeTagForOCI(actualCID)

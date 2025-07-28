@@ -8,8 +8,9 @@ The OCI storage system enables:
 - **Storage of OASF objects** in OCI-compliant registries (local or remote)
 - **Rich metadata annotations** for discovery and filtering
 - **Multiple discovery tags** for enhanced browsability
-- **Content-addressable storage** using CIDs based on OASF content
+- **Content-addressable storage** using CIDs calculated from ORAS digest operations
 - **Version-agnostic record handling** across OASF v0.3.1, v0.4.0, and v0.5.0
+- **Registry-aware operations** optimized for local vs remote storage
 
 ## Architecture
 
@@ -23,29 +24,35 @@ The OCI storage system enables:
          └─────────────▶│  Discovery Tags │◀─────────────┘
                         │ (Multiple Tags) │
                         └─────────────────┘
+                                │
+                        ┌─────────────────┐
+                        │   CID Utils     │
+                        │ (utils/cid/)    │
+                        └─────────────────┘
 ```
 
 ## Core Workflow Processes
 
 ### 1. Push Operation
 
-The push operation stores agent records with rich metadata and discovery tags:
+The push operation stores agent records with rich metadata and discovery tags using ORAS-native operations:
 
 ```go
 // Push record to OCI registry
 func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
 ```
 
-**Workflow:**
-1. **Validate record CID** - Ensures content addressing integrity
-2. **Create blob descriptor** - Stores the canonical OASF JSON data
-3. **Extract manifest annotations** - Rich metadata for discovery
-4. **Generate discovery tags** - Multiple tags for browsability
-5. **Push manifest with tags** - Links everything together
+**Workflow (6-step process):**
+1. **Marshal record** - Convert to canonical OASF JSON
+2. **Push blob with ORAS** - Use `oras.PushBytes` to get layer descriptor 
+3. **Calculate CID from digest** - Use `cidutil.ConvertDigestToCID` on ORAS digest
+4. **Construct manifest annotations** - Rich metadata including calculated CID
+5. **Pack manifest** - Create OCI manifest with `oras.PackManifest`
+6. **Tag manifest** - Apply multiple discovery tags for browsability
 
 ### 2. Pull Operation
 
-Retrieves complete agent records:
+Retrieves complete agent records with validation:
 
 ```go
 // Pull record from OCI registry
@@ -53,14 +60,16 @@ func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record
 ```
 
 **Workflow:**
-1. **Resolve manifest** using CID as tag
-2. **Fetch blob data** from manifest layers
-3. **Unmarshal canonical OASF JSON** back to Record
-4. **Return complete record** with all metadata
+1. **Validate input** - Comprehensive reference validation
+2. **Fetch and parse manifest** - Shared helper eliminates code duplication
+3. **Validate layer structure** - Check for proper blob descriptors
+4. **Fetch blob data** - Download actual record content
+5. **Validate blob integrity** - Size and format verification
+6. **Unmarshal record** - Convert back to OASF Record
 
 ### 3. Lookup Operation
 
-Fast metadata retrieval without downloading full record:
+Fast metadata retrieval optimized for performance:
 
 ```go
 // Lookup record metadata
@@ -68,38 +77,88 @@ func (s *store) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.Reco
 ```
 
 **Workflow:**
-1. **Check blob existence** - Fast existence validation
-2. **Fetch manifest annotations** - Rich metadata extraction
-3. **Parse structured metadata** - Convert to RecordMeta
+1. **Validate input** - Fast-fail for invalid references
+2. **Resolve manifest directly** - Skip redundant existence check
+3. **Parse manifest annotations** - Extract rich metadata
 4. **Return metadata only** - No blob download required
 
 ### 4. Delete Operation
 
-Removes records and associated tags:
+Registry-aware deletion following OCI best practices:
 
 ```go
 // Delete record and cleanup tags
 func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error
 ```
 
-**Workflow:**
-1. **Find all discovery tags** - Locate all associated tags
-2. **Remove tags** - Clean up discovery metadata
-3. **Delete manifest** - Remove main manifest
-4. **Delete blob** - Remove actual record data
+**Registry-Aware Workflow:**
+
+#### Local OCI Store:
+1. **Clean up discovery tags** - Remove all associated tags
+2. **Delete manifest** - Remove manifest descriptor
+3. **Delete blob explicitly** - Full cleanup (we have filesystem control)
+
+#### Remote Registry:
+1. **Best-effort tag cleanup** - Many registries don't support tag deletion
+2. **Delete manifest** - Usually supported via OCI API
+3. **Skip blob deletion** - Let registry garbage collection handle cleanup
+
+## Shared Helper Functions
+
+The implementation uses shared helper functions to eliminate code duplication:
+
+### Internal Helpers (`internal.go`)
+
+```go
+// Shared manifest operations (used by Lookup and Pull)
+func (s *store) fetchAndParseManifest(ctx context.Context, cid string) (*ocispec.Manifest, *ocispec.Descriptor, error)
+
+// Shared input validation (used by Lookup, Pull, Delete)  
+func validateRecordRef(ref *corev1.RecordRef) error
+
+// Local blob deletion (used by Delete for local stores)
+func (s *store) deleteBlobForLocalStore(ctx context.Context, cid string, store *oci.Store) error
+```
+
+**Benefits:**
+- **DRY principle** - Eliminates code duplication
+- **Consistent behavior** - Same validation and error handling patterns
+- **Easier maintenance** - Single place to modify shared logic
+
+## CID Utility Package (`utils/cid/`)
+
+Centralized CID operations with structured error handling:
+
+```go
+// Convert OCI digest to CID (used in Push)
+func ConvertDigestToCID(digest ocidigest.Digest) (string, error)
+
+// Convert CID to OCI digest (used in Delete)  
+func ConvertCIDToDigest(cidString string) (ocidigest.Digest, error)
+
+// Calculate digest from bytes (fallback utility)
+func CalculateDigest(data []byte) (ocidigest.Digest, error)
+```
+
+**Features:**
+- **Structured errors** - Custom error types with detailed context
+- **Comprehensive validation** - Algorithm and format checking
+- **Round-trip consistency** - Guaranteed CID ↔ Digest conversion
+- **Performance optimized** - Efficient hash operations
 
 ## Annotations System
 
-Annotations provide rich metadata for discovery, filtering, and organization. There are two types:
+The system uses a streamlined annotation approach focused on manifest annotations:
 
 ### Manifest Annotations
 
-Stored in OCI manifest for discovery and filtering:
+Rich metadata stored in OCI manifest for discovery and filtering:
 
 ```go
 // Example manifest annotations
 annotations := map[string]string{
     "org.agntcy.dir/type":              "record",
+    "org.agntcy.dir/cid":               "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
     "org.agntcy.dir/name":              "aws-ec2-agent",
     "org.agntcy.dir/version":           "1.2.0",
     "org.agntcy.dir/description":       "AWS EC2 management agent",
@@ -118,29 +177,11 @@ annotations := map[string]string{
 }
 ```
 
-### Descriptor Annotations
-
-Technical metadata stored in blob descriptors:
-
-```go
-// Example descriptor annotations
-annotations := map[string]string{
-    "org.agntcy.dir/encoding":      "json",
-    "org.agntcy.dir/blob-type":     "oasf-object",
-    "org.agntcy.dir/schema":        "oasf.v0.5.0.Record",
-    "org.agntcy.dir/compression":   "none",
-    "org.agntcy.dir/content-cid":   "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-    "org.agntcy.dir/signed":        "true",
-    "org.agntcy.dir/stored-at":     "2024-01-15T10:35:00Z",
-    "org.agntcy.dir/store-version": "v1",
-}
-```
-
 ### Annotation Categories
 
 | Category | Purpose | Examples |
 |----------|---------|----------|
-| **Core Identity** | Basic record information | `name`, `version`, `description` |
+| **Core Identity** | Basic record information | `name`, `version`, `description`, `cid` |
 | **Lifecycle** | Versioning and timestamps | `schema-version`, `created-at`, `authors` |
 | **Capability Discovery** | Functional metadata | `skills`, `locator-types`, `extension-names` |
 | **Security** | Integrity and verification | `signed`, `signature-algorithm`, `signed-at` |
@@ -166,7 +207,7 @@ type TagStrategy struct {
 ### Tag Categories and Examples
 
 #### 1. Content-Addressable Tags
-Primary identifier for exact record lookup:
+Primary identifier for exact record lookup (calculated from ORAS digest):
 ```
 bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi
 ```
@@ -224,7 +265,7 @@ All tags are normalized for OCI compliance:
 
 ### Example Tag Generation
 
-For an AWS EC2 management agent:
+For an AWS EC2 management agent with ORAS-calculated CID:
 
 ```go
 record := &corev1.Record{
@@ -251,9 +292,9 @@ record := &corev1.Record{
     },
 }
 
-// Generated tags:
+// Generated tags (CID calculated from ORAS digest):
 tags := []string{
-    "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi", // CID
+    "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi", // CID from ORAS
     "aws-ec2-agent",                    // Name
     "aws-ec2-agent:1.2.0",             // Name + version
     "aws-ec2-agent:latest",             // Name + latest
@@ -331,14 +372,15 @@ Supports multiple authentication methods:
 ## Storage Features
 
 ### Content Addressability
-- **CID-based identification** - Immutable content addressing based on OASF data
+- **ORAS-based CID calculation** - CIDs derived from ORAS digest operations
 - **Integrity verification** - Automatic content validation
 - **Deduplication** - Identical OASF content stored once
 
 ### Rich Metadata
-- **Structured annotations** - Searchable metadata
+- **Manifest annotations** - Searchable metadata stored in OCI manifests
 - **Version tracking** - Schema evolution support
 - **Custom annotations** - User-defined metadata
+- **CID in annotations** - Direct CID storage for discovery
 
 ### Discovery & Browsability
 - **Multiple tag strategies** - Enhanced discoverability
@@ -346,43 +388,69 @@ Supports multiple authentication methods:
 - **Hierarchical organization** - Team/project/capability grouping
 
 ### Performance
+- **Optimized network operations** - Minimal redundant calls
 - **Optional caching** - Local cache for remote registries
-- **Incremental operations** - Only changed data transferred
-- **Parallel processing** - Concurrent push/pull operations
+- **Shared helper functions** - Eliminated code duplication
+- **Registry-aware operations** - Optimized for local vs remote storage
 
 ## Error Handling
 
-The system provides comprehensive error handling with gRPC status codes:
+The system provides comprehensive error handling with structured errors and best-effort operations:
 
+### Structured CID Errors
+```go
+// CID utility errors with detailed context
+&Error{
+    Type:    ErrorTypeInvalidCID,
+    Message: "failed to decode CID",
+    Details: map[string]interface{}{"cid": cidString, "error": err.Error()},
+}
+```
+
+### gRPC Status Codes
 ```go
 // Common error scenarios
-status.Error(codes.InvalidArgument, "record CID is required")
+status.Error(codes.InvalidArgument, "record reference cannot be nil")
 status.Error(codes.NotFound, "record not found: <cid>")
-status.Error(codes.Internal, "failed to push blob: <error>")
-status.Error(codes.FailedPrecondition, "unsupported repo type")
+status.Error(codes.Internal, "failed to push record bytes: <error>")
+```
+
+### Best-Effort Operations
+```go
+// Delete operations continue despite partial failures
+var errors []string
+if err := deleteManifest(); err != nil {
+    errors = append(errors, fmt.Sprintf("manifest delete: %v", err))
+    // Continue with cleanup
+}
 ```
 
 ## Testing
 
 The package includes comprehensive tests covering:
+- **CID utility functions** - Round-trip conversion, error cases
+- **Shared helper functions** - Manifest parsing, validation
 - **Annotation extraction** - All OASF versions
 - **Tag generation** - All tag strategies  
 - **Tag normalization** - OCI compliance
 - **Workflow operations** - Push/Pull/Lookup/Delete
+- **Registry-aware deletion** - Local vs remote behavior
 - **Error scenarios** - Validation and edge cases
 
 Run tests:
 ```bash
 go test ./server/store/oci/...
+go test ./utils/cid/...
 ```
 
 ## Dependencies
 
 ### Core Dependencies
-- **`oras.land/oras-go/v2`** - OCI registry operations
+- **`oras.land/oras-go/v2`** - OCI registry operations and native digest calculation
 - **`github.com/opencontainers/image-spec`** - OCI specifications
-- **`github.com/ipfs/go-cid`** - Content addressing
-- **`github.com/multiformats/go-multihash`** - Hash format support
+- **`github.com/agntcy/dir/utils/cid`** - Centralized CID utilities
+- **`github.com/ipfs/go-cid`** - Content addressing (via CID utils)
+- **`github.com/multiformats/go-multihash`** - Hash format support (via CID utils)
 
 ### Registry Support
 - **OCI Distribution Spec** - Standard OCI registries
@@ -407,5 +475,12 @@ go test ./server/store/oci/...
 ### Storage Configuration
 1. **Use caching** - Improve performance for remote registries
 2. **Configure authentication** - Secure access control
-3. **Monitor storage usage** - Track registry size and costs
-4. **Backup strategies** - Ensure data resilience 
+3. **Choose appropriate deletion strategy** - Understand local vs remote behavior
+4. **Monitor storage usage** - Track registry size and costs
+5. **Backup strategies** - Ensure data resilience
+
+### Development Guidelines
+1. **Use shared helpers** - Leverage `fetchAndParseManifest`, `validateRecordRef`
+2. **Follow error handling patterns** - Use structured errors with context
+3. **Leverage CID utilities** - Use `utils/cid/` package for all CID operations
+4. **Consider registry differences** - Design for both local and remote scenarios 

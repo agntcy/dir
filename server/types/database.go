@@ -3,7 +3,10 @@
 
 package types
 
-import storev1alpha2 "github.com/agntcy/dir/api/store/v1alpha2"
+import (
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	storev1alpha2 "github.com/agntcy/dir/api/store/v1alpha2"
+)
 
 type DatabaseAPI interface {
 	SearchDatabaseAPI
@@ -16,6 +19,10 @@ type SearchDatabaseAPI interface {
 
 	// GetRecords retrieves records based on the provided RecordFilters.
 	GetRecords(opts ...FilterOption) ([]Record, error)
+
+	// GetRecordRefs retrieves only record references (CIDs) based on the provided filters.
+	// This is more efficient than GetRecords when only CIDs are needed.
+	GetRecordRefs(opts ...FilterOption) ([]*corev1.RecordRef, error)
 }
 
 type SyncDatabaseAPI interface {

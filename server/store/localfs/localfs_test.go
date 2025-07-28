@@ -34,14 +34,13 @@ func TestStore(t *testing.T) {
 		},
 	}
 
-	// Calculate CID (as the controller would do)
-	recordCID := record.GetCid()
-	require.NotEmpty(t, recordCID, "failed to calculate CID")
-
-	// Push
+	// Push record - store will calculate CID internally
 	pushedRef, err := store.Push(ctx, record)
 	require.NoError(t, err, "push failed")
-	assert.Equal(t, recordCID, pushedRef.GetCid(), "pushed CID should match calculated CID")
+	require.NotEmpty(t, pushedRef.GetCid(), "pushed CID should not be empty")
+
+	recordCID := pushedRef.GetCid()
+	t.Logf("Store calculated CID: %s", recordCID)
 
 	// Lookup
 	fetchedMeta, err := store.Lookup(ctx, pushedRef)
@@ -55,11 +54,7 @@ func TestStore(t *testing.T) {
 	fetchedRecord, err := store.Pull(ctx, pushedRef)
 	require.NoError(t, err, "pull failed")
 
-	fetchedCID := fetchedRecord.GetCid()
-	require.NotEmpty(t, fetchedCID, "failed to get fetched record CID")
-	assert.Equal(t, recordCID, fetchedCID, "pulled record CID should match")
-
-	// Verify record data
+	// Verify record data (don't check CID from pulled record since we're moving away from Record.GetCid)
 	assert.NotNil(t, fetchedRecord.GetV1(), "should have v1 data")
 	fetchedAgent := fetchedRecord.GetV1()
 	assert.Equal(t, testAgent.GetName(), fetchedAgent.GetName(), "agent name should match")

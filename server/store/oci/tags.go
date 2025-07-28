@@ -360,11 +360,14 @@ func generateDiscoveryTags(record *corev1.Record, strategy TagStrategy) []string
 		return []string{}
 	}
 
+	// Calculate CID from record
+	recordCID := record.GetCid()
+
 	// Extract metadata from record
 	metadata := extractMetadataFromRecord(record)
 
-	// Use shared helper
-	return generateTagsFromMetadata(metadata, record.GetCid(), strategy)
+	// Use shared helper with calculated CID
+	return generateTagsFromMetadata(metadata, recordCID, strategy)
 }
 
 // Moved to tags.go for better organization and uses shared helper.

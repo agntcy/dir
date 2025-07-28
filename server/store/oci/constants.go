@@ -19,6 +19,7 @@ const (
 	MetadataKeyVersion     = "version"
 	MetadataKeyDescription = "description"
 	MetadataKeyOASFVersion = "oasf-version"
+	MetadataKeyCid         = "cid"
 
 	// Lifecycle (simple keys).
 	MetadataKeySchemaVersion = "schema-version"
@@ -56,6 +57,7 @@ const (
 	ManifestKeyVersion     = manifestDirObjectKeyPrefix + "/" + MetadataKeyVersion
 	ManifestKeyDescription = manifestDirObjectKeyPrefix + "/" + MetadataKeyDescription
 	ManifestKeyOASFVersion = manifestDirObjectKeyPrefix + "/" + MetadataKeyOASFVersion
+	ManifestKeyCid         = manifestDirObjectKeyPrefix + "/" + MetadataKeyCid
 
 	// Lifecycle Metadata (mixed: some derived, some standalone).
 	ManifestKeySchemaVersion = manifestDirObjectKeyPrefix + "/" + MetadataKeySchemaVersion
@@ -77,18 +79,4 @@ const (
 
 	// Custom annotations prefix.
 	ManifestKeyCustomPrefix = manifestDirObjectKeyPrefix + "/custom."
-
-	// Format Information.
-	DescriptorKeyEncoding    = manifestDirObjectKeyPrefix + "/encoding"
-	DescriptorKeyBlobType    = manifestDirObjectKeyPrefix + "/blob-type"
-	DescriptorKeySchema      = manifestDirObjectKeyPrefix + "/schema"
-	DescriptorKeyCompression = manifestDirObjectKeyPrefix + "/compression"
-
-	// Integrity Information.
-	DescriptorKeyContentCid = manifestDirObjectKeyPrefix + "/content-cid"
-	DescriptorKeySigned     = manifestDirObjectKeyPrefix + "/signed"
-
-	// Storage Information.
-	DescriptorKeyStoredAt     = manifestDirObjectKeyPrefix + "/stored-at"
-	DescriptorKeyStoreVersion = manifestDirObjectKeyPrefix + "/store-version"
 )

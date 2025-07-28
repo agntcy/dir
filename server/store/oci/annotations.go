@@ -6,7 +6,6 @@ package oci
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types/adapters"
@@ -121,57 +120,6 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 			annotations[ManifestKeyCustomPrefix+key] = value
 		}
 	}
-
-	return annotations
-}
-
-// createDescriptorAnnotations creates descriptor annotations for technical metadata.
-func createDescriptorAnnotations(record *corev1.Record) map[string]string {
-	annotations := make(map[string]string)
-
-	// Format information
-	annotations[DescriptorKeyEncoding] = "json"
-	annotations[DescriptorKeyBlobType] = "oasf-record"
-	annotations[DescriptorKeyCompression] = "none"
-
-	// Schema information based on record version
-	switch record.GetData().(type) {
-	case *corev1.Record_V1:
-		annotations[DescriptorKeySchema] = "oasf.v0.3.1.Agent"
-	case *corev1.Record_V2:
-		annotations[DescriptorKeySchema] = "oasf.v0.4.0.AgentRecord"
-	case *corev1.Record_V3:
-		annotations[DescriptorKeySchema] = "oasf.v0.5.0.Record"
-	default:
-		annotations[DescriptorKeySchema] = "unknown"
-	}
-
-	// Integrity information
-	annotations[DescriptorKeyContentCid] = record.GetCid()
-
-	// Check if record has signature
-	hasSig := false
-
-	switch data := record.GetData().(type) {
-	case *corev1.Record_V1:
-		if data.V1 != nil && data.V1.GetSignature() != nil {
-			hasSig = true
-		}
-	case *corev1.Record_V2:
-		if data.V2 != nil && data.V2.GetSignature() != nil {
-			hasSig = true
-		}
-	case *corev1.Record_V3:
-		if data.V3 != nil && data.V3.GetSignature() != nil {
-			hasSig = true
-		}
-	}
-
-	annotations[DescriptorKeySigned] = strconv.FormatBool(hasSig)
-
-	// Storage information
-	annotations[DescriptorKeyStoredAt] = time.Now().Format(time.RFC3339)
-	annotations[DescriptorKeyStoreVersion] = "v1"
 
 	return annotations
 }

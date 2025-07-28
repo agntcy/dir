@@ -8,7 +8,6 @@ import (
 	"errors"
 	"io"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
@@ -69,37 +68,10 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 
 		storeLogger.Debug("Processing record", "hasData", record.GetData() != nil, "size", recordSize)
 
-		// Calculate CID for the record using the GetCid method
-		recordCID := record.GetCid()
-		if recordCID == "" {
-			storeLogger.Error("Failed to calculate record CID")
-
-			return status.Error(codes.Internal, "failed to calculate record CID")
-		}
-
-		storeLogger.Debug("CID calculated successfully", "cid", recordCID)
-
-		// Check if record already exists in store
-		recordRef := &corev1.RecordRef{Cid: recordCID}
-
-		_, err = s.store.Lookup(stream.Context(), recordRef)
-		if err == nil {
-			// Record already exists, return existing reference
-			storeLogger.Info("Record already exists in store", "cid", recordCID)
-
-			if err := stream.Send(recordRef); err != nil {
-				return status.Errorf(codes.Internal, "failed to send existing record reference: %v", err)
-			}
-
-			continue
-		}
-
-		// Record doesn't exist, push to store (with CID already set)
-		storeLogger.Debug("Record not found in store, pushing", "cid", recordCID)
-
+		// Push record to store (store handles existence checks and idempotency)
 		pushedRef, err := s.store.Push(stream.Context(), record)
 		if err != nil {
-			storeLogger.Error("Failed to push record to store", "error", err, "cid", recordCID)
+			storeLogger.Error("Failed to push record to store", "error", err)
 
 			return status.Errorf(codes.Internal, "failed to push record to store: %v", err)
 		}
@@ -111,9 +83,9 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		recordAdapter := adapters.NewRecordAdapter(record)
 		if err := s.db.AddRecord(recordAdapter); err != nil {
 			// Log error but don't fail the push operation
-			storeLogger.Error("Failed to add record to search index", "error", err, "cid", recordCID)
+			storeLogger.Error("Failed to add record to search index", "error", err, "cid", pushedRef.GetCid())
 		} else {
-			storeLogger.Debug("Record added to search index successfully", "cid", recordCID)
+			storeLogger.Debug("Record added to search index successfully", "cid", pushedRef.GetCid())
 		}
 
 		// Send the RecordRef back via stream

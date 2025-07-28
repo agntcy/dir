@@ -400,3 +400,40 @@ func TestGetRecords_NilOption(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, records)
 }
+
+// TestGetRecordRefs_CompareWithGetRecords tests that GetRecordRefs returns the same CIDs as GetRecords.
+func TestGetRecordRefs_CompareWithGetRecords(t *testing.T) {
+	db := setupTestDB(t)
+	createTestData(t, db)
+
+	// Get records using the original method
+	records, err := db.GetRecords()
+	require.NoError(t, err)
+	require.Len(t, records, 3)
+
+	// Get record refs using the new method
+	recordRefs, err := db.GetRecordRefs()
+	require.NoError(t, err)
+	require.Len(t, recordRefs, 3)
+
+	// Compare CIDs - they should match
+	expectedCIDs := make(map[string]bool)
+
+	for _, record := range records {
+		cid := record.GetCid()
+		require.NotEmpty(t, cid, "GetRecords should return non-empty CIDs")
+
+		expectedCIDs[cid] = true
+	}
+
+	actualCIDs := make(map[string]bool)
+
+	for _, ref := range recordRefs {
+		cid := ref.GetCid()
+		require.NotEmpty(t, cid, "GetRecordRefs should return non-empty CIDs")
+
+		actualCIDs[cid] = true
+	}
+
+	assert.Equal(t, expectedCIDs, actualCIDs, "GetRecordRefs should return the same CIDs as GetRecords")
+}

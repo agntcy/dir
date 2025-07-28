@@ -423,6 +423,7 @@ func TestIntegrationTagStrategy(t *testing.T) {
 			MaxTagsPerRecord:         5,
 		}
 
+		// Get CID for the minimal record
 		tags := generateDiscoveryTags(minimalRecord, strategy)
 		require.NotEmpty(t, tags, "Should generate tags even with limited strategy")
 

@@ -19,7 +19,6 @@ import (
 	"github.com/spf13/afero"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
 var logger = logging.Logger("store/localfs")
@@ -50,22 +49,32 @@ func New(cfg fsconfig.Config) (types.StoreAPI, error) {
 	}, nil
 }
 
-func (c *store) Push(_ context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+func (c *store) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
 	logger.Debug("Pushing record to LocalFS store", "record", record)
 
-	// Marshal the record to bytes using proto.Marshal
-	recordBytes, err := proto.Marshal(record)
+	// Calculate CID using Record.GetCid()
+	recordCID := record.GetCid()
+	if recordCID == "" {
+		return nil, status.Errorf(codes.Internal, "failed to calculate CID for record")
+	}
+
+	logger.Debug("Calculated CID for record", "cid", recordCID)
+
+	// Create record reference
+	recordRef := &corev1.RecordRef{Cid: recordCID}
+
+	// Check if record already exists (store-level idempotency)
+	if _, err := c.Lookup(ctx, recordRef); err == nil {
+		logger.Info("Record already exists in LocalFS store", "cid", recordCID)
+
+		return recordRef, nil
+	}
+
+	// Marshal record for file storage
+	recordBytes, err := record.MarshalOASF()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to marshal record: %v", err)
 	}
-
-	// CID must be set by the controller
-	recordCID := record.GetCid()
-	if recordCID == "" {
-		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck // Mock should return exact error without wrapping
-	}
-
-	logger.Debug("Using CID from record", "cid", recordCID)
 
 	// Create temp file for contents
 	contentsFile, err := afero.TempFile(c.dataFs, ".", "*")
@@ -116,7 +125,7 @@ func (c *store) Push(_ context.Context, record *corev1.Record) (*corev1.RecordRe
 
 	logger.Info("Record stored successfully", "cid", recordCID)
 
-	return &corev1.RecordRef{Cid: recordCID}, nil
+	return recordRef, nil
 }
 
 func (c *store) Lookup(_ context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
@@ -154,15 +163,15 @@ func (c *store) Pull(_ context.Context, ref *corev1.RecordRef) (*corev1.Record, 
 		return nil, status.Errorf(codes.Internal, "failed to read record data: %v", err)
 	}
 
-	// Unmarshal data back to Record
-	var record corev1.Record
-	if err := proto.Unmarshal(recordData, &record); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unmarshal record: %v", err)
+	// Unmarshal OASF data back to Record (consistent with MarshalOASF used in Push)
+	record, err := corev1.UnmarshalOASF(recordData)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unmarshal OASF record: %v", err)
 	}
 
 	logger.Debug("Record pulled successfully", "cid", ref.GetCid())
 
-	return &record, nil
+	return record, nil
 }
 
 func (c *store) Delete(_ context.Context, ref *corev1.RecordRef) error {

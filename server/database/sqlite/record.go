@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
@@ -243,6 +244,96 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) { //
 	result := make([]types.Record, len(dbRecords))
 	for i := range dbRecords {
 		result[i] = &dbRecords[i]
+	}
+
+	return result, nil
+}
+
+// GetRecordRefs retrieves only record references (CIDs) based on the provided options.
+// This is optimized for cases where only CIDs are needed, avoiding expensive joins and preloads.
+func (d *DB) GetRecordRefs(opts ...types.FilterOption) ([]*corev1.RecordRef, error) { //nolint:cyclop
+	// Create default configuration.
+	cfg := &types.RecordFilters{}
+
+	// Apply all options.
+	for _, opt := range opts {
+		if opt == nil {
+			return nil, errors.New("nil option provided")
+		}
+
+		opt(cfg)
+	}
+
+	// Start with the base query for records - only select CID for efficiency.
+	query := d.gormDB.Model(&Record{}).Select("CID").Distinct()
+
+	// Apply pagination.
+	if cfg.Limit > 0 {
+		query = query.Limit(cfg.Limit)
+	}
+
+	if cfg.Offset > 0 {
+		query = query.Offset(cfg.Offset)
+	}
+
+	// Apply record-level filters.
+	if cfg.Name != "" {
+		query = query.Where("records.name LIKE ?", "%"+cfg.Name+"%")
+	}
+
+	if cfg.Version != "" {
+		query = query.Where("records.version = ?", cfg.Version)
+	}
+
+	// Handle skill filters.
+	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
+		query = query.Joins("JOIN skills ON skills.agent_id = records.id")
+
+		if len(cfg.SkillIDs) > 0 {
+			query = query.Where("skills.skill_id IN ?", cfg.SkillIDs)
+		}
+
+		if len(cfg.SkillNames) > 0 {
+			query = query.Where("skills.name IN ?", cfg.SkillNames)
+		}
+	}
+
+	// Handle locator filters.
+	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
+		query = query.Joins("JOIN locators ON locators.agent_id = records.id")
+
+		if len(cfg.LocatorTypes) > 0 {
+			query = query.Where("locators.type IN ?", cfg.LocatorTypes)
+		}
+
+		if len(cfg.LocatorURLs) > 0 {
+			query = query.Where("locators.url IN ?", cfg.LocatorURLs)
+		}
+	}
+
+	// Handle extension filters.
+	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
+		query = query.Joins("JOIN extensions ON extensions.agent_id = records.id")
+
+		if len(cfg.ExtensionNames) > 0 {
+			query = query.Where("extensions.name IN ?", cfg.ExtensionNames)
+		}
+
+		if len(cfg.ExtensionVersions) > 0 {
+			query = query.Where("extensions.version IN ?", cfg.ExtensionVersions)
+		}
+	}
+
+	// Execute the query to get only CIDs (no preloading needed).
+	var cids []string
+	if err := query.Pluck("CID", &cids).Error; err != nil {
+		return nil, fmt.Errorf("failed to query record CIDs: %w", err)
+	}
+
+	// Convert CIDs to RecordRef objects.
+	result := make([]*corev1.RecordRef, len(cids))
+	for i, cid := range cids {
+		result[i] = &corev1.RecordRef{Cid: cid}
 	}
 
 	return result, nil

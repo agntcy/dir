@@ -3,11 +3,6 @@
 
 package corev1
 
-import (
-	cid "github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
-)
-
 // GetCid calculates and returns the CID for this record.
 // The CID is calculated from the record's content using CIDv1, codec 1, SHA2-256.
 // Uses canonical JSON marshaling to ensure consistent, cross-language compatible results.
@@ -17,26 +12,25 @@ func (r *Record) GetCid() string {
 		return ""
 	}
 
-	// Use canonical marshaling for CID calculation.
+	// Use canonical marshaling for CID calculation
 	canonicalBytes, err := r.MarshalOASF()
 	if err != nil {
 		return ""
 	}
 
-	// Create CID with version 1, codec 1, SHA2-256.
-	pref := cid.Prefix{
-		Version:  1,           // CIDv1
-		Codec:    1,           // codec value as requested
-		MhType:   mh.SHA2_256, // SHA2-256 hash function
-		MhLength: -1,          // default length (32 bytes for SHA2-256)
-	}
-
-	cidVal, err := pref.Sum(canonicalBytes)
+	// Calculate digest using local utilities
+	digest, err := CalculateDigest(canonicalBytes)
 	if err != nil {
 		return ""
 	}
 
-	return cidVal.String()
+	// Convert digest to CID using local utilities
+	cid, err := ConvertDigestToCID(digest)
+	if err != nil {
+		return ""
+	}
+
+	return cid
 }
 
 // MustGetCid is a convenience method that panics if CID calculation fails.
