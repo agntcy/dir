@@ -198,9 +198,9 @@ func (s *store) deleteFromOCIStore(ctx context.Context, ref *corev1.RecordRef) e
 
 	// Log summary
 	if len(errors) > 0 {
-		internalLogger.Warn("Partial delete completed with some errors", "cid", cid, "errors", errors)
 		// For local store, we might want to return an error if critical operations failed
 		// But continue with best-effort approach for now
+		internalLogger.Warn("Partial delete completed with some errors", "cid", cid, "errors", errors)
 	} else {
 		internalLogger.Info("Record deleted successfully from OCI store", "cid", cid)
 	}
@@ -272,9 +272,9 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.Reco
 
 	// Log summary
 	if len(errors) > 0 {
-		internalLogger.Warn("Partial delete completed with some errors", "cid", cid, "errors", errors)
 		// For remote registries, partial failure is common and expected
 		// Many operations may not be supported, but this is normal
+		internalLogger.Warn("Partial delete completed with some errors", "cid", cid, "errors", errors)
 	} else {
 		internalLogger.Info("Record deletion completed successfully", "cid", cid)
 	}
