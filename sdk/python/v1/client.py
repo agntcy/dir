@@ -6,12 +6,10 @@ import os
 from typing import Optional, List, Tuple, BinaryIO, Iterator
 
 import grpc
-import core.v1alpha1 as core
-import routing.v1alpha1.routing_service_pb2_grpc as routing_services
-import routing.v1alpha1.routing_service_pb2 as routing_types
-import sign.v1alpha1.sign_service_pb2_grpc as sign_services
-import sign.v1alpha1.sign_service_pb2 as sign_types
-import store.v1alpha1.store_service_pb2_grpc as store_services
+import core.v1.record_pb2 as core_types
+import routing.v1alpha2.routing_service_pb2_grpc as routing_services
+import routing.v1alpha2.routing_service_pb2 as routing_types
+import store.v1alpha2.store_service_pb2_grpc as store_services
 
 CHUNK_SIZE = 4096  # 4KB
 
@@ -60,27 +58,22 @@ class Client:
             config = Config.load_from_env()
         return cls(config)
 
-    def publish(self, ref: core.object_pb2.ObjectRef, network: bool = False, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
+    def publish(self, req: routing_types.PublishRequest, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
         """Publish an object to the routing service.
 
         Args:
-            ref: Reference to the object
-            network: Whether to publish to the network
+            req: Publish request containing the cid of published object
             metadata: Optional metadata for the gRPC call
-
         Raises:
             Exception: If publishing fails
         """
 
         try:
-            self.routing_client.Publish(
-                routing_types.PublishRequest(record=ref, network=network),
-                metadata=metadata,
-            )
+            self.routing_client.Publish(req, metadata=metadata)
         except Exception as e:
             raise Exception(f"Failed to publish object: {e}")
 
-    def list(self, req: routing_types.ListRequest, metadata: Optional[List[Tuple[str, str]]] = None) -> Iterator[routing_types.ListResponse.Item]:
+    def list(self, req: routing_types.ListRequest, metadata: Optional[List[Tuple[str, str]]] = None) -> Iterator[routing_types.ListResponse]:
         """List objects matching the criteria.
 
         Args:
@@ -100,38 +93,31 @@ class Client:
 
             # Yield each item from the stream
             for response in stream:
-                for item in response.items:
-                    yield item
+                yield response
         except Exception as e:
             logger.error(f"Error receiving objects: {e}")
             raise Exception(f"Failed to list objects: {e}")
 
-    def unpublish(self, ref: core.object_pb2.ObjectRef, network: bool = False, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
+    def unpublish(self, req: routing_types.UnpublishRequest, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
         """Unpublish an object from the routing service.
 
         Args:
-            ref: Reference to the object
-            network: Whether to unpublish from the network
+            req: Unpublish request containing the cid of unpublished object
             metadata: Optional metadata for the gRPC call
-
         Raises:
             Exception: If unpublishing fails
         """
 
         try:
-            self.routing_client.Unpublish(
-                routing_types.UnpublishRequest(record=ref, network=network),
-                metadata=metadata
-            )
+            self.routing_client.Unpublish(req, metadata=metadata)
         except Exception as e:
             raise Exception(f"Failed to unpublish object: {e}")
 
-    def push(self, ref: core.object_pb2.ObjectRef, reader: BinaryIO, metadata: Optional[List[Tuple[str, str]]] = None) -> core.object_pb2.ObjectRef:
+    def push(self, record: core_types.Record, metadata: Optional[List[Tuple[str, str]]] = None) -> core_types.RecordRef:
         """Push an object to the store.
 
         Args:
-            ref: Reference to the object
-            reader: Binary reader providing object data
+            record: Record object
             metadata: Optional metadata for the gRPC call
 
         Returns:
@@ -143,22 +129,18 @@ class Client:
 
         try:
             # Push is a client-streaming RPC - stream of requests, single response
-            def request_iterator():
-                while True:
-                    data = reader.read(CHUNK_SIZE)
-                    if not data:
-                        break
-
-                    obj = core.object_pb2.Object(ref=ref, data=data)
-                    yield obj
-
             # Call the Push method with the request iterator
+
+            def request_iterator():
+                yield record
+
             response = self.store_client.Push(request_iterator(), metadata=metadata)
-            return response
+
+            return next(response, None)
         except Exception as e:
             raise Exception(f"Failed to push object: {e}")
 
-    def pull(self, ref: core.object_pb2.ObjectRef, metadata: Optional[List[Tuple[str, str]]] = None) -> io.BytesIO:
+    def pull(self, ref: core_types.RecordRef, metadata: Optional[List[Tuple[str, str]]] = None) -> core_types.Record:
         """Pull an object from the store.
 
         Args:
@@ -174,18 +156,19 @@ class Client:
 
         try:
             # Pull is a server-streaming RPC - single request, stream of responses
-            stream = self.store_client.Pull(ref, metadata=metadata)
+            def request_iterator():
+                yield ref
 
-            buffer = io.BytesIO()
-            for obj in stream:
-                buffer.write(obj.data)
+            response = self.store_client.Pull(request_iterator(), metadata=metadata)
 
-            buffer.seek(0)
-            return buffer
+            for r in response:
+                if r is not None:
+                    return r
+
         except Exception as e:
             raise Exception(f"Failed to pull object: {e}")
 
-    def lookup(self, ref: core.object_pb2.ObjectRef, metadata: Optional[List[Tuple[str, str]]] = None) -> core.object_pb2.ObjectRef:
+    def lookup(self, ref: core_types.RecordRef, metadata: Optional[List[Tuple[str, str]]] = None) -> core_types.RecordMeta:
         """Look up an object in the store.
 
         Args:
@@ -200,12 +183,20 @@ class Client:
         """
 
         try:
-            # Lookup is a unary RPC - single request, single response
-            return self.store_client.Lookup(ref, metadata=metadata)
-        except Exception as e:
-            raise Exception(f"Failed to lookup object: {e}")
+            # Pull is a server-streaming RPC - single request, stream of responses
+            def request_iterator():
+                yield ref
 
-    def delete(self, ref: core.object_pb2.ObjectRef, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
+            response = self.store_client.Lookup(request_iterator(), metadata=metadata)
+
+            for r in response:
+                if r is not None:
+                    return r
+
+        except Exception as e:
+            raise Exception(f"Failed to pull object: {e}")
+
+    def delete(self, ref: core_types.RecordRef, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
         """Delete an object from the store.
 
         Args:
@@ -217,7 +208,10 @@ class Client:
         """
 
         try:
-            # Delete is a unary RPC - single request, single response
-            self.store_client.Delete(ref, metadata=metadata)
+            def request_iterator():
+                yield ref
+
+            self.store_client.Delete(request_iterator(), metadata=metadata)
+
         except Exception as e:
-            raise Exception(f"Failed to delete object: {e}")
+            raise Exception(f"Failed to pull object: {e}")
