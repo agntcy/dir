@@ -1,10 +1,12 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:dupl // Streaming functions intentionally follow the same pattern for consistency
 package streaming
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -13,7 +15,7 @@ import (
 	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
 )
 
-// LookupResult represents the result of a lookup operation
+// LookupResult represents the result of a lookup operation.
 type LookupResult struct {
 	RecordMeta *corev1.RecordMeta
 	Error      error
@@ -24,6 +26,8 @@ type LookupResult struct {
 // This follows the generator pattern from "Concurrency in Go" by Katherine Cox-Buday
 // where functions take a context, input channel, and configuration, return an output channel,
 // and manage their own goroutine lifecycle internally.
+//
+//nolint:gocognit,cyclop // Streaming functions necessarily have high complexity due to concurrent patterns
 func LookupStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client storetypes.StoreServiceClient) <-chan LookupResult {
 	outStream := make(chan LookupResult)
 
@@ -38,6 +42,7 @@ func LookupStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 				return
 			case outStream <- LookupResult{Error: fmt.Errorf("failed to create lookup stream: %w", err)}:
 			}
+
 			return
 		}
 
@@ -45,6 +50,7 @@ func LookupStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 
 		// Goroutine 1: Send record refs to server
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
 			defer func() {
@@ -58,6 +64,7 @@ func LookupStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 			}()
 
 			index := 0
+
 			for recordRef := range inStream {
 				select {
 				case <-ctx.Done():
@@ -69,8 +76,10 @@ func LookupStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 							return
 						case outStream <- LookupResult{Error: fmt.Errorf("failed to send record ref %d: %w", index, err), Index: index}:
 						}
+
 						return
 					}
+
 					index++
 				}
 			}
@@ -78,20 +87,25 @@ func LookupStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 
 		// Goroutine 2: Receive record metadata from server
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			index := 0
+
 			for {
 				recordMeta, err := stream.Recv()
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break
 				}
+
 				if err != nil {
 					select {
 					case <-ctx.Done():
 						return
 					case outStream <- LookupResult{Error: fmt.Errorf("failed to receive record meta %d: %w", index, err), Index: index}:
 					}
+
 					return
 				}
 
@@ -100,6 +114,7 @@ func LookupStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 					return
 				case outStream <- LookupResult{RecordMeta: recordMeta, Index: index}:
 				}
+
 				index++
 			}
 		}()
