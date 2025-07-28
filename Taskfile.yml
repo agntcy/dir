@@ -198,7 +198,6 @@ tasks:
       EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
       - EXTRA_ARGS="{{.EXTRA_ARGS}}" task client:test:go
-      - task client:test:python
 
   client:test:go:
     desc: Unit test Go Client code
@@ -207,14 +206,6 @@ tasks:
       EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
-
-  client:test:python:
-    desc: Unit test Python Client code
-    deps:
-      - deps:uv
-    dir: ./sdk/python
-    cmds:
-      - '{{.UV_BIN}} run python -m unittest'
 
   sdk:build:all:
     desc: Build all client SDK package
