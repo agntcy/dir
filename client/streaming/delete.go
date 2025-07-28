@@ -5,6 +5,7 @@ package streaming
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -12,7 +13,7 @@ import (
 	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
 )
 
-// DeleteResult represents the result of a delete operation
+// DeleteResult represents the result of a delete operation.
 type DeleteResult struct {
 	Error error
 	Index int // For correlating with input order if needed
@@ -22,6 +23,8 @@ type DeleteResult struct {
 // This follows the generator pattern from "Concurrency in Go" by Katherine Cox-Buday
 // where functions take a context, input channel, and configuration, return an output channel,
 // and manage their own goroutine lifecycle internally.
+//
+//nolint:cyclop // Streaming functions necessarily have high complexity due to concurrent patterns
 func DeleteStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client storetypes.StoreServiceClient) <-chan DeleteResult {
 	outStream := make(chan DeleteResult)
 
@@ -36,11 +39,13 @@ func DeleteStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 				return
 			case outStream <- DeleteResult{Error: fmt.Errorf("failed to create delete stream: %w", err)}:
 			}
+
 			return
 		}
 
 		// Send all record refs and emit results
 		index := 0
+
 		for recordRef := range inStream {
 			select {
 			case <-ctx.Done():
@@ -52,6 +57,7 @@ func DeleteStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 						return
 					case outStream <- DeleteResult{Error: fmt.Errorf("failed to send record ref %d: %w", index, err), Index: index}:
 					}
+
 					return
 				}
 
@@ -61,18 +67,20 @@ func DeleteStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client
 					return
 				case outStream <- DeleteResult{Index: index}:
 				}
+
 				index++
 			}
 		}
 
 		// Close the send stream and wait for server confirmation
 		_, err = stream.CloseAndRecv()
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			select {
 			case <-ctx.Done():
 				return
 			case outStream <- DeleteResult{Error: fmt.Errorf("failed to close delete stream: %w", err)}:
 			}
+
 			return
 		}
 	}()

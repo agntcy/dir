@@ -5,6 +5,7 @@ package streaming
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -13,7 +14,7 @@ import (
 	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
 )
 
-// PullResult represents the result of a pull operation
+// PullResult represents the result of a pull operation.
 type PullResult struct {
 	Record *corev1.Record
 	Error  error
@@ -24,6 +25,8 @@ type PullResult struct {
 // This follows the generator pattern from "Concurrency in Go" by Katherine Cox-Buday
 // where functions take a context, input channel, and configuration, return an output channel,
 // and manage their own goroutine lifecycle internally.
+//
+//nolint:gocognit,cyclop // Streaming functions necessarily have high complexity due to concurrent patterns
 func PullStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client storetypes.StoreServiceClient) <-chan PullResult {
 	outStream := make(chan PullResult)
 
@@ -38,6 +41,7 @@ func PullStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client s
 				return
 			case outStream <- PullResult{Error: fmt.Errorf("failed to create pull stream: %w", err)}:
 			}
+
 			return
 		}
 
@@ -45,6 +49,7 @@ func PullStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client s
 
 		// Goroutine 1: Send record refs to server
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
 			defer func() {
@@ -58,6 +63,7 @@ func PullStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client s
 			}()
 
 			index := 0
+
 			for recordRef := range inStream {
 				select {
 				case <-ctx.Done():
@@ -69,8 +75,10 @@ func PullStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client s
 							return
 						case outStream <- PullResult{Error: fmt.Errorf("failed to send record ref %d: %w", index, err), Index: index}:
 						}
+
 						return
 					}
+
 					index++
 				}
 			}
@@ -78,20 +86,25 @@ func PullStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client s
 
 		// Goroutine 2: Receive records from server
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			index := 0
+
 			for {
 				record, err := stream.Recv()
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break
 				}
+
 				if err != nil {
 					select {
 					case <-ctx.Done():
 						return
 					case outStream <- PullResult{Error: fmt.Errorf("failed to receive record %d: %w", index, err), Index: index}:
 					}
+
 					return
 				}
 
@@ -100,6 +113,7 @@ func PullStream(ctx context.Context, inStream <-chan *corev1.RecordRef, client s
 					return
 				case outStream <- PullResult{Record: record, Index: index}:
 				}
+
 				index++
 			}
 		}()

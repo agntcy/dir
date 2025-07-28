@@ -5,6 +5,7 @@ package streaming
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -13,7 +14,12 @@ import (
 	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
 )
 
-// PushResult represents the result of a push operation
+const (
+	// defaultBufferSize is the default buffer size for streaming result channels.
+	defaultBufferSize = 10
+)
+
+// PushResult represents the result of a push operation.
 type PushResult struct {
 	RecordRef *corev1.RecordRef
 	Error     error
@@ -24,13 +30,15 @@ type PushResult struct {
 // This follows the generator pattern from "Concurrency in Go" by Katherine Cox-Buday
 // where functions take a context, input channel, and configuration, return an output channel,
 // and manage their own goroutine lifecycle internally.
+//
+//nolint:gocognit,cyclop // Streaming functions necessarily have high complexity due to concurrent patterns
 func PushStream(ctx context.Context, inStream <-chan *corev1.Record, client storetypes.StoreServiceClient) <-chan PushResult {
-	outStream := make(chan PushResult)
+	outStream := make(chan PushResult, defaultBufferSize) // Buffer for better performance
 
 	go func() {
 		defer close(outStream)
 
-		// Create gRPC stream once
+		// Create streaming client once
 		stream, err := client.Push(ctx)
 		if err != nil {
 			select {
@@ -38,6 +46,7 @@ func PushStream(ctx context.Context, inStream <-chan *corev1.Record, client stor
 				return
 			case outStream <- PushResult{Error: fmt.Errorf("failed to create push stream: %w", err)}:
 			}
+
 			return
 		}
 
@@ -45,6 +54,7 @@ func PushStream(ctx context.Context, inStream <-chan *corev1.Record, client stor
 
 		// Goroutine 1: Send records to server
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
 			defer func() {
@@ -58,6 +68,7 @@ func PushStream(ctx context.Context, inStream <-chan *corev1.Record, client stor
 			}()
 
 			index := 0
+
 			for record := range inStream {
 				select {
 				case <-ctx.Done():
@@ -69,29 +80,36 @@ func PushStream(ctx context.Context, inStream <-chan *corev1.Record, client stor
 							return
 						case outStream <- PushResult{Error: fmt.Errorf("failed to send record %d: %w", index, err), Index: index}:
 						}
+
 						return
 					}
+
 					index++
 				}
 			}
 		}()
 
-		// Goroutine 2: Receive results from server
+		// Goroutine 2: Receive responses from server
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			index := 0
+
 			for {
 				recordRef, err := stream.Recv()
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break
 				}
+
 				if err != nil {
 					select {
 					case <-ctx.Done():
 						return
 					case outStream <- PushResult{Error: fmt.Errorf("failed to receive record ref %d: %w", index, err), Index: index}:
 					}
+
 					return
 				}
 
@@ -100,6 +118,7 @@ func PushStream(ctx context.Context, inStream <-chan *corev1.Record, client stor
 					return
 				case outStream <- PushResult{RecordRef: recordRef, Index: index}:
 				}
+
 				index++
 			}
 		}()
