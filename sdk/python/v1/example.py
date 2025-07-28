@@ -1,13 +1,10 @@
-import hashlib
-import io
 import json
 
 import core.v1.record_pb2 as core_record_pb2
-from objects.v3 import record_pb2, extension_pb2, skill_pb2, signature_pb2
 from google.protobuf.json_format import MessageToDict
-from routing.v1alpha2 import routing_service_pb2 as routingtypes
+from objects.v3 import extension_pb2, record_pb2, signature_pb2, skill_pb2
 from routing.v1alpha2 import record_query_pb2 as record_query_type
-
+from routing.v1alpha2 import routing_service_pb2 as routingtypes
 
 from client import Client, Config
 
@@ -87,12 +84,10 @@ print("Object published.")
 # List objects in the store
 query = record_query_type.RecordQuery(
     type=record_query_type.RECORD_QUERY_TYPE_SKILL,
-    value="/skills/Natural Language Processing/Text Completion"
+    value="/skills/Natural Language Processing/Text Completion",
 )
 
-list_request = routingtypes.ListRequest(
-    queries=[query]
-)
+list_request = routingtypes.ListRequest(queries=[query])
 objects = list(client.list(list_request))
 print("Listed objects:", objects)
 
