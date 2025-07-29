@@ -11,10 +11,9 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.2.6
-	github.com/agntcy/dir/cli v0.2.6
-	github.com/agntcy/dir/client v0.2.6
-	github.com/agntcy/dir/utils v0.2.6
+	github.com/agntcy/dir/api v0.2.7
+	github.com/agntcy/dir/cli v0.2.7
+	github.com/agntcy/dir/client v0.2.7
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.23.0
 	github.com/onsi/gomega v1.36.2
@@ -41,8 +40,30 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.53.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/oasf-sdk/pkg v0.0.0-20250915092450-6b95f6678b22 // indirect
+	github.com/Microsoft/hcsshim v0.11.7 // indirect
+	github.com/ProtonMail/go-crypto v1.1.3 // indirect
+	github.com/acobaugh/osrelease v0.1.0 // indirect
+	github.com/adrg/xdg v0.5.3 // indirect
+	github.com/agext/levenshtein v1.2.1 // indirect
+	github.com/agntcy/dir/hub v0.2.7 // indirect
+	github.com/agntcy/dir/utils v0.2.7 // indirect
+	github.com/anchore/archiver/v3 v3.5.3-0.20241210171143-5b1d8d1c7c51 // indirect
+	github.com/anchore/clio v0.0.0-20241115144204-29e89f9fa837 // indirect
+	github.com/anchore/fangs v0.0.0-20250326231402-da263204d38e // indirect
+	github.com/anchore/go-collections v0.0.0-20240216171411-9321230ce537 // indirect
+	github.com/anchore/go-homedir v0.0.0-20250319154043-c29668562e4d // indirect
+	github.com/anchore/go-logger v0.0.0-20250318195838-07ae343dd722 // indirect
+	github.com/anchore/go-macholibre v0.0.0-20220308212642-53e6d0aaf6fb // indirect
+	github.com/anchore/go-struct-converter v0.0.0-20221118182256-c68fdcfa2092 // indirect
+	github.com/anchore/go-version v1.2.2-0.20200701162849-18adb9c92b9b // indirect
+	github.com/anchore/packageurl-go v0.1.1-0.20250117185454-edf36a908b10 // indirect
+	github.com/anchore/stereoscope v0.0.13 // indirect
+	github.com/anchore/syft v1.19.0 // indirect
+	github.com/andybalholm/brotli v1.1.1 // indirect
+	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
+	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
+	github.com/aquasecurity/go-pep440-version v0.0.1 // indirect
+	github.com/aquasecurity/go-version v0.0.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/avast/retry-go/v4 v4.6.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
