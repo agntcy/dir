@@ -63,6 +63,9 @@ jobs:
           check-latest: true
           cache-dependency-path: "**/*.sum"
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.2
+
       #
       # Install kubernetes tools
       #
