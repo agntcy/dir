@@ -1,15 +1,15 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-import process from "node:process";
+const process = require('node:process');
 const grpc = require('@grpc/grpc-js');
 
-const core = require('@buf/agntcy_dir.grpc_web/core/v1alpha1/object_pb') // NOTE: There is no v1alpha2 in the JS package
-const routing = require('@buf/agntcy_dir.grpc_web/routing/v1alpha2/routing_service_pb')
-const routing = require('@buf/agntcy_dir.grpc_web/search/v1alpha2/search_service_pb')
-const sign = require('@buf/agntcy_dir.grpc_web/sign/v1alpha2/sign_service_pb')
-const store = require('@buf/agntcy_dir.grpc_web/store/v1alpha2/store_service_pb')
-
+const routing_service = require('@buf/agntcy_dir.grpc_node/routing/v1alpha2/routing_service_grpc_pb');
+const store_service = require('@buf/agntcy_dir.grpc_node/store/v1alpha2/store_service_grpc_pb');
+const search_service = require('@buf/agntcy_dir.grpc_node/search/v1alpha2/search_service_grpc_pb')
+const routing_type = require('@buf/agntcy_dir.grpc_node/routing/v1alpha2/routing_service_pb')
+const record_type = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
+const search_type = require('@buf/agntcy_dir.grpc_node/search/v1alpha2/search_service_pb')
 
 class Config {
     static DEFAULT_ENV_PREFIX = 'DIRECTORY_CLIENT';
@@ -28,10 +28,10 @@ class Config {
 
 class Client {
     constructor(config) {
-        this.channel = new grpc.Client(config.serverAddress, grpc.credentials.createInsecure());
-        this.storeClient = new storeServices.StoreServiceClient(config.serverAddress, grpc.credentials.createInsecure());
-        this.routingClient = new routingServices.RoutingServiceClient(config.serverAddress, grpc.credentials.createInsecure());
-        // Add sign client etc. as needed
+        this.storeClient = new store_service.StoreServiceClient(config.serverAddress, grpc.credentials.createInsecure());
+        this.routingClient = new routing_service.RoutingServiceClient(config.serverAddress, grpc.credentials.createInsecure());
+        this.searchClient = new search_service.SearchServiceClient(config.serverAddress, grpc.credentials.createInsecure());
+
     }
 
     static new(config = null) {
@@ -41,40 +41,161 @@ class Client {
         return new Client(config);
     }
 
-    publish(ref, network = false, metadata = null) {
-        throw new Error('Not implemented');
-    }
+    push(record, metadata = null) {
+        return new Promise((resolve, reject) => {
+            const call = this.storeClient.push();
 
-    list(req, metadata = null) {
-        throw new Error('Not implemented');
-    }
+            let ref = new record_type.RecordRef();
 
-    unpublish(ref, network = false, metadata = null) {
-        throw new Error('Not implemented');
-    }
+            call.on('data', (response) => {
+                ref = response.u
+            });
 
-    push(ref, reader, metadata = null) {
-        throw new Error('Not implemented');
+            call.on('end', () => {
+                resolve(ref)
+            });
+
+            call.on('error', (stream_error) => {
+                console.error('Stream error:', stream_error);
+
+                reject(stream_error)
+            });
+
+            // Send a requests and close the stream
+            call.write(record, metadata);
+            call.end();
+        });
     }
 
     pull(ref, metadata = null) {
-        throw new Error('Not implemented');
+        return new Promise((resolve, reject) => {
+            const call = this.storeClient.pull();
+
+            let record = new record_type.Record();
+
+            call.on('data', (response) => {
+                record = response.u
+            });
+
+            call.on('end', () => {
+                resolve(record)
+            });
+
+            call.on('error', (stream_error) => {
+                console.error('Stream error:', stream_error);
+
+                reject(stream_error)
+            });
+
+            // Send a requests and close the stream
+            call.write(ref, metadata);
+            call.end();
+        });
+    }
+
+    search(request, metadata = null) {
+        return new Promise((resolve, reject) => {
+            const call = this.searchClient.search(request, metadata);
+
+            let results = new search_type.SearchResponse();
+
+            // Handle response stream
+            call.on('data', (response) => {
+                results = response.u
+            });
+
+            call.on('end', () => {
+                resolve(results)
+            });
+
+            call.on('error', (stream_error) => {
+                console.error('Stream error:', stream_error);
+
+                reject(stream_error)
+            });
+        });
     }
 
     lookup(ref, metadata = null) {
-        throw new Error('Not implemented');
+        return new Promise((resolve, reject) => {
+            const call = this.storeClient.lookup();
+
+            let record_meta = new record_type.RecordMeta();
+
+            // Handle response stream
+            call.on('data', (response) => {
+                record_meta = response.u
+            });
+
+            call.on('end', () => {
+                resolve(record_meta)
+            });
+
+            call.on('error', (stream_error) => {
+                console.error('Stream error:', stream_error);
+
+                reject(stream_error)
+            });
+
+            // Send a requests and close the stream
+            call.write(ref, metadata);
+            call.end();
+        });
     }
 
-    delete(ref, metadata = null) {
-        throw new Error('Not implemented');
+    list(request, metadata = null) {
+        return new Promise((resolve, reject) => {
+            const call = this.routingClient.list(request, metadata);
+
+            let results = new routing_type.ListResponse();
+
+            call.on('data', (response) => {
+                results = response.u
+            });
+
+            call.on('end', () => {
+                resolve(results)
+            });
+
+            call.on('error', (stream_error) => {
+                console.error('Stream error:', stream_error);
+
+                reject(stream_error)
+            });
+        });
     }
 
-    sign(req) {
-        throw new Error('Not implemented');
+    publish(request) {
+        this.routingClient.publish(request, (error, _) => {
+            if (error) {
+                console.error('Error from server:', error);
+            }
+        });
     }
 
-    verify(req) {
-        throw new Error('Not implemented');
+    unpublish(request) {
+        this.routingClient.unpublish(request, (error, _) => {
+            if (error) {
+                console.error('Error from server:', error);
+            }
+        });
+    }
+
+    delete(ref) {
+        return new Promise((resolve, reject) => {
+            const call = this.storeClient.delete((error, _) => {
+                if (error.code !== 12) {
+                    console.error('Error from server:', error)
+                    reject(err);
+                }
+
+                resolve(); // No response to resolve
+            });
+
+            // Send a requests and close the stream
+            call.write(ref);
+            call.end();
+        });
     }
 }
 
