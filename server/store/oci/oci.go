@@ -129,7 +129,7 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 	expectedCID := record.GetCid()
 	if recordCID != expectedCID {
 		return nil, status.Errorf(codes.Internal,
-			"CID mismatch: ORAS digest CID (%s) != Record CID (%s)",
+			"CID mismatch: OCI digest CID (%s) != Record CID (%s)",
 			recordCID, expectedCID)
 	}
 

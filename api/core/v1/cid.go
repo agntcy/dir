@@ -6,6 +6,8 @@ package corev1
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 
 	cid "github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
@@ -17,11 +19,7 @@ import (
 func ConvertDigestToCID(digest ocidigest.Digest) (string, error) {
 	// Validate that the digest uses SHA256
 	if digest.Algorithm() != ocidigest.SHA256 {
-		return "", &Error{
-			Type:    ErrorTypeUnsupportedAlgorithm,
-			Message: "unsupported digest algorithm, only SHA256 is supported",
-			Details: map[string]interface{}{"algorithm": digest.Algorithm()},
-		}
+		return "", fmt.Errorf("unsupported digest algorithm %s, only SHA256 is supported", digest.Algorithm())
 	}
 
 	// Extract the hex-encoded hash from the OCI digest
@@ -30,21 +28,13 @@ func ConvertDigestToCID(digest ocidigest.Digest) (string, error) {
 	// Convert hex string to bytes
 	hashBytes, err := hex.DecodeString(hashHex)
 	if err != nil {
-		return "", &Error{
-			Type:    ErrorTypeInvalidDigest,
-			Message: "failed to decode digest hash from hex",
-			Details: map[string]interface{}{"error": err.Error(), "hex": hashHex},
-		}
+		return "", fmt.Errorf("failed to decode digest hash from hex %s: %w", hashHex, err)
 	}
 
 	// Create multihash from the digest bytes
 	mhash, err := mh.Encode(hashBytes, mh.SHA2_256)
 	if err != nil {
-		return "", &Error{
-			Type:    ErrorTypeHashCreation,
-			Message: "failed to create multihash",
-			Details: map[string]interface{}{"error": err.Error()},
-		}
+		return "", fmt.Errorf("failed to create multihash: %w", err)
 	}
 
 	// Create CID with same parameters as original Record.GetCid()
@@ -59,11 +49,7 @@ func ConvertCIDToDigest(cidString string) (ocidigest.Digest, error) {
 	// Decode the CID
 	c, err := cid.Decode(cidString)
 	if err != nil {
-		return "", &Error{
-			Type:    ErrorTypeInvalidCID,
-			Message: "failed to decode CID",
-			Details: map[string]interface{}{"cid": cidString, "error": err.Error()},
-		}
+		return "", fmt.Errorf("failed to decode CID %s: %w", cidString, err)
 	}
 
 	// Extract multihash bytes
@@ -72,20 +58,12 @@ func ConvertCIDToDigest(cidString string) (ocidigest.Digest, error) {
 	// Decode the multihash
 	decoded, err := mh.Decode(mhBytes)
 	if err != nil {
-		return "", &Error{
-			Type:    ErrorTypeInvalidCID,
-			Message: "failed to decode multihash from CID",
-			Details: map[string]interface{}{"cid": cidString, "error": err.Error()},
-		}
+		return "", fmt.Errorf("failed to decode multihash from CID %s: %w", cidString, err)
 	}
 
 	// Validate it's SHA2-256
 	if decoded.Code != uint64(mh.SHA2_256) {
-		return "", &Error{
-			Type:    ErrorTypeUnsupportedAlgorithm,
-			Message: "unsupported hash type in CID, only SHA2-256 is supported",
-			Details: map[string]interface{}{"hashType": decoded.Code, "cid": cidString},
-		}
+		return "", fmt.Errorf("unsupported hash type %d in CID %s, only SHA2-256 is supported", decoded.Code, cidString)
 	}
 
 	// Create OCI digest from the hash bytes
@@ -96,10 +74,7 @@ func ConvertCIDToDigest(cidString string) (ocidigest.Digest, error) {
 // This is used as a fallback when oras.PushBytes is not available.
 func CalculateDigest(data []byte) (ocidigest.Digest, error) {
 	if len(data) == 0 {
-		return "", &Error{
-			Type:    ErrorTypeInvalidInput,
-			Message: "cannot calculate digest of empty data",
-		}
+		return "", errors.New("cannot calculate digest of empty data")
 	}
 
 	// Calculate SHA2-256 hash
