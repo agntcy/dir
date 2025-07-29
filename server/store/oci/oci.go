@@ -6,16 +6,21 @@ package oci
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/store/cache"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,6 +29,18 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/retry"
+)
+
+// OCI-specific constants for signature artifacts.
+const (
+	// SignatureArtifactMediaType is the media type for signature artifacts.
+	SignatureArtifactMediaType = "application/vnd.dev.cosign.artifact.sig.v1+json"
+
+	// SignatureManifestMediaType is the media type for signature manifests.
+	SignatureManifestMediaType = "application/vnd.oci.image.manifest.v1+json"
+
+	// Signature annotations.
+	SignatureTypeAnnotation = "org.opencontainers.artifact.type"
 )
 
 var logger = logging.Logger("store/oci")
@@ -318,4 +335,257 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 	default:
 		return status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
 	}
+}
+
+// PushSignature stores OCI signature artifacts for a record.
+func (s *store) PushSignature(ctx context.Context, recordCID string, signature *signv1.Signature) error {
+	logger.Debug("Pushing signature artifact to OCI store", "recordCID", recordCID)
+
+	if recordCID == "" {
+		return status.Error(codes.InvalidArgument, "record CID is required")
+	}
+
+	// Create signature blob
+	signatureDesc, err := s.pushSignatureBlob(ctx, signature)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to push signature blob: %v", err)
+	}
+
+	// Create signature manifest that references the signed record
+	signatureManifestDesc, err := s.createSignatureManifest(ctx, signatureDesc, recordCID, signature)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to create signature manifest: %v", err)
+	}
+
+	logger.Debug("Signature artifact pushed successfully", "digest", signatureManifestDesc.Digest.String())
+
+	return nil
+}
+
+// PullSignature retrieves signature associated with a record.
+func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Signature, error) {
+	logger.Debug("Pulling signature from OCI store", "recordCID", recordCID)
+
+	if recordCID == "" {
+		return nil, status.Error(codes.InvalidArgument, "record CID is required")
+	}
+
+	// Find signature manifest for this record using OCI Referrers API
+	signatureManifestDesc, err := s.findSignatureManifest(ctx, recordCID)
+	if err != nil {
+		logger.Debug("Failed to find signature manifest", "error", err, "recordCID", recordCID)
+
+		return nil, status.Errorf(codes.NotFound, "signature not found: %s", recordCID)
+	}
+
+	// Fetch signature manifest
+	manifestReader, err := s.repo.Fetch(ctx, *signatureManifestDesc)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch signature manifest: %v", err)
+	}
+	defer manifestReader.Close()
+
+	manifestData, err := io.ReadAll(manifestReader)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to read signature manifest: %v", err)
+	}
+
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unmarshal signature manifest: %v", err)
+	}
+
+	// Extract signature artifact from manifest layers
+	if len(manifest.Layers) == 0 {
+		return nil, status.Errorf(codes.Internal, "signature manifest has no layers")
+	}
+
+	// Fetch signature blob data
+	signatureBlob := manifest.Layers[0]
+
+	signatureReader, err := s.repo.Fetch(ctx, signatureBlob)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch signature blob: %v", err)
+	}
+	defer signatureReader.Close()
+
+	signatureData, err := io.ReadAll(signatureReader)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to read signature blob: %v", err)
+	}
+
+	// Unmarshal the complete signature object from blob content
+	var signature signv1.Signature
+	if err := json.Unmarshal(signatureData, &signature); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unmarshal signature: %v", err)
+	}
+
+	logger.Debug("Retrieved signature artifact", "recordCID", recordCID)
+
+	return &signature, nil
+}
+
+// DeleteSignature removes signature associated with a record.
+func (s *store) DeleteSignature(ctx context.Context, recordCID string) error {
+	logger.Debug("Deleting signature from OCI store", "recordCID", recordCID)
+
+	if recordCID == "" {
+		return status.Error(codes.InvalidArgument, "record CID is required")
+	}
+
+	// Find signature manifest for this record using OCI Referrers API
+	signatureManifestDesc, err := s.findSignatureManifest(ctx, recordCID)
+	if err != nil {
+		logger.Debug("Failed to find signature manifest for deletion", "error", err, "recordCID", recordCID)
+
+		return nil
+	}
+
+	// Delete signature manifest and associated blobs
+	switch store := s.repo.(type) {
+	case *oci.Store:
+		// Delete manifest
+		if err := store.Delete(ctx, *signatureManifestDesc); err != nil {
+			return fmt.Errorf("failed to delete signature manifest %s: %w", signatureManifestDesc.Digest.String(), err)
+		}
+	case *remote.Repository:
+		// Delete manifest
+		if err := store.Manifests().Delete(ctx, *signatureManifestDesc); err != nil {
+			return fmt.Errorf("failed to delete signature manifest %s: %w", signatureManifestDesc.Digest.String(), err)
+		}
+	default:
+		return fmt.Errorf("unsupported repo type for signature deletion: %T", s.repo)
+	}
+
+	logger.Info("Signature deletion completed", "recordCID", recordCID)
+
+	return nil
+}
+
+// pushSignatureBlob pushes a signature artifact as a blob and returns its descriptor.
+func (s *store) pushSignatureBlob(ctx context.Context, signature *signv1.Signature) (ocispec.Descriptor, error) {
+	// Marshal the entire signature object to JSON
+	signatureJSON, err := json.Marshal(signature)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("failed to marshal signature: %w", err)
+	}
+
+	mediaType := signature.GetContentType()
+	if mediaType == "" {
+		mediaType = SignatureArtifactMediaType
+	}
+
+	blobDesc := ocispec.Descriptor{
+		MediaType: mediaType,
+		Digest:    digest.FromBytes(signatureJSON),
+		Size:      int64(len(signatureJSON)),
+	}
+
+	// Push the signature blob
+	err = s.repo.Push(ctx, blobDesc, strings.NewReader(string(signatureJSON)))
+	if err != nil && !strings.Contains(err.Error(), "already exists") {
+		return ocispec.Descriptor{}, fmt.Errorf("failed to push signature blob: %w", err)
+	}
+
+	return blobDesc, nil
+}
+
+// createSignatureManifest creates a signature manifest that references the signed record using OCI subject field.
+func (s *store) createSignatureManifest(ctx context.Context, signatureDesc ocispec.Descriptor, recordCID string, signature *signv1.Signature) (ocispec.Descriptor, error) {
+	// First, resolve the record manifest to get its descriptor for the subject field
+	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("failed to resolve record manifest for subject: %w", err)
+	}
+
+	// Create annotations for the signature manifest
+	annotations := make(map[string]string)
+
+	// Copy signature annotations
+	for k, v := range signature.GetAnnotations() {
+		annotations[k] = v
+	}
+
+	// Add OCI-required signature artifact type annotation
+	annotations[SignatureTypeAnnotation] = SignatureArtifactMediaType
+
+	// Create the signature manifest with proper OCI subject field
+	manifestDesc, err := oras.PackManifest(ctx, s.repo, oras.PackManifestVersion1_1, SignatureManifestMediaType,
+		oras.PackManifestOptions{
+			ManifestAnnotations: annotations,
+			Subject:             &recordManifestDesc, // OCI 1.1 subject field
+			Layers: []ocispec.Descriptor{
+				signatureDesc,
+			},
+		},
+	)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("failed to pack signature manifest: %w", err)
+	}
+
+	return manifestDesc, nil
+}
+
+// ReferrersLister interface for repositories that support the OCI Referrers API.
+type ReferrersLister interface {
+	Referrers(ctx context.Context, desc ocispec.Descriptor, artifactType string, fn func(referrers []ocispec.Descriptor) error) error
+}
+
+// findSignatureManifest finds the signature manifest for a given record using OCI Referrers API.
+func (s *store) findSignatureManifest(ctx context.Context, recordCID string) (*ocispec.Descriptor, error) {
+	logger.Debug("Finding signature manifest for record", "recordCID", recordCID)
+
+	// First, resolve the record manifest to get its descriptor
+	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve record manifest: %w", err)
+	}
+
+	// Check if the repository supports the referrers API
+	referrerLister, ok := s.repo.(ReferrersLister)
+	if !ok {
+		logger.Debug("Repository does not support Referrers API, falling back to tag schema")
+
+		return nil, errors.New("repository does not support Referrers API")
+	}
+
+	// Use the Referrers API to find signature manifests
+	var signatureManifestDesc *ocispec.Descriptor
+
+	err = referrerLister.Referrers(ctx, recordManifestDesc, SignatureManifestMediaType, func(referrers []ocispec.Descriptor) error {
+		for _, referrer := range referrers {
+			if s.isSignatureManifest(referrer) {
+				signatureManifestDesc = &referrer
+				logger.Debug("Found signature manifest using Referrers API", "digest", referrer.Digest.String())
+
+				return nil // Found our signature manifest
+			}
+		}
+
+		return nil // no signature manifest found
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query referrers: %w", err)
+	}
+
+	if signatureManifestDesc != nil {
+		return signatureManifestDesc, nil
+	}
+
+	return nil, fmt.Errorf("no signature manifest found for record %s", recordCID)
+}
+
+// isSignatureManifest checks if a descriptor represents a signature manifest.
+func (s *store) isSignatureManifest(desc ocispec.Descriptor) bool {
+	// Check media type
+	if desc.MediaType != SignatureManifestMediaType {
+		return false
+	}
+
+	// Check signature type annotation
+	if artifactType, ok := desc.Annotations[SignatureTypeAnnotation]; !ok || artifactType != SignatureArtifactMediaType {
+		return false
+	}
+
+	return true
 }
