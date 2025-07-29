@@ -11,10 +11,10 @@ import (
 	"os"
 	"path/filepath"
 
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	signtypes "github.com/agntcy/dir/api/sign/v1"
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/cli/presenter"
-	agentUtils "github.com/agntcy/dir/cli/util/agent"
+	utils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore/pkg/oauthflow"
@@ -23,12 +23,12 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "sign",
-	Short: "Sign agent model using identity-based OIDC signing",
-	Long: `This command signs the agent data model using identity-based signing.
+	Short: "Sign record using identity-based OIDC or key-based signing",
+	Long: `This command signs the record using identity-based signing.
 It uses a short-lived signing certificate issued by Sigstore Fulcio
 along with a local ephemeral signing key and OIDC identity.
 
-Verification data is attached to the signed agent model,
+Verification data is attached to the signed record,
 and the transparency log is pushed to Sigstore Rekor.
 
 This command opens a browser window to authenticate the user
@@ -36,13 +36,13 @@ with the default OIDC provider.
 
 Usage examples:
 
-1. Sign an agent model from file:
+1. Sign a record from file:
 
-	dirctl sign agent.json
+	dirctl sign record.json
 
-2. Sign an agent model from standard input:
+2. Sign a record from standard input:
 
-	cat agent.json | dirctl sign --stdin
+	cat record.json | dirctl sign --stdin
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -54,9 +54,9 @@ Usage examples:
 		}
 
 		// get source
-		source, err := agentUtils.GetReader(fpath, opts.FromStdin)
+		source, err := utils.GetReader(fpath, opts.FromStdin)
 		if err != nil {
-			return err //nolint:wrapcheck
+			return fmt.Errorf("failed to get reader: %w", err)
 		}
 
 		return runCommand(cmd, source)
@@ -70,17 +70,13 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return errors.New("failed to get client from context")
 	}
 
-	agent := &objectsv1.Agent{}
-
-	// Load into an Agent struct
-	if _, err := agent.LoadFromReader(source); err != nil {
-		return fmt.Errorf("failed to load agent: %w", err)
+	// Load OASF data (supports v1, v2, v3) into a Record
+	record, err := corev1.LoadOASFFromReader(source)
+	if err != nil {
+		return fmt.Errorf("failed to load OASF: %w", err)
 	}
 
-	var (
-		err         error
-		agentSigned *objectsv1.Agent
-	)
+	var signature *signv1.Signature
 
 	//nolint:nestif,gocritic
 	if opts.Key != "" {
@@ -96,11 +92,11 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
 
-		req := &signtypes.SignRequest{
-			Agent: agent,
-			Provider: &signtypes.SignRequestProvider{
-				Provider: &signtypes.SignRequestProvider_Key{
-					Key: &signtypes.SignWithKey{
+		req := &signv1.SignRequest{
+			Record: record,
+			Provider: &signv1.SignRequestProvider{
+				Request: &signv1.SignRequestProvider_Key{
+					Key: &signv1.SignWithKey{
 						PrivateKey: rawKey,
 						Password:   pw,
 					},
@@ -108,21 +104,21 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			},
 		}
 
-		// Sign the agent using the provided key
+		// Sign the record using the provided key
 		response, err := c.SignWithKey(cmd.Context(), req)
 		if err != nil {
-			return fmt.Errorf("failed to sign agent with key: %w", err)
+			return fmt.Errorf("failed to sign record with key: %w", err)
 		}
 
-		agentSigned = response.GetAgent()
+		signature = response.GetSignature()
 	} else if opts.OIDCToken != "" {
-		req := &signtypes.SignRequest{
-			Agent: agent,
-			Provider: &signtypes.SignRequestProvider{
-				Provider: &signtypes.SignRequestProvider_Oidc{
-					Oidc: &signtypes.SignWithOIDC{
+		req := &signv1.SignRequest{
+			Record: record,
+			Provider: &signv1.SignRequestProvider{
+				Request: &signv1.SignRequestProvider_Oidc{
+					Oidc: &signv1.SignWithOIDC{
 						IdToken: opts.OIDCToken,
-						Options: &signtypes.SignWithOIDC_SignOpts{
+						Options: &signv1.SignWithOIDC_SignOpts{
 							FulcioUrl:       &opts.FulcioURL,
 							RekorUrl:        &opts.RekorURL,
 							TimestampUrl:    &opts.TimestampURL,
@@ -133,13 +129,13 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			},
 		}
 
-		// Sign the agent using the OIDC provider
+		// Sign the record using the OIDC provider
 		response, err := c.SignWithOIDC(cmd.Context(), req)
 		if err != nil {
-			return fmt.Errorf("failed to sign agent: %w", err)
+			return fmt.Errorf("failed to sign record: %w", err)
 		}
 
-		agentSigned = response.GetAgent()
+		signature = response.GetSignature()
 	} else {
 		// Retrieve the token from the OIDC provider
 		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
@@ -147,13 +143,13 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to get OIDC token: %w", err)
 		}
 
-		req := &signtypes.SignRequest{
-			Agent: agent,
-			Provider: &signtypes.SignRequestProvider{
-				Provider: &signtypes.SignRequestProvider_Oidc{
-					Oidc: &signtypes.SignWithOIDC{
+		req := &signv1.SignRequest{
+			Record: record,
+			Provider: &signv1.SignRequestProvider{
+				Request: &signv1.SignRequestProvider_Oidc{
+					Oidc: &signv1.SignWithOIDC{
 						IdToken: token.RawString,
-						Options: &signtypes.SignWithOIDC_SignOpts{
+						Options: &signv1.SignWithOIDC_SignOpts{
 							FulcioUrl:       &opts.FulcioURL,
 							RekorUrl:        &opts.RekorURL,
 							TimestampUrl:    &opts.TimestampURL,
@@ -164,22 +160,22 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			},
 		}
 
-		// Sign the agent using the OIDC provider
+		// Sign the record using the OIDC provider
 		response, err := c.SignWithOIDC(cmd.Context(), req)
 		if err != nil {
-			return fmt.Errorf("failed to sign agent: %w", err)
+			return fmt.Errorf("failed to sign record: %w", err)
 		}
 
-		agentSigned = response.GetAgent()
+		signature = response.GetSignature()
 	}
 
-	// Print signed agent
-	signedAgentJSON, err := json.MarshalIndent(agentSigned, "", "  ")
+	// Print signature
+	signatureJSON, err := json.MarshalIndent(signature, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal agent: %w", err)
+		return fmt.Errorf("failed to marshal signature: %w", err)
 	}
 
-	presenter.Print(cmd, string(signedAgentJSON))
+	presenter.Print(cmd, string(signatureJSON))
 
 	return nil
 }

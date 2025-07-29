@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"time"
 
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	signtypes "github.com/agntcy/dir/api/sign/v1"
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
 	"github.com/sigstore/sigstore-go/pkg/root"
@@ -42,13 +42,13 @@ type SignOpts struct {
 	Key             string
 }
 
-// SignOIDC signs the agent using keyless OIDC service-based signing.
+// SignOIDC signs the record using keyless OIDC service-based signing.
 // The OIDC ID Token must be provided by the caller.
 // An ephemeral keypair is generated for signing.
-func (c *Client) SignWithOIDC(ctx context.Context, req *signtypes.SignRequest) (*signtypes.SignResponse, error) {
+func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
 	// Validate request.
-	if req.GetAgent() == nil {
-		return nil, errors.New("agent must be set")
+	if req.GetRecord() == nil {
+		return nil, errors.New("record must be set")
 	}
 
 	oidcSigner := req.GetProvider().GetOidc()
@@ -161,16 +161,17 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signtypes.SignRequest) (
 		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
 	}
 
-	signedAgent, err := c.sign(ctx, req.GetAgent(), signKeypair, signOpts)
-
-	response := signtypes.SignResponse{
-		Agent: signedAgent,
+	signature, err := c.sign(ctx, req.GetRecord(), signKeypair, signOpts)
+	if err != nil {
+		return nil, err
 	}
 
-	return &response, err
+	return &signv1.SignResponse{
+		Signature: signature,
+	}, nil
 }
 
-func (c *Client) SignWithKey(ctx context.Context, req *signtypes.SignRequest) (*signtypes.SignResponse, error) {
+func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
 	keySigner := req.GetProvider().GetKey()
 
 	// Generate a keypair from the provided private key bytes.
@@ -180,31 +181,27 @@ func (c *Client) SignWithKey(ctx context.Context, req *signtypes.SignRequest) (*
 		return nil, fmt.Errorf("failed to create keypair: %w", err)
 	}
 
-	signedAgent, err := c.sign(ctx, req.GetAgent(), signKeypair, sign.BundleOptions{})
-
-	response := signtypes.SignResponse{
-		Agent: signedAgent,
+	signature, err := c.sign(ctx, req.GetRecord(), signKeypair, sign.BundleOptions{})
+	if err != nil {
+		return nil, err
 	}
 
-	return &response, err
+	return &signv1.SignResponse{
+		Signature: signature,
+	}, nil
 }
 
-func (c *Client) sign(_ context.Context, agent *objectsv1.Agent, signKeypair sign.Keypair, signOpts sign.BundleOptions) (*objectsv1.Agent, error) {
-	// Reset the signature field in the agent.
-	// This is required as the agent may have been signed before,
-	// but also because this ensures signing idempotency.
-	agent.Signature = nil
-
-	// Convert the agent to JSON.
-	agentJSON, err := json.Marshal(agent)
+func (c *Client) sign(_ context.Context, record *corev1.Record, signKeypair sign.Keypair, signOpts sign.BundleOptions) (*signv1.Signature, error) {
+	// Convert the record to JSON.
+	recordJSON, err := json.Marshal(record)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal agent: %w", err)
+		return nil, fmt.Errorf("failed to marshal record: %w", err)
 	}
 
-	// Sign the agent JSON data.
-	sigBundle, err := sign.Bundle(&sign.PlainData{Data: agentJSON}, signKeypair, signOpts)
+	// Sign the record JSON data.
+	sigBundle, err := sign.Bundle(&sign.PlainData{Data: recordJSON}, signKeypair, signOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign agent: %w", err)
+		return nil, fmt.Errorf("failed to sign record: %w", err)
 	}
 
 	certData := sigBundle.GetVerificationMaterial()
@@ -217,7 +214,7 @@ func (c *Client) sign(_ context.Context, agent *objectsv1.Agent, signKeypair sig
 	}
 
 	// Update the agent with the signature details.
-	agent.Signature = &objectsv1.Signature{
+	signature := &signv1.Signature{
 		Algorithm:     sigData.GetMessageDigest().GetAlgorithm().String(),
 		Signature:     base64.StdEncoding.EncodeToString(sigData.GetSignature()),
 		Certificate:   base64.StdEncoding.EncodeToString(certData.GetCertificate().GetRawBytes()),
@@ -226,7 +223,7 @@ func (c *Client) sign(_ context.Context, agent *objectsv1.Agent, signKeypair sig
 		SignedAt:      time.Now().Format(time.RFC3339),
 	}
 
-	return agent, nil
+	return signature, nil
 }
 
 func setOrDefault(value string, defaultValue string) string {

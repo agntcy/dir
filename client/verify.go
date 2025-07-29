@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 
-	signtypes "github.com/agntcy/dir/api/sign/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
@@ -22,21 +22,19 @@ import (
 	"github.com/theupdateframework/go-tuf/v2/metadata/fetcher"
 )
 
-// Verify verifies the signature of the agent using OIDC.
-func (c *Client) VerifyWithOIDC(_ context.Context, req *signtypes.VerifyRequest) (*signtypes.VerifyResponse, error) {
-	agent := req.GetAgent()
-
+// VerifyWithOIDC verifies the signature of the record using OIDC.
+func (c *Client) VerifyWithOIDC(_ context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
 	// Validate request.
-	if agent == nil {
-		return nil, errors.New("agent must be set")
+	if req.GetRecord() == nil {
+		return nil, errors.New("record must be set")
 	}
 
-	if agent.GetSignature() == nil {
-		return nil, errors.New("agent has no signature")
+	if req.GetSignature() == nil {
+		return nil, errors.New("signature must be set")
 	}
 
-	// Extract signature data from the agent.
-	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(agent.GetSignature().GetContentBundle())
+	// Extract signature data.
+	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(req.GetSignature().GetContentBundle())
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode signature: %w", err)
 	}
@@ -46,17 +44,11 @@ func (c *Client) VerifyWithOIDC(_ context.Context, req *signtypes.VerifyRequest)
 		return nil, fmt.Errorf("failed to unmarshal signature bundle: %w", err)
 	}
 
-	// Get agent JSON data without the signature.
-	// We need to remove the signature from the agent before verifying.
-	agentSignature := agent.GetSignature()
-	agent.Signature = nil
-
-	agentJSON, err := json.Marshal(agent)
+	// Convert the record to JSON.
+	recordJSON, err := json.Marshal(req.GetRecord())
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal agent: %w", err)
+		return nil, fmt.Errorf("failed to marshal record: %w", err)
 	}
-
-	agent.Signature = agentSignature
 
 	oidcVerifier := req.GetProvider().GetOidc()
 
@@ -110,12 +102,12 @@ func (c *Client) VerifyWithOIDC(_ context.Context, req *signtypes.VerifyRequest)
 	}
 
 	// Run verification
-	_, err = sev.Verify(sigBundle, verify.NewPolicy(verify.WithArtifact(bytes.NewReader(agentJSON)), identityPolicy))
+	_, err = sev.Verify(sigBundle, verify.NewPolicy(verify.WithArtifact(bytes.NewReader(recordJSON)), identityPolicy))
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
 
-	response := &signtypes.VerifyResponse{
+	response := &signv1.VerifyResponse{
 		Success: err == nil,
 	}
 
@@ -123,24 +115,21 @@ func (c *Client) VerifyWithOIDC(_ context.Context, req *signtypes.VerifyRequest)
 	return response, nil
 }
 
-func (c *Client) VerifyWithKey(_ context.Context, req *signtypes.VerifyRequest) (*signtypes.VerifyResponse, error) {
+// VerifyWithKey verifies the signature of the record using a PEM-encoded public key.
+func (c *Client) VerifyWithKey(_ context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
 	keyVerifier := req.GetProvider().GetKey()
 
 	// Validate request.
-	if len(keyVerifier.GetPublicKey()) == 0 {
-		return nil, errors.New("key must not be empty")
+	if req.GetRecord() == nil {
+		return nil, errors.New("record must be set")
 	}
 
-	if req.GetAgent() == nil {
-		return nil, errors.New("agent must be set")
+	if req.GetSignature() == nil {
+		return nil, errors.New("signature must be set")
 	}
 
-	if req.GetAgent().GetSignature() == nil {
-		return nil, errors.New("agent has no signature")
-	}
-
-	// Extract signature data from the agent.
-	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(req.GetAgent().GetSignature().GetContentBundle())
+	// Extract signature data.
+	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(req.GetSignature().GetContentBundle())
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode signature: %w", err)
 	}
@@ -177,7 +166,7 @@ func (c *Client) VerifyWithKey(_ context.Context, req *signtypes.VerifyRequest) 
 		return nil, fmt.Errorf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
 	}
 
-	response := &signtypes.VerifyResponse{
+	response := &signv1.VerifyResponse{
 		Success: err == nil,
 	}
 
