@@ -1,0 +1,226 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package e2e
+
+import (
+	"bytes"
+	_ "embed"
+	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	signtypes "github.com/agntcy/dir/api/sign/v1alpha2"
+	clicmd "github.com/agntcy/dir/cli/cmd"
+	"github.com/agntcy/dir/e2e/config"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+)
+
+//go:embed testdata/agent_v3.json
+var signTestAgentJSON []byte
+
+// Test constants.
+const (
+	testPassword  = "testpassword"
+	tempDirPrefix = "sign-test"
+)
+
+// Helper function to execute CLI commands and return output.
+func executeCommand(args []string) (string, error) {
+	var outputBuffer bytes.Buffer
+
+	cmd := clicmd.RootCmd
+	cmd.SetOut(&outputBuffer)
+	cmd.SetArgs(args)
+
+	err := cmd.Execute()
+
+	return strings.TrimSpace(outputBuffer.String()), err
+}
+
+// Helper function to generate cosign key pair.
+func generateCosignKeyPair(dir string) {
+	cmd := exec.Command("cosign", "generate-key-pair")
+
+	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+testPassword)
+	cmd.Dir = dir
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		ginkgo.Fail("cosign generate-key-pair failed: " + err.Error() + "\nStderr: " + stderr.String())
+	}
+}
+
+// Test file paths helper.
+type testPaths struct {
+	tempDir         string
+	record          string
+	privateKey      string
+	publicKey       string
+	signature       string
+	signatureOutput string
+}
+
+func setupTestPaths() *testPaths {
+	tempDir, err := os.MkdirTemp("", tempDirPrefix)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	return &testPaths{
+		tempDir:         tempDir,
+		record:          filepath.Join(tempDir, "record.json"),
+		signature:       filepath.Join(tempDir, "signature.json"),
+		signatureOutput: filepath.Join(tempDir, "signature-output.json"),
+		privateKey:      filepath.Join(tempDir, "cosign.key"),
+		publicKey:       filepath.Join(tempDir, "cosign.pub"),
+	}
+}
+
+var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature support", func() {
+	ginkgo.BeforeEach(func() {
+		if cfg.DeploymentMode != config.DeploymentModeLocal {
+			ginkgo.Skip("Skipping test, not in local mode")
+		}
+	})
+
+	// Test params
+	var (
+		paths         *testPaths
+		tempAgentCID  string
+		signatureData string
+	)
+
+	ginkgo.Context("signature workflow", ginkgo.Ordered, func() {
+		// Setup: Create temporary directory and files for the entire workflow
+		ginkgo.BeforeAll(func() {
+			var err error
+			paths = setupTestPaths()
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Write test agent to temp location
+			err = os.WriteFile(paths.record, signTestAgentJSON, 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Generate cosign key pair for all tests
+			generateCosignKeyPair(paths.tempDir)
+
+			// Verify key files were created
+			gomega.Expect(paths.privateKey).To(gomega.BeAnExistingFile())
+			gomega.Expect(paths.publicKey).To(gomega.BeAnExistingFile())
+		})
+
+		// Cleanup: Remove temporary directory after all workflow tests
+		ginkgo.AfterAll(func() {
+			if paths != nil && paths.tempDir != "" {
+				err := os.RemoveAll(paths.tempDir)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			}
+		})
+
+		ginkgo.It("should create keys for signing", func() {
+			// Keys are already created in BeforeAll, just verify they exist
+			gomega.Expect(paths.privateKey).To(gomega.BeAnExistingFile())
+			gomega.Expect(paths.publicKey).To(gomega.BeAnExistingFile())
+		})
+
+		ginkgo.It("should sign a record with a key pair", func() {
+			// Set environment variable for password
+			err := os.Setenv("COSIGN_PASSWORD", testPassword)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			defer os.Unsetenv("COSIGN_PASSWORD")
+
+			output, err := executeCommand([]string{
+				"sign",
+				paths.record,
+				"--key", paths.privateKey,
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(output).NotTo(gomega.BeEmpty())
+
+			// Save signature output to file
+			signatureData = output
+			err = os.WriteFile(paths.signature, []byte(signatureData), 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.It("should push a record to the store with a signature", func() {
+			output, err := executeCommand([]string{
+				"push",
+				paths.record,
+				"--signature", paths.signature,
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(output).NotTo(gomega.BeEmpty())
+
+			tempAgentCID = output
+		})
+
+		ginkgo.It("should pull a record from the store with a signature", func() {
+			output, err := executeCommand([]string{
+				"pull",
+				tempAgentCID,
+				"--include-signature",
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(output).NotTo(gomega.BeEmpty())
+
+			// Extract signature from output
+			signatureOutput := extractSignatureFromCombinedOutput(output)
+			gomega.Expect(signatureOutput).NotTo(gomega.BeEmpty())
+
+			// Compare with expected signature
+			compareSignatures(signatureData, signatureOutput)
+
+			// Save output signature to file
+			err = os.WriteFile(paths.signatureOutput, []byte(signatureOutput), 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		ginkgo.It("should verify a signature with a public key", func() {
+			// Ensure we have a signature file
+			gomega.Expect(paths.signatureOutput).To(gomega.BeAnExistingFile(), "Signature file should exist from pull test")
+
+			output, err := executeCommand([]string{
+				"verify",
+				paths.record,
+				paths.signatureOutput,
+				"--key", paths.publicKey,
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Verify success message
+			gomega.Expect(output).To(gomega.ContainSubstring("Record signature verified successfully!"))
+		})
+	})
+})
+
+// extractSignatureFromCombinedOutput extracts signature JSON from combined output.
+// Input format: "{agent_json}{signature_json}".
+func extractSignatureFromCombinedOutput(combinedOutput string) string {
+	// Find the boundary between agent JSON and signature JSON
+	// Look for "}{"" pattern which separates the two JSON objects
+	parts := strings.Split(combinedOutput, "}{")
+	gomega.Expect(parts).To(gomega.HaveLen(2), "Expected combined output to contain exactly 2 JSON objects")
+
+	// The second part is the signature JSON, but we need to add back the opening "{"
+	return "{" + parts[1]
+}
+
+// compareSignatures compares two signature JSON strings for equality.
+//
+//nolint:govet
+func compareSignatures(expected, actual string) {
+	var expectedSignature, actualSignature signtypes.Signature
+
+	err := json.Unmarshal([]byte(expected), &expectedSignature)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to unmarshal expected signature")
+
+	err = json.Unmarshal([]byte(actual), &actualSignature)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to unmarshal actual signature")
+
+	gomega.Expect(actualSignature).To(gomega.Equal(expectedSignature), "Signatures should match")
+}
