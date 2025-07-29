@@ -19,7 +19,7 @@ import (
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
 )
 
-const OASFEndpoint = "https://schema.oasf.outshift.com/api/skills"
+const OASFEndpoint = "https://schema.oasf.outshift.com/0.5.0/api/skills"
 
 var Validator = &SkillValidator{
 	skills: make(map[uint64]*corev1alpha1.Skill),
