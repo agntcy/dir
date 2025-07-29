@@ -15,6 +15,8 @@ require (
 	github.com/agntcy/dir/utils v0.2.6
 	github.com/agntcy/oasf-sdk/pkg v0.0.5
 	github.com/casbin/casbin/v2 v2.120.0
+	github.com/agntcy/dir/api v0.2.7
+	github.com/agntcy/dir/utils v0.2.7
 	github.com/glebarez/sqlite v1.11.0
 	github.com/ipfs/go-datastore v0.8.2
 	github.com/libp2p/go-libp2p v0.41.0
