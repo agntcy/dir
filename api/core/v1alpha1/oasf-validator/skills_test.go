@@ -92,7 +92,8 @@ func TestValidateSkills(t *testing.T) {
 	// select first skill from fetched skills
 	var firstSkillID uint64
 	for _, skill := range Validator.skills {
-		firstSkillID = skill.ClassUid
+		firstSkillID = skill.GetClassUid()
+
 		break
 	}
 
