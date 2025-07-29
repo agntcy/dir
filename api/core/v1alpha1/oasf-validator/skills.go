@@ -19,7 +19,7 @@ import (
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
 )
 
-const OASFEndpoint = "https://schema.oasf.agntcy.org/api/skills"
+const OASFEndpoint = "https://schema.oasf.outshift.com/api/skills"
 
 var Validator = &SkillValidator{
 	skills: make(map[uint64]*corev1alpha1.Skill),
@@ -82,7 +82,7 @@ func (sv *SkillValidator) fetchSkills() error {
 			continue
 		}
 
-		categoryUid, ok := rawSkill["category_uid"].(float64)
+		categoryUid, ok := rawSkill["uid"].(float64)
 		if !ok {
 			return fmt.Errorf("invalid category_uid type for skill %v", uid)
 		}

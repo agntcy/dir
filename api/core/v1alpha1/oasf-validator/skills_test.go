@@ -89,14 +89,16 @@ func TestSkillValidator_Validate(t *testing.T) {
 }
 
 func TestValidateSkills(t *testing.T) {
-	className := "Skill1"
-	Validator.skills = map[uint64]*corev1alpha1.Skill{
-		1: {ClassUid: 1, ClassName: &className},
+	// select first skill from fetched skills
+	var firstSkillID uint64
+	for _, skill := range Validator.skills {
+		firstSkillID = skill.ClassUid
+		break
 	}
 
 	t.Run("Valid skills", func(t *testing.T) {
 		skills := []*corev1alpha1.Skill{
-			{ClassUid: 1},
+			{ClassUid: firstSkillID},
 		}
 
 		err := ValidateSkills(skills)
