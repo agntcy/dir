@@ -25,10 +25,9 @@ const (
 )
 
 // A specific skills that an agent record is capable of performing.
-// Supported skills: https://schema.oasf.agntcy.org/skills
 type Skill struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// UID of the skill in format: org.agntcy.oasf.schema/skills/<skill-name>
+	// Unique name of the skill.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Unique identifier of the skill.
 	Id uint32 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
