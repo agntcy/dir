@@ -185,7 +185,7 @@ class Client {
         return new Promise((resolve, reject) => {
             const call = this.storeClient.delete((error, _) => {
                 if (error.code !== 12) {
-                    console.error('Error form server:', error)
+                    console.error('Error from server:', error)
                     reject(err);
                 }
 
