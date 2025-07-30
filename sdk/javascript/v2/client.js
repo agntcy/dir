@@ -4,12 +4,12 @@
 const process = require('node:process');
 const grpc = require('@grpc/grpc-js');
 
-const routing_service = require('@buf/agntcy_dir.grpc_node/routing/v1alpha2/routing_service_grpc_pb');
-const store_service = require('@buf/agntcy_dir.grpc_node/store/v1alpha2/store_service_grpc_pb');
-const search_service = require('@buf/agntcy_dir.grpc_node/search/v1alpha2/search_service_grpc_pb')
-const routing_type = require('@buf/agntcy_dir.grpc_node/routing/v1alpha2/routing_service_pb')
+const routing_service = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_grpc_pb');
+const store_service = require('@buf/agntcy_dir.grpc_node/store/v1/store_service_grpc_pb');
+const search_service = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_grpc_pb')
+const routing_type = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_pb')
 const record_type = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
-const search_type = require('@buf/agntcy_dir.grpc_node/search/v1alpha2/search_service_pb')
+const search_type = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_pb')
 
 class Config {
     static DEFAULT_ENV_PREFIX = 'DIRECTORY_CLIENT';

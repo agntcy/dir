@@ -7,14 +7,14 @@ import os
 from typing import Optional, List, Tuple, BinaryIO, Iterator
 
 import grpc
-import core.v1alpha2 as core
-import routing.v1alpha2.routing_service_pb2_grpc as routing_services
-import routing.v1alpha2.routing_service_pb2 as routing_types
-import search.v1alpha2.search_service_pb2_grpc as search_services
-import search.v1alpha2.search_service_pb2 as search_types
-import sign.v1alpha2.sign_service_pb2_grpc as sign_services
-import sign.v1alpha2.sign_service_pb2 as sign_types
-import store.v1alpha2.store_service_pb2_grpc as store_services
+import core.v1 as core
+import routing.v1.routing_service_pb2_grpc as routing_services
+import routing.v1.routing_service_pb2 as routing_types
+import search.v1.search_service_pb2_grpc as search_services
+import search.v1.search_service_pb2 as search_types
+import sign.v1.sign_service_pb2_grpc as sign_services
+import sign.v1.sign_service_pb2 as sign_types
+import store.v1.store_service_pb2_grpc as store_services
 
 CHUNK_SIZE = 4096  # 4KB
 

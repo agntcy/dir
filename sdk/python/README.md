@@ -45,8 +45,8 @@ import hashlib
 import json
 from google.protobuf.json_format import MessageToDict
 from client.client import Client, Config
-from core.v1alpha1 import object_pb2, agent_pb2, skill_pb2, extension_pb2
-from routing.v1alpha1 import routing_service_pb2 as routingv1
+from core.v1 import object_pb2, agent_pb2, skill_pb2, extension_pb2
+from routing.v1 import routing_service_pb2 as routingv1
 
 # Initialize the client
 client = Client(Config())

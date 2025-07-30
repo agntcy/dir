@@ -3,10 +3,10 @@ const extension_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/extension_pb
 const record_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/record_pb');
 const signature_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/signature_pb');
 const skill_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/skill_pb');
-const record_query_type = require('@buf/agntcy_dir.grpc_web/routing/v1alpha2/record_query_pb');
-const routing_types = require('@buf/agntcy_dir.grpc_node/routing/v1alpha2/routing_service_pb');
-const search_types = require('@buf/agntcy_dir.grpc_node/search/v1alpha2/search_service_pb')
-const search_query_type = require('@buf/agntcy_dir.grpc_node/search/v1alpha2/record_query_pb')
+const record_query_type = require('@buf/agntcy_dir.grpc_web/routing/v1/record_query_pb');
+const routing_types = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_pb');
+const search_types = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_pb')
+const search_query_type = require('@buf/agntcy_dir.grpc_node/search/v1/record_query_pb')
 
 
 const { Client, Config } = require('./client');

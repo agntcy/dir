@@ -277,7 +277,7 @@ func TestExtractMetadataFromRecord(t *testing.T) {
 			expected: map[string]string{},
 		},
 		{
-			name: "V1Alpha1 record with basic data",
+			name: "V1 record with basic data",
 			record: &corev1.Record{
 				Data: &corev1.Record_V1{
 					V1: &objectsv1.Agent{
@@ -315,7 +315,7 @@ func TestExtractMetadataFromRecord(t *testing.T) {
 			},
 		},
 		{
-			name: "V1Alpha2 record with basic data",
+			name: "V1 record with basic data",
 			record: &corev1.Record{
 				Data: &corev1.Record_V3{
 					V3: &objectsv3.Record{

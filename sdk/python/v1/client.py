@@ -7,9 +7,9 @@ from typing import Optional, List, Tuple, BinaryIO, Iterator
 
 import grpc
 import core.v1.record_pb2 as core_types
-import routing.v1alpha2.routing_service_pb2_grpc as routing_services
-import routing.v1alpha2.routing_service_pb2 as routing_types
-import store.v1alpha2.store_service_pb2_grpc as store_services
+import routing.v1.routing_service_pb2_grpc as routing_services
+import routing.v1.routing_service_pb2 as routing_types
+import store.v1.store_service_pb2_grpc as store_services
 
 CHUNK_SIZE = 4096  # 4KB
 

@@ -82,7 +82,7 @@ func TestExtractManifestAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "V1Alpha1 basic record",
+			name: "V1 basic record",
 			record: &corev1.Record{
 				Data: &corev1.Record_V1{
 					V1: &objectsv1.Agent{
@@ -108,7 +108,7 @@ func TestExtractManifestAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "V1Alpha1 with skills and extensions",
+			name: "V1 with skills and extensions",
 			record: &corev1.Record{
 				Data: &corev1.Record_V1{
 					V1: &objectsv1.Agent{
@@ -145,7 +145,7 @@ func TestExtractManifestAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "V1Alpha2 basic record",
+			name: "V1 basic record",
 			record: &corev1.Record{
 				Data: &corev1.Record_V3{
 					V3: &objectsv3.Record{
@@ -234,21 +234,21 @@ func TestParseManifestAnnotations(t *testing.T) {
 		{
 			name: "Basic record metadata",
 			annotations: map[string]string{
-				ManifestKeySchemaVersion: "v1alpha1",
+				ManifestKeySchemaVersion: "v1",
 				ManifestKeyCreatedAt:     "2023-01-01T00:00:00Z",
 				ManifestKeyName:          "test-agent",
 				ManifestKeyVersion:       "1.0.0",
 				ManifestKeyDescription:   "Test description",
-				ManifestKeyOASFVersion:   "v1alpha1",
+				ManifestKeyOASFVersion:   "v1",
 			},
 			expected: &corev1.RecordMeta{
-				SchemaVersion: "v1alpha1",
+				SchemaVersion: "v1",
 				CreatedAt:     "2023-01-01T00:00:00Z",
 				Annotations: map[string]string{
 					MetadataKeyName:        "test-agent",
 					MetadataKeyVersion:     "1.0.0",
 					MetadataKeyDescription: "Test description",
-					MetadataKeyOASFVersion: "v1alpha1",
+					MetadataKeyOASFVersion: "v1",
 				},
 			},
 		},

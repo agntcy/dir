@@ -3,8 +3,8 @@ import json
 import core.v1.record_pb2 as core_record_pb2
 from google.protobuf.json_format import MessageToDict
 from objects.v3 import extension_pb2, record_pb2, signature_pb2, skill_pb2
-from routing.v1alpha2 import record_query_pb2 as record_query_type
-from routing.v1alpha2 import routing_service_pb2 as routingv1
+from routing.v1 import record_query_pb2 as record_query_type
+from routing.v1 import routing_service_pb2 as routingv1
 
 from client import Client, Config
 

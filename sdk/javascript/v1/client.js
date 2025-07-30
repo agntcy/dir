@@ -4,10 +4,10 @@
 import process from "node:process";
 const grpc = require('@grpc/grpc-js');
 
-const core = require('@buf/agntcy_dir.grpc_web/core/v1alpha1/object_pb')
-const routing = require('@buf/agntcy_dir.grpc_web/routing/v1alpha1/routing_service_pb')
-const sign = require('@buf/agntcy_dir.grpc_web/sign/v1alpha1/sign_service_pb')
-const store = require('@buf/agntcy_dir.grpc_web/store/v1alpha1/store_service_pb')
+const core = require('@buf/agntcy_dir.grpc_web/core/v1/object_pb')
+const routing = require('@buf/agntcy_dir.grpc_web/routing/v1/routing_service_pb')
+const sign = require('@buf/agntcy_dir.grpc_web/sign/v1/sign_service_pb')
+const store = require('@buf/agntcy_dir.grpc_web/store/v1/store_service_pb')
 
 class Config {
     static DEFAULT_ENV_PREFIX = 'DIRECTORY_CLIENT';
