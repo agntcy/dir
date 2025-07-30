@@ -225,6 +225,11 @@ tasks:
     cmds:
       - npm ci
 
+  sdk:test:python:
+    desc: Test python client SDK package
+    dir: ./sdk/python
+    cmd: uv run python -m unittest
+
   sdk:release:all:
     desc: Release all client SDK package
     env:
