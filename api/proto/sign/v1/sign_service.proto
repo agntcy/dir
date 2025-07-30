@@ -1,0 +1,137 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package sign.v1;
+
+import "core/v1/record.proto";
+
+service SignService {
+  // Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+  rpc Sign(SignRequest) returns (SignResponse);
+
+  // Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
+}
+
+message SignRequest {
+  // Record to be signed
+  core.v1.Record record = 1;
+
+  // Signing provider to use
+  SignRequestProvider provider = 2;
+}
+
+message SignRequestProvider {
+  oneof request {
+    // Sign with OIDC provider
+    SignWithOIDC oidc = 1;
+
+    // Sign with PEM-encoded public key
+    SignWithKey key = 2;
+  }
+}
+
+message SignWithOIDC {
+  // List of sign options for OIDC
+  message SignOpts {
+    // Fulcio authority access URL (default value: https://fulcio.sigstage.dev)
+    optional string fulcio_url = 1;
+
+    // Rekor validator access URL (default value: https://rekor.sigstage.dev)
+    optional string rekor_url = 2;
+
+    // Timestamp authority access URL (default value: https://timestamp.sigstage.dev/api/v1/timestamp)
+    optional string timestamp_url = 3;
+
+    // OIDC provider access URL (default value: https://oauth2.sigstage.dev/auth)
+    optional string oidc_provider_url = 4;
+  }
+
+  // Token for OIDC provider
+  string id_token = 1;
+
+  // Signing options for OIDC
+  SignOpts options = 2;
+}
+
+message SignWithKey {
+  // Private key used for signing
+  bytes private_key = 1;
+
+  // Password to unlock the private key
+  optional bytes password = 2;
+}
+
+message SignResponse {
+  // Cryptographic signature of the record
+  Signature signature = 1;
+}
+
+message VerifyRequest {
+  // Record to be verified
+  core.v1.Record record = 1;
+
+  // Signature to verify against the record
+  Signature signature = 2;
+
+  // Verification provider to use
+  VerifyRequestProvider provider = 3;
+}
+
+message VerifyRequestProvider {
+  oneof provider {
+    // Verify with OIDC provider
+    VerifyWithOIDC oidc = 1;
+
+    // Verify with PEM-encoded public key
+    VerifyWithKey key = 2;
+  }
+}
+
+message VerifyWithOIDC {
+  // Expected issuer in the signed record
+  string expected_issuer = 1;
+
+  // Expected signer in the signed record
+  string expected_signer = 2;
+}
+
+message VerifyWithKey {
+  // Public key to validate the signed record
+  bytes public_key = 1;
+}
+
+message VerifyResponse {
+  // The verify process result
+  bool success = 1;
+  
+  // Optional error message if verification failed
+  optional string error_message = 2;
+}
+
+message Signature {
+	// Metadata associated with the signature.
+	map<string, string> annotations = 1;
+
+	// Signing timestamp of the record in the RFC3339 format.
+	// Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+	string signed_at = 2;
+
+	// The signature algorithm used (e.g., "ECDSA_P256_SHA256").
+	string algorithm = 3;
+
+	// Base64-encoded signature.
+	string signature = 4;
+
+	// Base64-encoded signing certificate.
+	string certificate = 5;
+
+	// Type of the signature content bundle.
+	string content_type = 6;
+
+	// Base64-encoded signature bundle produced by the signer.
+	// It is up to the client to interpret the content of the bundle.
+	string content_bundle = 7;
+}
