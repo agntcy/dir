@@ -1,19 +1,19 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-import io
 import logging
 import os
-from typing import Optional, List, Tuple, BinaryIO, Iterator
+from typing import Iterator, List, Optional, Tuple
 
-import grpc
 import core.v1.record_pb2 as core_types
-import routing.v1.routing_service_pb2_grpc as routing_services
+import grpc
 import routing.v1.routing_service_pb2 as routing_types
+import routing.v1.routing_service_pb2_grpc as routing_services
 import store.v1.store_service_pb2_grpc as store_services
 
 CHUNK_SIZE = 4096  # 4KB
 
 logger = logging.getLogger("client")
+
 
 class Config:
     DEFAULT_ENV_PREFIX = "DIRECTORY_CLIENT"
@@ -23,10 +23,12 @@ class Config:
         self.server_address = server_address
 
     @classmethod
-    def load_from_env(cls) -> 'Config':
+    def load_from_env(cls) -> "Config":
         """Load configuration from environment variables"""
         prefix = cls.DEFAULT_ENV_PREFIX
-        server_address = os.environ.get(f"{prefix}_SERVER_ADDRESS", cls.DEFAULT_SERVER_ADDRESS)
+        server_address = os.environ.get(
+            f"{prefix}_SERVER_ADDRESS", cls.DEFAULT_SERVER_ADDRESS
+        )
         return cls(server_address=server_address)
 
 
@@ -45,7 +47,7 @@ class Client:
         self.routing_client = routing_services.RoutingServiceStub(channel)
 
     @classmethod
-    def new(cls, config: Optional[Config] = None) -> 'Client':
+    def new(cls, config: Optional[Config] = None) -> "Client":
         """Create a new client instance.
 
         Args:
@@ -58,7 +60,11 @@ class Client:
             config = Config.load_from_env()
         return cls(config)
 
-    def publish(self, req: routing_types.PublishRequest, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
+    def publish(
+        self,
+        req: routing_types.PublishRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> None:
         """Publish an object to the routing service.
 
         Args:
@@ -73,7 +79,11 @@ class Client:
         except Exception as e:
             raise Exception(f"Failed to publish object: {e}")
 
-    def list(self, req: routing_types.ListRequest, metadata: Optional[List[Tuple[str, str]]] = None) -> Iterator[routing_types.ListResponse]:
+    def list(
+        self,
+        req: routing_types.ListRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> Iterator[routing_types.ListResponse]:
         """List objects matching the criteria.
 
         Args:
@@ -98,7 +108,11 @@ class Client:
             logger.error(f"Error receiving objects: {e}")
             raise Exception(f"Failed to list objects: {e}")
 
-    def unpublish(self, req: routing_types.UnpublishRequest, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
+    def unpublish(
+        self,
+        req: routing_types.UnpublishRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> None:
         """Unpublish an object from the routing service.
 
         Args:
@@ -113,7 +127,11 @@ class Client:
         except Exception as e:
             raise Exception(f"Failed to unpublish object: {e}")
 
-    def push(self, record: core_types.Record, metadata: Optional[List[Tuple[str, str]]] = None) -> core_types.RecordRef:
+    def push(
+        self,
+        record: core_types.Record,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> core_types.RecordRef:
         """Push an object to the store.
 
         Args:
@@ -140,7 +158,11 @@ class Client:
         except Exception as e:
             raise Exception(f"Failed to push object: {e}")
 
-    def pull(self, ref: core_types.RecordRef, metadata: Optional[List[Tuple[str, str]]] = None) -> core_types.Record:
+    def pull(
+        self,
+        ref: core_types.RecordRef,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> core_types.Record:
         """Pull an object from the store.
 
         Args:
@@ -168,7 +190,11 @@ class Client:
         except Exception as e:
             raise Exception(f"Failed to pull object: {e}")
 
-    def lookup(self, ref: core_types.RecordRef, metadata: Optional[List[Tuple[str, str]]] = None) -> core_types.RecordMeta:
+    def lookup(
+        self,
+        ref: core_types.RecordRef,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> core_types.RecordMeta:
         """Look up an object in the store.
 
         Args:
@@ -196,7 +222,11 @@ class Client:
         except Exception as e:
             raise Exception(f"Failed to pull object: {e}")
 
-    def delete(self, ref: core_types.RecordRef, metadata: Optional[List[Tuple[str, str]]] = None) -> None:
+    def delete(
+        self,
+        ref: core_types.RecordRef,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> None:
         """Delete an object from the store.
 
         Args:
@@ -208,6 +238,7 @@ class Client:
         """
 
         try:
+
             def request_iterator():
                 yield ref
 
