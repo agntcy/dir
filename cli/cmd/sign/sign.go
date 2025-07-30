@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
+	signtypes "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -96,11 +96,11 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
 
-		req := &signv1alpha1.SignRequest{
+		req := &signtypes.SignRequest{
 			Agent: agent,
-			Provider: &signv1alpha1.SignRequestProvider{
-				Provider: &signv1alpha1.SignRequestProvider_Key{
-					Key: &signv1alpha1.SignWithKey{
+			Provider: &signtypes.SignRequestProvider{
+				Provider: &signtypes.SignRequestProvider_Key{
+					Key: &signtypes.SignWithKey{
 						PrivateKey: rawKey,
 						Password:   pw,
 					},
@@ -116,13 +116,13 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 
 		agentSigned = response.GetAgent()
 	} else if opts.OIDCToken != "" {
-		req := &signv1alpha1.SignRequest{
+		req := &signtypes.SignRequest{
 			Agent: agent,
-			Provider: &signv1alpha1.SignRequestProvider{
-				Provider: &signv1alpha1.SignRequestProvider_Oidc{
-					Oidc: &signv1alpha1.SignWithOIDC{
+			Provider: &signtypes.SignRequestProvider{
+				Provider: &signtypes.SignRequestProvider_Oidc{
+					Oidc: &signtypes.SignWithOIDC{
 						IdToken: opts.OIDCToken,
-						Options: &signv1alpha1.SignWithOIDC_SignOpts{
+						Options: &signtypes.SignWithOIDC_SignOpts{
 							FulcioUrl:       &opts.FulcioURL,
 							RekorUrl:        &opts.RekorURL,
 							TimestampUrl:    &opts.TimestampURL,
@@ -147,13 +147,13 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to get OIDC token: %w", err)
 		}
 
-		req := &signv1alpha1.SignRequest{
+		req := &signtypes.SignRequest{
 			Agent: agent,
-			Provider: &signv1alpha1.SignRequestProvider{
-				Provider: &signv1alpha1.SignRequestProvider_Oidc{
-					Oidc: &signv1alpha1.SignWithOIDC{
+			Provider: &signtypes.SignRequestProvider{
+				Provider: &signtypes.SignRequestProvider_Oidc{
+					Oidc: &signtypes.SignWithOIDC{
 						IdToken: token.RawString,
-						Options: &signv1alpha1.SignWithOIDC_SignOpts{
+						Options: &signtypes.SignWithOIDC_SignOpts{
 							FulcioUrl:       &opts.FulcioURL,
 							RekorUrl:        &opts.RekorURL,
 							TimestampUrl:    &opts.TimestampURL,

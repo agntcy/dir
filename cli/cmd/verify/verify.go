@@ -12,7 +12,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
+	signtypes "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -90,11 +90,11 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to read key file: %w", err)
 		}
 
-		req := &signv1alpha1.VerifyRequest{
+		req := &signtypes.VerifyRequest{
 			Agent: agent,
-			Provider: &signv1alpha1.VerifyRequestProvider{
-				Provider: &signv1alpha1.VerifyRequestProvider_Key{
-					Key: &signv1alpha1.VerifyWithKey{
+			Provider: &signtypes.VerifyRequestProvider{
+				Provider: &signtypes.VerifyRequestProvider_Key{
+					Key: &signtypes.VerifyWithKey{
 						PublicKey: rawPubKey,
 					},
 				},
@@ -107,11 +107,11 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 			return fmt.Errorf("failed to verify agent: %w", err)
 		}
 	} else {
-		req := &signv1alpha1.VerifyRequest{
+		req := &signtypes.VerifyRequest{
 			Agent: agent,
-			Provider: &signv1alpha1.VerifyRequestProvider{
-				Provider: &signv1alpha1.VerifyRequestProvider_Oidc{
-					Oidc: &signv1alpha1.VerifyWithOIDC{
+			Provider: &signtypes.VerifyRequestProvider{
+				Provider: &signtypes.VerifyRequestProvider_Oidc{
+					Oidc: &signtypes.VerifyWithOIDC{
 						ExpectedIssuer: opts.OIDCIssuer,
 						ExpectedSigner: opts.OIDCIdentity,
 					},

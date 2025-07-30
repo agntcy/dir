@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	routetypes "github.com/agntcy/dir/api/routing/v1alpha2"
+	routetypes "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"

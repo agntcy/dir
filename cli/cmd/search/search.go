@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	searchtypesv1alpha2 "github.com/agntcy/dir/api/search/v1alpha2"
+	searchtypes "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -43,7 +43,7 @@ func runCommand(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	ch, err := c.Search(cmd.Context(), &searchtypesv1alpha2.SearchRequest{
+	ch, err := c.Search(cmd.Context(), &searchtypes.SearchRequest{
 		Limit:   &opts.Limit,
 		Offset:  &opts.Offset,
 		Queries: opts.Query.ToAPIQueries(),

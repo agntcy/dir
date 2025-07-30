@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	routetypes "github.com/agntcy/dir/api/routing/v1alpha2"
+	routetypes "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
