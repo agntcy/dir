@@ -10,7 +10,7 @@ import (
 	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1alpha2"
+	routingtypes "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/utils/logging"
 )
 

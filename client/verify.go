@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 
-	signv1alpha1 "github.com/agntcy/dir/api/sign/v1alpha1"
+	signtypes "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
@@ -23,7 +23,7 @@ import (
 )
 
 // Verify verifies the signature of the agent using OIDC.
-func (c *Client) VerifyWithOIDC(_ context.Context, req *signv1alpha1.VerifyRequest) (*signv1alpha1.VerifyResponse, error) {
+func (c *Client) VerifyWithOIDC(_ context.Context, req *signtypes.VerifyRequest) (*signtypes.VerifyResponse, error) {
 	agent := req.GetAgent()
 
 	// Validate request.
@@ -115,7 +115,7 @@ func (c *Client) VerifyWithOIDC(_ context.Context, req *signv1alpha1.VerifyReque
 		return nil, fmt.Errorf("failed to verify signature: %w", err)
 	}
 
-	response := &signv1alpha1.VerifyResponse{
+	response := &signtypes.VerifyResponse{
 		Success: err == nil,
 	}
 
@@ -123,7 +123,7 @@ func (c *Client) VerifyWithOIDC(_ context.Context, req *signv1alpha1.VerifyReque
 	return response, nil
 }
 
-func (c *Client) VerifyWithKey(_ context.Context, req *signv1alpha1.VerifyRequest) (*signv1alpha1.VerifyResponse, error) {
+func (c *Client) VerifyWithKey(_ context.Context, req *signtypes.VerifyRequest) (*signtypes.VerifyResponse, error) {
 	keyVerifier := req.GetProvider().GetKey()
 
 	// Validate request.
@@ -177,7 +177,7 @@ func (c *Client) VerifyWithKey(_ context.Context, req *signv1alpha1.VerifyReques
 		return nil, fmt.Errorf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
 	}
 
-	response := &signv1alpha1.VerifyResponse{
+	response := &signtypes.VerifyResponse{
 		Success: err == nil,
 	}
 

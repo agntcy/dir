@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	synctypes "github.com/agntcy/dir/api/store/v1alpha2"
+	synctypes "github.com/agntcy/dir/api/store/v1"
 )
 
 func (c *Client) CreateSync(ctx context.Context, remoteURL string) (string, error) {

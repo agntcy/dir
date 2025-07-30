@@ -11,7 +11,7 @@ import (
 )
 
 // Push sends a complete record to the store and returns a record reference.
-// The record must be ≤4MB as per the v1alpha2 store service specification.
+// The record must be ≤4MB as per the v1 store service specification.
 func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
 	// Create streaming client
 	stream, err := c.StoreServiceClient.Push(ctx)

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	signtypes "github.com/agntcy/dir/api/sign/v1alpha1"
+	signtypes "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
 	"github.com/sigstore/sigstore-go/pkg/root"

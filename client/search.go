@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	searchtypes "github.com/agntcy/dir/api/search/v1alpha2"
+	searchtypes "github.com/agntcy/dir/api/search/v1"
 )
 
 func (c *Client) Search(ctx context.Context, req *searchtypes.SearchRequest) (<-chan string, error) {
