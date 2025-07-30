@@ -22,8 +22,6 @@ type Client struct {
 	routingtypes.RoutingServiceClient
 	searchtypesv1alpha2.SearchServiceClient
 	storetypes.SyncServiceClient
-
-	closeFn func() error
 }
 
 type options struct {
@@ -49,14 +47,6 @@ func WithConfig(config *Config) Option {
 	}
 }
 
-func (c *Client) Close() error {
-	if c.closeFn == nil {
-		return nil
-	}
-
-	return c.closeFn()
-}
-
 func New(opts ...Option) (*Client, error) {
 	// Load options
 	options := &options{}
@@ -66,26 +56,42 @@ func New(opts ...Option) (*Client, error) {
 		}
 	}
 
-	// Create a `workloadapi.X509Source`, it will connect to Workload API using provided socket path
-	// If socket path is not defined using `workloadapi.SourceOption`, value from environment variable `SPIFFE_ENDPOINT_SOCKET` is used.
-	source, err := workloadapi.NewX509Source(context.Background(), workloadapi.WithClientOptions(workloadapi.WithAddr(options.config.SpiffeWorkloadAddress)))
+	// create context for SPIFFE
+	ctx := context.Background()
+
+	// Create SPIFFE mTLS services
+	x509Src, err := workloadapi.NewX509Source(ctx,
+		workloadapi.WithClientOptions(
+			workloadapi.WithAddr(options.config.SpiffeSocketPath),
+			//workloadapi.WithLogger(logger.Std),
+		),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create X509Source: %w", err)
+		return nil, fmt.Errorf("failed to fetch svid: %w", err)
 	}
 
-	// Allowed SPIFFE ID
-	clientDomain := spiffeid.RequireTrustDomainFromString("spiffe://example.org")
+	bundleSrc, err := workloadapi.NewBundleSource(ctx,
+		workloadapi.WithClientOptions(
+			workloadapi.WithAddr(options.config.SpiffeSocketPath),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch trust bundle: %w", err)
+	}
+
+	trustDomain, err := spiffeid.TrustDomainFromString(options.config.SpiffeTrustDomain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse trust domain: %w", err)
+	}
 
 	// Create client
 	client, err := grpc.NewClient(
 		options.config.ServerAddress,
 		grpc.WithTransportCredentials(
-			grpccredentials.MTLSClientCredentials(source, source, tlsconfig.AuthorizeMemberOf(clientDomain)),
+			grpccredentials.MTLSClientCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
 		),
 	)
 	if err != nil {
-		defer source.Close()
-
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
 
@@ -94,6 +100,5 @@ func New(opts ...Option) (*Client, error) {
 		RoutingServiceClient: routingtypes.NewRoutingServiceClient(client),
 		SearchServiceClient:  searchtypesv1alpha2.NewSearchServiceClient(client),
 		SyncServiceClient:    storetypes.NewSyncServiceClient(client),
-		closeFn:              source.Close,
 	}, nil
 }
