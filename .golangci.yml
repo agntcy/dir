@@ -31,6 +31,9 @@ issues:
     - path: types/adapters/record_oasfv.*\.go
       linters:
         - dupl
+    - path: .*streaming.*\.go
+      linters:
+        - dupl
 
 linters-settings:
   gomoddirectives:

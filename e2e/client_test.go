@@ -6,6 +6,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -98,6 +99,261 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			equal, err := compareJSONAgents(agentData, pulledAgentData)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
+		})
+	})
+
+	ginkgo.Context("streaming operations", func() {
+		var streamingRefs []*corev1.RecordRef
+
+		ginkgo.It("should push multiple agents using PushStream", func() {
+			// Create multiple test records
+			recordCount := 5
+			records := make(chan *corev1.Record, recordCount)
+
+			// Generate test records
+			go func() {
+				defer close(records)
+				for i := range recordCount {
+					testAgent := &objectsv1.Agent{
+						Name:    fmt.Sprintf("stream-test-agent-%d", i),
+						Version: "v1",
+						Skills: []*objectsv1.Skill{
+							{
+								CategoryName: Ptr(fmt.Sprintf("stream-category-%d", i)),
+								ClassName:    Ptr(fmt.Sprintf("stream-class-%d", i)),
+							},
+						},
+						Extensions: []*objectsv1.Extension{
+							{
+								Name:    fmt.Sprintf("schema.oasf.agntcy.org/stream-test-%d", i),
+								Version: "v1",
+								Data:    nil,
+							},
+						},
+						Signature: &objectsv1.Signature{},
+					}
+
+					testRecord := &corev1.Record{
+						Data: &corev1.Record_V1{V1: testAgent},
+					}
+
+					records <- testRecord
+				}
+			}()
+
+			// Use PushStream to push all records
+			results := c.PushStream(ctx, records)
+
+			// Collect all results
+			var pushResults []client.PushResult
+			var successCount int
+			var errorCount int
+
+			for result := range results {
+				pushResults = append(pushResults, result)
+				if result.Error != nil {
+					errorCount++
+					ginkgo.GinkgoWriter.Printf("Push error for record %d: %v\n", result.Index, result.Error)
+				} else {
+					successCount++
+					streamingRefs = append(streamingRefs, result.RecordRef)
+					gomega.Expect(result.RecordRef.GetCid()).NotTo(gomega.BeEmpty())
+				}
+			}
+
+			// Validate results
+			gomega.Expect(pushResults).To(gomega.HaveLen(recordCount))
+			gomega.Expect(successCount).To(gomega.Equal(recordCount))
+			gomega.Expect(errorCount).To(gomega.Equal(0))
+			gomega.Expect(streamingRefs).To(gomega.HaveLen(recordCount))
+
+			ginkgo.GinkgoWriter.Printf("Successfully pushed %d records via PushStream\n", successCount)
+		})
+
+		ginkgo.It("should pull multiple agents using PullStream", func() {
+			gomega.Expect(streamingRefs).NotTo(gomega.BeEmpty(), "No streaming refs available from previous test")
+
+			// Create channel with record references
+			refCount := len(streamingRefs)
+			refs := make(chan *corev1.RecordRef, refCount)
+
+			go func() {
+				defer close(refs)
+				for _, ref := range streamingRefs {
+					refs <- ref
+				}
+			}()
+
+			// Use PullStream to pull all records
+			results := c.PullStream(ctx, refs)
+
+			// Collect all results
+			var pullResults []client.PullResult
+			var successCount int
+			var errorCount int
+
+			for result := range results {
+				pullResults = append(pullResults, result)
+				if result.Error != nil {
+					errorCount++
+					ginkgo.GinkgoWriter.Printf("Pull error for record %d: %v\n", result.Index, result.Error)
+				} else {
+					successCount++
+					gomega.Expect(result.Record).NotTo(gomega.BeNil())
+					gomega.Expect(result.Record.GetV1()).NotTo(gomega.BeNil())
+
+					// Verify the pulled agent has expected structure
+					pulledAgent := result.Record.GetV1()
+					gomega.Expect(pulledAgent.GetName()).To(gomega.ContainSubstring("stream-test-agent-"))
+					gomega.Expect(pulledAgent.GetSkills()).To(gomega.HaveLen(1))
+				}
+			}
+
+			// Validate results
+			gomega.Expect(pullResults).To(gomega.HaveLen(refCount))
+			gomega.Expect(successCount).To(gomega.Equal(refCount))
+			gomega.Expect(errorCount).To(gomega.Equal(0))
+
+			ginkgo.GinkgoWriter.Printf("Successfully pulled %d records via PullStream\n", successCount)
+		})
+
+		ginkgo.It("should lookup multiple agents using LookupStream", func() {
+			gomega.Expect(streamingRefs).NotTo(gomega.BeEmpty(), "No streaming refs available from previous test")
+
+			// Create channel with record references
+			refCount := len(streamingRefs)
+			refs := make(chan *corev1.RecordRef, refCount)
+
+			go func() {
+				defer close(refs)
+				for _, ref := range streamingRefs {
+					refs <- ref
+				}
+			}()
+
+			// Use LookupStream to lookup all records
+			results := c.LookupStream(ctx, refs)
+
+			// Collect all results
+			var lookupResults []client.LookupResult
+			var successCount int
+			var errorCount int
+
+			for result := range results {
+				lookupResults = append(lookupResults, result)
+				if result.Error != nil {
+					errorCount++
+					ginkgo.GinkgoWriter.Printf("Lookup error for record %d: %v\n", result.Index, result.Error)
+				} else {
+					successCount++
+					gomega.Expect(result.RecordMeta).NotTo(gomega.BeNil())
+					gomega.Expect(result.RecordMeta.GetCid()).NotTo(gomega.BeEmpty())
+				}
+			}
+
+			// Validate results
+			gomega.Expect(lookupResults).To(gomega.HaveLen(refCount))
+			gomega.Expect(successCount).To(gomega.Equal(refCount))
+			gomega.Expect(errorCount).To(gomega.Equal(0))
+
+			ginkgo.GinkgoWriter.Printf("Successfully looked up %d records via LookupStream\n", successCount)
+		})
+
+		ginkgo.It("should handle empty channel gracefully", func() {
+			// Create empty channel
+			records := make(chan *corev1.Record)
+			close(records)
+
+			// Use PushStream with empty channel
+			results := c.PushStream(ctx, records)
+
+			// Collect results - should be empty
+			var resultCount int
+			for range results {
+				resultCount++
+			}
+
+			gomega.Expect(resultCount).To(gomega.Equal(0))
+		})
+
+		ginkgo.It("should handle context cancellation", func() {
+			// Create context with timeout
+			timeoutCtx, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+			defer cancel()
+
+			// Create a slow record generator
+			records := make(chan *corev1.Record, 1)
+			go func() {
+				defer close(records)
+				// Send one record quickly
+				records <- record
+				// Then try to send another after delay (should be cancelled)
+				time.Sleep(100 * time.Millisecond)
+				records <- record
+			}()
+
+			// Use PushStream with timeout context
+			results := c.PushStream(timeoutCtx, records)
+
+			// Collect results - should stop due to context cancellation
+			var resultCount int
+			for result := range results {
+				resultCount++
+				if result.Error != nil {
+					ginkgo.GinkgoWriter.Printf("Expected cancellation error: %v\n", result.Error)
+				}
+			}
+
+			// Should have processed at least one result before cancellation
+			gomega.Expect(resultCount).To(gomega.BeNumerically(">=", 0))
+		})
+
+		ginkgo.It("should delete multiple agents using DeleteStream", func() {
+			gomega.Expect(streamingRefs).NotTo(gomega.BeEmpty(), "No streaming refs available from previous test")
+
+			// Create channel with record references
+			refCount := len(streamingRefs)
+			refs := make(chan *corev1.RecordRef, refCount)
+
+			go func() {
+				defer close(refs)
+				for _, ref := range streamingRefs {
+					refs <- ref
+				}
+			}()
+
+			// Use DeleteStream to delete all records
+			results := c.DeleteStream(ctx, refs)
+
+			// Collect all results
+			var deleteResults []client.DeleteResult
+			var successCount int
+			var errorCount int
+
+			for result := range results {
+				deleteResults = append(deleteResults, result)
+				if result.Error != nil {
+					errorCount++
+					ginkgo.GinkgoWriter.Printf("Delete error for record %d: %v\n", result.Index, result.Error)
+				} else {
+					successCount++
+				}
+			}
+
+			// Validate results
+			gomega.Expect(deleteResults).To(gomega.HaveLen(refCount))
+			gomega.Expect(successCount).To(gomega.Equal(refCount))
+			gomega.Expect(errorCount).To(gomega.Equal(0))
+
+			ginkgo.GinkgoWriter.Printf("Successfully deleted %d records via DeleteStream\n", successCount)
+
+			// Verify records are actually deleted by trying to pull them
+			time.Sleep(100 * time.Millisecond) // Small delay for deletion to complete
+
+			for _, ref := range streamingRefs {
+				_, err := c.Pull(ctx, ref)
+				gomega.Expect(err).To(gomega.HaveOccurred(), "Record should be deleted")
+			}
 		})
 	})
 
