@@ -97,19 +97,34 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Create sync service
 	syncService := sync.New(databaseAPI, storeAPI, options)
 
-	// Create a `workloadapi.X509Source`, it will connect to Workload API using provided socket path
-	source, err := workloadapi.NewX509Source(ctx, workloadapi.WithClientOptions(workloadapi.WithAddr(cfg.SpiffeWorkloadAddress)))
+	// Create SPIFFE mTLS services
+	x509Src, err := workloadapi.NewX509Source(ctx,
+		workloadapi.WithClientOptions(
+			workloadapi.WithAddr(cfg.Authz.SocketPath),
+			//workloadapi.WithLogger(logger.Std),
+		),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create X509Source: %w", err)
+		return nil, fmt.Errorf("failed to fetch svid: %w", err)
 	}
-	defer source.Close()
 
-	// Allowed SPIFFE ID
-	clientDomain := spiffeid.RequireTrustDomainFromString("spiffe://example.org")
+	bundleSrc, err := workloadapi.NewBundleSource(ctx,
+		workloadapi.WithClientOptions(
+			workloadapi.WithAddr(cfg.Authz.SocketPath),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch trust bundle: %w", err)
+	}
+
+	trustDomain, err := spiffeid.TrustDomainFromString(cfg.Authz.TrustDomain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse trust domain: %w", err)
+	}
 
 	// Create a server with credentials that do mTLS and verify that the presented certificate has SPIFFE ID `spiffe://example.org/client`
 	grpcServer := grpc.NewServer(grpc.Creds(
-		grpccredentials.MTLSServerCredentials(source, source, tlsconfig.AuthorizeMemberOf(clientDomain)),
+		grpccredentials.MTLSServerCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
 	))
 
 	// Register APIs

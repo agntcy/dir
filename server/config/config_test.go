@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
 	routing "github.com/agntcy/dir/server/routing/config"
@@ -46,6 +47,8 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_SYNC_SCHEDULER_INTERVAL":       "1s",
 				"DIRECTORY_SERVER_SYNC_WORKER_COUNT":             "1",
 				"DIRECTORY_SERVER_SYNC_WORKER_TIMEOUT":           "10s",
+				"DIRECTORY_SERVER_AUTHZ_SOCKET_PATH":             "/test/agent.sock",
+				"DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN":            "spiffe://trust-domain.org",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress:      "example.com:8889",
@@ -85,6 +88,10 @@ func TestConfig(t *testing.T) {
 					WorkerCount:       1,
 					WorkerTimeout:     10 * time.Second,
 				},
+				Authz: authz.Config{
+					SocketPath:  "/test/agent.sock",
+					TrustDomain: "spiffe://trust-domain.org",
+				},
 			},
 		},
 		{
@@ -118,6 +125,10 @@ func TestConfig(t *testing.T) {
 					SchedulerInterval: sync.DefaultSyncSchedulerInterval,
 					WorkerCount:       sync.DefaultSyncWorkerCount,
 					WorkerTimeout:     sync.DefaultSyncWorkerTimeout,
+				},
+				Authz: authz.Config{
+					SocketPath:  authz.DefaultSocketPath,
+					TrustDomain: authz.DefaultTrustDomain,
 				},
 			},
 		},
