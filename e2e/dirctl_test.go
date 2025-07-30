@@ -25,6 +25,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		if cfg.DeploymentMode != config.DeploymentModeLocal {
 			ginkgo.Skip("Skipping test, not in local mode")
 		}
+
+		// Reset CLI command state to ensure clean state between tests
+		ResetCLIState()
 	})
 
 	// Test params

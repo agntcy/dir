@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	signtypes "github.com/agntcy/dir/api/sign/v1alpha2"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	clicmd "github.com/agntcy/dir/cli/cmd"
 	"github.com/agntcy/dir/e2e/config"
 	"github.com/onsi/ginkgo/v2"
@@ -85,6 +85,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		if cfg.DeploymentMode != config.DeploymentModeLocal {
 			ginkgo.Skip("Skipping test, not in local mode")
 		}
+
+		// Reset CLI command state to ensure clean state between tests
+		ResetCLIState()
 	})
 
 	// Test params
@@ -214,7 +217,7 @@ func extractSignatureFromCombinedOutput(combinedOutput string) string {
 //
 //nolint:govet
 func compareSignatures(expected, actual string) {
-	var expectedSignature, actualSignature signtypes.Signature
+	var expectedSignature, actualSignature signv1.Signature
 
 	err := json.Unmarshal([]byte(expected), &expectedSignature)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to unmarshal expected signature")
