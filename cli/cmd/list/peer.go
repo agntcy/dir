@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	routetypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
@@ -16,16 +16,16 @@ import (
 func listPeer(cmd *cobra.Command, client *client.Client, peerID string, labels []string) error {
 	// Is peer set
 	// if not, run local list only
-	var peer *routetypes.Peer
+	var peer *routingv1.Peer
 	if peerID != "" {
-		peer = &routetypes.Peer{
+		peer = &routingv1.Peer{
 			Id: peerID,
 		}
 	}
 
 	// Start the list request
-	items, err := client.List(cmd.Context(), &routetypes.ListRequest{
-		LegacyListRequest: &routetypes.LegacyListRequest{
+	items, err := client.List(cmd.Context(), &routingv1.ListRequest{
+		LegacyListRequest: &routingv1.LegacyListRequest{
 			Peer:   peer,
 			Labels: labels,
 		},

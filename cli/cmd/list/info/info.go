@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	routetypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -44,9 +44,9 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	// Is peer set
-	var peer *routetypes.Peer
+	var peer *routingv1.Peer
 	if opts.PeerID != "" {
-		peer = &routetypes.Peer{
+		peer = &routingv1.Peer{
 			Id: opts.PeerID,
 		}
 	}
@@ -55,8 +55,8 @@ func runCommand(cmd *cobra.Command) error {
 	maxHops := uint32(10) //nolint:mnd
 
 	// Start the list request
-	items, err := c.List(cmd.Context(), &routetypes.ListRequest{
-		LegacyListRequest: &routetypes.LegacyListRequest{
+	items, err := c.List(cmd.Context(), &routingv1.ListRequest{
+		LegacyListRequest: &routingv1.LegacyListRequest{
 			Peer:    peer,
 			MaxHops: &maxHops,
 		},

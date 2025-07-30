@@ -8,7 +8,7 @@ import (
 	"errors"
 	"io"
 
-	storetypes "github.com/agntcy/dir/api/store/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
@@ -24,20 +24,20 @@ const (
 var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
-	storetypes.UnimplementedStoreServiceServer
+	storev1.UnimplementedStoreServiceServer
 	store types.StoreAPI
 	db    types.DatabaseAPI
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI) storetypes.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI) storev1.StoreServiceServer {
 	return &storeCtrl{
-		UnimplementedStoreServiceServer: storetypes.UnimplementedStoreServiceServer{},
+		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
 		db:                              db,
 	}
 }
 
-func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
+func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 	storeLogger.Debug("Called store controller's Push method")
 
 	for {
@@ -95,7 +95,7 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 	}
 }
 
-func (s storeCtrl) Pull(stream storetypes.StoreService_PullServer) error {
+func (s storeCtrl) Pull(stream storev1.StoreService_PullServer) error {
 	storeLogger.Debug("Called store controller's Pull method")
 
 	for {
@@ -143,7 +143,7 @@ func (s storeCtrl) Pull(stream storetypes.StoreService_PullServer) error {
 	}
 }
 
-func (s storeCtrl) Lookup(stream storetypes.StoreService_LookupServer) error {
+func (s storeCtrl) Lookup(stream storev1.StoreService_LookupServer) error {
 	storeLogger.Debug("Called store controller's Lookup method")
 
 	for {
@@ -183,7 +183,7 @@ func (s storeCtrl) Lookup(stream storetypes.StoreService_LookupServer) error {
 	}
 }
 
-func (s storeCtrl) Delete(stream storetypes.StoreService_DeleteServer) error {
+func (s storeCtrl) Delete(stream storev1.StoreService_DeleteServer) error {
 	storeLogger.Debug("Called store controller's Delete method")
 
 	for {

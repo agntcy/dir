@@ -5,7 +5,7 @@ package types
 
 import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	storetypes "github.com/agntcy/dir/api/store/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
 type DatabaseAPI interface {
@@ -36,10 +36,10 @@ type SyncDatabaseAPI interface {
 	GetSyncs(offset, limit int) ([]SyncObject, error)
 
 	// GetSyncsByStatus retrieves all sync objects by their status.
-	GetSyncsByStatus(status storetypes.SyncStatus) ([]SyncObject, error)
+	GetSyncsByStatus(status storev1.SyncStatus) ([]SyncObject, error)
 
 	// UpdateSyncStatus updates an existing sync object in the database.
-	UpdateSyncStatus(syncID string, status storetypes.SyncStatus) error
+	UpdateSyncStatus(syncID string, status storev1.SyncStatus) error
 
 	// UpdateSyncRemoteRegistry updates the remote registry of a sync object.
 	UpdateSyncRemoteRegistry(syncID string, remoteRegistry string) error

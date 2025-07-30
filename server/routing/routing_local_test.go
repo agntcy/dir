@@ -15,7 +15,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -148,15 +148,15 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	for k, v := range validQueriesWithExpectedObjectRef {
 		t.Run("Valid query: "+k, func(t *testing.T) {
 			// list
-			refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
-				LegacyListRequest: &routingtypes.LegacyListRequest{
+			refsChan, err := r.List(t.Context(), &routingv1.ListRequest{
+				LegacyListRequest: &routingv1.LegacyListRequest{
 					Labels: []string{k},
 				},
 			})
 			assert.NoError(t, err)
 
 			// Collect items from the channel
-			var refs []*routingtypes.LegacyListResponse_Item
+			var refs []*routingv1.LegacyListResponse_Item
 			for ref := range refsChan {
 				refs = append(refs, ref)
 			}
@@ -186,15 +186,15 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Try to list second record
-	refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
-		LegacyListRequest: &routingtypes.LegacyListRequest{
+	refsChan, err := r.List(t.Context(), &routingv1.ListRequest{
+		LegacyListRequest: &routingv1.LegacyListRequest{
 			Labels: []string{"/skills/category2"},
 		},
 	})
 	assert.NoError(t, err)
 
 	// Collect items from the channel
-	var refs []*routingtypes.LegacyListResponse_Item //nolint:prealloc
+	var refs []*routingv1.LegacyListResponse_Item //nolint:prealloc
 	for ref := range refsChan {
 		refs = append(refs, ref)
 	}
@@ -242,15 +242,15 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 
 	t.Run("Valid multi skill query", func(t *testing.T) {
 		// list
-		refsChan, err := r.List(t.Context(), &routingtypes.ListRequest{
-			LegacyListRequest: &routingtypes.LegacyListRequest{
+		refsChan, err := r.List(t.Context(), &routingv1.ListRequest{
+			LegacyListRequest: &routingv1.LegacyListRequest{
 				Labels: []string{"/skills/category1/class1", "/skills/category2/class2"},
 			},
 		})
 		assert.NoError(t, err)
 
 		// Collect items from the channel
-		var refs []*routingtypes.LegacyListResponse_Item
+		var refs []*routingv1.LegacyListResponse_Item
 		for ref := range refsChan {
 			refs = append(refs, ref)
 		}
@@ -329,8 +329,8 @@ func Benchmark_RouteLocal(b *testing.B) {
 	b.Run("Badger DB List", func(b *testing.B) {
 		_ = badgerRouter.Publish(b.Context(), ref, record)
 		for b.Loop() {
-			_, err := badgerRouter.List(b.Context(), &routingtypes.ListRequest{
-				LegacyListRequest: &routingtypes.LegacyListRequest{
+			_, err := badgerRouter.List(b.Context(), &routingv1.ListRequest{
+				LegacyListRequest: &routingv1.LegacyListRequest{
 					Labels: []string{"/skills/category1/class1"},
 				},
 			})
@@ -349,8 +349,8 @@ func Benchmark_RouteLocal(b *testing.B) {
 	b.Run("In memory DB List", func(b *testing.B) {
 		_ = inMemoryRouter.Publish(b.Context(), ref, record)
 		for b.Loop() {
-			_, err := inMemoryRouter.List(b.Context(), &routingtypes.ListRequest{
-				LegacyListRequest: &routingtypes.LegacyListRequest{
+			_, err := inMemoryRouter.List(b.Context(), &routingv1.ListRequest{
+				LegacyListRequest: &routingv1.LegacyListRequest{
 					Labels: []string{"/skills/category1/class1"},
 				},
 			})

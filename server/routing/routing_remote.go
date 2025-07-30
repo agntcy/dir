@@ -11,7 +11,7 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/rpc"
 	"github.com/agntcy/dir/server/types"
@@ -145,7 +145,7 @@ func (r *routeRemote) Publish(ctx context.Context, ref *corev1.RecordRef, record
 }
 
 //nolint:mnd,cyclop
-func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.LegacyListResponse_Item, error) {
+func (r *routeRemote) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
 	remoteLogger.Debug("Called remote routing's List method", "req", req)
 
 	// Check if we have peers connected for DHT operations i.e. if directory running in network mode.
@@ -153,7 +153,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 		remoteLogger.Debug("No peers in DHT routing table, returning empty channel")
 
 		// Return empty channel
-		emptyCh := make(chan *routingtypes.LegacyListResponse_Item)
+		emptyCh := make(chan *routingv1.LegacyListResponse_Item)
 		close(emptyCh)
 
 		return emptyCh, nil
@@ -164,8 +164,8 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	if req.GetLegacyListRequest().GetPeer() != nil {
 		remoteLogger.Info("Listing data for peer", "req", req)
 
-		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.GetLegacyListRequest().GetPeer().GetId())}, &routingtypes.ListRequest{
-			LegacyListRequest: &routingtypes.LegacyListRequest{
+		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.GetLegacyListRequest().GetPeer().GetId())}, &routingv1.ListRequest{
+			LegacyListRequest: &routingv1.LegacyListRequest{
 				Labels: req.GetLegacyListRequest().GetLabels(),
 			},
 		})
@@ -198,7 +198,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 		}
 
 		// stream results back
-		resCh := make(chan *routingtypes.LegacyListResponse_Item, 100)
+		resCh := make(chan *routingv1.LegacyListResponse_Item, 100)
 		go func(provs []peer.AddrInfo, ref *corev1.RecordRef) {
 			defer close(resCh)
 
@@ -225,10 +225,10 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 				remoteLogger.Info("Found an announced record", "ref", ref, "peer", prov.ID, "labels", strings.Join(labels, ", "), "addrs", strings.Join(addrs, ", "))
 
 				// send back to caller
-				resCh <- &routingtypes.LegacyListResponse_Item{
+				resCh <- &routingv1.LegacyListResponse_Item{
 					Ref:    ref,
 					Labels: labels,
-					Peer: &routingtypes.Peer{
+					Peer: &routingv1.Peer{
 						Id:    prov.ID.String(),
 						Addrs: addrs,
 					},
@@ -254,13 +254,13 @@ func (r *routeRemote) List(ctx context.Context, req *routingtypes.ListRequest) (
 	}
 
 	// run in the background
-	resCh := make(chan *routingtypes.LegacyListResponse_Item, 100)
-	go func(ctx context.Context, req *routingtypes.ListRequest) {
+	resCh := make(chan *routingv1.LegacyListResponse_Item, 100)
+	go func(ctx context.Context, req *routingv1.ListRequest) {
 		defer close(resCh)
 
 		// get data from peers (list what each of our connected peers has)
-		resp, err := r.service.List(ctx, r.server.Host().Peerstore().Peers(), &routingtypes.ListRequest{
-			LegacyListRequest: &routingtypes.LegacyListRequest{
+		resp, err := r.service.List(ctx, r.server.Host().Peerstore().Peers(), &routingv1.ListRequest{
+			LegacyListRequest: &routingv1.LegacyListRequest{
 				Peer:    req.GetLegacyListRequest().GetPeer(),
 				Labels:  req.GetLegacyListRequest().GetLabels(),
 				Ref:     req.GetLegacyListRequest().GetRef(),

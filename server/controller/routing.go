@@ -7,7 +7,7 @@ import (
 	"context"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
@@ -18,20 +18,20 @@ import (
 var routingLogger = logging.Logger("controller/routing")
 
 type routingCtlr struct {
-	routingtypes.UnimplementedRoutingServiceServer
+	routingv1.UnimplementedRoutingServiceServer
 	routing types.RoutingAPI
 	store   types.StoreAPI
 }
 
-func NewRoutingController(routing types.RoutingAPI, store types.StoreAPI) routingtypes.RoutingServiceServer {
+func NewRoutingController(routing types.RoutingAPI, store types.StoreAPI) routingv1.RoutingServiceServer {
 	return &routingCtlr{
 		routing:                           routing,
 		store:                             store,
-		UnimplementedRoutingServiceServer: routingtypes.UnimplementedRoutingServiceServer{},
+		UnimplementedRoutingServiceServer: routingv1.UnimplementedRoutingServiceServer{},
 	}
 }
 
-func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequest) (*emptypb.Empty, error) {
+func (c *routingCtlr) Publish(ctx context.Context, req *routingv1.PublishRequest) (*emptypb.Empty, error) {
 	routingLogger.Debug("Called routing controller's Publish method", "req", req)
 
 	ref := &corev1.RecordRef{
@@ -55,7 +55,7 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingtypes.PublishRequ
 	return &emptypb.Empty{}, nil
 }
 
-func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.RoutingService_ListServer) error {
+func (c *routingCtlr) List(req *routingv1.ListRequest, srv routingv1.RoutingService_ListServer) error {
 	routingLogger.Debug("Called routing controller's List method", "req", req)
 
 	itemChan, err := c.routing.List(srv.Context(), req)
@@ -65,13 +65,13 @@ func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.Routi
 		return status.Errorf(st.Code(), "failed to list: %s", st.Message())
 	}
 
-	items := []*routingtypes.LegacyListResponse_Item{}
+	items := []*routingv1.LegacyListResponse_Item{}
 	for i := range itemChan {
 		items = append(items, i)
 	}
 
-	if err := srv.Send(&routingtypes.ListResponse{
-		LegacyListResponse: &routingtypes.LegacyListResponse{
+	if err := srv.Send(&routingv1.ListResponse{
+		LegacyListResponse: &routingv1.LegacyListResponse{
 			Items: items,
 		},
 	}); err != nil {
@@ -81,7 +81,7 @@ func (c *routingCtlr) List(req *routingtypes.ListRequest, srv routingtypes.Routi
 	return nil
 }
 
-func (c *routingCtlr) Unpublish(ctx context.Context, req *routingtypes.UnpublishRequest) (*emptypb.Empty, error) {
+func (c *routingCtlr) Unpublish(ctx context.Context, req *routingv1.UnpublishRequest) (*emptypb.Empty, error) {
 	routingLogger.Debug("Called routing controller's Unpublish method", "req", req)
 
 	ref := &corev1.RecordRef{

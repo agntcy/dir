@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	searchtypes "github.com/agntcy/dir/api/search/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
@@ -16,18 +16,18 @@ import (
 var searchLogger = logging.Logger("controller/search")
 
 type searchCtlr struct {
-	searchtypes.UnimplementedSearchServiceServer
+	searchv1.UnimplementedSearchServiceServer
 	db types.DatabaseAPI
 }
 
-func NewSearchController(db types.DatabaseAPI) searchtypes.SearchServiceServer {
+func NewSearchController(db types.DatabaseAPI) searchv1.SearchServiceServer {
 	return &searchCtlr{
-		UnimplementedSearchServiceServer: searchtypes.UnimplementedSearchServiceServer{},
+		UnimplementedSearchServiceServer: searchv1.UnimplementedSearchServiceServer{},
 		db:                               db,
 	}
 }
 
-func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.SearchService_SearchServer) error {
+func (c *searchCtlr) Search(req *searchv1.SearchRequest, srv searchv1.SearchService_SearchServer) error {
 	searchLogger.Debug("Called search controller's Search method", "req", req)
 
 	filterOptions, err := queryToFilters(req)
@@ -41,7 +41,7 @@ func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.Sear
 	}
 
 	for _, ref := range recordRefs {
-		if err := srv.Send(&searchtypes.SearchResponse{RecordCid: ref.GetCid()}); err != nil {
+		if err := srv.Send(&searchv1.SearchResponse{RecordCid: ref.GetCid()}); err != nil {
 			return fmt.Errorf("failed to send record: %w", err)
 		}
 	}
@@ -49,7 +49,7 @@ func (c *searchCtlr) Search(req *searchtypes.SearchRequest, srv searchtypes.Sear
 	return nil
 }
 
-func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error) { //nolint:gocognit,cyclop
+func queryToFilters(req *searchv1.SearchRequest) ([]types.FilterOption, error) { //nolint:gocognit,cyclop
 	params := []types.FilterOption{
 		types.WithLimit(int(req.GetLimit())),
 		types.WithOffset(int(req.GetOffset())),
@@ -57,16 +57,16 @@ func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error
 
 	for _, query := range req.GetQueries() {
 		switch query.GetType() {
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
 			searchLogger.Warn("Unspecified query type, skipping", "query", query)
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_NAME:
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME:
 			params = append(params, types.WithName(query.GetValue()))
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_VERSION:
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION:
 			params = append(params, types.WithVersion(query.GetValue()))
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID:
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID:
 			u64, err := strconv.ParseUint(query.GetValue(), 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse skill ID %q: %w", query.GetValue(), err)
@@ -74,10 +74,10 @@ func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error
 
 			params = append(params, types.WithSkillIDs(u64))
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
 			params = append(params, types.WithSkillNames(query.GetValue()))
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
 			l := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
 
 			if len(l) == 1 && strings.TrimSpace(l[0]) != "" {
@@ -96,7 +96,7 @@ func queryToFilters(req *searchtypes.SearchRequest) ([]types.FilterOption, error
 				}
 			}
 
-		case searchtypes.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
 			e := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
 
 			if len(e) == 1 && strings.TrimSpace(e[0]) != "" {

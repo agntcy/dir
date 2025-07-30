@@ -9,7 +9,7 @@ import (
 	"errors"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routetypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
@@ -132,8 +132,8 @@ func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<
 		logger.Debug("P2p RPC: Executing List request on remote peer", "peer", r.service.host.ID())
 
 		// local list
-		listCh, err := r.service.route.List(ctx, &routetypes.ListRequest{
-			LegacyListRequest: &routetypes.LegacyListRequest{
+		listCh, err := r.service.route.List(ctx, &routingv1.ListRequest{
+			LegacyListRequest: &routingv1.LegacyListRequest{
 				Labels: in.Labels,
 			},
 		})
@@ -230,11 +230,11 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *corev1.RecordRef)
 // this is done in best effort mode.
 //
 //nolint:mnd
-func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.ListRequest) (<-chan *routetypes.LegacyListResponse_Item, error) {
+func (s *Service) List(ctx context.Context, peers []peer.ID, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
 	logger.Debug("P2p RPC: Executing List request on remote peers", "peers", peers, "req", req)
 
 	// reserve reasonable buffer size for output results
-	respCh := make(chan *routetypes.LegacyListResponse_Item, 10000)
+	respCh := make(chan *routingv1.LegacyListResponse_Item, 10000)
 
 	// run processing in the background
 	outCh := make(chan *ListResponse, 10000) // used as intermediary forwarding channel
@@ -289,10 +289,10 @@ func (s *Service) List(ctx context.Context, peers []peer.ID, req *routetypes.Lis
 			}
 
 			seenPeerRecords[uniqueKey] = struct{}{}
-			respCh <- &routetypes.LegacyListResponse_Item{
+			respCh <- &routingv1.LegacyListResponse_Item{
 				Labels:      out.Labels,
 				LabelCounts: out.LabelCounts,
-				Peer: &routetypes.Peer{
+				Peer: &routingv1.Peer{
 					Id: out.Peer,
 				},
 				Ref: &corev1.RecordRef{

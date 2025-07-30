@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
@@ -19,8 +19,8 @@ const (
 )
 
 func listDigest(cmd *cobra.Command, client *client.Client, digest string) error {
-	items, err := client.List(cmd.Context(), &routingtypes.ListRequest{
-		LegacyListRequest: &routingtypes.LegacyListRequest{
+	items, err := client.List(cmd.Context(), &routingv1.ListRequest{
+		LegacyListRequest: &routingv1.LegacyListRequest{
 			Ref: &corev1.RecordRef{
 				Cid: digest, // Use digest as CID directly
 			},

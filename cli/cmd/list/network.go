@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	routetypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
@@ -15,8 +15,8 @@ import (
 
 func listNetwork(cmd *cobra.Command, client *client.Client, labels []string) error {
 	// Start the list request
-	items, err := client.List(cmd.Context(), &routetypes.ListRequest{
-		LegacyListRequest: &routetypes.LegacyListRequest{
+	items, err := client.List(cmd.Context(), &routingv1.ListRequest{
+		LegacyListRequest: &routingv1.LegacyListRequest{
 			Labels: labels,
 		},
 	})

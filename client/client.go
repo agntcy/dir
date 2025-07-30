@@ -6,18 +6,18 @@ package client
 import (
 	"fmt"
 
-	routingtypes "github.com/agntcy/dir/api/routing/v1"
-	searchtypes "github.com/agntcy/dir/api/search/v1"
-	storetypes "github.com/agntcy/dir/api/store/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
-	storetypes.StoreServiceClient
-	routingtypes.RoutingServiceClient
-	searchtypes.SearchServiceClient
-	storetypes.SyncServiceClient
+	storev1.StoreServiceClient
+	routingv1.RoutingServiceClient
+	searchv1.SearchServiceClient
+	storev1.SyncServiceClient
 }
 
 type options struct {
@@ -62,9 +62,9 @@ func New(opts ...Option) (*Client, error) {
 	}
 
 	return &Client{
-		StoreServiceClient:   storetypes.NewStoreServiceClient(client),
-		RoutingServiceClient: routingtypes.NewRoutingServiceClient(client),
-		SearchServiceClient:  searchtypes.NewSearchServiceClient(client),
-		SyncServiceClient:    storetypes.NewSyncServiceClient(client),
+		StoreServiceClient:   storev1.NewStoreServiceClient(client),
+		RoutingServiceClient: routingv1.NewRoutingServiceClient(client),
+		SearchServiceClient:  searchv1.NewSearchServiceClient(client),
+		SyncServiceClient:    storev1.NewSyncServiceClient(client),
 	}, nil
 }

@@ -3,10 +3,10 @@
 
 package types
 
-import storetypes "github.com/agntcy/dir/api/store/v1"
+import storev1 "github.com/agntcy/dir/api/store/v1"
 
 type SyncObject interface {
 	GetID() string
 	GetRemoteDirectoryURL() string
-	GetStatus() storetypes.SyncStatus
+	GetStatus() storev1.SyncStatus
 }

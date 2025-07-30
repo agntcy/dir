@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	storetypes "github.com/agntcy/dir/api/store/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	zotconfig "github.com/agntcy/dir/server/sync/config/zot"
 	synctypes "github.com/agntcy/dir/server/sync/types"
@@ -71,27 +71,27 @@ func (w *Worker) processWorkItem(ctx context.Context, item synctypes.WorkItem) {
 	workCtx, cancel := context.WithTimeout(ctx, w.timeout)
 	defer cancel()
 
-	var finalStatus storetypes.SyncStatus
+	var finalStatus storev1.SyncStatus
 
 	switch item.Type {
 	case synctypes.WorkItemTypeSyncCreate:
-		finalStatus = storetypes.SyncStatus_SYNC_STATUS_IN_PROGRESS
+		finalStatus = storev1.SyncStatus_SYNC_STATUS_IN_PROGRESS
 
 		err := w.addSync(workCtx, item)
 		if err != nil {
 			logger.Error("Sync failed", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
 
-			finalStatus = storetypes.SyncStatus_SYNC_STATUS_FAILED
+			finalStatus = storev1.SyncStatus_SYNC_STATUS_FAILED
 		}
 
 	case synctypes.WorkItemTypeSyncDelete:
-		finalStatus = storetypes.SyncStatus_SYNC_STATUS_DELETED
+		finalStatus = storev1.SyncStatus_SYNC_STATUS_DELETED
 
 		err := w.deleteSync(workCtx, item)
 		if err != nil {
 			logger.Error("Sync delete failed", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
 
-			finalStatus = storetypes.SyncStatus_SYNC_STATUS_FAILED
+			finalStatus = storev1.SyncStatus_SYNC_STATUS_FAILED
 		}
 
 	default:
@@ -166,13 +166,13 @@ func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL st
 	defer conn.Close()
 
 	// Create SyncService client
-	syncClient := storetypes.NewSyncServiceClient(conn)
+	syncClient := storev1.NewSyncServiceClient(conn)
 
 	// TODO: Get actual peer ID from the routing system or configuration
 	requestingNodeID := "directory://local-node"
 
 	// Make the credential negotiation request
-	resp, err := syncClient.RequestRegistryCredentials(ctx, &storetypes.RequestRegistryCredentialsRequest{
+	resp, err := syncClient.RequestRegistryCredentials(ctx, &storev1.RequestRegistryCredentialsRequest{
 		RequestingNodeId: requestingNodeID,
 	})
 	if err != nil {

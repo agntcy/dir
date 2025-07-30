@@ -46,7 +46,7 @@ import json
 from google.protobuf.json_format import MessageToDict
 from client.client import Client, Config
 from core.v1alpha1 import object_pb2, agent_pb2, skill_pb2, extension_pb2
-from routing.v1alpha1 import routing_service_pb2 as routingtypes
+from routing.v1alpha1 import routing_service_pb2 as routingv1
 
 # Initialize the client
 client = Client(Config())
@@ -125,7 +125,7 @@ print("Object published.")
 
 ```python
 # List objects in the store
-list_request = routingtypes.ListRequest(
+list_request = routingv1.ListRequest(
     labels=["/skills/Natural Language Processing/Text Completion"]
 )
 objects = list(client.list(list_request))

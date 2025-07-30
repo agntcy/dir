@@ -12,9 +12,9 @@ import (
 	"syscall"
 
 	"github.com/Portshift/go-utils/healthz"
-	routingtypes "github.com/agntcy/dir/api/routing/v1"
-	searchtypes "github.com/agntcy/dir/api/search/v1"
-	storetypes "github.com/agntcy/dir/api/store/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/api/version"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
@@ -108,10 +108,10 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	}
 
 	// Register APIs
-	storetypes.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
-	routingtypes.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
-	searchtypes.RegisterSearchServiceServer(server.grpcServer, controller.NewSearchController(databaseAPI))
-	storetypes.RegisterSyncServiceServer(server.grpcServer, controller.NewSyncController(databaseAPI, options))
+	storev1.RegisterStoreServiceServer(server.grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
+	routingv1.RegisterRoutingServiceServer(server.grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
+	searchv1.RegisterSearchServiceServer(server.grpcServer, controller.NewSearchController(databaseAPI))
+	storev1.RegisterSyncServiceServer(server.grpcServer, controller.NewSyncController(databaseAPI, options))
 
 	// Register server
 	reflection.Register(server.grpcServer)

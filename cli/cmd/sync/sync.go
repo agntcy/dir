@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	storetypes "github.com/agntcy/dir/api/store/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -109,7 +109,7 @@ func runListSyncs(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	itemCh, err := client.ListSyncs(cmd.Context(), &storetypes.ListSyncsRequest{
+	itemCh, err := client.ListSyncs(cmd.Context(), &storev1.ListSyncsRequest{
 		Limit:  &opts.Limit,
 		Offset: &opts.Offset,
 	})
@@ -156,7 +156,7 @@ func runGetSyncStatus(cmd *cobra.Command, syncID string) error {
 	presenter.Printf(cmd,
 		"ID %s Status %s RemoteDirectoryUrl %s\n",
 		sync.GetSyncId(),
-		storetypes.SyncStatus_name[int32(sync.GetStatus())],
+		storev1.SyncStatus_name[int32(sync.GetStatus())],
 		sync.GetRemoteDirectoryUrl(),
 	)
 

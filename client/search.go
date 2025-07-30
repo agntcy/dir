@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"io"
 
-	searchtypes "github.com/agntcy/dir/api/search/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 )
 
-func (c *Client) Search(ctx context.Context, req *searchtypes.SearchRequest) (<-chan string, error) {
+func (c *Client) Search(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error) {
 	stream, err := c.SearchServiceClient.Search(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search stream: %w", err)

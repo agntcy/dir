@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routingtypes "github.com/agntcy/dir/api/routing/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
@@ -108,11 +108,11 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 }
 
 //nolint:cyclop
-func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<-chan *routingtypes.LegacyListResponse_Item, error) {
+func (r *routeLocal) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
 	localLogger.Debug("Called local routing's List method", "req", req)
 
 	// dest to write the results on
-	outCh := make(chan *routingtypes.LegacyListResponse_Item)
+	outCh := make(chan *routingv1.LegacyListResponse_Item)
 
 	// load metrics for the client
 	metrics, err := loadMetrics(ctx, r.dstore)
@@ -125,9 +125,9 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 		go func(labels []string) {
 			defer close(outCh)
 
-			outCh <- &routingtypes.LegacyListResponse_Item{
+			outCh <- &routingv1.LegacyListResponse_Item{
 				Labels: labels,
-				Peer: &routingtypes.Peer{
+				Peer: &routingv1.Peer{
 					Id: "HOST",
 				},
 				LabelCounts: metrics.counts(),
@@ -210,9 +210,9 @@ func (r *routeLocal) List(ctx context.Context, req *routingtypes.ListRequest) (<
 			labels := getLabels(record)
 
 			// forward results back
-			outCh <- &routingtypes.LegacyListResponse_Item{
+			outCh <- &routingv1.LegacyListResponse_Item{
 				Labels: labels,
-				Peer: &routingtypes.Peer{
+				Peer: &routingv1.Peer{
 					Id: "HOST",
 				},
 				Ref: ref,
