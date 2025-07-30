@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
 	routing "github.com/agntcy/dir/server/routing/config"
@@ -24,9 +25,8 @@ const (
 
 	// API configuration.
 
-	DefaultListenAddress         = "0.0.0.0:8888"
-	DefaultHealthCheckAddress    = "0.0.0.0:8889"
-	DefaultSpiffeWorkloadAddress = "tcp://0.0.0.0:8081"
+	DefaultListenAddress      = "0.0.0.0:8888"
+	DefaultHealthCheckAddress = "0.0.0.0:8889"
 
 	// Provider configuration.
 
@@ -41,9 +41,11 @@ var logger = logging.Logger("config")
 
 type Config struct {
 	// API configuration
-	ListenAddress         string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
-	HealthCheckAddress    string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
-	SpiffeWorkloadAddress string `json:"spiffe_workload_address,omitempty" mapstructure:"spiffe_workload_address"`
+	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
+	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
+
+	// Authz configuration
+	Authz authz.Config `json:"authz,omitempty" mapstructure:"authz"`
 
 	// Provider configuration
 	Provider string         `json:"provider,omitempty" mapstructure:"provider"`
@@ -93,8 +95,14 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("healthcheck_address")
 	v.SetDefault("healthcheck_address", DefaultHealthCheckAddress)
 
-	_ = v.BindEnv("spiffe_workload_address")
-	v.SetDefault("spiffe_workload_address", DefaultSpiffeWorkloadAddress)
+	//
+	// Authz configuration
+	//
+	_ = v.BindEnv("authz.socket_path")
+	v.SetDefault("authz.socket_path", authz.DefaultSocketPath)
+
+	_ = v.BindEnv("authz.trust_domain")
+	v.SetDefault("authz.trust_domain", authz.DefaultTrustDomain)
 
 	//
 	// Provider configuration
