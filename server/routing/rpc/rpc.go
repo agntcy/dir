@@ -9,7 +9,7 @@ import (
 	"errors"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routetypes "github.com/agntcy/dir/api/routing/v1alpha2"
+	routetypes "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	rpc "github.com/libp2p/go-libp2p-gorpc"

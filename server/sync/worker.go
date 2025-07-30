@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
+	storetypes "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	zotconfig "github.com/agntcy/dir/server/sync/config/zot"
 	synctypes "github.com/agntcy/dir/server/sync/types"

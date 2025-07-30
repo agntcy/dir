@@ -8,7 +8,7 @@ import (
 	"errors"
 	"io"
 
-	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
+	storetypes "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
@@ -58,7 +58,7 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 			return status.Error(codes.InvalidArgument, "record has no data")
 		}
 
-		// Validate record size (4MB limit for v1alpha2 API)
+		// Validate record size (4MB limit for v1 API)
 		recordSize := proto.Size(record)
 		if recordSize > maxAgentSize {
 			storeLogger.Warn("Record exceeds size limit", "size", recordSize, "limit", maxAgentSize)

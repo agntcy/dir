@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strings"
 
-	storetypes "github.com/agntcy/dir/api/store/v1alpha2"
+	storetypes "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"

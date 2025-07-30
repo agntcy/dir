@@ -109,7 +109,7 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 		annotations[ManifestKeySigned] = "false"
 	}
 
-	// Versioning (v1alpha2 specific)
+	// Versioning (v1 specific)
 	if previousCid := recordData.GetPreviousRecordCid(); previousCid != "" {
 		annotations[ManifestKeyPreviousCid] = previousCid
 	}

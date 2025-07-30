@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	searchtypes "github.com/agntcy/dir/api/search/v1alpha2"
+	searchtypes "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
