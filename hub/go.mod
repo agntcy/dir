@@ -2,10 +2,11 @@ module github.com/agntcy/dir/hub
 
 go 1.24.5
 
+// TODO: remove this once we refactor the hub to use the new API
 replace (
-	github.com/agntcy/dir/api => ../api
-	github.com/agntcy/dir/cli => ../cli
-	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/api => github.com/agntcy/dir/api v0.2.6
+	github.com/agntcy/dir/cli => github.com/agntcy/dir/cli v0.2.6
+	github.com/agntcy/dir/client => github.com/agntcy/dir/client v0.2.6
 )
 
 require (
