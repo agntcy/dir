@@ -1,7 +1,7 @@
 class Dirctl < Formula
     desc "Command-line interface for AGNTCY directory"
     homepage "https://github.com/agntcy/dir"
-    version "v0.2.7"
+    version "v0.2.8"
     license "Apache-2.0"
     version_scheme 1
 
@@ -12,7 +12,7 @@ class Dirctl < Formula
     on_macos do
         if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
             url "#{url}/dirctl-darwin-arm64"
-            sha256 "ac8e85dbac0aae8f42a0b1e8d07a7088e5de120d2f4bf7c9a0dc3aea8234e0e1"
+            sha256 "45badcb131dd74280b88acce23012ced5a26201fc6bd26d279401936d39f3c75"
 
             def install
                 bin.install "dirctl-darwin-arm64" => "dirctl"
@@ -24,7 +24,7 @@ class Dirctl < Formula
 
         if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
             url "#{url}/dirctl-darwin-amd64"
-            sha256 "164a5140e5798d2f069eadd793bc8cc119635b8f8405e3d5a4365a811585ce05"
+            sha256 "381f283619a772ec0e71673c977f782f715be9ccea6d67e1d05b8c0a059e033b"
 
             def install
                 bin.install "dirctl-darwin-amd64" => "dirctl"
@@ -38,7 +38,7 @@ class Dirctl < Formula
     on_linux do
         if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
             url "#{url}/dirctl-linux-arm64"
-            sha256 "ff179db901e7c138304731a7593fb710eeef28e8c27a686a42287b7c9529863e"
+            sha256 "d04c2f85ac16579e4bd8b3bf75f454f38f43b5e7a73ed7d889f9b8fc9b2a558f"
 
             def install
                 bin.install "dirctl-linux-arm64" => "dirctl"
@@ -50,7 +50,7 @@ class Dirctl < Formula
 
         if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
             url "#{url}/dirctl-linux-amd64"
-            sha256 "e1d84291bb207def7a09851adecf9dbf4c3f1be0d363f4945d46d61a23548258"
+            sha256 "50b3dedf1adc9ccdcfe14e595dcebba8cf5658d9aaa970beba5e9fb05cb64ac1"
 
             def install
                 bin.install "dirctl-linux-amd64" => "dirctl"
