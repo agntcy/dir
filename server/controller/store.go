@@ -58,12 +58,12 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 		}
 
 		// Validate record and get CID
-		recordCID, err := s.validateAndGetCID(record)
+		_, err = s.validateAndGetCID(record)
 		if err != nil {
 			return err
 		}
 
-		pushedRef, err := s.pushRecordToStore(stream.Context(), record, recordCID)
+		pushedRef, err := s.pushRecordToStore(stream.Context(), record)
 		if err != nil {
 			return err
 		}
@@ -209,14 +209,16 @@ func (s storeCtrl) PushWithOptions(stream storev1.StoreService_PushWithOptionsSe
 			return err
 		}
 
-		pushedRef, err := s.pushRecordToStore(stream.Context(), request.GetRecord(), recordCID)
+		pushedRef, err := s.pushRecordToStore(stream.Context(), request.GetRecord())
 		if err != nil {
 			return err
 		}
 
 		// Handle signature artifact if provided
-		if err := s.pushSignatureToStore(stream.Context(), request.GetOptions().GetSignature(), recordCID); err != nil {
-			return err
+		if request.GetOptions() != nil && request.GetOptions().GetSignature() != nil {
+			if err := s.pushSignatureToStore(stream.Context(), request.GetOptions().GetSignature(), recordCID); err != nil {
+				return err
+			}
 		}
 
 		// Send the response back via stream
@@ -248,7 +250,6 @@ func (s storeCtrl) PullWithOptions(stream storev1.StoreService_PullWithOptionsSe
 		}
 
 		recordRef := request.GetRecordRef()
-		options := request.GetOptions()
 
 		// Validate record reference
 		if err := s.validateRecordRef(recordRef); err != nil {
@@ -262,9 +263,12 @@ func (s storeCtrl) PullWithOptions(stream storev1.StoreService_PullWithOptionsSe
 		}
 
 		// Try to get signature artifact if requested and store supports it
-		signature, err := s.pullSignatureFromStore(stream.Context(), recordRef, options.GetIncludeSignature())
-		if err != nil {
-			return err
+		var signature *signv1.Signature
+		if request.GetOptions() != nil {
+			signature, err = s.pullSignatureFromStore(stream.Context(), recordRef, request.GetOptions().GetIncludeSignature())
+			if err != nil {
+				return err
+			}
 		}
 
 		// Send the response
@@ -317,11 +321,11 @@ func (s storeCtrl) validateAndGetCID(record *corev1.Record) (string, error) {
 }
 
 // pushRecordToStore pushes a record to the store and adds it to the search index.
-func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record, recordCID string) (*corev1.RecordRef, error) {
+func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
 	// Push the record to store
 	pushedRef, err := s.store.Push(ctx, record)
 	if err != nil {
-		storeLogger.Error("Failed to push record to store", "error", err, "cid", recordCID)
+		storeLogger.Error("Failed to push record to store", "error", err)
 
 		return nil, status.Errorf(codes.Internal, "failed to push record to store: %v", err)
 	}
@@ -343,10 +347,6 @@ func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record,
 
 // pushSignatureIfProvided pushes a signature artifact if the store supports it.
 func (s storeCtrl) pushSignatureToStore(ctx context.Context, signature *signv1.Signature, recordCID string) error {
-	if signature == nil {
-		return nil
-	}
-
 	storeLogger.Debug("Processing signature artifact")
 
 	// Check if store supports signature artifacts (OCI store should)
@@ -375,14 +375,6 @@ func (s storeCtrl) validateRecordRef(recordRef *corev1.RecordRef) error {
 
 // pullRecordFromStore pulls a record from the store with validation.
 func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.RecordRef) (*corev1.Record, error) {
-	// Check if record exists
-	_, err := s.store.Lookup(ctx, recordRef)
-	if err != nil {
-		st := status.Convert(err)
-
-		return nil, status.Errorf(st.Code(), "failed to lookup record: %s", st.Message())
-	}
-
 	// Pull record from store
 	record, err := s.store.Pull(ctx, recordRef)
 	if err != nil {

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -20,7 +19,6 @@ import (
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -475,15 +473,9 @@ func (s *store) pushSignatureBlob(ctx context.Context, signature *signv1.Signatu
 		mediaType = SignatureArtifactMediaType
 	}
 
-	blobDesc := ocispec.Descriptor{
-		MediaType: mediaType,
-		Digest:    digest.FromBytes(signatureJSON),
-		Size:      int64(len(signatureJSON)),
-	}
-
 	// Push the signature blob
-	err = s.repo.Push(ctx, blobDesc, strings.NewReader(string(signatureJSON)))
-	if err != nil && !strings.Contains(err.Error(), "already exists") {
+	blobDesc, err := oras.PushBytes(ctx, s.repo, mediaType, signatureJSON)
+	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("failed to push signature blob: %w", err)
 	}
 
