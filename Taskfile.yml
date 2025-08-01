@@ -406,6 +406,12 @@ tasks:
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
 
+      # Deploy SPIFFE for client and server
+      - |
+        helm upgrade --install -n spire-mgmt spire-crds spire-crds --repo https://spiffe.github.io/helm-charts-hardened/ --create-namespace
+        helm upgrade --install -n spire-mgmt spire spire --repo https://spiffe.github.io/helm-charts-hardened/ \
+          -f your-values.yaml
+
       # Deploy server chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
