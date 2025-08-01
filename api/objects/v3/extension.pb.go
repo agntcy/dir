@@ -32,7 +32,6 @@ type Extension struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the extension.
 	// Can be used as a fully qualified name.
-	// For example, "org.agntcy.oasf.schema/features/<feature-name>"
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Version of the extension.
 	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`

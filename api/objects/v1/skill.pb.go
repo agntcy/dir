@@ -25,9 +25,6 @@ const (
 )
 
 // A specific skills that an agent is capable of performing.
-// Specs: https://schema.oasf.agntcy.org/skills.
-//
-// Example (https://schema.oasf.agntcy.org/skills/contextual_comprehension)
 type Skill struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Additional metadata for this skill.

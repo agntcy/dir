@@ -1,29 +1,28 @@
 # Example values for enabling the dirctl search job
 # Copy this to your values.yaml or use it with helm install --values
 
+# Job config
+failedJobsHistoryLimit: 10
+successfulJobsHistoryLimit: 10
+concurrencyPolicy: "Forbid"
+schedule: "* * * * *" # every minute
+
 # Configure the dirctl image (update tag as needed)
 image:
   repository: ghcr.io/agntcy/dir-ctl
   tag: latest
   pullPolicy: IfNotPresent
-
-# Server endpoint - update this to match your dir-apiserver service
-serverEndpoint: "dir-apiserver.default.svc.cluster.local:8888"
-
-# Schedule for the cron job
-schedule: "* * * * *"  # Every minute (CronJob minimum interval)
+  pullSecrets: []
 
 # Search command arguments
 args:
+  - "search"
   - "--limit"
   - "10"
   - "--offset" 
   - "0"
-  # Add more query filters as needed:
-  # - "--query"
-  # - "name=my-agent-name"
-  # - "--query"
-  # - "version=v1.0.0"
+  - "--server-addr"
+  - "dir-apiserver.default.svc.cluster.local:8888"
 
 # Resource configuration
 resources:
@@ -34,9 +33,6 @@ resources:
     cpu: 50m
     memory: 64Mi
 
-# Log level
-logLevel: "INFO"
-
 # Additional environment variables if needed
 env: []
 
@@ -45,3 +41,12 @@ securityContext:
   runAsNonRoot: true
   runAsUser: 65532
   readOnlyRootFilesystem: true
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
