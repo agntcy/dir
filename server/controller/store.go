@@ -17,6 +17,7 @@ import (
 	"github.com/agntcy/dir/server/search/v1alpha1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	ocidigest "github.com/opencontainers/go-digest"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -124,8 +125,16 @@ func (s storeCtrl) Push(stream storetypes.StoreService_PushServer) error {
 		return status.Errorf(codes.InvalidArgument, "agent size exceeds maximum size of %d bytes", maxAgentSize)
 	}
 
+	// Update the ObjectRef size and digest to match the marshalled JSON data
+	updatedRef := &coretypes.ObjectRef{
+		Digest:      ocidigest.FromBytes(agentJSON).String(),
+		Type:        firstMessage.GetRef().GetType(),
+		Size:        uint64(len(agentJSON)),
+		Annotations: firstMessage.GetRef().GetAnnotations(),
+	}
+
 	// Push to underlying store
-	ref, err = s.store.Push(stream.Context(), firstMessage.GetRef(), bytes.NewReader(agentJSON))
+	ref, err = s.store.Push(stream.Context(), updatedRef, bytes.NewReader(agentJSON))
 	if err != nil {
 		st := status.Convert(err)
 
