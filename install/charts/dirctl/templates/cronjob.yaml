@@ -26,7 +26,7 @@ spec:
           {{- end }}
         spec:
           restartPolicy: OnFailure
-          {{- with .Values.imagePullSecrets }}
+          {{- with .Values.image.pullSecrets }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -50,17 +50,9 @@ spec:
             args:
             - "-c"
             - |
-              # Run dirctl search
-              dirctl search {{ range .Values.args }}{{ . }} {{ end }}
+              # Run dirctl command
+              dirctl {{ range .Values.args }}{{ . }} {{ end }}
             env:
-            {{- if .Values.serverEndpoint }}
-            - name: DIR_SERVER_ADDRESS
-              value: {{ .Values.serverEndpoint | quote }}
-            {{- end }}
-            {{- if .Values.logLevel }}
-            - name: LOG_LEVEL
-              value: {{ .Values.logLevel | quote }}
-            {{- end }}
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

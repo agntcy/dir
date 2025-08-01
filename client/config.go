@@ -15,12 +15,6 @@ const (
 	DefaultEnvPrefix = "DIRECTORY_CLIENT"
 
 	DefaultServerAddress = "0.0.0.0:8888"
-
-	// DefaultSocketPath is the default path for the SPIFFE Workload API socket
-	DefaultSpiffeSocketPath = "/tmp/agent.sock"
-
-	// DefaultTrustDomain is the default SPIFFE trust domain for the AuthZ service
-	DefaultSpiffeTrustDomain = "example.com"
 )
 
 var DefaultConfig = Config{
@@ -48,10 +42,10 @@ func LoadConfig() (*Config, error) {
 
 	// SPIFFE Workload API configuration
 	_ = v.BindEnv("spiffe_socket_path")
-	v.SetDefault("spiffe_socket_path", DefaultSpiffeSocketPath)
+	v.SetDefault("spiffe_socket_path", "")
 
 	_ = v.BindEnv("spiffe_trust_domain")
-	v.SetDefault("spiffe_trust_domain", DefaultSpiffeTrustDomain)
+	v.SetDefault("spiffe_trust_domain", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

@@ -104,10 +104,10 @@ func LoadConfig() (*Config, error) {
 	// Authz configuration
 	//
 	_ = v.BindEnv("authz.socket_path")
-	v.SetDefault("authz.socket_path", authz.DefaultSocketPath)
+	v.SetDefault("authz.socket_path", "")
 
 	_ = v.BindEnv("authz.trust_domain")
-	v.SetDefault("authz.trust_domain", authz.DefaultTrustDomain)
+	v.SetDefault("authz.trust_domain", "")
 
 	//
 	// I wanna do some queries
