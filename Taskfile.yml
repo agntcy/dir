@@ -390,10 +390,14 @@ tasks:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
-      # Helm args
+      # Helm args (server)
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      # Helm args (client)
+      HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "default" }}'
+      HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
+      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values.yaml'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -402,7 +406,7 @@ tasks:
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
 
-      # Deploy chart
+      # Deploy server chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
         {{ .HELM_BIN }} upgrade dir \
@@ -410,6 +414,20 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
           --namespace {{ .HELM_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+      # Deploy client chart
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade dir \
+          {{ .HELM_CLIENT_CHART_PATH }} \
+          -f {{ .HELM_CLIENT_VALUES_PATH }} \
+          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
           --create-namespace \
           --install \
           --wait \
