@@ -154,7 +154,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		database:      databaseAPI,
 		syncService:   syncService,
 		healthzServer: healthz.NewHealthServer(cfg.HealthCheckAddress),
-		grpcServer:    grpc.NewServer(),
+		grpcServer:    grpcServer,
 	}, nil
 }
 

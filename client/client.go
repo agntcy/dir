@@ -92,6 +92,8 @@ func New(opts ...Option) (*Client, error) {
 		clientOpts = append(clientOpts, grpc.WithTransportCredentials(
 			grpccredentials.MTLSClientCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
 		))
+	} else {
+		clientOpts = append(clientOpts, grpc.WithInsecure())
 	}
 
 	// Create client
