@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/cmd/delete"
+	hubCmd "github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/network"
@@ -22,6 +23,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/version"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
+	"github.com/agntcy/dir/hub"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +68,7 @@ func init() {
 		list.Command,
 		unpublish.Command,
 		network.Command,
-		// hubCmd.NewCommand(hub.NewHub()), // REMOVED: Hub functionality
+		hubCmd.NewCommand(hub.NewHub()),
 		// search commands
 		search.Command,
 		// sync commands

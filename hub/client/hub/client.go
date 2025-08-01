@@ -14,6 +14,7 @@ import (
 	"io"
 
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
+	corev1Objects "github.com/agntcy/dir/api/objects/v1"
 	"github.com/agntcy/dir/hub/api/v1alpha1"
 	"github.com/opencontainers/go-digest"
 	"google.golang.org/grpc"
@@ -52,7 +53,7 @@ func New(serverAddr string) (*client, error) { //nolint:revive
 
 // PushAgent uploads an agent to the hub in chunks and returns the response or an error.
 func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushAgentResponse, error) {
-	var parsedAgent *corev1alpha1.Agent
+	var parsedAgent *corev1Objects.Agent
 	if err := json.Unmarshal(agent, &parsedAgent); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
 	}

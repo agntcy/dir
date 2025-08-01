@@ -7,6 +7,7 @@ package push
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/agntcy/dir/cli/util/agent"
 	"github.com/agntcy/dir/hub/auth"
@@ -73,7 +74,7 @@ Examples:
 			return fmt.Errorf("failed to get reader: %w", err)
 		}
 
-		agentBytes, err := agent.GetAgentBytes(reader)
+		agentBytes, err := io.ReadAll(reader)
 		if err != nil {
 			return fmt.Errorf("failed to get agent bytes: %w", err)
 		}
