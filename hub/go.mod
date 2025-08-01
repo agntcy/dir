@@ -9,8 +9,8 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.2.8
-	github.com/agntcy/dir/cli v0.2.8
+	github.com/agntcy/dir/api v0.2.9
+	github.com/agntcy/dir/cli v0.2.9
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1

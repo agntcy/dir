@@ -13,10 +13,10 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai v0.7.1
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
 	github.com/BurntSushi/toml v1.4.0
-	github.com/agntcy/dir/api v0.2.8
-	github.com/agntcy/dir/client v0.2.8
-	github.com/agntcy/dir/hub v0.2.8
-	github.com/agntcy/dir/utils v0.2.8
+	github.com/agntcy/dir/api v0.2.9
+	github.com/agntcy/dir/client v0.2.9
+	github.com/agntcy/dir/hub v0.2.9
+	github.com/agntcy/dir/utils v0.2.9
 	github.com/anchore/syft v1.19.0
 	github.com/libp2p/go-libp2p v0.41.1
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
