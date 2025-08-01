@@ -423,7 +423,7 @@ tasks:
       # Deploy client chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dir \
+        {{ .HELM_BIN }} upgrade dirctl \
           {{ .HELM_CLIENT_CHART_PATH }} \
           -f {{ .HELM_CLIENT_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \

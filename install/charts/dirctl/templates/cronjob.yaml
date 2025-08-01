@@ -4,22 +4,22 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "chart.fullname" . }}-search
+  name: {{ include "chart.fullname" . }}-job
   labels:
     {{- include "chart.labels" . | nindent 4 }}
-    app.kubernetes.io/component: search-job
+    app.kubernetes.io/component: {{ include "chart.fullname" . }}-job
 spec:
-  schedule: {{ .Values.schedule }}
+  schedule: {{ .Values.schedule | quote }}
   successfulJobsHistoryLimit: {{ .Values.successfulJobsHistoryLimit }}
   failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit }}
-  concurrencyPolicy: {{ .Values.concurrencyPolicy }}
+  concurrencyPolicy: {{ .Values.concurrencyPolicy | quote }}
   jobTemplate:
     spec:
       template:
         metadata:
           labels:
             {{- include "chart.selectorLabels" . | nindent 12 }}
-            app.kubernetes.io/component: search-job
+            app.kubernetes.io/component: {{ include "chart.fullname" . }}-job
           {{- with .Values.podAnnotations }}
           annotations:
             {{- toYaml . | nindent 12 }}
@@ -38,20 +38,17 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           containers:
-          - name: dirctl-search
+          - name: dirctl
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             {{- with .Values.securityContext }}
             securityContext:
               {{- toYaml . | nindent 14 }}
             {{- end }}
-            command:
-            - "/bin/sh"
             args:
-            - "-c"
-            - |
-              # Run dirctl command
-              dirctl {{ range .Values.args }}{{ . }} {{ end }}
+            {{- range .Values.args }}
+            - {{ . | quote }}
+            {{- end }}
             env:
             {{- with .Values.env }}
             {{- toYaml . | nindent 12 }}
