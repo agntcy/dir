@@ -1,0 +1,149 @@
+apiserver:
+  image:
+    repository: ghcr.io/agntcy/dir-apiserver
+    tag: latest
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+
+  config:
+    # listen_address: "0.0.0.0:8888"
+    # healthcheck_address: "0.0.0.0:8889"
+
+    provider: "oci"
+
+    # OCI-backed store
+    oci:
+      # Path to a local directory that will be to hold data instead of remote.
+      # If this is set to non-empty value, only local store will be used.
+      # local_dir: ""
+
+      # Cache directory to use for metadata.
+      # cache_dir: ""
+
+      # Registry address to connect to
+      registry_address: "dir-zot.default.svc.cluster.local:5000"
+      # All data will be stored under this repo.
+      # Objects are pushed as tags, manifests, and blobs.
+      # repository_name: ""
+
+      # Auth credentials to use.
+      auth_config:
+        insecure: "true"
+        access_token: access-token
+        refresh_token: refresh-token
+
+    # localfs:
+    #   dir: ""
+
+    # Routing settings for the peer-to-peer network.
+    routing: {}
+      # Address to use for routing
+      # listen_address: "/ipv4/0.0.0.0/tcp/5555"
+
+      # Path to private key file for peer ID.
+      # key_path: /tmp/agntcy-dir/node.privkey
+
+      # Nodes to use for bootstrapping of the DHT.
+      # We read initial routing tables here and get introduced
+      # to the network.
+      # bootstrap_peers:
+      #   - /ip4/1.1.1.1/tcp/1
+      #   - /ip4/1.1.1.1/tcp/2
+
+      # Datastore to use for routing persistance.
+      # datastore_dir: ""
+
+    # Authz Spiffe configuration
+    authz:
+      socket_path: unix:/spire-workload-api/spire-agent.sock
+      ## I also need to specify my trust domain here
+      ## because for now this is only the external one
+      trust_domain: b-org.local
+
+  # create PVC for routing/cache data
+  pvc:
+    create: false
+    storageClassName: standard
+    size: 1G
+
+  # service exposes gRPC server api
+  service:
+    type: ClusterIP
+    port: 8888
+
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: false
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+  resources: {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  autoscaling:
+    enabled: false
+    replicaCount: 1
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  extraVolumes:
+    - name: agent
+      csi:
+        driver: a.csi.spiffe.io
+        readOnly: true
+
+  extraVolumeMounts:
+    - name: agent
+      mountPath: /spire-workload-api
+      readOnly: true
+
+  revisionHistoryLimit: 2

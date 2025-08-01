@@ -97,35 +97,43 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Create sync service
 	syncService := sync.New(databaseAPI, storeAPI, options)
 
-	// Create SPIFFE mTLS services
-	x509Src, err := workloadapi.NewX509Source(ctx,
-		workloadapi.WithClientOptions(
-			workloadapi.WithAddr(cfg.Authz.SocketPath),
-			//workloadapi.WithLogger(logger.Std),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch svid: %w", err)
+	// Create server transport options
+	var serverOpts []grpc.ServerOption
+
+	// Create SPIFFE mTLS services if configured
+	if cfg.Authz.SocketPath != "" {
+		x509Src, err := workloadapi.NewX509Source(ctx,
+			workloadapi.WithClientOptions(
+				workloadapi.WithAddr(cfg.Authz.SocketPath),
+				//workloadapi.WithLogger(logger.Std),
+			),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch svid: %w", err)
+		}
+
+		bundleSrc, err := workloadapi.NewBundleSource(ctx,
+			workloadapi.WithClientOptions(
+				workloadapi.WithAddr(cfg.Authz.SocketPath),
+			),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch trust bundle: %w", err)
+		}
+
+		trustDomain, err := spiffeid.TrustDomainFromString(cfg.Authz.TrustDomain)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse trust domain: %w", err)
+		}
+
+		// Add server options for SPIFFE mTLS
+		serverOpts = append(serverOpts, grpc.Creds(
+			grpccredentials.MTLSServerCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
+		))
 	}
 
-	bundleSrc, err := workloadapi.NewBundleSource(ctx,
-		workloadapi.WithClientOptions(
-			workloadapi.WithAddr(cfg.Authz.SocketPath),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch trust bundle: %w", err)
-	}
-
-	trustDomain, err := spiffeid.TrustDomainFromString(cfg.Authz.TrustDomain)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse trust domain: %w", err)
-	}
-
-	// Create a server with credentials that do mTLS and verify that the presented certificate has SPIFFE ID `spiffe://example.org/client`
-	grpcServer := grpc.NewServer(grpc.Creds(
-		grpccredentials.MTLSServerCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
-	))
+	// Create a server
+	grpcServer := grpc.NewServer(serverOpts...)
 
 	// Register APIs
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))

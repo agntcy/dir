@@ -58,41 +58,46 @@ func New(opts ...Option) (*Client, error) {
 		}
 	}
 
-	// create context for SPIFFE
+	// Create context for SPIFFE
 	ctx := context.Background()
 
-	// Create SPIFFE mTLS services
-	x509Src, err := workloadapi.NewX509Source(ctx,
-		workloadapi.WithClientOptions(
-			workloadapi.WithAddr(options.config.SpiffeSocketPath),
-			//workloadapi.WithLogger(logger.Std),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch svid: %w", err)
-	}
+	// Create client transport options
+	var clientOpts []grpc.DialOption
 
-	bundleSrc, err := workloadapi.NewBundleSource(ctx,
-		workloadapi.WithClientOptions(
-			workloadapi.WithAddr(options.config.SpiffeSocketPath),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch trust bundle: %w", err)
-	}
+	// Create SPIFFE mTLS services if configured
+	if options.config.SpiffeSocketPath != "" {
+		x509Src, err := workloadapi.NewX509Source(ctx,
+			workloadapi.WithClientOptions(
+				workloadapi.WithAddr(options.config.SpiffeSocketPath),
+				//workloadapi.WithLogger(logger.Std),
+			),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch svid: %w", err)
+		}
 
-	trustDomain, err := spiffeid.TrustDomainFromString(options.config.SpiffeTrustDomain)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse trust domain: %w", err)
+		bundleSrc, err := workloadapi.NewBundleSource(ctx,
+			workloadapi.WithClientOptions(
+				workloadapi.WithAddr(options.config.SpiffeSocketPath),
+			),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch trust bundle: %w", err)
+		}
+
+		trustDomain, err := spiffeid.TrustDomainFromString(options.config.SpiffeTrustDomain)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse trust domain: %w", err)
+		}
+
+		// Add client options for SPIFFE mTLS
+		clientOpts = append(clientOpts, grpc.WithTransportCredentials(
+			grpccredentials.MTLSClientCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
+		))
 	}
 
 	// Create client
-	client, err := grpc.NewClient(
-		options.config.ServerAddress,
-		grpc.WithTransportCredentials(
-			grpccredentials.MTLSClientCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
-		),
-	)
+	client, err := grpc.NewClient(options.config.ServerAddress, clientOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
