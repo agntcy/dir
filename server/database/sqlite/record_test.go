@@ -412,7 +412,7 @@ func TestGetRecordRefs_CompareWithGetRecords(t *testing.T) {
 	require.Len(t, records, 3)
 
 	// Get record refs using the new method
-	recordRefs, err := db.GetRecordRefs()
+	recordRefs, err := db.GetRecordCIDs()
 	require.NoError(t, err)
 	require.Len(t, recordRefs, 3)
 
@@ -429,7 +429,7 @@ func TestGetRecordRefs_CompareWithGetRecords(t *testing.T) {
 	actualCIDs := make(map[string]bool)
 
 	for _, ref := range recordRefs {
-		cid := ref.GetCid()
+		cid := ref
 		require.NotEmpty(t, cid, "GetRecordRefs should return non-empty CIDs")
 
 		actualCIDs[cid] = true

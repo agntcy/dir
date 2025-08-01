@@ -4,7 +4,6 @@
 package types
 
 import (
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
@@ -20,9 +19,12 @@ type SearchDatabaseAPI interface {
 	// GetRecords retrieves records based on the provided RecordFilters.
 	GetRecords(opts ...FilterOption) ([]Record, error)
 
-	// GetRecordRefs retrieves only record references (CIDs) based on the provided filters.
+	// GetRecordCIDs retrieves only record CIDs based on the provided filters.
 	// This is more efficient than GetRecords when only CIDs are needed.
-	GetRecordRefs(opts ...FilterOption) ([]*corev1.RecordRef, error)
+	GetRecordCIDs(opts ...FilterOption) ([]string, error)
+
+	// RemoveRecord removes a record from the search database by CID.
+	RemoveRecord(cid string) error
 }
 
 type SyncDatabaseAPI interface {

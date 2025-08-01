@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
@@ -249,9 +248,9 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) { //
 	return result, nil
 }
 
-// GetRecordRefs retrieves only record references (CIDs) based on the provided options.
+// GetRecordCIDs retrieves only record CIDs based on the provided options.
 // This is optimized for cases where only CIDs are needed, avoiding expensive joins and preloads.
-func (d *DB) GetRecordRefs(opts ...types.FilterOption) ([]*corev1.RecordRef, error) { //nolint:cyclop
+func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nolint:cyclop
 	// Create default configuration.
 	cfg := &types.RecordFilters{}
 
@@ -330,11 +329,27 @@ func (d *DB) GetRecordRefs(opts ...types.FilterOption) ([]*corev1.RecordRef, err
 		return nil, fmt.Errorf("failed to query record CIDs: %w", err)
 	}
 
-	// Convert CIDs to RecordRef objects.
-	result := make([]*corev1.RecordRef, len(cids))
-	for i, cid := range cids {
-		result[i] = &corev1.RecordRef{Cid: cid}
+	// Return CIDs directly - no need for wrapper objects.
+	return cids, nil
+}
+
+// RemoveRecord removes a record from the search database by CID.
+// Uses CASCADE DELETE to automatically remove related Skills, Locators, and Extensions.
+func (d *DB) RemoveRecord(cid string) error {
+	result := d.gormDB.Where("cid = ?", cid).Delete(&Record{})
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to remove record from search database: %w", result.Error)
 	}
 
-	return result, nil
+	if result.RowsAffected == 0 {
+		// Record not found in search database (might not have been indexed)
+		logger.Debug("No record found in search database", "cid", cid)
+
+		return nil // Not an error - might be a storage-only record
+	}
+
+	logger.Debug("Removed record from search database", "cid", cid, "rows_affected", result.RowsAffected)
+
+	return nil
 }
