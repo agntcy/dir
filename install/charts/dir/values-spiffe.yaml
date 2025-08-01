@@ -1,54 +1,3 @@
-global:
-  openshift: false
-  spire:
-    recommendations:
-      enabled: true
-    namespaces:
-      create: true
-    ingressControllerType: ingress-nginx
-    clusterName: a
-    trustDomain: a-org.local
-    bundleConfigMap: spire-bundle-a
-    caSubject:
-      country: US
-      organization: A
-      commonName: a.local
-
-spire-server:
-  federation:
-    enabled: true
-    ingress:
-      enabled: true
-  controllerManager:
-    identities:
-      clusterSPIFFEIDs:
-        default:
-          federatesWith:
-          - b-org.local
-      clusterFederatedTrustDomains:
-        b:
-          bundleEndpointProfile:
-            endpointSPIFFEID: spiffe://b-org.local/spire/server
-            type: https_spiffe
-          bundleEndpointURL: https://spire-server-federation.b-org.local
-          trustDomain: b-org.local
-
-spiffe-oidc-discovery-provider:
-  enabled: true
-  tls:
-    spire:
-      enabled: false
-  csiDriverName: a.csi.spiffe.io
-  ingress:
-    enabled: true
-
-spire-agent:
-  socketPath: /run/spire/agent-sockets-a/spire-agent.sock
-
-spiffe-csi-driver:
-  pluginName: a.csi.spiffe.io
-  agentSocketPath: /run/spire/agent-sockets-a/spire-agent.sock
-
 apiserver:
   image:
     repository: ghcr.io/agntcy/dir-apiserver
@@ -198,3 +147,57 @@ apiserver:
       readOnly: true
 
   revisionHistoryLimit: 2
+
+######################################################################
+### SPIFFEEEE
+######################################################################
+global:
+  openshift: false
+  spire:
+    recommendations:
+      enabled: true
+    namespaces:
+      create: true
+    ingressControllerType: ingress-nginx
+    clusterName: a
+    trustDomain: a-org.local
+    bundleConfigMap: spire-bundle-a
+    caSubject:
+      country: US
+      organization: A
+      commonName: a.local
+
+spire-server:
+  federation:
+    enabled: true
+    ingress:
+      enabled: true
+  controllerManager:
+    identities:
+      clusterSPIFFEIDs:
+        default:
+          federatesWith:
+          - b-org.local
+      clusterFederatedTrustDomains:
+        b:
+          bundleEndpointProfile:
+            endpointSPIFFEID: spiffe://b-org.local/spire/server
+            type: https_spiffe
+          bundleEndpointURL: https://spire-server-federation.b-org.local
+          trustDomain: b-org.local
+
+spiffe-oidc-discovery-provider:
+  enabled: true
+  tls:
+    spire:
+      enabled: false
+  csiDriverName: a.csi.spiffe.io
+  ingress:
+    enabled: true
+
+spire-agent:
+  socketPath: /run/spire/agent-sockets-a/spire-agent.sock
+
+spiffe-csi-driver:
+  pluginName: a.csi.spiffe.io
+  agentSocketPath: /run/spire/agent-sockets-a/spire-agent.sock
