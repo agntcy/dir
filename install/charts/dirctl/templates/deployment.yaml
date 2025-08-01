@@ -1,0 +1,122 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart.fullname" . }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.autoscaling.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "chart.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          env:
+            - name: DIRECTORY_LOGGER_LOG_LEVEL
+              value: {{ .Values.log_level }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              {{- if .Values.config.listen_address }}
+              containerPort: {{ (split ":" .Values.config.listen_address)._1 }}
+              {{- else }}
+              containerPort: 8888
+              {{- end }}
+              protocol: TCP
+            - name: health
+              {{- if .Values.config.healthcheck_address }}
+              containerPort: {{ (split ":" .Values.config.healthcheck_address)._1 }}
+              {{- else }}
+              containerPort: 8889
+              {{- end }}
+            - name: routing
+              {{- if .Values.config.routing.listen_address }}
+              containerPort: {{ (split "/" .Values.config.routing.listen_address)._4 }}
+              {{- else }}
+              containerPort: 8999
+              {{- end }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: health
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: health
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/agntcy/dir/server.config.yml
+              subPath: server.config.yml
+            {{- if .Values.privKey }}
+            - name: secret-volume
+              mountPath: {{ .Values.config.routing.key_path }}
+              subPath: node.privkey
+              readOnly: true
+            {{- end }}
+            {{- if .Values.pvc.create }}
+            - name: routing-data
+              mountPath: {{ .Values.config.routing.datastore_dir }}
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "chart.fullname" . }}
+        {{- if .Values.privKey }}
+        - name: secret-volume
+          secret:
+            secretName: {{ include "chart.fullname" . }}
+            items:
+              - key: node.privkey
+                path: node.privkey
+        {{- end }}
+        {{- if .Values.pvc.create }}
+        - name: routing-data
+          persistentVolumeClaim:
+            claimName: {{ include "chart.fullname" . }}-pvc
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

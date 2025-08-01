@@ -1,0 +1,20 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+{{- if .Values.config.routing.listen_address }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart.fullname" . }}-routing
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ (split "/" .Values.config.routing.listen_address)._4 }}
+      targetPort: routing
+      protocol: TCP
+      name: routing
+  selector:
+    {{- include "chart.selectorLabels" . | nindent 4 }}
+{{- end }}
