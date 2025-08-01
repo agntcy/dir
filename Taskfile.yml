@@ -408,9 +408,31 @@ tasks:
 
       # Deploy SPIFFE for client and server
       - |
+        # helm upgrade --install ingress-nginx ingress-nginx --repo "https://kubernetes.github.io/ingress-nginx" \
+        #   --namespace ingress-nginx \
+        #   --create-namespace \
+        #   --set controller.extraArgs.enable-ssl-passthrough=,controller.admissionWebhooks.enabled=false,controller.service.type=ClusterIP \
+        #   --set controller.ingressClassResource.default=true \
+        #   --wait
+
+        # kubectl rollout restart -n kube-system deployment/coredns
+        # kubectl rollout status -w --timeout=1m deploy/coredns -n kube-system
+
+        # IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o yaml | yq e .spec.clusterIPs[0] -)
+        # kubectl get configmap -n kube-system coredns -o yaml | grep hosts || kubectl get configmap -n kube-system coredns -o yaml | sed "/ready/a\        hosts {\n           fallthrough\n        }" | kubectl apply -f -
+        # kubectl get configmap -n kube-system coredns -o yaml | grep a-org || kubectl get configmap -n kube-system coredns -o yaml | sed "/hosts/a\           $IP spire-server-federation.a-org.local\n           $IP spire-server-federation.b-org.local\n" | kubectl apply -f -
+
         helm upgrade --install -n spire-mgmt spire-crds spire-crds --repo https://spiffe.github.io/helm-charts-hardened/ --create-namespace
-        helm upgrade --install -n spire-mgmt spire spire --repo https://spiffe.github.io/helm-charts-hardened/ \
-          -f your-values.yaml
+        # kubectl label namespace spire-mgmt pod-security.kubernetes.io/enforce=restricted || true
+
+        helm upgrade --install -n spire-mgmt spire-a spire --repo https://spiffe.github.io/helm-charts-hardened/ -f {{ .HELM_VALUES_PATH }}
+        helm upgrade --install -n spire-mgmt spire-b spire --repo https://spiffe.github.io/helm-charts-hardened/ -f {{ .HELM_CLIENT_VALUES_PATH }}
+
+        kubectl exec -it -n spire-server spire-a-server-0 -c spire-server -- spire-server bundle show -format spiffe | kubectl exec -i -n spire-server spire-b-server-0 -c spire-server -- spire-server bundle set -format spiffe -id spiffe://a-org.local
+        kubectl exec -it -n spire-server spire-b-server-0 -c spire-server -- spire-server bundle show -format spiffe | kubectl exec -i -n spire-server spire-a-server-0 -c spire-server -- spire-server bundle set -format spiffe -id spiffe://b-org.local
+
+        kubectl exec -it -n spire-server spire-b-server-0 -c spire-server -- spire-server bundle list
+        kubectl exec -it -n spire-server spire-a-server-0 -c spire-server -- spire-server bundle list
 
       # Deploy server chart
       - |

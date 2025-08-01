@@ -51,7 +51,7 @@ global:
     recommendations:
       enabled: true
     namespaces:
-      create: true
+      create: false
     ingressControllerType: ingress-nginx
     clusterName: b
     trustDomain: b-org.local
@@ -73,7 +73,7 @@ spire-server:
           federatesWith:
           - a-org.local
       clusterFederatedTrustDomains:
-        b:
+        a:
           bundleEndpointProfile:
             endpointSPIFFEID: spiffe://a-org.local/spire/server
             type: https_spiffe
@@ -90,8 +90,15 @@ spiffe-oidc-discovery-provider:
     enabled: true
 
 spire-agent:
+  healthChecks:
+    port: 9983
+  telemetry:
+    prometheus:
+      port: 9990
   socketPath: /run/spire/agent-sockets-b/spire-agent.sock
 
 spiffe-csi-driver:
+  healthChecks:
+    port: 9811
   pluginName: b.csi.spiffe.io
   agentSocketPath: /run/spire/agent-sockets-b/spire-agent.sock
