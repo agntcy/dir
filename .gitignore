@@ -34,6 +34,3 @@ tmp/
 
 # AI
 .cursor/
-
-# Ignore research docs (temp)
-docs/research/*

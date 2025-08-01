@@ -1,153 +1,47 @@
-# Copyright AGNTCY Contributors (https://github.com/agntcy)
-# SPDX-License-Identifier: Apache-2.0
+# Example values for enabling the dirctl search job
+# Copy this to your values.yaml or use it with helm install --values
 
-# Default values for helm-chart.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-nameOverride: ""
-fullnameOverride: ""
-
-log_level: INFO
-
+# Configure the dirctl image (update tag as needed)
 image:
-  repository: ghcr.io/agntcy/dir-apiserver
+  repository: ghcr.io/agntcy/dir-ctl
   tag: latest
   pullPolicy: IfNotPresent
-  pullSecrets: []
 
-config:
-  # listen_address: "0.0.0.0:8888"
-   # healthcheck_address: "0.0.0.0:8889"
+# Server endpoint - update this to match your dir-apiserver service
+serverEndpoint: "dir-apiserver.default.svc.cluster.local:8888"
 
-  provider: "oci"
+# Schedule for the cron job
+schedule: "* * * * *"  # Every minute (CronJob minimum interval)
 
-  # OCI-backed store
-  oci:
-    # Path to a local directory that will be to hold data instead of remote.
-    # If this is set to non-empty value, only local store will be used.
-    # local_dir: ""
+# Search command arguments
+args:
+  - "--limit"
+  - "10"
+  - "--offset" 
+  - "0"
+  # Add more query filters as needed:
+  # - "--query"
+  # - "name=my-agent-name"
+  # - "--query"
+  # - "version=v1.0.0"
 
-    # Cache directory to use for metadata.
-    # cache_dir: ""
+# Resource configuration
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
 
-    # Registry address to connect to
-    registry_address: "dir-zot.default.svc.cluster.local:5000"
-    # All data will be stored under this repo.
-    # Objects are pushed as tags, manifests, and blobs.
-    # repository_name: ""
+# Log level
+logLevel: "INFO"
 
-    # Auth credentials to use.
-    auth_config:
-      insecure: "true"
-      access_token: access-token
-      refresh_token: refresh-token
+# Additional environment variables if needed
+env: []
 
-  # localfs:
-  #   dir: ""
-
-  # Routing settings for the peer-to-peer network.
-  routing: {}
-    # Address to use for routing
-    # listen_address: "/ipv4/0.0.0.0/tcp/5555"
-
-    # Path to private key file for peer ID.
-    # key_path: /tmp/agntcy-dir/node.privkey
-
-    # Nodes to use for bootstrapping of the DHT.
-    # We read initial routing tables here and get introduced
-    # to the network.
-    # bootstrap_peers:
-    #   - /ip4/1.1.1.1/tcp/1
-    #   - /ip4/1.1.1.1/tcp/2
-
-    # Datastore to use for routing persistance.
-    # datastore_dir: ""
-
-# create PVC for routing/cache data
-pvc:
-  create: false
-  storageClassName: standard
-  size: 1G
-
-# service exposes gRPC server api
-service:
-  type: ClusterIP
-  port: 8888
-
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: false
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
-
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-autoscaling:
-  enabled: false
-  replicaCount: 1
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
-extraVolumes: []
-  # Example:
-  # - name: datastore
-  #   configMap:
-  #     name: my-configmap
-
-extraVolumeMounts: []
-  # Example:
-  # - name: datastore
-  #   mountPath: /etc/datastore
-
-revisionHistoryLimit: 2
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  readOnlyRootFilesystem: true
