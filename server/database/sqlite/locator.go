@@ -4,17 +4,18 @@
 package sqlite
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/agntcy/dir/server/types"
-	"gorm.io/gorm"
 )
 
 type Locator struct {
-	gorm.Model
-	AgentID uint   `gorm:"not null;index"`
-	Type    string `gorm:"not null"`
-	URL     string `gorm:"not null"`
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	RecordCID string `gorm:"column:record_cid;not null;index"`
+	Type      string `gorm:"not null"`
+	URL       string `gorm:"not null"`
 }
 
 func (locator *Locator) GetAnnotations() map[string]string {
@@ -40,18 +41,16 @@ func (locator *Locator) GetDigest() string {
 	return ""
 }
 
-func (d *DB) addLocatorTx(tx *gorm.DB, locator types.Locator, agentID uint) (uint, error) {
-	sqliteLocator := &Locator{
-		AgentID: agentID,
-		Type:    locator.GetType(),
-		URL:     locator.GetURL(),
+// convertLocators transforms interface types to SQLite structs.
+func convertLocators(locators []types.Locator, recordCID string) []Locator {
+	result := make([]Locator, len(locators))
+	for i, locator := range locators {
+		result[i] = Locator{
+			RecordCID: recordCID,
+			Type:      locator.GetType(),
+			URL:       locator.GetURL(),
+		}
 	}
 
-	if err := tx.Create(sqliteLocator).Error; err != nil {
-		return 0, fmt.Errorf("failed to add locator to SQLite database: %w", err)
-	}
-
-	logger.Debug("Added locator to SQLite database", "agent_id", agentID, "locator_id", sqliteLocator.ID)
-
-	return sqliteLocator.ID, nil
+	return result
 }

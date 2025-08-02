@@ -182,6 +182,14 @@ func (s storeCtrl) Delete(stream storev1.StoreService_DeleteServer) error {
 			return status.Errorf(st.Code(), "failed to delete record: %s", st.Message())
 		}
 
+		// Clean up search database (secondary operation - don't fail on errors)
+		if err := s.db.RemoveRecord(recordRef.GetCid()); err != nil {
+			// Log error but don't fail the delete - storage is source of truth
+			storeLogger.Error("Failed to remove record from search index", "error", err, "cid", recordRef.GetCid())
+		} else {
+			storeLogger.Debug("Record removed from search index", "cid", recordRef.GetCid())
+		}
+
 		storeLogger.Info("Record deleted successfully", "cid", recordRef.GetCid())
 	}
 }

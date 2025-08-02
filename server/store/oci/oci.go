@@ -183,20 +183,18 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 		return nil, status.Errorf(codes.Internal, "failed to pack manifest: %v", err)
 	}
 
-	// Step 5: Generate discovery tags for enhanced browsability
-	discoveryTags := generateDiscoveryTags(record, DefaultTagStrategy)
-	logger.Debug("Generated discovery tags", "cid", recordCID, "tags", discoveryTags, "count", len(discoveryTags))
+	// Step 5: Create CID tag for content-addressable storage
+	cidTag := recordCID
+	logger.Debug("Generated CID tag", "cid", recordCID, "tag", cidTag)
 
-	// Step 6: Tag the manifest with multiple tags
+	// Step 6: Tag the manifest with CID tag
 	// => resolve manifest to record which can be looked up (lookup)
-	// tags => allow to pull record directly (pull)
-	// tags => allow listing and filtering tags (list)
-	err = s.pushManifestWithTags(ctx, manifestDesc, discoveryTags)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create discovery tags: %v", err)
+	// => allows pulling record directly (pull)
+	if _, err := oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), cidTag); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create CID tag: %v", err)
 	}
 
-	logger.Info("Record pushed to OCI store successfully", "cid", recordCID, "tags", len(discoveryTags))
+	logger.Info("Record pushed to OCI store successfully", "cid", recordCID, "tag", cidTag)
 
 	// Return record reference
 	return recordRef, nil

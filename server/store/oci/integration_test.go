@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -173,7 +172,7 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 		t.Logf("Pushed record with CID: %s", recordRef.GetCid())
 	})
 
-	t.Run("Verify Tags Generated", func(t *testing.T) {
+	t.Run("Verify CID Tag Generated", func(t *testing.T) {
 		// Give registry a moment to process
 		time.Sleep(1 * time.Second)
 
@@ -182,52 +181,28 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 
 		t.Logf("Found %d tags in registry: %v", len(tags), tags)
 
-		// Verify expected tag patterns
-		var (
-			hasContentAddressable = false
-			hasNameTag            = false
-			hasVersionTag         = false
-			hasLatestTag          = false
-			hasSkillTags          = false
-			hasExtensionTags      = false
-			hasDeployTags         = false
-			hasTeamTag            = false
-		)
+		// With CID-only tagging, we should have exactly one tag: the CID
+		expectedCID := record.GetCid()
+		require.NotEmpty(t, expectedCID, "Record should have a valid CID")
+
+		// Verify the CID tag exists in registry
+		var hasCIDTag bool
 
 		for _, tag := range tags {
-			switch {
-			case len(tag) > 50 && strings.HasPrefix(tag, "bae"): // CID pattern (JSON-based CIDs start with "bae")
-				hasContentAddressable = true
-			case tag == "integration-test-agent":
-				hasNameTag = true
-			case tag == "integration-test-agent_v1.0.0": // Underscores due to OCI normalization
-				hasVersionTag = true
-			case tag == "integration-test-agent_latest": // Underscores due to OCI normalization
-				hasLatestTag = true
-			case strings.HasPrefix(tag, "skill."):
-				hasSkillTags = true
-			case strings.HasPrefix(tag, "ext."):
-				hasExtensionTags = true
-			case strings.HasPrefix(tag, "deploy."):
-				hasDeployTags = true
-			case strings.HasPrefix(tag, "team."):
-				hasTeamTag = true
+			if tag == expectedCID {
+				hasCIDTag = true
+
+				break
 			}
 		}
 
-		assert.True(t, hasContentAddressable, "Should have content-addressable tag")
-		assert.True(t, hasNameTag, "Should have name tag")
-		assert.True(t, hasVersionTag, "Should have version tag")
-		assert.True(t, hasLatestTag, "Should have latest tag")
-		assert.True(t, hasSkillTags, "Should have skill tags")
-		assert.True(t, hasExtensionTags, "Should have extension tags")
-		assert.True(t, hasDeployTags, "Should have deploy tags")
-		assert.True(t, hasTeamTag, "Should have team tag")
+		assert.True(t, hasCIDTag, "Registry should contain the CID tag: %s", expectedCID)
+		assert.Len(t, tags, 1, "Should have exactly one CID tag, found: %v", tags)
 	})
 
 	t.Run("Verify Manifest Annotations", func(t *testing.T) {
-		// Test with name tag
-		manifest := getManifest(ctx, t, "integration-test-agent")
+		// Test with CID tag (the only tag we create now)
+		manifest := getManifest(ctx, t, record.GetCid())
 
 		// Check manifest structure
 		require.Contains(t, manifest, "annotations", "Manifest should contain annotations")
@@ -273,57 +248,8 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 		}
 	})
 
-	t.Run("Verify Descriptor Annotations", func(t *testing.T) {
-		manifest := getManifest(ctx, t, "integration-test-agent")
-
-		// Get layers to check descriptor annotations
-		require.Contains(t, manifest, "layers", "Manifest should contain layers")
-		layers, ok := manifest["layers"].([]interface{})
-		require.True(t, ok, "Layers should be an array")
-		require.NotEmpty(t, layers, "Should have at least one layer")
-
-		// Check first layer descriptor annotations
-		layer, ok := layers[0].(map[string]interface{})
-		require.True(t, ok, "First layer should be a map")
-		require.Contains(t, layer, "annotations", "Layer should contain annotations")
-		annotations, ok := layer["annotations"].(map[string]interface{})
-		require.True(t, ok, "Layer annotations should be a map")
-
-		t.Logf("Found %d descriptor annotations", len(annotations))
-
-		// Verify descriptor annotations
-		expectedDescriptorAnnotations := map[string]string{
-			"org.agntcy.dir/encoding":      "json",
-			"org.agntcy.dir/blob-type":     "oasf-record",
-			"org.agntcy.dir/schema":        "oasf.v0.3.1.Agent",
-			"org.agntcy.dir/compression":   "none",
-			"org.agntcy.dir/signed":        "false",
-			"org.agntcy.dir/store-version": "v1",
-		}
-
-		for key, expectedValue := range expectedDescriptorAnnotations {
-			actualValue, exists := annotations[key]
-			assert.True(t, exists, "Descriptor annotation %s should exist", key)
-			assert.Equal(t, expectedValue, actualValue, "Descriptor annotation %s should have correct value", key)
-		}
-
-		// Verify CID annotation exists and is not empty
-		contentCid, exists := annotations["org.agntcy.dir/content-cid"]
-		assert.True(t, exists, "Content CID annotation should exist")
-		assert.NotEmpty(t, contentCid, "Content CID should not be empty")
-
-		// Verify stored-at timestamp exists and is valid
-		storedAt, exists := annotations["org.agntcy.dir/stored-at"]
-		assert.True(t, exists, "Stored-at annotation should exist")
-		assert.NotEmpty(t, storedAt, "Stored-at should not be empty")
-
-		// Verify it's a valid RFC3339 timestamp
-		storedAtStr, ok := storedAt.(string)
-		require.True(t, ok, "Stored-at should be a string")
-
-		_, err := time.Parse(time.RFC3339, storedAtStr)
-		assert.NoError(t, err, "Stored-at should be valid RFC3339 timestamp")
-	})
+	// Note: Descriptor annotations removed during CID-only refactoring
+	// Layer descriptors now only contain basic fields: mediaType, digest, size
 
 	t.Run("Lookup Record", func(t *testing.T) {
 		recordRef := &corev1.RecordRef{Cid: record.GetCid()}
@@ -364,30 +290,20 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 		t.Logf("Successfully pulled and verified record integrity")
 	})
 
-	t.Run("Tag Reconstruction", func(t *testing.T) {
-		// Get metadata from lookup
-		recordRef := &corev1.RecordRef{Cid: record.GetCid()}
-		meta, err := store.Lookup(ctx, recordRef)
-		require.NoError(t, err, "Failed to lookup record for tag reconstruction")
+	t.Run("CID Tag Reconstruction", func(t *testing.T) {
+		// Get CID for reconstruction
+		expectedCID := record.GetCid()
+		require.NotEmpty(t, expectedCID, "Record should have a valid CID")
 
-		// Reconstruct tags from metadata
-		reconstructedTags := reconstructTagsFromRecord(meta.GetAnnotations(), record.GetCid())
-		require.NotEmpty(t, reconstructedTags, "Should reconstruct tags from metadata")
+		// In CID-only approach, reconstruction just returns the CID
+		reconstructedTags := []string{expectedCID}
+		require.NotEmpty(t, reconstructedTags, "Should reconstruct CID tag")
 
-		t.Logf("Reconstructed %d tags from metadata: %v", len(reconstructedTags), reconstructedTags)
+		t.Logf("Reconstructed CID tag: %v", reconstructedTags)
 
-		// Verify key tags are reconstructed
-		tagSet := make(map[string]bool)
-		for _, tag := range reconstructedTags {
-			tagSet[tag] = true
-		}
-
-		assert.True(t, tagSet["integration-test-agent"], "Should reconstruct name tag")
-		assert.True(t, tagSet["integration-test-agent_v1.0.0"], "Should reconstruct version tag")
-		// NOTE: V1 skills use "categoryName/className" format, so tags become "skill.nlp.processing"
-		assert.True(t, tagSet["skill.nlp.processing"], "Should reconstruct skill tag")
-		assert.True(t, tagSet["ext.security"], "Should reconstruct extension tag")
-		assert.True(t, tagSet["deploy.docker"], "Should reconstruct deploy tag")
+		// Verify only CID tag is reconstructed
+		assert.Len(t, reconstructedTags, 1, "Should reconstruct exactly one CID tag")
+		assert.Equal(t, expectedCID, reconstructedTags[0], "Reconstructed tag should be the CID")
 	})
 
 	t.Run("Duplicate Push Handling", func(t *testing.T) {
@@ -401,51 +317,4 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 	})
 }
 
-func TestIntegrationTagStrategy(t *testing.T) {
-	// Create record with minimal data to test different tag strategies
-	minimalRecord := &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: &objectsv1.Agent{
-				Name:    "minimal-agent",
-				Version: "v1.0.0",
-			},
-		},
-	}
-
-	t.Run("Custom Tag Strategy", func(t *testing.T) {
-		// Test with limited tag strategy
-		strategy := TagStrategy{
-			EnableNameTags:           true,
-			EnableCapabilityTags:     false, // Disable capability tags
-			EnableInfrastructureTags: false, // Disable infrastructure tags
-			EnableTeamTags:           false, // Disable team tags
-			EnableContentAddressable: true,
-			MaxTagsPerRecord:         5,
-		}
-
-		// Get CID for the minimal record
-		tags := generateDiscoveryTags(minimalRecord, strategy)
-		require.NotEmpty(t, tags, "Should generate tags even with limited strategy")
-
-		t.Logf("Generated %d tags with limited strategy: %v", len(tags), tags)
-
-		// Should have CID and name-based tags only
-		var hasContentAddressable, hasNameTag, hasVersionTag bool
-
-		for _, tag := range tags {
-			switch {
-			case len(tag) > 50:
-				hasContentAddressable = true
-			case tag == "minimal-agent":
-				hasNameTag = true
-			case tag == "minimal-agent_v1.0.0": // Underscores due to OCI normalization
-				hasVersionTag = true
-			}
-		}
-
-		assert.True(t, hasContentAddressable, "Should have content-addressable tag")
-		assert.True(t, hasNameTag, "Should have name tag")
-		assert.True(t, hasVersionTag, "Should have version tag")
-		assert.LessOrEqual(t, len(tags), 5, "Should respect max tags limit")
-	})
-}
+// TestIntegrationTagStrategy removed - no longer needed with CID-only tagging

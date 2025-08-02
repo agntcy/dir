@@ -82,77 +82,7 @@ func (s *store) fetchAndParseManifest(ctx context.Context, cid string) (*ocispec
 	return &manifest, &manifestDesc, nil
 }
 
-// findAllTagsForRecord discovers all tags that point to a record's manifest.
-func (s *store) findAllTagsForRecord(ctx context.Context, cid string) ([]string, error) {
-	// Both local and remote stores have the same limitation:
-	// OCI registries typically don't provide reverse lookup (manifest -> tags)
-	// So we reconstruct tags based on record metadata for both cases
-	return s.reconstructTagsFromStoredMetadata(ctx, cid)
-}
-
-// reconstructTagsFromStoredMetadata rebuilds discovery tags from stored metadata in the registry.
-func (s *store) reconstructTagsFromStoredMetadata(ctx context.Context, cid string) ([]string, error) {
-	// Get the record metadata from manifest annotations
-	recordRef := &corev1.RecordRef{Cid: cid}
-
-	recordMeta, err := s.Lookup(ctx, recordRef)
-	if err != nil {
-		internalLogger.Debug("Failed to lookup record for tag reconstruction", "cid", cid, "error", err)
-		// Return at least the CID tag as fallback
-		return []string{cid}, nil
-	}
-
-	// Use the shared function from tags.go to ensure perfect synchronization
-	// This eliminates all duplication and ensures tags match exactly
-	return reconstructTagsFromRecord(recordMeta.GetAnnotations(), cid), nil
-}
-
-// cleanupAllTags removes all discovery tags for a record.
-func (s *store) cleanupAllTags(ctx context.Context, cid string) {
-	// Find all tags that might point to this record
-	allTags, err := s.findAllTagsForRecord(ctx, cid)
-	if err != nil {
-		internalLogger.Debug("Failed to find tags for cleanup", "cid", cid, "error", err)
-		// Continue with at least the CID tag
-		allTags = []string{cid}
-	}
-
-	internalLogger.Debug("Cleaning up discovery tags", "cid", cid, "tags", allTags, "count", len(allTags))
-
-	var cleanupErrors []string
-
-	// Remove all tags based on store type
-	switch store := s.repo.(type) {
-	case *oci.Store:
-		// For local OCI store, use Untag
-		for _, tag := range allTags {
-			if tag == "" {
-				continue
-			}
-
-			if err := store.Untag(ctx, tag); err != nil {
-				internalLogger.Debug("Failed to untag", "tag", tag, "error", err)
-				cleanupErrors = append(cleanupErrors, fmt.Sprintf("untag %s: %v", tag, err))
-			} else {
-				internalLogger.Debug("Successfully removed tag", "tag", tag)
-			}
-		}
-
-	case *remote.Repository:
-		// For remote repositories, tag deletion is often not supported via standard OCI APIs
-		// Many registries require manual cleanup or have registry-specific APIs
-		internalLogger.Debug("Tag cleanup not supported for remote repository", "cid", cid, "tags", allTags)
-
-		cleanupErrors = append(cleanupErrors, "remote tag cleanup not supported - manual cleanup may be required")
-	}
-
-	// Log cleanup summary
-	if len(cleanupErrors) > 0 {
-		internalLogger.Warn("Some tags could not be cleaned up", "cid", cid, "errors", cleanupErrors)
-	} else {
-		internalLogger.Info("All discovery tags cleaned up successfully", "cid", cid, "tag_count", len(allTags))
-	}
-}
+// Tag cleanup functions removed - OCI registry garbage collection handles dangling tags after manifest deletion
 
 // deleteFromOCIStore handles deletion of records from an OCI store.
 func (s *store) deleteFromOCIStore(ctx context.Context, ref *corev1.RecordRef) error {
@@ -167,12 +97,8 @@ func (s *store) deleteFromOCIStore(ctx context.Context, ref *corev1.RecordRef) e
 
 	var errors []string
 
-	// Phase 1: Remove tag references to manifests (best effort)
-	internalLogger.Debug("Phase 1: Cleaning up discovery tags", "cid", cid)
-	s.cleanupAllTags(ctx, cid) // This method already handles errors gracefully
-
-	// Phase 2: Remove manifest references to blobs
-	internalLogger.Debug("Phase 2: Deleting manifest", "cid", cid)
+	// Phase 1: Delete manifest (tags will be cleaned up by OCI GC)
+	internalLogger.Debug("Phase 1: Deleting manifest", "cid", cid)
 
 	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
@@ -188,8 +114,8 @@ func (s *store) deleteFromOCIStore(ctx context.Context, ref *corev1.RecordRef) e
 		}
 	}
 
-	// Phase 3: Remove blob data (local store - we have full control)
-	internalLogger.Debug("Phase 3: Deleting blob data", "cid", cid)
+	// Phase 2: Remove blob data (local store - we have full control)
+	internalLogger.Debug("Phase 2: Deleting blob data", "cid", cid)
 
 	if err := s.deleteBlobForLocalStore(ctx, cid, store); err != nil {
 		internalLogger.Warn("Failed to delete blob", "cid", cid, "error", err)
@@ -242,13 +168,8 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.Reco
 
 	var errors []string
 
-	// Phase 1: Remove tag references to manifests (best effort)
-	// Note: Many remote registries don't support tag deletion via standard OCI API
-	internalLogger.Debug("Phase 1: Attempting tag cleanup (may not be supported)", "cid", cid)
-	s.cleanupAllTags(ctx, cid) // This method already handles errors gracefully and logs warnings
-
-	// Phase 2: Remove manifest references to blobs
-	internalLogger.Debug("Phase 2: Deleting manifest", "cid", cid)
+	// Phase 1: Delete manifest (tags will be cleaned up by OCI GC)
+	internalLogger.Debug("Phase 1: Deleting manifest", "cid", cid)
 
 	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
@@ -263,9 +184,9 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.Reco
 		}
 	}
 
-	// Phase 3: Skip blob deletion for remote registries (best practice)
+	// Phase 2: Skip blob deletion for remote registries (best practice)
 	// Most remote registries handle blob cleanup via garbage collection
-	internalLogger.Debug("Phase 3: Skipping blob deletion (handled by registry GC)", "cid", cid)
+	internalLogger.Debug("Phase 2: Skipping blob deletion (handled by registry GC)", "cid", cid)
 	internalLogger.Info("Blob cleanup skipped for remote registry - will be handled by garbage collection",
 		"cid", cid,
 		"note", "This is the recommended approach for remote registries")

@@ -4,9 +4,15 @@
 package sqlite
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"testing"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	objectsv1 "github.com/agntcy/dir/api/objects/v1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -412,7 +418,7 @@ func TestGetRecordRefs_CompareWithGetRecords(t *testing.T) {
 	require.Len(t, records, 3)
 
 	// Get record refs using the new method
-	recordRefs, err := db.GetRecordRefs()
+	recordRefs, err := db.GetRecordCIDs()
 	require.NoError(t, err)
 	require.Len(t, recordRefs, 3)
 
@@ -429,11 +435,505 @@ func TestGetRecordRefs_CompareWithGetRecords(t *testing.T) {
 	actualCIDs := make(map[string]bool)
 
 	for _, ref := range recordRefs {
-		cid := ref.GetCid()
+		cid := ref
 		require.NotEmpty(t, cid, "GetRecordRefs should return non-empty CIDs")
 
 		actualCIDs[cid] = true
 	}
 
 	assert.Equal(t, expectedCIDs, actualCIDs, "GetRecordRefs should return the same CIDs as GetRecords")
+}
+
+// TestAddRecord_VerifyRelatedDataInsertion tests that AddRecord properly inserts all related data.
+func TestAddRecord_VerifyRelatedDataInsertion(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create a test record similar to the E2E agent
+	testRecord := &TestRecord{
+		cid: "test-cid-123",
+		data: &TestRecordData{
+			name:    "test-agent",
+			version: "1.0.0",
+			skills: []types.Skill{
+				&TestSkill{id: 10201, name: "Natural Language Processing/Text Completion"},
+			},
+			locators: []types.Locator{
+				&TestLocator{locType: "docker-image", url: "https://example.com/test"},
+			},
+			extensions: []types.Extension{
+				&TestExtension{name: "test-extension", version: "1.0.0"},
+			},
+		},
+	}
+
+	// Add the record
+	err := db.AddRecord(testRecord)
+	require.NoError(t, err, "AddRecord should succeed")
+
+	// Verify the record can be found by search
+	cids, err := db.GetRecordCIDs(types.WithName("test-agent"))
+	require.NoError(t, err, "Search should succeed")
+	require.Len(t, cids, 1, "Should find exactly 1 record")
+	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID")
+
+	// Verify skill-based search works
+	cids, err = db.GetRecordCIDs(types.WithSkillNames("Natural Language Processing/Text Completion"))
+	require.NoError(t, err, "Skill search should succeed")
+	require.Len(t, cids, 1, "Should find record by skill name")
+	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by skill")
+
+	// Verify locator-based search works
+	cids, err = db.GetRecordCIDs(types.WithLocatorTypes("docker-image"))
+	require.NoError(t, err, "Locator search should succeed")
+	require.Len(t, cids, 1, "Should find record by locator type")
+	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by locator")
+
+	// Verify extension-based search works
+	cids, err = db.GetRecordCIDs(types.WithExtensionNames("test-extension"))
+	require.NoError(t, err, "Extension search should succeed")
+	require.Len(t, cids, 1, "Should find record by extension name")
+	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by extension")
+
+	t.Logf("✅ AddRecord properly inserted all related data")
+}
+
+// TestRemoveRecord_VerifyRelatedDataDeletion tests that RemoveRecord deletes all related data.
+func TestRemoveRecord_VerifyRelatedDataDeletion(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create and add a test record
+	testRecord := &TestRecord{
+		cid: "test-cid-456",
+		data: &TestRecordData{
+			name:    "delete-test-agent",
+			version: "1.0.0",
+			skills: []types.Skill{
+				&TestSkill{id: 10202, name: "Test Skill"},
+			},
+			locators: []types.Locator{
+				&TestLocator{locType: "grpc", url: "localhost:9090"},
+			},
+			extensions: []types.Extension{
+				&TestExtension{name: "delete-extension", version: "2.0.0"},
+			},
+		},
+	}
+
+	err := db.AddRecord(testRecord)
+	require.NoError(t, err, "AddRecord should succeed")
+
+	// Verify the record exists
+	cids, err := db.GetRecordCIDs(types.WithName("delete-test-agent"))
+	require.NoError(t, err, "Search should succeed")
+	require.Len(t, cids, 1, "Should find the record before deletion")
+
+	// Delete the record
+	err = db.RemoveRecord("test-cid-456")
+	require.NoError(t, err, "RemoveRecord should succeed")
+
+	// Verify the record is gone from all searches
+	cids, err = db.GetRecordCIDs(types.WithName("delete-test-agent"))
+	require.NoError(t, err, "Search should succeed even after deletion")
+	assert.Empty(t, cids, "Should not find record by name after deletion")
+
+	cids, err = db.GetRecordCIDs(types.WithSkillNames("Test Skill"))
+	require.NoError(t, err, "Skill search should succeed even after deletion")
+	assert.Empty(t, cids, "Should not find record by skill after deletion")
+
+	cids, err = db.GetRecordCIDs(types.WithLocatorTypes("grpc"))
+	require.NoError(t, err, "Locator search should succeed even after deletion")
+	assert.Empty(t, cids, "Should not find record by locator after deletion")
+
+	cids, err = db.GetRecordCIDs(types.WithExtensionNames("delete-extension"))
+	require.NoError(t, err, "Extension search should succeed even after deletion")
+	assert.Empty(t, cids, "Should not find record by extension after deletion")
+
+	t.Logf("✅ RemoveRecord properly deleted all related data")
+}
+
+// TestE2EScenario_AddSearchDeleteSearch tests the exact E2E flow that's failing.
+func TestE2EScenario_AddSearchDeleteSearch(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create the exact record structure from E2E test
+	e2eRecord := &TestRecord{
+		cid: "test-e2e-cid",
+		data: &TestRecordData{
+			name:    "directory.agntcy.org/cisco/marketing-strategy",
+			version: "v1.0.0",
+			skills: []types.Skill{
+				&TestSkill{id: 10201, name: "Natural Language Processing/Text Completion"},
+			},
+			locators: []types.Locator{
+				&TestLocator{locType: "docker-image", url: "https://ghcr.io/agntcy/marketing-strategy"},
+			},
+			extensions: []types.Extension{
+				&TestExtension{name: "schema.oasf.agntcy.org/features/runtime/framework", version: "v0.0.0"},
+			},
+		},
+	}
+
+	// Step 1: Push agent (AddRecord)
+	err := db.AddRecord(e2eRecord)
+	require.NoError(t, err, "Initial AddRecord should succeed")
+	t.Logf("✅ Step 1: Agent pushed successfully")
+
+	// Step 2: Search for agent with exact E2E criteria (should find it)
+	searchFilters := []types.FilterOption{
+		types.WithName("directory.agntcy.org/cisco/marketing-strategy"),
+		types.WithVersion("v1.0.0"),
+		types.WithSkillIDs(10201),
+		types.WithSkillNames("Natural Language Processing/Text Completion"),
+		types.WithLocatorTypes("docker-image"),
+		types.WithExtensionNames("schema.oasf.agntcy.org/features/runtime/framework"),
+	}
+
+	cids, err := db.GetRecordCIDs(searchFilters...)
+	require.NoError(t, err, "Search should succeed")
+	require.Len(t, cids, 1, "Should find exactly 1 record")
+	assert.Equal(t, "test-e2e-cid", cids[0], "Should find the correct CID")
+	t.Logf("✅ Step 2: Search found agent successfully: %s", cids[0])
+
+	// Step 3: Delete agent (RemoveRecord)
+	err = db.RemoveRecord("test-e2e-cid")
+	require.NoError(t, err, "RemoveRecord should succeed")
+	t.Logf("✅ Step 3: Agent deleted successfully")
+
+	// Step 4: Search again (should NOT find it)
+	cids, err = db.GetRecordCIDs(searchFilters...)
+	require.NoError(t, err, "Search should succeed even after deletion")
+	assert.Empty(t, cids, "Should NOT find any records after deletion")
+	t.Logf("✅ Step 4: Search correctly returns empty after deletion")
+
+	// Step 5: Verify individual search criteria also return empty
+	individualTests := []struct {
+		name   string
+		filter types.FilterOption
+	}{
+		{"name", types.WithName("directory.agntcy.org/cisco/marketing-strategy")},
+		{"version", types.WithVersion("v1.0.0")},
+		{"skill-id", types.WithSkillIDs(10201)},
+		{"skill-name", types.WithSkillNames("Natural Language Processing/Text Completion")},
+		{"locator", types.WithLocatorTypes("docker-image")},
+		{"extension", types.WithExtensionNames("schema.oasf.agntcy.org/features/runtime/framework")},
+	}
+
+	for _, test := range individualTests {
+		cids, err := db.GetRecordCIDs(test.filter)
+		require.NoError(t, err, "Individual search should succeed")
+		assert.Empty(t, cids, "Should not find record by %s after deletion", test.name)
+	}
+
+	t.Logf("✅ Step 5: All individual search criteria correctly return empty")
+}
+
+// TestDuplicateAddRecord_VerifyIdempotency tests adding the same record twice.
+func TestDuplicateAddRecord_VerifyIdempotency(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create a test record
+	testRecord := &TestRecord{
+		cid: "duplicate-cid-789",
+		data: &TestRecordData{
+			name:    "duplicate-agent",
+			version: "1.0.0",
+			skills: []types.Skill{
+				&TestSkill{id: 10203, name: "Duplicate Skill"},
+			},
+			locators: []types.Locator{
+				&TestLocator{locType: "http", url: "http://duplicate.example.com"},
+			},
+			extensions: []types.Extension{
+				&TestExtension{name: "duplicate-extension", version: "1.0.0"},
+			},
+		},
+	}
+
+	// Add the record first time
+	err := db.AddRecord(testRecord)
+	require.NoError(t, err, "First AddRecord should succeed")
+
+	// Verify it can be found
+	cids, err := db.GetRecordCIDs(types.WithName("duplicate-agent"))
+	require.NoError(t, err, "Search should succeed")
+	require.Len(t, cids, 1, "Should find exactly 1 record after first add")
+
+	// Add the same record again (this tests our "insert if not exists" logic)
+	err = db.AddRecord(testRecord)
+	require.NoError(t, err, "Second AddRecord should also succeed (idempotent)")
+
+	// Verify it can still be found and there's only one
+	cids, err = db.GetRecordCIDs(types.WithName("duplicate-agent"))
+	require.NoError(t, err, "Search should succeed after duplicate add")
+	require.Len(t, cids, 1, "Should still find exactly 1 record after duplicate add")
+	assert.Equal(t, "duplicate-cid-789", cids[0], "Should find the correct CID")
+
+	// Verify search by skills still works
+	cids, err = db.GetRecordCIDs(types.WithSkillNames("Duplicate Skill"))
+	require.NoError(t, err, "Skill search should succeed after duplicate add")
+	require.Len(t, cids, 1, "Should find exactly 1 record by skill after duplicate add")
+
+	t.Logf("✅ Duplicate AddRecord is properly idempotent")
+}
+
+// TestAllOASFVersions_SkillHandling tests that all OASF versions (V1, V2, V3) handle skills correctly.
+func TestAllOASFVersions_SkillHandling(t *testing.T) {
+	testCases := []struct {
+		name            string
+		agentJSON       string
+		schemaVersion   string
+		expectedSkill   string
+		expectedSkillID uint64
+	}{
+		{
+			name: "V1_Agent_CategoryClassFormat",
+			agentJSON: `{
+				"name": "test-v1-agent",
+				"version": "1.0.0",
+				"schema_version": "v0.3.1",
+				"skills": [
+					{
+						"category_name": "Natural Language Processing",
+						"category_uid": 1,
+						"class_name": "Text Completion",
+						"class_uid": 10201
+					}
+				]
+			}`,
+			schemaVersion:   "v0.3.1",
+			expectedSkill:   "Natural Language Processing/Text Completion",
+			expectedSkillID: 10201,
+		},
+		{
+			name: "V2_AgentRecord_SimpleNameFormat",
+			agentJSON: `{
+				"name": "test-v2-agent",
+				"version": "1.0.0",
+				"schema_version": "v0.4.0",
+				"skills": [
+					{
+						"name": "Machine Learning/Classification",
+						"id": 20301
+					}
+				]
+			}`,
+			schemaVersion:   "v0.4.0",
+			expectedSkill:   "Machine Learning/Classification",
+			expectedSkillID: 20301,
+		},
+		{
+			name: "V3_Record_SimpleNameFormat",
+			agentJSON: `{
+				"name": "test-v3-agent",
+				"version": "1.0.0",
+				"schema_version": "v0.5.0",
+				"skills": [
+					{
+						"name": "Data Analysis",
+						"id": 30401
+					}
+				]
+			}`,
+			schemaVersion:   "v0.5.0",
+			expectedSkill:   "Data Analysis",
+			expectedSkillID: 30401,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupTestDB(t)
+
+			// Load the JSON using the same path as E2E tests
+			record, err := corev1.LoadOASFFromReader(bytes.NewReader([]byte(tc.agentJSON)))
+			require.NoError(t, err, "LoadOASFFromReader should succeed for %s", tc.schemaVersion)
+
+			// Verify it loaded the correct version
+			switch tc.schemaVersion {
+			case "v0.3.1":
+				_, ok := record.GetData().(*corev1.Record_V1)
+				require.True(t, ok, "Should load as V1 for schema_version v0.3.1")
+			case "v0.4.0":
+				_, ok := record.GetData().(*corev1.Record_V2)
+				require.True(t, ok, "Should load as V2 for schema_version v0.4.0")
+			case "v0.5.0":
+				_, ok := record.GetData().(*corev1.Record_V3)
+				require.True(t, ok, "Should load as V3 for schema_version v0.5.0")
+			}
+
+			// Create RecordAdapter and test skill extraction
+			recordAdapter := adapters.NewRecordAdapter(record)
+			recordData := recordAdapter.GetRecordData()
+			require.NotNil(t, recordData, "RecordData should not be nil")
+
+			skills := recordData.GetSkills()
+			require.Len(t, skills, 1, "Should have exactly 1 skill")
+
+			skill := skills[0]
+			assert.Equal(t, tc.expectedSkill, skill.GetName(), "Skill name should match for %s", tc.schemaVersion)
+			assert.Equal(t, tc.expectedSkillID, skill.GetID(), "Skill ID should match for %s", tc.schemaVersion)
+
+			t.Logf("✅ %s: Skill name='%s', ID=%d", tc.schemaVersion, skill.GetName(), skill.GetID())
+
+			// Test the complete database flow
+			err = db.AddRecord(recordAdapter)
+			require.NoError(t, err, "AddRecord should succeed for %s", tc.schemaVersion)
+
+			// Search by skill name
+			cids, err := db.GetRecordCIDs(types.WithSkillNames(tc.expectedSkill))
+			require.NoError(t, err, "Skill search should succeed for %s", tc.schemaVersion)
+			require.Len(t, cids, 1, "Should find record by skill name for %s", tc.schemaVersion)
+
+			// Search by skill ID
+			cids, err = db.GetRecordCIDs(types.WithSkillIDs(tc.expectedSkillID))
+			require.NoError(t, err, "Skill ID search should succeed for %s", tc.schemaVersion)
+			require.Len(t, cids, 1, "Should find record by skill ID for %s", tc.schemaVersion)
+
+			t.Logf("✅ %s: Database search works correctly", tc.schemaVersion)
+		})
+	}
+}
+
+// TestV1SkillFormats_EdgeCases tests V1 skill edge cases (category only, empty class, etc).
+func TestV1SkillFormats_EdgeCases(t *testing.T) {
+	testCases := []struct {
+		name         string
+		skillJSON    string
+		expectedName string
+		expectedID   uint64
+	}{
+		{
+			name: "CategoryOnly_NoClass",
+			skillJSON: `{
+				"category_name": "General AI",
+				"category_uid": 1,
+				"class_uid": 10001
+			}`,
+			expectedName: "General AI",
+			expectedID:   10001,
+		},
+		{
+			name: "EmptyClassName",
+			skillJSON: `{
+				"category_name": "Machine Learning",
+				"category_uid": 2,
+				"class_name": "",
+				"class_uid": 20001
+			}`,
+			expectedName: "Machine Learning",
+			expectedID:   20001,
+		},
+		{
+			name: "BothCategoryAndClass",
+			skillJSON: `{
+				"category_name": "Natural Language Processing",
+				"category_uid": 1,
+				"class_name": "Text Generation",
+				"class_uid": 10301
+			}`,
+			expectedName: "Natural Language Processing/Text Generation",
+			expectedID:   10301,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a full V1 agent with the test skill
+			agentJSON := fmt.Sprintf(`{
+				"name": "test-agent-%s",
+				"version": "1.0.0",
+				"schema_version": "v0.3.1",
+				"skills": [%s]
+			}`, tc.name, tc.skillJSON)
+
+			// Test parsing
+			var agent objectsv1.Agent
+			err := json.Unmarshal([]byte(agentJSON), &agent)
+			require.NoError(t, err, "JSON unmarshal should succeed")
+
+			skills := agent.GetSkills()
+			require.Len(t, skills, 1, "Should have 1 skill")
+
+			skill := skills[0]
+			assert.Equal(t, tc.expectedName, skill.GetName(), "Skill name should match")
+			assert.Equal(t, tc.expectedID, skill.GetID(), "Skill ID should match")
+
+			t.Logf("✅ %s: name='%s', ID=%d", tc.name, skill.GetName(), skill.GetID())
+		})
+	}
+}
+
+// TestSkillSearchCompatibility_AcrossVersions tests that all versions can be searched consistently.
+func TestSkillSearchCompatibility_AcrossVersions(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Add agents with the same logical skill across different versions
+	agentJSONs := []string{
+		// V1 format
+		`{
+			"name": "v1-agent",
+			"version": "1.0.0", 
+			"schema_version": "v0.3.1",
+			"skills": [
+				{
+					"category_name": "Text Processing",
+					"category_uid": 1,
+					"class_name": "Summarization",
+					"class_uid": 12345
+				}
+			]
+		}`,
+		// V2 format (simple name/id format)
+		`{
+			"name": "v2-agent",
+			"version": "1.0.0",
+			"schema_version": "v0.4.0", 
+			"skills": [
+				{
+					"name": "Text Processing/Summarization",
+					"id": 12345
+				}
+			]
+		}`,
+		// V3 format (simple name)
+		`{
+			"name": "v3-agent",
+			"version": "1.0.0",
+			"schema_version": "v0.5.0",
+			"skills": [
+				{
+					"name": "Text Processing/Summarization",
+					"id": 12345
+				}
+			]
+		}`,
+	}
+
+	addedCIDs := make([]string, 0, len(agentJSONs))
+
+	// Add all agents
+	for i, agentJSON := range agentJSONs {
+		record, err := corev1.LoadOASFFromReader(bytes.NewReader([]byte(agentJSON)))
+		require.NoError(t, err, "Should load agent %d", i+1)
+
+		recordAdapter := adapters.NewRecordAdapter(record)
+		err = db.AddRecord(recordAdapter)
+		require.NoError(t, err, "Should add agent %d", i+1)
+
+		addedCIDs = append(addedCIDs, recordAdapter.GetCid())
+	}
+
+	// Search by skill name - should find V1 and V2 agents (both use category/class format)
+	cids, err := db.GetRecordCIDs(types.WithSkillNames("Text Processing/Summarization"))
+	require.NoError(t, err, "Should search by combined skill name")
+	assert.Len(t, cids, 3, "Should find all 3 agents with the same logical skill")
+
+	// Search by skill ID - should find all agents (same ID across versions)
+	cids, err = db.GetRecordCIDs(types.WithSkillIDs(12345))
+	require.NoError(t, err, "Should search by skill ID")
+	assert.Len(t, cids, 3, "Should find all 3 agents with the same skill ID")
+
+	t.Logf("✅ Cross-version skill search compatibility verified")
+	t.Logf("   Added CIDs: %v", addedCIDs)
+	t.Logf("   Found by name: %d agents", len(cids))
 }

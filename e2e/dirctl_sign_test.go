@@ -114,6 +114,26 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			// Verify key files were created
 			gomega.Expect(paths.privateKey).To(gomega.BeAnExistingFile())
 			gomega.Expect(paths.publicKey).To(gomega.BeAnExistingFile())
+
+			// Create signature ONCE for all tests to ensure consistency
+			// (Signatures are non-deterministic, so we need the same instance for push/pull)
+			err = os.Setenv("COSIGN_PASSWORD", testPassword)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			output, err := executeCommand([]string{
+				"sign",
+				paths.record,
+				"--key", paths.privateKey,
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(output).NotTo(gomega.BeEmpty())
+
+			// Save signature for all tests
+			signatureData = output
+			err = os.WriteFile(paths.signature, []byte(signatureData), 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			os.Unsetenv("COSIGN_PASSWORD")
 		})
 
 		// Cleanup: Remove temporary directory after all workflow tests
@@ -131,23 +151,16 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		})
 
 		ginkgo.It("should sign a record with a key pair", func() {
-			// Set environment variable for password
-			err := os.Setenv("COSIGN_PASSWORD", testPassword)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			defer os.Unsetenv("COSIGN_PASSWORD")
+			// Signature was already created in BeforeAll, just verify it exists and is valid
+			gomega.Expect(signatureData).NotTo(gomega.BeEmpty(), "Signature should have been created in BeforeAll")
+			gomega.Expect(paths.signature).To(gomega.BeAnExistingFile(), "Signature file should exist")
 
-			output, err := executeCommand([]string{
-				"sign",
-				paths.record,
-				"--key", paths.privateKey,
-			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(output).NotTo(gomega.BeEmpty())
-
-			// Save signature output to file
-			signatureData = output
-			err = os.WriteFile(paths.signature, []byte(signatureData), 0o600)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			// Verify the signature can be parsed as valid JSON
+			var signature signv1.Signature
+			err := json.Unmarshal([]byte(signatureData), &signature)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Signature should be valid JSON")
+			gomega.Expect(signature.GetAlgorithm()).NotTo(gomega.BeEmpty(), "Signature should have an algorithm")
+			gomega.Expect(signature.GetSignature()).NotTo(gomega.BeEmpty(), "Signature should have signature data")
 		})
 
 		ginkgo.It("should push a record to the store with a signature", func() {
@@ -198,6 +211,18 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			// Verify success message
 			gomega.Expect(output).To(gomega.ContainSubstring("Record signature verified successfully!"))
 		})
+
+		ginkgo.It("should clean up by deleting the record from store", func() {
+			// Delete the record to ensure clean state for subsequent test runs
+			gomega.Expect(tempAgentCID).NotTo(gomega.BeEmpty(), "Agent CID should be available for deletion")
+
+			output, err := executeCommand([]string{
+				"delete",
+				tempAgentCID,
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(output).To(gomega.MatchRegexp("(?i)deleted"), "Delete operation should confirm deletion")
+		})
 	})
 })
 
@@ -214,8 +239,7 @@ func extractSignatureFromCombinedOutput(combinedOutput string) string {
 }
 
 // compareSignatures compares two signature JSON strings for equality.
-//
-//nolint:govet
+// Compares individual fields to avoid protobuf mutex copying issues.
 func compareSignatures(expected, actual string) {
 	var expectedSignature, actualSignature signv1.Signature
 
@@ -225,5 +249,15 @@ func compareSignatures(expected, actual string) {
 	err = json.Unmarshal([]byte(actual), &actualSignature)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to unmarshal actual signature")
 
-	gomega.Expect(actualSignature).To(gomega.Equal(expectedSignature), "Signatures should match")
+	// Compare individual fields to avoid protobuf lock copying
+	// Note: SignedAt is skipped because it uses time.Now() and changes between test runs
+	gomega.Expect(actualSignature.GetAlgorithm()).To(gomega.Equal(expectedSignature.GetAlgorithm()), "Algorithm should match")
+	gomega.Expect(actualSignature.GetSignature()).To(gomega.Equal(expectedSignature.GetSignature()), "Signature should match")
+	gomega.Expect(actualSignature.GetCertificate()).To(gomega.Equal(expectedSignature.GetCertificate()), "Certificate should match")
+	gomega.Expect(actualSignature.GetContentType()).To(gomega.Equal(expectedSignature.GetContentType()), "ContentType should match")
+	gomega.Expect(actualSignature.GetContentBundle()).To(gomega.Equal(expectedSignature.GetContentBundle()), "ContentBundle should match")
+
+	// Verify SignedAt is present and valid, but don't require exact match
+	gomega.Expect(actualSignature.GetSignedAt()).NotTo(gomega.BeEmpty(), "SignedAt should be present")
+	gomega.Expect(expectedSignature.GetSignedAt()).NotTo(gomega.BeEmpty(), "Expected SignedAt should be present")
 }

@@ -4,17 +4,18 @@
 package sqlite
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/agntcy/dir/server/types"
-	"gorm.io/gorm"
 )
 
 type Skill struct {
-	gorm.Model
-	AgentID uint   `gorm:"not null;index"`
-	SkillID uint64 `gorm:"not null"`
-	Name    string `gorm:"not null"`
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	RecordCID string `gorm:"column:record_cid;not null;index"`
+	SkillID   uint64 `gorm:"not null"`
+	Name      string `gorm:"not null"`
 }
 
 func (skill *Skill) GetAnnotations() map[string]string {
@@ -30,18 +31,16 @@ func (skill *Skill) GetName() string {
 	return skill.Name
 }
 
-func (d *DB) addSkillTx(tx *gorm.DB, skill types.Skill, agentID uint) (uint, error) {
-	sqliteSkill := &Skill{
-		AgentID: agentID,
-		SkillID: skill.GetID(),
-		Name:    skill.GetName(),
+// convertSkills transforms interface types to SQLite structs.
+func convertSkills(skills []types.Skill, recordCID string) []Skill {
+	result := make([]Skill, len(skills))
+	for i, skill := range skills {
+		result[i] = Skill{
+			RecordCID: recordCID,
+			SkillID:   skill.GetID(),
+			Name:      skill.GetName(),
+		}
 	}
 
-	if err := tx.Create(sqliteSkill).Error; err != nil {
-		return 0, fmt.Errorf("failed to add skill to SQLite database: %w", err)
-	}
-
-	logger.Debug("Added skill to SQLite database", "agent_id", agentID, "skill_id", sqliteSkill.ID)
-
-	return sqliteSkill.ID, nil
+	return result
 }
