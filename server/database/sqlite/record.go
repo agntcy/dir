@@ -13,21 +13,20 @@ import (
 )
 
 type Record struct {
-	ID        uint `gorm:"primarykey"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	RecordCID string `gorm:"column:record_cid;primarykey;not null"`
 	Name      string `gorm:"not null"`
 	Version   string `gorm:"not null"`
-	CID       string `gorm:"column:c_id;unique;not null"`
 
-	Skills     []Skill     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
-	Locators   []Locator   `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
-	Extensions []Extension `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
+	Skills     []Skill     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Locators   []Locator   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Extensions []Extension `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 // Implement central Record interface.
 func (r *Record) GetCid() string {
-	return r.CID
+	return r.RecordCID
 }
 
 func (r *Record) GetRecordData() types.RecordData {
@@ -108,74 +107,43 @@ func (r *RecordDataAdapter) GetPreviousRecordCid() string {
 	return ""
 }
 
-func (d *DB) addRecordTx(tx *gorm.DB, record types.Record) (uint, error) {
+func (d *DB) AddRecord(record types.Record) error {
 	recordData := record.GetRecordData()
 	cid := record.GetCid()
 
 	// Check if record already exists
 	var existingRecord Record
 
-	err := tx.Where("c_id = ?", cid).First(&existingRecord).Error
+	err := d.gormDB.Where("record_cid = ?", cid).First(&existingRecord).Error
 	if err == nil {
-		// Record exists, return existing ID
-		logger.Debug("Record already exists in search database, skipping insert", "record_id", existingRecord.ID, "cid", cid)
+		// Record exists, skip insert
+		logger.Debug("Record already exists in search database, skipping insert", "record_cid", existingRecord.RecordCID, "cid", cid)
 
-		return existingRecord.ID, nil
+		return nil
 	}
 
 	// If error is not "record not found", return the error
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, fmt.Errorf("failed to check existing record: %w", err)
+		return fmt.Errorf("failed to check existing record: %w", err)
 	}
 
-	// Record doesn't exist, create new one
+	// Build complete Record with all associations
 	sqliteRecord := &Record{
-		Name:    recordData.GetName(),
-		Version: recordData.GetVersion(),
-		CID:     cid,
+		RecordCID:  cid,
+		Name:       recordData.GetName(),
+		Version:    recordData.GetVersion(),
+		Skills:     convertSkills(recordData.GetSkills(), cid),
+		Locators:   convertLocators(recordData.GetLocators(), cid),
+		Extensions: convertExtensions(recordData.GetExtensions(), cid),
 	}
 
-	if err := tx.Create(sqliteRecord).Error; err != nil {
-		return 0, fmt.Errorf("failed to add record to SQLite database: %w", err)
+	// Let GORM handle the entire creation with associations
+	if err := d.gormDB.Create(sqliteRecord).Error; err != nil {
+		return fmt.Errorf("failed to add record to SQLite database: %w", err)
 	}
 
-	logger.Debug("Added new record to SQLite database", "record_id", sqliteRecord.ID, "cid", cid)
-
-	return sqliteRecord.ID, nil
-}
-
-func (d *DB) AddRecord(record types.Record) error {
-	err := d.gormDB.Transaction(func(tx *gorm.DB) error {
-		id, err := d.addRecordTx(tx, record)
-		if err != nil {
-			return fmt.Errorf("failed to add record to search index: %w", err)
-		}
-
-		recordData := record.GetRecordData()
-
-		for _, extension := range recordData.GetExtensions() {
-			if _, err = d.addExtensionTx(tx, extension, id); err != nil {
-				return fmt.Errorf("failed to add extension to search index: %w", err)
-			}
-		}
-
-		for _, locator := range recordData.GetLocators() {
-			if _, err = d.addLocatorTx(tx, locator, id); err != nil {
-				return fmt.Errorf("failed to add locator to search index: %w", err)
-			}
-		}
-
-		for _, skill := range recordData.GetSkills() {
-			if _, err = d.addSkillTx(tx, skill, id); err != nil {
-				return fmt.Errorf("failed to add skill to search index: %w", err)
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to add record: %w", err)
-	}
+	logger.Debug("Added new record with associations to SQLite database", "record_cid", sqliteRecord.RecordCID, "cid", cid,
+		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "extensions", len(sqliteRecord.Extensions))
 
 	return nil
 }
@@ -217,7 +185,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) { //
 
 	// Handle skill filters.
 	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
-		query = query.Joins("JOIN skills ON skills.agent_id = records.id")
+		query = query.Joins("JOIN skills ON skills.record_cid = records.record_cid")
 
 		if len(cfg.SkillIDs) > 0 {
 			query = query.Where("skills.skill_id IN ?", cfg.SkillIDs)
@@ -230,7 +198,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) { //
 
 	// Handle locator filters.
 	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
-		query = query.Joins("JOIN locators ON locators.agent_id = records.id")
+		query = query.Joins("JOIN locators ON locators.record_cid = records.record_cid")
 
 		if len(cfg.LocatorTypes) > 0 {
 			query = query.Where("locators.type IN ?", cfg.LocatorTypes)
@@ -243,7 +211,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) { //
 
 	// Handle extension filters.
 	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
-		query = query.Joins("JOIN extensions ON extensions.agent_id = records.id")
+		query = query.Joins("JOIN extensions ON extensions.record_cid = records.record_cid")
 
 		if len(cfg.ExtensionNames) > 0 {
 			query = query.Where("extensions.name IN ?", cfg.ExtensionNames)
@@ -285,7 +253,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 	}
 
 	// Start with the base query for records - only select CID for efficiency.
-	query := d.gormDB.Model(&Record{}).Select("c_id").Distinct()
+	query := d.gormDB.Model(&Record{}).Select("records.record_cid").Distinct()
 
 	// Apply pagination.
 	if cfg.Limit > 0 {
@@ -307,7 +275,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 
 	// Handle skill filters.
 	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
-		query = query.Joins("JOIN skills ON skills.agent_id = records.id")
+		query = query.Joins("JOIN skills ON skills.record_cid = records.record_cid")
 
 		if len(cfg.SkillIDs) > 0 {
 			query = query.Where("skills.skill_id IN ?", cfg.SkillIDs)
@@ -320,7 +288,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 
 	// Handle locator filters.
 	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
-		query = query.Joins("JOIN locators ON locators.agent_id = records.id")
+		query = query.Joins("JOIN locators ON locators.record_cid = records.record_cid")
 
 		if len(cfg.LocatorTypes) > 0 {
 			query = query.Where("locators.type IN ?", cfg.LocatorTypes)
@@ -333,7 +301,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 
 	// Handle extension filters.
 	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
-		query = query.Joins("JOIN extensions ON extensions.agent_id = records.id")
+		query = query.Joins("JOIN extensions ON extensions.record_cid = records.record_cid")
 
 		if len(cfg.ExtensionNames) > 0 {
 			query = query.Where("extensions.name IN ?", cfg.ExtensionNames)
@@ -346,7 +314,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 
 	// Execute the query to get only CIDs (no preloading needed).
 	var cids []string
-	if err := query.Pluck("c_id", &cids).Error; err != nil {
+	if err := query.Pluck("record_cid", &cids).Error; err != nil {
 		return nil, fmt.Errorf("failed to query record CIDs: %w", err)
 	}
 
@@ -357,7 +325,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 // RemoveRecord removes a record from the search database by CID.
 // Uses CASCADE DELETE to automatically remove related Skills, Locators, and Extensions.
 func (d *DB) RemoveRecord(cid string) error {
-	result := d.gormDB.Where("c_id = ?", cid).Delete(&Record{})
+	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {
 		return fmt.Errorf("failed to remove record from search database: %w", result.Error)

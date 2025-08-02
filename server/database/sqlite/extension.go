@@ -4,18 +4,16 @@
 package sqlite
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/agntcy/dir/server/types"
-	"gorm.io/gorm"
 )
 
 type Extension struct {
 	ID        uint `gorm:"primarykey"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	AgentID   uint   `gorm:"not null;index"`
+	RecordCID string `gorm:"column:record_cid;not null;index"`
 	Name      string `gorm:"not null"`
 	Version   string `gorm:"not null"`
 }
@@ -38,18 +36,16 @@ func (extension *Extension) GetData() map[string]any {
 	return make(map[string]any)
 }
 
-func (d *DB) addExtensionTx(tx *gorm.DB, extension types.Extension, agentID uint) (uint, error) {
-	sqliteExtension := &Extension{
-		AgentID: agentID,
-		Name:    extension.GetName(),
-		Version: extension.GetVersion(),
+// convertExtensions transforms interface types to SQLite structs.
+func convertExtensions(extensions []types.Extension, recordCID string) []Extension {
+	result := make([]Extension, len(extensions))
+	for i, extension := range extensions {
+		result[i] = Extension{
+			RecordCID: recordCID,
+			Name:      extension.GetName(),
+			Version:   extension.GetVersion(),
+		}
 	}
 
-	if err := tx.Create(sqliteExtension).Error; err != nil {
-		return 0, fmt.Errorf("failed to add extension to SQLite database: %w", err)
-	}
-
-	logger.Debug("Added extension to SQLite database", "agent_id", agentID, "extension_id", sqliteExtension.ID)
-
-	return sqliteExtension.ID, nil
+	return result
 }
