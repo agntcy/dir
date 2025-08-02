@@ -5,16 +5,19 @@ package sqlite
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
 type Locator struct {
-	gorm.Model
-	AgentID uint   `gorm:"not null;index"`
-	Type    string `gorm:"not null"`
-	URL     string `gorm:"not null"`
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	AgentID   uint   `gorm:"not null;index"`
+	Type      string `gorm:"not null"`
+	URL       string `gorm:"not null"`
 }
 
 func (locator *Locator) GetAnnotations() map[string]string {

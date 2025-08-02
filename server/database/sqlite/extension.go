@@ -5,16 +5,19 @@ package sqlite
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
 type Extension struct {
-	gorm.Model
-	AgentID uint   `gorm:"not null;index"`
-	Name    string `gorm:"not null"`
-	Version string `gorm:"not null"`
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	AgentID   uint   `gorm:"not null;index"`
+	Name      string `gorm:"not null"`
+	Version   string `gorm:"not null"`
 }
 
 func (extension *Extension) GetAnnotations() map[string]string {

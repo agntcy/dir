@@ -5,16 +5,19 @@ package sqlite
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
 type Skill struct {
-	gorm.Model
-	AgentID uint   `gorm:"not null;index"`
-	SkillID uint64 `gorm:"not null"`
-	Name    string `gorm:"not null"`
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	AgentID   uint   `gorm:"not null;index"`
+	SkillID   uint64 `gorm:"not null"`
+	Name      string `gorm:"not null"`
 }
 
 func (skill *Skill) GetAnnotations() map[string]string {

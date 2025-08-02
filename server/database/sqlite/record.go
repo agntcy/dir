@@ -6,16 +6,19 @@ package sqlite
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
 
 type Record struct {
-	gorm.Model
-	Name    string `gorm:"not null"`
-	Version string `gorm:"not null"`
-	CID     string `gorm:"unique;not null"`
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string `gorm:"not null"`
+	Version   string `gorm:"not null"`
+	CID       string `gorm:"column:c_id;unique;not null"`
 
 	Skills     []Skill     `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
 	Locators   []Locator   `gorm:"foreignKey:AgentID;constraint:OnDelete:CASCADE"`
@@ -107,18 +110,36 @@ func (r *RecordDataAdapter) GetPreviousRecordCid() string {
 
 func (d *DB) addRecordTx(tx *gorm.DB, record types.Record) (uint, error) {
 	recordData := record.GetRecordData()
+	cid := record.GetCid()
 
+	// Check if record already exists
+	var existingRecord Record
+
+	err := tx.Where("c_id = ?", cid).First(&existingRecord).Error
+	if err == nil {
+		// Record exists, return existing ID
+		logger.Debug("Record already exists in search database, skipping insert", "record_id", existingRecord.ID, "cid", cid)
+
+		return existingRecord.ID, nil
+	}
+
+	// If error is not "record not found", return the error
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, fmt.Errorf("failed to check existing record: %w", err)
+	}
+
+	// Record doesn't exist, create new one
 	sqliteRecord := &Record{
 		Name:    recordData.GetName(),
 		Version: recordData.GetVersion(),
-		CID:     record.GetCid(),
+		CID:     cid,
 	}
 
 	if err := tx.Create(sqliteRecord).Error; err != nil {
 		return 0, fmt.Errorf("failed to add record to SQLite database: %w", err)
 	}
 
-	logger.Debug("Added record to SQLite database", "record_id", sqliteRecord.ID)
+	logger.Debug("Added new record to SQLite database", "record_id", sqliteRecord.ID, "cid", cid)
 
 	return sqliteRecord.ID, nil
 }
@@ -264,7 +285,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 	}
 
 	// Start with the base query for records - only select CID for efficiency.
-	query := d.gormDB.Model(&Record{}).Select("CID").Distinct()
+	query := d.gormDB.Model(&Record{}).Select("c_id").Distinct()
 
 	// Apply pagination.
 	if cfg.Limit > 0 {
@@ -325,7 +346,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 
 	// Execute the query to get only CIDs (no preloading needed).
 	var cids []string
-	if err := query.Pluck("CID", &cids).Error; err != nil {
+	if err := query.Pluck("c_id", &cids).Error; err != nil {
 		return nil, fmt.Errorf("failed to query record CIDs: %w", err)
 	}
 
@@ -336,7 +357,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) { //nol
 // RemoveRecord removes a record from the search database by CID.
 // Uses CASCADE DELETE to automatically remove related Skills, Locators, and Extensions.
 func (d *DB) RemoveRecord(cid string) error {
-	result := d.gormDB.Where("cid = ?", cid).Delete(&Record{})
+	result := d.gormDB.Where("c_id = ?", cid).Delete(&Record{})
 
 	if result.Error != nil {
 		return fmt.Errorf("failed to remove record from search database: %w", result.Error)

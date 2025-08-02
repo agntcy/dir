@@ -4,6 +4,8 @@
 package sqlite
 
 import (
+	"time"
+
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/google/uuid"
@@ -11,7 +13,9 @@ import (
 )
 
 type Sync struct {
-	gorm.Model
+	GormID             uint `gorm:"primarykey"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 	ID                 string             `gorm:"not null;index"`
 	RemoteDirectoryURL string             `gorm:"not null"`
 	RemoteRegistryURL  string             `gorm:"not null"`
