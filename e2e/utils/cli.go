@@ -277,7 +277,7 @@ func (s *SearchBuilder) WithOffset(offset int) *SearchBuilder {
 func (s *SearchBuilder) Execute() (string, error) {
 	// Build search arguments
 	for key, value := range s.queries {
-		s.args = append(s.args, "--query", fmt.Sprintf("%s=%s", key, value))
+		s.args = append(s.args, "--query", fmt.Sprintf(`"%s=%s"`, key, value))
 	}
 
 	if s.limit > 0 {
@@ -315,7 +315,7 @@ func (l *ListBuilder) WithDigest(digest string) *ListBuilder {
 }
 
 func (l *ListBuilder) WithSkill(skill string) *ListBuilder {
-	l.args = append(l.args, skill)
+	l.args = append(l.args, fmt.Sprintf(`"%s"`, skill))
 
 	return l
 }
