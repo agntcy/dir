@@ -100,7 +100,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should list the sync", func() {
-			output := cli.Sync().List().ShouldSucceed()
+			output := cli.Sync().List().OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			gomega.Expect(output).To(gomega.ContainSubstring(syncID))
 			gomega.Expect(output).To(gomega.ContainSubstring(utils.Peer1InternalAddr))

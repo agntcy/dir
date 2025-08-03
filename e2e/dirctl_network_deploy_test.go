@@ -60,9 +60,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 			output := cli.List().WithDigest(tempAgentCID).OnServer(addr).ShouldSucceed()
 
 			// Extract the Peer ID/hash from the output
-			peerIDStart := strings.Index(output, "Peer ") + len("Peer ")
-			peerIDEnd := strings.Index(output[peerIDStart:], "\n") + peerIDStart
-			gomega.Expect(peerIDStart).NotTo(gomega.Equal(-1), "Peer ID not found in output")
+			peerIndex := strings.Index(output, "Peer ")
+			gomega.Expect(peerIndex).NotTo(gomega.Equal(-1), "Peer ID not found in output")
+
+			peerIDStart := peerIndex + len("Peer ")
+			peerIDEnd := strings.Index(output[peerIDStart:], "\n")
+			gomega.Expect(peerIDEnd).NotTo(gomega.Equal(-1), "Newline not found after Peer ID")
+			peerIDEnd += peerIDStart
+
 			peerID := output[peerIDStart:peerIDEnd]
 
 			// Build the expected output string
@@ -80,9 +85,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 			output := cli.List().WithSkill("\"/skills/Natural Language Processing\"").OnServer(addr).ShouldSucceed()
 
 			// Extract the Peer ID/hash from the output
-			peerIDStart := strings.Index(output, "Peer ") + len("Peer ")
-			peerIDEnd := strings.Index(output[peerIDStart:], "\n") + peerIDStart
-			gomega.Expect(peerIDStart).NotTo(gomega.Equal(-1), "Peer ID not found in output")
+			peerIndex := strings.Index(output, "Peer ")
+			gomega.Expect(peerIndex).NotTo(gomega.Equal(-1), "Peer ID not found in output")
+
+			peerIDStart := peerIndex + len("Peer ")
+			peerIDEnd := strings.Index(output[peerIDStart:], "\n")
+			gomega.Expect(peerIDEnd).NotTo(gomega.Equal(-1), "Newline not found after Peer ID")
+			peerIDEnd += peerIDStart
+
 			peerID := output[peerIDStart:peerIDEnd]
 
 			// Build the expected output string
