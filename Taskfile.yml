@@ -225,10 +225,23 @@ tasks:
     cmds:
       - npm ci
 
+  sdk:test:all:
+    desc: Test all client SDK packages
+    cmds:
+      - task: sdk:test:javascript
+      - task: sdk:test:python
+
   sdk:test:python:
     desc: Test python client SDK package
     dir: ./sdk/python
-    cmd: uv run python -m unittest
+    cmds:
+      - uv run python -m unittest
+
+  sdk:test:javascript:
+    desc: Test javascript client SDK package
+    dir: ./sdk/javascript
+    cmds:
+      - npm run test
 
   sdk:release:all:
     desc: Release all client SDK package
