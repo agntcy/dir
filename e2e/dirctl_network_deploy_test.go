@@ -22,9 +22,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 			ginkgo.Skip("Skipping test, not in network mode")
 		}
 
-		// Reset CLI command state to ensure clean state between tests
-		utils.ResetCLIState()
-
 		// Initialize CLI helper
 		cli = utils.NewCLI()
 	})

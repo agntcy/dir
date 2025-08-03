@@ -9,7 +9,6 @@ package utils
 // This package provides:
 // - CLI command builders with fluent API (cli.go)
 // - Common test utilities, comparisons, and channel collection (common.go)
-// - State management for test isolation (state.go)
 // - Signature testing utilities (sign.go)
 // - Network test constants and addresses (constants.go)
 // - Network key generation utilities (network.go)

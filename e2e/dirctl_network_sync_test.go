@@ -27,9 +27,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.Skip("Skipping test, not in network mode")
 		}
 
-		// Reset CLI command state to ensure clean state between tests
-		utils.ResetCLIState()
-
 		// Initialize CLI helper
 		cli = utils.NewCLI()
 	})

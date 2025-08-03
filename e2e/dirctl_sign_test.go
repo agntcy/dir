@@ -56,9 +56,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			ginkgo.Skip("Skipping test, not in local mode")
 		}
 
-		// Reset CLI command state to ensure clean state between tests
-		utils.ResetCLIState()
-
 		// Initialize CLI helper
 		cli = utils.NewCLI()
 	})
