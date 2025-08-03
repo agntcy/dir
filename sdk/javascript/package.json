@@ -23,6 +23,6 @@
     "@grpc/grpc-js": "^1.13.4"
   },
   "devDependencies": {
-    "jest": "^30.0.4"
+    "jest": "^30.0.5"
   }
 }
