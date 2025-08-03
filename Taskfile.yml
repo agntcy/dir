@@ -216,6 +216,8 @@ tasks:
   sdk:build:python:
     desc: Build python client SDK package
     dir: ./sdk/python
+    deps:
+      - task: deps:uv
     cmds:
       - '{{.UV_BIN}} build'
 
@@ -234,14 +236,22 @@ tasks:
   sdk:test:python:
     desc: Test python client SDK package
     dir: ./sdk/python
+    deps:
+      - task: deps:uv
     cmds:
-      - uv run python -m unittest
+      - '{{.UV_BIN}} run python -m unittest'
 
   sdk:test:javascript:
     desc: Test javascript client SDK package
     dir: ./sdk/javascript
     cmds:
       - npm run test
+
+  sdk:deps:javascript:
+    desc: Install deps for javascript SDK package
+    dir: ./sdk/javascript
+    cmds:
+      - npm install
 
   sdk:release:all:
     desc: Release all client SDK package
@@ -257,6 +267,8 @@ tasks:
     dir: ./sdk/python
     env:
       UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN }}'
+    deps:
+      - task: deps:uv
     cmds:
       - '{{.UV_BIN}} publish'
 
