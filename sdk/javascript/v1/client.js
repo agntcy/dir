@@ -186,7 +186,7 @@ class Client {
             const call = this.storeClient.delete((error, _) => {
                 if (error.code !== 12) {
                     console.error('Error from server:', error)
-                    reject(err);
+                    reject(error);
                 }
 
                 resolve(); // No response to resolve
