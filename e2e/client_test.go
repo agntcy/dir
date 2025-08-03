@@ -13,6 +13,7 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/e2e/config"
+	"github.com/agntcy/dir/e2e/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -37,12 +38,12 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		Version: "v1",
 		Skills: []*objectsv1.Skill{
 			{
-				CategoryName: Ptr("test-category-1"),
-				ClassName:    Ptr("test-class-1"),
+				CategoryName: utils.Ptr("test-category-1"),
+				ClassName:    utils.Ptr("test-class-1"),
 			},
 			{
-				CategoryName: Ptr("test-category-2"),
-				ClassName:    Ptr("test-class-2"),
+				CategoryName: utils.Ptr("test-category-2"),
+				ClassName:    utils.Ptr("test-class-2"),
 			},
 		},
 		Extensions: []*objectsv1.Extension{
@@ -77,8 +78,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			recordRef, err = c.Push(ctx, record)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Validate valid CID.
-			gomega.Expect(recordRef.GetCid()).NotTo(gomega.BeEmpty())
+			// Validate that the returned CID correctly represents the pushed data
+			utils.ValidateCIDAgainstData(recordRef.GetCid(), agentData)
 		})
 
 		ginkgo.It("should pull an agent from store", func() {
@@ -90,12 +91,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			pulledAgent := pulledRecord.GetV1()
 			gomega.Expect(pulledAgent).NotTo(gomega.BeNil())
 
-			// Marshal the pulled agent for comparison.
-			pulledAgentData, err := json.Marshal(pulledAgent)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			// Compare pushed and pulled agent.
-			equal, err := compareJSONAgents(agentData, pulledAgentData)
+			// Compare pushed and pulled agent directly.
+			equal, err := utils.CompareAgents(agent, pulledAgent)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
@@ -115,11 +112,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Collect items from the channel.
-			var items []*routingv1.LegacyListResponse_Item
-			for item := range itemsChan {
-				items = append(items, item)
-			}
+			// Collect items from the channel using utility.
+			items := utils.CollectChannelItems(itemsChan)
 
 			// Validate the response.
 			gomega.Expect(items).To(gomega.HaveLen(1))
@@ -137,11 +131,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Collect items from the channel.
-			var items []*routingv1.LegacyListResponse_Item
-			for item := range itemsChan {
-				items = append(items, item)
-			}
+			// Collect items from the channel using utility.
+			items := utils.CollectChannelItems(itemsChan)
 
 			// Validate the response.
 			gomega.Expect(items).To(gomega.HaveLen(1))
@@ -162,11 +153,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-				// Collect items from the channel.
-				var items []*routingv1.LegacyListResponse_Item
-				for item := range itemsChan {
-					items = append(items, item)
-				}
+				// Collect items from the channel using utility.
+				items := utils.CollectChannelItems(itemsChan)
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.HaveLen(1))
@@ -192,11 +180,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Collect items from the channel.
-			var items []*routingv1.LegacyListResponse_Item
-			for item := range itemsChan {
-				items = append(items, item)
-			}
+			// Collect items from the channel using utility.
+			items := utils.CollectChannelItems(itemsChan)
 
 			// Validate the response.
 			gomega.Expect(items).To(gomega.BeEmpty())

@@ -4,138 +4,60 @@
 package e2e
 
 import (
-	"bytes"
 	"strings"
 
-	clicmd "github.com/agntcy/dir/cli/cmd"
 	"github.com/agntcy/dir/e2e/config"
+	"github.com/agntcy/dir/e2e/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
-const (
-	Peer1Addr = "0.0.0.0:8890"
-	Peer2Addr = "0.0.0.0:8891"
-	Peer3Addr = "0.0.0.0:8892"
-)
-
-var peerAddrs = []string{Peer1Addr, Peer2Addr, Peer3Addr}
+// Using peer addresses from utils.constants
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi peer deployment", func() {
+	var cli *utils.CLI
+
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
 			ginkgo.Skip("Skipping test, not in network mode")
 		}
+
+		// Reset CLI command state to ensure clean state between tests
+		utils.ResetCLIState()
+
+		// Initialize CLI helper
+		cli = utils.NewCLI()
 	})
 
 	// Test params
 	var tempAgentCID string
 
 	ginkgo.It("should push an agent to peer 1", func() {
-		var outputBuffer bytes.Buffer
+		tempAgentCID = cli.Push("./testdata/agent.json").OnServer(utils.Peer1Addr).ShouldSucceed()
 
-		pushCmd := clicmd.RootCmd
-		pushCmd.SetOut(&outputBuffer)
-		pushCmd.SetArgs([]string{
-			"push",
-			"./testdata/agent.json",
-			"--server-addr",
-			Peer1Addr,
-		})
-
-		err := pushCmd.Execute()
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-		tempAgentCID = outputBuffer.String()
-
-		// TODO: Validate CID
+		// Validate that the returned CID correctly represents the pushed data
+		utils.LoadAndValidateCID(tempAgentCID, "./testdata/agent.json")
 	})
 
 	ginkgo.It("should pull the agent from peer 1", func() {
-		var outputBuffer bytes.Buffer
-
-		pullCmd := clicmd.RootCmd
-		pullCmd.SetOut(&outputBuffer)
-		pullCmd.SetArgs([]string{
-			"pull",
-			tempAgentCID,
-			"--server-addr",
-			Peer1Addr,
-		})
-
-		err := pullCmd.Execute()
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		cli.Pull(tempAgentCID).OnServer(utils.Peer1Addr).ShouldSucceed()
 	})
 
 	ginkgo.It("should fail to pull the agent from peer 2", func() {
-		var outputBuffer bytes.Buffer
-
-		pullCmd := clicmd.RootCmd
-		pullCmd.SetOut(&outputBuffer)
-		pullCmd.SetArgs([]string{
-			"pull",
-			tempAgentCID,
-			"--server-addr",
-			Peer2Addr,
-		})
-
-		err := pullCmd.Execute()
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		_ = cli.Pull(tempAgentCID).OnServer(utils.Peer2Addr).ShouldFail()
 	})
 
 	ginkgo.It("should publish an agent to the network on peer 1", func() {
-		var outputBuffer bytes.Buffer
-
-		publishCmd := clicmd.RootCmd
-		publishCmd.SetOut(&outputBuffer)
-		publishCmd.SetArgs([]string{
-			"publish",
-			tempAgentCID,
-			"--server-addr",
-			Peer1Addr,
-			"--network",
-		})
-
-		err := publishCmd.Execute()
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		cli.Publish(tempAgentCID).OnServer(utils.Peer1Addr).WithArgs("--network").ShouldSucceed()
 	})
 
 	ginkgo.It("should fail publish an agent to the network on peer 2 that does not store the agent", func() {
-		var outputBuffer bytes.Buffer
-
-		publishCmd := clicmd.RootCmd
-		publishCmd.SetOut(&outputBuffer)
-		publishCmd.SetArgs([]string{
-			"publish",
-			tempAgentCID,
-			"--server-addr",
-			Peer2Addr,
-			"--network",
-		})
-
-		err := publishCmd.Execute()
-		gomega.Expect(err).To(gomega.HaveOccurred())
+		_ = cli.Publish(tempAgentCID).OnServer(utils.Peer2Addr).WithArgs("--network").ShouldFail()
 	})
 
 	ginkgo.It("should list by CID on all peers", func() {
-		for _, addr := range peerAddrs {
-			var outputBuffer bytes.Buffer
-
-			listCmd := clicmd.RootCmd
-			listCmd.SetOut(&outputBuffer)
-			listCmd.SetArgs([]string{
-				"list",
-				"--digest",
-				tempAgentCID,
-				"--server-addr",
-				addr,
-			})
-
-			err := listCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			// Validate the output contains the expected digest
-			output := strings.TrimSpace(outputBuffer.String()) // Trim trailing whitespace and newlines
+		for _, addr := range utils.PeerAddrs {
+			output := cli.List().WithDigest(tempAgentCID).OnServer(addr).ShouldSucceed()
 
 			// Extract the Peer ID/hash from the output
 			peerIDStart := strings.Index(output, "Peer ") + len("Peer ")
@@ -154,23 +76,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 	})
 
 	ginkgo.It("should list by skill on all peers", func() {
-		for _, addr := range peerAddrs {
-			var outputBuffer bytes.Buffer
-
-			listCmd := clicmd.RootCmd
-			listCmd.SetOut(&outputBuffer)
-			listCmd.SetArgs([]string{
-				"list",
-				"\"/skills/Natural Language Processing\"",
-				"--server-addr",
-				addr,
-			})
-
-			err := listCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			// Validate the output contains the expected digest
-			output := strings.TrimSpace(outputBuffer.String()) // Trim trailing whitespace and newlines
+		for _, addr := range utils.PeerAddrs {
+			output := cli.List().WithSkill("\"/skills/Natural Language Processing\"").OnServer(addr).ShouldSucceed()
 
 			// Extract the Peer ID/hash from the output
 			peerIDStart := strings.Index(output, "Peer ") + len("Peer ")

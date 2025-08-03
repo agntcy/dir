@@ -4,17 +4,14 @@
 package e2e
 
 import (
-	"bytes"
 	_ "embed"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	clicmd "github.com/agntcy/dir/cli/cmd"
 	"github.com/agntcy/dir/e2e/config"
+	"github.com/agntcy/dir/e2e/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -24,37 +21,8 @@ var signTestAgentJSON []byte
 
 // Test constants.
 const (
-	testPassword  = "testpassword"
 	tempDirPrefix = "sign-test"
 )
-
-// Helper function to execute CLI commands and return output.
-func executeCommand(args []string) (string, error) {
-	var outputBuffer bytes.Buffer
-
-	cmd := clicmd.RootCmd
-	cmd.SetOut(&outputBuffer)
-	cmd.SetArgs(args)
-
-	err := cmd.Execute()
-
-	return strings.TrimSpace(outputBuffer.String()), err
-}
-
-// Helper function to generate cosign key pair.
-func generateCosignKeyPair(dir string) {
-	cmd := exec.Command("cosign", "generate-key-pair")
-
-	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+testPassword)
-	cmd.Dir = dir
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		ginkgo.Fail("cosign generate-key-pair failed: " + err.Error() + "\nStderr: " + stderr.String())
-	}
-}
 
 // Test file paths helper.
 type testPaths struct {
@@ -81,13 +49,18 @@ func setupTestPaths() *testPaths {
 }
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature support", func() {
+	var cli *utils.CLI
+
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeLocal {
 			ginkgo.Skip("Skipping test, not in local mode")
 		}
 
 		// Reset CLI command state to ensure clean state between tests
-		ResetCLIState()
+		utils.ResetCLIState()
+
+		// Initialize CLI helper
+		cli = utils.NewCLI()
 	})
 
 	// Test params
@@ -109,7 +82,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Generate cosign key pair for all tests
-			generateCosignKeyPair(paths.tempDir)
+			utils.GenerateCosignKeyPair(paths.tempDir)
 
 			// Verify key files were created
 			gomega.Expect(paths.privateKey).To(gomega.BeAnExistingFile())
@@ -117,19 +90,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 
 			// Create signature ONCE for all tests to ensure consistency
 			// (Signatures are non-deterministic, so we need the same instance for push/pull)
-			err = os.Setenv("COSIGN_PASSWORD", testPassword)
+			err = os.Setenv("COSIGN_PASSWORD", utils.TestPassword)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			output, err := executeCommand([]string{
-				"sign",
-				paths.record,
-				"--key", paths.privateKey,
-			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(output).NotTo(gomega.BeEmpty())
+			signatureData = cli.Sign(paths.record, paths.privateKey).ShouldSucceed()
 
 			// Save signature for all tests
-			signatureData = output
 			err = os.WriteFile(paths.signature, []byte(signatureData), 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -164,35 +130,24 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		})
 
 		ginkgo.It("should push a record to the store with a signature", func() {
-			output, err := executeCommand([]string{
-				"push",
-				paths.record,
-				"--signature", paths.signature,
-			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(output).NotTo(gomega.BeEmpty())
+			tempAgentCID = cli.Push(paths.record).WithArgs("--signature", paths.signature).ShouldSucceed()
 
-			tempAgentCID = output
+			// Validate that the returned CID correctly represents the pushed data
+			utils.LoadAndValidateCID(tempAgentCID, paths.record)
 		})
 
 		ginkgo.It("should pull a record from the store with a signature", func() {
-			output, err := executeCommand([]string{
-				"pull",
-				tempAgentCID,
-				"--include-signature",
-			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(output).NotTo(gomega.BeEmpty())
+			output := cli.Pull(tempAgentCID).WithArgs("--include-signature").ShouldSucceed()
 
 			// Extract signature from output
-			signatureOutput := extractSignatureFromCombinedOutput(output)
+			signatureOutput := utils.ExtractSignatureFromCombinedOutput(output)
 			gomega.Expect(signatureOutput).NotTo(gomega.BeEmpty())
 
 			// Compare with expected signature
-			compareSignatures(signatureData, signatureOutput)
+			utils.CompareSignatures(signatureData, signatureOutput)
 
 			// Save output signature to file
-			err = os.WriteFile(paths.signatureOutput, []byte(signatureOutput), 0o600)
+			err := os.WriteFile(paths.signatureOutput, []byte(signatureOutput), 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 
@@ -200,64 +155,16 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			// Ensure we have a signature file
 			gomega.Expect(paths.signatureOutput).To(gomega.BeAnExistingFile(), "Signature file should exist from pull test")
 
-			output, err := executeCommand([]string{
-				"verify",
-				paths.record,
-				paths.signatureOutput,
-				"--key", paths.publicKey,
-			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			// Verify success message
-			gomega.Expect(output).To(gomega.ContainSubstring("Record signature verified successfully!"))
+			cli.Command("verify").
+				WithArgs(paths.record, paths.signatureOutput, "--key", paths.publicKey).
+				ShouldContain("Record signature verified successfully!")
 		})
 
 		ginkgo.It("should clean up by deleting the record from store", func() {
 			// Delete the record to ensure clean state for subsequent test runs
 			gomega.Expect(tempAgentCID).NotTo(gomega.BeEmpty(), "Agent CID should be available for deletion")
 
-			output, err := executeCommand([]string{
-				"delete",
-				tempAgentCID,
-			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(output).To(gomega.MatchRegexp("(?i)deleted"), "Delete operation should confirm deletion")
+			cli.Delete(tempAgentCID).ShouldContain("Deleted")
 		})
 	})
 })
-
-// extractSignatureFromCombinedOutput extracts signature JSON from combined output.
-// Input format: "{agent_json}{signature_json}".
-func extractSignatureFromCombinedOutput(combinedOutput string) string {
-	// Find the boundary between agent JSON and signature JSON
-	// Look for "}{"" pattern which separates the two JSON objects
-	parts := strings.Split(combinedOutput, "}{")
-	gomega.Expect(parts).To(gomega.HaveLen(2), "Expected combined output to contain exactly 2 JSON objects")
-
-	// The second part is the signature JSON, but we need to add back the opening "{"
-	return "{" + parts[1]
-}
-
-// compareSignatures compares two signature JSON strings for equality.
-// Compares individual fields to avoid protobuf mutex copying issues.
-func compareSignatures(expected, actual string) {
-	var expectedSignature, actualSignature signv1.Signature
-
-	err := json.Unmarshal([]byte(expected), &expectedSignature)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to unmarshal expected signature")
-
-	err = json.Unmarshal([]byte(actual), &actualSignature)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to unmarshal actual signature")
-
-	// Compare individual fields to avoid protobuf lock copying
-	// Note: SignedAt is skipped because it uses time.Now() and changes between test runs
-	gomega.Expect(actualSignature.GetAlgorithm()).To(gomega.Equal(expectedSignature.GetAlgorithm()), "Algorithm should match")
-	gomega.Expect(actualSignature.GetSignature()).To(gomega.Equal(expectedSignature.GetSignature()), "Signature should match")
-	gomega.Expect(actualSignature.GetCertificate()).To(gomega.Equal(expectedSignature.GetCertificate()), "Certificate should match")
-	gomega.Expect(actualSignature.GetContentType()).To(gomega.Equal(expectedSignature.GetContentType()), "ContentType should match")
-	gomega.Expect(actualSignature.GetContentBundle()).To(gomega.Equal(expectedSignature.GetContentBundle()), "ContentBundle should match")
-
-	// Verify SignedAt is present and valid, but don't require exact match
-	gomega.Expect(actualSignature.GetSignedAt()).NotTo(gomega.BeEmpty(), "SignedAt should be present")
-	gomega.Expect(expectedSignature.GetSignedAt()).NotTo(gomega.BeEmpty(), "Expected SignedAt should be present")
-}

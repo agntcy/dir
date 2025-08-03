@@ -4,142 +4,77 @@
 package e2e
 
 import (
-	"bytes"
 	_ "embed"
 	"strings"
 	"time"
 
-	clicmd "github.com/agntcy/dir/cli/cmd"
 	"github.com/agntcy/dir/e2e/config"
+	"github.com/agntcy/dir/e2e/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
-const (
-	// Kubernetes internal service address for peer1.
-	Peer1InternalAddr = "agntcy-dir-apiserver.peer1.svc.cluster.local:8888"
-)
+// Using peer addresses from utils.constants
 
 //go:embed testdata/agent_v2.json
 var expectedAgentV2JSON []byte
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", func() {
+	var cli *utils.CLI
+
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
 			ginkgo.Skip("Skipping test, not in network mode")
 		}
+
+		// Reset CLI command state to ensure clean state between tests
+		utils.ResetCLIState()
+
+		// Initialize CLI helper
+		cli = utils.NewCLI()
 	})
 
 	var syncID string
 
 	ginkgo.Context("create command", func() {
 		ginkgo.It("should accept valid remote URL format", func() {
-			var outputBuffer bytes.Buffer
+			output := cli.Sync().Create("https://directory.example.com").OnServer(utils.Peer1Addr).ShouldSucceed()
 
-			createCmd := clicmd.RootCmd
-			createCmd.SetOut(&outputBuffer)
-			createCmd.SetArgs([]string{
-				"sync",
-				"create",
-				"https://directory.example.com",
-				"--server-addr",
-				Peer1Addr,
-			})
-
-			err := createCmd.Execute()
-			if err != nil {
-				gomega.Expect(err.Error()).NotTo(gomega.ContainSubstring("required"))
-			}
-
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring("Sync created with ID: "))
-			syncID = strings.TrimPrefix(outputBuffer.String(), "Sync created with ID: ")
+			gomega.Expect(output).To(gomega.ContainSubstring("Sync created with ID: "))
+			syncID = strings.TrimPrefix(output, "Sync created with ID: ")
 		})
 	})
 
 	ginkgo.Context("list command", func() {
 		ginkgo.It("should execute without arguments and return a list with the created sync", func() {
-			var outputBuffer bytes.Buffer
+			output := cli.Sync().List().OnServer(utils.Peer1Addr).ShouldSucceed()
 
-			listCmd := clicmd.RootCmd
-			listCmd.SetOut(&outputBuffer)
-			listCmd.SetArgs([]string{
-				"sync",
-				"list",
-				"--server-addr",
-				Peer1Addr,
-			})
-
-			err := listCmd.Execute()
-			if err != nil {
-				gomega.Expect(err.Error()).NotTo(gomega.ContainSubstring("argument"))
-			}
-
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring(syncID))
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring("https://directory.example.com"))
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring("PENDING"))
+			gomega.Expect(output).To(gomega.ContainSubstring(syncID))
+			gomega.Expect(output).To(gomega.ContainSubstring("https://directory.example.com"))
+			gomega.Expect(output).To(gomega.ContainSubstring("PENDING"))
 		})
 	})
 
 	ginkgo.Context("status command", func() {
 		ginkgo.It("should accept a sync ID argument and return the sync status", func() {
-			var outputBuffer bytes.Buffer
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer1Addr).ShouldSucceed()
 
-			statusCmd := clicmd.RootCmd
-			statusCmd.SetOut(&outputBuffer)
-			statusCmd.SetArgs([]string{
-				"sync",
-				"status",
-				syncID,
-				"--server-addr",
-				Peer1Addr,
-			})
-
-			err := statusCmd.Execute()
-			if err != nil {
-				gomega.Expect(err.Error()).NotTo(gomega.ContainSubstring("required"))
-			}
-
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring(syncID))
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring("PENDING"))
+			gomega.Expect(output).To(gomega.ContainSubstring(syncID))
+			gomega.Expect(output).To(gomega.ContainSubstring("PENDING"))
 		})
 	})
 
 	ginkgo.Context("delete command", func() {
 		ginkgo.It("should accept a sync ID argument and delete the sync", func() {
-			var outputBuffer bytes.Buffer
-
-			deleteCmd := clicmd.RootCmd
-			deleteCmd.SetOut(&outputBuffer)
-			deleteCmd.SetArgs([]string{
-				"sync",
-				"delete",
-				syncID,
-				"--server-addr",
-				Peer1Addr,
-			})
-
-			err := deleteCmd.Execute()
 			// Command may fail due to network/auth issues, but argument parsing should work
+			_, err := cli.Sync().Delete(syncID).OnServer(utils.Peer1Addr).Execute()
 			if err != nil {
 				gomega.Expect(err.Error()).NotTo(gomega.ContainSubstring("required"))
 			}
 		})
 
 		ginkgo.It("should return deleted status", func() {
-			var outputBuffer bytes.Buffer
-
-			listCmd := clicmd.RootCmd
-			listCmd.SetOut(&outputBuffer)
-			listCmd.SetArgs([]string{
-				"sync",
-				"list",
-				"--server-addr",
-				Peer1Addr,
-			})
-
-			err := listCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring("DELETE"))
+			cli.Sync().List().OnServer(utils.Peer1Addr).ShouldContain("DELETE")
 		})
 	})
 
@@ -147,205 +82,70 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		var agentCID string
 
 		ginkgo.It("should push agent_v2.json to peer 1", func() {
-			var outputBuffer bytes.Buffer
+			agentCID = cli.Push("./testdata/agent_v2.json").OnServer(utils.Peer1Addr).ShouldSucceed()
 
-			pushCmd := clicmd.RootCmd
-			pushCmd.SetOut(&outputBuffer)
-			pushCmd.SetArgs([]string{
-				"push",
-				"./testdata/agent_v2.json",
-				"--server-addr",
-				Peer1Addr,
-			})
-
-			err := pushCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			agentCID = strings.TrimSpace(outputBuffer.String())
+			// Validate that the returned CID correctly represents the pushed data
+			utils.LoadAndValidateCID(agentCID, "./testdata/agent_v2.json")
 		})
 
 		ginkgo.It("should fail to pull agent_v2.json from peer 2", func() {
-			var outputBuffer bytes.Buffer
-
-			pullCmd := clicmd.RootCmd
-			pullCmd.SetOut(&outputBuffer)
-			pullCmd.SetArgs([]string{
-				"pull",
-				agentCID,
-				"--server-addr",
-				Peer2Addr,
-			})
-
-			err := pullCmd.Execute()
-			gomega.Expect(err).To(gomega.HaveOccurred())
+			_ = cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldFail()
 		})
 
 		ginkgo.It("should create sync from peer 1 to peer 2", func() {
-			var outputBuffer bytes.Buffer
+			output := cli.Sync().Create(utils.Peer1InternalAddr).OnServer(utils.Peer2Addr).ShouldSucceed()
 
-			createCmd := clicmd.RootCmd
-			createCmd.SetOut(&outputBuffer)
-			createCmd.SetArgs([]string{
-				"sync",
-				"create",
-				Peer1InternalAddr,
-				"--server-addr",
-				Peer2Addr,
-			})
-
-			err := createCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			output := strings.TrimSpace(outputBuffer.String())
 			gomega.Expect(output).To(gomega.ContainSubstring("Sync created with ID: "))
-			syncID = strings.TrimPrefix(outputBuffer.String(), "Sync created with ID: ")
+			syncID = strings.TrimPrefix(output, "Sync created with ID: ")
 		})
 
 		ginkgo.It("should list the sync", func() {
-			var outputBuffer bytes.Buffer
+			output := cli.Sync().List().ShouldSucceed()
 
-			listCmd := clicmd.RootCmd
-			listCmd.SetOut(&outputBuffer)
-			listCmd.SetArgs([]string{
-				"sync",
-				"list",
-			})
-
-			err := listCmd.Execute()
-			if err != nil {
-				gomega.Expect(err.Error()).NotTo(gomega.ContainSubstring("argument"))
-			}
-
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring(syncID))
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring(Peer1InternalAddr))
-			gomega.Expect(outputBuffer.String()).To(gomega.ContainSubstring("PENDING"))
+			gomega.Expect(output).To(gomega.ContainSubstring(syncID))
+			gomega.Expect(output).To(gomega.ContainSubstring(utils.Peer1InternalAddr))
+			gomega.Expect(output).To(gomega.ContainSubstring("PENDING"))
 		})
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
 			// Poll sync status until it changes from PENDING to IN_PROGRESS
-			gomega.Eventually(func() string {
-				var outputBuffer bytes.Buffer
-
-				statusCmd := clicmd.RootCmd
-				statusCmd.SetOut(&outputBuffer)
-				statusCmd.SetArgs([]string{
-					"sync",
-					"status",
-					syncID,
-					"--server-addr",
-					Peer2Addr,
-				})
-
-				err := statusCmd.Execute()
-				gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-				output := outputBuffer.String()
-				ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
-
-				return output
-			}, 120*time.Second, 5*time.Second).Should(gomega.ContainSubstring("IN_PROGRESS"))
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
+			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
 		ginkgo.It("should succeed to pull agent_v2.json from peer 2 after sync", func() {
-			var outputBuffer bytes.Buffer
-
-			pullCmd := clicmd.RootCmd
-			pullCmd.SetOut(&outputBuffer)
-			pullCmd.SetArgs([]string{
-				"pull",
-				agentCID,
-				"--server-addr",
-				Peer2Addr,
-			})
-
-			err := pullCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			output := cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := compareJSONAgents(outputBuffer.Bytes(), expectedAgentV2JSON)
+			equal, err := utils.CompareJSONAgents([]byte(output), expectedAgentV2JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 
 		// Delete sync from peer 2
 		ginkgo.It("should delete sync from peer 2", func() {
-			var outputBuffer bytes.Buffer
-
-			deleteCmd := clicmd.RootCmd
-			deleteCmd.SetOut(&outputBuffer)
-			deleteCmd.SetArgs([]string{
-				"sync",
-				"delete",
-				syncID,
-				"--server-addr",
-				Peer2Addr,
-			})
-
-			err := deleteCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			cli.Sync().Delete(syncID).OnServer(utils.Peer2Addr).ShouldSucceed()
 		})
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for delete to complete", func() {
 			// Poll sync status until it changes from DELETE_PENDING to DELETED
-			gomega.Eventually(func() string {
-				var outputBuffer bytes.Buffer
-
-				statusCmd := clicmd.RootCmd
-				statusCmd.SetOut(&outputBuffer)
-				statusCmd.SetArgs([]string{
-					"sync",
-					"status",
-					syncID,
-					"--server-addr",
-					Peer2Addr,
-				})
-
-				err := statusCmd.Execute()
-				gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-				output := outputBuffer.String()
-				ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
-
-				return output
-			}, 120*time.Second, 5*time.Second).Should(gomega.ContainSubstring("DELETED"))
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("DELETED", 120*time.Second)
+			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
 		// Push agent_v3.json to peer 1
 		ginkgo.It("should push agent_v3.json to peer 1", func() {
-			var outputBuffer bytes.Buffer
+			agentCID = cli.Push("./testdata/agent_v3.json").OnServer(utils.Peer1Addr).ShouldSucceed()
 
-			pushCmd := clicmd.RootCmd
-			pushCmd.SetOut(&outputBuffer)
-			pushCmd.SetArgs([]string{
-				"push",
-				"./testdata/agent_v3.json",
-				"--server-addr",
-				Peer1Addr,
-			})
-
-			err := pushCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			agentCID = strings.TrimSpace(outputBuffer.String())
+			// Validate that the returned CID correctly represents the pushed data
+			utils.LoadAndValidateCID(agentCID, "./testdata/agent_v3.json")
 		})
 
 		// Pull agent_v3.json from peer 2
 		ginkgo.It("should fail to pull agent_v3.json from peer 2", func() {
-			var outputBuffer bytes.Buffer
-
-			pullCmd := clicmd.RootCmd
-			pullCmd.SetOut(&outputBuffer)
-			pullCmd.SetArgs([]string{
-				"pull",
-				agentCID,
-				"--server-addr",
-				Peer2Addr,
-			})
-
-			err := pullCmd.Execute()
-			gomega.Expect(err).To(gomega.HaveOccurred())
+			_ = cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldFail()
 		})
 	})
 })

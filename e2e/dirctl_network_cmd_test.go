@@ -4,23 +4,22 @@
 package e2e
 
 import (
-	"bytes"
 	_ "embed"
 	"os"
 	"path/filepath"
-	"strings"
 
-	clicmd "github.com/agntcy/dir/cli/cmd"
-	initcmd "github.com/agntcy/dir/cli/cmd/network/init"
 	"github.com/agntcy/dir/e2e/config"
+	"github.com/agntcy/dir/e2e/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for network commands", func() {
 	var (
+		cli         *utils.CLI
 		tempDir     string
 		tempKeyPath string
+		cleanup     func()
 	)
 
 	ginkgo.BeforeEach(func() {
@@ -28,142 +27,65 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for network commands", 
 			ginkgo.Skip("Skipping test, not in local mode")
 		}
 
-		// Create temporary directory for test keys
-		var err error
-		tempDir, err = os.MkdirTemp("", "network-test")
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		// Reset CLI command state to ensure clean state between tests
+		utils.ResetCLIState()
 
-		// Generate OpenSSL-style ED25519 key
-		_, privateKey, err := initcmd.GenerateED25519OpenSSLKey()
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		// Initialize CLI helper
+		cli = utils.NewCLI()
 
-		// Write the private key to a temporary file
-		tempKeyPath = filepath.Join(tempDir, "test_key")
-		err = os.WriteFile(tempKeyPath, privateKey, 0o0600)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		// Setup test directory and generate network key
+		tempDir, cleanup = utils.SetupNetworkTestDir()
+		tempKeyPath = utils.GenerateNetworkKeyPair(tempDir)
 	})
 
 	ginkgo.AfterEach(func() {
-		// Cleanup temporary directory
-		err := os.RemoveAll(tempDir)
-		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		if cleanup != nil {
+			cleanup()
+		}
 	})
 
 	ginkgo.Context("info command", func() {
 		ginkgo.It("should generate a peer ID from a valid ED25519 key", func() {
-			var outputBuffer bytes.Buffer
-
-			infoCmd := clicmd.RootCmd
-			infoCmd.SetOut(&outputBuffer)
-			infoCmd.SetArgs([]string{
-				"network",
-				"info",
-				tempKeyPath,
-			})
-
-			err := infoCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			output := cli.Network().Info(tempKeyPath).ShouldSucceed()
 
 			// Verify that the output is not empty
-			output := strings.TrimSpace(outputBuffer.String())
 			gomega.Expect(output).NotTo(gomega.BeEmpty())
 		})
 
 		ginkgo.It("should fail with non-existent key file", func() {
-			var outputBuffer bytes.Buffer
-
-			infoCmd := clicmd.RootCmd
-			infoCmd.SetOut(&outputBuffer)
-			infoCmd.SetArgs([]string{
-				"network",
-				"info",
-				"non-existent-key-file",
-			})
-
-			err := infoCmd.Execute()
-			gomega.Expect(err).To(gomega.HaveOccurred())
+			_ = cli.Network().Info("non-existent-key-file").ShouldFail()
 		})
 
 		ginkgo.It("should fail with empty key path", func() {
-			var outputBuffer bytes.Buffer
-
-			infoCmd := clicmd.RootCmd
-			infoCmd.SetOut(&outputBuffer)
-			infoCmd.SetArgs([]string{
-				"network",
-				"info",
-				"",
-			})
-
-			err := infoCmd.Execute()
-			gomega.Expect(err).To(gomega.HaveOccurred())
+			_ = cli.Network().Info("").ShouldFail()
 		})
 	})
 
 	ginkgo.Context("init command", func() {
 		ginkgo.It("should generate a new peer ID and save the key to specified output", func() {
 			outputPath := filepath.Join(tempDir, "generated.key")
-			var outputBuffer bytes.Buffer
 
-			initCmd := clicmd.RootCmd
-			initCmd.SetOut(&outputBuffer)
-			initCmd.SetArgs([]string{
-				"network",
-				"init",
-				"--output",
-				outputPath,
-			})
+			// Generate new peer ID and key
+			peerID := cli.Network().Init().WithOutput(outputPath).ShouldSucceed()
 
-			err := initCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			// Verify that the output file exists with correct permissions
+			gomega.Expect(outputPath).To(gomega.BeAnExistingFile())
 
-			// Verify that the output file exists
-			_, err = os.Stat(outputPath)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			// Verify file permissions
 			info, err := os.Stat(outputPath)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(info.Mode().Perm()).To(gomega.Equal(os.FileMode(0o0600)))
 
-			// Verify that the output is not empty and is a valid peer ID
-			output := strings.TrimSpace(outputBuffer.String())
-			gomega.Expect(output).NotTo(gomega.BeEmpty())
-			gomega.Expect(output).To(gomega.HavePrefix("12D3"))
+			// Verify that the peer ID is valid format
+			gomega.Expect(peerID).NotTo(gomega.BeEmpty())
+			gomega.Expect(peerID).To(gomega.HavePrefix("12D3"))
 
 			// Verify that the generated key can be used with the info command
-			var infoBuffer bytes.Buffer
-			infoCmd := clicmd.RootCmd
-			infoCmd.SetOut(&infoBuffer)
-			infoCmd.SetArgs([]string{
-				"network",
-				"info",
-				outputPath,
-			})
-
-			err = infoCmd.Execute()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			// Verify that info command returns the same peer ID
-			infoOutput := strings.TrimSpace(infoBuffer.String())
-			gomega.Expect(infoOutput).To(gomega.Equal(output))
+			infoOutput := cli.Network().Info(outputPath).ShouldSucceed()
+			gomega.Expect(infoOutput).To(gomega.Equal(peerID))
 		})
 
 		ginkgo.It("should fail when output directory doesn't exist and cannot be created", func() {
-			// Try to write to a location that should fail
-			var outputBuffer bytes.Buffer
-
-			initCmd := clicmd.RootCmd
-			initCmd.SetOut(&outputBuffer)
-			initCmd.SetArgs([]string{
-				"network",
-				"init",
-				"--output",
-				"/nonexistent/directory/key.pem",
-			})
-
-			err := initCmd.Execute()
-			gomega.Expect(err).To(gomega.HaveOccurred())
+			_ = cli.Network().Init().WithOutput("/nonexistent/directory/key.pem").ShouldFail()
 		})
 	})
 })
