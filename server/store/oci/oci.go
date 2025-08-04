@@ -619,3 +619,8 @@ func (s *store) isSignatureManifest(desc ocispec.Descriptor) bool {
 
 	return true
 }
+
+func VerifyWithZot(ctx context.Context, cid string) (bool, error) {
+	logger.Debug("Verifying with Zot not implemented", "cid", cid)
+	return false, nil
+}
