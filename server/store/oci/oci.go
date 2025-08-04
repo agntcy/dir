@@ -37,8 +37,15 @@ const (
 	// SignatureManifestMediaType is the media type for signature manifests.
 	SignatureManifestMediaType = "application/vnd.oci.image.manifest.v1+json"
 
+	// Cosign simple signing media type for signature layers
+	CosignSimpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
+
 	// Signature annotations.
 	SignatureTypeAnnotation = "org.opencontainers.artifact.type"
+
+	// Cosign-specific annotations
+	CosignSignatureAnnotation = "dev.cosignproject.cosign/signature"
+	CosignBundleAnnotation    = "dev.sigstore.cosign/bundle"
 )
 
 var logger = logging.Logger("store/oci")
@@ -416,6 +423,13 @@ func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Si
 		return nil, status.Errorf(codes.Internal, "failed to unmarshal signature: %v", err)
 	}
 
+	// Restore original content type from annotations if available
+	if signatureBlob.Annotations != nil {
+		if originalContentType, ok := signatureBlob.Annotations["original.content.type"]; ok && originalContentType != "" {
+			signature.ContentType = originalContentType
+		}
+	}
+
 	logger.Debug("Retrieved signature artifact", "recordCID", recordCID)
 
 	return &signature, nil
@@ -460,22 +474,40 @@ func (s *store) DeleteSignature(ctx context.Context, recordCID string) error {
 
 // pushSignatureBlob pushes a signature artifact as a blob and returns its descriptor.
 func (s *store) pushSignatureBlob(ctx context.Context, signature *signv1.Signature) (ocispec.Descriptor, error) {
-	// Marshal the entire signature object to JSON
+	// Store the original signature data as the blob content so it can be reconstructed
 	signatureJSON, err := json.Marshal(signature)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("failed to marshal signature: %w", err)
 	}
 
-	mediaType := signature.GetContentType()
-	if mediaType == "" {
-		mediaType = SignatureArtifactMediaType
+	// Create annotations for cosign compatibility
+	annotations := make(map[string]string)
+
+	// Add cosign signature annotation if signature data is available
+	if signature.GetSignature() != "" {
+		annotations[CosignSignatureAnnotation] = signature.GetSignature()
 	}
 
-	// Push the signature blob
+	// Add cosign bundle annotation if content bundle is available
+	if signature.GetContentBundle() != "" {
+		annotations[CosignBundleAnnotation] = signature.GetContentBundle()
+	}
+
+	// Use cosign simple signing media type for zot compatibility
+	mediaType := CosignSimpleSigningMediaType
+	if signature.GetContentType() != "" {
+		// Store the original content type in annotations for reconstruction
+		annotations["original.content.type"] = signature.GetContentType()
+	}
+
+	// Push the signature blob with original signature data but cosign media type
 	blobDesc, err := oras.PushBytes(ctx, s.repo, mediaType, signatureJSON)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("failed to push signature blob: %w", err)
 	}
+
+	// Update descriptor with annotations for cosign compatibility
+	blobDesc.Annotations = annotations
 
 	return blobDesc, nil
 }
@@ -499,13 +531,21 @@ func (s *store) createSignatureManifest(ctx context.Context, signatureDesc ocisp
 	// Add OCI-required signature artifact type annotation
 	annotations[SignatureTypeAnnotation] = SignatureArtifactMediaType
 
+	// Add cosign-specific annotations for better zot compatibility
+	if signature.GetSignature() != "" {
+		annotations[CosignSignatureAnnotation] = signature.GetSignature()
+	}
+	if signature.GetContentBundle() != "" {
+		annotations[CosignBundleAnnotation] = signature.GetContentBundle()
+	}
+
 	// Create the signature manifest with proper OCI subject field
 	manifestDesc, err := oras.PackManifest(ctx, s.repo, oras.PackManifestVersion1_1, SignatureManifestMediaType,
 		oras.PackManifestOptions{
 			ManifestAnnotations: annotations,
 			Subject:             &recordManifestDesc, // OCI 1.1 subject field
 			Layers: []ocispec.Descriptor{
-				signatureDesc,
+				signatureDesc, // Cosign simple signing layer
 			},
 		},
 	)
