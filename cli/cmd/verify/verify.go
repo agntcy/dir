@@ -30,27 +30,23 @@ Usage examples:
 
 1. Verify a record from file:
 
-	dirctl verify record.json signature.json
+	dirctl verify record.json --signature signature.json
 
 2. Verify a record from standard input:
 
-	dirctl pull <digest> | dirctl verify --stdin 
+	dirctl pull <digest> | dirctl verify --stdin --signature signature.json
 	# TODO Update to pull record and signature from store
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
 			recordPath    string
-			signaturePath string
 		)
 
-		if len(args) > 2 {
-			return errors.New("only two file paths are allowed")
+		if len(args) > 1 {
+			return errors.New("only one file path is allowed")
 		} else if len(args) == 1 {
-			return errors.New("signature file path is required")
-		} else if len(args) == 2 {
 			recordPath = args[0]
-			signaturePath = args[1]
 		}
 
 		// get source
@@ -59,17 +55,12 @@ Usage examples:
 			return err //nolint:wrapcheck
 		}
 
-		signatureSource, err := utils.GetReader(signaturePath, opts.FromStdin)
-		if err != nil {
-			return err //nolint:wrapcheck
-		}
-
-		return runCommand(cmd, recordSource, signatureSource)
+		return runCommand(cmd, recordSource)
 	},
 }
 
 // nolint:mnd
-func runCommand(cmd *cobra.Command, recordSource io.ReadCloser, signatureSource io.ReadCloser) error {
+func runCommand(cmd *cobra.Command, recordSource io.ReadCloser) error {
 	// Get the client from the context
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
@@ -82,10 +73,14 @@ func runCommand(cmd *cobra.Command, recordSource io.ReadCloser, signatureSource 
 		return fmt.Errorf("failed to load OASF: %w", err)
 	}
 
-	// Load signature from file
-	signatureData, err := io.ReadAll(signatureSource)
+	if opts.SignaturePath == "" {
+		return fmt.Errorf("signature path is not supported yet")
+	}
+
+	// Load signature from file if provided
+	signatureData, err := os.ReadFile(filepath.Clean(opts.SignaturePath))
 	if err != nil {
-		return fmt.Errorf("failed to read data: %w", err)
+		return fmt.Errorf("failed to read signature file: %w", err)
 	}
 
 	signature := &signv1.Signature{}

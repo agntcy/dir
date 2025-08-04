@@ -9,6 +9,7 @@ type options struct {
 	FromStdin bool
 
 	// Verification options
+	SignaturePath string
 	OIDCIssuer   string
 	OIDCIdentity string
 	Key          string // Key to use for verification, e.g., 'env://COSIGN_PUBLIC_KEY'
@@ -22,6 +23,8 @@ func init() {
 	)
 
 	// Verification options
+	flags.StringVar(&opts.SignaturePath, "signature", "",
+		"Path to the signature file to use for verification.")
 	flags.StringVar(&opts.OIDCIssuer, "oidc-issuer", ".*",
 		"OIDC Issuer to check against. Accepts regular expressions.")
 	flags.StringVar(&opts.OIDCIdentity, "oidc-identity", ".*",
