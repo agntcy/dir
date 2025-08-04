@@ -25,6 +25,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			ginkgo.Skip("Skipping test, not in local mode")
 		}
 
+		utils.ResetCLIState()
 		// Initialize CLI helper
 		cli = utils.NewCLI()
 	})
