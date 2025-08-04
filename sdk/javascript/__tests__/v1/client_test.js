@@ -1,4 +1,5 @@
-// Example: test_client.js
+const { setTimeout } = require('node:timers/promises');
+
 const { Client, Config } = require('../../v1/client');
 const core_record_pb2 = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
 const extension_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/extension_pb');
@@ -8,13 +9,30 @@ const skill_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/skill_pb');
 const record_query_type = require('@buf/agntcy_dir.grpc_web/routing/v1/record_query_pb');
 const routing_types = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_pb');
 const search_types = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_pb')
-const search_query_type = require('@buf/agntcy_dir.grpc_node/search/v1/record_query_pb')
-
-const client = new Client(new Config());
-
-let test_record_ref = null;
+const search_query_type = require('@buf/agntcy_dir.grpc_node/search/v1/record_query_pb');
+const { afterEach } = require('node:test');
 
 describe('Client', () => {
+    const client = new Client(new Config());
+
+    let test_record_ref = null;
+
+    let shouldSkipTest = false;
+
+    beforeEach(async () => {
+        if (shouldSkipTest === false) {
+            // Wait for directory api server to finish the test action
+            await setTimeout(3000);
+        }
+    });
+
+    afterEach(async () => {
+        const test_name = expect.getState().currentTestName.split(" ")[1];
+        if (test_name === 'push' && expect.getState().testFailing) {
+            shouldSkipTest = true;
+        }
+    });
+
     test('push', async () => {
         const exampleRecord = new record_pb2.Record();
         exampleRecord.setName('example-record');
@@ -36,7 +54,14 @@ describe('Client', () => {
         test_record = new core_record_pb2.Record();
         test_record.setV3(exampleRecord);
 
-        const reference = await client.push(test_record);
+        let reference;
+
+        try {
+            reference = await client.push(test_record);
+        } catch (error) {
+            throw new Error(error);
+        }
+
         test_record_ref = new core_record_pb2.RecordRef(reference);
 
         expect(reference).not.toBeNull();
@@ -47,7 +72,16 @@ describe('Client', () => {
     });
 
     test('pull', async () => {
-        const pulled_record = await client.pull(test_record_ref);
+        if (shouldSkipTest) { throw new Error("Test is skipped") };
+
+        let pulled_record;
+
+        try {
+            pulled_record = await client.pull(test_record_ref);
+        } catch (error) {
+            throw new Error(error);
+        }
+
         const pulledRecordInstance = new core_record_pb2.Record(pulled_record);
 
         expect(pulled_record).not.toBeNull();
@@ -58,6 +92,8 @@ describe('Client', () => {
     });
 
     test('search', async () => {
+        if (shouldSkipTest) { throw new Error("Test is skipped") };
+
         const search_query = new search_query_type.RecordQuery();
         search_query.setType(search_query_type.RecordQueryType.RECORD_QUERY_TYPE_SKILL);
         search_query.setValue('/skills/Natural Language Processing/Text Completion');
@@ -68,7 +104,14 @@ describe('Client', () => {
         search_request.setQueriesList(queries);
         search_request.setLimit(1);
 
-        objects = await client.search(search_request);
+        let objects;
+
+        try {
+            objects = await client.search(search_request);
+        } catch (error) {
+            throw new Error(error);
+        }
+
         objectsInstance = new search_types.SearchResponse(objects);
 
         expect(objects).not.toBeNull();
@@ -79,29 +122,53 @@ describe('Client', () => {
     });
 
     test('lookup', async () => {
-        const metadata = await client.lookup(test_record_ref);
+        if (shouldSkipTest) { throw new Error("Test is skipped") };
+
+
+        let metadata;
+
+        try {
+            metadata = await client.lookup(test_record_ref);
+        } catch (error) {
+            throw new Error(error);
+        }
 
         expect(metadata).not.toBeNull();
         expect(metadata).toBeInstanceOf(Array);
     });
 
     test('publish', async () => {
+        if (shouldSkipTest) { throw new Error("Test is skipped") };
+
         const publish_request = new routing_types.PublishRequest();
         publish_request.setRecordCid(test_record_ref.u[0]);
 
-        await client.publish(publish_request);
+        try {
+            await client.publish(publish_request);
+        } catch (error) {
+            throw new Error(error);
+        }
 
         // no assertion needed, no response
     });
 
     test('list', async () => {
+        if (shouldSkipTest) { throw new Error("Test is skipped") };
+
         const query = new record_query_type.RecordQuery();
         query.setType(record_query_type.RECORD_QUERY_TYPE_SKILL);
         query.setValue('/skills/Natural Language Processing/Text Completion');
         const listRequest = new routing_types.ListRequest();
         listRequest.addQueries(query);
 
-        const objects = await client.list(listRequest)
+        let objects;
+
+        try {
+            objects = await client.list(listRequest)
+        } catch (error) {
+            throw new Error(error);
+        }
+
         const objectsInstance = new routing_types.ListResponse(objects);
 
         expect(objects).not.toBeNull();
@@ -112,16 +179,29 @@ describe('Client', () => {
     });
 
     test('unpublish', async () => {
+        if (shouldSkipTest) { throw new Error("Test is skipped") };
+
+
         let unpublish_request = new routing_types.UnpublishRequest();
         unpublish_request.setRecordCid(test_record_ref.u[0]);
 
-        await client.unpublish(unpublish_request);
+        try {
+            await client.unpublish(unpublish_request);
+        } catch (error) {
+            throw new Error(error);
+        }
 
         // no assertion needed, no response
     });
 
     test('delete', async () => {
-        await client.delete(test_record_ref);
+        if (shouldSkipTest) { throw new Error("Test is skipped") };
+
+        try {
+            await client.delete(test_record_ref);
+        } catch (error) {
+            throw new Error(error);
+        }
 
         // no assertion needed, no response
     });
