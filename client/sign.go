@@ -174,9 +174,14 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
 	keySigner := req.GetProvider().GetKey()
 
+	password := keySigner.GetPassword()
+	if password == nil {
+		password = []byte("") // Empty password is valid for cosign.
+	}
+
 	// Generate a keypair from the provided private key bytes.
 	// The keypair hint is derived from the public key and will be used for verification.
-	signKeypair, err := cosign.LoadKeypair(keySigner.GetPrivateKey(), keySigner.GetPassword())
+	signKeypair, err := cosign.LoadKeypair(keySigner.GetPrivateKey(), password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keypair: %w", err)
 	}
