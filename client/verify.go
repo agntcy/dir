@@ -172,3 +172,19 @@ func (c *Client) VerifyWithKey(_ context.Context, req *signv1.VerifyRequest) (*s
 
 	return response, nil
 }
+
+// VerifyWithZot verifies the signature of the record using zot's verification API via the server.
+func (c *Client) VerifyWithZot(ctx context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
+	// Validate request.
+	if req.GetRecord() == nil || req.GetRecord().GetCid() == "" {
+		return nil, errors.New("record must be set and have a CID")
+	}
+
+	// Call the server's SignService.Verify method
+	response, err := c.SignServiceClient.Verify(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("server verification failed: %w", err)
+	}
+
+	return response, nil
+}

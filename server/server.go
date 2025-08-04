@@ -14,6 +14,7 @@ import (
 	"github.com/Portshift/go-utils/healthz"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/api/version"
 	"github.com/agntcy/dir/server/config"
@@ -150,6 +151,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
+	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(storeAPI))
 
 	// Register server
 	reflection.Register(grpcServer)

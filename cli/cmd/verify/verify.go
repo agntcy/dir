@@ -73,8 +73,22 @@ func runCommand(cmd *cobra.Command, recordSource io.ReadCloser) error {
 		return fmt.Errorf("failed to load OASF: %w", err)
 	}
 
+	// If no signature path is provided, use server-side zot verification
 	if opts.SignaturePath == "" {
-		return fmt.Errorf("signature path is not supported yet")
+		response, err := c.VerifyWithZot(cmd.Context(), &signv1.VerifyRequest{
+			Record:    record,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to verify record: %w", err)
+		}
+
+		if !response.GetSuccess() {
+			return fmt.Errorf("signature verification failed: %s", response.GetErrorMessage())
+		}
+
+		// Print success message
+		presenter.Print(cmd, "Record signature verified successfully!")
+		return nil
 	}
 
 	// Load signature from file if provided
