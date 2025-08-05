@@ -9,22 +9,18 @@ type options struct {
 	FromStdin bool
 
 	// Verification options
-	SignaturePath string
+	OIDC         bool
 	OIDCIssuer   string
 	OIDCIdentity string
-	Key          string // Key to use for verification, e.g., 'env://COSIGN_PUBLIC_KEY'
+	Key          string
 }
 
 func init() {
 	flags := Command.Flags()
-	flags.BoolVar(&opts.FromStdin, "stdin", false,
-		"Read data from standard input. Useful for piping. Reads from file if empty. "+
-			"Ignored if file is provided as an argument.",
-	)
 
 	// Verification options
-	flags.StringVar(&opts.SignaturePath, "signature", "",
-		"Path to the signature file to use for verification.")
+	flags.BoolVar(&opts.OIDC, "oidc", false,
+		"Use OIDC identity-based verification.")
 	flags.StringVar(&opts.OIDCIssuer, "oidc-issuer", ".*",
 		"OIDC Issuer to check against. Accepts regular expressions.")
 	flags.StringVar(&opts.OIDCIdentity, "oidc-identity", ".*",

@@ -23,31 +23,11 @@ import (
 )
 
 // VerifyWithOIDC verifies the signature of the record using OIDC.
-func (c *Client) VerifyWithOIDC(_ context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
-	// Validate request.
-	if req.GetRecord() == nil {
-		return nil, errors.New("record must be set")
-	}
-
-	if req.GetSignature() == nil {
-		return nil, errors.New("signature must be set")
-	}
-
-	// Extract signature data.
-	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(req.GetSignature().GetContentBundle())
+func (c *Client) VerifyWithOIDC(ctx context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
+	// Pull record and signature from store.
+	recordJSON, sigBundle, err := c.pullRecordAndSignature(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode signature: %w", err)
-	}
-
-	sigBundle := &bundle.Bundle{}
-	if err := sigBundle.UnmarshalJSON(sigBundleRawJSON); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal signature bundle: %w", err)
-	}
-
-	// Convert the record to JSON.
-	recordJSON, err := json.Marshal(req.GetRecord())
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal record: %w", err)
+		return nil, err
 	}
 
 	oidcVerifier := req.GetProvider().GetOidc()
@@ -102,41 +82,28 @@ func (c *Client) VerifyWithOIDC(_ context.Context, req *signv1.VerifyRequest) (*
 	}
 
 	// Run verification
+	var errMsg string
+	var success bool
 	_, err = sev.Verify(sigBundle, verify.NewPolicy(verify.WithArtifact(bytes.NewReader(recordJSON)), identityPolicy))
 	if err != nil {
-		return nil, fmt.Errorf("failed to verify signature: %w", err)
+		errMsg = fmt.Sprintf("failed to verify signature: %v", err)
+		success = false
 	}
 
-	response := &signv1.VerifyResponse{
-		Success: err == nil,
-	}
-
-	// Verify the signature.
-	return response, nil
+	return &signv1.VerifyResponse{
+		Success:      success,
+		ErrorMessage: &errMsg,
+	}, nil
 }
 
 // VerifyWithKey verifies the signature of the record using a PEM-encoded public key.
-func (c *Client) VerifyWithKey(_ context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
+func (c *Client) VerifyWithKey(ctx context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
 	keyVerifier := req.GetProvider().GetKey()
 
-	// Validate request.
-	if req.GetRecord() == nil {
-		return nil, errors.New("record must be set")
-	}
-
-	if req.GetSignature() == nil {
-		return nil, errors.New("signature must be set")
-	}
-
-	// Extract signature data.
-	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(req.GetSignature().GetContentBundle())
+	// Pull record and signature from store.
+	_, sigBundle, err := c.pullRecordAndSignature(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode signature: %w", err)
-	}
-
-	sigBundle := &bundle.Bundle{}
-	if err := sigBundle.UnmarshalJSON(sigBundleRawJSON); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal signature bundle: %w", err)
+		return nil, err
 	}
 
 	// Get the public key from the signature bundle and compare it with the provided key.
@@ -162,24 +129,21 @@ func (c *Client) VerifyWithKey(_ context.Context, req *signv1.VerifyRequest) (*s
 
 	expectedHint := string(cosign.GenerateHintFromPublicKey(p.Bytes))
 
+	var errMsg string
+	var success bool
 	if pubKey.GetHint() != expectedHint {
-		return nil, fmt.Errorf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
+		errMsg = fmt.Sprintf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
+		success = false
 	}
 
-	response := &signv1.VerifyResponse{
-		Success: err == nil,
-	}
-
-	return response, nil
+	return &signv1.VerifyResponse{
+		Success:      success,
+		ErrorMessage: &errMsg,
+	}, nil
 }
 
 // VerifyWithZot verifies the signature of the record using zot's verification API via the server.
 func (c *Client) VerifyWithZot(ctx context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
-	// Validate request.
-	if req.GetRecord() == nil || req.GetRecord().GetCid() == "" {
-		return nil, errors.New("record must be set and have a CID")
-	}
-
 	// Call the server's SignService.Verify method
 	response, err := c.SignServiceClient.Verify(ctx, req)
 	if err != nil {
@@ -187,4 +151,46 @@ func (c *Client) VerifyWithZot(ctx context.Context, req *signv1.VerifyRequest) (
 	}
 
 	return response, nil
+}
+
+// pullRecordAndSignature is a helper function that pulls a record and its signature from the store,
+// validates both exist, and extracts the signature bundle for verification.
+func (c *Client) pullRecordAndSignature(ctx context.Context, req *signv1.VerifyRequest) ([]byte, *bundle.Bundle, error) {
+	// Validate request.
+	if req.GetRecordRef() == nil {
+		return nil, nil, errors.New("record ref must be set")
+	}
+
+	// Pull the record and its signature.
+	pullResponse, err := c.PullWithOptions(ctx, req.GetRecordRef(), true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get record: %w", err)
+	}
+
+	if pullResponse.GetRecord() == nil {
+		return nil, nil, errors.New("record not found")
+	}
+
+	if pullResponse.GetSignature() == nil {
+		return nil, nil, errors.New("signature not found")
+	}
+
+	// Extract signature data.
+	sigBundleRawJSON, err := base64.StdEncoding.DecodeString(pullResponse.GetSignature().GetContentBundle())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decode signature: %w", err)
+	}
+
+	sigBundle := &bundle.Bundle{}
+	if err := sigBundle.UnmarshalJSON(sigBundleRawJSON); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal signature bundle: %w", err)
+	}
+
+	// Convert the record to JSON.
+	recordJSON, err := json.Marshal(pullResponse.GetRecord())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to marshal record: %w", err)
+	}
+
+	return recordJSON, sigBundle, nil
 }

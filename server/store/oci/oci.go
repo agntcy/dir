@@ -37,13 +37,13 @@ const (
 	// SignatureManifestMediaType is the media type for signature manifests.
 	SignatureManifestMediaType = "application/vnd.oci.image.manifest.v1+json"
 
-	// Cosign simple signing media type for signature layers
+	// Cosign simple signing media type for signature layers.
 	CosignSimpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
 
 	// Signature annotations.
 	SignatureTypeAnnotation = "org.opencontainers.artifact.type"
 
-	// Cosign-specific annotations
+	// Cosign-specific annotations.
 	CosignSignatureAnnotation = "dev.cosignproject.cosign/signature"
 	CosignBundleAnnotation    = "dev.sigstore.cosign/bundle"
 )
@@ -495,6 +495,7 @@ func (s *store) pushSignatureBlob(ctx context.Context, signature *signv1.Signatu
 
 	// Use cosign simple signing media type for zot compatibility
 	mediaType := CosignSimpleSigningMediaType
+
 	if signature.GetContentType() != "" {
 		// Store the original content type in annotations for reconstruction
 		annotations["original.content.type"] = signature.GetContentType()
@@ -535,6 +536,7 @@ func (s *store) createSignatureManifest(ctx context.Context, signatureDesc ocisp
 	if signature.GetSignature() != "" {
 		annotations[CosignSignatureAnnotation] = signature.GetSignature()
 	}
+
 	if signature.GetContentBundle() != "" {
 		annotations[CosignBundleAnnotation] = signature.GetContentBundle()
 	}
@@ -620,7 +622,8 @@ func (s *store) isSignatureManifest(desc ocispec.Descriptor) bool {
 	return true
 }
 
-func VerifyWithZot(ctx context.Context, cid string) (bool, error) {
+func VerifyWithZot(_ context.Context, cid string) (bool, error) {
 	logger.Debug("Verifying with Zot not implemented", "cid", cid)
+
 	return false, nil
 }
