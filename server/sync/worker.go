@@ -238,7 +238,7 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 
 	// Initialize extensions if nil
 	if zotConfig.Extensions == nil {
-		zotConfig.Extensions = &zotconfig.SyncExtensions{}
+		zotConfig.Extensions = &zotconfig.Extensions{}
 	}
 
 	// Initialize sync config if nil

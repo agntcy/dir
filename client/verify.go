@@ -83,7 +83,9 @@ func (c *Client) VerifyWithOIDC(ctx context.Context, req *signv1.VerifyRequest) 
 
 	// Run verification
 	var errMsg string
+
 	var success bool
+
 	_, err = sev.Verify(sigBundle, verify.NewPolicy(verify.WithArtifact(bytes.NewReader(recordJSON)), identityPolicy))
 	if err != nil {
 		errMsg = fmt.Sprintf("failed to verify signature: %v", err)
@@ -130,7 +132,9 @@ func (c *Client) VerifyWithKey(ctx context.Context, req *signv1.VerifyRequest) (
 	expectedHint := string(cosign.GenerateHintFromPublicKey(p.Bytes))
 
 	var errMsg string
+
 	var success bool
+
 	if pubKey.GetHint() != expectedHint {
 		errMsg = fmt.Sprintf("public key hint mismatch: expected %s, got %s", expectedHint, pubKey.GetHint())
 		success = false

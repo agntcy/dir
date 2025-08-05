@@ -5,12 +5,14 @@
 package oci
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -51,7 +53,8 @@ const (
 var logger = logging.Logger("store/oci")
 
 type store struct {
-	repo oras.GraphTarget
+	repo   oras.GraphTarget
+	config ociconfig.Config
 }
 
 func New(cfg ociconfig.Config) (types.StoreAPI, error) {
@@ -67,7 +70,8 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 		}
 
 		return &store{
-			repo: repo,
+			repo:   repo,
+			config: cfg,
 		}, nil
 	}
 
@@ -98,7 +102,8 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 
 	// Create store API
 	store := &store{
-		repo: repo,
+		repo:   repo,
+		config: cfg,
 	}
 
 	// If no cache requested, return.
@@ -622,8 +627,110 @@ func (s *store) isSignatureManifest(desc ocispec.Descriptor) bool {
 	return true
 }
 
-func VerifyWithZot(_ context.Context, cid string) (bool, error) {
-	logger.Debug("Verifying with Zot not implemented", "cid", cid)
+// VerifyWithZot queries zot's verification API to check if a signature is valid.
+func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, error) {
+	// Skip if using local storage
+	if s.config.LocalDir != "" {
+		logger.Debug("Skipping zot verification for local storage")
 
-	return false, nil
+		return false, errors.New("zot verification not available for local storage")
+	}
+
+	// Build zot search endpoint URL
+	registryURL := s.config.RegistryAddress
+	if !strings.HasPrefix(registryURL, "http://") && !strings.HasPrefix(registryURL, "https://") {
+		if s.config.Insecure {
+			registryURL = "http://" + registryURL
+		} else {
+			registryURL = "https://" + registryURL
+		}
+	}
+
+	searchEndpoint := registryURL + "/v2/_zot/ext/search"
+	logger.Debug("Querying zot for signature verification", "endpoint", searchEndpoint, "recordCID", recordCID)
+
+	// Create GraphQL query for signature verification
+	query := fmt.Sprintf(`{
+		Image(image: "%s:%s") {
+			Digest
+			IsSigned
+			Tag
+			SignatureInfo {
+				Tool
+				IsTrusted
+				Author
+			}
+		}
+	}`, s.config.RepositoryName, recordCID)
+
+	graphqlQuery := map[string]interface{}{
+		"query": query,
+	}
+
+	jsonData, err := json.Marshal(graphqlQuery)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal GraphQL query: %w", err)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchEndpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return false, fmt.Errorf("failed to create verification request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Add authentication if configured
+	if s.config.Username != "" && s.config.Password != "" {
+		req.SetBasicAuth(s.config.Username, s.config.Password)
+	} else if s.config.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+s.config.AccessToken)
+	}
+
+	// Create HTTP client
+	client := &http.Client{}
+
+	// Execute request
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("failed to query zot verification: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, fmt.Errorf("failed to read verification response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Debug("Verification query returned non-success status", "status", resp.StatusCode, "body", string(body))
+
+		return false, fmt.Errorf("verification query returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse GraphQL response
+	var graphqlResp struct {
+		Data struct {
+			Image struct {
+				Digest        string `json:"Digest"`
+				IsSigned      bool   `json:"IsSigned"`
+				Tag           string `json:"Tag"`
+				SignatureInfo []struct {
+					Tool      string `json:"Tool"`
+					IsTrusted bool   `json:"IsTrusted"`
+					Author    string `json:"Author"`
+				} `json:"SignatureInfo"`
+			} `json:"Image"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(body, &graphqlResp); err != nil {
+		return false, fmt.Errorf("failed to decode verification response: %w", err)
+	}
+
+	// Check if the image is signed according to zot
+	isSigned := graphqlResp.Data.Image.IsSigned
+	logger.Debug("Zot verification result", "recordCID", recordCID, "isSigned", isSigned)
+
+	return isSigned, nil
 }

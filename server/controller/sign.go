@@ -67,7 +67,7 @@ func (s *signCtrl) verifyWithZot(ctx context.Context, recordCID string) (*signv1
 		}
 
 		return &signv1.VerifyResponse{
-			Success: verified,
+			Success:      verified,
 			ErrorMessage: &errMsg,
 		}, nil
 	}
