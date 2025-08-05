@@ -153,7 +153,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(paths.signatureOutput).To(gomega.BeAnExistingFile(), "Signature file should exist from pull test")
 
 			cli.Command("verify").
-				WithArgs(paths.record, "--signature", paths.signatureOutput, "--key", paths.publicKey).
+				WithArgs(tempAgentCID, "--key", paths.publicKey).
 				ShouldContain("Record signature verified successfully!")
 		})
 

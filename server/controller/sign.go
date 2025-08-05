@@ -27,28 +27,23 @@ func NewSignController(store types.StoreAPI) signv1.SignServiceServer {
 	}
 }
 
-func (s *signCtrl) Sign(ctx context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
+func (s *signCtrl) Sign(_ context.Context, _ *signv1.SignRequest) (*signv1.SignResponse, error) {
 	signLogger.Debug("Sign request received")
 
 	// Sign functionality is handled client-side
-	return nil, status.Error(codes.Unimplemented, "server-side signing not implemented")
+	return nil, status.Error(codes.Unimplemented, "server-side signing not implemented") //nolint:wrapcheck
 }
 
 func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
 	signLogger.Debug("Verify request received")
 
 	// Validate request
-	if req.GetRecord() == nil {
-		return nil, status.Error(codes.InvalidArgument, "record must be set")
-	}
-
-	recordCID := req.GetRecord().GetCid()
-	if recordCID == "" {
-		return nil, status.Error(codes.InvalidArgument, "record CID is required")
+	if req.GetRecordRef() == nil || req.GetRecordRef().GetCid() == "" {
+		return nil, status.Error(codes.InvalidArgument, "record ref must be set") //nolint:wrapcheck
 	}
 
 	// Server-side verification is enabled by zot verification.
-	return s.verifyWithZot(ctx, recordCID)
+	return s.verifyWithZot(ctx, req.GetRecordRef().GetCid())
 }
 
 // verifyWithZot attempts zot verification if the store supports it.
@@ -65,10 +60,17 @@ func (s *signCtrl) verifyWithZot(ctx context.Context, recordCID string) (*signv1
 		}
 
 		signLogger.Debug("Zot verification completed", "recordCID", recordCID, "verified", verified)
+
+		var errMsg string
+		if !verified {
+			errMsg = "Signature verification failed"
+		}
+
 		return &signv1.VerifyResponse{
 			Success: verified,
+			ErrorMessage: &errMsg,
 		}, nil
 	}
 
-	return nil, status.Error(codes.Unimplemented, "zot verification not available in this store configuration")
+	return nil, status.Error(codes.Unimplemented, "zot verification not available in this store configuration") //nolint:wrapcheck
 }
