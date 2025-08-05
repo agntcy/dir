@@ -149,7 +149,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		})
 
-		ginkgo.It("should verify a signature with a public key", func() {
+		ginkgo.It("should verify a signature with a public key on client side", func() {
 			// Ensure we have a signature file
 			gomega.Expect(paths.signatureOutput).To(gomega.BeAnExistingFile(), "Signature file should exist from pull test")
 
@@ -163,6 +163,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(tempAgentCID).NotTo(gomega.BeEmpty(), "Agent CID should be available for deletion")
 
 			cli.Delete(tempAgentCID).ShouldContain("Deleted")
+		})
+
+		ginkgo.It("should verify a signature with a public key on server side", func() {
+			cli.Command("verify").
+				WithArgs(paths.record).
+				ShouldContain("Record signature verified successfully!")
 		})
 	})
 })

@@ -281,7 +281,7 @@ tasks:
             "rootDirectory": "/tmp/zot"
           },
           "http": {
-            "address": "127.0.0.1",
+            "address": "0.0.0.0",
             "port": "5000"
           },
           "log": {
@@ -293,6 +293,11 @@ tasks:
               "cve": {
                 "updateInterval": "24h"
               }
+            },
+            "trust": {
+              "enable": true,
+              "cosign": true,
+              "notation": false
             }
           }
         }
@@ -303,7 +308,7 @@ tasks:
               -it \
               --rm -d -p 5000:5000 \
               -v /tmp/config.json:/config.json:ro \
-              --name oci-registry {{.IMAGE}}
+              --name oci-registry {{.IMAGE}} serve /config.json
 
   server:store:stop:
     desc: Stop local OCI registry node
@@ -566,6 +571,13 @@ tasks:
           },
           "log": {
             "level": "info"
+          },
+          "extensions": {
+            "trust": {
+              "enable": true,
+              "cosign": true,
+              "notation": false
+            }
           }
         }
         EOF
