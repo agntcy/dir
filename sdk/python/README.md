@@ -7,9 +7,9 @@ It allows developers to integrate directory functionality into their Python appl
 
 ## Features
 
-- **Store API**: The SDK includes a store API that allows developers to push the agent data model to the store and
+- **Store API**: The SDK includes a store API that allows developers to push the record data model to the store and
 retrieve it from the store.
-- **Routing API**: The SDK provides a routing API that allows developers to publish and retrieve agents to and from the
+- **Routing API**: The SDK provides a routing API that allows developers to publish and retrieve record to and from the
 network.
 
 
@@ -40,30 +40,20 @@ task server:start
 ### Initializing the Client
 
 ```python
-import io
-import hashlib
-import json
-from google.protobuf.json_format import MessageToDict
-from client.client import Client, Config
-from core.v1 import object_pb2, agent_pb2, skill_pb2, extension_pb2
-from routing.v1 import routing_service_pb2 as routingv1
-
 # Initialize the client
 client = Client(Config())
 ```
 ### Creating and Pushing an Agent Object
 
 ```python
-# Create an agent object
-agent = agent_pb2.Agent(
-    name="example-agent",
-    version="v1",
+# Create a record object
+example_record = record_pb2.Record(
+    name="example-record",
+    version="v3",
     skills=[
         skill_pb2.Skill(
-            category_name="Natural Language Processing",
-            category_uid="1",
-            class_name="Text Completion",
-            class_uid="10201",
+            name="Natural Language Processing",
+            id=1,
         ),
     ],
     extensions=[
@@ -71,79 +61,60 @@ agent = agent_pb2.Agent(
             name="schema.oasf.agntcy.org/domains/domain-1",
             version="v1",
         )
-    ]
+    ],
+    signature=signature_pb2.Signature(),
 )
 
-agent_dict = MessageToDict(agent, preserving_proto_field_name=True)
-
-# Convert the agent object to a JSON string
-agent_json = json.dumps(agent_dict).encode('utf-8')
-print(agent_json)
-
-# Create a reference for the object
-ref = object_pb2.ObjectRef(
-    digest="sha256:" + hashlib.sha256(agent_json).hexdigest(),
-    type=object_pb2.ObjectType.Name(object_pb2.ObjectType.OBJECT_TYPE_AGENT),
-    size=len(agent_json),
-    annotations=agent.annotations,
-)
+r = core_record_pb2.Record(v3=example_record)
 
 # Push the object to the store
-data_stream = io.BytesIO(agent_json)
-response = client.push(ref, data_stream)
-print("Pushed object:", response)
+record_reference = client.push(record=r)
 ```
 
 ### Pulling the Object
 
 ```python
 # Pull the object from the store
-data_stream = client.pull(ref)
-
-# Deserialize the data
-pulled_agent_json = data_stream.getvalue().decode('utf-8')
-print("Pulled object data:", pulled_agent_json)
+record = client.pull(record_reference)
 ```
 
 ### Looking Up the Object
 
 ```python
 # Lookup the object
-metadata = client.lookup(ref)
-print("Object metadata:", metadata)
+metadata = client.lookup(record_reference)
 ```
 
 ### Publishing the Object
 
 ```python
 # Publish the object
-client.publish(ref, network=False)
-print("Object published.")
+client.publish(record_reference)
 ```
 
 ### Listing Objects in the Store
 
 ```python
 # List objects in the store
-list_request = routingv1.ListRequest(
-    labels=["/skills/Natural Language Processing/Text Completion"]
+query = record_query_type.RecordQuery(
+    type=record_query_type.RECORD_QUERY_TYPE_SKILL,
+    value="/skills/Natural Language Processing/Text Completion",
 )
+
+list_request = routingv1.ListRequest(queries=[query])
 objects = list(client.list(list_request))
-print("Listed objects:", objects)
 ```
 
 ### Unpublishing the Object
 
 ```python
 # Unpublish the object
-client.unpublish(ref, network=False)
-print("Object unpublished.")
+client.unpublish(record_reference)
 ```
 
 ### Deleting the Object
 
 ```python
 # Delete the object
-client.delete(ref)
-print("Object deleted.")
+client.delete(record_reference)
 ```
