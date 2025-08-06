@@ -7,11 +7,14 @@ package oci
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -349,6 +352,21 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 func (s *store) PushSignature(ctx context.Context, recordCID string, signature *signv1.Signature) error {
 	logger.Debug("Pushing signature artifact to OCI store", "recordCID", recordCID)
 
+	// Upload the public key to zot for signature verification
+	// This enables zot to mark this signature as "trusted" in verification queries
+	//nolint:nestif
+	if signature.PublicKey != nil && len(signature.GetPublicKey()) > 0 {
+		err := s.UploadPublicKeyToZotForVerification(ctx, signature.GetPublicKey())
+		if err != nil {
+			logger.Warn("Failed to upload public key to zot for verification", "error", err, "recordCID", recordCID)
+			// Don't fail the whole operation if public key upload fails
+		} else {
+			logger.Debug("Successfully uploaded public key to zot for verification", "recordCID", recordCID)
+		}
+	} else {
+		logger.Debug("No public key in signature, skipping upload to zot", "recordCID", recordCID)
+	}
+
 	if recordCID == "" {
 		return status.Error(codes.InvalidArgument, "record CID is required")
 	}
@@ -625,6 +643,59 @@ func (s *store) isSignatureManifest(desc ocispec.Descriptor) bool {
 	}
 
 	return true
+}
+
+// This enables zot to mark signatures as "trusted" when they can be verified with this key.
+func (s *store) UploadPublicKeyToZotForVerification(_ context.Context, publicKey string) error {
+	logger.Debug("Uploading public key to zot for signature verification")
+
+	if publicKey == "" {
+		return errors.New("public key is required")
+	}
+
+	// Decode the Base64-encoded public key
+	publicKeyPEM, err := base64.StdEncoding.DecodeString(publicKey)
+	if err != nil {
+		return fmt.Errorf("failed to decode Base64 public key: %w", err)
+	}
+
+	// Create a temporary file to store the public key
+	tempFile, err := os.CreateTemp("", "cosign.pub")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	defer os.Remove(tempFile.Name())
+
+	// Write the public key to the temporary file
+	_, err = tempFile.Write(publicKeyPEM)
+	if err != nil {
+		return fmt.Errorf("failed to write public key to temporary file: %w", err)
+	}
+
+	// Get registry URL for zot cosign endpoint
+	registryURL := s.config.RegistryAddress
+	if !strings.HasPrefix(registryURL, "http://") && !strings.HasPrefix(registryURL, "https://") {
+		if s.config.Insecure {
+			registryURL = "http://" + registryURL
+		} else {
+			registryURL = "https://" + registryURL
+		}
+	}
+
+	uploadEndpoint := registryURL + "/v2/_zot/ext/cosign"
+	logger.Debug("Uploading public key to zot", "endpoint", uploadEndpoint, "keySize", len(publicKeyPEM))
+
+	// Execute the curl command
+	cmd := exec.Command("curl", "--data-binary", "@"+tempFile.Name(), "-X", "POST", uploadEndpoint)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to upload public key: %w", err)
+	}
+
+	logger.Debug("Curl command output", "output", string(output))
+
+	return nil
 }
 
 // VerifyWithZot queries zot's verification API to check if a signature is valid.
