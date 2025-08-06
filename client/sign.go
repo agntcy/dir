@@ -228,6 +228,18 @@ func (c *Client) sign(_ context.Context, record *corev1.Record, signKeypair sign
 		SignedAt:      time.Now().Format(time.RFC3339),
 	}
 
+	// Extract public key from keypair for zot upload
+	publicKeyPEM, err := signKeypair.GetPublicKeyPem()
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract public key: %w", err)
+	}
+
+	// Add public key for zot upload (base64 encoded PEM)
+	if publicKeyPEM != "" {
+		encodedPublicKey := base64.StdEncoding.EncodeToString([]byte(publicKeyPEM))
+		signature.PublicKey = &encodedPublicKey
+	}
+
 	return signature, nil
 }
 
