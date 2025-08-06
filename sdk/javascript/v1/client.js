@@ -97,11 +97,11 @@ class Client {
         return new Promise((resolve, reject) => {
             const call = this.searchClient.search(request, metadata);
 
-            let results = new search_type.SearchResponse();
+            let results = [];
 
             // Handle response stream
             call.on('data', (response) => {
-                results = response.u
+                results.push(response.u);
             });
 
             call.on('end', () => {

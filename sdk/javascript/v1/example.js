@@ -48,7 +48,7 @@ function protoToJson(protoMsg) {
 (async () => {
     const client = new Client(new Config());
 
-    // Create a record object
+    // // Create a record object
     const exampleRecord = new record_pb2.Record();
     exampleRecord.setName('example-record');
     exampleRecord.setVersion('v3');
@@ -96,20 +96,24 @@ function protoToJson(protoMsg) {
 
     // Search object
     let search_query = new search_query_type.RecordQuery();
-    search_query.setType(search_query_type.RecordQueryType.RECORD_QUERY_TYPE_SKILL);
-    search_query.setValue('/skills/Natural Language Processing/Text Completion');
+    search_query.setType(search_query_type.RecordQueryType.RECORD_QUERY_TYPE_EXTENSION);
+    search_query.setValue('schema.oasf.agntcy.org/domains/domain-1');
 
     const queries = [search_query];
 
     let search_request = new search_types.SearchRequest();
     search_request.setQueriesList(queries);
-    search_request.setLimit(1);
+    search_request.setLimit(2);
 
     let search_response;
     try {
         response = await client.search(search_request);
-        search_response = new search_types.SearchResponse(response);
-        console.log('Search result:', printAsJson(search_response));
+
+        response.forEach(r => {
+            search_response = new search_types.SearchResponse(r);
+            console.log('Search result:', printAsJson(search_response));
+        });
+
     } catch (err) {
         console.error('Search error:', err);
         return;
