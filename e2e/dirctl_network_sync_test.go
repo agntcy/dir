@@ -5,6 +5,8 @@ package e2e
 
 import (
 	_ "embed"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,11 +18,24 @@ import (
 
 // Using peer addresses from utils.constants
 
-//go:embed testdata/agent_v2.json
-var expectedAgentV2JSON []byte
+// expectedAgentV2JSON is now embedded in dirctl_test.go and reused here
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", func() {
 	var cli *utils.CLI
+	var syncID string
+
+	// Setup temp agent files
+	tempAgentDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
+	if tempAgentDir == "" {
+		tempAgentDir = os.TempDir()
+	}
+	tempAgentV2Path := filepath.Join(tempAgentDir, "agent_v2_sync_test.json")
+	tempAgentV3Path := filepath.Join(tempAgentDir, "agent_v3_sync_test.json")
+
+	// Create directory and write agent data
+	_ = os.MkdirAll(filepath.Dir(tempAgentV2Path), 0o755)
+	_ = os.WriteFile(tempAgentV2Path, expectedAgentV2JSON, 0o600)
+	_ = os.WriteFile(tempAgentV3Path, expectedAgentV3JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -30,8 +45,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		// Initialize CLI helper
 		cli = utils.NewCLI()
 	})
-
-	var syncID string
 
 	ginkgo.Context("create command", func() {
 		ginkgo.It("should accept valid remote URL format", func() {
@@ -79,10 +92,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		var agentCID string
 
 		ginkgo.It("should push agent_v2.json to peer 1", func() {
-			agentCID = cli.Push("./testdata/agent_v2.json").OnServer(utils.Peer1Addr).ShouldSucceed()
+			agentCID = cli.Push(tempAgentV2Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
-			utils.LoadAndValidateCID(agentCID, "./testdata/agent_v2.json")
+			utils.LoadAndValidateCID(agentCID, tempAgentV2Path)
 		})
 
 		ginkgo.It("should fail to pull agent_v2.json from peer 2", func() {
@@ -115,7 +128,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			output := cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareJSONAgents([]byte(output), expectedAgentV2JSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), expectedAgentV2JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
@@ -132,17 +145,36 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
-		// Push agent_v3.json to peer 1
-		ginkgo.It("should push agent_v3.json to peer 1", func() {
-			agentCID = cli.Push("./testdata/agent_v3.json").OnServer(utils.Peer1Addr).ShouldSucceed()
+		// Wait for network state to propagate after sync deletion
+		ginkgo.It("should wait for sync deletion to propagate", func() {
+			// Add explicit wait to ensure sync deletion is fully propagated
+			time.Sleep(2 * time.Second)
 
-			// Validate that the returned CID correctly represents the pushed data
-			utils.LoadAndValidateCID(agentCID, "./testdata/agent_v3.json")
+			// Verify sync is no longer listed as active
+			output := cli.Sync().List().OnServer(utils.Peer2Addr).ShouldSucceed()
+			gomega.Expect(output).To(gomega.ContainSubstring("DELETED"))
 		})
 
-		// Pull agent_v3.json from peer 2
-		ginkgo.It("should fail to pull agent_v3.json from peer 2", func() {
-			_ = cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldFail()
+		// Push agent_v3.json to peer 1 (this is a NEW agent after sync deletion)
+		ginkgo.It("should push agent_v3.json to peer 1", func() {
+			agentCID = cli.Push(tempAgentV3Path).OnServer(utils.Peer1Addr).ShouldSucceed()
+
+			// Validate that the returned CID correctly represents the pushed data
+			utils.LoadAndValidateCID(agentCID, tempAgentV3Path)
+		})
+
+		// Verify sync is properly deleted and no new syncs are auto-created
+		ginkgo.It("should confirm sync remains deleted", func() {
+			// Wait a bit more to ensure no background sync recreation
+			time.Sleep(1 * time.Second)
+
+			// Verify the sync is still in DELETED state and hasn't been recreated
+			output := cli.Sync().List().OnServer(utils.Peer2Addr).ShouldSucceed()
+			gomega.Expect(output).To(gomega.ContainSubstring("DELETED"))
+
+			// Ensure no new active syncs were created
+			gomega.Expect(output).NotTo(gomega.ContainSubstring("PENDING"))
+			gomega.Expect(output).NotTo(gomega.ContainSubstring("IN_PROGRESS"))
 		})
 	})
 })

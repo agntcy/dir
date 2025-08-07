@@ -4,6 +4,8 @@
 package e2e
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/agntcy/dir/e2e/config"
@@ -16,6 +18,18 @@ import (
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi peer deployment", func() {
 	var cli *utils.CLI
+	var tempAgentCID string
+
+	// Setup temp agent file
+	tempAgentDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
+	if tempAgentDir == "" {
+		tempAgentDir = os.TempDir()
+	}
+	tempAgentPath := filepath.Join(tempAgentDir, "agent_v3_network_test.json")
+
+	// Create directory and write V3 agent data
+	_ = os.MkdirAll(filepath.Dir(tempAgentPath), 0o755)
+	_ = os.WriteFile(tempAgentPath, expectedAgentV3JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -26,14 +40,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		cli = utils.NewCLI()
 	})
 
-	// Test params
-	var tempAgentCID string
-
 	ginkgo.It("should push an agent to peer 1", func() {
-		tempAgentCID = cli.Push("./testdata/agent.json").OnServer(utils.Peer1Addr).ShouldSucceed()
+		tempAgentCID = cli.Push(tempAgentPath).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 		// Validate that the returned CID correctly represents the pushed data
-		utils.LoadAndValidateCID(tempAgentCID, "./testdata/agent.json")
+		utils.LoadAndValidateCID(tempAgentCID, tempAgentPath)
 	})
 
 	ginkgo.It("should pull the agent from peer 1", func() {

@@ -41,10 +41,10 @@ func TestDetectOASFVersion(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "no schema_version defaults to v0.3.1",
+			name:        "no schema_version returns error",
 			jsonData:    `{"name": "test-agent", "version": "1.0"}`,
-			expectedVer: "v0.3.1",
-			expectError: false,
+			expectedVer: "",
+			expectError: true,
 		},
 		{
 			name:        "invalid json",
@@ -96,10 +96,9 @@ func TestLoadOASFFromReader(t *testing.T) {
 			expectV3:    true,
 		},
 		{
-			name:        "no schema_version defaults to v0.3.1",
+			name:        "no schema_version returns error",
 			jsonData:    `{"name": "test-agent", "version": "1.0"}`,
-			expectError: false,
-			expectV1:    true,
+			expectError: true,
 		},
 		{
 			name:        "unsupported version",
@@ -469,10 +468,9 @@ func TestUnmarshalOASF(t *testing.T) {
 			expectV3: true,
 		},
 		{
-			name:     "no schema_version defaults to v0.3.1",
-			data:     []byte(`{"name":"test-agent","description":"A test agent"}`),
-			wantErr:  false,
-			expectV1: true,
+			name:    "no schema_version returns error",
+			data:    []byte(`{"name":"test-agent","description":"A test agent"}`),
+			wantErr: true,
 		},
 		{
 			name:    "invalid json",

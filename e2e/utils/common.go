@@ -10,6 +10,8 @@ import (
 	"sort"
 
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
+	objectsv2 "github.com/agntcy/dir/api/objects/v2"
+	objectsv3 "github.com/agntcy/dir/api/objects/v3"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	clicmd "github.com/agntcy/dir/cli/cmd"
 	"github.com/spf13/cobra"
@@ -34,6 +36,116 @@ func CollectChannelItems(itemsChan <-chan *routingv1.LegacyListResponse_Item) []
 	return items
 }
 
+// OASFVersion represents the detected OASF version from JSON.
+type OASFVersion string
+
+const (
+	OASFVersionV1 OASFVersion = "v0.3.1"
+	OASFVersionV2 OASFVersion = "v0.4.0"
+	OASFVersionV3 OASFVersion = "v0.5.0"
+)
+
+// schemaVersionDetector is used to extract schema_version from JSON.
+type schemaVersionDetector struct {
+	SchemaVersion string `json:"schema_version"`
+}
+
+// detectOASFVersion extracts the OASF version from JSON by reading schema_version field.
+func detectOASFVersion(jsonData []byte) (OASFVersion, error) {
+	var detector schemaVersionDetector
+	if err := json.Unmarshal(jsonData, &detector); err != nil {
+		return "", fmt.Errorf("failed to detect OASF version: %w", err)
+	}
+
+	switch detector.SchemaVersion {
+	case "v0.3.1":
+		return OASFVersionV1, nil
+	case "v0.4.0":
+		return OASFVersionV2, nil
+	case "v0.5.0":
+		return OASFVersionV3, nil
+	default:
+		return "", fmt.Errorf("unsupported OASF version: %s", detector.SchemaVersion)
+	}
+}
+
+// CompareOASFRecords compares two OASF JSON records with version-aware logic.
+// This function automatically detects OASF versions and uses appropriate comparison logic.
+func CompareOASFRecords(json1, json2 []byte) (bool, error) {
+	// Detect versions from both JSON records
+	version1, err := detectOASFVersion(json1)
+	if err != nil {
+		return false, fmt.Errorf("failed to detect version for first record: %w", err)
+	}
+
+	version2, err := detectOASFVersion(json2)
+	if err != nil {
+		return false, fmt.Errorf("failed to detect version for second record: %w", err)
+	}
+
+	// Both records must be the same version to compare
+	if version1 != version2 {
+		return false, fmt.Errorf("version mismatch: %s vs %s", version1, version2)
+	}
+
+	// Use version-specific comparison
+	switch version1 {
+	case OASFVersionV1:
+		return compareV1Records(json1, json2)
+	case OASFVersionV2:
+		return compareV2Records(json1, json2)
+	case OASFVersionV3:
+		return compareV3Records(json1, json2)
+	default:
+		return false, fmt.Errorf("unsupported OASF version: %s", version1)
+	}
+}
+
+// compareV1Records compares two V1 Agent records.
+func compareV1Records(json1, json2 []byte) (bool, error) {
+	var agent1, agent2 objectsv1.Agent
+
+	if err := json.Unmarshal(json1, &agent1); err != nil {
+		return false, fmt.Errorf("failed to unmarshal V1 agent 1: %w", err)
+	}
+
+	if err := json.Unmarshal(json2, &agent2); err != nil {
+		return false, fmt.Errorf("failed to unmarshal V1 agent 2: %w", err)
+	}
+
+	return compareV1Agents(&agent1, &agent2)
+}
+
+// compareV2Records compares two V2 AgentRecord records.
+func compareV2Records(json1, json2 []byte) (bool, error) {
+	var record1, record2 objectsv2.AgentRecord
+
+	if err := json.Unmarshal(json1, &record1); err != nil {
+		return false, fmt.Errorf("failed to unmarshal V2 record 1: %w", err)
+	}
+
+	if err := json.Unmarshal(json2, &record2); err != nil {
+		return false, fmt.Errorf("failed to unmarshal V2 record 2: %w", err)
+	}
+
+	return compareV2AgentRecords(&record1, &record2)
+}
+
+// compareV3Records compares two V3 Record records.
+func compareV3Records(json1, json2 []byte) (bool, error) {
+	var record1, record2 objectsv3.Record
+
+	if err := json.Unmarshal(json1, &record1); err != nil {
+		return false, fmt.Errorf("failed to unmarshal V3 record 1: %w", err)
+	}
+
+	if err := json.Unmarshal(json2, &record2); err != nil {
+		return false, fmt.Errorf("failed to unmarshal V3 record 2: %w", err)
+	}
+
+	return compareV3RecordStructs(&record1, &record2)
+}
+
 //nolint:govet
 func compareJSONAgents(json1, json2 []byte) (bool, error) {
 	var agent1, agent2 objectsv1.Agent
@@ -47,7 +159,7 @@ func compareJSONAgents(json1, json2 []byte) (bool, error) {
 		return false, fmt.Errorf("failed to unmarshal json: %w", err)
 	}
 
-	return compareAgents(&agent1, &agent2)
+	return compareV1Agents(&agent1, &agent2)
 }
 
 // CompareJSONAgents compares two agent JSON byte arrays for equality.
@@ -56,7 +168,7 @@ func CompareJSONAgents(json1, json2 []byte) (bool, error) {
 }
 
 //nolint:govet
-func compareAgents(agent1, agent2 *objectsv1.Agent) (bool, error) {
+func compareV1Agents(agent1, agent2 *objectsv1.Agent) (bool, error) {
 	// Overwrite CreatedAt
 	agent1.CreatedAt = agent2.GetCreatedAt()
 
@@ -96,7 +208,109 @@ func compareAgents(agent1, agent2 *objectsv1.Agent) (bool, error) {
 
 // CompareAgents compares two agent objects for equality.
 func CompareAgents(agent1, agent2 *objectsv1.Agent) (bool, error) {
-	return compareAgents(agent1, agent2)
+	return compareV1Agents(agent1, agent2)
+}
+
+//nolint:govet
+func compareV2AgentRecords(record1, record2 *objectsv2.AgentRecord) (bool, error) {
+	// Normalize CreatedAt
+	record1.CreatedAt = record2.GetCreatedAt()
+
+	// Sort authors
+	sort.Strings(record1.GetAuthors())
+	sort.Strings(record2.GetAuthors())
+
+	// Sort locators by type
+	sort.Slice(record1.GetLocators(), func(i, j int) bool {
+		return record1.GetLocators()[i].GetType() < record1.GetLocators()[j].GetType()
+	})
+	sort.Slice(record2.GetLocators(), func(i, j int) bool {
+		return record2.GetLocators()[i].GetType() < record2.GetLocators()[j].GetType()
+	})
+
+	// Sort extensions by name
+	sort.Slice(record1.GetExtensions(), func(i, j int) bool {
+		return record1.GetExtensions()[i].GetName() < record1.GetExtensions()[j].GetName()
+	})
+	sort.Slice(record2.GetExtensions(), func(i, j int) bool {
+		return record2.GetExtensions()[i].GetName() < record2.GetExtensions()[j].GetName()
+	})
+
+	// Sort skills by name (V2 uses simple name/id format)
+	sort.Slice(record1.GetSkills(), func(i, j int) bool {
+		return record1.GetSkills()[i].GetName() < record1.GetSkills()[j].GetName()
+	})
+	sort.Slice(record2.GetSkills(), func(i, j int) bool {
+		return record2.GetSkills()[i].GetName() < record2.GetSkills()[j].GetName()
+	})
+
+	// Marshal and compare
+	json1, err := json.Marshal(record1)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal V2 record 1: %w", err)
+	}
+
+	json2, err := json.Marshal(record2)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal V2 record 2: %w", err)
+	}
+
+	return reflect.DeepEqual(json1, json2), nil
+}
+
+//nolint:govet
+func compareV3RecordStructs(record1, record2 *objectsv3.Record) (bool, error) {
+	// Normalize CreatedAt
+	record1.CreatedAt = record2.GetCreatedAt()
+
+	// Sort authors
+	sort.Strings(record1.GetAuthors())
+	sort.Strings(record2.GetAuthors())
+
+	// Sort locators by type
+	sort.Slice(record1.GetLocators(), func(i, j int) bool {
+		return record1.GetLocators()[i].GetType() < record1.GetLocators()[j].GetType()
+	})
+	sort.Slice(record2.GetLocators(), func(i, j int) bool {
+		return record2.GetLocators()[i].GetType() < record2.GetLocators()[j].GetType()
+	})
+
+	// Sort extensions by name
+	sort.Slice(record1.GetExtensions(), func(i, j int) bool {
+		return record1.GetExtensions()[i].GetName() < record1.GetExtensions()[j].GetName()
+	})
+	sort.Slice(record2.GetExtensions(), func(i, j int) bool {
+		return record2.GetExtensions()[i].GetName() < record2.GetExtensions()[j].GetName()
+	})
+
+	// Sort skills by name (V3 uses simple name/id format like V2)
+	sort.Slice(record1.GetSkills(), func(i, j int) bool {
+		return record1.GetSkills()[i].GetName() < record1.GetSkills()[j].GetName()
+	})
+	sort.Slice(record2.GetSkills(), func(i, j int) bool {
+		return record2.GetSkills()[i].GetName() < record2.GetSkills()[j].GetName()
+	})
+
+	// Sort domains by name (V3-specific field)
+	sort.Slice(record1.GetDomains(), func(i, j int) bool {
+		return record1.GetDomains()[i].GetName() < record1.GetDomains()[j].GetName()
+	})
+	sort.Slice(record2.GetDomains(), func(i, j int) bool {
+		return record2.GetDomains()[i].GetName() < record2.GetDomains()[j].GetName()
+	})
+
+	// Marshal and compare
+	json1, err := json.Marshal(record1)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal V3 record 1: %w", err)
+	}
+
+	json2, err := json.Marshal(record2)
+	if err != nil {
+		return false, fmt.Errorf("failed to marshal V3 record 2: %w", err)
+	}
+
+	return reflect.DeepEqual(json1, json2), nil
 }
 
 // ResetCobraFlags resets all CLI command flags to their default values.

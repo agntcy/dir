@@ -23,9 +23,10 @@ func TestStore(t *testing.T) {
 
 	// Create test record
 	testAgent := &objectsv1.Agent{
-		Name:        "test-agent-123",
-		Description: "A test agent for unit testing",
-		Version:     "1.0.0",
+		Name:          "test-agent-123",
+		Description:   "A test agent for unit testing",
+		Version:       "1.0.0",
+		SchemaVersion: "v0.3.1", // Required field for OASF version detection
 	}
 
 	record := &corev1.Record{

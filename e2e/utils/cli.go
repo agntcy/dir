@@ -119,12 +119,13 @@ func (s *SyncCommands) Delete(syncID string) *CommandBuilder {
 
 // CommandBuilder provides a fluent interface for building and executing commands.
 type CommandBuilder struct {
-	command    string
-	args       []string
-	serverAddr string
-	expectErr  bool
-	timeout    time.Duration
-	outputFile string
+	command     string
+	args        []string
+	serverAddr  string
+	expectErr   bool
+	timeout     time.Duration
+	outputFile  string
+	suppressErr bool
 }
 
 func (c *CommandBuilder) WithArgs(args ...string) *CommandBuilder {
@@ -157,6 +158,12 @@ func (c *CommandBuilder) ExpectError() *CommandBuilder {
 	return c
 }
 
+func (c *CommandBuilder) SuppressStderr() *CommandBuilder {
+	c.suppressErr = true
+
+	return c
+}
+
 // Execute runs the command and returns output and error.
 func (c *CommandBuilder) Execute() (string, error) {
 	args := append([]string{c.command}, c.args...)
@@ -171,8 +178,15 @@ func (c *CommandBuilder) Execute() (string, error) {
 
 	var outputBuffer bytes.Buffer
 
+	var errorBuffer bytes.Buffer
+
 	cmd := clicmd.RootCmd
 	cmd.SetOut(&outputBuffer)
+
+	if c.suppressErr {
+		cmd.SetErr(&errorBuffer) // Capture stderr to suppress it
+	}
+
 	cmd.SetArgs(args)
 
 	err := cmd.Execute()
@@ -196,6 +210,8 @@ func (c *CommandBuilder) ShouldSucceed() string {
 
 // ShouldFail executes the command and expects failure.
 func (c *CommandBuilder) ShouldFail() error {
+	// Automatically suppress stderr for expected failures to reduce noise
+	c.suppressErr = true
 	_, err := c.Execute()
 	gomega.Expect(err).To(gomega.HaveOccurred(),
 		fmt.Sprintf("Command '%s %s' should fail", c.command, strings.Join(c.args, " ")))

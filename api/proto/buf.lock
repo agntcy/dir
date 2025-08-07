@@ -2,5 +2,5 @@
 version: v2
 deps:
   - name: buf.build/agntcy/oasf
-    commit: 7e02c1ec1e5c496698e1176876f9955f
+    commit: d66b37d3cfe348bba74d6653ff7ca068
     digest: b5:798ac54c805e39bbd99f4ca9e582d937fa855537f888f4ec102f160d5682116ed7e865f1d2f77977f32058472092d06268813113ba964dccbcc0dee21ddf9867

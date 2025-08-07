@@ -4,12 +4,11 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
-	"encoding/json"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/e2e/config"
@@ -25,130 +24,107 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		}
 	})
 
-	var err error
 	ctx := context.Background()
 
 	// Create a new client
 	c, err := client.New(client.WithEnvConfig())
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	// Create agent object using new Record structure.
-	agent := &objectsv1.Agent{
-		Name:    "test-agent",
-		Version: "v1",
-		Skills: []*objectsv1.Skill{
-			{
-				CategoryName: utils.Ptr("test-category-1"),
-				ClassName:    utils.Ptr("test-class-1"),
+	// Test cases for each OASF version (reusing same structure as dirctl_test.go)
+	testVersions := []struct {
+		name                 string
+		jsonData             []byte
+		expectedSkillLabels  []string
+		expectedDomainLabel  string
+		expectedFeatureLabel string
+	}{
+		{
+			name:     "V1_Agent_OASF_v0.3.1",
+			jsonData: expectedAgentV1JSON,
+			expectedSkillLabels: []string{
+				"/skills/Natural Language Processing/Text Completion",
+				"/skills/Natural Language Processing/Problem Solving",
 			},
-			{
-				CategoryName: utils.Ptr("test-category-2"),
-				ClassName:    utils.Ptr("test-class-2"),
-			},
+			expectedDomainLabel:  "/domains/research",
+			expectedFeatureLabel: "/features/runtime/framework",
 		},
-		Extensions: []*objectsv1.Extension{
-			{
-				Name:    "schema.oasf.agntcy.org/domains/domain-1",
-				Version: "v1",
-				Data:    nil,
+		{
+			name:     "V2_AgentRecord_OASF_v0.4.0",
+			jsonData: expectedAgentV2JSON,
+			expectedSkillLabels: []string{
+				"/skills/Natural Language Processing/Text Completion",
+				"/skills/Natural Language Processing/Problem Solving",
 			},
-			{
-				Name:    "schema.oasf.agntcy.org/features/feature-1",
-				Version: "v1",
-				Data:    nil,
-			},
+			expectedDomainLabel:  "/domains/research",
+			expectedFeatureLabel: "/features/runtime/framework",
 		},
-		Signature: &objectsv1.Signature{},
+		{
+			name:     "V3_Record_OASF_v0.5.0",
+			jsonData: expectedAgentV3JSON,
+			expectedSkillLabels: []string{
+				"/skills/Natural Language Processing/Text Completion",
+				"/skills/Natural Language Processing/Problem Solving",
+			},
+			expectedDomainLabel:  "/domains/research",
+			expectedFeatureLabel: "/features/runtime/framework",
+		},
 	}
 
-	// Create Record with the agent.
-	record := &corev1.Record{
-		Data: &corev1.Record_V1{V1: agent},
-	}
+	// Test each OASF version dynamically
+	for _, v := range testVersions {
+		version := v // Capture loop variable by value to avoid closure issues
+		ginkgo.Context(version.name, ginkgo.Ordered, ginkgo.Serial, func() {
+			var record *corev1.Record
+			var canonicalData []byte
+			var recordRef *corev1.RecordRef // Shared across the business flow
 
-	// Marshal the agent for comparison (we'll still need this for testing).
-	agentData, err := json.Marshal(agent)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	// Variable to hold the record reference (will be set by Push).
-	var recordRef *corev1.RecordRef
-
-	ginkgo.Context("agent push and pull", func() {
-		ginkgo.It("should push an agent to store", func() {
-			recordRef, err = c.Push(ctx, record)
+			// Load the record once per version context (inline initialization)
+			var err error
+			record, err = corev1.LoadOASFFromReader(bytes.NewReader(version.jsonData))
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Validate that the returned CID correctly represents the pushed data
-			utils.ValidateCIDAgainstData(recordRef.GetCid(), agentData)
-		})
-
-		ginkgo.It("should pull an agent from store", func() {
-			// Pull the agent object.
-			pulledRecord, err := c.Pull(ctx, recordRef)
+			// Use canonical marshaling for CID validation
+			canonicalData, err = record.MarshalOASF()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Extract the agent from the pulled record.
-			pulledAgent := pulledRecord.GetV1()
-			gomega.Expect(pulledAgent).NotTo(gomega.BeNil())
+			// Step 1: Push
+			ginkgo.It("should push an agent to store", func() {
+				var err error
+				recordRef, err = c.Push(ctx, record)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Compare pushed and pulled agent directly.
-			equal, err := utils.CompareAgents(agent, pulledAgent)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(equal).To(gomega.BeTrue())
-		})
-	})
-
-	ginkgo.Context("routing publish and list", func() {
-		ginkgo.It("should publish an agent", func() {
-			err = c.Publish(ctx, recordRef)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-		})
-
-		ginkgo.It("should list published agent by one label", func() {
-			itemsChan, err := c.List(ctx, &routingv1.ListRequest{
-				LegacyListRequest: &routingv1.LegacyListRequest{
-					Labels: []string{"/skills/test-category-1/test-class-1"},
-				},
+				// Validate that the returned CID correctly represents the pushed data using canonical marshaling
+				utils.ValidateCIDAgainstData(recordRef.GetCid(), canonicalData)
 			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Collect items from the channel using utility.
-			items := utils.CollectChannelItems(itemsChan)
+			// Step 2: Pull (depends on push)
+			ginkgo.It("should pull an agent from store", func() {
+				// Pull the record object (using recordRef from push)
+				pulledRecord, err := c.Pull(ctx, recordRef)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Validate the response.
-			gomega.Expect(items).To(gomega.HaveLen(1))
-			for _, item := range items {
-				gomega.Expect(item).NotTo(gomega.BeNil())
-				gomega.Expect(item.GetRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
-			}
-		})
+				// Get canonical data from pulled record for comparison
+				pulledCanonicalData, err := pulledRecord.MarshalOASF()
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		ginkgo.It("should list published agent by multiple labels", func() {
-			itemsChan, err := c.List(ctx, &routingv1.ListRequest{
-				LegacyListRequest: &routingv1.LegacyListRequest{
-					Labels: []string{"/skills/test-category-1/test-class-1", "/skills/test-category-2/test-class-2"},
-				},
+				// Compare pushed and pulled records using canonical data
+				equal, err := utils.CompareOASFRecords(canonicalData, pulledCanonicalData)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+				gomega.Expect(equal).To(gomega.BeTrue(), "Pushed and pulled records should be identical")
 			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Collect items from the channel using utility.
-			items := utils.CollectChannelItems(itemsChan)
+			// Step 3: Publish (depends on push)
+			ginkgo.It("should publish an agent", func() {
+				err := c.Publish(ctx, recordRef)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			})
 
-			// Validate the response.
-			gomega.Expect(items).To(gomega.HaveLen(1))
-			for _, item := range items {
-				gomega.Expect(item).NotTo(gomega.BeNil())
-				gomega.Expect(item.GetRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
-			}
-		})
-
-		ginkgo.It("should list published agent by feature and domain labels", func() {
-			labels := []string{"/domains/domain-1", "/features/feature-1"}
-
-			for _, label := range labels {
+			// Step 4: List by one label (depends on publish)
+			ginkgo.It("should list published agent by one label", func() {
+				// Use the first skill label from this version's data
 				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
 					LegacyListRequest: &routingv1.LegacyListRequest{
-						Labels: []string{label},
+						Labels: []string{version.expectedSkillLabels[0]},
 					},
 				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -162,45 +138,92 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 					gomega.Expect(item).NotTo(gomega.BeNil())
 					gomega.Expect(item.GetRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
 				}
-			}
-		})
-	})
-
-	ginkgo.Context("agent unpublish", func() {
-		ginkgo.It("should unpublish an agent", func() {
-			err = c.Unpublish(ctx, recordRef)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-		})
-
-		ginkgo.It("should not find unpublish agent", func() {
-			itemsChan, err := c.List(ctx, &routingv1.ListRequest{
-				LegacyListRequest: &routingv1.LegacyListRequest{
-					Labels: []string{"/skills/test-category-1/test-class-1"},
-				},
 			})
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Collect items from the channel using utility.
-			items := utils.CollectChannelItems(itemsChan)
+			// Step 5: List by multiple labels (depends on publish)
+			ginkgo.It("should list published agent by multiple labels", func() {
+				// Use all skill labels from this version's data
+				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
+					LegacyListRequest: &routingv1.LegacyListRequest{
+						Labels: version.expectedSkillLabels,
+					},
+				})
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Validate the response.
-			gomega.Expect(items).To(gomega.BeEmpty())
+				// Collect items from the channel using utility.
+				items := utils.CollectChannelItems(itemsChan)
+
+				// Validate the response.
+				gomega.Expect(items).To(gomega.HaveLen(1))
+				for _, item := range items {
+					gomega.Expect(item).NotTo(gomega.BeNil())
+					gomega.Expect(item.GetRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
+				}
+			})
+
+			// Step 6: List by feature and domain labels (depends on publish)
+			ginkgo.It("should list published agent by feature and domain labels", func() {
+				// Use extension labels from this version's data
+				labels := []string{version.expectedDomainLabel, version.expectedFeatureLabel}
+
+				for _, label := range labels {
+					itemsChan, err := c.List(ctx, &routingv1.ListRequest{
+						LegacyListRequest: &routingv1.LegacyListRequest{
+							Labels: []string{label},
+						},
+					})
+					gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+					// Collect items from the channel using utility.
+					items := utils.CollectChannelItems(itemsChan)
+
+					// Validate the response.
+					gomega.Expect(items).To(gomega.HaveLen(1))
+					for _, item := range items {
+						gomega.Expect(item).NotTo(gomega.BeNil())
+						gomega.Expect(item.GetRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
+					}
+				}
+			})
+
+			// Step 7: Unpublish (depends on publish)
+			ginkgo.It("should unpublish an agent", func() {
+				err := c.Unpublish(ctx, recordRef)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			})
+
+			// Step 8: Verify unpublished agent is not found (depends on unpublish)
+			ginkgo.It("should not find unpublished agent", func() {
+				// Try to find the agent using the same skill label as before
+				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
+					LegacyListRequest: &routingv1.LegacyListRequest{
+						Labels: []string{version.expectedSkillLabels[0]},
+					},
+				})
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				// Collect items from the channel using utility.
+				items := utils.CollectChannelItems(itemsChan)
+
+				// Validate the response.
+				gomega.Expect(items).To(gomega.BeEmpty())
+			})
+
+			// Step 9: Delete (depends on previous steps)
+			ginkgo.It("should delete an agent from store", func() {
+				err := c.Delete(ctx, recordRef)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			})
+
+			// Step 10: Verify deleted agent is not found (depends on delete)
+			ginkgo.It("should not find deleted agent in store", func() {
+				// Add a small delay to ensure delete operation is fully processed
+				time.Sleep(100 * time.Millisecond)
+
+				pulledRecord, err := c.Pull(ctx, recordRef)
+				gomega.Expect(err).To(gomega.HaveOccurred())
+				gomega.Expect(pulledRecord).To(gomega.BeNil())
+			})
 		})
-	})
-
-	ginkgo.Context("agent delete", func() {
-		ginkgo.It("should delete an agent from store", func() {
-			err = c.Delete(ctx, recordRef)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-		})
-
-		ginkgo.It("should not find deleted agent in store", func() {
-			// Add a small delay to ensure delete operation is fully processed
-			time.Sleep(100 * time.Millisecond)
-
-			pulledRecord, err := c.Pull(ctx, recordRef)
-			gomega.Expect(err).To(gomega.HaveOccurred())
-			gomega.Expect(pulledRecord).To(gomega.BeNil())
-		})
-	})
+	}
 })

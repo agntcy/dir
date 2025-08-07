@@ -13,7 +13,7 @@ const (
 	// Internal Kubernetes service address for peer1.
 	Peer1InternalAddr = "agntcy-dir-apiserver.peer1.svc.cluster.local:8888"
 
-	// Test directory prefix for temporary files.
+	// Test directory prefixes for temporary files.
 	NetworkTestDirPrefix = "network-test"
 	SignTestDirPrefix    = "sign-test"
 )

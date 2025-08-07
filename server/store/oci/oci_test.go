@@ -11,9 +11,12 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	objectsv1 "github.com/agntcy/dir/api/objects/v1"
+	objectsv2 "github.com/agntcy/dir/api/objects/v2"
+	objectsv3 "github.com/agntcy/dir/api/objects/v3"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TODO: this should be configurable to unified Storage API test flow.
@@ -182,4 +185,254 @@ func loadRemoteStore(t *testing.T) types.StoreAPI {
 	assert.NoErrorf(t, err, "failed to create remote store")
 
 	return store
+}
+
+// TestAllVersionsSkillsAndLocatorsPreservation comprehensively tests skills and locators
+// preservation across all OASF versions (v1, v2, v3) through OCI push/pull cycles.
+// This addresses the reported issue where v3 record skills become empty after push/pull.
+func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
+	store := loadLocalStore(t)
+
+	testCases := []struct {
+		name                 string
+		record               *corev1.Record
+		expectedSkillCount   int
+		expectedLocatorCount int
+		skillVerifier        func(t *testing.T, record *corev1.Record)
+		locatorVerifier      func(t *testing.T, record *corev1.Record)
+	}{
+		{
+			name: "V1_Agent_CategoryClass_Skills",
+			record: &corev1.Record{
+				Data: &corev1.Record_V1{
+					V1: &objectsv1.Agent{
+						Name:          "test-v1-agent",
+						Version:       "1.0.0",
+						SchemaVersion: "v0.3.1",
+						Description:   "Test v1 agent with hierarchical skills",
+						Skills: []*objectsv1.Skill{
+							{
+								CategoryName: stringPtr("Natural Language Processing"),
+								CategoryUid:  1,
+								ClassName:    stringPtr("Text Completion"),
+								ClassUid:     10201,
+							},
+							{
+								CategoryName: stringPtr("Machine Learning"),
+								CategoryUid:  2,
+								ClassName:    stringPtr("Classification"),
+								ClassUid:     20301,
+							},
+						},
+						Locators: []*objectsv1.Locator{
+							{
+								Type: "docker-image",
+								Url:  "ghcr.io/agntcy/test-v1-agent",
+							},
+							{
+								Type: "helm-chart",
+								Url:  "oci://registry.example.com/charts/test-agent",
+							},
+						},
+					},
+				},
+			},
+			expectedSkillCount:   2,
+			expectedLocatorCount: 2,
+			skillVerifier: func(t *testing.T, record *corev1.Record) {
+				t.Helper()
+				v1Agent := record.GetV1()
+				require.NotNil(t, v1Agent, "should be v1 agent")
+				skills := v1Agent.GetSkills()
+				require.Len(t, skills, 2, "v1 should have 2 skills")
+
+				// V1 uses category/class format
+				assert.Equal(t, "Natural Language Processing", skills[0].GetCategoryName())
+				assert.Equal(t, "Text Completion", skills[0].GetClassName())
+				assert.Equal(t, uint64(10201), skills[0].GetClassUid())
+
+				assert.Equal(t, "Machine Learning", skills[1].GetCategoryName())
+				assert.Equal(t, "Classification", skills[1].GetClassName())
+				assert.Equal(t, uint64(20301), skills[1].GetClassUid())
+			},
+			locatorVerifier: func(t *testing.T, record *corev1.Record) {
+				t.Helper()
+				v1Agent := record.GetV1()
+				locators := v1Agent.GetLocators()
+				require.Len(t, locators, 2, "v1 should have 2 locators")
+
+				assert.Equal(t, "docker-image", locators[0].GetType())
+				assert.Equal(t, "ghcr.io/agntcy/test-v1-agent", locators[0].GetUrl())
+
+				assert.Equal(t, "helm-chart", locators[1].GetType())
+				assert.Equal(t, "oci://registry.example.com/charts/test-agent", locators[1].GetUrl())
+			},
+		},
+		{
+			name: "V2_AgentRecord_Simple_Skills",
+			record: &corev1.Record{
+				Data: &corev1.Record_V2{
+					V2: &objectsv2.AgentRecord{
+						Name:          "test-v2-agent",
+						Version:       "2.0.0",
+						SchemaVersion: "v0.4.0",
+						Description:   "Test v2 agent record with simple skills",
+						Skills: []*objectsv2.Skill{
+							{
+								Name: "Natural Language Processing/Text Completion",
+								Id:   10201,
+							},
+							{
+								Name: "Machine Learning/Classification",
+								Id:   20301,
+							},
+						},
+						Locators: []*objectsv2.Locator{
+							{
+								Type: "docker-image",
+								Url:  "ghcr.io/agntcy/test-v2-agent",
+							},
+							{
+								Type: "kubernetes",
+								Url:  "k8s://default/test-v2-agent",
+							},
+						},
+					},
+				},
+			},
+			expectedSkillCount:   2,
+			expectedLocatorCount: 2,
+			skillVerifier: func(t *testing.T, record *corev1.Record) {
+				t.Helper()
+				v2Agent := record.GetV2()
+				require.NotNil(t, v2Agent, "should be v2 agent record")
+				skills := v2Agent.GetSkills()
+				require.Len(t, skills, 2, "v2 should have 2 skills")
+
+				// V2 uses simple name/id format
+				assert.Equal(t, "Natural Language Processing/Text Completion", skills[0].GetName())
+				assert.Equal(t, uint32(10201), skills[0].GetId())
+
+				assert.Equal(t, "Machine Learning/Classification", skills[1].GetName())
+				assert.Equal(t, uint32(20301), skills[1].GetId())
+			},
+			locatorVerifier: func(t *testing.T, record *corev1.Record) {
+				t.Helper()
+				v2Agent := record.GetV2()
+				locators := v2Agent.GetLocators()
+				require.Len(t, locators, 2, "v2 should have 2 locators")
+
+				assert.Equal(t, "docker-image", locators[0].GetType())
+				assert.Equal(t, "ghcr.io/agntcy/test-v2-agent", locators[0].GetUrl())
+
+				assert.Equal(t, "kubernetes", locators[1].GetType())
+				assert.Equal(t, "k8s://default/test-v2-agent", locators[1].GetUrl())
+			},
+		},
+		{
+			name: "V3_Record_Simple_Skills",
+			record: &corev1.Record{
+				Data: &corev1.Record_V3{
+					V3: &objectsv3.Record{
+						Name:          "test-v3-record",
+						Version:       "3.0.0",
+						SchemaVersion: "v0.5.0",
+						Description:   "Test v3 record with simple skills",
+						Skills: []*objectsv3.Skill{
+							{
+								Name: "Natural Language Processing",
+								Id:   10201,
+							},
+							{
+								Name: "Data Analysis",
+								Id:   20301,
+							},
+						},
+						Locators: []*objectsv3.Locator{
+							{
+								Type: "docker-image",
+								Url:  "ghcr.io/agntcy/test-v3-record",
+							},
+							{
+								Type: "oci-artifact",
+								Url:  "oci://registry.example.com/artifacts/test-record",
+							},
+						},
+					},
+				},
+			},
+			expectedSkillCount:   2,
+			expectedLocatorCount: 2,
+			skillVerifier: func(t *testing.T, record *corev1.Record) {
+				t.Helper()
+				v3Record := record.GetV3()
+				require.NotNil(t, v3Record, "should be v3 record")
+				skills := v3Record.GetSkills()
+				require.Len(t, skills, 2, "SKILLS ISSUE: v3 should have 2 skills but has %d", len(skills))
+
+				// V3 uses simple name/id format (same as v2)
+				assert.Equal(t, "Natural Language Processing", skills[0].GetName())
+				assert.Equal(t, uint32(10201), skills[0].GetId())
+
+				assert.Equal(t, "Data Analysis", skills[1].GetName())
+				assert.Equal(t, uint32(20301), skills[1].GetId())
+			},
+			locatorVerifier: func(t *testing.T, record *corev1.Record) {
+				t.Helper()
+				v3Record := record.GetV3()
+				locators := v3Record.GetLocators()
+				require.Len(t, locators, 2, "v3 should have 2 locators")
+
+				assert.Equal(t, "docker-image", locators[0].GetType())
+				assert.Equal(t, "ghcr.io/agntcy/test-v3-record", locators[0].GetUrl())
+
+				assert.Equal(t, "oci-artifact", locators[1].GetType())
+				assert.Equal(t, "oci://registry.example.com/artifacts/test-record", locators[1].GetUrl())
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Calculate CID for the original record
+			originalCID := tc.record.GetCid()
+			require.NotEmpty(t, originalCID, "failed to calculate CID for %s", tc.name)
+
+			// Log original state
+			t.Logf("🔄 Testing %s:", tc.name)
+			t.Logf("   Original CID: %s", originalCID)
+			t.Logf("   Expected skills: %d, locators: %d", tc.expectedSkillCount, tc.expectedLocatorCount)
+
+			// Verify original skills and locators using verifiers
+			tc.skillVerifier(t, tc.record)
+			tc.locatorVerifier(t, tc.record)
+
+			// PUSH operation
+			recordRef, err := store.Push(testCtx, tc.record)
+			require.NoError(t, err, "push should succeed for %s", tc.name)
+			assert.Equal(t, originalCID, recordRef.GetCid(), "pushed CID should match original")
+
+			// PULL operation
+			pulledRecord, err := store.Pull(testCtx, recordRef)
+			require.NoError(t, err, "pull should succeed for %s", tc.name)
+
+			// Verify pulled record CID matches
+			pulledCID := pulledRecord.GetCid()
+			require.NotEmpty(t, pulledCID, "pulled record should have CID")
+			assert.Equal(t, originalCID, pulledCID, "pulled CID should match original")
+
+			// CRITICAL TEST: Verify skills and locators are preserved after push/pull cycle
+			t.Logf("   Verifying skills preservation...")
+			tc.skillVerifier(t, pulledRecord)
+
+			t.Logf("   Verifying locators preservation...")
+			tc.locatorVerifier(t, pulledRecord)
+
+			t.Logf("✅ %s: Skills and locators preserved successfully", tc.name)
+
+			// Cleanup - delete the record
+			err = store.Delete(testCtx, recordRef)
+			require.NoError(t, err, "cleanup delete should succeed for %s", tc.name)
+		})
+	}
 }

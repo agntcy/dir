@@ -16,8 +16,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-//go:embed testdata/agent_v3.json
-var signTestAgentJSON []byte
+// Using the shared agent V3 data from embed.go
 
 // Test constants.
 const (
@@ -76,7 +75,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Write test agent to temp location
-			err = os.WriteFile(paths.record, signTestAgentJSON, 0o600)
+			err = os.WriteFile(paths.record, expectedAgentV3JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Generate cosign key pair for all tests

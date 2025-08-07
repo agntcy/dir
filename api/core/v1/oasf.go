@@ -29,8 +29,8 @@ func detectOASFVersion(data []byte) (string, error) {
 	}
 
 	if detector.SchemaVersion == "" {
-		// Default to v0.3.1 if no schema_version specified for backward compatibility
-		return "v0.3.1", nil
+		// If the schema version is not set, we need to throw an error
+		return "", errors.New("schema version is not set")
 	}
 
 	return detector.SchemaVersion, nil
