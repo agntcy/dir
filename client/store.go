@@ -201,7 +201,7 @@ func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) 
 }
 
 // PushWithOptions sends a record with optional OCI artifacts like signatures to the store.
-func (c *Client) PushWithOptions(ctx context.Context, record *corev1.Record, signature *signv1.Signature) (*storev1.PushWithOptionsResponse, error) {
+func (c *Client) PushWithOptions(ctx context.Context, record *corev1.Record, sign bool, signatureProvider *signv1.SignRequestProvider) (*storev1.PushWithOptionsResponse, error) {
 	// Create streaming client
 	stream, err := c.StoreServiceClient.PushWithOptions(ctx)
 	if err != nil {
@@ -210,7 +210,8 @@ func (c *Client) PushWithOptions(ctx context.Context, record *corev1.Record, sig
 
 	// Create push options
 	options := &storev1.PushOptions{
-		Signature: signature,
+		Sign:              &sign,
+		SignatureProvider: signatureProvider,
 	}
 
 	// Create request
@@ -235,43 +236,50 @@ func (c *Client) PushWithOptions(ctx context.Context, record *corev1.Record, sig
 		return nil, fmt.Errorf("failed to receive push with options response: %w", err)
 	}
 
+	// Get record reference
+	recordRef := response.GetRecordRef()
+
+	// Sign the record if requested
+	if sign {
+		signResponse, err := c.Sign(ctx, &signv1.SignRequest{
+			RecordRef: recordRef,
+			Provider:  signatureProvider,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign record: %w", err)
+		}
+
+		// Store the signature if signing was successful
+		if signResponse.GetSignature() != nil {
+			err = c.storeSignature(ctx, recordRef.GetCid(), signResponse.GetSignature())
+			if err != nil {
+				return nil, fmt.Errorf("failed to store signature: %w", err)
+			}
+		}
+	}
+
 	return response, nil
 }
 
-// PullWithOptions retrieves a record along with its associated OCI artifacts.
-func (c *Client) PullWithOptions(ctx context.Context, recordRef *corev1.RecordRef, includeSignature bool) (*storev1.PullWithOptionsResponse, error) {
-	// Create streaming client
-	stream, err := c.StoreServiceClient.PullWithOptions(ctx)
+// storeSignature stores a signature for a given record CID using the new PushSignature RPC.
+func (c *Client) storeSignature(ctx context.Context, recordCID string, signature *signv1.Signature) error {
+	req := &signv1.PushSignatureRequest{
+		RecordRef: &corev1.RecordRef{Cid: recordCID},
+		Signature: signature,
+	}
+
+	resp, err := c.SignServiceClient.PushSignature(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pull with options stream: %w", err)
+		return fmt.Errorf("failed to push signature: %w", err)
 	}
 
-	// Create pull options
-	options := &storev1.PullOptions{
-		IncludeSignature: includeSignature,
+	if !resp.GetSuccess() {
+		errorMsg := "unknown error"
+		if resp.ErrorMessage != nil {
+			errorMsg = *resp.ErrorMessage
+		}
+		return fmt.Errorf("signature storage failed: %s", errorMsg)
 	}
 
-	// Create request
-	request := &storev1.PullWithOptionsRequest{
-		RecordRef: recordRef,
-		Options:   options,
-	}
-
-	// Send request
-	if err := stream.Send(request); err != nil {
-		return nil, fmt.Errorf("failed to send pull with options request: %w", err)
-	}
-
-	// Close send stream
-	if err := stream.CloseSend(); err != nil {
-		return nil, fmt.Errorf("failed to close send stream: %w", err)
-	}
-
-	// Receive response
-	response, err := stream.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive pull with options response: %w", err)
-	}
-
-	return response, nil
+	return nil
 }

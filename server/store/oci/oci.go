@@ -7,7 +7,6 @@ package oci
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -348,13 +347,12 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 	}
 }
 
-// PushSignature stores OCI signature artifacts for a record.
+// PushSignature stores OCI signature artifacts for a record using cosign attach signature and uploads public key to zot for verification.
 func (s *store) PushSignature(ctx context.Context, recordCID string, signature *signv1.Signature) error {
 	logger.Debug("Pushing signature artifact to OCI store", "recordCID", recordCID)
 
 	// Upload the public key to zot for signature verification
 	// This enables zot to mark this signature as "trusted" in verification queries
-	//nolint:nestif
 	if signature.PublicKey != nil && len(signature.GetPublicKey()) > 0 {
 		err := s.UploadPublicKeyToZotForVerification(ctx, signature.GetPublicKey())
 		if err != nil {
@@ -371,19 +369,13 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 		return status.Error(codes.InvalidArgument, "record CID is required")
 	}
 
-	// Create signature blob
-	signatureDesc, err := s.pushSignatureBlob(ctx, signature)
+	// Use cosign attach signature to attach the signature to the record
+	err := s.attachSignatureWithCosign(ctx, recordCID, signature)
 	if err != nil {
-		return status.Errorf(codes.Internal, "failed to push signature blob: %v", err)
+		return status.Errorf(codes.Internal, "failed to attach signature with cosign: %v", err)
 	}
 
-	// Create signature manifest that references the signed record
-	signatureManifestDesc, err := s.createSignatureManifest(ctx, signatureDesc, recordCID, signature)
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to create signature manifest: %v", err)
-	}
-
-	logger.Debug("Signature artifact pushed successfully", "digest", signatureManifestDesc.Digest.String())
+	logger.Debug("Signature attached successfully using cosign", "recordCID", recordCID)
 
 	return nil
 }
@@ -495,90 +487,85 @@ func (s *store) DeleteSignature(ctx context.Context, recordCID string) error {
 	return nil
 }
 
-// pushSignatureBlob pushes a signature artifact as a blob and returns its descriptor.
-func (s *store) pushSignatureBlob(ctx context.Context, signature *signv1.Signature) (ocispec.Descriptor, error) {
-	// Store the original signature data as the blob content so it can be reconstructed
-	signatureJSON, err := json.Marshal(signature)
+// attachSignatureWithCosign uses cosign attach signature to attach a signature to a record in the OCI registry.
+func (s *store) attachSignatureWithCosign(ctx context.Context, recordCID string, signature *signv1.Signature) error {
+	logger.Debug("Attaching signature using cosign attach signature", "recordCID", recordCID)
+
+	// Create temporary files for signature and payload
+	signatureFile, err := os.CreateTemp("", "signature.sig")
 	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("failed to marshal signature: %w", err)
+		return fmt.Errorf("failed to create signature temp file: %w", err)
 	}
+	defer os.Remove(signatureFile.Name())
 
-	// Create annotations for cosign compatibility
-	annotations := make(map[string]string)
-
-	// Add cosign signature annotation if signature data is available
-	if signature.GetSignature() != "" {
-		annotations[CosignSignatureAnnotation] = signature.GetSignature()
-	}
-
-	// Add cosign bundle annotation if content bundle is available
-	if signature.GetContentBundle() != "" {
-		annotations[CosignBundleAnnotation] = signature.GetContentBundle()
-	}
-
-	// Use cosign simple signing media type for zot compatibility
-	mediaType := CosignSimpleSigningMediaType
-
-	if signature.GetContentType() != "" {
-		// Store the original content type in annotations for reconstruction
-		annotations["original.content.type"] = signature.GetContentType()
-	}
-
-	// Push the signature blob with original signature data but cosign media type
-	blobDesc, err := oras.PushBytes(ctx, s.repo, mediaType, signatureJSON)
+	payloadFile, err := os.CreateTemp("", "payload.json")
 	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("failed to push signature blob: %w", err)
+		return fmt.Errorf("failed to create payload temp file: %w", err)
+	}
+	defer os.Remove(payloadFile.Name())
+
+	// Write the base64-encoded signature string to the signature file
+	// signature.GetSignature() returns a base64-encoded string like "MEUCIGCNH4noAPtiIbW1LaKW6yBjucNcy+vVSuvfepZVfCc5AiEAtjzFeSbQGbIGIOMHEwmqwrZsn5FAx0gToYseUh9U/2s="
+	// This is what cosign expects in the .sig file
+	signatureString := signature.GetSignature()
+
+	logger.Debug("Signature (base64)", "signature", signatureString)
+
+	if _, err := signatureFile.WriteString(signatureString); err != nil {
+		return fmt.Errorf("failed to write signature file: %w", err)
+	}
+	signatureFile.Close()
+
+	// Get the payload from the signature
+	payload := signature.GetAnnotations()["payload"]
+
+	// Log the payload
+	logger.Debug("Payload", "payload", payload)
+
+	// Write the payload to the payload file
+	if _, err := payloadFile.Write([]byte(payload)); err != nil {
+		return fmt.Errorf("failed to write payload file: %w", err)
+	}
+	payloadFile.Close()
+
+	// Construct the OCI image reference for the record
+	// Format: registry/repository:tag-or-digest
+	imageRef := s.constructImageReference(recordCID)
+
+	// Build cosign attach signature command
+	args := []string{
+		"attach", "signature",
+		"--signature", signatureFile.Name(),
+		"--payload", payloadFile.Name(),
 	}
 
-	// Update descriptor with annotations for cosign compatibility
-	blobDesc.Annotations = annotations
+	// Add the image reference
+	args = append(args, imageRef)
 
-	return blobDesc, nil
+	// Execute cosign attach signature command
+	cmd := exec.CommandContext(ctx, "cosign", args...)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("cosign attach signature failed: %w, output: %s", err, string(output))
+	}
+
+	logger.Debug("Cosign attach signature completed successfully", "output", string(output))
+	return nil
 }
 
-// createSignatureManifest creates a signature manifest that references the signed record using OCI subject field.
-func (s *store) createSignatureManifest(ctx context.Context, signatureDesc ocispec.Descriptor, recordCID string, signature *signv1.Signature) (ocispec.Descriptor, error) {
-	// First, resolve the record manifest to get its descriptor for the subject field
-	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
-	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("failed to resolve record manifest for subject: %w", err)
-	}
+// constructImageReference builds the OCI image reference for a record CID.
+func (s *store) constructImageReference(recordCID string) string {
+	// Use the configured repository name and CID as tag to match how records are stored
+	registry := s.config.RegistryAddress
+	repository := s.config.RepositoryName
 
-	// Create annotations for the signature manifest
-	annotations := make(map[string]string)
+	// Remove any protocol prefix from registry address for the image reference
+	registry = strings.TrimPrefix(registry, "http://")
+	registry = strings.TrimPrefix(registry, "https://")
 
-	// Copy signature annotations
-	for k, v := range signature.GetAnnotations() {
-		annotations[k] = v
-	}
-
-	// Add OCI-required signature artifact type annotation
-	annotations[SignatureTypeAnnotation] = SignatureArtifactMediaType
-
-	// Add cosign-specific annotations for better zot compatibility
-	if signature.GetSignature() != "" {
-		annotations[CosignSignatureAnnotation] = signature.GetSignature()
-	}
-
-	if signature.GetContentBundle() != "" {
-		annotations[CosignBundleAnnotation] = signature.GetContentBundle()
-	}
-
-	// Create the signature manifest with proper OCI subject field
-	manifestDesc, err := oras.PackManifest(ctx, s.repo, oras.PackManifestVersion1_1, SignatureManifestMediaType,
-		oras.PackManifestOptions{
-			ManifestAnnotations: annotations,
-			Subject:             &recordManifestDesc, // OCI 1.1 subject field
-			Layers: []ocispec.Descriptor{
-				signatureDesc, // Cosign simple signing layer
-			},
-		},
-	)
-	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("failed to pack signature manifest: %w", err)
-	}
-
-	return manifestDesc, nil
+	// Use CID as tag to match the oras.Tag operation in Push method
+	return fmt.Sprintf("%s/%s:%s", registry, repository, recordCID)
 }
 
 // ReferrersLister interface for repositories that support the OCI Referrers API.
@@ -653,11 +640,14 @@ func (s *store) UploadPublicKeyToZotForVerification(_ context.Context, publicKey
 		return errors.New("public key is required")
 	}
 
-	// Decode the Base64-encoded public key
-	publicKeyPEM, err := base64.StdEncoding.DecodeString(publicKey)
-	if err != nil {
-		return fmt.Errorf("failed to decode Base64 public key: %w", err)
-	}
+	// The public key is already in PEM format, no need to decode
+	publicKeyPEM := []byte(publicKey)
+
+	// Debug log the public key format
+	logger.Debug("Processing public key for zot upload",
+		"keyLength", len(publicKey),
+		"startsWithBegin", strings.HasPrefix(publicKey, "-----BEGIN"),
+		"endsWithEnd", strings.HasSuffix(strings.TrimSpace(publicKey), "-----END PUBLIC KEY-----"))
 
 	// Create a temporary file to store the public key
 	tempFile, err := os.CreateTemp("", "cosign.pub")
@@ -670,6 +660,12 @@ func (s *store) UploadPublicKeyToZotForVerification(_ context.Context, publicKey
 	_, err = tempFile.Write(publicKeyPEM)
 	if err != nil {
 		return fmt.Errorf("failed to write public key to temporary file: %w", err)
+	}
+
+	// Close the file to ensure it's flushed before curl reads it
+	err = tempFile.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close temporary file: %w", err)
 	}
 
 	// Get registry URL for zot cosign endpoint
@@ -688,12 +684,15 @@ func (s *store) UploadPublicKeyToZotForVerification(_ context.Context, publicKey
 	// Execute the curl command
 	cmd := exec.Command("curl", "--data-binary", "@"+tempFile.Name(), "-X", "POST", uploadEndpoint)
 
+	logger.Debug("Executing curl command", "args", cmd.Args)
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to upload public key: %w", err)
+		logger.Error("Curl command failed", "error", err, "output", string(output), "command", cmd.Args)
+		return fmt.Errorf("failed to upload public key: %w, output: %s", err, string(output))
 	}
 
-	logger.Debug("Curl command output", "output", string(output))
+	logger.Debug("Curl command successful", "output", string(output))
 
 	return nil
 }
@@ -803,5 +802,12 @@ func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, erro
 	isSigned := graphqlResp.Data.Image.IsSigned
 	logger.Debug("Zot verification result", "recordCID", recordCID, "isSigned", isSigned)
 
-	return isSigned, nil
+	// Check if the signature is trusted
+	isTrusted := false
+	if len(graphqlResp.Data.Image.SignatureInfo) > 0 {
+		isTrusted = graphqlResp.Data.Image.SignatureInfo[0].IsTrusted
+	}
+	logger.Debug("Zot verification result", "recordCID", recordCID, "isTrusted", isTrusted)
+
+	return isTrusted, nil
 }

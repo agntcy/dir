@@ -203,7 +203,6 @@ func (s storeCtrl) PushWithOptions(stream storev1.StoreService_PushWithOptionsSe
 		request, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
 			storeLogger.Debug("PushWithOptions stream completed")
-
 			return nil
 		}
 
@@ -211,23 +210,13 @@ func (s storeCtrl) PushWithOptions(stream storev1.StoreService_PushWithOptionsSe
 			return status.Errorf(codes.Internal, "failed to receive push request: %v", err)
 		}
 
-		// Validate record and get CID
-		recordCID, err := s.validateAndGetCID(request.GetRecord())
-		if err != nil {
-			return err
-		}
-
 		pushedRef, err := s.pushRecordToStore(stream.Context(), request.GetRecord())
 		if err != nil {
 			return err
 		}
 
-		// Handle signature artifact if provided
-		if request.GetOptions() != nil && request.GetOptions().GetSignature() != nil {
-			if err := s.pushSignatureToStore(stream.Context(), request.GetOptions().GetSignature(), recordCID); err != nil {
-				return err
-			}
-		}
+		// Note: Signature handling is done client-side after receiving the record reference
+		// The client will use the returned CID to create and store the signature separately
 
 		// Send the response back via stream
 		response := &storev1.PushWithOptionsResponse{
@@ -236,57 +225,6 @@ func (s storeCtrl) PushWithOptions(stream storev1.StoreService_PushWithOptionsSe
 
 		if err := stream.Send(response); err != nil {
 			return status.Errorf(codes.Internal, "failed to send push options response: %v", err)
-		}
-	}
-}
-
-// PullWithOptions retrieves records along with their associated OCI artifacts.
-func (s storeCtrl) PullWithOptions(stream storev1.StoreService_PullWithOptionsServer) error {
-	storeLogger.Debug("Called store controller's PullWithOptions method")
-
-	for {
-		// Receive PullWithOptionsRequest from stream
-		request, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			storeLogger.Debug("PullWithOptions stream completed")
-
-			return nil
-		}
-
-		if err != nil {
-			return status.Errorf(codes.Internal, "failed to receive pull request: %v", err)
-		}
-
-		recordRef := request.GetRecordRef()
-
-		// Validate record reference
-		if err := s.validateRecordRef(recordRef); err != nil {
-			return err
-		}
-
-		// Pull the record
-		record, err := s.pullRecordFromStore(stream.Context(), recordRef)
-		if err != nil {
-			return err
-		}
-
-		// Try to get signature artifact if requested and store supports it
-		var signature *signv1.Signature
-		if request.GetOptions() != nil {
-			signature, err = s.pullSignatureFromStore(stream.Context(), recordRef, request.GetOptions().GetIncludeSignature())
-			if err != nil {
-				return err
-			}
-		}
-
-		// Send the response
-		response := &storev1.PullWithOptionsResponse{
-			Record:    record,
-			Signature: signature,
-		}
-
-		if err := stream.Send(response); err != nil {
-			return status.Errorf(codes.Internal, "failed to send pull options response: %v", err)
 		}
 	}
 }

@@ -44,6 +44,8 @@ vars:
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
+  COSIGN_VERSION: '2.5.3'
+  COSIGN_BIN: '{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}'
 
 tasks:
   ##
@@ -260,6 +262,8 @@ tasks:
 
   server:start:
     desc: Start Directory server
+    deps:
+      - task: deps:cosign
     dir: server/cmd
     cmds:
       - defer: { task: server:store:stop }
@@ -992,6 +996,14 @@ tasks:
       - rm {{.BIN_DIR}}/uvx
     status:
       - test -x {{.BIN_DIR}}/uv
+
+  deps:cosign:
+    desc: Install cosign
+    internal: true
+    deps:
+      - deps:bin-dir
+    cmds:
+      - curl -sfL https://github.com/sigstore/cosign/releases/download/v{{.COSIGN_VERSION}}/cosign-{{OS}}-{{ARCH}} -o {{.COSIGN_BIN}}
 
   ##
   ## Helm
