@@ -16,8 +16,8 @@ service SignService {
 }
 
 message SignRequest {
-  // Record to be signed
-  core.v1.Record record = 1;
+  // Record reference to be signed
+  core.v1.RecordRef record_ref = 1;
 
   // Signing provider to use
   SignRequestProvider provider = 2;
