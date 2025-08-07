@@ -25,11 +25,6 @@ Usage examples:
 1. Pull by digest and output
 
 	dirctl pull <digest>
-
-2. Pull by digest and include signature:
-
-	dirctl pull <digest> --include-signature
-
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
