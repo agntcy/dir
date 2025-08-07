@@ -72,32 +72,6 @@ message SignResponse {
 message VerifyRequest {
   // Record reference to be verified
   core.v1.RecordRef record_ref = 1;
-
-  // Verification provider to use
-  optional VerifyRequestProvider provider = 3;
-}
-
-message VerifyRequestProvider {
-  oneof provider {
-    // Verify with OIDC provider
-    VerifyWithOIDC oidc = 1;
-
-    // Verify with PEM-encoded public key
-    VerifyWithKey key = 2;
-  }
-}
-
-message VerifyWithOIDC {
-  // Expected issuer in the signed record
-  string expected_issuer = 1;
-
-  // Expected signer in the signed record
-  string expected_signer = 2;
-}
-
-message VerifyWithKey {
-  // Public key to validate the signed record
-  bytes public_key = 1;
 }
 
 message VerifyResponse {
