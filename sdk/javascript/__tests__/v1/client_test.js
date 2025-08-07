@@ -6,6 +6,7 @@ const extension_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/extension_pb
 const record_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/record_pb');
 const signature_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/signature_pb');
 const skill_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/skill_pb');
+const locator_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/locator_pb');
 const record_query_type = require('@buf/agntcy_dir.grpc_web/routing/v1/record_query_pb');
 const routing_types = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_pb');
 const search_types = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_pb')
@@ -37,11 +38,17 @@ describe('Client', () => {
         const exampleRecord = new record_pb2.Record();
         exampleRecord.setName('example-record');
         exampleRecord.setVersion('v3');
+        exampleRecord.setSchemaVersion("v0.5.0");
 
         const skill = new skill_pb2.Skill();
         skill.setName('Natural Language Processing');
         skill.setId(1);
         exampleRecord.addSkills(skill);
+
+        const locator = new locator_pb2.Locator();
+        locator.setType("ipv4")
+        locator.setUrl("127.0.0.1");
+        exampleRecord.addLocators(locator);
 
         const extension = new extension_pb2.Extension();
         extension.setName('schema.oasf.agntcy.org/domains/domain-1');

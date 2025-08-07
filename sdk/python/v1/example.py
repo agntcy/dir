@@ -2,7 +2,7 @@ import json
 
 import core.v1.record_pb2 as core_record_pb2
 from google.protobuf.json_format import MessageToDict
-from objects.v3 import extension_pb2, record_pb2, signature_pb2, skill_pb2
+from objects.v3 import extension_pb2, record_pb2, signature_pb2, skill_pb2, locator_pb2
 from routing.v1 import record_query_pb2 as record_query_type
 from routing.v1 import routing_service_pb2 as routingv1
 
@@ -36,10 +36,17 @@ client = Client(Config())
 example_record = record_pb2.Record(
     name="example-record",
     version="v3",
+    schema_version="v0.5.0",
     skills=[
         skill_pb2.Skill(
             name="Natural Language Processing",
             id=1,
+        ),
+    ],
+    locators=[
+        locator_pb2.Locator(
+            type="ipv4",
+            url="127.0.0.1",
         ),
     ],
     extensions=[
