@@ -5,14 +5,13 @@
 package push
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -76,18 +75,32 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	var recordRef *corev1.RecordRef
 
 	//nolint:nestif
-	if opts.SignaturePath != "" {
-		signatureSource, err := os.ReadFile(opts.SignaturePath)
-		if err != nil {
-			return fmt.Errorf("failed to read signature file: %w", err)
+	if opts.Sign {
+		var err error
+		var resp *storev1.PushWithOptionsResponse
+		if opts.Key != "" {
+			resp, err = c.PushWithOptions(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
+				Request: &signv1.SignRequestProvider_Key{
+					Key: &signv1.SignWithKey{
+						PrivateKey: []byte(opts.Key),
+					},
+				},
+			})
+		} else {
+			resp, err = c.PushWithOptions(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
+				Request: &signv1.SignRequestProvider_Oidc{
+					Oidc: &signv1.SignWithOIDC{
+						IdToken: opts.OIDCToken,
+						Options: &signv1.SignWithOIDC_SignOpts{
+							FulcioUrl:       &opts.FulcioURL,
+							RekorUrl:        &opts.RekorURL,
+							TimestampUrl:    &opts.TimestampURL,
+							OidcProviderUrl: &opts.OIDCProviderURL,
+						},
+					},
+				},
+			})
 		}
-
-		signature := &signv1.Signature{}
-		if err := json.Unmarshal(signatureSource, signature); err != nil {
-			return fmt.Errorf("failed to unmarshal signature: %w", err)
-		}
-
-		resp, err := c.PushWithOptions(cmd.Context(), record, signature)
 		if err != nil {
 			return fmt.Errorf("failed to push data: %w", err)
 		}
