@@ -60,9 +60,9 @@ type StoreServiceClient interface {
 	Lookup(ctx context.Context, opts ...grpc.CallOption) (StoreService_LookupClient, error)
 	// Remove performs delete operation for the records.
 	Delete(ctx context.Context, opts ...grpc.CallOption) (StoreService_DeleteClient, error)
-	// PushWithOptions performs write operation for records with optional OCI artifacts like signatures.
+	// PushWithOptions performs write operation for records with optional flags.
 	PushWithOptions(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushWithOptionsClient, error)
-	// PullWithOptions retrieves records along with their associated OCI artifacts.
+	// PullWithOptions performs read operation for records with optional flags.
 	PullWithOptions(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullWithOptionsClient, error)
 }
 
@@ -297,9 +297,9 @@ type StoreServiceServer interface {
 	Lookup(StoreService_LookupServer) error
 	// Remove performs delete operation for the records.
 	Delete(StoreService_DeleteServer) error
-	// PushWithOptions performs write operation for records with optional OCI artifacts like signatures.
+	// PushWithOptions performs write operation for records with optional flags.
 	PushWithOptions(StoreService_PushWithOptionsServer) error
-	// PullWithOptions retrieves records along with their associated OCI artifacts.
+	// PullWithOptions performs read operation for records with optional flags.
 	PullWithOptions(StoreService_PullWithOptionsServer) error
 }
 

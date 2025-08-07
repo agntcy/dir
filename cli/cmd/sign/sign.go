@@ -93,7 +93,9 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		req := &signv1.SignRequest{
-			Record: record,
+			RecordRef: &corev1.RecordRef{
+				Cid: record.GetCid(),
+			},
 			Provider: &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Key{
 					Key: &signv1.SignWithKey{
@@ -113,7 +115,9 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		signature = response.GetSignature()
 	} else if opts.OIDCToken != "" {
 		req := &signv1.SignRequest{
-			Record: record,
+			RecordRef: &corev1.RecordRef{
+				Cid: record.GetCid(),
+			},
 			Provider: &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Oidc{
 					Oidc: &signv1.SignWithOIDC{
@@ -144,7 +148,9 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		req := &signv1.SignRequest{
-			Record: record,
+			RecordRef: &corev1.RecordRef{
+				Cid: record.GetCid(),
+			},
 			Provider: &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Oidc{
 					Oidc: &signv1.SignWithOIDC{

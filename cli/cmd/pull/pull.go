@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -48,30 +47,12 @@ func runCommand(cmd *cobra.Command, digest string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	var record *corev1.Record
-
-	var signature *signv1.Signature
-
-	var err error
-
 	// Fetch record from store
-	if opts.IncludeSignature {
-		resp, err := c.PullWithOptions(cmd.Context(), &corev1.RecordRef{
-			Cid: digest, // Use digest as CID directly
-		}, true)
-		if err != nil {
-			return fmt.Errorf("failed to pull data: %w", err)
-		}
-
-		record = resp.GetRecord()
-		signature = resp.GetSignature()
-	} else {
-		record, err = c.Pull(cmd.Context(), &corev1.RecordRef{
-			Cid: digest, // Use digest as CID directly
-		})
-		if err != nil {
-			return fmt.Errorf("failed to pull data: %w", err)
-		}
+	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{
+		Cid: digest, // Use digest as CID directly
+	})
+	if err != nil {
+		return fmt.Errorf("failed to pull data: %w", err)
 	}
 
 	// Extract the OASF object from the Record based on version
@@ -111,15 +92,6 @@ func runCommand(cmd *cobra.Command, digest string) error {
 	}
 
 	presenter.Print(cmd, string(output))
-
-	if opts.IncludeSignature {
-		signatureJSON, err := json.MarshalIndent(signature, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal signature to JSON: %w", err)
-		}
-
-		presenter.Print(cmd, string(signatureJSON))
-	}
 
 	return nil
 }
