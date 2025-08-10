@@ -14,9 +14,45 @@ const search_query_type = require('@buf/agntcy_dir.grpc_node/search/v1/record_qu
 const { afterEach } = require('node:test');
 
 describe('Client', () => {
+    function generateRecords(names) {
+        const test_records = [];
+
+        names.forEach(name => {
+            const exampleRecord = new record_pb2.Record();
+            exampleRecord.setName(name);
+            exampleRecord.setVersion('v3');
+            exampleRecord.setSchemaVersion("v0.5.0");
+
+            const skill = new skill_pb2.Skill();
+            skill.setName('Natural Language Processing');
+            skill.setId(1);
+            exampleRecord.addSkills(skill);
+
+            const locator = new locator_pb2.Locator();
+            locator.setType("ipv4")
+            locator.setUrl("127.0.0.1");
+            exampleRecord.addLocators(locator);
+
+            const extension = new extension_pb2.Extension();
+            extension.setName('schema.oasf.agntcy.org/domains/domain-1');
+            extension.setVersion('v1');
+            exampleRecord.addExtensions(extension);
+
+            const signature = new signature_pb2.Signature();
+            exampleRecord.setSignature(signature);
+
+            const test_record = new core_record_pb2.Record();
+            test_record.setV3(exampleRecord);
+
+            test_records.push(test_record);
+        });
+
+        return test_records;
+    }
+
     const client = new Client(new Config());
 
-    let test_record_ref = null;
+    let test_record_refs = null;
 
     let shouldSkipTest = false;
 
@@ -35,66 +71,52 @@ describe('Client', () => {
     });
 
     test('push', async () => {
-        const exampleRecord = new record_pb2.Record();
-        exampleRecord.setName('example-record');
-        exampleRecord.setVersion('v3');
-        exampleRecord.setSchemaVersion("v0.5.0");
+        const test_records = generateRecords(['example-record', 'example-record2']);
 
-        const skill = new skill_pb2.Skill();
-        skill.setName('Natural Language Processing');
-        skill.setId(1);
-        exampleRecord.addSkills(skill);
-
-        const locator = new locator_pb2.Locator();
-        locator.setType("ipv4")
-        locator.setUrl("127.0.0.1");
-        exampleRecord.addLocators(locator);
-
-        const extension = new extension_pb2.Extension();
-        extension.setName('schema.oasf.agntcy.org/domains/domain-1');
-        extension.setVersion('v1');
-        exampleRecord.addExtensions(extension);
-
-        const signature = new signature_pb2.Signature();
-        exampleRecord.setSignature(signature);
-
-        test_record = new core_record_pb2.Record();
-        test_record.setV3(exampleRecord);
-
-        let reference;
+        let references;
 
         try {
-            reference = await client.push(test_record);
+            references = await client.push(test_records);
         } catch (error) {
             throw new Error(error);
         }
 
-        test_record_ref = new core_record_pb2.RecordRef(reference);
+        const test_record_ref1 = new core_record_pb2.RecordRef(references[0].u);
+        const test_record_ref2 = new core_record_pb2.RecordRef(references[1].u);
 
-        expect(reference).not.toBeNull();
-        expect(reference).toBeInstanceOf(Array);
-        expect(reference[0].length).toBe(59);
-        expect(test_record_ref).not.toBeNull();
-        expect(test_record_ref).toBeInstanceOf(core_record_pb2.RecordRef);
+        expect(references).not.toBeNull();
+        expect(references).toBeInstanceOf(Array);
+        expect(references[0].u[0].length).toBe(59);
+        expect(references[1].u[0].length).toBe(59);
+        expect(test_record_ref1).not.toBeNull();
+        expect(test_record_ref2).not.toBeNull();
+        expect(test_record_ref1).toBeInstanceOf(core_record_pb2.RecordRef);
+        expect(test_record_ref2).toBeInstanceOf(core_record_pb2.RecordRef);
+
+        test_record_refs = [test_record_ref1, test_record_ref2];
     });
 
     test('pull', async () => {
         if (shouldSkipTest) { throw new Error("Test is skipped") };
 
-        let pulled_record;
+        let pulled_records;
 
         try {
-            pulled_record = await client.pull(test_record_ref);
+            pulled_records = await client.pull(test_record_refs);
         } catch (error) {
             throw new Error(error);
         }
 
-        const pulledRecordInstance = new core_record_pb2.Record(pulled_record);
+        const pulledRecordInstance1 = new core_record_pb2.Record(pulled_records[0]);
+        const pulledRecordInstance2 = new core_record_pb2.Record(pulled_records[1]);
 
-        expect(pulled_record).not.toBeNull();
-        expect(pulled_record).toBeInstanceOf(Array);
-        expect(pulledRecordInstance).not.toBeNull();
-        expect(pulledRecordInstance).toBeInstanceOf(core_record_pb2.Record);
+        expect(pulled_records).not.toBeNull();
+        expect(pulled_records).toBeInstanceOf(Array);
+        expect(pulled_records.length).toBe(2);
+        expect(pulledRecordInstance1).not.toBeNull();
+        expect(pulledRecordInstance2).not.toBeNull();
+        expect(pulledRecordInstance1).toBeInstanceOf(core_record_pb2.Record);
+        expect(pulledRecordInstance2).toBeInstanceOf(core_record_pb2.Record);
 
     });
 
@@ -109,7 +131,7 @@ describe('Client', () => {
 
         const search_request = new search_types.SearchRequest();
         search_request.setQueriesList(queries);
-        search_request.setLimit(1);
+        search_request.setLimit(3);
 
         let objects;
 
@@ -123,38 +145,44 @@ describe('Client', () => {
 
         expect(objects).not.toBeNull();
         expect(objects).toBeInstanceOf(Array);
-        expect(objects.length).not.toBe(0);
+        expect(objects.length).toBe(2);
         expect(objectsInstance).not.toBeNull();
         expect(objectsInstance).toBeInstanceOf(search_types.SearchResponse);
+        expect(objectsInstance.u.length).toBe(2);
     });
 
     test('lookup', async () => {
         if (shouldSkipTest) { throw new Error("Test is skipped") };
 
-
-        let metadata;
+        let metadatas;
 
         try {
-            metadata = await client.lookup(test_record_ref);
+            metadatas = await client.lookup(test_record_refs);
         } catch (error) {
             throw new Error(error);
         }
 
-        expect(metadata).not.toBeNull();
-        expect(metadata).toBeInstanceOf(Array);
+        expect(metadatas).not.toBeNull();
+        expect(metadatas).toBeInstanceOf(Array);
+        expect(metadatas.length).toBe(2);
     });
 
     test('publish', async () => {
         if (shouldSkipTest) { throw new Error("Test is skipped") };
 
         const publish_request = new routing_types.PublishRequest();
-        publish_request.setRecordCid(test_record_ref.u[0]);
+        publish_request.setRecordCid(test_record_refs[0].u[0]);
+
+        const err = null;
 
         try {
             await client.publish(publish_request);
         } catch (error) {
+            err = error;
             throw new Error(error);
         }
+
+        expect(err).toBeNull();
 
         // no assertion needed, no response
     });
@@ -190,13 +218,18 @@ describe('Client', () => {
 
 
         let unpublish_request = new routing_types.UnpublishRequest();
-        unpublish_request.setRecordCid(test_record_ref.u[0]);
+        unpublish_request.setRecordCid(test_record_refs[0].u[0]);
+
+        const err = null;
 
         try {
             await client.unpublish(unpublish_request);
         } catch (error) {
+            err = error;
             throw new Error(error);
         }
+
+        expect(err).toBeNull();
 
         // no assertion needed, no response
     });
@@ -204,11 +237,16 @@ describe('Client', () => {
     test('delete', async () => {
         if (shouldSkipTest) { throw new Error("Test is skipped") };
 
+        const err = null;
+
         try {
-            await client.delete(test_record_ref);
+            await client.delete(test_record_refs);
         } catch (error) {
+            err = error;
             throw new Error(error);
         }
+
+        expect(err).toBeNull();
 
         // no assertion needed, no response
     });
