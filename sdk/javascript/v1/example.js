@@ -3,13 +3,12 @@ const extension_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/extension_pb
 const record_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/record_pb');
 const signature_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/signature_pb');
 const skill_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/skill_pb');
+const locator_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/locator_pb');
 const record_query_type = require('@buf/agntcy_dir.grpc_web/routing/v1/record_query_pb');
 const routing_types = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_pb');
 const search_types = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_pb')
 const search_query_type = require('@buf/agntcy_dir.grpc_node/search/v1/record_query_pb')
-
-
-const { Client, Config } = require('./client');
+const { Client, Config } = require('agntcy-dir-sdk/v1/client');
 
 function printAsJson(obj) {
     let obj_dict = protoToJson(obj);
@@ -45,56 +44,72 @@ function protoToJson(protoMsg) {
     return protoMsg.toObject ? protoMsg.toObject() : protoMsg;
 }
 
+function generateRecords(names) {
+    const test_records = [];
+
+    names.forEach(name => {
+        const exampleRecord = new record_pb2.Record();
+        exampleRecord.setName(name);
+        exampleRecord.setVersion('v3');
+        exampleRecord.setSchemaVersion("v0.5.0");
+
+        const skill = new skill_pb2.Skill();
+        skill.setName('Natural Language Processing');
+        skill.setId(1);
+        exampleRecord.addSkills(skill);
+
+        const locator = new locator_pb2.Locator();
+        locator.setType("ipv4")
+        locator.setUrl("127.0.0.1");
+        exampleRecord.addLocators(locator);
+
+        const extension = new extension_pb2.Extension();
+        extension.setName('schema.oasf.agntcy.org/domains/domain-1');
+        extension.setVersion('v1');
+        exampleRecord.addExtensions(extension);
+
+        const signature = new signature_pb2.Signature();
+        exampleRecord.setSignature(signature);
+
+        const test_record = new core_record_pb2.Record();
+        test_record.setV3(exampleRecord);
+
+        test_records.push(test_record);
+    });
+
+    return test_records;
+}
+
 (async () => {
     const client = new Client(new Config());
 
-    // Create a record object
-    const exampleRecord = new record_pb2.Record();
-    exampleRecord.setName('example-record');
-    exampleRecord.setVersion('v3');
-    exampleRecord.setSchemaVersion("v0.5.0");
+    // Create records object
+    const records = generateRecords(['example-record', 'example-record2']);
 
-    const skill = new skill_pb2.Skill();
-    skill.setName('Natural Language Processing');
-    skill.setId(1);
-    exampleRecord.addSkills(skill);
-
-    const locator = new locator_pb2.Locator();
-    locator.setType("ipv4")
-    locator.setUrl("127.0.0.1");
-    exampleRecord.addLocators(locator);
-
-    const extension = new extension_pb2.Extension();
-    extension.setName('schema.oasf.agntcy.org/domains/domain-1');
-    extension.setVersion('v1');
-    exampleRecord.addExtensions(extension);
-
-    const signature = new signature_pb2.Signature();
-    exampleRecord.setSignature(signature);
-
-    record = new core_record_pb2.Record();
-    record.setV3(exampleRecord);
-
-    // Push object to store
-    let ref;
+    // Push objects to store
+    let refs;
 
     try {
-        response = await client.push(record)
-        ref = new core_record_pb2.RecordRef(response);
+        response = await client.push(records);
+        refs = response;
 
-        console.log('Pushed object ref:', printAsJson(ref));
+        refs.forEach(ref => {
+            console.log('Pushed object ref:', printAsJson(ref));
+        });
     } catch (err) {
         console.error('Push error:', err);
         return;
     }
 
-    // Pull the object from the store
-    let pulledRecord;
+    // Pull objects from the store
+    let pulledRecords;
     try {
-        response = await client.pull(ref);
-        pulledRecord = new core_record_pb2.Record(response);
+        response = await client.pull(refs);
+        pulledRecords = response;
 
-        console.log('Pulled object:', printAsJson(pulledRecord));
+        pulledRecords.forEach(pulledRecord => {
+            console.log('Pulled object:', printAsJson(new core_record_pb2.Record(pulledRecord)));
+        });
     } catch (err) {
         console.error('Pull error:', err);
         return;
@@ -109,12 +124,10 @@ function protoToJson(protoMsg) {
 
     let search_request = new search_types.SearchRequest();
     search_request.setQueriesList(queries);
-    search_request.setLimit(1);
+    search_request.setLimit(3);
 
-    let search_response;
     try {
-        response = await client.search(search_request);
-        search_response = new search_types.SearchResponse(response);
+        search_response = await client.search(search_request);
         console.log('Search result:', printAsJson(search_response));
     } catch (err) {
         console.error('Search error:', err);
@@ -122,26 +135,23 @@ function protoToJson(protoMsg) {
     }
 
     // Lookup the object (gets metadata)
-    let metadata;
+    let metadatas;
     try {
-        metadata = await client.lookup(ref);
+        metadatas = await client.lookup(refs);
+        metadatas.forEach(metadata => {
+            console.log('Lookup result:', printAsJson(new core_record_pb2.RecordMeta(metadata)));
+        });
     } catch (err) {
         console.error('Lookup error:', err);
         return;
     }
-    let metadata_dict = protoToJson(metadata);
-    metadata_dict = convertUint64FieldsToInt(metadata_dict);
-    const metadata_json = JSON.stringify(metadata_dict);
-
-    console.log('Object metadata:', metadata_json);
 
     let publish_request = new routing_types.PublishRequest();
-    publish_request.setRecordCid(ref.u[0]);
+    publish_request.setRecordCid(refs[0].u[0]);
 
     // Publish the object
     try {
         client.publish(publish_request);
-
         console.log('Object published.');
     } catch (err) {
         console.error('Publish error:', err);
@@ -154,18 +164,17 @@ function protoToJson(protoMsg) {
     const listRequest = new routing_types.ListRequest();
     listRequest.addQueries(query);
 
-    let list_response;
     try {
-        response = await client.list(listRequest)
-        list_response = new routing_types.ListResponse(response);
-
-        console.log('Listed objects:', printAsJson(list_response));
+        list_response = await client.list(listRequest);
+        list_response.forEach(r => {
+            console.log('Listed objects:', printAsJson(new routing_types.ListResponse(r)));
+        });
     } catch (err) {
         console.error('List error:', err);
     }
 
     let unpublish_request = new routing_types.UnpublishRequest();
-    unpublish_request.setRecordCid(ref.u[0]);
+    unpublish_request.setRecordCid(refs[0].u[0]);
 
     // Unpublish the object
     try {
@@ -178,8 +187,7 @@ function protoToJson(protoMsg) {
 
     // Delete the object
     try {
-        await client.delete(ref);
-
+        await client.delete(refs);
         console.log('Object deleted.');
     } catch (err) {
         console.error('Delete error:', err);
