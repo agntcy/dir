@@ -7,9 +7,6 @@ const grpc = require('@grpc/grpc-js');
 const routing_service = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_grpc_pb');
 const store_service = require('@buf/agntcy_dir.grpc_node/store/v1/store_service_grpc_pb');
 const search_service = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_grpc_pb')
-const routing_type = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_pb')
-const record_type = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
-const search_type = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_pb')
 
 class Config {
     static DEFAULT_ENV_PREFIX = 'DIRECTORY_CLIENT';
@@ -41,54 +38,60 @@ class Client {
         return new Client(config);
     }
 
-    push(record, metadata = null) {
+    push(records, metadata = null) {
         return new Promise((resolve, reject) => {
             const call = this.storeClient.push();
 
-            let ref = new record_type.RecordRef();
+            let refs = [];
 
             call.on('data', (response) => {
-                ref = response.u
+                refs.push(response);
             });
 
             call.on('end', () => {
-                resolve(ref)
+                resolve(refs);
             });
 
             call.on('error', (stream_error) => {
                 console.error('Stream error:', stream_error);
 
-                reject(stream_error)
+                reject(stream_error);
             });
 
             // Send a requests and close the stream
-            call.write(record, metadata);
+            records.forEach(record => {
+                call.write(record, metadata);
+            });
+
             call.end();
         });
     }
 
-    pull(ref, metadata = null) {
+    pull(refs, metadata = null) {
         return new Promise((resolve, reject) => {
             const call = this.storeClient.pull();
 
-            let record = new record_type.Record();
+            let records = [];
 
             call.on('data', (response) => {
-                record = response.u
+                records.push(response.u);
             });
 
             call.on('end', () => {
-                resolve(record)
+                resolve(records);
             });
 
             call.on('error', (stream_error) => {
                 console.error('Stream error:', stream_error);
 
-                reject(stream_error)
+                reject(stream_error);
             });
 
             // Send a requests and close the stream
-            call.write(ref, metadata);
+            refs.forEach(ref => {
+                call.write(ref, metadata);
+            });
+
             call.end();
         });
     }
@@ -97,48 +100,51 @@ class Client {
         return new Promise((resolve, reject) => {
             const call = this.searchClient.search(request, metadata);
 
-            let results = new search_type.SearchResponse();
+            let results = [];
 
             // Handle response stream
             call.on('data', (response) => {
-                results = response.u
+                results.push(response.u[0]); // Save CIDs
             });
 
             call.on('end', () => {
-                resolve(results)
+                resolve(results);
             });
 
             call.on('error', (stream_error) => {
                 console.error('Stream error:', stream_error);
 
-                reject(stream_error)
+                reject(stream_error);
             });
         });
     }
 
-    lookup(ref, metadata = null) {
+    lookup(refs, metadata = null) {
         return new Promise((resolve, reject) => {
             const call = this.storeClient.lookup();
 
-            let record_meta = new record_type.RecordMeta();
+            let record_metas = [];
 
             // Handle response stream
             call.on('data', (response) => {
-                record_meta = response.u
+                record_metas.push(response.u);
             });
 
             call.on('end', () => {
-                resolve(record_meta)
+                resolve(record_metas);
             });
 
             call.on('error', (stream_error) => {
                 console.error('Stream error:', stream_error);
 
-                reject(stream_error)
+                reject(stream_error);
             });
 
             // Send a requests and close the stream
-            call.write(ref, metadata);
+            refs.forEach(ref => {
+                call.write(ref, metadata);
+            });
+
             call.end();
         });
     }
@@ -147,20 +153,20 @@ class Client {
         return new Promise((resolve, reject) => {
             const call = this.routingClient.list(request, metadata);
 
-            let results = new routing_type.ListResponse();
+            let results = [];
 
             call.on('data', (response) => {
-                results = response.u
+                results.push(response.u);
             });
 
             call.on('end', () => {
-                resolve(results)
+                resolve(results);
             });
 
             call.on('error', (stream_error) => {
                 console.error('Stream error:', stream_error);
 
-                reject(stream_error)
+                reject(stream_error);
             });
         });
     }
@@ -181,7 +187,7 @@ class Client {
         });
     }
 
-    delete(ref) {
+    delete(refs) {
         return new Promise((resolve, reject) => {
             const call = this.storeClient.delete((error, _) => {
                 if (error.code !== 12) {
@@ -193,7 +199,10 @@ class Client {
             });
 
             // Send a requests and close the stream
-            call.write(ref);
+            refs.forEach(ref => {
+                call.write(ref);
+            });
+
             call.end();
         });
     }
