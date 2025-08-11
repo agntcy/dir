@@ -127,8 +127,8 @@ func TestConfig(t *testing.T) {
 					WorkerTimeout:     sync.DefaultSyncWorkerTimeout,
 				},
 				Authz: authz.Config{
-					SocketPath:  authz.DefaultSocketPath,
-					TrustDomain: authz.DefaultTrustDomain,
+					SocketPath:  "",
+					TrustDomain: "",
 				},
 			},
 		},

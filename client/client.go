@@ -22,8 +22,6 @@ type Client struct {
 	routingv1.RoutingServiceClient
 	searchv1.SearchServiceClient
 	storev1.SyncServiceClient
-
-	closeFn func() error
 }
 
 type options struct {
@@ -109,6 +107,5 @@ func New(opts ...Option) (*Client, error) {
 		RoutingServiceClient: routingv1.NewRoutingServiceClient(client),
 		SearchServiceClient:  searchv1.NewSearchServiceClient(client),
 		SyncServiceClient:    storev1.NewSyncServiceClient(client),
-		closeFn:              source.Close,
 	}, nil
 }

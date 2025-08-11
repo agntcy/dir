@@ -390,14 +390,16 @@ tasks:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+      # SPIRE Config
+      K8S_SPIRE_PATH: '{{ .ROOT_DIR }}/install/charts/spire/templates'
       # Helm args (server)
-      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
-      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-spire.yaml'
       # Helm args (client)
-      HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "default" }}'
+      HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
       HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
-      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values.yaml'
+      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-spire.yaml'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -408,31 +410,49 @@ tasks:
 
       # Deploy SPIFFE for client and server
       - |
-        # helm upgrade --install ingress-nginx ingress-nginx --repo "https://kubernetes.github.io/ingress-nginx" \
-        #   --namespace ingress-nginx \
-        #   --create-namespace \
-        #   --set controller.extraArgs.enable-ssl-passthrough=,controller.admissionWebhooks.enabled=false,controller.service.type=ClusterIP \
-        #   --set controller.ingressClassResource.default=true \
-        #   --wait
+        kubectl apply -f {{.K8S_SPIRE_PATH}}/spire-namespace.yaml
+        kubectl apply \
+          -f {{.K8S_SPIRE_PATH}}/server-account.yaml \
+          -f {{.K8S_SPIRE_PATH}}/spire-bundle-configmap.yaml \
+          -f {{.K8S_SPIRE_PATH}}/server-cluster-role.yaml
+        kubectl apply \
+          -f {{.K8S_SPIRE_PATH}}/server-configmap.yaml \
+          -f {{.K8S_SPIRE_PATH}}/server-statefulset.yaml \
+          -f {{.K8S_SPIRE_PATH}}/server-service.yaml
+        kubectl apply \
+            -f {{.K8S_SPIRE_PATH}}/agent-account.yaml \
+            -f {{.K8S_SPIRE_PATH}}/agent-cluster-role.yaml
+        kubectl apply \
+            -f {{.K8S_SPIRE_PATH}}/agent-configmap.yaml \
+            -f {{.K8S_SPIRE_PATH}}/agent-daemonset.yaml
 
-        # kubectl rollout restart -n kube-system deployment/coredns
-        # kubectl rollout status -w --timeout=1m deploy/coredns -n kube-system
+        # Wait for SPIRE server to be ready
+        sleep 10
+        kubectl wait --for=condition=ready pod -l app=spire-server -n spire --timeout=120s
 
-        # IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o yaml | yq e .spec.clusterIPs[0] -)
-        # kubectl get configmap -n kube-system coredns -o yaml | grep hosts || kubectl get configmap -n kube-system coredns -o yaml | sed "/ready/a\        hosts {\n           fallthrough\n        }" | kubectl apply -f -
-        # kubectl get configmap -n kube-system coredns -o yaml | grep a-org || kubectl get configmap -n kube-system coredns -o yaml | sed "/hosts/a\           $IP spire-server-federation.a-org.local\n           $IP spire-server-federation.b-org.local\n" | kubectl apply -f -
+        # Create SPIFFE ID for the SPIRE server
+        kubectl exec -n spire spire-server-0 -- \
+          /opt/spire/bin/spire-server entry create \
+          -spiffeID spiffe://example.org/ns/spire/sa/spire-agent \
+          -selector k8s_psat:cluster:demo-cluster \
+          -selector k8s_psat:agent_ns:spire \
+          -selector k8s_psat:agent_sa:spire-agent \
+          -node
 
-        helm upgrade --install -n spire-mgmt spire-crds spire-crds --repo https://spiffe.github.io/helm-charts-hardened/ --create-namespace
-        # kubectl label namespace spire-mgmt pod-security.kubernetes.io/enforce=restricted || true
-
-        helm upgrade --install -n spire-mgmt spire-a spire --repo https://spiffe.github.io/helm-charts-hardened/ -f {{ .HELM_VALUES_PATH }}
-        helm upgrade --install -n spire-mgmt spire-b spire --repo https://spiffe.github.io/helm-charts-hardened/ -f {{ .HELM_CLIENT_VALUES_PATH }}
-
-        kubectl exec -it -n spire-server spire-a-server-0 -c spire-server -- spire-server bundle show -format spiffe | kubectl exec -i -n spire-server spire-b-server-0 -c spire-server -- spire-server bundle set -format spiffe -id spiffe://a-org.local
-        kubectl exec -it -n spire-server spire-b-server-0 -c spire-server -- spire-server bundle show -format spiffe | kubectl exec -i -n spire-server spire-a-server-0 -c spire-server -- spire-server bundle set -format spiffe -id spiffe://b-org.local
-
-        kubectl exec -it -n spire-server spire-b-server-0 -c spire-server -- spire-server bundle list
-        kubectl exec -it -n spire-server spire-a-server-0 -c spire-server -- spire-server bundle list
+      # Create SPIFFE workload APIs for client and server
+      - |
+        kubectl exec -n spire spire-server-0 -- \
+          /opt/spire/bin/spire-server entry create \
+          -spiffeID spiffe://example.org/ns/{{.HELM_NAMESPACE}}/sa/default \
+          -parentID spiffe://example.org/ns/spire/sa/spire-agent \
+          -selector k8s:ns:{{.HELM_NAMESPACE}} \
+          -selector k8s:sa:default
+        kubectl exec -n spire spire-server-0 -- \
+          /opt/spire/bin/spire-server entry create \
+          -spiffeID spiffe://example.org/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
+          -parentID spiffe://example.org/ns/spire/sa/spire-agent \
+          -selector k8s:ns:{{.HELM_CLIENT_NAMESPACE}} \
+          -selector k8s:sa:default
 
       # Deploy server chart
       - |

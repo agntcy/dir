@@ -1,0 +1,106 @@
+apiserver:
+  image:
+    repository: ghcr.io/agntcy/dir-apiserver
+    tag: latest
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+
+  config:
+    # listen_address: "0.0.0.0:8888"
+    # healthcheck_address: "0.0.0.0:8889"
+
+    provider: "oci"
+
+    # OCI-backed store
+    oci:
+      # Path to a local directory that will be to hold data instead of remote.
+      # If this is set to non-empty value, only local store will be used.
+      # local_dir: ""
+
+      # Cache directory to use for metadata.
+      # cache_dir: ""
+
+      # Registry address to connect to
+      registry_address: "dir-zot.dir-server.svc.cluster.local:5000"
+      # All data will be stored under this repo.
+      # Objects are pushed as tags, manifests, and blobs.
+      # repository_name: ""
+
+      # Auth credentials to use.
+      auth_config:
+        insecure: "true"
+        access_token: access-token
+        refresh_token: refresh-token
+
+    # localfs:
+    #   dir: ""
+
+    # Routing settings for the peer-to-peer network.
+    routing: {}
+      # Address to use for routing
+      # listen_address: "/ipv4/0.0.0.0/tcp/5555"
+
+      # Path to private key file for peer ID.
+      # key_path: /tmp/agntcy-dir/node.privkey
+
+      # Nodes to use for bootstrapping of the DHT.
+      # We read initial routing tables here and get introduced
+      # to the network.
+      # bootstrap_peers:
+      #   - /ip4/1.1.1.1/tcp/1
+      #   - /ip4/1.1.1.1/tcp/2
+
+      # Datastore to use for routing persistance.
+      # datastore_dir: ""
+
+    # Authz Spiffe configuration
+    authz:
+      socket_path: unix:/run/spire/sockets/agent.sock
+      ## I also need to specify my trust domain here
+      ## because for now this is only the external one
+      trust_domain: example.org
+
+  # service exposes gRPC server api
+  service:
+    type: ClusterIP
+    port: 8888
+
+  extraVolumes:
+    - name: zot-config-storage
+      hostPath:
+        path: /opt/zot-config
+        type: DirectoryOrCreate
+    - name: spire-agent-socket
+      hostPath:
+        path: /run/spire/sockets
+        type: Directory
+
+  extraVolumeMounts:
+    - name: zot-config-storage
+      mountPath: /etc/zot
+    - name: spire-agent-socket
+      mountPath: /run/spire/sockets
+      readOnly: true
+
+  # Zot registry configuration (subchart)
+  zot:
+    # Disable default config mounting to use shared volume
+    mountConfig: false
+    mountSecret: false
+    
+    # Share the same volume with apiserver for hot reload
+    extraVolumeMounts:
+      - name: zot-config-storage
+        mountPath: /etc/zot
+    
+    # Use the same hostPath for true volume sharing
+    extraVolumes:
+      - name: zot-config-storage
+        hostPath:
+          path: /opt/zot-config
+          type: DirectoryOrCreate
+    
+    # Configure zot to use the config file from the shared mounted volume
+    extraArgs:
+      - "serve"
+      - "/etc/zot/config.json"
