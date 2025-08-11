@@ -214,6 +214,7 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 
 	// Write payload to temporary file
 	payloadFile := "payload-temp.json"
+
 	err = os.WriteFile(payloadFile, payloadBytes, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write payload: %w", err)

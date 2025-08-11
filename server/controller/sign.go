@@ -34,7 +34,7 @@ func NewSignController(store types.StoreAPI) signv1.SignServiceServer {
 }
 
 //nolint:wrapcheck
-func (s *signCtrl) Sign(_ context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
+func (s *signCtrl) Sign(_ context.Context, _ *signv1.SignRequest) (*signv1.SignResponse, error) {
 	signLogger.Debug("Sign request received")
 
 	// Sign functionality is handled client-side

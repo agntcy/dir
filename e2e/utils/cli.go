@@ -57,8 +57,8 @@ func (c *CLI) Search() *SearchBuilder {
 	}
 }
 
-func (c *CLI) Sign(recordPath, keyPath string) *CommandBuilder {
-	return c.Command("sign").WithArgs(recordPath, "--key", keyPath)
+func (c *CLI) Sign(recordCID, keyPath string) *CommandBuilder {
+	return c.Command("sign").WithArgs(recordCID, "--key", keyPath)
 }
 
 func (c *CLI) Publish(cid string) *CommandBuilder {

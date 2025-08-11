@@ -357,9 +357,9 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 		err := s.UploadPublicKeyToZotForVerification(ctx, signature.GetPublicKey())
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to upload public key to zot for verification: %v", err)
-		} else {
-			logger.Debug("Successfully uploaded public key to zot for verification", "recordCID", recordCID)
 		}
+
+		logger.Debug("Successfully uploaded public key to zot for verification", "recordCID", recordCID)
 	} else {
 		logger.Debug("No public key in signature, skipping upload to zot", "recordCID", recordCID)
 	}
@@ -675,10 +675,12 @@ func (s *store) UploadPublicKeyToZotForVerification(ctx context.Context, publicK
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
+
 		return fmt.Errorf("failed to upload public key, status: %d, response: %s", resp.StatusCode, string(body))
 	}
 
 	logger.Debug("Successfully uploaded public key to zot", "endpoint", uploadEndpoint)
+
 	return nil
 }
 

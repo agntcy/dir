@@ -18,7 +18,7 @@ vars:
   IMAGE_TAG: '{{ .IMAGE_TAG | default .COMMIT_SHA }}'
   IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}'
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
-  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
+  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}" COSIGN_VERSION={{.COSIGN_VERSION}}'
 
   ## Dependency config
   BIN_DIR: '{{ .ROOT_DIR }}/bin'
@@ -44,6 +44,7 @@ vars:
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
+  COSIGN_VERSION: '2.5.3'
 
 tasks:
   ##
@@ -290,6 +291,8 @@ tasks:
 
   server:start:
     desc: Start Directory server
+    deps:
+      - task: deps:cosign
     dir: server/cmd
     cmds:
       - defer: { task: server:store:stop }
@@ -319,10 +322,7 @@ tasks:
           },
           "extensions": {
             "search": {
-              "enable": true,
-              "cve": {
-                "updateInterval": "24h"
-              }
+              "enable": true
             },
             "trust": {
               "enable": true,
@@ -712,6 +712,9 @@ tasks:
             "level": "info"
           },
           "extensions": {
+            "search": {
+              "enable": true
+            },
             "trust": {
               "enable": true,
               "cosign": true,
@@ -1131,6 +1134,20 @@ tasks:
       - rm {{.BIN_DIR}}/uvx
     status:
       - test -x {{.BIN_DIR}}/uv
+
+  deps:cosign:
+    desc: Install cosign
+    internal: true
+    vars:
+      ARCH_TYPE: '{{ if eq ARCH "amd64" }}amd64{{ else }}{{ARCH}}{{ end }}'
+      BINARY_NAME: 'cosign-{{OS}}-{{.ARCH_TYPE}}'
+    cmds:
+      - cmd: echo "Downloading Cosign v{{.COSIGN_VERSION}}..."
+      - cmd: curl -O -L "https://github.com/sigstore/cosign/releases/download/v{{.COSIGN_VERSION}}/{{.BINARY_NAME}}"
+      - cmd: sudo mv {{.BINARY_NAME}} /usr/local/bin/cosign
+      - cmd: sudo chmod +x /usr/local/bin/cosign
+    status:
+      - test -x /usr/local/bin/cosign
 
   ##
   ## Helm

@@ -80,9 +80,12 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		var err error
 
 		var resp *storev1.PushWithOptionsResponse
+
 		if opts.Key != "" {
 			// Read the private key file content
-			privateKeyBytes, err := os.ReadFile(opts.Key)
+			var privateKeyBytes []byte
+
+			privateKeyBytes, err = os.ReadFile(opts.Key)
 			if err != nil {
 				return fmt.Errorf("failed to read private key file: %w", err)
 			}
