@@ -3,6 +3,7 @@
 import logging
 import os
 from typing import Iterator, List, Optional, Tuple
+from urllib import response
 
 import core.v1.record_pb2 as core_types
 import grpc
@@ -98,7 +99,6 @@ class Client:
         """
 
         try:
-            # List is a server-streaming RPC - single request, stream of responses
             stream = self.routing_client.List(req, metadata=metadata)
 
             # Yield each item from the stream
@@ -129,13 +129,13 @@ class Client:
 
     def push(
         self,
-        record: core_types.Record,
+        records: [core_types.Record],
         metadata: Optional[List[Tuple[str, str]]] = None,
     ) -> core_types.RecordRef:
         """Push an object to the store.
 
         Args:
-            record: Record object
+            records: Records object
             metadata: Optional metadata for the gRPC call
 
         Returns:
@@ -145,28 +145,31 @@ class Client:
             Exception: If push operation fails
         """
 
+        references = []
+
         try:
             # Push is a client-streaming RPC - stream of requests, single response
             # Call the Push method with the request iterator
 
-            def request_iterator():
-                yield record
+            response = self.store_client.Push(iter(records), metadata=metadata)
 
-            response = self.store_client.Push(request_iterator(), metadata=metadata)
+            for r in response:
+                references.append(r)
 
-            return next(response, None)
         except Exception as e:
             raise Exception(f"Failed to push object: {e}")
 
+        return references
+
     def pull(
         self,
-        ref: core_types.RecordRef,
+        refs: [core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
     ) -> core_types.Record:
         """Pull an object from the store.
 
         Args:
-            ref: Reference to the object
+            refs: References to objects
             metadata: Optional metadata for the gRPC call
 
         Returns:
@@ -176,29 +179,29 @@ class Client:
             Exception: If pull operation fails
         """
 
-        try:
-            # Pull is a server-streaming RPC - single request, stream of responses
-            def request_iterator():
-                yield ref
+        records = []
 
-            response = self.store_client.Pull(request_iterator(), metadata=metadata)
+        try:
+            response = self.store_client.Pull(iter(refs), metadata=metadata)
 
             for r in response:
                 if r is not None:
-                    return r
+                    records.append(r)
 
         except Exception as e:
             raise Exception(f"Failed to pull object: {e}")
 
+        return records
+
     def lookup(
         self,
-        ref: core_types.RecordRef,
+        refs: [core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
     ) -> core_types.RecordMeta:
         """Look up an object in the store.
 
         Args:
-            ref: Reference to the object
+            refs: References to objects
             metadata: Optional metadata for the gRPC call
 
         Returns:
@@ -208,29 +211,29 @@ class Client:
             Exception: If lookup fails
         """
 
-        try:
-            # Pull is a server-streaming RPC - single request, stream of responses
-            def request_iterator():
-                yield ref
+        metadatas = []
 
-            response = self.store_client.Lookup(request_iterator(), metadata=metadata)
+        try:
+            response = self.store_client.Lookup(iter(refs), metadata=metadata)
 
             for r in response:
                 if r is not None:
-                    return r
+                    metadatas.append(r)
 
         except Exception as e:
             raise Exception(f"Failed to pull object: {e}")
 
+        return metadatas
+
     def delete(
         self,
-        ref: core_types.RecordRef,
+        refs: [core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
     ) -> None:
         """Delete an object from the store.
 
         Args:
-            ref: Reference to the object
+            refs: References to objects
             metadata: Optional metadata for the gRPC call
 
         Raises:
@@ -238,11 +241,7 @@ class Client:
         """
 
         try:
-
-            def request_iterator():
-                yield ref
-
-            self.store_client.Delete(request_iterator(), metadata=metadata)
+            self.store_client.Delete(iter(refs), metadata=metadata)
 
         except Exception as e:
             raise Exception(f"Failed to pull object: {e}")
