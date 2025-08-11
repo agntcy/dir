@@ -1,40 +1,69 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: spire-agent
-  namespace: spire
+  name: {{ include "spire.agent.fullname" . }}
+  namespace: {{ include "spire.namespace" . }}
   labels:
-    app: spire-agent
+    {{- include "spire.agent.labels" . | nindent 4 }}
+  {{- with (include "spire.annotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     matchLabels:
-      app: spire-agent
+      {{- include "spire.agent.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      namespace: spire
       labels:
-        app: spire-agent
+        {{- include "spire.agent.selectorLabels" . | nindent 8 }}
+      {{- with (include "spire.annotations" .) }}
+      annotations:
+        {{- . | nindent 8 }}
+      {{- end }}
     spec:
-      hostPID: true
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
-      serviceAccountName: spire-agent
+      hostPID: {{ .Values.agent.hostPID }}
+      hostNetwork: {{ .Values.agent.hostNetwork }}
+      dnsPolicy: {{ .Values.agent.dnsPolicy }}
+      serviceAccountName: {{ include "spire.agent.serviceAccountName" . }}
+      {{- with .Values.agent.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.agent.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.agent.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         - name: init
-          # This is a small image with wait-for-it, choose whatever image
-          # you prefer that waits for a service to be up. This image is built
-          # from https://github.com/lqhl/wait-for-it
-          image: cgr.dev/chainguard/wait-for-it
-          args: ["-t", "30", "spire-server:8081"]
+          image: "{{ .Values.agent.initContainer.image.repository }}:{{ .Values.agent.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.agent.initContainer.image.pullPolicy }}
+          args: 
+            - "-t"
+            - "{{ .Values.agent.initContainer.waitTimeout }}"
+            - "{{ .Values.agent.config.serverAddress }}:{{ .Values.agent.config.serverPort }}"
       containers:
         - name: spire-agent
-          image: ghcr.io/spiffe/spire-agent:1.11.2
-          args: ["-config", "/run/spire/config/agent.conf"]
+          image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
+          args: 
+            - "-config"
+            - "/run/spire/config/agent.conf"
           env:
-          - name: MY_NODE_NAME
+          - name: {{ .Values.agent.config.workloadAttestor.k8s.nodeNameEnv }}
             valueFrom:
               fieldRef:
                 fieldPath: status.podIP
+          ports:
+            {{- if .Values.agent.healthChecks.enabled }}
+            - containerPort: {{ .Values.agent.healthChecks.bindPort }}
+              name: healthz
+              protocol: TCP
+            {{- end }}
           volumeMounts:
             - name: spire-config
               mountPath: /run/spire/config
@@ -46,35 +75,33 @@ spec:
               readOnly: false
             - name: spire-token
               mountPath: /var/run/secrets/tokens
+          {{- if .Values.agent.livenessProbe }}
           livenessProbe:
-            httpGet:
-              path: /live
-              port: 8080
-            failureThreshold: 2
-            initialDelaySeconds: 15
-            periodSeconds: 60
-            timeoutSeconds: 3
+            {{- toYaml .Values.agent.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.agent.readinessProbe }}
           readinessProbe:
-            httpGet:
-              path: /ready
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            {{- toYaml .Values.agent.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- with .Values.agent.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       volumes:
         - name: spire-config
           configMap:
-            name: spire-agent
+            name: {{ include "spire.agent.fullname" . }}
         - name: spire-bundle
           configMap:
-            name: spire-bundle
+            name: {{ .Values.bundle.configMap.name | default (printf "%s-bundle" (include "spire.fullname" .)) }}
         - name: spire-agent-socket
           hostPath:
-            path: /run/spire/sockets
+            path: {{ .Values.agent.socketPath }}
             type: DirectoryOrCreate
         - name: spire-token
           projected:
             sources:
             - serviceAccountToken:
                 path: spire-agent
-                expirationSeconds: 7200
-                audience: spire-server
+                expirationSeconds: {{ .Values.agent.serviceAccountToken.expirationSeconds }}
+                audience: {{ .Values.agent.serviceAccountToken.audience }}

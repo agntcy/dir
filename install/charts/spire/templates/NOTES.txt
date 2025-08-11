@@ -1,0 +1,39 @@
+1. Get the application URL by running these commands:
+{{- if contains "NodePort" .Values.server.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ include "spire.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "spire.server.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ include "spire.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.server.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ include "spire.namespace" . }} svc -w {{ include "spire.server.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ include "spire.namespace" . }} {{ include "spire.server.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.server.service.port }}
+{{- else if contains "ClusterIP" .Values.server.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ include "spire.namespace" . }} -l "{{- include "spire.server.selectorLabels" . | replace ": " "=" | replace "\n" "," }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ include "spire.namespace" . }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ include "spire.namespace" . }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+2. SPIRE Server is running in namespace: {{ include "spire.namespace" . }}
+
+3. Trust Domain: {{ include "spire.trustDomain" . }}
+
+4. Cluster Name: {{ include "spire.clusterName" . }}
+
+5. To check the status of SPIRE components:
+   kubectl get pods -n {{ include "spire.namespace" . }}
+
+6. To view SPIRE server logs:
+   kubectl logs -n {{ include "spire.namespace" . }} -l {{- include "spire.server.selectorLabels" . | replace ": " "=" | replace "\n" "," }}
+
+7. To view SPIRE agent logs:
+   kubectl logs -n {{ include "spire.namespace" . }} -l {{- include "spire.agent.selectorLabels" . | replace ": " "=" | replace "\n" "," }} -c spire-agent
+
+8. To register workloads, use the SPIRE server pod:
+   kubectl exec -n {{ include "spire.namespace" . }} deployment/{{ include "spire.server.fullname" . }} -- \
+     /opt/spire/bin/spire-server entry create \
+     -spiffeID spiffe://{{ include "spire.trustDomain" . }}/workload \
+     -parentID spiffe://{{ include "spire.trustDomain" . }}/agent/k8s_psat/{{ include "spire.clusterName" . }}/node \
+     -selector k8s:ns:default \
+     -selector k8s:sa:default

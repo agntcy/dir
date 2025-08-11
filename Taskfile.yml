@@ -417,8 +417,7 @@ tasks:
           --timeout "15m"
 
   deploy:kubernetes:spire:local:
-    aliases: [deploy:local]
-    desc: Deploy a local Directory server in Kubernetes with SPIRE
+    desc: Deploy a local Directory server in Kubernetes with SPIRE support
     deps:
       - deploy:kubernetes:setup-cluster
     vars:
@@ -426,7 +425,9 @@ tasks:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # SPIRE Config
-      K8S_SPIRE_PATH: '{{ .ROOT_DIR }}/install/charts/spire/templates'
+      HELM_SPIRE_NAMESPACE: '{{ .HELM_NAMESPACE | default "spire" }}'
+      HELM_SPIRE_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/spire'
+      HELM_SPIRE_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/spire/values.yaml'
       # Helm args (server)
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
@@ -437,35 +438,26 @@ tasks:
       HELM_CLIENT_PUSH_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-push-spire.yaml'
       HELM_CLIENT_SEARCH_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-search-spire.yaml'
     cmds:
-      # TODO: make logic idempotent so that running functional tests does not change previous contexts
-
       # Create zot configuration using helper task
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
 
-      # Deploy SPIFFE for client and server
+      # Deploy SPIRE
       - |
-        kubectl apply -f {{.K8S_SPIRE_PATH}}/spire-namespace.yaml
-        kubectl apply \
-          -f {{.K8S_SPIRE_PATH}}/server-account.yaml \
-          -f {{.K8S_SPIRE_PATH}}/spire-bundle-configmap.yaml \
-          -f {{.K8S_SPIRE_PATH}}/server-cluster-role.yaml
-        kubectl apply \
-          -f {{.K8S_SPIRE_PATH}}/server-configmap.yaml \
-          -f {{.K8S_SPIRE_PATH}}/server-statefulset.yaml \
-          -f {{.K8S_SPIRE_PATH}}/server-service.yaml
-        kubectl apply \
-            -f {{.K8S_SPIRE_PATH}}/agent-account.yaml \
-            -f {{.K8S_SPIRE_PATH}}/agent-cluster-role.yaml
-        kubectl apply \
-            -f {{.K8S_SPIRE_PATH}}/agent-configmap.yaml \
-            -f {{.K8S_SPIRE_PATH}}/agent-daemonset.yaml
+        {{ .HELM_BIN }} dependency build {{ .HELM_SPIRE_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade spire \
+          {{ .HELM_SPIRE_CHART_PATH }} \
+          -f {{ .HELM_SPIRE_VALUES_PATH }} \
+          --namespace {{ .HELM_SPIRE_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
 
-        # Wait for SPIRE server to be ready
-        sleep 10
-        kubectl wait --for=condition=ready pod -l app=spire-server -n spire --timeout=120s
-
+      # Create SPIFFE workload API for services
+      - |
         # Create SPIFFE ID for the SPIRE server
         kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
@@ -475,14 +467,15 @@ tasks:
           -selector k8s_psat:agent_sa:spire-agent \
           -node
 
-      # Create SPIFFE workload APIs for client and server
-      - |
+        # Create SPIFFE ID for the default service account in server namespace
         kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
           -spiffeID spiffe://example.org/ns/{{.HELM_NAMESPACE}}/sa/default \
           -parentID spiffe://example.org/ns/spire/sa/spire-agent \
           -selector k8s:ns:{{.HELM_NAMESPACE}} \
           -selector k8s:sa:default
+        
+        # Create SPIFFE ID for the default service account in client namespace
         kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
           -spiffeID spiffe://example.org/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
