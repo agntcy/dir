@@ -8,34 +8,39 @@ there is an effort to expose the same functionality via language-specific SDKs.
 
 ## Prerequisites
 
-- Directory CLI client, distributed via [GitHub Releases](https://github.com/agntcy/dir/releases)
-- Directory API server, outlined in the [Readme Deployment](README.md#deployment) section.
+- Directory CLI client (`dirctl`), distributed via [GitHub Releases](https://github.com/agntcy/dir/releases)
+- Directory API server, outlined in the [Readme Deployment](README.md#deployment) section
 
 ### Build
 
-This example demonstrates how to define a record using provided tooling to prepare for publication.
+This example demonstrates how to define a Record using provided tooling to prepare for publication.
 
-To start, generate an example record that matches the data model schema defined in [Record](api/proto/core/v1alpha1/agent.proto) specification.
+To start, generate an example Record that matches the data model schema defined in [Record](https://buf.build/agntcy/oasf/docs/main:objects.v3#objects.v3.Record) specification using the [OASF Record Sample generator](https://schema.oasf.outshift.com/sample/0.5.0/objects/record).
 
 ```bash
 # Generate an example data model
-cat << EOF > model.json
+cat << EOF > record.json
 {
- "name": "my-agent",
- "skills": [
-    {
-      "category_name": "Natural Language Processing",
-      "category_uid": 1,
-      "class_name": "Text Completion",
-      "class_uid": 10201
-    },
-    {
-      "category_name": "Natural Language Processing",
-      "category_uid": 1,
-      "class_name": "Fact Extraction",
-      "class_uid": 10201
-    }
- ]
+    "name": "record",
+    "version": "v1.0.0",
+    "description": "insert description here",
+    "schema_version": "v0.5.0",
+    "skills": [
+        {
+            "id": 302,
+            "name": "schema.oasf.agntcy.org/skills/audio_to_audio"
+        }
+    ],
+    "authors": [
+        "Jane Doe"
+    ],
+    "created_at": "2025-08-11T16:20:37.159072Z",
+    "locators": [
+        {
+            "type": "source_code",
+            "url": "https://github.com/agntcy/oasf/blob/main/record"
+        }
+    ]
 }
 EOF
 ```
@@ -46,44 +51,40 @@ This example demonstrates the interaction with the local storage layer using the
 The storage layer is used as a content-addressable object store for Directory-specific models and serves both the local and network-based operations (if enabled).
 
 ```bash
-# Push and store content CID
+# Push the record and store its CID to a file
 dirctl push record.json > record.cid
-CID=$(cat model.cid)
+
+# Set the CID as a variable for easier reference
+RECORD_CID=$(cat record.cid)
 
 # Pull the record
 # Returns the same data as record.json
-dirctl pull $CID
+dirctl pull $RECORD_CID
 
 # Lookup basic metadata about the record
-dirctl info $CID
-
-#> {
-#>   "digest": "sha256:<hash>",
-#>   "type": "OBJECT_TYPE_AGENT",
-#>   "size": 143
-#> }
+# Returns annotations, creation timestamp and OASF schema version
+dirctl info $RECORD_CID
 ```
 
 ### Signing and Verification
 
 #### Method 1: OIDC-based Interactive
 
-This process relies on attaching signature to the record using identity-based OIDC signing flow which can later be verified.
+This process relies on creating and uploading to the OCI registry a signature for the record using identity-based OIDC signing flow which can later be verified.
 The signing process opens a browser window to authenticate the user with an OIDC identity provider.
-The verification process validates the record signature against the identity provider and signature transparency services.
 These operations are implemented using [Sigstore](https://www.sigstore.dev/).
 
 ```bash
-## Push record with signature
+# Push record with signature
 dirctl push record.json --sign
 
-## Verify record
-dirctl verify <record-cid>
+# Verify record
+dirctl verify $RECORD_CID
 ```
 
 #### Method 2: OIDC-based Non-Interactive
 
-This method is designed for automated environments such as CI/CD pipelines where browser-based authentication is not available. It uses OIDC tokens provided by the execution environment (like GitHub Actions) to sign records. The signing process uses a pre-obtained OIDC token along with provider-specific configuration to establish identity without user interaction. The verification process validates the record signature against the specified OIDC issuer and identity pattern.
+This method is designed for automated environments such as CI/CD pipelines where browser-based authentication is not available. It uses OIDC tokens provided by the execution environment (like GitHub Actions) to sign records. The signing process uses a pre-obtained OIDC token along with provider-specific configuration to establish identity without user interaction.
 
 ```
       - name: Push and sign record
@@ -96,24 +97,25 @@ This method is designed for automated environments such as CI/CD pipelines where
       - name: Run verify command
         run: |
           echo "Running dir verify command"
-          bin/dirctl verify baeareihdlxh7rg2kldu2ienemushqwhnu35zfcn3scomw5sy7imfeim2sy
+          bin/dirctl verify $RECORD_CID
 ```
 
 #### Method 3: Self-Managed Keys
 
-This method is suitable for non-interactive use cases, such as CI/CD pipelines, where browser-based authentication is not possible or desired. Instead of OIDC, a signing keypair is generated (e.g., with Cosign), and the private key is used to sign the record. The corresponding public key is then required to verify the record, therefore, it must be distributed to any party that needs to verify signed records.
+This method is suitable for non-interactive use cases, such as CI/CD pipelines, where browser-based authentication is not possible or desired. Instead of OIDC, a signing keypair is generated (e.g., with Cosign), and the private key is used to sign the record.
 
 ```bash
 # Generate a key-pair for signing
 # This creates 'cosign.key' (private) and 'cosign.pub' (public)
 cosign generate-key-pair
 
-# Set COSIGN_PASSWORD shell variable if password protected the private key
+# Set COSIGN_PASSWORD shell variable if you password protected the private key
+export COSIGN_PASSWORD=your_password_here
 # Push record with signature 
 dirctl push record.json --sign --key cosign.key
 
 # Verify the signed record
-dirctl verify <record-cid>
+dirctl verify $RECORD_CID
 ```
 
 ### Announce
@@ -122,14 +124,11 @@ This example demonstrates how to publish records to allow content discovery acro
 To avoid stale data, it is recommended to republish the data periodically
 as the data across the network has TTL.
 
-Note that this operation only works for the objects already pushed to the local storage layer, ie. it is required to first push the data before publication.
+Note that this operation only works for the objects already pushed to the local storage layer, i.e., it is required to first push the data before publication.
 
 ```bash
-# Publish the data to your local data store
-dirctl publish $DIGEST
-
-# Publish the data across the network
-dirctl publish $DIGEST --network
+# Publish the record across the network
+dirctl publish $RECORD_CID
 ```
 
 If the data is not published to the network, it cannot be discovered by other peers.
@@ -145,7 +144,7 @@ and multicast- mode for attribute-based matching and routing.
 
 There are two modes of operation, a) local mode where the data is queried from the local data store, and b) network mode where the data is queried across the network.
 
-Discovery is performed using full-set label matching, ie. the results always fully match the requested query.
+Discovery is performed using full-set label matching, i.e., the results always fully match the requested query.
 Note that it is not guaranteed that the returned data is available, valid, or up to date.
 
 ```bash
@@ -187,7 +186,7 @@ dirctl list info --network
 
 The sync feature enables one-way synchronization of records and other objects between remote Directory instances and your local node. This feature supports distributed AI agent ecosystems by allowing you to replicate content from multiple remote directories, creating local mirrors for offline access, backup, and cross-network collaboration.
 
-**How Sync Works with Zot**: Directory leverages [Zot](https://zotregistry.dev/), a cloud-native OCI registry, as the underlying synchronization engine. When you create a sync operation, the system dynamically configures Zot's sync extension to pull content from remote registries. Objects are stored as OCI artifacts (manifests, blobs, and tags), enabling container-native synchronization with automatic polling, retry mechanisms, and secure credential exchange between Directory nodes.
+**How Sync Works**: Directory leverages [Zot](https://zotregistry.dev/), a cloud-native OCI registry, as the underlying synchronization engine. When you create a sync operation, the system dynamically configures Zot's sync extension to pull content from remote registries. Objects are stored as OCI artifacts (manifests, blobs, and tags), enabling container-native synchronization with automatic polling, retry mechanisms, and secure credential exchange between Directory nodes.
 
 This example demonstrates how to synchronize records between remote directories and your local instance.
 
