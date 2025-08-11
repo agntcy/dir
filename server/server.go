@@ -29,7 +29,9 @@ import (
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -136,7 +138,11 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	}
 
 	// Create a server
-	grpcServer := grpc.NewServer(serverOpts...)
+	grpcServer := grpc.NewServer(append(
+		serverOpts,
+		grpc.ChainUnaryInterceptor(unaryInterceptorFor(authInterceptor)),
+		grpc.ChainStreamInterceptor(streamInterceptorFor(authInterceptor)),
+	)...)
 
 	// Register APIs
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
@@ -220,4 +226,35 @@ func (s Server) bootstrap(_ context.Context) error {
 	// TODO: bootstrap routing and storage data by listing from storage
 	// TODO: also update cache datastore
 	return nil
+}
+
+func authInterceptor(ctx context.Context) error {
+	sid, ok := grpccredentials.PeerIDFromContext(ctx)
+	if !ok {
+		return status.Error(codes.Unauthenticated, "missing peer ID")
+	}
+
+	logger.Debug("Authenticated peer", "peer_id", sid)
+
+	return nil
+}
+
+// TODO: this can be moved to utils and expanded
+func unaryInterceptorFor(fn func(context.Context) error) func(context.Context, any, *grpc.UnaryServerInfo, grpc.UnaryHandler) (any, error) {
+	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		if err := fn(ctx); err != nil {
+			return nil, err
+		}
+		return handler(ctx, req)
+	}
+}
+
+// TODO: this can be moved to utils and expanded
+func streamInterceptorFor(fn func(context.Context) error) func(any, grpc.ServerStream, *grpc.StreamServerInfo, grpc.StreamHandler) error {
+	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if err := fn(ss.Context()); err != nil {
+			return err
+		}
+		return handler(srv, ss)
+	}
 }
