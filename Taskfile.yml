@@ -416,9 +416,9 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-  deploy:kubernetes:local:spire:
+  deploy:kubernetes:spire:local:
     aliases: [deploy:local]
-    desc: Deploy a local Directory server in Kubernetes
+    desc: Deploy a local Directory server in Kubernetes with SPIRE
     deps:
       - deploy:kubernetes:setup-cluster
     vars:
@@ -884,41 +884,6 @@ tasks:
       - task: poc:integration
         vars:
           RECORD_FILE: 'docs/research/integrations/mcp-to-oasf-agent/extractor.record.json'
-
-  poc:spiffe:
-    desc: Run SPIFFE proof-of-concept
-    deps:
-      - deploy:kubernetes:setup-cluster
-    cmds:
-      - defer: { task: deploy:kubernetes:local:cleanup }
-      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
-
-      # Deploy SPIFFE to K8s
-      - |
-        helm upgrade --install -n spire-server spire-crds spire-crds --repo https://spiffe.github.io/helm-charts-hardened/ --create-namespace
-        helm upgrade --install -n spire-server spire spire --repo https://spiffe.github.io/helm-charts-hardened/
-
-      # Generate SPIFFE entries
-      - |
-        # server
-        kubectl exec -n spire-server spire-server-0 -- \
-            /opt/spire/bin/spire-server entry create \
-            -spiffeID spiffe://example.org/server \
-            -parentID spiffe://example.org/host \
-            -selector unix:gid:$(USER_GID)
-
-        # client
-        kubectl exec -n spire-server spire-server-0 -- \
-            /opt/spire/bin/spire-server entry create \
-            -spiffeID spiffe://example.org/client \
-            -parentID spiffe://example.org/host \
-            -selector unix:gid:$(USER_GID)
-
-      # Bootstrap Directory server
-      - task: deploy:kubernetes:local
-      - task: deploy:kubernetes:local:port-forward
-      # Run tests
-      - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
 
   ##
   ## Dependencies

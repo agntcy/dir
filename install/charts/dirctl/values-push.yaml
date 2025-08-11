@@ -20,7 +20,7 @@ args:
   - "--spiffe-trust-domain"
   - "example.org"
   - "--server-addr"
-  - "dir-apiserver.dir-server.svc.cluster.local:8888"
+  - 'dir-apiserver.default.svc.cluster.local:8888'
 
 # Some example record to push
 record: |

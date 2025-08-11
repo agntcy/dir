@@ -60,11 +60,6 @@ type Config struct {
 
 	// Sync configuration
 	Sync sync.Config `json:"sync,omitempty" mapstructure:"sync"`
-
-	// Client stuff
-	ClientServerAddr  string `json:"client_server_addr,omitempty" mapstructure:"client_server_addr"`
-	ClientSocketPath  string `json:"client_socket_path,omitempty" mapstructure:"client_socket_path"`
-	ClientTrustDomain string `json:"client_trust_domain,omitempty" mapstructure:"client_trust_domain"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -108,18 +103,6 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("authz.trust_domain")
 	v.SetDefault("authz.trust_domain", "")
-
-	//
-	// I wanna do some queries
-	//
-	_ = v.BindEnv("client_server_addr")
-	v.SetDefault("client_server_addr", "")
-
-	_ = v.BindEnv("client_socket_path")
-	v.SetDefault("client_socket_path", "")
-
-	_ = v.BindEnv("client_trust_domain")
-	v.SetDefault("client_trust_domain", "")
 
 	//
 	// Provider configuration
