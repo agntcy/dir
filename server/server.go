@@ -132,18 +132,18 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		}
 
 		// Add server options for SPIFFE mTLS
-		serverOpts = append(serverOpts, grpc.Creds(
-			grpccredentials.MTLSServerCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
-		))
+		//nolint:contextcheck
+		serverOpts = append(serverOpts,
+			grpc.Creds(
+				grpccredentials.MTLSServerCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
+			),
+			grpc.ChainUnaryInterceptor(unaryInterceptorFor(authInterceptor)),
+			grpc.ChainStreamInterceptor(streamInterceptorFor(authInterceptor)),
+		)
 	}
 
 	// Create a server
-	//nolint:contextcheck
-	grpcServer := grpc.NewServer(append(
-		serverOpts,
-		grpc.ChainUnaryInterceptor(unaryInterceptorFor(authInterceptor)),
-		grpc.ChainStreamInterceptor(streamInterceptorFor(authInterceptor)),
-	)...)
+	grpcServer := grpc.NewServer(serverOpts...)
 
 	// Register APIs
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
