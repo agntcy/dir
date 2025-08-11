@@ -474,7 +474,7 @@ tasks:
         {{ .HELM_BIN }} upgrade dirctl \
           {{ .HELM_CLIENT_CHART_PATH }} \
           -f {{ .HELM_CLIENT_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --set image.tag="{{ .IMAGE_TAG }}" \
           --namespace {{ .HELM_CLIENT_NAMESPACE }} \
           --create-namespace \
           --install \
