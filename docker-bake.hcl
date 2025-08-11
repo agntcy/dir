@@ -7,6 +7,7 @@
 variable "IMAGE_REPO" {default = "ghcr.io/agntcy"}
 variable "IMAGE_TAG" {default = "v0.1.0-rc"}
 variable "EXTRA_LDFLAGS" {default = ""}
+variable "COSIGN_VERSION" {default = "2.5.3"}
 
 function "get_tag" {
   params = [tags, name]
@@ -30,6 +31,7 @@ target "_common" {
   ]
   args = {
     EXTRA_LDFLAGS = "${EXTRA_LDFLAGS}"
+    COSIGN_VERSION = "${COSIGN_VERSION}"
   }
 }
 

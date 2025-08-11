@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -36,7 +37,7 @@ Usage examples:
 
 3. Push with signature:
 
-	dirctl push model.json --signature signature.json
+	dirctl push model.json --sign
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -77,12 +78,19 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	//nolint:nestif
 	if opts.Sign {
 		var err error
+
 		var resp *storev1.PushWithOptionsResponse
 		if opts.Key != "" {
+			// Read the private key file content
+			privateKeyBytes, err := os.ReadFile(opts.Key)
+			if err != nil {
+				return fmt.Errorf("failed to read private key file: %w", err)
+			}
+
 			resp, err = c.PushWithOptions(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Key{
 					Key: &signv1.SignWithKey{
-						PrivateKey: []byte(opts.Key),
+						PrivateKey: privateKeyBytes,
 					},
 				},
 			})
@@ -101,6 +109,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 				},
 			})
 		}
+
 		if err != nil {
 			return fmt.Errorf("failed to push data: %w", err)
 		}

@@ -96,7 +96,6 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		if err != nil {
 			return fmt.Errorf("failed to sign record with key: %w", err)
 		}
-
 	} else if opts.OIDCToken != "" {
 		req := &signv1.SignRequest{
 			RecordRef: &corev1.RecordRef{Cid: recordCID},

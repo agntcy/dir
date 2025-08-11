@@ -10,8 +10,8 @@ import (
 var opts = &options{}
 
 type options struct {
-	FromStdin     bool
-	Sign          bool
+	FromStdin bool
+	Sign      bool
 
 	// Signing options
 	client.SignOpts

@@ -12,8 +12,8 @@ ARG TARGETPLATFORM
 RUN --mount=type=cache,id=${TARGETPLATFORM}-apt,target=/var/cache/apt,sharing=locked \
     apt-get update \
     && xx-apt-get install -y --no-install-recommends \
-      gcc \
-      libc6-dev
+    gcc \
+    libc6-dev
 
 WORKDIR /build/server
 
@@ -37,12 +37,27 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/apiserver
 
-FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc
+FROM alpine:3.20@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d AS runtime
+
+ARG COSIGN_VERSION=2.5.3
+ARG TARGETPLATFORM
+
+# Install cosign - using fixed version for now, will enhance later
+RUN apk add --no-cache ca-certificates curl && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then COSIGN_ARCH="amd64"; elif [ "$ARCH" = "aarch64" ]; then COSIGN_ARCH="arm64"; else echo "Unsupported arch: $ARCH" && exit 1; fi && \
+    COSIGN_URL="https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION:-2.5.3}/cosign-linux-${COSIGN_ARCH}" && \
+    echo "Downloading cosign from: $COSIGN_URL" && \
+    curl -fsSL "$COSIGN_URL" -o /usr/local/bin/cosign && \
+    chmod +x /usr/local/bin/cosign && \
+    /usr/local/bin/cosign version || echo "Cosign installed but version check failed"
 
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
 
+# Create non-root user
+RUN adduser -D -s /bin/sh -u 65532 nonroot
 USER 65532:65532
 
 ENTRYPOINT ["./apiserver", "run"]

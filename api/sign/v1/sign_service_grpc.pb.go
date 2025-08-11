@@ -22,8 +22,9 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SignService_Sign_FullMethodName   = "/sign.v1.SignService/Sign"
-	SignService_Verify_FullMethodName = "/sign.v1.SignService/Verify"
+	SignService_Sign_FullMethodName          = "/sign.v1.SignService/Sign"
+	SignService_PushSignature_FullMethodName = "/sign.v1.SignService/PushSignature"
+	SignService_Verify_FullMethodName        = "/sign.v1.SignService/Verify"
 )
 
 // SignServiceClient is the client API for SignService service.
@@ -32,6 +33,8 @@ const (
 type SignServiceClient interface {
 	// Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
 	Sign(ctx context.Context, in *SignRequest, opts ...grpc.CallOption) (*SignResponse, error)
+	// Push a pre-generated signature to storage for a record
+	PushSignature(ctx context.Context, in *PushSignatureRequest, opts ...grpc.CallOption) (*PushSignatureResponse, error)
 	// Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
 	Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error)
 }
@@ -54,6 +57,16 @@ func (c *signServiceClient) Sign(ctx context.Context, in *SignRequest, opts ...g
 	return out, nil
 }
 
+func (c *signServiceClient) PushSignature(ctx context.Context, in *PushSignatureRequest, opts ...grpc.CallOption) (*PushSignatureResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PushSignatureResponse)
+	err := c.cc.Invoke(ctx, SignService_PushSignature_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *signServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(VerifyResponse)
@@ -70,6 +83,8 @@ func (c *signServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts 
 type SignServiceServer interface {
 	// Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
 	Sign(context.Context, *SignRequest) (*SignResponse, error)
+	// Push a pre-generated signature to storage for a record
+	PushSignature(context.Context, *PushSignatureRequest) (*PushSignatureResponse, error)
 	// Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
 	Verify(context.Context, *VerifyRequest) (*VerifyResponse, error)
 }
@@ -83,6 +98,9 @@ type UnimplementedSignServiceServer struct{}
 
 func (UnimplementedSignServiceServer) Sign(context.Context, *SignRequest) (*SignResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Sign not implemented")
+}
+func (UnimplementedSignServiceServer) PushSignature(context.Context, *PushSignatureRequest) (*PushSignatureResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PushSignature not implemented")
 }
 func (UnimplementedSignServiceServer) Verify(context.Context, *VerifyRequest) (*VerifyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Verify not implemented")
@@ -125,6 +143,24 @@ func _SignService_Sign_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SignService_PushSignature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PushSignatureRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SignServiceServer).PushSignature(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SignService_PushSignature_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SignServiceServer).PushSignature(ctx, req.(*PushSignatureRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SignService_Verify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(VerifyRequest)
 	if err := dec(in); err != nil {
@@ -153,6 +189,10 @@ var SignService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Sign",
 			Handler:    _SignService_Sign_Handler,
+		},
+		{
+			MethodName: "PushSignature",
+			Handler:    _SignService_PushSignature_Handler,
 		},
 		{
 			MethodName: "Verify",

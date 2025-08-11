@@ -1,14 +1,16 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:mnd,gosec
 package client
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -17,7 +19,6 @@ import (
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/sign"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const (
@@ -42,13 +43,30 @@ type SignOpts struct {
 	Key             string
 }
 
-// SignOIDC signs the record using keyless OIDC service-based signing.
+// Sign routes to the appropriate signing method based on provider type.
+// This is the main entry point for signing operations.
+func (c *Client) Sign(ctx context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
+	if req.GetProvider() == nil {
+		return nil, errors.New("signature provider must be specified")
+	}
+
+	switch provider := req.GetProvider().GetRequest().(type) {
+	case *signv1.SignRequestProvider_Key:
+		return c.SignWithKey(ctx, req)
+	case *signv1.SignRequestProvider_Oidc:
+		return c.SignWithOIDC(ctx, req)
+	default:
+		return nil, fmt.Errorf("unsupported signature provider type: %T", provider)
+	}
+}
+
+// SignWithOIDC signs the record using keyless OIDC service-based signing.
 // The OIDC ID Token must be provided by the caller.
 // An ephemeral keypair is generated for signing.
 func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
 	// Validate request.
-	if req.GetRecord() == nil {
-		return nil, errors.New("record must be set")
+	if req.GetRecordRef() == nil {
+		return nil, errors.New("record ref must be set")
 	}
 
 	oidcSigner := req.GetProvider().GetOidc()
@@ -156,19 +174,21 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 	}
 
 	// Generate an ephemeral keypair for signing.
-	signKeypair, err := sign.NewEphemeralKeypair(nil)
+	_, err := sign.NewEphemeralKeypair(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
 	}
 
-	signature, err := c.sign(ctx, req.GetRecord(), signKeypair, signOpts)
-	if err != nil {
-		return nil, err
-	}
+	// TODO
+	// signature, err := c.sign(ctx, req.GetRecord(), signKeypair, signOpts)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return &signv1.SignResponse{
-		Signature: signature,
-	}, nil
+	// return &signv1.SignResponse{
+	// 	Signature: signature,
+	// }, nil
+	return nil, nil
 }
 
 func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*signv1.SignResponse, error) {
@@ -179,68 +199,88 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 		password = []byte("") // Empty password is valid for cosign.
 	}
 
-	// Generate a keypair from the provided private key bytes.
-	// The keypair hint is derived from the public key and will be used for verification.
-	signKeypair, err := cosign.LoadKeypair(keySigner.GetPrivateKey(), password)
+	digest, err := corev1.ConvertCIDToDigest(req.GetRecordRef().GetCid())
 	if err != nil {
-		return nil, fmt.Errorf("failed to create keypair: %w", err)
+		return nil, fmt.Errorf("failed to convert CID to digest: %w", err)
 	}
 
-	signature, err := c.sign(ctx, req.GetRecord(), signKeypair, sign.BundleOptions{})
+	// Create payload temporary file
+	payload := cosign.GeneratePayload("localhost:5000", "dir", digest.String())
+
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	// Write payload to temporary file
+	payloadFile := "payload-temp.json"
+	err = os.WriteFile(payloadFile, payloadBytes, 0o644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write payload: %w", err)
+	}
+
+	defer os.Remove(payloadFile)
+
+	// Write private key to temporary file
+	keyFile := "cosign-temp.key"
+
+	err = os.WriteFile(keyFile, keySigner.GetPrivateKey(), 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write private key: %w", err)
+	}
+
+	defer os.Remove(keyFile)
+
+	signatureFile := "signature-temp.sig"
+	cmd := exec.Command("cosign", "sign-blob",
+		"-y",
+		"--key", keyFile,
+		"--output-signature", signatureFile,
+		payloadFile)
+
+	// Set environment variables
+	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+string(password))
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("cosign sign failed: %w\nOutput: %s", err, string(output))
+	}
+
+	signature, err := os.ReadFile(signatureFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read signature: %w", err)
+	}
+
+	defer os.Remove(signatureFile)
+
+	cosignKeypair, err := cosign.LoadKeypair(keySigner.GetPrivateKey(), password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load cosign keypair: %w", err)
+	}
+
+	publicKey, err := cosignKeypair.GetPublicKeyPem()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get public key: %w", err)
+	}
+
+	// Create the signature object
+	signatureObj := &signv1.Signature{
+		Signature: string(signature),
+		PublicKey: &publicKey,
+		Annotations: map[string]string{
+			"payload": string(payloadBytes),
+		},
+	}
+
+	// Push signature to store
+	err = c.pushSignatureToStore(ctx, req.GetRecordRef().GetCid(), signatureObj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store signature: %w", err)
 	}
 
 	return &signv1.SignResponse{
-		Signature: signature,
+		Signature: signatureObj,
 	}, nil
-}
-
-func (c *Client) sign(_ context.Context, record *corev1.Record, signKeypair sign.Keypair, signOpts sign.BundleOptions) (*signv1.Signature, error) {
-	// Convert the record to JSON.
-	recordJSON, err := json.Marshal(record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal record: %w", err)
-	}
-
-	// Sign the record JSON data.
-	sigBundle, err := sign.Bundle(&sign.PlainData{Data: recordJSON}, signKeypair, signOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign record: %w", err)
-	}
-
-	certData := sigBundle.GetVerificationMaterial()
-	sigData := sigBundle.GetMessageSignature()
-
-	// Extract data from the signature bundle.
-	sigBundleJSON, err := protojson.Marshal(sigBundle)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal bundle: %w", err)
-	}
-
-	// Update the agent with the signature details.
-	signature := &signv1.Signature{
-		Algorithm:     sigData.GetMessageDigest().GetAlgorithm().String(),
-		Signature:     base64.StdEncoding.EncodeToString(sigData.GetSignature()),
-		Certificate:   base64.StdEncoding.EncodeToString(certData.GetCertificate().GetRawBytes()),
-		ContentType:   sigBundle.GetMediaType(),
-		ContentBundle: base64.StdEncoding.EncodeToString(sigBundleJSON),
-		SignedAt:      time.Now().Format(time.RFC3339),
-	}
-
-	// Extract public key from keypair for zot upload
-	publicKeyPEM, err := signKeypair.GetPublicKeyPem()
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract public key: %w", err)
-	}
-
-	// Add public key for zot upload (base64 encoded PEM)
-	if publicKeyPEM != "" {
-		encodedPublicKey := base64.StdEncoding.EncodeToString([]byte(publicKeyPEM))
-		signature.PublicKey = &encodedPublicKey
-	}
-
-	return signature, nil
 }
 
 func setOrDefault(value string, defaultValue string) string {
@@ -249,4 +289,19 @@ func setOrDefault(value string, defaultValue string) string {
 	}
 
 	return value
+}
+
+// pushSignatureToStore stores a signature using the new PushSignature RPC.
+func (c *Client) pushSignatureToStore(ctx context.Context, recordCID string, signature *signv1.Signature) error {
+	req := &signv1.PushSignatureRequest{
+		RecordRef: &corev1.RecordRef{Cid: recordCID},
+		Signature: signature,
+	}
+
+	_, err := c.SignServiceClient.PushSignature(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to push signature to store: %w", err)
+	}
+
+	return nil
 }

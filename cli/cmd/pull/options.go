@@ -6,7 +6,7 @@ package pull
 var opts = &options{}
 
 type options struct {
-	FormatRaw        bool
+	FormatRaw bool
 }
 
 func init() {

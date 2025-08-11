@@ -11,6 +11,9 @@ service SignService {
   // Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
   rpc Sign(SignRequest) returns (SignResponse);
 
+  // Push a pre-generated signature to storage for a record
+  rpc PushSignature(PushSignatureRequest) returns (PushSignatureResponse);
+
   // Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
   rpc Verify(VerifyRequest) returns (VerifyResponse);
 }
@@ -108,4 +111,22 @@ message Signature {
 	
 	// Base64-encoded PEM public key (optional, for verification)
 	optional string public_key = 8;
+}
+
+// PushSignatureRequest is used to store a pre-generated signature for a record
+message PushSignatureRequest {
+  // Record reference that this signature is for
+  core.v1.RecordRef record_ref = 1;
+
+  // The signature to store
+  Signature signature = 2;
+}
+
+// PushSignatureResponse confirms successful signature storage
+message PushSignatureResponse {
+  // Indicates if the signature was successfully stored
+  bool success = 1;
+
+  // Optional error message if storage failed
+  optional string error_message = 2;
 }
