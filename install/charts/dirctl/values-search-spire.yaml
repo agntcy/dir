@@ -1,17 +1,14 @@
-# Job config
 failedJobsHistoryLimit: 10
 successfulJobsHistoryLimit: 10
 concurrencyPolicy: "Forbid"
-schedule: "* * * * *" # every minute
+schedule: "* * * * *"
 
-# Configure the dirctl image (update tag as needed)
 image:
   repository: ghcr.io/agntcy/dir-ctl
   tag: latest
   pullPolicy: IfNotPresent
   pullSecrets: []
 
-# Search command arguments
 args:
   - "search"
   - "--limit"
@@ -25,7 +22,9 @@ args:
   - "--server-addr"
   - "dir-apiserver.dir-server.svc.cluster.local:8888"
 
-# Security context
+serviceAccount:
+  create: false
+
 securityContext:
   runAsNonRoot: true
   runAsUser: 65532

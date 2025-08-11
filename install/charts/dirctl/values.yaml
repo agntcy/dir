@@ -1,28 +1,47 @@
-# Example values for enabling the dirctl search job
-# Copy this to your values.yaml or use it with helm install --values
-
 # Job config
 failedJobsHistoryLimit: 10
 successfulJobsHistoryLimit: 10
 concurrencyPolicy: "Forbid"
-schedule: "* * * * *" # every minute
+schedule: "* * * * *"
 
-# Configure the dirctl image (update tag as needed)
+# Image config
 image:
   repository: ghcr.io/agntcy/dir-ctl
   tag: latest
   pullPolicy: IfNotPresent
   pullSecrets: []
 
-# Search command arguments
+# CronJob dirctl config
 args:
   - "search"
-  - "--limit"
-  - "10"
-  - "--offset" 
-  - "0"
   - "--server-addr"
-  - 'dir-apiserver.default.svc.cluster.local:8888'
+  - "dir-apiserver.default.svc.cluster.local:8888"
+
+# Config maps config
+configMaps: []
+  # - name: example-record
+  #   data:
+  #     record.json: |
+  #       {
+  #         "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
+  #         "version": "v3.0.0",
+  #       }
+
+# Service account config
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  readOnlyRootFilesystem: true
 
 # Resource configuration
 resources:
@@ -33,20 +52,11 @@ resources:
     cpu: 50m
     memory: 64Mi
 
-# Additional environment variables if needed
+# Additional environment variables
 env: []
 
-# Security context
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 65532
-  readOnlyRootFilesystem: true
+# Volumes
+volumes: []
 
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: false
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
+# Volume mounts
+volumeMounts: []

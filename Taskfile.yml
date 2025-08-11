@@ -434,8 +434,8 @@ tasks:
       # Helm args (client)
       HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
       HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
-      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-spire.yaml'
-      HELM_CLIENT_PUSH_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-spire-push.yaml'
+      HELM_CLIENT_PUSH_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-push-spire.yaml'
+      HELM_CLIENT_SEARCH_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-search-spire.yaml'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -504,12 +504,12 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-      # Deploy client (search) chart
+      # Deploy client (push) chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dirctl \
+        {{ .HELM_BIN }} upgrade dirctl-push \
           {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_VALUES_PATH }} \
+          -f {{ .HELM_CLIENT_PUSH_VALUES_PATH }} \
           --set image.tag="{{ .IMAGE_TAG }}" \
           --namespace {{ .HELM_CLIENT_NAMESPACE }} \
           --create-namespace \
@@ -518,12 +518,12 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-      # Deploy client (push) chart
+      # Deploy client (search) chart
       - |
           {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-          {{ .HELM_BIN }} upgrade dirctl-push \
+          {{ .HELM_BIN }} upgrade dirctl-search \
             {{ .HELM_CLIENT_CHART_PATH }} \
-            -f {{ .HELM_CLIENT_PUSH_VALUES_PATH }} \
+            -f {{ .HELM_CLIENT_SEARCH_VALUES_PATH }} \
             --set image.tag="{{ .IMAGE_TAG }}" \
             --namespace {{ .HELM_CLIENT_NAMESPACE }} \
             --create-namespace \

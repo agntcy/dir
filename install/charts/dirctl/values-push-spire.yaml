@@ -12,8 +12,12 @@ image:
 args:
   - "push"
   - "/examples/record.json"
+  - "--spiffe-socket-path"
+  - "unix:/run/spire/sockets/agent.sock"
+  - "--spiffe-trust-domain"
+  - "example.org"
   - "--server-addr"
-  - "dir-apiserver.default.svc.cluster.local:8888"
+  - "dir-apiserver.dir-server.svc.cluster.local:8888"
 
 configMaps:
   - name: example-record
@@ -94,6 +98,10 @@ securityContext:
   readOnlyRootFilesystem: true
 
 volumes:
+  - name: spire-agent-socket
+    hostPath:
+      path: /run/spire/sockets
+      type: Directory
   - name: record-json
     configMap:
       name: example-record
@@ -102,6 +110,9 @@ volumes:
           path: examples/record.json
 
 volumeMounts:
+  - name: spire-agent-socket
+    mountPath: /run/spire/sockets
+    readOnly: true
   - name: record-json
     mountPath: /examples/record.json
     subPath: examples/record.json

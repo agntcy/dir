@@ -1,0 +1,14 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+{{- range $config := .Values.configMaps }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $config.name }}
+data:
+  {{- range $key, $value := $config.data }}
+  {{ $key }}: |
+    {{ $value | nindent 4 }}
+  {{- end }}
+{{- end }}
