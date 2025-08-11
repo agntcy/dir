@@ -15,6 +15,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
@@ -67,7 +68,7 @@ func New(opts ...Option) (*Client, error) {
 		x509Src, err := workloadapi.NewX509Source(ctx,
 			workloadapi.WithClientOptions(
 				workloadapi.WithAddr(options.config.SpiffeSocketPath),
-				//workloadapi.WithLogger(logger.Std),
+				// workloadapi.WithLogger(logger.Std),
 			),
 		)
 		if err != nil {
@@ -93,7 +94,7 @@ func New(opts ...Option) (*Client, error) {
 			grpccredentials.MTLSClientCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
 		))
 	} else {
-		clientOpts = append(clientOpts, grpc.WithInsecure())
+		clientOpts = append(clientOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	// Create client

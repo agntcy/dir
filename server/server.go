@@ -110,7 +110,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		x509Src, err := workloadapi.NewX509Source(ctx,
 			workloadapi.WithClientOptions(
 				workloadapi.WithAddr(cfg.Authz.SocketPath),
-				//workloadapi.WithLogger(logger.Std),
+				// workloadapi.WithLogger(logger.Std),
 			),
 		)
 		if err != nil {
@@ -138,6 +138,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	}
 
 	// Create a server
+	//nolint:contextcheck
 	grpcServer := grpc.NewServer(append(
 		serverOpts,
 		grpc.ChainUnaryInterceptor(unaryInterceptorFor(authInterceptor)),
@@ -231,7 +232,7 @@ func (s Server) bootstrap(_ context.Context) error {
 func authInterceptor(ctx context.Context) error {
 	sid, ok := grpccredentials.PeerIDFromContext(ctx)
 	if !ok {
-		return status.Error(codes.Unauthenticated, "missing peer ID")
+		return status.Error(codes.Unauthenticated, "missing peer ID") //nolint:wrapcheck
 	}
 
 	logger.Debug("Authenticated peer", "peer_id", sid)
@@ -239,22 +240,24 @@ func authInterceptor(ctx context.Context) error {
 	return nil
 }
 
-// TODO: this can be moved to utils and expanded
+// TODO: this can be moved to utils and expanded.
 func unaryInterceptorFor(fn func(context.Context) error) func(context.Context, any, *grpc.UnaryServerInfo, grpc.UnaryHandler) (any, error) {
 	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		if err := fn(ctx); err != nil {
 			return nil, err
 		}
+
 		return handler(ctx, req)
 	}
 }
 
-// TODO: this can be moved to utils and expanded
+// TODO: this can be moved to utils and expanded.
 func streamInterceptorFor(fn func(context.Context) error) func(any, grpc.ServerStream, *grpc.StreamServerInfo, grpc.StreamHandler) error {
 	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		if err := fn(ss.Context()); err != nil {
 			return err
 		}
+
 		return handler(srv, ss)
 	}
 }

@@ -22,8 +22,8 @@ var DefaultConfig = Config{
 }
 
 type Config struct {
-	ServerAddress     string `json:"server_address,omitempty" mapstructure:"server_address"`
-	SpiffeSocketPath  string `json:"spiffe_socket_path,omitempty" mapstructure:"spiffe_socket_path"`
+	ServerAddress     string `json:"server_address,omitempty"      mapstructure:"server_address"`
+	SpiffeSocketPath  string `json:"spiffe_socket_path,omitempty"  mapstructure:"spiffe_socket_path"`
 	SpiffeTrustDomain string `json:"spiffe_trust_domain,omitempty" mapstructure:"spiffe_trust_domain"`
 }
 
