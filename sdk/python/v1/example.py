@@ -2,11 +2,10 @@ import json
 
 import core.v1.record_pb2 as core_record_pb2
 from google.protobuf.json_format import MessageToDict
-from objects.v3 import extension_pb2, record_pb2, signature_pb2, skill_pb2, locator_pb2
+from objects.v3 import extension_pb2, locator_pb2, record_pb2, signature_pb2, skill_pb2
 from routing.v1 import record_query_pb2 as record_query_type
 from routing.v1 import routing_service_pb2 as routingv1
-
-from client import Client, Config
+from v1.client import Client, Config
 
 
 def convert_uint64_fields_to_int(d):
@@ -29,63 +28,84 @@ def convert_uint64_fields_to_int(d):
     return d
 
 
+def print_as_json(object: any):
+    """
+    Convert object to a serializable JSON object and print it.
+    :param object: object to serialize
+    :return: json_object: serialized JSON object
+    """
+
+    # Convert the record object to a JSON string
+    dict_object = MessageToDict(object, preserving_proto_field_name=True)
+    dict_object = convert_uint64_fields_to_int(dict_object)
+    json_object = json.dumps(dict_object).encode("utf-8")
+
+    return json_object
+
+
+def generate_records(names):
+    example_records = []
+
+    for name in names:
+        example_record = core_record_pb2.Record(
+            v3=record_pb2.Record(
+                name=name,
+                version="v3",
+                schema_version="v0.5.0",
+                skills=[
+                    skill_pb2.Skill(
+                        name="Natural Language Processing",
+                        id=1,
+                    ),
+                ],
+                locators=[
+                    locator_pb2.Locator(
+                        type="ipv4",
+                        url="127.0.0.1",
+                    ),
+                ],
+                extensions=[
+                    extension_pb2.Extension(
+                        name="schema.oasf.agntcy.org/domains/domain-1",
+                        version="v1",
+                    )
+                ],
+                signature=signature_pb2.Signature(),
+            )
+        )
+
+        example_records.append(example_record)
+
+    return example_records
+
+
 # Initialize the client
 client = Client(Config())
 
-# Create a record object
-example_record = record_pb2.Record(
-    name="example-record",
-    version="v3",
-    schema_version="v0.5.0",
-    skills=[
-        skill_pb2.Skill(
-            name="Natural Language Processing",
-            id=1,
-        ),
-    ],
-    locators=[
-        locator_pb2.Locator(
-            type="ipv4",
-            url="127.0.0.1",
-        ),
-    ],
-    extensions=[
-        extension_pb2.Extension(
-            name="schema.oasf.agntcy.org/domains/domain-1",
-            version="v1",
-        )
-    ],
-    signature=signature_pb2.Signature(),
-)
+records = generate_records(["example-record", "example-record2"])
 
-r = core_record_pb2.Record(v3=example_record)
+# Push objects to the store
+refs = client.push(records)
 
-# Push the object to the store
-ref = client.push(record=r)
-print("Pushed object ref:", ref)
+for ref in refs:
+    print("Pushed object ref:", print_as_json(ref))
 
-# Pull the object from the store
-record = client.pull(ref)
+# Pull objects from the store
+pulled_records = client.pull(refs)
 
-# Convert the record object to a JSON string
-record_dict = MessageToDict(record, preserving_proto_field_name=True)
-record_dict = convert_uint64_fields_to_int(record_dict)
-record_json = json.dumps(record_dict).encode("utf-8")
+for pulled_record in pulled_records:
+    print("Pulled object data:", print_as_json(pulled_record))
 
-print("Pulled object data:", record_json)
 
 # Lookup the object
-metadata = client.lookup(ref)
+metadatas = client.lookup(refs)
 
-# Convert the metadata object to a JSON string
-metadata_dict = MessageToDict(metadata, preserving_proto_field_name=True)
-metadata_dict = convert_uint64_fields_to_int(metadata_dict)
-metadata_json = json.dumps(metadata_dict).encode("utf-8")
-
-print("Object metadata:", metadata_json)
+for metadata in metadatas:
+    print("Lookup object metadata:", print_as_json(metadata))
 
 # Publish the object
-client.publish(ref)
+publish_request = routingv1.PublishRequest(record_cid=refs[0].cid)
+client.publish(publish_request)
 print("Object published.")
 
 # List objects in the store
@@ -96,12 +116,15 @@ query = record_query_type.RecordQuery(
 
 list_request = routingv1.ListRequest(queries=[query])
 objects = list(client.list(list_request))
-print("Listed objects:", objects)
+
+for o in objects:
+    print("Listed object:", print_as_json(o))
 
 # Unpublish the object
-client.unpublish(ref)
+unpublish_request = routingv1.UnpublishRequest(record_cid=refs[0].cid)
+client.unpublish(unpublish_request)
 print("Object unpublished.")
 
 # Delete the object
-client.delete(ref)
-print("Object deleted.")
+client.delete(refs)
+print("Objects are deleted.")
