@@ -33,14 +33,13 @@ with the default OIDC provider.
 
 Usage examples:
 
-1. Sign a record from file:
+1. Sign a record using OIDC:
 
 	dirctl sign <record-cid>
 
-2. Sign a record from standard input:
+2. Sign a record using key:
 
-	cat record.json | dirctl push record.json | dirctl sign --stdin
-
+	dirctl sign <record-cid> --key <key-file>
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var recordCID string
@@ -52,8 +51,6 @@ Usage examples:
 			return errors.New("record CID is required")
 		}
 
-		// TODO: get record cid from stdin
-
 		return runCommand(cmd, recordCID)
 	},
 }
@@ -63,6 +60,15 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
+	}
+
+	// Override client registry config with command-specific flags if provided
+	if opts.RegistryAddress != "" {
+		c.SetRegistryAddress(opts.RegistryAddress)
+	}
+
+	if opts.RepositoryName != "" {
+		c.SetRepositoryName(opts.RepositoryName)
 	}
 
 	//nolint:nestif,gocritic

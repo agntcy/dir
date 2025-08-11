@@ -14,6 +14,7 @@ require (
 	github.com/agntcy/dir/api v0.2.6
 	github.com/agntcy/dir/cli v0.2.6
 	github.com/agntcy/dir/client v0.2.6
+	github.com/agntcy/dir/utils v0.2.6
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.23.0
 	github.com/onsi/gomega v1.36.2
@@ -24,7 +25,6 @@ require (
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/agntcy/dir/utils v0.2.6 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect

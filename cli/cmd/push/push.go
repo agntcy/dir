@@ -16,6 +16,7 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/sigstore/sigstore/pkg/oauthflow"
 	"github.com/spf13/cobra"
 )
 
@@ -67,6 +68,15 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return errors.New("failed to get client from context")
 	}
 
+	// Override client registry config with command-specific flags if provided
+	if opts.RegistryAddress != "" {
+		c.SetRegistryAddress(opts.RegistryAddress)
+	}
+
+	if opts.RepositoryName != "" {
+		c.SetRepositoryName(opts.RepositoryName)
+	}
+
 	// Load OASF data (supports v1, v2, v3) into a Record
 	record, err := corev1.LoadOASFFromReader(source)
 	if err != nil {
@@ -98,10 +108,22 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 				},
 			})
 		} else {
+			// Handle OIDC token retrieval if not provided
+			oidcToken := opts.OIDCToken
+			if oidcToken == "" {
+				// Retrieve the token from the OIDC provider
+				token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
+				if err != nil {
+					return fmt.Errorf("failed to get OIDC token: %w", err)
+				}
+
+				oidcToken = token.RawString
+			}
+
 			resp, err = c.PushWithOptions(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Oidc{
 					Oidc: &signv1.SignWithOIDC{
-						IdToken: opts.OIDCToken,
+						IdToken: oidcToken,
 						Options: &signv1.SignWithOIDC_SignOpts{
 							FulcioUrl:       &opts.FulcioURL,
 							RekorUrl:        &opts.RekorURL,

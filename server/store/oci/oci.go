@@ -5,15 +5,10 @@
 package oci
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"os/exec"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -21,7 +16,9 @@ import (
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/store/cache"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/server/store/oci/utils"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/logging"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
@@ -31,25 +28,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/retry"
-)
-
-// OCI-specific constants for signature artifacts.
-const (
-	// SignatureArtifactMediaType is the media type for signature artifacts.
-	SignatureArtifactMediaType = "application/vnd.dev.cosign.artifact.sig.v1+json"
-
-	// SignatureManifestMediaType is the media type for signature manifests.
-	SignatureManifestMediaType = "application/vnd.oci.image.manifest.v1+json"
-
-	// Cosign simple signing media type for signature layers.
-	CosignSimpleSigningMediaType = "application/vnd.dev.cosign.simplesigning.v1+json"
-
-	// Signature annotations.
-	SignatureTypeAnnotation = "org.opencontainers.artifact.type"
-
-	// Cosign-specific annotations.
-	CosignSignatureAnnotation = "dev.cosignproject.cosign/signature"
-	CosignBundleAnnotation    = "dev.sigstore.cosign/bundle"
 )
 
 var logger = logging.Logger("store/oci")
@@ -354,7 +332,12 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 	// Upload the public key to zot for signature verification
 	// This enables zot to mark this signature as "trusted" in verification queries
 	if signature.PublicKey != nil && len(signature.GetPublicKey()) > 0 {
-		err := s.UploadPublicKeyToZotForVerification(ctx, signature.GetPublicKey())
+		uploadOpts := &utils.UploadPublicKeyOptions{
+			Config:    s.buildZotConfig(),
+			PublicKey: signature.GetPublicKey(),
+		}
+
+		err := utils.UploadPublicKeyToZot(ctx, uploadOpts)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to upload public key to zot for verification: %v", err)
 		}
@@ -379,173 +362,27 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 	return nil
 }
 
-// PullSignature retrieves signature associated with a record.
-func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Signature, error) {
-	logger.Debug("Pulling signature from OCI store", "recordCID", recordCID)
-
-	if recordCID == "" {
-		return nil, status.Error(codes.InvalidArgument, "record CID is required")
-	}
-
-	// Find signature manifest for this record using OCI Referrers API
-	signatureManifestDesc, err := s.findSignatureManifest(ctx, recordCID)
-	if err != nil {
-		logger.Debug("Failed to find signature manifest", "error", err, "recordCID", recordCID)
-
-		return nil, status.Errorf(codes.NotFound, "signature not found: %s", recordCID)
-	}
-
-	// Fetch signature manifest
-	manifestReader, err := s.repo.Fetch(ctx, *signatureManifestDesc)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch signature manifest: %v", err)
-	}
-	defer manifestReader.Close()
-
-	manifestData, err := io.ReadAll(manifestReader)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read signature manifest: %v", err)
-	}
-
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(manifestData, &manifest); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unmarshal signature manifest: %v", err)
-	}
-
-	// Extract signature artifact from manifest layers
-	if len(manifest.Layers) == 0 {
-		return nil, status.Errorf(codes.Internal, "signature manifest has no layers")
-	}
-
-	// Fetch signature blob data
-	signatureBlob := manifest.Layers[0]
-
-	signatureReader, err := s.repo.Fetch(ctx, signatureBlob)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch signature blob: %v", err)
-	}
-	defer signatureReader.Close()
-
-	signatureData, err := io.ReadAll(signatureReader)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read signature blob: %v", err)
-	}
-
-	// Unmarshal the complete signature object from blob content
-	var signature signv1.Signature
-	if err := json.Unmarshal(signatureData, &signature); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unmarshal signature: %v", err)
-	}
-
-	// Restore original content type from annotations if available
-	if signatureBlob.Annotations != nil {
-		if originalContentType, ok := signatureBlob.Annotations["original.content.type"]; ok && originalContentType != "" {
-			signature.ContentType = originalContentType
-		}
-	}
-
-	logger.Debug("Retrieved signature artifact", "recordCID", recordCID)
-
-	return &signature, nil
-}
-
-// DeleteSignature removes signature associated with a record.
-func (s *store) DeleteSignature(ctx context.Context, recordCID string) error {
-	logger.Debug("Deleting signature from OCI store", "recordCID", recordCID)
-
-	if recordCID == "" {
-		return status.Error(codes.InvalidArgument, "record CID is required")
-	}
-
-	// Find signature manifest for this record using OCI Referrers API
-	signatureManifestDesc, err := s.findSignatureManifest(ctx, recordCID)
-	if err != nil {
-		logger.Debug("Failed to find signature manifest for deletion", "error", err, "recordCID", recordCID)
-
-		return nil
-	}
-
-	// Delete signature manifest and associated blobs
-	switch store := s.repo.(type) {
-	case *oci.Store:
-		// Delete manifest
-		if err := store.Delete(ctx, *signatureManifestDesc); err != nil {
-			return fmt.Errorf("failed to delete signature manifest %s: %w", signatureManifestDesc.Digest.String(), err)
-		}
-	case *remote.Repository:
-		// Delete manifest
-		if err := store.Manifests().Delete(ctx, *signatureManifestDesc); err != nil {
-			return fmt.Errorf("failed to delete signature manifest %s: %w", signatureManifestDesc.Digest.String(), err)
-		}
-	default:
-		return fmt.Errorf("unsupported repo type for signature deletion: %T", s.repo)
-	}
-
-	logger.Info("Signature deletion completed", "recordCID", recordCID)
-
-	return nil
-}
-
 // attachSignatureWithCosign uses cosign attach signature to attach a signature to a record in the OCI registry.
 func (s *store) attachSignatureWithCosign(ctx context.Context, recordCID string, signature *signv1.Signature) error {
 	logger.Debug("Attaching signature using cosign attach signature", "recordCID", recordCID)
 
-	// Create temporary files for signature and payload
-	signatureFile, err := os.CreateTemp("", "signature.sig")
-	if err != nil {
-		return fmt.Errorf("failed to create signature temp file: %w", err)
-	}
-	defer os.Remove(signatureFile.Name())
-
-	payloadFile, err := os.CreateTemp("", "payload.json")
-	if err != nil {
-		return fmt.Errorf("failed to create payload temp file: %w", err)
-	}
-	defer os.Remove(payloadFile.Name())
-
-	// Write the base64-encoded signature string to the signature file
-	signatureString := signature.GetSignature()
-
-	// Write the signature to the signature file
-	if _, err := signatureFile.WriteString(signatureString); err != nil {
-		return fmt.Errorf("failed to write signature file: %w", err)
-	}
-
-	signatureFile.Close()
-
-	// Get the payload from the signature
-	payload := signature.GetAnnotations()["payload"]
-
-	// Write the payload to the payload file
-	if _, err := payloadFile.WriteString(payload); err != nil {
-		return fmt.Errorf("failed to write payload file: %w", err)
-	}
-
-	payloadFile.Close()
-
 	// Construct the OCI image reference for the record
-	// Format: registry/repository:tag-or-digest
 	imageRef := s.constructImageReference(recordCID)
 
-	// Build cosign attach signature command
-	args := []string{
-		"attach", "signature",
-		"--signature", signatureFile.Name(),
-		"--payload", payloadFile.Name(),
+	// Prepare options for attaching signature
+	attachOpts := &cosign.AttachSignatureOptions{
+		ImageRef:  imageRef,
+		Signature: signature.GetSignature(),
+		Payload:   signature.GetAnnotations()["payload"],
 	}
 
-	// Add the image reference
-	args = append(args, imageRef)
-
-	// Execute cosign attach signature command
-	cmd := exec.CommandContext(ctx, "cosign", args...)
-
-	output, err := cmd.CombinedOutput()
+	// Attach signature using utility function
+	err := cosign.AttachSignature(ctx, attachOpts)
 	if err != nil {
-		return fmt.Errorf("cosign attach signature failed: %w, output: %s", err, string(output))
+		return fmt.Errorf("failed to attach signature: %w", err)
 	}
 
-	logger.Debug("Cosign attach signature completed successfully", "output", string(output))
+	logger.Debug("Cosign attach signature completed successfully")
 
 	return nil
 }
@@ -569,239 +406,31 @@ type ReferrersLister interface {
 	Referrers(ctx context.Context, desc ocispec.Descriptor, artifactType string, fn func(referrers []ocispec.Descriptor) error) error
 }
 
-// findSignatureManifest finds the signature manifest for a given record using OCI Referrers API.
-func (s *store) findSignatureManifest(ctx context.Context, recordCID string) (*ocispec.Descriptor, error) {
-	logger.Debug("Finding signature manifest for record", "recordCID", recordCID)
-
-	// First, resolve the record manifest to get its descriptor
-	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve record manifest: %w", err)
-	}
-
-	// Check if the repository supports the referrers API
-	referrerLister, ok := s.repo.(ReferrersLister)
-	if !ok {
-		logger.Debug("Repository does not support Referrers API, falling back to tag schema")
-
-		return nil, errors.New("repository does not support Referrers API")
-	}
-
-	// Use the Referrers API to find signature manifests
-	var signatureManifestDesc *ocispec.Descriptor
-
-	err = referrerLister.Referrers(ctx, recordManifestDesc, SignatureManifestMediaType, func(referrers []ocispec.Descriptor) error {
-		for _, referrer := range referrers {
-			if s.isSignatureManifest(referrer) {
-				signatureManifestDesc = &referrer
-				logger.Debug("Found signature manifest using Referrers API", "digest", referrer.Digest.String())
-
-				return nil // Found our signature manifest
-			}
-		}
-
-		return nil // no signature manifest found
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to query referrers: %w", err)
-	}
-
-	if signatureManifestDesc != nil {
-		return signatureManifestDesc, nil
-	}
-
-	return nil, fmt.Errorf("no signature manifest found for record %s", recordCID)
-}
-
-// isSignatureManifest checks if a descriptor represents a signature manifest.
-func (s *store) isSignatureManifest(desc ocispec.Descriptor) bool {
-	// Check media type
-	if desc.MediaType != SignatureManifestMediaType {
-		return false
-	}
-
-	// Check signature type annotation
-	if artifactType, ok := desc.Annotations[SignatureTypeAnnotation]; !ok || artifactType != SignatureArtifactMediaType {
-		return false
-	}
-
-	return true
-}
-
-// This enables zot to mark signatures as "trusted" when they can be verified with this key.
-func (s *store) UploadPublicKeyToZotForVerification(ctx context.Context, publicKey string) error {
-	logger.Debug("Uploading public key to zot for signature verification")
-
-	if publicKey == "" {
-		return errors.New("public key is required")
-	}
-
-	// Get registry URL for zot cosign endpoint
-	registryURL := s.config.RegistryAddress
-	if !strings.HasPrefix(registryURL, "http://") && !strings.HasPrefix(registryURL, "https://") {
-		if s.config.Insecure {
-			registryURL = "http://" + registryURL
-		} else {
-			registryURL = "https://" + registryURL
-		}
-	}
-
-	uploadEndpoint := registryURL + "/v2/_zot/ext/cosign"
-
-	// Create HTTP request with public key as body
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, uploadEndpoint, strings.NewReader(publicKey))
-	if err != nil {
-		return fmt.Errorf("failed to create upload request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/octet-stream")
-
-	// Add authentication if configured
-	if s.config.Username != "" && s.config.Password != "" {
-		req.SetBasicAuth(s.config.Username, s.config.Password)
-	} else if s.config.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+s.config.AccessToken)
-	}
-
-	// Create HTTP client
-	client := &http.Client{}
-
-	// Execute request
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to upload public key: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
-
-		return fmt.Errorf("failed to upload public key, status: %d, response: %s", resp.StatusCode, string(body))
-	}
-
-	logger.Debug("Successfully uploaded public key to zot", "endpoint", uploadEndpoint)
-
-	return nil
-}
-
 // VerifyWithZot queries zot's verification API to check if a signature is valid.
-//
-//nolint:cyclop
 func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, error) {
-	// Skip if using local storage
-	if s.config.LocalDir != "" {
-		logger.Debug("Skipping zot verification for local storage")
-
-		return false, errors.New("zot verification not available for local storage")
+	verifyOpts := &utils.VerificationOptions{
+		Config:    s.buildZotConfig(),
+		RecordCID: recordCID,
 	}
 
-	// Build zot search endpoint URL
-	registryURL := s.config.RegistryAddress
-	if !strings.HasPrefix(registryURL, "http://") && !strings.HasPrefix(registryURL, "https://") {
-		if s.config.Insecure {
-			registryURL = "http://" + registryURL
-		} else {
-			registryURL = "https://" + registryURL
-		}
-	}
-
-	searchEndpoint := registryURL + "/v2/_zot/ext/search"
-	logger.Debug("Querying zot for signature verification", "endpoint", searchEndpoint, "recordCID", recordCID)
-
-	// Create GraphQL query for signature verification
-	query := fmt.Sprintf(`{
-		Image(image: "%s:%s") {
-			Digest
-			IsSigned
-			Tag
-			SignatureInfo {
-				Tool
-				IsTrusted
-				Author
-			}
-		}
-	}`, s.config.RepositoryName, recordCID)
-
-	graphqlQuery := map[string]interface{}{
-		"query": query,
-	}
-
-	jsonData, err := json.Marshal(graphqlQuery)
+	result, err := utils.VerifyWithZot(ctx, verifyOpts)
 	if err != nil {
-		return false, fmt.Errorf("failed to marshal GraphQL query: %w", err)
+		return false, err
 	}
 
-	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, searchEndpoint, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return false, fmt.Errorf("failed to create verification request: %w", err)
+	// Return the trusted status (which implies signed as well)
+	return result.IsTrusted, nil
+}
+
+// buildZotConfig creates a ZotConfig from the store configuration.
+func (s *store) buildZotConfig() *utils.ZotConfig {
+	return &utils.ZotConfig{
+		RegistryAddress: s.config.RegistryAddress,
+		RepositoryName:  s.config.RepositoryName,
+		Username:        s.config.Username,
+		Password:        s.config.Password,
+		AccessToken:     s.config.AccessToken,
+		Insecure:        s.config.Insecure,
+		LocalDir:        s.config.LocalDir,
 	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	// Add authentication if configured
-	if s.config.Username != "" && s.config.Password != "" {
-		req.SetBasicAuth(s.config.Username, s.config.Password)
-	} else if s.config.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+s.config.AccessToken)
-	}
-
-	// Create HTTP client
-	client := &http.Client{}
-
-	// Execute request
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, fmt.Errorf("failed to query zot verification: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, fmt.Errorf("failed to read verification response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		logger.Debug("Verification query returned non-success status", "status", resp.StatusCode, "body", string(body))
-
-		return false, fmt.Errorf("verification query returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse GraphQL response
-	var graphqlResp struct {
-		Data struct {
-			Image struct {
-				Digest        string `json:"Digest"`
-				IsSigned      bool   `json:"IsSigned"`
-				Tag           string `json:"Tag"`
-				SignatureInfo []struct {
-					Tool      string `json:"Tool"`
-					IsTrusted bool   `json:"IsTrusted"`
-					Author    string `json:"Author"`
-				} `json:"SignatureInfo"`
-			} `json:"Image"`
-		} `json:"data"`
-	}
-
-	if err := json.Unmarshal(body, &graphqlResp); err != nil {
-		return false, fmt.Errorf("failed to decode verification response: %w", err)
-	}
-
-	// Check if the image is signed according to zot
-	isSigned := graphqlResp.Data.Image.IsSigned
-	if !isSigned {
-		logger.Debug("Image is not signed", "recordCID", recordCID)
-
-		return false, nil
-	}
-
-	// Check if the signature is trusted
-	isTrusted := false
-	if len(graphqlResp.Data.Image.SignatureInfo) > 0 {
-		isTrusted = graphqlResp.Data.Image.SignatureInfo[0].IsTrusted
-	}
-
-	logger.Debug("Zot verification result", "recordCID", recordCID, "isSigned", isSigned, "isTrusted", isTrusted)
-
-	return isTrusted, nil
 }

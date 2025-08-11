@@ -1,37 +1,17 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-//nolint:mnd,gosec
 package client
 
 import (
 	"context"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"strings"
-	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
-)
-
-const (
-	DefaultFulcioURL       = "https://fulcio.sigstage.dev"
-	DefaultRekorURL        = "https://rekor.sigstage.dev"
-	DefaultTimestampURL    = "https://timestamp.sigstage.dev/api/v1/timestamp"
-	DefaultOIDCProviderURL = "https://oauth2.sigstage.dev/auth"
-	DefaultOIDCClientID    = "sigstore"
-
-	DefaultFulcioTimeout             = 30 * time.Second
-	DefaultTimestampAuthorityTimeout = 30 * time.Second
-	DefaultRekorTimeout              = 90 * time.Second
 )
 
 type SignOpts struct {
@@ -42,6 +22,18 @@ type SignOpts struct {
 	OIDCClientID    string
 	OIDCToken       string
 	Key             string
+	RegistryAddress string
+	RepositoryName  string
+}
+
+// SetRegistryAddress updates the client's registry address configuration.
+func (c *Client) SetRegistryAddress(address string) {
+	c.config.RegistryAddress = address
+}
+
+// SetRepositoryName updates the client's repository name configuration.
+func (c *Client) SetRepositoryName(name string) {
+	c.config.RepositoryName = name
 }
 
 // Sign routes to the appropriate signing method based on provider type.
@@ -77,116 +69,39 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 		return nil, fmt.Errorf("failed to convert CID to digest: %w", err)
 	}
 
-	// Create payload temporary file (same as SignWithKey)
-	payload := cosign.GeneratePayload("localhost:5000", "dir", digest.String())
+	// Create payload
+	payload := cosign.GeneratePayload(c.config.RegistryAddress, c.config.RepositoryName, digest.String())
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	// Write payload to temporary file
-	payloadFile := "payload-oidc-temp.json"
-	err = os.WriteFile(payloadFile, payloadBytes, 0o644)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write payload: %w", err)
-	}
-	defer os.Remove(payloadFile)
-
-	// Prepare output files for signature and certificate
-	signatureFile := "signature-oidc-temp.sig"
-	certificateFile := "certificate-oidc-temp.crt"
-	bundleFile := "bundle-oidc-temp.json"
-
-	// Build cosign sign-blob command with OIDC options
-	args := []string{
-		"sign-blob",
-		"-y",
-		"--output-signature", signatureFile,
-		"--output-certificate", certificateFile,
-		"--bundle", bundleFile,
-		"--new-bundle-format",    // Use new bundle format
-		"--insecure-skip-verify", // Skip SCT verification for staging/testing
+	// Prepare options for signing
+	signOpts := &cosign.SignBlobOIDCOptions{
+		Payload:      payloadBytes,
+		IDToken:      oidcSigner.GetIdToken(),
+		OIDCClientID: cosign.DefaultOIDCClientID,
 	}
 
-	// Add identity token only if provided
-	// If no token provided, cosign will attempt interactive OIDC flow
-	if idToken := oidcSigner.GetIdToken(); idToken != "" {
-		args = append(args, "--identity-token", idToken)
-	} else {
-		// For interactive OIDC flow, we need to ensure proper provider configuration
-		// Add OIDC client ID for better auth flow
-		args = append(args, "--oidc-client-id", DefaultOIDCClientID)
-	}
-
-	// Add optional OIDC URLs if provided
+	// Set URLs from options if provided
 	if opts := oidcSigner.GetOptions(); opts != nil {
-		if fulcioURL := opts.GetFulcioUrl(); fulcioURL != "" {
-			args = append(args, "--fulcio-url", fulcioURL)
-		} else {
-			args = append(args, "--fulcio-url", DefaultFulcioURL)
-		}
-
-		if rekorURL := opts.GetRekorUrl(); rekorURL != "" {
-			args = append(args, "--rekor-url", rekorURL)
-		} else {
-			args = append(args, "--rekor-url", DefaultRekorURL)
-		}
-
-		if timestampURL := opts.GetTimestampUrl(); timestampURL != "" {
-			args = append(args, "--timestamp-server-url", timestampURL)
-		} else {
-			args = append(args, "--timestamp-server-url", DefaultTimestampURL)
-		}
-
-		if oidcProviderURL := opts.GetOidcProviderUrl(); oidcProviderURL != "" {
-			args = append(args, "--oidc-issuer", oidcProviderURL)
-		} else {
-			args = append(args, "--oidc-issuer", DefaultOIDCProviderURL)
-		}
-	} else {
-		// Use default URLs if no options provided
-		args = append(args,
-			"--fulcio-url", DefaultFulcioURL,
-			"--rekor-url", DefaultRekorURL,
-			"--timestamp-server-url", DefaultTimestampURL,
-			"--oidc-issuer", DefaultOIDCProviderURL,
-		)
+		signOpts.FulcioURL = opts.GetFulcioUrl()
+		signOpts.RekorURL = opts.GetRekorUrl()
+		signOpts.TimestampURL = opts.GetTimestampUrl()
+		signOpts.OIDCProviderURL = opts.GetOidcProviderUrl()
 	}
 
-	// Add the payload file as the last argument
-	args = append(args, payloadFile)
-
-	cmd := exec.Command("cosign", args...)
-
-	// Execute the command
-	output, err := cmd.CombinedOutput()
+	// Sign using utility function
+	result, err := cosign.SignBlobWithOIDC(ctx, signOpts)
 	if err != nil {
-		return nil, fmt.Errorf("cosign sign-blob OIDC failed: %w\nOutput: %s", err, string(output))
+		return nil, fmt.Errorf("failed to sign with OIDC: %w", err)
 	}
 
-	// Read the signature
-	signature, err := os.ReadFile(signatureFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read signature: %w", err)
-	}
-	defer os.Remove(signatureFile)
-
-	// Extract public key from certificate
-	publicKeyPEM, err := extractPublicKeyFromCertificateFile(certificateFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract public key from certificate: %w", err)
-	}
-	defer os.Remove(certificateFile)
-
-	// Remove the bundle file
-	// TODO Investigate why sign fails if the bundle file is not added as a parameter
-	defer os.Remove(bundleFile)
-
-	// Create the signature object with proper structure
+	// Create the signature object
 	signatureObj := &signv1.Signature{
-		Signature:     string(signature),
-		PublicKey:     &publicKeyPEM,
+		Signature: result.Signature,
+		PublicKey: &result.PublicKey,
 		Annotations: map[string]string{
 			"payload": string(payloadBytes),
 		},
@@ -216,70 +131,31 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 		return nil, fmt.Errorf("failed to convert CID to digest: %w", err)
 	}
 
-	// Create payload temporary file
-	payload := cosign.GeneratePayload("localhost:5000", "dir", digest.String())
+	// Create payload
+	payload := cosign.GeneratePayload(c.config.RegistryAddress, c.config.RepositoryName, digest.String())
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	// Write payload to temporary file
-	payloadFile := "payload-temp.json"
-
-	err = os.WriteFile(payloadFile, payloadBytes, 0o644)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write payload: %w", err)
+	// Prepare options for signing
+	signOpts := &cosign.SignBlobKeyOptions{
+		Payload:    payloadBytes,
+		PrivateKey: keySigner.GetPrivateKey(),
+		Password:   password,
 	}
 
-	defer os.Remove(payloadFile)
-
-	// Write private key to temporary file
-	keyFile := "cosign-temp.key"
-
-	err = os.WriteFile(keyFile, keySigner.GetPrivateKey(), 0o600)
+	// Sign using utility function
+	result, err := cosign.SignBlobWithKey(ctx, signOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to write private key: %w", err)
-	}
-
-	defer os.Remove(keyFile)
-
-	signatureFile := "signature-temp.sig"
-	cmd := exec.Command("cosign", "sign-blob",
-		"-y",
-		"--key", keyFile,
-		"--output-signature", signatureFile,
-		payloadFile)
-
-	// Set environment variables
-	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+string(password))
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("cosign sign failed: %w\nOutput: %s", err, string(output))
-	}
-
-	signature, err := os.ReadFile(signatureFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read signature: %w", err)
-	}
-
-	defer os.Remove(signatureFile)
-
-	cosignKeypair, err := cosign.LoadKeypair(keySigner.GetPrivateKey(), password)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load cosign keypair: %w", err)
-	}
-
-	publicKey, err := cosignKeypair.GetPublicKeyPem()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get public key: %w", err)
+		return nil, fmt.Errorf("failed to sign with key: %w", err)
 	}
 
 	// Create the signature object
 	signatureObj := &signv1.Signature{
-		Signature: string(signature),
-		PublicKey: &publicKey,
+		Signature: result.Signature,
+		PublicKey: &result.PublicKey,
 		Annotations: map[string]string{
 			"payload": string(payloadBytes),
 		},
@@ -296,14 +172,6 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 	}, nil
 }
 
-func setOrDefault(value string, defaultValue string) string {
-	if value == "" {
-		value = defaultValue
-	}
-
-	return value
-}
-
 // pushSignatureToStore stores a signature using the new PushSignature RPC.
 func (c *Client) pushSignatureToStore(ctx context.Context, recordCID string, signature *signv1.Signature) error {
 	req := &signv1.PushSignatureRequest{
@@ -317,51 +185,4 @@ func (c *Client) pushSignatureToStore(ctx context.Context, recordCID string, sig
 	}
 
 	return nil
-}
-
-// extractPublicKeyFromCertificateFile extracts the public key from a base64-encoded certificate file
-func extractPublicKeyFromCertificateFile(certificateFile string) (string, error) {
-	// Read the base64-encoded certificate file
-	certData, err := os.ReadFile(certificateFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to read certificate file: %w", err)
-	}
-
-	// Clean up the base64 data - remove URL encoding and whitespace
-	certDataStr := strings.TrimSpace(string(certData))
-	certDataStr = strings.TrimSuffix(certDataStr, "%")      // Remove URL encoding artifacts at the end
-	certDataStr = strings.ReplaceAll(certDataStr, "\n", "") // Remove any newlines
-	certDataStr = strings.ReplaceAll(certDataStr, "\r", "") // Remove any carriage returns
-
-	// Decode the base64 certificate (this gives us PEM data)
-	pemBytes, err := base64.StdEncoding.DecodeString(certDataStr)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 certificate: %w", err)
-	}
-
-	// Parse the PEM-encoded certificate
-	block, _ := pem.Decode(pemBytes)
-	if block == nil || block.Type != "CERTIFICATE" {
-		return "", fmt.Errorf("failed to decode PEM certificate")
-	}
-
-	// Parse the X.509 certificate from the PEM block
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse X.509 certificate: %w", err)
-	}
-
-	// Extract the public key
-	pubKeyBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal public key: %w", err)
-	}
-
-	// Encode the public key as PEM
-	pubKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pubKeyBytes,
-	})
-
-	return string(pubKeyPEM), nil
 }

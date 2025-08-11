@@ -25,6 +25,7 @@ type Client struct {
 	searchv1.SearchServiceClient
 	storev1.SyncServiceClient
 	signv1.SignServiceClient
+	config *Config
 }
 
 type options struct {
@@ -111,5 +112,6 @@ func New(opts ...Option) (*Client, error) {
 		SearchServiceClient:  searchv1.NewSearchServiceClient(client),
 		SyncServiceClient:    storev1.NewSyncServiceClient(client),
 		SignServiceClient:    signv1.NewSignServiceClient(client),
+		config:               options.config,
 	}, nil
 }
