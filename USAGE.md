@@ -13,9 +13,9 @@ there is an effort to expose the same functionality via language-specific SDKs.
 
 ### Build
 
-This example demonstrates how to define an agent data model and build such models using provided tooling to prepare for publication.
+This example demonstrates how to define a record using provided tooling to prepare for publication.
 
-To start, generate an example agent that matches the data model schema defined in [Agent Data Model](api/proto/core/v1alpha1/agent.proto) specification.
+To start, generate an example record that matches the data model schema defined in [Record](api/proto/core/v1alpha1/agent.proto) specification.
 
 ```bash
 # Generate an example data model
@@ -40,48 +40,37 @@ cat << EOF > model.json
 EOF
 ```
 
-Alternatively, build the same agent data model using the CLI client.
-The build process allows the execution of additional user-defined operations,
-which is useful for data model enrichment and other custom use cases.
+### Store
+
+This example demonstrates the interaction with the local storage layer using the CLI client.
+The storage layer is used as a content-addressable object store for Directory-specific models and serves both the local and network-based operations (if enabled).
 
 ```bash
-# Use the model above as the base model
-mv model.json model.base.json
+# Push and store content CID
+dirctl push record.json > record.cid
+CID=$(cat model.cid)
 
-# Define the build config
-cat << EOF > build.config.yml
-builder:
- # Base agent model path
- base-model: "model.base.json"
+# Pull the record
+# Returns the same data as record.json
+dirctl pull $CID
 
- # Disable the LLMAnalyzer plugin
- llmanalyzer: false
+# Lookup basic metadata about the record
+dirctl info $CID
 
- # Disable the runtime plugin
- runtime: false
-
- # Disable the pyprojectparser plugin
- pyprojectparser: false
-
- # Enable OASF validation
- oasf-validation: true
-EOF
-
-# Build the agent
-dirctl build . > model.json
-
-# Preview built agent
-cat model.json
+#> {
+#>   "digest": "sha256:<hash>",
+#>   "type": "OBJECT_TYPE_AGENT",
+#>   "size": 143
+#> }
 ```
 
 ### Signing and Verification
 
 #### Method 1: OIDC-based Interactive
 
-This process relies on attaching signature to the agent data model using identity-based OIDC signing flow which can be verified by other clients.
-The signing process opens a browser window to authenticate the user
-with an OIDC identity provider.
-The verification process validates the agent signature against the identity provider and signature transparency services.
+This process relies on attaching signature to the record using identity-based OIDC signing flow which can later be verified.
+The signing process opens a browser window to authenticate the user with an OIDC identity provider.
+The verification process validates the record signature against the identity provider and signature transparency services.
 These operations are implemented using [Sigstore](https://www.sigstore.dev/).
 
 ```bash
@@ -94,12 +83,12 @@ dirctl verify <record-cid>
 
 #### Method 2: OIDC-based Non-Interactive
 
-This method is designed for automated environments such as CI/CD pipelines where browser-based authentication is not available. It uses OIDC tokens provided by the execution environment (like GitHub Actions) to sign agent data models. The signing process uses a pre-obtained OIDC token along with provider-specific configuration to establish identity without user interaction. The verification process validates the agent signature against the specified OIDC issuer and identity pattern.
+This method is designed for automated environments such as CI/CD pipelines where browser-based authentication is not available. It uses OIDC tokens provided by the execution environment (like GitHub Actions) to sign records. The signing process uses a pre-obtained OIDC token along with provider-specific configuration to establish identity without user interaction. The verification process validates the record signature against the specified OIDC issuer and identity pattern.
 
 ```
       - name: Push and sign record
         run: |
-          bin/dirctl push agent.json --sign \
+          bin/dirctl push record.json --sign \
             --oidc-token ${{ steps.oidc-token.outputs.token }} \
             --oidc-provider-url "https://token.actions.githubusercontent.com" \
             --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
@@ -112,7 +101,7 @@ This method is designed for automated environments such as CI/CD pipelines where
 
 #### Method 3: Self-Managed Keys
 
-This method is suitable for non-interactive use cases, such as CI/CD pipelines, where browser-based authentication is not possible or desired. Instead of OIDC, a signing keypair is generated (e.g., with Cosign), and the private key is used to sign the agent model. The corresponding public key is then required to verify the agent, therefore, it must be distributed to any party that needs to verify signed agent models.
+This method is suitable for non-interactive use cases, such as CI/CD pipelines, where browser-based authentication is not possible or desired. Instead of OIDC, a signing keypair is generated (e.g., with Cosign), and the private key is used to sign the record. The corresponding public key is then required to verify the record, therefore, it must be distributed to any party that needs to verify signed records.
 
 ```bash
 # Generate a key-pair for signing
@@ -120,40 +109,16 @@ This method is suitable for non-interactive use cases, such as CI/CD pipelines, 
 cosign generate-key-pair
 
 # Set COSIGN_PASSWORD shell variable if password protected the private key
-# Push record with signature
+# Push record with signature 
 dirctl push record.json --sign --key cosign.key
 
-# Verify the signed agent using the public key:
+# Verify the signed record
 dirctl verify <record-cid>
-```
-
-### Store
-
-This example demonstrates the interaction with the local storage layer using the CLI client.
-The storage layer is used as a content-addressable object store for Directory-specific models and serves both the local and network-based operations (if enabled).
-
-```bash
-# Push and store content digest
-dirctl push model.json > model.digest
-DIGEST=$(cat model.digest)
-
-# Pull the agent
-# Returns the same data as model.json
-dirctl pull $DIGEST
-
-# Lookup basic metadata about the agent
-dirctl info $DIGEST
-
-#> {
-#>   "digest": "sha256:<hash>",
-#>   "type": "OBJECT_TYPE_AGENT",
-#>   "size": 143
-#> }
 ```
 
 ### Announce
 
-This example demonstrates how to publish agent data models to allow content discovery across the network.
+This example demonstrates how to publish records to allow content discovery across the network.
 To avoid stale data, it is recommended to republish the data periodically
 as the data across the network has TTL.
 
@@ -184,14 +149,14 @@ Discovery is performed using full-set label matching, ie. the results always ful
 Note that it is not guaranteed that the returned data is available, valid, or up to date.
 
 ```bash
-# Get a list of peers holding a specific agent data model
+# Get a list of peers holding a specific record
 dirctl list --digest $DIGEST
 
 #> Peer 12D3KooWQffoFP8ePUxTeZ8AcfReTMo4oRPqTiN1caDeG5YW3gng
 #>   Digest: sha256:<hash>
 #>   Labels: /skills/Text Generation, /skills/Fact Extraction
 
-# Discover the agent data models in your local data store
+# Discover the records in your local data store
 dirctl list "/skills/Text Generation"
 dirctl list "/skills/Text Generation" "/skills/Fact Extraction"
 
@@ -199,7 +164,7 @@ dirctl list "/skills/Text Generation" "/skills/Fact Extraction"
 #>   Digest: sha256:<hash>
 #>   Labels: /skills/Text Generation, /skills/Fact Extraction
 
-# Discover the agent data models across the network
+# Discover the records across the network
 dirctl list "/skills/Text Generation" --network
 dirctl list "/skills/Text Generation" "/skills/Fact Extraction" --network
 ```
@@ -246,7 +211,7 @@ The following table lists the gRPC error codes returned by the server APIs, alon
 
 | Error Code                 | Description                                                                                                                                                           |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `codes.InvalidArgument`    | Returned when the client provides an invalid or malformed argument, such as a missing or invalid object reference or agent.                                           |
+| `codes.InvalidArgument`    | Returned when the client provides an invalid or malformed argument, such as a missing or invalid record reference or record.                                           |
 | `codes.NotFound`           | Returned when the requested object does not exist in the local store or across the network.                                                                           |
 | `codes.FailedPrecondition` | Returned when the server environment or configuration is not in the required state (e.g., failed to create a directory or temp file, unsupported provider in config). |
 | `codes.Internal`           | Returned for unexpected internal errors, such as I/O failures, serialization errors, or other server-side issues.                                                     |
