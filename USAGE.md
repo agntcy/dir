@@ -85,23 +85,11 @@ The verification process validates the agent signature against the identity prov
 These operations are implemented using [Sigstore](https://www.sigstore.dev/).
 
 ```bash
-## Sign the agent data model
-cat model.json | dirctl sign --stdin > signed.model.json
+## Push record with signature
+dirctl push record.json --sign
 
-## Verify agent data models
-cat model.json | dirctl verify --stdin
-cat signed.model.json | dirctl verify --stdin
-
-## Verify signature using custom parameters:
-# 1. Only trust users with "cisco.com" addresses
-# 2. Only trust issuers from "github.com"
-dirctl verify signed.model.json \
-   --oidc-identity "(.*)@cisco.com" \
-   --oidc-issuer "(.*)github.com(.*)"
-
-## Replace the base agent model with a signed one
-rm -rf model.json
-mv signed.model.json model.json
+## Verify record
+dirctl verify <record-cid>
 ```
 
 #### Method 2: OIDC-based Non-Interactive
@@ -109,24 +97,17 @@ mv signed.model.json model.json
 This method is designed for automated environments such as CI/CD pipelines where browser-based authentication is not available. It uses OIDC tokens provided by the execution environment (like GitHub Actions) to sign agent data models. The signing process uses a pre-obtained OIDC token along with provider-specific configuration to establish identity without user interaction. The verification process validates the agent signature against the specified OIDC issuer and identity pattern.
 
 ```
-      - name: Run sign command
+      - name: Push and sign record
         run: |
-          echo "Running dir sign command"
-          bin/dirctl sign agent.json \
+          bin/dirctl push agent.json --sign \
             --oidc-token ${{ steps.oidc-token.outputs.token }} \
             --oidc-provider-url "https://token.actions.githubusercontent.com" \
-            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}" \
-            --stdin > signed.model.json
-          echo "Signed agent.json to signed.model.json"
-          cat signed.model.json
-          mv signed.model.json agent.json
+            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
 
       - name: Run verify command
         run: |
           echo "Running dir verify command"
-          bin/dirctl verify agent.json \
-            --oidc-issuer "https://token.actions.githubusercontent.com" \
-            --oidc-identity "https://github.com/${{ github.repository }}-custom/.github/workflows/demo.yaml@${{ github.ref }}"
+          bin/dirctl verify baeareihdlxh7rg2kldu2ienemushqwhnu35zfcn3scomw5sy7imfeim2sy
 ```
 
 #### Method 3: Self-Managed Keys
@@ -139,15 +120,11 @@ This method is suitable for non-interactive use cases, such as CI/CD pipelines, 
 cosign generate-key-pair
 
 # Set COSIGN_PASSWORD shell variable if password protected the private key
-# Sign the agent data model using the private key:
-cat model.json | dirctl sign --stdin --key cosign.key > signed.model.json
+# Push record with signature
+dirctl push record.json --sign --key cosign.key
 
 # Verify the signed agent using the public key:
-cat signed.model.json | dirctl verify --stdin --key cosign.pub
-
-# (Optional) Replace the base agent model with the signed one:
-rm -rf model.json
-mv signed.model.json model.json
+dirctl verify <record-cid>
 ```
 
 ### Store
