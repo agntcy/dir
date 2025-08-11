@@ -390,6 +390,41 @@ tasks:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+      # Helm args
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+    cmds:
+      # TODO: make logic idempotent so that running functional tests does not change previous contexts
+
+      # Create zot configuration using helper task
+      - task: deploy:zot:config
+        vars:
+          ZOT_CONFIG_DIR: /opt/zot-config
+
+      # Deploy chart
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --namespace {{ .HELM_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+  deploy:kubernetes:local:spire:
+    aliases: [deploy:local]
+    desc: Deploy a local Directory server in Kubernetes
+    deps:
+      - deploy:kubernetes:setup-cluster
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # SPIRE Config
       K8S_SPIRE_PATH: '{{ .ROOT_DIR }}/install/charts/spire/templates'
       # Helm args (server)
@@ -400,6 +435,7 @@ tasks:
       HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
       HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
       HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-spire.yaml'
+      HELM_CLIENT_PUSH_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-spire-push.yaml'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -468,7 +504,7 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-      # Deploy client chart
+      # Deploy client (search) chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
         {{ .HELM_BIN }} upgrade dirctl \
@@ -481,6 +517,20 @@ tasks:
           --wait \
           --wait-for-jobs \
           --timeout "15m"
+
+      # Deploy client (push) chart
+      - |
+          {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
+          {{ .HELM_BIN }} upgrade dirctl-push \
+            {{ .HELM_CLIENT_CHART_PATH }} \
+            -f {{ .HELM_CLIENT_PUSH_VALUES_PATH }} \
+            --set image.tag="{{ .IMAGE_TAG }}" \
+            --namespace {{ .HELM_CLIENT_NAMESPACE }} \
+            --create-namespace \
+            --install \
+            --wait \
+            --wait-for-jobs \
+            --timeout "15m"
 
   deploy:kubernetes:local:port-forward:
     aliases: [deploy:local:port-forward]
