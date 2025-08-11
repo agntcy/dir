@@ -6,6 +6,7 @@ package routing
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/utils/logging"
@@ -27,8 +28,10 @@ type handler struct {
 }
 
 type handlerSync struct {
-	Ref  *corev1.RecordRef
-	Peer peer.AddrInfo
+	Ref              *corev1.RecordRef
+	Peer             peer.AddrInfo
+	AnnouncementType string // "CID" or "LABEL"
+	LabelKey         string // For label announcements like "/skills/golang/CID1", "/domains/web/CID2"
 }
 
 func (h *handler) AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error {
@@ -56,22 +59,59 @@ func (h *handler) GetProviders(ctx context.Context, key []byte) ([]peer.AddrInfo
 // handleAnnounce tries to parse the data from provider in order to update the local routing data
 // about the content and peer.
 // nolint:unparam
-func (h *handler) handleAnnounce(_ context.Context, key []byte, prov peer.AddrInfo) error {
-	handlerLogger.Debug("Received announcement event", "key", key, "provider", prov)
+func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.AddrInfo) error {
+	keyStr := string(key)
+	handlerLogger.Debug("Received announcement event", "key", keyStr, "provider", prov)
 
-	// validete if the provider is not the same as the host
+	// validate if the provider is not the same as the host
 	if peer.ID(h.hostID) == prov.ID {
 		handlerLogger.Info("Ignoring announcement event from self", "provider", prov)
-
 		return nil
 	}
 
+	// Route to appropriate handler based on key type
+	if strings.HasPrefix(keyStr, "/skills/") ||
+		strings.HasPrefix(keyStr, "/domains/") ||
+		strings.HasPrefix(keyStr, "/features/") {
+		return h.handleLabelAnnouncement(ctx, keyStr, prov)
+	}
+
+	// Handle CID provider announcements (existing logic)
+	return h.handleCIDProviderAnnouncement(ctx, key, prov)
+}
+
+// handleLabelAnnouncement handles announcements for label mappings (skills/domains/features)
+func (h *handler) handleLabelAnnouncement(_ context.Context, labelKey string, prov peer.AddrInfo) error {
+	// Extract CID from label key: "/skills/golang/CID123" → "CID123"
+	parts := strings.Split(labelKey, "/")
+	if len(parts) < 3 {
+		handlerLogger.Error("Invalid label key format", "key", labelKey)
+		return nil
+	}
+
+	cidStr := parts[len(parts)-1] // Last part is CID
+	ref := &corev1.RecordRef{Cid: cidStr}
+
+	handlerLogger.Info("Label announcement event", "label", labelKey, "cid", cidStr, "provider", prov)
+
+	// Notify about label announcement
+	h.notifyCh <- &handlerSync{
+		Ref:              ref,
+		Peer:             prov,
+		AnnouncementType: "LABEL",
+		LabelKey:         labelKey,
+	}
+
+	return nil
+}
+
+// handleCIDProviderAnnouncement handles CID provider announcements (existing logic)
+func (h *handler) handleCIDProviderAnnouncement(_ context.Context, key []byte, prov peer.AddrInfo) error {
 	// get ref cid from request
 	// if this fails, it may mean that it's not DIR-constructed CID
 	cast, err := mh.Cast(key)
 	if err != nil {
 		handlerLogger.Error("Failed to cast key to multihash", "error", err)
-
 		return nil
 	}
 
@@ -83,16 +123,16 @@ func (h *handler) handleAnnounce(_ context.Context, key []byte, prov peer.AddrIn
 	// Validate that we have a non-empty CID
 	if ref.GetCid() == "" {
 		handlerLogger.Info("Ignoring announcement event for empty CID")
-
 		return nil
 	}
 
-	handlerLogger.Info("Announcement event for object", "ref", ref, "provider", prov, "host", h.hostID)
+	handlerLogger.Info("CID provider announcement event", "ref", ref, "provider", prov, "host", h.hostID)
 
 	// notify the channel
 	h.notifyCh <- &handlerSync{
-		Ref:  ref,
-		Peer: prov,
+		Ref:              ref,
+		Peer:             prov,
+		AnnouncementType: "CID",
 	}
 
 	return nil
