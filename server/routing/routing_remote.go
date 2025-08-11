@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore/query"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -33,6 +35,9 @@ var (
 	// refresh interval for DHT routing tables.
 	refreshInterval = 30 * time.Second
 
+	// label republishing interval - republish every 20 hours to prevent 24h expiration.
+	labelRepublishInterval = 20 * time.Hour
+
 	remoteLogger = logging.Logger("routing/remote")
 )
 
@@ -43,6 +48,7 @@ type routeRemote struct {
 	server   *p2p.Server
 	service  *rpc.Service
 	notifyCh chan *handlerSync
+	dstore   types.Datastore
 }
 
 //nolint:mnd
@@ -56,6 +62,7 @@ func newRemote(ctx context.Context,
 	routeAPI := &routeRemote{
 		storeAPI: storeAPI,
 		notifyCh: make(chan *handlerSync, 1000),
+		dstore:   dstore,
 	}
 
 	// Create P2P server
@@ -107,6 +114,9 @@ func newRemote(ctx context.Context,
 	// run listener in background
 	go routeAPI.handleNotify(ctx)
 
+	// run label republishing task in background
+	go routeAPI.startLabelRepublishTask(ctx)
+
 	return routeAPI, nil
 }
 
@@ -120,26 +130,39 @@ func (r *routeRemote) hasPeersInRoutingTable() bool {
 func (r *routeRemote) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
 	remoteLogger.Debug("Called remote routing's Publish method", "ref", ref, "record", record)
 
-	// Check if we have peers connected for DHT operations i.e. if directory running in network mode.
-	if !r.hasPeersInRoutingTable() {
-		remoteLogger.Debug("No peers in DHT routing table, returning empty channel")
-
-		return nil
-	}
-
 	// get record CID
 	decodedCID, err := cid.Decode(ref.GetCid())
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "failed to parse CID: %v", err)
 	}
 
-	// announce to DHT
+	// announce CID to DHT (always store locally, even without peers)
 	err = r.server.DHT().Provide(ctx, decodedCID, true)
 	if err != nil {
-		return status.Errorf(codes.Internal, "failed to announce object %v, it will be retried in the background. Reason: %v", ref.GetCid(), err)
+		return status.Errorf(codes.Internal, "failed to announce object %v: %v", ref.GetCid(), err)
 	}
 
-	remoteLogger.Debug("Successfully announced object to the network", "ref", ref)
+	// store label mappings in DHT
+	labels := getLabels(record)
+	for _, label := range labels {
+		labelKey := fmt.Sprintf("%s/%s", label, ref.GetCid())
+
+		// Store label mapping in DHT datastore
+		err = r.server.DHT().PutValue(ctx, labelKey, []byte(""))
+		if err != nil {
+			remoteLogger.Warn("Failed to store label mapping", "label", labelKey, "error", err)
+			// Continue with other labels rather than failing completely
+		}
+	}
+
+	// Log success with network state information
+	if r.hasPeersInRoutingTable() {
+		remoteLogger.Debug("Successfully announced object and labels to network",
+			"ref", ref, "labels", len(labels), "peers", r.server.DHT().RoutingTable().Size())
+	} else {
+		remoteLogger.Debug("Successfully stored object and labels locally (no peers connected)",
+			"ref", ref, "labels", len(labels))
+	}
 
 	return nil
 }
@@ -290,57 +313,167 @@ func (r *routeRemote) handleNotify(ctx context.Context) {
 	defer cancel()
 
 	// check if anything on notify
-procLoop:
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case notif := <-r.notifyCh:
-
-			// check if we have this record locally
-			_, err := r.storeAPI.Lookup(ctx, notif.Ref)
-			if err != nil {
-				// Check if this is a "record not found" error, which is expected behavior
-				// for fresh deployments or when we haven't synced this record yet
-				if st := status.Convert(err); st.Code() == codes.NotFound {
-					remoteLogger.Debug("record not found locally, which is expected for unsynced content", "ref", notif.Ref, "peer", notif.Peer.ID)
-				} else {
-					// Log other lookup failures as errors since they indicate actual problems
-					remoteLogger.Error("failed to check if record exists locally", "error", err, "ref", notif.Ref)
-				}
-
-				continue procLoop
+			switch notif.AnnouncementType {
+			case "LABEL":
+				r.handleLabelNotification(ctx, notif)
+			case "CID":
+				r.handleCIDProviderNotification(ctx, notif)
+			default:
+				// Backward compatibility: treat as CID announcement
+				r.handleCIDProviderNotification(ctx, notif)
 			}
-
-			// TODO: we should subscribe to some records so we can create a local copy
-			// of the record and its skills.
-			// for now, we are only testing if we can reach out and fetch it from the
-			// broadcasting node
-
-			// lookup from remote
-			meta, err := r.service.Lookup(ctx, notif.Peer.ID, notif.Ref)
-			if err != nil {
-				remoteLogger.Error("failed to lookup record", "error", err)
-
-				continue procLoop
-			}
-
-			// fetch model directly from peer and drop it
-			record, err := r.service.Pull(ctx, notif.Peer.ID, notif.Ref)
-			if err != nil {
-				remoteLogger.Error("failed to pull record", "error", err)
-
-				continue procLoop
-			}
-
-			// extract labels
-			labels := getLabels(record)
-
-			// TODO: we can perform validation and data synchronization here.
-			// Depending on the server configuration, we can decide if we want to
-			// pull this model into our own cache, rebroadcast it, or ignore it.
-
-			remoteLogger.Info("Successfully processed record", "meta", meta, "labels", strings.Join(labels, ", "), "peer", notif.Peer.ID)
 		}
 	}
+}
+
+// handleLabelNotification handles notifications for label announcements.
+func (r *routeRemote) handleLabelNotification(ctx context.Context, notif *handlerSync) {
+	remoteLogger.Info("Processing label announcement",
+		"label", notif.LabelKey, "cid", notif.Ref.GetCid(), "peer", notif.Peer.ID)
+
+	// Store the label mapping locally in our DHT datastore
+	// This allows us to discover this remote content via label searches
+	err := r.server.DHT().PutValue(ctx, notif.LabelKey, []byte(""))
+	if err != nil {
+		remoteLogger.Error("Failed to store remote label announcement",
+			"label", notif.LabelKey, "error", err)
+
+		return
+	}
+
+	remoteLogger.Info("Successfully stored remote label announcement",
+		"label", notif.LabelKey, "peer", notif.Peer.ID)
+	// Optional: You could also fetch the record to validate it
+	// record, err := r.service.Pull(ctx, notif.Peer.ID, notif.Ref)
+	//
+	//	if err == nil {
+	//	    labels := getLabels(record)
+	//	    // Validate that the announced label matches the record
+	//	}
+}
+
+// "I have this content", while label announcements indicate "this content has these labels".
+func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *handlerSync) {
+	// Check if we have this record locally (for comparison/validation)
+	_, err := r.storeAPI.Lookup(ctx, notif.Ref)
+	if err == nil {
+		remoteLogger.Debug("Local copy exists, validating remote announcement consistency",
+			"cid", notif.Ref.GetCid(), "peer", notif.Peer.ID)
+	} else {
+		remoteLogger.Debug("No local copy, validating remote content availability",
+			"cid", notif.Ref.GetCid(), "peer", notif.Peer.ID)
+	}
+
+	// TODO: we should subscribe to some records so we can create a local copy
+	// of the record and its skills.
+	// for now, we are only testing if we can reach out and fetch it from the
+	// broadcasting node
+
+	// FRAUD DETECTION: Validate that the announcing peer actually has the content
+	// Step 1: Try to lookup metadata from the announcing peer
+	_, err = r.service.Lookup(ctx, notif.Peer.ID, notif.Ref)
+	if err != nil {
+		remoteLogger.Error("FRAUD DETECTED: Peer announced CID but failed metadata lookup",
+			"peer", notif.Peer.ID, "cid", notif.Ref.GetCid(), "error", err)
+
+		return
+	}
+
+	// Step 2: Try to actually fetch the content from the announcing peer
+	_, err = r.service.Pull(ctx, notif.Peer.ID, notif.Ref)
+	if err != nil {
+		remoteLogger.Error("FRAUD DETECTED: Peer announced CID but failed content delivery",
+			"peer", notif.Peer.ID, "cid", notif.Ref.GetCid(), "error", err)
+
+		return
+	}
+
+	// TODO: we can perform validation and data synchronization here.
+	// Depending on the server configuration, we can decide if we want to
+	// pull this model into our own cache, rebroadcast it, or ignore it.
+
+	// MONITORING: Log successful content validation for network analytics
+	remoteLogger.Info("Successfully validated announced content",
+		"peer", notif.Peer.ID, "cid", notif.Ref.GetCid())
+}
+
+// label mappings to prevent them from expiring (DHT PutValue records expire after 24h).
+func (r *routeRemote) startLabelRepublishTask(ctx context.Context) {
+	ticker := time.NewTicker(labelRepublishInterval)
+	defer ticker.Stop()
+
+	remoteLogger.Info("Started label republishing task", "interval", labelRepublishInterval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			remoteLogger.Info("Label republishing task stopped")
+
+			return
+		case <-ticker.C:
+			r.republishLocalLabels(ctx)
+		}
+	}
+}
+
+// to ensure they remain discoverable in the DHT.
+func (r *routeRemote) republishLocalLabels(ctx context.Context) {
+	remoteLogger.Info("Starting label republishing cycle")
+
+	// Query all local records from the datastore
+	results, err := r.dstore.Query(ctx, query.Query{
+		Prefix: "/records/",
+	})
+	if err != nil {
+		remoteLogger.Error("Failed to query local records for republishing", "error", err)
+
+		return
+	}
+
+	republishedCount := 0
+	errorCount := 0
+
+	for result := range results.Next() {
+		// Extract CID from record key: /records/CID123 → CID123
+		cid := path.Base(result.Key)
+		if cid == "" {
+			continue
+		}
+
+		// Get the record to extract its labels
+		ref := &corev1.RecordRef{Cid: cid}
+
+		record, err := r.storeAPI.Pull(ctx, ref)
+		if err != nil {
+			remoteLogger.Warn("Failed to pull record for republishing", "cid", cid, "error", err)
+
+			errorCount++
+
+			continue
+		}
+
+		// Republish all label mappings for this record
+		labels := getLabels(record)
+		for _, label := range labels {
+			labelKey := fmt.Sprintf("%s/%s", label, cid)
+
+			// Store label mapping in DHT datastore
+			err = r.server.DHT().PutValue(ctx, labelKey, []byte(""))
+			if err != nil {
+				remoteLogger.Warn("Failed to republish label mapping", "label", labelKey, "error", err)
+
+				errorCount++
+			} else {
+				republishedCount++
+			}
+		}
+	}
+
+	remoteLogger.Info("Completed label republishing cycle",
+		"republished", republishedCount, "errors", errorCount)
 }
