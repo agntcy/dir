@@ -157,7 +157,9 @@ func (e *TestExtension) GetData() map[string]any {
 func setupTestDB(t *testing.T) *DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{
+		Logger: newCustomLogger(),
+	})
 	require.NoError(t, err)
 
 	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Extension{}, &Sync{})
