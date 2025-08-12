@@ -300,7 +300,14 @@ procLoop:
 			// check if we have this record locally
 			_, err := r.storeAPI.Lookup(ctx, notif.Ref)
 			if err != nil {
-				remoteLogger.Error("failed to check if record exists locally", "error", err)
+				// Check if this is a "record not found" error, which is expected behavior
+				// for fresh deployments or when we haven't synced this record yet
+				if st := status.Convert(err); st.Code() == codes.NotFound {
+					remoteLogger.Debug("record not found locally, which is expected for unsynced content", "ref", notif.Ref, "peer", notif.Peer.ID)
+				} else {
+					// Log other lookup failures as errors since they indicate actual problems
+					remoteLogger.Error("failed to check if record exists locally", "error", err, "ref", notif.Ref)
+				}
 
 				continue procLoop
 			}
