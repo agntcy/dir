@@ -24,6 +24,7 @@ Usage example:
 	dirctl delete <digest>
 
 `,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return errors.New("digest is a required argument")

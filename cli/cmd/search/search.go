@@ -32,6 +32,7 @@ Usage examples:
 		--query "extension=my-custom-extension-name:v1.0.0" 
 
 `,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runCommand(cmd)
 	},

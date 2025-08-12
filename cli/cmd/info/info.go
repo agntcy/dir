@@ -24,6 +24,7 @@ Usage example:
 	dirctl info <digest>
 
 `,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return errors.New("exactly one argument is required which is the digest of the object")

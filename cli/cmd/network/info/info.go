@@ -29,6 +29,7 @@ Usage examples:
 	dirctl network info <path_to_private_key>
 
 `,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return errors.New("expected exactly one argument")

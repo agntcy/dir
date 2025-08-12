@@ -31,6 +31,7 @@ Examples:
   dir sync create https://directory.example.com
   dir sync create http://localhost:8080`,
 	Args: cobra.ExactArgs(1),
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runCreateSync(cmd, args[0])
 	},
@@ -45,6 +46,7 @@ completed, and failed synchronizations.
 
 Pagination can be controlled using --limit and --offset flags:
   dir sync list --limit 10 --offset 20`,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runListSyncs(cmd)
 	},
@@ -57,6 +59,7 @@ var statusCmd = &cobra.Command{
 	Long: `Status retrieves comprehensive information about a specific sync operation,
 including progress, timing, and error details if applicable.`,
 	Args: cobra.ExactArgs(1),
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runGetSyncStatus(cmd, args[0])
 	},
@@ -69,6 +72,7 @@ var deleteCmd = &cobra.Command{
 	Long: `Delete removes a sync operation from the system. For active syncs,
 this will attempt to cancel the operation gracefully.`,
 	Args: cobra.ExactArgs(1),
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runDeleteSync(cmd, args[0])
 	},

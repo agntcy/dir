@@ -38,6 +38,7 @@ Usage examples:
 	dirctl push model.json --sign
 
 `,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var path string
 		if len(args) > 1 {

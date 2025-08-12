@@ -31,6 +31,7 @@ Usage examples:
    	dir list info --network
 	
 `,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, _ []string) error { //nolint:gocritic
 		return runCommand(cmd)
 	},

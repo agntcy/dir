@@ -43,6 +43,7 @@ Usage examples:
 
 	dirctl sign <record-cid> --key <key-file>
 `,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var recordCID string
 		if len(args) > 1 {

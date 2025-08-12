@@ -27,6 +27,7 @@ Usage examples:
 
 	dirctl verify <record-cid>
 `,
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var recordRef string
 		if len(args) > 1 {
