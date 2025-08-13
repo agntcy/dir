@@ -132,7 +132,7 @@ SPIRE Agent full name
 Trust domain
 */}}
 {{- define "spire.trustDomain" -}}
-{{- .Values.global.spire.trustDomain | default .Values.agent.config.trustDomain | default .Values.server.config.trustDomain | default "example.org" }}
+{{- .Values.global.spire.trustDomain | default "example.org" }}
 {{- end }}
 
 {{/*

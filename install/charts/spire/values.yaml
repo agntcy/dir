@@ -204,7 +204,6 @@ agent:
     serverAddress: "spire-server"
     serverPort: 8081
     socketPath: "/run/spire/sockets/agent.sock"
-    trustDomain: "example.org"
     dataDir: "/run/spire"
     logLevel: "DEBUG"
     trustBundlePath: "/run/spire/bundle/bundle.crt"

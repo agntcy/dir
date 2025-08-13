@@ -447,6 +447,7 @@ tasks:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # SPIRE Config
+      SPIFFE_TRUST_DOMAIN: '{{ .SPIFFE_TRUST_DOMAIN | default "example-abc.org" }}'
       HELM_SPIRE_NAMESPACE: '{{ .HELM_NAMESPACE | default "spire" }}'
       HELM_SPIRE_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/spire'
       HELM_SPIRE_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/spire/values.yaml'
@@ -471,6 +472,7 @@ tasks:
         {{ .HELM_BIN }} upgrade spire \
           {{ .HELM_SPIRE_CHART_PATH }} \
           -f {{ .HELM_SPIRE_VALUES_PATH }} \
+          --set global.spire.trustDomain="{{ .SPIFFE_TRUST_DOMAIN }}" \
           --namespace {{ .HELM_SPIRE_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -483,7 +485,7 @@ tasks:
         # Create SPIFFE ID for the SPIRE server
         kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://example.org/ns/spire/sa/spire-agent \
+          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
           -selector k8s_psat:cluster:demo-cluster \
           -selector k8s_psat:agent_ns:spire \
           -selector k8s_psat:agent_sa:spire-agent \
@@ -492,16 +494,16 @@ tasks:
         # Create SPIFFE ID for the default service account in server namespace
         kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://example.org/ns/{{.HELM_NAMESPACE}}/sa/default \
-          -parentID spiffe://example.org/ns/spire/sa/spire-agent \
+          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{.HELM_NAMESPACE}}/sa/default \
+          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
           -selector k8s:ns:{{.HELM_NAMESPACE}} \
           -selector k8s:sa:default
 
         # Create SPIFFE ID for the default service account in client namespace
         kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://example.org/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
-          -parentID spiffe://example.org/ns/spire/sa/spire-agent \
+          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
+          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
           -selector k8s:ns:{{.HELM_CLIENT_NAMESPACE}} \
           -selector k8s:sa:default
 
@@ -512,6 +514,7 @@ tasks:
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --set apiserver.config.authz.trust_domain="{{ .SPIFFE_TRUST_DOMAIN }}" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -526,6 +529,7 @@ tasks:
           {{ .HELM_CLIENT_CHART_PATH }} \
           -f {{ .HELM_CLIENT_PUSH_VALUES_PATH }} \
           --set image.tag="{{ .IMAGE_TAG }}" \
+          --set env[0].value="{{ .SPIFFE_TRUST_DOMAIN }}" \
           --namespace {{ .HELM_CLIENT_NAMESPACE }} \
           --create-namespace \
           --install \

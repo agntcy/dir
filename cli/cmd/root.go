@@ -25,8 +25,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var clientConfig = client.DefaultConfig
-
 var RootCmd = &cobra.Command{
 	Use:          "dirctl",
 	Short:        "CLI tool to interact with Directory",
@@ -35,7 +33,7 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		// Set client via context for all requests
 		// TODO: make client config configurable via CLI args
-		c, err := client.New(client.WithConfig(&clientConfig))
+		c, err := client.New(client.WithConfig(clientConfig))
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
 		}
