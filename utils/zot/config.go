@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package config
+package zot
 
 const (
 	// DefaultZotConfigPath is the default path to the zot configuration file.

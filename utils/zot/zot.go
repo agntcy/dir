@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package utils
+package zot
 
 import (
 	"bytes"
@@ -16,28 +16,27 @@ import (
 	"github.com/agntcy/dir/utils/logging"
 )
 
-var logger = logging.Logger("store/oci/utils/zot")
+var logger = logging.Logger("utils/zot")
 
-// ZotConfig contains configuration for zot operations.
-type ZotConfig struct {
+// VerifyConfig contains configuration for zot verification.
+type VerifyConfig struct {
 	RegistryAddress string
 	RepositoryName  string
 	Username        string
 	Password        string
 	AccessToken     string
 	Insecure        bool
-	LocalDir        string
 }
 
 // UploadPublicKeyOptions contains options for uploading public keys to zot.
 type UploadPublicKeyOptions struct {
-	Config    *ZotConfig
+	Config    *VerifyConfig
 	PublicKey string
 }
 
 // VerificationOptions contains options for zot verification.
 type VerificationOptions struct {
-	Config    *ZotConfig
+	Config    *VerifyConfig
 	RecordCID string
 }
 
@@ -49,9 +48,9 @@ type VerificationResult struct {
 	Tool      string
 }
 
-// UploadPublicKeyToZot uploads a public key to zot for signature verification.
+// UploadPublicKey uploads a public key to zot for signature verification.
 // This enables zot to mark signatures as "trusted" when they can be verified with this key.
-func UploadPublicKeyToZot(ctx context.Context, opts *UploadPublicKeyOptions) error {
+func UploadPublicKey(ctx context.Context, opts *UploadPublicKeyOptions) error {
 	logger.Debug("Uploading public key to zot for signature verification")
 
 	if opts.PublicKey == "" {
@@ -94,17 +93,8 @@ func UploadPublicKeyToZot(ctx context.Context, opts *UploadPublicKeyOptions) err
 	return nil
 }
 
-// VerifyWithZot queries zot's verification API to check if a signature is valid.
-//
-//nolint:cyclop
-func VerifyWithZot(ctx context.Context, opts *VerificationOptions) (*VerificationResult, error) {
-	// Skip if using local storage
-	if opts.Config.LocalDir != "" {
-		logger.Debug("Skipping zot verification for local storage")
-
-		return nil, errors.New("zot verification not available for local storage")
-	}
-
+// Verify queries zot's verification API to check if a signature is valid.
+func Verify(ctx context.Context, opts *VerificationOptions) (*VerificationResult, error) {
 	// Build zot search endpoint URL
 	registryURL := buildRegistryURL(opts.Config)
 	searchEndpoint := registryURL + "/v2/_zot/ext/search"
@@ -205,7 +195,7 @@ func VerifyWithZot(ctx context.Context, opts *VerificationOptions) (*Verificatio
 }
 
 // buildRegistryURL constructs the registry URL with proper protocol.
-func buildRegistryURL(config *ZotConfig) string {
+func buildRegistryURL(config *VerifyConfig) string {
 	registryURL := config.RegistryAddress
 	if !strings.HasPrefix(registryURL, "http://") && !strings.HasPrefix(registryURL, "https://") {
 		if config.Insecure {
@@ -219,7 +209,7 @@ func buildRegistryURL(config *ZotConfig) string {
 }
 
 // addAuthentication adds authentication headers to HTTP requests.
-func addAuthentication(req *http.Request, config *ZotConfig) {
+func addAuthentication(req *http.Request, config *VerifyConfig) {
 	if config.Username != "" && config.Password != "" {
 		req.SetBasicAuth(config.Username, config.Password)
 	} else if config.AccessToken != "" {

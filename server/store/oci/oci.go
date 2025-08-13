@@ -16,10 +16,10 @@ import (
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/store/cache"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
-	"github.com/agntcy/dir/server/store/oci/utils"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -332,12 +332,12 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 	// Upload the public key to zot for signature verification
 	// This enables zot to mark this signature as "trusted" in verification queries
 	if signature.PublicKey != nil && len(signature.GetPublicKey()) > 0 {
-		uploadOpts := &utils.UploadPublicKeyOptions{
+		uploadOpts := &zot.UploadPublicKeyOptions{
 			Config:    s.buildZotConfig(),
 			PublicKey: signature.GetPublicKey(),
 		}
 
-		err := utils.UploadPublicKeyToZot(ctx, uploadOpts)
+		err := zot.UploadPublicKey(ctx, uploadOpts)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to upload public key to zot for verification: %v", err)
 		}
@@ -408,12 +408,12 @@ type ReferrersLister interface {
 
 // VerifyWithZot queries zot's verification API to check if a signature is valid.
 func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, error) {
-	verifyOpts := &utils.VerificationOptions{
+	verifyOpts := &zot.VerificationOptions{
 		Config:    s.buildZotConfig(),
 		RecordCID: recordCID,
 	}
 
-	result, err := utils.VerifyWithZot(ctx, verifyOpts)
+	result, err := zot.Verify(ctx, verifyOpts)
 	if err != nil {
 		return false, err
 	}
@@ -423,14 +423,13 @@ func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, erro
 }
 
 // buildZotConfig creates a ZotConfig from the store configuration.
-func (s *store) buildZotConfig() *utils.ZotConfig {
-	return &utils.ZotConfig{
+func (s *store) buildZotConfig() *zot.VerifyConfig {
+	return &zot.VerifyConfig{
 		RegistryAddress: s.config.RegistryAddress,
 		RepositoryName:  s.config.RepositoryName,
 		Username:        s.config.Username,
 		Password:        s.config.Password,
 		AccessToken:     s.config.AccessToken,
 		Insecure:        s.config.Insecure,
-		LocalDir:        s.config.LocalDir,
 	}
 }
