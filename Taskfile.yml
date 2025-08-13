@@ -296,11 +296,23 @@ tasks:
       - task: server:store:start
       - go run main.go
 
+  server:store:pull:
+    desc: Pull local OCI registry server docker image
+    vars:
+      IMAGE: '{{.IMAGE}}'
+    cmds:
+      - |
+        docker pull {{.IMAGE}}
+
   server:store:start:
     desc: Start local OCI registry server for storage
     internal: true
     vars:
       IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:v2.1.1
+    deps:
+      - task: server:store:pull
+        vars:
+          IMAGE: '{{.IMAGE}}'
     cmds:
       - |
         # mount config
@@ -476,7 +488,7 @@ tasks:
           -parentID spiffe://example.org/ns/spire/sa/spire-agent \
           -selector k8s:ns:{{.HELM_NAMESPACE}} \
           -selector k8s:sa:default
-        
+
         # Create SPIFFE ID for the default service account in client namespace
         kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
@@ -515,17 +527,17 @@ tasks:
 
       # Deploy client (search) chart
       - |
-          {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-          {{ .HELM_BIN }} upgrade dirctl-search \
-            {{ .HELM_CLIENT_CHART_PATH }} \
-            -f {{ .HELM_CLIENT_SEARCH_VALUES_PATH }} \
-            --set image.tag="{{ .IMAGE_TAG }}" \
-            --namespace {{ .HELM_CLIENT_NAMESPACE }} \
-            --create-namespace \
-            --install \
-            --wait \
-            --wait-for-jobs \
-            --timeout "15m"
+        {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade dirctl-search \
+          {{ .HELM_CLIENT_CHART_PATH }} \
+          -f {{ .HELM_CLIENT_SEARCH_VALUES_PATH }} \
+          --set image.tag="{{ .IMAGE_TAG }}" \
+          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
 
   deploy:kubernetes:local:port-forward:
     aliases: [deploy:local:port-forward]
