@@ -4,6 +4,8 @@ import core.v1.record_pb2 as core_record_pb2
 from objects.v3 import extension_pb2, record_pb2, signature_pb2, skill_pb2, locator_pb2
 from routing.v1 import record_query_pb2 as record_query_type
 from routing.v1 import routing_service_pb2 as routingv1
+from search.v1 import search_service_pb2 as searchv1
+from search.v1 import record_query_pb2 as search_query_type
 
 from .client import Client, Config
 
@@ -100,10 +102,29 @@ class TestClient(unittest.TestCase):
         objects = list(client.list(list_request))
 
         self.assertIsNotNone(objects)
-        self.assertNotEqual(objects, 0)
+        self.assertNotEqual(len(objects), 0)
 
         for o in objects:
             self.assertIsInstance(o, routingv1.ListResponse)
+
+    def test_6_search(self):
+        search_query = search_query_type.RecordQuery(
+            type=search_query_type.RECORD_QUERY_TYPE_SKILL_ID,
+            value="1"
+        )
+
+        search_request = searchv1.SearchRequest(
+            queries=[search_query],
+            limit=3
+        )
+
+        objects = list(client.search(search_request))
+
+        self.assertIsNotNone(objects)
+        self.assertNotEqual(len(objects), 0)
+
+        for o in objects:
+            self.assertIsInstance(o, searchv1.SearchResponse)
 
     def test_7_unpublish(self):
         unpublish_request = routingv1.UnpublishRequest(record_cid=TestClient.example_record_refs[0].cid)

@@ -5,6 +5,9 @@ from google.protobuf.json_format import MessageToDict
 from objects.v3 import extension_pb2, locator_pb2, record_pb2, signature_pb2, skill_pb2
 from routing.v1 import record_query_pb2 as record_query_type
 from routing.v1 import routing_service_pb2 as routingv1
+from search.v1 import search_service_pb2 as searchv1
+from search.v1 import record_query_pb2 as search_query_type
+
 from v1.client import Client, Config
 
 
@@ -119,6 +122,19 @@ objects = list(client.list(list_request))
 
 for o in objects:
     print("Listed object:", print_as_json(o))
+
+# Search objects
+search_query = search_query_type.RecordQuery(
+    type=search_query_type.RECORD_QUERY_TYPE_SKILL_ID,
+    value="1")
+
+search_request = searchv1.SearchRequest(
+    queries=[search_query],
+    limit=3)
+
+objects = list(client.search(search_request))
+
+print(objects)
 
 # Unpublish the object
 unpublish_request = routingv1.UnpublishRequest(record_cid=refs[0].cid)

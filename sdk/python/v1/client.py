@@ -3,12 +3,13 @@
 import logging
 import os
 from typing import Iterator, List, Optional, Tuple
-from urllib import response
 
 import core.v1.record_pb2 as core_types
 import grpc
 import routing.v1.routing_service_pb2 as routing_types
 import routing.v1.routing_service_pb2_grpc as routing_services
+import search.v1.search_service_pb2 as search_types
+import search.v1.search_service_pb2_grpc as search_services
 import store.v1.store_service_pb2_grpc as store_services
 
 CHUNK_SIZE = 4096  # 4KB
@@ -46,6 +47,7 @@ class Client:
         # Initialize service clients
         self.store_client = store_services.StoreServiceStub(channel)
         self.routing_client = routing_services.RoutingServiceStub(channel)
+        self.search_client = search_services.SearchServiceStub(channel)
 
     @classmethod
     def new(cls, config: Optional[Config] = None) -> "Client":
@@ -107,6 +109,33 @@ class Client:
         except Exception as e:
             logger.error(f"Error receiving objects: {e}")
             raise Exception(f"Failed to list objects: {e}")
+
+    def search(
+        self,
+        req: search_types.SearchRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> Iterator[routing_types.SearchResponse]:
+        """Search objects matching the queries.
+
+        Args:
+            req: Search request specifying criteria
+            metadata: Optional metadata for the gRPC call
+
+        Returns:
+            Search response object
+
+        Raises: Exception if search fails
+        """
+
+        try:
+            stream = self.search_client.Search(req, metadata=metadata)
+
+            # Yield each item from the stream
+            for response in stream:
+                yield response
+        except Exception as e:
+            logger.error(f"Error receiving objects: {e}")
+            raise Exception(f"Failed to search objects: {e}")
 
     def unpublish(
         self,
