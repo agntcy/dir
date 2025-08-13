@@ -64,9 +64,8 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 
 	// Prepare options for signing
 	signOpts := &cosign.SignBlobOIDCOptions{
-		Payload:      payloadBytes,
-		IDToken:      oidcSigner.GetIdToken(),
-		OIDCClientID: cosign.DefaultOIDCClientID,
+		Payload: payloadBytes,
+		IDToken: oidcSigner.GetIdToken(),
 	}
 
 	// Set URLs from options if provided

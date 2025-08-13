@@ -6,14 +6,10 @@ package cosign
 import (
 	"bytes"
 	"context"
-	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -21,6 +17,9 @@ import (
 	"github.com/sigstore/cosign/v2/pkg/oci/mutate"
 	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
 	"github.com/sigstore/cosign/v2/pkg/oci/static"
+	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
+	"github.com/sigstore/sigstore-go/pkg/root"
+	"github.com/sigstore/sigstore-go/pkg/sign"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 )
 
@@ -45,53 +44,6 @@ func SetOrDefault(value string, defaultValue string) string {
 	return value
 }
 
-// ExtractPublicKeyFromCertificateFile extracts the public key from a base64-encoded certificate file.
-func ExtractPublicKeyFromCertificateFile(certificateFile string) (string, error) {
-	// Read the base64-encoded certificate file
-	certData, err := os.ReadFile(certificateFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to read certificate file: %w", err)
-	}
-
-	// Clean up the base64 data - remove URL encoding and whitespace
-	certDataStr := strings.TrimSpace(string(certData))
-	certDataStr = strings.TrimSuffix(certDataStr, "%")      // Remove URL encoding artifacts at the end
-	certDataStr = strings.ReplaceAll(certDataStr, "\n", "") // Remove any newlines
-	certDataStr = strings.ReplaceAll(certDataStr, "\r", "") // Remove any carriage returns
-
-	// Decode the base64 certificate (this gives us PEM data)
-	pemBytes, err := base64.StdEncoding.DecodeString(certDataStr)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 certificate: %w", err)
-	}
-
-	// Parse the PEM-encoded certificate
-	block, _ := pem.Decode(pemBytes)
-	if block == nil || block.Type != "CERTIFICATE" {
-		return "", errors.New("failed to decode PEM certificate")
-	}
-
-	// Parse the X.509 certificate from the PEM block
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse X.509 certificate: %w", err)
-	}
-
-	// Extract the public key
-	pubKeyBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal public key: %w", err)
-	}
-
-	// Encode the public key as PEM
-	pubKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: pubKeyBytes,
-	})
-
-	return string(pubKeyPEM), nil
-}
-
 // SignBlobOIDCOptions contains options for OIDC-based blob signing.
 type SignBlobOIDCOptions struct {
 	Payload         []byte
@@ -100,7 +52,6 @@ type SignBlobOIDCOptions struct {
 	RekorURL        string
 	TimestampURL    string
 	OIDCProviderURL string
-	OIDCClientID    string
 }
 
 // SignBlobOIDCResult contains the result of OIDC blob signing.
@@ -110,97 +61,128 @@ type SignBlobOIDCResult struct {
 }
 
 // SignBlobWithOIDC signs a blob using OIDC authentication.
-func SignBlobWithOIDC(ctx context.Context, opts *SignBlobOIDCOptions) (*SignBlobOIDCResult, error) {
-	// Create temporary files
-	payloadFile, err := os.CreateTemp("", "payload-oidc-*.json")
+func SignBlobWithOIDC(_ context.Context, opts *SignBlobOIDCOptions) (*SignBlobOIDCResult, error) {
+	// Load signing options.
+	var signOpts sign.BundleOptions
+	{
+		// Define config to use for signing.
+		signingConfig, err := root.NewSigningConfig(
+			root.SigningConfigMediaType02,
+			// Fulcio URLs
+			[]root.Service{
+				{
+					URL:                 setOrDefault(opts.FulcioURL, DefaultFulcioURL),
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			// OIDC Provider URLs
+			// Usage and requirements: https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/
+			[]root.Service{
+				{
+					URL:                 setOrDefault(opts.OIDCProviderURL, DefaultOIDCProviderURL),
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			// Rekor URLs
+			[]root.Service{
+				{
+					URL:                 setOrDefault(opts.RekorURL, DefaultRekorURL),
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			root.ServiceConfiguration{
+				Selector: v1.ServiceSelector_ANY,
+			},
+			[]root.Service{
+				{
+					URL:                 setOrDefault(opts.TimestampURL, DefaultTimestampURL),
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			root.ServiceConfiguration{
+				Selector: v1.ServiceSelector_ANY,
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create signing config: %w", err)
+		}
+
+		// Use fulcio to sign the agent.
+		fulcioURL, err := root.SelectService(signingConfig.FulcioCertificateAuthorityURLs(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select fulcio URL: %w", err)
+		}
+
+		fulcioOpts := &sign.FulcioOptions{
+			BaseURL: fulcioURL,
+			Timeout: DefaultFulcioTimeout,
+			Retries: 1,
+		}
+		signOpts.CertificateProvider = sign.NewFulcio(fulcioOpts)
+		signOpts.CertificateProviderOptions = &sign.CertificateProviderOptions{
+			IDToken: opts.IDToken,
+		}
+
+		// Use timestamp authortiy to sign the agent.
+		tsaURLs, err := root.SelectServices(signingConfig.TimestampAuthorityURLs(),
+			signingConfig.TimestampAuthorityURLsConfig(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select timestamp authority URL: %w", err)
+		}
+
+		for _, tsaURL := range tsaURLs {
+			tsaOpts := &sign.TimestampAuthorityOptions{
+				URL:     tsaURL,
+				Timeout: DefaultTimestampAuthorityTimeout,
+				Retries: 1,
+			}
+			signOpts.TimestampAuthorities = append(signOpts.TimestampAuthorities, sign.NewTimestampAuthority(tsaOpts))
+		}
+
+		// Use rekor to sign the agent.
+		rekorURLs, err := root.SelectServices(signingConfig.RekorLogURLs(),
+			signingConfig.RekorLogURLsConfig(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select rekor URL: %w", err)
+		}
+
+		for _, rekorURL := range rekorURLs {
+			rekorOpts := &sign.RekorOptions{
+				BaseURL: rekorURL,
+				Timeout: DefaultRekorTimeout,
+				Retries: 1,
+			}
+			signOpts.TransparencyLogs = append(signOpts.TransparencyLogs, sign.NewRekor(rekorOpts))
+		}
+	}
+
+	// Generate an ephemeral keypair for signing.
+	signKeypair, err := sign.NewEphemeralKeypair(nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create payload temp file: %w", err)
+		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
 	}
-	defer os.Remove(payloadFile.Name())
 
-	signatureFile, err := os.CreateTemp("", "signature-oidc-*.sig")
+	// Sign the record JSON data.
+	sigBundle, err := sign.Bundle(&sign.PlainData{Data: opts.Payload}, signKeypair, signOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create signature temp file: %w", err)
+		return nil, fmt.Errorf("failed to sign record: %w", err)
 	}
-	defer os.Remove(signatureFile.Name())
 
-	certificateFile, err := os.CreateTemp("", "certificate-oidc-*.crt")
+	publicKeyPEM, err := signKeypair.GetPublicKeyPem()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create certificate temp file: %w", err)
-	}
-	defer os.Remove(certificateFile.Name())
-
-	bundleFile, err := os.CreateTemp("", "bundle-oidc-*.json")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create bundle temp file: %w", err)
-	}
-	defer os.Remove(bundleFile.Name())
-
-	// Write payload to file
-	if _, err := payloadFile.Write(opts.Payload); err != nil {
-		return nil, fmt.Errorf("failed to write payload: %w", err)
-	}
-
-	payloadFile.Close()
-
-	// Build cosign command arguments
-	args := []string{
-		"sign-blob",
-		"-y",
-		"--output-signature", signatureFile.Name(),
-		"--output-certificate", certificateFile.Name(),
-		"--bundle", bundleFile.Name(),
-		"--new-bundle-format",
-		"--insecure-skip-verify",
-	}
-
-	// Add identity token if provided
-	if opts.IDToken != "" {
-		args = append(args, "--identity-token", opts.IDToken)
-	} else {
-		// For interactive OIDC flow
-		clientID := SetOrDefault(opts.OIDCClientID, DefaultOIDCClientID)
-		args = append(args, "--oidc-client-id", clientID)
-	}
-
-	// Add URLs with defaults
-	fulcioURL := SetOrDefault(opts.FulcioURL, DefaultFulcioURL)
-	rekorURL := SetOrDefault(opts.RekorURL, DefaultRekorURL)
-	timestampURL := SetOrDefault(opts.TimestampURL, DefaultTimestampURL)
-	oidcProviderURL := SetOrDefault(opts.OIDCProviderURL, DefaultOIDCProviderURL)
-
-	args = append(args,
-		"--fulcio-url", fulcioURL,
-		"--rekor-url", rekorURL,
-		"--timestamp-server-url", timestampURL,
-		"--oidc-issuer", oidcProviderURL,
-	)
-
-	// Add payload file as last argument
-	args = append(args, payloadFile.Name())
-
-	// Execute command
-	cmd := exec.CommandContext(ctx, "cosign", args...)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("cosign sign-blob OIDC failed: %w\nOutput: %s", err, string(output))
-	}
-
-	// Read signature
-	signature, err := os.ReadFile(signatureFile.Name())
-	if err != nil {
-		return nil, fmt.Errorf("failed to read signature: %w", err)
-	}
-
-	// Extract public key from certificate
-	publicKeyPEM, err := ExtractPublicKeyFromCertificateFile(certificateFile.Name())
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract public key from certificate: %w", err)
+		return nil, fmt.Errorf("failed to get public key: %w", err)
 	}
 
 	return &SignBlobOIDCResult{
-		Signature: base64.StdEncoding.EncodeToString(signature),
+		Signature: base64.StdEncoding.EncodeToString(sigBundle.GetMessageSignature().GetSignature()),
 		PublicKey: publicKeyPEM,
 	}, nil
 }
@@ -310,4 +292,12 @@ func GenerateKeyPair(ctx context.Context, opts *GenerateKeyPairOptions) error {
 	}
 
 	return nil
+}
+
+func setOrDefault(value string, defaultValue string) string {
+	if value == "" {
+		value = defaultValue
+	}
+
+	return value
 }
