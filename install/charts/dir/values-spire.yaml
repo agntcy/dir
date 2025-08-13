@@ -55,7 +55,7 @@ apiserver:
 
     # Authz Spiffe configuration
     authz:
-      socket_path: unix:/run/spire/sockets/agent.sock
+      socket_path: unix:/run/spire/sockets/spire-agent.sock
       ## I also need to specify my trust domain here
       ## because for now this is only the external one
       trust_domain: example.org
@@ -70,15 +70,15 @@ apiserver:
       hostPath:
         path: /opt/zot-config
         type: DirectoryOrCreate
-    - name: spire-agent-socket
-      hostPath:
-        path: /run/spire/sockets
-        type: Directory
+    - name: spiffe-workload-api
+      csi:
+        driver: csi.spiffe.io
+        readOnly: true
 
   extraVolumeMounts:
     - name: zot-config-storage
       mountPath: /etc/zot
-    - name: spire-agent-socket
+    - name: spiffe-workload-api
       mountPath: /run/spire/sockets
       readOnly: true
 
