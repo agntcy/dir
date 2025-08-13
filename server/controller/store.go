@@ -10,6 +10,7 @@ import (
 	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
@@ -192,40 +193,77 @@ func (s storeCtrl) Delete(stream storev1.StoreService_DeleteServer) error {
 	}
 }
 
-// PushWithOptions handles records with optional OCI artifacts like signatures.
-func (s storeCtrl) PushWithOptions(stream storev1.StoreService_PushWithOptionsServer) error {
-	storeLogger.Debug("Called store controller's PushWithOptions method")
+func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) error {
+	storeLogger.Debug("Called store controller's PushReferrer method")
 
 	for {
-		// Receive PushWithOptionsRequest from stream
+		// Receive PushReferrerRequest from stream
 		request, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
-			storeLogger.Debug("PushWithOptions stream completed")
+			storeLogger.Debug("PushReferrer stream completed")
 
 			return nil
 		}
 
 		if err != nil {
-			return status.Errorf(codes.Internal, "failed to receive push request: %v", err)
+			return status.Errorf(codes.Internal, "failed to receive push referrer request: %v", err)
 		}
 
-		pushedRef, err := s.pushRecordToStore(stream.Context(), request.GetRecord())
-		if err != nil {
+		// Validate the record reference
+		if err := s.validateRecordRef(request.GetRecordRef()); err != nil {
 			return err
 		}
 
-		// Note: Signature handling is done client-side after receiving the record reference
-		// The client will use the returned CID to create and store the signature separately
+		var response *storev1.PushReferrerResponse
 
-		// Send the response back via stream
-		response := &storev1.PushWithOptionsResponse{
-			RecordRef: pushedRef,
+		switch request.GetOptions().(type) {
+		case *storev1.PushReferrerRequest_Signature:
+			storeLogger.Debug("Signature referrer request received")
+
+			response, err = s.pushSignatureReferrer(stream.Context(), request)
+			if err != nil {
+				return status.Errorf(codes.Internal, "failed to push signature: %v", err)
+			}
+		default:
+			storeLogger.Debug("Unknown referrer type, skipping")
+
+			continue
 		}
 
 		if err := stream.Send(response); err != nil {
-			return status.Errorf(codes.Internal, "failed to send push options response: %v", err)
+			return status.Errorf(codes.Internal, "failed to send push referrer response: %v", err)
 		}
 	}
+}
+
+func (s storeCtrl) pushSignatureReferrer(ctx context.Context, request *storev1.PushReferrerRequest) (*storev1.PushReferrerResponse, error) {
+	storeLogger.Debug("Pushing signature referrer", "cid", request.GetRecordRef().GetCid())
+
+	// Try to use signature storage if the store supports it
+	if sigStore, ok := s.store.(interface {
+		PushSignature(context.Context, string, *signv1.Signature) error
+	}); ok {
+		err := sigStore.PushSignature(ctx, request.GetRecordRef().GetCid(), request.GetSignature())
+		if err != nil {
+			storeLogger.Error("Failed to store signature", "error", err, "cid", request.GetRecordRef().GetCid())
+
+			return nil, status.Errorf(codes.Internal, "failed to store signature: %v", err)
+		}
+
+		storeLogger.Info("Signature stored successfully", "cid", request.GetRecordRef().GetCid())
+
+		return &storev1.PushReferrerResponse{}, nil
+	}
+
+	return nil, status.Errorf(codes.Internal, "signature storage not supported by current store implementation")
+}
+
+// PullReferrer handles retrieving referrers (like signatures) for records.
+func (s storeCtrl) PullReferrer(_ storev1.StoreService_PullReferrerServer) error {
+	storeLogger.Debug("Called store controller's PullReferrer method")
+
+	// No implemented yet
+	return status.Error(codes.Unimplemented, "pull referrer not implemented")
 }
 
 // validateRecord performs common record validation logic.

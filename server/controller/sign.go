@@ -41,57 +41,6 @@ func (s *signCtrl) Sign(_ context.Context, _ *signv1.SignRequest) (*signv1.SignR
 	return nil, status.Error(codes.Unimplemented, "server-side signing not implemented")
 }
 
-func (s *signCtrl) PushSignature(ctx context.Context, req *signv1.PushSignatureRequest) (*signv1.PushSignatureResponse, error) {
-	signLogger.Debug("PushSignature request received", "recordCID", req.GetRecordRef().GetCid())
-
-	// Validate request
-	if req.GetRecordRef() == nil || req.GetRecordRef().GetCid() == "" {
-		errMsg := "record ref must be set"
-
-		return &signv1.PushSignatureResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
-		}, nil
-	}
-
-	if req.GetSignature() == nil {
-		errMsg := "signature must be set"
-
-		return &signv1.PushSignatureResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
-		}, nil
-	}
-
-	// Check if store supports signature operations
-	if s.store == nil {
-		errMsg := "signature store not available"
-
-		return &signv1.PushSignatureResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
-		}, nil
-	}
-
-	// Push signature to store
-	err := s.store.PushSignature(ctx, req.GetRecordRef().GetCid(), req.GetSignature())
-	if err != nil {
-		errMsg := err.Error()
-		signLogger.Error("Failed to push signature", "error", err, "recordCID", req.GetRecordRef().GetCid())
-
-		return &signv1.PushSignatureResponse{
-			Success:      false,
-			ErrorMessage: &errMsg,
-		}, nil
-	}
-
-	signLogger.Debug("Signature stored successfully", "recordCID", req.GetRecordRef().GetCid())
-
-	return &signv1.PushSignatureResponse{
-		Success: true,
-	}, nil
-}
-
 func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1.VerifyResponse, error) {
 	signLogger.Debug("Verify request received")
 

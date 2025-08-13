@@ -12,7 +12,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -80,8 +79,6 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	if opts.Sign {
 		var err error
 
-		var resp *storev1.PushWithOptionsResponse
-
 		if opts.Key != "" {
 			// Read the private key file content
 			var privateKeyBytes []byte
@@ -91,7 +88,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 				return fmt.Errorf("failed to read private key file: %w", err)
 			}
 
-			resp, err = c.PushWithOptions(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
+			recordRef, err = c.PushWithSigning(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Key{
 					Key: &signv1.SignWithKey{
 						PrivateKey: privateKeyBytes,
@@ -111,7 +108,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 				oidcToken = token.RawString
 			}
 
-			resp, err = c.PushWithOptions(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
+			recordRef, err = c.PushWithSigning(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Oidc{
 					Oidc: &signv1.SignWithOIDC{
 						IdToken: oidcToken,
@@ -129,8 +126,6 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		if err != nil {
 			return fmt.Errorf("failed to push data: %w", err)
 		}
-
-		recordRef = resp.GetRecordRef()
 	} else {
 		// Use the client's Push method to send the record
 		recordRef, err = c.Push(cmd.Context(), record)

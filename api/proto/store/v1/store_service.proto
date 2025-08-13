@@ -37,53 +37,44 @@ service StoreService {
   // Remove performs delete operation for the records.
   rpc Delete(stream core.v1.RecordRef) returns (google.protobuf.Empty);
 
-  // PushWithOptions performs write operation for records with optional flags.
-  rpc PushWithOptions(stream PushWithOptionsRequest) returns (stream PushWithOptionsResponse);
+  // PushReferrer performs write operation for record referrers.
+  rpc PushReferrer(stream PushReferrerRequest) returns (stream PushReferrerResponse);
 
-  // PullWithOptions performs read operation for records with optional flags.
-  rpc PullWithOptions(stream PullWithOptionsRequest) returns (stream PullWithOptionsResponse);
+  // PullReferrer performs read operation for record referrers.
+  rpc PullReferrer(stream PullReferrerRequest) returns (stream PullReferrerResponse);
 }
 
-// PushWithOptionsRequest represents a record with optional OCI artifacts for push operations.
-message PushWithOptionsRequest {
-  // Record to be stored
-  core.v1.Record record = 1;
-
-  // Push options containing optional flags
-  PushOptions options = 2;
-}
-
-// PushOptions contains optional flags for push operations.
-message PushOptions {
-  // Optional flag to sign the record and include signature in the push operation
-  optional bool sign = 1;
-
-  // Optional signature provider to use for signing the record
-  optional sign.v1.SignRequestProvider signature_provider = 2;
-}
-
-// PushWithOptionsResponse is returned after successfully storing a record with options.
-message PushWithOptionsResponse {
-  // Reference to the stored record
-  core.v1.RecordRef record_ref = 1;
-}
-
-// PullWithOptionsRequest represents a record with optional flags for pull operations.
-message PullWithOptionsRequest {
-  // Record reference to be fetched
+// PushReferrerRequest represents a record with optional OCI artifacts for push operations.
+message PushReferrerRequest {
+  // Record reference
   core.v1.RecordRef record_ref = 1;
 
-  // Pull options containing optional flags
-  PullOptions options = 2;
+  // Push referrer options
+  oneof options {
+    // Signature to be stored as a referrer for the record
+    sign.v1.Signature signature = 2;
+  }
 }
 
-
-// PullOptions contains optional flags for pull operations.
-message PullOptions {
+// PushReferrerResponse
+message PushReferrerResponse {
 }
 
-// PullWithOptionsResponse contains a record.
-message PullWithOptionsResponse {
-  // Stored record
-  core.v1.Record record = 1;
+// PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
+message PullReferrerRequest {
+  // Record reference
+  core.v1.RecordRef record_ref = 1;
+
+  oneof options {
+    // Pull signature referrer
+    bool pull_signature = 2;
+  }
+}
+
+// PullReferrerResponse is returned after successfully fetching a record referrer.
+message PullReferrerResponse {
+  oneof response {
+    // Signature to be fetched as a referrer
+    sign.v1.Signature signature = 1;
+  }
 }
