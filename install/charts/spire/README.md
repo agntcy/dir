@@ -92,6 +92,15 @@ The following table lists the configurable parameters of the SPIRE chart and the
 | ---- | ----------- | ----- |
 | `rbac.create` | Create RBAC resources | `true` |
 
+### Federation Parameters
+
+| Name | Description | Value |
+| ---- | ----------- | ----- |
+| `server.config.federation.enabled` | Enable SPIRE federation | `false` |
+| `server.config.federation.bundleEndpoint.address` | Bundle endpoint bind address | `0.0.0.0` |
+| `server.config.federation.bundleEndpoint.port` | Bundle endpoint port | `8443` |
+| `server.config.federation.federatedTrustDomains` | List of federated trust domains | `[]` |
+
 ## Examples
 
 ### Basic Installation
@@ -145,4 +154,33 @@ agent:
     - key: node-role.kubernetes.io/master
       operator: Exists
       effect: NoSchedule
+```
+
+### Federation Configuration
+
+```yaml
+# values-federation.yaml
+global:
+  spire:
+    trustDomain: "domain1.example.org"
+    clusterName: "cluster-1"
+
+server:
+  config:
+    federation:
+      enabled: true
+      bundleEndpoint:
+        address: "0.0.0.0"
+        port: 8443
+      federatedTrustDomains:
+        - trustDomain: "domain2.example.org"
+          bundleEndpointUrl: "https://spire-server-domain2.example.org:8443"
+          bundleEndpointProfile:
+            httpsSpiffe:
+              endpointSpiffeId: "spiffe://domain2.example.org/spire/server"
+        - trustDomain: "domain3.example.org"
+          bundleEndpointUrl: "https://spire-server-domain3.example.org:8443"
+          bundleEndpointProfile:
+            httpsSpiffe:
+              endpointSpiffeId: "spiffe://domain3.example.org/spire/server"
 ```

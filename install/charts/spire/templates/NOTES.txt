@@ -37,3 +37,19 @@
      -parentID spiffe://{{ include "spire.trustDomain" . }}/agent/k8s_psat/{{ include "spire.clusterName" . }}/node \
      -selector k8s:ns:default \
      -selector k8s:sa:default
+
+{{- if .Values.server.config.federation.enabled }}
+
+9. Federation is ENABLED:
+   - Bundle endpoint: {{ include "spire.federation.bundleEndpointUrl" . }}
+   - Federation port: {{ .Values.server.config.federation.bundleEndpoint.port }}
+   {{- if .Values.server.config.federation.federatedTrustDomains }}
+   - Federated trust domains:
+   {{- range .Values.server.config.federation.federatedTrustDomains }}
+     - {{ .trustDomain }}: {{ .bundleEndpointUrl }}
+   {{- end }}
+   {{- end }}
+
+   To expose the federation endpoint externally:
+   kubectl port-forward -n {{ include "spire.namespace" . }} svc/{{ include "spire.server.fullname" . }} {{ .Values.server.config.federation.bundleEndpoint.port }}:{{ .Values.server.config.federation.bundleEndpoint.port }}
+{{- end }}

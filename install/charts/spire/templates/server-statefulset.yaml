@@ -57,6 +57,11 @@ spec:
               name: healthz
               protocol: TCP
             {{- end }}
+            {{- if .Values.server.config.federation.enabled }}
+            - containerPort: {{ .Values.server.config.federation.bundleEndpoint.port }}
+              name: federation
+              protocol: TCP
+            {{- end }}
           volumeMounts:
             - name: spire-config
               mountPath: /run/spire/config

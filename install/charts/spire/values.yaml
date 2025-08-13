@@ -124,6 +124,22 @@ server:
       k8sBundle:
         enabled: true
 
+    # Federation configuration
+    federation:
+      enabled: false
+      # Bundle endpoint configuration for federation
+      bundleEndpoint:
+        address: "0.0.0.0"
+        port: 8443
+      # Federated trust domains
+      federatedTrustDomains: []
+        # Example configuration:
+        # - trustDomain: "example-federated.org"
+        #   bundleEndpointUrl: "https://spire-server.federated.svc.cluster.local:8443"
+        #   bundleEndpointProfile:
+        #     httpsSpiffe:
+        #       endpointSpiffeId: "spiffe://example-federated.org/spire/server"
+
 # SPIRE Agent configuration
 agent:
   # Agent container image
@@ -212,11 +228,6 @@ agent:
     keyManager:
       memory:
         enabled: true
-
-    # Node attestor configuration
-    nodeAttestor:
-      k8sPsat:
-        cluster: "demo-cluster"
 
     # Workload attestor configuration
     workloadAttestor:

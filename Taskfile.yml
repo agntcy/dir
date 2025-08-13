@@ -448,6 +448,7 @@ tasks:
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # SPIRE Config
       SPIFFE_TRUST_DOMAIN: '{{ .SPIFFE_TRUST_DOMAIN | default "example-abc.org" }}'
+      SPIFFE_CLUSTER_NAME: '{{ .SPIFFE_CLUSTER_NAME | default "my-cluster" }}'
       HELM_SPIRE_NAMESPACE: '{{ .HELM_NAMESPACE | default "spire" }}'
       HELM_SPIRE_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/spire'
       HELM_SPIRE_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/spire/values.yaml'
@@ -473,6 +474,7 @@ tasks:
           {{ .HELM_SPIRE_CHART_PATH }} \
           -f {{ .HELM_SPIRE_VALUES_PATH }} \
           --set global.spire.trustDomain="{{ .SPIFFE_TRUST_DOMAIN }}" \
+          --set global.spire.clusterName="{{ .SPIFFE_CLUSTER_NAME }}" \
           --namespace {{ .HELM_SPIRE_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -486,7 +488,7 @@ tasks:
         kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
           -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
-          -selector k8s_psat:cluster:demo-cluster \
+          -selector k8s_psat:cluster:{{.SPIFFE_CLUSTER_NAME}} \
           -selector k8s_psat:agent_ns:spire \
           -selector k8s_psat:agent_sa:spire-agent \
           -node

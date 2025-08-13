@@ -150,3 +150,17 @@ Common annotations
 {{ toYaml . }}
 {{- end }}
 {{- end }}
+
+{{/*
+Federation enabled check
+*/}}
+{{- define "spire.federation.enabled" -}}
+{{- .Values.server.config.federation.enabled | default false }}
+{{- end }}
+
+{{/*
+Federation bundle endpoint URL
+*/}}
+{{- define "spire.federation.bundleEndpointUrl" -}}
+{{- printf "https://%s:%v" (include "spire.server.fullname" .) .Values.server.config.federation.bundleEndpoint.port }}
+{{- end }}

@@ -72,3 +72,28 @@ data:
       ready_path = "{{ .Values.server.healthChecks.readyPath }}"
     }
     {{- end }}
+
+    {{- if .Values.server.config.federation.enabled }}
+    federation {
+      bundle_endpoint {
+        address = "{{ .Values.server.config.federation.bundleEndpoint.address }}"
+        port = {{ .Values.server.config.federation.bundleEndpoint.port }}
+      }
+      
+      {{- if .Values.server.config.federation.federatedTrustDomains }}
+      {{- range .Values.server.config.federation.federatedTrustDomains }}
+      federates_with "{{ .trustDomain }}" {
+        bundle_endpoint_url = "{{ .bundleEndpointUrl }}"
+        {{- if .bundleEndpointProfile }}
+        bundle_endpoint_profile "{{ keys .bundleEndpointProfile | first }}" {
+          {{- $profile := index .bundleEndpointProfile (keys .bundleEndpointProfile | first) }}
+          {{- if $profile.endpointSpiffeId }}
+          endpoint_spiffe_id = "{{ $profile.endpointSpiffeId }}"
+          {{- end }}
+        }
+        {{- end }}
+      }
+      {{- end }}
+      {{- end }}
+    }
+    {{- end }}
