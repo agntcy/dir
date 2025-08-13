@@ -43,6 +43,8 @@ func (c *Client) Sign(ctx context.Context, req *signv1.SignRequest) (*signv1.Sig
 		return nil, errors.New("signature provider must be specified")
 	}
 
+	// TODO get registry and repo from server
+
 	switch provider := req.GetProvider().GetRequest().(type) {
 	case *signv1.SignRequestProvider_Key:
 		return c.SignWithKey(ctx, req)

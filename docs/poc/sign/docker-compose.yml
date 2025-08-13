@@ -1,0 +1,14 @@
+services:
+  zot-source:
+    image: ghcr.io/project-zot/zot:latest
+    ports:
+      - "5000:5000"
+    environment:
+      - ZOT_LOG_LEVEL=info
+    volumes:
+      - ./zot-config.json:/etc/zot/config.json
+      - zot-data:/var/lib/zot
+    command: ["serve", "/etc/zot/config.json"]
+
+volumes:
+  zot-data:
