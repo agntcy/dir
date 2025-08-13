@@ -14,6 +14,11 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/sigstore/cosign/v2/pkg/oci/mutate"
+	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
+	"github.com/sigstore/cosign/v2/pkg/oci/static"
 )
 
 const (
@@ -296,45 +301,31 @@ type AttachSignatureOptions struct {
 }
 
 // AttachSignature attaches a signature to an OCI image using cosign.
-//
-//nolint:mnd,gosec
-func AttachSignature(ctx context.Context, opts *AttachSignatureOptions) error {
-	// Create temporary files
-	signatureFile, err := os.CreateTemp("", "attach-signature-*.sig")
+func AttachSignature(_ context.Context, opts *AttachSignatureOptions) error {
+	ref, err := name.ParseReference(opts.ImageRef)
 	if err != nil {
-		return fmt.Errorf("failed to create signature temp file: %w", err)
+		return fmt.Errorf("failed to parse image reference: %w", err)
 	}
-	defer os.Remove(signatureFile.Name())
 
-	payloadFile, err := os.CreateTemp("", "attach-payload-*.json")
+	sig, err := static.NewSignature([]byte(opts.Payload), opts.Signature)
 	if err != nil {
-		return fmt.Errorf("failed to create payload temp file: %w", err)
-	}
-	defer os.Remove(payloadFile.Name())
-
-	// Write signature and payload to files
-	if err := os.WriteFile(signatureFile.Name(), []byte(opts.Signature), 0o644); err != nil {
-		return fmt.Errorf("failed to write signature file: %w", err)
+		return fmt.Errorf("failed to create static signature: %w", err)
 	}
 
-	if err := os.WriteFile(payloadFile.Name(), []byte(opts.Payload), 0o644); err != nil {
-		return fmt.Errorf("failed to write payload file: %w", err)
-	}
-
-	// Build cosign attach command
-	args := []string{
-		"attach", "signature",
-		"--signature", signatureFile.Name(),
-		"--payload", payloadFile.Name(),
-		opts.ImageRef,
-	}
-
-	// Execute command
-	cmd := exec.CommandContext(ctx, "cosign", args...)
-
-	output, err := cmd.CombinedOutput()
+	se, err := ociremote.SignedEntity(ref)
 	if err != nil {
-		return fmt.Errorf("cosign attach signature failed: %w\nOutput: %s", err, string(output))
+		return fmt.Errorf("failed to create signed entity: %w", err)
+	}
+
+	// Attach the signature to the entity.
+	newSE, err := mutate.AttachSignatureToEntity(se, sig)
+	if err != nil {
+		return fmt.Errorf("failed to attach signature to entity: %w", err)
+	}
+
+	err = ociremote.WriteSignatures(ref.Context(), newSE)
+	if err != nil {
+		return fmt.Errorf("failed to write signatures: %w", err)
 	}
 
 	return nil

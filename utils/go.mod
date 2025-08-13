@@ -3,6 +3,7 @@ module github.com/agntcy/dir/utils
 go 1.24.5
 
 require (
+	github.com/google/go-containerregistry v0.20.6
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/sigstore/cosign/v2 v2.5.2
 	github.com/sigstore/protobuf-specs v0.4.3
@@ -43,7 +44,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/certificate-transparency-go v1.3.2 // indirect
-	github.com/google/go-containerregistry v0.20.6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/in-toto/attestation v1.1.1 // indirect
 	github.com/in-toto/in-toto-golang v0.9.0 // indirect
