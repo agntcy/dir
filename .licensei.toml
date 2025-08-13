@@ -24,5 +24,6 @@ ignored = [
   "modernc.org/sqlite", # BSD-3-Clause https://gitlab.com/cznic/sqlite/-/blob/master/LICENSE
   "modernc.org/libc", # BSD-3-Clause https://gitlab.com/cznic/libc/-/blob/master/LICENSE
   "modernc.org/mathutil", # BSD-3-Clausehttps://gitlab.com/cznic/mathutil/-/blob/master/LICENSE
-  "modernc.org/memory" # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
+  "modernc.org/memory", # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
+  "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go", # Generated protobuf code, no license file
 ]

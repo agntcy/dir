@@ -30,3 +30,4 @@ agent_model.json
 .licensei.cache
 
 tmp/
+tools/python/client/agntcy_dir_client_sdk.egg-info
