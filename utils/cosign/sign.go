@@ -4,6 +4,7 @@
 package cosign
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/base64"
@@ -16,9 +17,11 @@ import (
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/oci/mutate"
 	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
 	"github.com/sigstore/cosign/v2/pkg/oci/static"
+	"github.com/sigstore/sigstore/pkg/cryptoutils"
 )
 
 const (
@@ -197,7 +200,7 @@ func SignBlobWithOIDC(ctx context.Context, opts *SignBlobOIDCOptions) (*SignBlob
 	}
 
 	return &SignBlobOIDCResult{
-		Signature: string(signature),
+		Signature: base64.StdEncoding.EncodeToString(signature),
 		PublicKey: publicKeyPEM,
 	}, nil
 }
@@ -216,80 +219,32 @@ type SignBlobKeyResult struct {
 }
 
 // SignBlobWithKey signs a blob using a private key.
-//
-//nolint:mnd,gosec
-func SignBlobWithKey(ctx context.Context, opts *SignBlobKeyOptions) (*SignBlobKeyResult, error) {
-	// Create temporary files
-	payloadFile, err := os.CreateTemp("", "payload-key-*.json")
+func SignBlobWithKey(_ context.Context, opts *SignBlobKeyOptions) (*SignBlobKeyResult, error) {
+	payload := bytes.NewReader(opts.Payload)
+
+	sv, err := cosign.LoadPrivateKey(opts.PrivateKey, opts.Password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create payload temp file: %w", err)
+		return nil, fmt.Errorf("loading private key: %w", err)
 	}
-	defer os.Remove(payloadFile.Name())
 
-	keyFile, err := os.CreateTemp("", "cosign-key-*.key")
+	sig, err := sv.SignMessage(payload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create key temp file: %w", err)
+		return nil, fmt.Errorf("signing blob: %w", err)
 	}
-	defer os.Remove(keyFile.Name())
 
-	signatureFile, err := os.CreateTemp("", "signature-key-*.sig")
+	pubKey, err := sv.PublicKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create signature temp file: %w", err)
-	}
-	defer os.Remove(signatureFile.Name())
-
-	// Write payload and private key to files
-	if _, err := payloadFile.Write(opts.Payload); err != nil {
-		return nil, fmt.Errorf("failed to write payload: %w", err)
+		return nil, fmt.Errorf("getting public key: %w", err)
 	}
 
-	payloadFile.Close()
-
-	if err := os.WriteFile(keyFile.Name(), opts.PrivateKey, 0o600); err != nil {
-		return nil, fmt.Errorf("failed to write private key: %w", err)
-	}
-
-	// Build cosign command
-	cmd := exec.CommandContext(ctx, "cosign", "sign-blob",
-		"-y",
-		"--key", keyFile.Name(),
-		"--output-signature", signatureFile.Name(),
-		payloadFile.Name())
-
-	// Set password environment variable
-	password := opts.Password
-	if password == nil {
-		password = []byte("")
-	}
-
-	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+string(password))
-
-	// Execute command
-	output, err := cmd.CombinedOutput()
+	publicKeyPEM, err := cryptoutils.MarshalPublicKeyToPEM(pubKey)
 	if err != nil {
-		return nil, fmt.Errorf("cosign sign-blob with key failed: %w\nOutput: %s", err, string(output))
-	}
-
-	// Read signature
-	signature, err := os.ReadFile(signatureFile.Name())
-	if err != nil {
-		return nil, fmt.Errorf("failed to read signature: %w", err)
-	}
-
-	// Load keypair to get public key
-	cosignKeypair, err := LoadKeypair(opts.PrivateKey, password)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load cosign keypair: %w", err)
-	}
-
-	publicKeyPEM, err := cosignKeypair.GetPublicKeyPem()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get public key: %w", err)
+		return nil, fmt.Errorf("getting public key: %w", err)
 	}
 
 	return &SignBlobKeyResult{
-		Signature: string(signature),
-		PublicKey: publicKeyPEM,
+		Signature: base64.StdEncoding.EncodeToString(sig),
+		PublicKey: string(publicKeyPEM),
 	}, nil
 }
 
