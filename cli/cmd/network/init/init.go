@@ -35,7 +35,6 @@ Usage examples:
 	dirctl network init --output /path/to/private/key.pem
 
 `,
-	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runCommand(cmd)
 	},

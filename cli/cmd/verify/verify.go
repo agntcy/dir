@@ -38,7 +38,6 @@ Usage examples:
 	# TODO Update to pull record and signature from store
 
 `,
-	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var (
 			recordPath    string

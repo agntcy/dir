@@ -45,7 +45,6 @@ Usage examples:
 	cat record.json | dirctl sign --stdin
 
 `,
-	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var fpath string
 		if len(args) > 1 {

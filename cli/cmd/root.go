@@ -28,9 +28,10 @@ import (
 var clientConfig = client.DefaultConfig
 
 var RootCmd = &cobra.Command{
-	Use:   "dirctl",
-	Short: "CLI tool to interact with Directory",
-	Long:  ``,
+	Use:          "dirctl",
+	Short:        "CLI tool to interact with Directory",
+	Long:         ``,
+	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		// Set client via context for all requests
 		// TODO: make client config configurable via CLI args

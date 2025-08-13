@@ -45,7 +45,6 @@ matching labels passed as arguments. The matching is performed using
 exact set-membership rule.
 
 `,
-	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
 		return runCommand(cmd, args)
 	},
