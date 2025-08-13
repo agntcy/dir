@@ -68,15 +68,6 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Override client registry config with command-specific flags if provided
-	if opts.RegistryAddress != "" {
-		c.SetRegistryAddress(opts.RegistryAddress)
-	}
-
-	if opts.RepositoryName != "" {
-		c.SetRepositoryName(opts.RepositoryName)
-	}
-
 	// Load OASF data (supports v1, v2, v3) into a Record
 	record, err := corev1.LoadOASFFromReader(source)
 	if err != nil {

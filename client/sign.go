@@ -5,7 +5,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -22,18 +21,6 @@ type SignOpts struct {
 	OIDCClientID    string
 	OIDCToken       string
 	Key             string
-	RegistryAddress string
-	RepositoryName  string
-}
-
-// SetRegistryAddress updates the client's registry address configuration.
-func (c *Client) SetRegistryAddress(address string) {
-	c.config.RegistryAddress = address
-}
-
-// SetRepositoryName updates the client's repository name configuration.
-func (c *Client) SetRepositoryName(name string) {
-	c.config.RepositoryName = name
 }
 
 // Sign routes to the appropriate signing method based on provider type.
@@ -69,12 +56,9 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 		return nil, fmt.Errorf("failed to convert CID to digest: %w", err)
 	}
 
-	// Create payload
-	payload := cosign.GeneratePayload(c.config.RegistryAddress, c.config.RepositoryName, digest.String())
-
-	payloadBytes, err := json.Marshal(payload)
+	payloadBytes, err := cosign.GeneratePayload(digest.String())
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+		return nil, fmt.Errorf("failed to generate payload: %w", err)
 	}
 
 	// Prepare options for signing
@@ -131,12 +115,9 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 		return nil, fmt.Errorf("failed to convert CID to digest: %w", err)
 	}
 
-	// Create payload
-	payload := cosign.GeneratePayload(c.config.RegistryAddress, c.config.RepositoryName, digest.String())
-
-	payloadBytes, err := json.Marshal(payload)
+	payloadBytes, err := cosign.GeneratePayload(digest.String())
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+		return nil, fmt.Errorf("failed to generate payload: %w", err)
 	}
 
 	// Prepare options for signing

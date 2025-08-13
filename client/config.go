@@ -20,17 +20,13 @@ const (
 )
 
 var DefaultConfig = Config{
-	ServerAddress:   DefaultServerAddress,
-	RegistryAddress: DefaultRegistryAddress,
-	RepositoryName:  DefaultRepositoryName,
+	ServerAddress: DefaultServerAddress,
 }
 
 type Config struct {
 	ServerAddress     string `json:"server_address,omitempty"      mapstructure:"server_address"`
 	SpiffeSocketPath  string `json:"spiffe_socket_path,omitempty"  mapstructure:"spiffe_socket_path"`
 	SpiffeTrustDomain string `json:"spiffe_trust_domain,omitempty" mapstructure:"spiffe_trust_domain"`
-	RegistryAddress   string `json:"registry_address,omitempty"    mapstructure:"registry_address"`
-	RepositoryName    string `json:"repository_name,omitempty"     mapstructure:"repository_name"`
 }
 
 func LoadConfig() (*Config, error) {

@@ -62,15 +62,6 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Override client registry config with command-specific flags if provided
-	if opts.RegistryAddress != "" {
-		c.SetRegistryAddress(opts.RegistryAddress)
-	}
-
-	if opts.RepositoryName != "" {
-		c.SetRepositoryName(opts.RepositoryName)
-	}
-
 	//nolint:nestif,gocritic
 	if opts.Key != "" {
 		// Load the key from file

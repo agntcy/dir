@@ -3,32 +3,36 @@
 
 package cosign
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 type Payload struct {
 	Critical Critical `json:"critical"`
 }
 
 type Critical struct {
-	Identity Identity `json:"identity"`
-	Image    Image    `json:"image"`
-}
-
-type Identity struct {
-	DockerReference string `json:"docker-reference"`
+	Image Image `json:"image"`
 }
 
 type Image struct {
 	DockerManifestDigest string `json:"docker-manifest-digest"`
 }
 
-func GeneratePayload(registry, repo, digest string) *Payload {
-	return &Payload{
+func GeneratePayload(digest string) ([]byte, error) {
+	payload := &Payload{
 		Critical: Critical{
-			Identity: Identity{
-				DockerReference: registry + "/" + repo,
-			},
 			Image: Image{
 				DockerManifestDigest: digest,
 			},
 		},
 	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	return payloadBytes, nil
 }
