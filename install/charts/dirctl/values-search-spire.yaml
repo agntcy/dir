@@ -16,7 +16,7 @@ args:
   - "--offset"
   - "0"
   - "--spiffe-socket-path"
-  - "unix:/run/spire/sockets/agent.sock"
+  - "unix:/run/spire/sockets/spire-agent.sock"
   - "--server-addr"
   - "dir-apiserver.dir-server.svc.cluster.local:8888"
 
@@ -34,12 +34,12 @@ securityContext:
   readOnlyRootFilesystem: true
 
 volumes:
-  - name: spire-agent-socket
-    hostPath:
-      path: /run/spire/sockets
-      type: Directory
+  - name: spiffe-workload-api
+    csi:
+      driver: csi.spiffe.io
+      readOnly: true
 
 volumeMounts:
-  - name: spire-agent-socket
+  - name: spiffe-workload-api
     mountPath: /run/spire/sockets
     readOnly: true
