@@ -70,6 +70,12 @@ describe('Client', () => {
         }
     });
 
+    afterAll(async () => {
+        client.storeClient.close();
+        client.routingClient.close();
+        client.searchClient.close();
+    });
+
     test('push', async () => {
         const test_records = generateRecords(['example-record', 'example-record2']);
 
