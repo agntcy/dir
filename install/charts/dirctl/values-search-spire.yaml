@@ -17,10 +17,13 @@ args:
   - "0"
   - "--spiffe-socket-path"
   - "unix:/run/spire/sockets/agent.sock"
-  - "--spiffe-trust-domain"
-  - "example.org"
   - "--server-addr"
   - "dir-apiserver.dir-server.svc.cluster.local:8888"
+
+# Additional environment variables
+env:
+  - name: DIRECTORY_CLIENT_SPIFFE_TRUST_DOMAIN
+    value: "example.org"
 
 serviceAccount:
   create: false
