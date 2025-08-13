@@ -6,14 +6,14 @@ managed:
   override:
     - file_option: go_package
       path: saas/v1alpha1
-      value: github.com/cisco-eti/agntcy/api/hub/v1alpha1
+      value: github.com/agntcy/dir/hub/api/v1alpha1
     - file_option: go_package
       path: core/v1alpha1
       value: github.com/agntcy/dir/api/core/v1alpha1
 inputs:
-  - proto_file: saas/v1alpha1/agent_dir_service.proto
-  - proto_file: saas/v1alpha1/agent_id.proto
-  - proto_file: saas/v1alpha1/agent_id_response.proto
+  - proto_file: saas/v1alpha1/record_dir_service.proto
+  - proto_file: saas/v1alpha1/record_id.proto
+  - proto_file: saas/v1alpha1/record_id_response.proto
   - proto_file: saas/v1alpha1/repo_version_id.proto
 plugins:
   - remote: buf.build/grpc/go:v1.5.1

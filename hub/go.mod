@@ -9,6 +9,7 @@ replace (
 )
 
 require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.7-20250717185734-6c6e0d3c608e.1
 	github.com/agntcy/dir/api v0.2.9
 	github.com/agntcy/dir/cli v0.2.9
 	github.com/golang-jwt/jwt/v5 v5.2.2
@@ -20,8 +21,9 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
+	google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237
 	google.golang.org/grpc v1.73.0
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.7
 )
 
 require (
