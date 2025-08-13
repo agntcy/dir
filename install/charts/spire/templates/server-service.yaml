@@ -16,5 +16,11 @@ spec:
       port: {{ .Values.server.service.port }}
       targetPort: {{ .Values.server.service.targetPort }}
       protocol: TCP
+    {{- if .Values.server.config.federation.enabled }}
+    - name: federation
+      port: {{ .Values.server.config.federation.bundleEndpoint.port }}
+      targetPort: {{ .Values.server.config.federation.bundleEndpoint.port }}
+      protocol: TCP
+    {{- end }}
   selector:
     {{- include "spire.server.selectorLabels" . | nindent 4 }}
