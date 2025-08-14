@@ -9,7 +9,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
 // Push sends a complete record to the store and returns a record reference.
@@ -200,78 +199,16 @@ func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) 
 	return records, nil
 }
 
-// PushWithOptions sends a record with optional OCI artifacts like signatures to the store.
-func (c *Client) PushWithOptions(ctx context.Context, record *corev1.Record, signature *signv1.Signature) (*storev1.PushWithOptionsResponse, error) {
-	// Create streaming client
-	stream, err := c.StoreServiceClient.PushWithOptions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create push with options stream: %w", err)
-	}
-
-	// Create push options
-	options := &storev1.PushOptions{
-		Signature: signature,
-	}
-
-	// Create request
-	request := &storev1.PushWithOptionsRequest{
-		Record:  record,
-		Options: options,
-	}
-
-	// Send request
-	if err := stream.Send(request); err != nil {
-		return nil, fmt.Errorf("failed to send push with options request: %w", err)
-	}
-
-	// Close send stream
-	if err := stream.CloseSend(); err != nil {
-		return nil, fmt.Errorf("failed to close send stream: %w", err)
-	}
-
-	// Receive response
-	response, err := stream.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive push with options response: %w", err)
-	}
-
-	return response, nil
-}
-
-// PullWithOptions retrieves a record along with its associated OCI artifacts.
-func (c *Client) PullWithOptions(ctx context.Context, recordRef *corev1.RecordRef, includeSignature bool) (*storev1.PullWithOptionsResponse, error) {
-	// Create streaming client
-	stream, err := c.StoreServiceClient.PullWithOptions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pull with options stream: %w", err)
-	}
-
-	// Create pull options
-	options := &storev1.PullOptions{
-		IncludeSignature: includeSignature,
-	}
-
-	// Create request
-	request := &storev1.PullWithOptionsRequest{
+// PushReferrer pushes a record and optionally signs it using the separate signing flow.
+func (c *Client) PushSignatureReferrer(ctx context.Context, recordRef *corev1.RecordRef, signatureProvider *signv1.SignRequestProvider) error {
+	// Sign the record if requested
+	_, err := c.Sign(ctx, &signv1.SignRequest{
 		RecordRef: recordRef,
-		Options:   options,
-	}
-
-	// Send request
-	if err := stream.Send(request); err != nil {
-		return nil, fmt.Errorf("failed to send pull with options request: %w", err)
-	}
-
-	// Close send stream
-	if err := stream.CloseSend(); err != nil {
-		return nil, fmt.Errorf("failed to close send stream: %w", err)
-	}
-
-	// Receive response
-	response, err := stream.Recv()
+		Provider:  signatureProvider,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to receive pull with options response: %w", err)
+		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
-	return response, nil
+	return nil
 }

@@ -194,101 +194,89 @@ func (s storeCtrl) Delete(stream storev1.StoreService_DeleteServer) error {
 	}
 }
 
-// PushWithOptions handles records with optional OCI artifacts like signatures.
-func (s storeCtrl) PushWithOptions(stream storev1.StoreService_PushWithOptionsServer) error {
-	storeLogger.Debug("Called store controller's PushWithOptions method")
+func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) error {
+	storeLogger.Debug("Called store controller's PushReferrer method")
 
 	for {
-		// Receive PushWithOptionsRequest from stream
+		// Receive PushReferrerRequest from stream
 		request, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
-			storeLogger.Debug("PushWithOptions stream completed")
+			storeLogger.Debug("PushReferrer stream completed")
 
 			return nil
 		}
 
 		if err != nil {
-			return status.Errorf(codes.Internal, "failed to receive push request: %v", err)
+			return status.Errorf(codes.Internal, "failed to receive push referrer request: %v", err)
 		}
 
-		// Validate record and get CID
-		recordCID, err := s.validateAndGetCID(request.GetRecord())
-		if err != nil {
+		// Validate the record reference
+		if err := s.validateRecordRef(request.GetRecordRef()); err != nil {
 			return err
 		}
 
-		pushedRef, err := s.pushRecordToStore(stream.Context(), request.GetRecord())
-		if err != nil {
-			return err
-		}
+		var response *storev1.PushReferrerResponse
 
-		// Handle signature artifact if provided
-		if request.GetOptions() != nil && request.GetOptions().GetSignature() != nil {
-			if err := s.pushSignatureToStore(stream.Context(), request.GetOptions().GetSignature(), recordCID); err != nil {
-				return err
-			}
-		}
+		switch request.GetOptions().(type) {
+		case *storev1.PushReferrerRequest_Signature:
+			storeLogger.Debug("Signature referrer request received")
 
-		// Send the response back via stream
-		response := &storev1.PushWithOptionsResponse{
-			RecordRef: pushedRef,
+			response = s.pushSignatureReferrer(stream.Context(), request)
+		default:
+			storeLogger.Debug("Unknown referrer type, skipping")
+
+			continue
 		}
 
 		if err := stream.Send(response); err != nil {
-			return status.Errorf(codes.Internal, "failed to send push options response: %v", err)
+			return status.Errorf(codes.Internal, "failed to send push referrer response: %v", err)
 		}
 	}
 }
 
-// PullWithOptions retrieves records along with their associated OCI artifacts.
-func (s storeCtrl) PullWithOptions(stream storev1.StoreService_PullWithOptionsServer) error {
-	storeLogger.Debug("Called store controller's PullWithOptions method")
+func (s storeCtrl) pushSignatureReferrer(ctx context.Context, request *storev1.PushReferrerRequest) *storev1.PushReferrerResponse {
+	storeLogger.Debug("Pushing signature referrer", "cid", request.GetRecordRef().GetCid())
 
-	for {
-		// Receive PullWithOptionsRequest from stream
-		request, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			storeLogger.Debug("PullWithOptions stream completed")
+	// Try to use signature storage if the store supports it
+	sigStore, ok := s.store.(interface {
+		PushSignature(context.Context, string, *signv1.Signature) error
+	})
+	if !ok {
+		errMsg := "signature storage not supported by current store implementation"
 
-			return nil
-		}
+		storeLogger.Error(errMsg)
 
-		if err != nil {
-			return status.Errorf(codes.Internal, "failed to receive pull request: %v", err)
-		}
-
-		recordRef := request.GetRecordRef()
-
-		// Validate record reference
-		if err := s.validateRecordRef(recordRef); err != nil {
-			return err
-		}
-
-		// Pull the record
-		record, err := s.pullRecordFromStore(stream.Context(), recordRef)
-		if err != nil {
-			return err
-		}
-
-		// Try to get signature artifact if requested and store supports it
-		var signature *signv1.Signature
-		if request.GetOptions() != nil {
-			signature, err = s.pullSignatureFromStore(stream.Context(), recordRef, request.GetOptions().GetIncludeSignature())
-			if err != nil {
-				return err
-			}
-		}
-
-		// Send the response
-		response := &storev1.PullWithOptionsResponse{
-			Record:    record,
-			Signature: signature,
-		}
-
-		if err := stream.Send(response); err != nil {
-			return status.Errorf(codes.Internal, "failed to send pull options response: %v", err)
+		return &storev1.PushReferrerResponse{
+			Success:      false,
+			ErrorMessage: &errMsg,
 		}
 	}
+
+	err := sigStore.PushSignature(ctx, request.GetRecordRef().GetCid(), request.GetSignature())
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to store signature: %v", err)
+
+		storeLogger.Error(errMsg, "cid", request.GetRecordRef().GetCid())
+
+		return &storev1.PushReferrerResponse{
+			Success:      false,
+			ErrorMessage: &errMsg,
+		}
+	}
+
+	storeLogger.Info("Signature stored successfully", "cid", request.GetRecordRef().GetCid())
+
+	return &storev1.PushReferrerResponse{
+		Success: true,
+	}
+}
+
+// PullReferrer handles retrieving referrers (like signatures) for records.
+func (s storeCtrl) PullReferrer(_ storev1.StoreService_PullReferrerServer) error {
+	storeLogger.Debug("Called store controller's PullReferrer method")
+
+	// No implemented yet
+	return status.Error(codes.Unimplemented, "pull referrer not implemented")
 }
 
 // validateRecord performs common record validation logic.
@@ -353,25 +341,6 @@ func (s storeCtrl) pushRecordToStore(ctx context.Context, record *corev1.Record)
 	return pushedRef, nil
 }
 
-// pushSignatureIfProvided pushes a signature artifact if the store supports it.
-func (s storeCtrl) pushSignatureToStore(ctx context.Context, signature *signv1.Signature, recordCID string) error {
-	storeLogger.Debug("Processing signature artifact")
-
-	// Check if store supports signature artifacts (OCI store should)
-	if ociStore, ok := s.store.(types.SignatureStoreAPI); ok {
-		err := ociStore.PushSignature(ctx, recordCID, signature)
-		if err != nil {
-			storeLogger.Error("Failed to push signature", "error", err, "cid", recordCID)
-
-			return status.Errorf(codes.Internal, "failed to push signature: %v", err)
-		}
-	} else {
-		storeLogger.Warn("Store does not support signature artifacts, ignoring", "storeType", fmt.Sprintf("%T", s.store))
-	}
-
-	return nil
-}
-
 // validateRecordRef validates a record reference.
 func (s storeCtrl) validateRecordRef(recordRef *corev1.RecordRef) error {
 	if recordRef.GetCid() == "" {
@@ -394,26 +363,4 @@ func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.Re
 	storeLogger.Debug("Record pulled successfully", "cid", recordRef.GetCid())
 
 	return record, nil
-}
-
-// pullSignatureIfRequested pulls a signature artifact if requested and supported.
-func (s storeCtrl) pullSignatureFromStore(ctx context.Context, recordRef *corev1.RecordRef, includeSignature bool) (*signv1.Signature, error) {
-	if !includeSignature {
-		storeLogger.Debug("Signature not requested, skipping")
-
-		return nil, nil //nolint:nilnil
-	}
-
-	if ociStore, ok := s.store.(types.SignatureStoreAPI); ok {
-		signature, err := ociStore.PullSignature(ctx, recordRef.GetCid())
-		if err != nil {
-			storeLogger.Error("Failed to pull signature from store", "error", err, "cid", recordRef.GetCid())
-
-			return nil, status.Errorf(codes.Internal, "failed to pull signature from store: %v", err)
-		}
-
-		return signature, nil
-	}
-
-	return nil, status.Error(codes.Unimplemented, "store does not support signature artifacts") //nolint:nilnil
 }

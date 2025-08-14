@@ -3,11 +3,19 @@
 
 package push
 
+import (
+	signcmd "github.com/agntcy/dir/cli/cmd/sign"
+	"github.com/agntcy/dir/client"
+)
+
 var opts = &options{}
 
 type options struct {
-	FromStdin     bool
-	SignaturePath string
+	FromStdin bool
+	Sign      bool
+
+	// Signing options
+	client.SignOpts
 }
 
 func init() {
@@ -16,7 +24,9 @@ func init() {
 		"Read compiled data from standard input. Useful for piping. Reads from file if empty. "+
 			"Ignored if file is provided as an argument.",
 	)
-	flags.StringVar(&opts.SignaturePath, "signature", "",
-		"Path to signature file. If provided, the signature will be included in the push operation.",
+	flags.BoolVar(&opts.Sign, "sign", false,
+		"Sign the record with the specified signing options.",
 	)
+
+	signcmd.AddSigningFlags(flags)
 }

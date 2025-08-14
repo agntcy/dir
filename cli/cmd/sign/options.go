@@ -5,33 +5,33 @@ package sign
 
 import (
 	"github.com/agntcy/dir/client"
+	"github.com/agntcy/dir/utils/cosign"
+	"github.com/spf13/pflag"
 )
 
 var opts = &options{}
 
 type options struct {
-	FromStdin bool
-
 	// Signing options
 	client.SignOpts
 }
 
 func init() {
 	flags := Command.Flags()
-	flags.BoolVar(&opts.FromStdin, "stdin", false,
-		"Read data from standard input. Useful for piping. Reads from file if empty. "+
-			"Ignored if file is provided as an argument.")
 
-	// Signing options
-	flags.StringVar(&opts.FulcioURL, "fulcio-url", client.DefaultFulcioURL,
+	AddSigningFlags(flags)
+}
+
+func AddSigningFlags(flags *pflag.FlagSet) {
+	flags.StringVar(&opts.FulcioURL, "fulcio-url", cosign.DefaultFulcioURL,
 		"Sigstore Fulcio URL")
-	flags.StringVar(&opts.RekorURL, "rekor-url", client.DefaultRekorURL,
+	flags.StringVar(&opts.RekorURL, "rekor-url", cosign.DefaultRekorURL,
 		"Sigstore Rekor URL")
-	flags.StringVar(&opts.TimestampURL, "timestamp-url", client.DefaultTimestampURL,
+	flags.StringVar(&opts.TimestampURL, "timestamp-url", cosign.DefaultTimestampURL,
 		"Sigstore Timestamp URL")
-	flags.StringVar(&opts.OIDCProviderURL, "oidc-provider-url", client.DefaultOIDCProviderURL,
+	flags.StringVar(&opts.OIDCProviderURL, "oidc-provider-url", cosign.DefaultOIDCProviderURL,
 		"OIDC Provider URL")
-	flags.StringVar(&opts.OIDCClientID, "oidc-client-id", client.DefaultOIDCClientID,
+	flags.StringVar(&opts.OIDCClientID, "oidc-client-id", cosign.DefaultOIDCClientID,
 		"OIDC Client ID")
 	flags.StringVar(&opts.OIDCToken, "oidc-token", "",
 		"OIDC Token for non-interactive signing. ")

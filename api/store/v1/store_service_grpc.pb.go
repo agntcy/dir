@@ -24,12 +24,12 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	StoreService_Push_FullMethodName            = "/store.v1.StoreService/Push"
-	StoreService_Pull_FullMethodName            = "/store.v1.StoreService/Pull"
-	StoreService_Lookup_FullMethodName          = "/store.v1.StoreService/Lookup"
-	StoreService_Delete_FullMethodName          = "/store.v1.StoreService/Delete"
-	StoreService_PushWithOptions_FullMethodName = "/store.v1.StoreService/PushWithOptions"
-	StoreService_PullWithOptions_FullMethodName = "/store.v1.StoreService/PullWithOptions"
+	StoreService_Push_FullMethodName         = "/store.v1.StoreService/Push"
+	StoreService_Pull_FullMethodName         = "/store.v1.StoreService/Pull"
+	StoreService_Lookup_FullMethodName       = "/store.v1.StoreService/Lookup"
+	StoreService_Delete_FullMethodName       = "/store.v1.StoreService/Delete"
+	StoreService_PushReferrer_FullMethodName = "/store.v1.StoreService/PushReferrer"
+	StoreService_PullReferrer_FullMethodName = "/store.v1.StoreService/PullReferrer"
 )
 
 // StoreServiceClient is the client API for StoreService service.
@@ -60,10 +60,10 @@ type StoreServiceClient interface {
 	Lookup(ctx context.Context, opts ...grpc.CallOption) (StoreService_LookupClient, error)
 	// Remove performs delete operation for the records.
 	Delete(ctx context.Context, opts ...grpc.CallOption) (StoreService_DeleteClient, error)
-	// PushWithOptions performs write operation for records with optional OCI artifacts like signatures.
-	PushWithOptions(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushWithOptionsClient, error)
-	// PullWithOptions retrieves records along with their associated OCI artifacts.
-	PullWithOptions(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullWithOptionsClient, error)
+	// PushReferrer performs write operation for record referrers.
+	PushReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushReferrerClient, error)
+	// PullReferrer performs read operation for record referrers.
+	PullReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullReferrerClient, error)
 }
 
 type storeServiceClient struct {
@@ -205,64 +205,64 @@ func (x *storeServiceDeleteClient) CloseAndRecv() (*emptypb.Empty, error) {
 	return m, nil
 }
 
-func (c *storeServiceClient) PushWithOptions(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushWithOptionsClient, error) {
+func (c *storeServiceClient) PushReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushReferrerClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[4], StoreService_PushWithOptions_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[4], StoreService_PushReferrer_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &storeServicePushWithOptionsClient{ClientStream: stream}
+	x := &storeServicePushReferrerClient{ClientStream: stream}
 	return x, nil
 }
 
-type StoreService_PushWithOptionsClient interface {
-	Send(*PushWithOptionsRequest) error
-	Recv() (*PushWithOptionsResponse, error)
+type StoreService_PushReferrerClient interface {
+	Send(*PushReferrerRequest) error
+	Recv() (*PushReferrerResponse, error)
 	grpc.ClientStream
 }
 
-type storeServicePushWithOptionsClient struct {
+type storeServicePushReferrerClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServicePushWithOptionsClient) Send(m *PushWithOptionsRequest) error {
+func (x *storeServicePushReferrerClient) Send(m *PushReferrerRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServicePushWithOptionsClient) Recv() (*PushWithOptionsResponse, error) {
-	m := new(PushWithOptionsResponse)
+func (x *storeServicePushReferrerClient) Recv() (*PushReferrerResponse, error) {
+	m := new(PushReferrerResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *storeServiceClient) PullWithOptions(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullWithOptionsClient, error) {
+func (c *storeServiceClient) PullReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullReferrerClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[5], StoreService_PullWithOptions_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[5], StoreService_PullReferrer_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &storeServicePullWithOptionsClient{ClientStream: stream}
+	x := &storeServicePullReferrerClient{ClientStream: stream}
 	return x, nil
 }
 
-type StoreService_PullWithOptionsClient interface {
-	Send(*PullWithOptionsRequest) error
-	Recv() (*PullWithOptionsResponse, error)
+type StoreService_PullReferrerClient interface {
+	Send(*PullReferrerRequest) error
+	Recv() (*PullReferrerResponse, error)
 	grpc.ClientStream
 }
 
-type storeServicePullWithOptionsClient struct {
+type storeServicePullReferrerClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServicePullWithOptionsClient) Send(m *PullWithOptionsRequest) error {
+func (x *storeServicePullReferrerClient) Send(m *PullReferrerRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServicePullWithOptionsClient) Recv() (*PullWithOptionsResponse, error) {
-	m := new(PullWithOptionsResponse)
+func (x *storeServicePullReferrerClient) Recv() (*PullReferrerResponse, error) {
+	m := new(PullReferrerResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -297,10 +297,10 @@ type StoreServiceServer interface {
 	Lookup(StoreService_LookupServer) error
 	// Remove performs delete operation for the records.
 	Delete(StoreService_DeleteServer) error
-	// PushWithOptions performs write operation for records with optional OCI artifacts like signatures.
-	PushWithOptions(StoreService_PushWithOptionsServer) error
-	// PullWithOptions retrieves records along with their associated OCI artifacts.
-	PullWithOptions(StoreService_PullWithOptionsServer) error
+	// PushReferrer performs write operation for record referrers.
+	PushReferrer(StoreService_PushReferrerServer) error
+	// PullReferrer performs read operation for record referrers.
+	PullReferrer(StoreService_PullReferrerServer) error
 }
 
 // UnimplementedStoreServiceServer should be embedded to have
@@ -322,11 +322,11 @@ func (UnimplementedStoreServiceServer) Lookup(StoreService_LookupServer) error {
 func (UnimplementedStoreServiceServer) Delete(StoreService_DeleteServer) error {
 	return status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedStoreServiceServer) PushWithOptions(StoreService_PushWithOptionsServer) error {
-	return status.Errorf(codes.Unimplemented, "method PushWithOptions not implemented")
+func (UnimplementedStoreServiceServer) PushReferrer(StoreService_PushReferrerServer) error {
+	return status.Errorf(codes.Unimplemented, "method PushReferrer not implemented")
 }
-func (UnimplementedStoreServiceServer) PullWithOptions(StoreService_PullWithOptionsServer) error {
-	return status.Errorf(codes.Unimplemented, "method PullWithOptions not implemented")
+func (UnimplementedStoreServiceServer) PullReferrer(StoreService_PullReferrerServer) error {
+	return status.Errorf(codes.Unimplemented, "method PullReferrer not implemented")
 }
 func (UnimplementedStoreServiceServer) testEmbeddedByValue() {}
 
@@ -452,52 +452,52 @@ func (x *storeServiceDeleteServer) Recv() (*v1.RecordRef, error) {
 	return m, nil
 }
 
-func _StoreService_PushWithOptions_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(StoreServiceServer).PushWithOptions(&storeServicePushWithOptionsServer{ServerStream: stream})
+func _StoreService_PushReferrer_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StoreServiceServer).PushReferrer(&storeServicePushReferrerServer{ServerStream: stream})
 }
 
-type StoreService_PushWithOptionsServer interface {
-	Send(*PushWithOptionsResponse) error
-	Recv() (*PushWithOptionsRequest, error)
+type StoreService_PushReferrerServer interface {
+	Send(*PushReferrerResponse) error
+	Recv() (*PushReferrerRequest, error)
 	grpc.ServerStream
 }
 
-type storeServicePushWithOptionsServer struct {
+type storeServicePushReferrerServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServicePushWithOptionsServer) Send(m *PushWithOptionsResponse) error {
+func (x *storeServicePushReferrerServer) Send(m *PushReferrerResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServicePushWithOptionsServer) Recv() (*PushWithOptionsRequest, error) {
-	m := new(PushWithOptionsRequest)
+func (x *storeServicePushReferrerServer) Recv() (*PushReferrerRequest, error) {
+	m := new(PushReferrerRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func _StoreService_PullWithOptions_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(StoreServiceServer).PullWithOptions(&storeServicePullWithOptionsServer{ServerStream: stream})
+func _StoreService_PullReferrer_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StoreServiceServer).PullReferrer(&storeServicePullReferrerServer{ServerStream: stream})
 }
 
-type StoreService_PullWithOptionsServer interface {
-	Send(*PullWithOptionsResponse) error
-	Recv() (*PullWithOptionsRequest, error)
+type StoreService_PullReferrerServer interface {
+	Send(*PullReferrerResponse) error
+	Recv() (*PullReferrerRequest, error)
 	grpc.ServerStream
 }
 
-type storeServicePullWithOptionsServer struct {
+type storeServicePullReferrerServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServicePullWithOptionsServer) Send(m *PullWithOptionsResponse) error {
+func (x *storeServicePullReferrerServer) Send(m *PullReferrerResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServicePullWithOptionsServer) Recv() (*PullWithOptionsRequest, error) {
-	m := new(PullWithOptionsRequest)
+func (x *storeServicePullReferrerServer) Recv() (*PullReferrerRequest, error) {
+	m := new(PullReferrerRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -536,14 +536,14 @@ var StoreService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 		{
-			StreamName:    "PushWithOptions",
-			Handler:       _StoreService_PushWithOptions_Handler,
+			StreamName:    "PushReferrer",
+			Handler:       _StoreService_PushReferrer_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
 		{
-			StreamName:    "PullWithOptions",
-			Handler:       _StoreService_PullWithOptions_Handler,
+			StreamName:    "PullReferrer",
+			Handler:       _StoreService_PullReferrer_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},

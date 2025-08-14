@@ -5,14 +5,12 @@
 package push
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	signv1 "github.com/agntcy/dir/api/sign/v1"
+	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -37,7 +35,7 @@ Usage examples:
 
 3. Push with signature:
 
-	dirctl push model.json --signature signature.json
+	dirctl push model.json --sign
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -75,29 +73,16 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 
 	var recordRef *corev1.RecordRef
 
-	//nolint:nestif
-	if opts.SignaturePath != "" {
-		signatureSource, err := os.ReadFile(opts.SignaturePath)
-		if err != nil {
-			return fmt.Errorf("failed to read signature file: %w", err)
-		}
+	// Use the client's Push method to send the record
+	recordRef, err = c.Push(cmd.Context(), record)
+	if err != nil {
+		return fmt.Errorf("failed to push data: %w", err)
+	}
 
-		signature := &signv1.Signature{}
-		if err := json.Unmarshal(signatureSource, signature); err != nil {
-			return fmt.Errorf("failed to unmarshal signature: %w", err)
-		}
-
-		resp, err := c.PushWithOptions(cmd.Context(), record, signature)
+	if opts.Sign {
+		err = signcmd.Sign(cmd.Context(), c, recordRef.GetCid())
 		if err != nil {
-			return fmt.Errorf("failed to push data: %w", err)
-		}
-
-		recordRef = resp.GetRecordRef()
-	} else {
-		// Use the client's Push method to send the record
-		recordRef, err = c.Push(cmd.Context(), record)
-		if err != nil {
-			return fmt.Errorf("failed to push data: %w", err)
+			return fmt.Errorf("failed to sign record: %w", err)
 		}
 	}
 

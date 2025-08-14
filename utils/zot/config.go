@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package config
+package zot
 
 const (
 	// DefaultZotConfigPath is the default path to the zot configuration file.
@@ -53,16 +53,28 @@ type SyncConfig struct {
 	Registries      []SyncRegistryConfig `json:"registries,omitempty"`
 }
 
-type SyncExtensions struct {
-	Sync *SyncConfig `json:"sync,omitempty"`
+type TrustConfig struct {
+	Enable   bool `json:"enable,omitempty"`
+	Cosign   bool `json:"cosign,omitempty"`
+	Notation bool `json:"notation,omitempty"`
+}
+
+type SearchConfig struct {
+	Enable bool `json:"enable,omitempty"`
+}
+
+type Extensions struct {
+	Search *SearchConfig `json:"search,omitempty"`
+	Sync   *SyncConfig   `json:"sync,omitempty"`
+	Trust  *TrustConfig  `json:"trust,omitempty"`
 }
 
 type Config struct {
-	DistSpecVersion string          `json:"distSpecVersion"      mapstructure:"distSpecVersion"`
-	Storage         StorageConfig   `json:"storage"              mapstructure:"storage"`
-	HTTP            HTTPConfig      `json:"http"                 mapstructure:"http"`
-	Log             *LogConfig      `json:"log,omitempty"        mapstructure:"log"`
-	Extensions      *SyncExtensions `json:"extensions,omitempty"`
+	DistSpecVersion string        `json:"distSpecVersion"      mapstructure:"distSpecVersion"`
+	Storage         StorageConfig `json:"storage"              mapstructure:"storage"`
+	HTTP            HTTPConfig    `json:"http"                 mapstructure:"http"`
+	Log             *LogConfig    `json:"log,omitempty"        mapstructure:"log"`
+	Extensions      *Extensions   `json:"extensions,omitempty"`
 }
 
 type StorageConfig struct {

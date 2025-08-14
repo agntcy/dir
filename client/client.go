@@ -9,6 +9,7 @@ import (
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
@@ -23,6 +24,8 @@ type Client struct {
 	routingv1.RoutingServiceClient
 	searchv1.SearchServiceClient
 	storev1.SyncServiceClient
+	signv1.SignServiceClient
+	config *Config
 }
 
 type options struct {
@@ -108,5 +111,7 @@ func New(opts ...Option) (*Client, error) {
 		RoutingServiceClient: routingv1.NewRoutingServiceClient(client),
 		SearchServiceClient:  searchv1.NewSearchServiceClient(client),
 		SyncServiceClient:    storev1.NewSyncServiceClient(client),
+		SignServiceClient:    signv1.NewSignServiceClient(client),
+		config:               options.config,
 	}, nil
 }

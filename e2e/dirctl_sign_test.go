@@ -5,11 +5,10 @@ package e2e
 
 import (
 	_ "embed"
-	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
-	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/e2e/config"
 	"github.com/agntcy/dir/e2e/utils"
 	"github.com/onsi/ginkgo/v2"
@@ -62,9 +61,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 
 	// Test params
 	var (
-		paths         *testPaths
-		tempAgentCID  string
-		signatureData string
+		paths        *testPaths
+		tempAgentCID string
 	)
 
 	ginkgo.Context("signature workflow", ginkgo.Ordered, func() {
@@ -85,22 +83,16 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(paths.privateKey).To(gomega.BeAnExistingFile())
 			gomega.Expect(paths.publicKey).To(gomega.BeAnExistingFile())
 
-			// Create signature ONCE for all tests to ensure consistency
-			// (Signatures are non-deterministic, so we need the same instance for push/pull)
+			// Set cosign password for all tests
 			err = os.Setenv("COSIGN_PASSWORD", utils.TestPassword)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			signatureData = cli.Sign(paths.record, paths.privateKey).ShouldSucceed()
-
-			// Save signature for all tests
-			err = os.WriteFile(paths.signature, []byte(signatureData), 0o600)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			os.Unsetenv("COSIGN_PASSWORD")
 		})
 
 		// Cleanup: Remove temporary directory after all workflow tests
 		ginkgo.AfterAll(func() {
+			// Unset cosign password for all tests
+			os.Unsetenv("COSIGN_PASSWORD")
+
 			if paths != nil && paths.tempDir != "" {
 				err := os.RemoveAll(paths.tempDir)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -113,55 +105,23 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(paths.publicKey).To(gomega.BeAnExistingFile())
 		})
 
-		ginkgo.It("should sign a record with a key pair", func() {
-			// Signature was already created in BeforeAll, just verify it exists and is valid
-			gomega.Expect(signatureData).NotTo(gomega.BeEmpty(), "Signature should have been created in BeforeAll")
-			gomega.Expect(paths.signature).To(gomega.BeAnExistingFile(), "Signature file should exist")
-
-			// Verify the signature can be parsed as valid JSON
-			var signature signv1.Signature
-			err := json.Unmarshal([]byte(signatureData), &signature)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Signature should be valid JSON")
-			gomega.Expect(signature.GetAlgorithm()).NotTo(gomega.BeEmpty(), "Signature should have an algorithm")
-			gomega.Expect(signature.GetSignature()).NotTo(gomega.BeEmpty(), "Signature should have signature data")
-		})
-
-		ginkgo.It("should push a record to the store with a signature", func() {
-			tempAgentCID = cli.Push(paths.record).WithArgs("--signature", paths.signature).ShouldSucceed()
+		ginkgo.It("should push a record to the store", func() {
+			tempAgentCID = cli.Push(paths.record).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(tempAgentCID, paths.record)
 		})
 
-		ginkgo.It("should pull a record from the store with a signature", func() {
-			output := cli.Pull(tempAgentCID).WithArgs("--include-signature").ShouldSucceed()
+		ginkgo.It("should sign a record with a key pair", func() {
+			_ = cli.Sign(tempAgentCID, paths.privateKey).ShouldSucceed()
 
-			// Extract signature from output
-			signatureOutput := utils.ExtractSignatureFromCombinedOutput(output)
-			gomega.Expect(signatureOutput).NotTo(gomega.BeEmpty())
-
-			// Compare with expected signature
-			utils.CompareSignatures(signatureData, signatureOutput)
-
-			// Save output signature to file
-			err := os.WriteFile(paths.signatureOutput, []byte(signatureOutput), 0o600)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			time.Sleep(10 * time.Second)
 		})
 
-		ginkgo.It("should verify a signature with a public key", func() {
-			// Ensure we have a signature file
-			gomega.Expect(paths.signatureOutput).To(gomega.BeAnExistingFile(), "Signature file should exist from pull test")
-
+		ginkgo.It("should verify a signature with a public key on server side", func() {
 			cli.Command("verify").
-				WithArgs(paths.record, paths.signatureOutput, "--key", paths.publicKey).
-				ShouldContain("Record signature verified successfully!")
-		})
-
-		ginkgo.It("should clean up by deleting the record from store", func() {
-			// Delete the record to ensure clean state for subsequent test runs
-			gomega.Expect(tempAgentCID).NotTo(gomega.BeEmpty(), "Agent CID should be available for deletion")
-
-			cli.Delete(tempAgentCID).ShouldContain("Deleted")
+				WithArgs(tempAgentCID).
+				ShouldContain("Record signature is trusted!")
 		})
 	})
 })

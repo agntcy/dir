@@ -15,9 +15,9 @@ import (
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
-	zotconfig "github.com/agntcy/dir/server/sync/config/zot"
 	synctypes "github.com/agntcy/dir/server/sync/types"
 	"github.com/agntcy/dir/server/types"
+	zotconfig "github.com/agntcy/dir/utils/zot"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -238,7 +238,7 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 
 	// Initialize extensions if nil
 	if zotConfig.Extensions == nil {
-		zotConfig.Extensions = &zotconfig.SyncExtensions{}
+		zotConfig.Extensions = &zotconfig.Extensions{}
 	}
 
 	// Initialize sync config if nil

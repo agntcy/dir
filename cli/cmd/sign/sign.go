@@ -4,18 +4,17 @@
 package sign
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/cli/presenter"
-	utils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore/pkg/oauthflow"
 	"github.com/spf13/cobra"
@@ -36,50 +35,48 @@ with the default OIDC provider.
 
 Usage examples:
 
-1. Sign a record from file:
+1. Sign a record using OIDC:
 
-	dirctl sign record.json
+	dirctl sign <record-cid>
 
-2. Sign a record from standard input:
+2. Sign a record using key:
 
-	cat record.json | dirctl sign --stdin
-
+	dirctl sign <record-cid> --key <key-file>
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		var fpath string
+		var recordCID string
 		if len(args) > 1 {
-			return errors.New("only one file path is allowed")
+			return errors.New("only one record CID is allowed")
 		} else if len(args) == 1 {
-			fpath = args[0]
+			recordCID = args[0]
+		} else {
+			return errors.New("record CID is required")
 		}
 
-		// get source
-		source, err := utils.GetReader(fpath, opts.FromStdin)
-		if err != nil {
-			return fmt.Errorf("failed to get reader: %w", err)
-		}
-
-		return runCommand(cmd, source)
+		return runCommand(cmd, recordCID)
 	},
 }
 
-func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
+func runCommand(cmd *cobra.Command, recordCID string) error {
 	// Get the client from the context
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
-	// Load OASF data (supports v1, v2, v3) into a Record
-	record, err := corev1.LoadOASFFromReader(source)
+	err := Sign(cmd.Context(), c, recordCID)
 	if err != nil {
-		return fmt.Errorf("failed to load OASF: %w", err)
+		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
-	var signature *signv1.Signature
+	presenter.Print(cmd, "Record signed successfully")
 
-	//nolint:nestif,gocritic
-	if opts.Key != "" {
+	return nil
+}
+
+func Sign(ctx context.Context, c *client.Client, recordCID string) error {
+	switch {
+	case opts.Key != "":
 		// Load the key from file
 		rawKey, err := os.ReadFile(filepath.Clean(opts.Key))
 		if err != nil {
@@ -93,7 +90,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		req := &signv1.SignRequest{
-			Record: record,
+			RecordRef: &corev1.RecordRef{Cid: recordCID},
 			Provider: &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Key{
 					Key: &signv1.SignWithKey{
@@ -105,15 +102,13 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		// Sign the record using the provided key
-		response, err := c.SignWithKey(cmd.Context(), req)
+		_, err = c.SignWithKey(ctx, req)
 		if err != nil {
 			return fmt.Errorf("failed to sign record with key: %w", err)
 		}
-
-		signature = response.GetSignature()
-	} else if opts.OIDCToken != "" {
+	case opts.OIDCToken != "":
 		req := &signv1.SignRequest{
-			Record: record,
+			RecordRef: &corev1.RecordRef{Cid: recordCID},
 			Provider: &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Oidc{
 					Oidc: &signv1.SignWithOIDC{
@@ -130,13 +125,11 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		// Sign the record using the OIDC provider
-		response, err := c.SignWithOIDC(cmd.Context(), req)
+		_, err := c.SignWithOIDC(ctx, req)
 		if err != nil {
 			return fmt.Errorf("failed to sign record: %w", err)
 		}
-
-		signature = response.GetSignature()
-	} else {
+	default:
 		// Retrieve the token from the OIDC provider
 		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
 		if err != nil {
@@ -144,7 +137,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		req := &signv1.SignRequest{
-			Record: record,
+			RecordRef: &corev1.RecordRef{Cid: recordCID},
 			Provider: &signv1.SignRequestProvider{
 				Request: &signv1.SignRequestProvider_Oidc{
 					Oidc: &signv1.SignWithOIDC{
@@ -161,21 +154,11 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		// Sign the record using the OIDC provider
-		response, err := c.SignWithOIDC(cmd.Context(), req)
+		_, err = c.SignWithOIDC(ctx, req)
 		if err != nil {
 			return fmt.Errorf("failed to sign record: %w", err)
 		}
-
-		signature = response.GetSignature()
 	}
-
-	// Print signature
-	signatureJSON, err := json.MarshalIndent(signature, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal signature: %w", err)
-	}
-
-	presenter.Print(cmd, string(signatureJSON))
 
 	return nil
 }
