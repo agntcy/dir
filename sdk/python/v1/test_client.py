@@ -1,18 +1,19 @@
 import unittest
 
 import core.v1.record_pb2 as core_record_pb2
-from objects.v3 import extension_pb2, record_pb2, signature_pb2, skill_pb2, locator_pb2
+from objects.v3 import extension_pb2, locator_pb2, record_pb2, signature_pb2, skill_pb2
 from routing.v1 import record_query_pb2 as record_query_type
 from routing.v1 import routing_service_pb2 as routingv1
-from search.v1 import search_service_pb2 as searchv1
 from search.v1 import record_query_pb2 as search_query_type
+from search.v1 import search_service_pb2 as searchv1
 
 from .client import Client, Config
 
 client = Client(Config())
 
+
 def generate_records(names):
-    example_records = [];
+    example_records = []
 
     for name in names:
         example_record = core_record_pb2.Record(
@@ -45,6 +46,7 @@ def generate_records(names):
         example_records.append(example_record)
 
     return example_records
+
 
 class TestClient(unittest.TestCase):
     example_records = generate_records(["example-record", "example-record2"])
@@ -85,7 +87,9 @@ class TestClient(unittest.TestCase):
             self.assertIsInstance(metadata, core_record_pb2.RecordMeta)
 
     def test_4_publish(self):
-        publish_request = routingv1.PublishRequest(record_cid=TestClient.example_record_refs[0].cid)
+        publish_request = routingv1.PublishRequest(
+            record_cid=TestClient.example_record_refs[0].cid
+        )
 
         try:
             client.publish(publish_request)
@@ -109,14 +113,10 @@ class TestClient(unittest.TestCase):
 
     def test_6_search(self):
         search_query = search_query_type.RecordQuery(
-            type=search_query_type.RECORD_QUERY_TYPE_SKILL_ID,
-            value="1"
+            type=search_query_type.RECORD_QUERY_TYPE_SKILL_ID, value="1"
         )
 
-        search_request = searchv1.SearchRequest(
-            queries=[search_query],
-            limit=3
-        )
+        search_request = searchv1.SearchRequest(queries=[search_query], limit=3)
 
         objects = list(client.search(search_request))
 
@@ -127,7 +127,9 @@ class TestClient(unittest.TestCase):
             self.assertIsInstance(o, searchv1.SearchResponse)
 
     def test_7_unpublish(self):
-        unpublish_request = routingv1.UnpublishRequest(record_cid=TestClient.example_record_refs[0].cid)
+        unpublish_request = routingv1.UnpublishRequest(
+            record_cid=TestClient.example_record_refs[0].cid
+        )
 
         try:
             client.unpublish(unpublish_request)
@@ -139,6 +141,7 @@ class TestClient(unittest.TestCase):
             client.delete(TestClient.example_record_refs)
         except Exception as e:
             self.assertIsNone(e)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@ import routing.v1.routing_service_pb2_grpc as routing_services
 import search.v1.search_service_pb2 as search_types
 import search.v1.search_service_pb2_grpc as search_services
 import store.v1.store_service_pb2_grpc as store_services
+import store.v1.store_service_pb2 as store_types
 
 CHUNK_SIZE = 4096  # 4KB
 
@@ -190,6 +191,38 @@ class Client:
 
         return references
 
+    def push_with_options(
+            self,
+            req: [store_types.PushWithOptionsRequest],
+            metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> [store_types.PushWithOptionsResponse]:
+        """
+        Push objects to the store.
+
+        Args:
+            req: PushWithOptions requests containing the record object
+            metadata: Optional metadata for the gRPC call
+
+        Returns:
+            List of objects cid pushed to the store
+
+        Raises:
+            Exception: If push operation fails
+        """
+
+        responses = []
+
+        try:
+            response = self.store_client.PushWithOptions(iter(req), metadata=metadata)
+
+            for r in response:
+                responses.append(r)
+
+        except Exception as e:
+            raise Exception(f"Failed to push object: {e}")
+
+        return responses
+
     def pull(
         self,
         refs: [core_types.RecordRef],
@@ -221,6 +254,38 @@ class Client:
             raise Exception(f"Failed to pull object: {e}")
 
         return records
+
+    def pull_with_options(
+            self,
+            req: [store_types.PullWithOptionsRequest],
+            metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> [store_types.PullWithOptionsResponse]:
+        """
+        Pull objects from the store.
+
+        Args:
+            req: PullWithOptions requests containing the record object
+            metadata: Optional metadata for the gRPC call
+
+        Returns:
+            List of record objects from the store
+
+        Raises:
+            Exception: If push operation fails
+        """
+
+        responses = []
+
+        try:
+            response = self.store_client.PullWithOptions(iter(req), metadata=metadata)
+
+            for r in response:
+                responses.append(r)
+
+        except Exception as e:
+            raise Exception(f"Failed to push object: {e}")
+
+        return responses
 
     def lookup(
         self,
