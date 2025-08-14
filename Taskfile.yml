@@ -457,8 +457,7 @@ tasks:
       # Helm args (client)
       HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
       HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
-      HELM_CLIENT_PUSH_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-push-spire.yaml'
-      HELM_CLIENT_SEARCH_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-search-spire.yaml'
+      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-spire.yaml'
     cmds:
       # Create zot configuration using helper task
       - task: deploy:zot:config
@@ -529,28 +528,14 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-      # Deploy client (push) chart
+      # Deploy client chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dirctl-push \
+        {{ .HELM_BIN }} upgrade dirctl \
           {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_PUSH_VALUES_PATH }} \
+          -f {{ .HELM_CLIENT_VALUES_PATH }} \
           --set image.tag="{{ .IMAGE_TAG }}" \
           --set env[0].value="{{ .SPIFFE_TRUST_DOMAIN }}" \
-          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Deploy client (search) chart
-      - |
-        {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dirctl-search \
-          {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_SEARCH_VALUES_PATH }} \
-          --set image.tag="{{ .IMAGE_TAG }}" \
           --namespace {{ .HELM_CLIENT_NAMESPACE }} \
           --create-namespace \
           --install \
