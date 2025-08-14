@@ -7,18 +7,18 @@ global:
       organization: TestORG
       commonName: test.org
 
-spiffe-oidc-discovery-provider:
-  enabled: true
-  tls:
-    spire:
-      enabled: false
-  csiDriverName: csi.spiffe.io
-  ingress:
+  spiffe-oidc-discovery-provider:
     enabled: true
+    tls:
+      spire:
+        enabled: false
+    csiDriverName: csi.spiffe.io
+    ingress:
+      enabled: true
 
-spire-agent:
-  socketPath: /run/spire/sockets/spire-agent.sock
+  spire-agent:
+    socketPath: /run/spire/sockets/spire-agent.sock
 
-spiffe-csi-driver:
-  pluginName: csi.spiffe.io
-  agentSocketPath: /run/spire/sockets/spire-agent.sock
+  spiffe-csi-driver:
+    pluginName: csi.spiffe.io
+    agentSocketPath: /run/spire/sockets/spire-agent.sock
