@@ -14,9 +14,7 @@ import (
 const (
 	DefaultEnvPrefix = "DIRECTORY_CLIENT"
 
-	DefaultServerAddress   = "0.0.0.0:8888"
-	DefaultRegistryAddress = "127.0.0.1:5000"
-	DefaultRepositoryName  = "dir"
+	DefaultServerAddress = "0.0.0.0:8888"
 )
 
 var DefaultConfig = Config{
@@ -48,12 +46,6 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("spiffe_trust_domain")
 	v.SetDefault("spiffe_trust_domain", "")
-
-	_ = v.BindEnv("registry_address")
-	v.SetDefault("registry_address", DefaultRegistryAddress)
-
-	_ = v.BindEnv("repository_name")
-	v.SetDefault("repository_name", DefaultRepositoryName)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

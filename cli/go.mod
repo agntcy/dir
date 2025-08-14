@@ -16,6 +16,7 @@ require (
 	github.com/libp2p/go-libp2p v0.41.1
 	github.com/sigstore/sigstore v1.9.5
 	github.com/spf13/cobra v1.9.1
+	github.com/spf13/pflag v1.0.6
 	golang.org/x/crypto v0.40.0
 )
 
@@ -132,7 +133,6 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/spf13/viper v1.20.1 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect

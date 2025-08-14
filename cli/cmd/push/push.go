@@ -8,14 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	signv1 "github.com/agntcy/dir/api/sign/v1"
+	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	"github.com/sigstore/sigstore/pkg/oauthflow"
 	"github.com/spf13/cobra"
 )
 
@@ -75,62 +73,16 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 
 	var recordRef *corev1.RecordRef
 
-	//nolint:nestif
+	// Use the client's Push method to send the record
+	recordRef, err = c.Push(cmd.Context(), record)
+	if err != nil {
+		return fmt.Errorf("failed to push data: %w", err)
+	}
+
 	if opts.Sign {
-		var err error
-
-		if opts.Key != "" {
-			// Read the private key file content
-			var privateKeyBytes []byte
-
-			privateKeyBytes, err = os.ReadFile(opts.Key)
-			if err != nil {
-				return fmt.Errorf("failed to read private key file: %w", err)
-			}
-
-			recordRef, err = c.PushWithSigning(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
-				Request: &signv1.SignRequestProvider_Key{
-					Key: &signv1.SignWithKey{
-						PrivateKey: privateKeyBytes,
-					},
-				},
-			})
-		} else {
-			// Handle OIDC token retrieval if not provided
-			oidcToken := opts.OIDCToken
-			if oidcToken == "" {
-				// Retrieve the token from the OIDC provider
-				token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
-				if err != nil {
-					return fmt.Errorf("failed to get OIDC token: %w", err)
-				}
-
-				oidcToken = token.RawString
-			}
-
-			recordRef, err = c.PushWithSigning(cmd.Context(), record, opts.Sign, &signv1.SignRequestProvider{
-				Request: &signv1.SignRequestProvider_Oidc{
-					Oidc: &signv1.SignWithOIDC{
-						IdToken: oidcToken,
-						Options: &signv1.SignWithOIDC_SignOpts{
-							FulcioUrl:       &opts.FulcioURL,
-							RekorUrl:        &opts.RekorURL,
-							TimestampUrl:    &opts.TimestampURL,
-							OidcProviderUrl: &opts.OIDCProviderURL,
-						},
-					},
-				},
-			})
-		}
-
+		err = signcmd.Sign(cmd.Context(), c, recordRef.GetCid())
 		if err != nil {
-			return fmt.Errorf("failed to push data: %w", err)
-		}
-	} else {
-		// Use the client's Push method to send the record
-		recordRef, err = c.Push(cmd.Context(), record)
-		if err != nil {
-			return fmt.Errorf("failed to push data: %w", err)
+			return fmt.Errorf("failed to sign record: %w", err)
 		}
 	}
 

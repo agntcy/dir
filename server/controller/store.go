@@ -7,6 +7,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -220,10 +221,7 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 		case *storev1.PushReferrerRequest_Signature:
 			storeLogger.Debug("Signature referrer request received")
 
-			response, err = s.pushSignatureReferrer(stream.Context(), request)
-			if err != nil {
-				return status.Errorf(codes.Internal, "failed to push signature: %v", err)
-			}
+			response = s.pushSignatureReferrer(stream.Context(), request)
 		default:
 			storeLogger.Debug("Unknown referrer type, skipping")
 
@@ -236,26 +234,41 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 	}
 }
 
-func (s storeCtrl) pushSignatureReferrer(ctx context.Context, request *storev1.PushReferrerRequest) (*storev1.PushReferrerResponse, error) {
+func (s storeCtrl) pushSignatureReferrer(ctx context.Context, request *storev1.PushReferrerRequest) *storev1.PushReferrerResponse {
 	storeLogger.Debug("Pushing signature referrer", "cid", request.GetRecordRef().GetCid())
 
 	// Try to use signature storage if the store supports it
-	if sigStore, ok := s.store.(interface {
+	sigStore, ok := s.store.(interface {
 		PushSignature(context.Context, string, *signv1.Signature) error
-	}); ok {
-		err := sigStore.PushSignature(ctx, request.GetRecordRef().GetCid(), request.GetSignature())
-		if err != nil {
-			storeLogger.Error("Failed to store signature", "error", err, "cid", request.GetRecordRef().GetCid())
+	})
+	if !ok {
+		errMsg := "signature storage not supported by current store implementation"
 
-			return nil, status.Errorf(codes.Internal, "failed to store signature: %v", err)
+		storeLogger.Error(errMsg)
+
+		return &storev1.PushReferrerResponse{
+			Success:      false,
+			ErrorMessage: &errMsg,
 		}
-
-		storeLogger.Info("Signature stored successfully", "cid", request.GetRecordRef().GetCid())
-
-		return &storev1.PushReferrerResponse{}, nil
 	}
 
-	return nil, status.Errorf(codes.Internal, "signature storage not supported by current store implementation")
+	err := sigStore.PushSignature(ctx, request.GetRecordRef().GetCid(), request.GetSignature())
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to store signature: %v", err)
+
+		storeLogger.Error(errMsg, "cid", request.GetRecordRef().GetCid())
+
+		return &storev1.PushReferrerResponse{
+			Success:      false,
+			ErrorMessage: &errMsg,
+		}
+	}
+
+	storeLogger.Info("Signature stored successfully", "cid", request.GetRecordRef().GetCid())
+
+	return &storev1.PushReferrerResponse{
+		Success: true,
+	}
 }
 
 // PullReferrer handles retrieving referrers (like signatures) for records.

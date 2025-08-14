@@ -92,7 +92,7 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 	}
 
 	// Push signature to store
-	err = c.pushSignatureToStore(ctx, req.GetRecordRef().GetCid(), signatureObj)
+	err = c.pushSignatureReferrer(ctx, req.GetRecordRef().GetCid(), signatureObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store signature: %w", err)
 	}
@@ -143,7 +143,7 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 	}
 
 	// Push signature to store
-	err = c.pushSignatureToStore(ctx, req.GetRecordRef().GetCid(), signatureObj)
+	err = c.pushSignatureReferrer(ctx, req.GetRecordRef().GetCid(), signatureObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store signature: %w", err)
 	}
@@ -153,8 +153,8 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 	}, nil
 }
 
-// pushSignatureToStore stores a signature using the PushReferrer RPC.
-func (c *Client) pushSignatureToStore(ctx context.Context, recordCID string, signature *signv1.Signature) error {
+// pushSignatureReferrer stores a signature using the PushReferrer RPC.
+func (c *Client) pushSignatureReferrer(ctx context.Context, recordCID string, signature *signv1.Signature) error {
 	// Create streaming client
 	stream, err := c.StoreServiceClient.PushReferrer(ctx)
 	if err != nil {

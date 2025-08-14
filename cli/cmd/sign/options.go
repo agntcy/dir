@@ -6,6 +6,7 @@ package sign
 import (
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/utils/cosign"
+	"github.com/spf13/pflag"
 )
 
 var opts = &options{}
@@ -18,7 +19,10 @@ type options struct {
 func init() {
 	flags := Command.Flags()
 
-	// Signing options
+	AddSigningFlags(flags)
+}
+
+func AddSigningFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&opts.FulcioURL, "fulcio-url", cosign.DefaultFulcioURL,
 		"Sigstore Fulcio URL")
 	flags.StringVar(&opts.RekorURL, "rekor-url", cosign.DefaultRekorURL,

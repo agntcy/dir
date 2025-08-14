@@ -199,24 +199,16 @@ func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) 
 	return records, nil
 }
 
-// PushWithSigning pushes a record and optionally signs it using the separate signing flow.
-func (c *Client) PushWithSigning(ctx context.Context, record *corev1.Record, sign bool, signatureProvider *signv1.SignRequestProvider) (*corev1.RecordRef, error) {
-	// Push the record
-	recordRef, err := c.Push(ctx, record)
-	if err != nil {
-		return nil, fmt.Errorf("failed to push record: %w", err)
-	}
-
+// PushReferrer pushes a record and optionally signs it using the separate signing flow.
+func (c *Client) PushSignatureReferrer(ctx context.Context, recordRef *corev1.RecordRef, signatureProvider *signv1.SignRequestProvider) error {
 	// Sign the record if requested
-	if sign {
-		_, err := c.Sign(ctx, &signv1.SignRequest{
-			RecordRef: recordRef,
-			Provider:  signatureProvider,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to sign record: %w", err)
-		}
+	_, err := c.Sign(ctx, &signv1.SignRequest{
+		RecordRef: recordRef,
+		Provider:  signatureProvider,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
-	return recordRef, nil
+	return nil
 }
