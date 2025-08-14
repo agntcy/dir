@@ -1,0 +1,51 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Dirctl configuration for cluster2 to search cluster1's dir server
+# This demonstrates cross-cluster federation search functionality
+
+failedJobsHistoryLimit: 10
+successfulJobsHistoryLimit: 10
+concurrencyPolicy: "Forbid"
+schedule: "* * * * *"  # Run every 3 minutes, offset from push
+
+image:
+  repository: ghcr.io/agntcy/dir-ctl
+  tag: latest
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+args:
+  - "search"
+  - "--limit"
+  - "10"
+  - "--offset"
+  - "0"
+  - "--spiffe-socket-path"
+  - "unix:/run/spire/sockets/spire-agent.sock"
+  - "--server-addr"
+  - "dir-cluster1-apiserver.dir-server.svc.cluster.local:8888"  # Search cluster1
+
+# Environment variables for federation
+env:
+  - name: DIRECTORY_CLIENT_SPIFFE_TRUST_DOMAIN
+    value: "cluster1.agntcy.org"  # Target cluster's trust domain
+
+serviceAccount:
+  create: false
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  readOnlyRootFilesystem: true
+
+volumes:
+  - name: spiffe-workload-api
+    csi:
+      driver: csi.spiffe.io
+      readOnly: true
+
+volumeMounts:
+  - name: spiffe-workload-api
+    mountPath: /run/spire/sockets
+    readOnly: true
