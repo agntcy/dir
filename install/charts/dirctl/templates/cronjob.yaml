@@ -1,79 +1,101 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
+{{- range $name, $cronjob := .Values.cronjobs }}
+{{- if $cronjob.enabled }}
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "chart.fullname" . }}-job
+  name: {{ include "chart.fullname" $ }}-{{ $name }}
   labels:
-    {{- include "chart.labels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ include "chart.fullname" . }}-job
+    {{- include "chart.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ include "chart.fullname" $ }}-{{ $name }}
 spec:
-  schedule: {{ .Values.schedule | quote }}
-  successfulJobsHistoryLimit: {{ .Values.successfulJobsHistoryLimit }}
-  failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit }}
-  concurrencyPolicy: {{ .Values.concurrencyPolicy | quote }}
+  schedule: {{ $cronjob.schedule | quote }}
+  successfulJobsHistoryLimit: {{ $cronjob.successfulJobsHistoryLimit | default $.Values.global.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $cronjob.failedJobsHistoryLimit | default $.Values.global.cronjob.failedJobsHistoryLimit }}
+  concurrencyPolicy: {{ $cronjob.concurrencyPolicy | default $.Values.global.cronjob.concurrencyPolicy | quote }}
   jobTemplate:
     spec:
       template:
         metadata:
           labels:
-            {{- include "chart.selectorLabels" . | nindent 12 }}
-            app.kubernetes.io/component: {{ include "chart.fullname" . }}-job
-          {{- with .Values.podAnnotations }}
+            {{- include "chart.selectorLabels" $ | nindent 12 }}
+            app.kubernetes.io/component: {{ include "chart.fullname" $ }}-{{ $name }}
+          {{- with $.Values.podAnnotations }}
           annotations:
             {{- toYaml . | nindent 12 }}
           {{- end }}
         spec:
           restartPolicy: OnFailure
-          {{- with .Values.image.pullSecrets }}
+          {{- with $.Values.image.pullSecrets }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if .Values.serviceAccount.create }}
-          serviceAccountName: {{ include "chart.fullname" . }}
+          {{- if $.Values.serviceAccount.create }}
+          serviceAccountName: {{ include "chart.fullname" $ }}
           {{- end }}
-          {{- with .Values.podSecurityContext }}
+          {{- with $.Values.podSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           containers:
           - name: dirctl
-            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-            imagePullPolicy: {{ .Values.image.pullPolicy }}
-            {{- with .Values.securityContext }}
+            image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+            imagePullPolicy: {{ $.Values.image.pullPolicy }}
+            {{- with $.Values.securityContext }}
             securityContext:
               {{- toYaml . | nindent 14 }}
             {{- end }}
             args:
-            {{- range .Values.args }}
+            {{- range $cronjob.args }}
             - {{ . | quote }}
             {{- end }}
             env:
-            {{- with .Values.env }}
+            {{- with $.Values.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-            {{- with .Values.resources }}
+            {{- with $cronjob.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with ($cronjob.resources | default $.Values.resources) }}
             resources:
               {{- toYaml . | nindent 14 }}
             {{- end }}
-            {{- with .Values.volumeMounts }}
-            volumeMounts:
-              {{- toYaml . | nindent 14 }}
+            {{- $allVolumeMounts := list }}
+            {{- if $.Values.volumeMounts }}
+            {{- $allVolumeMounts = concat $allVolumeMounts $.Values.volumeMounts }}
             {{- end }}
-          {{- with .Values.volumes }}
-          volumes:
-            {{- toYaml . | nindent 12 }}
+            {{- if $cronjob.volumeMounts }}
+            {{- $allVolumeMounts = concat $allVolumeMounts $cronjob.volumeMounts }}
+            {{- end }}
+            {{- if $allVolumeMounts }}
+            volumeMounts:
+              {{- toYaml $allVolumeMounts | nindent 14 }}
+            {{- end }}
+          {{- $allVolumes := list }}
+          {{- if $.Values.volumes }}
+          {{- $allVolumes = concat $allVolumes $.Values.volumes }}
           {{- end }}
-          {{- with .Values.nodeSelector }}
+          {{- if $cronjob.volumes }}
+          {{- $allVolumes = concat $allVolumes $cronjob.volumes }}
+          {{- end }}
+          {{- if $allVolumes }}
+          volumes:
+            {{- toYaml $allVolumes | nindent 12 }}
+          {{- end }}
+          {{- with $.Values.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.affinity }}
+          {{- with $.Values.affinity }}
           affinity:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.tolerations }}
+          {{- with $.Values.tolerations }}
           tolerations:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+{{- end }}
+{{- end }}

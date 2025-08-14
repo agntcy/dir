@@ -28,7 +28,7 @@ cronjobs:
       - "--offset" 
       - "0"
       - "--server-addr"
-      - "dir-apiserver.default.svc.cluster.local:8888"
+      - "dir-apiserver.dir-server.svc.cluster.local:8888"
 
   # Push cronjob
   push:
@@ -38,7 +38,7 @@ cronjobs:
       - "push"
       - "/examples/record.json"
       - "--server-addr"
-      - "dir-apiserver.default.svc.cluster.local:8888"
+      - "dir-apiserver.dir-server.svc.cluster.local:8888"
     volumes:
       - name: record-json
         configMap:
@@ -108,10 +108,21 @@ resources:
     memory: 64Mi
 
 # Additional environment variables (applied to all cronjobs)
-env: []
+env:
+  - name: DIRECTORY_CLIENT_SPIFFE_TRUST_DOMAIN
+    value: "example.org"
+  - name: DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH
+    value: "unix:/run/spire/sockets/spire-agent.sock"
 
 # Default volumes (can be extended per cronjob)
-volumes: []
+volumes:
+  - name: spiffe-workload-api
+    csi:
+      driver: csi.spiffe.io
+      readOnly: true
 
 # Default volume mounts (can be extended per cronjob)
-volumeMounts: []
+volumeMounts:
+  - name: spiffe-workload-api
+    mountPath: /run/spire/sockets
+    readOnly: true
