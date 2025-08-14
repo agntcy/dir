@@ -10,7 +10,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/utils/cosign"
 )
 
@@ -92,7 +91,7 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 	}
 
 	// Push signature to store
-	err = c.pushSignatureToStore(ctx, req.GetRecordRef().GetCid(), signatureObj)
+	err = c.PushSignatureReferrer(ctx, req.GetRecordRef().GetCid(), signatureObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store signature: %w", err)
 	}
@@ -143,7 +142,7 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 	}
 
 	// Push signature to store
-	err = c.pushSignatureToStore(ctx, req.GetRecordRef().GetCid(), signatureObj)
+	err = c.PushSignatureReferrer(ctx, req.GetRecordRef().GetCid(), signatureObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store signature: %w", err)
 	}
@@ -151,41 +150,4 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 	return &signv1.SignResponse{
 		Signature: signatureObj,
 	}, nil
-}
-
-// pushSignatureToStore stores a signature using the PushReferrer RPC.
-func (c *Client) pushSignatureToStore(ctx context.Context, recordCID string, signature *signv1.Signature) error {
-	// Create streaming client
-	stream, err := c.StoreServiceClient.PushReferrer(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create push referrer stream: %w", err)
-	}
-
-	// Create the push referrer request
-	req := &storev1.PushReferrerRequest{
-		RecordRef: &corev1.RecordRef{
-			Cid: recordCID,
-		},
-		Options: &storev1.PushReferrerRequest_Signature{
-			Signature: signature,
-		},
-	}
-
-	// Send the request
-	if err := stream.Send(req); err != nil {
-		return fmt.Errorf("failed to send push referrer request: %w", err)
-	}
-
-	// Close send stream
-	if err := stream.CloseSend(); err != nil {
-		return fmt.Errorf("failed to close send stream: %w", err)
-	}
-
-	// Receive response
-	_, err = stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive push referrer response: %w", err)
-	}
-
-	return nil
 }

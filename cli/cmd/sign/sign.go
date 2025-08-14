@@ -4,6 +4,7 @@
 package sign
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/sigstore/sigstore/pkg/oauthflow"
 	"github.com/spf13/cobra"
@@ -62,8 +64,19 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	//nolint:nestif,gocritic
-	if opts.Key != "" {
+	err := Sign(cmd.Context(), c, recordCID)
+	if err != nil {
+		return fmt.Errorf("failed to sign record: %w", err)
+	}
+
+	presenter.Print(cmd, "Record signed successfully")
+
+	return nil
+}
+
+func Sign(ctx context.Context, c *client.Client, recordCID string) error {
+	switch {
+	case opts.Key != "":
 		// Load the key from file
 		rawKey, err := os.ReadFile(filepath.Clean(opts.Key))
 		if err != nil {
@@ -89,11 +102,11 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		}
 
 		// Sign the record using the provided key
-		_, err = c.SignWithKey(cmd.Context(), req)
+		_, err = c.SignWithKey(ctx, req)
 		if err != nil {
 			return fmt.Errorf("failed to sign record with key: %w", err)
 		}
-	} else if opts.OIDCToken != "" {
+	case opts.OIDCToken != "":
 		req := &signv1.SignRequest{
 			RecordRef: &corev1.RecordRef{Cid: recordCID},
 			Provider: &signv1.SignRequestProvider{
@@ -112,11 +125,11 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		}
 
 		// Sign the record using the OIDC provider
-		_, err := c.SignWithOIDC(cmd.Context(), req)
+		_, err := c.SignWithOIDC(ctx, req)
 		if err != nil {
 			return fmt.Errorf("failed to sign record: %w", err)
 		}
-	} else {
+	default:
 		// Retrieve the token from the OIDC provider
 		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
 		if err != nil {
@@ -141,13 +154,11 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		}
 
 		// Sign the record using the OIDC provider
-		_, err = c.SignWithOIDC(cmd.Context(), req)
+		_, err = c.SignWithOIDC(ctx, req)
 		if err != nil {
 			return fmt.Errorf("failed to sign record: %w", err)
 		}
 	}
-
-	presenter.Print(cmd, "Record signed successfully")
 
 	return nil
 }

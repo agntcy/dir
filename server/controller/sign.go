@@ -50,34 +50,35 @@ func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*sign
 	}
 
 	// Server-side verification is enabled by zot verification.
-	return s.verifyWithZot(ctx, req.GetRecordRef().GetCid())
+	return s.verify(ctx, req.GetRecordRef().GetCid())
 }
 
-// verifyWithZot attempts zot verification if the store supports it.
-func (s *signCtrl) verifyWithZot(ctx context.Context, recordCID string) (*signv1.VerifyResponse, error) {
-	// Try zot verification if the store supports it
-	if zotStore, ok := s.store.(interface {
+// verify attempts zot verification if the store supports it.
+func (s *signCtrl) verify(ctx context.Context, recordCID string) (*signv1.VerifyResponse, error) {
+	// Check if the store supports zot verification
+	zotStore, ok := s.store.(interface {
 		VerifyWithZot(ctx context.Context, recordCID string) (bool, error)
-	}); ok {
-		signLogger.Debug("Attempting zot verification", "recordCID", recordCID)
-
-		verified, err := zotStore.VerifyWithZot(ctx, recordCID)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "zot verification failed: %v", err)
-		}
-
-		signLogger.Debug("Zot verification completed", "recordCID", recordCID, "verified", verified)
-
-		var errMsg string
-		if !verified {
-			errMsg = "Signature verification failed"
-		}
-
-		return &signv1.VerifyResponse{
-			Success:      verified,
-			ErrorMessage: &errMsg,
-		}, nil
+	})
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "zot verification not available in this store configuration") //nolint:wrapcheck
 	}
 
-	return nil, status.Error(codes.Unimplemented, "zot verification not available in this store configuration") //nolint:wrapcheck
+	signLogger.Debug("Attempting zot verification", "recordCID", recordCID)
+
+	verified, err := zotStore.VerifyWithZot(ctx, recordCID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "zot verification failed: %v", err)
+	}
+
+	signLogger.Debug("Zot verification completed", "recordCID", recordCID, "verified", verified)
+
+	var errMsg string
+	if !verified {
+		errMsg = "Signature verification failed"
+	}
+
+	return &signv1.VerifyResponse{
+		Success:      verified,
+		ErrorMessage: &errMsg,
+	}, nil
 }

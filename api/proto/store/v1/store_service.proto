@@ -58,6 +58,11 @@ message PushReferrerRequest {
 
 // PushReferrerResponse
 message PushReferrerResponse {
+  // The push process result
+  bool success = 1;
+  
+  // Optional error message if push failed
+  optional string error_message = 2;
 }
 
 // PullReferrerRequest represents a record with optional OCI artifacts for pull operations.

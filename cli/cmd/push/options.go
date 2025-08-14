@@ -4,8 +4,8 @@
 package push
 
 import (
+	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/client"
-	"github.com/agntcy/dir/utils/cosign"
 )
 
 var opts = &options{}
@@ -28,19 +28,5 @@ func init() {
 		"Sign the record with the specified signing options.",
 	)
 
-	// Signing options
-	flags.StringVar(&opts.FulcioURL, "fulcio-url", cosign.DefaultFulcioURL,
-		"Sigstore Fulcio URL")
-	flags.StringVar(&opts.RekorURL, "rekor-url", cosign.DefaultRekorURL,
-		"Sigstore Rekor URL")
-	flags.StringVar(&opts.TimestampURL, "timestamp-url", cosign.DefaultTimestampURL,
-		"Sigstore Timestamp URL")
-	flags.StringVar(&opts.OIDCProviderURL, "oidc-provider-url", cosign.DefaultOIDCProviderURL,
-		"OIDC Provider URL")
-	flags.StringVar(&opts.OIDCClientID, "oidc-client-id", cosign.DefaultOIDCClientID,
-		"OIDC Client ID")
-	flags.StringVar(&opts.OIDCToken, "oidc-token", "",
-		"OIDC Token for non-interactive signing. ")
-	flags.StringVar(&opts.Key, "key", "",
-		"Path to the private key file to use for signing (e.g., a Cosign key generated with a GitHub token). Use this option to sign with a self-managed keypair instead of OIDC identity-based signing.")
+	signcmd.AddSigningFlags(flags)
 }

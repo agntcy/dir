@@ -47,8 +47,7 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Verify with Zot
-	response, err := c.VerifyWithZot(cmd.Context(), &signv1.VerifyRequest{
+	response, err := c.Verify(cmd.Context(), &signv1.VerifyRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordRef,
 		},

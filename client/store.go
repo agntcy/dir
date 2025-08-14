@@ -9,6 +9,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
 // Push sends a complete record to the store and returns a record reference.
@@ -199,24 +200,39 @@ func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) 
 	return records, nil
 }
 
-// PushWithSigning pushes a record and optionally signs it using the separate signing flow.
-func (c *Client) PushWithSigning(ctx context.Context, record *corev1.Record, sign bool, signatureProvider *signv1.SignRequestProvider) (*corev1.RecordRef, error) {
-	// Push the record
-	recordRef, err := c.Push(ctx, record)
+// PushSignatureReferrer stores a signature using the PushReferrer RPC.
+func (c *Client) PushSignatureReferrer(ctx context.Context, recordCID string, signature *signv1.Signature) error {
+	// Create streaming client
+	stream, err := c.StoreServiceClient.PushReferrer(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push record: %w", err)
+		return fmt.Errorf("failed to create push referrer stream: %w", err)
 	}
 
-	// Sign the record if requested
-	if sign {
-		_, err := c.Sign(ctx, &signv1.SignRequest{
-			RecordRef: recordRef,
-			Provider:  signatureProvider,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to sign record: %w", err)
-		}
+	// Create the push referrer request
+	req := &storev1.PushReferrerRequest{
+		RecordRef: &corev1.RecordRef{
+			Cid: recordCID,
+		},
+		Options: &storev1.PushReferrerRequest_Signature{
+			Signature: signature,
+		},
 	}
 
-	return recordRef, nil
+	// Send the request
+	if err := stream.Send(req); err != nil {
+		return fmt.Errorf("failed to send push referrer request: %w", err)
+	}
+
+	// Close send stream
+	if err := stream.CloseSend(); err != nil {
+		return fmt.Errorf("failed to close send stream: %w", err)
+	}
+
+	// Receive response
+	_, err = stream.Recv()
+	if err != nil {
+		return fmt.Errorf("failed to receive push referrer response: %w", err)
+	}
+
+	return nil
 }
