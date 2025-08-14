@@ -490,27 +490,27 @@ tasks:
       # Create SPIFFE workload API for services
       - |
         # Create SPIFFE ID for the SPIRE server
-        kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
+        kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
+          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
           -selector k8s_psat:cluster:{{.KIND_CLUSTER_NAME}} \
-          -selector k8s_psat:agent_ns:{{ .SPIFFE_NAMESPACE }} \
+          -selector k8s_psat:agent_ns:spire \
           -selector k8s_psat:agent_sa:spire-agent \
           -node
 
         # Create SPIFFE ID for the default service account in server namespace
-        kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
+        kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
           -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{.HELM_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
+          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
           -selector k8s:ns:{{.HELM_NAMESPACE}} \
           -selector k8s:sa:default
 
         # Create SPIFFE ID for the default service account in client namespace
-        kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
+        kubectl exec -n spire spire-server-0 -- \
           /opt/spire/bin/spire-server entry create \
           -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
+          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
           -selector k8s:ns:{{.HELM_CLIENT_NAMESPACE}} \
           -selector k8s:sa:default
 
@@ -557,299 +557,6 @@ tasks:
           --wait \
           --wait-for-jobs \
           --timeout "15m"
-
-  deploy:kubernetes:spire:federation:setup-clusters:
-    internal: true
-    desc: Create two kind clusters for SPIRE federation testing
-    deps:
-      - deps:helm
-      - deps:kubectl
-      - deps:kind
-    vars:
-      CLUSTER1_NAME: '{{ .CLUSTER1_NAME | default "federation-cluster1" }}'
-      CLUSTER2_NAME: '{{ .CLUSTER2_NAME | default "federation-cluster2" }}'
-      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
-    cmds:
-      # Create first cluster
-      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .CLUSTER1_NAME }}'
-      - '{{ .KIND_BIN }} export kubeconfig --name {{ .CLUSTER1_NAME }} --kubeconfig /tmp/kubeconfig-{{ .CLUSTER1_NAME }}'
-
-      # Create second cluster
-      - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .CLUSTER2_NAME }}'
-      - '{{ .KIND_BIN }} export kubeconfig --name {{ .CLUSTER2_NAME }} --kubeconfig /tmp/kubeconfig-{{ .CLUSTER2_NAME }}'
-
-      # Check cluster status
-      - 'KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} {{ .KUBECTL_BIN }} cluster-info'
-      - 'KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} {{ .KUBECTL_BIN }} cluster-info'
-
-      # Import images to both clusters
-      - |
-        images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-        echo "$images" | while read image; do
-          {{ .KIND_BIN }} load docker-image $image --name {{ .CLUSTER1_NAME }}
-          {{ .KIND_BIN }} load docker-image $image --name {{ .CLUSTER2_NAME }}
-        done
-
-  deploy:kubernetes:spire:federation:
-    aliases: [deploy:spire:federation]
-    desc: Deploy SPIRE federation between two clusters with configurable dirctl testing
-    deps:
-      - deploy:kubernetes:spire:federation:setup-clusters
-    vars:
-      # Cluster names
-      CLUSTER1_NAME: '{{ .CLUSTER1_NAME | default "federation-cluster1" }}'
-      CLUSTER2_NAME: '{{ .CLUSTER2_NAME | default "federation-cluster2" }}'
-      # SPIRE Config
-      SPIFFE_NAMESPACE: '{{ .SPIFFE_NAMESPACE | default "spire" }}'
-      SPIFFE_CLUSTER1_VALUES_PATH: '{{ .SPIFFE_CLUSTER1_VALUES_PATH | default (print .ROOT_DIR "/install/charts/spire/values-federation-cluster1.yaml") }}'
-      SPIFFE_CLUSTER2_VALUES_PATH: '{{ .SPIFFE_CLUSTER2_VALUES_PATH | default (print .ROOT_DIR "/install/charts/spire/values-federation-cluster2.yaml") }}'
-      TRUST_DOMAIN_1: '{{ .TRUST_DOMAIN_1 | default "cluster1.agntcy.org" }}'
-      TRUST_DOMAIN_2: '{{ .TRUST_DOMAIN_2 | default "cluster2.agntcy.org" }}'
-      # Helm args (server)
-      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
-      HELM_CHART_PATH: '{{ .HELM_CHART_PATH | default (print .ROOT_DIR "/install/charts/dir") }}'
-      HELM_VALUES_PATH: '{{ .HELM_VALUES_PATH | default (print .ROOT_DIR "/install/charts/dir/values-spire.yaml") }}'
-      # Helm args (dirctl)
-      HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "federation-test" }}'
-      HELM_CLIENT_CHART_PATH: '{{ .HELM_CLIENT_CHART_PATH | default (print .ROOT_DIR "/install/charts/dirctl") }}'
-      HELM_CLIENT_CLUSTER1_PUSH_VALUES_PATH: '{{ .HELM_CLIENT_CLUSTER1_PUSH_VALUES_PATH | default (print .ROOT_DIR "/install/charts/dirctl/values-federation-cluster1-push.yaml") }}'
-      HELM_CLIENT_CLUSTER1_SEARCH_VALUES_PATH: '{{ .HELM_CLIENT_CLUSTER1_SEARCH_VALUES_PATH | default (print .ROOT_DIR "/install/charts/dirctl/values-federation-cluster1-search.yaml") }}'
-      HELM_CLIENT_CLUSTER2_PUSH_VALUES_PATH: '{{ .HELM_CLIENT_CLUSTER2_PUSH_VALUES_PATH | default (print .ROOT_DIR "/install/charts/dirctl/values-federation-cluster2-push.yaml") }}'
-      HELM_CLIENT_CLUSTER2_SEARCH_VALUES_PATH: '{{ .HELM_CLIENT_CLUSTER2_SEARCH_VALUES_PATH | default (print .ROOT_DIR "/install/charts/dirctl/values-federation-cluster2-search.yaml") }}'
-    cmds:
-      # Create zot configuration for both clusters
-      - task: deploy:zot:config
-        vars:
-          ZOT_CONFIG_DIR: /opt/zot-config-cluster1
-          KUBECONFIG_PATH: /tmp/kubeconfig-{{ .CLUSTER1_NAME }}
-      - task: deploy:zot:config
-        vars:
-          ZOT_CONFIG_DIR: /opt/zot-config-cluster2
-          KUBECONFIG_PATH: /tmp/kubeconfig-{{ .CLUSTER2_NAME }}
-
-      # Deploy SPIRE CRDs to both clusters
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} helm upgrade --install spire-crds spire-crds \
-          --repo https://spiffe.github.io/helm-charts-hardened/ \
-          --create-namespace -n {{.SPIFFE_NAMESPACE}} \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} helm upgrade --install spire-crds spire-crds \
-          --repo https://spiffe.github.io/helm-charts-hardened/ \
-          --create-namespace -n {{.SPIFFE_NAMESPACE}} \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Deploy SPIRE to cluster 1
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} helm upgrade --install spire spire \
-          --repo https://spiffe.github.io/helm-charts-hardened/ \
-          --values {{ .SPIFFE_CLUSTER1_VALUES_PATH }} \
-          --set global.spire.trustDomain="{{ .TRUST_DOMAIN_1 }}" \
-          --set global.spire.caSubject.commonName="{{ .TRUST_DOMAIN_1 }}" \
-          --set global.spire.clusterName="{{ .CLUSTER1_NAME }}" \
-          --namespace {{ .SPIFFE_NAMESPACE }} \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Deploy SPIRE to cluster 2
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} helm upgrade --install spire spire \
-          --repo https://spiffe.github.io/helm-charts-hardened/ \
-          --values {{ .SPIFFE_CLUSTER2_VALUES_PATH }} \
-          --set global.spire.trustDomain="{{ .TRUST_DOMAIN_2 }}" \
-          --set global.spire.caSubject.commonName="{{ .TRUST_DOMAIN_2 }}" \
-          --set global.spire.clusterName="{{ .CLUSTER2_NAME }}" \
-          --namespace {{ .SPIFFE_NAMESPACE }} \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Create SPIFFE workload API entries for cluster 1
-      - |
-        # Create SPIFFE ID for the SPIRE server
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.TRUST_DOMAIN_1}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
-          -selector k8s_psat:cluster:{{.CLUSTER1_NAME}} \
-          -selector k8s_psat:agent_ns:{{ .SPIFFE_NAMESPACE }} \
-          -selector k8s_psat:agent_sa:spire-agent \
-          -node
-
-        # Create SPIFFE ID for the default service account in server namespace
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.TRUST_DOMAIN_1}}/ns/{{.HELM_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.TRUST_DOMAIN_1}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
-          -selector k8s:ns:{{.HELM_NAMESPACE}} \
-          -selector k8s:sa:default
-
-      # Create SPIFFE workload API entries for cluster 2
-      - |
-        # Create SPIFFE ID for the SPIRE server
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.TRUST_DOMAIN_2}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
-          -selector k8s_psat:cluster:{{.CLUSTER2_NAME}} \
-          -selector k8s_psat:agent_ns:{{ .SPIFFE_NAMESPACE }} \
-          -selector k8s_psat:agent_sa:spire-agent \
-          -node
-
-        # Create SPIFFE ID for the default service account in server namespace
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.TRUST_DOMAIN_2}}/ns/{{.HELM_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.TRUST_DOMAIN_2}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
-          -selector k8s:ns:{{.HELM_NAMESPACE}} \
-          -selector k8s:sa:default
-
-      # Create additional SPIFFE entries for the dirctl jobs in client namespace
-      - |
-        # Create SPIFFE ID for client namespace in cluster1
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.TRUST_DOMAIN_1}}/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.TRUST_DOMAIN_1}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
-          -selector k8s:ns:{{.HELM_CLIENT_NAMESPACE}} \
-          -selector k8s:sa:default
-
-        # Create SPIFFE ID for client namespace in cluster2
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.TRUST_DOMAIN_2}}/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.TRUST_DOMAIN_2}}/ns/{{ .SPIFFE_NAMESPACE }}/sa/spire-agent \
-          -selector k8s:ns:{{.HELM_CLIENT_NAMESPACE}} \
-          -selector k8s:sa:default
-
-      # Set up federation relationship between clusters
-      - |
-        # Extract and exchange trust bundles
-        echo "Setting up federation relationship between clusters..."
-        
-        # Get cluster1 trust bundle
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server bundle show -format spiffe > /tmp/cluster1-bundle.json
-
-        # Get cluster2 trust bundle  
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server bundle show -format spiffe > /tmp/cluster2-bundle.json
-
-        # Set cluster2 bundle in cluster1
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server bundle set -format spiffe -id {{ .TRUST_DOMAIN_2 }} < /tmp/cluster2-bundle.json
-
-        # Set cluster1 bundle in cluster2
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} kubectl exec -n {{ .SPIFFE_NAMESPACE }} spire-server-0 -- \
-          /opt/spire/bin/spire-server bundle set -format spiffe -id {{ .TRUST_DOMAIN_1 }} < /tmp/cluster1-bundle.json
-
-      # Deploy server chart to cluster 1
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} {{ .HELM_BIN }} upgrade dir-cluster1 \
-          {{ .HELM_CHART_PATH }} \
-          -f {{ .HELM_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
-          --set apiserver.config.authz.trust_domain="{{ .TRUST_DOMAIN_1 }}" \
-          --namespace {{ .HELM_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Deploy server chart to cluster 2
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} {{ .HELM_BIN }} upgrade dir-cluster2 \
-          {{ .HELM_CHART_PATH }} \
-          -f {{ .HELM_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
-          --set apiserver.config.authz.trust_domain="{{ .TRUST_DOMAIN_2 }}" \
-          --namespace {{ .HELM_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Deploy dirctl charts for cross-cluster federation testing
-      # Cluster1 -> Cluster2 (push)
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} {{ .HELM_BIN }} upgrade dirctl-federation-push \
-          {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_CLUSTER1_PUSH_VALUES_PATH }} \
-          --set image.tag="{{ .IMAGE_TAG }}" \
-          --set env[0].value="{{ .TRUST_DOMAIN_2 }}" \
-          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --timeout "15m"
-
-      # Cluster1 -> Cluster2 (search)
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER1_NAME }} {{ .HELM_BIN }} upgrade dirctl-federation-search \
-          {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_CLUSTER1_SEARCH_VALUES_PATH }} \
-          --set image.tag="{{ .IMAGE_TAG }}" \
-          --set env[0].value="{{ .TRUST_DOMAIN_2 }}" \
-          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --timeout "15m"
-
-      # Cluster2 -> Cluster1 (push)
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} {{ .HELM_BIN }} upgrade dirctl-federation-push \
-          {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_CLUSTER2_PUSH_VALUES_PATH }} \
-          --set image.tag="{{ .IMAGE_TAG }}" \
-          --set env[0].value="{{ .TRUST_DOMAIN_1 }}" \
-          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --timeout "15m"
-
-      # Cluster2 -> Cluster1 (search)
-      - |
-        KUBECONFIG=/tmp/kubeconfig-{{ .CLUSTER2_NAME }} {{ .HELM_BIN }} upgrade dirctl-federation-search \
-          {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_CLUSTER2_SEARCH_VALUES_PATH }} \
-          --set image.tag="{{ .IMAGE_TAG }}" \
-          --set env[0].value="{{ .TRUST_DOMAIN_1 }}" \
-          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --timeout "15m"
-
-  deploy:kubernetes:spire:federation:cleanup:
-    aliases: [deploy:spire:federation:cleanup]
-    desc: Cleanup Kubernetes environment for SPIRE federation deployment
-    deps:
-      - deps:kind
-    vars:
-      CLUSTER1_NAME: '{{ .CLUSTER1_NAME | default "federation-cluster1" }}'
-      CLUSTER2_NAME: '{{ .CLUSTER2_NAME | default "federation-cluster2" }}'
-    cmds:
-      - '{{ .KIND_BIN }} delete cluster --name {{ .CLUSTER1_NAME }}'
-      - '{{ .KIND_BIN }} delete cluster --name {{ .CLUSTER2_NAME }}'
-      - rm -f /tmp/kubeconfig-{{ .CLUSTER1_NAME }}
-      - rm -f /tmp/kubeconfig-{{ .CLUSTER2_NAME }}
-      - rm -f /tmp/cluster1-bundle.json
-      - rm -f /tmp/cluster2-bundle.json
 
   deploy:kubernetes:local:port-forward:
     aliases: [deploy:local:port-forward]
@@ -1004,15 +711,13 @@ tasks:
 
   deploy:zot:config:
     internal: true
-    desc: Create zot configuration directory and file (supports custom kubeconfig via KUBECONFIG_PATH)
+    desc: Create zot configuration directory and file
     vars:
       ZOT_CONFIG_DIR: '{{ .ZOT_CONFIG_DIR | default "/opt/zot-config" }}'
-      KUBECONFIG_PATH: '{{ .KUBECONFIG_PATH | default "" }}'
-      KUBECTL_CMD: '{{ if .KUBECONFIG_PATH }}KUBECONFIG={{ .KUBECONFIG_PATH }} {{ .KUBECTL_BIN }}{{ else }}{{ .KUBECTL_BIN }}{{ end }}'
     cmds:
       # Create host directory for zot configuration hot reload
       - |
-        if ! {{ .KUBECTL_CMD }} get nodes -o jsonpath='{.items[0].metadata.name}' | xargs -I {} \
+        if ! {{ .KUBECTL_BIN }} get nodes -o jsonpath='{.items[0].metadata.name}' | xargs -I {} \
         docker exec {} mkdir -p {{ .ZOT_CONFIG_DIR }}; then
           echo "Failed to create zot config directory: {{ .ZOT_CONFIG_DIR }}"
           exit 1
@@ -1020,7 +725,7 @@ tasks:
 
       # Create zot configuration file with proper permissions
       - |
-        if ! {{ .KUBECTL_CMD }} get nodes -o jsonpath='{.items[0].metadata.name}' | xargs -I {} \
+        if ! {{ .KUBECTL_BIN }} get nodes -o jsonpath='{.items[0].metadata.name}' | xargs -I {} \
         docker exec {} sh -c 'cat > {{ .ZOT_CONFIG_DIR }}/config.json << "EOF"
         {
           "distSpecVersion": "1.1.1",
