@@ -6,6 +6,8 @@ from routing.v1 import record_query_pb2 as record_query_type
 from routing.v1 import routing_service_pb2 as routingv1
 from search.v1 import record_query_pb2 as search_query_type
 from search.v1 import search_service_pb2 as searchv1
+from store.v1 import store_service_pb2 as store_types
+from sign.v1 import sign_service_pb2 as sign_types
 
 from .client import Client, Config
 
@@ -139,9 +141,44 @@ class TestClient(unittest.TestCase):
     def test_8_delete(self):
         try:
             client.delete(TestClient.example_record_refs)
+            TestClient.example_record_refs.clear()
         except Exception as e:
             self.assertIsNone(e)
 
+    def test_9a_push_with_options(self):
+        try:
+            example_signature = sign_types.Signature()
+            option = store_types.PushOptions(signature=example_signature)
+            request = [store_types.PushWithOptionsRequest(record=TestClient.example_records[0], options=option),
+                       store_types.PushWithOptionsRequest(record=TestClient.example_records[1], options=option)]
+
+            response = client.push_with_options(req=request)
+
+            self.assertIsNotNone(response)
+            self.assertEqual(len(response), 2)
+
+            for r in response:
+                self.assertIsInstance(r, store_types.PushWithOptionsResponse)
+                TestClient.example_record_refs.append(r.record_ref)
+
+        except Exception as e:
+            self.assertIsNone(e)
+
+    def test_9b_pull_with_options(self):
+        try:
+            option = store_types.PullOptions(include_signature=True)
+            request = [store_types.PullWithOptionsRequest(record_ref=TestClient.example_record_refs[0], options=option),
+                       store_types.PullWithOptionsRequest(record_ref=TestClient.example_record_refs[1], options=option)]
+
+            response = client.pull_with_options(req=request)
+
+            self.assertIsNotNone(response)
+            self.assertEqual(len(response), 2)
+
+            for r in response:
+                self.assertIsInstance(r, store_types.PullWithOptionsResponse)
+        except Exception as e:
+            self.assertIsNone(e)
 
 if __name__ == "__main__":
     unittest.main()
