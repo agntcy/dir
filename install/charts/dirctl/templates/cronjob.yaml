@@ -53,6 +53,12 @@ spec:
             - {{ . | quote }}
             {{- end }}
             env:
+            {{- if eq $.Values.spire.enabled true }}
+            - name: DIRECTORY_CLIENT_SPIFFE_TRUST_DOMAIN
+              value: {{ $.Values.spire.trustDomain }}
+            - name: DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH
+              value: unix:/run/spire/agent-sockets/api.sock
+            {{- end }}
             {{- with $.Values.env }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -63,28 +69,39 @@ spec:
             resources:
               {{- toYaml . | nindent 14 }}
             {{- end }}
-            {{- $allVolumeMounts := list }}
-            {{- if $.Values.volumeMounts }}
-            {{- $allVolumeMounts = concat $allVolumeMounts $.Values.volumeMounts }}
-            {{- end }}
-            {{- if $cronjob.volumeMounts }}
-            {{- $allVolumeMounts = concat $allVolumeMounts $cronjob.volumeMounts }}
-            {{- end }}
-            {{- if $allVolumeMounts }}
             volumeMounts:
+              {{- if eq $.Values.spire.enabled true }}
+              - name: spire-agent-socket
+                mountPath: /run/spire/agent-sockets
+                readOnly: false 
+              {{- end }}
+              {{- $allVolumeMounts := list }}
+              {{- if $.Values.volumeMounts }}
+              {{- $allVolumeMounts = concat $allVolumeMounts $.Values.volumeMounts }}
+              {{- end }}
+              {{- if $cronjob.volumeMounts }}
+              {{- $allVolumeMounts = concat $allVolumeMounts $cronjob.volumeMounts }}
+              {{- end }}
+              {{- if $allVolumeMounts }}
               {{- toYaml $allVolumeMounts | nindent 14 }}
-            {{- end }}
-          {{- $allVolumes := list }}
-          {{- if $.Values.volumes }}
-          {{- $allVolumes = concat $allVolumes $.Values.volumes }}
-          {{- end }}
-          {{- if $cronjob.volumes }}
-          {{- $allVolumes = concat $allVolumes $cronjob.volumes }}
-          {{- end }}
-          {{- if $allVolumes }}
+              {{- end }}
           volumes:
+            {{- if eq $.Values.spire.enabled true }}
+            - name: spire-agent-socket
+              hostPath:
+                path: /run/spire/agent-sockets
+                type: Directory
+            {{- end }}
+            {{- $allVolumes := list }}
+            {{- if $.Values.volumes }}
+            {{- $allVolumes = concat $allVolumes $.Values.volumes }}
+            {{- end }}
+            {{- if $cronjob.volumes }}
+            {{- $allVolumes = concat $allVolumes $cronjob.volumes }}
+            {{- end }}
+            {{- if $allVolumes }}
             {{- toYaml $allVolumes | nindent 12 }}
-          {{- end }}
+            {{- end }}
           {{- with $.Values.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}

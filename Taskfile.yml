@@ -426,7 +426,7 @@ tasks:
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # SPIRE Config
       SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE | default "spire" }}'
-      SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN | default "example-abc.org" }}'
+      SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN | default "example.org" }}'
       # Helm args (server)
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
@@ -434,7 +434,7 @@ tasks:
       # Helm args (client)
       HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
       HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
-      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-spire.yaml'
+      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values.yaml'
     cmds:
       # Create zot configuration using helper task
       - task: deploy:zot:config
@@ -453,6 +453,7 @@ tasks:
 
         helm upgrade --install spire spire \
           --repo https://spiffe.github.io/helm-charts-hardened/ \
+          --set global.spire.trustDomain="{{ .SPIRE_TRUST_DOMAIN }}" \
           --namespace {{ .SPIRE_NAMESPACE }} \
           --install \
           --wait \
@@ -475,20 +476,21 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-      # # Deploy client chart
-      # - |
-      #   {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-      #   {{ .HELM_BIN }} upgrade dirctl \
-      #     {{ .HELM_CLIENT_CHART_PATH }} \
-      #     -f {{ .HELM_CLIENT_VALUES_PATH }} \
-      #     --set image.tag="{{ .IMAGE_TAG }}" \
-      #     --set env[0].value="{{ .SPIRE_TRUST_DOMAIN }}" \
-      #     --namespace {{ .HELM_CLIENT_NAMESPACE }} \
-      #     --create-namespace \
-      #     --install \
-      #     --wait \
-      #     --wait-for-jobs \
-      #     --timeout "15m"
+      # Deploy client chart
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
+        {{ .HELM_BIN }} upgrade dirctl \
+          {{ .HELM_CLIENT_CHART_PATH }} \
+          -f {{ .HELM_CLIENT_VALUES_PATH }} \
+          --set image.tag="{{ .IMAGE_TAG }}" \
+          --set spire.enabled="true" \
+          --set spire.trustDomain="{{ .SPIRE_TRUST_DOMAIN }}" \
+          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
 
   deploy:kubernetes:local:port-forward:
     aliases: [deploy:local:port-forward]
