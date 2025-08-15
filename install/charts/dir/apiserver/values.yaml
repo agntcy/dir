@@ -156,5 +156,3 @@ revisionHistoryLimit: 2
 spire:
   enabled: false
   trustDomain: example.org
-  federatesWith:
-    - example2.org

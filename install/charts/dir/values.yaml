@@ -59,9 +59,6 @@ apiserver:
   spire:
     enabled: false
     trustDomain: example.org
-    federatesWith:
-      - example2.org
-      - example3.org
 
   # Extra volume mounts for the apiserver container
   extraVolumeMounts: 
