@@ -23,10 +23,6 @@ cronjobs:
     schedule: "* * * * *"
     args:
       - "search"
-      - "--limit"
-      - "10"
-      - "--offset" 
-      - "0"
       - "--server-addr"
       - "dir-apiserver.dir-server.svc.cluster.local:8888"
 
@@ -56,8 +52,6 @@ cronjobs:
 spire:
   enabled: false
   trustDomain: example.org
-  federatesWith:
-    - example2.org
 
 # Config maps config (shared across all cronjobs)
 configMaps:

@@ -508,7 +508,7 @@ tasks:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # SPIRE Config
-      SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE }}'
+      SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE | default "spire" }}'
       SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN | default "example.org" }}'
       # Helm args (client)
       HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
