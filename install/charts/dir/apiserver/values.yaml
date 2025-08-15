@@ -155,4 +155,6 @@ revisionHistoryLimit: 2
 # SPIRE configuration
 spire:
   enabled: false
-  trustDomain: "example.org"
+  trustDomain: example.org
+  federatesWith:
+    - example2.org
