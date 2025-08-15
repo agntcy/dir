@@ -87,8 +87,6 @@ func (h *handler) handleAnnounce(_ context.Context, key []byte, prov peer.AddrIn
 		return nil
 	}
 
-	handlerLogger.Info("Announcement event for object", "ref", ref, "provider", prov, "host", h.hostID)
-
 	// notify the channel
 	h.notifyCh <- &handlerSync{
 		Ref:  ref,

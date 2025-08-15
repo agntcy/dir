@@ -1,0 +1,21 @@
+{{- if eq .Values.spire.enabled true }}
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: {{ include "chart.fullname" . }}
+spec:
+  className: spire-server-spire
+  fallback: false
+  hint: default
+  podSelector:
+    matchExpressions:
+    - key: app.kubernetes.io/name
+      operator: In
+      values:
+      - {{ include "chart.name" . }}
+  workloadSelectorTemplates:
+    - k8s:pod-image:{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+    - k8s:sa:{{ include "chart.serviceAccountName" . }}
+  spiffeIDTemplate: {{ "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}" }}
+  autoPopulateDNSNames: true
+{{- end }}
