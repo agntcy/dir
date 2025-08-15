@@ -31,4 +31,5 @@ ignored = [
   "github.com/xeipuuv/gojsonreference", # Apache License 2.0 https://github.com/xeipuuv/gojsonreference/blob/master/LICENSE-APACHE-2.0.txt
   "github.com/xeipuuv/gojsonschema", # Apache License 2.0 https://github.com/xeipuuv/gojsonschema/blob/master/LICENSE-APACHE-2.0.txt
   "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go", # Apache License 2.0 https://github.com/agntcy/oasf-sdk/blob/main/LICENSE.md
+  "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go", # Generated protobuf code, no license file
 ]

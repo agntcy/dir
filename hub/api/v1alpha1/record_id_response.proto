@@ -2,9 +2,11 @@ syntax = "proto3";
 
 package saas.v1alpha1;
 
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
 import "saas/v1alpha1/repo_version_id.proto";
 
-message AgentIdentifierResponse {
+message RecordIdentifierResponse {
   RepoVersionId repo_version_id = 2;
   string digest = 3;
 }
