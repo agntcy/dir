@@ -413,7 +413,7 @@ tasks:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # Helm args
-      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
     cmds:
@@ -548,7 +548,7 @@ tasks:
     desc: Set up port-forwarding for the local deployment
     vars:
       # Helm args
-      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "default" }}'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
     cmds:
       # Port-forward dependency services
       - |
