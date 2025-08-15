@@ -1,8 +1,12 @@
-# Job config
-failedJobsHistoryLimit: 10
-successfulJobsHistoryLimit: 10
-concurrencyPolicy: "Forbid"
-schedule: "* * * * *"
+# Example configuration with multiple cronjobs
+# This demonstrates how to configure multiple dirctl cronjobs
+
+# Global config
+global:
+  cronjob:
+    failedJobsHistoryLimit: 10
+    successfulJobsHistoryLimit: 10
+    concurrencyPolicy: "Forbid"
 
 # Image config
 image:
@@ -11,30 +15,82 @@ image:
   pullPolicy: IfNotPresent
   pullSecrets: []
 
-# CronJob dirctl config
-args:
-  - "search"
-  - "--server-addr"
-  - "dir-apiserver.default.svc.cluster.local:8888"
+# CronJobs configuration
+cronjobs:
+  # Search cronjob
+  search:
+    enabled: true
+    schedule: "* * * * *"
+    args:
+      - "search"
+      - "--server-addr"
+      - "dir-apiserver.dir-server.svc.cluster.local:8888"
 
-# Config maps config
-configMaps: []
-  # - name: example-record
-  #   data:
-  #     record.json: |
-  #       {
-  #         "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
-  #         "version": "v3.0.0",
-  #       }
+  # Push cronjob
+  push:
+    enabled: true
+    schedule: "* * * * *"
+    args:
+      - "push"
+      - "/examples/record.json"
+      - "--server-addr"
+      - "dir-apiserver.dir-server.svc.cluster.local:8888"
+    volumes:
+      - name: record-json
+        configMap:
+          name: example-record
+          items:
+            - key: record.json
+              path: examples/record.json
+    volumeMounts:
+      - name: record-json
+        mountPath: /examples/record.json
+        subPath: examples/record.json
+        readOnly: true
+
+# SPIRE configuration
+spire:
+  enabled: false
+  trustDomain: example.org
+
+# Config maps config (shared across all cronjobs)
+configMaps:
+  - name: example-record
+    data:
+      record.json: |
+        {
+          "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
+          "version": "v3.0.0",
+          "schema_version": "v0.5.0",
+          "description": "Research agent for Cisco's marketing strategy.",
+          "authors": ["Cisco Systems"],
+          "created_at": "2025-03-19T17:06:37Z",
+          "annotations": {
+            "key": "value"
+          },
+          "skills": [
+            {
+              "name": "Natural Language Processing/Text Completion",
+              "id": 10201
+            }
+          ],
+          "locators": [
+            {
+              "type": "docker-image",
+              "url": "https://ghcr.io/agntcy/marketing-strategy"
+            }
+          ],
+          "domains": [
+            {
+              "name": "research"
+            }
+          ]
+        }
 
 # Service account config
 serviceAccount:
-  # Specifies whether a service account should be created
   create: false
-  # Annotations to add to the service account
   annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
   name: ""
 
 # Security context
@@ -43,7 +99,7 @@ securityContext:
   runAsUser: 65532
   readOnlyRootFilesystem: true
 
-# Resource configuration
+# Default resource configuration (can be overridden per cronjob)
 resources:
   limits:
     cpu: 100m
@@ -52,11 +108,11 @@ resources:
     cpu: 50m
     memory: 64Mi
 
-# Additional environment variables
+# Additional environment variables (applied to all cronjobs)
 env: []
 
-# Volumes
+# Default volumes (can be extended per cronjob)
 volumes: []
 
-# Volume mounts
+# Default volume mounts (can be extended per cronjob)
 volumeMounts: []
