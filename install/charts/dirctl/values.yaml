@@ -52,6 +52,11 @@ cronjobs:
         subPath: examples/record.json
         readOnly: true
 
+# SPIRE configuration
+spire:
+  enabled: false
+  trustDomain: "example.org"
+
 # Config maps config (shared across all cronjobs)
 configMaps:
   - name: example-record

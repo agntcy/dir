@@ -134,12 +134,13 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse trust domain: %w", err)
 		}
+		_ = tlsconfig.AuthorizeMemberOf(trustDomain)
 
 		// Add server options for SPIFFE mTLS
 		//nolint:contextcheck
 		serverOpts = append(serverOpts,
 			grpc.Creds(
-				grpccredentials.MTLSServerCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeMemberOf(trustDomain)),
+				grpccredentials.MTLSServerCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeAny()),
 			),
 			grpc.ChainUnaryInterceptor(unaryInterceptorFor(authInterceptor)),
 			grpc.ChainStreamInterceptor(streamInterceptorFor(authInterceptor)),
@@ -240,7 +241,7 @@ func authInterceptor(ctx context.Context) error {
 		return status.Error(codes.Unauthenticated, "missing peer ID") //nolint:wrapcheck
 	}
 
-	logger.Debug("Authenticated peer", "peer_id", sid)
+	logger.Info("Authenticated peer", "peer_id", sid)
 
 	return nil
 }

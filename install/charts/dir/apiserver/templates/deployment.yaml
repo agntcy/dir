@@ -107,8 +107,8 @@ spec:
         - name: spire-agent-socket
           hostPath:
             path: /run/spire/agent-sockets
-            type: Directory          
-        {{- end}}
+            type: Directory
+        {{- end }}
         {{- if .Values.privKey }}
         - name: secret-volume
           secret:
