@@ -159,9 +159,9 @@ class Client:
 
     def push(
         self,
-        records: [core_types.Record],
+        records: List[core_types.Record],
         metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> core_types.RecordRef:
+    ) -> List[core_types.RecordRef]:
         """Push an object to the store.
 
         Args:
@@ -193,9 +193,9 @@ class Client:
 
     def push_with_options(
             self,
-            req: [store_types.PushWithOptionsRequest],
+            req: List[store_types.PushWithOptionsRequest],
             metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> [store_types.PushWithOptionsResponse]:
+    ) -> List[store_types.PushWithOptionsResponse]:
         """
         Push objects to the store.
 
@@ -225,10 +225,10 @@ class Client:
 
     def pull(
         self,
-        refs: [core_types.RecordRef],
+        refs: List[core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> core_types.Record:
-        """Pull an object from the store.
+    ) -> List[core_types.Record]:
+        """Pull objects from the store.
 
         Args:
             refs: References to objects
@@ -257,9 +257,9 @@ class Client:
 
     def pull_with_options(
             self,
-            req: [store_types.PullWithOptionsRequest],
+            req: List[store_types.PullWithOptionsRequest],
             metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> [store_types.PullWithOptionsResponse]:
+    ) -> List[store_types.PullWithOptionsResponse]:
         """
         Pull objects from the store.
 
@@ -289,9 +289,9 @@ class Client:
 
     def lookup(
         self,
-        refs: [core_types.RecordRef],
+        refs: List[core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> core_types.RecordMeta:
+    ) -> List[core_types.RecordMeta]:
         """Look up an object in the store.
 
         Args:
@@ -321,7 +321,7 @@ class Client:
 
     def delete(
         self,
-        refs: [core_types.RecordRef],
+        refs: List[core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
     ) -> None:
         """Delete an object from the store.
