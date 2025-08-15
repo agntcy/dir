@@ -36,6 +36,12 @@ spec:
           env:
             - name: DIRECTORY_LOGGER_LOG_LEVEL
               value: {{ .Values.log_level }}
+            {{- if eq .Values.spire.enabled true }}
+            - name: DIRECTORY_SERVER_AUTHZ_SOCKET_PATH
+              value: unix:/run/spire/agent-sockets/api.sock
+            - name: DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN
+              value: {{ .Values.spire.trustDomain }}
+            {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -81,6 +87,11 @@ spec:
               subPath: node.privkey
               readOnly: true
             {{- end }}
+            {{- if eq .Values.spire.enabled true }}
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: false 
+            {{- end }}
             {{- if .Values.pvc.create }}
             - name: routing-data
               mountPath: {{ .Values.config.routing.datastore_dir }}
@@ -92,6 +103,12 @@ spec:
         - name: config-volume
           configMap:
             name: {{ include "chart.fullname" . }}
+        {{- if eq .Values.spire.enabled true }}
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/agent-sockets
+            type: Directory          
+        {{- end}}
         {{- if .Values.privKey }}
         - name: secret-volume
           secret:

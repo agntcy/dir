@@ -425,13 +425,12 @@ tasks:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
       # SPIRE Config
-      SPIFFE_NAMESPACE: '{{ .SPIFFE_NAMESPACE | default "spire" }}'
-      SPIFFE_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/spire/values.yaml'
-      SPIFFE_TRUST_DOMAIN: '{{ .SPIFFE_TRUST_DOMAIN | default "example-abc.org" }}'
+      SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE | default "spire" }}'
+      SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN | default "example-abc.org" }}'
       # Helm args (server)
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
-      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-spire.yaml'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
       # Helm args (client)
       HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
       HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
@@ -446,7 +445,7 @@ tasks:
       - |
         helm upgrade --install spire-crds spire-crds \
           --repo https://spiffe.github.io/helm-charts-hardened/ \
-          --create-namespace -n {{.SPIFFE_NAMESPACE}} \
+          --create-namespace -n {{.SPIRE_NAMESPACE}} \
           --install \
           --wait \
           --wait-for-jobs \
@@ -454,42 +453,11 @@ tasks:
 
         helm upgrade --install spire spire \
           --repo https://spiffe.github.io/helm-charts-hardened/ \
-          --values {{ .SPIFFE_VALUES_PATH }} \
-          --set global.spire.trustDomain="{{ .SPIFFE_TRUST_DOMAIN }}" \
-          --set global.spire.caSubject.commonName="{{ .SPIFFE_TRUST_DOMAIN }}" \
-          --set global.spire.clusterName="{{ .KIND_CLUSTER_NAME }}" \
-          --namespace {{ .SPIFFE_NAMESPACE }} \
+          --namespace {{ .SPIRE_NAMESPACE }} \
           --install \
           --wait \
           --wait-for-jobs \
           --timeout "15m"
-
-      # Create SPIFFE workload API for services
-      - |
-        # Create SPIFFE ID for the SPIRE server
-        kubectl exec -n spire spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
-          -selector k8s_psat:cluster:{{.KIND_CLUSTER_NAME}} \
-          -selector k8s_psat:agent_ns:spire \
-          -selector k8s_psat:agent_sa:spire-agent \
-          -node
-
-        # Create SPIFFE ID for the default service account in server namespace
-        kubectl exec -n spire spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{.HELM_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
-          -selector k8s:ns:{{.HELM_NAMESPACE}} \
-          -selector k8s:sa:default
-        
-        # Create SPIFFE ID for the default service account in client namespace
-        kubectl exec -n spire spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
-          -selector k8s:ns:{{.HELM_CLIENT_NAMESPACE}} \
-          -selector k8s:sa:default
 
       # Deploy server chart
       - |
@@ -498,7 +466,8 @@ tasks:
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
-          --set apiserver.config.authz.trust_domain="{{ .SPIFFE_TRUST_DOMAIN }}" \
+          --set apiserver.spire.enabled="true" \
+          --set apiserver.spire.trustDomain="{{ .SPIRE_TRUST_DOMAIN }}" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -506,20 +475,20 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-      # Deploy client chart
-      - |
-        {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dirctl \
-          {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_VALUES_PATH }} \
-          --set image.tag="{{ .IMAGE_TAG }}" \
-          --set env[0].value="{{ .SPIFFE_TRUST_DOMAIN }}" \
-          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
-          --create-namespace \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
+      # # Deploy client chart
+      # - |
+      #   {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
+      #   {{ .HELM_BIN }} upgrade dirctl \
+      #     {{ .HELM_CLIENT_CHART_PATH }} \
+      #     -f {{ .HELM_CLIENT_VALUES_PATH }} \
+      #     --set image.tag="{{ .IMAGE_TAG }}" \
+      #     --set env[0].value="{{ .SPIRE_TRUST_DOMAIN }}" \
+      #     --namespace {{ .HELM_CLIENT_NAMESPACE }} \
+      #     --create-namespace \
+      #     --install \
+      #     --wait \
+      #     --wait-for-jobs \
+      #     --timeout "15m"
 
   deploy:kubernetes:local:port-forward:
     aliases: [deploy:local:port-forward]

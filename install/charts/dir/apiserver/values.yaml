@@ -151,3 +151,8 @@ extraVolumeMounts: []
   #   mountPath: /etc/datastore
 
 revisionHistoryLimit: 2
+
+# SPIRE configuration
+spire:
+  enabled: false
+  trustDomain: "example.org"
