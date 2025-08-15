@@ -367,6 +367,15 @@ tasks:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
     cmds:
+      # Check if cluster already exists
+      - |
+        if {{ .KIND_BIN }} get clusters | grep -q "^{{ .KIND_CLUSTER_NAME }}$"; then
+          echo "Kind cluster '{{ .KIND_CLUSTER_NAME }}' already exists. Skipping cluster creation."
+          echo "If you want to recreate the cluster, please delete it first with:"
+          echo "  {{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}"
+          exit 0
+        fi
+
       # Create ephemeral cluster
       - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
       - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
@@ -416,10 +425,8 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-  deploy:kubernetes:spire:local:
-    desc: Deploy a local Directory server in Kubernetes with SPIRE support
-    deps:
-      - deploy:kubernetes:setup-cluster
+  deploy:k8s:spire:setup:
+    desc: Deploy SPIRE infrastructure in Kubernetes
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
@@ -427,14 +434,11 @@ tasks:
       # SPIRE Config
       SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE | default "spire" }}'
       SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN | default "example.org" }}'
-      # Helm args (server)
-      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
-      HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
-      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
-      # Helm args (client)
-      HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
-      HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
-      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values.yaml'
+    deps:
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
+          KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS }}'
     cmds:
       # Create zot configuration using helper task
       - task: deploy:zot:config
@@ -460,6 +464,27 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
+  deploy:k8s:spire:dir:
+    desc: Deploy Directory server in Kubernetes with SPIRE support
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+      # SPIRE Config
+      SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE | default "spire" }}'
+      SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN | default "example.org" }}'
+      # Helm args (server)
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
+      HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+    deps:
+      - task: deploy:k8s:spire:setup
+        vars:
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
+          KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS }}'
+          SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE }}'
+          SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN }}'
+    cmds:
       # Deploy server chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
@@ -476,6 +501,27 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
+  deploy:k8s:spire:dirctl:
+    desc: Deploy Directory client (dirctl) in Kubernetes with SPIRE support
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+      # SPIRE Config
+      SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE }}'
+      SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN | default "example.org" }}'
+      # Helm args (client)
+      HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
+      HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
+      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values.yaml'
+    deps:
+      - task: deploy:k8s:spire:setup
+        vars:
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
+          KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS }}'
+          SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE }}'
+          SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN }}'
+    cmds:
       # Deploy client chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
@@ -491,6 +537,28 @@ tasks:
           --wait \
           --wait-for-jobs \
           --timeout "15m"
+
+  deploy:kubernetes:spire:local:
+    desc: Deploy a local Directory server in Kubernetes with SPIRE support (full stack)
+    deps:
+      - task: deploy:k8s:spire:dirctl
+        vars:
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
+          KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS }}'
+          SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE }}'
+          SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN }}'
+          HELM_NAMESPACE: '{{ .HELM_NAMESPACE }}'
+          HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE }}'
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+      # SPIRE Config
+      SPIRE_NAMESPACE: '{{ .SPIRE_NAMESPACE | default "spire" }}'
+      SPIRE_TRUST_DOMAIN: '{{ .SPIRE_TRUST_DOMAIN | default "example.org" }}'
+      # Helm args
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
+      HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
 
   deploy:kubernetes:local:port-forward:
     aliases: [deploy:local:port-forward]
