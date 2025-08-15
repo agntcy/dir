@@ -103,8 +103,10 @@ jobs:
           scope: "@agntcy"
 
       - name: Test SDKs
+        working-directory: ./server
         run: |
           task sdk:deps:javascript
+          go mod download
           task server:start &
           sleep 60 # Wait for dir-apiserver startup
           task sdk:test:all

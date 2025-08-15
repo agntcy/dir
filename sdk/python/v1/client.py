@@ -3,13 +3,15 @@
 import logging
 import os
 from typing import Iterator, List, Optional, Tuple
-from urllib import response
 
 import core.v1.record_pb2 as core_types
 import grpc
 import routing.v1.routing_service_pb2 as routing_types
 import routing.v1.routing_service_pb2_grpc as routing_services
+import search.v1.search_service_pb2 as search_types
+import search.v1.search_service_pb2_grpc as search_services
 import store.v1.store_service_pb2_grpc as store_services
+import store.v1.store_service_pb2 as store_types
 
 CHUNK_SIZE = 4096  # 4KB
 
@@ -46,6 +48,7 @@ class Client:
         # Initialize service clients
         self.store_client = store_services.StoreServiceStub(channel)
         self.routing_client = routing_services.RoutingServiceStub(channel)
+        self.search_client = search_services.SearchServiceStub(channel)
 
     @classmethod
     def new(cls, config: Optional[Config] = None) -> "Client":
@@ -108,6 +111,33 @@ class Client:
             logger.error(f"Error receiving objects: {e}")
             raise Exception(f"Failed to list objects: {e}")
 
+    def search(
+        self,
+        req: search_types.SearchRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> Iterator[routing_types.SearchResponse]:
+        """Search objects matching the queries.
+
+        Args:
+            req: Search request specifying criteria
+            metadata: Optional metadata for the gRPC call
+
+        Returns:
+            Search response object
+
+        Raises: Exception if search fails
+        """
+
+        try:
+            stream = self.search_client.Search(req, metadata=metadata)
+
+            # Yield each item from the stream
+            for response in stream:
+                yield response
+        except Exception as e:
+            logger.error(f"Error receiving objects: {e}")
+            raise Exception(f"Failed to search objects: {e}")
+
     def unpublish(
         self,
         req: routing_types.UnpublishRequest,
@@ -129,9 +159,9 @@ class Client:
 
     def push(
         self,
-        records: [core_types.Record],
+        records: List[core_types.Record],
         metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> core_types.RecordRef:
+    ) -> List[core_types.RecordRef]:
         """Push an object to the store.
 
         Args:
@@ -161,12 +191,44 @@ class Client:
 
         return references
 
+    def push_with_options(
+            self,
+            req: List[store_types.PushWithOptionsRequest],
+            metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> List[store_types.PushWithOptionsResponse]:
+        """
+        Push objects to the store.
+
+        Args:
+            req: PushWithOptions requests containing the record object
+            metadata: Optional metadata for the gRPC call
+
+        Returns:
+            List of objects cid pushed to the store
+
+        Raises:
+            Exception: If push operation fails
+        """
+
+        responses = []
+
+        try:
+            response = self.store_client.PushWithOptions(iter(req), metadata=metadata)
+
+            for r in response:
+                responses.append(r)
+
+        except Exception as e:
+            raise Exception(f"Failed to push object: {e}")
+
+        return responses
+
     def pull(
         self,
-        refs: [core_types.RecordRef],
+        refs: List[core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> core_types.Record:
-        """Pull an object from the store.
+    ) -> List[core_types.Record]:
+        """Pull objects from the store.
 
         Args:
             refs: References to objects
@@ -193,11 +255,43 @@ class Client:
 
         return records
 
+    def pull_with_options(
+            self,
+            req: List[store_types.PullWithOptionsRequest],
+            metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> List[store_types.PullWithOptionsResponse]:
+        """
+        Pull objects from the store.
+
+        Args:
+            req: PullWithOptions requests containing the record object
+            metadata: Optional metadata for the gRPC call
+
+        Returns:
+            List of record objects from the store
+
+        Raises:
+            Exception: If push operation fails
+        """
+
+        responses = []
+
+        try:
+            response = self.store_client.PullWithOptions(iter(req), metadata=metadata)
+
+            for r in response:
+                responses.append(r)
+
+        except Exception as e:
+            raise Exception(f"Failed to push object: {e}")
+
+        return responses
+
     def lookup(
         self,
-        refs: [core_types.RecordRef],
+        refs: List[core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> core_types.RecordMeta:
+    ) -> List[core_types.RecordMeta]:
         """Look up an object in the store.
 
         Args:
@@ -227,7 +321,7 @@ class Client:
 
     def delete(
         self,
-        refs: [core_types.RecordRef],
+        refs: List[core_types.RecordRef],
         metadata: Optional[List[Tuple[str, str]]] = None,
     ) -> None:
         """Delete an object from the store.
