@@ -1,3 +1,4 @@
+import time
 import unittest
 
 import core.v1.record_pb2 as core_record_pb2
@@ -6,21 +7,21 @@ from routing.v1 import record_query_pb2 as record_query_type
 from routing.v1 import routing_service_pb2 as routingv1
 from search.v1 import record_query_pb2 as search_query_type
 from search.v1 import search_service_pb2 as searchv1
-from store.v1 import store_service_pb2 as store_types
 from sign.v1 import sign_service_pb2 as sign_types
+from store.v1 import store_service_pb2 as store_types
 
 from .client import Client, Config
 
 client = Client(Config())
 
 
-def generate_records(names):
-    example_records = []
+def init_records(count, test_function_name, push=True, publish=False):
+    example_records = {}
 
-    for name in names:
-        example_record = core_record_pb2.Record(
+    for index in range(count):
+        generated_record = core_record_pb2.Record(
             v3=record_pb2.Record(
-                name=name,
+                name="{}-{}".format(test_function_name, index),
                 version="v3",
                 schema_version="v0.5.0",
                 skills=[
@@ -45,18 +46,37 @@ def generate_records(names):
             )
         )
 
-        example_records.append(example_record)
+        example_records[index] = (None, generated_record)
+
+    if push:
+        records_list = list[core_record_pb2.Record](
+            record for _, record in example_records.values()
+        )
+
+        for index, record in enumerate(records_list):
+            # Push only one at a time to make sure of the cid pairing
+            references = client.push(records=[record])
+
+            example_records[index] = (references[0], record)
+
+        if publish:
+            for record_ref, record in example_records.values():
+                req = routingv1.PublishRequest(record_cid=record_ref.cid)
+                client.publish(req=req)
+
+    time.sleep(3)
 
     return example_records
 
 
 class TestClient(unittest.TestCase):
-    example_records = generate_records(["example-record", "example-record2"])
+    def test_push(self):
+        example_records = init_records(2, "push", push=False)
+        records_list = list[core_record_pb2.Record](
+            record for _, record in example_records.values()
+        )
 
-    example_record_refs = []
-
-    def test_1_push(self):
-        references = client.push(records=self.example_records)
+        references = client.push(records=records_list)
 
         self.assertIsNotNone(references)
         self.assertIsInstance(references, list)
@@ -66,10 +86,13 @@ class TestClient(unittest.TestCase):
             self.assertIsInstance(ref, core_record_pb2.RecordRef)
             self.assertEqual(len(ref.cid), 59)
 
-        TestClient.example_record_refs = references
+    def test_pull(self):
+        example_records = init_records(2, "pull")
+        record_refs_list = list[core_record_pb2.RecordRef](
+            ref for ref, _ in example_records.values()
+        )
 
-    def test_2_pull(self):
-        pulled_records = client.pull(refs=TestClient.example_record_refs)
+        pulled_records = client.pull(refs=record_refs_list)
 
         self.assertIsNotNone(pulled_records)
         self.assertIsInstance(pulled_records, list)
@@ -78,8 +101,13 @@ class TestClient(unittest.TestCase):
         for record in pulled_records:
             self.assertIsInstance(record, core_record_pb2.Record)
 
-    def test_3_lookup(self):
-        metadatas = client.lookup(TestClient.example_record_refs)
+    def test_lookup(self):
+        example_records = init_records(2, "lookup")
+        record_refs_list = list[core_record_pb2.RecordRef](
+            ref for ref, _ in example_records.values()
+        )
+
+        metadatas = client.lookup(record_refs_list)
 
         self.assertIsNotNone(metadatas)
         self.assertIsInstance(metadatas, list)
@@ -88,17 +116,22 @@ class TestClient(unittest.TestCase):
         for metadata in metadatas:
             self.assertIsInstance(metadata, core_record_pb2.RecordMeta)
 
-    def test_4_publish(self):
-        publish_request = routingv1.PublishRequest(
-            record_cid=TestClient.example_record_refs[0].cid
+    def test_publish(self):
+        example_records = init_records(1, "publish")
+        record_refs_list = list[core_record_pb2.RecordRef](
+            ref for ref, _ in example_records.values()
         )
+
+        publish_request = routingv1.PublishRequest(record_cid=record_refs_list[0].cid)
 
         try:
             client.publish(publish_request)
         except Exception as e:
             self.assertIsNone(e)
 
-    def test_5_list(self):
+    def test_list(self):
+        _ = init_records(2, "list", publish=True)
+
         list_query = record_query_type.RecordQuery(
             type=record_query_type.RECORD_QUERY_TYPE_SKILL,
             value="/skills/Natural Language Processing/Text Completion",
@@ -113,12 +146,14 @@ class TestClient(unittest.TestCase):
         for o in objects:
             self.assertIsInstance(o, routingv1.ListResponse)
 
-    def test_6_search(self):
+    def test_search(self):
+        _ = init_records(2, "search", publish=True)
+
         search_query = search_query_type.RecordQuery(
             type=search_query_type.RECORD_QUERY_TYPE_SKILL_ID, value="1"
         )
 
-        search_request = searchv1.SearchRequest(queries=[search_query], limit=3)
+        search_request = searchv1.SearchRequest(queries=[search_query], limit=2)
 
         objects = list(client.search(search_request))
 
@@ -128,9 +163,14 @@ class TestClient(unittest.TestCase):
         for o in objects:
             self.assertIsInstance(o, searchv1.SearchResponse)
 
-    def test_7_unpublish(self):
+    def test_unpublish(self):
+        example_records = init_records(1, "unpublish", publish=True)
+        record_refs_list = list[core_record_pb2.RecordRef](
+            ref for ref, _ in example_records.values()
+        )
+
         unpublish_request = routingv1.UnpublishRequest(
-            record_cid=TestClient.example_record_refs[0].cid
+            record_cid=record_refs_list[0].cid
         )
 
         try:
@@ -138,19 +178,34 @@ class TestClient(unittest.TestCase):
         except Exception as e:
             self.assertIsNone(e)
 
-    def test_8_delete(self):
+    def test_delete(self):
+        example_records = init_records(2, "delete")
+        record_refs_list = list[core_record_pb2.RecordRef](
+            ref for ref, _ in example_records.values()
+        )
+
         try:
-            client.delete(TestClient.example_record_refs)
-            TestClient.example_record_refs.clear()
+            client.delete(record_refs_list)
         except Exception as e:
             self.assertIsNone(e)
 
-    def test_9a_push_with_options(self):
+    def test_push_with_options(self):
+        example_records = init_records(2, "push_with_options", push=False)
+        records_list = list[core_record_pb2.Record](
+            record for _, record in example_records.values()
+        )
+
         try:
             example_signature = sign_types.Signature()
             option = store_types.PushOptions(signature=example_signature)
-            request = [store_types.PushWithOptionsRequest(record=TestClient.example_records[0], options=option),
-                       store_types.PushWithOptionsRequest(record=TestClient.example_records[1], options=option)]
+            request = [
+                store_types.PushWithOptionsRequest(
+                    record=records_list[0], options=option
+                ),
+                store_types.PushWithOptionsRequest(
+                    record=records_list[1], options=option
+                ),
+            ]
 
             response = client.push_with_options(req=request)
 
@@ -159,16 +214,28 @@ class TestClient(unittest.TestCase):
 
             for r in response:
                 self.assertIsInstance(r, store_types.PushWithOptionsResponse)
-                TestClient.example_record_refs.append(r.record_ref)
 
         except Exception as e:
             self.assertIsNone(e)
 
-    def test_9b_pull_with_options(self):
+    def test_pull_with_options(self):
+        example_records = init_records(2, "pull_with_options")
+        record_refs_list = list[core_record_pb2.RecordRef](
+            ref for ref, _ in example_records.values()
+        )
+
         try:
-            option = store_types.PullOptions(include_signature=True)
-            request = [store_types.PullWithOptionsRequest(record_ref=TestClient.example_record_refs[0], options=option),
-                       store_types.PullWithOptionsRequest(record_ref=TestClient.example_record_refs[1], options=option)]
+            option = store_types.PullOptions(
+                include_signature=False
+            )  # TODO: Generate signature when refactor is done
+            request = [
+                store_types.PullWithOptionsRequest(
+                    record_ref=record_refs_list[0], options=option
+                ),
+                store_types.PullWithOptionsRequest(
+                    record_ref=record_refs_list[1], options=option
+                ),
+            ]
 
             response = client.pull_with_options(req=request)
 
@@ -179,6 +246,7 @@ class TestClient(unittest.TestCase):
                 self.assertIsInstance(r, store_types.PullWithOptionsResponse)
         except Exception as e:
             self.assertIsNone(e)
+
 
 if __name__ == "__main__":
     unittest.main()
