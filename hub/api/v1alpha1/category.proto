@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+message Category {
+  uint32 uid = 1;
+
+  string name = 2;
+  string description = 3;
+  string caption = 4;
+  optional uint32 parent_uid = 5;
+
+  repeated Category categories = 6;
+}

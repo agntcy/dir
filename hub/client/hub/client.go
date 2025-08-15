@@ -25,9 +25,9 @@ const chunkSize = 4096 // 4KB
 // Client defines the interface for interacting with the Agent Hub backend for agent operations.
 type Client interface {
 	// PushAgent uploads an agent to the hub and returns the response or an error.
-	PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushAgentResponse, error)
+	PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushRecordResponse, error)
 	// PullAgent downloads an agent from the hub and returns the agent data or an error.
-	PullAgent(ctx context.Context, request *v1alpha1.PullAgentRequest) ([]byte, error)
+	PullAgent(ctx context.Context, request *v1alpha1.PullRecordRequest) ([]byte, error)
 }
 
 // client implements the Client interface for the Agent Hub backend.
@@ -51,7 +51,7 @@ func New(serverAddr string) (*client, error) { //nolint:revive
 }
 
 // PushAgent uploads an agent to the hub in chunks and returns the response or an error.
-func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushAgentResponse, error) {
+func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) (*v1alpha1.PushRecordResponse, error) {
 	var parsedAgent *corev1alpha1.Agent
 	if err := json.Unmarshal(agent, &parsedAgent); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
@@ -67,7 +67,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) 
 		Annotations: parsedAgent.GetAnnotations(),
 	}
 
-	stream, err := c.AgentDirServiceClient.PushAgent(ctx)
+	stream, err := c.AgentDirServiceClient.PushRecord(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create push stream: %w", err)
 	}
@@ -87,7 +87,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) 
 			break
 		}
 
-		msg := &v1alpha1.PushAgentRequest{
+		msg := &v1alpha1.PushRecordRequest{
 			Model: &corev1alpha1.Object{
 				Data: buf[:n],
 				Ref:  ref,
@@ -95,9 +95,9 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) 
 		}
 
 		switch parsedRepoID := repositoryID.(type) {
-		case *v1alpha1.PushAgentRequest_RepositoryName:
+		case *v1alpha1.PushRecordRequest_RepositoryName:
 			msg.Repository = parsedRepoID
-		case *v1alpha1.PushAgentRequest_RepositoryId:
+		case *v1alpha1.PushRecordRequest_RepositoryId:
 			msg.Repository = parsedRepoID
 		default:
 			return nil, fmt.Errorf("unknown repository type: %T", repositoryID)
@@ -117,8 +117,8 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repositoryID any) 
 }
 
 // PullAgent downloads an agent from the hub in chunks and returns the agent data or an error.
-func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullAgentRequest) ([]byte, error) {
-	stream, err := c.AgentDirServiceClient.PullAgent(ctx, request)
+func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullRecordRequest) ([]byte, error) {
+	stream, err := c.AgentDirServiceClient.PullRecord(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pull stream: %w", err)
 	}
@@ -126,7 +126,7 @@ func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullAgentReque
 	var buffer bytes.Buffer
 
 	for {
-		var chunk *v1alpha1.PullAgentResponse
+		var chunk *v1alpha1.PullRecordResponse
 
 		chunk, err = stream.Recv()
 		if errors.Is(err, io.EOF) {

@@ -12,7 +12,7 @@ bin/
 
 # Python
 __pycache__/
-*.egg-info/
+*.egg-info
 
 # JS
 node_modules

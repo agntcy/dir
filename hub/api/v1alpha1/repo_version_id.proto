@@ -2,7 +2,14 @@ syntax = "proto3";
 
 package saas.v1alpha1;
 
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "buf/validate/validate.proto";
+
 message RepoVersionId {
-  string repository_name = 1;
+  string repository_name = 1 [
+    (buf.validate.field).string.pattern = "^[a-z0-9_-]+(/[a-z0-9_-]+)*$",
+    (buf.validate.field).string.max_len = 100
+  ];
   string version = 2;
 }

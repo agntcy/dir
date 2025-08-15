@@ -4,6 +4,7 @@
 version: v2
 deps:
   - buf.build/googleapis/googleapis
+  - buf.build/bufbuild/protovalidate
 lint:
   disallow_comment_ignores: true
   use:
