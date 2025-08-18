@@ -18,8 +18,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "@buf/agntcy_dir.grpc_node": "^1.13.0-20250730140857-ac127ee206f2.2",
-    "@buf/agntcy_dir.grpc_web": "^1.5.0-20250730140857-ac127ee206f2.1",
+    "@buf/agntcy_dir.grpc_node": "^1.13.0-20250818093216-7b5f01ca9089.2",
+    "@buf/agntcy_dir.grpc_web": "^1.5.0-20250818093216-7b5f01ca9089.1",
     "@grpc/grpc-js": "^1.13.4"
   },
   "devDependencies": {
