@@ -102,11 +102,38 @@ jobs:
           registry-url: https://registry.npmjs.org/
           scope: "@agntcy"
 
+      - name: Setup Kind cluster
+        shell: bash
+        run: |
+          # Create cluster config
+          KIND_CONFIG_FILE=$(mktemp -p /tmp)
+          cat <<EOF > $KIND_CONFIG_FILE
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          networking:
+            apiServerAddress: "127.0.0.1"
+            apiServerPort: 6443
+          EOF
+
+          # Create cluster
+          kind create cluster --config $KIND_CONFIG_FILE --name kind
+          kubectl cluster-info
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4.1.9
+        with:
+          path: tmp/artifacts
+          merge-multiple: true
+
+      - name: Load images to local Docker registry
+        run: |
+          for image_archive in tmp/artifacts/*.tar; do
+            docker load --input "$image_archive"
+          done
+          docker images
+
       - name: Test SDKs
-        working-directory: ./server
         run: |
           task sdk:deps:javascript
-          go mod download
-          task server:start &
-          sleep 60 # Wait for dir-apiserver startup
+          task sdk:test-env:create
           task sdk:test:all

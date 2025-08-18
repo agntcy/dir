@@ -227,6 +227,14 @@ tasks:
     cmds:
       - npm ci
 
+  sdk:test-env:create:
+    desc: Create Kubernetes cluster test environment
+    deps:
+      - task: build
+    cmds:
+      - task: deploy:kubernetes:local
+      - task: deploy:kubernetes:local:port-forward
+
   sdk:test:all:
     desc: Test all client SDK packages
     cmds:
