@@ -4,6 +4,9 @@ kind: ClusterSPIFFEID
 metadata:
   name: {{ include "chart.fullname" . }}
 spec:
+  {{ if .Values.spire.className }}
+  className: {{ .Values.spire.className }}
+  {{ end }}
   podSelector:
     matchExpressions:
     - key: app.kubernetes.io/name
