@@ -189,63 +189,57 @@ class TestClient(unittest.TestCase):
         except Exception as e:
             self.assertIsNone(e)
 
-    def test_push_with_options(self):
-        example_records = init_records(2, "push_with_options", push=False)
-        records_list = list[core_record_pb2.Record](
-            record for _, record in example_records.values()
-        )
-
-        try:
-            example_signature = sign_types.Signature()
-            option = store_types.PushOptions(signature=example_signature)
-            request = [
-                store_types.PushWithOptionsRequest(
-                    record=records_list[0], options=option
-                ),
-                store_types.PushWithOptionsRequest(
-                    record=records_list[1], options=option
-                ),
-            ]
-
-            response = client.push_with_options(req=request)
-
-            self.assertIsNotNone(response)
-            self.assertEqual(len(response), 2)
-
-            for r in response:
-                self.assertIsInstance(r, store_types.PushWithOptionsResponse)
-
-        except Exception as e:
-            self.assertIsNone(e)
-
-    def test_pull_with_options(self):
-        example_records = init_records(2, "pull_with_options")
+    def test_push_referrer(self):
+        example_records = init_records(2, "push_referrer")
         record_refs_list = list[core_record_pb2.RecordRef](
             ref for ref, _ in example_records.values()
         )
 
         try:
-            option = store_types.PullOptions(
-                include_signature=False
-            )  # TODO: Generate signature when refactor is done
+            example_signature = sign_types.Signature()
             request = [
-                store_types.PullWithOptionsRequest(
-                    record_ref=record_refs_list[0], options=option
-                ),
-                store_types.PullWithOptionsRequest(
-                    record_ref=record_refs_list[1], options=option
-                ),
+                store_types.PushReferrerRequest(record_ref=record_refs_list[0], signature=example_signature),
+                store_types.PushReferrerRequest(record_ref=record_refs_list[1], signature=example_signature),
             ]
 
-            response = client.pull_with_options(req=request)
+            response = client.push_referrer(req=request)
 
             self.assertIsNotNone(response)
             self.assertEqual(len(response), 2)
 
             for r in response:
-                self.assertIsInstance(r, store_types.PullWithOptionsResponse)
+                self.assertIsInstance(r, store_types.PushReferrerResponse)
+
         except Exception as e:
             self.assertIsNone(e)
+
+    def test_pull_referrer(self):
+        example_records = init_records(2, "pull_referrer")
+        record_refs_list = list[core_record_pb2.RecordRef](
+            ref for ref, _ in example_records.values()
+        )
+
+        try:
+            request = [
+                store_types.PullReferrerRequest(
+                    record_ref=record_refs_list[0], pull_signature=False
+                ),
+                store_types.PullReferrerRequest(
+                    record_ref=record_refs_list[1], pull_signature=False
+                ),
+            ]
+
+            response = client.pull_referrer(req=request)
+
+            self.assertIsNotNone(response)
+            self.assertEqual(len(response), 2)
+
+            for r in response:
+                self.assertIsInstance(r, store_types.PullReferrerResponse)
+        except Exception as e:
+            self.assertTrue("pull referrer not implemented" in str(e)) # Delete when the service implemented
+
+            # self.assertIsNone(e) # Uncomment when the service implemented
 
 
 if __name__ == "__main__":

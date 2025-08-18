@@ -191,16 +191,16 @@ class Client:
 
         return references
 
-    def push_with_options(
+    def push_referrer(
             self,
-            req: List[store_types.PushWithOptionsRequest],
+            req: List[store_types.PushReferrerRequest],
             metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> List[store_types.PushWithOptionsResponse]:
+    ) -> List[store_types.PushReferrerResponse]:
         """
         Push objects to the store.
 
         Args:
-            req: PushWithOptions requests containing the record object
+            req: PushReferrerRequest represents a record with optional OCI artifacts for push operations.
             metadata: Optional metadata for the gRPC call
 
         Returns:
@@ -213,7 +213,7 @@ class Client:
         responses = []
 
         try:
-            response = self.store_client.PushWithOptions(iter(req), metadata=metadata)
+            response = self.store_client.PushReferrer(iter(req), metadata=metadata)
 
             for r in response:
                 responses.append(r)
@@ -255,16 +255,16 @@ class Client:
 
         return records
 
-    def pull_with_options(
+    def pull_referrer(
             self,
-            req: List[store_types.PullWithOptionsRequest],
+            req: List[store_types.PullReferrerRequest],
             metadata: Optional[List[Tuple[str, str]]] = None,
-    ) -> List[store_types.PullWithOptionsResponse]:
+    ) -> List[store_types.PullReferrerResponse]:
         """
         Pull objects from the store.
 
         Args:
-            req: PullWithOptions requests containing the record object
+            req: PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
             metadata: Optional metadata for the gRPC call
 
         Returns:
@@ -277,7 +277,7 @@ class Client:
         responses = []
 
         try:
-            response = self.store_client.PullWithOptions(iter(req), metadata=metadata)
+            response = self.store_client.PullReferrer(iter(req), metadata=metadata)
 
             for r in response:
                 responses.append(r)
