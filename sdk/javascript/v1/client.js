@@ -67,18 +67,18 @@ class Client {
         });
     }
 
-    push_with_options(requests, metadata = null) {
+    push_referrer(requests, metadata = null) {
         return new Promise((resolve, reject) => {
-            const call = this.storeClient.pushWithOptions();
+            const call = this.storeClient.pushReferrer();
 
-            let pushWithOptionsResponses = [];
+            let pushReferrerResponses = [];
 
             call.on('data', (response) => {
-                pushWithOptionsResponses.push(response);
+                pushReferrerResponses.push(response);
             });
 
             call.on('end', () => {
-                resolve(pushWithOptionsResponses);
+                resolve(pushReferrerResponses);
             });
 
             call.on('error', (stream_error) => {
@@ -125,18 +125,18 @@ class Client {
         });
     }
 
-    pull_with_options(requests, metadata = null) {
+    pull_referrer(requests, metadata = null) {
         return new Promise((resolve, reject) => {
-            const call = this.storeClient.pullWithOptions();
+            const call = this.storeClient.pullReferrer();
 
-            let pullWithOptionsResponses = [];
+            let pullReferrerResponses = [];
 
             call.on('data', (response) => {
-                pullWithOptionsResponses.push(response);
+                pullReferrerResponses.push(response);
             });
 
             call.on('end', () => {
-                resolve(pullWithOptionsResponses);
+                resolve(pullReferrerResponses);
             });
 
             call.on('error', (stream_error) => {
