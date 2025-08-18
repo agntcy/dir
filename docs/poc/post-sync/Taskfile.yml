@@ -1,0 +1,17 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: '3'
+
+vars:
+  BIN_DIR: '{{ .ROOT_DIR }}/bin'
+  REGSYNC_VERSION: '0.9.0'
+  REGSYNC_BIN: '{{ .BIN_DIR }}/regsync-{{.REGSYNC_VERSION}}'
+
+tasks:
+  sync-poc:
+    cmds:
+      - docker compose up -d
+      - go run main.go
+      - docker compose down -v
+      - git checkout -- zot-target-config.json

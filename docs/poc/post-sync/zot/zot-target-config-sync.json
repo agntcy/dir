@@ -1,0 +1,38 @@
+{
+    "distSpecVersion": "1.0.1",
+    "storage": {
+        "rootDirectory": "/var/lib/zot"
+    },
+    "http": {
+        "address": "0.0.0.0",
+        "port": "5000"
+    },
+    "log": {
+        "level": "debug"
+    },
+    "extensions": {
+        "search": {
+            "enable": true
+        },
+        "sync": {
+            "enable": true,
+            "registries": [
+                {
+                    "urls": [
+                        "http://zot-source:5000"
+                    ],
+                    "content": [
+                        {
+                            "prefix": "demo"
+                        }
+                    ],
+                    "onDemand": false,
+                    "pollInterval": "10s",
+                    "maxRetries": 3,
+                    "retryDelay": "10s",
+                    "tlsVerify": false
+                }
+            ]
+        }
+    }
+}
