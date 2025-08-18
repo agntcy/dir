@@ -67,6 +67,35 @@ class Client {
         });
     }
 
+    push_with_options(requests, metadata = null) {
+        return new Promise((resolve, reject) => {
+            const call = this.storeClient.pushWithOptions();
+
+            let pushWithOptionsResponses = [];
+
+            call.on('data', (response) => {
+                pushWithOptionsResponses.push(response);
+            });
+
+            call.on('end', () => {
+                resolve(pushWithOptionsResponses);
+            });
+
+            call.on('error', (stream_error) => {
+                console.error('Stream error:', stream_error);
+
+                reject(stream_error);
+            });
+
+            // Send a requests and close the stream
+            requests.forEach(request => {
+                call.write(request, metadata);
+            });
+
+            call.end();
+        });
+    }
+
     pull(refs, metadata = null) {
         return new Promise((resolve, reject) => {
             const call = this.storeClient.pull();
@@ -90,6 +119,35 @@ class Client {
             // Send a requests and close the stream
             refs.forEach(ref => {
                 call.write(ref, metadata);
+            });
+
+            call.end();
+        });
+    }
+
+    pull_with_options(requests, metadata = null) {
+        return new Promise((resolve, reject) => {
+            const call = this.storeClient.pullWithOptions();
+
+            let pullWithOptionsResponses = [];
+
+            call.on('data', (response) => {
+                pullWithOptionsResponses.push(response);
+            });
+
+            call.on('end', () => {
+                resolve(pullWithOptionsResponses);
+            });
+
+            call.on('error', (stream_error) => {
+                console.error('Stream error:', stream_error);
+
+                reject(stream_error);
+            });
+
+            // Send a requests and close the stream
+            requests.forEach(request => {
+                call.write(request, metadata);
             });
 
             call.end();
