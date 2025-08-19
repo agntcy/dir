@@ -57,12 +57,21 @@ func main() {
 	// push artifact to source registry
 	artifacts := []string{"artifact1", "artifact2"}
 	for _, artifact := range artifacts {
-		err = pushArtifact(ctx, sourceRepoClient, artifact)
+		err = pushArtifact(ctx, sourceRepoClient, artifact, "")
 		if err != nil {
 			fmt.Printf("failed to push %s: %v\n", artifact, err)
 
 			return
 		}
+	}
+
+	// push empty artifact to target registry with same tag as artifact1
+	content := "very important content"
+	err = pushArtifact(ctx, targetRepoClient, artifacts[0], content)
+	if err != nil {
+		fmt.Printf("failed to push empty artifact: %v\n", err)
+
+		return
 	}
 
 	// Verify artifacts exist in source registry
@@ -91,22 +100,6 @@ func main() {
 		}
 	}
 
-	// Remove artifact 1 blob from target registry but keep the tag
-	err = replaceBlobWithEmptyBlob(ctx, targetRepoClient, artifacts[0])
-	if err != nil {
-		fmt.Printf("failed to remove artifact: %v\n", err)
-	}
-
-	time.Sleep(1 * time.Minute)
-
-	// Check if artifact 1 tag is still present in target registry
-	_, err = verifyArtifact(ctx, targetRepoClient, artifacts[0])
-	if err != nil {
-		fmt.Printf("failed to verify %s in target registry: %v\n", artifacts[0], err)
-
-		return
-	}
-
 	// Check if tag points to empty blob content
 	isEmpty, err := verifyBlob(ctx, targetRepoClient, artifacts[0])
 	if err != nil {
@@ -116,9 +109,9 @@ func main() {
 	}
 
 	if isEmpty {
-		fmt.Printf("✅ SUCCESS: %s now points to empty blob content\n", artifacts[0])
+		fmt.Printf("❌ FAILURE: %s is empty\n", artifacts[0])
 	} else {
-		fmt.Printf("❌ FAILURE: %s still has non-empty blob content\n", artifacts[0])
+		fmt.Printf("✅ SUCCESS: %s is not empty\n", artifacts[0])
 	}
 
 	time.Sleep(10 * time.Minute)
@@ -264,9 +257,8 @@ func replaceBlobWithEmptyBlob(ctx context.Context, targetRepoClient *remote.Repo
 	return nil
 }
 
-func pushArtifact(ctx context.Context, repo *remote.Repository, artifactName string) error {
+func pushArtifact(ctx context.Context, repo *remote.Repository, artifactName string, content string) error {
 	// Create sample content for the artifact
-	content := "This is sample content for " + artifactName
 	contentBytes := []byte(content)
 
 	// Create blob descriptor
