@@ -15,6 +15,7 @@ import (
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/server/sync/monitor"
 	synctypes "github.com/agntcy/dir/server/sync/types"
 	"github.com/agntcy/dir/server/types"
 	zotconfig "github.com/agntcy/dir/utils/zot"
@@ -24,21 +25,23 @@ import (
 
 // Worker processes sync work items.
 type Worker struct {
-	id        int
-	db        types.SyncDatabaseAPI
-	store     types.StoreAPI
-	workQueue <-chan synctypes.WorkItem
-	timeout   time.Duration
+	id             int
+	db             types.DatabaseAPI
+	store          types.StoreAPI
+	workQueue      <-chan synctypes.WorkItem
+	timeout        time.Duration
+	monitorService *monitor.MonitorService
 }
 
 // NewWorker creates a new worker instance.
-func NewWorker(id int, db types.SyncDatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration) *Worker {
+func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration, monitorService *monitor.MonitorService) *Worker {
 	return &Worker{
-		id:        id,
-		db:        db,
-		store:     store,
-		workQueue: workQueue,
-		timeout:   timeout,
+		id:             id,
+		db:             db,
+		store:          store,
+		workQueue:      workQueue,
+		timeout:        timeout,
+		monitorService: monitorService,
 	}
 }
 
@@ -107,6 +110,12 @@ func (w *Worker) processWorkItem(ctx context.Context, item synctypes.WorkItem) {
 func (w *Worker) deleteSync(workCtx context.Context, item synctypes.WorkItem) error {
 	logger.Debug("Starting sync delete operation", "worker_id", w.id, "sync_id", item.SyncID, "remote_url", item.RemoteDirectoryURL)
 
+	// Stop monitoring for this sync operation
+	if err := w.monitorService.StopSyncMonitoring(item.SyncID); err != nil {
+		logger.Warn("Failed to stop local registry monitoring", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
+		// Continue with deletion even if monitoring stop fails
+	}
+
 	// Get remote registry URL from sync object
 	remoteRegistryURL, err := w.db.GetSyncRemoteRegistry(item.SyncID)
 	if err != nil {
@@ -144,6 +153,11 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	// Update zot configuration with sync extension to trigger sync
 	if err := w.addRegistryToZotSync(ctx, remoteRegistryURL); err != nil {
 		return fmt.Errorf("failed to add registry to zot sync: %w", err)
+	}
+
+	// Start monitoring the local registry for changes after Zot sync is configured
+	if err := w.monitorService.StartSyncMonitoring(item.SyncID); err != nil { //nolint:contextcheck
+		return fmt.Errorf("failed to start registry monitoring: %w", err)
 	}
 
 	logger.Debug("Sync operation completed", "worker_id", w.id, "sync_id", item.SyncID)

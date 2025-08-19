@@ -101,7 +101,10 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	}
 
 	// Create sync service
-	syncService := sync.New(databaseAPI, storeAPI, options)
+	syncService, err := sync.New(databaseAPI, storeAPI, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sync service: %w", err)
+	}
 
 	// Create server transport options
 	var serverOpts []grpc.ServerOption

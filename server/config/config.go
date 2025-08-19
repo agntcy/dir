@@ -15,6 +15,7 @@ import (
 	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	sync "github.com/agntcy/dir/server/sync/config"
+	syncmonitor "github.com/agntcy/dir/server/sync/monitor/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -175,6 +176,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("sync.worker_timeout")
 	v.SetDefault("sync.worker_timeout", sync.DefaultSyncWorkerTimeout)
+
+	_ = v.BindEnv("sync.registry_monitor.check_interval")
+	v.SetDefault("sync.registry_monitor.check_interval", syncmonitor.DefaultCheckInterval)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

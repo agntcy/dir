@@ -3,7 +3,11 @@
 
 package config
 
-import "time"
+import (
+	"time"
+
+	monitor "github.com/agntcy/dir/server/sync/monitor/config"
+)
 
 const (
 	DefaultSyncSchedulerInterval = 30 * time.Second
@@ -22,4 +26,7 @@ type Config struct {
 
 	// Worker timeout.
 	WorkerTimeout time.Duration `json:"worker_timeout,omitempty" mapstructure:"worker_timeout"`
+
+	// Registry monitor configuration
+	RegistryMonitor monitor.Config `json:"registry_monitor,omitempty" mapstructure:"registry_monitor"`
 }

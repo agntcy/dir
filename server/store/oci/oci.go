@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -26,8 +25,6 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 var logger = logging.Logger("store/oci")
@@ -55,29 +52,9 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 		}, nil
 	}
 
-	// create remote client
-	repo, err := remote.NewRepository(fmt.Sprintf("%s/%s", cfg.RegistryAddress, cfg.RepositoryName))
+	repo, err := NewORASRepository(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to remote repo: %w", err)
-	}
-
-	// configure client to remote
-	repo.PlainHTTP = cfg.Insecure
-	repo.Client = &auth.Client{
-		Client: retry.DefaultClient,
-		Header: http.Header{
-			"User-Agent": {"dir-client"},
-		},
-		Cache: auth.DefaultCache,
-		Credential: auth.StaticCredential(
-			cfg.RegistryAddress,
-			auth.Credential{
-				Username:     cfg.Username,
-				Password:     cfg.Password,
-				RefreshToken: cfg.RefreshToken,
-				AccessToken:  cfg.AccessToken,
-			},
-		),
+		return nil, fmt.Errorf("failed to create remote repo: %w", err)
 	}
 
 	// Create store API
