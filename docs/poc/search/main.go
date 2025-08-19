@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,11 +18,17 @@ import (
 )
 
 const (
-	registry = "localhost:5000"
-	repo     = "demo"
+	registry        = "localhost:5000"
+	repo            = "other"
+	artifactsToPush = 100
 )
 
 func main() {
+	syncOCI()
+}
+
+func syncOCI() {
+	// do other stuff
 	ctx := context.Background()
 
 	// create client to registry
@@ -35,20 +40,19 @@ func main() {
 	client.PlainHTTP = true
 
 	// push artifacts to source registry
-	artifacts := []string{"data/artifact1.json", "data/artifact2.json", "data/artifact3.json"}
-	for _, artifact := range artifacts {
-		err = pushArtifact(ctx, client, artifact)
+	for artifactID := 0; artifactID < artifactsToPush; artifactID++ {
+		err = pushArtifact(ctx, client, fmt.Sprintf("artifact-%d", artifactID))
 		if err != nil {
-			fmt.Printf("failed to push %s: %v\n", artifact, err)
+			fmt.Printf("failed to push %d: %v\n", artifactID, err)
 			return
 		}
 	}
 
 	// run query
-	if err := queryWithGQL("artifact1"); err != nil {
-		fmt.Printf("failed to query with GQL: %v\n", err)
-		return
-	}
+	// if err := queryWithGQL("artifact1"); err != nil {
+	// 	fmt.Printf("failed to query with GQL: %v\n", err)
+	// 	return
+	// }
 }
 
 // GraphQL query structures for signature verification
@@ -122,16 +126,9 @@ func queryWithGQL(artifactName string) error {
 	return nil
 }
 
-func pushArtifact(ctx context.Context, repo *remote.Repository, artifactFile string) error {
+func pushArtifact(ctx context.Context, repo *remote.Repository, artifactID string) error {
 	// Create sample content for the artifact
-	content, err := os.ReadFile(artifactFile)
-	if err != nil {
-		return fmt.Errorf("failed to read artifact file: %w", err)
-	}
-	contentBytes := []byte(content)
-
-	artifactName := filepath.Base(artifactFile)
-	artifactName = strings.TrimSuffix(artifactName, filepath.Ext(artifactName))
+	contentBytes := []byte(fmt.Sprintf(`{"id": "%s"}`, artifactID))
 
 	// Create blob descriptor
 	blobDesc := ocispec.Descriptor{
@@ -158,9 +155,9 @@ func pushArtifact(ctx context.Context, repo *remote.Repository, artifactFile str
 
 	// Create manifest with annotations
 	annotations := map[string]string{
+		"org.opencontainers.image.created":        "2024-01-01T00:00:00Z",
 		"org.opencontainers.artifact.created":     "2024-01-01T00:00:00Z",
-		"org.opencontainers.artifact.description": "Sample artifact: " + artifactName,
-		"my-custom-annotation":                    "Sample artifact: " + artifactName,
+		"org.opencontainers.artifact.description": "Sample artifact: " + artifactID,
 	}
 
 	// Pack manifest
@@ -179,14 +176,14 @@ func pushArtifact(ctx context.Context, repo *remote.Repository, artifactFile str
 	}
 
 	// Tag the manifest
-	_, err = oras.Tag(ctx, repo, manifestDesc.Digest.String(), artifactName)
+	_, err = oras.Tag(ctx, repo, manifestDesc.Digest.String(), artifactID)
 	if err != nil {
 		fmt.Printf("Failed to tag manifest: %v\n", err)
 
 		return err
 	}
 
-	fmt.Printf("Pushed artifact: %s\n", artifactName)
+	fmt.Printf("Pushed artifact: %s\n", artifactID)
 
 	return nil
 }

@@ -8,6 +8,7 @@ services:
     volumes:
       - ./zot-config.json:/etc/zot/config.json
       - zot-data:/var/lib/zot
+      - ./store:/tmp/zot-storage
     command: ["serve", "/etc/zot/config.json"]
 
 volumes:

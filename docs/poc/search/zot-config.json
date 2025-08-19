@@ -21,6 +21,9 @@
             "enable": true,
             "cosign": true,
             "notation": false
+        },
+        "ui": {
+            "enable": true
         }
     }
 }
