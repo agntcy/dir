@@ -5,7 +5,14 @@
     },
     "http": {
         "address": "0.0.0.0",
-        "port": "5000"
+        "port": "5000",
+        "accessControl": {
+            "repositories": {
+                "**": {
+                    "anonymousPolicy": ["read", "create"]
+                }
+            }
+        }
     },
     "log": {
         "level": "debug"
