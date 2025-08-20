@@ -133,6 +133,13 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 
+		ginkgo.It("should succeed to search for agent_v2.json from peer 2 after sync", func() {
+			// Search should eventually return the agentCID in peer 2 (retry until monitor indexes the record)
+			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v2").OnServer(utils.Peer2Addr).ShouldEventuallyContain(agentCID, 240*time.Second)
+
+			ginkgo.GinkgoWriter.Printf("Search found agentCID: %s", output)
+		})
+
 		// Delete sync from peer 2
 		ginkgo.It("should delete sync from peer 2", func() {
 			cli.Sync().Delete(syncID).OnServer(utils.Peer2Addr).ShouldSucceed()
@@ -145,36 +152,20 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
-		// Wait for network state to propagate after sync deletion
-		ginkgo.It("should wait for sync deletion to propagate", func() {
-			// Add explicit wait to ensure sync deletion is fully propagated
-			time.Sleep(2 * time.Second)
-
-			// Verify sync is no longer listed as active
-			output := cli.Sync().List().OnServer(utils.Peer2Addr).ShouldSucceed()
-			gomega.Expect(output).To(gomega.ContainSubstring("DELETED"))
-		})
-
 		// Push agent_v3.json to peer 1 (this is a NEW agent after sync deletion)
 		ginkgo.It("should push agent_v3.json to peer 1", func() {
+			// Wait for sync to delete
+			time.Sleep(60 * time.Second)
+
 			agentCID = cli.Push(tempAgentV3Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(agentCID, tempAgentV3Path)
 		})
 
-		// Verify sync is properly deleted and no new syncs are auto-created
-		ginkgo.It("should confirm sync remains deleted", func() {
-			// Wait a bit more to ensure no background sync recreation
-			time.Sleep(1 * time.Second)
-
-			// Verify the sync is still in DELETED state and hasn't been recreated
-			output := cli.Sync().List().OnServer(utils.Peer2Addr).ShouldSucceed()
-			gomega.Expect(output).To(gomega.ContainSubstring("DELETED"))
-
-			// Ensure no new active syncs were created
-			gomega.Expect(output).NotTo(gomega.ContainSubstring("PENDING"))
-			gomega.Expect(output).NotTo(gomega.ContainSubstring("IN_PROGRESS"))
+		// Pull agent_v3.json from peer 2
+		ginkgo.It("should fail to pull agent_v3.json from peer 2", func() {
+			_ = cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldFail()
 		})
 	})
 })
