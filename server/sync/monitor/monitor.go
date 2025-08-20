@@ -277,7 +277,7 @@ func (s *MonitorService) detectChanges(oldSnapshot, newSnapshot *RegistrySnapsho
 	for _, tag := range oldSnapshot.Tags {
 		oldTags[tag] = struct{}{}
 	}
-	
+
 	// Find new tags
 	var addedTags []string
 
@@ -301,8 +301,8 @@ func (s *MonitorService) processChanges(ctx context.Context, changes *RegistryCh
 	// Process new tags (index new records)
 	for _, tag := range changes.NewTags {
 		if err := s.indexRecord(ctx, tag); err != nil {
+			// Warn but continue processing other records even if one fails
 			logger.Error("Failed to index record", "tag", tag, "error", err)
-			// Continue processing other records even if one fails
 		} else {
 			logger.Debug("Successfully indexed record", "tag", tag)
 		}

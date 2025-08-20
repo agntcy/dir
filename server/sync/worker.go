@@ -112,8 +112,8 @@ func (w *Worker) deleteSync(workCtx context.Context, item synctypes.WorkItem) er
 
 	// Stop monitoring for this sync operation
 	if err := w.monitorService.StopSyncMonitoring(item.SyncID); err != nil {
+		// Warn but continue with deletion
 		logger.Warn("Failed to stop local registry monitoring", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
-		// Continue with deletion even if monitoring stop fails
 	}
 
 	// Get remote registry URL from sync object

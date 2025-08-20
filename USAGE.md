@@ -182,6 +182,64 @@ dirctl list info
 dirctl list info --network
 ```
 
+### Search
+
+This example demonstrates how to search for records in the directory using various filters and query parameters.
+The search functionality allows you to find records based on specific attributes like name, version, skills, locators, and extensions using structured query filters.
+
+Search operations support pagination and return Content Identifier (CID) values that can be used with other Directory commands like `pull`, `info`, and `verify`.
+
+```bash
+# Basic search for records by name
+dirctl search --query "name=my-agent-name"
+
+# Search for records with a specific version
+dirctl search --query "version=v1.0.0"
+
+# Search for records that have a particular skill by ID
+dirctl search --query "skill-id=10201"
+
+# Search for records with a specific skill name
+dirctl search --query "skill-name=Text Generation"
+
+# Search for records with a specific locator type and URL
+dirctl search --query "locator=docker-image:https://example.com/my-agent"
+
+# Search for records with a specific extension
+dirctl search --query "extension=my-custom-extension:v1.0.0"
+
+# Combine multiple query filters (AND operation)
+dirctl search \
+  --query "name=my-agent" \
+  --query "version=v1.0.0" \
+  --query "skill-name=Text Generation"
+
+# Use pagination to limit results and specify offset
+dirctl search \
+  --query "skill-name=Text Generation" \
+  --limit 10 \
+  --offset 0
+
+# Get the next page of results
+dirctl search \
+  --query "skill-name=Text Generation" \
+  --limit 10 \
+  --offset 10
+```
+
+**Available Query Types:**
+
+- `name` - Search by record name
+- `version` - Search by record version  
+- `skill-id` - Search by skill ID number
+- `skill-name` - Search by skill name
+- `locator` - Search by locator (format: `type:url`)
+- `extension` - Search by extension (format: `name:version`)
+
+**Query Format:**
+
+All queries use the format `field=value`. Multiple queries are combined with AND logic, meaning results must match all specified criteria.
+
 ### Sync
 
 The sync feature enables one-way synchronization of records and other objects between remote Directory instances and your local node. This feature supports distributed AI agent ecosystems by allowing you to replicate content from multiple remote directories, creating local mirrors for offline access, backup, and cross-network collaboration.
