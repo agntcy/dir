@@ -75,12 +75,11 @@ func FetchAuthConfig(ctx context.Context, frontedURL string) (*AuthConfig, error
 	backendAddr = strings.TrimPrefix(backendAddr, "http://")
 	backendAddr = strings.TrimPrefix(backendAddr, "https://")
 	backendAddr = strings.TrimSuffix(backendAddr, "/")
-	backendAddr = strings.TrimSuffix(backendAddr, "/v1alpha1")
-	backendAddr = fmt.Sprintf("%s:%d", backendAddr, DefaultHubBackendGRPCPort)
 	authConfig.HubBackendAddress = backendAddr
 
 	idpBackendAddr := authConfig.IdpBackendAddress
 	idpBackendAddr = strings.TrimSuffix(idpBackendAddr, "/")
+	// FIXME: is this trim still necessary?
 	idpBackendAddr = strings.TrimSuffix(idpBackendAddr, "/v1alpha1")
 	authConfig.IdpBackendAddress = idpBackendAddr
 
