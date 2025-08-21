@@ -292,11 +292,15 @@ func (s *MonitorService) createRegistrySnapshot(ctx context.Context) (*RegistryS
 
 // createContentHash creates a hash of the tags for quick comparison.
 func (s *MonitorService) createContentHash(tags []string) string {
-	// Create a deterministic hash of all tags
-	content := strings.Join(tags, "|")
-	hash := sha256.Sum256([]byte(content))
+	// Create a deterministic hash by writing each tag individually
+	hasher := sha256.New()
 
-	return hex.EncodeToString(hash[:])
+	for _, tag := range tags {
+		hasher.Write([]byte(tag))
+		hasher.Write([]byte("|"))
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 // detectChanges compares two registry snapshots and detects changes.
