@@ -110,12 +110,6 @@ func (w *Worker) processWorkItem(ctx context.Context, item synctypes.WorkItem) {
 func (w *Worker) deleteSync(workCtx context.Context, item synctypes.WorkItem) error {
 	logger.Debug("Starting sync delete operation", "worker_id", w.id, "sync_id", item.SyncID, "remote_url", item.RemoteDirectoryURL)
 
-	// Stop monitoring for this sync operation
-	if err := w.monitorService.StopSyncMonitoring(item.SyncID); err != nil {
-		// Warn but continue with deletion
-		logger.Warn("Failed to stop local registry monitoring", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
-	}
-
 	// Get remote registry URL from sync object
 	remoteRegistryURL, err := w.db.GetSyncRemoteRegistry(item.SyncID)
 	if err != nil {
@@ -125,6 +119,13 @@ func (w *Worker) deleteSync(workCtx context.Context, item synctypes.WorkItem) er
 	// Remove registry from zot configuration
 	if err := w.removeRegistryFromZotSync(workCtx, remoteRegistryURL); err != nil {
 		return fmt.Errorf("failed to remove registry from zot sync: %w", err)
+	}
+
+	// Start graceful monitoring shutdown - this will continue monitoring
+	// until all records that zot may still be syncing are indexed
+	if err := w.monitorService.StopSyncMonitoring(item.SyncID); err != nil { //nolint:contextcheck
+		// Warn but continue
+		logger.Warn("Failed to initiate graceful monitoring shutdown", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
 	}
 
 	return nil

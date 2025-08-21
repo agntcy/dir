@@ -152,11 +152,13 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
+		// Wait a reasonable time to ensure any residual sync processes would have completed
+		ginkgo.It("should wait to ensure no sync occurs", func() {
+			time.Sleep(120 * time.Second)
+		})
+
 		// Push agent_v3.json to peer 1 (this is a NEW agent after sync deletion)
 		ginkgo.It("should push agent_v3.json to peer 1", func() {
-			// Wait for sync to delete
-			time.Sleep(60 * time.Second)
-
 			agentCID = cli.Push(tempAgentV3Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data

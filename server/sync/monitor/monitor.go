@@ -117,6 +117,7 @@ func (s *MonitorService) StartSyncMonitoring(syncID string) error {
 }
 
 // StopSyncMonitoring stops monitoring when a sync operation ends.
+// It performs a final indexing scan before stopping to ensure no records are missed.
 func (s *MonitorService) StopSyncMonitoring(syncID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -131,10 +132,13 @@ func (s *MonitorService) StopSyncMonitoring(syncID string) error {
 			s.cancelMonitor()
 		}
 
-		s.ticker.Stop()
-
 		// Update state
 		s.isRunning = false
+
+		// Run graceful shutdown in background to not block deletion
+		go s.gracefulShutdown()
+
+		s.ticker.Stop()
 
 		logger.Info("Stopped registry monitoring")
 	}
@@ -142,6 +146,32 @@ func (s *MonitorService) StopSyncMonitoring(syncID string) error {
 	logger.Debug("Sync removed from monitoring", "sync_id", syncID, "active_syncs", len(s.activeSyncs))
 
 	return nil
+}
+
+// gracefulShutdown performs final monitoring checks in the background
+// to ensure all synced records are indexed before stopping monitoring.
+func (s *MonitorService) gracefulShutdown() {
+	logger.Debug("Starting graceful shutdown with final monitoring checks")
+
+	// Perform final indexing scan
+	ctx, cancel := context.WithTimeout(context.Background(), config.DefaultCheckInterval*2) //nolint:mnd
+	defer cancel()
+
+	// Create a separate ticker for graceful shutdown since main ticker is stopped
+	shutdownTicker := time.NewTicker(config.DefaultCheckInterval) //nolint:mnd
+	defer shutdownTicker.Stop()
+
+	// Perform monitoring checks until timeout is reached
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Debug("Graceful shutdown timeout reached")
+
+			return
+		case <-shutdownTicker.C:
+			s.performMonitoringCheck(ctx)
+		}
+	}
 }
 
 // startMonitoring begins registry monitoring.
@@ -331,12 +361,33 @@ func (s *MonitorService) indexRecord(ctx context.Context, tag string) error {
 	// Add to database
 	recordAdapter := adapters.NewRecordAdapter(record)
 	if err := s.db.AddRecord(recordAdapter); err != nil {
+		// Check if this is a duplicate record error - if so, it's not really an error
+		if s.isDuplicateRecordError(err) {
+			logger.Debug("Record already indexed, skipping", "cid", tag)
+
+			return nil
+		}
+
 		return fmt.Errorf("failed to add record to database: %w", err)
 	}
 
 	logger.Info("Successfully indexed local record", "cid", tag)
 
 	return nil
+}
+
+// isDuplicateRecordError checks if the error indicates a duplicate record.
+func (s *MonitorService) isDuplicateRecordError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := strings.ToLower(err.Error())
+
+	return strings.Contains(errStr, "duplicate") ||
+		strings.Contains(errStr, "already exists") ||
+		strings.Contains(errStr, "unique constraint") ||
+		strings.Contains(errStr, "primary key")
 }
 
 // isRepositoryNotFoundError checks if the error is a "repository not found" (404) error.

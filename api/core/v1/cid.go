@@ -87,9 +87,6 @@ func CalculateDigest(data []byte) (ocidigest.Digest, error) {
 // IsValidCID validates a CID string.
 func IsValidCID(cidString string) bool {
 	_, err := cid.Decode(cidString)
-	if err != nil {
-		return false
-	}
 
-	return true
+	return err == nil
 }
