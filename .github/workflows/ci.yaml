@@ -106,7 +106,7 @@ jobs:
       - name: Generate api
         run: |
           task gen
-          if [[ -n "$(git status --porcelain | grep -v 'api/proto/buf.lock')" ]]; then
+          if [[ -n "$(git status --porcelain)" ]]; then
             echo "There are uncommitted changes after running 'task gen'. Please commit these changes."
             exit 1
           fi
