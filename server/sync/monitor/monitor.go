@@ -225,7 +225,14 @@ func (s *MonitorService) createRegistrySnapshot(ctx context.Context) (*RegistryS
 	var tags []string
 
 	err := s.repo.Tags(ctx, "", func(tagDescriptors []string) error {
-		tags = append(tags, tagDescriptors...)
+		// Filter tags to only include valid CIDs
+		for _, tag := range tagDescriptors {
+			if corev1.IsValidCID(tag) {
+				tags = append(tags, tag)
+			} else {
+				logger.Debug("Skipping non-CID tag", "tag", tag)
+			}
+		}
 
 		return nil
 	})
