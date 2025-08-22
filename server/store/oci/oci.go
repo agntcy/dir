@@ -346,7 +346,33 @@ func (s *store) PushPublicKey(ctx context.Context, recordCID string, publicKey s
 		return status.Error(codes.InvalidArgument, "record CID is required")
 	}
 
-	// TODO Push public key to OCI store
+	// Push the public key blob
+	mediaType := "application/vnd.agntcy.dir.publickey.v1+pem"
+	blobDesc, err := oras.PushBytes(ctx, s.repo, mediaType, []byte(publicKey))
+	if err != nil {
+		return fmt.Errorf("failed to push public key blob: %w", err)
+	}
+
+	// Resolve the record manifest to get its descriptor for the subject field
+	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve record manifest for subject: %w", err)
+	}
+
+	// Create the public key manifest with proper OCI subject field
+	manifestDesc, err := oras.PackManifest(ctx, s.repo, oras.PackManifestVersion1_1, ocispec.MediaTypeImageManifest,
+		oras.PackManifestOptions{
+			Subject: &recordManifestDesc,
+			Layers: []ocispec.Descriptor{
+				blobDesc,
+			},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to pack public key manifest: %w", err)
+	}
+
+	logger.Debug("Public key pushed successfully", "digest", manifestDesc.Digest.String())
 
 	return nil
 }
