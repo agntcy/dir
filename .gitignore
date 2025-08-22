@@ -19,7 +19,7 @@ node_modules
 
 # Helm
 install/charts/dir/charts/
-install/charts/spire/charts/
+install/charts/dirctl/charts/
 
 # MacOS
 .DS_Store
