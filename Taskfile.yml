@@ -518,7 +518,9 @@ tasks:
           --set global.spire.trustDomain="{{ .TRUST_DOMAIN }}" \
           --set spire-server.service.type="{{ .SERVICE_TYPE }}" \
           --set spire-server.federation.enabled="true" \
+          --set spire-server.ingress.enabled="true" \
           --set spire-server.controllerManager.watchClassless="true" \
+          --set spire-server.nodeAttestor.joinToken.enabled="true" \
           --namespace spire \
           --create-namespace \
           --install \
@@ -978,7 +980,7 @@ tasks:
       SPIRE_AGENT_SOCKET: '/tmp/spire-agent/private/api.sock'
       WORKLOAD_UID: '{{ .WORKLOAD_UID | default "" }}'
       WORKLOAD_USER: '{{ .WORKLOAD_USER | default "" }}'
-      SPIFFE_ID: '{{ .SPIFFE_ID | default "spiffe://{{ .TRUST_DOMAIN }}/dirctl" }}'
+      SPIFFE_ID: "spiffe://{{ .TRUST_DOMAIN }}/dirctl-awesome2"
     cmds:
       - task: deploy:kubernetes:context
         vars:
@@ -991,7 +993,8 @@ tasks:
           echo "Error: Could not get SPIRE server LoadBalancer IP. Make sure SPIRE is deployed with LoadBalancer service."
           exit 1
         fi
-        SPIRE_SERVER_ADDRESS="${SPIRE_SERVER_IP}:8081"
+        # SPIRE_SERVER_ADDRESS="${SPIRE_SERVER_IP}"
+        SPIRE_SERVER_ADDRESS="0.0.0.0"
         echo "SPIRE Server Address: $SPIRE_SERVER_ADDRESS"
 
         echo "Creating SPIRE agent directories..."
@@ -1012,10 +1015,11 @@ tasks:
         tee {{ .SPIRE_AGENT_DIR }}/conf/agent/agent.conf > /dev/null << EOF
         agent {
             data_dir = "{{ .SPIRE_AGENT_DATA_DIR }}"
-            log_level = "INFO"
+            log_level = "DEBUG"
             server_address = "${SPIRE_SERVER_ADDRESS}"
-            server_port = "8081"
+            server_port = "9443"
             socket_path = "{{ .SPIRE_AGENT_SOCKET }}"
+            trust_bundle_format = "spiffe"
             trust_bundle_path = "{{ .SPIRE_AGENT_DIR }}/conf/agent/bootstrap.crt"
             trust_domain = "{{ .TRUST_DOMAIN }}"
         }
@@ -1028,13 +1032,11 @@ tasks:
 
             KeyManager "disk" {
                 plugin_data {
-                    keys_path = "{{ .SPIRE_AGENT_DATA_DIR }}/keys.json"
+                    directory = "{{ .SPIRE_AGENT_DATA_DIR }}"
                 }
             }
 
             WorkloadAttestor "unix" {
-                plugin_data {
-                }
             }
         }
         EOF
@@ -1042,22 +1044,16 @@ tasks:
       
         echo "Generating join token..."
         JOIN_TOKEN=$(kubectl exec spire-server-0 -n spire -c spire-server -- \
-            /opt/spire/bin/spire-server token generate -spiffeID spiffe://{{ .TRUST_DOMAIN }}/local-agent 2>/dev/null)
+            /opt/spire/bin/spire-server token generate -spiffeID spiffe://{{ .TRUST_DOMAIN }}/local-agents -output json | jq .value -r 2>/dev/null)
         if [ -z "$JOIN_TOKEN" ]; then
           echo "Error: Could not generate join token"
           exit 1
         fi
         echo "Join token generated successfully"
       
-        echo "Starting SPIRE server..."
-        cd {{ .SPIRE_SERVER_DIR }}
-        {{.SPIRE_SERVER_BIN}} run -config {{ .SPIRE_SERVER_CONF }} &
-        echo "SPIRE server started (PID: $!)"
-        sleep 10
-
         echo "Starting SPIRE agent..."
         echo "Starting SPIRE agent in background..."
-        {{.SPIRE_AGENT_BIN}} run -config {{ .SPIRE_AGENT_DIR }}/conf/agent/agent.conf -joinToken $JOIN_TOKEN > /tmp/spire-agent.log 2>&1 &
+        {{.SPIRE_AGENT_BIN}} run -config {{ .SPIRE_AGENT_DIR }}/conf/agent/agent.conf -joinToken "$JOIN_TOKEN" > /tmp/spire-agent.log 2>&1 &
         echo "SPIRE agent started (PID: $!)"
         echo "Agent logs: /tmp/spire-agent.log"
         
@@ -1076,39 +1072,16 @@ tasks:
           WORKLOAD_USER=$(whoami)
         fi
         
-        echo "Registering workload with UID: $WORKLOAD_UID, User: $WORKLOAD_USER"
+        echo "Creating SPIRE server entries..."
         
-        # Validate that we have required values
-        if [ -z "$WORKLOAD_UID" ] || [ -z "$WORKLOAD_USER" ]; then
-          echo "Error: Could not determine user UID or username"
-          echo "UID: '$WORKLOAD_UID', User: '$WORKLOAD_USER'"
-          exit 1
-        fi
-        
-        WORKLOAD_GID=$(id -g)
-        echo "Final values - UID: $WORKLOAD_UID, User: $WORKLOAD_USER, GID: $WORKLOAD_GID"
-        
-        # Debug: Show the exact command that will be executed
-        echo "Debug: About to execute:"
-        echo "kubectl exec spire-server-0 -n spire -c spire-server -- /opt/spire/bin/spire-server entry create -spiffeID {{ .SPIFFE_ID }} -parentID spiffe://{{ .TRUST_DOMAIN }}/local-agent -selector \"unix:uid:${WORKLOAD_UID}\" -selector \"unix:user:${WORKLOAD_USER}\" -selector \"unix:gid:${WORKLOAD_GID}\""
-        
-        # Try to register workload - first attempt with all selectors
-        echo "Attempting to register workload..."
-        if ! kubectl exec spire-server-0 -n spire -c spire-server -- \
+        # Create entry for local unix workload
+        echo "Registering workload with UID: $WORKLOAD_UID, User: $WORKLOAD_USER"  
+        echo kubectl exec spire-server-0 -n spire -c spire-server -- \
             /opt/spire/bin/spire-server entry create \
             -spiffeID {{ .SPIFFE_ID }} \
-            -parentID spiffe://{{ .TRUST_DOMAIN }}/local-agent \
+            -parentID spiffe://{{ .TRUST_DOMAIN }}/local-agents \
             -selector "unix:uid:${WORKLOAD_UID}" \
-            -selector "unix:user:${WORKLOAD_USER}" \
-            -selector "unix:gid:${WORKLOAD_GID}"; then
-            
-            echo "First attempt failed, trying with just UID selector..."
-            kubectl exec spire-server-0 -n spire -c spire-server -- \
-                /opt/spire/bin/spire-server entry create \
-                -spiffeID {{ .SPIFFE_ID }} \
-                -parentID spiffe://{{ .TRUST_DOMAIN }}/local-agent \
-                -selector "unix:uid:${WORKLOAD_UID}"
-        fi
+            -selector "unix:user:${WORKLOAD_USER}" -node
         
         echo "=============================================="
         echo "LOCAL SPIRE Registration Complete!"
@@ -1127,6 +1100,60 @@ tasks:
         echo ""
         echo "Agent logs:"
         echo "  tail -f /tmp/spire-agent.log"
+
+  test:spire:entries:
+    desc: Create SPIRE server entries for join token and unix workloads
+    vars:
+      TRUST_DOMAIN: '{{ .TRUST_DOMAIN | default "dir.example" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default .TRUST_DOMAIN }}'
+      SPIFFE_ID: '{{ .SPIFFE_ID | default "spiffe://{{ .TRUST_DOMAIN }}/dirctl" }}'
+      WORKLOAD_UID: '{{ .WORKLOAD_UID | default "" }}'
+      WORKLOAD_USER: '{{ .WORKLOAD_USER | default "" }}'
+    cmds:
+      - task: deploy:kubernetes:context
+        vars:
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
+
+      - |
+        echo "Creating SPIRE server entries..."
+        
+        # Get current user info if not provided
+        WORKLOAD_UID="{{ .WORKLOAD_UID }}"
+        WORKLOAD_USER="{{ .WORKLOAD_USER }}"
+        if [ -z "$WORKLOAD_UID" ]; then
+          WORKLOAD_UID=$(id -u)
+        fi
+        if [ -z "$WORKLOAD_USER" ]; then
+          WORKLOAD_USER=$(whoami)
+        fi
+        
+        echo "Creating agent entry for join token authentication..."
+        kubectl exec spire-server-0 -n spire -c spire-server -- \
+            /opt/spire/bin/spire-server entry create \
+            -spiffeID spiffe://{{ .TRUST_DOMAIN }}/spire/agent/join_token \
+            -parentID spiffe://{{ .TRUST_DOMAIN }}/spire/server \
+            -selector "join_token:token" \
+            -node || echo "Agent entry may already exist"
+        
+        echo "Creating workload entry for unix authentication (UID: $WORKLOAD_UID, User: $WORKLOAD_USER)..."
+        kubectl exec spire-server-0 -n spire -c spire-server -- \
+            /opt/spire/bin/spire-server entry create \
+            -spiffeID {{ .SPIFFE_ID }} \
+            -parentID spiffe://{{ .TRUST_DOMAIN }}/spire/agent/join_token \
+            -selector "unix:uid:${WORKLOAD_UID}" \
+            -selector "unix:user:${WORKLOAD_USER}" || echo "Workload entry may already exist"
+        
+        echo "Creating additional workload entry for process-based authentication..."
+        kubectl exec spire-server-0 -n spire -c spire-server -- \
+            /opt/spire/bin/spire-server entry create \
+            -spiffeID spiffe://{{ .TRUST_DOMAIN }}/dirctl-process \
+            -parentID spiffe://{{ .TRUST_DOMAIN }}/spire/agent/join_token \
+            -selector "unix:gid:$(id -g)" \
+            -selector "unix:path:/usr/local/bin/dirctl" || echo "Process entry may already exist"
+        
+        echo "Listing all entries..."
+        kubectl exec spire-server-0 -n spire -c spire-server -- \
+            /opt/spire/bin/spire-server entry show
 
   ##
   ## Linters
