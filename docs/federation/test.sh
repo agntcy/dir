@@ -10,8 +10,8 @@ trap 'kill $(jobs -p)' EXIT
 ## Deploy SPIRE cluster
 deploy_spire_cluster() {
   # Function params
-  local KIND_CLUSTER_NAME=$1
-  local SPIRE_TRUST_DOMAIN=$2
+  export KIND_CLUSTER_NAME=$1
+  export SPIRE_TRUST_DOMAIN=$2
   local SPIRE_BUNDLE_PATH=$3
 
   # Start kind cloud provider in the background.
@@ -31,7 +31,7 @@ deploy_spire_cluster() {
 ## Deploy DIR server
 deploy_dir() {
   # Function params
-  local KIND_CLUSTER_NAME=$1
+  export KIND_CLUSTER_NAME=$1
   local DIRCTL_BUNDLE_ADDRESS=$2
   local DIRCTL_BUNDLE_PATH=$3
 
@@ -55,7 +55,7 @@ apiserver:
 EOF
 
   # Deploy server
-  local HELM_EXTRA_ARGS="-f /tmp/server-federation.yaml"
+  export HELM_EXTRA_ARGS="-f /tmp/server-federation.yaml"
   task deploy:kubernetes:context
   task deploy:kubernetes:dir
 }
@@ -63,7 +63,7 @@ EOF
 ## Deploy DIRCTL server
 deploy_dirctl() {
   # Function params
-  local KIND_CLUSTER_NAME=$1
+  export KIND_CLUSTER_NAME=$1
   local DIR_SERVER_ADDRESS=$2
   local DIR_BUNDLE_ADDRESS=$3
   local DIR_BUNDLE_PATH=$4
@@ -88,14 +88,14 @@ spire:
 EOF
 
   # Deploy client
-  local HELM_EXTRA_ARGS="-f /tmp/client-federation.yaml"
+  export HELM_EXTRA_ARGS="-f /tmp/client-federation.yaml"
   task deploy:kubernetes:context
   task deploy:kubernetes:dirctl
 }
 
 ## Get Dir server IP Address
 get_dir_server_address() {
-  local KIND_CLUSTER_NAME=$1
+  export KIND_CLUSTER_NAME=$1
   task deploy:kubernetes:context
   ip=$(kubectl get service -n dir-server dir-apiserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo $ip:8888
@@ -103,23 +103,36 @@ get_dir_server_address() {
 
 ## Get Dir bundle IP Address
 get_spire_bundle_address() {
-  local KIND_CLUSTER_NAME=$1
+  export KIND_CLUSTER_NAME=$1
   task deploy:kubernetes:context
   ip=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
   echo $ip:8443
 }
 
+## Cleanup
+cleanup() {
+  export KIND_CLUSTER_NAME=$1
+  task deploy:kubernetes:cleanup
+}
+
 ########### WORKFLOW
 
-# Deploy SPIRE clusters
-deploy_spire_cluster "$DIR_TRUST_DOMAIN" "$DIR_TRUST_DOMAIN" "/tmp/$DIR_TRUST_DOMAIN.spiffe"
-deploy_spire_cluster "$DIRCTL_TRUST_DOMAIN" "$DIR_TRUST_DOMAIN" "/tmp/$DIRCTL_TRUST_DOMAIN.spiffe"
+# If cleanup flag is provided, run cleanup only
+if [[ "$CLEANUP" == "true" ]]; then
+  cleanup "$DIR_TRUST_DOMAIN"
+  cleanup "$DIRCTL_TRUST_DOMAIN"
+else
+  # Run main flow
+  # Deploy SPIRE clusters
+  deploy_spire_cluster "$DIR_TRUST_DOMAIN" "$DIR_TRUST_DOMAIN" "/tmp/$DIR_TRUST_DOMAIN.spiffe"
+  deploy_spire_cluster "$DIRCTL_TRUST_DOMAIN" "$DIR_TRUST_DOMAIN" "/tmp/$DIRCTL_TRUST_DOMAIN.spiffe"
 
-# Get addresses
-DIR_SERVER_ADDRESS=$(get_dir_server_address "$DIR_TRUST_DOMAIN")
-DIR_BUNDLE_ADDRESS=$(get_spire_bundle_address "$DIR_TRUST_DOMAIN")
-DIRCTL_BUNDLE_ADDRESS=$(get_spire_bundle_address "$DIRCTL_TRUST_DOMAIN")
+  # Get addresses
+  DIR_SERVER_ADDRESS=$(get_dir_server_address "$DIR_TRUST_DOMAIN")
+  DIR_BUNDLE_ADDRESS=$(get_spire_bundle_address "$DIR_TRUST_DOMAIN")
+  DIRCTL_BUNDLE_ADDRESS=$(get_spire_bundle_address "$DIRCTL_TRUST_DOMAIN")
 
-# Deploy servers
-deploy_dir "$DIR_TRUST_DOMAIN" "$DIRCTL_BUNDLE_ADDRESS" "/tmp/$DIRCTL_TRUST_DOMAIN.spiffe"
-deploy_dirctl "$DIRCTL_TRUST_DOMAIN" "$DIR_SERVER_ADDRESS" "$DIR_BUNDLE_ADDRESS" "/tmp/$DIR_TRUST_DOMAIN.spiffe"
+  # Deploy servers
+  deploy_dir "$DIR_TRUST_DOMAIN" "$DIRCTL_BUNDLE_ADDRESS" "/tmp/$DIRCTL_TRUST_DOMAIN.spiffe"
+  deploy_dirctl "$DIRCTL_TRUST_DOMAIN" "$DIR_SERVER_ADDRESS" "$DIR_BUNDLE_ADDRESS" "/tmp/$DIR_TRUST_DOMAIN.spiffe"
+fi
