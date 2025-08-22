@@ -222,6 +222,10 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 			storeLogger.Debug("Signature referrer request received")
 
 			response = s.pushSignatureReferrer(stream.Context(), request)
+		case *storev1.PushReferrerRequest_PublicKey:
+			storeLogger.Debug("Public key referrer request received")
+
+			response = s.pushPublicKeyReferrer(stream.Context(), request)
 		default:
 			storeLogger.Debug("Unknown referrer type, skipping")
 
@@ -244,8 +248,6 @@ func (s storeCtrl) pushSignatureReferrer(ctx context.Context, request *storev1.P
 	if !ok {
 		errMsg := "signature storage not supported by current store implementation"
 
-		storeLogger.Error(errMsg)
-
 		return &storev1.PushReferrerResponse{
 			Success:      false,
 			ErrorMessage: &errMsg,
@@ -254,9 +256,7 @@ func (s storeCtrl) pushSignatureReferrer(ctx context.Context, request *storev1.P
 
 	err := sigStore.PushSignature(ctx, request.GetRecordRef().GetCid(), request.GetSignature())
 	if err != nil {
-		errMsg := fmt.Sprintf("failed to store signature: %v", err)
-
-		storeLogger.Error(errMsg, "cid", request.GetRecordRef().GetCid())
+		errMsg := fmt.Sprintf("failed to store signature for record %s: %v", request.GetRecordRef().GetCid(), err)
 
 		return &storev1.PushReferrerResponse{
 			Success:      false,
@@ -264,7 +264,40 @@ func (s storeCtrl) pushSignatureReferrer(ctx context.Context, request *storev1.P
 		}
 	}
 
-	storeLogger.Info("Signature stored successfully", "cid", request.GetRecordRef().GetCid())
+	storeLogger.Debug("Signature stored successfully", "cid", request.GetRecordRef().GetCid())
+
+	return &storev1.PushReferrerResponse{
+		Success: true,
+	}
+}
+
+func (s storeCtrl) pushPublicKeyReferrer(ctx context.Context, request *storev1.PushReferrerRequest) *storev1.PushReferrerResponse {
+	storeLogger.Debug("Pushing public key referrer", "cid", request.GetRecordRef().GetCid())
+
+	// Try to use signature storage if the store supports it
+	sigStore, ok := s.store.(interface {
+		PushPublicKey(context.Context, string) error
+	})
+	if !ok {
+		errMsg := "signature storage not supported by current store implementation"
+
+		return &storev1.PushReferrerResponse{
+			Success:      false,
+			ErrorMessage: &errMsg,
+		}
+	}
+
+	err := sigStore.PushPublicKey(ctx, request.GetPublicKey())
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to store public key for record %s: %v", request.GetRecordRef().GetCid(), err)
+
+		return &storev1.PushReferrerResponse{
+			Success:      false,
+			ErrorMessage: &errMsg,
+		}
+	}
+
+	storeLogger.Debug("Public key stored successfully", "cid", request.GetRecordRef().GetCid())
 
 	return &storev1.PushReferrerResponse{
 		Success: true,

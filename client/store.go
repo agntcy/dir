@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
@@ -200,22 +199,12 @@ func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) 
 	return records, nil
 }
 
-// PushSignatureReferrer stores a signature using the PushReferrer RPC.
-func (c *Client) PushSignatureReferrer(ctx context.Context, recordCID string, signature *signv1.Signature) error {
+// PushReferrer stores a signature using the PushReferrer RPC.
+func (c *Client) PushReferrer(ctx context.Context, req *storev1.PushReferrerRequest) error {
 	// Create streaming client
 	stream, err := c.StoreServiceClient.PushReferrer(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create push referrer stream: %w", err)
-	}
-
-	// Create the push referrer request
-	req := &storev1.PushReferrerRequest{
-		RecordRef: &corev1.RecordRef{
-			Cid: recordCID,
-		},
-		Options: &storev1.PushReferrerRequest_Signature{
-			Signature: signature,
-		},
 	}
 
 	// Send the request

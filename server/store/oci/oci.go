@@ -306,24 +306,6 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 func (s *store) PushSignature(ctx context.Context, recordCID string, signature *signv1.Signature) error {
 	logger.Debug("Pushing signature artifact to OCI store", "recordCID", recordCID)
 
-	// Upload the public key to zot for signature verification
-	// This enables zot to mark this signature as "trusted" in verification queries
-	if signature.PublicKey != nil && len(signature.GetPublicKey()) > 0 {
-		uploadOpts := &zot.UploadPublicKeyOptions{
-			Config:    s.buildZotConfig(),
-			PublicKey: signature.GetPublicKey(),
-		}
-
-		err := zot.UploadPublicKey(ctx, uploadOpts)
-		if err != nil {
-			return status.Errorf(codes.Internal, "failed to upload public key to zot for verification: %v", err)
-		}
-
-		logger.Debug("Successfully uploaded public key to zot for verification", "recordCID", recordCID)
-	} else {
-		logger.Debug("No public key in signature, skipping upload to zot", "recordCID", recordCID)
-	}
-
 	if recordCID == "" {
 		return status.Error(codes.InvalidArgument, "record CID is required")
 	}
@@ -335,6 +317,36 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 	}
 
 	logger.Debug("Signature attached successfully using cosign", "recordCID", recordCID)
+
+	return nil
+}
+
+func (s *store) PushPublicKey(ctx context.Context, recordCID string, publicKey string) error {
+	logger.Debug("Pushing public key to OCI store", "recordCID", recordCID)
+
+	if len(publicKey) > 0 {
+		return status.Error(codes.InvalidArgument, "public key is required")
+	}
+
+	// Upload the public key to zot for signature verification
+	// This enables zot to mark this signature as "trusted" in verification queries
+	uploadOpts := &zot.UploadPublicKeyOptions{
+		Config:    s.buildZotConfig(),
+		PublicKey: publicKey,
+	}
+
+	err := zot.UploadPublicKey(ctx, uploadOpts)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to upload public key to zot for verification: %v", err)
+	}
+
+	logger.Debug("Successfully uploaded public key to zot for verification", "recordCID", recordCID)
+
+	if recordCID == "" {
+		return status.Error(codes.InvalidArgument, "record CID is required")
+	}
+
+	// TODO Push public key to OCI store
 
 	return nil
 }
