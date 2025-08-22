@@ -4,9 +4,6 @@ kind: ClusterSPIFFEID
 metadata:
   name: {{ include "chart.fullname" . }}
 spec:
-  {{ if .Values.spire.className }}
-  className: {{ .Values.spire.className }}
-  {{ end }}
   podSelector:
     matchExpressions:
     - key: app.kubernetes.io/name
@@ -18,4 +15,10 @@ spec:
     - k8s:sa:{{ include "chart.serviceAccountName" . }}
   spiffeIDTemplate: {{ "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}" }}
   autoPopulateDNSNames: true
+  {{- if .Values.spire.federation }}
+  federatesWith:
+  {{ range .Values.spire.federation }}
+    - {{ .trustDomain }}
+  {{ end }}
+  {{- end }}
 {{- end }}

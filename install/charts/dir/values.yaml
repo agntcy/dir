@@ -59,6 +59,12 @@ apiserver:
   spire:
     enabled: false
     trustDomain: example.org
+    federation: []
+      # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
+      # - trustDomain: dir-cluster
+      #   bundleEndpointURL: https://0.0.0.0:8081
+      #   bundleEndpointProfile:
+      #     type: https_web
 
   # Extra volume mounts for the apiserver container
   extraVolumeMounts: 

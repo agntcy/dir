@@ -23,8 +23,6 @@ cronjobs:
     schedule: "* * * * *"
     args:
       - "search"
-      - "--server-addr"
-      - "dir-apiserver.dir-server.svc.cluster.local:8888"
 
   # Push cronjob
   push:
@@ -33,8 +31,6 @@ cronjobs:
     args:
       - "push"
       - "/examples/record.json"
-      - "--server-addr"
-      - "dir-apiserver.dir-server.svc.cluster.local:8888"
     volumes:
       - name: record-json
         configMap:
@@ -52,6 +48,12 @@ cronjobs:
 spire:
   enabled: false
   trustDomain: example.org
+  federation: []
+    # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
+    # - trustDomain: dir-cluster
+    #   bundleEndpointURL: https://0.0.0.0:8081
+    #   bundleEndpointProfile:
+    #     type: https_web
 
 # Config maps config (shared across all cronjobs)
 configMaps:
@@ -109,7 +111,9 @@ resources:
     memory: 64Mi
 
 # Additional environment variables (applied to all cronjobs)
-env: []
+env:
+  - name: DIRECTORY_CLIENT_SERVER_ADDRESS
+    value: dir-apiserver.dir-server.svc.cluster.local:8888
 
 # Default volumes (can be extended per cronjob)
 volumes: []
