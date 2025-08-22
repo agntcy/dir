@@ -54,8 +54,6 @@ spec:
             {{- end }}
             env:
             {{- if eq $.Values.spire.enabled true }}
-            - name: DIRECTORY_CLIENT_SPIFFE_TRUST_DOMAIN
-              value: {{ $.Values.spire.trustDomain }}
             - name: DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH
               value: unix:/run/spire/agent-sockets/api.sock
             {{- end }}

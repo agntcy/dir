@@ -22,9 +22,8 @@ var DefaultConfig = Config{
 }
 
 type Config struct {
-	ServerAddress     string `json:"server_address,omitempty"      mapstructure:"server_address"`
-	SpiffeSocketPath  string `json:"spiffe_socket_path,omitempty"  mapstructure:"spiffe_socket_path"`
-	SpiffeTrustDomain string `json:"spiffe_trust_domain,omitempty" mapstructure:"spiffe_trust_domain"`
+	ServerAddress    string `json:"server_address,omitempty"     mapstructure:"server_address"`
+	SpiffeSocketPath string `json:"spiffe_socket_path,omitempty" mapstructure:"spiffe_socket_path"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -43,9 +42,6 @@ func LoadConfig() (*Config, error) {
 	// SPIFFE Workload API configuration
 	_ = v.BindEnv("spiffe_socket_path")
 	v.SetDefault("spiffe_socket_path", "")
-
-	_ = v.BindEnv("spiffe_trust_domain")
-	v.SetDefault("spiffe_trust_domain", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

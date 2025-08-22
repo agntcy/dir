@@ -50,7 +50,6 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_SYNC_REGISTRY_MONITOR_CHECK_INTERVAL": "10s",
 				"DIRECTORY_SERVER_SYNC_WORKER_TIMEOUT":                  "10s",
 				"DIRECTORY_SERVER_AUTHZ_SOCKET_PATH":                    "/test/agent.sock",
-				"DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN":                   "spiffe://trust-domain.org",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress:      "example.com:8889",
@@ -94,8 +93,7 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Authz: authz.Config{
-					SocketPath:  "/test/agent.sock",
-					TrustDomain: "spiffe://trust-domain.org",
+					SocketPath: "/test/agent.sock",
 				},
 			},
 		},
@@ -135,8 +133,7 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Authz: authz.Config{
-					SocketPath:  "",
-					TrustDomain: "",
+					SocketPath: "",
 				},
 			},
 		},
