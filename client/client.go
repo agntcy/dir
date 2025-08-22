@@ -91,6 +91,7 @@ func New(opts ...Option) (*Client, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse trust domain: %w", err)
 		}
+
 		_ = tlsconfig.AuthorizeMemberOf(trustDomain)
 
 		// Add client options for SPIFFE mTLS

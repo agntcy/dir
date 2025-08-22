@@ -134,6 +134,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse trust domain: %w", err)
 		}
+
 		_ = tlsconfig.AuthorizeMemberOf(trustDomain)
 
 		// Add server options for SPIFFE mTLS

@@ -7,9 +7,7 @@ import (
 	"github.com/agntcy/dir/client"
 )
 
-var (
-	clientConfig = &client.DefaultConfig
-)
+var clientConfig = &client.DefaultConfig
 
 func init() {
 	// load config
