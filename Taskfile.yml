@@ -44,6 +44,11 @@ vars:
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
+  SPIRE_VERSION: '1.12.5'
+  SPIRE_AGENT_BIN: '{{ .BIN_DIR }}/spire-agent-{{.SPIRE_VERSION}}'
+  SPIRE_SERVER_BIN: '{{ .BIN_DIR }}/spire-server-{{.SPIRE_VERSION}}'
+  SPIRE_SERVER_DIR: '{{.BIN_DIR}}/spire-{{.SPIRE_VERSION}}'
+  SPIRE_SERVER_CONF: '{{.BIN_DIR}}/spire-{{.SPIRE_VERSION}}/conf/server/server.conf'
 
 tasks:
   ##
@@ -961,6 +966,168 @@ tasks:
           KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
       - echo "Cleanup complete!"
 
+  test:spire:local:
+    desc: Register local binary as external workload to SPIRE server in Kubernetes
+    deps:
+      - task: deps:spire
+    vars:
+      TRUST_DOMAIN: '{{ .TRUST_DOMAIN | default "dir.example" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default .TRUST_DOMAIN }}'
+      SPIRE_AGENT_DIR: '/tmp/spire/agent'
+      SPIRE_AGENT_DATA_DIR: '/tmp/spire/agent/data'
+      SPIRE_AGENT_SOCKET: '/tmp/spire-agent/private/api.sock'
+      WORKLOAD_UID: '{{ .WORKLOAD_UID | default "" }}'
+      WORKLOAD_USER: '{{ .WORKLOAD_USER | default "" }}'
+      SPIFFE_ID: '{{ .SPIFFE_ID | default "spiffe://{{ .TRUST_DOMAIN }}/dirctl" }}'
+    cmds:
+      - task: deploy:kubernetes:context
+        vars:
+          KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME }}'
+
+      - |
+        echo "Getting remote SPIRE server information..."
+        SPIRE_SERVER_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+        if [ -z "$SPIRE_SERVER_IP" ]; then
+          echo "Error: Could not get SPIRE server LoadBalancer IP. Make sure SPIRE is deployed with LoadBalancer service."
+          exit 1
+        fi
+        SPIRE_SERVER_ADDRESS="${SPIRE_SERVER_IP}:8081"
+        echo "SPIRE Server Address: $SPIRE_SERVER_ADDRESS"
+
+        echo "Creating SPIRE agent directories..."
+        mkdir -p {{ .SPIRE_AGENT_DIR }}/conf/agent
+        mkdir -p {{ .SPIRE_AGENT_DATA_DIR }}
+        mkdir -p /tmp/spire-agent/private
+      
+        echo "Extracting trust bundle from Kubernetes..."
+        {{ .KUBECTL_BIN }} get configmap -n spire spire-bundle -o json | jq '.data."bundle.spiffe"' -r > /tmp/bootstrap.crt
+        if [ ! -s /tmp/bootstrap.crt ]; then
+          echo "Error: Could not extract trust bundle from SPIRE server"
+          exit 1
+        fi
+        mv /tmp/bootstrap.crt {{ .SPIRE_AGENT_DIR }}/conf/agent/bootstrap.crt
+        echo "Trust bundle saved to {{ .SPIRE_AGENT_DIR }}/conf/agent/bootstrap.crt"
+      
+        echo "Creating SPIRE agent configuration..."
+        tee {{ .SPIRE_AGENT_DIR }}/conf/agent/agent.conf > /dev/null << EOF
+        agent {
+            data_dir = "{{ .SPIRE_AGENT_DATA_DIR }}"
+            log_level = "INFO"
+            server_address = "${SPIRE_SERVER_ADDRESS}"
+            server_port = "8081"
+            socket_path = "{{ .SPIRE_AGENT_SOCKET }}"
+            trust_bundle_path = "{{ .SPIRE_AGENT_DIR }}/conf/agent/bootstrap.crt"
+            trust_domain = "{{ .TRUST_DOMAIN }}"
+        }
+
+        plugins {
+            NodeAttestor "join_token" {
+                plugin_data {
+                }
+            }
+
+            KeyManager "disk" {
+                plugin_data {
+                    keys_path = "{{ .SPIRE_AGENT_DATA_DIR }}/keys.json"
+                }
+            }
+
+            WorkloadAttestor "unix" {
+                plugin_data {
+                }
+            }
+        }
+        EOF
+        echo "Agent configuration created at {{ .SPIRE_AGENT_DIR }}/conf/agent/agent.conf"
+      
+        echo "Generating join token..."
+        JOIN_TOKEN=$(kubectl exec spire-server-0 -n spire -c spire-server -- \
+            /opt/spire/bin/spire-server token generate -spiffeID spiffe://{{ .TRUST_DOMAIN }}/local-agent 2>/dev/null)
+        if [ -z "$JOIN_TOKEN" ]; then
+          echo "Error: Could not generate join token"
+          exit 1
+        fi
+        echo "Join token generated successfully"
+      
+        echo "Starting SPIRE server..."
+        cd {{ .SPIRE_SERVER_DIR }}
+        {{.SPIRE_SERVER_BIN}} run -config {{ .SPIRE_SERVER_CONF }} &
+        echo "SPIRE server started (PID: $!)"
+        sleep 10
+
+        echo "Starting SPIRE agent..."
+        echo "Starting SPIRE agent in background..."
+        {{.SPIRE_AGENT_BIN}} run -config {{ .SPIRE_AGENT_DIR }}/conf/agent/agent.conf -joinToken $JOIN_TOKEN > /tmp/spire-agent.log 2>&1 &
+        echo "SPIRE agent started (PID: $!)"
+        echo "Agent logs: /tmp/spire-agent.log"
+        
+        # Wait for agent to start
+        echo "Waiting for agent to initialize..."
+        sleep 5
+      
+        echo "Registering workload..."
+        # Get current user info if not provided
+        WORKLOAD_UID="{{ .WORKLOAD_UID }}"
+        WORKLOAD_USER="{{ .WORKLOAD_USER }}"
+        if [ -z "$WORKLOAD_UID" ]; then
+          WORKLOAD_UID=$(id -u)
+        fi
+        if [ -z "$WORKLOAD_USER" ]; then
+          WORKLOAD_USER=$(whoami)
+        fi
+        
+        echo "Registering workload with UID: $WORKLOAD_UID, User: $WORKLOAD_USER"
+        
+        # Validate that we have required values
+        if [ -z "$WORKLOAD_UID" ] || [ -z "$WORKLOAD_USER" ]; then
+          echo "Error: Could not determine user UID or username"
+          echo "UID: '$WORKLOAD_UID', User: '$WORKLOAD_USER'"
+          exit 1
+        fi
+        
+        WORKLOAD_GID=$(id -g)
+        echo "Final values - UID: $WORKLOAD_UID, User: $WORKLOAD_USER, GID: $WORKLOAD_GID"
+        
+        # Debug: Show the exact command that will be executed
+        echo "Debug: About to execute:"
+        echo "kubectl exec spire-server-0 -n spire -c spire-server -- /opt/spire/bin/spire-server entry create -spiffeID {{ .SPIFFE_ID }} -parentID spiffe://{{ .TRUST_DOMAIN }}/local-agent -selector \"unix:uid:${WORKLOAD_UID}\" -selector \"unix:user:${WORKLOAD_USER}\" -selector \"unix:gid:${WORKLOAD_GID}\""
+        
+        # Try to register workload - first attempt with all selectors
+        echo "Attempting to register workload..."
+        if ! kubectl exec spire-server-0 -n spire -c spire-server -- \
+            /opt/spire/bin/spire-server entry create \
+            -spiffeID {{ .SPIFFE_ID }} \
+            -parentID spiffe://{{ .TRUST_DOMAIN }}/local-agent \
+            -selector "unix:uid:${WORKLOAD_UID}" \
+            -selector "unix:user:${WORKLOAD_USER}" \
+            -selector "unix:gid:${WORKLOAD_GID}"; then
+            
+            echo "First attempt failed, trying with just UID selector..."
+            kubectl exec spire-server-0 -n spire -c spire-server -- \
+                /opt/spire/bin/spire-server entry create \
+                -spiffeID {{ .SPIFFE_ID }} \
+                -parentID spiffe://{{ .TRUST_DOMAIN }}/local-agent \
+                -selector "unix:uid:${WORKLOAD_UID}"
+        fi
+        
+        echo "=============================================="
+        echo "LOCAL SPIRE Registration Complete!"
+        echo "=============================================="
+        echo "Trust Domain: {{ .TRUST_DOMAIN }}"
+        echo "SPIFFE ID: {{ .SPIFFE_ID }}"
+        echo "Agent Socket: {{ .SPIRE_AGENT_SOCKET }}"
+        echo ""
+        echo "To test your setup:"
+        echo "  {{.SPIRE_AGENT_BIN}} api fetch -socketPath {{ .SPIRE_AGENT_SOCKET }}"
+        echo "  {{.SPIRE_AGENT_BIN}} api fetch jwt -audience test -socketPath {{ .SPIRE_AGENT_SOCKET }}"
+        echo ""
+        echo "To stop SPIRE:"
+        echo "  pkill -f {{.SPIRE_AGENT_BIN}}"
+        echo "  pkill -f {{.SPIRE_SERVER_BIN}}"
+        echo ""
+        echo "Agent logs:"
+        echo "  tail -f /tmp/spire-agent.log"
+
   ##
   ## Linters
   ##
@@ -1161,6 +1328,25 @@ tasks:
       - cmd: chmod +x {{.HELM_BIN}}
     status:
       - test -x {{.HELM_BIN}}
+
+  deps:spire:
+    desc: Ensure supported SPIRE binary is installed
+    internal: true
+    deps:
+      - deps:bin-dir
+    preconditions:
+      - which curl
+      - which tar
+    cmd: |
+      git clone --single-branch --branch v{{.SPIRE_VERSION}} https://github.com/spiffe/spire.git {{.SPIRE_SERVER_DIR}}
+      cd {{.SPIRE_SERVER_DIR}}
+      go build -C ./cmd/spire-server
+      go build -C ./cmd/spire-agent
+      mv ./cmd/spire-server/spire-server {{.SPIRE_SERVER_BIN}}
+      mv ./cmd/spire-agent/spire-agent {{.SPIRE_AGENT_BIN}}
+    status:
+      - test -x {{.SPIRE_AGENT_BIN}}
+      - test -x {{.SPIRE_SERVER_BIN}}
 
   deps:kubectl:
     desc: Ensure supported kubectl version is installed
