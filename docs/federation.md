@@ -152,21 +152,17 @@ spire:
 
 ## Example
 
-An example deployment that sets up two k8s Kind clusters and deploys the neccesary infrastructure described above is provided in [deploy.sh](deploy.sh).
+An example deployment that sets up two k8s Kind clusters and deploys the necessary infrastructure described above is provided via the Taskfile command:
 
 ```bash
 ## Deploy
-sudo ./test.sh
-
-## Verify
-# It may take up to 60 seconds for client jobs to start
-kubectl get pods -n dir-client
+sudo task test:spire
 
 ## Cleanup
-CLEANUP=true ./test.sh
+task test:spire:cleanup
 ```
 
-NOTE: The example deployment uses [cloud-provider-kind](https://github.com/kubernetes-sigs/cloud-provider-kind) to expose services from Kind clusters for cross-cluster communication between SPIRE Bundle APIs and DIR API. It requires sudo priviledges to update docker network configuration for the clusters via host rules.
+NOTE: The example deployment uses [cloud-provider-kind](https://github.com/kubernetes-sigs/cloud-provider-kind) to expose services from Kind clusters for cross-cluster communication between SPIRE Bundle APIs and DIR API. It requires sudo privileges to update docker network configuration for the clusters via host rules.
 
 ## References
 

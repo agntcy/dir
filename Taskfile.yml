@@ -379,7 +379,6 @@ tasks:
   ## Deploy
   ##
   deploy:kubernetes:setup-cluster:
-    internal: true
     desc: Create a kind cluster and load Docker images
     deps:
       - deps:helm
@@ -438,89 +437,31 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-  deploy:kubernetes:spire:local:
-    desc: Deploy a local Directory server in Kubernetes with SPIRE support
-    deps:
-      - deploy:kubernetes:setup-cluster
+  deploy:kubernetes:context:
+    desc: Switch context to given Kubernetes cluster
     vars:
-      # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
-      KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
-      # SPIRE Config
-      SPIFFE_NAMESPACE: '{{ .SPIFFE_NAMESPACE | default "spire" }}'
-      SPIFFE_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/spire/values.yaml'
-      SPIFFE_TRUST_DOMAIN: '{{ .SPIFFE_TRUST_DOMAIN | default "example-abc.org" }}'
-      # Helm args (server)
+    cmds:
+      - '{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}'
+
+  deploy:kubernetes:dir:
+    desc: Deploy DIR helm chart
+    vars:
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
-      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values-spire.yaml'
-      # Helm args (client)
-      HELM_CLIENT_NAMESPACE: '{{ .HELM_CLIENT_NAMESPACE | default "dir-client" }}'
-      HELM_CLIENT_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
-      HELM_CLIENT_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values-spire.yaml'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
     cmds:
-      # Create zot configuration using helper task
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
 
-      # Deploy SPIRE
       - |
-        helm upgrade --install spire-crds spire-crds \
-          --repo https://spiffe.github.io/helm-charts-hardened/ \
-          --create-namespace -n {{.SPIFFE_NAMESPACE}} \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-        helm upgrade --install spire spire \
-          --repo https://spiffe.github.io/helm-charts-hardened/ \
-          --values {{ .SPIFFE_VALUES_PATH }} \
-          --set global.spire.trustDomain="{{ .SPIFFE_TRUST_DOMAIN }}" \
-          --set global.spire.caSubject.commonName="{{ .SPIFFE_TRUST_DOMAIN }}" \
-          --set global.spire.clusterName="{{ .KIND_CLUSTER_NAME }}" \
-          --namespace {{ .SPIFFE_NAMESPACE }} \
-          --install \
-          --wait \
-          --wait-for-jobs \
-          --timeout "15m"
-
-      # Create SPIFFE workload API for services
-      - |
-        # Create SPIFFE ID for the SPIRE server
-        kubectl exec -n spire spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
-          -selector k8s_psat:cluster:{{.KIND_CLUSTER_NAME}} \
-          -selector k8s_psat:agent_ns:spire \
-          -selector k8s_psat:agent_sa:spire-agent \
-          -node
-
-        # Create SPIFFE ID for the default service account in server namespace
-        kubectl exec -n spire spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{.HELM_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
-          -selector k8s:ns:{{.HELM_NAMESPACE}} \
-          -selector k8s:sa:default
-
-        # Create SPIFFE ID for the default service account in client namespace
-        kubectl exec -n spire spire-server-0 -- \
-          /opt/spire/bin/spire-server entry create \
-          -spiffeID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/{{.HELM_CLIENT_NAMESPACE}}/sa/default \
-          -parentID spiffe://{{.SPIFFE_TRUST_DOMAIN}}/ns/spire/sa/spire-agent \
-          -selector k8s:ns:{{.HELM_CLIENT_NAMESPACE}} \
-          -selector k8s:sa:default
-
-      # Deploy server chart
-      - |
-        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dir \
+        {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
-          --set apiserver.config.authz.trust_domain="{{ .SPIFFE_TRUST_DOMAIN }}" \
+          {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -528,20 +469,60 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
-      # Deploy client chart
+  deploy:kubernetes:dirctl:
+    desc: Deploy DIRCTL helm chart
+    vars:
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-client" }}'
+      HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl'
+      HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dirctl/values.yaml'
+      HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
+    cmds:
       - |
-        {{ .HELM_BIN }} dependency build {{ .HELM_CLIENT_CHART_PATH }}
-        {{ .HELM_BIN }} upgrade dirctl \
-          {{ .HELM_CLIENT_CHART_PATH }} \
-          -f {{ .HELM_CLIENT_VALUES_PATH }} \
+        {{ .HELM_BIN }} upgrade --install dirctl \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
           --set image.tag="{{ .IMAGE_TAG }}" \
-          --set env[0].value="{{ .SPIFFE_TRUST_DOMAIN }}" \
-          --namespace {{ .HELM_CLIENT_NAMESPACE }} \
+          {{ .HELM_EXTRA_ARGS }} \
+          --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
           --wait \
           --wait-for-jobs \
           --timeout "15m"
+
+  deploy:kubernetes:spire:
+    desc: Deploy SPIRE helm chart
+    vars:
+      TRUST_DOMAIN: '{{ .TRUST_DOMAIN | default "example.org" }}'
+      SERVICE_TYPE: '{{ .SERVICE_TYPE | default "LoadBalancer" }}'
+      BUNDLE_PATH: '{{ .BUNDLE_PATH | default "/tmp/spire-bundle.spiffe" }}'
+    cmds:
+      - |
+        {{ .HELM_BIN }} upgrade --install spire-crds spire-crds \
+          --repo https://spiffe.github.io/helm-charts-hardened/ \
+          --namespace spire-crds \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+      - |
+        {{ .HELM_BIN }} upgrade --install spire spire \
+          --repo https://spiffe.github.io/helm-charts-hardened/ \
+          --set global.spire.trustDomain="{{ .TRUST_DOMAIN }}" \
+          --set spire-server.service.type="{{ .SERVICE_TYPE }}" \
+          --set spire-server.federation.enabled="true" \
+          --set spire-server.controllerManager.watchClassless="true" \
+          --namespace spire \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+      - |
+        {{ .KUBECTL_BIN }} get configmap -n spire spire-bundle -o json | jq '.data."bundle.spiffe"' -r > {{ .BUNDLE_PATH }}
 
   deploy:kubernetes:local:port-forward:
     aliases: [deploy:local:port-forward]
@@ -565,7 +546,7 @@ tasks:
       - kill -9 $(ps aux | grep port-forward | grep dir-apiserver | awk '{print $2}') || true
 
   deploy:kubernetes:local:cleanup:
-    aliases: [deploy:local:cleanup]
+    aliases: [deploy:local:cleanup, deploy:kubernetes:cleanup]
     desc: Cleanup Kubernetes environment for local deployment
     deps:
       - deps:kind
@@ -812,6 +793,173 @@ tasks:
       - task: deploy:kubernetes:network:port-forward
       # Run tests
       - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
+
+  # TODO: move spire out from here
+  # TODO: change to Ingress services instead of LoadBalancer
+  test:spire:
+    desc: Test SPIRE federation setup between DIR and DIRCTL clusters
+    vars:
+      DIR_TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN | default "dir.example" }}'
+      DIRCTL_TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN | default "dirctl.example" }}'
+    cmds:
+      # Setup DIR cluster
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
+      
+      # Start cloud provider for LoadBalancer support
+      - |
+        echo "Starting Kind cloud provider for LoadBalancer support..."
+        go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
+        echo "Cloud provider started in background"
+      
+      # Deploy SPIRE on DIR cluster
+      - task: deploy:kubernetes:spire
+        vars:
+          TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN }}'
+          BUNDLE_PATH: /tmp/{{ .DIR_TRUST_DOMAIN }}.spiffe
+
+      # Setup DIRCTL cluster
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
+      
+      # Start cloud provider for LoadBalancer support
+      - |
+        echo "Starting Kind cloud provider for LoadBalancer support..."
+        go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
+        echo "Cloud provider started in background"
+      
+      # Deploy SPIRE on DIRCTL cluster
+      - task: deploy:kubernetes:spire
+        vars:
+          TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN }}'
+          BUNDLE_PATH: /tmp/{{ .DIRCTL_TRUST_DOMAIN }}.spiffe
+
+      # Get DIR cluster service addresses
+      - task: deploy:kubernetes:context
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
+      - |
+        echo "Getting DIR cluster service addresses..."
+        DIR_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
+        echo "DIR_BUNDLE_ADDRESS=${DIR_BUNDLE_IP}:8443" >> /tmp/spire-addresses.env
+      
+      # Get DIRCTL cluster service addresses
+      - task: deploy:kubernetes:context
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
+      - |
+        echo "Getting DIRCTL cluster service addresses..."
+        DIRCTL_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
+        echo "DIRCTL_BUNDLE_ADDRESS=${DIRCTL_BUNDLE_IP}:8443" >> /tmp/spire-addresses.env
+      
+      # Create DIR server federation config
+      - |
+        source /tmp/spire-addresses.env
+        echo "Creating DIR server federation config..."
+        cat > /tmp/server-federation.yaml << EOF
+        apiserver:
+          service:
+            type: LoadBalancer
+          spire:
+            enabled: true
+            trustDomain: {{ .DIR_TRUST_DOMAIN }}
+            federation:
+              - trustDomain: {{ .DIRCTL_TRUST_DOMAIN }}
+                bundleEndpointURL: https://${DIRCTL_BUNDLE_ADDRESS}
+                bundleEndpointProfile:
+                  type: https_spiffe
+                  endpointSPIFFEID: spiffe://{{ .DIRCTL_TRUST_DOMAIN }}/spire/server
+                trustDomainBundle: |-
+                  $(cat /tmp/{{ .DIRCTL_TRUST_DOMAIN }}.spiffe)
+        EOF
+      
+      # Deploy DIR server with federation
+      - task: deploy:kubernetes:context
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
+      - task: deploy:kubernetes:dir
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
+          HELM_EXTRA_ARGS: '-f /tmp/server-federation.yaml'
+      
+      # Get DIR API server address
+      - task: deploy:kubernetes:context
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
+      - |
+        echo "Getting DIR API server address..."
+        DIR_API_IP=$(kubectl get service -n dir-server dir-apiserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
+        echo "DIR_SERVER_ADDRESS=${DIR_API_IP}:8888" >> /tmp/spire-addresses.env
+      
+      # Create DIRCTL client federation config
+      - |
+        source /tmp/spire-addresses.env
+        echo "Creating DIRCTL client federation config..."
+        cat > /tmp/client-federation.yaml << EOF
+        env:
+          - name: DIRECTORY_CLIENT_SERVER_ADDRESS
+            value: ${DIR_SERVER_ADDRESS}
+        spire:
+          enabled: true
+          trustDomain: {{ .DIRCTL_TRUST_DOMAIN }}
+          federation:
+            - trustDomain: {{ .DIR_TRUST_DOMAIN }}
+              bundleEndpointURL: https://${DIR_BUNDLE_ADDRESS}
+              bundleEndpointProfile:
+                type: https_spiffe
+                endpointSPIFFEID: spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server
+              trustDomainBundle: |-
+                $(cat /tmp/{{ .DIR_TRUST_DOMAIN }}.spiffe)
+        EOF
+      
+      # Deploy DIRCTL client with federation
+      - task: deploy:kubernetes:context
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
+      - task: deploy:kubernetes:dirctl
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
+          HELM_EXTRA_ARGS: '-f /tmp/client-federation.yaml'
+      
+      # Display completion status
+      - |
+        source /tmp/spire-addresses.env
+        echo "=============================================="
+        echo "SPIRE federation test deployment complete!"
+        echo "=============================================="
+        echo "DIR Server: ${DIR_SERVER_ADDRESS}"
+        echo "DIR Bundle: ${DIR_BUNDLE_ADDRESS}"
+        echo "DIRCTL Bundle: ${DIRCTL_BUNDLE_ADDRESS}"
+        echo ""
+        echo "Trust domains:"
+        echo "  DIR: {{ .DIR_TRUST_DOMAIN }}"
+        echo "  DIRCTL: {{ .DIRCTL_TRUST_DOMAIN }}"
+        echo ""
+        echo "To verify deployment:"
+        echo "  kubectl --context kind-{{ .DIR_TRUST_DOMAIN }} get pods -n dir-server"
+        echo "  kubectl --context kind-{{ .DIRCTL_TRUST_DOMAIN }} get pods -n dir-client"
+        echo "  kubectl --context kind-{{ .DIRCTL_TRUST_DOMAIN }} logs -n dir-client -l app.kubernetes.io/name=dirctl"
+        echo ""
+        echo "To cleanup:"
+        echo "  task test:spire:cleanup"
+
+  test:spire:cleanup:
+    desc: Cleanup SPIRE federation test clusters
+    vars:
+      DIR_TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN | default "dir.example" }}'
+      DIRCTL_TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN | default "dirctl.example" }}'
+    cmds:
+      - echo "Cleaning up DIR cluster ({{ .DIR_TRUST_DOMAIN }})..."
+      - task: deploy:kubernetes:cleanup
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
+      - echo "Cleaning up DIRCTL cluster ({{ .DIRCTL_TRUST_DOMAIN }})..."
+      - task: deploy:kubernetes:cleanup
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
+      - echo "Cleanup complete!"
 
   ##
   ## Linters
