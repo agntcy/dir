@@ -284,7 +284,6 @@ func (s *MonitorService) createRegistrySnapshot(ctx context.Context) (*RegistryS
 	return &RegistrySnapshot{
 		Timestamp:    time.Now(),
 		Tags:         tags,
-		TagCount:     len(tags),
 		ContentHash:  contentHash,
 		LastModified: time.Now(),
 	}, nil
