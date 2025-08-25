@@ -151,21 +151,8 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 }
 
 func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, signature *signv1.Signature, publicKey string) error {
-	// Push signature to store
-	err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
-		RecordRef: &corev1.RecordRef{
-			Cid: recordCID,
-		},
-		Options: &storev1.PushReferrerRequest_Signature{
-			Signature: signature,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to store signature: %w", err)
-	}
-
 	// Push public key to store
-	err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+	err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
@@ -175,6 +162,19 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, sig
 	})
 	if err != nil {
 		return fmt.Errorf("failed to store public key: %w", err)
+	}
+
+	// Push signature to store
+	err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		RecordRef: &corev1.RecordRef{
+			Cid: recordCID,
+		},
+		Options: &storev1.PushReferrerRequest_Signature{
+			Signature: signature,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to store signature: %w", err)
 	}
 
 	return nil
