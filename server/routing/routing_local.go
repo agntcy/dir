@@ -79,11 +79,17 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 		return status.Errorf(codes.Internal, "failed to put record key: %v", err)
 	}
 
-	// Update metrics for all record labels
-	// Note: Label storage is now handled by routing_remote.Publish via DHT.PutValue()
-	// to avoid redundancy in the unified datastore
+	// Update metrics for all record labels and store them locally for queries
+	// Note: This handles ALL local storage for both local-only and network scenarios
+	// Network announcements are handled separately by routing_remote when peers are available
 	labels := getLabels(record)
 	for _, label := range labels {
+		// Store label key for local List queries
+		labelKey := datastore.NewKey(fmt.Sprintf("%s/%s", label, ref.GetCid()))
+		if err := batch.Put(ctx, labelKey, nil); err != nil {
+			return status.Errorf(codes.Internal, "failed to put label key: %v", err)
+		}
+
 		metrics.increment(label)
 	}
 

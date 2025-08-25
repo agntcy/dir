@@ -7,7 +7,6 @@ package routing
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/agntcy/dir/server/config"
 	routingconfig "github.com/agntcy/dir/server/routing/config"
@@ -25,15 +24,7 @@ func toPtr[T any](v T) *T {
 func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route {
 	t.Helper()
 
-	// override interval for routing table refresh
-	realInterval := refreshInterval
-	refreshInterval = 1 * time.Second
-
-	defer func() {
-		refreshInterval = realInterval
-	}()
-
-	// define opts
+	// define opts with faster refresh interval for testing
 	opts := types.NewOptions(
 		&config.Config{
 			Provider: string(store.OCI),
@@ -41,8 +32,9 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 				LocalDir: t.TempDir(),
 			},
 			Routing: routingconfig.Config{
-				ListenAddress:  "/ip4/0.0.0.0/tcp/0",
-				BootstrapPeers: bootPeers,
+				ListenAddress:   "/ip4/0.0.0.0/tcp/0",
+				BootstrapPeers:  bootPeers,
+				RefreshInterval: TestRefreshInterval, // Fast refresh for testing
 			},
 		},
 	)

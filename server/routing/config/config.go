@@ -3,6 +3,8 @@
 
 package config
 
+import "time"
+
 var (
 	DefaultListenAddress  = "/ip4/0.0.0.0/tcp/8999"
 	DefaultBootstrapPeers = []string{
@@ -25,4 +27,9 @@ type Config struct {
 	// If empty, the routing data will be stored in memory.
 	// If not empty, this dir will be used to store the routing data on disk.
 	DatastoreDir string `json:"datastore_dir,omitempty" mapstructure:"datastore_dir"`
+
+	// Refresh interval for DHT routing tables.
+	// If not set or zero, uses the default RefreshInterval constant.
+	// This is primarily used for testing with faster intervals.
+	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
 }

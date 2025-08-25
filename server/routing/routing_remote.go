@@ -18,9 +18,11 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
+	record "github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
@@ -28,18 +30,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var (
-	ProtocolPrefix     = "dir"
-	ProtocolRendezvous = "dir/connect"
-
-	// refresh interval for DHT routing tables.
-	refreshInterval = 30 * time.Second
-
-	// label republishing interval - republish every 20 hours to prevent 24h expiration.
-	labelRepublishInterval = 20 * time.Hour
-
-	remoteLogger = logging.Logger("routing/remote")
-)
+var remoteLogger = logging.Logger("routing/remote")
 
 // this interface handles routing across the network.
 // TODO: we shoud add caching here.
@@ -61,8 +52,14 @@ func newRemote(ctx context.Context,
 	// Create routing
 	routeAPI := &routeRemote{
 		storeAPI: storeAPI,
-		notifyCh: make(chan *handlerSync, 1000),
+		notifyCh: make(chan *handlerSync, NotificationChannelSize),
 		dstore:   dstore,
+	}
+
+	// Determine refresh interval: use config override for testing, otherwise use default
+	refreshInterval := RefreshInterval
+	if opts.Config().Routing.RefreshInterval > 0 {
+		refreshInterval = opts.Config().Routing.RefreshInterval
 	}
 
 	// Create P2P server
@@ -80,10 +77,20 @@ func newRemote(ctx context.Context,
 					return nil, fmt.Errorf("failed to create provider manager: %w", err)
 				}
 
+				// create custom validators for label namespaces
+				labelValidators := CreateLabelValidators()
+				validator := record.NamespacedValidator{
+					"skills":   labelValidators["skills"],
+					"domains":  labelValidators["domains"],
+					"features": labelValidators["features"],
+				}
+
 				// return custom opts for DHT
 				return []dht.Option{
 					dht.Datastore(dstore),                           // custom DHT datastore
 					dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)), // custom DHT protocol prefix
+					dht.Validator(validator),                        // custom validators for label namespaces
+					dht.MaxRecordAge(DHTRecordTTL),                  // set consistent TTL for all DHT records
 					dht.ProviderStore(&handler{
 						ProviderManager: providerMgr,
 						hostID:          h.ID().String(),
@@ -120,67 +127,36 @@ func newRemote(ctx context.Context,
 	return routeAPI, nil
 }
 
-func (r *routeRemote) hasPeersInRoutingTable() bool {
-	// Check if we have any peers in the DHT routing table
-	rt := r.server.DHT().RoutingTable()
-
-	return rt.Size() > 0
-}
-
 func (r *routeRemote) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
-	remoteLogger.Debug("Called remote routing's Publish method", "ref", ref, "record", record)
+	remoteLogger.Debug("Called remote routing's Publish method for network operations", "ref", ref, "record", record)
 
-	// get record CID
+	// Parse record CID
 	decodedCID, err := cid.Decode(ref.GetCid())
 	if err != nil {
 		return status.Errorf(codes.InvalidArgument, "failed to parse CID: %v", err)
 	}
 
-	// announce CID to DHT (always store locally, even without peers)
+	// Announce CID to DHT network
 	err = r.server.DHT().Provide(ctx, decodedCID, true)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to announce object %v: %v", ref.GetCid(), err)
 	}
 
-	// store label mappings in DHT
+	// Announce all label mappings to DHT network
 	labels := getLabels(record)
 	for _, label := range labels {
-		labelKey := fmt.Sprintf("%s/%s", label, ref.GetCid())
-
-		// Store label mapping in DHT datastore
-		err = r.server.DHT().PutValue(ctx, labelKey, []byte(""))
-		if err != nil {
-			remoteLogger.Warn("Failed to store label mapping", "label", labelKey, "error", err)
-			// Continue with other labels rather than failing completely
-		}
+		r.announceLabelToDHT(ctx, label, ref.GetCid())
 	}
 
-	// Log success with network state information
-	if r.hasPeersInRoutingTable() {
-		remoteLogger.Debug("Successfully announced object and labels to network",
-			"ref", ref, "labels", len(labels), "peers", r.server.DHT().RoutingTable().Size())
-	} else {
-		remoteLogger.Debug("Successfully stored object and labels locally (no peers connected)",
-			"ref", ref, "labels", len(labels))
-	}
+	remoteLogger.Debug("Successfully announced object and labels to network",
+		"ref", ref, "labels", len(labels), "peers", r.server.DHT().RoutingTable().Size())
 
 	return nil
 }
 
 //nolint:mnd,cyclop
 func (r *routeRemote) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
-	remoteLogger.Debug("Called remote routing's List method", "req", req)
-
-	// Check if we have peers connected for DHT operations i.e. if directory running in network mode.
-	if !r.hasPeersInRoutingTable() {
-		remoteLogger.Debug("No peers in DHT routing table, returning empty channel")
-
-		// Return empty channel
-		emptyCh := make(chan *routingv1.LegacyListResponse_Item)
-		close(emptyCh)
-
-		return emptyCh, nil
-	}
+	remoteLogger.Debug("Called remote routing's List method for network operations", "req", req)
 
 	// list data from remote for a given peer.
 	// this returns all the records that fully match our query.
@@ -267,7 +243,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingv1.ListRequest) (<-c
 	remoteLogger.Info("Listing data for all peers", "req", req)
 
 	// resolve hops
-	if req.GetLegacyListRequest().GetMaxHops() > 20 {
+	if req.GetLegacyListRequest().GetMaxHops() > MaxHops {
 		return nil, errors.New("max hops exceeded")
 	}
 
@@ -336,9 +312,9 @@ func (r *routeRemote) handleLabelNotification(ctx context.Context, notif *handle
 	remoteLogger.Info("Processing label announcement",
 		"label", notif.LabelKey, "cid", notif.Ref.GetCid(), "peer", notif.Peer.ID)
 
-	// Store the label mapping locally in our DHT datastore
+	// Store the remote label mapping locally in our shared datastore
 	// This allows us to discover this remote content via label searches
-	err := r.server.DHT().PutValue(ctx, notif.LabelKey, []byte(""))
+	err := r.dstore.Put(ctx, datastore.NewKey(notif.LabelKey), []byte(""))
 	if err != nil {
 		remoteLogger.Error("Failed to store remote label announcement",
 			"label", notif.LabelKey, "error", err)
@@ -348,13 +324,6 @@ func (r *routeRemote) handleLabelNotification(ctx context.Context, notif *handle
 
 	remoteLogger.Info("Successfully stored remote label announcement",
 		"label", notif.LabelKey, "peer", notif.Peer.ID)
-	// Optional: You could also fetch the record to validate it
-	// record, err := r.service.Pull(ctx, notif.Peer.ID, notif.Ref)
-	//
-	//	if err == nil {
-	//	    labels := getLabels(record)
-	//	    // Validate that the announced label matches the record
-	//	}
 }
 
 // "I have this content", while label announcements indicate "this content has these labels".
@@ -402,12 +371,12 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 		"peer", notif.Peer.ID, "cid", notif.Ref.GetCid())
 }
 
-// label mappings to prevent them from expiring (DHT PutValue records expire after 24h).
+// label mappings to prevent them from expiring (DHT PutValue records expire after DHTRecordTTL).
 func (r *routeRemote) startLabelRepublishTask(ctx context.Context) {
-	ticker := time.NewTicker(labelRepublishInterval)
+	ticker := time.NewTicker(LabelRepublishInterval)
 	defer ticker.Stop()
 
-	remoteLogger.Info("Started label republishing task", "interval", labelRepublishInterval)
+	remoteLogger.Info("Started label republishing task", "interval", LabelRepublishInterval)
 
 	for {
 		select {
@@ -460,15 +429,18 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 		// Republish all label mappings for this record
 		labels := getLabels(record)
 		for _, label := range labels {
-			labelKey := fmt.Sprintf("%s/%s", label, cid)
+			// Use proper validator-compatible DHT key format
+			dhtKey := FormatLabelKey(label, cid)
 
-			// Store label mapping in DHT datastore
-			err = r.server.DHT().PutValue(ctx, labelKey, []byte(""))
+			// Republish label mapping to DHT network
+			err = r.server.DHT().PutValue(ctx, dhtKey, []byte(cid))
 			if err != nil {
-				remoteLogger.Warn("Failed to republish label mapping", "label", labelKey, "error", err)
+				remoteLogger.Warn("Failed to republish label mapping", "label", dhtKey, "error", err)
 
 				errorCount++
 			} else {
+				remoteLogger.Debug("Successfully republished label mapping", "label", dhtKey)
+
 				republishedCount++
 			}
 		}
@@ -476,4 +448,18 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 
 	remoteLogger.Info("Completed label republishing cycle",
 		"republished", republishedCount, "errors", errorCount)
+}
+
+// announceLabelToDHT announces a label mapping to the DHT network.
+func (r *routeRemote) announceLabelToDHT(ctx context.Context, label, cidStr string) {
+	// Announce to DHT network using proper validator-compatible key format
+	// This automatically stores in the shared datastore AND announces to the network
+	dhtKey := FormatLabelKey(label, cidStr)
+	err := r.server.DHT().PutValue(ctx, dhtKey, []byte(cidStr))
+
+	if err != nil {
+		remoteLogger.Warn("Failed to announce label to DHT", "label", dhtKey, "error", err)
+	} else {
+		remoteLogger.Debug("Successfully announced label to DHT", "label", dhtKey)
+	}
 }

@@ -569,7 +569,7 @@ tasks:
     cmds:
       # Generate private key if it doesn't exist
       - |
-        test -f /tmp/node.privkey || openssl genpkey -algorithm ED25519 -out /tmp/node.privkey
+        test -f /tmp/node.privkey || {{ .BIN_DIR }}/dirctl network init --output /tmp/node.privkey
 
       # Generate the bootstrap peer ID and export it to the environment file
       - |

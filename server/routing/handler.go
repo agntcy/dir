@@ -86,9 +86,7 @@ func (h *handler) handleLabelAnnouncement(_ context.Context, labelKey string, pr
 	// Extract CID from label key: "/skills/golang/CID123" → "CID123"
 	parts := strings.Split(labelKey, "/")
 
-	const minLabelKeyParts = 3 // Format: /type/label/CID
-
-	if len(parts) < minLabelKeyParts {
+	if len(parts) < MinLabelKeyParts {
 		handlerLogger.Error("Invalid label key format", "key", labelKey)
 
 		return nil
