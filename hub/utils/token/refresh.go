@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	tenantNameClaim = "tenant_name"
-	userClaim       = "sub"
+	userClaim = "sub"
 )
 
 // RefreshTokenIfExpired refreshes the access token for the current session if it is expired.
@@ -25,14 +24,12 @@ const (
 func RefreshTokenIfExpired(sessionKey string, session *sessionstore.HubSession, secretStore sessionstore.SessionStore, oktaClient okta.Client) error {
 	if session == nil ||
 		session.Tokens == nil ||
-		session.CurrentTenant == "" ||
-		session.Tokens[session.CurrentTenant] == nil ||
-		session.Tokens[session.CurrentTenant].AccessToken == "" {
+		session.Tokens.AccessToken == "" {
 		return nil
 	}
 
-	accessToken := session.Tokens[session.CurrentTenant].AccessToken
-	refreshToken := session.Tokens[session.CurrentTenant].RefreshToken
+	accessToken := session.Tokens.AccessToken
+	refreshToken := session.Tokens.RefreshToken
 
 	if !IsTokenExpired(accessToken) {
 		return nil
@@ -59,7 +56,7 @@ func RefreshTokenIfExpired(sessionKey string, session *sessionstore.HubSession, 
 		RefreshToken: resp.Token.RefreshToken,
 		IDToken:      resp.Token.IDToken,
 	}
-	session.Tokens[session.CurrentTenant] = newTokenSecret
+	session.Tokens = newTokenSecret
 
 	// Update tokens store with new token
 	if err = secretStore.SaveHubSession(sessionKey, session); err != nil {
@@ -67,11 +64,6 @@ func RefreshTokenIfExpired(sessionKey string, session *sessionstore.HubSession, 
 	}
 
 	return nil
-}
-
-// GetTenantNameFromToken extracts the tenant name from the given JWT access token.
-func GetTenantNameFromToken(token string) (string, error) {
-	return getClaimFromToken(token, tenantNameClaim)
 }
 
 // GetUserFromToken extracts the user (subject) from the given JWT access token.

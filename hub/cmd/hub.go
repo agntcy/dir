@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/hub/client/okta"
+	"github.com/agntcy/dir/hub/cmd/apikey"
 	"github.com/agntcy/dir/hub/cmd/login"
 	"github.com/agntcy/dir/hub/cmd/logout"
 	"github.com/agntcy/dir/hub/cmd/options"
@@ -92,8 +93,9 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 		login.NewCommand(opts),
 		logout.NewCommand(opts),
 		push.NewCommand(opts),
-		pull.NewCommand(),
+		pull.NewCommand(opts),
 		orgs.NewCommand(opts),
+		apikey.NewCommand(opts),
 	)
 
 	return cmd

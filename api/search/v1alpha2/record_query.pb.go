@@ -95,9 +95,8 @@ func (RecordQueryType) EnumDescriptor() ([]byte, []int) {
 
 // A query to match the record against during discovery.
 // For example:
-//
-//	{ type: RECORD_QUERY_TYPE_SKILL_NAME, value: "Natural Language Processing" }
-//	{ type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://example.com/docker-image" }
+//  { type: RECORD_QUERY_TYPE_SKILL_NAME, value: "Natural Language Processing" }
+//  { type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://example.com/docker-image" }
 type RecordQuery struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The type of the query to match against.

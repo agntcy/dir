@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "google/api/field_behavior.proto";
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/protobuf/empty.proto";
+import "saas/v1alpha1/paginated_response.proto";
+import "saas/v1alpha1/pagination_param.proto";
+import "saas/v1alpha1/organization.proto";
+import "saas/v1alpha1/user.proto";
+import "saas/v1alpha1/roles.proto";
+
+
+message ListOrganizationsRequest {
+  PaginationParam pagination = 1;
+}
+
+message OrganizationWithRole {
+  Organization organization = 1;
+  Role role = 2 [
+    (buf.validate.field).enum = {
+      in: [2, 3, 4]
+    }
+  ];
+}
+
+message UserWithRole {
+  User user = 1;
+  Role role = 2 [
+    (buf.validate.field).enum = {
+      in: [2, 3, 4]
+    }
+  ];
+}
+
+message ListOrganizationsResponse {
+  PaginatedResponse paginated_response = 1;
+  repeated OrganizationWithRole organizations = 2;
+}
+
+message GetOrganizationRequest {
+  string id = 1;
+}
+
+message ListOrganizationUsersRequest {
+  string id = 1;
+  PaginationParam pagination = 2;
+}
+
+message ListOrganizationUsersResponse {
+  PaginatedResponse paginated_response = 1;
+  repeated UserWithRole users = 2;
+}
+
+message CreateOrganizationRequest {
+  Organization organization = 1;
+}
+
+message UpdateOrganizationRequest {
+  string id = 1;
+  Organization organization = 2;
+}
+
+message DeleteOrganizationRequest {
+  string id = 1;
+}
+
+
+message UsernameWithRole {
+  string username = 1;
+  Role role = 2 [
+    (buf.validate.field).enum = {
+      in: [2, 3, 4]
+    }
+  ];
+}
+
+message InviteUserToOrganizationRequest {
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  UsernameWithRole username_with_role = 2;
+}
+
+message RemoveUserFromOrganizationRequest {
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  string user_id = 2 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+
+message RoleWrapper {
+  Role role = 1 [
+    (buf.validate.field).enum = {
+      in: [2, 3, 4]
+    }
+  ];
+}
+
+message ChangeUserOrganizationRoleRequest {
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+  string user_id = 2 [
+    (buf.validate.field).string.uuid = true
+  ];
+  RoleWrapper new_role = 3;
+}
+
+service OrganizationService {
+  rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse) {
+    option (google.api.http) = {get: "/v1alpha1/organizations"};
+  }
+
+  rpc GetOrganization(GetOrganizationRequest) returns (OrganizationWithRole) {
+    option (google.api.http) = {
+      get: "/v1alpha1/organizations/{id}"
+    };
+  }
+
+  rpc ListUsers(ListOrganizationUsersRequest) returns (ListOrganizationUsersResponse) {
+    option (google.api.http) = {
+      get: "/v1alpha1/organizations/{id}/users"
+    };
+  }
+
+  rpc InviteUserToOrganization(InviteUserToOrganizationRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1alpha1/organizations/{id}/users"
+      body: "username_with_role"
+    };
+  }
+
+  rpc RemoveUserFromOrganization(RemoveUserFromOrganizationRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1alpha1/organizations/{id}/users/{user_id}"
+    };
+  }
+
+  rpc ChangeUserOrganizationRole(ChangeUserOrganizationRoleRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/v1alpha1/organizations/{id}/users/{user_id}/role"
+      body: "new_role"
+    };
+  }
+
+  rpc CreateOrganization(CreateOrganizationRequest) returns (Organization) {
+    option (google.api.http) = {
+      post: "/v1alpha1/organizations"
+      body: "organization"
+    };
+  }
+
+  rpc UpdateOrganization(UpdateOrganizationRequest) returns (Organization) {
+    option (google.api.http) = {
+      put: "/v1alpha1/organizations/{id}"
+      body: "organization"
+    };
+  }
+
+  rpc DeleteOrganization(DeleteOrganizationRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1alpha1/organizations/{id}"
+    };
+  }
+}

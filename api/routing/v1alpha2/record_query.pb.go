@@ -79,9 +79,8 @@ func (RecordQueryType) EnumDescriptor() ([]byte, []int) {
 
 // A query to match the record against during discovery.
 // For example:
-//
-//	{ type: RECORD_QUERY_TYPE_SKILL, value: "Natural Language Processing" }
-//	{ type: RECORD_QUERY_TYPE_LOCATOR, value: "helm-chart" }
+//  { type: RECORD_QUERY_TYPE_SKILL, value: "Natural Language Processing" }
+//  { type: RECORD_QUERY_TYPE_LOCATOR, value: "helm-chart" }
 type RecordQuery struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The type of the query to match against.

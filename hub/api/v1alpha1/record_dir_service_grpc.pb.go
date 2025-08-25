@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: saas/v1alpha1/record_dir_service.proto
 
-package v1alpha1
+package saasv1alpha1
 
 import (
 	context "context"
@@ -15,8 +15,8 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-// Requires gRPC-Go v1.64.0 or later.
-const _ = grpc.SupportPackageIsVersion9
+// Requires gRPC-Go v1.62.0 or later.
+const _ = grpc.SupportPackageIsVersion8
 
 const (
 	AgentDirService_PushRecord_FullMethodName = "/saas.v1alpha1.AgentDirService/PushRecord"
@@ -29,8 +29,8 @@ const (
 //
 // This API is primarily intended for use by CLI tools. Implementations of these APIs should interact with the Agent Directory service to perform their operations.
 type AgentDirServiceClient interface {
-	PushRecord(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[PushRecordRequest, PushRecordResponse], error)
-	PullRecord(ctx context.Context, in *PullRecordRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PullRecordResponse], error)
+	PushRecord(ctx context.Context, opts ...grpc.CallOption) (AgentDirService_PushRecordClient, error)
+	PullRecord(ctx context.Context, in *PullRecordRequest, opts ...grpc.CallOption) (AgentDirService_PullRecordClient, error)
 }
 
 type agentDirServiceClient struct {
@@ -41,26 +41,48 @@ func NewAgentDirServiceClient(cc grpc.ClientConnInterface) AgentDirServiceClient
 	return &agentDirServiceClient{cc}
 }
 
-func (c *agentDirServiceClient) PushRecord(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[PushRecordRequest, PushRecordResponse], error) {
+func (c *agentDirServiceClient) PushRecord(ctx context.Context, opts ...grpc.CallOption) (AgentDirService_PushRecordClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &AgentDirService_ServiceDesc.Streams[0], AgentDirService_PushRecord_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[PushRecordRequest, PushRecordResponse]{ClientStream: stream}
+	x := &agentDirServicePushRecordClient{ClientStream: stream}
 	return x, nil
 }
 
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type AgentDirService_PushRecordClient = grpc.ClientStreamingClient[PushRecordRequest, PushRecordResponse]
+type AgentDirService_PushRecordClient interface {
+	Send(*PushRecordRequest) error
+	CloseAndRecv() (*PushRecordResponse, error)
+	grpc.ClientStream
+}
 
-func (c *agentDirServiceClient) PullRecord(ctx context.Context, in *PullRecordRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PullRecordResponse], error) {
+type agentDirServicePushRecordClient struct {
+	grpc.ClientStream
+}
+
+func (x *agentDirServicePushRecordClient) Send(m *PushRecordRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *agentDirServicePushRecordClient) CloseAndRecv() (*PushRecordResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(PushRecordResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *agentDirServiceClient) PullRecord(ctx context.Context, in *PullRecordRequest, opts ...grpc.CallOption) (AgentDirService_PullRecordClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &AgentDirService_ServiceDesc.Streams[1], AgentDirService_PullRecord_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[PullRecordRequest, PullRecordResponse]{ClientStream: stream}
+	x := &agentDirServicePullRecordClient{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -70,35 +92,47 @@ func (c *agentDirServiceClient) PullRecord(ctx context.Context, in *PullRecordRe
 	return x, nil
 }
 
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type AgentDirService_PullRecordClient = grpc.ServerStreamingClient[PullRecordResponse]
+type AgentDirService_PullRecordClient interface {
+	Recv() (*PullRecordResponse, error)
+	grpc.ClientStream
+}
+
+type agentDirServicePullRecordClient struct {
+	grpc.ClientStream
+}
+
+func (x *agentDirServicePullRecordClient) Recv() (*PullRecordResponse, error) {
+	m := new(PullRecordResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
 
 // AgentDirServiceServer is the server API for AgentDirService service.
-// All implementations must embed UnimplementedAgentDirServiceServer
+// All implementations should embed UnimplementedAgentDirServiceServer
 // for forward compatibility.
 //
 // This API is primarily intended for use by CLI tools. Implementations of these APIs should interact with the Agent Directory service to perform their operations.
 type AgentDirServiceServer interface {
-	PushRecord(grpc.ClientStreamingServer[PushRecordRequest, PushRecordResponse]) error
-	PullRecord(*PullRecordRequest, grpc.ServerStreamingServer[PullRecordResponse]) error
-	mustEmbedUnimplementedAgentDirServiceServer()
+	PushRecord(AgentDirService_PushRecordServer) error
+	PullRecord(*PullRecordRequest, AgentDirService_PullRecordServer) error
 }
 
-// UnimplementedAgentDirServiceServer must be embedded to have
+// UnimplementedAgentDirServiceServer should be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
 type UnimplementedAgentDirServiceServer struct{}
 
-func (UnimplementedAgentDirServiceServer) PushRecord(grpc.ClientStreamingServer[PushRecordRequest, PushRecordResponse]) error {
+func (UnimplementedAgentDirServiceServer) PushRecord(AgentDirService_PushRecordServer) error {
 	return status.Errorf(codes.Unimplemented, "method PushRecord not implemented")
 }
-func (UnimplementedAgentDirServiceServer) PullRecord(*PullRecordRequest, grpc.ServerStreamingServer[PullRecordResponse]) error {
+func (UnimplementedAgentDirServiceServer) PullRecord(*PullRecordRequest, AgentDirService_PullRecordServer) error {
 	return status.Errorf(codes.Unimplemented, "method PullRecord not implemented")
 }
-func (UnimplementedAgentDirServiceServer) mustEmbedUnimplementedAgentDirServiceServer() {}
-func (UnimplementedAgentDirServiceServer) testEmbeddedByValue()                         {}
+func (UnimplementedAgentDirServiceServer) testEmbeddedByValue() {}
 
 // UnsafeAgentDirServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to AgentDirServiceServer will
@@ -119,22 +153,51 @@ func RegisterAgentDirServiceServer(s grpc.ServiceRegistrar, srv AgentDirServiceS
 }
 
 func _AgentDirService_PushRecord_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(AgentDirServiceServer).PushRecord(&grpc.GenericServerStream[PushRecordRequest, PushRecordResponse]{ServerStream: stream})
+	return srv.(AgentDirServiceServer).PushRecord(&agentDirServicePushRecordServer{ServerStream: stream})
 }
 
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type AgentDirService_PushRecordServer = grpc.ClientStreamingServer[PushRecordRequest, PushRecordResponse]
+type AgentDirService_PushRecordServer interface {
+	SendAndClose(*PushRecordResponse) error
+	Recv() (*PushRecordRequest, error)
+	grpc.ServerStream
+}
+
+type agentDirServicePushRecordServer struct {
+	grpc.ServerStream
+}
+
+func (x *agentDirServicePushRecordServer) SendAndClose(m *PushRecordResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *agentDirServicePushRecordServer) Recv() (*PushRecordRequest, error) {
+	m := new(PushRecordRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
 
 func _AgentDirService_PullRecord_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(PullRecordRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(AgentDirServiceServer).PullRecord(m, &grpc.GenericServerStream[PullRecordRequest, PullRecordResponse]{ServerStream: stream})
+	return srv.(AgentDirServiceServer).PullRecord(m, &agentDirServicePullRecordServer{ServerStream: stream})
 }
 
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type AgentDirService_PullRecordServer = grpc.ServerStreamingServer[PullRecordResponse]
+type AgentDirService_PullRecordServer interface {
+	Send(*PullRecordResponse) error
+	grpc.ServerStream
+}
+
+type agentDirServicePullRecordServer struct {
+	grpc.ServerStream
+}
+
+func (x *agentDirServicePullRecordServer) Send(m *PullRecordResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
 
 // AgentDirService_ServiceDesc is the grpc.ServiceDesc for AgentDirService service.
 // It's only intended for direct use with grpc.RegisterService,

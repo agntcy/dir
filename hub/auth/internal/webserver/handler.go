@@ -18,8 +18,9 @@ const (
 
 // SessionStore holds the PKCE verifier and the resulting tokens from the OAuth flow.
 type SessionStore struct {
-	verifier string
-	Tokens   *okta.Token
+	Verifier  string
+	Challenge string
+	Tokens    *okta.Token
 }
 
 // Config contains the configuration for the local webserver and OAuth handler.
@@ -78,9 +79,8 @@ func (h *Handler) HandleHealthz(w http.ResponseWriter, _ *http.Request) {
 // HandleRequestRedirect handles the initial OAuth redirect, generating a PKCE challenge and redirecting to the IdP.
 func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) {
 	requestID := r.URL.Query().Get("request")
-
 	var challenge string
-	h.sessionStore.verifier, challenge = utils.GenerateChallenge()
+	h.sessionStore.Verifier, challenge = utils.GenerateChallenge()
 
 	nonce, err := utils.GenerateNonce()
 	if err != nil {
@@ -101,11 +101,10 @@ func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) 
 // HandleCodeRedirect handles the redirect from the IdP with the authorization code, exchanges it for tokens, and stores them.
 func (h *Handler) HandleCodeRedirect(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
-
 	resp, err := h.idpClient.RequestToken(&okta.RequestTokenRequest{
 		ClientID:    h.clientID,
 		RedirectURI: h.localWebserverURL,
-		Verifier:    h.sessionStore.verifier,
+		Verifier:    h.sessionStore.Verifier,
 		Code:        code,
 	})
 	if err != nil {

@@ -13,7 +13,7 @@ import (
 	"github.com/agntcy/dir/hub/sessionstore"
 )
 
-// Logout logs the user out of the Agent Hub by revoking the current session's tokens and removing the session from the session store.
+// Logout logs the user out of the Agent Hub by revoking the current session's tokens.
 // It uses the provided Okta client to perform the logout operation and cleans up the session data.
 // Returns an error if the logout or session removal fails.
 func Logout(
@@ -26,8 +26,10 @@ func Logout(
 		return fmt.Errorf("failed to logout: %w", err)
 	}
 
-	if err := sessionStore.RemoveSession(opts.ServerAddress); err != nil {
-		return fmt.Errorf("failed to remove session: %w", err)
+	// Do not remove the full session because we need to keep apikey if any. Just remove access tokens.
+	currentSession.Tokens = &sessionstore.Tokens{}
+	if err := sessionStore.SaveHubSession(opts.ServerAddress, currentSession); err != nil {
+		return fmt.Errorf("failed to save tokens: %w", err)
 	}
 
 	return nil
@@ -36,16 +38,11 @@ func Logout(
 // doLogout revokes the current session's tokens using the Okta client.
 // Returns an error if the logout request fails or the response status is not OK.
 func doLogout(session *sessionstore.HubSession, oktaClient okta.Client) error {
-	if session == nil || session.CurrentTenant == "" || session.Tokens == nil {
+	if session == nil || session.Tokens == nil {
 		return nil
 	}
 
-	// Check if the session exists
-	if _, ok := session.Tokens[session.CurrentTenant]; !ok {
-		return nil
-	}
-
-	resp, err := oktaClient.Logout(&okta.LogoutRequest{IDToken: session.Tokens[session.CurrentTenant].IDToken})
+	resp, err := oktaClient.Logout(&okta.LogoutRequest{IDToken: session.Tokens.IDToken})
 	if err != nil {
 		return fmt.Errorf("failed to logout: %w", err)
 	}

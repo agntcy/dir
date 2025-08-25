@@ -9,7 +9,7 @@ from routing.v1alpha2 import routing_service_pb2 as routing_dot_v1alpha2_dot_rou
 class RoutingServiceStub(object):
     """Defines an interface for announcement and discovery
     of records across interconnected network.
-
+    
     Middleware should be used to control who can perform these RPCs.
     Policies for the middleware can be handled via separate service.
     """
@@ -45,7 +45,7 @@ class RoutingServiceStub(object):
 class RoutingServiceServicer(object):
     """Defines an interface for announcement and discovery
     of records across interconnected network.
-
+    
     Middleware should be used to control who can perform these RPCs.
     Policies for the middleware can be handled via separate service.
     """
@@ -55,7 +55,7 @@ class RoutingServiceServicer(object):
         This enables other peers to discover this record and retrieve it
         from this peer. Listeners can use this event to perform custom operations,
         for example by cloning the record.
-
+        
         Items need to be periodically republished (eg. 24h) to the network
         to avoid stale data. Republication should be done in the background.
         """
@@ -74,10 +74,10 @@ class RoutingServiceServicer(object):
     def Search(self, request, context):
         """Search records based on the request across the network.
         This will search the network for the record with the given parameters.
-
+        
         It is possible that the records are stale or that they do not exist.
         Some records may be provided by multiple peers.
-
+        
         Results from the search can be used as an input
         to Pull operation to retrieve the records.
         """
@@ -128,7 +128,7 @@ def add_RoutingServiceServicer_to_server(servicer, server):
 class RoutingService(object):
     """Defines an interface for announcement and discovery
     of records across interconnected network.
-
+    
     Middleware should be used to control who can perform these RPCs.
     Policies for the middleware can be handled via separate service.
     """

@@ -44,7 +44,7 @@ class RoutingServiceServicer(object):
         Listeners should use this event to update their routing tables.
         They may optionally forward the request to other nodes.
         Items need to be periodically republished to avoid stale data.
-
+        
         It is the API responsibility to fully construct the routing details,
         these are minimal details needed for us to publish the request.
         """

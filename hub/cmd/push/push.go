@@ -22,13 +22,12 @@ import (
 // Returns the configured *cobra.Command.
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "push {<repository> | <repository_id>} {<model.json> | --stdin} ",
+		Use:   "push <repository> {<model.json> | --stdin} ",
 		Short: "Push model to Agent Hub",
 		Long: `Push a model to the Agent Hub.
 
 Parameters:
   <repository>    Repository name in the format of '<owner>/<name>'
-  <repository_id> UUID of an existing repository
   <model.json>    Path to the model file (optional)
   --stdin         Read model from standard input (optional)
 
@@ -50,7 +49,19 @@ Examples:
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
-		if !ok || !auth.HasLoginCreds(currentSession) {
+		if !ok || currentSession == nil {
+			errors.New("could not get current hub session")
+		}
+
+		if !auth.HasLoginCreds(currentSession) && auth.HasApiKey(currentSession) {
+			fmt.Println("User is authenticated with API key, using it to get credentials...")
+
+			if err := auth.RefreshApiKeyAccessToken(cmd.Context(), currentSession, opts.ServerAddress); err != nil {
+				return fmt.Errorf("failed to refresh API key access token: %w", err)
+			}
+		}
+
+		if !auth.HasLoginCreds(currentSession) && !auth.HasApiKey(currentSession) {
 			return errors.New("you need to be logged in to push to the hub\nuse `dirctl hub login` command to login")
 		}
 
@@ -79,9 +90,9 @@ Examples:
 		}
 
 		// TODO: Push based on repoName and version misleading
-		repoID := service.ParseRepoTagID(args[0])
+		repository := service.ParseRepoTagID(args[0])
 
-		resp, err := service.PushAgent(cmd.Context(), hc, agentBytes, repoID, currentSession)
+		resp, err := service.PushAgent(cmd.Context(), hc, agentBytes, repository, currentSession)
 		if err != nil {
 			return fmt.Errorf("failed to push agent: %w", err)
 		}

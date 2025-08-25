@@ -84,11 +84,11 @@ type Peer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// ID of a given peer, typically described by a protocol.
 	// For example:
-	//   - SPIFFE:   "spiffe://example.org/service/foo"
-	//   - JWT:      "jwt:sub=alice,iss=https://issuer.example.com"
-	//   - Tor:      "onion:abcdefghijklmno.onion"
-	//   - DID:      "did:example:123456789abcdefghi"
-	//   - IPFS:     "ipfs:QmYwAPJzv5CZsnAzt8auVZRn2E6sD1c4x8pN5o6d5cW4D5"
+	//  - SPIFFE:   "spiffe://example.org/service/foo"
+	//  - JWT:      "jwt:sub=alice,iss=https://issuer.example.com"
+	//  - Tor:      "onion:abcdefghijklmno.onion"
+	//  - DID:      "did:example:123456789abcdefghi"
+	//  - IPFS:     "ipfs:QmYwAPJzv5CZsnAzt8auVZRn2E6sD1c4x8pN5o6d5cW4D5"
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Multiaddrs for a given peer.
 	// For example:
