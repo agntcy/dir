@@ -1,7 +1,6 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-//nolint:wrapcheck,nilerr,gosec
 package oci
 
 import (
@@ -41,7 +40,7 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 	referrersLogger.Debug("Pushing signature artifact to OCI store", "recordCID", recordCID)
 
 	if recordCID == "" {
-		return status.Error(codes.InvalidArgument, "record CID is required")
+		return status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
 	// Use cosign attach signature to attach the signature to the record
@@ -60,7 +59,7 @@ func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Si
 	referrersLogger.Debug("Pulling signature from OCI store", "recordCID", recordCID)
 
 	if recordCID == "" {
-		return nil, status.Error(codes.InvalidArgument, "record CID is required")
+		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
 	// Get the record manifest descriptor
@@ -147,11 +146,11 @@ func (s *store) PushPublicKey(ctx context.Context, recordCID string, publicKey s
 	referrersLogger.Debug("Pushing public key to OCI store", "recordCID", recordCID)
 
 	if len(publicKey) == 0 {
-		return status.Error(codes.InvalidArgument, "public key is required")
+		return status.Error(codes.InvalidArgument, "public key is required") //nolint:wrapcheck
 	}
 
 	if recordCID == "" {
-		return status.Error(codes.InvalidArgument, "record CID is required")
+		return status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
 	// Upload the public key to zot for signature verification
@@ -203,7 +202,7 @@ func (s *store) PullPublicKey(ctx context.Context, recordCID string) (string, er
 	referrersLogger.Debug("Pulling public key from OCI store", "recordCID", recordCID)
 
 	if recordCID == "" {
-		return "", status.Error(codes.InvalidArgument, "record CID is required")
+		return "", status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
 	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
@@ -218,7 +217,6 @@ func (s *store) PullPublicKey(ctx context.Context, recordCID string) (string, er
 
 	return s.extractPublicKeyFromManifest(ctx, *publicKeyManifestDesc, recordCID)
 }
-
 
 // findPublicKeyReferrer searches for a public key artifact that references the given record manifest.
 func (s *store) findPublicKeyReferrer(ctx context.Context, recordManifestDesc ocispec.Descriptor) (*ocispec.Descriptor, error) {
@@ -367,7 +365,7 @@ func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, erro
 
 	result, err := zot.Verify(ctx, verifyOpts)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to verify with zot: %w", err)
 	}
 
 	// Return the trusted status (which implies signed as well)
