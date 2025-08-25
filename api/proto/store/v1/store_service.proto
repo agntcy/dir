@@ -53,6 +53,9 @@ message PushReferrerRequest {
   oneof options {
     // Signature to be stored as a referrer for the record
     sign.v1.Signature signature = 2;
+
+    // Public key to be stored as a referrer for the record and uploaded as a file to zot for verification
+    string public_key = 3;
   }
 }
 
@@ -73,6 +76,9 @@ message PullReferrerRequest {
   oneof options {
     // Pull signature referrer
     bool pull_signature = 2;
+
+    // Pull public key referrer
+    bool pull_public_key = 3;
   }
 }
 
@@ -81,5 +87,8 @@ message PullReferrerResponse {
   oneof response {
     // Signature to be fetched as a referrer
     sign.v1.Signature signature = 1;
+
+    // Public key to be fetched as a referrer
+    string public_key = 2;
   }
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -87,6 +88,40 @@ func runCommand(cmd *cobra.Command, digest string) error {
 	}
 
 	presenter.Print(cmd, string(output))
+
+	if opts.PublicKey {
+		// Pull the public key for the record
+		response, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+			RecordRef: &corev1.RecordRef{
+				Cid: digest,
+			},
+			Options: &storev1.PullReferrerRequest_PullPublicKey{
+				PullPublicKey: true,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to pull public key: %w", err)
+		}
+
+		presenter.Print(cmd, "Public key: "+response.GetPublicKey())
+	}
+
+	if opts.Signature {
+		// Pull the signature for the record
+		response, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+			RecordRef: &corev1.RecordRef{
+				Cid: digest,
+			},
+			Options: &storev1.PullReferrerRequest_PullSignature{
+				PullSignature: true,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to pull signature: %w", err)
+		}
+
+		presenter.Print(cmd, "Signature: "+response.GetSignature().GetSignature())
+	}
 
 	return nil
 }

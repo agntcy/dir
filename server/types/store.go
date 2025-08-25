@@ -33,4 +33,13 @@ type StoreAPI interface {
 type SignatureStoreAPI interface {
 	// Push signature to content store
 	PushSignature(context.Context, string, *signv1.Signature) error
+
+	// Push public key to content store
+	PushPublicKey(context.Context, string, string) error
+
+	// Pull signature from content store
+	PullSignature(context.Context, string) (*signv1.Signature, error)
+
+	// Pull public key from content store
+	PullPublicKey(context.Context, string) (string, error)
 }

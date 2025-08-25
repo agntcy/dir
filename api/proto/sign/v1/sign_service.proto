@@ -105,7 +105,4 @@ message Signature {
 	// Base64-encoded signature bundle produced by the signer.
 	// It is up to the client to interpret the content of the bundle.
 	string content_bundle = 7;
-	
-	// Base64-encoded PEM public key (optional, for verification)
-	optional string public_key = 8;
 }

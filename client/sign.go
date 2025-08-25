@@ -10,6 +10,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/utils/cosign"
 )
 
@@ -81,19 +82,17 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 		return nil, fmt.Errorf("failed to sign with OIDC: %w", err)
 	}
 
-	// Create the signature object
 	signatureObj := &signv1.Signature{
 		Signature: result.Signature,
-		PublicKey: &result.PublicKey,
 		Annotations: map[string]string{
 			"payload": string(payloadBytes),
 		},
 	}
 
-	// Push signature to store
-	err = c.PushSignatureReferrer(ctx, req.GetRecordRef().GetCid(), signatureObj)
+	// Push signature and public key to store
+	err = c.pushReferrersToStore(ctx, req.GetRecordRef().GetCid(), signatureObj, result.PublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to store signature: %w", err)
+		return nil, fmt.Errorf("failed to push referrers to store: %w", err)
 	}
 
 	return &signv1.SignResponse{
@@ -135,19 +134,48 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 	// Create the signature object
 	signatureObj := &signv1.Signature{
 		Signature: result.Signature,
-		PublicKey: &result.PublicKey,
 		Annotations: map[string]string{
 			"payload": string(payloadBytes),
 		},
 	}
 
-	// Push signature to store
-	err = c.PushSignatureReferrer(ctx, req.GetRecordRef().GetCid(), signatureObj)
+	// Push signature and public key to store
+	err = c.pushReferrersToStore(ctx, req.GetRecordRef().GetCid(), signatureObj, result.PublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to store signature: %w", err)
+		return nil, fmt.Errorf("failed to push referrers to store: %w", err)
 	}
 
 	return &signv1.SignResponse{
 		Signature: signatureObj,
 	}, nil
+}
+
+func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, signature *signv1.Signature, publicKey string) error {
+	// Push public key to store
+	err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		RecordRef: &corev1.RecordRef{
+			Cid: recordCID,
+		},
+		Options: &storev1.PushReferrerRequest_PublicKey{
+			PublicKey: publicKey,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to store public key: %w", err)
+	}
+
+	// Push signature to store
+	err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+		RecordRef: &corev1.RecordRef{
+			Cid: recordCID,
+		},
+		Options: &storev1.PushReferrerRequest_Signature{
+			Signature: signature,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to store signature: %w", err)
+	}
+
+	return nil
 }
