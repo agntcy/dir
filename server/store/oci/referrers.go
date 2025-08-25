@@ -6,7 +6,9 @@ package oci
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -24,6 +26,9 @@ var referrersLogger = logging.Logger("store/oci/referrers")
 const (
 	// PublicKeyArtifactMediaType defines the media type for public key blobs.
 	PublicKeyArtifactMediaType = "application/vnd.agntcy.dir.publickey.v1+pem"
+
+	// SignatureArtifactType defines the media type for cosign signature layers.
+	SignatureArtifactType = "application/vnd.dev.cosign.simplesigning.v1+json"
 )
 
 // ReferrersLister interface for repositories that support the OCI Referrers API.
@@ -51,12 +56,90 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 }
 
 // PullSignature pulls a signature from the OCI store.
-func (s *store) PullSignature(_ context.Context, recordCID string) (*signv1.Signature, error) {
+func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Signature, error) {
 	referrersLogger.Debug("Pulling signature from OCI store", "recordCID", recordCID)
 
-	// TODO implement
+	if recordCID == "" {
+		return nil, status.Error(codes.InvalidArgument, "record CID is required")
+	}
 
-	return nil, nil //nolint:nilnil
+	// Get the record manifest descriptor
+	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
+	}
+
+	// Cosign uses format like "sha256-abc123.sig" (dash instead of colon)
+	cosignTag := strings.Replace(recordManifestDesc.Digest.String(), ":", "-", 1) + ".sig"
+
+	signatureManifestDesc, err := s.repo.Resolve(ctx, cosignTag)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "no signature found for record CID %s: %v", recordCID, err)
+	}
+
+	return s.extractSignatureFromManifest(ctx, signatureManifestDesc)
+}
+
+// extractSignatureFromManifest extracts signature data from a cosign signature manifest.
+func (s *store) extractSignatureFromManifest(ctx context.Context, manifestDesc ocispec.Descriptor) (*signv1.Signature, error) {
+	manifestReader, err := s.repo.Fetch(ctx, manifestDesc)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch signature manifest: %v", err)
+	}
+	defer manifestReader.Close()
+
+	manifestData, err := io.ReadAll(manifestReader)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to read signature manifest data: %v", err)
+	}
+
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to parse signature manifest: %v", err)
+	}
+
+	if len(manifest.Layers) == 0 {
+		return nil, status.Errorf(codes.Internal, "signature manifest has no layers")
+	}
+
+	signatureBlobDesc := manifest.Layers[0]
+
+	// Validate layer media type
+	if signatureBlobDesc.MediaType != SignatureArtifactType {
+		referrersLogger.Warn("Unexpected signature blob media type", "expected", SignatureArtifactType, "actual", signatureBlobDesc.MediaType)
+	}
+
+	// Fetch the signature data
+	blobReader, err := s.repo.Fetch(ctx, signatureBlobDesc)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "signature blob not found for CID %s: %v", manifestDesc.Digest.String(), err)
+	}
+	defer blobReader.Close()
+
+	signatureBlobData, err := io.ReadAll(blobReader)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to read signature data for CID %s: %v", manifestDesc.Digest.String(), err)
+	}
+
+	// Extract the signature from the layer annotations
+	var signatureValue string
+
+	if manifest.Layers[0].Annotations != nil {
+		if sig, exists := manifest.Layers[0].Annotations["dev.cosignproject.cosign/signature"]; exists {
+			signatureValue = sig
+		}
+	}
+
+	if signatureValue == "" {
+		return nil, status.Errorf(codes.Internal, "no signature value found in annotations")
+	}
+
+	return &signv1.Signature{
+		Signature: signatureValue,
+		Annotations: map[string]string{
+			"payload": string(signatureBlobData),
+		},
+	}, nil
 }
 
 // PushPublicKey pushes a public key as an OCI artifact that references a record as its subject.
@@ -115,25 +198,125 @@ func (s *store) PushPublicKey(ctx context.Context, recordCID string, publicKey s
 	return nil
 }
 
-// buildZotConfig creates a ZotConfig from the store configuration.
-func (s *store) buildZotConfig() *zot.VerifyConfig {
-	return &zot.VerifyConfig{
-		RegistryAddress: s.config.RegistryAddress,
-		RepositoryName:  s.config.RepositoryName,
-		Username:        s.config.Username,
-		Password:        s.config.Password,
-		AccessToken:     s.config.AccessToken,
-		Insecure:        s.config.Insecure,
-	}
-}
-
 // PullPublicKey retrieves a public key for a given record CID by finding the public key artifact that references the record.
-func (s *store) PullPublicKey(_ context.Context, recordCID string) (string, error) {
+func (s *store) PullPublicKey(ctx context.Context, recordCID string) (string, error) {
 	referrersLogger.Debug("Pulling public key from OCI store", "recordCID", recordCID)
 
-	// TODO implement
+	if recordCID == "" {
+		return "", status.Error(codes.InvalidArgument, "record CID is required")
+	}
 
-	return "", nil
+	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
+	if err != nil {
+		return "", status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
+	}
+
+	publicKeyManifestDesc, err := s.findPublicKeyReferrer(ctx, recordManifestDesc)
+	if err != nil {
+		return "", err
+	}
+
+	return s.extractPublicKeyFromManifest(ctx, *publicKeyManifestDesc, recordCID)
+}
+
+
+// findPublicKeyReferrer searches for a public key artifact that references the given record manifest.
+func (s *store) findPublicKeyReferrer(ctx context.Context, recordManifestDesc ocispec.Descriptor) (*ocispec.Descriptor, error) {
+	referrersLister, ok := s.repo.(ReferrersLister)
+	if !ok {
+		return nil, status.Errorf(codes.Unimplemented, "repository does not support OCI referrers API")
+	}
+
+	var publicKeyManifestDesc *ocispec.Descriptor
+
+	err := referrersLister.Referrers(ctx, recordManifestDesc, "", func(referrers []ocispec.Descriptor) error {
+		for _, referrer := range referrers {
+			if s.isPublicKeyReferrer(ctx, referrer) {
+				referrersLogger.Debug("Found matching public key referrer", "digest", referrer.Digest.String())
+				publicKeyManifestDesc = &referrer
+
+				return nil // Found public key, stop searching
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to query referrers: %v", err)
+	}
+
+	if publicKeyManifestDesc == nil {
+		return nil, status.Errorf(codes.NotFound, "no public key referrer found")
+	}
+
+	return publicKeyManifestDesc, nil
+}
+
+// isPublicKeyReferrer checks if the given referrer descriptor points to a public key artifact.
+func (s *store) isPublicKeyReferrer(ctx context.Context, referrer ocispec.Descriptor) bool {
+	manifestReader, err := s.repo.Fetch(ctx, referrer)
+	if err != nil {
+		referrersLogger.Debug("Failed to fetch referrer manifest", "digest", referrer.Digest.String(), "error", err)
+
+		return false
+	}
+
+	manifestData, err := io.ReadAll(manifestReader)
+	manifestReader.Close()
+
+	if err != nil {
+		referrersLogger.Debug("Failed to read referrer manifest", "digest", referrer.Digest.String(), "error", err)
+
+		return false
+	}
+
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		referrersLogger.Debug("Failed to parse referrer manifest", "digest", referrer.Digest.String(), "error", err)
+
+		return false
+	}
+
+	// Check if this manifest contains a public key layer
+	return len(manifest.Layers) > 0 && manifest.Layers[0].MediaType == PublicKeyArtifactMediaType
+}
+
+// extractPublicKeyFromManifest extracts the public key data from a public key manifest.
+func (s *store) extractPublicKeyFromManifest(ctx context.Context, manifestDesc ocispec.Descriptor, recordCID string) (string, error) {
+	manifestReader, err := s.repo.Fetch(ctx, manifestDesc)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to fetch public key manifest: %v", err)
+	}
+	defer manifestReader.Close()
+
+	manifestData, err := io.ReadAll(manifestReader)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to read public key manifest data: %v", err)
+	}
+
+	var manifest ocispec.Manifest
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		return "", status.Errorf(codes.Internal, "failed to parse public key manifest: %v", err)
+	}
+
+	if len(manifest.Layers) == 0 {
+		return "", status.Errorf(codes.Internal, "public key manifest has no layers")
+	}
+
+	blobDesc := manifest.Layers[0]
+
+	reader, err := s.repo.Fetch(ctx, blobDesc)
+	if err != nil {
+		return "", status.Errorf(codes.NotFound, "public key blob not found for CID %s: %v", recordCID, err)
+	}
+	defer reader.Close()
+
+	publicKeyData, err := io.ReadAll(reader)
+	if err != nil {
+		return "", status.Errorf(codes.Internal, "failed to read public key data for CID %s: %v", recordCID, err)
+	}
+
+	return string(publicKeyData), nil
 }
 
 // attachSignatureWithCosign uses cosign attach signature to attach a signature to a record in the OCI registry.
@@ -189,4 +372,16 @@ func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, erro
 
 	// Return the trusted status (which implies signed as well)
 	return result.IsTrusted, nil
+}
+
+// buildZotConfig creates a ZotConfig from the store configuration.
+func (s *store) buildZotConfig() *zot.VerifyConfig {
+	return &zot.VerifyConfig{
+		RegistryAddress: s.config.RegistryAddress,
+		RepositoryName:  s.config.RepositoryName,
+		Username:        s.config.Username,
+		Password:        s.config.Password,
+		AccessToken:     s.config.AccessToken,
+		Insecure:        s.config.Insecure,
+	}
 }

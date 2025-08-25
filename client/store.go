@@ -225,3 +225,30 @@ func (c *Client) PushReferrer(ctx context.Context, req *storev1.PushReferrerRequ
 
 	return nil
 }
+
+// PullReferrer retrieves a signature using the PullReferrer RPC.
+func (c *Client) PullReferrer(ctx context.Context, req *storev1.PullReferrerRequest) (*storev1.PullReferrerResponse, error) {
+	// Create streaming client
+	stream, err := c.StoreServiceClient.PullReferrer(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pull referrer stream: %w", err)
+	}
+
+	// Send the request
+	if err := stream.Send(req); err != nil {
+		return nil, fmt.Errorf("failed to send pull referrer request: %w", err)
+	}
+
+	// Close send stream
+	if err := stream.CloseSend(); err != nil {
+		return nil, fmt.Errorf("failed to close send stream: %w", err)
+	}
+
+	// Receive response
+	response, err := stream.Recv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive pull referrer response: %w", err)
+	}
+
+	return response, nil
+}
