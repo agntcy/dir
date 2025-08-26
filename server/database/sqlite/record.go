@@ -148,7 +148,7 @@ func (d *DB) AddRecord(record types.Record) error {
 	return nil
 }
 
-// GetRecords retrieves agent records based on the provided options.
+// GetRecords retrieves records based on the provided options.
 func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) { //nolint:cyclop
 	// Create default configuration.
 	cfg := &types.RecordFilters{}

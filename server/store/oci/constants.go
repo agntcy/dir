@@ -5,7 +5,7 @@ package oci
 
 // This file defines the complete metadata schema for OCI annotations.
 // It serves as the single source of truth for all annotation keys used
-// in manifest and descriptor annotations for agent record storage.
+// in manifest and descriptor annotations for record storage.
 
 const (
 	// Used for dir-specific annotations.

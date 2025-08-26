@@ -115,7 +115,7 @@ func SignBlobWithOIDC(_ context.Context, opts *SignBlobOIDCOptions) (*SignBlobOI
 			return nil, fmt.Errorf("failed to create signing config: %w", err)
 		}
 
-		// Use fulcio to sign the agent.
+		// Use fulcio to sign.
 		fulcioURL, err := root.SelectService(signingConfig.FulcioCertificateAuthorityURLs(), []uint32{1}, time.Now())
 		if err != nil {
 			return nil, fmt.Errorf("failed to select fulcio URL: %w", err)
@@ -131,7 +131,7 @@ func SignBlobWithOIDC(_ context.Context, opts *SignBlobOIDCOptions) (*SignBlobOI
 			IDToken: opts.IDToken,
 		}
 
-		// Use timestamp authortiy to sign the agent.
+		// Use timestamp authortiy to sign.
 		tsaURLs, err := root.SelectServices(signingConfig.TimestampAuthorityURLs(),
 			signingConfig.TimestampAuthorityURLsConfig(), []uint32{1}, time.Now())
 		if err != nil {
@@ -147,7 +147,7 @@ func SignBlobWithOIDC(_ context.Context, opts *SignBlobOIDCOptions) (*SignBlobOI
 			signOpts.TimestampAuthorities = append(signOpts.TimestampAuthorities, sign.NewTimestampAuthority(tsaOpts))
 		}
 
-		// Use rekor to sign the agent.
+		// Use rekor to sign.
 		rekorURLs, err := root.SelectServices(signingConfig.RekorLogURLs(),
 			signingConfig.RekorLogURLsConfig(), []uint32{1}, time.Now())
 		if err != nil {
