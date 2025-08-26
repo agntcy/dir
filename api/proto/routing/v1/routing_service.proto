@@ -46,12 +46,12 @@ service RoutingService {
 }
 
 message PublishRequest {
-  // Reference to the agent record to be published.
+  // Reference to the record to be published.
   string record_cid = 1;
 }
 
 message UnpublishRequest {
-  // Reference to the agent record to be unpublished.
+  // Reference to the record to be unpublished.
   string record_cid = 1;
 }
 

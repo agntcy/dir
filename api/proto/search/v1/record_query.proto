@@ -22,10 +22,10 @@ enum RecordQueryType {
   // Unspecified query type.
   RECORD_QUERY_TYPE_UNSPECIFIED = 0;
 
-  // Query for an agent name.
+  // Query for an record name.
   RECORD_QUERY_TYPE_NAME = 1;
 
-  // Query for an agent version.
+  // Query for an record version.
   RECORD_QUERY_TYPE_VERSION = 2;
 
   // Query for a skill ID.

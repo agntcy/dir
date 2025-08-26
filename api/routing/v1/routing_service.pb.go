@@ -28,7 +28,7 @@ const (
 
 type PublishRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Reference to the agent record to be published.
+	// Reference to the record to be published.
 	RecordCid     string `protobuf:"bytes,1,opt,name=record_cid,json=recordCid,proto3" json:"record_cid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -73,7 +73,7 @@ func (x *PublishRequest) GetRecordCid() string {
 
 type UnpublishRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Reference to the agent record to be unpublished.
+	// Reference to the record to be unpublished.
 	RecordCid     string `protobuf:"bytes,1,opt,name=record_cid,json=recordCid,proto3" json:"record_cid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
