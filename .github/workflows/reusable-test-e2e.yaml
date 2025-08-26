@@ -133,14 +133,3 @@ jobs:
           E2E_COMPILE_OUTPUT_DIR: tmp
         run: |
           task ${{ inputs.taskfile-task }}
-
-      # - name: Export agent model
-      #   id: export
-      #   run: |
-      #     echo "## Agent Model" >> $GITHUB_STEP_SUMMARY
-
-      #     # Export agent model
-      #     echo "**Agent model**"
-      #     echo '```json' >> $GITHUB_STEP_SUMMARY
-      #     cat e2e/tmp/agent.json >> $GITHUB_STEP_SUMMARY
-      #     echo '```' >> $GITHUB_STEP_SUMMARY

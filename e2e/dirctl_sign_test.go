@@ -61,8 +61,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 
 	// Test params
 	var (
-		paths        *testPaths
-		cid string
+		paths *testPaths
+		cid   string
 	)
 
 	ginkgo.Context("signature workflow", ginkgo.Ordered, func() {

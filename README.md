@@ -1,7 +1,7 @@
-# Agent Directory
+# Directory
 
-The Agent Directory (dir) allows publication, exchange, and discovery of information about AI agents over a distributed peer-to-peer network.
-It leverages [OASF](https://github.com/agntcy/oasf) to describe agents and provides a set of APIs and tools to build, store, publish, and discover agents across the network by their attributes and constraints.
+The Directory (dir) allows publication, exchange, and discovery of information about records over a distributed peer-to-peer network.
+It leverages [OASF](https://github.com/agntcy/oasf) to describe AI agents and provides a set of APIs and tools to store, publish, and discover records across the network by their attributes and constraints.
 Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous system integration and testing across different versions, environments, and features.
 
 ## Features
@@ -9,8 +9,8 @@ Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous s
 - **Data Models** - Defines a standard schema for data representation and exchange.
 - **Dev Kit** - Provides CLI tooling to simplify development workflows and facilitate API interactions.
 - **Plugins** - Pluggable components to extend the build process of agent data models for custom use cases.
-- **Announce** - Allows publication of agent data models to the network.
-- **Discover** - Listen, search, and retrieve agents across the network by their attributes and constraints.
+- **Announce** - Allows publication of records to the network.
+- **Discover** - Listen, search, and retrieve records across the network by their attributes and constraints.
 - **Security** - Relies on well-known security principles to provide data provenance, integrity, and ownership.
 
 ## Usage

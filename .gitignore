@@ -26,7 +26,6 @@ install/charts/dirctl/charts/
 
 # Test output
 e2e/tmp/*
-agent_model.json
 
 # Licensei
 .licensei.cache
