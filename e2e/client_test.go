@@ -40,7 +40,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 	}{
 		{
 			name:     "V1_Agent_OASF_v0.3.1",
-			jsonData: expectedAgentV1JSON,
+			jsonData: expectedRecordV1JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
@@ -50,7 +50,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		},
 		{
 			name:     "V2_AgentRecord_OASF_v0.4.0",
-			jsonData: expectedAgentV2JSON,
+			jsonData: expectedRecordV2JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
@@ -60,7 +60,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		},
 		{
 			name:     "V3_Record_OASF_v0.5.0",
-			jsonData: expectedAgentV3JSON,
+			jsonData: expectedRecordV3JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",

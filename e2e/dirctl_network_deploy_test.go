@@ -25,11 +25,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 	if tempAgentDir == "" {
 		tempAgentDir = os.TempDir()
 	}
-	tempAgentPath := filepath.Join(tempAgentDir, "agent_v3_network_test.json")
+	tempAgentPath := filepath.Join(tempAgentDir, "record_v3_network_test.json")
 
 	// Create directory and write V3 agent data
 	_ = os.MkdirAll(filepath.Dir(tempAgentPath), 0o755)
-	_ = os.WriteFile(tempAgentPath, expectedAgentV3JSON, 0o600)
+	_ = os.WriteFile(tempAgentPath, expectedRecordV3JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {

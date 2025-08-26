@@ -29,13 +29,13 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 	if tempAgentDir == "" {
 		tempAgentDir = os.TempDir()
 	}
-	tempAgentV2Path := filepath.Join(tempAgentDir, "agent_v2_sync_test.json")
-	tempAgentV3Path := filepath.Join(tempAgentDir, "agent_v3_sync_test.json")
+	tempAgentV2Path := filepath.Join(tempAgentDir, "record_v2_sync_test.json")
+	tempAgentV3Path := filepath.Join(tempAgentDir, "record_v3_sync_test.json")
 
 	// Create directory and write agent data
 	_ = os.MkdirAll(filepath.Dir(tempAgentV2Path), 0o755)
-	_ = os.WriteFile(tempAgentV2Path, expectedAgentV2JSON, 0o600)
-	_ = os.WriteFile(tempAgentV3Path, expectedAgentV3JSON, 0o600)
+	_ = os.WriteFile(tempAgentV2Path, expectedRecordV2JSON, 0o600)
+	_ = os.WriteFile(tempAgentV3Path, expectedRecordV3JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -91,14 +91,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 	ginkgo.Context("sync functionality", func() {
 		var agentCID string
 
-		ginkgo.It("should push agent_v2.json to peer 1", func() {
+		ginkgo.It("should push record_v2.json to peer 1", func() {
 			agentCID = cli.Push(tempAgentV2Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(agentCID, tempAgentV2Path)
 		})
 
-		ginkgo.It("should fail to pull agent_v2.json from peer 2", func() {
+		ginkgo.It("should fail to pull record_v2.json from peer 2", func() {
 			_ = cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldFail()
 		})
 
@@ -124,16 +124,16 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
-		ginkgo.It("should succeed to pull agent_v2.json from peer 2 after sync", func() {
+		ginkgo.It("should succeed to pull record_v2.json from peer 2 after sync", func() {
 			output := cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), expectedAgentV2JSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), expectedRecordV2JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 
-		ginkgo.It("should succeed to search for agent_v2.json from peer 2 after sync", func() {
+		ginkgo.It("should succeed to search for record_v2.json from peer 2 after sync", func() {
 			// Search should eventually return the agentCID in peer 2 (retry until monitor indexes the record)
 			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v2").OnServer(utils.Peer2Addr).ShouldEventuallyContain(agentCID, 240*time.Second)
 

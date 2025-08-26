@@ -47,8 +47,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 	}{
 		{
 			name:              "V1_Agent_OASF_v0.3.1",
-			fileName:          "agent_v1_test.json",
-			jsonData:          expectedAgentV1JSON,
+			fileName:          "record_v1_test.json",
+			jsonData:          expectedRecordV1JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v1",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
@@ -60,8 +60,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		},
 		{
 			name:              "V2_AgentRecord_OASF_v0.4.0",
-			fileName:          "agent_v2_test.json",
-			jsonData:          expectedAgentV2JSON,
+			fileName:          "record_v2_test.json",
+			jsonData:          expectedRecordV2JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v2",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
@@ -73,8 +73,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		},
 		{
 			name:              "V3_Record_OASF_v0.5.0",
-			fileName:          "agent_v3_test.json",
-			jsonData:          expectedAgentV3JSON,
+			fileName:          "record_v3_test.json",
+			jsonData:          expectedRecordV3JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v3",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
