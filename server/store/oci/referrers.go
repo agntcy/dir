@@ -5,7 +5,6 @@ package oci
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -81,20 +80,9 @@ func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Si
 
 // extractSignatureFromManifest extracts signature data from a cosign signature manifest.
 func (s *store) extractSignatureFromManifest(ctx context.Context, manifestDesc ocispec.Descriptor) (*signv1.Signature, error) {
-	manifestReader, err := s.repo.Fetch(ctx, manifestDesc)
+	manifest, err := s.fetchAndParseManifestFromDescriptor(ctx, manifestDesc)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch signature manifest: %v", err)
-	}
-	defer manifestReader.Close()
-
-	manifestData, err := io.ReadAll(manifestReader)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read signature manifest data: %v", err)
-	}
-
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(manifestData, &manifest); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to parse signature manifest: %v", err)
+		return nil, err // Error already includes proper gRPC status
 	}
 
 	if len(manifest.Layers) == 0 {
@@ -252,25 +240,9 @@ func (s *store) findPublicKeyReferrer(ctx context.Context, recordManifestDesc oc
 
 // isPublicKeyReferrer checks if the given referrer descriptor points to a public key artifact.
 func (s *store) isPublicKeyReferrer(ctx context.Context, referrer ocispec.Descriptor) bool {
-	manifestReader, err := s.repo.Fetch(ctx, referrer)
+	manifest, err := s.fetchAndParseManifestFromDescriptor(ctx, referrer)
 	if err != nil {
-		referrersLogger.Debug("Failed to fetch referrer manifest", "digest", referrer.Digest.String(), "error", err)
-
-		return false
-	}
-
-	manifestData, err := io.ReadAll(manifestReader)
-	manifestReader.Close()
-
-	if err != nil {
-		referrersLogger.Debug("Failed to read referrer manifest", "digest", referrer.Digest.String(), "error", err)
-
-		return false
-	}
-
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(manifestData, &manifest); err != nil {
-		referrersLogger.Debug("Failed to parse referrer manifest", "digest", referrer.Digest.String(), "error", err)
+		referrersLogger.Debug("Failed to fetch and parse referrer manifest", "digest", referrer.Digest.String(), "error", err)
 
 		return false
 	}
@@ -281,20 +253,9 @@ func (s *store) isPublicKeyReferrer(ctx context.Context, referrer ocispec.Descri
 
 // extractPublicKeyFromManifest extracts the public key data from a public key manifest.
 func (s *store) extractPublicKeyFromManifest(ctx context.Context, manifestDesc ocispec.Descriptor, recordCID string) (string, error) {
-	manifestReader, err := s.repo.Fetch(ctx, manifestDesc)
+	manifest, err := s.fetchAndParseManifestFromDescriptor(ctx, manifestDesc)
 	if err != nil {
-		return "", status.Errorf(codes.Internal, "failed to fetch public key manifest: %v", err)
-	}
-	defer manifestReader.Close()
-
-	manifestData, err := io.ReadAll(manifestReader)
-	if err != nil {
-		return "", status.Errorf(codes.Internal, "failed to read public key manifest data: %v", err)
-	}
-
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(manifestData, &manifest); err != nil {
-		return "", status.Errorf(codes.Internal, "failed to parse public key manifest: %v", err)
+		return "", err // Error already includes proper gRPC status
 	}
 
 	if len(manifest.Layers) == 0 {
