@@ -15,7 +15,7 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "unpublish",
-	Short: "Unpublish agent model from the network",
+	Short: "Unpublish record from the network",
 	Long: `Unpublish the data from your local or rest of the network to disallow content discovery.
 This command only works for the objects that are available in the store.
 
@@ -67,7 +67,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 	presenter.Printf(cmd, "Successfully unpublished!\n")
 
 	if opts.Network {
-		presenter.Printf(cmd, "It may take some time for the agent to be unpublished across the network.\n")
+		presenter.Printf(cmd, "It may take some time for the record to be unpublished across the network.\n")
 	}
 
 	return nil

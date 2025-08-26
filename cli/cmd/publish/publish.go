@@ -16,7 +16,7 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "publish",
-	Short: "Publish agent model to the network, allowing content discovery",
+	Short: "Publish record to the network, allowing content discovery",
 	Long: `Publish the data to your local or rest of the network to allow content discovery.
 This command only works for the objects already pushed to store.
 
@@ -73,7 +73,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 	presenter.Printf(cmd, "Successfully published!\n")
 
 	if opts.Network {
-		presenter.Printf(cmd, "It may take some time for the agent to be propagated and discoverable across the network.\n")
+		presenter.Printf(cmd, "It may take some time for the record to be propagated and discoverable across the network.\n")
 	}
 
 	return nil

@@ -16,8 +16,8 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "delete",
-	Short: "Delete agent model from Directory store",
-	Long: `This command deletes an agent model from the Directory store.
+	Short: "Delete record from Directory store",
+	Long: `This command deletes a record from the Directory store.
 
 Usage example:
 
@@ -45,10 +45,10 @@ func runCommand(cmd *cobra.Command, digest string) error {
 		Cid: digest, // Use digest as CID directly
 	})
 	if err != nil {
-		return fmt.Errorf("failed to delete agent model: %w", err)
+		return fmt.Errorf("failed to delete record: %w", err)
 	}
 
-	presenter.Printf(cmd, "Deleted agent model with digest: %s\n", digest)
+	presenter.Printf(cmd, "Deleted record with digest: %s\n", digest)
 
 	return nil
 }

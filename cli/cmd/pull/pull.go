@@ -17,8 +17,8 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "pull",
-	Short: "Pull agent model from Directory server",
-	Long: `This command pulls the agent data model from Directory API. The data can be validated against its hash, as
+	Short: "Pull record from Directory server",
+	Long: `This command pulls the record from Directory API. The data can be validated against its hash, as
 the returned object is content-addressable.
 
 Usage examples:

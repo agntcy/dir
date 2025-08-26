@@ -51,7 +51,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 	// Marshal metadata for nice preview
 	output, err := json.MarshalIndent(&info, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal agent to JSON: %w", err)
+		return fmt.Errorf("failed to marshal record to JSON: %w", err)
 	}
 
 	// Print the metadata
