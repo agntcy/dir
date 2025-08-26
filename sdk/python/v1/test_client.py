@@ -1,3 +1,5 @@
+import os
+import subprocess
 import time
 import unittest
 
@@ -12,7 +14,7 @@ from store.v1 import store_service_pb2 as store_types
 
 from .client import Client, Config
 
-client = Client(Config())
+client = Client(Config.load_from_env())
 
 
 def init_records(count, test_function_name, push=True, publish=False):
@@ -198,8 +200,12 @@ class TestClient(unittest.TestCase):
         try:
             example_signature = sign_types.Signature()
             request = [
-                store_types.PushReferrerRequest(record_ref=record_refs_list[0], signature=example_signature),
-                store_types.PushReferrerRequest(record_ref=record_refs_list[1], signature=example_signature),
+                store_types.PushReferrerRequest(
+                    record_ref=record_refs_list[0], signature=example_signature
+                ),
+                store_types.PushReferrerRequest(
+                    record_ref=record_refs_list[1], signature=example_signature
+                ),
             ]
 
             response = client.push_referrer(req=request)
@@ -237,9 +243,83 @@ class TestClient(unittest.TestCase):
             for r in response:
                 self.assertIsInstance(r, store_types.PullReferrerResponse)
         except Exception as e:
-            self.assertTrue("pull referrer not implemented" in str(e)) # Delete when the service implemented
+            self.assertTrue(
+                "pull referrer not implemented" in str(e)
+            )  # Delete when the service implemented
 
             # self.assertIsNone(e) # Uncomment when the service implemented
+
+    def test_sign_and_verify(self):
+        example_records = init_records(2, "sign_and_verify")
+        record_refs_list = list[core_record_pb2.RecordRef](
+            ref for ref, _ in example_records.values()
+        )
+
+        shell_env = os.environ.copy()
+
+        key_password = "testing-key"
+        shell_env["COSIGN_PASSWORD"] = key_password
+
+        # Avoid interactive question about override
+        try:
+            os.remove("cosign.key")
+            os.remove("cosign.pub")
+        except FileNotFoundError:
+            pass  # Clean state found
+
+        cosign_path = os.getenv("COSIGN_PATH", "cosign")
+        command = (cosign_path, "generate-key-pair")
+        subprocess.run(command, check=True, capture_output=True, env=shell_env)
+
+        with open("cosign.key", "rb") as reader:
+            key_file = reader.read()
+
+        key_provider = sign_types.SignWithKey(
+            private_key=key_file, password=key_password.encode("utf-8")
+        )
+
+        token = shell_env.get("OIDC_TOKEN", "")
+        provider_url = shell_env.get("OIDC_PROVIDER_URL", "")
+        client_id = shell_env.get("OIDC_CLIENT_ID", "sigstore")
+
+        oidc_options = sign_types.SignWithOIDC.SignOpts(oidc_provider_url=provider_url)
+        oidc_provider = sign_types.SignWithOIDC(id_token=token, options=oidc_options)
+
+        request_key_provider = sign_types.SignRequestProvider(key=key_provider)
+        request_oidc_provider = sign_types.SignRequestProvider(oidc=oidc_provider)
+
+        key_request = sign_types.SignRequest(
+            record_ref=record_refs_list[0], provider=request_key_provider
+        )
+        oidc_request = sign_types.SignRequest(
+            record_ref=record_refs_list[1], provider=request_oidc_provider
+        )
+
+        try:
+            # Sign test
+            result = client.sign(key_request)
+            self.assertEqual(result.stderr.decode("utf-8"), "")
+            self.assertEqual(
+                result.stdout.decode("utf-8"), "Record signed successfully"
+            )
+
+            result = client.sign(oidc_request, client_id)
+            self.assertEqual(result.stderr.decode("utf-8"), "")
+            self.assertEqual(
+                result.stdout.decode("utf-8"), "Record signed successfully"
+            )
+
+            # Verify test
+            for ref in record_refs_list:
+                request = sign_types.VerifyRequest(record_ref=ref)
+                response = client.verify(request)
+
+                self.assertIs(response.success, True)
+        except Exception as e:
+            self.assertIsNone(e)
+        finally:
+            os.remove("cosign.key")
+            os.remove("cosign.pub")
 
 
 if __name__ == "__main__":
