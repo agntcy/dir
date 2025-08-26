@@ -47,28 +47,38 @@ func (s *store) fetchAndParseManifest(ctx context.Context, cid string) (*ocispec
 
 	internalLogger.Debug("Manifest resolved successfully", "cid", cid, "digest", manifestDesc.Digest.String())
 
+	manifest, err := s.fetchAndParseManifestFromDescriptor(ctx, manifestDesc)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return manifest, &manifestDesc, nil
+}
+
+// fetchAndParseManifestFromDescriptor fetches and parses a manifest when you already have the descriptor.
+func (s *store) fetchAndParseManifestFromDescriptor(ctx context.Context, manifestDesc ocispec.Descriptor) (*ocispec.Manifest, error) {
 	// Validate manifest size if available
 	if manifestDesc.Size > 0 {
-		internalLogger.Debug("Manifest size from descriptor", "cid", cid, "size", manifestDesc.Size)
+		internalLogger.Debug("Manifest size from descriptor", "cid", manifestDesc.Digest.String(), "size", manifestDesc.Size)
 	}
 
 	// Fetch manifest from remote
 	manifestRd, err := s.repo.Fetch(ctx, manifestDesc)
 	if err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to fetch manifest for CID %s: %v", cid, err)
+		return nil, status.Errorf(codes.Internal, "failed to fetch manifest for %s: %v", manifestDesc.Digest.String(), err)
 	}
 	defer manifestRd.Close()
 
 	// Read manifest data
 	manifestData, err := io.ReadAll(manifestRd)
 	if err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to read manifest data for CID %s: %v", cid, err)
+		return nil, status.Errorf(codes.Internal, "failed to read manifest data for %s: %v", manifestDesc.Digest.String(), err)
 	}
 
 	// Validate manifest size matches descriptor
 	if manifestDesc.Size > 0 && int64(len(manifestData)) != manifestDesc.Size {
 		internalLogger.Warn("Manifest size mismatch",
-			"cid", cid,
+			"cid", manifestDesc.Digest.String(),
 			"expected", manifestDesc.Size,
 			"actual", len(manifestData))
 	}
@@ -76,10 +86,10 @@ func (s *store) fetchAndParseManifest(ctx context.Context, cid string) (*ocispec
 	// Parse manifest
 	var manifest ocispec.Manifest
 	if err := json.Unmarshal(manifestData, &manifest); err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to unmarshal manifest for CID %s: %v", cid, err)
+		return nil, status.Errorf(codes.Internal, "failed to unmarshal manifest for %s: %v", manifestDesc.Digest.String(), err)
 	}
 
-	return &manifest, &manifestDesc, nil
+	return &manifest, nil
 }
 
 // Tag cleanup functions removed - OCI registry garbage collection handles dangling tags after manifest deletion
