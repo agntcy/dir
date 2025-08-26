@@ -6,7 +6,7 @@ name: Dir - Demo
 description: |
   This workflow demonstrates how to use the Dir CLI with a Kind cluster and Helm chart.
   It can be run in either local mode or network mode.
-  It includes steps for building, pushing, publishing, listing and pulling agents.
+  It includes steps for building, pushing, publishing, listing and pulling records.
 
 on:
   workflow_dispatch:
@@ -77,21 +77,14 @@ jobs:
             task deploy:local:port-forward
           fi
 
-      - name: Run build command
-        run: |
-          echo "Running dir build command"
-          bin/dirctl build e2e/testdata > agent.json
-          echo "Built agent.json:"
-          cat agent.json
-
       - name: Run push command
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir push command on Peer 1"
-            bin/dirctl push agent.json --server-addr 127.0.0.1:8890 > digest.txt
+            bin/dirctl push e2e/testdata/record_v1.json --server-addr 127.0.0.1:8890 > digest.txt
           else
             echo "Running dir push command"
-            bin/dirctl push agent.json > digest.txt
+            bin/dirctl push e2e/testdata/record_v1.json > digest.txt
           fi
           echo "Pushed image digest:"
           cat digest.txt
@@ -177,13 +170,6 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.8.2
 
-      - name: Run build command
-        run: |
-          echo "Running dir build command"
-          bin/dirctl build e2e/testdata > agent.json
-          echo "Built agent.json:"
-          cat agent.json
-
       - name: Get Github OIDC token
         id: oidc-token
         run: |
@@ -192,24 +178,29 @@ jobs:
           echo "::add-mask::$OIDC_TOKEN"
           echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Run sign command
+      - name: Deploy Dir
+        run: |
+          echo "Deploying Dir"
+          IMAGE_TAG=${{ inputs.dir-version }} task deploy:local
+          task deploy:local:port-forward
+
+      - name: Push record
+        run: |
+          echo "Pushing record"
+          bin/dirctl push e2e/testdata/record_v1.json > digest.txt
+
+      - name: Sign record
         run: |
           echo "Running dir sign command"
-          bin/dirctl sign agent.json \
+          bin/dirctl sign $(cat digest.txt) \
             --oidc-token ${{ steps.oidc-token.outputs.token }} \
             --oidc-provider-url "https://token.actions.githubusercontent.com" \
-            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}" \
-            --stdin > signed.model.json
-          echo "Signed agent.json to signed.model.json"
-          cat signed.model.json
-          mv signed.model.json agent.json
+            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
 
       - name: Run verify command
         run: |
           echo "Running dir verify command"
-          bin/dirctl verify agent.json \
-            --oidc-issuer "https://token.actions.githubusercontent.com" \
-            --oidc-identity "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
+          bin/dirctl verify $(cat digest.txt)
 
   sign-and-verify-with-key:
       # This job demonstrates how to sign and verify a record using Cosign keys.
@@ -233,22 +224,23 @@ jobs:
           cosign generate-key-pair
           echo "Cosign keys generated successfully"
 
-      - name: Run build command
+      - name: Deploy Dir
         run: |
-          echo "Running dir build command"
-          bin/dirctl build e2e/testdata > agent.json
-          echo "Built agent.json:"
-          cat agent.json
+          echo "Deploying Dir"
+          IMAGE_TAG=${{ inputs.dir-version }} task deploy:local
+          task deploy:local:port-forward
 
-      - name: Run sign command
+      - name: Push record
+        run: |
+          echo "Pushing record"
+          bin/dirctl push e2e/testdata/record_v1.json > digest.txt
+
+      - name: Sign record
         run: |
           echo "Running dir sign command"
-          bin/dirctl sign agent.json --key cosign.key --stdin > signed.model.json
-          echo "Signed agent.json:"
-          cat signed.model.json
-          mv signed.model.json agent.json
+          bin/dirctl sign $(cat digest.txt) --key cosign.key
 
-      - name: Run verify command
+      - name: Verify record
         run: |
           echo "Running dir verify command"
-          bin/dirctl verify agent.json --key cosign.pub
+          bin/dirctl verify $(cat digest.txt)
