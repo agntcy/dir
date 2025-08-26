@@ -15,7 +15,7 @@ Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous s
 
 ## Usage
 
-Check the [USAGE](USAGE.md) file for a full walkthrough of all the Directory features.
+Check the [Usage Scenarios](https://docs.agntcy.org/dir/scenarios/) for a full walkthrough of all the Directory features.
 
 ## Source tree
 
