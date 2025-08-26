@@ -24,32 +24,32 @@ Usage examples:
 
 1. Publish the data to the local data store:
 
-	dirctl publish <digest>
+	dirctl publish <cid>
 
 2. Publish the data across the network:
 
-  	dirctl publish <digest> --network
+  	dirctl publish <cid> --network
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
 		if len(args) != 1 {
-			return errors.New("digest is a required argument")
+			return errors.New("cid is a required argument")
 		}
 
 		return runCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command, digest string) error {
+func runCommand(cmd *cobra.Command, cid string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
-	// Create RecordRef from digest
+	// Create RecordRef from cid
 	recordRef := &corev1.RecordRef{
-		Cid: digest, // Use digest as CID directly
+		Cid: cid,
 	}
 
 	// Lookup metadata to verify record exists

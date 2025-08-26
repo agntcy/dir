@@ -65,7 +65,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 
 	ginkgo.It("should list by CID on all peers", func() {
 		for _, addr := range utils.PeerAddrs {
-			output := cli.List().WithDigest(tempAgentCID).OnServer(addr).ShouldSucceed()
+			output := cli.List().WithCid(tempAgentCID).OnServer(addr).ShouldSucceed()
 
 			// Extract the Peer ID/hash from the output
 			peerIndex := strings.Index(output, "Peer ")

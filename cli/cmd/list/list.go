@@ -26,7 +26,7 @@ Usage examples:
 
 1. List all peers that are providing a specific object:
 
-	dirctl list --digest <digest>
+	dirctl list --cid <cid>
 
 2. List published records on the local node:
 
@@ -57,9 +57,9 @@ func runCommand(cmd *cobra.Command, labels []string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// if we request --digest, ignore everything else
-	if opts.Digest != "" {
-		return listDigest(cmd, client, opts.Digest)
+	// if we request --cid, ignore everything else
+	if opts.Cid != "" {
+		return listCid(cmd, client, opts.Cid)
 	}
 
 	// validate that we have labels for all the flows below

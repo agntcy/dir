@@ -21,19 +21,19 @@ var Command = &cobra.Command{
 
 Usage example:
 
-	dirctl delete <digest>
+	dirctl delete <cid>
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.New("digest is a required argument")
+			return errors.New("cid is a required argument")
 		}
 
 		return runCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command, digest string) error {
+func runCommand(cmd *cobra.Command, cid string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
@@ -42,13 +42,13 @@ func runCommand(cmd *cobra.Command, digest string) error {
 
 	// Delete object from store
 	err := c.Delete(cmd.Context(), &corev1.RecordRef{
-		Cid: digest, // Use digest as CID directly
+		Cid: cid,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to delete record: %w", err)
 	}
 
-	presenter.Printf(cmd, "Deleted record with digest: %s\n", digest)
+	presenter.Printf(cmd, "Deleted record with cid: %s\n", cid)
 
 	return nil
 }

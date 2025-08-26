@@ -127,7 +127,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			})
 
 			// Step 4: Verify duplicate push returns same CID (depends on push)
-			ginkgo.It("should push the same agent again and return the same digest", func() {
+			ginkgo.It("should push the same agent again and return the same cid", func() {
 				cli.Push(tempAgentPath).ShouldReturn(tempAgentCID)
 			})
 
