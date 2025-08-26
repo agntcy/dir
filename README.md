@@ -8,7 +8,6 @@ Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous s
 
 - **Data Models** - Defines a standard schema for data representation and exchange.
 - **Dev Kit** - Provides CLI tooling to simplify development workflows and facilitate API interactions.
-- **Plugins** - Pluggable components to extend the build process of agent data models for custom use cases.
 - **Announce** - Allows publication of records to the network.
 - **Discover** - Listen, search, and retrieve records across the network by their attributes and constraints.
 - **Security** - Relies on well-known security principles to provide data provenance, integrity, and ownership.
@@ -21,7 +20,6 @@ Check the [Usage Scenarios](https://docs.agntcy.org/dir/scenarios/) for a full w
 
 - [api](./api) - gRPC specification for data models and services
 - [cli](./cli) - command line client for interacting with system components
-  - [builder](./cli/builder) - common data model build tools and plugins
 - [client](./client) - client SDK for development and API workflows
 - [e2e](./e2e) - end-to-end testing framework
 - [docs](./docs) - research details and documentation around the project
