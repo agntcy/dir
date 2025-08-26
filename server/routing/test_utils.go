@@ -7,6 +7,7 @@ package routing
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/agntcy/dir/server/config"
 	routingconfig "github.com/agntcy/dir/server/routing/config"
@@ -24,6 +25,8 @@ func toPtr[T any](v T) *T {
 func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route {
 	t.Helper()
 
+	refreshInterval := 1 * time.Second
+
 	// define opts with faster refresh interval for testing
 	opts := types.NewOptions(
 		&config.Config{
@@ -34,7 +37,7 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 			Routing: routingconfig.Config{
 				ListenAddress:   "/ip4/0.0.0.0/tcp/0",
 				BootstrapPeers:  bootPeers,
-				RefreshInterval: TestRefreshInterval, // Fast refresh for testing
+				RefreshInterval: refreshInterval, // Fast refresh for testing
 			},
 		},
 	)

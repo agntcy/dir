@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package routing
+package validators
 
 import (
 	"errors"
@@ -94,7 +94,7 @@ func (v *SkillValidator) Validate(key string, value []byte) error {
 	validatorLogger.Debug("Validating skills DHT record", "key", key)
 
 	// Basic format validation
-	parts, err := v.validateKeyFormat(key, "skills")
+	parts, err := v.validateKeyFormat(key, NamespaceSkills.String())
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func (v *DomainValidator) Validate(key string, value []byte) error {
 	validatorLogger.Debug("Validating domains DHT record", "key", key)
 
 	// Basic format validation
-	parts, err := v.validateKeyFormat(key, "domains")
+	parts, err := v.validateKeyFormat(key, NamespaceDomains.String())
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (v *FeatureValidator) Validate(key string, value []byte) error {
 	validatorLogger.Debug("Validating features DHT record", "key", key)
 
 	// Basic format validation
-	parts, err := v.validateKeyFormat(key, "features")
+	parts, err := v.validateKeyFormat(key, NamespaceFeatures.String())
 	if err != nil {
 		return err
 	}
@@ -271,9 +271,9 @@ func (v *FeatureValidator) Select(key string, values [][]byte) (int, error) {
 // CreateLabelValidators creates separate validators for each label namespace.
 func CreateLabelValidators() map[string]record.Validator {
 	return map[string]record.Validator{
-		"skills":   &SkillValidator{},
-		"domains":  &DomainValidator{},
-		"features": &FeatureValidator{},
+		NamespaceSkills.String():   &SkillValidator{},
+		NamespaceDomains.String():  &DomainValidator{},
+		NamespaceFeatures.String(): &FeatureValidator{},
 	}
 }
 
@@ -285,10 +285,7 @@ func ValidateLabelKey(key string) error {
 	}
 
 	namespace := parts[1]
-	switch namespace {
-	case "skills", "domains", "features":
-		// Valid namespaces
-	default:
+	if _, valid := ParseNamespace(namespace); !valid {
 		return errors.New("unsupported namespace: " + namespace)
 	}
 

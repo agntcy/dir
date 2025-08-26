@@ -12,6 +12,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	"github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
@@ -316,7 +317,7 @@ func getLabels(record *corev1.Record) []string {
 	// get record skills
 	skills := make([]string, 0, len(recordData.GetSkills()))
 	for _, skill := range recordData.GetSkills() {
-		skills = append(skills, "/skills/"+skill.GetName())
+		skills = append(skills, validators.NamespaceSkills.Prefix()+skill.GetName())
 	}
 
 	labels = append(labels, skills...)
@@ -329,7 +330,7 @@ func getLabels(record *corev1.Record) []string {
 	for _, ext := range recordData.GetExtensions() {
 		if strings.HasPrefix(ext.GetName(), domainPrefix) {
 			domain := ext.GetName()[len(domainPrefix):]
-			domains = append(domains, "/domains/"+domain)
+			domains = append(domains, validators.NamespaceDomains.Prefix()+domain)
 		}
 	}
 
@@ -343,7 +344,7 @@ func getLabels(record *corev1.Record) []string {
 	for _, ext := range recordData.GetExtensions() {
 		if strings.HasPrefix(ext.GetName(), featuresPrefix) {
 			feature := ext.GetName()[len(featuresPrefix):]
-			features = append(features, "/features/"+feature)
+			features = append(features, validators.NamespaceFeatures.Prefix()+feature)
 		}
 	}
 

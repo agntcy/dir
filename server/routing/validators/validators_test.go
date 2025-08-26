@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package routing
+package validators
 
 import (
 	"testing"
@@ -323,19 +323,78 @@ func TestValidators_Select(t *testing.T) {
 	}
 }
 
+func TestNamespaceType(t *testing.T) {
+	// Test String() method
+	assert.Equal(t, "skills", NamespaceSkills.String())
+	assert.Equal(t, "domains", NamespaceDomains.String())
+	assert.Equal(t, "features", NamespaceFeatures.String())
+
+	// Test Prefix() method
+	assert.Equal(t, "/skills/", NamespaceSkills.Prefix())
+	assert.Equal(t, "/domains/", NamespaceDomains.Prefix())
+	assert.Equal(t, "/features/", NamespaceFeatures.Prefix())
+
+	// Test IsValid() method
+	assert.True(t, NamespaceSkills.IsValid())
+	assert.True(t, NamespaceDomains.IsValid())
+	assert.True(t, NamespaceFeatures.IsValid())
+	assert.False(t, NamespaceType("invalid").IsValid())
+
+	// Test ParseNamespace() function
+	ns, valid := ParseNamespace("skills")
+	assert.True(t, valid)
+	assert.Equal(t, NamespaceSkills, ns)
+
+	ns, valid = ParseNamespace("invalid")
+	assert.False(t, valid)
+	assert.Equal(t, NamespaceType(""), ns)
+
+	// Test AllNamespaces() function
+	all := AllNamespaces()
+	assert.Len(t, all, 3)
+	assert.Contains(t, all, NamespaceSkills)
+	assert.Contains(t, all, NamespaceDomains)
+	assert.Contains(t, all, NamespaceFeatures)
+
+	// Test IsValidNamespaceKey() function
+	assert.True(t, IsValidNamespaceKey("/skills/golang/CID123"))
+	assert.True(t, IsValidNamespaceKey("/domains/web/CID123"))
+	assert.True(t, IsValidNamespaceKey("/features/chat/CID123"))
+	assert.False(t, IsValidNamespaceKey("/invalid/test/CID123"))
+	assert.False(t, IsValidNamespaceKey("/records/CID123"))
+	assert.False(t, IsValidNamespaceKey("skills/golang/CID123")) // missing leading slash
+
+	// Test GetNamespaceFromKey() function
+	ns, found := GetNamespaceFromKey("/skills/golang/CID123")
+	assert.True(t, found)
+	assert.Equal(t, NamespaceSkills, ns)
+
+	ns, found = GetNamespaceFromKey("/domains/web/CID123")
+	assert.True(t, found)
+	assert.Equal(t, NamespaceDomains, ns)
+
+	ns, found = GetNamespaceFromKey("/features/chat/CID123")
+	assert.True(t, found)
+	assert.Equal(t, NamespaceFeatures, ns)
+
+	ns, found = GetNamespaceFromKey("/invalid/test/CID123")
+	assert.False(t, found)
+	assert.Equal(t, NamespaceType(""), ns)
+}
+
 func TestCreateLabelValidators(t *testing.T) {
 	validators := CreateLabelValidators()
 
 	// Test that all expected validators are created
 	assert.Len(t, validators, 3)
-	assert.Contains(t, validators, "skills")
-	assert.Contains(t, validators, "domains")
-	assert.Contains(t, validators, "features")
+	assert.Contains(t, validators, NamespaceSkills.String())
+	assert.Contains(t, validators, NamespaceDomains.String())
+	assert.Contains(t, validators, NamespaceFeatures.String())
 
 	// Test that validators are of correct types
-	assert.IsType(t, &SkillValidator{}, validators["skills"])
-	assert.IsType(t, &DomainValidator{}, validators["domains"])
-	assert.IsType(t, &FeatureValidator{}, validators["features"])
+	assert.IsType(t, &SkillValidator{}, validators[NamespaceSkills.String()])
+	assert.IsType(t, &DomainValidator{}, validators[NamespaceDomains.String()])
+	assert.IsType(t, &FeatureValidator{}, validators[NamespaceFeatures.String()])
 }
 
 func TestValidateLabelKey(t *testing.T) {
@@ -455,28 +514,28 @@ func TestBaseValidator_validateKeyFormat(t *testing.T) {
 		{
 			name:              "valid key format",
 			key:               "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
-			expectedNamespace: "skills",
+			expectedNamespace: NamespaceSkills.String(),
 			wantError:         false,
 			expectedParts:     []string{"", "skills", "programming", "golang", "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"},
 		},
 		{
 			name:              "invalid format - too few parts",
 			key:               "/skills/programming",
-			expectedNamespace: "skills",
+			expectedNamespace: NamespaceSkills.String(),
 			wantError:         true,
 			errorMsg:          "invalid key format: expected /<namespace>/<specific_path>/<cid>",
 		},
 		{
 			name:              "wrong namespace",
 			key:               "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
-			expectedNamespace: "skills",
+			expectedNamespace: NamespaceSkills.String(),
 			wantError:         true,
 			errorMsg:          "invalid namespace: expected skills, got domains",
 		},
 		{
 			name:              "invalid CID",
 			key:               "/skills/programming/golang/invalid-cid",
-			expectedNamespace: "skills",
+			expectedNamespace: NamespaceSkills.String(),
 			wantError:         true,
 			errorMsg:          "invalid CID format",
 		},

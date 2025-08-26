@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -30,7 +31,7 @@ type handler struct {
 type handlerSync struct {
 	Ref              *corev1.RecordRef
 	Peer             peer.AddrInfo
-	AnnouncementType string // "CID" or "LABEL"
+	AnnouncementType AnnouncementType
 	LabelKey         string // For label announcements like "/skills/golang/CID1", "/domains/web/CID2"
 }
 
@@ -71,9 +72,7 @@ func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.Addr
 	}
 
 	// Route to appropriate handler based on key type
-	if strings.HasPrefix(keyStr, "/skills/") ||
-		strings.HasPrefix(keyStr, "/domains/") ||
-		strings.HasPrefix(keyStr, "/features/") {
+	if validators.IsValidNamespaceKey(keyStr) {
 		return h.handleLabelAnnouncement(ctx, keyStr, prov)
 	}
 
@@ -101,7 +100,7 @@ func (h *handler) handleLabelAnnouncement(_ context.Context, labelKey string, pr
 	h.notifyCh <- &handlerSync{
 		Ref:              ref,
 		Peer:             prov,
-		AnnouncementType: "LABEL",
+		AnnouncementType: AnnouncementTypeLabel,
 		LabelKey:         labelKey,
 	}
 
@@ -137,7 +136,7 @@ func (h *handler) handleCIDProviderAnnouncement(_ context.Context, key []byte, p
 	h.notifyCh <- &handlerSync{
 		Ref:              ref,
 		Peer:             prov,
-		AnnouncementType: "CID",
+		AnnouncementType: AnnouncementTypeCID,
 	}
 
 	return nil

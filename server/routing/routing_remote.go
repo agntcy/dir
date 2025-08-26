@@ -15,6 +15,7 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/rpc"
+	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
@@ -78,11 +79,11 @@ func newRemote(ctx context.Context,
 				}
 
 				// create custom validators for label namespaces
-				labelValidators := CreateLabelValidators()
+				labelValidators := validators.CreateLabelValidators()
 				validator := record.NamespacedValidator{
-					"skills":   labelValidators["skills"],
-					"domains":  labelValidators["domains"],
-					"features": labelValidators["features"],
+					validators.NamespaceSkills.String():   labelValidators[validators.NamespaceSkills.String()],
+					validators.NamespaceDomains.String():  labelValidators[validators.NamespaceDomains.String()],
+					validators.NamespaceFeatures.String(): labelValidators[validators.NamespaceFeatures.String()],
 				}
 
 				// return custom opts for DHT
@@ -90,7 +91,7 @@ func newRemote(ctx context.Context,
 					dht.Datastore(dstore),                           // custom DHT datastore
 					dht.ProtocolPrefix(protocol.ID(ProtocolPrefix)), // custom DHT protocol prefix
 					dht.Validator(validator),                        // custom validators for label namespaces
-					dht.MaxRecordAge(DHTRecordTTL),                  // set consistent TTL for all DHT records
+					dht.MaxRecordAge(RecordTTL),                     // set consistent TTL for all DHT records
 					dht.ProviderStore(&handler{
 						ProviderManager: providerMgr,
 						hostID:          h.ID().String(),
@@ -295,9 +296,9 @@ func (r *routeRemote) handleNotify(ctx context.Context) {
 			return
 		case notif := <-r.notifyCh:
 			switch notif.AnnouncementType {
-			case "LABEL":
+			case AnnouncementTypeLabel:
 				r.handleLabelNotification(ctx, notif)
-			case "CID":
+			case AnnouncementTypeCID:
 				r.handleCIDProviderNotification(ctx, notif)
 			default:
 				// Backward compatibility: treat as CID announcement
@@ -343,11 +344,11 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 	// for now, we are only testing if we can reach out and fetch it from the
 	// broadcasting node
 
-	// FRAUD DETECTION: Validate that the announcing peer actually has the content
+	// Validate that the announcing peer actually has the content they claim to provide
 	// Step 1: Try to lookup metadata from the announcing peer
 	_, err = r.service.Lookup(ctx, notif.Peer.ID, notif.Ref)
 	if err != nil {
-		remoteLogger.Error("FRAUD DETECTED: Peer announced CID but failed metadata lookup",
+		remoteLogger.Error("Peer announced CID but failed metadata lookup",
 			"peer", notif.Peer.ID, "cid", notif.Ref.GetCid(), "error", err)
 
 		return
@@ -356,7 +357,7 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 	// Step 2: Try to actually fetch the content from the announcing peer
 	_, err = r.service.Pull(ctx, notif.Peer.ID, notif.Ref)
 	if err != nil {
-		remoteLogger.Error("FRAUD DETECTED: Peer announced CID but failed content delivery",
+		remoteLogger.Error("Peer announced CID but failed content delivery",
 			"peer", notif.Peer.ID, "cid", notif.Ref.GetCid(), "error", err)
 
 		return
@@ -373,10 +374,10 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 
 // label mappings to prevent them from expiring (DHT PutValue records expire after DHTRecordTTL).
 func (r *routeRemote) startLabelRepublishTask(ctx context.Context) {
-	ticker := time.NewTicker(LabelRepublishInterval)
+	ticker := time.NewTicker(RepublishInterval)
 	defer ticker.Stop()
 
-	remoteLogger.Info("Started label republishing task", "interval", LabelRepublishInterval)
+	remoteLogger.Info("Started label republishing task", "interval", RepublishInterval)
 
 	for {
 		select {
@@ -430,7 +431,7 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 		labels := getLabels(record)
 		for _, label := range labels {
 			// Use proper validator-compatible DHT key format
-			dhtKey := FormatLabelKey(label, cid)
+			dhtKey := validators.FormatLabelKey(label, cid)
 
 			// Republish label mapping to DHT network
 			err = r.server.DHT().PutValue(ctx, dhtKey, []byte(cid))
@@ -454,7 +455,7 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 func (r *routeRemote) announceLabelToDHT(ctx context.Context, label, cidStr string) {
 	// Announce to DHT network using proper validator-compatible key format
 	// This automatically stores in the shared datastore AND announces to the network
-	dhtKey := FormatLabelKey(label, cidStr)
+	dhtKey := validators.FormatLabelKey(label, cidStr)
 	err := r.server.DHT().PutValue(ctx, dhtKey, []byte(cidStr))
 
 	if err != nil {
