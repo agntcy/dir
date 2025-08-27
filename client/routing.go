@@ -9,17 +9,14 @@ import (
 	"fmt"
 	"io"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/utils/logging"
 )
 
 var logger = logging.Logger("client")
 
-func (c *Client) Publish(ctx context.Context, ref *corev1.RecordRef) error {
-	_, err := c.RoutingServiceClient.Publish(ctx, &routingv1.PublishRequest{
-		RecordCid: ref.GetCid(),
-	})
+func (c *Client) Publish(ctx context.Context, req *routingv1.PublishRequest) error {
+	_, err := c.RoutingServiceClient.Publish(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to publish object: %w", err)
 	}
@@ -60,10 +57,8 @@ func (c *Client) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *
 	return resCh, nil
 }
 
-func (c *Client) Unpublish(ctx context.Context, ref *corev1.RecordRef) error {
-	_, err := c.RoutingServiceClient.Unpublish(ctx, &routingv1.UnpublishRequest{
-		RecordCid: ref.GetCid(),
-	})
+func (c *Client) Unpublish(ctx context.Context, req *routingv1.UnpublishRequest) error {
+	_, err := c.RoutingServiceClient.Unpublish(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to unpublish object: %w", err)
 	}

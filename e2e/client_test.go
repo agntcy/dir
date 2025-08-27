@@ -116,7 +116,13 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 			// Step 3: Publish (depends on push)
 			ginkgo.It("should publish a record", func() {
-				err := c.Publish(ctx, recordRef)
+				err := c.Publish(ctx, &routingv1.PublishRequest{
+					Request: &routingv1.PublishRequest_RecordRefs{
+						RecordRefs: &routingv1.RecordRefs{
+							Refs: []*corev1.RecordRef{recordRef},
+						},
+					},
+				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			})
 
@@ -189,7 +195,13 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 			// Step 7: Unpublish (depends on publish)
 			ginkgo.It("should unpublish a record", func() {
-				err := c.Unpublish(ctx, recordRef)
+				err := c.Unpublish(ctx, &routingv1.UnpublishRequest{
+					Request: &routingv1.UnpublishRequest_RecordRefs{
+						RecordRefs: &routingv1.RecordRefs{
+							Refs: []*corev1.RecordRef{recordRef},
+						},
+					},
+				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			})
 

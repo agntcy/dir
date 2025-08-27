@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -57,7 +58,13 @@ func runCommand(cmd *cobra.Command, cid string) error {
 	presenter.Printf(cmd, "Publishing record with CID: %s\n", recordRef.GetCid())
 
 	// Start publishing using the same RecordRef
-	if err := c.Publish(cmd.Context(), recordRef); err != nil {
+	if err := c.Publish(cmd.Context(), &routingv1.PublishRequest{
+		Request: &routingv1.PublishRequest_RecordRefs{
+			RecordRefs: &routingv1.RecordRefs{
+				Refs: []*corev1.RecordRef{recordRef},
+			},
+		},
+	}); err != nil {
 		if strings.Contains(err.Error(), "failed to announce object") {
 			return errors.New("failed to announce object, it will be retried in the background on the API server")
 		}
