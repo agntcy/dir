@@ -6,7 +6,6 @@ package routing
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/routing/validators"
@@ -82,16 +81,14 @@ func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.Addr
 
 // handleLabelAnnouncement handles announcements for label mappings (skills/domains/features).
 func (h *handler) handleLabelAnnouncement(_ context.Context, labelKey string, prov peer.AddrInfo) error {
-	// Extract CID from label key: "/skills/golang/CID123" → "CID123"
-	parts := strings.Split(labelKey, "/")
-
-	if len(parts) < MinLabelKeyParts {
-		handlerLogger.Error("Invalid label key format", "key", labelKey)
+	// Extract CID from label key using validators utility
+	cidStr, err := validators.ExtractCIDFromLabelKey(labelKey)
+	if err != nil {
+		handlerLogger.Error("Invalid label key format", "key", labelKey, "error", err)
 
 		return nil
 	}
 
-	cidStr := parts[len(parts)-1] // Last part is CID
 	ref := &corev1.RecordRef{Cid: cidStr}
 
 	handlerLogger.Info("Label announcement event", "label", labelKey, "cid", cidStr, "provider", prov)

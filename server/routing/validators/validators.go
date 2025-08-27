@@ -315,3 +315,30 @@ func FormatLabelKey(label, cidStr string) string {
 
 	return key
 }
+
+// Example: "/skills/golang/CID123" → "CID123", nil.
+func ExtractCIDFromLabelKey(labelKey string) (string, error) {
+	parts := strings.Split(labelKey, "/")
+	if len(parts) < MinLabelKeyParts {
+		return "", errors.New("invalid label key format: expected /<namespace>/<label_path>/<cid>")
+	}
+
+	// Validate it's a proper namespace key
+	if !IsValidNamespaceKey(labelKey) {
+		return "", errors.New("invalid namespace in label key")
+	}
+
+	// Extract and validate CID (last part)
+	cidStr := parts[len(parts)-1]
+	if cidStr == "" {
+		return "", errors.New("missing CID in label key")
+	}
+
+	// Validate CID format
+	_, err := cid.Decode(cidStr)
+	if err != nil {
+		return "", errors.New("invalid CID format: " + err.Error())
+	}
+
+	return cidStr, nil
+}

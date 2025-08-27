@@ -5,10 +5,12 @@ package routing
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
@@ -37,7 +39,7 @@ func newLocal(store types.StoreAPI, dstore types.Datastore) *routeLocal {
 	}
 }
 
-func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
+func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record, localPeerID string) error {
 	localLogger.Debug("Called local routing's Publish method", "ref", ref, "record", record)
 
 	// Validate input parameters
@@ -85,9 +87,23 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 	// Network announcements are handled separately by routing_remote when peers are available
 	labels := getLabels(record)
 	for _, label := range labels {
-		// Store label key for local List queries
+		// Create metadata for local label
+		metadata := &LabelMetadata{
+			Timestamp: time.Now(),
+			PeerID:    localPeerID,
+			CID:       ref.GetCid(),
+			LastSeen:  time.Now(),
+		}
+
+		// Serialize metadata to JSON
+		metadataBytes, err := json.Marshal(metadata)
+		if err != nil {
+			return status.Errorf(codes.Internal, "failed to serialize label metadata: %v", err)
+		}
+
+		// Store label key with metadata for local List queries
 		labelKey := datastore.NewKey(fmt.Sprintf("%s/%s", label, ref.GetCid()))
-		if err := batch.Put(ctx, labelKey, nil); err != nil {
+		if err := batch.Put(ctx, labelKey, metadataBytes); err != nil {
 			return status.Errorf(codes.Internal, "failed to put label key: %v", err)
 		}
 
@@ -323,13 +339,11 @@ func getLabels(record *corev1.Record) []string {
 	labels = append(labels, skills...)
 
 	// get record domains
-	domainPrefix := "schema.oasf.agntcy.org/domains/"
-
 	var domains []string
 
 	for _, ext := range recordData.GetExtensions() {
-		if strings.HasPrefix(ext.GetName(), domainPrefix) {
-			domain := ext.GetName()[len(domainPrefix):]
+		if strings.HasPrefix(ext.GetName(), validators.DomainSchemaPrefix) {
+			domain := ext.GetName()[len(validators.DomainSchemaPrefix):]
 			domains = append(domains, validators.NamespaceDomains.Prefix()+domain)
 		}
 	}
@@ -337,13 +351,11 @@ func getLabels(record *corev1.Record) []string {
 	labels = append(labels, domains...)
 
 	// get record features
-	featuresPrefix := "schema.oasf.agntcy.org/features/"
-
 	var features []string
 
 	for _, ext := range recordData.GetExtensions() {
-		if strings.HasPrefix(ext.GetName(), featuresPrefix) {
-			feature := ext.GetName()[len(featuresPrefix):]
+		if strings.HasPrefix(ext.GetName(), validators.FeaturesSchemaPrefix) {
+			feature := ext.GetName()[len(validators.FeaturesSchemaPrefix):]
 			features = append(features, validators.NamespaceFeatures.Prefix()+feature)
 		}
 	}

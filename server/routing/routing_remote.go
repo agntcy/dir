@@ -5,6 +5,7 @@ package routing
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -125,6 +126,9 @@ func newRemote(ctx context.Context,
 	// run label republishing task in background
 	go routeAPI.startLabelRepublishTask(ctx)
 
+	// run remote label cleanup task in background
+	go routeAPI.startRemoteLabelCleanupTask(ctx)
+
 	return routeAPI, nil
 }
 
@@ -198,7 +202,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingv1.ListRequest) (<-c
 		}
 
 		// stream results back
-		resCh := make(chan *routingv1.LegacyListResponse_Item, 100)
+		resCh := make(chan *routingv1.LegacyListResponse_Item, ResultChannelBufferSize)
 		go func(provs []peer.AddrInfo, ref *corev1.RecordRef) {
 			defer close(resCh)
 
@@ -254,7 +258,7 @@ func (r *routeRemote) List(ctx context.Context, req *routingv1.ListRequest) (<-c
 	}
 
 	// run in the background
-	resCh := make(chan *routingv1.LegacyListResponse_Item, 100)
+	resCh := make(chan *routingv1.LegacyListResponse_Item, ResultChannelBufferSize)
 	go func(ctx context.Context, req *routingv1.ListRequest) {
 		defer close(resCh)
 
@@ -313,9 +317,27 @@ func (r *routeRemote) handleLabelNotification(ctx context.Context, notif *handle
 	remoteLogger.Info("Processing label announcement",
 		"label", notif.LabelKey, "cid", notif.Ref.GetCid(), "peer", notif.Peer.ID)
 
-	// Store the remote label mapping locally in our shared datastore
+	labelKey := datastore.NewKey(notif.LabelKey)
+	now := time.Now()
+
+	// Get or create label metadata
+	metadata := r.getOrCreateLabelMetadata(ctx, labelKey, notif, now)
+	if metadata == nil {
+		return // Error already logged in helper function
+	}
+
+	// Serialize metadata to JSON
+	metadataBytes, err := json.Marshal(metadata)
+	if err != nil {
+		remoteLogger.Error("Failed to serialize label metadata",
+			"label", notif.LabelKey, "error", err)
+
+		return
+	}
+
+	// Store the remote label mapping with metadata in our shared datastore
 	// This allows us to discover this remote content via label searches
-	err := r.dstore.Put(ctx, datastore.NewKey(notif.LabelKey), []byte(""))
+	err = r.dstore.Put(ctx, labelKey, metadataBytes)
 	if err != nil {
 		remoteLogger.Error("Failed to store remote label announcement",
 			"label", notif.LabelKey, "error", err)
@@ -325,6 +347,65 @@ func (r *routeRemote) handleLabelNotification(ctx context.Context, notif *handle
 
 	remoteLogger.Info("Successfully stored remote label announcement",
 		"label", notif.LabelKey, "peer", notif.Peer.ID)
+}
+
+// getOrCreateLabelMetadata retrieves existing label metadata or creates new metadata if needed.
+func (r *routeRemote) getOrCreateLabelMetadata(ctx context.Context, labelKey datastore.Key, notif *handlerSync, now time.Time) *LabelMetadata {
+	// Try to get existing metadata
+	if metadata := r.getExistingLabelMetadata(ctx, labelKey, notif.LabelKey); metadata != nil {
+		metadata.Update()
+		remoteLogger.Debug("Updated existing remote label LastSeen",
+			"label", notif.LabelKey, "peer", notif.Peer.ID)
+
+		return metadata
+	}
+
+	// Create new metadata
+	metadata := &LabelMetadata{
+		Timestamp: now,
+		PeerID:    notif.Peer.ID.String(),
+		CID:       notif.Ref.GetCid(),
+		LastSeen:  now,
+	}
+
+	// Validate new metadata
+	if err := metadata.Validate(); err != nil {
+		remoteLogger.Error("Created invalid label metadata",
+			"label", notif.LabelKey, "error", err)
+
+		return nil
+	}
+
+	remoteLogger.Debug("Created new remote label metadata",
+		"label", notif.LabelKey, "peer", notif.Peer.ID)
+
+	return metadata
+}
+
+// getExistingLabelMetadata attempts to retrieve and validate existing label metadata.
+func (r *routeRemote) getExistingLabelMetadata(ctx context.Context, labelKey datastore.Key, labelKeyStr string) *LabelMetadata {
+	existingData, err := r.dstore.Get(ctx, labelKey)
+	if err != nil {
+		return nil // Label doesn't exist
+	}
+
+	var metadata LabelMetadata
+	if err := json.Unmarshal(existingData, &metadata); err != nil {
+		remoteLogger.Warn("Failed to unmarshal existing label metadata, creating new",
+			"label", labelKeyStr, "error", err)
+
+		return nil
+	}
+
+	// Validate existing metadata
+	if err := metadata.Validate(); err != nil {
+		remoteLogger.Warn("Existing label metadata is invalid, creating new",
+			"label", labelKeyStr, "error", err)
+
+		return nil
+	}
+
+	return &metadata
 }
 
 // "I have this content", while label announcements indicate "this content has these labels".
@@ -408,6 +489,8 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 	republishedCount := 0
 	errorCount := 0
 
+	var orphanedCIDs []string
+
 	for result := range results.Next() {
 		// Extract CID from record key: /records/CID123 → CID123
 		cid := path.Base(result.Key)
@@ -420,8 +503,10 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 
 		record, err := r.storeAPI.Pull(ctx, ref)
 		if err != nil {
-			remoteLogger.Warn("Failed to pull record for republishing", "cid", cid, "error", err)
+			remoteLogger.Warn("Failed to pull record for republishing, marking as orphaned", "cid", cid, "error", err)
 
+			// Track this CID for cleanup - the record no longer exists in storage
+			orphanedCIDs = append(orphanedCIDs, cid)
 			errorCount++
 
 			continue
@@ -447,8 +532,14 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 		}
 	}
 
+	// Clean up orphaned local records and their labels
+	if len(orphanedCIDs) > 0 {
+		cleanedCount := r.cleanupOrphanedLocalLabels(ctx, orphanedCIDs)
+		remoteLogger.Info("Cleaned up orphaned local records", "count", cleanedCount)
+	}
+
 	remoteLogger.Info("Completed label republishing cycle",
-		"republished", republishedCount, "errors", errorCount)
+		"republished", republishedCount, "errors", errorCount, "orphaned", len(orphanedCIDs))
 }
 
 // announceLabelToDHT announces a label mapping to the DHT network.
@@ -463,4 +554,279 @@ func (r *routeRemote) announceLabelToDHT(ctx context.Context, label, cidStr stri
 	} else {
 		remoteLogger.Debug("Successfully announced label to DHT", "label", dhtKey)
 	}
+}
+
+// remoteLabelFilter identifies remote labels by checking if they lack a corresponding local record.
+// Remote labels are those that don't have a matching "/records/CID" key in the datastore.
+//
+//nolint:containedctx
+type remoteLabelFilter struct {
+	dstore      types.Datastore
+	ctx         context.Context
+	localPeerID string
+}
+
+func (f *remoteLabelFilter) Filter(e query.Entry) bool {
+	// Extract CID from label key using validators utility
+	cidStr, err := validators.ExtractCIDFromLabelKey(e.Key)
+	if err != nil {
+		// Invalid label key format, skip it
+		return false
+	}
+
+	// Check if we have a local record for this CID
+	recordKey := datastore.NewKey("/records/" + cidStr)
+
+	exists, err := f.dstore.Has(f.ctx, recordKey)
+	if err != nil {
+		// On error, assume it's remote to be safe
+		return true
+	}
+
+	// If no local record exists, this is a remote label
+	if !exists {
+		return true
+	}
+
+	// If local record exists, check the metadata to confirm it's from a different peer
+	labelData, err := f.dstore.Get(f.ctx, datastore.NewKey(e.Key))
+	if err != nil {
+		// Can't read metadata, assume remote to be safe
+		return true
+	}
+
+	var metadata LabelMetadata
+	if err := json.Unmarshal(labelData, &metadata); err != nil {
+		// Can't parse metadata, assume remote to be safe
+		return true
+	}
+
+	// Validate metadata before checking if it's local
+	if err := metadata.Validate(); err != nil {
+		// Invalid metadata, assume remote to be safe
+		return true
+	}
+
+	// It's remote if it's not local to our peer
+	return !metadata.IsLocal(f.localPeerID)
+}
+
+// cleanupStaleRemoteLabels removes remote labels that haven't been seen recently.
+func (r *routeRemote) cleanupStaleRemoteLabels(ctx context.Context) error {
+	localPeerID := r.server.Host().ID().String()
+
+	remoteLogger.Debug("Starting stale remote label cleanup")
+
+	// Query all label keys with remote filter
+	// We'll query each namespace separately and combine results
+	var allResults []query.Result
+
+	for _, namespace := range validators.AllNamespaces() {
+		nsResults, err := r.dstore.Query(ctx, query.Query{
+			Prefix: namespace.Prefix(),
+			Filters: []query.Filter{
+				&remoteLabelFilter{
+					dstore:      r.dstore,
+					ctx:         ctx,
+					localPeerID: localPeerID,
+				},
+			},
+		})
+		if err != nil {
+			remoteLogger.Warn("Failed to query namespace", "namespace", namespace, "error", err)
+
+			continue
+		}
+
+		// Collect results from this namespace
+		for result := range nsResults.Next() {
+			allResults = append(allResults, result)
+		}
+
+		nsResults.Close()
+	}
+
+	var staleKeys []datastore.Key
+
+	// Check each remote label for staleness
+	for _, result := range allResults {
+		if result.Error != nil {
+			remoteLogger.Warn("Error reading label entry", "key", result.Key, "error", result.Error)
+
+			continue
+		}
+
+		var metadata LabelMetadata
+		if err := json.Unmarshal(result.Value, &metadata); err != nil {
+			remoteLogger.Warn("Failed to parse label metadata, marking for deletion",
+				"key", result.Key, "error", err)
+
+			staleKeys = append(staleKeys, datastore.NewKey(result.Key))
+
+			continue
+		}
+
+		// Validate metadata before checking staleness
+		if err := metadata.Validate(); err != nil {
+			remoteLogger.Warn("Invalid label metadata found during cleanup, marking for deletion",
+				"key", result.Key, "error", err)
+
+			staleKeys = append(staleKeys, datastore.NewKey(result.Key))
+
+			continue
+		}
+
+		// Check if label is stale using the IsStale method
+		if metadata.IsStale(MaxLabelAge) {
+			remoteLogger.Debug("Found stale remote label",
+				"key", result.Key, "age", metadata.Age(), "peer", metadata.PeerID)
+
+			staleKeys = append(staleKeys, datastore.NewKey(result.Key))
+		}
+	}
+
+	// Delete stale labels in batch
+	if len(staleKeys) > 0 {
+		batch, err := r.dstore.Batch(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create batch for cleanup: %w", err)
+		}
+
+		for _, key := range staleKeys {
+			if err := batch.Delete(ctx, key); err != nil {
+				remoteLogger.Warn("Failed to delete stale label", "key", key.String(), "error", err)
+			}
+		}
+
+		if err := batch.Commit(ctx); err != nil {
+			return fmt.Errorf("failed to commit stale label cleanup: %w", err)
+		}
+
+		remoteLogger.Info("Cleaned up stale remote labels", "count", len(staleKeys))
+	} else {
+		remoteLogger.Debug("No stale remote labels found")
+	}
+
+	return nil
+}
+
+// startRemoteLabelCleanupTask starts a background task that periodically cleans up stale remote labels.
+func (r *routeRemote) startRemoteLabelCleanupTask(ctx context.Context) {
+	remoteLogger.Info("Starting remote label cleanup task", "interval", CleanupInterval)
+
+	ticker := time.NewTicker(CleanupInterval)
+
+	go func() {
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				remoteLogger.Info("Remote label cleanup task stopped")
+
+				return
+			case <-ticker.C:
+				if err := r.cleanupStaleRemoteLabels(ctx); err != nil {
+					remoteLogger.Error("Failed to cleanup stale remote labels", "error", err)
+				}
+			}
+		}
+	}()
+}
+
+// cleanupOrphanedLocalLabels removes local records and labels for CIDs that no longer exist in storage.
+func (r *routeRemote) cleanupOrphanedLocalLabels(ctx context.Context, orphanedCIDs []string) int {
+	cleanedCount := 0
+
+	for _, cid := range orphanedCIDs {
+		if r.cleanupLabelsForCID(ctx, cid) {
+			cleanedCount++
+		}
+	}
+
+	return cleanedCount
+}
+
+// cleanupLabelsForCID removes all local records and labels associated with a specific CID.
+func (r *routeRemote) cleanupLabelsForCID(ctx context.Context, cid string) bool {
+	batch, err := r.dstore.Batch(ctx)
+	if err != nil {
+		remoteLogger.Error("Failed to create cleanup batch", "cid", cid, "error", err)
+
+		return false
+	}
+
+	keysDeleted := 0
+
+	// Remove the /records/ key
+	recordKey := datastore.NewKey("/records/" + cid)
+	if err := batch.Delete(ctx, recordKey); err != nil {
+		remoteLogger.Warn("Failed to delete record key", "key", recordKey.String(), "error", err)
+	} else {
+		keysDeleted++
+	}
+
+	// Find and remove all label keys for this CID across all namespaces
+	localPeerID := r.server.Host().ID().String()
+
+	for _, namespace := range validators.AllNamespaces() {
+		// Query labels in this namespace that match our CID
+		labelResults, err := r.dstore.Query(ctx, query.Query{
+			Prefix: namespace.Prefix(),
+		})
+		if err != nil {
+			remoteLogger.Warn("Failed to query labels for cleanup", "namespace", namespace, "cid", cid, "error", err)
+
+			continue
+		}
+
+		defer labelResults.Close()
+
+		for result := range labelResults.Next() {
+			// Check if this label key ends with our CID
+			if !strings.HasSuffix(result.Key, "/"+cid) {
+				continue
+			}
+
+			// Verify this is a local label by checking metadata
+			var metadata LabelMetadata
+			if err := json.Unmarshal(result.Value, &metadata); err != nil {
+				// If we can't parse metadata, delete it to be safe
+				remoteLogger.Warn("Failed to parse label metadata during cleanup, deleting",
+					"key", result.Key, "error", err)
+			} else {
+				// Validate metadata before checking if it's local
+				if err := metadata.Validate(); err != nil {
+					remoteLogger.Warn("Invalid label metadata during cleanup, deleting",
+						"key", result.Key, "error", err)
+				} else if !metadata.IsLocal(localPeerID) {
+					// Skip remote labels
+					continue
+				}
+			}
+
+			// Delete this local label
+			labelKey := datastore.NewKey(result.Key)
+			if err := batch.Delete(ctx, labelKey); err != nil {
+				remoteLogger.Warn("Failed to delete label key", "key", labelKey.String(), "error", err)
+			} else {
+				keysDeleted++
+
+				remoteLogger.Debug("Scheduled orphaned label for deletion", "key", result.Key)
+			}
+		}
+	}
+
+	// Commit the batch deletion
+	if err := batch.Commit(ctx); err != nil {
+		remoteLogger.Error("Failed to commit orphaned label cleanup", "cid", cid, "error", err)
+
+		return false
+	}
+
+	if keysDeleted > 0 {
+		remoteLogger.Debug("Successfully cleaned up orphaned labels", "cid", cid, "keysDeleted", keysDeleted)
+	}
+
+	return keysDeleted > 0
 }

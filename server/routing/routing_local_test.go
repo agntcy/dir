@@ -23,11 +23,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testPeerID = "test-peer-id"
+
 func TestPublish_InvalidObject(t *testing.T) {
 	r := &routeLocal{}
 
 	t.Run("Invalid object", func(t *testing.T) {
-		err := r.Publish(t.Context(), nil, &corev1.Record{})
+		err := r.Publish(t.Context(), nil, &corev1.Record{}, testPeerID)
 
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "record reference is required")
@@ -320,14 +322,14 @@ func Benchmark_RouteLocal(b *testing.B) {
 
 	b.Run("Badger DB Publish and Unpublish", func(b *testing.B) {
 		for b.Loop() {
-			_ = badgerRouter.Publish(b.Context(), ref, record)
+			_ = badgerRouter.Publish(b.Context(), ref, record, testPeerID)
 			err := badgerRouter.Unpublish(b.Context(), ref, record)
 			assert.NoError(b, err)
 		}
 	})
 
 	b.Run("Badger DB List", func(b *testing.B) {
-		_ = badgerRouter.Publish(b.Context(), ref, record)
+		_ = badgerRouter.Publish(b.Context(), ref, record, testPeerID)
 		for b.Loop() {
 			_, err := badgerRouter.List(b.Context(), &routingv1.ListRequest{
 				LegacyListRequest: &routingv1.LegacyListRequest{
@@ -340,14 +342,14 @@ func Benchmark_RouteLocal(b *testing.B) {
 
 	b.Run("In memory DB Publish and Unpublish", func(b *testing.B) {
 		for b.Loop() {
-			_ = inMemoryRouter.Publish(b.Context(), ref, record)
+			_ = inMemoryRouter.Publish(b.Context(), ref, record, testPeerID)
 			err := inMemoryRouter.Unpublish(b.Context(), ref, record)
 			assert.NoError(b, err)
 		}
 	})
 
 	b.Run("In memory DB List", func(b *testing.B) {
-		_ = inMemoryRouter.Publish(b.Context(), ref, record)
+		_ = inMemoryRouter.Publish(b.Context(), ref, record, testPeerID)
 		for b.Loop() {
 			_, err := inMemoryRouter.List(b.Context(), &routingv1.ListRequest{
 				LegacyListRequest: &routingv1.LegacyListRequest{

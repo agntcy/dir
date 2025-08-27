@@ -635,6 +635,74 @@ func BenchmarkFeatureValidator_Validate(b *testing.B) {
 	}
 }
 
+func TestExtractCIDFromLabelKey(t *testing.T) {
+	tests := []struct {
+		name      string
+		labelKey  string
+		wantCID   string
+		wantError bool
+		errorMsg  string
+	}{
+		{
+			name:      "valid skills key",
+			labelKey:  "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			wantCID:   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			wantError: false,
+		},
+		{
+			name:      "valid domains key",
+			labelKey:  "/domains/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			wantCID:   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			wantError: false,
+		},
+		{
+			name:      "valid features key",
+			labelKey:  "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			wantCID:   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			wantError: false,
+		},
+		{
+			name:      "invalid format - too few parts",
+			labelKey:  "/skills/programming",
+			wantError: true,
+			errorMsg:  "invalid label key format",
+		},
+		{
+			name:      "invalid namespace",
+			labelKey:  "/unknown/test/value/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			wantError: true,
+			errorMsg:  "invalid namespace",
+		},
+		{
+			name:      "invalid CID format",
+			labelKey:  "/skills/programming/golang/invalid-cid",
+			wantError: true,
+			errorMsg:  "invalid CID format",
+		},
+		{
+			name:      "missing CID",
+			labelKey:  "/skills/programming/golang/",
+			wantError: true,
+			errorMsg:  "missing CID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cid, err := ExtractCIDFromLabelKey(tt.labelKey)
+
+			if tt.wantError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+				assert.Equal(t, "", cid)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantCID, cid)
+			}
+		})
+	}
+}
+
 func BenchmarkFormatLabelKey(b *testing.B) {
 	label := "/skills/programming/golang"
 	cid := "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
@@ -643,5 +711,15 @@ func BenchmarkFormatLabelKey(b *testing.B) {
 
 	for range b.N {
 		_ = FormatLabelKey(label, cid)
+	}
+}
+
+func BenchmarkExtractCIDFromLabelKey(b *testing.B) {
+	labelKey := "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+
+	b.ResetTimer()
+
+	for range b.N {
+		_, _ = ExtractCIDFromLabelKey(labelKey)
 	}
 }

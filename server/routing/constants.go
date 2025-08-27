@@ -42,9 +42,9 @@ const (
 	// NotificationChannelSize defines the buffer size for announcement notifications.
 	NotificationChannelSize = 1000
 
-	// MinLabelKeyParts defines the minimum number of parts required in a label key after splitting.
-	// Format: /type/label/CID splits into ["", "type", "label", "CID"] = 4 parts (empty first due to leading slash).
-	MinLabelKeyParts = 4
+	// MaxLabelAge defines when remote label announcements are considered stale.
+	// Labels older than this will be cleaned up during periodic cleanup cycles.
+	MaxLabelAge = 72 * time.Hour
 )
 
 // AnnouncementType defines the type of DHT announcement being processed.
@@ -60,3 +60,5 @@ const (
 	// This means "this content has these labels" - peers announce skill/domain/feature associations.
 	AnnouncementTypeLabel AnnouncementType = "LABEL"
 )
+
+const ResultChannelBufferSize = 100

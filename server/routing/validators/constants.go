@@ -83,3 +83,8 @@ const (
 	// Format: /type/label/CID splits into ["", "type", "label", "CID"] = 4 parts (empty first due to leading slash).
 	MinLabelKeyParts = 4
 )
+
+const (
+	DomainSchemaPrefix   = "schema.oasf.agntcy.org/domains/"
+	FeaturesSchemaPrefix = "schema.oasf.agntcy.org/features/"
+)

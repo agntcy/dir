@@ -1,6 +1,15 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package routing provides distributed content routing capabilities for the dir system.
+// It implements both local and remote routing strategies with automatic cleanup of stale data.
+//
+// The routing system consists of:
+// - Local routing: Fast queries against local datastore
+// - Remote routing: DHT-based discovery across the network
+// - Cleanup service: Automatic removal of stale labels and orphaned records
+//
+// Label metadata is stored in JSON format with timestamps for lifecycle management.
 package routing
 
 import (
@@ -57,8 +66,11 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 }
 
 func (r *route) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
+	// Get local peer ID from the remote server host
+	localPeerID := r.remote.server.Host().ID().String()
+
 	// Always publish data locally for archival/querying
-	err := r.local.Publish(ctx, ref, record)
+	err := r.local.Publish(ctx, ref, record, localPeerID)
 	if err != nil {
 		st := status.Convert(err)
 
