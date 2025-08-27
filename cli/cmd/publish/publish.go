@@ -26,10 +26,6 @@ Usage examples:
 
 	dirctl publish <cid>
 
-2. Publish the data across the network:
-
-  	dirctl publish <cid> --network
-
 `,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
 		if len(args) != 1 {
@@ -71,10 +67,6 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	// Success
 	presenter.Printf(cmd, "Successfully published!\n")
-
-	if opts.Network {
-		presenter.Printf(cmd, "It may take some time for the record to be propagated and discoverable across the network.\n")
-	}
 
 	return nil
 }
