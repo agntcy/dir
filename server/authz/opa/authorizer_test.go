@@ -38,19 +38,24 @@ func TestAuthorize(t *testing.T) {
 	}
 
 	tests := []struct {
-		userID  string
-		request string
-		allowed bool
+		trustDomain string
+		userID      string
+		apiMethod   string
+		allowed     bool
 	}{
-		{"admin", "GET", true},
-		{"admin", "POST", true},
-		{"client", "GET", true},
-		{"client", "POST", false},
+		{"dir.com", "spiffe://dir.com/admin", "PushRequest", true},
+		{"dir.com", "spiffe://dir.com/admin", "LookupRequest", true},
+		{"dir.com", "spiffe://dir.com/admin", "PullRequest", true},
+		{"dir.com", "spiffe://dir.com/admin", "DeleteRequest", true},
+		{"service.org", "spiffe://service.org/client", "PushRequest", false},
+		{"service.org", "spiffe://service.org/client", "LookupRequest", true},
+		{"service.org", "spiffe://service.org/client", "PullRequest", true},
+		{"service.org", "spiffe://service.org/client", "DeleteRequest", false},
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s_%s", tt.userID, tt.request), func(t *testing.T) {
-			if got := authz.Authorize(ctx, tt.userID, tt.request); got != tt.allowed {
+		t.Run(fmt.Sprintf("%s_%s_%s", tt.trustDomain, tt.userID, tt.apiMethod), func(t *testing.T) {
+			if got := authz.Authorize(ctx, tt.trustDomain, tt.userID, tt.apiMethod); got != tt.allowed {
 				t.Errorf("Authorize() = %v, want %v", got, tt.allowed)
 			}
 		})
