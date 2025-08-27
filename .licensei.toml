@@ -26,4 +26,7 @@ ignored = [
   "modernc.org/libc", # BSD-3-Clause https://gitlab.com/cznic/libc/-/blob/master/LICENSE
   "modernc.org/mathutil", # BSD-3-Clausehttps://gitlab.com/cznic/mathutil/-/blob/master/LICENSE
   "modernc.org/memory" # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
+  "github.com/xeipuuv/gojsonpointer" # Apache License 2.0 https://github.com/xeipuuv/gojsonpointer/blob/master/LICENSE-APACHE-2.0.txt
+  "github.com/xeipuuv/gojsonreference" # Apache License 2.0 https://github.com/xeipuuv/gojsonreference/blob/master/LICENSE-APACHE-2.0.txt
+  "github.com/rcrowley/go-metrics" # Public Domain https://github.com/rcrowley/go-metrics/blob/master/LICENSE
 ]
