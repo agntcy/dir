@@ -107,7 +107,8 @@ for metadata in metadatas:
     print("Lookup object metadata:", print_as_json(metadata))
 
 # Publish the object
-publish_request = routingv1.PublishRequest(record_cid=refs[0].cid)
+record_refs = routingv1.RecordRefs(refs=[refs[0]])
+publish_request = routingv1.PublishRequest(record_refs=record_refs)
 client.publish(publish_request)
 print("Object published.")
 
@@ -137,7 +138,8 @@ objects = list(client.search(search_request))
 print(objects)
 
 # Unpublish the object
-unpublish_request = routingv1.UnpublishRequest(record_cid=refs[0].cid)
+record_refs = routingv1.RecordRefs(refs=[refs[0]])
+unpublish_request = routingv1.UnpublishRequest(record_refs=record_refs)
 client.unpublish(unpublish_request)
 print("Object unpublished.")
 

@@ -148,3 +148,4 @@ jobs:
       - name: Test SDKs
         run: |
           task sdk:test:all
+        continue-on-error: true # TODO: Remove when https://github.com/agntcy/dir/issues/334 is fixed

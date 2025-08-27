@@ -62,7 +62,8 @@ def init_records(count, test_function_name, push=True, publish=False):
 
         if publish:
             for record_ref, record in example_records.values():
-                req = routingv1.PublishRequest(record_cid=record_ref.cid)
+                record_refs = routingv1.RecordRefs(refs=[record_ref])
+                req = routingv1.PublishRequest(record_refs=record_refs)
                 client.publish(req=req)
 
     return example_records
@@ -121,7 +122,8 @@ class TestClient(unittest.TestCase):
             ref for ref, _ in example_records.values()
         )
 
-        publish_request = routingv1.PublishRequest(record_cid=record_refs_list[0].cid)
+        record_refs = routingv1.RecordRefs(refs=record_refs_list)
+        publish_request = routingv1.PublishRequest(record_refs=record_refs)
 
         try:
             client.publish(publish_request)
@@ -168,9 +170,8 @@ class TestClient(unittest.TestCase):
             ref for ref, _ in example_records.values()
         )
 
-        unpublish_request = routingv1.UnpublishRequest(
-            record_cid=record_refs_list[0].cid
-        )
+        record_refs = routingv1.RecordRefs(refs=record_refs_list)
+        unpublish_request = routingv1.UnpublishRequest(record_refs=record_refs)
 
         try:
             client.unpublish(unpublish_request)
