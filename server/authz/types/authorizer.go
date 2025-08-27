@@ -1,7 +1,12 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package types
+
+import "context"
 
 // Authorizer defines the interface for authorization.
 // It checks if a user is allowed to perform a specific request.
 type Authorizer interface {
-	Authorize(userID string, request string) bool
+	Authorize(ctx context.Context, userID string, request string) bool
 }
