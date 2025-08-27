@@ -25,10 +25,6 @@ Usage examples:
 
 	dirctl unpublish <cid>
 
-2. Unpublish the data across the network:
-
-  	dirctl unpublish <cid> --network
-
 `,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
 		if len(args) != 1 {
@@ -65,10 +61,6 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	// Success
 	presenter.Printf(cmd, "Successfully unpublished!\n")
-
-	if opts.Network {
-		presenter.Printf(cmd, "It may take some time for the record to be unpublished across the network.\n")
-	}
 
 	return nil
 }
