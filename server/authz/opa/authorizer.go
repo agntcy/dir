@@ -27,7 +27,7 @@ type opaAuthz struct {
 
 func New(ctx context.Context, cfg config.Config) (types.Authorizer, error) {
 	opa := &opaAuthz{}
-	if err := opa.init(ctx, cfg.PolicyDirPath); err != nil {
+	if err := opa.init(ctx, cfg.BundlePath); err != nil {
 		return nil, fmt.Errorf("failed to initialize authorizer: %w", err)
 	}
 

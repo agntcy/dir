@@ -13,7 +13,7 @@ import (
 func TestNew(t *testing.T) {
 	ctx := t.Context()
 	cfg := config.Config{
-		PolicyDirPath: "./testdata/policies",
+		BundlePath: "./testdata/policies",
 	}
 
 	authz, err := New(ctx, cfg)
@@ -29,7 +29,7 @@ func TestNew(t *testing.T) {
 func TestAuthorize(t *testing.T) {
 	ctx := t.Context()
 	cfg := config.Config{
-		PolicyDirPath: "./testdata/policies",
+		BundlePath: "./testdata/policies",
 	}
 
 	authz, err := New(ctx, cfg)

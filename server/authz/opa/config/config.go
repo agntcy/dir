@@ -4,6 +4,6 @@
 package config
 
 type Config struct {
-	// Path to the OPA policy directory
-	PolicyDirPath string `json:"policy_dir_path,omitempty" mapstructure:"policy_dir_path"`
+	// OPA bundle path, supports directory path or a path to compiled bundle
+	BundlePath string `json:"policy_dir_path,omitempty" mapstructure:"policy_dir_path"`
 }
