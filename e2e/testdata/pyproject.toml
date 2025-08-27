@@ -1,6 +1,0 @@
-[project]
-name = "directory.agntcy.org/cisco/marketing-strategy"
-version = "v1.0.0"
-description = "Research agent for Cisco's marketing strategy."
-authors = ["Cisco Systems"]
-dependencies = []

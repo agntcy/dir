@@ -7,17 +7,17 @@ package list
 var opts = &options{}
 
 type options struct {
-	Digest  string
+	Cid     string
 	PeerID  string
 	Network bool
 }
 
 func init() {
 	flags := Command.Flags()
-	flags.StringVar(&opts.Digest, "digest", "", "Get published records for a given object")
+	flags.StringVar(&opts.Cid, "cid", "", "Get published records for a given object")
 	flags.StringVar(&opts.PeerID, "peer", "", "Get published records for a single peer")
 	flags.BoolVar(&opts.Network, "network", false, "Get published records for the network")
 	flags.MarkHidden("peer") //nolint:errcheck
 
-	Command.MarkFlagsMutuallyExclusive("digest", "peer", "network")
+	Command.MarkFlagsMutuallyExclusive("cid", "peer", "network")
 }

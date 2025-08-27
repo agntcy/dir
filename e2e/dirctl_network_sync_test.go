@@ -18,24 +18,24 @@ import (
 
 // Using peer addresses from utils.constants
 
-// expectedAgentV2JSON is now embedded in dirctl_test.go and reused here
+// expectedRecordV2JSON is now embedded in dirctl_test.go and reused here
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", func() {
 	var cli *utils.CLI
 	var syncID string
 
-	// Setup temp agent files
-	tempAgentDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
-	if tempAgentDir == "" {
-		tempAgentDir = os.TempDir()
+	// Setup temp files
+	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
+	if tempDir == "" {
+		tempDir = os.TempDir()
 	}
-	tempAgentV2Path := filepath.Join(tempAgentDir, "agent_v2_sync_test.json")
-	tempAgentV3Path := filepath.Join(tempAgentDir, "agent_v3_sync_test.json")
+	tempV2Path := filepath.Join(tempDir, "record_v2_sync_test.json")
+	tempV3Path := filepath.Join(tempDir, "record_v3_sync_test.json")
 
-	// Create directory and write agent data
-	_ = os.MkdirAll(filepath.Dir(tempAgentV2Path), 0o755)
-	_ = os.WriteFile(tempAgentV2Path, expectedAgentV2JSON, 0o600)
-	_ = os.WriteFile(tempAgentV3Path, expectedAgentV3JSON, 0o600)
+	// Create directory and write record data
+	_ = os.MkdirAll(filepath.Dir(tempV2Path), 0o755)
+	_ = os.WriteFile(tempV2Path, expectedRecordV2JSON, 0o600)
+	_ = os.WriteFile(tempV3Path, expectedRecordV3JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -89,17 +89,17 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 	})
 
 	ginkgo.Context("sync functionality", func() {
-		var agentCID string
+		var cid string
 
-		ginkgo.It("should push agent_v2.json to peer 1", func() {
-			agentCID = cli.Push(tempAgentV2Path).OnServer(utils.Peer1Addr).ShouldSucceed()
+		ginkgo.It("should push record_v2.json to peer 1", func() {
+			cid = cli.Push(tempV2Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
-			utils.LoadAndValidateCID(agentCID, tempAgentV2Path)
+			utils.LoadAndValidateCID(cid, tempV2Path)
 		})
 
-		ginkgo.It("should fail to pull agent_v2.json from peer 2", func() {
-			_ = cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldFail()
+		ginkgo.It("should fail to pull record_v2.json from peer 2", func() {
+			_ = cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldFail()
 		})
 
 		ginkgo.It("should create sync from peer 1 to peer 2", func() {
@@ -124,20 +124,20 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
-		ginkgo.It("should succeed to pull agent_v2.json from peer 2 after sync", func() {
-			output := cli.Pull(agentCID).OnServer(utils.Peer2Addr).ShouldSucceed()
+		ginkgo.It("should succeed to pull record_v2.json from peer 2 after sync", func() {
+			output := cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), expectedAgentV2JSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), expectedRecordV2JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 
-		ginkgo.It("should succeed to search for agent_v2.json from peer 2 after sync", func() {
-			// Search should eventually return the agentCID in peer 2 (retry until monitor indexes the record)
-			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v2").OnServer(utils.Peer2Addr).ShouldEventuallyContain(agentCID, 240*time.Second)
+		ginkgo.It("should succeed to search for record_v2.json from peer 2 after sync", func() {
+			// Search should eventually return the cid in peer 2 (retry until monitor indexes the record)
+			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v2").OnServer(utils.Peer2Addr).ShouldEventuallyContain(cid, 240*time.Second)
 
-			ginkgo.GinkgoWriter.Printf("Search found agentCID: %s", output)
+			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
 		})
 
 		// Delete sync from peer 2

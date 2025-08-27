@@ -18,16 +18,16 @@ const (
 	UnknownCID = "unknown"
 )
 
-func listDigest(cmd *cobra.Command, client *client.Client, digest string) error {
+func listCid(cmd *cobra.Command, client *client.Client, cid string) error {
 	items, err := client.List(cmd.Context(), &routingv1.ListRequest{
 		LegacyListRequest: &routingv1.LegacyListRequest{
 			Ref: &corev1.RecordRef{
-				Cid: digest, // Use digest as CID directly
+				Cid: cid,
 			},
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to list digest %s records: %w", digest, err)
+		return fmt.Errorf("failed to list cid %s records: %w", cid, err)
 	}
 
 	// Print the results

@@ -5,7 +5,7 @@ name: Dir - Local Demo on Windows
 
 description: |
   This workflow demonstrates how to use the Dir CLI on Windows.
-  It includes steps for compiling the CLI, building an agent, and verifying the binary.
+  It includes steps for compiling the CLI and verifying the binary.
 
 on:
   workflow_dispatch:
@@ -49,12 +49,5 @@ jobs:
         run: |
           echo "Running version command"
           .\bin\dirctl.exe version
-
-      - name: Run build command
-        run: |
-          echo "Running dir build command"
-          .\bin\dirctl.exe build e2e/testdata > agent.json
-          echo "Built agent.json:"
-          cat agent.json
 
       # TODO Start server and run push/publish commands

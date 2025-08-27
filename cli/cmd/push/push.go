@@ -8,24 +8,24 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/presenter"
-	agentUtils "github.com/agntcy/dir/cli/util/agent"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
 
 var Command = &cobra.Command{
 	Use:   "push",
-	Short: "Push agent data model to Directory server",
-	Long: `This command pushes the agent data model to local storage layer via Directory API. The data is stored into
+	Short: "Push record to Directory server",
+	Long: `This command pushes the record to local storage layer via Directory API. The data is stored into
 content-addressable object store.
 
 Usage examples:
 
-1. From agent data model file:
+1. From record file:
 
 	dirctl push model.json
 
@@ -47,9 +47,13 @@ Usage examples:
 		}
 
 		// get source
-		source, err := agentUtils.GetReader(path, opts.FromStdin)
+		if path == "" && !opts.FromStdin {
+			return errors.New("if no path defined --stdin flag must be set")
+		}
+
+		source, err := os.Open(path)
 		if err != nil {
-			return err //nolint:wrapcheck // Error is already wrapped
+			return fmt.Errorf("could not open file %s: %w", path, err)
 		}
 
 		return runCommand(cmd, source)

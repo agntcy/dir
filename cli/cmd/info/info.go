@@ -21,19 +21,19 @@ var Command = &cobra.Command{
 
 Usage example:
 
-	dirctl info <digest>
+	dirctl info <cid>
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.New("exactly one argument is required which is the digest of the object")
+			return errors.New("exactly one argument is required which is the cid of the object")
 		}
 
 		return runCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command, digest string) error {
+func runCommand(cmd *cobra.Command, cid string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
@@ -42,7 +42,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 
 	// Fetch info from store
 	info, err := c.Lookup(cmd.Context(), &corev1.RecordRef{
-		Cid: digest, // Use digest as CID directly
+		Cid: cid,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to pull data: %w", err)
@@ -51,7 +51,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 	// Marshal metadata for nice preview
 	output, err := json.MarshalIndent(&info, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal agent to JSON: %w", err)
+		return fmt.Errorf("failed to marshal record to JSON: %w", err)
 	}
 
 	// Print the metadata

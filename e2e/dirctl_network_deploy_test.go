@@ -18,18 +18,18 @@ import (
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi peer deployment", func() {
 	var cli *utils.CLI
-	var tempAgentCID string
+	var cid string
 
-	// Setup temp agent file
-	tempAgentDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
-	if tempAgentDir == "" {
-		tempAgentDir = os.TempDir()
+	// Setup temp record file
+	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
+	if tempDir == "" {
+		tempDir = os.TempDir()
 	}
-	tempAgentPath := filepath.Join(tempAgentDir, "agent_v3_network_test.json")
+	tempPath := filepath.Join(tempDir, "record_v3_network_test.json")
 
-	// Create directory and write V3 agent data
-	_ = os.MkdirAll(filepath.Dir(tempAgentPath), 0o755)
-	_ = os.WriteFile(tempAgentPath, expectedAgentV3JSON, 0o600)
+	// Create directory and write V3 record data
+	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
+	_ = os.WriteFile(tempPath, expectedRecordV3JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -40,32 +40,32 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		cli = utils.NewCLI()
 	})
 
-	ginkgo.It("should push an agent to peer 1", func() {
-		tempAgentCID = cli.Push(tempAgentPath).OnServer(utils.Peer1Addr).ShouldSucceed()
+	ginkgo.It("should push an record to peer 1", func() {
+		cid = cli.Push(tempPath).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 		// Validate that the returned CID correctly represents the pushed data
-		utils.LoadAndValidateCID(tempAgentCID, tempAgentPath)
+		utils.LoadAndValidateCID(cid, tempPath)
 	})
 
-	ginkgo.It("should pull the agent from peer 1", func() {
-		cli.Pull(tempAgentCID).OnServer(utils.Peer1Addr).ShouldSucceed()
+	ginkgo.It("should pull the record from peer 1", func() {
+		cli.Pull(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
 	})
 
-	ginkgo.It("should fail to pull the agent from peer 2", func() {
-		_ = cli.Pull(tempAgentCID).OnServer(utils.Peer2Addr).ShouldFail()
+	ginkgo.It("should fail to pull the record from peer 2", func() {
+		_ = cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldFail()
 	})
 
-	ginkgo.It("should publish an agent to the network on peer 1", func() {
-		cli.Publish(tempAgentCID).OnServer(utils.Peer1Addr).WithArgs("--network").ShouldSucceed()
+	ginkgo.It("should publish an record to the network on peer 1", func() {
+		cli.Publish(cid).OnServer(utils.Peer1Addr).WithArgs("--network").ShouldSucceed()
 	})
 
-	ginkgo.It("should fail publish an agent to the network on peer 2 that does not store the agent", func() {
-		_ = cli.Publish(tempAgentCID).OnServer(utils.Peer2Addr).WithArgs("--network").ShouldFail()
+	ginkgo.It("should fail publish an record to the network on peer 2 that does not store the record", func() {
+		_ = cli.Publish(cid).OnServer(utils.Peer2Addr).WithArgs("--network").ShouldFail()
 	})
 
 	ginkgo.It("should list by CID on all peers", func() {
 		for _, addr := range utils.PeerAddrs {
-			output := cli.List().WithDigest(tempAgentCID).OnServer(addr).ShouldSucceed()
+			output := cli.List().WithCid(cid).OnServer(addr).ShouldSucceed()
 
 			// Extract the Peer ID/hash from the output
 			peerIndex := strings.Index(output, "Peer ")
@@ -80,7 +80,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 
 			// Build the expected output string
 			expectedOutput := "Peer " + peerID + "\n" +
-				"  CID: " + tempAgentCID + "\n" +
+				"  CID: " + cid + "\n" +
 				"  Labels: /skills/Natural Language Processing/Text Completion, /skills/Natural Language Processing/Problem Solving, /domains/research, /features/runtime/framework, /features/runtime/language"
 
 			// Validate the output matches the expected format
@@ -105,7 +105,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 
 			// Build the expected output string
 			expectedOutput := "Peer " + peerID + "\n" +
-				"  CID: " + tempAgentCID + "\n" +
+				"  CID: " + cid + "\n" +
 				"  Labels: /skills/Natural Language Processing/Text Completion, /skills/Natural Language Processing/Problem Solving, /domains/research, /features/runtime/framework, /features/runtime/language"
 
 			// Validate the output matches the expected format

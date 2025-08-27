@@ -51,7 +51,6 @@ func init() {
 	RootCmd.AddCommand(
 		// local commands
 		version.Command,
-		// build.Command, // REMOVED: Builder functionality
 		// initialize.Command, // REMOVED: Initialize functionality
 		sign.Command,
 		verify.Command,

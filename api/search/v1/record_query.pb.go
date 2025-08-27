@@ -30,9 +30,9 @@ type RecordQueryType int32
 const (
 	// Unspecified query type.
 	RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED RecordQueryType = 0
-	// Query for an agent name.
+	// Query for an record name.
 	RecordQueryType_RECORD_QUERY_TYPE_NAME RecordQueryType = 1
-	// Query for an agent version.
+	// Query for an record version.
 	RecordQueryType_RECORD_QUERY_TYPE_VERSION RecordQueryType = 2
 	// Query for a skill ID.
 	RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID RecordQueryType = 3

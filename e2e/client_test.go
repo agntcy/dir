@@ -40,7 +40,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 	}{
 		{
 			name:     "V1_Agent_OASF_v0.3.1",
-			jsonData: expectedAgentV1JSON,
+			jsonData: expectedRecordV1JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
@@ -50,7 +50,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		},
 		{
 			name:     "V2_AgentRecord_OASF_v0.4.0",
-			jsonData: expectedAgentV2JSON,
+			jsonData: expectedRecordV2JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
@@ -60,7 +60,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		},
 		{
 			name:     "V3_Record_OASF_v0.5.0",
-			jsonData: expectedAgentV3JSON,
+			jsonData: expectedRecordV3JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
@@ -88,7 +88,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Step 1: Push
-			ginkgo.It("should push an agent to store", func() {
+			ginkgo.It("should push a record to store", func() {
 				var err error
 				recordRef, err = c.Push(ctx, record)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -98,7 +98,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 2: Pull (depends on push)
-			ginkgo.It("should pull an agent from store", func() {
+			ginkgo.It("should pull a record from store", func() {
 				// Pull the record object (using recordRef from push)
 				pulledRecord, err := c.Pull(ctx, recordRef)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -114,13 +114,13 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 3: Publish (depends on push)
-			ginkgo.It("should publish an agent", func() {
+			ginkgo.It("should publish a record", func() {
 				err := c.Publish(ctx, recordRef)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			})
 
 			// Step 4: List by one label (depends on publish)
-			ginkgo.It("should list published agent by one label", func() {
+			ginkgo.It("should list published record by one label", func() {
 				// Use the first skill label from this version's data
 				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
 					LegacyListRequest: &routingv1.LegacyListRequest{
@@ -141,7 +141,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 5: List by multiple labels (depends on publish)
-			ginkgo.It("should list published agent by multiple labels", func() {
+			ginkgo.It("should list published record by multiple labels", func() {
 				// Use all skill labels from this version's data
 				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
 					LegacyListRequest: &routingv1.LegacyListRequest{
@@ -162,7 +162,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 6: List by feature and domain labels (depends on publish)
-			ginkgo.It("should list published agent by feature and domain labels", func() {
+			ginkgo.It("should list published record by feature and domain labels", func() {
 				// Use extension labels from this version's data
 				labels := []string{version.expectedDomainLabel, version.expectedFeatureLabel}
 
@@ -187,14 +187,14 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 7: Unpublish (depends on publish)
-			ginkgo.It("should unpublish an agent", func() {
+			ginkgo.It("should unpublish a record", func() {
 				err := c.Unpublish(ctx, recordRef)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			})
 
-			// Step 8: Verify unpublished agent is not found (depends on unpublish)
-			ginkgo.It("should not find unpublished agent", func() {
-				// Try to find the agent using the same skill label as before
+			// Step 8: Verify unpublished record is not found (depends on unpublish)
+			ginkgo.It("should not find unpublished record", func() {
+				// Try to find the record using the same skill label as before
 				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
 					LegacyListRequest: &routingv1.LegacyListRequest{
 						Labels: []string{version.expectedSkillLabels[0]},
@@ -210,13 +210,13 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			})
 
 			// Step 9: Delete (depends on previous steps)
-			ginkgo.It("should delete an agent from store", func() {
+			ginkgo.It("should delete a record from store", func() {
 				err := c.Delete(ctx, recordRef)
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			})
 
-			// Step 10: Verify deleted agent is not found (depends on delete)
-			ginkgo.It("should not find deleted agent in store", func() {
+			// Step 10: Verify deleted record is not found (depends on delete)
+			ginkgo.It("should not find deleted record in store", func() {
 				// Add a small delay to ensure delete operation is fully processed
 				time.Sleep(100 * time.Millisecond)
 

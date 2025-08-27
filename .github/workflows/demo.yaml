@@ -6,27 +6,16 @@ name: Dir - Demo
 description: |
   This workflow demonstrates how to use the Dir CLI with a Kind cluster and Helm chart.
   It can be run in either local mode or network mode.
-  It includes steps for building, pushing, publishing, listing and pulling agents.
+  It includes steps for building, pushing, publishing, listing and pulling records.
 
 on:
   workflow_dispatch:
     inputs:
-      dir-apiserver-image:
+      git-ref:
         required: true
         type: string
-        default: "ghcr.io/agntcy/dir-apiserver"
-      dir-ctl-image:
-        required: true
-        type: string
-        default: "ghcr.io/agntcy/dir-ctl"
-      dir-helm-chart:
-        required: true
-        type: string
-        default: "oci://ghcr.io/agntcy/dir/helm-charts/dir"
-      dir-version:
-        required: true
-        type: string
-        default: "v0.2.1"
+        default: "main"
+        description: "Git branch, tag, or commit hash to build from"
       network:
         required: true
         type: boolean
@@ -42,16 +31,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.git-ref }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24.5'
 
       - name: Setup Taskfile
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
-      - name: Setup Dirctl
+      - name: Build Dirctl
         run: |
-          mkdir -p bin
-          curl -L -o bin/dirctl https://github.com/agntcy/dir/releases/download/${{ inputs.dir-version }}/dirctl-linux-amd64
-          chmod +x bin/dirctl
+          # Generate API code and compile CLI
+          task cli:compile
+          ls -la bin/
+
+      - name: Build Docker Images
+        run: |
+          # Build Docker images from source using commit SHA as tag
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          IMAGE_TAG=${COMMIT_SHA} task build
 
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@v1.12.0
@@ -60,38 +62,27 @@ jobs:
           cluster_name: dir-demo
           install_only: true
 
-      - name: Pull Docker image
-        run: |
-          docker pull ${{ inputs.dir-apiserver-image }}:${{ inputs.dir-version }}
-          docker pull ${{ inputs.dir-ctl-image }}:${{ inputs.dir-version }}
-
       - name: Deploy Dir
         run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
           if [ ${{ inputs.network }} = "true" ]; then
             echo "Using network mode"
-            IMAGE_TAG=${{ inputs.dir-version }} task deploy:network
+            IMAGE_TAG=${COMMIT_SHA} task deploy:network
             task deploy:network:port-forward
           else
             echo "Using local mode"
-            IMAGE_TAG=${{ inputs.dir-version }} task deploy:local
+            IMAGE_TAG=${COMMIT_SHA} task deploy:local
             task deploy:local:port-forward
           fi
-
-      - name: Run build command
-        run: |
-          echo "Running dir build command"
-          bin/dirctl build e2e/testdata > agent.json
-          echo "Built agent.json:"
-          cat agent.json
 
       - name: Run push command
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir push command on Peer 1"
-            bin/dirctl push agent.json --server-addr 127.0.0.1:8890 > digest.txt
+            bin/dirctl push e2e/testdata/agent_v1.json --server-addr 127.0.0.1:8890 > digest.txt
           else
             echo "Running dir push command"
-            bin/dirctl push agent.json > digest.txt
+            bin/dirctl push e2e/testdata/agent_v1.json > digest.txt
           fi
           echo "Pushed image digest:"
           cat digest.txt
@@ -167,22 +158,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.git-ref }}
 
-      - name: Setup Dirctl
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24.5'
+
+      - name: Setup Taskfile
+        shell: bash
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      - name: Build Dirctl
         run: |
-          mkdir -p bin
-          curl -L -o bin/dirctl https://github.com/agntcy/dir/releases/download/${{ inputs.dir-version }}/dirctl-linux-amd64
-          chmod +x bin/dirctl
+          task cli:compile
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.8.2
-
-      - name: Run build command
-        run: |
-          echo "Running dir build command"
-          bin/dirctl build e2e/testdata > agent.json
-          echo "Built agent.json:"
-          cat agent.json
 
       - name: Get Github OIDC token
         id: oidc-token
@@ -192,24 +185,35 @@ jobs:
           echo "::add-mask::$OIDC_TOKEN"
           echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Run sign command
+      - name: Build Docker Images
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          IMAGE_TAG=${COMMIT_SHA} task build
+
+      - name: Deploy Dir
+        run: |
+          echo "Deploying Dir"
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          IMAGE_TAG=${COMMIT_SHA} task deploy:local
+          task deploy:local:port-forward
+
+      - name: Push record
+        run: |
+          echo "Pushing record"
+          bin/dirctl push e2e/testdata/agent_v1.json > digest.txt
+
+      - name: Sign record
         run: |
           echo "Running dir sign command"
-          bin/dirctl sign agent.json \
+          bin/dirctl sign $(cat digest.txt) \
             --oidc-token ${{ steps.oidc-token.outputs.token }} \
             --oidc-provider-url "https://token.actions.githubusercontent.com" \
-            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}" \
-            --stdin > signed.model.json
-          echo "Signed agent.json to signed.model.json"
-          cat signed.model.json
-          mv signed.model.json agent.json
+            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
 
       - name: Run verify command
         run: |
           echo "Running dir verify command"
-          bin/dirctl verify agent.json \
-            --oidc-issuer "https://token.actions.githubusercontent.com" \
-            --oidc-identity "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
+          bin/dirctl verify $(cat digest.txt)
 
   sign-and-verify-with-key:
       # This job demonstrates how to sign and verify a record using Cosign keys.
@@ -217,12 +221,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.git-ref }}
 
-      - name: Setup Dirctl
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24.5'
+
+      - name: Setup Taskfile
+        shell: bash
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      - name: Build Dirctl
         run: |
-          mkdir -p bin
-          curl -L -o bin/dirctl https://github.com/agntcy/dir/releases/download/${{ inputs.dir-version }}/dirctl-linux-amd64
-          chmod +x bin/dirctl
+          task cli:compile
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.8.2
@@ -233,22 +246,29 @@ jobs:
           cosign generate-key-pair
           echo "Cosign keys generated successfully"
 
-      - name: Run build command
+      - name: Build Docker Images
         run: |
-          echo "Running dir build command"
-          bin/dirctl build e2e/testdata > agent.json
-          echo "Built agent.json:"
-          cat agent.json
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          IMAGE_TAG=${COMMIT_SHA} task build
 
-      - name: Run sign command
+      - name: Deploy Dir
+        run: |
+          echo "Deploying Dir"
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          IMAGE_TAG=${COMMIT_SHA} task deploy:local
+          task deploy:local:port-forward
+
+      - name: Push record
+        run: |
+          echo "Pushing record"
+          bin/dirctl push e2e/testdata/agent_v1.json > digest.txt
+
+      - name: Sign record
         run: |
           echo "Running dir sign command"
-          bin/dirctl sign agent.json --key cosign.key --stdin > signed.model.json
-          echo "Signed agent.json:"
-          cat signed.model.json
-          mv signed.model.json agent.json
+          bin/dirctl sign $(cat digest.txt) --key cosign.key
 
-      - name: Run verify command
+      - name: Verify record
         run: |
           echo "Running dir verify command"
-          bin/dirctl verify agent.json --key cosign.pub
+          bin/dirctl verify $(cat digest.txt)

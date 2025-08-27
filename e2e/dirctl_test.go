@@ -29,9 +29,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 	})
 
 	// Setup temp directory for all tests
-	tempAgentDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
-	if tempAgentDir == "" {
-		tempAgentDir = os.TempDir()
+	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
+	if tempDir == "" {
+		tempDir = os.TempDir()
 	}
 
 	// Test cases for each OASF version
@@ -47,8 +47,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 	}{
 		{
 			name:              "V1_Agent_OASF_v0.3.1",
-			fileName:          "agent_v1_test.json",
-			jsonData:          expectedAgentV1JSON,
+			fileName:          "record_v1_test.json",
+			jsonData:          expectedRecordV1JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v1",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
@@ -60,8 +60,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		},
 		{
 			name:              "V2_AgentRecord_OASF_v0.4.0",
-			fileName:          "agent_v2_test.json",
-			jsonData:          expectedAgentV2JSON,
+			fileName:          "record_v2_test.json",
+			jsonData:          expectedRecordV2JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v2",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
@@ -73,8 +73,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		},
 		{
 			name:              "V3_Record_OASF_v0.5.0",
-			fileName:          "agent_v3_test.json",
-			jsonData:          expectedAgentV3JSON,
+			fileName:          "record_v3_test.json",
+			jsonData:          expectedRecordV3JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v3",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
@@ -90,45 +90,45 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 	for _, v := range testVersions {
 		version := v // Capture loop variable by value to avoid closure issues
 		ginkgo.Context(version.name, ginkgo.Ordered, ginkgo.Serial, func() {
-			var tempAgentCID string
+			var cid string
 
-			// Setup agent file path and create file
-			tempAgentPath := filepath.Join(tempAgentDir, version.fileName)
+			// Setup file path and create file
+			tempPath := filepath.Join(tempDir, version.fileName)
 
-			// Create directory and write agent data once per version
-			_ = os.MkdirAll(filepath.Dir(tempAgentPath), 0o755)
-			_ = os.WriteFile(tempAgentPath, version.jsonData, 0o600)
+			// Create directory and write record data once per version
+			_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
+			_ = os.WriteFile(tempPath, version.jsonData, 0o600)
 
 			// Step 1: Push
-			ginkgo.It("should successfully push an agent", func() {
-				tempAgentCID = cli.Push(tempAgentPath).ShouldSucceed()
+			ginkgo.It("should successfully push an record", func() {
+				cid = cli.Push(tempPath).ShouldSucceed()
 
 				// Validate that the returned CID correctly represents the pushed data
-				utils.LoadAndValidateCID(tempAgentCID, tempAgentPath)
+				utils.LoadAndValidateCID(cid, tempPath)
 			})
 
 			// Step 2: Pull (depends on push)
-			ginkgo.It("should successfully pull an existing agent", func() {
-				cli.Pull(tempAgentCID).ShouldSucceed()
+			ginkgo.It("should successfully pull an existing record", func() {
+				cli.Pull(cid).ShouldSucceed()
 			})
 
 			// Step 3: Verify push/pull consistency (depends on pull)
-			ginkgo.It("should return identical agent when pulled after push", func() {
-				// Pull the agent and get the output JSON
-				pulledJSON := cli.Pull(tempAgentCID).ShouldSucceed()
+			ginkgo.It("should return identical record when pulled after push", func() {
+				// Pull the record and get the output JSON
+				pulledJSON := cli.Pull(cid).ShouldSucceed()
 
 				// Compare original embedded JSON with pulled JSON using version-aware comparison
 				equal, err := utils.CompareOASFRecords(version.jsonData, []byte(pulledJSON))
 				gomega.Expect(err).NotTo(gomega.HaveOccurred(),
 					"JSON comparison should not error for %s", version.name)
 				gomega.Expect(equal).To(gomega.BeTrue(),
-					"PUSH/PULL MISMATCH for %s: Original and pulled agent should be identical. "+
+					"PUSH/PULL MISMATCH for %s: Original and pulled record should be identical. "+
 						"This indicates data loss during push/pull cycle - possibly the V3 skills issue!", version.name)
 			})
 
 			// Step 4: Verify duplicate push returns same CID (depends on push)
-			ginkgo.It("should push the same agent again and return the same digest", func() {
-				cli.Push(tempAgentPath).ShouldReturn(tempAgentCID)
+			ginkgo.It("should push the same record again and return the same cid", func() {
+				cli.Push(tempPath).ShouldReturn(cid)
 			})
 
 			// Step 5: Search by first skill (depends on push)
@@ -138,7 +138,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				search := cli.Search().
 					WithLimit(10).
 					WithOffset(0).
-					WithQuery("name", version.expectedAgentName). // Use version-specific agent name to prevent conflicts between V1/V2/V3 tests
+					WithQuery("name", version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
 					WithQuery("skill-id", version.expectedSkillIDs[0]).
 					WithQuery("skill-name", version.expectedSkillNames[0])
 
@@ -150,7 +150,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					search = search.WithQuery("extension", version.expectedExtension)
 				}
 
-				search.ShouldReturn(tempAgentCID)
+				search.ShouldReturn(cid)
 			})
 
 			// Step 6: Search by second skill (depends on push)
@@ -164,7 +164,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				search := cli.Search().
 					WithLimit(10).
 					WithOffset(0).
-					WithQuery("name", version.expectedAgentName). // Use version-specific agent name to prevent conflicts between V1/V2/V3 tests
+					WithQuery("name", version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
 					WithQuery("skill-id", version.expectedSkillIDs[1]).
 					WithQuery("skill-name", version.expectedSkillNames[1])
 
@@ -176,25 +176,25 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					search = search.WithQuery("extension", version.expectedExtension)
 				}
 
-				search.ShouldReturn(tempAgentCID)
+				search.ShouldReturn(cid)
 			})
 
 			// Step 7: Test non-existent pull (independent test)
-			ginkgo.It("should pull a non-existent agent and return an error", func() {
+			ginkgo.It("should pull a non-existent record and return an error", func() {
 				_ = cli.Pull("non-existent-CID").ShouldFail()
 			})
 
 			// Step 8: Delete (depends on previous steps)
-			ginkgo.It("should successfully delete an agent", func() {
-				cli.Delete(tempAgentCID).ShouldSucceed()
+			ginkgo.It("should successfully delete an record", func() {
+				cli.Delete(cid).ShouldSucceed()
 			})
 
 			// Step 9: Verify deletion (depends on delete)
-			ginkgo.It("should fail to pull a deleted agent", func() {
+			ginkgo.It("should fail to pull a deleted record", func() {
 				// Add a small delay to ensure delete operation is fully processed
 				time.Sleep(100 * time.Millisecond)
 
-				_ = cli.Pull(tempAgentCID).ShouldFail()
+				_ = cli.Pull(cid).ShouldFail()
 			})
 		})
 	}

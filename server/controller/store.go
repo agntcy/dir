@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	maxAgentSize = 1024 * 1024 * 4 // 4MB
+	maxRecordSize = 1024 * 1024 * 4 // 4MB
 )
 
 var storeLogger = logging.Logger("controller/store")
@@ -429,10 +429,10 @@ func (s storeCtrl) validateRecord(record *corev1.Record) error {
 
 	// Validate record size (4MB limit for v1alpha2 API)
 	recordSize := proto.Size(record)
-	if recordSize > maxAgentSize {
-		storeLogger.Warn("Record exceeds size limit", "size", recordSize, "limit", maxAgentSize)
+	if recordSize > maxRecordSize {
+		storeLogger.Warn("Record exceeds size limit", "size", recordSize, "limit", maxRecordSize)
 
-		return status.Errorf(codes.InvalidArgument, "record size %d bytes exceeds maximum allowed size of %d bytes (4MB)", recordSize, maxAgentSize)
+		return status.Errorf(codes.InvalidArgument, "record size %d bytes exceeds maximum allowed size of %d bytes (4MB)", recordSize, maxRecordSize)
 	}
 
 	return nil

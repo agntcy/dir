@@ -15,7 +15,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-// Using the shared agent V3 data from embed.go
+// Using the shared record V3 data from embed.go
 
 // Test constants.
 const (
@@ -61,8 +61,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 
 	// Test params
 	var (
-		paths        *testPaths
-		tempAgentCID string
+		paths *testPaths
+		cid   string
 	)
 
 	ginkgo.Context("signature workflow", ginkgo.Ordered, func() {
@@ -72,8 +72,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			paths = setupTestPaths()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Write test agent to temp location
-			err = os.WriteFile(paths.record, expectedAgentV3JSON, 0o600)
+			// Write test record to temp location
+			err = os.WriteFile(paths.record, expectedRecordV3JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Generate cosign key pair for all tests
@@ -106,33 +106,33 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		})
 
 		ginkgo.It("should push a record to the store", func() {
-			tempAgentCID = cli.Push(paths.record).ShouldSucceed()
+			cid = cli.Push(paths.record).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
-			utils.LoadAndValidateCID(tempAgentCID, paths.record)
+			utils.LoadAndValidateCID(cid, paths.record)
 		})
 
 		ginkgo.It("should sign a record with a key pair", func() {
-			_ = cli.Sign(tempAgentCID, paths.privateKey).ShouldSucceed()
+			_ = cli.Sign(cid, paths.privateKey).ShouldSucceed()
 
 			time.Sleep(10 * time.Second)
 		})
 
 		ginkgo.It("should verify a signature with a public key on server side", func() {
 			cli.Command("verify").
-				WithArgs(tempAgentCID).
+				WithArgs(cid).
 				ShouldContain("Record signature is trusted!")
 		})
 
 		ginkgo.It("should pull a signature from the store", func() {
 			cli.Command("pull").
-				WithArgs(tempAgentCID, "--signature").
+				WithArgs(cid, "--signature").
 				ShouldContain("Signature:")
 		})
 
 		ginkgo.It("should pull a public key from the store", func() {
 			cli.Command("pull").
-				WithArgs(tempAgentCID, "--public-key").
+				WithArgs(cid, "--public-key").
 				ShouldContain("-----BEGIN PUBLIC KEY-----")
 		})
 	})

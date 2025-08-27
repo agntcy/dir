@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 module-sets:
-  agent-directory:
+  directory:
     version: v0.2.6
     modules:
       - github.com/agntcy/dir/api

@@ -17,26 +17,26 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "pull",
-	Short: "Pull agent model from Directory server",
-	Long: `This command pulls the agent data model from Directory API. The data can be validated against its hash, as
+	Short: "Pull record from Directory server",
+	Long: `This command pulls the record from Directory API. The data can be validated against its hash, as
 the returned object is content-addressable.
 
 Usage examples:
 
-1. Pull by digest and output
+1. Pull by cid and output
 
-	dirctl pull <digest>
+	dirctl pull <cid>
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.New("digest is a required argument")
+			return errors.New("cid is a required argument")
 		}
 
 		return runCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command, digest string) error {
+func runCommand(cmd *cobra.Command, cid string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
@@ -45,7 +45,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 
 	// Fetch record from store
 	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{
-		Cid: digest, // Use digest as CID directly
+		Cid: cid,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to pull data: %w", err)
@@ -93,7 +93,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 		// Pull the public key for the record
 		response, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
-				Cid: digest,
+				Cid: cid,
 			},
 			Options: &storev1.PullReferrerRequest_PullPublicKey{
 				PullPublicKey: true,
@@ -110,7 +110,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 		// Pull the signature for the record
 		response, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
-				Cid: digest,
+				Cid: cid,
 			},
 			Options: &storev1.PullReferrerRequest_PullSignature{
 				PullSignature: true,

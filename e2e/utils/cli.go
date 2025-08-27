@@ -324,8 +324,8 @@ type ListBuilder struct {
 	*CommandBuilder
 }
 
-func (l *ListBuilder) WithDigest(digest string) *ListBuilder {
-	l.args = append(l.args, "--digest", digest)
+func (l *ListBuilder) WithCid(cid string) *ListBuilder {
+	l.args = append(l.args, "--cid", cid)
 
 	return l
 }

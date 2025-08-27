@@ -16,7 +16,7 @@ import (
 
 var Command = &cobra.Command{
 	Use:   "publish",
-	Short: "Publish agent model to the network, allowing content discovery",
+	Short: "Publish record to the network, allowing content discovery",
 	Long: `Publish the data to your local or rest of the network to allow content discovery.
 This command only works for the objects already pushed to store.
 
@@ -24,32 +24,32 @@ Usage examples:
 
 1. Publish the data to the local data store:
 
-	dirctl publish <digest>
+	dirctl publish <cid>
 
 2. Publish the data across the network:
 
-  	dirctl publish <digest> --network
+  	dirctl publish <cid> --network
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
 		if len(args) != 1 {
-			return errors.New("digest is a required argument")
+			return errors.New("cid is a required argument")
 		}
 
 		return runCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command, digest string) error {
+func runCommand(cmd *cobra.Command, cid string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
-	// Create RecordRef from digest
+	// Create RecordRef from cid
 	recordRef := &corev1.RecordRef{
-		Cid: digest, // Use digest as CID directly
+		Cid: cid,
 	}
 
 	// Lookup metadata to verify record exists
@@ -73,7 +73,7 @@ func runCommand(cmd *cobra.Command, digest string) error {
 	presenter.Printf(cmd, "Successfully published!\n")
 
 	if opts.Network {
-		presenter.Printf(cmd, "It may take some time for the agent to be propagated and discoverable across the network.\n")
+		presenter.Printf(cmd, "It may take some time for the record to be propagated and discoverable across the network.\n")
 	}
 
 	return nil

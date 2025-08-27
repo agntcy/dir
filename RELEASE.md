@@ -1,6 +1,6 @@
 # Release
 
-This document outlines the process for creating a new release for Agent Directory using the [Go MultiMod Releaser](https://github.com/open-telemetry/opentelemetry-go-build-tools/tree/main/multimod). All code block examples provided below correspond to an update to version `v1.0.0`, please update accordingly.
+This document outlines the process for creating a new release for Directory using the [Go MultiMod Releaser](https://github.com/open-telemetry/opentelemetry-go-build-tools/tree/main/multimod). All code block examples provided below correspond to an update to version `v1.0.0`, please update accordingly.
 
 ## 1. Update the New Release Version
 
@@ -9,9 +9,9 @@ This document outlines the process for creating a new release for Agent Director
 git checkout -b release/v1.0.0
 ```
 
-* Modify the `versions.yaml` file to update the version for Agent Directory's module-set. Keep in mind that the same version is applied to all modules.
+* Modify the `versions.yaml` file to update the version for Directory's module-set. Keep in mind that the same version is applied to all modules.
 ```diff
-  agent-directory:
+  directory:
 -    version: v0.0.0
 +    version: v1.0.0
 ```

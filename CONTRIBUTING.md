@@ -1,6 +1,6 @@
 # How to Contribute
 
-Thanks for your interest in contributing to Agent Directory! Here are a few
+Thanks for your interest in contributing to Directory! Here are a few
 general guidelines on contributing and reporting bugs that we ask you to review.
 Following these guidelines helps to communicate that you respect the time of the
 contributors managing and developing this open source project. In return, they
