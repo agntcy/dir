@@ -34,22 +34,16 @@ func NewRoutingController(routing types.RoutingAPI, store types.StoreAPI) routin
 func (c *routingCtlr) Publish(ctx context.Context, req *routingv1.PublishRequest) (*emptypb.Empty, error) {
 	routingLogger.Debug("Called routing controller's Publish method", "req", req)
 
-	ref := &corev1.RecordRef{
-		Cid: req.GetRecordCid(),
-	}
+	switch req.GetRequest().(type) {
+	case *routingv1.PublishRequest_RecordRefs:
+		if err := c.processRecordRefs(ctx, req.GetRecordRefs().GetRefs(), c.routing.Publish); err != nil {
+			return nil, err
+		}
 
-	record, err := c.getRecord(ctx, ref)
-	if err != nil {
-		st := status.Convert(err)
-
-		return nil, status.Errorf(st.Code(), "failed to get record: %s", st.Message())
-	}
-
-	err = c.routing.Publish(ctx, ref, record)
-	if err != nil {
-		st := status.Convert(err)
-
-		return nil, status.Errorf(st.Code(), "failed to publish: %s", st.Message())
+	case *routingv1.PublishRequest_Queries:
+	case *routingv1.PublishRequest_AllRecords:
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "invalid publish request")
 	}
 
 	return &emptypb.Empty{}, nil
@@ -84,25 +78,39 @@ func (c *routingCtlr) List(req *routingv1.ListRequest, srv routingv1.RoutingServ
 func (c *routingCtlr) Unpublish(ctx context.Context, req *routingv1.UnpublishRequest) (*emptypb.Empty, error) {
 	routingLogger.Debug("Called routing controller's Unpublish method", "req", req)
 
-	ref := &corev1.RecordRef{
-		Cid: req.GetRecordCid(),
-	}
+	switch req.GetRequest().(type) {
+	case *routingv1.UnpublishRequest_RecordRefs:
+		if err := c.processRecordRefs(ctx, req.GetRecordRefs().GetRefs(), c.routing.Unpublish); err != nil {
+			return nil, err
+		}
 
-	record, err := c.getRecord(ctx, ref)
-	if err != nil {
-		st := status.Convert(err)
-
-		return nil, status.Errorf(st.Code(), "failed to get record: %s", st.Message())
-	}
-
-	err = c.routing.Unpublish(ctx, ref, record)
-	if err != nil {
-		st := status.Convert(err)
-
-		return nil, status.Errorf(st.Code(), "failed to unpublish: %s", st.Message())
+	case *routingv1.UnpublishRequest_Queries:
+	case *routingv1.UnpublishRequest_AllRecords:
+	default:
+		return nil, status.Errorf(codes.InvalidArgument, "invalid unpublish request")
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (c *routingCtlr) processRecordRefs(ctx context.Context, refs []*corev1.RecordRef, operation func(context.Context, *corev1.RecordRef, *corev1.Record) error) error {
+	for _, ref := range refs {
+		record, err := c.getRecord(ctx, ref)
+		if err != nil {
+			st := status.Convert(err)
+
+			return status.Errorf(st.Code(), "failed to get record: %s", st.Message())
+		}
+
+		err = operation(ctx, ref, record)
+		if err != nil {
+			st := status.Convert(err)
+
+			return status.Errorf(st.Code(), "failed to execute operation: %s", st.Message())
+		}
+	}
+
+	return nil
 }
 
 func (c *routingCtlr) getRecord(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record, error) {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -55,7 +56,13 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	presenter.Printf(cmd, "Unpublishing record with CID: %s\n", recordRef.GetCid())
 
-	if err := c.Unpublish(cmd.Context(), recordRef); err != nil {
+	if err := c.Unpublish(cmd.Context(), &routingv1.UnpublishRequest{
+		Request: &routingv1.UnpublishRequest_RecordRefs{
+			RecordRefs: &routingv1.RecordRefs{
+				Refs: []*corev1.RecordRef{recordRef},
+			},
+		},
+	}); err != nil {
 		return fmt.Errorf("failed to unpublish: %w", err)
 	}
 
