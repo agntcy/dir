@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "core/v1alpha1/locator.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "saas/v1alpha1/category.proto";
+import "saas/v1alpha1/mcp.proto";
+import "saas/v1alpha1/a2a.proto";
+import "buf/validate/validate.proto";
+
+message Record {
+  string id = 1;
+
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+
+  string name_ref = 4;
+  string name = 5;
+  string version = 6;
+  string digest = 7;
+  string blob_ref = 8;
+
+  map<string, string> annotations = 9;
+  map<string, google.protobuf.Any> security = 10;
+  map<string, google.protobuf.Any> framework = 11;
+
+  repeated Category categories = 13;
+  repeated core.v1alpha1.Locator locators = 14;
+
+  optional string repository_id = 15;
+  string user_id = 16;
+
+  optional string description = 17 [(buf.validate.field).string.max_len = 350];
+  repeated string authors = 18;
+  repeated string extensions = 19;
+
+  // Mcp related field
+  optional Mcp mcp = 20;
+  
+  // A2A related field
+  optional A2A a2a = 21;
+
+  // Repository private status
+  optional bool repository_private = 22;
+}

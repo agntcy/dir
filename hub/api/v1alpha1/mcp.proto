@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "google/protobuf/struct.proto";
+
+message Mcp {
+  repeated google.protobuf.Value tools = 1;
+  repeated google.protobuf.Value resources = 2;
+  repeated google.protobuf.Value prompts = 3;
+}

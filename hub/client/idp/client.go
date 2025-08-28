@@ -1,36 +1,42 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package idp provides a client for interacting with the Identity Provider (IDP) API, including tenant and organization management.
+// Package idp provides a client for interacting with the Identity Provider (IDP) API, including organization management.
 package idp
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
-// TenantListResponse represents a list of tenants returned by the IDP API.
-type TenantListResponse struct {
-	Tenants []*TenantResponse `json:"tenants"`
-}
+const (
+	// Path to the IDP API for retrieving an AccessToken for ApiKey Access.
+	AccessTokenEndpoint = "/v1/token"
+	// Fixed Client ID for the access token request. THIS IS NOT THE CLIENT ID THAT WILL BE IN ACCESS TOKEN.
+	AccessTokenClientID = "0oackfvbjvy65qVi41d7" //nolint:gosec
+	// Scope for the access token request.
+	AccessTokenScope = "openid offline_access"
+	// Grant type for the access token request.
+	AccessTokenGrantType = "password"
+	// AccessTokenGrantTypeClientCredentials is the grant type for client credentials.
+	AccessTokenGrantTypeClientCredentials = "client_credentials"
+	AccessTokenCustomScope                = "customScope" // Custom scope for the access token request.
+)
 
-// TenantResponse represents a single tenant's information.
-type TenantResponse struct {
-	ID             string   `json:"id"`
-	Name           string   `json:"name"`
-	OrganizationID string   `json:"organizationId"`
-	Entitlements   []string `json:"entitlements"`
-}
-
-// GetTenantsInProductResponse contains the response from the GetTenantsInProduct API call.
-type GetTenantsInProductResponse struct {
-	TenantList *TenantListResponse
-	Response   *http.Response
-	Body       []byte
+// GetAccessTokenResponse contains the response when requesting an access token from the IDP API.
+type GetAccessTokenResponse struct {
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	AccessToken  string `json:"access_token"`
+	Scope        string `json:"scope"`
+	RefreshToken string `json:"refresh_token"`
+	IDToken      string `json:"id_token"`
 }
 
 // RequestModifier is a function that modifies an HTTP request before it is sent.
@@ -47,8 +53,11 @@ func WithBearerToken(token string) RequestModifier {
 
 // Client defines the interface for interacting with the IDP API.
 type Client interface {
-	// GetTenantsInProduct retrieves the list of tenants for a given product ID.
-	GetTenantsInProduct(ctx context.Context, productID string, modifier ...RequestModifier) (*GetTenantsInProductResponse, error)
+	// GetAccessToken retrieves an access token using the provided username and secret.
+	GetAccessTokenFromAPIKey(ctx context.Context, username string, secret string) (*GetAccessTokenResponse, error)
+
+	// GetAccessToken retrieves an access token using the provided username and secret.
+	GetAccessTokenFromOkta(ctx context.Context, username string, secret string) (*GetAccessTokenResponse, error)
 }
 
 // client implements the Client interface for the IDP API.
@@ -69,27 +78,23 @@ func NewClient(baseURL string, httpClient *http.Client) Client {
 	}
 }
 
-// GetTenantsInProduct retrieves the list of tenants for the specified product ID from the IDP API.
-// It applies any provided request modifiers (e.g., for authentication).
-// Returns the response or an error if the request fails.
-func (c *client) GetTenantsInProduct(ctx context.Context, productID string, modifiers ...RequestModifier) (*GetTenantsInProductResponse, error) {
-	const path = "/v1alpha1/tenant"
+func (c *client) GetAccessTokenFromAPIKey(ctx context.Context, username string, secret string) (*GetAccessTokenResponse, error) {
+	requestURL := fmt.Sprintf("%s%s", c.baseURL, AccessTokenEndpoint)
 
-	params := url.Values{}
-	params.Set("product", productID)
+	data := url.Values{}
+	data.Set("grant_type", AccessTokenGrantType)
+	data.Set("username", username)
+	data.Set("password", secret)
+	data.Set("scope", AccessTokenScope)
+	data.Set("client_id", AccessTokenClientID)
 
-	requestURL := fmt.Sprintf("%s%s?%s", c.baseURL, path, params.Encode())
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	for _, m := range modifiers {
-		if err = m(req); err != nil {
-			return nil, fmt.Errorf("failed to modify request: %w", err)
-		}
-	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -97,8 +102,49 @@ func (c *client) GetTenantsInProduct(ctx context.Context, productID string, modi
 	}
 	defer resp.Body.Close()
 
+	return handleTokenResponse(resp)
+}
+
+/*
+This is based on https://developer.okta.com/docs/guides/implement-grant-type/clientcreds/main/#request-for-token
+*/
+func (c *client) GetAccessTokenFromOkta(ctx context.Context, clientID string, secret string) (*GetAccessTokenResponse, error) {
+	// The request URL for the Okta API to get an access token.
+	requestURL := fmt.Sprintf("%s%s", c.baseURL, AccessTokenEndpoint)
+
+	// The auth header for the request, which includes the client ID and secret.
+	authToken := fmt.Sprintf("%s:%s", clientID, secret)
+	authHeader := "Basic " + base64.StdEncoding.EncodeToString([]byte(authToken))
+
+	// The body for the request, which includes the grant type and scope.
+	data := url.Values{}
+	data.Set("grant_type", AccessTokenGrantTypeClientCredentials)
+	data.Set("scope", AccessTokenCustomScope)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Authorization", authHeader)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	return handleTokenResponse(resp)
+}
+
+func handleTokenResponse(resp *http.Response) (*GetAccessTokenResponse, error) {
 	var body []byte
+
 	if resp.Body != nil {
+		var err error
+
 		body, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read response body: %w", err)
@@ -106,21 +152,13 @@ func (c *client) GetTenantsInProduct(ctx context.Context, productID string, modi
 	}
 
 	if resp.StatusCode == http.StatusOK {
-		var parsedResponse *TenantListResponse
-		if err = json.Unmarshal(body, &parsedResponse); err != nil {
+		var parsedResponse *GetAccessTokenResponse
+		if err := json.Unmarshal(body, &parsedResponse); err != nil {
 			return nil, fmt.Errorf("failed to parse response: %w", err)
 		}
 
-		return &GetTenantsInProductResponse{
-			TenantList: parsedResponse,
-			Response:   resp,
-			Body:       body,
-		}, nil
+		return parsedResponse, nil
 	}
 
-	return &GetTenantsInProductResponse{
-		TenantList: nil,
-		Response:   resp,
-		Body:       body,
-	}, nil
+	return nil, fmt.Errorf("bad response status code: %d, body: %s", resp.StatusCode, string(body))
 }

@@ -10,23 +10,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/agntcy/dir/hub/api/v1alpha1"
+	v1alpha1 "github.com/agntcy/dir/hub/api/v1alpha1"
+	authUtils "github.com/agntcy/dir/hub/auth/utils"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
 	"github.com/agntcy/dir/hub/sessionstore"
 	"github.com/google/uuid"
-	"google.golang.org/grpc/metadata"
 )
-
-// addAuthToContext adds the authorization header to the context if an access token is available.
-func addAuthToContext(ctx context.Context, session *sessionstore.HubSession) context.Context {
-	if session != nil && session.Tokens != nil && session.CurrentTenant != "" {
-		if t, ok := session.Tokens[session.CurrentTenant]; ok && t != nil && t.AccessToken != "" {
-			return metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+t.AccessToken))
-		}
-	}
-
-	return ctx
-}
 
 // PullAgent pulls an agent from the hub and returns the pretty-printed JSON.
 // It uses the provided session for authentication.
@@ -36,7 +25,7 @@ func PullAgent(
 	agentID *v1alpha1.RecordIdentifier,
 	session *sessionstore.HubSession,
 ) ([]byte, error) {
-	ctx = addAuthToContext(ctx, session)
+	ctx = authUtils.AddAuthToContext(ctx, session)
 
 	model, err := hc.PullAgent(ctx, &v1alpha1.PullRecordRequest{
 		Id: agentID,
@@ -96,18 +85,31 @@ func ParseRepoTagID(id string) any {
 	return &v1alpha1.PushRecordRequest_RepositoryName{RepositoryName: id}
 }
 
+// ParseOrganizationName parses an organization name string from a Repository.
+// Returns an OrganizationName.
+func ParseOrganizationName(repository string) (string, error) {
+	const orgPartsNumber = 2
+
+	parts := strings.Split(repository, "/")
+	if len(parts) == orgPartsNumber {
+		return parts[0], nil
+	}
+
+	return "", fmt.Errorf("invalid repository format: %s. Expected format is '<org>/<repo>'", repository)
+}
+
 // PushAgent pushes an agent to the hub and returns the response.
 // It uses the provided session for authentication.
 func PushAgent(
 	ctx context.Context,
 	hc hubClient.Client,
 	agentBytes []byte,
-	repoID any,
+	repository any,
 	session *sessionstore.HubSession,
 ) (*v1alpha1.PushRecordResponse, error) {
-	ctx = addAuthToContext(ctx, session)
+	ctx = authUtils.AddAuthToContext(ctx, session)
 
-	resp, err := hc.PushAgent(ctx, agentBytes, repoID)
+	resp, err := hc.PushAgent(ctx, agentBytes, repository)
 	if err != nil {
 		return nil, fmt.Errorf("failed to push agent: %w", err)
 	}
