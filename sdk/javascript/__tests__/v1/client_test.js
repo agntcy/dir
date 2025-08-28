@@ -1,4 +1,6 @@
 const { setTimeout } = require('node:timers/promises');
+const { execSync } = require('child_process');
+const { readFileSync, rmSync } = require('node:fs');
 
 const { Client, Config } = require('../../v1/client');
 const core_record_pb2 = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
@@ -86,10 +88,10 @@ describe('Client', () => {
         return test_records;
     }
 
-    const client = new Client(new Config());
+    const client = new Client(Config.loadFromEnv());
 
     beforeEach(async () => {
-        // await setTimeout(3000); // Wait for api server
+        await setTimeout(3000); // Wait for api server
     });
 
     afterAll(async () => {
@@ -355,4 +357,101 @@ describe('Client', () => {
 
         expect(err).toBeNull();
     });
+
+    test('sign_and_verify', async () => {
+        const generated_records = await initRecords(2, "sign_and_verify", true, false);
+        const test_records_ref = [];
+
+        generated_records.forEach(generated_record => {
+            test_records_ref.push(generated_record.ref);
+        });
+
+        rmSync("cosign.key", { force: true });
+        rmSync("cosign.pub", { force: true });
+
+        let err = null;
+
+        const key_password = "testing-key";
+        shell_env = process.env
+
+        try {
+            const cosign_path = process.env["COSIGN_PATH"] || 'cosign';
+            execSync(
+                `${cosign_path} generate-key-pair`,
+                { env: { ...shell_env, COSIGN_PASSWORD: key_password }, encoding: 'utf8', stdio: 'pipe' }
+            );
+        } catch (error) {
+            err = error;
+        }
+
+        expect(err).toBeNull();
+
+        let key_file = null;
+
+        try {
+            key_file = readFileSync('cosign.key');
+        } catch (error) {
+            err = error;
+        }
+
+        expect(err).toBeNull();
+
+        let key_provider = new sign_types.SignWithKey();
+        key_provider.setPrivateKey(key_file);
+        key_provider.setPassword(key_password);
+
+        const token = shell_env["OIDC_TOKEN"];
+        const provider_url = shell_env["OIDC_PROVIDER_URL"];
+        const client_id = shell_env["OIDC_CLIENT_ID"];
+
+        let oidc_options = new sign_types.SignWithOIDC.SignOpts();
+        oidc_options.setOidcProviderUrl(provider_url);
+
+        let oidc_provider = new sign_types.SignWithOIDC();
+        oidc_provider.setIdToken(token);
+        oidc_provider.setOptions(oidc_options);
+
+        let request_key_provider = new sign_types.SignRequestProvider();
+        request_key_provider.setKey(key_provider);
+
+        let request_oidc_provider = new sign_types.SignRequestProvider();
+        request_oidc_provider.setOidc(oidc_provider);
+
+        let key_request = new sign_types.SignRequest();
+        key_request.setRecordRef(test_records_ref[0]);
+        key_request.setProvider(request_key_provider);
+
+        let oidc_request = new sign_types.SignRequest();
+        oidc_request.setRecordRef(test_records_ref[1]);
+        oidc_request.setProvider(request_oidc_provider);
+
+        try {
+            let command_result = client.sign(key_request);
+            expect(command_result.error).toBeNull();
+            expect(command_result.output).toEqual('Record signed successfully');
+
+            command_result = null;
+
+            command_result = client.sign(oidc_request, client_id);
+            expect(command_result.error).toBeNull();
+            expect(command_result.output).toEqual('Record signed successfully');
+
+            for (const ref of test_records_ref) {
+                let request = new sign_types.VerifyRequest();
+                request.setRecordRef(ref);
+
+                response = await client.verify(request);
+
+                expect(response[0]).toBe(true);
+            }
+        } catch (error) {
+            err = error;
+            throw new Error(error);
+        } finally {
+            rmSync("cosign.key", { force: true });
+            rmSync("cosign.pub", { force: true });
+        }
+
+        expect(err).toBeNull();
+    }, 30000); // NOTE: This test timeout is 30s because interactive mode
 });
