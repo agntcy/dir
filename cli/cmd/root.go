@@ -20,6 +20,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/verify"
 	"github.com/agntcy/dir/cli/cmd/version"
+	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
@@ -40,6 +41,12 @@ var RootCmd = &cobra.Command{
 
 		ctx := ctxUtils.SetClientForContext(cmd.Context(), c)
 		cmd.SetContext(ctx)
+
+		cobra.OnFinalize(func() {
+			if err := c.Close(); err != nil {
+				presenter.Printf(cmd, "failed to close client: %v\n", err)
+			}
+		})
 
 		return nil
 	},

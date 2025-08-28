@@ -29,6 +29,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 	// Create a new client
 	c, err := client.New(client.WithEnvConfig())
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	defer c.Close()
 
 	// Test cases for each OASF version (reusing same structure as dirctl_test.go)
 	testVersions := []struct {

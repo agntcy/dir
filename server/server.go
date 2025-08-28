@@ -17,6 +17,7 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/api/version"
+	"github.com/agntcy/dir/server/authz"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/database"
@@ -25,13 +26,8 @@ import (
 	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
-	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
-	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 var (
@@ -45,6 +41,7 @@ type Server struct {
 	routing       types.RoutingAPI
 	database      types.DatabaseAPI
 	syncService   *sync.Service
+	authzService  *authz.Service
 	healthzServer *healthz.Server
 	grpcServer    *grpc.Server
 }
@@ -80,8 +77,9 @@ func Run(ctx context.Context, cfg *config.Config) error {
 func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
 
-	// Load API options
+	// Load options
 	options := types.NewOptions(cfg)
+	serverOpts := []grpc.ServerOption{}
 
 	// Create APIs
 	storeAPI, err := store.New(options) //nolint:staticcheck
@@ -99,45 +97,21 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create database API: %w", err)
 	}
 
-	// Create sync service
+	// Create services
 	syncService, err := sync.New(databaseAPI, storeAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sync service: %w", err)
 	}
 
-	// Create server transport options
-	var serverOpts []grpc.ServerOption
-
-	// Create SPIFFE mTLS services if configured
-	if cfg.Authz.SocketPath != "" {
-		x509Src, err := workloadapi.NewX509Source(ctx,
-			workloadapi.WithClientOptions(
-				workloadapi.WithAddr(cfg.Authz.SocketPath),
-				// workloadapi.WithLogger(logger.Std),
-			),
-		)
+	var authzService *authz.Service
+	if cfg.Authz.Enabled {
+		authzService, err = authz.New(ctx, cfg.Authz)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch svid: %w", err)
+			return nil, fmt.Errorf("failed to create authz service: %w", err)
 		}
 
-		bundleSrc, err := workloadapi.NewBundleSource(ctx,
-			workloadapi.WithClientOptions(
-				workloadapi.WithAddr(cfg.Authz.SocketPath),
-			),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch trust bundle: %w", err)
-		}
-
-		// Add server options for SPIFFE mTLS
 		//nolint:contextcheck
-		serverOpts = append(serverOpts,
-			grpc.Creds(
-				grpccredentials.MTLSServerCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeAny()),
-			),
-			grpc.ChainUnaryInterceptor(unaryInterceptorFor(authInterceptor)),
-			grpc.ChainStreamInterceptor(streamInterceptorFor(authInterceptor)),
-		)
+		serverOpts = append(serverOpts, authzService.GetServerOptions()...)
 	}
 
 	// Create a server
@@ -159,6 +133,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		routing:       routingAPI,
 		database:      databaseAPI,
 		syncService:   syncService,
+		authzService:  authzService,
 		healthzServer: healthz.NewHealthServer(cfg.HealthCheckAddress),
 		grpcServer:    grpcServer,
 	}, nil
@@ -180,15 +155,17 @@ func (s Server) Close() {
 		}
 	}
 
+	// Stop authz service if running
+	if s.authzService != nil {
+		if err := s.authzService.Stop(); err != nil {
+			logger.Error("Failed to stop authz service", "error", err)
+		}
+	}
+
 	s.grpcServer.GracefulStop()
 }
 
 func (s Server) start(ctx context.Context) error {
-	// Bootstrap
-	if err := s.bootstrap(ctx); err != nil {
-		return fmt.Errorf("failed to bootstrap server: %w", err)
-	}
-
 	// Start sync service
 	if s.syncService != nil {
 		if err := s.syncService.Start(ctx); err != nil {
@@ -220,43 +197,4 @@ func (s Server) start(ctx context.Context) error {
 	}()
 
 	return nil
-}
-
-func (s Server) bootstrap(_ context.Context) error {
-	// TODO: bootstrap routing and storage data by listing from storage
-	// TODO: also update cache datastore
-	return nil
-}
-
-func authInterceptor(ctx context.Context) error {
-	sid, ok := grpccredentials.PeerIDFromContext(ctx)
-	if !ok {
-		return status.Error(codes.Unauthenticated, "missing peer ID") //nolint:wrapcheck
-	}
-
-	logger.Debug("Authenticated user", "id", sid)
-
-	return nil
-}
-
-// TODO: this can be moved to utils and expanded.
-func unaryInterceptorFor(fn func(context.Context) error) func(context.Context, any, *grpc.UnaryServerInfo, grpc.UnaryHandler) (any, error) {
-	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		if err := fn(ctx); err != nil {
-			return nil, err
-		}
-
-		return handler(ctx, req)
-	}
-}
-
-// TODO: this can be moved to utils and expanded.
-func streamInterceptorFor(fn func(context.Context) error) func(any, grpc.ServerStream, *grpc.StreamServerInfo, grpc.StreamHandler) error {
-	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		if err := fn(ss.Context()); err != nil {
-			return err
-		}
-
-		return handler(srv, ss)
-	}
 }

@@ -1,7 +1,9 @@
-package casbin
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package authz
 
 import (
-	"context"
 	"testing"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
@@ -10,7 +12,7 @@ import (
 )
 
 func TestAuthorizer(t *testing.T) {
-	authz, err := New(config.Config{
+	authz, err := NewAuthorizer(config.Config{
 		TrustDomain: "dir.com",
 	})
 	if err != nil {
@@ -36,10 +38,11 @@ func TestAuthorizer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		allowed, err := authz.Authorize(context.Background(), tt.trustDomain, tt.apiMethod)
+		allowed, err := authz.Authorize(tt.trustDomain, tt.apiMethod)
 		if err != nil {
 			t.Errorf("Authorize() error: %v", err)
 		}
+
 		if allowed != tt.allow {
 			t.Errorf("Authorize(%q, %q) = %v, want %v", tt.trustDomain, tt.apiMethod, allowed, tt.allow)
 		}

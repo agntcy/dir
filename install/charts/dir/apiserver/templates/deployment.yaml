@@ -37,8 +37,10 @@ spec:
             - name: DIRECTORY_LOGGER_LOG_LEVEL
               value: {{ .Values.log_level }}
             {{- if eq .Values.spire.enabled true }}
+            - name: DIRECTORY_SERVER_AUTHZ_ENABLED
+              value: "true"
             - name: DIRECTORY_SERVER_AUTHZ_SOCKET_PATH
-              value: unix:/run/spire/agent-sockets/api.sock
+              value: "unix:/run/spire/agent-sockets/api.sock"
             - name: DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN
               value: {{ .Values.spire.trustDomain }}
             {{- end }}

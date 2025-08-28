@@ -1,7 +1,9 @@
-package casbin
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package authz
 
 import (
-	"context"
 	_ "embed"
 	"fmt"
 
@@ -11,9 +13,13 @@ import (
 	"github.com/casbin/casbin/v2/model"
 )
 
+// Defines the Casbin authorization model
+//
 //go:embed model.conf
 var modelConf string
 
+// Defines the allowed external API methods that can be performed
+// by users outside of our trust domain.
 var allowedExternalAPIMethods = []string{
 	storev1.StoreService_Pull_FullMethodName,                      // store: pull
 	storev1.StoreService_PullReferrer_FullMethodName,              // store: pull referrer
@@ -25,8 +31,8 @@ type Authorizer struct {
 	enforcer *casbin.Enforcer
 }
 
-// New creates a new Casbin Authorizer
-func New(cfg config.Config) (*Authorizer, error) {
+// New creates a new Casbin-based Authorizer.
+func NewAuthorizer(cfg config.Config) (*Authorizer, error) {
 	// Create model from string
 	model, err := model.NewModelFromString(modelConf)
 	if err != nil {
@@ -48,12 +54,17 @@ func New(cfg config.Config) (*Authorizer, error) {
 }
 
 // Authorize checks if the user in trust domain can perform a given API method.
-func (a *Authorizer) Authorize(ctx context.Context, trustDomain, apiMethod string) (bool, error) {
+//
+//nolint:wrapcheck
+func (a *Authorizer) Authorize(trustDomain, apiMethod string) (bool, error) {
 	return a.enforcer.Enforce(trustDomain, apiMethod)
 }
 
+// getPolicies returns a list of authorization in the following form:
+//   - All API methods are allowed for users within our trust domain
+//   - Only specific API methods are allowed for users outside of the trust domain
 func getPolicies(cfg config.Config) [][]string {
-	var policies [][]string
+	policies := [][]string{}
 
 	// Allow all API methods for the trust domain
 	policies = append(policies, []string{cfg.TrustDomain, "*"})
