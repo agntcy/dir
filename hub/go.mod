@@ -10,8 +10,8 @@ replace (
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.7-20250717185734-6c6e0d3c608e.1
-	github.com/agntcy/dir/api v0.2.9
-	github.com/agntcy/dir/cli v0.2.9
+	github.com/agntcy/dir/api v0.2.10
+	github.com/agntcy/dir/cli v0.2.10
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
