@@ -207,6 +207,28 @@ tasks:
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
+  sdk:deps:common:
+    desc: Common dependencies for SDKs
+    cmds:
+      - task: deps:cosign
+      - task: cli:compile
+
+  sdk:deps:iodc-token-generation:
+    desc: Get Fulcio OIDC token for CI
+    requires:
+      vars: [CLIENT_ID]
+    cmds:
+      - |
+        OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+           "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+
+        CLIENT_ID="{{.CLIENT_ID}}"
+        PROVIDER_URL="https://token.actions.githubusercontent.com"
+
+        echo "OIDC_PROVIDER_URL=${PROVIDER_URL}"
+        echo "CLIENT_ID=${CLIENT_ID}"
+        echo "OIDC_TOKEN=${OIDC_TOKEN}"
+
   sdk:build:all:
     desc: Build all client SDK package
     cmds:
@@ -806,13 +828,13 @@ tasks:
       - task: deploy:kubernetes:setup-cluster
         vars:
           KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
-      
+
       # Start cloud provider for LoadBalancer support
       - |
         echo "Starting Kind cloud provider for LoadBalancer support..."
         go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
         echo "Cloud provider started in background"
-      
+
       # Deploy SPIRE on DIR cluster
       - task: deploy:kubernetes:spire
         vars:
@@ -823,13 +845,13 @@ tasks:
       - task: deploy:kubernetes:setup-cluster
         vars:
           KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
-      
+
       # Start cloud provider for LoadBalancer support
       - |
         echo "Starting Kind cloud provider for LoadBalancer support..."
         go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
         echo "Cloud provider started in background"
-      
+
       # Deploy SPIRE on DIRCTL cluster
       - task: deploy:kubernetes:spire
         vars:
@@ -844,7 +866,7 @@ tasks:
         echo "Getting DIR cluster service addresses..."
         DIR_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
         echo "DIR_BUNDLE_ADDRESS=${DIR_BUNDLE_IP}:8443" >> /tmp/spire-addresses.env
-      
+
       # Get DIRCTL cluster service addresses
       - task: deploy:kubernetes:context
         vars:
@@ -853,7 +875,7 @@ tasks:
         echo "Getting DIRCTL cluster service addresses..."
         DIRCTL_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
         echo "DIRCTL_BUNDLE_ADDRESS=${DIRCTL_BUNDLE_IP}:8443" >> /tmp/spire-addresses.env
-      
+
       # Create DIR server federation config
       - |
         source /tmp/spire-addresses.env
@@ -874,7 +896,7 @@ tasks:
                 trustDomainBundle: |-
                   $(cat /tmp/{{ .DIRCTL_TRUST_DOMAIN }}.spiffe)
         EOF
-      
+
       # Deploy DIR server with federation
       - task: deploy:kubernetes:context
         vars:
@@ -883,7 +905,7 @@ tasks:
         vars:
           KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
           HELM_EXTRA_ARGS: '-f /tmp/server-federation.yaml'
-      
+
       # Get DIR API server address
       - task: deploy:kubernetes:context
         vars:
@@ -945,7 +967,7 @@ tasks:
         vars:
           KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
           HELM_EXTRA_ARGS: '-f /tmp/client-federation.yaml'
-      
+
       # Display completion status
       - |
         source /tmp/spire-addresses.env
