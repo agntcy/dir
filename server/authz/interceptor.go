@@ -26,6 +26,7 @@ func NewInterceptor(authorizer *Authorizer) InterceptorFn {
 		}
 
 		trustDomain := sid.TrustDomain().String()
+
 		allowed, err := authorizer.Authorize(trustDomain, apiMethod)
 		if err != nil {
 			logger.Error("Authorization error",
