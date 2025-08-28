@@ -30,6 +30,10 @@ on:
         type: string
         description: 'Kind version'
 
+permissions:
+  id-token: write   # Required for OIDC token generation
+  contents: read    # Required for repository access
+
 jobs:
   test-unit:
     name: Unit
@@ -132,8 +136,15 @@ jobs:
           done
           docker images
 
-      - name: Test SDKs
+      - name: Add dependencies for SDKs testing
         run: |
+          CLIENT_ID="https://github.com/${{ github.repository }}/.github/workflows/reusable-test.yaml@${{ github.ref }}"
+
+          task sdk:deps:common
           task sdk:deps:javascript
           task sdk:test-env:create
+
+          task sdk:deps:cicd:iodc-token-generation CLIENT_ID=$CLIENT_ID >> $GITHUB_ENV
+      - name: Test SDKs
+        run: |
           task sdk:test:all
