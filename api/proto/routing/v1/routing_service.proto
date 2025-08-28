@@ -8,6 +8,7 @@ package routing.v1;
 import "google/protobuf/empty.proto";
 import "routing/v1/peer.proto";
 import "routing/v1/record_query.proto";
+import "search/v1/record_query.proto";
 import "core/v1/record.proto";
 
 // Defines an interface for announcement and discovery
@@ -76,7 +77,7 @@ message RecordRefs {
 }
 
 message RecordQueries {
-  repeated RecordQuery queries = 1;
+  repeated search.v1.RecordQuery queries = 1;
 }
 
 message SearchRequest {
