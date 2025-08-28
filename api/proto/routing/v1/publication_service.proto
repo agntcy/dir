@@ -1,0 +1,107 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package routing.v1;
+
+import "google/protobuf/empty.proto";
+import "routing/v1/routing_service.proto";
+import "store/v1/object.proto";
+
+// PublicationService manages publication requests for announcing records to the DHT.
+// 
+// Publications are stored in the database and processed by a worker that runs every hour.
+// The publication workflow:
+// 1. Publications are created via routing's Publish RPC by specifying either a query, a list of CIDs, or all records
+// 2. Publication requests are added to the database
+// 3. PublicationWorker queries the data using the publication request from the database to get the list of CIDs to be published
+// 4. PublicationWorker announces the records with these CIDs to the DHT
+service PublicationService {
+  // CreatePublication creates a new publication request that will be processed by the PublicationWorker.
+  // The publication request can specify either a query, a list of specific CIDs, or all records to be announced to the DHT.
+  rpc CreatePublication(PublishRequest) returns (CreatePublicationResponse);
+
+  // ListPublications returns a stream of all publication requests in the system.
+  // This allows monitoring of pending, processing, and completed publication requests.
+  rpc ListPublications(ListPublicationsRequest) returns (stream ListPublicationsItem);
+
+  // GetPublication retrieves details of a specific publication request by its identifier.
+  // This includes the current status and any associated metadata.
+  rpc GetPublication(GetPublicationRequest) returns (GetPublicationResponse);
+}
+
+// CreatePublicationResponse returns the result of creating a publication request.
+// This includes the publication ID and any relevant metadata.
+message CreatePublicationResponse {
+  // Unique identifier of the publication operation.
+  string publication_id = 1;
+}
+
+// ListPublicationsRequest contains optional filters for listing publication requests.
+message ListPublicationsRequest {
+  // Optional limit on the number of results to return.
+  optional uint32 limit = 2;
+
+  // Optional offset for pagination of results.
+  optional uint32 offset = 3;
+}
+
+// ListPublicationsItem represents a single publication request in the list response.
+// Contains publication details including ID, status, and creation timestamp.
+message ListPublicationsItem {
+  // Unique identifier of the publication operation.
+  string publication_id = 1;
+
+  // Current status of the publication operation.
+  PublicationStatus status = 2;
+
+  // Timestamp when the publication operation was created in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string created_time = 3;
+
+  // Timestamp of the most recent status update for this publication in the RFC3339 format.
+  string last_update_time = 4;
+}
+
+// GetPublicationRequest specifies which publication to retrieve by its identifier.
+message GetPublicationRequest {
+  // Unique identifier of the publication operation to query.
+  string publication_id = 1;
+}
+
+// GetPublicationResponse contains the full details of a specific publication request.
+// Includes status, progress information, and any error details if applicable.
+message GetPublicationResponse {
+  // Unique identifier of the publication operation.
+  string publication_id = 1;
+
+  // Current status of the publication operation.
+  PublicationStatus status = 2;
+
+  // Timestamp when the publication operation was created in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string created_time = 3;
+
+  // Timestamp of the most recent status update for this publication in the RFC3339 format.
+  string last_update_time = 4;
+}
+
+// PublicationStatus represents the current state of a publication request.
+// Publications progress from pending to processing to completed or failed states.
+enum PublicationStatus {
+  // Default/unset status - should not be used in practice
+  PUBLICATION_STATUS_UNSPECIFIED = 0;
+  
+  // Sync operation has been created but not yet started
+  PUBLICATION_STATUS_PENDING = 1;
+  
+  // Sync operation is actively discovering and transferring objects
+  PUBLICATION_STATUS_IN_PROGRESS = 2;
+
+  // Sync operation has been successfully completed
+  PUBLICATION_STATUS_COMPLETED = 3;
+  
+  // Sync operation encountered an error and stopped
+  PUBLICATION_STATUS_FAILED = 4;
+}

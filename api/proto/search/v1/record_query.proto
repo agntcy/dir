@@ -32,7 +32,7 @@ enum RecordQueryType {
   RECORD_QUERY_TYPE_SKILL_ID = 3;
 
   // Query for a skill name.
-  RECORD_QUERY_TYPE_SKILL = 4;
+  RECORD_QUERY_TYPE_SKILL_NAME = 4;
 
   // Query for a locator type.
   RECORD_QUERY_TYPE_LOCATOR = 5;
