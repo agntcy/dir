@@ -95,7 +95,7 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 		push.NewCommand(opts),
 		pull.NewCommand(),
 		orgs.NewCommand(opts),
-		translate.NewCommand(opts),
+		translate.NewCommand(),
 	)
 
 	return cmd

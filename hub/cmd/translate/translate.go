@@ -16,7 +16,6 @@ import (
 
 	"github.com/agntcy/dir/hub/api/v1alpha1"
 	"github.com/agntcy/dir/hub/auth"
-	hubOptions "github.com/agntcy/dir/hub/cmd/options"
 	"github.com/agntcy/dir/hub/sessionstore"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -24,7 +23,12 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// translateOptions holds the configuration for the translate command
+const (
+	// outputFilePermission defines the file permission for output files (owner read/write only).
+	outputFilePermission = 0o600
+)
+
+// translateOptions holds the configuration for the translate command.
 type translateOptions struct {
 	configType string
 	inputFile  string
@@ -39,13 +43,16 @@ func addAuthToContext(ctx context.Context, session *sessionstore.HubSession) con
 			return metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+t.AccessToken))
 		}
 	}
+
 	return ctx
 }
 
 // NewCommand creates the "translate" command for the Agent Hub CLI.
 // It translates MCP/A2A configurations to OASF objects using the translation service.
 // Returns the configured *cobra.Command.
-func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
+//
+//nolint:contextcheck
+func NewCommand() *cobra.Command {
 	opts := &translateOptions{}
 
 	cmd := &cobra.Command{
@@ -80,7 +87,11 @@ Examples:
 			// Validate arguments and flags
 			if err := validateTranslateArgs(opts, args); err != nil {
 				// Show help on validation error
-				cmd.Help()
+				helpErr := cmd.Help()
+				if helpErr != nil {
+					return fmt.Errorf("failed to show help: %w", helpErr)
+				}
+
 				return err
 			}
 
@@ -120,7 +131,7 @@ Examples:
 	return cmd
 }
 
-// validateTranslateArgs validates the command arguments and flags
+// validateTranslateArgs validates the command arguments and flags.
 func validateTranslateArgs(opts *translateOptions, args []string) error {
 	// Validate config type
 	if opts.configType != "mcp" && opts.configType != "a2a" {
@@ -136,14 +147,15 @@ func validateTranslateArgs(opts *translateOptions, args []string) error {
 		if len(args) != 1 {
 			return errors.New("exactly one configuration file must be specified when not using --stdin")
 		}
+
 		opts.inputFile = args[0]
 	}
 
 	return nil
 }
 
-// readInputData reads the configuration data from file or stdin
-func readInputData(opts *translateOptions, args []string) ([]byte, error) {
+// readInputData reads the configuration data from file or stdin.
+func readInputData(opts *translateOptions, _ []string) ([]byte, error) {
 	var reader io.Reader
 
 	if opts.stdin {
@@ -153,6 +165,7 @@ func readInputData(opts *translateOptions, args []string) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to open file '%s': %w", opts.inputFile, err)
 		}
+
 		defer file.Close()
 		reader = file
 	}
@@ -169,7 +182,7 @@ func readInputData(opts *translateOptions, args []string) ([]byte, error) {
 	return data, nil
 }
 
-// translateConfiguration calls the translation service to convert the configuration
+// translateConfiguration calls the translation service to convert the configuration.
 func translateConfiguration(ctx context.Context, session *sessionstore.HubSession, configType string, inputData []byte) ([]byte, error) {
 	// Get the server address from the session
 	if session.AuthConfig == nil {
@@ -210,7 +223,7 @@ func translateConfiguration(ctx context.Context, session *sessionstore.HubSessio
 	}
 
 	// Marshal the response to JSON
-	result, err := json.MarshalIndent(response.Record, "", "  ")
+	result, err := json.MarshalIndent(response.GetRecord(), "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal response: %w", err)
 	}
@@ -218,23 +231,38 @@ func translateConfiguration(ctx context.Context, session *sessionstore.HubSessio
 	return result, nil
 }
 
-// writeOutput writes the translated result to the specified output
-func writeOutput(opts *translateOptions, result []byte) error {
-	if opts.outputFile == "" {
-		// Write to stdout
-		_, err := os.Stdout.Write(result)
-		if err != nil {
-			return fmt.Errorf("failed to write to stdout: %w", err)
-		}
-		fmt.Println() // Add newline
-	} else {
-		// Write to file
-		err := os.WriteFile(opts.outputFile, result, 0644)
-		if err != nil {
-			return fmt.Errorf("failed to write to file '%s': %w", opts.outputFile, err)
-		}
-		fmt.Printf("Translation completed successfully. Output written to: %s\n", opts.outputFile)
+// writeOutputToStdout writes the result to stdout with a newline.
+func writeOutputToStdout(result []byte) error {
+	if _, err := os.Stdout.Write(result); err != nil {
+		return fmt.Errorf("failed to write to stdout: %w", err)
+	}
+
+	if _, err := os.Stdout.WriteString("\n"); err != nil {
+		return fmt.Errorf("failed to write newline to stdout: %w", err)
 	}
 
 	return nil
+}
+
+// writeOutputToFile writes the result to a file and prints a success message.
+func writeOutputToFile(outputFile string, result []byte) error {
+	if err := os.WriteFile(outputFile, result, outputFilePermission); err != nil {
+		return fmt.Errorf("failed to write to file '%s': %w", outputFile, err)
+	}
+
+	// Write success message to stderr to avoid mixing with output
+	if _, err := fmt.Fprintf(os.Stderr, "Translation completed successfully. Output written to: %s\n", outputFile); err != nil {
+		return fmt.Errorf("failed to write success message: %w", err)
+	}
+
+	return nil
+}
+
+// writeOutput writes the translated result to the specified output.
+func writeOutput(opts *translateOptions, result []byte) error {
+	if opts.outputFile == "" {
+		return writeOutputToStdout(result)
+	}
+
+	return writeOutputToFile(opts.outputFile, result)
 }
