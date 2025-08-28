@@ -11,6 +11,7 @@ import (
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Option func(*options) error
@@ -41,7 +42,10 @@ func WithConfig(config *Config) Option {
 
 func withAuth(ctx context.Context) Option {
 	return func(o *options) error {
+		// Use insecure access in case SpiffeSocketPath is not set
 		if o.config.SpiffeSocketPath == "" {
+			o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 			return nil
 		}
 

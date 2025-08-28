@@ -24,6 +24,14 @@ cronjobs:
     args:
       - "search"
 
+  # Lookup cronjob
+  lookup:
+    enabled: true
+    schedule: "* * * * *"
+    args:
+      - "info"
+      - "baeareiglp6uzpr2z5jg4qynvubgp55ucyldcnklzwbj7olgc4pn6e2vyau"
+
   # Push cronjob
   push:
     enabled: true

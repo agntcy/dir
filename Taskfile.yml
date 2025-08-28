@@ -892,8 +892,31 @@ tasks:
         echo "Getting DIR API server address..."
         DIR_API_IP=$(kubectl get service -n dir-server dir-apiserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
         echo "DIR_SERVER_ADDRESS=${DIR_API_IP}:8888" >> /tmp/spire-addresses.env
-      
-      # Create DIRCTL client federation config
+
+      # Create DIRCTL client federation config (for dirctl in dir.example)
+      - |
+        source /tmp/spire-addresses.env
+        echo "Creating DIRCTL client federation config for dir.example..."
+        cat > /tmp/client-federation-dir-example.yaml << EOF
+        env:
+          - name: DIRECTORY_CLIENT_SERVER_ADDRESS
+            value: ${DIR_SERVER_ADDRESS}
+        spire:
+          enabled: true
+          trustDomain: {{ .DIR_TRUST_DOMAIN }}
+        EOF
+
+      # Deploy DIRCTL client in dir.example trust domain (same cluster as dir)
+      - task: deploy:kubernetes:context
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
+      - task: deploy:kubernetes:dirctl
+        vars:
+          KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
+          HELM_NAMESPACE: 'dir-client'
+          HELM_EXTRA_ARGS: '-f /tmp/client-federation-dir-example.yaml'
+
+      # Create DIRCTL client federation config (for dirctl.example cluster)
       - |
         source /tmp/spire-addresses.env
         echo "Creating DIRCTL client federation config..."
@@ -913,8 +936,8 @@ tasks:
               trustDomainBundle: |-
                 $(cat /tmp/{{ .DIR_TRUST_DOMAIN }}.spiffe)
         EOF
-      
-      # Deploy DIRCTL client with federation
+
+      # Deploy DIRCTL client with federation (in dirctl.example cluster)
       - task: deploy:kubernetes:context
         vars:
           KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
@@ -933,13 +956,14 @@ tasks:
         echo "DIR Bundle: ${DIR_BUNDLE_ADDRESS}"
         echo "DIRCTL Bundle: ${DIRCTL_BUNDLE_ADDRESS}"
         echo ""
-        echo "Trust domains:"
+        echo "Trust domains setup:"
         echo "  DIR: {{ .DIR_TRUST_DOMAIN }}"
-        echo "  DIRCTL: {{ .DIRCTL_TRUST_DOMAIN }}"
+        echo "  DIRCTL Internal: {{ .DIR_TRUST_DOMAIN }}"
+        echo "  DIRCTL External: {{ .DIRCTL_TRUST_DOMAIN }}"
         echo ""
         echo "To verify deployment:"
         echo "  kubectl --context kind-{{ .DIR_TRUST_DOMAIN }} get pods -n dir-server"
-        echo "  kubectl --context kind-{{ .DIRCTL_TRUST_DOMAIN }} get pods -n dir-client"
+        echo "  kubectl --context kind-{{ .DIR_TRUST_DOMAIN }} logs -n dir-client -l app.kubernetes.io/name=dirctl"
         echo "  kubectl --context kind-{{ .DIRCTL_TRUST_DOMAIN }} logs -n dir-client -l app.kubernetes.io/name=dirctl"
         echo ""
         echo "To cleanup:"
