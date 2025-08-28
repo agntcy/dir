@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+message PaginationParam {
+  uint32 page_number = 1;
+  uint32 page_size = 2;
+}

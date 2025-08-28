@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "buf/validate/validate.proto";
+import "core/v1alpha1/object.proto";
+import "google/api/annotations.proto";
+import "saas/v1alpha1/apikey.proto";
+import "saas/v1alpha1/roles.proto";
+import "saas/v1alpha1/paginated_response.proto";
+import "saas/v1alpha1/pagination_param.proto";
+
+message CreateApiKeyRequest {
+  Role role = 1;
+  oneof organization {
+    string organization_id = 2 [(buf.validate.field).string.uuid = true];
+    string organization_name = 3 [
+      (buf.validate.field).string.max_len = 100
+    ];
+  }
+}
+
+message CreateApiKeyResponse {
+  ApiKey token = 1;
+}
+
+message DeleteApiKeyRequest {
+  string client_id = 1;
+}
+
+message DeleteApiKeyResponse {}
+
+message ListApiKeyRequest {
+  oneof organization {
+    string organization_id = 1[(buf.validate.field).string.uuid = true];
+    string organization_name = 2 [
+      (buf.validate.field).string.max_len = 100
+    ];
+  }
+  PaginationParam pagination = 3;
+}
+
+message ListApiKeyResponse {
+  PaginatedResponse paginated_response = 1;
+  repeated ApiKey apikeys = 2;
+}
+
+service ApiKeyService {
+  rpc CreateAPIKey(CreateApiKeyRequest) returns (stream CreateApiKeyResponse) {
+    option (google.api.http) = {post: "/v1alpha1/agents/apikey"};
+  }
+
+  rpc DeleteAPIKey(DeleteApiKeyRequest) returns (DeleteApiKeyResponse) {
+    option (google.api.http) = {delete: "/v1alpha1/agents/apikey/{client_id}"};
+  }
+
+  rpc ListApiKey(ListApiKeyRequest) returns (ListApiKeyResponse) {
+    option (google.api.http) = {get: "/v1alpha1/apikeys"};
+  }
+
+}

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "buf/validate/validate.proto";
+
+message RepositoryIdentifier {
+  oneof id {
+    string db_id = 1 [(buf.validate.field).string.uuid = true];
+    string name = 2 [
+      (buf.validate.field).string.pattern = "^[a-z0-9_-]+(/[a-z0-9_-]+)*$",
+      (buf.validate.field).string.max_len = 100
+    ];
+  }
+}

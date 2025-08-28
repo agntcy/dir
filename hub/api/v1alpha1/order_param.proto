@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "saas/v1alpha1/order.proto";
+
+message OrderParam {
+  string order_by = 1;
+  Order order = 2;
+}
