@@ -5,10 +5,9 @@ package controller
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	databaseutils "github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
@@ -30,10 +29,15 @@ func NewSearchController(db types.DatabaseAPI) searchv1.SearchServiceServer {
 func (c *searchCtlr) Search(req *searchv1.SearchRequest, srv searchv1.SearchService_SearchServer) error {
 	searchLogger.Debug("Called search controller's Search method", "req", req)
 
-	filterOptions, err := queryToFilters(req)
+	filterOptions, err := databaseutils.QueryToFilters(req.GetQueries())
 	if err != nil {
 		return fmt.Errorf("failed to create filter options: %w", err)
 	}
+
+	filterOptions = append(filterOptions,
+		types.WithLimit(int(req.GetLimit())),
+		types.WithOffset(int(req.GetOffset())),
+	)
 
 	recordCIDs, err := c.db.GetRecordCIDs(filterOptions...)
 	if err != nil {
@@ -47,78 +51,4 @@ func (c *searchCtlr) Search(req *searchv1.SearchRequest, srv searchv1.SearchServ
 	}
 
 	return nil
-}
-
-func queryToFilters(req *searchv1.SearchRequest) ([]types.FilterOption, error) { //nolint:gocognit,cyclop
-	params := []types.FilterOption{
-		types.WithLimit(int(req.GetLimit())),
-		types.WithOffset(int(req.GetOffset())),
-	}
-
-	for _, query := range req.GetQueries() {
-		switch query.GetType() {
-		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
-			searchLogger.Warn("Unspecified query type, skipping", "query", query)
-
-		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME:
-			params = append(params, types.WithName(query.GetValue()))
-
-		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION:
-			params = append(params, types.WithVersion(query.GetValue()))
-
-		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID:
-			u64, err := strconv.ParseUint(query.GetValue(), 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse skill ID %q: %w", query.GetValue(), err)
-			}
-
-			params = append(params, types.WithSkillIDs(u64))
-
-		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
-			params = append(params, types.WithSkillNames(query.GetValue()))
-
-		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
-			l := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
-
-			if len(l) == 1 && strings.TrimSpace(l[0]) != "" {
-				params = append(params, types.WithLocatorTypes(l[0]))
-
-				break
-			}
-
-			if len(l) == 2 { //nolint:mnd
-				if strings.TrimSpace(l[0]) != "" {
-					params = append(params, types.WithLocatorTypes(l[0]))
-				}
-
-				if strings.TrimSpace(l[1]) != "" {
-					params = append(params, types.WithLocatorURLs(l[1]))
-				}
-			}
-
-		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
-			e := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
-
-			if len(e) == 1 && strings.TrimSpace(e[0]) != "" {
-				params = append(params, types.WithExtensionNames(e[0]))
-
-				break
-			}
-
-			if len(e) == 2 { //nolint:mnd
-				if strings.TrimSpace(e[0]) != "" {
-					params = append(params, types.WithExtensionNames(e[0]))
-				}
-
-				if strings.TrimSpace(e[1]) != "" {
-					params = append(params, types.WithExtensionVersions(e[1]))
-				}
-			}
-
-		default:
-			searchLogger.Warn("Unknown query type", "type", query.GetType())
-		}
-	}
-
-	return params, nil
 }

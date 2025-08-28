@@ -11,6 +11,7 @@ import (
 	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
@@ -52,6 +53,9 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_AUTHZ_ENABLED":                        "true",
 				"DIRECTORY_SERVER_AUTHZ_SOCKET_PATH":                    "/test/agent.sock",
 				"DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN":                   "dir.com",
+				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":       "10s",
+				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":             "1",
+				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":           "10s",
 			},
 			ExpectedConfig: &Config{
 				ListenAddress:      "example.com:8889",
@@ -99,6 +103,11 @@ func TestConfig(t *testing.T) {
 					SocketPath:  "/test/agent.sock",
 					TrustDomain: "dir.com",
 				},
+				Publication: publication.Config{
+					SchedulerInterval: 10 * time.Second,
+					WorkerCount:       1,
+					WorkerTimeout:     10 * time.Second,
+				},
 			},
 		},
 		{
@@ -137,6 +146,11 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Authz: authz.Config{},
+				Publication: publication.Config{
+					SchedulerInterval: publication.DefaultPublicationSchedulerInterval,
+					WorkerCount:       publication.DefaultPublicationWorkerCount,
+					WorkerTimeout:     publication.DefaultPublicationWorkerTimeout,
+				},
 			},
 		},
 	}

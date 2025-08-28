@@ -53,6 +53,11 @@ func New(path string) (*DB, error) {
 		return nil, fmt.Errorf("failed to migrate sync schema: %w", err)
 	}
 
+	// Migrate publication-related schema
+	if err := db.AutoMigrate(Publication{}); err != nil {
+		return nil, fmt.Errorf("failed to migrate publication schema: %w", err)
+	}
+
 	return &DB{
 		gormDB: db,
 	}, nil

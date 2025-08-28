@@ -4,12 +4,14 @@
 package types
 
 import (
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
 type DatabaseAPI interface {
 	SearchDatabaseAPI
 	SyncDatabaseAPI
+	PublicationDatabaseAPI
 }
 
 type SearchDatabaseAPI interface {
@@ -51,4 +53,24 @@ type SyncDatabaseAPI interface {
 
 	// DeleteSync deletes a sync object by its ID.
 	DeleteSync(syncID string) error
+}
+
+type PublicationDatabaseAPI interface {
+	// CreatePublication creates a new publication object in the database.
+	CreatePublication(request *routingv1.PublishRequest) (string, error)
+
+	// GetPublicationByID retrieves a publication object by its ID.
+	GetPublicationByID(publicationID string) (PublicationObject, error)
+
+	// GetPublications retrieves all publication objects.
+	GetPublications(offset, limit int) ([]PublicationObject, error)
+
+	// GetPublicationsByStatus retrieves all publication objects by their status.
+	GetPublicationsByStatus(status routingv1.PublicationStatus) ([]PublicationObject, error)
+
+	// UpdatePublicationStatus updates an existing publication object's status in the database.
+	UpdatePublicationStatus(publicationID string, status routingv1.PublicationStatus) error
+
+	// DeletePublication deletes a publication object by its ID.
+	DeletePublication(publicationID string) error
 }

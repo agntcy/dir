@@ -21,6 +21,7 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/database"
+	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/sync"
@@ -42,6 +43,7 @@ type Server struct {
 	database      types.DatabaseAPI
 	syncService   *sync.Service
 	authzService  *authz.Service
+	publicationService *publication.Service
 	healthzServer *healthz.Server
 	grpcServer    *grpc.Server
 }
@@ -114,12 +116,19 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		serverOpts = append(serverOpts, authzService.GetServerOptions()...)
 	}
 
+	// Create publication service
+	publicationService, err := publication.New(databaseAPI, storeAPI, routingAPI, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create publication service: %w", err)
+	}
+
 	// Create a server
 	grpcServer := grpc.NewServer(serverOpts...)
 
 	// Register APIs
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI))
+	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(storeAPI))
@@ -128,14 +137,15 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	reflection.Register(grpcServer)
 
 	return &Server{
-		options:       options,
-		store:         storeAPI,
-		routing:       routingAPI,
-		database:      databaseAPI,
-		syncService:   syncService,
-		authzService:  authzService,
-		healthzServer: healthz.NewHealthServer(cfg.HealthCheckAddress),
-		grpcServer:    grpcServer,
+		options:            options,
+		store:              storeAPI,
+		routing:            routingAPI,
+		database:           databaseAPI,
+		syncService:        syncService,
+		authzService:  		authzService,
+		publicationService: publicationService,
+		healthzServer:      healthz.NewHealthServer(cfg.HealthCheckAddress),
+		grpcServer:         grpcServer,
 	}, nil
 }
 
@@ -162,6 +172,13 @@ func (s Server) Close() {
 		}
 	}
 
+	// Stop publication service if running
+	if s.publicationService != nil {
+		if err := s.publicationService.Stop(); err != nil {
+			logger.Error("Failed to stop publication service", "error", err)
+		}
+	}
+
 	s.grpcServer.GracefulStop()
 }
 
@@ -173,6 +190,15 @@ func (s Server) start(ctx context.Context) error {
 		}
 
 		logger.Info("Sync service started")
+	}
+
+	// Start publication service
+	if s.publicationService != nil {
+		if err := s.publicationService.Start(ctx); err != nil {
+			return fmt.Errorf("failed to start publication service: %w", err)
+		}
+
+		logger.Info("Publication service started")
 	}
 
 	// Create a listener on TCP port
