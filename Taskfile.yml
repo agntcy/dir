@@ -22,6 +22,7 @@ vars:
 
   ## Dependency config
   BIN_DIR: '{{ .ROOT_DIR }}/bin'
+  DIRCTL_BIN: '{{ .BIN_DIR}}/dirctl'
   HELM_VERSION: '3.16.3'
   HELM_BIN: '{{ .BIN_DIR }}/helm-{{.HELM_VERSION}}'
   KUBECTL_VERSION: '1.31.3'
@@ -42,6 +43,8 @@ vars:
   UV_VERSION: '0.6.1'
   UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
+  COSIGN_VERSION: '2.5.3'
+  COSIGN_BIN: '{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}'
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
 
@@ -213,8 +216,8 @@ tasks:
       - task: deps:cosign
       - task: cli:compile
 
-  sdk:deps:iodc-token-generation:
-    desc: Get Fulcio OIDC token for CI
+  sdk:deps:cicd:iodc-token-generation:
+    desc: Get Fulcio OIDC token for CICD
     requires:
       vars: [CLIENT_ID]
     cmds:
@@ -259,6 +262,8 @@ tasks:
 
   sdk:test:all:
     desc: Test all client SDK packages
+    deps:
+      - task: sdk:deps:common
     cmds:
       - task: sdk:test:javascript
       - task: sdk:test:python
@@ -267,15 +272,26 @@ tasks:
     desc: Test python client SDK package
     dir: ./sdk/python
     deps:
+      - task: sdk:deps:common
       - task: deps:uv
     cmds:
-      - '{{.UV_BIN}} run python -m unittest'
+      - |
+        export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
+        export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
+
+        '{{.UV_BIN}}' run python -m unittest
 
   sdk:test:javascript:
     desc: Test javascript client SDK package
     dir: ./sdk/javascript
+    deps:
+      - task: sdk:deps:common
     cmds:
-      - npm run test
+      - |
+        export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
+        export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
+
+        npm run test
 
   sdk:deps:javascript:
     desc: Install deps for javascript SDK package
@@ -477,7 +493,6 @@ tasks:
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
-
       - |
         {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
@@ -1112,6 +1127,7 @@ tasks:
       - task: deps:protoc
       - task: deps:bufbuild
       - task: deps:uv
+      - task: deps:cosign
 
   deps:hub:api:
     desc: generate HUB API
@@ -1341,6 +1357,16 @@ tasks:
       - rm {{.BIN_DIR}}/uvx
     status:
       - test -x {{.BIN_DIR}}/uv
+
+  deps:cosign:
+    desc: Install sigstore cosign
+    dir: '{{ .BIN_DIR }}'
+    internal: true
+    cmds:
+      - curl -sfL https://github.com/sigstore/cosign/releases/download/v{{.COSIGN_VERSION}}/cosign-{{OS}}-{{ARCH}} -o cosign-{{.COSIGN_VERSION}}
+      - chmod +x cosign-{{.COSIGN_VERSION}}
+    status:
+      - test -x cosign-{{.COSIGN_VERSION}}
 
   ##
   ## Helm
