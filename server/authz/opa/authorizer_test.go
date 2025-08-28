@@ -55,7 +55,12 @@ func TestAuthorize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s_%s_%s", tt.trustDomain, tt.userID, tt.apiMethod), func(t *testing.T) {
-			if got := authz.Authorize(ctx, tt.trustDomain, tt.userID, tt.apiMethod); got != tt.allowed {
+			got, err := authz.Authorize(ctx, tt.trustDomain, tt.userID, tt.apiMethod)
+			if err != nil {
+				t.Errorf("Authorize() error = %v", err)
+				return
+			}
+			if got != tt.allowed {
 				t.Errorf("Authorize() = %v, want %v", got, tt.allowed)
 			}
 		})
