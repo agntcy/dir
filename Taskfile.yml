@@ -42,6 +42,7 @@ vars:
   UV_VERSION: '0.6.1'
   UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
+  COSIGN_VERSION: '2.5.3'
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
 
@@ -207,6 +208,28 @@ tasks:
     cmds:
       - go -C . test ./... {{.EXTRA_ARGS}}
 
+  sdk:deps:common:
+    desc: Common dependencies for SDKs
+    cmds:
+      - task: deps:cosign
+      - task: cli:compile
+
+  sdk:deps:iodc-token-generation:
+    desc: Get Fulcio OIDC token for CI
+    requires:
+      vars: [CLIENT_ID]
+    cmds:
+      - |
+        OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+           "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+
+        CLIENT_ID="{{.CLIENT_ID}}"
+        PROVIDER_URL="https://token.actions.githubusercontent.com"
+
+        echo "OIDC_PROVIDER_URL=${PROVIDER_URL}"
+        echo "CLIENT_ID=${CLIENT_ID}"
+        echo "OIDC_TOKEN=${OIDC_TOKEN}"
+
   sdk:build:all:
     desc: Build all client SDK package
     cmds:
@@ -237,6 +260,8 @@ tasks:
 
   sdk:test:all:
     desc: Test all client SDK packages
+    deps:
+      - task: sdk:deps:common
     cmds:
       - task: sdk:test:javascript
       - task: sdk:test:python
@@ -245,6 +270,7 @@ tasks:
     desc: Test python client SDK package
     dir: ./sdk/python
     deps:
+      - task: sdk:deps:common
       - task: deps:uv
     cmds:
       - '{{.UV_BIN}} run python -m unittest'
@@ -252,6 +278,8 @@ tasks:
   sdk:test:javascript:
     desc: Test javascript client SDK package
     dir: ./sdk/javascript
+    deps:
+      - task: sdk:deps:common
     cmds:
       - npm run test
 
@@ -455,7 +483,6 @@ tasks:
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
-
       - |
         {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
@@ -806,13 +833,13 @@ tasks:
       - task: deploy:kubernetes:setup-cluster
         vars:
           KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
-      
+
       # Start cloud provider for LoadBalancer support
       - |
         echo "Starting Kind cloud provider for LoadBalancer support..."
         go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
         echo "Cloud provider started in background"
-      
+
       # Deploy SPIRE on DIR cluster
       - task: deploy:kubernetes:spire
         vars:
@@ -823,13 +850,13 @@ tasks:
       - task: deploy:kubernetes:setup-cluster
         vars:
           KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
-      
+
       # Start cloud provider for LoadBalancer support
       - |
         echo "Starting Kind cloud provider for LoadBalancer support..."
         go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
         echo "Cloud provider started in background"
-      
+
       # Deploy SPIRE on DIRCTL cluster
       - task: deploy:kubernetes:spire
         vars:
@@ -844,7 +871,7 @@ tasks:
         echo "Getting DIR cluster service addresses..."
         DIR_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
         echo "DIR_BUNDLE_ADDRESS=${DIR_BUNDLE_IP}:8443" >> /tmp/spire-addresses.env
-      
+
       # Get DIRCTL cluster service addresses
       - task: deploy:kubernetes:context
         vars:
@@ -853,7 +880,7 @@ tasks:
         echo "Getting DIRCTL cluster service addresses..."
         DIRCTL_BUNDLE_IP=$(kubectl get service -n spire spire-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "127.0.0.1")
         echo "DIRCTL_BUNDLE_ADDRESS=${DIRCTL_BUNDLE_IP}:8443" >> /tmp/spire-addresses.env
-      
+
       # Create DIR server federation config
       - |
         source /tmp/spire-addresses.env
@@ -874,7 +901,7 @@ tasks:
                 trustDomainBundle: |-
                   $(cat /tmp/{{ .DIRCTL_TRUST_DOMAIN }}.spiffe)
         EOF
-      
+
       # Deploy DIR server with federation
       - task: deploy:kubernetes:context
         vars:
@@ -883,7 +910,7 @@ tasks:
         vars:
           KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
           HELM_EXTRA_ARGS: '-f /tmp/server-federation.yaml'
-      
+
       # Get DIR API server address
       - task: deploy:kubernetes:context
         vars:
@@ -945,7 +972,7 @@ tasks:
         vars:
           KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
           HELM_EXTRA_ARGS: '-f /tmp/client-federation.yaml'
-      
+
       # Display completion status
       - |
         source /tmp/spire-addresses.env
@@ -1090,6 +1117,7 @@ tasks:
       - task: deps:protoc
       - task: deps:bufbuild
       - task: deps:uv
+      - task: deps:cosign
 
   deps:hub:api:
     desc: generate HUB API
@@ -1319,6 +1347,16 @@ tasks:
       - rm {{.BIN_DIR}}/uvx
     status:
       - test -x {{.BIN_DIR}}/uv
+
+  deps:cosign:
+    desc: Install sigstore cosign
+    dir: '{{ .BIN_DIR }}'
+    internal: true
+    cmds:
+      - curl -sfL https://github.com/sigstore/cosign/releases/download/v{{.COSIGN_VERSION}}/cosign-{{OS}}-{{ARCH}} -o cosign
+      - chmod +x cosign
+    status:
+      - test -x cosign
 
   ##
   ## Helm
