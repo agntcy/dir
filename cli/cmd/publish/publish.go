@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
@@ -25,10 +26,6 @@ Usage examples:
 1. Publish the data to the local data store:
 
 	dirctl publish <cid>
-
-2. Publish the data across the network:
-
-  	dirctl publish <cid> --network
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
@@ -61,7 +58,13 @@ func runCommand(cmd *cobra.Command, cid string) error {
 	presenter.Printf(cmd, "Publishing record with CID: %s\n", recordRef.GetCid())
 
 	// Start publishing using the same RecordRef
-	if err := c.Publish(cmd.Context(), recordRef); err != nil {
+	if err := c.Publish(cmd.Context(), &routingv1.PublishRequest{
+		Request: &routingv1.PublishRequest_RecordRefs{
+			RecordRefs: &routingv1.RecordRefs{
+				Refs: []*corev1.RecordRef{recordRef},
+			},
+		},
+	}); err != nil {
 		if strings.Contains(err.Error(), "failed to announce object") {
 			return errors.New("failed to announce object, it will be retried in the background on the API server")
 		}
@@ -71,10 +74,6 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	// Success
 	presenter.Printf(cmd, "Successfully published!\n")
-
-	if opts.Network {
-		presenter.Printf(cmd, "It may take some time for the record to be propagated and discoverable across the network.\n")
-	}
 
 	return nil
 }

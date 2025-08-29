@@ -8,6 +8,7 @@ package routing.v1;
 import "google/protobuf/empty.proto";
 import "routing/v1/peer.proto";
 import "routing/v1/record_query.proto";
+import "search/v1/record_query.proto";
 import "core/v1/record.proto";
 
 // Defines an interface for announcement and discovery
@@ -46,13 +47,37 @@ service RoutingService {
 }
 
 message PublishRequest {
-  // Reference to the record to be published.
-  string record_cid = 1;
+  oneof request {
+    // References to the records to be published.
+    RecordRefs record_refs = 1;
+
+    // Queries to match against the records to be published.
+    RecordQueries queries = 2;
+
+    // TODO: Future enhancement - Publish all stored records.
+    // bool all_records = 3;
+  }
 }
 
 message UnpublishRequest {
-  // Reference to the record to be unpublished.
-  string record_cid = 1;
+  oneof request {
+    // References to the records to be unpublished.
+    RecordRefs record_refs = 1;
+
+    // Queries to match against the records to be unpublished.
+    RecordQueries queries = 2;
+
+    // TODO: Future enhancement - Unpublish all stored records.
+    // bool all_records = 3;
+  }
+}
+
+message RecordRefs {
+  repeated core.v1.RecordRef refs = 1;
+}
+
+message RecordQueries {
+  repeated search.v1.RecordQuery queries = 1;
 }
 
 message SearchRequest {

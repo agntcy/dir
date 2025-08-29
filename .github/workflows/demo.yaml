@@ -79,10 +79,10 @@ jobs:
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir push command on Peer 1"
-            bin/dirctl push e2e/testdata/agent_v1.json --server-addr 127.0.0.1:8890 > digest.txt
+            bin/dirctl push e2e/testdata/record_v1.json --server-addr 127.0.0.1:8890 > digest.txt
           else
             echo "Running dir push command"
-            bin/dirctl push e2e/testdata/agent_v1.json > digest.txt
+            bin/dirctl push e2e/testdata/record_v1.json > digest.txt
           fi
           echo "Pushed image digest:"
           cat digest.txt
@@ -92,7 +92,7 @@ jobs:
           
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir publish command on Peer 1"
-            bin/dirctl publish $(cat digest.txt) --server-addr 127.0.0.1:8890 --network
+            bin/dirctl publish $(cat digest.txt) --server-addr 127.0.0.1:8890
             echo "Waiting for publish to complete"
             sleep 120
           else
@@ -105,11 +105,11 @@ jobs:
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir list info command on Peer 1"
-            bin/dirctl list info --server-addr 127.0.0.1:8890 --network
+            bin/dirctl list info --server-addr 127.0.0.1:8890
             echo "Running dir list info command on Peer 2"
-            bin/dirctl list info --server-addr 127.0.0.1:8891 --network
+            bin/dirctl list info --server-addr 127.0.0.1:8891
             echo "Running dir list info command on Peer 3"
-            bin/dirctl list info --server-addr 127.0.0.1:8892 --network
+            bin/dirctl list info --server-addr 127.0.0.1:8892
           else
             echo "Running dir list info command"
             bin/dirctl list info
@@ -120,11 +120,11 @@ jobs:
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir list search by skill command on Peer 1"
-            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8890 --network
+            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8890
             echo "Running dir list search by skill command on Peer 2"
-            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8891 --network
+            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8891
             echo "Running dir list search by skill command on Peer 3"
-            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8892 --network
+            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8892
           else
             echo "Running dir list search by skill command"
             bin/dirctl list "/skills/Natural Language Processing"
@@ -200,7 +200,7 @@ jobs:
       - name: Push record
         run: |
           echo "Pushing record"
-          bin/dirctl push e2e/testdata/agent_v1.json > digest.txt
+          bin/dirctl push e2e/testdata/record_v1.json > digest.txt
 
       - name: Sign record
         run: |
@@ -261,7 +261,7 @@ jobs:
       - name: Push record
         run: |
           echo "Pushing record"
-          bin/dirctl push e2e/testdata/agent_v1.json > digest.txt
+          bin/dirctl push e2e/testdata/record_v1.json > digest.txt
 
       - name: Sign record
         run: |

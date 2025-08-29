@@ -56,11 +56,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 	})
 
 	ginkgo.It("should publish an record to the network on peer 1", func() {
-		cli.Publish(cid).OnServer(utils.Peer1Addr).WithArgs("--network").ShouldSucceed()
+		cli.Publish(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
 	})
 
 	ginkgo.It("should fail publish an record to the network on peer 2 that does not store the record", func() {
-		_ = cli.Publish(cid).OnServer(utils.Peer2Addr).WithArgs("--network").ShouldFail()
+		_ = cli.Publish(cid).OnServer(utils.Peer2Addr).ShouldFail()
 	})
 
 	ginkgo.It("should list by CID on all peers", func() {

@@ -22,10 +22,10 @@ enum RecordQueryType {
   // Unspecified query type.
   RECORD_QUERY_TYPE_UNSPECIFIED = 0;
 
-  // Query for an record name.
+  // Query for a record name.
   RECORD_QUERY_TYPE_NAME = 1;
 
-  // Query for an record version.
+  // Query for a record version.
   RECORD_QUERY_TYPE_VERSION = 2;
 
   // Query for a skill ID.
@@ -34,7 +34,7 @@ enum RecordQueryType {
   // Query for a skill name.
   RECORD_QUERY_TYPE_SKILL_NAME = 4;
 
-  // Query for a locator.
+  // Query for a locator type.
   RECORD_QUERY_TYPE_LOCATOR = 5;
 
   // Query for an extension.
