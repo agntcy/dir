@@ -41,7 +41,6 @@ func (c *routingCtlr) Publish(ctx context.Context, req *routingv1.PublishRequest
 		}
 
 	case *routingv1.PublishRequest_Queries:
-	case *routingv1.PublishRequest_AllRecords:
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "invalid publish request")
 	}
@@ -85,7 +84,6 @@ func (c *routingCtlr) Unpublish(ctx context.Context, req *routingv1.UnpublishReq
 		}
 
 	case *routingv1.UnpublishRequest_Queries:
-	case *routingv1.UnpublishRequest_AllRecords:
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "invalid unpublish request")
 	}

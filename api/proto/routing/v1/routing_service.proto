@@ -54,8 +54,8 @@ message PublishRequest {
     // Queries to match against the records to be published.
     RecordQueries queries = 2;
 
-    // Publish all stored records.
-    bool all_records = 3;
+    // TODO: Future enhancement - Publish all stored records.
+    // bool all_records = 3;
   }
 }
 
@@ -67,8 +67,8 @@ message UnpublishRequest {
     // Queries to match against the records to be unpublished.
     RecordQueries queries = 2;
 
-    // Unpublish all stored records.
-    bool all_records = 3;
+    // TODO: Future enhancement - Unpublish all stored records.
+    // bool all_records = 3;
   }
 }
 
