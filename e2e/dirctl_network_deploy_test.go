@@ -6,7 +6,6 @@ package e2e
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/agntcy/dir/e2e/config"
@@ -67,53 +66,51 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		_ = cli.Publish(cid).OnServer(utils.Peer2Addr).ShouldFail()
 	})
 
-	ginkgo.It("should list by CID on all peers", func() {
-		for _, addr := range utils.PeerAddrs {
-			output := cli.List().WithCid(cid).OnServer(addr).ShouldSucceed()
+	ginkgo.It("should list local records correctly (List is local-only)", func() {
+		// Reset CLI state to ensure clean test environment
+		utils.ResetCLIState()
 
-			// Extract the Peer ID/hash from the output
-			peerIndex := strings.Index(output, "Peer ")
-			gomega.Expect(peerIndex).NotTo(gomega.Equal(-1), "Peer ID not found in output")
+		// Test that List only returns records on the peer that published them
+		// Peer1 published the record, so it should find it locally
+		output := cli.List().WithCid(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
 
-			peerIDStart := peerIndex + len("Peer ")
-			peerIDEnd := strings.Index(output[peerIDStart:], "\n")
-			gomega.Expect(peerIDEnd).NotTo(gomega.Equal(-1), "Newline not found after Peer ID")
-			peerIDEnd += peerIDStart
+		// Should find the local record
+		gomega.Expect(output).To(gomega.ContainSubstring(cid))
+		gomega.Expect(output).To(gomega.ContainSubstring("Local Record"))
 
-			peerID := output[peerIDStart:peerIDEnd]
+		// Reset CLI state before testing Peer2
+		utils.ResetCLIState()
 
-			// Build the expected output string
-			expectedOutput := "Peer " + peerID + "\n" +
-				"  CID: " + cid + "\n" +
-				"  Labels: /skills/Natural Language Processing/Text Completion, /skills/Natural Language Processing/Problem Solving, /domains/research, /features/runtime/framework, /features/runtime/language"
+		// Peer2 did NOT publish the record, so List should not find it locally
+		// (even though it might be available via DHT/network)
+		output2 := cli.List().WithCid(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
 
-			// Validate the output matches the expected format
-			gomega.Expect(output).To(gomega.Equal(expectedOutput))
-		}
+		// Should NOT find the record locally on Peer2
+		gomega.Expect(output2).To(gomega.ContainSubstring("not found in local records"))
+		gomega.Expect(output2).To(gomega.ContainSubstring("Use 'dirctl search' to find providers"))
 	})
 
-	ginkgo.It("should list by skill on all peers", func() {
-		for _, addr := range utils.PeerAddrs {
-			output := cli.List().WithSkill("/skills/Natural Language Processing").OnServer(addr).ShouldSucceed()
+	ginkgo.It("should list by skill correctly on local vs remote peers", func() {
+		// Reset CLI state to ensure clean test environment
+		utils.ResetCLIState()
 
-			// Extract the Peer ID/hash from the output
-			peerIndex := strings.Index(output, "Peer ")
-			gomega.Expect(peerIndex).NotTo(gomega.Equal(-1), "Peer ID not found in output")
+		// Test Peer1 (published the record) - should find it locally
+		output1 := cli.List().WithSkill("/skills/Natural Language Processing").OnServer(utils.Peer1Addr).ShouldSucceed()
 
-			peerIDStart := peerIndex + len("Peer ")
-			peerIDEnd := strings.Index(output[peerIDStart:], "\n")
-			gomega.Expect(peerIDEnd).NotTo(gomega.Equal(-1), "Newline not found after Peer ID")
-			peerIDEnd += peerIDStart
+		// Should find the local record with expected labels
+		gomega.Expect(output1).To(gomega.ContainSubstring(cid))
+		gomega.Expect(output1).To(gomega.ContainSubstring("Local Record"))
+		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/Natural Language Processing/Text Completion"))
+		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/Natural Language Processing/Problem Solving"))
 
-			peerID := output[peerIDStart:peerIDEnd]
+		// Reset CLI state again before testing Peer2
+		utils.ResetCLIState()
 
-			// Build the expected output string
-			expectedOutput := "Peer " + peerID + "\n" +
-				"  CID: " + cid + "\n" +
-				"  Labels: /skills/Natural Language Processing/Text Completion, /skills/Natural Language Processing/Problem Solving, /domains/research, /features/runtime/framework, /features/runtime/language"
+		// Test Peer2 (did NOT publish the record) - should not find it locally
+		output2 := cli.List().WithSkill("/skills/Natural Language Processing").OnServer(utils.Peer2Addr).ShouldSucceed()
 
-			// Validate the output matches the expected format
-			gomega.Expect(output).To(gomega.Equal(expectedOutput))
-		}
+		// Should NOT find the record locally, but should show helpful message
+		gomega.Expect(output2).NotTo(gomega.ContainSubstring(cid))
+		// Note: If no local records match, CLI might show empty results or no records message
 	})
 })

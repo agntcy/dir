@@ -1,6 +1,19 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+// Package routing provides label frequency metrics for operational monitoring.
+//
+// The Metrics system tracks how many records are associated with each label
+// (skills, domains, features) on the local peer. This data is persisted to
+// the datastore and can be used for:
+//
+// - Operational monitoring and dashboards
+// - Debugging label distribution issues
+// - Future query optimization features
+// - Administrative APIs and tooling
+//
+// Metrics are automatically maintained during Publish/Unpublish operations
+// and stored at the "/metrics" datastore key in JSON format.
 package routing
 
 import (
@@ -13,13 +26,17 @@ import (
 	"github.com/ipfs/go-datastore"
 )
 
+// LabelMetric represents the frequency count for a specific label.
 type LabelMetric struct {
-	Name  string `json:"name"`  // label name
-	Total uint64 `json:"total"` // total items assigned to the label
+	Name  string `json:"name"`  // Full label name (e.g., "/skills/AI/ML", "/domains/research")
+	Total uint64 `json:"total"` // Number of local records that have this label
 }
 
+// Metrics tracks label frequency distribution for operational monitoring.
+// This provides visibility into what types of records this peer is providing
+// and can be used for debugging, monitoring, and future optimization features.
 type Metrics struct {
-	Data map[string]LabelMetric `json:"data"`
+	Data map[string]LabelMetric `json:"data"` // Map of label name → frequency count
 }
 
 func (m *Metrics) increment(label string) {
@@ -55,23 +72,11 @@ func (m *Metrics) decrement(label string) {
 	}
 }
 
-func (m *Metrics) counts() map[string]uint64 {
-	counts := make(map[string]uint64)
-	for _, metric := range m.Data {
-		counts[metric.Name] = metric.Total
-	}
+// NOTE: counts() method removed as it's no longer used in the new List API
+// The new ListResponse doesn't include label_counts field for simplicity
 
-	return counts
-}
-
-func (m *Metrics) labels() []string {
-	labels := make([]string, 0, len(m.Data))
-	for _, metric := range m.Data {
-		labels = append(labels, metric.Name)
-	}
-
-	return labels
-}
+// NOTE: labels() method removed as it's no longer used in the new List API
+// The new List API doesn't return peer statistics for empty requests
 
 func (m *Metrics) update(ctx context.Context, dstore types.Datastore) error {
 	data, err := json.Marshal(m)

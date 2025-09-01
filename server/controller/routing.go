@@ -58,17 +58,11 @@ func (c *routingCtlr) List(req *routingv1.ListRequest, srv routingv1.RoutingServ
 		return status.Errorf(st.Code(), "failed to list: %s", st.Message())
 	}
 
-	items := []*routingv1.LegacyListResponse_Item{}
-	for i := range itemChan {
-		items = append(items, i)
-	}
-
-	if err := srv.Send(&routingv1.ListResponse{
-		LegacyListResponse: &routingv1.LegacyListResponse{
-			Items: items,
-		},
-	}); err != nil {
-		return status.Errorf(codes.Internal, "failed to send list response: %v", err)
+	// Stream ListResponse items directly to the client
+	for item := range itemChan {
+		if err := srv.Send(item); err != nil {
+			return status.Errorf(codes.Internal, "failed to send list response: %v", err)
+		}
 	}
 
 	return nil
@@ -77,8 +71,21 @@ func (c *routingCtlr) List(req *routingv1.ListRequest, srv routingv1.RoutingServ
 func (c *routingCtlr) Unpublish(_ context.Context, req *routingv1.UnpublishRequest) (*emptypb.Empty, error) {
 	routingLogger.Debug("Called routing controller's Unpublish method", "req", req)
 
-	// Unpublish is intentionally not implemented.
-	// Records will be deleted from the network once their retention period (TTL) expires.
+	ref := req.GetRecordRef()
+
+	record, err := c.getRecord(ctx, ref)
+	if err != nil {
+		st := status.Convert(err)
+
+		return nil, status.Errorf(st.Code(), "failed to get record: %s", st.Message())
+	}
+
+	err = c.routing.Unpublish(ctx, ref, record)
+	if err != nil {
+		st := status.Convert(err)
+
+		return nil, status.Errorf(st.Code(), "failed to unpublish: %s", st.Message())
+	}
 
 	return &emptypb.Empty{}, nil
 }

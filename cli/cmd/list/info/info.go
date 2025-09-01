@@ -43,41 +43,45 @@ func runCommand(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Is peer set
-	var peer *routingv1.Peer
+	// Info command now shows local record statistics only (List is local-only)
 	if opts.PeerID != "" {
-		peer = &routingv1.Peer{
-			Id: opts.PeerID,
-		}
+		presenter.Printf(cmd, "Warning: --peer flag ignored. Info operation is local-only.\n")
+		presenter.Printf(cmd, "Use 'dirctl search' for network-wide statistics.\n\n")
 	}
 
-	// Set max hops when searching the network
-	maxHops := uint32(10) //nolint:mnd
+	presenter.Printf(cmd, "Local Record Summary:\n\n")
 
-	// Start the list request
+	// Get all local records
 	items, err := c.List(cmd.Context(), &routingv1.ListRequest{
-		LegacyListRequest: &routingv1.LegacyListRequest{
-			Peer:    peer,
-			MaxHops: &maxHops,
-		},
+		// No queries = list all local records
 	})
 	if err != nil {
-		return fmt.Errorf("failed to list peers: %w", err)
+		return fmt.Errorf("failed to list local records: %w", err)
 	}
 
-	// Print the results
+	// Count labels manually since we don't have label_counts in the new API
+	labelCounts := make(map[string]uint64)
+	totalRecords := 0
+
 	for item := range items {
-		peerName := item.GetPeer().GetId()
+		totalRecords++
 
-		// in case we have nothing for that host, skip
-		if len(item.GetLabelCounts()) == 0 {
-			continue
+		// Count each label
+		for _, label := range item.GetLabels() {
+			labelCounts[label]++
 		}
+	}
 
-		// otherwise, print each label and count
-		for label, count := range item.GetLabelCounts() {
-			presenter.Printf(cmd, "Peer %s | Label: %s | Total: %d\n", peerName, label, count)
+	// Print summary statistics
+	presenter.Printf(cmd, "Total Records: %d\n\n", totalRecords)
+
+	if len(labelCounts) > 0 {
+		presenter.Printf(cmd, "Label Distribution:\n")
+		for label, count := range labelCounts {
+			presenter.Printf(cmd, "  %s: %d\n", label, count)
 		}
+	} else {
+		presenter.Printf(cmd, "No labels found.\n")
 	}
 
 	return nil

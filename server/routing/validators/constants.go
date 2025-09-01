@@ -79,9 +79,9 @@ func GetNamespaceFromKey(key string) (NamespaceType, bool) {
 }
 
 const (
-	// MinLabelKeyParts defines the minimum number of parts required in a label key after splitting.
-	// Format: /type/label/CID splits into ["", "type", "label", "CID"] = 4 parts (empty first due to leading slash).
-	MinLabelKeyParts = 4
+	// MinLabelKeyParts defines the minimum number of parts required in an enhanced label key after splitting.
+	// Enhanced format: /type/label/CID/PeerID splits into ["", "type", "label", "CID", "PeerID"] = 5 parts (empty first due to leading slash).
+	MinLabelKeyParts = 5
 )
 
 const (

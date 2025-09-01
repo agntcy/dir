@@ -13,42 +13,60 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func listPeer(cmd *cobra.Command, client *client.Client, peerID string, labels []string) error {
-	// Is peer set
-	// if not, run local list only
-	var peer *routingv1.Peer
-	if peerID != "" {
-		peer = &routingv1.Peer{
-			Id: peerID,
+// convertLabelsToRecordQueries converts legacy label format to RecordQuery format.
+func convertLabelsToRecordQueries(labels []string) []*routingv1.RecordQuery {
+	var queries []*routingv1.RecordQuery
+
+	for _, label := range labels {
+		switch {
+		case strings.HasPrefix(label, "/skills/"):
+			skillName := strings.TrimPrefix(label, "/skills/")
+			queries = append(queries, &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+				Value: skillName,
+			})
+		case strings.HasPrefix(label, "locator="):
+			locatorType := strings.TrimPrefix(label, "locator=")
+			queries = append(queries, &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
+				Value: locatorType,
+			})
 		}
 	}
 
-	// Start the list request
+	return queries
+}
+
+func listPeer(cmd *cobra.Command, client *client.Client, peerID string, labels []string) error {
+	// Note: peerID is ignored since List is now local-only
+	// For querying specific peers, use Search API instead
+	if peerID != "" {
+		presenter.Printf(cmd, "Warning: --peer flag ignored. List operation is local-only.\n")
+		presenter.Printf(cmd, "Use 'dirctl search' for network-wide queries.\n\n")
+	}
+
+	// Convert legacy labels to RecordQuery format
+	queries := convertLabelsToRecordQueries(labels)
+
+	// Start the list request (local-only)
 	items, err := client.List(cmd.Context(), &routingv1.ListRequest{
-		LegacyListRequest: &routingv1.LegacyListRequest{
-			Peer:   peer,
-			Labels: labels,
-		},
+		Queries: queries,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to list peer records: %w", err)
+		return fmt.Errorf("failed to list local records: %w", err)
 	}
 
 	// Print the results
 	for item := range items {
-		var cid string
-		if ref := item.GetRef(); ref != nil {
-			cid = ref.GetCid()
-		} else {
-			cid = "unknown"
-		}
+		cid := item.GetRecordRef().GetCid()
 
 		presenter.Printf(cmd,
-			"Peer %s\n  CID: %s\n  Labels: %s\n",
-			item.GetPeer().GetId(),
+			"Local Record:\n  CID: %s\n  Labels: %s\n",
 			cid,
 			strings.Join(item.GetLabels(), ", "),
 		)
+
+		presenter.Printf(cmd, "\n")
 	}
 
 	return nil

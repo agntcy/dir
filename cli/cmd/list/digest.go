@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
@@ -19,32 +18,37 @@ const (
 )
 
 func listCid(cmd *cobra.Command, client *client.Client, cid string) error {
+	// CID-specific listing should use Search API to find providers across network
+	presenter.Printf(cmd, "Note: CID lookup should use Search API for network-wide provider discovery.\n")
+	presenter.Printf(cmd, "Checking if CID exists in local records:\n\n")
+
+	// For now, check if we have this record locally
 	items, err := client.List(cmd.Context(), &routingv1.ListRequest{
-		LegacyListRequest: &routingv1.LegacyListRequest{
-			Ref: &corev1.RecordRef{
-				Cid: cid,
-			},
-		},
+		// No queries = list all local records, then filter
 	})
 	if err != nil {
-		return fmt.Errorf("failed to list cid %s records: %w", cid, err)
+		return fmt.Errorf("failed to list local records: %w", err)
 	}
 
-	// Print the results
+	found := false
+	// Check if the requested CID exists in our local records
 	for item := range items {
-		var cid string
-		if ref := item.GetRef(); ref != nil {
-			cid = ref.GetCid()
-		} else {
-			cid = UnknownCID
-		}
+		if item.GetRecordRef().GetCid() == cid {
+			found = true
 
-		presenter.Printf(cmd,
-			"Peer %s\n  CID: %s\n  Labels: %s\n",
-			item.GetPeer().GetId(),
-			cid,
-			strings.Join(item.GetLabels(), ", "),
-		)
+			presenter.Printf(cmd,
+				"Local Record Found:\n  CID: %s\n  Labels: %s\n",
+				item.GetRecordRef().GetCid(),
+				strings.Join(item.GetLabels(), ", "),
+			)
+
+			break
+		}
+	}
+
+	if !found {
+		presenter.Printf(cmd, "CID %s not found in local records.\n", cid)
+		presenter.Printf(cmd, "Use 'dirctl search' to find providers across the network.\n")
 	}
 
 	return nil

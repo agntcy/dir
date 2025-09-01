@@ -6,9 +6,6 @@ package routing
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"path"
 	"strings"
 	"time"
 
@@ -28,18 +25,20 @@ var localLogger = logging.Logger("routing/local")
 
 // operations performed locally.
 type routeLocal struct {
-	store  types.StoreAPI
-	dstore types.Datastore
+	store       types.StoreAPI
+	dstore      types.Datastore
+	localPeerID string // Cached local peer ID for efficient filtering
 }
 
-func newLocal(store types.StoreAPI, dstore types.Datastore) *routeLocal {
+func newLocal(store types.StoreAPI, dstore types.Datastore, localPeerID string) *routeLocal {
 	return &routeLocal{
-		store:  store,
-		dstore: dstore,
+		store:       store,
+		dstore:      dstore,
+		localPeerID: localPeerID,
 	}
 }
 
-func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record, localPeerID string) error {
+func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
 	localLogger.Debug("Called local routing's Publish method", "ref", ref, "record", record)
 
 	// Validate input parameters
@@ -87,11 +86,9 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 	// Network announcements are handled separately by routing_remote when peers are available
 	labels := getLabels(record)
 	for _, label := range labels {
-		// Create metadata for local label
+		// Create minimal metadata (PeerID and CID now in key)
 		metadata := &LabelMetadata{
 			Timestamp: time.Now(),
-			PeerID:    localPeerID,
-			CID:       ref.GetCid(),
 			LastSeen:  time.Now(),
 		}
 
@@ -101,8 +98,10 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 			return status.Errorf(codes.Internal, "failed to serialize label metadata: %v", err)
 		}
 
-		// Store label key with metadata for local List queries
-		labelKey := datastore.NewKey(fmt.Sprintf("%s/%s", label, ref.GetCid()))
+		// Store with enhanced self-descriptive key: /skills/AI/CID123/Peer1
+		enhancedKey := BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
+
+		labelKey := datastore.NewKey(enhancedKey)
 		if err := batch.Put(ctx, labelKey, metadataBytes); err != nil {
 			return status.Errorf(codes.Internal, "failed to put label key: %v", err)
 		}
@@ -127,119 +126,178 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 }
 
 //nolint:cyclop
-func (r *routeLocal) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
+func (r *routeLocal) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.ListResponse, error) {
 	localLogger.Debug("Called local routing's List method", "req", req)
 
-	// dest to write the results on
-	outCh := make(chan *routingv1.LegacyListResponse_Item)
+	// Output channel for results
+	outCh := make(chan *routingv1.ListResponse)
 
-	// load metrics for the client
-	metrics, err := loadMetrics(ctx, r.dstore)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to load metrics: %v", err)
-	}
-
-	// if we sent an empty request, return us stats for the current peer
-	if req.GetLegacyListRequest().GetRef() == nil && len(req.GetLegacyListRequest().GetLabels()) == 0 {
-		go func(labels []string) {
-			defer close(outCh)
-
-			outCh <- &routingv1.LegacyListResponse_Item{
-				Labels: labels,
-				Peer: &routingv1.Peer{
-					Id: "HOST",
-				},
-				LabelCounts: metrics.counts(),
-			}
-		}(metrics.labels())
-
-		return outCh, nil
-	}
-
-	// validate request
-	if len(req.GetLegacyListRequest().GetLabels()) == 0 {
-		return nil, errors.New("no labels provided")
-	}
-
-	// get filters for not least common labels
-	var filters []query.Filter
-
-	leastCommonLabel := req.GetLegacyListRequest().GetLabels()[0]
-	for _, label := range req.GetLegacyListRequest().GetLabels() {
-		if metrics.Data[label].Total < metrics.Data[leastCommonLabel].Total {
-			leastCommonLabel = label
-		}
-	}
-
-	for _, label := range req.GetLegacyListRequest().GetLabels() {
-		if label != leastCommonLabel {
-			filters = append(filters, &labelFilter{
-				dstore: r.dstore,
-				ctx:    ctx,
-				label:  label,
-			})
-		}
-	}
-
-	// start query
-	res, err := r.dstore.Query(ctx, query.Query{
-		Prefix:  leastCommonLabel,
-		Filters: filters,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to query datastore: %v", err)
-	}
-
-	// process items in the background, done in best effort mode
+	// Process in background
 	go func() {
 		defer close(outCh)
-
-		processedRecordCids := make(map[string]struct{})
-
-		for entry := range res.Next() {
-			// read record cid from datastore key
-			cid := path.Base(entry.Key)
-
-			if _, ok := processedRecordCids[cid]; ok {
-				continue
-			}
-
-			processedRecordCids[cid] = struct{}{}
-
-			ref := &corev1.RecordRef{
-				Cid: cid,
-			}
-
-			// lookup record
-			_, err := r.store.Lookup(ctx, ref)
-			if err != nil {
-				localLogger.Error("failed to lookup record", "error", err)
-
-				continue
-			}
-
-			// get record from peer
-			record, err := r.store.Pull(ctx, ref)
-			if err != nil {
-				localLogger.Error("failed to pull record", "error", err)
-
-				continue
-			}
-
-			labels := getLabels(record)
-
-			// forward results back
-			outCh <- &routingv1.LegacyListResponse_Item{
-				Labels: labels,
-				Peer: &routingv1.Peer{
-					Id: "HOST",
-				},
-				Ref: ref,
-			}
-		}
+		r.listLocalRecords(ctx, req.GetQueries(), req.GetLimit(), outCh)
 	}()
 
 	return outCh, nil
+}
+
+// listLocalRecords lists all local records with optional query filtering.
+// Uses the simple and efficient approach: start with /records/ index, then filter by queries.
+func (r *routeLocal) listLocalRecords(ctx context.Context, queries []*routingv1.RecordQuery, limit uint32, outCh chan<- *routingv1.ListResponse) {
+	processedCount := 0
+	limitInt := int(limit)
+
+	// Step 1: Get all local record CIDs from /records/ index
+	recordResults, err := r.dstore.Query(ctx, query.Query{
+		Prefix: "/records/",
+	})
+	if err != nil {
+		localLogger.Error("Failed to query local records", "error", err)
+
+		return
+	}
+	defer recordResults.Close()
+
+	// Step 2: For each local record, check if it matches ALL queries
+	for result := range recordResults.Next() {
+		if result.Error != nil {
+			localLogger.Warn("Error reading record entry", "key", result.Key, "error", result.Error)
+
+			continue
+		}
+
+		// Extract CID from record key: /records/CID123 → CID123
+		cid := strings.TrimPrefix(result.Key, "/records/")
+		if cid == "" {
+			continue
+		}
+
+		// Check if this record matches all queries (AND relationship)
+		if r.matchesAllQueries(ctx, cid, queries) {
+			// Get labels for this record
+			labels := r.getRecordLabelsEfficiently(ctx, cid)
+
+			// Send the response
+			outCh <- &routingv1.ListResponse{
+				RecordRef: &corev1.RecordRef{Cid: cid},
+				Labels:    labels,
+			}
+
+			processedCount++
+			if limitInt > 0 && processedCount >= limitInt {
+				break
+			}
+		}
+	}
+
+	localLogger.Debug("Completed List operation", "processed", processedCount, "queries", len(queries))
+}
+
+// matchesAllQueries checks if a record matches ALL provided queries (AND relationship).
+func (r *routeLocal) matchesAllQueries(ctx context.Context, cid string, queries []*routingv1.RecordQuery) bool {
+	if len(queries) == 0 {
+		return true // No filters = match everything
+	}
+
+	// Get all labels for this record
+	recordLabels := r.getRecordLabelsEfficiently(ctx, cid)
+
+	// ALL queries must match (AND relationship)
+	for _, query := range queries {
+		if !r.queryMatchesLabels(query, recordLabels) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// queryMatchesLabels checks if a query matches against the record's labels.
+func (r *routeLocal) queryMatchesLabels(query *routingv1.RecordQuery, labels []string) bool {
+	switch query.GetType() {
+	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL:
+		// Check if any skill label matches the query
+		skillPrefix := validators.NamespaceSkills.Prefix()
+		targetSkill := skillPrefix + query.GetValue()
+
+		for _, label := range labels {
+			// Exact match: /skills/category1/class1 matches "category1/class1"
+			if label == targetSkill {
+				return true
+			}
+			// Prefix match: /skills/category2/class2 matches "category2"
+			if strings.HasPrefix(label, targetSkill+"/") {
+				return true
+			}
+		}
+
+		return false
+
+	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
+		// For locators, check if locator value is found in labels
+		return strings.Contains(strings.Join(labels, " "), query.GetValue())
+
+	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
+		// Unspecified queries match everything
+		return true
+
+	default:
+		localLogger.Warn("Unknown query type", "type", query.GetType())
+
+		return false
+	}
+}
+
+// getRecordLabelsEfficiently gets labels for a record by extracting them from datastore keys.
+// This completely avoids expensive Pull operations by using the fact that labels are stored as keys.
+// This function is designed to be resilient - it never returns an error, only logs warnings.
+func (r *routeLocal) getRecordLabelsEfficiently(ctx context.Context, cid string) []string {
+	var labels []string
+
+	// Query each namespace to find labels for this CID
+	namespaces := []string{
+		validators.NamespaceSkills.Prefix(),
+		validators.NamespaceDomains.Prefix(),
+		validators.NamespaceFeatures.Prefix(),
+	}
+
+	for _, namespace := range namespaces {
+		// Query all keys in this namespace
+		results, err := r.dstore.Query(ctx, query.Query{
+			Prefix: namespace,
+		})
+		if err != nil {
+			localLogger.Warn("Failed to query namespace for labels", "namespace", namespace, "cid", cid, "error", err)
+
+			continue
+		}
+
+		// Find keys for this CID and local peer: "/skills/AI/ML/CID123/Peer1"
+		for result := range results.Next() {
+			if result.Error != nil {
+				localLogger.Warn("Error reading label key", "key", result.Key, "error", result.Error)
+
+				continue
+			}
+
+			// Parse the enhanced key to get components
+			label, keyCID, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
+			if err != nil {
+				localLogger.Warn("Failed to parse enhanced label key", "key", result.Key, "error", err)
+
+				continue
+			}
+
+			// Check if this key matches our CID and is from local peer
+			if keyCID == cid && keyPeerID == r.localPeerID {
+				labels = append(labels, label)
+			}
+		}
+
+		results.Close()
+	}
+
+	return labels
 }
 
 func (r *routeLocal) Unpublish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
@@ -275,10 +333,12 @@ func (r *routeLocal) Unpublish(ctx context.Context, ref *corev1.RecordRef, recor
 	labels := getLabels(record)
 
 	for _, label := range labels {
-		// Delete key with cid
-		labelKey := fmt.Sprintf("%s/%s", label, ref.GetCid())
-		if err := batch.Delete(ctx, datastore.NewKey(labelKey)); err != nil {
-			return status.Errorf(codes.Internal, "failed to delete skill key: %v", err)
+		// Delete enhanced key with CID and PeerID
+		enhancedKey := BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
+
+		labelKey := datastore.NewKey(enhancedKey)
+		if err := batch.Delete(ctx, labelKey); err != nil {
+			return status.Errorf(codes.Internal, "failed to delete label key: %v", err)
 		}
 
 		metrics.decrement(label)
@@ -298,23 +358,6 @@ func (r *routeLocal) Unpublish(ctx context.Context, ref *corev1.RecordRef, recor
 	localLogger.Info("Successfully unpublished record", "ref", ref)
 
 	return nil
-}
-
-var _ query.Filter = (*labelFilter)(nil)
-
-//nolint:containedctx
-type labelFilter struct {
-	dstore types.Datastore
-	ctx    context.Context
-
-	label string
-}
-
-func (s *labelFilter) Filter(e query.Entry) bool {
-	cid := path.Base(e.Key)
-	has, _ := s.dstore.Has(s.ctx, datastore.NewKey(fmt.Sprintf("%s/%s", s.label, cid)))
-
-	return has
 }
 
 func getLabels(record *corev1.Record) []string {

@@ -5,29 +5,22 @@ package routing
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"time"
+
+	"github.com/agntcy/dir/server/routing/validators"
 )
 
-// LabelMetadata stores metadata about label announcements for cleanup tracking.
-// This is used by both local and remote routing to track label lifecycle.
+// The PeerID and CID are now stored in the key structure: /skills/AI/CID123/Peer1.
 type LabelMetadata struct {
 	Timestamp time.Time `json:"timestamp"` // When label was first announced
-	PeerID    string    `json:"peer_id"`   // ID of peer that announced the label
-	CID       string    `json:"cid"`       // Content identifier associated with label
 	LastSeen  time.Time `json:"last_seen"` // When label was last seen/refreshed
 }
 
 // Validate checks if the metadata is valid and all required fields are properly set.
 // Returns an error if any validation fails.
 func (m *LabelMetadata) Validate() error {
-	if m.PeerID == "" {
-		return errors.New("peer ID cannot be empty")
-	}
-
-	if m.CID == "" {
-		return errors.New("CID cannot be empty")
-	}
-
 	if m.Timestamp.IsZero() {
 		return errors.New("timestamp cannot be zero")
 	}
@@ -60,7 +53,56 @@ func (m *LabelMetadata) Update() {
 	m.LastSeen = time.Now()
 }
 
-// IsLocal checks if this label belongs to the given local peer ID.
-func (m *LabelMetadata) IsLocal(localPeerID string) bool {
-	return m.PeerID == localPeerID
+// Example: /skills/AI/ML/CID123/Peer1.
+func BuildEnhancedLabelKey(label, cid, peerID string) string {
+	return fmt.Sprintf("%s/%s/%s", label, cid, peerID)
+}
+
+// Example: "/skills/AI/ML/CID123/Peer1" → ("skills/AI/ML", "CID123", "Peer1", nil).
+//
+//nolint:nonamedreturns // Named returns improve readability for multiple related string values
+func ParseEnhancedLabelKey(key string) (label, cid, peerID string, err error) {
+	if !strings.HasPrefix(key, "/") {
+		return "", "", "", errors.New("key must start with /")
+	}
+
+	parts := strings.Split(key, "/")
+	if len(parts) < validators.MinLabelKeyParts {
+		return "", "", "", errors.New("key must have at least namespace/path/CID/PeerID")
+	}
+
+	// Extract PeerID (last part) and CID (second to last part)
+	peerID = parts[len(parts)-1]
+	cid = parts[len(parts)-2]
+
+	// Extract label (everything except the last two parts)
+	labelParts := parts[1 : len(parts)-2] // Skip empty first part and last two parts
+	label = "/" + strings.Join(labelParts, "/")
+
+	return label, cid, peerID, nil
+}
+
+// ExtractPeerIDFromKey extracts just the PeerID from a self-descriptive key.
+func ExtractPeerIDFromKey(key string) string {
+	parts := strings.Split(key, "/")
+	if len(parts) < validators.MinLabelKeyParts {
+		return ""
+	}
+
+	return parts[len(parts)-1]
+}
+
+// ExtractCIDFromKey extracts just the CID from a self-descriptive key.
+func ExtractCIDFromKey(key string) string {
+	parts := strings.Split(key, "/")
+	if len(parts) < validators.MinLabelKeyParts {
+		return ""
+	}
+
+	return parts[len(parts)-2]
+}
+
+// IsLocalKey checks if a key belongs to the given local peer ID.
+func IsLocalKey(key, localPeerID string) bool {
+	return ExtractPeerIDFromKey(key) == localPeerID
 }

@@ -53,24 +53,24 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 		return nil, fmt.Errorf("failed to create routing datastore: %w", err)
 	}
 
-	// Create local router
-	mainRounter.local = newLocal(store, dstore)
-
-	// Create remote router
-	mainRounter.remote, err = newRemote(ctx, mainRounter, store, dstore, opts)
+	// Create remote router first to get the peer ID
+	mainRounter.remote, err = newRemote(ctx, store, dstore, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create remote routing: %w", err)
 	}
+
+	// Get local peer ID from the remote server host
+	localPeerID := mainRounter.remote.server.Host().ID().String()
+
+	// Create local router with peer ID
+	mainRounter.local = newLocal(store, dstore, localPeerID)
 
 	return mainRounter, nil
 }
 
 func (r *route) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
-	// Get local peer ID from the remote server host
-	localPeerID := r.remote.server.Host().ID().String()
-
 	// Always publish data locally for archival/querying
-	err := r.local.Publish(ctx, ref, record, localPeerID)
+	err := r.local.Publish(ctx, ref, record)
 	if err != nil {
 		st := status.Convert(err)
 
@@ -90,16 +90,9 @@ func (r *route) Publish(ctx context.Context, ref *corev1.RecordRef, record *core
 	return nil
 }
 
-func (r *route) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
-	// Use remote routing when:
-	// 1. Looking for a specific record (cid) - to find providers across the network
-	// 2. MaxHops is set - indicates network traversal
-	// But only if we have peers available for network operations
-	if (req.GetLegacyListRequest().GetRef() != nil || req.GetLegacyListRequest().GetMaxHops() > 0) && r.hasPeersInRoutingTable() {
-		return r.remote.List(ctx, req)
-	}
-
-	// Otherwise use local routing
+func (r *route) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.ListResponse, error) {
+	// List is always local-only - it returns records that this peer is currently providing
+	// This operation does not interact with the network (per proto comment)
 	return r.local.List(ctx, req)
 }
 

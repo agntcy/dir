@@ -18,8 +18,8 @@ type RoutingAPI interface {
 	// Publish record to the network
 	Publish(context.Context, *corev1.RecordRef, *corev1.Record) error
 
-	// Search records from the network
-	List(context.Context, *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error)
+	// List all records that this peer is currently providing (local-only operation)
+	List(context.Context, *routingv1.ListRequest) (<-chan *routingv1.ListResponse, error)
 
 	// Unpublish record from the network
 	Unpublish(context.Context, *corev1.RecordRef, *corev1.Record) error

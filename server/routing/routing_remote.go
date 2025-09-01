@@ -6,14 +6,11 @@ package routing
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path"
-	"strings"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/routing/rpc"
 	validators "github.com/agntcy/dir/server/routing/validators"
@@ -26,7 +23,6 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	record "github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -46,7 +42,6 @@ type routeRemote struct {
 
 //nolint:mnd
 func newRemote(ctx context.Context,
-	parentRouter types.RoutingAPI,
 	storeAPI types.StoreAPI,
 	dstore types.Datastore,
 	opts types.APIOptions,
@@ -110,7 +105,7 @@ func newRemote(ctx context.Context,
 	routeAPI.server = server
 
 	// Register RPC server
-	rpcService, err := rpc.New(server.Host(), storeAPI, parentRouter)
+	rpcService, err := rpc.New(server.Host(), storeAPI)
 	if err != nil {
 		defer server.Close()
 
@@ -159,135 +154,9 @@ func (r *routeRemote) Publish(ctx context.Context, ref *corev1.RecordRef, record
 	return nil
 }
 
-//nolint:mnd,cyclop
-func (r *routeRemote) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
-	remoteLogger.Debug("Called remote routing's List method for network operations", "req", req)
-
-	// list data from remote for a given peer.
-	// this returns all the records that fully match our query.
-	if req.GetLegacyListRequest().GetPeer() != nil {
-		remoteLogger.Info("Listing data for peer", "req", req)
-
-		resp, err := r.service.List(ctx, []peer.ID{peer.ID(req.GetLegacyListRequest().GetPeer().GetId())}, &routingv1.ListRequest{
-			LegacyListRequest: &routingv1.LegacyListRequest{
-				Labels: req.GetLegacyListRequest().GetLabels(),
-			},
-		})
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to list data on remote: %v", err)
-		}
-
-		return resp, nil
-	}
-
-	// get specific record from all remote peers hosting it
-	// this returns all the peers that are holding requested record
-	if ref := req.GetLegacyListRequest().GetRef(); ref != nil {
-		remoteLogger.Info("Listing data for record", "ref", ref)
-
-		// get record CID
-		decodedCID, err := cid.Decode(ref.GetCid())
-		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "failed to parse CID: %v", err)
-		}
-
-		// find using the DHT
-		provs, err := r.server.DHT().FindProviders(ctx, decodedCID)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to find object providers: %v", err)
-		}
-
-		if len(provs) == 0 {
-			return nil, status.Errorf(codes.NotFound, "no providers found for object: %s", ref.GetCid())
-		}
-
-		// stream results back
-		resCh := make(chan *routingv1.LegacyListResponse_Item, ResultChannelBufferSize)
-		go func(provs []peer.AddrInfo, ref *corev1.RecordRef) {
-			defer close(resCh)
-
-			for _, prov := range provs {
-				// pull record from peer
-				// TODO: this is not optional because we pull everything
-				// just for the sake of showing the result
-				record, err := r.service.Pull(ctx, prov.ID, ref)
-				if err != nil {
-					remoteLogger.Error("failed to pull record", "error", err)
-
-					continue
-				}
-
-				// get record
-				labels := getLabels(record)
-
-				// peer addrs to string
-				var addrs []string
-				for _, addr := range prov.Addrs {
-					addrs = append(addrs, addr.String())
-				}
-
-				remoteLogger.Info("Found an announced record", "ref", ref, "peer", prov.ID, "labels", strings.Join(labels, ", "), "addrs", strings.Join(addrs, ", "))
-
-				// send back to caller
-				resCh <- &routingv1.LegacyListResponse_Item{
-					Ref:    ref,
-					Labels: labels,
-					Peer: &routingv1.Peer{
-						Id:    prov.ID.String(),
-						Addrs: addrs,
-					},
-				}
-			}
-		}(provs, ref)
-
-		return resCh, nil
-	}
-
-	// run a query across peers, keep forwarding until we exhaust the hops
-	// TODO: this is a naive implementation, reconsider better selection of peers and scheduling.
-	remoteLogger.Info("Listing data for all peers", "req", req)
-
-	// resolve hops
-	if req.GetLegacyListRequest().GetMaxHops() > MaxHops {
-		return nil, errors.New("max hops exceeded")
-	}
-
-	//nolint:protogetter
-	if req.LegacyListRequest.MaxHops != nil && *req.LegacyListRequest.MaxHops > 0 {
-		*req.LegacyListRequest.MaxHops--
-	}
-
-	// run in the background
-	resCh := make(chan *routingv1.LegacyListResponse_Item, ResultChannelBufferSize)
-	go func(ctx context.Context, req *routingv1.ListRequest) {
-		defer close(resCh)
-
-		// get data from peers (list what each of our connected peers has)
-		resp, err := r.service.List(ctx, r.server.Host().Peerstore().Peers(), &routingv1.ListRequest{
-			LegacyListRequest: &routingv1.LegacyListRequest{
-				Peer:    req.GetLegacyListRequest().GetPeer(),
-				Labels:  req.GetLegacyListRequest().GetLabels(),
-				Ref:     req.GetLegacyListRequest().GetRef(),
-				MaxHops: req.LegacyListRequest.MaxHops, //nolint:protogetter
-			},
-		})
-		if err != nil {
-			remoteLogger.Error("failed to list from peer over the network", "error", err)
-
-			return
-		}
-
-		// TODO: crawl by continuing the walk based on hop count
-		// IMPORTANT: do we really want to use other nodes as hops or our peers are enough?
-
-		// pass the results back
-		for item := range resp {
-			resCh <- item
-		}
-	}(ctx, req)
-
-	return resCh, nil
-}
+// NOTE: List method removed from routeRemote
+// List is a local-only operation that should never interact with the network
+// Use Search for network-wide discovery instead
 
 func (r *routeRemote) handleNotify(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
@@ -314,98 +183,54 @@ func (r *routeRemote) handleNotify(ctx context.Context) {
 
 // handleLabelNotification handles notifications for label announcements.
 func (r *routeRemote) handleLabelNotification(ctx context.Context, notif *handlerSync) {
-	remoteLogger.Info("Processing label announcement",
-		"label", notif.LabelKey, "cid", notif.Ref.GetCid(), "peer", notif.Peer.ID)
+	remoteLogger.Info("Processing enhanced label announcement",
+		"enhanced_key", notif.LabelKey, "cid", notif.Ref.GetCid(), "peer", notif.Peer.ID)
 
-	labelKey := datastore.NewKey(notif.LabelKey)
 	now := time.Now()
 
-	// Get or create label metadata
-	metadata := r.getOrCreateLabelMetadata(ctx, labelKey, notif, now)
+	// The notif.LabelKey is already in enhanced format: /skills/AI/CID123/Peer1
+	enhancedKey := datastore.NewKey(notif.LabelKey)
+
+	// Check if we already have this exact label from this peer
+	var metadata *LabelMetadata
+
+	if existingData, err := r.dstore.Get(ctx, enhancedKey); err == nil {
+		// Update existing metadata
+		var existingMetadata LabelMetadata
+		if err := json.Unmarshal(existingData, &existingMetadata); err == nil {
+			existingMetadata.Update()
+			metadata = &existingMetadata
+		}
+	}
+
+	// Create new metadata if we couldn't update existing
 	if metadata == nil {
-		return // Error already logged in helper function
+		metadata = &LabelMetadata{
+			Timestamp: now,
+			LastSeen:  now,
+		}
 	}
 
 	// Serialize metadata to JSON
 	metadataBytes, err := json.Marshal(metadata)
 	if err != nil {
 		remoteLogger.Error("Failed to serialize label metadata",
-			"label", notif.LabelKey, "error", err)
+			"enhanced_key", notif.LabelKey, "error", err)
 
 		return
 	}
 
-	// Store the remote label mapping with metadata in our shared datastore
-	// This allows us to discover this remote content via label searches
-	err = r.dstore.Put(ctx, labelKey, metadataBytes)
+	// Store with the enhanced key directly
+	err = r.dstore.Put(ctx, enhancedKey, metadataBytes)
 	if err != nil {
 		remoteLogger.Error("Failed to store remote label announcement",
-			"label", notif.LabelKey, "error", err)
+			"enhanced_key", notif.LabelKey, "error", err)
 
 		return
 	}
 
 	remoteLogger.Info("Successfully stored remote label announcement",
-		"label", notif.LabelKey, "peer", notif.Peer.ID)
-}
-
-// getOrCreateLabelMetadata retrieves existing label metadata or creates new metadata if needed.
-func (r *routeRemote) getOrCreateLabelMetadata(ctx context.Context, labelKey datastore.Key, notif *handlerSync, now time.Time) *LabelMetadata {
-	// Try to get existing metadata
-	if metadata := r.getExistingLabelMetadata(ctx, labelKey, notif.LabelKey); metadata != nil {
-		metadata.Update()
-		remoteLogger.Debug("Updated existing remote label LastSeen",
-			"label", notif.LabelKey, "peer", notif.Peer.ID)
-
-		return metadata
-	}
-
-	// Create new metadata
-	metadata := &LabelMetadata{
-		Timestamp: now,
-		PeerID:    notif.Peer.ID.String(),
-		CID:       notif.Ref.GetCid(),
-		LastSeen:  now,
-	}
-
-	// Validate new metadata
-	if err := metadata.Validate(); err != nil {
-		remoteLogger.Error("Created invalid label metadata",
-			"label", notif.LabelKey, "error", err)
-
-		return nil
-	}
-
-	remoteLogger.Debug("Created new remote label metadata",
-		"label", notif.LabelKey, "peer", notif.Peer.ID)
-
-	return metadata
-}
-
-// getExistingLabelMetadata attempts to retrieve and validate existing label metadata.
-func (r *routeRemote) getExistingLabelMetadata(ctx context.Context, labelKey datastore.Key, labelKeyStr string) *LabelMetadata {
-	existingData, err := r.dstore.Get(ctx, labelKey)
-	if err != nil {
-		return nil // Label doesn't exist
-	}
-
-	var metadata LabelMetadata
-	if err := json.Unmarshal(existingData, &metadata); err != nil {
-		remoteLogger.Warn("Failed to unmarshal existing label metadata, creating new",
-			"label", labelKeyStr, "error", err)
-
-		return nil
-	}
-
-	// Validate existing metadata
-	if err := metadata.Validate(); err != nil {
-		remoteLogger.Warn("Existing label metadata is invalid, creating new",
-			"label", labelKeyStr, "error", err)
-
-		return nil
-	}
-
-	return &metadata
+		"enhanced_key", notif.LabelKey, "peer", notif.Peer.ID)
 }
 
 // "I have this content", while label announcements indicate "this content has these labels".
@@ -512,20 +337,22 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 			continue
 		}
 
-		// Republish all label mappings for this record
+		// Republish all label mappings for this record using enhanced format
 		labels := getLabels(record)
+		localPeerID := r.server.Host().ID().String()
+
 		for _, label := range labels {
-			// Use proper validator-compatible DHT key format
-			dhtKey := validators.FormatLabelKey(label, cid)
+			// Use enhanced self-descriptive DHT key format
+			enhancedKey := BuildEnhancedLabelKey(label, cid, localPeerID)
 
 			// Republish label mapping to DHT network
-			err = r.server.DHT().PutValue(ctx, dhtKey, []byte(cid))
+			err = r.server.DHT().PutValue(ctx, enhancedKey, []byte(cid))
 			if err != nil {
-				remoteLogger.Warn("Failed to republish label mapping", "label", dhtKey, "error", err)
+				remoteLogger.Warn("Failed to republish enhanced label mapping", "enhanced_key", enhancedKey, "error", err)
 
 				errorCount++
 			} else {
-				remoteLogger.Debug("Successfully republished label mapping", "label", dhtKey)
+				remoteLogger.Debug("Successfully republished enhanced label mapping", "enhanced_key", enhancedKey)
 
 				republishedCount++
 			}
@@ -542,17 +369,19 @@ func (r *routeRemote) republishLocalLabels(ctx context.Context) {
 		"republished", republishedCount, "errors", errorCount, "orphaned", len(orphanedCIDs))
 }
 
-// announceLabelToDHT announces a label mapping to the DHT network.
+// announceLabelToDHT announces a label mapping to the DHT network using enhanced key format.
 func (r *routeRemote) announceLabelToDHT(ctx context.Context, label, cidStr string) {
-	// Announce to DHT network using proper validator-compatible key format
-	// This automatically stores in the shared datastore AND announces to the network
-	dhtKey := validators.FormatLabelKey(label, cidStr)
-	err := r.server.DHT().PutValue(ctx, dhtKey, []byte(cidStr))
+	// Get local peer ID for enhanced key
+	localPeerID := r.server.Host().ID().String()
+
+	// Announce to DHT network using enhanced self-descriptive key format
+	enhancedKey := BuildEnhancedLabelKey(label, cidStr, localPeerID)
+	err := r.server.DHT().PutValue(ctx, enhancedKey, []byte(cidStr))
 
 	if err != nil {
-		remoteLogger.Warn("Failed to announce label to DHT", "label", dhtKey, "error", err)
+		remoteLogger.Warn("Failed to announce enhanced label to DHT", "enhanced_key", enhancedKey, "error", err)
 	} else {
-		remoteLogger.Debug("Successfully announced label to DHT", "label", dhtKey)
+		remoteLogger.Debug("Successfully announced enhanced label to DHT", "enhanced_key", enhancedKey)
 	}
 }
 
@@ -567,48 +396,16 @@ type remoteLabelFilter struct {
 }
 
 func (f *remoteLabelFilter) Filter(e query.Entry) bool {
-	// Extract CID from label key using validators utility
-	cidStr, err := validators.ExtractCIDFromLabelKey(e.Key)
-	if err != nil {
-		// Invalid label key format, skip it
-		return false
-	}
-
-	// Check if we have a local record for this CID
-	recordKey := datastore.NewKey("/records/" + cidStr)
-
-	exists, err := f.dstore.Has(f.ctx, recordKey)
-	if err != nil {
-		// On error, assume it's remote to be safe
+	// With enhanced keys, we can check PeerID directly from the key
+	// Key format: /skills/AI/CID123/Peer1
+	keyPeerID := ExtractPeerIDFromKey(e.Key)
+	if keyPeerID == "" {
+		// Invalid key format, assume remote to be safe
 		return true
 	}
 
-	// If no local record exists, this is a remote label
-	if !exists {
-		return true
-	}
-
-	// If local record exists, check the metadata to confirm it's from a different peer
-	labelData, err := f.dstore.Get(f.ctx, datastore.NewKey(e.Key))
-	if err != nil {
-		// Can't read metadata, assume remote to be safe
-		return true
-	}
-
-	var metadata LabelMetadata
-	if err := json.Unmarshal(labelData, &metadata); err != nil {
-		// Can't parse metadata, assume remote to be safe
-		return true
-	}
-
-	// Validate metadata before checking if it's local
-	if err := metadata.Validate(); err != nil {
-		// Invalid metadata, assume remote to be safe
-		return true
-	}
-
-	// It's remote if it's not local to our peer
-	return !metadata.IsLocal(f.localPeerID)
+	// It's remote if the PeerID in the key is not our local peer
+	return keyPeerID != f.localPeerID
 }
 
 // cleanupStaleRemoteLabels removes remote labels that haven't been seen recently.
@@ -656,6 +453,17 @@ func (r *routeRemote) cleanupStaleRemoteLabels(ctx context.Context) error {
 			continue
 		}
 
+		// Parse enhanced key to get peer information
+		_, _, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
+		if err != nil {
+			remoteLogger.Warn("Failed to parse enhanced label key, marking for deletion",
+				"key", result.Key, "error", err)
+
+			staleKeys = append(staleKeys, datastore.NewKey(result.Key))
+
+			continue
+		}
+
 		var metadata LabelMetadata
 		if err := json.Unmarshal(result.Value, &metadata); err != nil {
 			remoteLogger.Warn("Failed to parse label metadata, marking for deletion",
@@ -679,7 +487,7 @@ func (r *routeRemote) cleanupStaleRemoteLabels(ctx context.Context) error {
 		// Check if label is stale using the IsStale method
 		if metadata.IsStale(MaxLabelAge) {
 			remoteLogger.Debug("Found stale remote label",
-				"key", result.Key, "age", metadata.Age(), "peer", metadata.PeerID)
+				"key", result.Key, "age", metadata.Age(), "peer", keyPeerID)
 
 			staleKeys = append(staleKeys, datastore.NewKey(result.Key))
 		}
@@ -783,36 +591,30 @@ func (r *routeRemote) cleanupLabelsForCID(ctx context.Context, cid string) bool 
 		defer labelResults.Close()
 
 		for result := range labelResults.Next() {
-			// Check if this label key ends with our CID
-			if !strings.HasSuffix(result.Key, "/"+cid) {
+			// Parse enhanced key to get CID and PeerID
+			_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
+			if err != nil {
+				remoteLogger.Warn("Failed to parse enhanced label key during cleanup, deleting",
+					"key", result.Key, "error", err)
+				// Delete malformed keys
+				if err := batch.Delete(ctx, datastore.NewKey(result.Key)); err == nil {
+					keysDeleted++
+				}
+
 				continue
 			}
 
-			// Verify this is a local label by checking metadata
-			var metadata LabelMetadata
-			if err := json.Unmarshal(result.Value, &metadata); err != nil {
-				// If we can't parse metadata, delete it to be safe
-				remoteLogger.Warn("Failed to parse label metadata during cleanup, deleting",
-					"key", result.Key, "error", err)
-			} else {
-				// Validate metadata before checking if it's local
-				if err := metadata.Validate(); err != nil {
-					remoteLogger.Warn("Invalid label metadata during cleanup, deleting",
-						"key", result.Key, "error", err)
-				} else if !metadata.IsLocal(localPeerID) {
-					// Skip remote labels
-					continue
+			// Check if this key matches our CID and is from local peer
+			if keyCID == cid && keyPeerID == localPeerID {
+				// Delete this local label
+				labelKey := datastore.NewKey(result.Key)
+				if err := batch.Delete(ctx, labelKey); err != nil {
+					remoteLogger.Warn("Failed to delete label key", "key", labelKey.String(), "error", err)
+				} else {
+					keysDeleted++
+
+					remoteLogger.Debug("Scheduled orphaned label for deletion", "key", result.Key)
 				}
-			}
-
-			// Delete this local label
-			labelKey := datastore.NewKey(result.Key)
-			if err := batch.Delete(ctx, labelKey); err != nil {
-				remoteLogger.Warn("Failed to delete label key", "key", labelKey.String(), "error", err)
-			} else {
-				keysDeleted++
-
-				remoteLogger.Debug("Scheduled orphaned label for deletion", "key", result.Key)
 			}
 		}
 	}

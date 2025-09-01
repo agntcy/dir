@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,10 +27,10 @@ import (
 const testPeerID = "test-peer-id"
 
 func TestPublish_InvalidObject(t *testing.T) {
-	r := &routeLocal{}
+	r := &routeLocal{localPeerID: testPeerID}
 
 	t.Run("Invalid object", func(t *testing.T) {
-		err := r.Publish(t.Context(), nil, &corev1.Record{}, testPeerID)
+		err := r.Publish(t.Context(), nil, &corev1.Record{})
 
 		assert.Error(t, err)
 		assert.ErrorContains(t, err, "record reference is required")
@@ -149,16 +150,24 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 
 	for k, v := range validQueriesWithExpectedObjectRef {
 		t.Run("Valid query: "+k, func(t *testing.T) {
+			// Convert label to RecordQuery
+			var queries []*routingv1.RecordQuery
+			if strings.HasPrefix(k, "/skills/") {
+				skillName := strings.TrimPrefix(k, "/skills/")
+				queries = append(queries, &routingv1.RecordQuery{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+					Value: skillName,
+				})
+			}
+
 			// list
 			refsChan, err := r.List(t.Context(), &routingv1.ListRequest{
-				LegacyListRequest: &routingv1.LegacyListRequest{
-					Labels: []string{k},
-				},
+				Queries: queries,
 			})
 			assert.NoError(t, err)
 
 			// Collect items from the channel
-			var refs []*routingv1.LegacyListResponse_Item
+			var refs []*routingv1.ListResponse
 			for ref := range refsChan {
 				refs = append(refs, ref)
 			}
@@ -171,7 +180,7 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 				found := false
 
 				for _, ref := range refs {
-					if ref.GetRef().GetCid() == expectedRef.GetCid() {
+					if ref.GetRecordRef().GetCid() == expectedRef.GetCid() {
 						found = true
 
 						break
@@ -187,16 +196,19 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	err = r.Unpublish(t.Context(), testRef2, testRecord2)
 	assert.NoError(t, err)
 
-	// Try to list second record
+	// Try to list second record using RecordQuery
 	refsChan, err := r.List(t.Context(), &routingv1.ListRequest{
-		LegacyListRequest: &routingv1.LegacyListRequest{
-			Labels: []string{"/skills/category2"},
+		Queries: []*routingv1.RecordQuery{
+			{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+				Value: "category2",
+			},
 		},
 	})
 	assert.NoError(t, err)
 
 	// Collect items from the channel
-	var refs []*routingv1.LegacyListResponse_Item //nolint:prealloc
+	var refs []*routingv1.ListResponse //nolint:prealloc
 	for ref := range refsChan {
 		refs = append(refs, ref)
 	}
@@ -243,16 +255,23 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("Valid multi skill query", func(t *testing.T) {
-		// list
+		// list with multiple RecordQueries (AND logic)
 		refsChan, err := r.List(t.Context(), &routingv1.ListRequest{
-			LegacyListRequest: &routingv1.LegacyListRequest{
-				Labels: []string{"/skills/category1/class1", "/skills/category2/class2"},
+			Queries: []*routingv1.RecordQuery{
+				{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+					Value: "category1/class1",
+				},
+				{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+					Value: "category2/class2",
+				},
 			},
 		})
 		assert.NoError(t, err)
 
 		// Collect items from the channel
-		var refs []*routingv1.LegacyListResponse_Item
+		var refs []*routingv1.ListResponse
 		for ref := range refsChan {
 			refs = append(refs, ref)
 		}
@@ -261,7 +280,7 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 		assert.Len(t, refs, 1)
 
 		// check if expected ref is present
-		assert.Equal(t, testRef.GetCid(), refs[0].GetRef().GetCid())
+		assert.Equal(t, testRef.GetCid(), refs[0].GetRecordRef().GetCid())
 	})
 }
 
@@ -302,8 +321,8 @@ func Benchmark_RouteLocal(b *testing.B) {
 	inMemoryDatastore := newInMemoryDatastore(b)
 	localLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	badgerRouter := newLocal(store, badgerDatastore)
-	inMemoryRouter := newLocal(store, inMemoryDatastore)
+	badgerRouter := newLocal(store, badgerDatastore, testPeerID)
+	inMemoryRouter := newLocal(store, inMemoryDatastore, testPeerID)
 
 	record := &corev1.Record{
 		Data: &corev1.Record_V1{
@@ -322,18 +341,21 @@ func Benchmark_RouteLocal(b *testing.B) {
 
 	b.Run("Badger DB Publish and Unpublish", func(b *testing.B) {
 		for b.Loop() {
-			_ = badgerRouter.Publish(b.Context(), ref, record, testPeerID)
+			_ = badgerRouter.Publish(b.Context(), ref, record)
 			err := badgerRouter.Unpublish(b.Context(), ref, record)
 			assert.NoError(b, err)
 		}
 	})
 
 	b.Run("Badger DB List", func(b *testing.B) {
-		_ = badgerRouter.Publish(b.Context(), ref, record, testPeerID)
+		_ = badgerRouter.Publish(b.Context(), ref, record)
 		for b.Loop() {
 			_, err := badgerRouter.List(b.Context(), &routingv1.ListRequest{
-				LegacyListRequest: &routingv1.LegacyListRequest{
-					Labels: []string{"/skills/category1/class1"},
+				Queries: []*routingv1.RecordQuery{
+					{
+						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+						Value: "category1/class1",
+					},
 				},
 			})
 			assert.NoError(b, err)
@@ -342,18 +364,21 @@ func Benchmark_RouteLocal(b *testing.B) {
 
 	b.Run("In memory DB Publish and Unpublish", func(b *testing.B) {
 		for b.Loop() {
-			_ = inMemoryRouter.Publish(b.Context(), ref, record, testPeerID)
+			_ = inMemoryRouter.Publish(b.Context(), ref, record)
 			err := inMemoryRouter.Unpublish(b.Context(), ref, record)
 			assert.NoError(b, err)
 		}
 	})
 
 	b.Run("In memory DB List", func(b *testing.B) {
-		_ = inMemoryRouter.Publish(b.Context(), ref, record, testPeerID)
+		_ = inMemoryRouter.Publish(b.Context(), ref, record)
 		for b.Loop() {
 			_, err := inMemoryRouter.List(b.Context(), &routingv1.ListRequest{
-				LegacyListRequest: &routingv1.LegacyListRequest{
-					Labels: []string{"/skills/category1/class1"},
+				Queries: []*routingv1.RecordQuery{
+					{
+						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+						Value: "category1/class1",
+					},
 				},
 			})
 			assert.NoError(b, err)

@@ -24,13 +24,13 @@ func (c *Client) Publish(ctx context.Context, req *routingv1.PublishRequest) err
 	return nil
 }
 
-func (c *Client) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
+func (c *Client) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.ListResponse, error) {
 	stream, err := c.RoutingServiceClient.List(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create list stream: %w", err)
 	}
 
-	resCh := make(chan *routingv1.LegacyListResponse_Item, 100) //nolint:mnd
+	resCh := make(chan *routingv1.ListResponse, 100) //nolint:mnd
 
 	go func() {
 		defer close(resCh)
@@ -47,10 +47,8 @@ func (c *Client) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *
 				return
 			}
 
-			items := obj.GetLegacyListResponse().GetItems()
-			for _, item := range items {
-				resCh <- item
-			}
+			// Stream ListResponse directly (no legacy wrapper)
+			resCh <- obj
 		}
 	}()
 

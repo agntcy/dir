@@ -26,9 +26,9 @@ func Ptr[T any](v T) *T {
 // CollectChannelItems collects all items from a channel into a slice.
 // This utility eliminates the repetitive pattern of iterating over channels
 // in list operations throughout the test suite.
-func CollectChannelItems(itemsChan <-chan *routingv1.LegacyListResponse_Item) []*routingv1.LegacyListResponse_Item {
+func CollectChannelItems(itemsChan <-chan *routingv1.ListResponse) []*routingv1.ListResponse {
 	//nolint:prealloc // Cannot pre-allocate when reading from channel - count is unknown
-	var items []*routingv1.LegacyListResponse_Item
+	var items []*routingv1.ListResponse
 	for item := range itemsChan {
 		items = append(items, item)
 	}

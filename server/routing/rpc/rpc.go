@@ -6,10 +6,8 @@ package rpc
 
 import (
 	"context"
-	"errors"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	rpc "github.com/libp2p/go-libp2p-gorpc"
@@ -29,7 +27,6 @@ const (
 	DirService           = "RPCAPI"
 	DirServiceFuncLookup = "Lookup"
 	DirServiceFuncPull   = "Pull"
-	DirServiceFuncList   = "List"
 	MaxPullSize          = 4 * 1024 * 1024 // 4 MB
 )
 
@@ -48,18 +45,8 @@ type LookupResponse struct {
 	Annotations map[string]string
 }
 
-type ListRequest struct {
-	Peer   string
-	Labels []string
-}
-
-type ListResponse struct {
-	Labels      []string
-	LabelCounts map[string]uint64
-	Peer        string
-	Cid         string
-	Annotations map[string]string
-}
+// NOTE: List-related types removed since List is a local-only operation
+// and should not be part of peer-to-peer RPC communication
 
 func (r *RPCAPI) Lookup(ctx context.Context, in *corev1.RecordRef, out *LookupResponse) error {
 	logger.Debug("P2p RPC: Executing Lookup request on remote peer", "peer", r.service.host.ID())
@@ -125,58 +112,20 @@ func (r *RPCAPI) Pull(ctx context.Context, in *corev1.RecordRef, out *PullRespon
 	return nil
 }
 
-func (r *RPCAPI) List(ctx context.Context, inCh <-chan *ListRequest, outCh chan<- *ListResponse) error {
-	defer close(outCh)
-
-	for in := range inCh {
-		logger.Debug("P2p RPC: Executing List request on remote peer", "peer", r.service.host.ID())
-
-		// local list
-		listCh, err := r.service.route.List(ctx, &routingv1.ListRequest{
-			LegacyListRequest: &routingv1.LegacyListRequest{
-				Labels: in.Labels,
-			},
-		})
-		if err != nil {
-			st := status.Convert(err)
-
-			return status.Errorf(st.Code(), "failed to list: %s", st.Message())
-		}
-
-		// resolve response before forwarding
-		for item := range listCh {
-			result := &ListResponse{
-				Labels:      item.GetLabels(),
-				LabelCounts: item.GetLabelCounts(),
-				Peer:        r.service.host.ID().String(), // remote peer where local list was called
-			}
-
-			if ref := item.GetRef(); ref != nil {
-				result.Cid = ref.GetCid()
-			}
-
-			// forward data
-			outCh <- result
-		}
-	}
-
-	return nil
-}
+// NOTE: List RPC method removed since List is a local-only operation
 
 type Service struct {
 	rpcServer *rpc.Server
 	rpcClient *rpc.Client
 	host      host.Host
 	store     types.StoreAPI
-	route     types.RoutingAPI
 }
 
-func New(host host.Host, store types.StoreAPI, route types.RoutingAPI) (*Service, error) {
+func New(host host.Host, store types.StoreAPI) (*Service, error) {
 	service := &Service{
 		rpcServer: rpc.NewServer(host, Protocol),
 		host:      host,
 		store:     store,
-		route:     route,
 	}
 
 	// register api
@@ -226,81 +175,5 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *corev1.RecordRef)
 	return record, nil
 }
 
-// range over the result channel, then read the error after the loop.
-// this is done in best effort mode.
-//
-//nolint:mnd
-func (s *Service) List(ctx context.Context, peers []peer.ID, req *routingv1.ListRequest) (<-chan *routingv1.LegacyListResponse_Item, error) {
-	logger.Debug("P2p RPC: Executing List request on remote peers", "peers", peers, "req", req)
-
-	// reserve reasonable buffer size for output results
-	respCh := make(chan *routingv1.LegacyListResponse_Item, 10000)
-
-	// run processing in the background
-	outCh := make(chan *ListResponse, 10000) // used as intermediary forwarding channel
-	go func() {
-		// run logic in the background
-		// prepare inputs for each call
-		inCh := make(chan *ListRequest, len(peers)+1)
-		for _, peer := range peers {
-			inCh <- &ListRequest{
-				Peer:   peer.String(),
-				Labels: req.GetLegacyListRequest().GetLabels(),
-			}
-		}
-
-		close(inCh)
-
-		// run async
-		errs := s.rpcClient.MultiStream(ctx,
-			peers,
-			DirService,
-			DirServiceFuncList,
-			inCh,
-			outCh,
-		)
-
-		// log error
-		if err := errors.Join(errs...); err != nil {
-			logger.Error("Failed to process all List RPC requests", "error", err)
-
-			return
-		}
-
-		logger.Info("Successfully processed all List RPC requests", "peers", peers)
-	}()
-
-	// forward results from one goroutine to the output channel
-	go func() {
-		// close resp channel once done so the subscribers can finish
-		defer close(respCh)
-
-		// remove duplicate outputs to avoid redundant entries
-		// this can happen when multiple peers are connected to the same peer that holds the object
-		seenPeerRecords := make(map[string]struct{})
-
-		// forward data to response channel
-		for out := range outCh {
-			uniqueKey := out.Peer + out.Cid
-
-			// check if we have already seen this peer
-			if _, ok := seenPeerRecords[uniqueKey]; ok {
-				continue
-			}
-
-			seenPeerRecords[uniqueKey] = struct{}{}
-			respCh <- &routingv1.LegacyListResponse_Item{
-				Labels:      out.Labels,
-				LabelCounts: out.LabelCounts,
-				Peer: &routingv1.Peer{
-					Id: out.Peer,
-				},
-				Ref: &corev1.RecordRef{
-					Cid: out.Cid,
-				},
-			}
-		}
-	}()
-
-	return respCh, nil
-}
+// NOTE: List RPC client method removed since List is a local-only operation
+// Use Search for network-wide record discovery instead

@@ -28,6 +28,7 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 	refreshInterval := 1 * time.Second
 
 	// define opts with faster refresh interval for testing
+	// Use a unique temporary directory for each test to avoid datastore sharing
 	opts := types.NewOptions(
 		&config.Config{
 			Provider: string(store.OCI),
@@ -38,6 +39,7 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 				ListenAddress:   "/ip4/0.0.0.0/tcp/0",
 				BootstrapPeers:  bootPeers,
 				RefreshInterval: refreshInterval, // Fast refresh for testing
+				DatastoreDir:    t.TempDir(),     // Use isolated BadgerDB for each test
 			},
 		},
 	)

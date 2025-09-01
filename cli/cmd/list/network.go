@@ -14,31 +14,37 @@ import (
 )
 
 func listNetwork(cmd *cobra.Command, client *client.Client, labels []string) error {
-	// Start the list request
+	// Network listing should use Search API since List is local-only
+	presenter.Printf(cmd, "Note: Network mode now uses Search API for network-wide discovery.\n\n")
+
+	// Convert legacy labels to RecordQuery format
+	queries := convertLabelsToRecordQueries(labels)
+
+	// Use Search API for network-wide discovery
+	// TODO: This should be implemented when Search API is available in the client
+	// For now, fall back to local List with a warning
+	presenter.Printf(cmd, "Warning: Search API not yet implemented in CLI.\n")
+	presenter.Printf(cmd, "Falling back to local records only:\n\n")
+
+	// Start the list request (local-only fallback)
 	items, err := client.List(cmd.Context(), &routingv1.ListRequest{
-		LegacyListRequest: &routingv1.LegacyListRequest{
-			Labels: labels,
-		},
+		Queries: queries,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to list network records: %w", err)
+		return fmt.Errorf("failed to list local records: %w", err)
 	}
 
 	// Print the results
 	for item := range items {
-		var cid string
-		if ref := item.GetRef(); ref != nil {
-			cid = ref.GetCid()
-		} else {
-			cid = "unknown"
-		}
+		cid := item.GetRecordRef().GetCid()
 
 		presenter.Printf(cmd,
-			"Peer %s\n  CID: %s\n  Labels: %s\n",
-			item.GetPeer().GetId(),
+			"Local Record:\n  CID: %s\n  Labels: %s\n",
 			cid,
 			strings.Join(item.GetLabels(), ", "),
 		)
+
+		presenter.Printf(cmd, "\n")
 	}
 
 	return nil

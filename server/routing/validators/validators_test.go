@@ -22,70 +22,77 @@ func TestSkillValidator_Validate(t *testing.T) {
 	}{
 		{
 			name:      "valid skills key with category and class",
-			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: false,
 		},
 		{
 			name:      "valid skills key with value",
-			key:       "/skills/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2",
 			value:     []byte("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
 			wantError: false,
 		},
 		{
 			name:      "invalid namespace",
-			key:       "/domains/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/domains/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "invalid namespace: expected skills, got domains",
 		},
 		{
 			name:      "missing skill path",
-			key:       "/skills/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
-			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>",
+			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
 		},
 		{
 			name:      "valid single skill path",
-			key:       "/skills/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: false,
 		},
 		{
 			name:      "empty skill path component",
-			key:       "/skills//golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills//golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "skill path component cannot be empty at position 1",
 		},
 		{
 			name:      "empty skill path component in middle",
-			key:       "/skills/programming//advanced/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/programming//advanced/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "skill path component cannot be empty at position 2",
 		},
 		{
 			name:      "invalid CID format",
-			key:       "/skills/programming/golang/invalid-cid",
+			key:       "/skills/programming/golang/invalid-cid/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "invalid CID format",
 		},
 		{
 			name:      "invalid value CID",
-			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte("invalid-cid-value"),
 			wantError: true,
 			errorMsg:  "invalid CID in value",
 		},
 		{
 			name:      "missing CID",
-			key:       "/skills/programming/golang/",
+			key:       "/skills/programming/golang//Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "missing CID in key",
+		},
+		{
+			name:      "missing PeerID",
+			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
 		},
 	}
 
@@ -116,46 +123,46 @@ func TestDomainValidator_Validate(t *testing.T) {
 	}{
 		{
 			name:      "valid domains key with single domain",
-			key:       "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: false,
 		},
 		{
 			name:      "valid domains key with nested domain path",
-			key:       "/domains/ai/machine-learning/nlp/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/domains/ai/machine-learning/nlp/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2",
 			value:     []byte{},
 			wantError: false,
 		},
 		{
 			name:      "valid domains key with value",
-			key:       "/domains/software/web-development/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/domains/software/web-development/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
 			value:     []byte("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
 			wantError: false,
 		},
 		{
 			name:      "invalid namespace",
-			key:       "/skills/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "invalid namespace: expected domains, got skills",
 		},
 		{
 			name:      "missing domain path",
-			key:       "/domains/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/domains/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
-			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>",
+			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
 		},
 		{
 			name:      "invalid CID format",
-			key:       "/domains/ai/invalid-cid",
+			key:       "/domains/ai/invalid-cid/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "invalid CID format",
 		},
 		{
 			name:      "invalid value CID",
-			key:       "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte("invalid-cid-value"),
 			wantError: true,
 			errorMsg:  "invalid CID in value",
@@ -189,46 +196,46 @@ func TestFeatureValidator_Validate(t *testing.T) {
 	}{
 		{
 			name:      "valid features key with single feature",
-			key:       "/features/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/features/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: false,
 		},
 		{
 			name:      "valid features key with nested feature path",
-			key:       "/features/ai/reasoning/logical/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/features/ai/reasoning/logical/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2",
 			value:     []byte{},
 			wantError: false,
 		},
 		{
 			name:      "valid features key with value",
-			key:       "/features/search/semantic/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/features/search/semantic/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
 			value:     []byte("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
 			wantError: false,
 		},
 		{
 			name:      "invalid namespace",
-			key:       "/domains/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/domains/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "invalid namespace: expected features, got domains",
 		},
 		{
 			name:      "missing feature path",
-			key:       "/features/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/features/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
-			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>",
+			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
 		},
 		{
 			name:      "invalid CID format",
-			key:       "/features/llm/invalid-cid",
+			key:       "/features/llm/invalid-cid/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "invalid CID format",
 		},
 		{
 			name:      "invalid value CID",
-			key:       "/features/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/features/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte("invalid-cid-value"),
 			wantError: true,
 			errorMsg:  "invalid CID in value",
@@ -264,7 +271,7 @@ func TestValidators_Select(t *testing.T) {
 		{
 			name:      "skills validator - select first valid value",
 			validator: &SkillValidator{},
-			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			values: [][]byte{
 				[]byte("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
 				[]byte("invalid-cid"),
@@ -275,7 +282,7 @@ func TestValidators_Select(t *testing.T) {
 		{
 			name:      "domains validator - select first valid from multiple",
 			validator: &DomainValidator{},
-			key:       "/domains/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/domains/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2",
 			values: [][]byte{
 				[]byte("invalid-cid"),
 				[]byte("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
@@ -287,7 +294,7 @@ func TestValidators_Select(t *testing.T) {
 		{
 			name:      "features validator - no valid values",
 			validator: &FeatureValidator{},
-			key:       "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
 			values: [][]byte{
 				[]byte("invalid-cid-1"),
 				[]byte("invalid-cid-2"),
@@ -299,7 +306,7 @@ func TestValidators_Select(t *testing.T) {
 		{
 			name:      "empty values slice",
 			validator: &SkillValidator{},
-			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			values:    [][]byte{},
 			wantIndex: -1,
 			wantError: true,
@@ -513,28 +520,28 @@ func TestBaseValidator_validateKeyFormat(t *testing.T) {
 	}{
 		{
 			name:              "valid key format",
-			key:               "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:               "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			expectedNamespace: NamespaceSkills.String(),
 			wantError:         false,
-			expectedParts:     []string{"", "skills", "programming", "golang", "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"},
+			expectedParts:     []string{"", "skills", "programming", "golang", "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku", "Peer1"},
 		},
 		{
 			name:              "invalid format - too few parts",
 			key:               "/skills/programming",
 			expectedNamespace: NamespaceSkills.String(),
 			wantError:         true,
-			errorMsg:          "invalid key format: expected /<namespace>/<specific_path>/<cid>",
+			errorMsg:          "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
 		},
 		{
 			name:              "wrong namespace",
-			key:               "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			key:               "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			expectedNamespace: NamespaceSkills.String(),
 			wantError:         true,
 			errorMsg:          "invalid namespace: expected skills, got domains",
 		},
 		{
 			name:              "invalid CID",
-			key:               "/skills/programming/golang/invalid-cid",
+			key:               "/skills/programming/golang/invalid-cid/Peer1",
 			expectedNamespace: NamespaceSkills.String(),
 			wantError:         true,
 			errorMsg:          "invalid CID format",
@@ -601,7 +608,7 @@ func TestBaseValidator_validateValue(t *testing.T) {
 // Benchmark tests to ensure validators perform well.
 func BenchmarkSkillValidator_Validate(b *testing.B) {
 	validator := &SkillValidator{}
-	key := "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+	key := "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1"
 	value := []byte{}
 
 	b.ResetTimer()
@@ -613,7 +620,7 @@ func BenchmarkSkillValidator_Validate(b *testing.B) {
 
 func BenchmarkDomainValidator_Validate(b *testing.B) {
 	validator := &DomainValidator{}
-	key := "/domains/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+	key := "/domains/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2"
 	value := []byte{}
 
 	b.ResetTimer()
@@ -625,7 +632,7 @@ func BenchmarkDomainValidator_Validate(b *testing.B) {
 
 func BenchmarkFeatureValidator_Validate(b *testing.B) {
 	validator := &FeatureValidator{}
-	key := "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+	key := "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3"
 	value := []byte{}
 
 	b.ResetTimer()
@@ -645,19 +652,19 @@ func TestExtractCIDFromLabelKey(t *testing.T) {
 	}{
 		{
 			name:      "valid skills key",
-			labelKey:  "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			labelKey:  "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			wantCID:   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
 			wantError: false,
 		},
 		{
 			name:      "valid domains key",
-			labelKey:  "/domains/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			labelKey:  "/domains/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2",
 			wantCID:   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
 			wantError: false,
 		},
 		{
 			name:      "valid features key",
-			labelKey:  "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			labelKey:  "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
 			wantCID:   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
 			wantError: false,
 		},
@@ -665,23 +672,23 @@ func TestExtractCIDFromLabelKey(t *testing.T) {
 			name:      "invalid format - too few parts",
 			labelKey:  "/skills/programming",
 			wantError: true,
-			errorMsg:  "invalid label key format",
+			errorMsg:  "invalid enhanced key format",
 		},
 		{
 			name:      "invalid namespace",
-			labelKey:  "/unknown/test/value/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			labelKey:  "/unknown/test/value/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			wantError: true,
 			errorMsg:  "invalid namespace",
 		},
 		{
 			name:      "invalid CID format",
-			labelKey:  "/skills/programming/golang/invalid-cid",
+			labelKey:  "/skills/programming/golang/invalid-cid/Peer1",
 			wantError: true,
 			errorMsg:  "invalid CID format",
 		},
 		{
 			name:      "missing CID",
-			labelKey:  "/skills/programming/golang/",
+			labelKey:  "/skills/programming/golang//Peer1",
 			wantError: true,
 			errorMsg:  "missing CID",
 		},
@@ -715,7 +722,7 @@ func BenchmarkFormatLabelKey(b *testing.B) {
 }
 
 func BenchmarkExtractCIDFromLabelKey(b *testing.B) {
-	labelKey := "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+	labelKey := "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1"
 
 	b.ResetTimer()
 

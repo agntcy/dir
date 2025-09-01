@@ -24,40 +24,14 @@ func TestLabelMetadata_Validate(t *testing.T) {
 			name: "valid metadata",
 			metadata: &LabelMetadata{
 				Timestamp: now.Add(-time.Hour),
-				PeerID:    "peer123",
-				CID:       "CID123",
 				LastSeen:  now,
 			},
 			expectError: false,
 		},
 		{
-			name: "empty peer ID",
-			metadata: &LabelMetadata{
-				Timestamp: now.Add(-time.Hour),
-				PeerID:    "",
-				CID:       "CID123",
-				LastSeen:  now,
-			},
-			expectError: true,
-			errorMsg:    "peer ID cannot be empty",
-		},
-		{
-			name: "empty CID",
-			metadata: &LabelMetadata{
-				Timestamp: now.Add(-time.Hour),
-				PeerID:    "peer123",
-				CID:       "",
-				LastSeen:  now,
-			},
-			expectError: true,
-			errorMsg:    "CID cannot be empty",
-		},
-		{
 			name: "zero timestamp",
 			metadata: &LabelMetadata{
 				Timestamp: time.Time{},
-				PeerID:    "peer123",
-				CID:       "CID123",
 				LastSeen:  now,
 			},
 			expectError: true,
@@ -67,8 +41,6 @@ func TestLabelMetadata_Validate(t *testing.T) {
 			name: "zero last seen",
 			metadata: &LabelMetadata{
 				Timestamp: now.Add(-time.Hour),
-				PeerID:    "peer123",
-				CID:       "CID123",
 				LastSeen:  time.Time{},
 			},
 			expectError: true,
@@ -78,8 +50,6 @@ func TestLabelMetadata_Validate(t *testing.T) {
 			name: "last seen before timestamp",
 			metadata: &LabelMetadata{
 				Timestamp: now,
-				PeerID:    "peer123",
-				CID:       "CID123",
 				LastSeen:  now.Add(-time.Hour),
 			},
 			expectError: true,
@@ -183,47 +153,6 @@ func TestLabelMetadata_Update(t *testing.T) {
 	assert.Less(t, time.Since(metadata.LastSeen), time.Second) // Should be very recent
 }
 
-func TestLabelMetadata_IsLocal(t *testing.T) {
-	tests := []struct {
-		name        string
-		metadata    *LabelMetadata
-		localPeerID string
-		expected    bool
-	}{
-		{
-			name: "is local peer",
-			metadata: &LabelMetadata{
-				PeerID: "peer123",
-			},
-			localPeerID: "peer123",
-			expected:    true,
-		},
-		{
-			name: "is remote peer",
-			metadata: &LabelMetadata{
-				PeerID: "peer123",
-			},
-			localPeerID: "peer456",
-			expected:    false,
-		},
-		{
-			name: "empty peer ID",
-			metadata: &LabelMetadata{
-				PeerID: "",
-			},
-			localPeerID: "peer123",
-			expected:    false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.metadata.IsLocal(tt.localPeerID)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestLabelMetadata_Integration(t *testing.T) {
 	// Test a complete workflow with validation and updates
 	now := time.Now()
@@ -231,8 +160,6 @@ func TestLabelMetadata_Integration(t *testing.T) {
 	// Create valid metadata
 	metadata := &LabelMetadata{
 		Timestamp: now.Add(-time.Hour),
-		PeerID:    "peer123",
-		CID:       "CID123",
 		LastSeen:  now.Add(-30 * time.Minute),
 	}
 
@@ -242,10 +169,6 @@ func TestLabelMetadata_Integration(t *testing.T) {
 	// Should not be stale with 1 hour max age
 	assert.False(t, metadata.IsStale(time.Hour))
 
-	// Should be local to peer123
-	assert.True(t, metadata.IsLocal("peer123"))
-	assert.False(t, metadata.IsLocal("peer456"))
-
 	// Update and verify LastSeen changed
 	oldLastSeen := metadata.LastSeen
 
@@ -254,4 +177,197 @@ func TestLabelMetadata_Integration(t *testing.T) {
 
 	assert.True(t, metadata.LastSeen.After(oldLastSeen))
 	require.NoError(t, metadata.Validate()) // Should still be valid
+}
+
+func TestBuildEnhancedLabelKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		label    string
+		cid      string
+		peerID   string
+		expected string
+	}{
+		{
+			name:     "skill label",
+			label:    "/skills/AI/ML",
+			cid:      "CID123",
+			peerID:   "Peer1",
+			expected: "/skills/AI/ML/CID123/Peer1",
+		},
+		{
+			name:     "domain label",
+			label:    "/domains/technology",
+			cid:      "CID456",
+			peerID:   "Peer2",
+			expected: "/domains/technology/CID456/Peer2",
+		},
+		{
+			name:     "feature label",
+			label:    "/features/search/semantic",
+			cid:      "CID789",
+			peerID:   "Peer3",
+			expected: "/features/search/semantic/CID789/Peer3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := BuildEnhancedLabelKey(tt.label, tt.cid, tt.peerID)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestParseEnhancedLabelKey(t *testing.T) {
+	tests := []struct {
+		name          string
+		key           string
+		expectedLabel string
+		expectedCID   string
+		expectedPeer  string
+		expectError   bool
+		errorMsg      string
+	}{
+		{
+			name:          "valid skill key",
+			key:           "/skills/AI/ML/CID123/Peer1",
+			expectedLabel: "/skills/AI/ML",
+			expectedCID:   "CID123",
+			expectedPeer:  "Peer1",
+			expectError:   false,
+		},
+		{
+			name:          "valid domain key",
+			key:           "/domains/technology/web/CID456/Peer2",
+			expectedLabel: "/domains/technology/web",
+			expectedCID:   "CID456",
+			expectedPeer:  "Peer2",
+			expectError:   false,
+		},
+		{
+			name:        "invalid key - no leading slash",
+			key:         "skills/AI/ML/CID123/Peer1",
+			expectError: true,
+			errorMsg:    "key must start with /",
+		},
+		{
+			name:        "invalid key - too few parts",
+			key:         "/skills/AI",
+			expectError: true,
+			errorMsg:    "key must have at least namespace/path/CID/PeerID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			label, cid, peerID, err := ParseEnhancedLabelKey(tt.key)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedLabel, label)
+				assert.Equal(t, tt.expectedCID, cid)
+				assert.Equal(t, tt.expectedPeer, peerID)
+			}
+		})
+	}
+}
+
+func TestExtractPeerIDFromKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      string
+		expected string
+	}{
+		{
+			name:     "valid enhanced key",
+			key:      "/skills/AI/ML/CID123/Peer1",
+			expected: "Peer1",
+		},
+		{
+			name:     "short key",
+			key:      "/invalid",
+			expected: "",
+		},
+		{
+			name:     "empty key",
+			key:      "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractPeerIDFromKey(tt.key)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestExtractCIDFromKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      string
+		expected string
+	}{
+		{
+			name:     "valid enhanced key",
+			key:      "/skills/AI/ML/CID123/Peer1",
+			expected: "CID123",
+		},
+		{
+			name:     "short key",
+			key:      "/invalid/short",
+			expected: "",
+		},
+		{
+			name:     "empty key",
+			key:      "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractCIDFromKey(tt.key)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsLocalKey(t *testing.T) {
+	tests := []struct {
+		name        string
+		key         string
+		localPeerID string
+		expected    bool
+	}{
+		{
+			name:        "local key",
+			key:         "/skills/AI/ML/CID123/Peer1",
+			localPeerID: "Peer1",
+			expected:    true,
+		},
+		{
+			name:        "remote key",
+			key:         "/skills/AI/ML/CID123/Peer2",
+			localPeerID: "Peer1",
+			expected:    false,
+		},
+		{
+			name:        "invalid key",
+			key:         "/invalid",
+			localPeerID: "Peer1",
+			expected:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsLocalKey(tt.key, tt.localPeerID)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
