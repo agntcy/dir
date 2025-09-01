@@ -7,6 +7,7 @@ import (
 	"context"
 	"sync"
 
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/publication/config"
 	publypes "github.com/agntcy/dir/server/publication/types"
 	"github.com/agntcy/dir/server/types"
@@ -38,6 +39,11 @@ func New(db types.DatabaseAPI, store types.StoreAPI, routing types.RoutingAPI, o
 		config:  opts.Config().Publication,
 		stopCh:  make(chan struct{}),
 	}, nil
+}
+
+// CreatePublication creates a new publication task to be processed.
+func (s *Service) CreatePublication(_ context.Context, req *routingv1.PublishRequest) (string, error) {
+	return s.db.CreatePublication(req) //nolint:wrapcheck
 }
 
 // Start begins the publication service operations.

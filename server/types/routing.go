@@ -24,3 +24,9 @@ type RoutingAPI interface {
 	// Unpublish record from the network
 	Unpublish(context.Context, *corev1.RecordRef, *corev1.Record) error
 }
+
+// PublicationAPI handles management of publication tasks.
+type PublicationAPI interface {
+	// CreatePublication creates a new publication task to be processed.
+	CreatePublication(context.Context, *routingv1.PublishRequest) (string, error)
+}
