@@ -37,15 +37,15 @@ var (
 )
 
 type Server struct {
-	options       types.APIOptions
-	store         types.StoreAPI
-	routing       types.RoutingAPI
-	database      types.DatabaseAPI
-	syncService   *sync.Service
-	authzService  *authz.Service
+	options            types.APIOptions
+	store              types.StoreAPI
+	routing            types.RoutingAPI
+	database           types.DatabaseAPI
+	syncService        *sync.Service
+	authzService       *authz.Service
 	publicationService *publication.Service
-	healthzServer *healthz.Server
-	grpcServer    *grpc.Server
+	healthzServer      *healthz.Server
+	grpcServer         *grpc.Server
 }
 
 func Run(ctx context.Context, cfg *config.Config) error {
@@ -142,7 +142,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		routing:            routingAPI,
 		database:           databaseAPI,
 		syncService:        syncService,
-		authzService:  		authzService,
+		authzService:       authzService,
 		publicationService: publicationService,
 		healthzServer:      healthz.NewHealthServer(cfg.HealthCheckAddress),
 		grpcServer:         grpcServer,

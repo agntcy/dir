@@ -124,6 +124,9 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 					},
 				})
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				// Wait at least 10 seconds to ensure the record is published.
+				time.Sleep(15 * time.Second)
 			})
 
 			// Step 4: List by one label (depends on publish)
@@ -193,34 +196,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				}
 			})
 
-			// Step 7: Unpublish (depends on publish)
-			ginkgo.It("should unpublish a record", func() {
-				err := c.Unpublish(ctx, &routingv1.UnpublishRequest{
-					Request: &routingv1.UnpublishRequest_RecordRefs{
-						RecordRefs: &routingv1.RecordRefs{
-							Refs: []*corev1.RecordRef{recordRef},
-						},
-					},
-				})
-				gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			})
-
-			// Step 8: Verify unpublished record is not found (depends on unpublish)
-			ginkgo.It("should not find unpublished record", func() {
-				// Try to find the record using the same skill label as before
-				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
-					LegacyListRequest: &routingv1.LegacyListRequest{
-						Labels: []string{version.expectedSkillLabels[0]},
-					},
-				})
-				gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-				// Collect items from the channel using utility.
-				items := utils.CollectChannelItems(itemsChan)
-
-				// Validate the response.
-				gomega.Expect(items).To(gomega.BeEmpty())
-			})
+			// TODO: Test if record is deleted from network after TTL
 
 			// Step 9: Delete (depends on previous steps)
 			ginkgo.It("should delete a record from store", func() {

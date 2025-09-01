@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/agntcy/dir/e2e/config"
 	"github.com/agntcy/dir/e2e/utils"
@@ -57,6 +58,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 
 	ginkgo.It("should publish an record to the network on peer 1", func() {
 		cli.Publish(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
+
+		// Wait at least 10 seconds to ensure the record is published.
+		time.Sleep(15 * time.Second)
 	})
 
 	ginkgo.It("should fail publish an record to the network on peer 2 that does not store the record", func() {
