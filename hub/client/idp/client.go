@@ -18,15 +18,14 @@ import (
 const (
 	// Path to the IDP API for retrieving an AccessToken for ApiKey Access.
 	AccessTokenEndpoint = "/v1/token"
-	// Fixed Client ID for the access token request. THIS IS NOT THE CLIENT ID THAT WILL BE IN ACCESS TOKEN.
-	AccessTokenClientID = "0oackfvbjvy65qVi41d7" //nolint:gosec
 	// Scope for the access token request.
 	AccessTokenScope = "openid offline_access"
 	// Grant type for the access token request.
 	AccessTokenGrantType = "password"
 	// AccessTokenGrantTypeClientCredentials is the grant type for client credentials.
 	AccessTokenGrantTypeClientCredentials = "client_credentials"
-	AccessTokenCustomScope                = "customScope" // Custom scope for the access token request.
+	// Custom scope for the access token request.
+	AccessTokenCustomScope = "customScope"
 )
 
 // GetAccessTokenResponse contains the response when requesting an access token from the IDP API.
@@ -62,19 +61,21 @@ type Client interface {
 
 // client implements the Client interface for the IDP API.
 type client struct {
-	httpClient *http.Client
-	baseURL    string
+	httpClient     *http.Client
+	baseURL        string
+	apiKeyClientID string
 }
 
 // NewClient creates a new IDP client with the given base URL and HTTP client.
-func NewClient(baseURL string, httpClient *http.Client) Client {
+func NewClient(baseURL string, httpClient *http.Client, apiKeyClientID string) Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 
 	return &client{
-		baseURL:    baseURL,
-		httpClient: httpClient,
+		baseURL:        baseURL,
+		httpClient:     httpClient,
+		apiKeyClientID: apiKeyClientID,
 	}
 }
 
@@ -86,7 +87,7 @@ func (c *client) GetAccessTokenFromAPIKey(ctx context.Context, username string, 
 	data.Set("username", username)
 	data.Set("password", secret)
 	data.Set("scope", AccessTokenScope)
-	data.Set("client_id", AccessTokenClientID)
+	data.Set("client_id", c.apiKeyClientID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, strings.NewReader(data.Encode()))
 	if err != nil {

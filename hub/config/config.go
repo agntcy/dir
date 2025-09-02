@@ -32,6 +32,7 @@ type AuthConfig struct {
 	IdpBackendAddress  string `json:"IAM_API"`
 	IdpFrontendAddress string `json:"IAM_UI"`
 	HubBackendAddress  string `json:"HUB_API"`
+	APIKeyClientID     string `json:"API_KEY_CLIENT_ID"`
 }
 
 // FetchAuthConfig retrieves and parses the AuthConfig from the given frontend URL.
