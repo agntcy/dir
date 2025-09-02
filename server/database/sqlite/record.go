@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
 )
@@ -255,16 +256,24 @@ func (d *DB) RemoveRecord(cid string) error {
 
 // handleFilterOptions applies the provided filters to the query.
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
-	// Apply record-level filters.
+	// Apply record-level filters with wildcard support.
 	if cfg.Name != "" {
-		query = query.Where("records.name LIKE ?", "%"+cfg.Name+"%")
+		if utils.ContainsWildcards(cfg.Name) {
+			query = query.Where("records.name LIKE ?", utils.WildcardToSQL(cfg.Name))
+		} else {
+			query = query.Where("records.name = ?", cfg.Name)
+		}
 	}
 
 	if cfg.Version != "" {
-		query = query.Where("records.version = ?", cfg.Version)
+		if utils.ContainsWildcards(cfg.Version) {
+			query = query.Where("records.version LIKE ?", utils.WildcardToSQL(cfg.Version))
+		} else {
+			query = query.Where("records.version = ?", cfg.Version)
+		}
 	}
 
-	// Handle skill filters.
+	// Handle skill filters with wildcard support.
 	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
 		query = query.Joins("JOIN skills ON skills.record_cid = records.record_cid")
 
@@ -273,33 +282,48 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 
 		if len(cfg.SkillNames) > 0 {
-			query = query.Where("skills.name IN ?", cfg.SkillNames)
+			condition, args := utils.BuildWildcardCondition("skills.name", cfg.SkillNames)
+			if condition != "" {
+				query = query.Where(condition, args...)
+			}
 		}
 	}
 
-	// Handle locator filters.
+	// Handle locator filters with wildcard support.
 	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
 		query = query.Joins("JOIN locators ON locators.record_cid = records.record_cid")
 
 		if len(cfg.LocatorTypes) > 0 {
-			query = query.Where("locators.type IN ?", cfg.LocatorTypes)
+			condition, args := utils.BuildWildcardCondition("locators.type", cfg.LocatorTypes)
+			if condition != "" {
+				query = query.Where(condition, args...)
+			}
 		}
 
 		if len(cfg.LocatorURLs) > 0 {
-			query = query.Where("locators.url IN ?", cfg.LocatorURLs)
+			condition, args := utils.BuildWildcardCondition("locators.url", cfg.LocatorURLs)
+			if condition != "" {
+				query = query.Where(condition, args...)
+			}
 		}
 	}
 
-	// Handle extension filters.
+	// Handle extension filters with wildcard support.
 	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
 		query = query.Joins("JOIN extensions ON extensions.record_cid = records.record_cid")
 
 		if len(cfg.ExtensionNames) > 0 {
-			query = query.Where("extensions.name IN ?", cfg.ExtensionNames)
+			condition, args := utils.BuildWildcardCondition("extensions.name", cfg.ExtensionNames)
+			if condition != "" {
+				query = query.Where(condition, args...)
+			}
 		}
 
 		if len(cfg.ExtensionVersions) > 0 {
-			query = query.Where("extensions.version IN ?", cfg.ExtensionVersions)
+			condition, args := utils.BuildWildcardCondition("extensions.version", cfg.ExtensionVersions)
+			if condition != "" {
+				query = query.Where(condition, args...)
+			}
 		}
 	}
 
