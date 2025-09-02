@@ -9,8 +9,8 @@ replace (
 
 require (
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
-	github.com/agntcy/dir/api v0.2.10
-	github.com/agntcy/dir/utils v0.2.10
+	github.com/agntcy/dir/api v0.2.11
+	github.com/agntcy/dir/utils v0.2.11
 	github.com/glebarez/sqlite v1.11.0
 	github.com/ipfs/go-datastore v0.8.2
 	github.com/libp2p/go-libp2p v0.41.0
