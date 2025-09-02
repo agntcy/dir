@@ -1,6 +1,5 @@
 import os
 import subprocess
-import time
 import unittest
 
 import core.v1.record_pb2 as core_record_pb2
@@ -65,8 +64,6 @@ def init_records(count, test_function_name, push=True, publish=False):
             for record_ref, record in example_records.values():
                 req = routingv1.PublishRequest(record_cid=record_ref.cid)
                 client.publish(req=req)
-
-    time.sleep(3)
 
     return example_records
 

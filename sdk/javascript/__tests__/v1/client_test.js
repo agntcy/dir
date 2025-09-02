@@ -90,10 +90,6 @@ describe('Client', () => {
 
     const client = new Client(Config.loadFromEnv());
 
-    beforeEach(async () => {
-        await setTimeout(3000); // Wait for api server
-    });
-
     afterAll(async () => {
         client.storeClient.close();
         client.routingClient.close();
