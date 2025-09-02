@@ -36,12 +36,6 @@ spec:
           env:
             - name: DIRECTORY_LOGGER_LOG_LEVEL
               value: {{ .Values.log_level }}
-            {{- if .Values.publication }}
-            {{- if .Values.publication.scheduler_interval }}
-            - name: DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL
-              value: {{ .Values.publication.scheduler_interval }}
-            {{- end }}
-            {{- end }}
             {{- if eq .Values.spire.enabled true }}
             - name: DIRECTORY_SERVER_AUTHZ_ENABLED
               value: "true"

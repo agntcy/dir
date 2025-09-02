@@ -55,6 +55,16 @@ apiserver:
       #   - /ip4/1.1.1.1/tcp/1
       #   - /ip4/1.1.1.1/tcp/2
 
+    # Publication configuration
+    publication:
+      # How frequently the scheduler checks for pending publications
+      scheduler_interval: "1h"
+      
+      # Maximum number of publication workers running concurrently
+      worker_count: 1
+      
+      # Timeout for individual publication operations
+      worker_timeout: "30m"
   # SPIRE configuration
   spire:
     enabled: false
