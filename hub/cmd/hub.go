@@ -69,6 +69,7 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 			IdpBackendAddress:  authConfig.IdpBackendAddress,
 			IdpIssuerAddress:   authConfig.IdpIssuerAddress,
 			HubBackendAddress:  authConfig.HubBackendAddress,
+			APIKeyClientID:     authConfig.APIKeyClientID,
 		}
 
 		// Only refresh token if not running login or logout

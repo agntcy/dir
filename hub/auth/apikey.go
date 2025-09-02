@@ -21,7 +21,7 @@ func RefreshAPIKeyAccessToken(ctx context.Context, session *sessionstore.HubSess
 		return errors.New("no API key access token available in the session")
 	}
 
-	idpClient := idp.NewClient(session.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
+	idpClient := idp.NewClient(session.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient(), session.AuthConfig.APIKeyClientID)
 
 	var err error
 
