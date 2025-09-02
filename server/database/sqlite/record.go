@@ -255,6 +255,8 @@ func (d *DB) RemoveRecord(cid string) error {
 }
 
 // handleFilterOptions applies the provided filters to the query.
+//
+//nolint:gocognit,cyclop,nestif
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
 	// Apply record-level filters with wildcard support.
 	if cfg.Name != "" {
