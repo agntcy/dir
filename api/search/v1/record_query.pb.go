@@ -31,16 +31,22 @@ const (
 	// Unspecified query type.
 	RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED RecordQueryType = 0
 	// Query for a record name.
+	// Supports wildcard patterns: "web*", "*service", "api-*-v2"
 	RecordQueryType_RECORD_QUERY_TYPE_NAME RecordQueryType = 1
 	// Query for a record version.
+	// Supports wildcard patterns: "v1.*", "v2.*", "*-beta"
 	RecordQueryType_RECORD_QUERY_TYPE_VERSION RecordQueryType = 2
 	// Query for a skill ID.
+	// Numeric field - exact match only, no wildcard support.
 	RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID RecordQueryType = 3
 	// Query for a skill name.
+	// Supports wildcard patterns: "python*", "*script", "*machine*learning*"
 	RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME RecordQueryType = 4
 	// Query for a locator type.
+	// Supports wildcard patterns: "http*", "ftp*", "*docker*"
 	RecordQueryType_RECORD_QUERY_TYPE_LOCATOR RecordQueryType = 5
 	// Query for an extension.
+	// Supports wildcard patterns: "*-plugin", "*-extension", "core*"
 	RecordQueryType_RECORD_QUERY_TYPE_EXTENSION RecordQueryType = 6
 )
 
@@ -96,13 +102,16 @@ func (RecordQueryType) EnumDescriptor() ([]byte, []int) {
 // A query to match the record against during discovery.
 // For example:
 //
-//	{ type: RECORD_QUERY_TYPE_SKILL_NAME, value: "Natural Language Processing" }
-//	{ type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://example.com/docker-image" }
+//	Exact match:    { type: RECORD_QUERY_TYPE_NAME, value: "my-agent" }
+//	Wildcard match: { type: RECORD_QUERY_TYPE_NAME, value: "web*" }
+//	Pattern match:  { type: RECORD_QUERY_TYPE_SKILL_NAME, value: "*machine*learning*" }
+//	Complex match:  { type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://*.example.com/*" }
 type RecordQuery struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The type of the query to match against.
 	Type RecordQueryType `protobuf:"varint,1,opt,name=type,proto3,enum=search.v1.RecordQueryType" json:"type,omitempty"`
 	// The query value to match against.
+	// Supports wildcard patterns using '*' for zero or more characters.
 	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
