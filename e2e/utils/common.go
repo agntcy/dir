@@ -14,6 +14,7 @@ import (
 	objectsv3 "github.com/agntcy/dir/api/objects/v3"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	clicmd "github.com/agntcy/dir/cli/cmd"
+	searchcmd "github.com/agntcy/dir/cli/cmd/search"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -388,4 +389,12 @@ func ResetCLIState() {
 	// Clear any output buffers by setting output to default
 	clicmd.RootCmd.SetOut(nil)
 	clicmd.RootCmd.SetErr(nil)
+
+	// Reset search command global state
+	ResetSearchCommandState()
+}
+
+// ResetSearchCommandState resets the global state in search command.
+func ResetSearchCommandState() {
+	searchcmd.ResetGlobalState()
 }
