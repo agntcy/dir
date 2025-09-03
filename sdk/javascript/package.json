@@ -18,9 +18,10 @@
     "test": "jest"
   },
   "dependencies": {
-    "@buf/agntcy_dir.grpc_node": "^1.13.0-20250818093216-7b5f01ca9089.2",
-    "@buf/agntcy_dir.grpc_web": "^1.5.0-20250818093216-7b5f01ca9089.1",
-    "@grpc/grpc-js": "^1.13.4"
+    "@buf/agntcy_dir.grpc_node": "^1.13.0-20250904070231-b2906e58eb12.2",
+    "@buf/agntcy_dir.grpc_web": "^2.0.0-20250904070231-b2906e58eb12.1",
+    "@grpc/grpc-js": "^1.13.4",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "jest": "^30.0.5"
