@@ -14,7 +14,8 @@ import (
 )
 
 // Using the shared record V3 data from embed.go
-
+//
+//nolint:dupl
 var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functionality", func() {
 	var cli *utils.CLI
 

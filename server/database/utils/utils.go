@@ -43,8 +43,26 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
 			l := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
 
+			// If the type starts with a wildcard, treat it as a URL pattern
+			// Example: "*marketing-strategy"
+			if len(l) == 1 && strings.HasPrefix(l[0], "*") {
+				options = append(options, types.WithLocatorURLs(l[0]))
+
+				break
+			}
+
 			if len(l) == 1 && strings.TrimSpace(l[0]) != "" {
 				options = append(options, types.WithLocatorTypes(l[0]))
+
+				break
+			}
+
+			// If the prefix is //, check if the part before : is a wildcard
+			// If it's a wildcard (like "*"), treat the whole thing as a URL pattern
+			// If it's not a wildcard (like "docker-image"), treat as type:url format
+			// Example: "*://ghcr.io/agntcy/marketing-strategy" -> pure URL pattern
+			if len(l) == 2 && strings.HasPrefix(l[1], "//") && strings.HasPrefix(l[0], "*") {
+				options = append(options, types.WithLocatorURLs(query.GetValue()))
 
 				break
 			}
