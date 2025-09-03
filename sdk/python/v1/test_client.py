@@ -1,8 +1,10 @@
 import os
 import subprocess
 import unittest
+import uuid
 
 import core.v1.record_pb2 as core_record_pb2
+import store.v1.sync_service_pb2 as sync_types
 from objects.v3 import extension_pb2, locator_pb2, record_pb2, signature_pb2, skill_pb2
 from routing.v1 import record_query_pb2 as record_query_type
 from routing.v1 import routing_service_pb2 as routingv1
@@ -60,11 +62,11 @@ def init_records(count, test_function_name, push=True, publish=False):
 
             example_records[index] = (references[0], record)
 
-        if publish:
-            for record_ref, record in example_records.values():
-                record_refs = routingv1.RecordRefs(refs=[record_ref])
-                req = routingv1.PublishRequest(record_refs=record_refs)
-                client.publish(req=req)
+        # if publish:
+        #     for record_ref, record in example_records.values():
+        #         record_refs = routingv1.RecordRefs(refs=[record_ref])
+        #         req = routingv1.PublishRequest(record_refs=record_refs)
+        #         client.publish(req=req)
 
     return example_records
 
@@ -317,6 +319,44 @@ class TestClient(unittest.TestCase):
         finally:
             os.remove("cosign.key")
             os.remove("cosign.pub")
+
+    def test_sync(self):
+        try:
+            create_request = sync_types.CreateSyncRequest(
+                remote_directory_url=os.getenv(
+                    "DIRECTORY_SERVER_PEER1_ADDRESS", "0.0.0.0:8891"
+                )
+            )
+            create_response = client.create_sync(create_request)
+
+            try:
+                self.assertTrue(uuid.UUID(create_response.sync_id))
+            except ValueError:
+                raise ValueError("Not an UUID: {}".format(create_response.sync_id))
+
+            list_request = sync_types.ListSyncsRequest()
+            list_response = client.list_syncs(list_request)
+
+            for sync_item in list_response:
+                try:
+                    self.assertIsInstance(sync_item, sync_types.ListSyncsItem)
+                    self.assertTrue(uuid.UUID(sync_item.sync_id))
+                except ValueError:
+                    raise ValueError("Not an UUID: {}".format(sync_item.sync_id))
+
+            get_request = sync_types.GetSyncRequest(sync_id=create_response.sync_id)
+            get_response = client.get_sync(get_request)
+
+            self.assertIsInstance(get_response, sync_types.GetSyncResponse)
+            self.assertEqual(get_response.sync_id, create_response.sync_id)
+
+            delete_request = sync_types.DeleteSyncRequest(
+                sync_id=create_response.sync_id
+            )
+            client.delete_sync(delete_request)
+
+        except Exception as e:
+            self.assertIsNone(e)
 
 
 if __name__ == "__main__":
