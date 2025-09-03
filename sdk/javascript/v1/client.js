@@ -10,6 +10,7 @@ const routing_service = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_se
 const store_service = require('@buf/agntcy_dir.grpc_node/store/v1/store_service_grpc_pb');
 const search_service = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_grpc_pb')
 const sign_service = require('@buf/agntcy_dir.grpc_node/sign/v1/sign_service_grpc_pb')
+const sync_service = require('@buf/agntcy_dir.grpc_node/store/v1/sync_service_grpc_pb')
 
 
 class Config {
@@ -37,6 +38,7 @@ class Client {
         this.routingClient = new routing_service.RoutingServiceClient(config.serverAddress, grpc.credentials.createInsecure());
         this.searchClient = new search_service.SearchServiceClient(config.serverAddress, grpc.credentials.createInsecure());
         this.signClient = new sign_service.SignServiceClient(config.serverAddress, grpc.credentials.createInsecure());
+        this.syncClient = new sync_service.SyncServiceClient(config.serverAddress, grpc.credentials.createInsecure());
 
         this.dirctl_path = config.dirctl_path;
     }
@@ -297,6 +299,71 @@ class Client {
             }
 
             this.signClient.verify(request, metadata, callback);
+        });
+    }
+
+    create_sync(request, metadata = new grpc.Metadata()) {
+        return new Promise((resolve, reject) => {
+            function callback(error, response) {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(response);
+                }
+            }
+
+            this.syncClient.createSync(request, metadata, callback);
+        });
+    }
+
+    list_syncs(request, metadata = new grpc.Metadata()) {
+        return new Promise((resolve, reject) => {
+            const call = this.syncClient.listSyncs(request, metadata);
+
+            let result = null;
+
+            // Handle response stream
+            call.on('data', (response) => {
+                result = response;
+            });
+
+            call.on('end', () => {
+                resolve(result);
+            });
+
+            call.on('error', (stream_error) => {
+                console.error('Stream error:', stream_error);
+
+                reject(stream_error);
+            });
+        });
+    }
+
+    get_sync(request, metadata = new grpc.Metadata()) {
+        return new Promise((resolve, reject) => {
+            function callback(error, response) {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(response);
+                }
+            }
+
+            this.syncClient.getSync(request, metadata, callback);
+        });
+    }
+
+    delete_sync(request, metadata = new grpc.Metadata()) {
+        return new Promise((resolve, reject) => {
+            function callback(error, response) {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(response);
+                }
+            }
+
+            this.syncClient.deleteSync(request, metadata, callback);
         });
     }
 
