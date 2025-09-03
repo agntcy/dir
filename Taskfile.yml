@@ -257,13 +257,17 @@ tasks:
     deps:
       - task: build
     cmds:
-      - task: deploy:kubernetes:local
-      - task: deploy:kubernetes:local:port-forward
+      - task: deploy:kubernetes:network
+      - task: deploy:kubernetes:network:port-forward
+
+  sdk:test-env:delete:
+    desc: Delete Kubernetes cluster test environment
+    cmds:
+      - task: deploy:kubernetes:network:port-forward:cleanup
+      - task: deploy:kubernetes:network:cleanup
 
   sdk:test:all:
     desc: Test all client SDK packages
-    deps:
-      - task: sdk:deps:common
     cmds:
       - task: sdk:test:javascript
       - task: sdk:test:python
@@ -274,6 +278,10 @@ tasks:
     deps:
       - task: sdk:deps:common
       - task: deps:uv
+    env:
+      DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
+      DIRECTORY_SERVER_PEER1_ADDRESS: '0.0.0.0:8891'
+      DIRECTORY_SERVER_PEER2_ADDRESS: '0.0.0.0:8892'
     cmds:
       - |
         export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
@@ -286,6 +294,10 @@ tasks:
     dir: ./sdk/javascript
     deps:
       - task: sdk:deps:common
+    env:
+      DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
+      DIRECTORY_SERVER_PEER1_ADDRESS: '0.0.0.0:8891'
+      DIRECTORY_SERVER_PEER2_ADDRESS: '0.0.0.0:8892'
     cmds:
       - |
         export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
