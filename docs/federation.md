@@ -15,20 +15,43 @@ The federation setup consists of:
 - **Cross-domain Federation**: Enables secure communication between the two trust domains
 
 ```mermaid
-architecture-beta
-    group dir_cluster(cloud)[DIR Cluster]
-    group dirctl_cluster(cloud)[DIRCTL Cluster]
+flowchart TD
+  %% DIR Trust Domain
+  subgraph DIR_Trust_Domain[DIR: dir.example]
+    DIR_SPIRE_SERVER[SPIRE Server]
     
-    service spire_server_dir(database)[SPIRE Server] in dir_cluster
-    service dir_apiserver(server)[DIR API Server] in dir_cluster
+    subgraph K8s[K8s Cluster]
+      DIR_API_SERVER[DIR API Server]
+    end
     
-    service spire_server_dirctl(database)[SPIRE Server] in dirctl_cluster
-    service dirctl_client(server)[DIRCTL Client] in dirctl_cluster
+    DIR_SPIRE_AGENT1[SPIRE Agent: k8s]
+    DIR_SPIRE_SERVER <--> DIR_SPIRE_AGENT1
+    DIR_SPIRE_AGENT1 -->|"Workload API"| DIR_API_SERVER
+  end
+
+  %% DIRCTL Trust Domain
+  subgraph DIRCTL_Trust_Domain[DIRCTL: dirctl.example]
+    DIRCTL_SPIRE_SERVER[SPIRE Server]
+
+    subgraph K8S_1[K8s Cluster]
+      DIRCTL_CLIENT[DIRCTL Client]
+    end
+
+    subgraph K8S_2[AWS VM]
+      DIRCTL_CLIENT_2[DIRCTL Client]
+    end
     
-    spire_server_dirctl:T <--> B:spire_server_dir
-    spire_server_dirctl:L --> R:dirctl_client
-    dirctl_client:T --> B:dir_apiserver
-    spire_server_dir:L --> R:dir_apiserver
+    DIRCTL_SPIRE_AGENT1[SPIRE Agent k8s]
+    DIRCTL_SPIRE_AGENT2[SPIRE Agent VM]
+    DIRCTL_SPIRE_SERVER <--> DIRCTL_SPIRE_AGENT1
+    DIRCTL_SPIRE_SERVER <--> DIRCTL_SPIRE_AGENT2
+    DIRCTL_SPIRE_AGENT1 -->|"Workload API"| DIRCTL_CLIENT
+    DIRCTL_SPIRE_AGENT2 -->|"Workload API"| DIRCTL_CLIENT_2
+  end
+
+  DIR_SPIRE_SERVER -.->|"Federation (SPIFFE Bundle)"| DIRCTL_SPIRE_SERVER
+  DIRCTL_CLIENT -->|"API Calls"| DIR_API_SERVER
+  DIRCTL_CLIENT_2 -->|"API Calls"| DIR_API_SERVER
 ```
 
 ## Components
@@ -152,7 +175,10 @@ spire:
 
 ## Example
 
+# Example
+
 An example deployment that sets up two k8s Kind clusters and deploys the necessary infrastructure described above is provided via the Taskfile command:
+
 
 ```bash
 ## Deploy
@@ -161,6 +187,64 @@ sudo task test:spire
 ## Cleanup
 task test:spire:cleanup
 ```
+
+## Supported Environments for Trust Domains and Workload APIs
+
+The Agent Directory and SPIRE federation setup is flexible and can support a variety of deployment environments and trust domain topologies:
+
+### 1. Single Trust Domain, Multiple Agents
+
+- **Kubernetes (k8s):**
+  - Multiple SPIRE Agents can run as DaemonSets or sidecars, attesting workloads in pods.
+- **Virtual Machines (VMs):**
+  - SPIRE Agents can run directly on VMs, attesting local workloads.
+- **SSH/Bare Metal:**
+  - SPIRE Agents can be deployed on bare metal hosts or via SSH, attesting processes or services running outside of k8s.
+- **Hybrid:**
+  - A single trust domain can span k8s, VMs, and bare metal, with all agents connecting to the same SPIRE Server.
+
+**Diagram:**
+
+```mermaid
+flowchart LR
+  subgraph Trust_Domain[Trust Domain: example.org]
+    SPIRE_SERVER[SPIRE Server]
+    AGENT_K8S1[SPIRE Agent k8s]
+    AGENT_K8S2[SPIRE Agent k8s]
+    AGENT_VM[SPIRE Agent VM]
+    AGENT_SSH[SPIRE Agent SSH]
+    SPIRE_SERVER -->|"Workload API"| AGENT_K8S1
+    SPIRE_SERVER -->|"Workload API"| AGENT_K8S2
+    SPIRE_SERVER -->|"Workload API"| AGENT_VM
+    SPIRE_SERVER -->|"Workload API"| AGENT_SSH
+  end
+```
+
+### 2. Multiple Trust Domains with Federation
+
+- Each trust domain has its own SPIRE Server and set of agents (k8s, VM, SSH, etc.).
+- Federation is established between SPIRE Servers using SPIFFE bundles, enabling cross-domain workload authentication.
+
+**Use Cases:**
+  - Multi-cluster k8s deployments (e.g., dev/prod, multi-cloud)
+  - Hybrid cloud and on-prem environments
+  - Secure communication between different organizations or business units
+
+### 3. Workload API Access
+
+- **Kubernetes:**
+  - Workloads access the Workload API via the local SPIRE Agent (usually via a Unix socket).
+- **VM/SSH:**
+  - Workloads access the Workload API via the local SPIRE Agent process.
+- **Service Mesh Integration:**
+  - SPIRE can integrate with service meshes (e.g., Istio, Linkerd) to provide mTLS identities.
+
+### 4. Example Topologies
+
+- **Single Trust Domain:** All workloads (k8s, VM, SSH) share a single trust root and SPIRE Server.
+- **Federated Trust Domains:** Each environment (e.g., cluster, org) has its own trust root, federated via SPIFFE bundles.
+
+For more details, see the [SPIRE Documentation](https://spiffe.io/docs/latest/spiffe-about/overview/) and [SPIRE Federation Guide](https://spiffe.io/docs/latest/spire-helm-charts-hardened-advanced/federation/).
 
 NOTE: The example deployment uses [cloud-provider-kind](https://github.com/kubernetes-sigs/cloud-provider-kind) to expose services from Kind clusters for cross-cluster communication between SPIRE Bundle APIs and DIR API. It requires sudo privileges to update docker network configuration for the clusters via host rules.
 

@@ -5,6 +5,7 @@ const process = require('node:process');
 const grpc = require('@grpc/grpc-js');
 const { execSync } = require('child_process');
 const { rmSync, writeFileSync } = require('node:fs');
+const core_record_pb2 = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
 
 const routing_service = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_grpc_pb');
 const store_service = require('@buf/agntcy_dir.grpc_node/store/v1/store_service_grpc_pb');
@@ -383,4 +384,5 @@ class Client {
 module.exports = {
     Config,
     Client,
+    core_record_pb2
 };

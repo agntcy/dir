@@ -1,1 +1,1 @@
-export * as clientv1 from "./v1/client.js"
+export * as clientv1 from "./client/v1/client.js"
