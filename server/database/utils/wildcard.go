@@ -4,50 +4,155 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 )
 
-// ContainsWildcards checks if a pattern contains wildcard characters (*).
-func ContainsWildcards(pattern string) bool {
-	return strings.Contains(pattern, "*")
+// Constants for GLOB pattern escaping
+const (
+	// GLOB special characters that need escaping
+	globLiteralAsterisk     = "[*]"
+	globLiteralQuestion     = "[?]"
+	globLiteralBracketOpen  = "[[]"
+	globLiteralBracketClose = "[]]"
+
+	// Growth factor for strings.Builder pre-allocation
+	buildGrowthFactor = 2
+
+	// SQL operators
+	sqlGlobLower  = "LOWER(%s) GLOB LOWER(?)"
+	sqlEqualLower = "LOWER(%s) = LOWER(?)"
+)
+
+// ContainsWildcards checks if a pattern contains unescaped wildcard characters (*).
+// Escaped asterisks (\*) are not considered wildcards.
+func ContainsWildcards(s string) bool {
+	for i := 0; i < len(s); {
+		ch := s[i]
+
+		// Handle escapes from user input
+		if ch == '\\' {
+			if i+1 < len(s) {
+				// Skip the escaped character (including \*)
+				i += 2
+				continue
+			}
+			// Trailing backslash
+			i++
+			continue
+		}
+
+		// Check for unescaped wildcard
+		if ch == '*' {
+			return true
+		}
+
+		i++
+	}
+	return false
 }
 
-// WildcardToSQL converts wildcard patterns (*) to SQL LIKE patterns (%).
-// It also escapes existing SQL wildcards to prevent injection.
-func WildcardToSQL(pattern string) string {
-	if !ContainsWildcards(pattern) {
-		return pattern
+// UserGlobOnlyStar converts a user pattern where only '*' is a wildcard.
+// Rules:
+// - Unescaped '*'  => '*' (wildcard many)
+// - Escaped '\*'   => literal '*'  (-> "[*]")
+// - '?'            => literal '?'  (-> "[?]")
+// - '['            => literal '['  (-> "[[]")
+// - ']'            => literal ']'  (-> "[]]")
+// - '\?' '\[' '\]' => their literal forms as above
+// - '\' not before a recognized char => kept as literal '\'
+//
+// Performance: O(n) time complexity, pre-allocates buffer for efficiency.
+// Use with: "... GLOB ?" for case-sensitive or "LOWER(field) GLOB LOWER(?)" for case-insensitive.
+func UserGlobOnlyStar(s string) string {
+	if s == "" {
+		return ""
 	}
 
-	// Escape existing SQL wildcards
-	result := strings.ReplaceAll(pattern, "%", `\%`)
-	result = strings.ReplaceAll(result, "_", `\_`)
+	var b strings.Builder
+	b.Grow(len(s) * buildGrowthFactor)
 
-	// Convert wildcard patterns to SQL patterns
-	result = strings.ReplaceAll(result, "*", "%")
+	for i := 0; i < len(s); {
+		ch := s[i]
 
-	return result
+		if ch == '\\' {
+			if i+1 < len(s) {
+				n := s[i+1]
+				switch n {
+				case '*':
+					b.WriteString(globLiteralAsterisk)
+				case '?':
+					b.WriteString(globLiteralQuestion)
+				case '[':
+					b.WriteString(globLiteralBracketOpen)
+				case ']':
+					b.WriteString(globLiteralBracketClose)
+				case '\\':
+					b.WriteString(`\\`)
+				default:
+					// Unknown escape: keep backslash and char literally
+					b.WriteByte('\\')
+					b.WriteByte(n)
+				}
+				i += 2
+				continue
+			}
+			// trailing backslash -> literal backslash
+			b.WriteByte('\\')
+			i++
+			continue
+		}
+
+		switch ch {
+		case '*':
+			b.WriteByte('*')
+		case '?':
+			b.WriteString(globLiteralQuestion)
+		case '[':
+			b.WriteString(globLiteralBracketOpen)
+		case ']':
+			b.WriteString(globLiteralBracketClose)
+		default:
+			b.WriteByte(ch)
+		}
+		i++
+	}
+	return b.String()
 }
 
-// BuildWildcardCondition builds a WHERE condition for wildcard or exact matching.
+// BuildWildcardCondition builds a WHERE condition for wildcard or exact matching using GLOB.
 // Returns the condition string and arguments for the WHERE clause.
+// Uses case-insensitive matching with LOWER().
+//
+// Performance: Pre-allocates slices with known capacity for efficiency.
+// Field parameter should be properly sanitized before calling this function.
 func BuildWildcardCondition(field string, patterns []string) (string, []interface{}) {
-	if len(patterns) == 0 {
+	if len(patterns) == 0 || field == "" {
 		return "", nil
 	}
 
-	var conditions []string
-
-	var args []interface{}
+	// Pre-allocate slices with known capacity to avoid reallocations
+	conditions := make([]string, 0, len(patterns))
+	args := make([]interface{}, 0, len(patterns))
 
 	for _, pattern := range patterns {
+		// Skip empty patterns
+		if pattern == "" {
+			continue
+		}
+
 		if ContainsWildcards(pattern) {
-			conditions = append(conditions, field+" LIKE ?")
-			args = append(args, WildcardToSQL(pattern))
+			conditions = append(conditions, fmt.Sprintf(sqlGlobLower, field))
+			args = append(args, UserGlobOnlyStar(pattern))
 		} else {
-			conditions = append(conditions, field+" = ?")
+			conditions = append(conditions, fmt.Sprintf(sqlEqualLower, field))
 			args = append(args, pattern)
 		}
+	}
+
+	// Handle case where all patterns were empty
+	if len(conditions) == 0 {
+		return "", nil
 	}
 
 	condition := strings.Join(conditions, " OR ")
