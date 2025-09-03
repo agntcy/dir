@@ -301,7 +301,7 @@ func TestGetRecords_CombinedOptions(t *testing.T) {
 
 	// Test name + version filter.
 	records, err = db.GetRecords(
-		types.WithName("agent"),
+		types.WithName("*agent*"),
 		types.WithVersion("1.0.0"),
 	)
 	require.NoError(t, err)
@@ -317,7 +317,7 @@ func TestGetRecords_CombinedOptions(t *testing.T) {
 
 	// Test complex combination.
 	records, err = db.GetRecords(
-		types.WithName("agent"),
+		types.WithName("*agent*"),
 		types.WithVersion("1.0.0"),
 		types.WithSkillNames("skill1"),
 	)
