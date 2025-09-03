@@ -358,15 +358,17 @@ func TestNamespaceType(t *testing.T) {
 
 	// Test AllNamespaces() function
 	all := AllNamespaces()
-	assert.Len(t, all, 3)
+	assert.Len(t, all, 4)
 	assert.Contains(t, all, NamespaceSkills)
 	assert.Contains(t, all, NamespaceDomains)
 	assert.Contains(t, all, NamespaceFeatures)
+	assert.Contains(t, all, NamespaceLocators)
 
 	// Test IsValidNamespaceKey() function
 	assert.True(t, IsValidNamespaceKey("/skills/golang/CID123"))
 	assert.True(t, IsValidNamespaceKey("/domains/web/CID123"))
 	assert.True(t, IsValidNamespaceKey("/features/chat/CID123"))
+	assert.True(t, IsValidNamespaceKey("/locators/docker-image/CID123"))
 	assert.False(t, IsValidNamespaceKey("/invalid/test/CID123"))
 	assert.False(t, IsValidNamespaceKey("/records/CID123"))
 	assert.False(t, IsValidNamespaceKey("skills/golang/CID123")) // missing leading slash
@@ -393,15 +395,17 @@ func TestCreateLabelValidators(t *testing.T) {
 	validators := CreateLabelValidators()
 
 	// Test that all expected validators are created
-	assert.Len(t, validators, 3)
+	assert.Len(t, validators, 4)
 	assert.Contains(t, validators, NamespaceSkills.String())
 	assert.Contains(t, validators, NamespaceDomains.String())
 	assert.Contains(t, validators, NamespaceFeatures.String())
+	assert.Contains(t, validators, NamespaceLocators.String())
 
 	// Test that validators are of correct types
 	assert.IsType(t, &SkillValidator{}, validators[NamespaceSkills.String()])
 	assert.IsType(t, &DomainValidator{}, validators[NamespaceDomains.String()])
 	assert.IsType(t, &FeatureValidator{}, validators[NamespaceFeatures.String()])
+	assert.IsType(t, &LocatorValidator{}, validators[NamespaceLocators.String()])
 }
 
 func TestValidateLabelKey(t *testing.T) {

@@ -234,8 +234,18 @@ func (r *routeLocal) queryMatchesLabels(query *routingv1.RecordQuery, labels []s
 		return false
 
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
-		// For locators, check if locator value is found in labels
-		return strings.Contains(strings.Join(labels, " "), query.GetValue())
+		// Check if any locator label matches the query (consistent with skills)
+		locatorPrefix := validators.NamespaceLocators.Prefix()
+		targetLocator := locatorPrefix + query.GetValue()
+
+		for _, label := range labels {
+			// Exact match: /locators/docker-image matches "docker-image"
+			if label == targetLocator {
+				return true
+			}
+		}
+
+		return false
 
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
 		// Unspecified queries match everything
@@ -259,6 +269,7 @@ func (r *routeLocal) getRecordLabelsEfficiently(ctx context.Context, cid string)
 		validators.NamespaceSkills.Prefix(),
 		validators.NamespaceDomains.Prefix(),
 		validators.NamespaceFeatures.Prefix(),
+		validators.NamespaceLocators.Prefix(),
 	}
 
 	for _, namespace := range namespaces {
@@ -404,6 +415,15 @@ func getLabels(record *corev1.Record) []string {
 	}
 
 	labels = append(labels, features...)
+
+	// get record locators
+	locators := make([]string, 0, len(recordData.GetLocators()))
+
+	for _, locator := range recordData.GetLocators() {
+		locators = append(locators, validators.NamespaceLocators.Prefix()+locator.GetType())
+	}
+
+	labels = append(labels, locators...)
 
 	return labels
 }

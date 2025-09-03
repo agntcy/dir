@@ -40,8 +40,8 @@ func convertLabelsToRecordQueries(labels []string) []*routingv1.RecordQuery {
 			_ = featureName
 			// Note: features might need to be mapped to locator or handled differently
 			// For now, skip features as they're not in the current RecordQueryType
-		case strings.HasPrefix(label, "locator="):
-			locatorType := strings.TrimPrefix(label, "locator=")
+		case strings.HasPrefix(label, "/locators/"):
+			locatorType := strings.TrimPrefix(label, "/locators/")
 			queries = append(queries, &routingv1.RecordQuery{
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
 				Value: locatorType,

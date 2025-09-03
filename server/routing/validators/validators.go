@@ -280,12 +280,80 @@ func (v *FeatureValidator) Select(key string, values [][]byte) (int, error) {
 	return v.selectFirstValid(key, values, v.Validate)
 }
 
+// LocatorValidator validates DHT records for locator-based content discovery.
+type LocatorValidator struct {
+	BaseValidator
+}
+
+// Validate validates a locators DHT record.
+// Key format: /locators/<locator_type>/<cid>/<peer_id>
+// Future: Can validate against supported locator types, registry, etc.
+func (v *LocatorValidator) Validate(key string, value []byte) error {
+	validatorLogger.Debug("Validating locators DHT record", "key", key)
+
+	// Basic format validation
+	parts, err := v.validateKeyFormat(key, NamespaceLocators.String())
+	if err != nil {
+		return err
+	}
+
+	// Locators-specific validation
+	if err := v.validateLocatorsSpecific(parts); err != nil {
+		return err
+	}
+
+	// Value validation
+	if err := v.validateValue(value); err != nil {
+		return err
+	}
+
+	validatorLogger.Debug("Locators DHT record validation successful", "key", key)
+
+	return nil
+}
+
+// validateLocatorsSpecific performs locators-specific validation logic.
+func (v *LocatorValidator) validateLocatorsSpecific(parts []string) error {
+	// parts[0] = "", parts[1] = "locators", parts[2:len-2] = locator path components, parts[len-2] = cid, parts[len-1] = peer_id
+	// Enhanced format: /locators/<locator_type>/<cid>/<peer_id>
+	if len(parts) < MinLabelKeyParts {
+		return errors.New("locators key must have format: /locators/<locator_type>/<cid>/<peer_id>")
+	}
+
+	// Extract locator type (everything between "locators" and CID)
+	locatorParts := parts[2 : len(parts)-2] // Exclude CID and PeerID
+	if len(locatorParts) == 0 {
+		return errors.New("locator type cannot be empty")
+	}
+
+	// Validate that none of the locator path components are empty
+	for i, part := range locatorParts {
+		if part == "" {
+			return errors.New("locator path component cannot be empty at position " + strconv.Itoa(i+1))
+		}
+	}
+
+	// Future: validate against supported locator types
+	// locatorType := strings.Join(locatorParts, "/")
+	// if !v.isValidLocatorType(locatorType) {
+	//     return errors.New("invalid locator type: " + locatorType)
+	// }
+
+	return nil
+}
+
+// Select chooses between multiple values for locators records.
+func (v *LocatorValidator) Select(key string, values [][]byte) (int, error) {
+	return v.selectFirstValid(key, values, v.Validate)
+}
+
 // CreateLabelValidators creates separate validators for each label namespace.
 func CreateLabelValidators() map[string]record.Validator {
 	return map[string]record.Validator{
 		NamespaceSkills.String():   &SkillValidator{},
 		NamespaceDomains.String():  &DomainValidator{},
 		NamespaceFeatures.String(): &FeatureValidator{},
+		NamespaceLocators.String(): &LocatorValidator{},
 	}
 }
 

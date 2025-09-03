@@ -17,6 +17,9 @@ const (
 
 	// NamespaceFeatures defines the namespace for feature-based labels.
 	NamespaceFeatures NamespaceType = "features"
+
+	// NamespaceLocators defines the namespace for locator-based labels.
+	NamespaceLocators NamespaceType = "locators"
 )
 
 // String returns the string representation of the namespace type.
@@ -32,7 +35,7 @@ func (n NamespaceType) Prefix() string {
 // IsValid checks if the namespace type is one of the supported types.
 func (n NamespaceType) IsValid() bool {
 	switch n {
-	case NamespaceSkills, NamespaceDomains, NamespaceFeatures:
+	case NamespaceSkills, NamespaceDomains, NamespaceFeatures, NamespaceLocators:
 		return true
 	default:
 		return false
@@ -51,11 +54,11 @@ func ParseNamespace(s string) (NamespaceType, bool) {
 
 // AllNamespaces returns all supported namespace types.
 func AllNamespaces() []NamespaceType {
-	return []NamespaceType{NamespaceSkills, NamespaceDomains, NamespaceFeatures}
+	return []NamespaceType{NamespaceSkills, NamespaceDomains, NamespaceFeatures, NamespaceLocators}
 }
 
 // IsValidNamespaceKey checks if a key starts with any valid namespace prefix.
-// Returns true if the key starts with /skills/, /domains/, or /features/.
+// Returns true if the key starts with /skills/, /domains/, /features/, or /locators/.
 func IsValidNamespaceKey(key string) bool {
 	for _, ns := range AllNamespaces() {
 		if strings.HasPrefix(key, ns.Prefix()) {
