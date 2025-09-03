@@ -857,10 +857,14 @@ func TestV1SkillFormats_EdgeCases(t *testing.T) {
 			require.Len(t, skills, 1, "Should have 1 skill")
 
 			skill := skills[0]
-			assert.Equal(t, tc.expectedName, fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName()), "Skill name should match")
+
+			// Use the V1SkillAdapter to get the properly formatted name
+			adapter := adapters.NewV1SkillAdapter(skill)
+
+			assert.Equal(t, tc.expectedName, adapter.GetName(), "Skill name should match")
 			assert.Equal(t, tc.expectedID, skill.GetClassUid(), "Skill ID should match")
 
-			t.Logf("✅ %s: name='%s', ID=%d", tc.name, fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName()), skill.GetClassUid())
+			t.Logf("✅ %s: name='%s', ID=%d", tc.name, adapter.GetName(), skill.GetClassUid())
 		})
 	}
 }
