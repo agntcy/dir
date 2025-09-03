@@ -13,6 +13,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// Constants for database joins and common queries
+const (
+	// Join clauses for related tables
+	joinSkills     = "JOIN skills ON skills.record_cid = records.record_cid"
+	joinLocators   = "JOIN locators ON locators.record_cid = records.record_cid"
+	joinExtensions = "JOIN extensions ON extensions.record_cid = records.record_cid"
+)
+
 type Record struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -254,80 +262,117 @@ func (d *DB) RemoveRecord(cid string) error {
 	return nil
 }
 
-// handleFilterOptions applies the provided filters to the query.
-//
-//nolint:gocognit,cyclop,nestif
-func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
-	// Apply record-level filters with wildcard support.
-	if cfg.Name != "" {
-		if utils.ContainsWildcards(cfg.Name) {
-			query = query.Where("records.name LIKE ?", utils.WildcardToSQL(cfg.Name))
-		} else {
-			query = query.Where("records.name = ?", cfg.Name)
+// WithGlobFilter creates a scope for single field wildcard filtering using GLOB.
+// Performs input validation and handles empty values gracefully.
+// Field parameter should be a valid, sanitized database field reference.
+func WithGlobFilter(field, value string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		// Validate inputs
+		if field == "" || value == "" {
+			return db
 		}
-	}
 
-	if cfg.Version != "" {
-		if utils.ContainsWildcards(cfg.Version) {
-			query = query.Where("records.version LIKE ?", utils.WildcardToSQL(cfg.Version))
-		} else {
-			query = query.Where("records.version = ?", cfg.Version)
+		if utils.ContainsWildcards(value) {
+			return db.Where("LOWER("+field+") GLOB LOWER(?)", utils.UserGlobOnlyStar(value))
 		}
+		return db.Where("LOWER("+field+") = LOWER(?)", value)
 	}
+}
 
-	// Handle skill filters with wildcard support.
-	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
-		query = query.Joins("JOIN skills ON skills.record_cid = records.record_cid")
+// WithGlobArrayFilter creates a scope for array field wildcard filtering using GLOB.
+// Filters out empty values and validates field parameter.
+// Field parameter should be a valid, sanitized database field reference.
+func WithGlobArrayFilter(field string, values []string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		// Validate inputs
+		if field == "" || len(values) == 0 {
+			return db
+		}
 
+		condition, args := utils.BuildWildcardCondition(field, values)
+		if condition != "" {
+			return db.Where(condition, args...)
+		}
+		return db
+	}
+}
+
+// WithSkillsFilter creates a scope for skills filtering with conditional join.
+// Performs nil checks and validates that at least one filter criterion is provided.
+func WithSkillsFilter(cfg *types.RecordFilters) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		// Validate input and check if any skill filters are provided
+		if cfg == nil || (len(cfg.SkillIDs) == 0 && len(cfg.SkillNames) == 0) {
+			return db
+		}
+
+		// Apply the join once - GORM will handle duplicate joins automatically
+		db = db.Joins(joinSkills)
+
+		// Apply skill ID filter if provided
 		if len(cfg.SkillIDs) > 0 {
-			query = query.Where("skills.skill_id IN ?", cfg.SkillIDs)
+			db = db.Where("skills.skill_id IN ?", cfg.SkillIDs)
 		}
 
-		if len(cfg.SkillNames) > 0 {
-			condition, args := utils.BuildWildcardCondition("skills.name", cfg.SkillNames)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
+		// Apply skill name filter if provided
+		return db.Scopes(WithGlobArrayFilter("skills.name", cfg.SkillNames))
+	}
+}
+
+// WithLocatorsFilter creates a scope for locators filtering with conditional join.
+// Performs nil checks and validates that at least one filter criterion is provided.
+func WithLocatorsFilter(cfg *types.RecordFilters) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		// Validate input and check if any locator filters are provided
+		if cfg == nil || (len(cfg.LocatorTypes) == 0 && len(cfg.LocatorURLs) == 0) {
+			return db
 		}
+
+		// Apply the join once - GORM will handle duplicate joins automatically
+		db = db.Joins(joinLocators)
+
+		// Apply all locator filters using scopes
+		return db.Scopes(
+			WithGlobArrayFilter("locators.type", cfg.LocatorTypes),
+			WithGlobArrayFilter("locators.url", cfg.LocatorURLs),
+		)
+	}
+}
+
+// WithExtensionsFilter creates a scope for extensions filtering with conditional join.
+// Performs nil checks and validates that at least one filter criterion is provided.
+func WithExtensionsFilter(cfg *types.RecordFilters) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		// Validate input and check if any extension filters are provided
+		if cfg == nil || (len(cfg.ExtensionNames) == 0 && len(cfg.ExtensionVersions) == 0) {
+			return db
+		}
+
+		// Apply the join once - GORM will handle duplicate joins automatically
+		db = db.Joins(joinExtensions)
+
+		// Apply all extension filters using scopes
+		return db.Scopes(
+			WithGlobArrayFilter("extensions.name", cfg.ExtensionNames),
+			WithGlobArrayFilter("extensions.version", cfg.ExtensionVersions),
+		)
+	}
+}
+
+// handleFilterOptions applies the provided filters to the query using clean GORM scopes.
+// Performs input validation and handles nil configuration gracefully.
+func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
+	// Validate inputs - return unmodified query if invalid
+	if query == nil || cfg == nil {
+		return query
 	}
 
-	// Handle locator filters with wildcard support.
-	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
-		query = query.Joins("JOIN locators ON locators.record_cid = records.record_cid")
-
-		if len(cfg.LocatorTypes) > 0 {
-			condition, args := utils.BuildWildcardCondition("locators.type", cfg.LocatorTypes)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
-
-		if len(cfg.LocatorURLs) > 0 {
-			condition, args := utils.BuildWildcardCondition("locators.url", cfg.LocatorURLs)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
-	}
-
-	// Handle extension filters with wildcard support.
-	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
-		query = query.Joins("JOIN extensions ON extensions.record_cid = records.record_cid")
-
-		if len(cfg.ExtensionNames) > 0 {
-			condition, args := utils.BuildWildcardCondition("extensions.name", cfg.ExtensionNames)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
-
-		if len(cfg.ExtensionVersions) > 0 {
-			condition, args := utils.BuildWildcardCondition("extensions.version", cfg.ExtensionVersions)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
-	}
-
-	return query
+	// Apply all filter scopes - each scope handles its own validation
+	return query.Scopes(
+		WithGlobFilter("records.name", cfg.Name),
+		WithGlobFilter("records.version", cfg.Version),
+		WithSkillsFilter(cfg),
+		WithLocatorsFilter(cfg),
+		WithExtensionsFilter(cfg),
+	)
 }
