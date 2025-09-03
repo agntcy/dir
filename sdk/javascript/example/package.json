@@ -1,0 +1,12 @@
+{
+  "name": "dir-example",
+  "version": "0.0.0",
+  "dependencies": {
+    "@buf/agntcy_dir.grpc_node": "^1.13.0-20250902143656-38a679e0e504.2",
+    "@buf/agntcy_dir.grpc_web": "^1.5.0-20250902143656-38a679e0e504.1",
+    "agntcy-dir-sdk": "file:../"
+  },
+  "scripts": {
+    "example": "node example.js"
+  }
+}
