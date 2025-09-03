@@ -17,6 +17,8 @@ import sign.v1.sign_service_pb2 as sign_types
 import sign.v1.sign_service_pb2_grpc as sign_services
 import store.v1.store_service_pb2 as store_types
 import store.v1.store_service_pb2_grpc as store_services
+import store.v1.sync_service_pb2 as sync_types
+import store.v1.sync_service_pb2_grpc as sync_services
 
 CHUNK_SIZE = 4096  # 4KB
 
@@ -65,6 +67,7 @@ class Client:
         self.routing_client = routing_services.RoutingServiceStub(channel)
         self.search_client = search_services.SearchServiceStub(channel)
         self.sign_client = sign_services.SignServiceStub(channel)
+        self.sync_client = sync_services.SyncServiceStub(channel)
 
         self.dirctl_path = config.dirctl_path
 
@@ -489,3 +492,54 @@ class Client:
             raise Exception(f"Unknown error: {e}")
 
         return result
+
+    def create_sync(
+        self,
+        req: sync_types.CreateSyncRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> sync_types.CreateSyncResponse:
+        try:
+            response = self.sync_client.CreateSync(req, metadata=metadata)
+        except Exception as e:
+            raise Exception(f"Failed to create sync: {e}")
+
+        return response
+
+    def list_syncs(
+        self,
+        req: sync_types.ListSyncsRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> Iterator[sync_types.ListSyncsItem]:
+        try:
+            stream = self.sync_client.ListSyncs(req, metadata=metadata)
+
+            # Yield each item from the stream
+            for response in stream:
+                yield response
+
+        except Exception as e:
+            raise Exception(f"Failed to list sync: {e}")
+
+    def get_sync(
+        self,
+        req: sync_types.GetSyncRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> sync_types.GetSyncResponse:
+        try:
+            response = self.sync_client.GetSync(req, metadata=metadata)
+        except Exception as e:
+            raise Exception(f"Failed to get sync: {e}")
+
+        return response
+
+    def delete_sync(
+        self,
+        req: sync_types.DeleteSyncRequest,
+        metadata: Optional[List[Tuple[str, str]]] = None,
+    ) -> sync_types.DeleteSyncResponse:
+        try:
+            response = self.sync_client.DeleteSync(req, metadata=metadata)
+        except Exception as e:
+            raise Exception(f"Failed to delete sync: {e}")
+
+        return response
