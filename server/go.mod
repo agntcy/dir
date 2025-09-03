@@ -9,6 +9,7 @@ replace (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.8-20250903081957-6f94bdb7ac29.1
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
 	github.com/agntcy/dir/api v0.2.6
 	github.com/agntcy/dir/utils v0.2.6
@@ -27,7 +28,7 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.5.0
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.73.0
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.8
 	gorm.io/gorm v1.30.0
 	oras.land/oras-go/v2 v2.6.0
 )

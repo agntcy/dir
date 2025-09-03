@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"

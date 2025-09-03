@@ -3,10 +3,11 @@ module github.com/agntcy/dir/api
 go 1.24.5
 
 require (
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.8-20250903081957-6f94bdb7ac29.1
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/go-digest v1.0.0
 	google.golang.org/grpc v1.72.0
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.8
 )
 
 require (

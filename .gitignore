@@ -34,3 +34,7 @@ tmp/
 
 # AI
 .cursor/
+
+# Go workspace files
+go.work
+go.work.sum

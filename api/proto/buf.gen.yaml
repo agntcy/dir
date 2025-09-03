@@ -11,24 +11,19 @@ managed:
     - file_option: go_package_prefix
       value: github.com/agntcy/dir/api
       module: buf.build/agntcy/dir
-    # Override for OASF module to generate into api/oasf/
+    # Override for OASF module to use the official Go module
     - file_option: go_package_prefix
-      value: github.com/agntcy/dir/api
+      value: buf.build/gen/go/agntcy/oasf/protocolbuffers/go
       module: buf.build/agntcy/oasf
-inputs:
-  - module: buf.build/agntcy/oasf
-  - directory: .
 plugins:
   # Stubs for Golang
   - remote: buf.build/protocolbuffers/go:v1.36.5
     out: ../
     opt:
       - paths=source_relative
-    include_imports: true
   - remote: buf.build/grpc/go:v1.5.1
     out: ../
     opt:
       - paths=source_relative
       - require_unimplemented_servers=false
       - use_generic_streams_experimental=false
-    include_imports: true

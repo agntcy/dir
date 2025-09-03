@@ -6,8 +6,8 @@ package corev1
 import (
 	"testing"
 
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	objectsv3 "github.com/agntcy/dir/api/objects/v3"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v3"
 	"github.com/stretchr/testify/assert"
 )
 

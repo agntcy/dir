@@ -10,9 +10,9 @@
 package corev1
 
 import (
-	v1 "github.com/agntcy/dir/api/objects/v1"
-	v2 "github.com/agntcy/dir/api/objects/v2"
-	v3 "github.com/agntcy/dir/api/objects/v3"
+	v1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+	v2 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v2"
+	v3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v3"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

@@ -4,7 +4,9 @@
 package adapters
 
 import (
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
+	"fmt"
+
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	"github.com/agntcy/dir/server/types"
 )
 
@@ -284,9 +286,12 @@ func (s *V1SkillAdapter) GetName() string {
 	if s.skill == nil {
 		return ""
 	}
-	// Use the skill's own GetName method which returns categoryName/className format
-	// This preserves V1's semantic meaning where skills are hierarchical (category/class)
-	return s.skill.GetName()
+
+	if s.skill.GetClassName() == "" {
+		return s.skill.GetCategoryName()
+	}
+
+	return fmt.Sprintf("%s/%s", s.skill.GetCategoryName(), s.skill.GetClassName())
 }
 
 // GetID implements types.Skill interface.

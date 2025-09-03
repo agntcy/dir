@@ -9,10 +9,10 @@ import (
 	"os"
 	"testing"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+	objectsv2 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v2"
+	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v3"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	objectsv2 "github.com/agntcy/dir/api/objects/v2"
-	objectsv3 "github.com/agntcy/dir/api/objects/v3"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"

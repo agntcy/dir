@@ -1,0 +1,13 @@
+# Ignore Go workspace files during Docker builds
+go.work
+go.work.sum
+
+# Common ignores
+.git/
+.gitignore
+README.md
+.env
+.env.local
+*.log
+tmp/
+.DS_Store

@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"io"
 
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
-	objectsv2 "github.com/agntcy/dir/api/objects/v2"
-	objectsv3 "github.com/agntcy/dir/api/objects/v3"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+	objectsv2 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v2"
+	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v3"
 )
 
 // DetectOASFVersion detects the OASF schema version from JSON data.

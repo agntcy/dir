@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/glebarez/sqlite"
@@ -857,10 +857,10 @@ func TestV1SkillFormats_EdgeCases(t *testing.T) {
 			require.Len(t, skills, 1, "Should have 1 skill")
 
 			skill := skills[0]
-			assert.Equal(t, tc.expectedName, skill.GetName(), "Skill name should match")
-			assert.Equal(t, tc.expectedID, skill.GetID(), "Skill ID should match")
+			assert.Equal(t, tc.expectedName, fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName()), "Skill name should match")
+			assert.Equal(t, tc.expectedID, skill.GetClassUid(), "Skill ID should match")
 
-			t.Logf("✅ %s: name='%s', ID=%d", tc.name, skill.GetName(), skill.GetID())
+			t.Logf("✅ %s: name='%s', ID=%d", tc.name, fmt.Sprintf("%s/%s", skill.GetCategoryName(), skill.GetClassName()), skill.GetClassUid())
 		})
 	}
 }

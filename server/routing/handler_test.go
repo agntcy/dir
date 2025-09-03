@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	objectsv1 "github.com/agntcy/dir/api/objects/v1"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 )
