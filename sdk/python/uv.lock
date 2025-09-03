@@ -4,7 +4,7 @@ requires-python = ">=3.9"
 
 [[package]]
 name = "agntcy-dir-grpc-python"
-version = "1.74.1.1.20250818093216+7b5f01ca9089"
+version = "1.74.1.1.20250904070231+b2906e58eb12"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "agntcy-dir-protocolbuffers-python" },
@@ -12,7 +12,7 @@ dependencies = [
     { name = "grpcio" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/agntcy-dir-grpc-python/agntcy_dir_grpc_python-1.74.1.1.20250818093216+7b5f01ca9089-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/agntcy-dir-grpc-python/agntcy_dir_grpc_python-1.74.1.1.20250904070231+b2906e58eb12-py3-none-any.whl" },
 ]
 
 [[package]]
@@ -50,18 +50,18 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "agntcy-dir-grpc-python", specifier = "==1.74.1.1.20250818093216+7b5f01ca9089" }]
+requires-dist = [{ name = "agntcy-dir-grpc-python", specifier = "==1.74.1.1.20250904070231+b2906e58eb12" }]
 
 [[package]]
 name = "agntcy-oasf-grpc-python"
-version = "1.74.1.1.20250815145957+677fb6c59174"
+version = "1.74.1.1.20250903081957+6f94bdb7ac29"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "agntcy-oasf-protocolbuffers-python" },
     { name = "grpcio" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/agntcy-oasf-grpc-python/agntcy_oasf_grpc_python-1.74.1.1.20250815145957+677fb6c59174-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/agntcy-oasf-grpc-python/agntcy_oasf_grpc_python-1.74.1.1.20250903081957+6f94bdb7ac29-py3-none-any.whl" },
 ]
 
 [[package]]

@@ -5,7 +5,7 @@ description = "Directory client SDK"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "agntcy-dir-grpc-python==1.74.1.1.20250818093216+7b5f01ca9089",
+    "agntcy-dir-grpc-python==1.74.1.1.20250904070231+b2906e58eb12",
 ]
 
 [[tool.uv.index]]
