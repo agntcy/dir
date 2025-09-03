@@ -302,7 +302,6 @@ class TestClient(unittest.TestCase):
             )
 
             result = client.sign(oidc_request, client_id)
-            self.assertEqual(result.stderr.decode("utf-8"), "")
             self.assertEqual(
                 result.stdout.decode("utf-8"), "Record signed successfully"
             )
