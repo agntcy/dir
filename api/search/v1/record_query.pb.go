@@ -31,22 +31,22 @@ const (
 	// Unspecified query type.
 	RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED RecordQueryType = 0
 	// Query for a record name.
-	// Supports wildcard patterns: "web*", "*service", "api-*-v2"
+	// Supports wildcard patterns: "web*", "*service", "api-*-v2", "???api", "agent-[0-9]"
 	RecordQueryType_RECORD_QUERY_TYPE_NAME RecordQueryType = 1
 	// Query for a record version.
-	// Supports wildcard patterns: "v1.*", "v2.*", "*-beta"
+	// Supports wildcard patterns: "v1.*", "v2.*", "*-beta", "v1.0.?", "v[0-9].*"
 	RecordQueryType_RECORD_QUERY_TYPE_VERSION RecordQueryType = 2
 	// Query for a skill ID.
 	// Numeric field - exact match only, no wildcard support.
 	RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID RecordQueryType = 3
 	// Query for a skill name.
-	// Supports wildcard patterns: "python*", "*script", "*machine*learning*"
+	// Supports wildcard patterns: "python*", "*script", "*machine*learning*", "Pytho?", "[A-M]*"
 	RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME RecordQueryType = 4
 	// Query for a locator type.
-	// Supports wildcard patterns: "http*", "ftp*", "*docker*"
+	// Supports wildcard patterns: "http*", "ftp*", "*docker*", "[hf]tt[ps]*"
 	RecordQueryType_RECORD_QUERY_TYPE_LOCATOR RecordQueryType = 5
 	// Query for an extension.
-	// Supports wildcard patterns: "*-plugin", "*-extension", "core*"
+	// Supports wildcard patterns: "*-plugin", "*-extension", "core*", "ext-?", "plugin-[0-9]"
 	RecordQueryType_RECORD_QUERY_TYPE_EXTENSION RecordQueryType = 6
 )
 
@@ -102,16 +102,22 @@ func (RecordQueryType) EnumDescriptor() ([]byte, []int) {
 // A query to match the record against during discovery.
 // For example:
 //
-//	Exact match:    { type: RECORD_QUERY_TYPE_NAME, value: "my-agent" }
-//	Wildcard match: { type: RECORD_QUERY_TYPE_NAME, value: "web*" }
-//	Pattern match:  { type: RECORD_QUERY_TYPE_SKILL_NAME, value: "*machine*learning*" }
-//	Complex match:  { type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://*.example.com/*" }
+//	Exact match:      { type: RECORD_QUERY_TYPE_NAME, value: "my-agent" }
+//	Wildcard match:   { type: RECORD_QUERY_TYPE_NAME, value: "web*" }
+//	Pattern match:    { type: RECORD_QUERY_TYPE_SKILL_NAME, value: "*machine*learning*" }
+//	Question mark:    { type: RECORD_QUERY_TYPE_VERSION, value: "v1.0.?" }
+//	List wildcards:   { type: RECORD_QUERY_TYPE_NAME, value: "agent-[0-9]" }
+//	Complex match:    { type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://*.example.com/*" }
 type RecordQuery struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The type of the query to match against.
 	Type RecordQueryType `protobuf:"varint,1,opt,name=type,proto3,enum=search.v1.RecordQueryType" json:"type,omitempty"`
 	// The query value to match against.
-	// Supports wildcard patterns using '*' for zero or more characters.
+	// Supports wildcard patterns:
+	//
+	//	'*' - matches zero or more characters
+	//	'?' - matches exactly one character
+	//	'[]' - matches any character within brackets (e.g., [0-9], [a-z], [abc])
 	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

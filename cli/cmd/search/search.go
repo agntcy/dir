@@ -48,7 +48,32 @@ Usage examples:
 	# Find agents with plugin extensions
 	dirctl search --query "extension=*-plugin*"
 
-3. Complex wildcard patterns:
+3. Question mark wildcard (? matches exactly one character):
+
+	# Find version v1.0.x where x is any single digit
+	dirctl search --query "version=v1.0.?"
+	
+	# Find agents with 3-character names ending in "api"
+	dirctl search --query "name=???api"
+	
+	# Find skills with single character variations
+	dirctl search --query "skill-name=Pytho?"
+
+4. List wildcards ([] matches any character within brackets):
+
+	# Find agents with numeric suffixes
+	dirctl search --query "name=agent-[0-9]"
+	
+	# Find versions starting with v followed by any digit
+	dirctl search --query "version=v[0-9].*"
+	
+	# Find skills starting with uppercase letters A-M
+	dirctl search --query "skill-name=[A-M]*"
+	
+	# Find locators with specific protocols
+	dirctl search --query "locator=[hf]tt[ps]*"
+
+5. Complex wildcard patterns:
 
 	# Find API services with v2 versions
 	dirctl search --query "name=api-*-service" --query "version=v2.*"
@@ -58,6 +83,9 @@ Usage examples:
 	
 	# Find agents with container locators
 	dirctl search --query "locator=*docker*" --query "locator=*container*"
+	
+	# Combine different wildcard types
+	dirctl search --query "name=web-[0-9]?" --query "version=v?.*.?"
 
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
