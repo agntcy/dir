@@ -7,9 +7,27 @@ import (
 	"strings"
 )
 
-// ContainsWildcards checks if a pattern contains wildcard characters (* or ?).
+// ContainsWildcards checks if a pattern contains wildcard characters (* or ? or []).
 func ContainsWildcards(pattern string) bool {
-	return strings.Contains(pattern, "*") || strings.Contains(pattern, "?")
+	return strings.Contains(pattern, "*") || strings.Contains(pattern, "?") || containsListWildcard(pattern)
+}
+
+// containsListWildcard checks if a pattern contains list wildcard characters [].
+func containsListWildcard(pattern string) bool {
+	// Look for properly formed list wildcards [...]
+	for i := range len(pattern) {
+		if pattern[i] == '[' {
+			// Find the closing bracket
+			for j := i + 1; j < len(pattern); j++ {
+				if pattern[j] == ']' {
+					// Found a complete list wildcard [...]
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 // BuildWildcardCondition builds a WHERE condition for wildcard or exact matching.
@@ -19,9 +37,8 @@ func BuildWildcardCondition(field string, patterns []string) (string, []interfac
 		return "", nil
 	}
 
-	var conditions []string
-
-	var args []interface{}
+	conditions := make([]string, 0, len(patterns))
+	args := make([]interface{}, 0, len(patterns))
 
 	for _, pattern := range patterns {
 		condition, arg := BuildSingleWildcardCondition(field, pattern)
@@ -43,5 +60,6 @@ func BuildSingleWildcardCondition(field, pattern string) (string, interface{}) {
 	if ContainsWildcards(pattern) {
 		return "LOWER(" + field + ") GLOB ?", strings.ToLower(pattern)
 	}
+
 	return "LOWER(" + field + ") = ?", strings.ToLower(pattern)
 }
