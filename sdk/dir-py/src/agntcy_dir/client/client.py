@@ -4,32 +4,30 @@ import logging
 import os
 import subprocess
 import tempfile
+import grpc
 from subprocess import CompletedProcess
 from typing import Iterator, List, Optional, Tuple
 
-import core.v1.record_pb2 as core_types
-import grpc
-import routing.v1.routing_service_pb2 as routing_types
-import routing.v1.routing_service_pb2_grpc as routing_services
-import search.v1.search_service_pb2 as search_types
-import search.v1.search_service_pb2_grpc as search_services
-import sign.v1.sign_service_pb2 as sign_types
-import sign.v1.sign_service_pb2_grpc as sign_services
-import store.v1.store_service_pb2 as store_types
-import store.v1.store_service_pb2_grpc as store_services
-
+from models import *
 from client.config import Config
 
 logger = logging.getLogger("client")
 
 
 class Client:
-    def __init__(self, config: Config):
+    def __init__(self, config: Optional[Config] = None) -> "Client":
         """Initialize the client with the given configuration.
 
         Args:
-            config: The client configuration
+            config: Optional client configuration. If unset, loaded from env.
+
+        Returns:
+            A new Client instance
         """
+        # Load config if unset
+        if config is None:
+            config = Config.load_from_env()
+
         # Create gRPC channel
         channel = grpc.insecure_channel(config.server_address)
 
@@ -38,22 +36,6 @@ class Client:
         self.routing_client = routing_services.RoutingServiceStub(channel)
         self.search_client = search_services.SearchServiceStub(channel)
         self.sign_client = sign_services.SignServiceStub(channel)
-
-        self.dirctl_path = config.dirctl_path
-
-    @classmethod
-    def new(cls, config: Optional[Config] = None) -> "Client":
-        """Create a new client instance.
-
-        Args:
-            config: Optional configuration, will load from environment if not provided
-
-        Returns:
-            A new Client instance
-        """
-        if config is None:
-            config = Config.load_from_env()
-        return cls(config)
 
     def publish(
         self,
@@ -396,7 +378,7 @@ class Client:
             shell_env["COSIGN_PASSWORD"] = key_signer.password.decode("utf8")
 
             command = (
-                self.dirctl_path,
+                self.config.dirctl_path,
                 "sign",
                 req.record_ref.cid,
                 "--key",
@@ -425,7 +407,7 @@ class Client:
         try:
             shell_env = os.environ.copy()
 
-            command = (self.dirctl_path, "sign", f"{req.record_ref.cid}")
+            command = (self.config.dirctl_path, "sign", f"{req.record_ref.cid}")
             if oidc_signer.id_token != "":
                 command = (*command, "--oidc-token", f"{oidc_signer.id_token}")
             if oidc_signer.options.oidc_provider_url != "":
