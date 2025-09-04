@@ -1,6 +1,6 @@
-const { setTimeout } = require('node:timers/promises');
 const { execSync } = require('child_process');
 const { readFileSync, rmSync } = require('node:fs');
+const { validate: isValidUUID } = require('uuid');
 
 const { Client, Config } = require('../../v1/client');
 const core_record_pb2 = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
@@ -15,6 +15,7 @@ const search_types = require('@buf/agntcy_dir.grpc_node/search/v1/search_service
 const store_types = require('@buf/agntcy_dir.grpc_node/store/v1/store_service_pb');
 const search_query_type = require('@buf/agntcy_dir.grpc_node/search/v1/record_query_pb');
 const sign_types = require('@buf/agntcy_dir.grpc_node/sign/v1/sign_service_pb');
+const sync_types = require('@buf/agntcy_dir.grpc_node/store/v1/sync_service_pb');
 
 class GeneratedRecord {
     constructor(ref, record) {
@@ -94,6 +95,7 @@ describe('Client', () => {
         client.storeClient.close();
         client.routingClient.close();
         client.searchClient.close();
+        client.syncClient.close();
     });
 
     test('push', async () => {
@@ -252,7 +254,7 @@ describe('Client', () => {
 
         expect(objects).not.toBeNull();
         expect(objects).toBeInstanceOf(Array);
-        expect(objects.length).not.toBe(0);
+        expect(objects[1].length).not.toBe(0);
         expect(objectsInstance).not.toBeNull();
         expect(objectsInstance).toBeInstanceOf(routing_types.ListResponse);
     });
@@ -450,4 +452,40 @@ describe('Client', () => {
 
         expect(err).toBeNull();
     }, 30000); // NOTE: This test timeout is 30s because interactive mode
+
+    test('sync', async () => {
+        let err = null;
+
+        try {
+            let create_request = new sync_types.CreateSyncRequest();
+            create_request.setRemoteDirectoryUrl(process.env["DIRECTORY_SERVER_PEER1_ADDRESS"] || "0.0.0.0:8891");
+
+            let create_response = await client.create_sync(create_request);
+            expect(create_response).toBeInstanceOf(sync_types.CreateSyncResponse);
+
+            let sync_id = create_response.u[0];
+            expect(isValidUUID(sync_id)).toBe(true);
+
+            let list_request = new sync_types.ListSyncsRequest();
+            let list_response = await client.list_syncs(list_request);
+            expect(list_response).toBeInstanceOf(sync_types.ListSyncsItem);
+
+            let get_request = new sync_types.GetSyncRequest();
+            get_request.setSyncId(sync_id);
+
+            let get_response = await client.get_sync(get_request);
+            expect(get_response).toBeInstanceOf(sync_types.GetSyncResponse);
+            expect(get_response.u[0]).toEqual(sync_id);
+
+            let delete_request = new sync_types.DeleteSyncRequest();
+            delete_request.setSyncId(sync_id);
+            client.delete_sync(delete_request);
+
+        } catch (error) {
+            err = error;
+            throw new Error(error);
+        }
+
+        expect(err).toBeNull();
+    });
 });
