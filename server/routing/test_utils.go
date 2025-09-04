@@ -17,9 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func toPtr[T any](v T) *T {
-	return &v
-}
+const testLocalPeerID = "local-peer"
 
 //nolint:revive
 func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route {

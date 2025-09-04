@@ -9,6 +9,8 @@ package routing.v1;
 // For example:
 //  { type: RECORD_QUERY_TYPE_SKILL, value: "Natural Language Processing" }
 //  { type: RECORD_QUERY_TYPE_LOCATOR, value: "helm-chart" }
+//  { type: RECORD_QUERY_TYPE_DOMAIN, value: "research" }
+//  { type: RECORD_QUERY_TYPE_FEATURE, value: "runtime/language" }
 message RecordQuery {
   // The type of the query to match against.
   RecordQueryType type = 1;
@@ -27,4 +29,10 @@ enum RecordQueryType {
 
   // Query for a locator type.
   RECORD_QUERY_TYPE_LOCATOR = 2;
+
+  // Query for a domain name.
+  RECORD_QUERY_TYPE_DOMAIN = 3;
+
+  // Query for a feature name.
+  RECORD_QUERY_TYPE_FEATURE = 4;
 }

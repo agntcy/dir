@@ -175,7 +175,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Collect items from the channel using utility.
-				items := utils.CollectChannelItems(itemsChan)
+				items := utils.CollectListItems(itemsChan)
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.HaveLen(1))
@@ -196,7 +196,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Collect items from the channel using utility.
-				items := utils.CollectChannelItems(itemsChan)
+				items := utils.CollectListItems(itemsChan)
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.HaveLen(1))
@@ -208,15 +208,66 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 			// Step 6: List by feature and domain labels (depends on publish)
 			ginkgo.It("should list published record by feature and domain labels", func() {
-				// Note: Current RecordQuery only supports SKILL and LOCATOR types
-				// Domain and feature queries are not yet supported in the routing API
-				// For now, we'll test with all labels to ensure the record is found
-				ginkgo.Skip("Domain and feature queries not yet supported in RecordQuery API")
+				// ✅ Domain and feature queries are now supported in RecordQuery API!
+				// Test domain query
+				domainQuery := &routingv1.RecordQuery{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+					Value: "research", // From record_v3.json extension
+				}
 
-				// TODO: When domain/feature support is added to RecordQueryType, update this test
+				// Test feature query
+				featureQuery := &routingv1.RecordQuery{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_FEATURE,
+					Value: "runtime/language", // From record_v3.json extension
+				}
+
+				// Test with domain query
+				domainItemsChan, err := c.List(ctx, &routingv1.ListRequest{
+					Queries: []*routingv1.RecordQuery{domainQuery},
+					Limit:   utils.Ptr[uint32](10),
+				})
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				domainResults := utils.CollectListItems(domainItemsChan)
+				gomega.Expect(domainResults).ToNot(gomega.BeEmpty(), "Should find record with domain query")
+				gomega.Expect(domainResults[0].GetRecordRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
+
+				// Test with feature query
+				featureItemsChan, err := c.List(ctx, &routingv1.ListRequest{
+					Queries: []*routingv1.RecordQuery{featureQuery},
+					Limit:   utils.Ptr[uint32](10),
+				})
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				featureResults := utils.CollectListItems(featureItemsChan)
+				gomega.Expect(featureResults).ToNot(gomega.BeEmpty(), "Should find record with feature query")
+				gomega.Expect(featureResults[0].GetRecordRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
+
+				ginkgo.GinkgoWriter.Printf("✅ SUCCESS: Domain and feature queries working correctly")
 			})
 
-			// Step 7: Unpublish (depends on publish)
+			// Step 7: Search routing for remote records (depends on publish)
+			ginkgo.It("should search routing for remote records", func() {
+				// Convert skill labels to RecordQuery format
+				queries := convertLabelsToRecordQueries([]string{version.expectedSkillLabels[0]})
+
+				searchChan, err := c.SearchRouting(ctx, &routingv1.SearchRequest{
+					Queries:       queries,
+					Limit:         utils.Ptr[uint32](10),
+					MinMatchScore: utils.Ptr[uint32](1),
+				})
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				// Collect search results using utility
+				results := utils.CollectSearchItems(searchChan)
+
+				// For single-peer testing, we should get an empty slice (no remote records)
+				// This test validates the SearchRouting method works without errors
+				// In multi-peer e2e tests, we'll test actual remote discovery
+				gomega.Expect(results).To(gomega.BeEmpty()) // Should be empty slice in local mode
+			})
+
+			// Step 8: Unpublish (depends on publish)
 			ginkgo.It("should unpublish a record", func() {
 				err := c.Unpublish(ctx, &routingv1.UnpublishRequest{
 					Request: &routingv1.UnpublishRequest_RecordRefs{
@@ -239,7 +290,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Collect items from the channel using utility.
-				items := utils.CollectChannelItems(itemsChan)
+				items := utils.CollectListItems(itemsChan)
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.BeEmpty())

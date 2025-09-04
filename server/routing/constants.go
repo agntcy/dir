@@ -12,9 +12,9 @@ const (
 	// This is configured via dht.MaxRecordAge() and affects all PutValue operations.
 	// Default DHT TTL is 36h, but we use 48h for better network resilience.
 	RecordTTL = 48 * time.Hour
-	// RepublishInterval defines how often we republish DHT records to prevent expiration.
-	// This should be significantly less than DHTRecordTTL to ensure records don't expire.
-	// We use 36h (75% of DHTRecordTTL) to provide a safe margin for network delays.
+	// RepublishInterval defines how often we republish CID provider announcements to prevent expiration.
+	// Provider records typically expire after 24h, but we use a longer interval for robustness.
+	// This ensures our content remains discoverable by triggering pull-based label caching.
 	RepublishInterval = 36 * time.Hour
 	// CleanupInterval defines how often we clean up stale announcements.
 	// This should match DHTRecordTTL to stay consistent with DHT behavior and prevent
@@ -45,20 +45,11 @@ const (
 	// MaxLabelAge defines when remote label announcements are considered stale.
 	// Labels older than this will be cleaned up during periodic cleanup cycles.
 	MaxLabelAge = 72 * time.Hour
-)
 
-// AnnouncementType defines the type of DHT announcement being processed.
-// This helps distinguish between different kinds of network events and route them appropriately.
-type AnnouncementType string
-
-const (
-	// AnnouncementTypeCID indicates a content identifier provider announcement.
-	// This means "I have this content" - peers announce their ability to serve specific records.
-	AnnouncementTypeCID AnnouncementType = "CID"
-
-	// AnnouncementTypeLabel indicates a semantic label mapping announcement.
-	// This means "this content has these labels" - peers announce skill/domain/feature associations.
-	AnnouncementTypeLabel AnnouncementType = "LABEL"
+	// DefaultMinMatchScore defines the minimum allowed match score for production safety.
+	// Per proto specification: "If not set, it will return records that match at least one query".
+	// Any value below this threshold is automatically corrected to this value.
+	DefaultMinMatchScore = 1
 )
 
 const ResultChannelBufferSize = 100

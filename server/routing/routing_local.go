@@ -13,7 +13,6 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -84,7 +83,7 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 	// Update metrics for all record labels and store them locally for queries
 	// Note: This handles ALL local storage for both local-only and network scenarios
 	// Network announcements are handled separately by routing_remote when peers are available
-	labels := getLabels(record)
+	labels := GetLabels(record)
 	for _, label := range labels {
 		// Create minimal metadata (PeerID and CID now in key)
 		metadata := &LabelMetadata{
@@ -129,13 +128,22 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 func (r *routeLocal) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *routingv1.ListResponse, error) {
 	localLogger.Debug("Called local routing's List method", "req", req)
 
+	// ✅ DEFENSIVE: Deduplicate queries for consistent behavior (same as remote Search)
+	originalQueries := req.GetQueries()
+	deduplicatedQueries := deduplicateQueries(originalQueries)
+
+	if len(originalQueries) != len(deduplicatedQueries) {
+		localLogger.Info("Deduplicated list queries for consistent filtering",
+			"originalCount", len(originalQueries), "deduplicatedCount", len(deduplicatedQueries))
+	}
+
 	// Output channel for results
 	outCh := make(chan *routingv1.ListResponse)
 
-	// Process in background
+	// Process in background with deduplicated queries
 	go func() {
 		defer close(outCh)
-		r.listLocalRecords(ctx, req.GetQueries(), req.GetLimit(), outCh)
+		r.listLocalRecords(ctx, deduplicatedQueries, req.GetLimit(), outCh)
 	}()
 
 	return outCh, nil
@@ -194,68 +202,10 @@ func (r *routeLocal) listLocalRecords(ctx context.Context, queries []*routingv1.
 }
 
 // matchesAllQueries checks if a record matches ALL provided queries (AND relationship).
+// Uses shared query matching logic with local label retrieval strategy.
 func (r *routeLocal) matchesAllQueries(ctx context.Context, cid string, queries []*routingv1.RecordQuery) bool {
-	if len(queries) == 0 {
-		return true // No filters = match everything
-	}
-
-	// Get all labels for this record
-	recordLabels := r.getRecordLabelsEfficiently(ctx, cid)
-
-	// ALL queries must match (AND relationship)
-	for _, query := range queries {
-		if !r.queryMatchesLabels(query, recordLabels) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// queryMatchesLabels checks if a query matches against the record's labels.
-func (r *routeLocal) queryMatchesLabels(query *routingv1.RecordQuery, labels []string) bool {
-	switch query.GetType() {
-	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL:
-		// Check if any skill label matches the query
-		skillPrefix := validators.NamespaceSkills.Prefix()
-		targetSkill := skillPrefix + query.GetValue()
-
-		for _, label := range labels {
-			// Exact match: /skills/category1/class1 matches "category1/class1"
-			if label == targetSkill {
-				return true
-			}
-			// Prefix match: /skills/category2/class2 matches "category2"
-			if strings.HasPrefix(label, targetSkill+"/") {
-				return true
-			}
-		}
-
-		return false
-
-	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
-		// Check if any locator label matches the query (consistent with skills)
-		locatorPrefix := validators.NamespaceLocators.Prefix()
-		targetLocator := locatorPrefix + query.GetValue()
-
-		for _, label := range labels {
-			// Exact match: /locators/docker-image matches "docker-image"
-			if label == targetLocator {
-				return true
-			}
-		}
-
-		return false
-
-	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
-		// Unspecified queries match everything
-		return true
-
-	default:
-		localLogger.Warn("Unknown query type", "type", query.GetType())
-
-		return false
-	}
+	// Inject local label retrieval strategy into shared query matching logic
+	return MatchesAllQueries(ctx, cid, queries, r.getRecordLabelsEfficiently)
 }
 
 // getRecordLabelsEfficiently gets labels for a record by extracting them from datastore keys.
@@ -341,7 +291,7 @@ func (r *routeLocal) Unpublish(ctx context.Context, ref *corev1.RecordRef, recor
 	}
 
 	// keep track of all record labels
-	labels := getLabels(record)
+	labels := GetLabels(record)
 
 	for _, label := range labels {
 		// Delete enhanced key with CID and PeerID
@@ -369,61 +319,4 @@ func (r *routeLocal) Unpublish(ctx context.Context, ref *corev1.RecordRef, recor
 	localLogger.Info("Successfully unpublished record", "ref", ref)
 
 	return nil
-}
-
-func getLabels(record *corev1.Record) []string {
-	// Use adapter pattern to get version-agnostic access to record data
-	adapter := adapters.NewRecordAdapter(record)
-
-	recordData := adapter.GetRecordData()
-	if recordData == nil {
-		localLogger.Error("failed to get record data")
-
-		return nil
-	}
-
-	var labels []string
-
-	// get record skills
-	skills := make([]string, 0, len(recordData.GetSkills()))
-	for _, skill := range recordData.GetSkills() {
-		skills = append(skills, validators.NamespaceSkills.Prefix()+skill.GetName())
-	}
-
-	labels = append(labels, skills...)
-
-	// get record domains
-	var domains []string
-
-	for _, ext := range recordData.GetExtensions() {
-		if strings.HasPrefix(ext.GetName(), validators.DomainSchemaPrefix) {
-			domain := ext.GetName()[len(validators.DomainSchemaPrefix):]
-			domains = append(domains, validators.NamespaceDomains.Prefix()+domain)
-		}
-	}
-
-	labels = append(labels, domains...)
-
-	// get record features
-	var features []string
-
-	for _, ext := range recordData.GetExtensions() {
-		if strings.HasPrefix(ext.GetName(), validators.FeaturesSchemaPrefix) {
-			feature := ext.GetName()[len(validators.FeaturesSchemaPrefix):]
-			features = append(features, validators.NamespaceFeatures.Prefix()+feature)
-		}
-	}
-
-	labels = append(labels, features...)
-
-	// get record locators
-	locators := make([]string, 0, len(recordData.GetLocators()))
-
-	for _, locator := range recordData.GetLocators() {
-		locators = append(locators, validators.NamespaceLocators.Prefix()+locator.GetType())
-	}
-
-	labels = append(labels, locators...)
-
-	return labels
 }

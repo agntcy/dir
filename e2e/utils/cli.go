@@ -19,6 +19,8 @@ const (
 	DefaultCommandTimeout = 30 * time.Second
 	// PollingInterval is the interval for Eventually polling operations.
 	PollingInterval = 5 * time.Second
+	// PublishProcessingDelay is the delay to allow asynchronous publish operations to complete.
+	PublishProcessingDelay = 15 * time.Second
 )
 
 // CLI provides a fluent interface for executing CLI commands in tests.
@@ -61,14 +63,41 @@ func (c *CLI) Sign(recordCID, keyPath string) *CommandBuilder {
 	return c.Command("sign").WithArgs(recordCID, "--key", keyPath)
 }
 
-func (c *CLI) Publish(cid string) *CommandBuilder {
-	return c.Command("publish").WithArgs(cid)
+// Routing commands - all routing operations are now under the routing subcommand.
+func (c *CLI) Routing() *RoutingCommands {
+	return &RoutingCommands{cli: c}
 }
 
-func (c *CLI) List() *ListBuilder {
-	return &ListBuilder{
-		CommandBuilder: c.Command("list"),
+type RoutingCommands struct {
+	cli *CLI
+}
+
+func (r *RoutingCommands) Publish(cid string) *CommandBuilder {
+	return r.cli.Command("routing").WithArgs("publish", cid)
+}
+
+func (r *RoutingCommands) Unpublish(cid string) *CommandBuilder {
+	return r.cli.Command("routing").WithArgs("unpublish", cid)
+}
+
+func (r *RoutingCommands) List() *RoutingListBuilder {
+	return &RoutingListBuilder{
+		CommandBuilder: r.cli.Command("routing").WithArgs("list"),
 	}
+}
+
+func (r *RoutingCommands) Search() *RoutingSearchBuilder {
+	return &RoutingSearchBuilder{
+		CommandBuilder: r.cli.Command("routing").WithArgs("search"),
+	}
+}
+
+func (r *RoutingCommands) Info() *CommandBuilder {
+	return r.cli.Command("routing").WithArgs("info")
+}
+
+func (r *RoutingCommands) WithArgs(args ...string) *CommandBuilder {
+	return r.cli.Command("routing").WithArgs(args...)
 }
 
 func (c *CLI) Verify(recordCID string) *CommandBuilder {
@@ -319,19 +348,84 @@ func (s *SearchBuilder) ShouldReturn(expectedCID string) {
 	gomega.Expect(output).To(gomega.Equal(expectedCID))
 }
 
-// ListBuilder extends CommandBuilder with list-specific methods.
-type ListBuilder struct {
+// RoutingListBuilder extends CommandBuilder with routing list-specific methods.
+type RoutingListBuilder struct {
 	*CommandBuilder
 }
 
-func (l *ListBuilder) WithCid(cid string) *ListBuilder {
+func (l *RoutingListBuilder) WithCid(cid string) *RoutingListBuilder {
 	l.args = append(l.args, "--cid", cid)
 
 	return l
 }
 
-func (l *ListBuilder) WithSkill(skill string) *ListBuilder {
-	l.args = append(l.args, fmt.Sprintf(`"%s"`, skill))
+func (l *RoutingListBuilder) WithSkill(skill string) *RoutingListBuilder {
+	l.args = append(l.args, "--skill", skill)
 
 	return l
+}
+
+func (l *RoutingListBuilder) WithLocator(locator string) *RoutingListBuilder {
+	l.args = append(l.args, "--locator", locator)
+
+	return l
+}
+
+func (l *RoutingListBuilder) WithDomain(domain string) *RoutingListBuilder {
+	l.args = append(l.args, "--domain", domain)
+
+	return l
+}
+
+func (l *RoutingListBuilder) WithFeature(feature string) *RoutingListBuilder {
+	l.args = append(l.args, "--feature", feature)
+
+	return l
+}
+
+func (l *RoutingListBuilder) WithLimit(limit int) *RoutingListBuilder {
+	l.args = append(l.args, "--limit", strconv.Itoa(limit))
+
+	return l
+}
+
+// RoutingSearchBuilder extends CommandBuilder with routing search-specific methods.
+type RoutingSearchBuilder struct {
+	*CommandBuilder
+}
+
+func (s *RoutingSearchBuilder) WithSkill(skill string) *RoutingSearchBuilder {
+	s.args = append(s.args, "--skill", skill)
+
+	return s
+}
+
+func (s *RoutingSearchBuilder) WithLocator(locator string) *RoutingSearchBuilder {
+	s.args = append(s.args, "--locator", locator)
+
+	return s
+}
+
+func (s *RoutingSearchBuilder) WithDomain(domain string) *RoutingSearchBuilder {
+	s.args = append(s.args, "--domain", domain)
+
+	return s
+}
+
+func (s *RoutingSearchBuilder) WithFeature(feature string) *RoutingSearchBuilder {
+	s.args = append(s.args, "--feature", feature)
+
+	return s
+}
+
+func (s *RoutingSearchBuilder) WithLimit(limit int) *RoutingSearchBuilder {
+	s.args = append(s.args, "--limit", strconv.Itoa(limit))
+
+	return s
+}
+
+func (s *RoutingSearchBuilder) WithMinScore(minScore int) *RoutingSearchBuilder {
+	s.args = append(s.args, "--min-score", strconv.Itoa(minScore))
+
+	return s
 }

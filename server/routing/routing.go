@@ -96,6 +96,12 @@ func (r *route) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *r
 	return r.local.List(ctx, req)
 }
 
+func (r *route) Search(ctx context.Context, req *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error) {
+	// Search is always remote-only - it returns records from other peers using cached announcements
+	// This operation queries locally cached remote announcements from DHT
+	return r.remote.Search(ctx, req)
+}
+
 func (r *route) Unpublish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
 	err := r.local.Unpublish(ctx, ref, record)
 	if err != nil {

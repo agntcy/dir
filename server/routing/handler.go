@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
@@ -28,10 +27,8 @@ type handler struct {
 }
 
 type handlerSync struct {
-	Ref              *corev1.RecordRef
-	Peer             peer.AddrInfo
-	AnnouncementType AnnouncementType
-	LabelKey         string // For label announcements like "/skills/golang/CID1", "/domains/web/CID2"
+	Ref  *corev1.RecordRef
+	Peer peer.AddrInfo
 }
 
 func (h *handler) AddProvider(ctx context.Context, key []byte, prov peer.AddrInfo) error {
@@ -70,38 +67,9 @@ func (h *handler) handleAnnounce(ctx context.Context, key []byte, prov peer.Addr
 		return nil
 	}
 
-	// Route to appropriate handler based on key type
-	if validators.IsValidNamespaceKey(keyStr) {
-		return h.handleLabelAnnouncement(ctx, keyStr, prov)
-	}
-
-	// Handle CID provider announcements (existing logic)
+	// All announcements are now treated as CID provider announcements
+	// Labels are discovered via pull-based mechanism when content is fetched
 	return h.handleCIDProviderAnnouncement(ctx, key, prov)
-}
-
-// handleLabelAnnouncement handles announcements for label mappings (skills/domains/features).
-func (h *handler) handleLabelAnnouncement(_ context.Context, labelKey string, prov peer.AddrInfo) error {
-	// Extract CID from label key using validators utility
-	cidStr, err := validators.ExtractCIDFromLabelKey(labelKey)
-	if err != nil {
-		handlerLogger.Error("Invalid label key format", "key", labelKey, "error", err)
-
-		return nil
-	}
-
-	ref := &corev1.RecordRef{Cid: cidStr}
-
-	handlerLogger.Info("Label announcement event", "label", labelKey, "cid", cidStr, "provider", prov)
-
-	// Notify about label announcement
-	h.notifyCh <- &handlerSync{
-		Ref:              ref,
-		Peer:             prov,
-		AnnouncementType: AnnouncementTypeLabel,
-		LabelKey:         labelKey,
-	}
-
-	return nil
 }
 
 // handleCIDProviderAnnouncement handles CID provider announcements (existing logic).
@@ -131,9 +99,8 @@ func (h *handler) handleCIDProviderAnnouncement(_ context.Context, key []byte, p
 
 	// notify the channel
 	h.notifyCh <- &handlerSync{
-		Ref:              ref,
-		Peer:             prov,
-		AnnouncementType: AnnouncementTypeCID,
+		Ref:  ref,
+		Peer: prov,
 	}
 
 	return nil

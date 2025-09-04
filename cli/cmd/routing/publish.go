@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package publish
+package routing
 
 import (
 	"errors"
@@ -15,30 +15,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "publish",
-	Short: "Publish record to the network, allowing content discovery",
-	Long: `Publish the data to your local or rest of the network to allow content discovery.
-This command only works for the objects already pushed to store.
+var publishCmd = &cobra.Command{
+	Use:   "publish <cid>",
+	Short: "Publish record to the network for discovery",
+	Long: `Publish a record to the network to allow content discovery by other peers.
+
+This command announces a record that is already stored locally to the distributed
+network, making it discoverable by other peers through the DHT.
+
+The record must already exist in local storage (use 'dirctl push' first if needed).
+
+Key Features:
+- Network announcement: Makes record discoverable by other peers
+- Local storage: Stores record in local routing index
+- DHT announcement: Announces record and labels to distributed network
+- Background retry: Failed announcements are retried automatically
 
 Usage examples:
 
-1. Publish the data to the local data store:
+1. Publish a record to the network:
+   dirctl routing publish <cid>
 
-	dirctl publish <cid>
-
+Note: The record must already be pushed to storage before publishing.
 `,
-	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
-		if len(args) != 1 {
-			return errors.New("cid is a required argument")
-		}
-
-		return runCommand(cmd, args[0])
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runPublishCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command, cid string) error {
-	// Get the client from the context.
+func runPublishCommand(cmd *cobra.Command, cid string) error {
+	// Get the client from the context
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
@@ -74,6 +81,8 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	// Success
 	presenter.Printf(cmd, "Successfully published!\n")
+	presenter.Printf(cmd, "Record is now discoverable by other peers.\n")
+	presenter.Printf(cmd, "Use 'dirctl routing search' from other peers to find this record.\n")
 
 	return nil
 }

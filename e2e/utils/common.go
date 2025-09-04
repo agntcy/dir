@@ -24,17 +24,29 @@ func Ptr[T any](v T) *T {
 	return &v
 }
 
-// CollectChannelItems collects all items from a channel into a slice.
-// This utility eliminates the repetitive pattern of iterating over channels
-// in list operations throughout the test suite.
-func CollectChannelItems(itemsChan <-chan *routingv1.ListResponse) []*routingv1.ListResponse {
+// CollectItems collects all items from a channel into a slice.
+// This generic utility eliminates the repetitive pattern of iterating over channels
+// and works with any channel type.
+func CollectItems[T any](itemsChan <-chan T) []T {
 	//nolint:prealloc // Cannot pre-allocate when reading from channel - count is unknown
-	var items []*routingv1.ListResponse
+	var items []T
 	for item := range itemsChan {
 		items = append(items, item)
 	}
 
 	return items
+}
+
+// CollectListItems collects all list items from a channel into a slice.
+// Wrapper around generic CollectItems for routing list operations.
+func CollectListItems(itemsChan <-chan *routingv1.ListResponse) []*routingv1.ListResponse {
+	return CollectItems(itemsChan)
+}
+
+// CollectSearchItems collects all search items from a channel into a slice.
+// Wrapper around generic CollectItems for routing search operations.
+func CollectSearchItems(searchChan <-chan *routingv1.SearchResponse) []*routingv1.SearchResponse {
+	return CollectItems(searchChan)
 }
 
 // OASFVersion represents the detected OASF version from JSON.
@@ -349,6 +361,12 @@ func resetCommandFlags(cmd *cobra.Command) {
 					flag.Value.Set(flag.DefValue)
 				case "float32", "float64":
 					flag.Value.Set(flag.DefValue)
+				case "stringArray", "stringSlice":
+					// For string arrays/slices, completely clear them
+					// Setting to empty string should clear the underlying slice
+					flag.Value.Set("")
+					// Also reset the default value to ensure clean state
+					flag.DefValue = ""
 				default:
 					// For custom types, try to set to default value
 					flag.Value.Set(flag.DefValue)
@@ -363,7 +381,14 @@ func resetCommandFlags(cmd *cobra.Command) {
 		// Reset persistent flags
 		cmd.PersistentFlags().VisitAll(func(flag *pflag.Flag) {
 			if flag.Value != nil {
-				flag.Value.Set(flag.DefValue)
+				// Handle string arrays specially for persistent flags too
+				if flag.Value.Type() == "stringArray" || flag.Value.Type() == "stringSlice" {
+					flag.Value.Set("")
+					flag.DefValue = ""
+				} else {
+					flag.Value.Set(flag.DefValue)
+				}
+
 				flag.Changed = false
 			}
 		})
@@ -392,6 +417,9 @@ func ResetCLIState() {
 
 	// Reset search command global state
 	ResetSearchCommandState()
+
+	// Force complete re-initialization of routing command flags to clear accumulated state
+	resetRoutingCommandFlags()
 }
 
 // ResetSearchCommandState resets the global state in search command.
@@ -410,6 +438,56 @@ func ResetSearchCommandState() {
 			if queryValue, ok := queryFlag.Value.(*searchcmd.Query); ok {
 				*queryValue = searchcmd.Query{}
 			}
+		}
+	}
+}
+
+// resetRoutingCommandFlags aggressively resets routing command flags and their underlying variables.
+// The key insight is that Cobra StringArrayVar flags are bound to Go slice variables that persist
+// across command executions. We need to reset both the flag state AND the underlying variables.
+func resetRoutingCommandFlags() {
+	// Import the routing package to access the global option variables
+	// Since we can't import the routing package directly (circular dependency),
+	// we need to reset the flags in a way that also clears the underlying slices
+	// Find the routing command
+	for _, cmd := range clicmd.RootCmd.Commands() {
+		if cmd.Name() == "routing" {
+			// Reset all routing subcommands
+			for _, subCmd := range cmd.Commands() {
+				switch subCmd.Name() {
+				case "list":
+					// Reset list command flags and underlying variables
+					resetStringArrayFlag(subCmd, "skill")
+					resetStringArrayFlag(subCmd, "locator")
+					resetStringArrayFlag(subCmd, "domain")
+					resetStringArrayFlag(subCmd, "feature")
+				case "search":
+					// Reset search command flags and underlying variables
+					resetStringArrayFlag(subCmd, "skill")
+					resetStringArrayFlag(subCmd, "locator")
+					resetStringArrayFlag(subCmd, "domain")
+					resetStringArrayFlag(subCmd, "feature")
+				}
+			}
+		}
+	}
+}
+
+// resetStringArrayFlag completely resets a StringArrayVar flag by clearing its underlying slice.
+func resetStringArrayFlag(cmd *cobra.Command, flagName string) {
+	if flag := cmd.Flags().Lookup(flagName); flag != nil {
+		// For StringArrayVar flags, we need to clear the underlying slice completely
+		// The flag.Value is a pointer to a stringArrayValue that wraps the actual slice
+		// Method 1: Set to empty string (should clear the slice)
+		_ = flag.Value.Set("") // Ignore error - flag reset is best effort
+
+		// Method 2: Reset all flag metadata
+		flag.DefValue = ""
+		flag.Changed = false
+
+		// Method 3: If the flag has a slice interface, try to clear it directly
+		if sliceValue, ok := flag.Value.(interface{ Replace([]string) error }); ok {
+			sliceValue.Replace([]string{}) //nolint:errcheck
 		}
 	}
 }
