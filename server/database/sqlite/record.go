@@ -260,19 +260,13 @@ func (d *DB) RemoveRecord(cid string) error {
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
 	// Apply record-level filters with wildcard support.
 	if cfg.Name != "" {
-		if utils.ContainsWildcards(cfg.Name) {
-			query = query.Where("records.name LIKE ?", utils.WildcardToSQL(cfg.Name))
-		} else {
-			query = query.Where("records.name = ?", cfg.Name)
-		}
+		condition, arg := utils.BuildSingleWildcardCondition("records.name", cfg.Name)
+		query = query.Where(condition, arg)
 	}
 
 	if cfg.Version != "" {
-		if utils.ContainsWildcards(cfg.Version) {
-			query = query.Where("records.version LIKE ?", utils.WildcardToSQL(cfg.Version))
-		} else {
-			query = query.Where("records.version = ?", cfg.Version)
-		}
+		condition, arg := utils.BuildSingleWildcardCondition("records.version", cfg.Version)
+		query = query.Where(condition, arg)
 	}
 
 	// Handle skill filters with wildcard support.

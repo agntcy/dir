@@ -12,23 +12,6 @@ func ContainsWildcards(pattern string) bool {
 	return strings.Contains(pattern, "*")
 }
 
-// WildcardToSQL converts wildcard patterns (*) to SQL LIKE patterns (%).
-// It also escapes existing SQL wildcards to prevent injection.
-func WildcardToSQL(pattern string) string {
-	if !ContainsWildcards(pattern) {
-		return pattern
-	}
-
-	// Escape existing SQL wildcards
-	result := strings.ReplaceAll(pattern, "%", `\%`)
-	result = strings.ReplaceAll(result, "_", `\_`)
-
-	// Convert wildcard patterns to SQL patterns
-	result = strings.ReplaceAll(result, "*", "%")
-
-	return result
-}
-
 // BuildWildcardCondition builds a WHERE condition for wildcard or exact matching.
 // Returns the condition string and arguments for the WHERE clause.
 func BuildWildcardCondition(field string, patterns []string) (string, []interface{}) {
@@ -41,13 +24,9 @@ func BuildWildcardCondition(field string, patterns []string) (string, []interfac
 	var args []interface{}
 
 	for _, pattern := range patterns {
-		if ContainsWildcards(pattern) {
-			conditions = append(conditions, field+" LIKE ?")
-			args = append(args, WildcardToSQL(pattern))
-		} else {
-			conditions = append(conditions, field+" = ?")
-			args = append(args, pattern)
-		}
+		condition, arg := BuildSingleWildcardCondition(field, pattern)
+		conditions = append(conditions, condition)
+		args = append(args, arg)
 	}
 
 	condition := strings.Join(conditions, " OR ")
@@ -56,4 +35,13 @@ func BuildWildcardCondition(field string, patterns []string) (string, []interfac
 	}
 
 	return condition, args
+}
+
+// BuildSingleWildcardCondition builds a WHERE condition for a single field with wildcard or exact matching.
+// Returns the condition string and argument for the WHERE clause.
+func BuildSingleWildcardCondition(field, pattern string) (string, interface{}) {
+	if ContainsWildcards(pattern) {
+		return "LOWER(" + field + ") GLOB ?", strings.ToLower(pattern)
+	}
+	return "LOWER(" + field + ") = ?", strings.ToLower(pattern)
 }

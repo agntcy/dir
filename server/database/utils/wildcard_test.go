@@ -40,9 +40,9 @@ func TestContainsWildcards(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "question mark (not a wildcard)",
+			name:     "question mark (wildcard in GLOB)",
 			pattern:  "test?",
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "mixed asterisk and question mark",
@@ -76,89 +76,63 @@ func TestContainsWildcards(t *testing.T) {
 	}
 }
 
-func TestWildcardToSQL(t *testing.T) {
+func TestBuildSingleWildcardCondition(t *testing.T) {
 	tests := []struct {
-		name     string
-		pattern  string
-		expected string
+		name              string
+		field             string
+		pattern           string
+		expectedCondition string
+		expectedArg       interface{}
 	}{
 		{
-			name:     "no wildcards",
-			pattern:  "simple",
-			expected: "simple",
+			name:              "exact match",
+			field:             "name",
+			pattern:           "Test",
+			expectedCondition: "LOWER(name) = ?",
+			expectedArg:       "test",
 		},
 		{
-			name:     "single asterisk",
-			pattern:  "test*",
-			expected: "test%",
+			name:              "wildcard with asterisk",
+			field:             "name",
+			pattern:           "Test*",
+			expectedCondition: "LOWER(name) GLOB ?",
+			expectedArg:       "test*",
 		},
 		{
-			name:     "asterisk at beginning",
-			pattern:  "*test",
-			expected: "%test",
+			name:              "wildcard with question mark",
+			field:             "version",
+			pattern:           "V1.?",
+			expectedCondition: "LOWER(version) GLOB ?",
+			expectedArg:       "v1.?",
 		},
 		{
-			name:     "asterisk in middle",
-			pattern:  "te*st",
-			expected: "te%st",
+			name:              "complex field name",
+			field:             "skills.name",
+			pattern:           "*Script",
+			expectedCondition: "LOWER(skills.name) GLOB ?",
+			expectedArg:       "*script",
 		},
 		{
-			name:     "multiple asterisks",
-			pattern:  "*test*",
-			expected: "%test%",
-		},
-		{
-			name:     "question mark (literal)",
-			pattern:  "test?",
-			expected: "test?",
-		},
-		{
-			name:     "mixed asterisk and question mark",
-			pattern:  "test*?",
-			expected: "test%?",
-		},
-		{
-			name:     "only asterisk",
-			pattern:  "*",
-			expected: "%",
-		},
-		{
-			name:     "complex pattern",
-			pattern:  "api-*-v2",
-			expected: "api-%-v2",
-		},
-		{
-			name:     "escape existing percent",
-			pattern:  "test%*",
-			expected: "test\\%%",
-		},
-		{
-			name:     "escape existing underscore",
-			pattern:  "test_*",
-			expected: "test\\_%",
-		},
-		{
-			name:     "escape both percent and underscore",
-			pattern:  "test%_*",
-			expected: "test\\%\\_%",
-		},
-		{
-			name:     "no wildcards with SQL chars",
-			pattern:  "test%_",
-			expected: "test%_",
-		},
-		{
-			name:     "empty string",
-			pattern:  "",
-			expected: "",
+			name:              "empty pattern",
+			field:             "name",
+			pattern:           "",
+			expectedCondition: "LOWER(name) = ?",
+			expectedArg:       "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := WildcardToSQL(tt.pattern)
-			if result != tt.expected {
-				t.Errorf("WildcardToSQL(%q) = %q, want %q", tt.pattern, result, tt.expected)
+			condition, arg := BuildSingleWildcardCondition(tt.field, tt.pattern)
+
+			if condition != tt.expectedCondition {
+				t.Errorf("BuildSingleWildcardCondition(%q, %q) condition = %q, want %q",
+					tt.field, tt.pattern, condition, tt.expectedCondition)
+			}
+
+			if arg != tt.expectedArg {
+				t.Errorf("BuildSingleWildcardCondition(%q, %q) arg = %v, want %v",
+					tt.field, tt.pattern, arg, tt.expectedArg)
 			}
 		})
 	}
@@ -182,65 +156,65 @@ func TestBuildWildcardCondition(t *testing.T) {
 		{
 			name:              "single exact pattern",
 			field:             "name",
-			patterns:          []string{"test"},
-			expectedCondition: "name = ?",
+			patterns:          []string{"Test"},
+			expectedCondition: "LOWER(name) = ?",
 			expectedArgs:      []interface{}{"test"},
 		},
 		{
 			name:              "single wildcard pattern",
 			field:             "name",
-			patterns:          []string{"test*"},
-			expectedCondition: "name LIKE ?",
-			expectedArgs:      []interface{}{"test%"},
+			patterns:          []string{"Test*"},
+			expectedCondition: "LOWER(name) GLOB ?",
+			expectedArgs:      []interface{}{"test*"},
 		},
 		{
 			name:              "multiple exact patterns",
 			field:             "name",
-			patterns:          []string{"test1", "test2"},
-			expectedCondition: "(name = ? OR name = ?)",
+			patterns:          []string{"Test1", "Test2"},
+			expectedCondition: "(LOWER(name) = ? OR LOWER(name) = ?)",
 			expectedArgs:      []interface{}{"test1", "test2"},
 		},
 		{
 			name:              "multiple wildcard patterns",
 			field:             "name",
-			patterns:          []string{"test*", "*service"},
-			expectedCondition: "(name LIKE ? OR name LIKE ?)",
-			expectedArgs:      []interface{}{"test%", "%service"},
+			patterns:          []string{"Test*", "*Service"},
+			expectedCondition: "(LOWER(name) GLOB ? OR LOWER(name) GLOB ?)",
+			expectedArgs:      []interface{}{"test*", "*service"},
 		},
 		{
 			name:              "mixed exact and wildcard patterns",
 			field:             "name",
-			patterns:          []string{"python*", "go", "java*"},
-			expectedCondition: "(name LIKE ? OR name = ? OR name LIKE ?)",
-			expectedArgs:      []interface{}{"python%", "go", "java%"},
+			patterns:          []string{"Python*", "Go", "Java*"},
+			expectedCondition: "(LOWER(name) GLOB ? OR LOWER(name) = ? OR LOWER(name) GLOB ?)",
+			expectedArgs:      []interface{}{"python*", "go", "java*"},
 		},
 		{
 			name:              "single pattern no parentheses",
 			field:             "version",
-			patterns:          []string{"v1.*"},
-			expectedCondition: "version LIKE ?",
-			expectedArgs:      []interface{}{"v1.%"},
+			patterns:          []string{"V1.*"},
+			expectedCondition: "LOWER(version) GLOB ?",
+			expectedArgs:      []interface{}{"v1.*"},
 		},
 		{
 			name:              "complex field name",
 			field:             "skills.name",
-			patterns:          []string{"*script"},
-			expectedCondition: "skills.name LIKE ?",
-			expectedArgs:      []interface{}{"%script"},
+			patterns:          []string{"*Script"},
+			expectedCondition: "LOWER(skills.name) GLOB ?",
+			expectedArgs:      []interface{}{"*script"},
 		},
 		{
-			name:              "pattern with SQL injection chars",
+			name:              "pattern with special chars (literal in GLOB)",
 			field:             "name",
-			patterns:          []string{"test%_*"},
-			expectedCondition: "name LIKE ?",
-			expectedArgs:      []interface{}{"test\\%\\_%"},
+			patterns:          []string{"Test%_*"},
+			expectedCondition: "LOWER(name) GLOB ?",
+			expectedArgs:      []interface{}{"test%_*"},
 		},
 		{
-			name:              "question mark as literal",
+			name:              "question mark as wildcard in GLOB",
 			field:             "name",
-			patterns:          []string{"test?", "pattern*"},
-			expectedCondition: "(name = ? OR name LIKE ?)",
-			expectedArgs:      []interface{}{"test?", "pattern%"},
+			patterns:          []string{"Test?", "Pattern*"},
+			expectedCondition: "(LOWER(name) GLOB ? OR LOWER(name) GLOB ?)",
+			expectedArgs:      []interface{}{"test?", "pattern*"},
 		},
 	}
 
@@ -273,23 +247,23 @@ func TestWildcardIntegration(t *testing.T) {
 		{
 			name:              "real world example - skill names",
 			field:             "skills.name",
-			patterns:          []string{"python*", "javascript", "*script", "go"},
-			expectedCondition: "(skills.name LIKE ? OR skills.name = ? OR skills.name LIKE ? OR skills.name = ?)",
-			expectedArgs:      []interface{}{"python%", "javascript", "%script", "go"},
+			patterns:          []string{"Python*", "JavaScript", "*Script", "Go"},
+			expectedCondition: "(LOWER(skills.name) GLOB ? OR LOWER(skills.name) = ? OR LOWER(skills.name) GLOB ? OR LOWER(skills.name) = ?)",
+			expectedArgs:      []interface{}{"python*", "javascript", "*script", "go"},
 		},
 		{
 			name:              "real world example - locator types",
 			field:             "locators.type",
-			patterns:          []string{"http*", "ftp*", "file"},
-			expectedCondition: "(locators.type LIKE ? OR locators.type LIKE ? OR locators.type = ?)",
-			expectedArgs:      []interface{}{"http%", "ftp%", "file"},
+			patterns:          []string{"HTTP*", "FTP*", "File"},
+			expectedCondition: "(LOWER(locators.type) GLOB ? OR LOWER(locators.type) GLOB ? OR LOWER(locators.type) = ?)",
+			expectedArgs:      []interface{}{"http*", "ftp*", "file"},
 		},
 		{
 			name:              "real world example - extension names",
 			field:             "extensions.name",
-			patterns:          []string{"*-plugin", "*-extension", "core"},
-			expectedCondition: "(extensions.name LIKE ? OR extensions.name LIKE ? OR extensions.name = ?)",
-			expectedArgs:      []interface{}{"%-plugin", "%-extension", "core"},
+			patterns:          []string{"*-Plugin", "*-Extension", "Core"},
+			expectedCondition: "(LOWER(extensions.name) GLOB ? OR LOWER(extensions.name) GLOB ? OR LOWER(extensions.name) = ?)",
+			expectedArgs:      []interface{}{"*-plugin", "*-extension", "core"},
 		},
 	}
 
@@ -330,28 +304,8 @@ func BenchmarkContainsWildcards(b *testing.B) {
 	}
 }
 
-func BenchmarkWildcardToSQL(b *testing.B) {
-	patterns := []string{
-		"simple",
-		"test*",
-		"*test",
-		"te*st",
-		"*test*",
-		"test%_*",
-		"complex-pattern-*-with-multiple-*-wildcards",
-	}
-
-	b.ResetTimer()
-
-	for range b.N {
-		for _, pattern := range patterns {
-			WildcardToSQL(pattern)
-		}
-	}
-}
-
 func BenchmarkBuildWildcardCondition(b *testing.B) {
-	patterns := []string{"python*", "go", "java*", "*script", "typescript"}
+	patterns := []string{"Python*", "Go", "Java*", "*Script", "TypeScript"}
 	field := "skills.name"
 
 	b.ResetTimer()
