@@ -1,0 +1,14 @@
+[project]
+name = "dir-example"
+version = "0.0.0"
+requires-python = ">=3.9"
+dependencies = [
+    "agntcy-dir",
+    "agntcy-dir-grpc-python==1.74.1.1.20250902143656+38a679e0e504",
+]
+
+[[tool.uv.index]]
+url = "https://buf.build/gen/python"
+
+[tool.uv.sources]
+agntcy-dir-sdk = { path = "../", editable = true }
