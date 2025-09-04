@@ -2,7 +2,7 @@ const { setTimeout } = require('node:timers/promises');
 const { execSync } = require('child_process');
 const { readFileSync, rmSync } = require('node:fs');
 
-const { Client, Config } = require('../../client/v1/client');
+const { Client, Config } = require('../v1/client');
 const core_record_pb2 = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
 const extension_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/extension_pb');
 const record_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/record_pb');
