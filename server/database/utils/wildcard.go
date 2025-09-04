@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-// ContainsWildcards checks if a pattern contains wildcard characters (*).
+// ContainsWildcards checks if a pattern contains wildcard characters (* or ?).
 func ContainsWildcards(pattern string) bool {
-	return strings.Contains(pattern, "*")
+	return strings.Contains(pattern, "*") || strings.Contains(pattern, "?")
 }
 
 // BuildWildcardCondition builds a WHERE condition for wildcard or exact matching.

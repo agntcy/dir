@@ -64,6 +64,36 @@ func TestContainsWildcards(t *testing.T) {
 			pattern:  "api-*-v2",
 			expected: true,
 		},
+		{
+			name:     "only question mark",
+			pattern:  "?",
+			expected: true,
+		},
+		{
+			name:     "multiple question marks",
+			pattern:  "test???",
+			expected: true,
+		},
+		{
+			name:     "question mark at beginning",
+			pattern:  "?test",
+			expected: true,
+		},
+		{
+			name:     "question mark in middle",
+			pattern:  "te?st",
+			expected: true,
+		},
+		{
+			name:     "question mark at end",
+			pattern:  "test?",
+			expected: true,
+		},
+		{
+			name:     "complex pattern with both wildcards",
+			pattern:  "api-*-v?.?",
+			expected: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -111,6 +141,20 @@ func TestBuildSingleWildcardCondition(t *testing.T) {
 			pattern:           "*Script",
 			expectedCondition: "LOWER(skills.name) GLOB ?",
 			expectedArg:       "*script",
+		},
+		{
+			name:              "wildcard with mixed asterisk and question mark",
+			field:             "name",
+			pattern:           "Test*?.txt",
+			expectedCondition: "LOWER(name) GLOB ?",
+			expectedArg:       "test*?.txt",
+		},
+		{
+			name:              "multiple question marks",
+			field:             "code",
+			pattern:           "AB??-XY?",
+			expectedCondition: "LOWER(code) GLOB ?",
+			expectedArg:       "ab??-xy?",
 		},
 		{
 			name:              "empty pattern",
@@ -216,6 +260,27 @@ func TestBuildWildcardCondition(t *testing.T) {
 			expectedCondition: "(LOWER(name) GLOB ? OR LOWER(name) GLOB ?)",
 			expectedArgs:      []interface{}{"test?", "pattern*"},
 		},
+		{
+			name:              "multiple question marks in single pattern",
+			field:             "version",
+			patterns:          []string{"v?.?.?"},
+			expectedCondition: "LOWER(version) GLOB ?",
+			expectedArgs:      []interface{}{"v?.?.?"},
+		},
+		{
+			name:              "mixed patterns with question marks",
+			field:             "code",
+			patterns:          []string{"AB??", "CD*", "EF", "GH?I"},
+			expectedCondition: "(LOWER(code) GLOB ? OR LOWER(code) GLOB ? OR LOWER(code) = ? OR LOWER(code) GLOB ?)",
+			expectedArgs:      []interface{}{"ab??", "cd*", "ef", "gh?i"},
+		},
+		{
+			name:              "question mark with special characters",
+			field:             "filename",
+			patterns:          []string{"test?.txt", "data_?.csv"},
+			expectedCondition: "(LOWER(filename) GLOB ? OR LOWER(filename) GLOB ?)",
+			expectedArgs:      []interface{}{"test?.txt", "data_?.csv"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -265,6 +330,20 @@ func TestWildcardIntegration(t *testing.T) {
 			expectedCondition: "(LOWER(extensions.name) GLOB ? OR LOWER(extensions.name) GLOB ? OR LOWER(extensions.name) = ?)",
 			expectedArgs:      []interface{}{"*-plugin", "*-extension", "core"},
 		},
+		{
+			name:              "real world example - version patterns with question marks",
+			field:             "version",
+			patterns:          []string{"v?.0.0", "v1.?.?", "v2.*"},
+			expectedCondition: "(LOWER(version) GLOB ? OR LOWER(version) GLOB ? OR LOWER(version) GLOB ?)",
+			expectedArgs:      []interface{}{"v?.0.0", "v1.?.?", "v2.*"},
+		},
+		{
+			name:              "real world example - file extensions with question marks",
+			field:             "filename",
+			patterns:          []string{"*.tx?", "data_?.csv", "log???.txt"},
+			expectedCondition: "(LOWER(filename) GLOB ? OR LOWER(filename) GLOB ? OR LOWER(filename) GLOB ?)",
+			expectedArgs:      []interface{}{"*.tx?", "data_?.csv", "log???.txt"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -284,6 +363,72 @@ func TestWildcardIntegration(t *testing.T) {
 	}
 }
 
+func TestQuestionMarkWildcardFunctionality(t *testing.T) {
+	tests := []struct {
+		name              string
+		field             string
+		patterns          []string
+		expectedCondition string
+		expectedArgs      []interface{}
+		description       string
+	}{
+		{
+			name:              "single character replacement",
+			field:             "code",
+			patterns:          []string{"A?C"},
+			expectedCondition: "LOWER(code) GLOB ?",
+			expectedArgs:      []interface{}{"a?c"},
+			description:       "? should match exactly one character",
+		},
+		{
+			name:              "multiple single character replacements",
+			field:             "serial",
+			patterns:          []string{"AB??EF"},
+			expectedCondition: "LOWER(serial) GLOB ?",
+			expectedArgs:      []interface{}{"ab??ef"},
+			description:       "Multiple ? should each match one character",
+		},
+		{
+			name:              "question mark with asterisk combination",
+			field:             "filename",
+			patterns:          []string{"*.tx?", "data*.?sv"},
+			expectedCondition: "(LOWER(filename) GLOB ? OR LOWER(filename) GLOB ?)",
+			expectedArgs:      []interface{}{"*.tx?", "data*.?sv"},
+			description:       "? and * should work together",
+		},
+		{
+			name:              "question mark in version patterns",
+			field:             "version",
+			patterns:          []string{"v1.?.0", "v?.0.0"},
+			expectedCondition: "(LOWER(version) GLOB ? OR LOWER(version) GLOB ?)",
+			expectedArgs:      []interface{}{"v1.?.0", "v?.0.0"},
+			description:       "? useful for version number wildcards",
+		},
+		{
+			name:              "question mark with exact matches",
+			field:             "type",
+			patterns:          []string{"A?B", "exact", "C?D"},
+			expectedCondition: "(LOWER(type) GLOB ? OR LOWER(type) = ? OR LOWER(type) GLOB ?)",
+			expectedArgs:      []interface{}{"a?b", "exact", "c?d"},
+			description:       "Mix of ? wildcards and exact matches",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			condition, args := BuildWildcardCondition(tt.field, tt.patterns)
+
+			if condition != tt.expectedCondition {
+				t.Errorf("%s: condition = %q, want %q", tt.description, condition, tt.expectedCondition)
+			}
+
+			if !reflect.DeepEqual(args, tt.expectedArgs) {
+				t.Errorf("%s: args = %v, want %v", tt.description, args, tt.expectedArgs)
+			}
+		})
+	}
+}
+
 // Benchmark tests to ensure performance is acceptable.
 func BenchmarkContainsWildcards(b *testing.B) {
 	patterns := []string{
@@ -292,7 +437,13 @@ func BenchmarkContainsWildcards(b *testing.B) {
 		"*test",
 		"te*st",
 		"*test*",
-		"complex-pattern-*-with-multiple-*-wildcards",
+		"test?",
+		"?test",
+		"te?st",
+		"test???",
+		"*test?",
+		"?test*",
+		"complex-pattern-*-with-multiple-*-wildcards-and-?-marks",
 	}
 
 	b.ResetTimer()

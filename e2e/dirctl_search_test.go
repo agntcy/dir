@@ -251,6 +251,153 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			})
 		})
 
+		ginkgo.Context("wildcard searches with ? pattern", func() {
+			ginkgo.Context("version field question mark wildcards", func() {
+				ginkgo.It("should find record with single character version wildcard", func() {
+					output := cli.Search().
+						WithQuery("version", "v?.0.0").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with multiple question mark wildcards in version", func() {
+					output := cli.Search().
+						WithQuery("version", "v?.?.?").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with question mark in middle of version", func() {
+					output := cli.Search().
+						WithQuery("version", "v3.?.0").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
+
+			ginkgo.Context("name field question mark wildcards", func() {
+				ginkgo.It("should find record with question mark in name", func() {
+					output := cli.Search().
+						WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v?").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with multiple question marks in name", func() {
+					output := cli.Search().
+						WithQuery("name", "directory.agntcy.org/????o/marketing-strategy-v3").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with question mark at beginning of name segment", func() {
+					output := cli.Search().
+						WithQuery("name", "directory.agntcy.org/?isco/marketing-strategy-v3").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
+
+			ginkgo.Context("skill name question mark wildcards", func() {
+				ginkgo.It("should find record with question mark in skill name", func() {
+					output := cli.Search().
+						WithQuery("skill-name", "Natural Language Processing/Text Completio?").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with question mark replacing single word character", func() {
+					output := cli.Search().
+						WithQuery("skill-name", "?atural Language Processing/Text Completion").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with multiple question marks in skill name", func() {
+					output := cli.Search().
+						WithQuery("skill-name", "Natural Langua?? Processing/Text Completion").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
+
+			ginkgo.Context("locator question mark wildcards", func() {
+				ginkgo.It("should find record with question mark in protocol", func() {
+					output := cli.Search().
+						WithQuery("locator", "docker-image:http?://ghcr.io/agntcy/marketing-strategy").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with question mark in domain", func() {
+					output := cli.Search().
+						WithQuery("locator", "docker-image:https://ghcr.i?/agntcy/marketing-strategy").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with question mark in path", func() {
+					output := cli.Search().
+						WithQuery("locator", "docker-image:https://ghcr.io/agntcy/marketing-strateg?").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
+
+			ginkgo.Context("extension question mark wildcards", func() {
+				ginkgo.It("should find record with question mark in extension name", func() {
+					output := cli.Search().
+						WithQuery("extension", "licens?:v1.0.0").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with question mark in extension version", func() {
+					output := cli.Search().
+						WithQuery("extension", "license:v?.0.0").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with question mark in schema domain", func() {
+					output := cli.Search().
+						WithQuery("extension", "schema.oasf.agntcy.or?/features/runtime/framework:v0.0.0").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
+
+			ginkgo.Context("mixed ? and * wildcard patterns", func() {
+				ginkgo.It("should find record with both wildcards in version", func() {
+					output := cli.Search().
+						WithQuery("version", "v?.*").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with both wildcards in name", func() {
+					output := cli.Search().
+						WithQuery("name", "*cisco/marketing-strategy-v?").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with both wildcards in skill name", func() {
+					output := cli.Search().
+						WithQuery("skill-name", "Natural*Processing/Text Completio?").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with complex wildcard combination", func() {
+					output := cli.Search().
+						WithQuery("locator", "*://ghcr.i?/*/marketing-strateg?").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
+		})
+
 		ginkgo.Context("complex wildcard combinations", func() {
 			ginkgo.It("should find record with multiple filter types using wildcards", func() {
 				output := cli.Search().
@@ -286,6 +433,24 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
+
+			ginkgo.It("should find record with question mark and asterisk wildcards combined", func() {
+				output := cli.Search().
+					WithQuery("name", "*cisco*").
+					WithQuery("version", "v?.0.0").
+					WithQuery("skill-name", "Natural*Completio?").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should find record mixing exact, asterisk and question mark filters", func() {
+				output := cli.Search().
+					WithQuery("skill-id", "10201").
+					WithQuery("name", "*marketing-strategy-v?").
+					WithQuery("locator", "docker-image:http?://*").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
 		})
 
 		ginkgo.Context("negative wildcard tests", func() {
@@ -307,6 +472,28 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 				output := cli.Search().
 					WithQuery("name", "*cisco*").
 					WithQuery("version", "v1.*"). // Record has v3.0.0
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should return no results for non-matching question mark pattern", func() {
+				output := cli.Search().
+					WithQuery("version", "v?.9.9"). // Record has v3.0.0
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should return no results for question mark requiring exact length", func() {
+				output := cli.Search().
+					WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v??"). // v3 is only 1 char
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should return no results for conflicting question mark and exact filters", func() {
+				output := cli.Search().
+					WithQuery("version", "v?.0.0").
+					WithQuery("version", "v2.0.0"). // Record has v3.0.0, not v2.0.0
 					ShouldSucceed()
 				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
 			})
@@ -337,6 +524,41 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.It("should handle wildcards with dots and slashes", func() {
 				output := cli.Search().
 					WithQuery("extension", "schema.oasf.agntcy.org/features/runtime/*").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should handle question mark with dots in version", func() {
+				output := cli.Search().
+					WithQuery("version", "v3.?.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should handle question mark with special characters in URLs", func() {
+				output := cli.Search().
+					WithQuery("locator", "docker-image:https://ghcr.i?/agntcy/marketing-strategy").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should handle question mark with slashes and colons", func() {
+				output := cli.Search().
+					WithQuery("extension", "license:v?.0.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should handle single question mark in various positions", func() {
+				output := cli.Search().
+					WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v?").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should handle mixed wildcards with complex patterns", func() {
+				output := cli.Search().
+					WithQuery("locator", "*://ghcr.i?/*/marketing-strateg?").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
