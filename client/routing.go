@@ -55,6 +55,37 @@ func (c *Client) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *
 	return resCh, nil
 }
 
+func (c *Client) SearchRouting(ctx context.Context, req *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error) {
+	stream, err := c.RoutingServiceClient.Search(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search stream: %w", err)
+	}
+
+	resCh := make(chan *routingv1.SearchResponse, 100) //nolint:mnd
+
+	go func() {
+		defer close(resCh)
+
+		for {
+			obj, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			if err != nil {
+				logger.Error("error receiving search result", "error", err)
+
+				return
+			}
+
+			// Stream SearchResponse directly
+			resCh <- obj
+		}
+	}()
+
+	return resCh, nil
+}
+
 func (c *Client) Unpublish(ctx context.Context, req *routingv1.UnpublishRequest) error {
 	_, err := c.RoutingServiceClient.Unpublish(ctx, req)
 	if err != nil {

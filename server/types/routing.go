@@ -21,6 +21,9 @@ type RoutingAPI interface {
 	// List all records that this peer is currently providing (local-only operation)
 	List(context.Context, *routingv1.ListRequest) (<-chan *routingv1.ListResponse, error)
 
+	// Search for records across the network using cached remote announcements
+	Search(context.Context, *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error)
+
 	// Unpublish record from the network
 	Unpublish(context.Context, *corev1.RecordRef, *corev1.Record) error
 }

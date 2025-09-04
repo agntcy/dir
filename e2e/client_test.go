@@ -175,7 +175,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Collect items from the channel using utility.
-				items := utils.CollectChannelItems(itemsChan)
+				items := utils.CollectListItems(itemsChan)
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.HaveLen(1))
@@ -196,7 +196,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Collect items from the channel using utility.
-				items := utils.CollectChannelItems(itemsChan)
+				items := utils.CollectListItems(itemsChan)
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.HaveLen(1))
@@ -216,7 +216,28 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				// TODO: When domain/feature support is added to RecordQueryType, update this test
 			})
 
-			// Step 7: Unpublish (depends on publish)
+			// Step 7: Search routing for remote records (depends on publish)
+			ginkgo.It("should search routing for remote records", func() {
+				// Convert skill labels to RecordQuery format
+				queries := convertLabelsToRecordQueries([]string{version.expectedSkillLabels[0]})
+
+				searchChan, err := c.SearchRouting(ctx, &routingv1.SearchRequest{
+					Queries:       queries,
+					Limit:         utils.Ptr[uint32](10),
+					MinMatchScore: utils.Ptr[uint32](1),
+				})
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+				// Collect search results using utility
+				results := utils.CollectSearchItems(searchChan)
+
+				// For single-peer testing, we should get an empty slice (no remote records)
+				// This test validates the SearchRouting method works without errors
+				// In multi-peer e2e tests, we'll test actual remote discovery
+				gomega.Expect(results).To(gomega.BeEmpty()) // Should be empty slice in local mode
+			})
+
+			// Step 8: Unpublish (depends on publish)
 			ginkgo.It("should unpublish a record", func() {
 				err := c.Unpublish(ctx, &routingv1.UnpublishRequest{
 					Request: &routingv1.UnpublishRequest_RecordRefs{
@@ -239,7 +260,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Collect items from the channel using utility.
-				items := utils.CollectChannelItems(itemsChan)
+				items := utils.CollectListItems(itemsChan)
 
 				// Validate the response.
 				gomega.Expect(items).To(gomega.BeEmpty())
