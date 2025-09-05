@@ -103,7 +103,7 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 - **Golang** - [github.com/agntcy/dir/api](https://pkg.go.dev/github.com/agntcy/dir/api), [github.com/agntcy/dir/cli](https://pkg.go.dev/github.com/agntcy/dir/cli), [github.com/agntcy/dir/server](https://pkg.go.dev/github.com/agntcy/dir/server)
 
-- **Python** - [github.com/agntcy/dir/sdk/python](https://pkg.go.dev/github.com/agntcy/dir/sdk/python)
+- **Python** - [github.com/agntcy/dir/sdk/dir-py](./sdk/dir-py/)
 
 - **Javascript** - [github.com/agntcy/dir/sdk/javascript](https://pkg.go.dev/github.com/agntcy/dir/sdk/javascript)
 

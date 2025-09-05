@@ -12,6 +12,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.4.1",
+    "uuid>=1.30",
 ]
 
 [[tool.uv.index]]

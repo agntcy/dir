@@ -24,7 +24,7 @@ class Config:
             Config.DEFAULT_SERVER_ADDRESS,
         )
         dirctl_path = os.environ.get(
-            f"DIRCTL_PATH",
+            "DIRCTL_PATH",
             Config.DEFAULT_DIRCTL_PATH,
         )
 

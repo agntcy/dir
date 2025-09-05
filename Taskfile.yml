@@ -240,7 +240,7 @@ tasks:
 
   sdk:build:python:
     desc: Build python client SDK package
-    dir: ./sdk/python
+    dir: ./sdk/dir-py
     deps:
       - task: deps:uv
     cmds:
@@ -275,7 +275,7 @@ tasks:
 
   sdk:test:python:
     desc: Test python client SDK package
-    dir: ./sdk/python
+    dir: ./sdk/dir-py
     deps:
       - task: sdk:deps:common
       - task: deps:uv
@@ -323,7 +323,7 @@ tasks:
 
   sdk:release:python:
     desc: Release python client SDK package
-    dir: ./sdk/python
+    dir: ./sdk/dir-py
     env:
       UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN }}'
     deps:

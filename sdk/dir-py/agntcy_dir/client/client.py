@@ -13,7 +13,6 @@ import os
 import subprocess
 import tempfile
 from collections.abc import Sequence
-from typing import Optional
 
 import grpc
 
@@ -85,8 +84,7 @@ class Client:
             metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the request is invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the object is not found or cannot be published
 
         Example:
@@ -123,8 +121,7 @@ class Client:
             List[routing_v1.ListResponse]: List of items matching the criteria
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the request is invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the list operation fails
 
         Example:
@@ -168,8 +165,7 @@ class Client:
             List[routing_v1.SearchResponse]: List of search results matching the queries
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the request is invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the search operation fails
 
         Example:
@@ -210,8 +206,7 @@ class Client:
             metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the request is invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the objects cannot be unpublished
 
         Example:
@@ -249,8 +244,7 @@ class Client:
             List[core_v1.RecordRef]: List of objects containing the CIDs of the pushed records
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the records are invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the push operation fails
 
         Example:
@@ -294,8 +288,7 @@ class Client:
             List[store_v1.PushReferrerResponse]: List of objects containing the details of pushed artifacts
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the request is invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the push operation fails
 
         Example:
@@ -336,10 +329,8 @@ class Client:
             List[core_v1.Record]: List of record objects retrieved from the store
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the references are invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the pull operation fails
-            NotFoundError: If one or more records are not found
 
         Example:
             >>> refs = [core_v1.RecordRef(cid="QmExample123")]
@@ -383,8 +374,7 @@ class Client:
             List[store_v1.PullReferrerResponse]: List of objects containing the retrieved records
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the request is invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the pull operation fails
 
         Example:
@@ -428,8 +418,7 @@ class Client:
             List[core_v1.RecordMeta]: List of objects containing metadata for the records
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the references are invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the lookup operation fails
 
         Example:
@@ -469,10 +458,8 @@ class Client:
             metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the references are invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the delete operation fails
-            PermissionError: If the client lacks permission to delete the records
 
         Example:
             >>> refs = [core_v1.RecordRef(cid="QmExample123")]
@@ -494,10 +481,40 @@ class Client:
         req: store_v1.CreateSyncRequest,
         metadata: Sequence[tuple[str, str]] | None = None,
     ) -> store_v1.CreateSyncResponse:
+        """Create a new synchronization configuration.
+
+        Creates a new sync configuration that defines how data should be
+        synchronized between different Directory servers. This allows for
+        automated data replication and consistency across multiple locations.
+
+        Args:
+            req: CreateSyncRequest containing the sync configuration details
+                 including source, target, and synchronization parameters
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            store_v1.CreateSyncResponse: Response containing the created sync details
+                                       including the sync ID and configuration
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the sync creation fails
+
+        Example:
+            >>> req = store_v1.CreateSyncRequest()
+            >>> response = client.create_sync(req)
+            >>> print(f"Created sync with ID: {response.sync_id}")
+
+        """
         try:
             response = self.sync_client.CreateSync(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during create_sync: %s", e)
+            raise
         except Exception as e:
-            raise Exception(f"Failed to create sync: {e}")
+            logger.exception("Unexpected error during create_sync: %s", e)
+            msg = f"Failed to create sync: {e}"
+            raise RuntimeError(msg) from e
 
         return response
 
@@ -506,14 +523,45 @@ class Client:
         req: store_v1.ListSyncsRequest,
         metadata: Sequence[tuple[str, str]] | None = None,
     ) -> builtins.list[store_v1.ListSyncsItem]:
+        """List existing synchronization configurations.
+
+        Retrieves a list of all sync configurations that have been created,
+        with optional filtering and pagination support. This allows you to
+        monitor and manage multiple synchronization processes.
+
+        Args:
+            req: ListSyncsRequest containing filtering criteria, pagination options,
+                 and other query parameters
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            list[store_v1.ListSyncsItem]: List of sync configuration items with
+                                         their details including ID, name, status,
+                                         and configuration parameters
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the list operation fails
+
+        Example:
+            >>> req = store_v1.ListSyncsRequest(limit=10)
+            >>> syncs = client.list_syncs(req)
+            >>> for sync in syncs:
+            ...     print(f"Sync: {sync}")
+
+        """
         results: list[store_v1.ListSyncsItem] = []
 
         try:
             stream = self.sync_client.ListSyncs(req, metadata=metadata)
             results.extend(stream)
-
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during list_syncs: %s", e)
+            raise
         except Exception as e:
-            raise Exception(f"Failed to list sync: {e}")
+            logger.exception("Unexpected error during list_syncs: %s", e)
+            msg = f"Failed to list syncs: {e}"
+            raise RuntimeError(msg) from e
 
         return results
 
@@ -522,10 +570,40 @@ class Client:
         req: store_v1.GetSyncRequest,
         metadata: Sequence[tuple[str, str]] | None = None,
     ) -> store_v1.GetSyncResponse:
+        """Retrieve detailed information about a specific synchronization configuration.
+
+        Gets comprehensive details about a specific sync configuration including
+        its current status, configuration parameters, performance metrics,
+        and any recent errors or warnings.
+
+        Args:
+            req: GetSyncRequest containing the sync ID or identifier to retrieve
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            store_v1.GetSyncResponse: Detailed information about the sync configuration
+                                    including status, metrics, configuration, and logs
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the get operation fails
+
+        Example:
+            >>> req = store_v1.GetSyncRequest(sync_id="sync-123")
+            >>> response = client.get_sync(req)
+            >>> print(f"Sync status: {response.status}")
+            >>> print(f"Last update: {response.last_update_time}")
+
+        """
         try:
             response = self.sync_client.GetSync(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during get_sync: %s", e)
+            raise
         except Exception as e:
-            raise Exception(f"Failed to get sync: {e}")
+            logger.exception("Unexpected error during get_sync: %s", e)
+            msg = f"Failed to get sync: {e}"
+            raise RuntimeError(msg) from e
 
         return response
 
@@ -533,13 +611,36 @@ class Client:
         self,
         req: store_v1.DeleteSyncRequest,
         metadata: Sequence[tuple[str, str]] | None = None,
-    ) -> store_v1.DeleteSyncResponse:
-        try:
-            response = self.sync_client.DeleteSync(req, metadata=metadata)
-        except Exception as e:
-            raise Exception(f"Failed to delete sync: {e}")
+    ) -> None:
+        """Delete a synchronization configuration.
 
-        return response
+        Permanently removes a sync configuration and stops any ongoing
+        synchronization processes. This operation cannot be undone and
+        will halt all data synchronization for the specified configuration.
+
+        Args:
+            req: DeleteSyncRequest containing the sync ID or identifier to delete
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the delete operation fails
+
+        Example:
+            >>> req = store_v1.DeleteSyncRequest(sync_id="sync-123")
+            >>> client.delete_sync(req)
+            >>> print(f"Sync deleted")
+
+        """
+        try:
+            self.sync_client.DeleteSync(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during delete_sync: %s", e)
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error during delete_sync: %s", e)
+            msg = f"Failed to delete sync: {e}"
+            raise RuntimeError(msg) from e
 
     def verify(
         self,
@@ -561,8 +662,7 @@ class Client:
             VerifyResponse containing the verification result and details
 
         Raises:
-            grpc.RpcError: If the gRPC call fails
-            ValueError: If the request is invalid
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the verification operation fails
 
         Example:
@@ -713,12 +813,10 @@ class Client:
             if oidc_signer.id_token:
                 command.extend(["--oidc-token", oidc_signer.id_token])
             if oidc_signer.options.oidc_provider_url:
-                command.extend(
-                    [
-                        "--oidc-provider-url",
-                        oidc_signer.options.oidc_provider_url,
-                    ]
-                )
+                command.extend([
+                    "--oidc-provider-url",
+                    oidc_signer.options.oidc_provider_url,
+                ])
             if oidc_signer.options.fulcio_url:
                 command.extend(["--fulcio-url", oidc_signer.options.fulcio_url])
             if oidc_signer.options.rekor_url:

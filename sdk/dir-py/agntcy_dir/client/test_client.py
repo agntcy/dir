@@ -5,6 +5,7 @@ import os
 import pathlib
 import subprocess
 import unittest
+import uuid
 
 from agntcy_dir.client import Client
 from agntcy_dir.models import *
@@ -257,43 +258,44 @@ class TestClient(unittest.TestCase):
         except RuntimeError as e:
             assert "Failed to sign the object" in str(e)
 
-    def test_sync(self):
+    def test_sync(self) -> None:
         try:
-            create_request = sync_types.CreateSyncRequest(
+            create_request = store_v1.CreateSyncRequest(
                 remote_directory_url=os.getenv(
-                    "DIRECTORY_SERVER_PEER1_ADDRESS", "0.0.0.0:8891"
-                )
+                    "DIRECTORY_SERVER_PEER1_ADDRESS",
+                    "0.0.0.0:8891",
+                ),
             )
-            create_response = client.create_sync(create_request)
+            create_response = self.client.create_sync(create_request)
 
             try:
-                self.assertTrue(uuid.UUID(create_response.sync_id))
+                assert uuid.UUID(create_response.sync_id)
             except ValueError:
-                raise ValueError("Not an UUID: {}".format(create_response.sync_id))
+                msg = f"Not an UUID: {create_response.sync_id}"
+                raise ValueError(msg)
 
-            list_request = sync_types.ListSyncsRequest()
-            list_response = client.list_syncs(list_request)
+            list_request = store_v1.ListSyncsRequest()
+            list_response = self.client.list_syncs(list_request)
 
             for sync_item in list_response:
                 try:
-                    self.assertIsInstance(sync_item, sync_types.ListSyncsItem)
-                    self.assertTrue(uuid.UUID(sync_item.sync_id))
+                    assert isinstance(sync_item, store_v1.ListSyncsItem)
+                    assert uuid.UUID(sync_item.sync_id)
                 except ValueError:
-                    raise ValueError("Not an UUID: {}".format(sync_item.sync_id))
+                    msg = f"Not an UUID: {sync_item.sync_id}"
+                    raise ValueError(msg)
 
-            get_request = sync_types.GetSyncRequest(sync_id=create_response.sync_id)
-            get_response = client.get_sync(get_request)
+            get_request = store_v1.GetSyncRequest(sync_id=create_response.sync_id)
+            get_response = self.client.get_sync(get_request)
 
-            self.assertIsInstance(get_response, sync_types.GetSyncResponse)
-            self.assertEqual(get_response.sync_id, create_response.sync_id)
+            assert isinstance(get_response, store_v1.GetSyncResponse)
+            assert get_response.sync_id == create_response.sync_id
 
-            delete_request = sync_types.DeleteSyncRequest(
-                sync_id=create_response.sync_id
-            )
-            client.delete_sync(delete_request)
+            delete_request = store_v1.DeleteSyncRequest(sync_id=create_response.sync_id)
+            self.client.delete_sync(delete_request)
 
         except Exception as e:
-            self.assertIsNone(e)
+            assert e is None
 
     def gen_records(self, count: int, test_function_name: str) -> list[core_v1.Record]:
         records: list[core_v1.Record] = [
