@@ -1,0 +1,15 @@
+# Python
+dist/
+__pycache__/
+*.egg-info/
+*.pyc
+*.pyo
+*.pyd
+*.lock
+
+# Virtual Environments
+.venv/
+
+# Tests
+*.key
+*.pub
