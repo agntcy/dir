@@ -17,7 +17,8 @@ approved = [
 ignored = [
   "github.com/agntcy/dir/api",
   "buf.build/gen/go/agntcy/oasf/protocolbuffers/go",
-  
+  "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go",
+
   "google.golang.org/protobuf", # BSD-3-Clause
   "github.com/xi2/xz", # Public Domain https://github.com/xi2/xz/blob/master/LICENSE
   "github.com/libp2p/go-libp2p-gorpc", # MIT https://github.com/libp2p/go-libp2p-gorpc/blob/master/LICENSE-MIT
@@ -25,5 +26,8 @@ ignored = [
   "modernc.org/sqlite", # BSD-3-Clause https://gitlab.com/cznic/sqlite/-/blob/master/LICENSE
   "modernc.org/libc", # BSD-3-Clause https://gitlab.com/cznic/libc/-/blob/master/LICENSE
   "modernc.org/mathutil", # BSD-3-Clausehttps://gitlab.com/cznic/mathutil/-/blob/master/LICENSE
-  "modernc.org/memory" # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
+  "modernc.org/memory", # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
+  "github.com/xeipuuv/gojsonpointer", # Apache License 2.0 https://github.com/xeipuuv/gojsonpointer/blob/master/LICENSE-APACHE-2.0.txt
+  "github.com/xeipuuv/gojsonreference", # https://github.com/xeipuuv/gojsonreference/blob/master/LICENSE-APACHE-2.0.txt
+  "github.com/xeipuuv/gojsonschema", # https://github.com/xeipuuv/gojsonschema/blob/master/LICENSE-APACHE-2.0.txt
 ]
