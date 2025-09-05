@@ -9,3 +9,7 @@ __pycache__/
 
 # Virtual Environments
 .venv/
+
+# Tests
+*.key
+*.pub

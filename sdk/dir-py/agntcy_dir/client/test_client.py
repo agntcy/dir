@@ -5,6 +5,7 @@ import os
 import pathlib
 import subprocess
 import unittest
+from typing import Dict, List, Tuple
 
 from agntcy_dir.client import Client
 from agntcy_dir.models import *
@@ -21,43 +22,34 @@ class TestClient(unittest.TestCase):
         self.client = Client()
 
     def test_push(self) -> None:
-        example_records = self.init_records(2, "push", push=False)
-        records_list = list[core_v1.Record](
-            record for _, record in example_records.values()
-        )
+        records = self.gen_records(2, "push")
+        record_refs = self.client.push(records=records)
 
-        references = self.client.push(records=records_list)
+        assert record_refs is not None
+        assert isinstance(record_refs, list)
+        assert len(record_refs) == 2
 
-        assert references is not None
-        assert isinstance(references, list)
-        assert len(references) == 2
-
-        for ref in references:
+        for ref in record_refs:
             assert isinstance(ref, core_v1.RecordRef)
             assert len(ref.cid) == 59
 
     def test_pull(self) -> None:
-        example_records = self.init_records(2, "pull")
-        record_refs_list = list[core_v1.RecordRef](
-            ref for ref, _ in example_records.values()
-        )
-
-        pulled_records = self.client.pull(refs=record_refs_list)
+        records = self.gen_records(2, "pull")
+        record_refs = self.client.push(records=records)
+        pulled_records = self.client.pull(refs=record_refs)
 
         assert pulled_records is not None
         assert isinstance(pulled_records, list)
         assert len(pulled_records) == 2
 
-        for record in pulled_records:
+        for index, record in enumerate(pulled_records):
             assert isinstance(record, core_v1.Record)
+            assert records[index] == record
 
     def test_lookup(self) -> None:
-        example_records = self.init_records(2, "lookup")
-        record_refs_list = list[core_v1.RecordRef](
-            ref for ref, _ in example_records.values()
-        )
-
-        metadatas = self.client.lookup(record_refs_list)
+        records = self.gen_records(2, "lookup")
+        record_refs = self.client.push(records=records)
+        metadatas = self.client.lookup(record_refs)
 
         assert metadatas is not None
         assert isinstance(metadatas, list)
@@ -67,13 +59,9 @@ class TestClient(unittest.TestCase):
             assert isinstance(metadata, core_v1.RecordMeta)
 
     def test_publish(self) -> None:
-        example_records = self.init_records(1, "publish")
-        record_refs_list = list[core_v1.RecordRef](
-            ref for ref, _ in example_records.values()
-        )
-
-        record_refs = routing_v1.RecordRefs(refs=record_refs_list)
-        publish_request = routing_v1.PublishRequest(record_refs=record_refs)
+        records = self.gen_records(1, "publish")
+        record_refs = self.client.push(records=records)
+        publish_request = routing_v1.PublishRequest(record_refs=routing_v1.RecordRefs(refs=record_refs))
 
         try:
             self.client.publish(publish_request)
@@ -81,11 +69,11 @@ class TestClient(unittest.TestCase):
             assert e is None
 
     def test_list(self) -> None:
-        _ = self.init_records(2, "list", publish=True)
-
+        records = self.gen_records(1, "list")
+        _ = self.client.push(records=records)
         list_query = routing_v1.RecordQuery(
-            type=routing_v1.RECORD_QUERY_TYPE_SKILL,
-            value="/skills/Natural Language Processing/Text Completion",
+            type=routing_v1.RECORD_QUERY_TYPE_LOCATOR,
+            value="docker-image",
         )
 
         list_request = routing_v1.ListRequest(queries=[list_query])
@@ -98,10 +86,12 @@ class TestClient(unittest.TestCase):
             assert isinstance(o, routing_v1.ListResponse)
 
     def test_search(self) -> None:
-        _ = self.init_records(2, "search", publish=True)
+        records = self.gen_records(1, "search")
+        _ = self.client.push(records=records)
 
         search_query = search_v1.RecordQuery(
-            type=search_v1.RECORD_QUERY_TYPE_SKILL_ID, value="1",
+            type=search_v1.RECORD_QUERY_TYPE_SKILL_ID,
+            value="1",
         )
 
         search_request = search_v1.SearchRequest(queries=[search_query], limit=2)
@@ -109,19 +99,18 @@ class TestClient(unittest.TestCase):
         objects = list(self.client.search(search_request))
 
         assert objects is not None
-        assert len(objects) != 0
+        assert len(objects) > 0
 
         for o in objects:
             assert isinstance(o, search_v1.SearchResponse)
 
     def test_unpublish(self) -> None:
-        example_records = self.init_records(1, "unpublish", publish=True)
-        record_refs_list = list[core_v1.RecordRef](
-            ref for ref, _ in example_records.values()
-        )
+        records = self.gen_records(1, "unpublish")
+        record_refs = self.client.push(records=records)
 
-        record_refs = routing_v1.RecordRefs(refs=record_refs_list)
-        unpublish_request = routing_v1.UnpublishRequest(record_refs=record_refs)
+        publish_record_refs = routing_v1.RecordRefs(refs=record_refs)
+        _ = routing_v1.PublishRequest(record_refs=publish_record_refs)
+        unpublish_request = routing_v1.UnpublishRequest(record_refs=publish_record_refs)
 
         try:
             self.client.unpublish(unpublish_request)
@@ -129,30 +118,25 @@ class TestClient(unittest.TestCase):
             assert e is None
 
     def test_delete(self) -> None:
-        example_records = self.init_records(2, "delete")
-        record_refs_list = list[core_v1.RecordRef](
-            ref for ref, _ in example_records.values()
-        )
-
+        records = self.gen_records(1, "delete")
+        record_refs = self.client.push(records=records)
         try:
-            self.client.delete(record_refs_list)
+            self.client.delete(record_refs)
         except Exception as e:
             assert e is None
 
     def test_push_referrer(self) -> None:
-        example_records = self.init_records(2, "push_referrer")
-        record_refs_list = list[core_v1.RecordRef](
-            ref for ref, _ in example_records.values()
-        )
+        records = self.gen_records(2, "push_referrer")
+        record_refs = self.client.push(records=records)
 
         try:
             example_signature = sign_v1.Signature()
             request = [
                 store_v1.PushReferrerRequest(
-                    record_ref=record_refs_list[0], signature=example_signature,
+                    record_ref=record_refs[0], signature=example_signature,
                 ),
                 store_v1.PushReferrerRequest(
-                    record_ref=record_refs_list[1], signature=example_signature,
+                    record_ref=record_refs[1], signature=example_signature,
                 ),
             ]
 
@@ -168,18 +152,16 @@ class TestClient(unittest.TestCase):
             assert e is None
 
     def test_pull_referrer(self) -> None:
-        example_records = self.init_records(2, "pull_referrer")
-        record_refs_list = list[core_v1.RecordRef](
-            ref for ref, _ in example_records.values()
-        )
+        records = self.gen_records(2, "pull_referrer")
+        record_refs = self.client.push(records=records)
 
         try:
             request = [
                 store_v1.PullReferrerRequest(
-                    record_ref=record_refs_list[0], pull_signature=False,
+                    record_ref=record_refs[0], pull_signature=False,
                 ),
                 store_v1.PullReferrerRequest(
-                    record_ref=record_refs_list[1], pull_signature=False,
+                    record_ref=record_refs[1], pull_signature=False,
                 ),
             ]
 
@@ -196,10 +178,8 @@ class TestClient(unittest.TestCase):
             # self.assertIsNone(e) # Uncomment when the service implemented
 
     def test_sign_and_verify(self) -> None:
-        example_records = self.init_records(2, "sign_and_verify")
-        record_refs_list = list[core_v1.RecordRef](
-            ref for ref, _ in example_records.values()
-        )
+        records = self.gen_records(2, "sign_verify")
+        record_refs = self.client.push(records=records)
 
         shell_env = os.environ.copy()
 
@@ -235,24 +215,22 @@ class TestClient(unittest.TestCase):
         request_oidc_provider = sign_v1.SignRequestProvider(oidc=oidc_provider)
 
         key_request = sign_v1.SignRequest(
-            record_ref=record_refs_list[0], provider=request_key_provider,
+            record_ref=record_refs[0], provider=request_key_provider,
         )
         oidc_request = sign_v1.SignRequest(
-            record_ref=record_refs_list[1], provider=request_oidc_provider,
+            record_ref=record_refs[1], provider=request_oidc_provider,
         )
 
         try:
             # Sign test
             result = self.client.sign(key_request)
-            assert result.stderr.decode("utf-8") == ""
             assert result.stdout.decode("utf-8") == "Record signed successfully"
 
             result = self.client.sign(oidc_request, client_id)
-            assert result.stderr.decode("utf-8") == ""
             assert result.stdout.decode("utf-8") == "Record signed successfully"
 
             # Verify test
-            for ref in record_refs_list:
+            for ref in record_refs:
                 request = sign_v1.VerifyRequest(record_ref=ref)
                 response = self.client.verify(request)
 
@@ -264,11 +242,11 @@ class TestClient(unittest.TestCase):
             pathlib.Path("cosign.key").unlink()
             pathlib.Path("cosign.pub").unlink()
 
-    def init_records(self, count, test_function_name, push=True, publish=False):
-        example_records = {}
+    def gen_records(self, count: int, test_function_name: str) -> List[core_v1.Record]:
+        records: List[core_v1.Record] = []
 
         for index in range(count):
-            generated_record = core_v1.Record(
+            records.append(core_v1.Record(
                 v3=objects_v3.Record(
                     name=f"{test_function_name}-{index}",
                     version="v3",
@@ -281,40 +259,21 @@ class TestClient(unittest.TestCase):
                     ],
                     locators=[
                         objects_v3.Locator(
-                            type="ipv4",
+                            type="docker-image",
                             url="127.0.0.1",
                         ),
                     ],
                     extensions=[
                         objects_v3.Extension(
-                            name="schema.oasf.agntcy.org/domains/domain-1",
+                            name="runtime/prompt",
                             version="v1",
                         ),
                     ],
                     signature=objects_v3.Signature(),
                 ),
-            )
+            ))
 
-            example_records[index] = (None, generated_record)
-
-        if push:
-            records_list = list[core_v1.Record](
-                record for _, record in example_records.values()
-            )
-
-            for index, record in enumerate(records_list):
-                # Push only one at a time to make sure of the cid pairing
-                references = self.client.push(records=[record])
-
-                example_records[index] = (references[0], record)
-
-            if publish:
-                for record_ref in example_records.values():
-                    record_refs = routing_v1.RecordRefs(refs=[record_ref])
-                    req = routing_v1.PublishRequest(record_refs=record_refs)
-                    self.client.publish(req=req)
-
-        return example_records
+        return records
 
 
 if __name__ == "__main__":

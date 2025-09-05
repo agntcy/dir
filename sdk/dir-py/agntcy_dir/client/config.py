@@ -7,7 +7,6 @@ import os
 class Config:
     DEFAULT_ENV_PREFIX = "DIRECTORY_CLIENT"
     DEFAULT_SERVER_ADDRESS = "0.0.0.0:8888"
-
     DEFAULT_DIRCTL_PATH = "dirctl"
 
     def __init__(
