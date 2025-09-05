@@ -140,6 +140,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
 		})
 
+		ginkgo.It("should verify the record_v2.json from peer 2 after sync", func() {
+			cli.Verify(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
+		})
+
 		// Delete sync from peer 2
 		ginkgo.It("should delete sync from peer 2", func() {
 			cli.Sync().Delete(syncID).OnServer(utils.Peer2Addr).ShouldSucceed()
