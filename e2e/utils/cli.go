@@ -71,8 +71,8 @@ func (c *CLI) List() *ListBuilder {
 	}
 }
 
-func (c *CLI) Verify(recordPath, signaturePath, keyPath string) *CommandBuilder {
-	return c.Command("verify").WithArgs(recordPath, signaturePath, "--key", keyPath)
+func (c *CLI) Verify(recordCID string) *CommandBuilder {
+	return c.Command("verify").WithArgs(recordCID)
 }
 
 // Network commands.

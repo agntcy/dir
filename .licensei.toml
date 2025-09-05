@@ -25,5 +25,6 @@ ignored = [
   "modernc.org/sqlite", # BSD-3-Clause https://gitlab.com/cznic/sqlite/-/blob/master/LICENSE
   "modernc.org/libc", # BSD-3-Clause https://gitlab.com/cznic/libc/-/blob/master/LICENSE
   "modernc.org/mathutil", # BSD-3-Clausehttps://gitlab.com/cznic/mathutil/-/blob/master/LICENSE
-  "modernc.org/memory" # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
+  "modernc.org/memory", # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
+  "gitlab.com/gitlab-org/api/client-go" # Apache License 2.0 https://gitlab.com/gitlab-org/api/client-go/-/blob/main/LICENSE
 ]
