@@ -1,31 +1,56 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
+"""Client module for the AGNTCY Directory service.
+
+This module provides a high-level Python client for interacting with the AGNTCY
+Directory services including routing, search, store, and signing operations.
+"""
+
 import builtins
 import logging
 import os
 import subprocess
 import tempfile
-from collections.abc import Iterator
-from subprocess import CompletedProcess
+from collections.abc import Sequence
 
 import grpc
 
 from agntcy_dir.client.config import Config
-from agntcy_dir.models import *
+from agntcy_dir.models import (
+    core_v1,
+    routing_v1,
+    search_v1,
+    sign_v1,
+    store_v1,
+)
 
 logger = logging.getLogger("client")
 
 
 class Client:
-    def __init__(self, config: Config | None = None) -> "Client":
+    """High-level client for interacting with AGNTCY Directory services.
+
+    This client provides a unified interface for operations across Dir API.
+    It handles gRPC communication and provides convenient methods for common operations.
+
+    Example:
+        >>> config = Config.load_from_env()
+        >>> client = Client(config)
+        >>> # Use client for operations...
+
+    """
+
+    def __init__(self, config: Config | None = None) -> None:
         """Initialize the client with the given configuration.
 
         Args:
-            config: Optional client configuration. If unset, loaded from env.
+            config: Optional client configuration. If None, loads from environment
+                   variables using Config.load_from_env().
 
-        Returns:
-            A new Client instance
+        Raises:
+            grpc.RpcError: If unable to establish connection to the server
+            ValueError: If configuration is invalid
 
         """
         # Load config if unset
@@ -45,416 +70,624 @@ class Client:
     def publish(
         self,
         req: routing_v1.PublishRequest,
-        metadata: list[tuple[str, str]] | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> None:
-        """Publish an object to the routing service.
+        """Publish objects to the Routing API matching the specified criteria.
+
+        Makes the specified objects available for discovery and retrieval by other
+        clients in the network. The objects must already exist in the store before
+        they can be published.
 
         Args:
-            req: Publish request containing the cid of published object
-            metadata: Optional metadata for the gRPC call
+            req: Publish request containing the query for the objects to publish
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
         Raises:
-            Exception: If publishing fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the request is invalid
+            RuntimeError: If the object is not found or cannot be published
+
+        Example:
+            >>> ref = routing_v1.RecordRef(cid="QmExample123")
+            >>> req = routing_v1.PublishRequest(record_refs=[ref])
+            >>> client.publish(req)
 
         """
         try:
             self.routing_client.Publish(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during publish: %s", e)
+            raise
         except Exception as e:
+            logger.exception("Unexpected error during publish: %s", e)
             msg = f"Failed to publish object: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
 
     def list(
         self,
         req: routing_v1.ListRequest,
-        metadata: list[tuple[str, str]] | None = None,
-    ) -> Iterator[routing_v1.ListResponse]:
-        """List objects matching the criteria.
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> list[routing_v1.ListResponse]:
+        """List objects from the Routing API matching the specified criteria.
+
+        Returns a list of objects that match the filtering and
+        query criteria specified in the request.
 
         Args:
-            req: List request specifying criteria
-            metadata: Optional metadata for the gRPC call
+            req: List request specifying filtering criteria, pagination, etc.
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
-            Iterator yielding list response items
+            List[routing_v1.ListResponse]: List of items matching the criteria
 
         Raises:
-            Exception: If list operation fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the request is invalid
+            RuntimeError: If the list operation fails
+
+        Example:
+            >>> req = routing_v1.ListRequest(limit=10)
+            >>> responses = client.list(req)
+            >>> for response in responses:
+            ...     print(f"Found object: {response.cid}")
 
         """
+        results: list[routing_v1.ListResponse] = []
+
         try:
             stream = self.routing_client.List(req, metadata=metadata)
-
-            # Yield each item from the stream
-            yield from stream
+            results.extend(stream)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during list: %s", e)
+            raise
         except Exception as e:
             logger.exception("Error receiving objects: %s", e)
             msg = f"Failed to list objects: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
+
+        return results
 
     def search(
         self,
         req: search_v1.SearchRequest,
-        metadata: builtins.list[tuple[str, str]] | None = None,
-    ) -> Iterator[routing_v1.SearchResponse]:
-        """Search objects matching the queries.
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> builtins.list[routing_v1.SearchResponse]:
+        """Search objects from the Store API matching the specified queries.
+
+        Performs a search across the storage using the provided search queries
+        and returns a list of matching results. Supports various
+        search types including text, semantic, and structured queries.
 
         Args:
-            req: Search request specifying criteria
-            metadata: Optional metadata for the gRPC call
+            req: Search request containing queries, filters, and search options
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
-            Search response object
+            List[routing_v1.SearchResponse]: List of search results matching the queries
 
-        Raises: Exception if search fails
+        Raises:
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the request is invalid
+            RuntimeError: If the search operation fails
+
+        Example:
+            >>> req = search_v1.SearchRequest(query="python AI agent")
+            >>> responses = client.search(req)
+            >>> for response in responses:
+            ...     print(f"Found: {response.record.name}")
 
         """
+        results: list[routing_v1.SearchResponse] = []
+
         try:
             stream = self.search_client.Search(req, metadata=metadata)
-
-            # Yield each item from the stream
-            yield from stream
+            results.extend(stream)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during search: %s", e)
+            raise
         except Exception as e:
-            logger.exception("Error receiving objects: %s", e)
+            logger.exception("Error receiving search results: %s", e)
             msg = f"Failed to search objects: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
+
+        return results
 
     def unpublish(
         self,
         req: routing_v1.UnpublishRequest,
-        metadata: builtins.list[tuple[str, str]] | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> None:
-        """Unpublish an object from the routing service.
+        """Unpublish objects from the Routing API matching the specified criteria.
+
+        Removes the specified objects from the public network, making them no
+        longer discoverable by other clients. The objects remain in the local
+        store but are not available for network discovery.
 
         Args:
-            req: Unpublish request containing the cid of unpublished object
-            metadata: Optional metadata for the gRPC call
+            req: Unpublish request containing the query for the objects to unpublish
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
         Raises:
-            Exception: If unpublishing fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the request is invalid
+            RuntimeError: If the objects cannot be unpublished
+
+        Example:
+            >>> ref = routing_v1.RecordRef(cid="QmExample123")
+            >>> req = routing_v1.UnpublishRequest(record_refs=[ref])
+            >>> client.unpublish(req)
 
         """
         try:
             self.routing_client.Unpublish(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during unpublish: %s", e)
+            raise
         except Exception as e:
+            logger.exception("Unexpected error during unpublish: %s", e)
             msg = f"Failed to unpublish object: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
 
     def push(
         self,
         records: builtins.list[core_v1.Record],
-        metadata: builtins.list[tuple[str, str]] | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> builtins.list[core_v1.RecordRef]:
-        """Push an object to the store.
+        """Push records to the Store API.
+
+        Uploads one or more records to the content store, making them available
+        for retrieval and reference. Each record is assigned a unique content
+        identifier (CID) based on its content hash.
 
         Args:
-            records: Records object
-            metadata: Optional metadata for the gRPC call
+            records: List of Record objects to push to the store
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
-            Updated object reference
+            List[core_v1.RecordRef]: List of objects containing the CIDs of the pushed records
 
         Raises:
-            Exception: If push operation fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the records are invalid
+            RuntimeError: If the push operation fails
+
+        Example:
+            >>> records = [create_record("example")]
+            >>> refs = client.push(records)
+            >>> print(f"Pushed with CID: {refs[0].cid}")
 
         """
-        references = []
+        results: list[core_v1.RecordRef] = []
 
         try:
-            # Push is a client-streaming RPC - stream of requests, single response
-            # Call the Push method with the request iterator
-
             response = self.store_client.Push(iter(records), metadata=metadata)
-
-            for r in response:
-                references.append(r)
-
+            results.extend(response)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during push: %s", e)
+            raise
         except Exception as e:
+            logger.exception("Unexpected error during push: %s", e)
             msg = f"Failed to push object: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
 
-        return references
+        return results
 
     def push_referrer(
         self,
         req: builtins.list[store_v1.PushReferrerRequest],
-        metadata: builtins.list[tuple[str, str]] | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> builtins.list[store_v1.PushReferrerResponse]:
-        """Push objects to the store.
+        """Push records with referrer metadata to the Store API.
+
+        Uploads records along with optional artifacts and referrer information.
+        This is useful for pushing complex objects that include additional
+        metadata or associated artifacts.
 
         Args:
-            req: PushReferrerRequest represents a record with optional OCI artifacts for push operations.
-            metadata: Optional metadata for the gRPC call
+            req: List of PushReferrerRequest objects containing records and
+                 optional artifacts
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
-            List of objects cid pushed to the store
+            List[store_v1.PushReferrerResponse]: List of objects containing the details of pushed artifacts
 
         Raises:
-            Exception: If push operation fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the request is invalid
+            RuntimeError: If the push operation fails
+
+        Example:
+            >>> requests = [store_v1.PushReferrerRequest(record=record)]
+            >>> responses = client.push_referrer(requests)
 
         """
-        responses = []
+        results: list[store_v1.PushReferrerResponse] = []
 
         try:
             response = self.store_client.PushReferrer(iter(req), metadata=metadata)
-
-            for r in response:
-                responses.append(r)
-
+            results.extend(response)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during push_referrer: %s", e)
+            raise
         except Exception as e:
+            logger.exception("Unexpected error during push_referrer: %s", e)
             msg = f"Failed to push object: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
 
-        return responses
+        return results
 
     def pull(
         self,
         refs: builtins.list[core_v1.RecordRef],
-        metadata: builtins.list[tuple[str, str]] | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> builtins.list[core_v1.Record]:
-        """Pull objects from the store.
+        """Pull records from the Store API by their references.
+
+        Retrieves one or more records from the content store using their
+        content identifiers (CIDs).
 
         Args:
-            refs: References to objects
-            metadata: Optional metadata for the gRPC call
+            refs: List of RecordRef objects containing the CIDs to retrieve
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
-            BytesIO object containing the pulled data
+            List[core_v1.Record]: List of record objects retrieved from the store
 
         Raises:
-            Exception: If pull operation fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the references are invalid
+            RuntimeError: If the pull operation fails
+            NotFoundError: If one or more records are not found
+
+        Example:
+            >>> refs = [core_v1.RecordRef(cid="QmExample123")]
+            >>> records = client.pull(refs)
+            >>> for record in records:
+            ...     print(f"Retrieved record: {record}")
 
         """
-        records = []
+        results: list[core_v1.Record] = []
 
         try:
             response = self.store_client.Pull(iter(refs), metadata=metadata)
-
-            records.extend(r for r in response if r is not None)
-
+            results.extend(response)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during pull: %s", e)
+            raise
         except Exception as e:
+            logger.exception("Unexpected error during pull: %s", e)
             msg = f"Failed to pull object: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
 
-        return records
+        return results
 
     def pull_referrer(
         self,
         req: builtins.list[store_v1.PullReferrerRequest],
-        metadata: builtins.list[tuple[str, str]] | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> builtins.list[store_v1.PullReferrerResponse]:
-        """Pull objects from the store.
+        """Pull records with referrer metadata from the Store API.
+
+        Retrieves records along with their associated artifacts and referrer
+        information. This provides access to complex objects that include
+        additional metadata or associated artifacts.
 
         Args:
-            req: PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
-            metadata: Optional metadata for the gRPC call
+            req: List of PullReferrerRequest objects containing records and
+                 optional artifacts for pull operations
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
-            List of record objects from the store
+            List[store_v1.PullReferrerResponse]: List of objects containing the retrieved records
 
         Raises:
-            Exception: If push operation fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the request is invalid
+            RuntimeError: If the pull operation fails
+
+        Example:
+            >>> requests = [store_v1.PullReferrerRequest(ref=ref)]
+            >>> responses = client.pull_referrer(requests)
+            >>> for response in responses:
+            ...     print(f"Retrieved: {response}")
 
         """
-        responses = []
+        results: list[store_v1.PullReferrerResponse] = []
 
         try:
             response = self.store_client.PullReferrer(iter(req), metadata=metadata)
-
-            for r in response:
-                responses.append(r)
-
+            results.extend(response)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during pull_referrer: %s", e)
+            raise
         except Exception as e:
-            msg = f"Failed to push object: {e}"
-            raise Exception(msg)
+            logger.exception("Unexpected error during pull_referrer: %s", e)
+            msg = f"Failed to pull referrer object: {e}"
+            raise RuntimeError(msg) from e
 
-        return responses
+        return results
 
     def lookup(
         self,
         refs: builtins.list[core_v1.RecordRef],
-        metadata: builtins.list[tuple[str, str]] | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> builtins.list[core_v1.RecordMeta]:
-        """Look up an object in the store.
+        """Look up metadata for records in the Store API.
+
+        Retrieves metadata information for one or more records without
+        downloading the full record content. This is useful for checking
+        if records exist and getting basic information about them.
 
         Args:
-            refs: References to objects
-            metadata: Optional metadata for the gRPC call
+            refs: List of RecordRef objects containing the CIDs to look up
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
-            Object metadata
+            List[core_v1.RecordMeta]: List of objects containing metadata for the records
 
         Raises:
-            Exception: If lookup fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the references are invalid
+            RuntimeError: If the lookup operation fails
+
+        Example:
+            >>> refs = [core_v1.RecordRef(cid="QmExample123")]
+            >>> metadatas = client.lookup(refs)
+            >>> for meta in metadatas:
+            ...     print(f"Record size: {meta.size}")
 
         """
-        metadatas = []
+        results: list[core_v1.RecordMeta] = []
 
         try:
             response = self.store_client.Lookup(iter(refs), metadata=metadata)
-
-            metadatas.extend(r for r in response if r is not None)
-
+            results.extend(response)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during lookup: %s", e)
+            raise
         except Exception as e:
-            msg = f"Failed to pull object: {e}"
-            raise Exception(msg)
+            logger.exception("Unexpected error during lookup: %s", e)
+            msg = f"Failed to lookup object: {e}"
+            raise RuntimeError(msg) from e
 
-        return metadatas
+        return results
 
     def delete(
         self,
         refs: builtins.list[core_v1.RecordRef],
-        metadata: builtins.list[tuple[str, str]] | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> None:
-        """Delete an object from the store.
+        """Delete records from the Store API.
+
+        Permanently removes one or more records from the content store using
+        their content identifiers (CIDs). This operation cannot be undone.
 
         Args:
-            refs: References to objects
-            metadata: Optional metadata for the gRPC call
+            refs: List of RecordRef objects containing the CIDs to delete
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Raises:
-            Exception: If delete operation fails
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the references are invalid
+            RuntimeError: If the delete operation fails
+            PermissionError: If the client lacks permission to delete the records
+
+        Example:
+            >>> refs = [core_v1.RecordRef(cid="QmExample123")]
+            >>> client.delete(refs)
 
         """
         try:
             self.store_client.Delete(iter(refs), metadata=metadata)
-
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during delete: %s", e)
+            raise
         except Exception as e:
-            msg = f"Failed to pull object: {e}"
-            raise Exception(msg)
+            logger.exception("Unexpected error during delete: %s", e)
+            msg = f"Failed to delete object: {e}"
+            raise RuntimeError(msg) from e
+
+    def verify(
+        self,
+        req: sign_v1.VerifyRequest,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> sign_v1.VerifyResponse:
+        """Verify a cryptographic signature on a record.
+
+        Validates the cryptographic signature of a previously signed record
+        to ensure its authenticity and integrity. This operation verifies
+        that the record has not been tampered with since signing.
+
+        Args:
+            req: VerifyRequest containing the record reference and verification
+                 parameters
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            VerifyResponse containing the verification result and details
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails
+            ValueError: If the request is invalid
+            RuntimeError: If the verification operation fails
+
+        Example:
+            >>> req = sign_v1.VerifyRequest(
+            ...     record_ref=core_v1.RecordRef(cid="QmExample123")
+            ... )
+            >>> response = client.verify(req)
+            >>> print(f"Signature valid: {response.valid}")
+
+        """
+        try:
+            response = self.sign_client.Verify(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during verify: %s", e)
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error during verify: %s", e)
+            msg = f"Failed to verify the object: {e}"
+            raise RuntimeError(msg) from e
+
+        return response
 
     def sign(
         self,
         req: sign_v1.SignRequest,
         oidc_client_id: str | None = "sigstore",
-    ) -> CompletedProcess[bytes]:
-        """Sign a record with a provider.
+    ) -> None:
+        """Sign a record with a cryptographic signature.
+
+        Creates a cryptographic signature for a record using either a private
+        key or OIDC-based signing. The signing process uses the external dirctl
+        command-line tool to perform the actual cryptographic operations.
 
         Args:
-            req: Sign request contains the record reference and provider
-            oidc_client_id: OIDC client id for OIDC signing
+            req: SignRequest containing the record reference and signing provider
+                 configuration. The provider can specify either key-based signing
+                 (with a private key) or OIDC-based signing
+            oidc_client_id: OIDC client identifier for OIDC-based signing.
+                           Defaults to "sigstore"
+
         Raises:
-            Exception: If sign operation fails
+            RuntimeError: If the signing operation fails
+
+        Example:
+            >>> req = sign_v1.SignRequest(
+            ...     record_ref=core_v1.RecordRef(cid="QmExample123"),
+            ...     provider=sign_v1.SignProvider(key=key_config)
+            ... )
+            >>> client.sign(req)
+            >>> print(f"Signing completed!")
 
         """
         try:
             if len(req.provider.key.private_key) > 0:
-                result = self.__sign_with_key__(req)
+                self._sign_with_key(req.record_ref, req.provider.key)
             else:
-                result = self.__sign_with_oidc__(req, oidc_client_id=oidc_client_id)
-
-        except Exception as e:
+                self._sign_with_oidc(req.record_ref, req.provider.oidc, oidc_client_id)
+        except RuntimeError as e:
             msg = f"Failed to sign the object: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
+        except Exception as e:
+            logger.exception("Signing operation failed: %s", e)
+            msg = f"Failed to sign the object: {e}"
+            raise RuntimeError(msg) from e
 
-        return result
-
-    def verify(
+    def _sign_with_key(
         self,
-        req: sign_v1.VerifyRequest,
-        metadata: builtins.list[tuple[str, str]] | None = None,
-    ) -> sign_v1.VerifyResponse:
-        """Verify a signed record.
+        record_ref: core_v1.RecordRef,
+        key_signer: sign_v1.SignWithKey,
+    ) -> None:
+        """Sign a record using a private key.
+
+        This private method handles key-based signing by writing the private key
+        to a temporary file and executing the dirctl command with the key file.
 
         Args:
-            req: Verify request contains the record reference
-            metadata: Optional metadata for the gRPC call
+            req: SignRequest containing the record reference and key provider
 
         Raises:
-            Exception: If verify operation fails
+            RuntimeError: If any other error occurs during signing
 
         """
         try:
-            response = self.sign_client.Verify(req, metadata=metadata)
-        except Exception as e:
-            msg = f"Failed to verify the object: {e}"
-            raise Exception(msg)
+            # Create temporary file for the private key
+            with tempfile.NamedTemporaryFile(delete=False) as tmp_key_file:
+                tmp_key_file.write(key_signer.private_key)
+                tmp_key_file.flush()
 
-        return response
+                # Set up environment with password
+                shell_env = os.environ.copy()
+                shell_env["COSIGN_PASSWORD"] = key_signer.password.decode("utf-8")
 
-    def __sign_with_key__(
-        self,
-        req: sign_v1.SignRequest,
-    ) -> CompletedProcess[bytes]:
-        process = None
-
-        try:
-            key_signer = req.provider.key
-
-            tmp_key_file = tempfile.NamedTemporaryFile()
-
-            with open(tmp_key_file.name, "wb") as key_file:
-                key_file.write(key_signer.private_key)
-
-            shell_env = os.environ.copy()
-            shell_env["COSIGN_PASSWORD"] = key_signer.password.decode("utf8")
-
-            command = (
-                self.config.dirctl_path,
-                "sign",
-                req.record_ref.cid,
-                "--key",
-                tmp_key_file.name,
-            )
-            process = subprocess.run(
-                command, check=True, capture_output=True, env=shell_env,
-            )
+                # Build and execute the signing command
+                command = (
+                    self.config.dirctl_path,
+                    "sign",
+                    record_ref.cid,
+                    "--key",
+                    tmp_key_file.name,
+                )
+                subprocess.run(
+                    command,
+                    check=True,
+                    capture_output=True,
+                    env=shell_env,
+                    timeout=60,  # 1 minute timeout
+                )
 
         except OSError as e:
-            msg = f"Failed to write file to disk: {e}"
-            raise Exception(msg)
+            msg = f"Failed to write key file to disk: {e}"
+            raise RuntimeError(msg) from e
         except subprocess.CalledProcessError as e:
-            msg = f"dirctl command failed: {e}"
-            raise Exception(msg)
+            msg = f"dirctl signing failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "dirctl signing timed out"
+            raise RuntimeError(msg) from e
         except Exception as e:
-            msg = f"Unknown error: {e}"
-            raise Exception(msg)
+            msg = f"Unexpected error during key-based signing: {e}"
+            raise RuntimeError(msg) from e
 
-        return process
-
-    def __sign_with_oidc__(
+    def _sign_with_oidc(
         self,
-        req: sign_v1.SignRequest,
+        record_ref: core_v1.RecordRef,
+        oidc_signer: sign_v1.SignWithOIDC,
         oidc_client_id: str = "sigstore",
-    ) -> CompletedProcess[bytes]:
-        oidc_signer = req.provider.oidc
+    ) -> None:
+        """Sign a record using OIDC-based authentication.
 
+        This private method handles OIDC-based signing by building the appropriate
+        dirctl command with OIDC parameters and executing it.
+
+        Args:
+            req: SignRequest containing the record reference and OIDC provider
+            oidc_client_id: OIDC client identifier for authentication
+
+        Raises:
+            RuntimeError: If any other error occurs during signing
+
+        """
         try:
             shell_env = os.environ.copy()
 
-            command = (self.config.dirctl_path, "sign", f"{req.record_ref.cid}")
-            if oidc_signer.id_token != "":
-                command = (*command, "--oidc-token", f"{oidc_signer.id_token}")
-            if oidc_signer.options.oidc_provider_url != "":
-                command = (
-                    *command,
-                    "--oidc-provider-url",
-                    f"{oidc_signer.options.oidc_provider_url}",
-                )
-            if oidc_signer.options.fulcio_url != "":
-                command = (
-                    *command,
-                    "--fulcio-url",
-                    f"{oidc_signer.options.fulcio_url}",
-                )
-            if oidc_signer.options.rekor_url != "":
-                command = (*command, "--rekor-url", f"{oidc_signer.options.rekor_url}")
-            if oidc_signer.options.timestamp_url != "":
-                command = (
-                    *command,
-                    "--timestamp-url",
-                    f"{oidc_signer.options.timestamp_url}",
-                )
+            # Build base command
+            command = [self.config.dirctl_path, "sign", record_ref.cid]
 
-            result = subprocess.run(
-                (*command, "--oidc-client-id", f"{oidc_client_id}"),
+            # Add OIDC-specific parameters
+            if oidc_signer.id_token:
+                command.extend(["--oidc-token", oidc_signer.id_token])
+            if oidc_signer.options.oidc_provider_url:
+                command.extend([
+                    "--oidc-provider-url",
+                    oidc_signer.options.oidc_provider_url,
+                ])
+            if oidc_signer.options.fulcio_url:
+                command.extend(["--fulcio-url", oidc_signer.options.fulcio_url])
+            if oidc_signer.options.rekor_url:
+                command.extend(["--rekor-url", oidc_signer.options.rekor_url])
+            if oidc_signer.options.timestamp_url:
+                command.extend(["--timestamp-url", oidc_signer.options.timestamp_url])
+
+            # Add client ID
+            command.extend(["--oidc-client-id", oidc_client_id])
+
+            # Execute the signing command
+            subprocess.run(
+                command,
                 check=True,
                 capture_output=True,
                 env=shell_env,
+                timeout=60,  # 1 minute timeout
             )
 
         except subprocess.CalledProcessError as e:
-            msg = f"dirctl command failed: {e}"
-            raise Exception(msg)
+            msg = f"dirctl signing failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "dirctl signing timed out"
+            raise RuntimeError(msg) from e
         except Exception as e:
-            msg = f"Unknown error: {e}"
-            raise Exception(msg)
-
-        return result
+            msg = f"Unexpected error during OIDC signing: {e}"
+            raise RuntimeError(msg) from e

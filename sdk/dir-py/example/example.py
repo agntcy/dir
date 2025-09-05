@@ -84,7 +84,7 @@ def main() -> None:
     search_request = search_v1.SearchRequest(queries=[search_query], limit=3)
     objects = list(client.search(search_request))
 
-    print(objects)
+    print("Searched objects:",objects)
 
     # Unpublish the object
     record_refs = routing_v1.RecordRefs(refs=[refs[0]])

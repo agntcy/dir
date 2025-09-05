@@ -5,7 +5,6 @@ import os
 import pathlib
 import subprocess
 import unittest
-from typing import Dict, List, Tuple
 
 from agntcy_dir.client import Client
 from agntcy_dir.models import *
@@ -61,7 +60,9 @@ class TestClient(unittest.TestCase):
     def test_publish(self) -> None:
         records = self.gen_records(1, "publish")
         record_refs = self.client.push(records=records)
-        publish_request = routing_v1.PublishRequest(record_refs=routing_v1.RecordRefs(refs=record_refs))
+        publish_request = routing_v1.PublishRequest(
+            record_refs=routing_v1.RecordRefs(refs=record_refs),
+        )
 
         try:
             self.client.publish(publish_request)
@@ -133,10 +134,12 @@ class TestClient(unittest.TestCase):
             example_signature = sign_v1.Signature()
             request = [
                 store_v1.PushReferrerRequest(
-                    record_ref=record_refs[0], signature=example_signature,
+                    record_ref=record_refs[0],
+                    signature=example_signature,
                 ),
                 store_v1.PushReferrerRequest(
-                    record_ref=record_refs[1], signature=example_signature,
+                    record_ref=record_refs[1],
+                    signature=example_signature,
                 ),
             ]
 
@@ -158,10 +161,12 @@ class TestClient(unittest.TestCase):
         try:
             request = [
                 store_v1.PullReferrerRequest(
-                    record_ref=record_refs[0], pull_signature=False,
+                    record_ref=record_refs[0],
+                    pull_signature=False,
                 ),
                 store_v1.PullReferrerRequest(
-                    record_ref=record_refs[1], pull_signature=False,
+                    record_ref=record_refs[1],
+                    pull_signature=False,
                 ),
             ]
 
@@ -173,7 +178,9 @@ class TestClient(unittest.TestCase):
             for r in response:
                 assert isinstance(r, store_v1.PullReferrerResponse)
         except Exception as e:
-            assert "pull referrer not implemented" in str(e)  # Delete when the service implemented
+            assert "pull referrer not implemented" in str(
+                e,
+            )  # Delete when the service implemented
 
             # self.assertIsNone(e) # Uncomment when the service implemented
 
@@ -201,7 +208,8 @@ class TestClient(unittest.TestCase):
             key_file = reader.read()
 
         key_provider = sign_v1.SignWithKey(
-            private_key=key_file, password=key_password.encode("utf-8"),
+            private_key=key_file,
+            password=key_password.encode("utf-8"),
         )
 
         token = shell_env.get("OIDC_TOKEN", "")
@@ -215,19 +223,18 @@ class TestClient(unittest.TestCase):
         request_oidc_provider = sign_v1.SignRequestProvider(oidc=oidc_provider)
 
         key_request = sign_v1.SignRequest(
-            record_ref=record_refs[0], provider=request_key_provider,
+            record_ref=record_refs[0],
+            provider=request_key_provider,
         )
         oidc_request = sign_v1.SignRequest(
-            record_ref=record_refs[1], provider=request_oidc_provider,
+            record_ref=record_refs[1],
+            provider=request_oidc_provider,
         )
 
         try:
             # Sign test
-            result = self.client.sign(key_request)
-            assert result.stdout.decode("utf-8") == "Record signed successfully"
-
-            result = self.client.sign(oidc_request, client_id)
-            assert result.stdout.decode("utf-8") == "Record signed successfully"
+            self.client.sign(key_request)
+            self.client.sign(oidc_request, client_id)
 
             # Verify test
             for ref in record_refs:
@@ -236,17 +243,23 @@ class TestClient(unittest.TestCase):
 
                 assert response.success is True
         except Exception as e:
-            print(e)
             assert e is None
         finally:
             pathlib.Path("cosign.key").unlink()
             pathlib.Path("cosign.pub").unlink()
 
-    def gen_records(self, count: int, test_function_name: str) -> List[core_v1.Record]:
-        records: List[core_v1.Record] = []
+        invalid_request = sign_v1.SignRequest(
+            record_ref=core_v1.RecordRef(cid="invalid-cid"),
+            provider=request_key_provider,
+        )
+        try:
+            self.client.sign(invalid_request)
+        except RuntimeError as e:
+            assert "Failed to sign the object" in str(e)
 
-        for index in range(count):
-            records.append(core_v1.Record(
+    def gen_records(self, count: int, test_function_name: str) -> list[core_v1.Record]:
+        records: list[core_v1.Record] = [
+            core_v1.Record(
                 v3=objects_v3.Record(
                     name=f"{test_function_name}-{index}",
                     version="v3",
@@ -271,7 +284,9 @@ class TestClient(unittest.TestCase):
                     ],
                     signature=objects_v3.Signature(),
                 ),
-            ))
+            )
+            for index in range(count)
+        ]
 
         return records
 
