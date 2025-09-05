@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "buf/validate/validate.proto";
+import "core/v1alpha1/object.proto";
+import "google/api/annotations.proto";
+import "saas/v1alpha1/record.proto";
+import "saas/v1alpha1/timestamp_range.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+
+message SearchHubResponseRecord {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  string name = 4;
+  string user_id = 6;
+  string organization_id = 7;
+  string repo_type = 8;
+  google.protobuf.Value query_return_metadata = 9; // Metadata related to the search query
+  string explanation = 10; // Explanation of the record's relevance
+  string version = 11;
+  optional string repository_id = 12;
+  optional string description = 13 [(buf.validate.field).string.max_len = 350];
+  repeated string authors = 14;
+  repeated string extensions = 15; 
+                         
+}
+
+message SearchHubFilters {
+  repeated string record_types = 1; // Filter by record types
+}
+
+message SearchHubRequest {
+  string query = 1;
+  optional SearchHubFilters filters = 2;
+  repeated string organization_ids = 3; // List of organization IDs to search within
+}
+
+message SearchHubResponse {
+  repeated SearchHubResponseRecord repositories = 1;
+}
+
+// This API should communicate with the Hub Service for semantic search functionality
+service SearchHubService {
+  rpc Search(SearchHubRequest) returns (SearchHubResponse) {
+    option (google.api.http) = {
+      post: "/v1alpha1/search"
+      body: "*"
+    };
+  }
+}

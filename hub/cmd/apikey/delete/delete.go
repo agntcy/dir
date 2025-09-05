@@ -30,7 +30,7 @@ Examples:
   # Delete API key
   dirctl hub apikey delete f1a3c901-deba-40bc-8a7c-9f9b0a246b80`,
 	}
-	opts := options.NewAPIKeyDeleteOptions(hubOpts)
+	opts := options.NewAPIKeyDeleteOptions(hubOpts, cmd)
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return runCommand(cmd, args, opts)
@@ -46,7 +46,9 @@ func runCommand(cmd *cobra.Command, args []string, opts *options.APIKeyDeleteOpt
 
 	// Retrieve the API key Client ID to delete from the command arguments
 	clientID := args[0]
-	fmt.Fprintf(cmd.OutOrStdout(), "Deleting API key with Client ID: %s\n", clientID)
+	if !opts.JSONOutput {
+		fmt.Fprintf(cmd.OutOrStdout(), "Deleting API key with Client ID: %s\n", clientID)
+	}
 
 	// Retrieve session from context
 	ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
@@ -57,7 +59,7 @@ func runCommand(cmd *cobra.Command, args []string, opts *options.APIKeyDeleteOpt
 	}
 
 	// Check for credentials
-	if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress); err != nil {
+	if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress, opts.JSONOutput); err != nil {
 		// this error need to be return without modification in order to be displayed
 		return err //nolint:wrapcheck
 	}
@@ -72,7 +74,9 @@ func runCommand(cmd *cobra.Command, args []string, opts *options.APIKeyDeleteOpt
 		return fmt.Errorf("failed to delete API key: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "API Key '%s' deleted successfully\n", clientID)
+	if !opts.JSONOutput {
+		fmt.Fprintf(cmd.OutOrStdout(), "API Key '%s' deleted successfully\n", clientID)
+	}
 
 	return nil
 }

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "buf/validate/validate.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+import "saas/v1alpha1/roles.proto";
+
+message Invite {
+  string id = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+  string organization_id = 2 [(google.api.field_behavior) = OUTPUT_ONLY];
+  string username = 3 [(buf.validate.field).string.max_len = 100];
+  Role role = 4 [
+    (buf.validate.field).enum = {
+      in: [1, 2, 3, 4]
+    }
+  ];
+  InviteStatus status = 5 [
+    (buf.validate.field).enum = {
+      in: [1, 2]
+    }
+  ];
+  google.protobuf.Timestamp created_at = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+  google.protobuf.Timestamp updated_at = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  option (buf.validate.message).cel = {
+    id: "updated_at.not_less_than.created_at"
+    message: "updated_at should be equal or more than created_at"
+    expression: "this.updated_at >= this.created_at"
+  };
+}
+
+enum InviteStatus {
+  STATUS_UNKNOWN = 0; // default value, should not be used
+  STATUS_PENDING = 1;
+  STATUS_ACCEPTED = 2;
+  STATUS_DECLINED = 3;
+}

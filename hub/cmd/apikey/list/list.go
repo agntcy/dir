@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 
 	v1alpha1 "github.com/agntcy/dir/hub/api/v1alpha1"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
@@ -73,7 +74,7 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyListOptions)
 	}
 
 	// Check for credentials
-	if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress); err != nil {
+	if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress, opts.JSONOutput); err != nil {
 		// this error need to be return without modification in order to be displayed
 		return err //nolint:wrapcheck
 	}
@@ -83,25 +84,36 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyListOptions)
 		return fmt.Errorf("failed to create hub client: %w", err)
 	}
 
-	resp, err := service.ListAPIKeys(cmd.Context(), hc, organization, currentSession)
+	// Get apikeys list
+	apikeys, err := service.ListAPIKeys(cmd.Context(), hc, organization, currentSession)
 	if err != nil {
 		return fmt.Errorf("failed to list API keys: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "API Keys for organization %v:\n", organization)
+	if !opts.JSONOutput {
+		fmt.Fprintf(cmd.OutOrStdout(), "API Keys for organization %v:\n", organization)
+	}
 
-	if resp == nil || len(resp.GetApikeys()) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "No API keys found.")
+	if err := renderList(cmd.OutOrStdout(), apikeys); err != nil {
+		return fmt.Errorf("failed to render API keys list: %w", err)
+	}
+
+	return nil
+}
+
+func renderList(stream io.Writer, apikeys []*service.APIKeyWithRoleName) error {
+	if len(apikeys) == 0 {
+		fmt.Fprintf(stream, "[]\n")
 
 		return nil
 	}
 
-	prettyModel, err := json.MarshalIndent(resp.GetApikeys(), "", "  ")
+	prettyModel, err := json.MarshalIndent(apikeys, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal response list: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", string(prettyModel))
+	fmt.Fprintf(stream, "%s\n", string(prettyModel))
 
 	return nil
 }

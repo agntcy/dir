@@ -1,0 +1,34 @@
+// Translation service for converting MCP/A2A to OASF record
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "core/v1alpha1/agent.proto";
+import "google/api/annotations.proto";
+
+message TranslateRequest {
+    // record type
+    string source_type = 1;
+
+    // target type
+    string target_type = 2;
+
+    // data representation of the record in base64
+    string data = 3;
+}
+
+message TranslateResponse {
+    core.v1alpha1.Agent record = 1;
+}
+
+// Translation service for converting MCP/A2A to OASF record
+service TranslationService {
+    rpc Translate(TranslateRequest) returns (TranslateResponse) {
+        option (google.api.http) = {
+            post: "/v1alpha1/translate"
+            body: "*"
+        };
+    }
+}

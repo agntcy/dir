@@ -32,7 +32,7 @@ message Record {
   repeated core.v1alpha1.Locator locators = 14;
 
   optional string repository_id = 15;
-  string user_id = 16;
+  optional string user_id = 16;
 
   optional string description = 17 [(buf.validate.field).string.max_len = 350];
   repeated string authors = 18;

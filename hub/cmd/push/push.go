@@ -54,7 +54,7 @@ Examples:
 		}
 
 		// Check for credentials
-		if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress); err != nil {
+		if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress, false); err != nil {
 			// this error need to be return without modification in order to be displayed
 			return err //nolint:wrapcheck
 		}

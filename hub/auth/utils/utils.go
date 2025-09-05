@@ -5,8 +5,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"github.com/agntcy/dir/hub/sessionstore"
 	"google.golang.org/grpc/metadata"
@@ -22,8 +20,6 @@ func AddAuthToContext(ctx context.Context, session *sessionstore.HubSession) con
 	}
 	// Otherwise, using API key access token if present
 	if session != nil && session.APIKeyAccessToken != nil && session.APIKeyAccessToken.AccessToken != "" {
-		fmt.Fprintf(os.Stdout, "Using API key access token\n")
-
 		return metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+session.APIKeyAccessToken.AccessToken))
 	}
 

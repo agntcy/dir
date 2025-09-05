@@ -75,7 +75,7 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 	}
 
 	// Check for credentials
-	if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress); err != nil {
+	if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress, opts.JSONOutput); err != nil {
 		// this error need to be return without modification in order to be displayed
 		return err //nolint:wrapcheck
 	}
@@ -85,23 +85,24 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 		return fmt.Errorf("failed to create hub client: %w", err)
 	}
 
-	resp, err := service.CreateAPIKey(cmd.Context(), hc, opts.Role, organization, currentSession)
+	apikeyWithSecret, err := service.CreateAPIKey(cmd.Context(), hc, opts.Role, organization, currentSession)
 	if err != nil {
 		return fmt.Errorf("failed to create API key: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "API Key created successfully:\n")
-
-	prettyModel, err := json.MarshalIndent(resp.GetToken(), "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal API key: %w", err)
+	// Apikeywithsecret will not be shown for security reasons. Use apikey instead.
+	apikey := &service.APIKeyWithRoleName{
+		ClientID: apikeyWithSecret.ClientID,
+		RoleName: apikeyWithSecret.RoleName,
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", string(prettyModel))
+	if !opts.JSONOutput {
+		fmt.Fprintf(cmd.OutOrStdout(), "API Key created successfully:\n")
+	}
 
 	currentSession.APIKeyAccess = &sessionstore.APIKey{
-		ClientID: resp.GetToken().GetClientId(),
-		Secret:   resp.GetToken().GetSecret(),
+		ClientID: apikeyWithSecret.ClientID,
+		Secret:   apikeyWithSecret.Secret,
 	}
 
 	// Save session with new api key
@@ -110,7 +111,17 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 		return fmt.Errorf("failed to save tokens: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "The API Key has been added to your session file.\n")
+	// Output API key details
+	prettyModel, err := json.MarshalIndent(apikey, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal API key: %w", err)
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", string(prettyModel))
+
+	if !opts.JSONOutput {
+		fmt.Fprintf(cmd.OutOrStdout(), "The API Key has been added to your session file.\n")
+	}
 
 	return nil
 }
