@@ -43,6 +43,7 @@ vars:
   UV_VERSION: '0.6.1'
   UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
+  RUFF_VERSION: '0.12.12'
   COSIGN_VERSION: '2.5.3'
   COSIGN_BIN: '{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}'
   HUB_API_VERSION: 'main'
@@ -1056,6 +1057,21 @@ tasks:
           cd {{.ITEM}}
           {{.GOLANGCI_LINT_BIN}} run --config {{.ROOT_DIR}}/.golangci.yml {{.FIX_FLAG}}
 
+  lint:python:
+    desc: Run Python linters
+    deps:
+      - task: deps:python-lint
+    vars:
+      FIX: '{{ .FIX | default "false" }}'
+      FIX_FLAG: '{{if eq .FIX "true"}}check --fix --unsafe-fixes{{else}}check{{end}}'
+      PYTHON_DIR: ["sdk/dir-py", sdk/dir-py/example]
+    cmds:
+      - for: { var: PYTHON_DIR }
+        cmd: |
+          echo "Running Ruff pylint in {{.ITEM}}"
+          cd {{.ITEM}}
+          {{.UV_BIN}} tool run ruff {{.FIX_FLAG}} . --preview
+
   lint:buf:
     desc: Run Buf linters
     deps:
@@ -1070,6 +1086,7 @@ tasks:
     deps:
       - lint:go
       - lint:buf
+      - lint:python
 
   ##
   ## License
@@ -1346,6 +1363,16 @@ tasks:
     status:
       - test -x {{.GOLANGCI_LINT_BIN}}
 
+  deps:python-lint:
+    desc: Install python-linter
+    internal: true
+    deps:
+      - deps:uv
+    cmds:
+      - '{{.UV_BIN}} tool install ruff@{{.RUFF_VERSION}}'
+    status:
+      - '{{.UV_BIN}} tool run ruff'
+
   deps:licensei:
     desc: Install licensei
     internal: true
@@ -1371,7 +1398,7 @@ tasks:
       - chmod +x {{.UV_BIN}}
       - rm {{.BIN_DIR}}/uvx
     status:
-      - test -x {{.BIN_DIR}}/uv
+      - test -x {{.UV_BIN}}
 
   deps:cosign:
     desc: Install sigstore cosign
