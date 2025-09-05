@@ -12,11 +12,26 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/agntcy/dir/utils/logging"
 )
 
 var logger = logging.Logger("utils/zot")
+
+const (
+	// DefaultZotConfigPath is the default path to the zot configuration file.
+	DefaultZotConfigPath = "/etc/zot/config.json"
+
+	// DefaultPollInterval is the default interval for polling new content.
+	DefaultPollInterval = time.Second * 60
+
+	// DefaultRetryDelay is the default delay between retries.
+	DefaultRetryDelay = time.Minute * 5
+
+	// DefaultMaxRetries is the default maximum number of retries.
+	DefaultMaxRetries = 3
+)
 
 // VerifyConfig contains configuration for zot verification.
 type VerifyConfig struct {

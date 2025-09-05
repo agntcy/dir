@@ -18,9 +18,12 @@ import (
 	"github.com/agntcy/dir/server/sync/monitor"
 	synctypes "github.com/agntcy/dir/server/sync/types"
 	"github.com/agntcy/dir/server/types"
-	zotconfig "github.com/agntcy/dir/utils/zot"
+	zotutils "github.com/agntcy/dir/utils/zot"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	zotconfig "zotregistry.dev/zot/pkg/api/config"
+	zotextensionsconfig "zotregistry.dev/zot/pkg/extensions/config"
+	zotsyncconfig "zotregistry.dev/zot/pkg/extensions/config/sync"
 )
 
 // Worker processes sync work items.
@@ -207,9 +210,9 @@ func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL st
 
 // readZotConfig reads and parses the zot configuration file.
 func (w *Worker) readZotConfig() (*zotconfig.Config, error) {
-	config, err := os.ReadFile(zotconfig.DefaultZotConfigPath)
+	config, err := os.ReadFile(zotutils.DefaultZotConfigPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read zot config file %s: %w", zotconfig.DefaultZotConfigPath, err)
+		return nil, fmt.Errorf("failed to read zot config file %s: %w", zotutils.DefaultZotConfigPath, err)
 	}
 
 	logger.Debug("Read zot config file", "worker_id", w.id, "file", string(config))
@@ -229,7 +232,7 @@ func (w *Worker) writeZotConfig(zotConfig *zotconfig.Config) error {
 		return fmt.Errorf("failed to marshal updated zot config: %w", err)
 	}
 
-	if err := os.WriteFile(zotconfig.DefaultZotConfigPath, updatedConfig, 0o644); err != nil { //nolint:gosec,mnd
+	if err := os.WriteFile(zotutils.DefaultZotConfigPath, updatedConfig, 0o644); err != nil { //nolint:gosec,mnd
 		return fmt.Errorf("failed to write updated zot config: %w", err)
 	}
 
@@ -253,13 +256,13 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 
 	// Initialize extensions if nil
 	if zotConfig.Extensions == nil {
-		zotConfig.Extensions = &zotconfig.Extensions{}
+		zotConfig.Extensions = &zotextensionsconfig.ExtensionConfig{}
 	}
 
 	// Initialize sync config if nil
 	syncConfig := zotConfig.Extensions.Sync
 	if syncConfig == nil {
-		syncConfig = &zotconfig.SyncConfig{}
+		syncConfig = &zotsyncconfig.Config{}
 		zotConfig.Extensions.Sync = syncConfig
 	}
 
@@ -283,7 +286,7 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 		}
 	}
 
-	var syncContent []zotconfig.SyncContent
+	var syncContent []zotsyncconfig.Content
 
 	if len(cids) > 0 {
 		// Create a regex to match the CIDs
@@ -291,28 +294,28 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 		regex := fmt.Sprintf("^(%s)$", cidsRegex)
 
 		// Add the regex to the sync content
-		syncContent = []zotconfig.SyncContent{
+		syncContent = []zotsyncconfig.Content{
 			{
 				Prefix: ociconfig.DefaultRepositoryName,
-				Tags: &zotconfig.SyncContentTags{
-					Regex: regex,
+				Tags: &zotsyncconfig.Tags{
+					Regex: &regex,
 				},
 			},
 		}
 	} else {
-		syncContent = []zotconfig.SyncContent{
+		syncContent = []zotsyncconfig.Content{
 			{
 				Prefix: ociconfig.DefaultRepositoryName,
 			},
 		}
 	}
 
-	registry := zotconfig.SyncRegistryConfig{
+	registry := zotsyncconfig.RegistryConfig{
 		URLs:         []string{registryURL},
 		OnDemand:     false, // Disable OnDemand for proactive sync
-		PollInterval: zotconfig.DefaultPollInterval,
-		MaxRetries:   zotconfig.DefaultMaxRetries,
-		RetryDelay:   zotconfig.DefaultRetryDelay,
+		PollInterval: zotutils.DefaultPollInterval,
+		MaxRetries:   toPtr(zotutils.DefaultMaxRetries),
+		RetryDelay:   toPtr(zotutils.DefaultRetryDelay),
 		TLSVerify:    toPtr(false),
 		Content:      syncContent,
 	}
@@ -361,7 +364,7 @@ func (w *Worker) removeRegistryFromZotSync(_ context.Context, remoteRegistryURL 
 	}
 
 	// Find and remove the registry
-	var filteredRegistries []zotconfig.SyncRegistryConfig
+	var filteredRegistries []zotsyncconfig.RegistryConfig
 
 	for _, registry := range syncConfig.Registries {
 		found := false

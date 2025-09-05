@@ -41,6 +41,11 @@ linters-settings:
     # TODO: remove once hub is properly integrated into CLI
     replace-allow-list:
       - github.com/agntcy/dirhub/backport/api
+      - github.com/aquasecurity/trivy
+      - go.opentelemetry.io/otel/sdk
+      - go.opentelemetry.io/otel
+      - go.opentelemetry.io/otel/metric
+      - go.opentelemetry.io/otel/trace
 
   cyclop:
     max-complexity: 15
