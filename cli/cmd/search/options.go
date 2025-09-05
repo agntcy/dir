@@ -20,10 +20,3 @@ func init() {
 
 	flags.VarP(&opts.Query, "query", "q", "Search query terms")
 }
-
-// ResetGlobalState resets the global options state for testing.
-func ResetGlobalState() {
-	opts.Limit = 100
-	opts.Offset = 0
-	opts.Query = Query{} // Reset the query slice
-}

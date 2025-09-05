@@ -14,20 +14,10 @@ func ContainsWildcards(pattern string) bool {
 
 // containsListWildcard checks if a pattern contains list wildcard characters [].
 func containsListWildcard(pattern string) bool {
-	// Look for properly formed list wildcards [...]
-	for i := range len(pattern) {
-		if pattern[i] == '[' {
-			// Find the closing bracket
-			for j := i + 1; j < len(pattern); j++ {
-				if pattern[j] == ']' {
-					// Found a complete list wildcard [...]
-					return true
-				}
-			}
-		}
-	}
+	openIdx := strings.Index(pattern, "[")
+	closeIdx := strings.Index(pattern, "]")
 
-	return false
+	return openIdx != -1 && closeIdx > openIdx
 }
 
 // BuildWildcardCondition builds a WHERE condition for wildcard or exact matching.
@@ -56,7 +46,7 @@ func BuildWildcardCondition(field string, patterns []string) (string, []interfac
 
 // BuildSingleWildcardCondition builds a WHERE condition for a single field with wildcard or exact matching.
 // Returns the condition string and argument for the WHERE clause.
-func BuildSingleWildcardCondition(field, pattern string) (string, interface{}) {
+func BuildSingleWildcardCondition(field, pattern string) (string, string) {
 	if ContainsWildcards(pattern) {
 		return "LOWER(" + field + ") GLOB ?", strings.ToLower(pattern)
 	}

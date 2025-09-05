@@ -395,6 +395,21 @@ func ResetCLIState() {
 }
 
 // ResetSearchCommandState resets the global state in search command.
+//
+//nolint:errcheck
 func ResetSearchCommandState() {
-	searchcmd.ResetGlobalState()
+	if cmd := searchcmd.Command; cmd != nil {
+		// Reset flags to default values
+		cmd.Flags().Set("limit", "100")
+		cmd.Flags().Set("offset", "0")
+
+		// For the query flag, reset it by accessing the underlying value
+		if queryFlag := cmd.Flags().Lookup("query"); queryFlag != nil {
+			queryFlag.Changed = false
+			// Cast to the Query type and reset it
+			if queryValue, ok := queryFlag.Value.(*searchcmd.Query); ok {
+				*queryValue = searchcmd.Query{}
+			}
+		}
+	}
 }
