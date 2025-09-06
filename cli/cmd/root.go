@@ -9,15 +9,13 @@ import (
 
 	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/info"
-	"github.com/agntcy/dir/cli/cmd/list"
 	"github.com/agntcy/dir/cli/cmd/network"
-	"github.com/agntcy/dir/cli/cmd/publish"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
+	"github.com/agntcy/dir/cli/cmd/routing"
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/cmd/sync"
-	"github.com/agntcy/dir/cli/cmd/unpublish"
 	"github.com/agntcy/dir/cli/cmd/verify"
 	"github.com/agntcy/dir/cli/cmd/version"
 	"github.com/agntcy/dir/cli/presenter"
@@ -66,14 +64,12 @@ func init() {
 		pull.Command,
 		push.Command,
 		delete.Command,
-		// routing commands
-		publish.Command,
-		list.Command,
-		unpublish.Command,
+		// routing commands (all under routing subcommand)
+		routing.Command, // Contains: publish, unpublish, list, search
 		network.Command,
 		// hubCmd.NewCommand(hub.NewHub()), // REMOVED: Hub functionality
 		// search commands
-		search.Command,
+		search.Command, // General search (searchv1)
 		// sync commands
 		sync.Command,
 	)

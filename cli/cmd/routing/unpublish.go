@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package unpublish
+package routing
 
 import (
 	"errors"
@@ -14,30 +14,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Command = &cobra.Command{
-	Use:   "unpublish",
+var unpublishCmd = &cobra.Command{
+	Use:   "unpublish <cid>",
 	Short: "Unpublish record from the network",
-	Long: `Unpublish the data from your local or rest of the network to disallow content discovery.
-This command only works for the objects that are available in the store.
+	Long: `Unpublish a record from the network to stop content discovery by other peers.
+
+This command removes a record's network announcements, making it no longer
+discoverable by other peers through the DHT. The record remains in local storage.
+
+Key Features:
+- Network removal: Removes record from distributed discovery
+- Local cleanup: Removes record from local routing index
+- DHT cleanup: Removes record and label announcements from network
+- Immediate effect: Record becomes undiscoverable by other peers
 
 Usage examples:
 
-1. Unpublish the data to the local data store:
+1. Unpublish a record from the network:
+   dirctl routing unpublish <cid>
 
-	dirctl unpublish <cid>
-
+Note: This only removes network announcements. Use 'dirctl delete' to remove the record entirely.
 `,
-	RunE: func(cmd *cobra.Command, args []string) error { //nolint:gocritic
-		if len(args) != 1 {
-			return errors.New("cid is a required argument")
-		}
-
-		return runCommand(cmd, args[0])
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runUnpublishCommand(cmd, args[0])
 	},
 }
 
-func runCommand(cmd *cobra.Command, cid string) error {
-	// Get the client from the context.
+func runUnpublishCommand(cmd *cobra.Command, cid string) error {
+	// Get the client from the context
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
@@ -56,6 +61,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	presenter.Printf(cmd, "Unpublishing record with CID: %s\n", recordRef.GetCid())
 
+	// Start unpublishing using the same RecordRef
 	if err := c.Unpublish(cmd.Context(), &routingv1.UnpublishRequest{
 		Request: &routingv1.UnpublishRequest_RecordRefs{
 			RecordRefs: &routingv1.RecordRefs{
@@ -68,6 +74,8 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	// Success
 	presenter.Printf(cmd, "Successfully unpublished!\n")
+	presenter.Printf(cmd, "Record is no longer discoverable by other peers.\n")
+	presenter.Printf(cmd, "The record still exists in local storage.\n")
 
 	return nil
 }
