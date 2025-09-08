@@ -4,7 +4,15 @@ package saas.v1alpha1;
 
 option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
 
+import "saas/v1alpha1/roles.proto";
+
 message ApiKey {
   string client_id = 1;
+  Role role = 2;
+}
+
+message ApiKeyCreated {
+  ApiKey apikey = 1;
   string secret = 2;
 }
+

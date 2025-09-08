@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	corev1alpha1 "github.com/agntcy/dir/api/core/v1alpha1"
@@ -185,10 +184,8 @@ func (c *client) CreateAPIKey(ctx context.Context, roleName string, organization
 
 	switch parsedOrg := organization.(type) {
 	case *v1alpha1.CreateApiKeyRequest_OrganizationName:
-		fmt.Fprintf(os.Stdout, "Creating API key for organization name: %v\n", parsedOrg)
 		req.Organization = parsedOrg
 	case *v1alpha1.CreateApiKeyRequest_OrganizationId:
-		fmt.Fprintf(os.Stdout, "Creating API key for organization id: %v\n", parsedOrg)
 		req.Organization = parsedOrg
 	default:
 		return nil, fmt.Errorf("unknown organization type: %T", organization)
@@ -231,10 +228,8 @@ func (c *client) ListAPIKeys(ctx context.Context, organization any) (*v1alpha1.L
 
 	switch parsedOrg := organization.(type) {
 	case *v1alpha1.ListApiKeyRequest_OrganizationName:
-		fmt.Fprintf(os.Stdout, "Listing API keys for organization name: %v\n", parsedOrg)
 		req.Organization = parsedOrg
 	case *v1alpha1.ListApiKeyRequest_OrganizationId:
-		fmt.Fprintf(os.Stdout, "Listing API keys for organization id: %v\n", parsedOrg)
 		req.Organization = parsedOrg
 	default:
 		return nil, fmt.Errorf("unknown organization type: %T", organization)

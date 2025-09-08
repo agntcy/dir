@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package saas.v1alpha1;
+
+option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
+
+import "google/api/field_behavior.proto";
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/protobuf/empty.proto";
+import "saas/v1alpha1/paginated_response.proto";
+import "saas/v1alpha1/pagination_param.proto";
+import "saas/v1alpha1/user.proto";
+import "saas/v1alpha1/invite.proto";
+
+message ListInvitesResponse {
+  repeated Invite invites = 1;
+}
+
+message AcceptInviteRequest {
+  string id = 1;
+}
+
+message DeclineInviteRequest {
+  string id = 1;
+}
+
+message DeleteInviteRequest {
+  string id = 1;
+}
+
+service InviteService {
+  rpc ListInvites(google.protobuf.Empty) returns (ListInvitesResponse) {
+    option (google.api.http) = {
+      get: "/v1alpha1/invites"
+    };
+  }
+
+  rpc AcceptInvite(AcceptInviteRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1alpha1/invites/{id}/accept"
+    };
+  }
+
+  rpc DeclineInvite(DeclineInviteRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1alpha1/invites/{id}/decline"
+    };
+  }
+
+  rpc DeleteInvite(DeleteInviteRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1alpha1/invites/{id}"
+    };
+  }
+
+}

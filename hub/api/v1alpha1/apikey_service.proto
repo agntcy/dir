@@ -23,7 +23,7 @@ message CreateApiKeyRequest {
 }
 
 message CreateApiKeyResponse {
-  ApiKey token = 1;
+  ApiKeyCreated token = 1;
 }
 
 message DeleteApiKeyRequest {

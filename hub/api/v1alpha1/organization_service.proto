@@ -14,6 +14,7 @@ import "saas/v1alpha1/pagination_param.proto";
 import "saas/v1alpha1/organization.proto";
 import "saas/v1alpha1/user.proto";
 import "saas/v1alpha1/roles.proto";
+import "saas/v1alpha1/invite.proto";
 
 
 message ListOrganizationsRequest {
@@ -29,13 +30,14 @@ message OrganizationWithRole {
   ];
 }
 
-message UserWithRole {
-  User user = 1;
-  Role role = 2 [
+message UserRoleInvite {
+  optional User user = 1;
+  optional Role role = 2 [
     (buf.validate.field).enum = {
       in: [2, 3, 4]
     }
   ];
+  optional Invite invite = 3;
 }
 
 message ListOrganizationsResponse {
@@ -49,12 +51,10 @@ message GetOrganizationRequest {
 
 message ListOrganizationUsersRequest {
   string id = 1;
-  PaginationParam pagination = 2;
 }
 
 message ListOrganizationUsersResponse {
-  PaginatedResponse paginated_response = 1;
-  repeated UserWithRole users = 2;
+  repeated UserRoleInvite users = 1;
 }
 
 message CreateOrganizationRequest {
