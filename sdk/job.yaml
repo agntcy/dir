@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sdks-test
+spec:
+  template:
+    spec:
+      containers:
+        - name: sdks-test
+          image: ghcr.io/agntcy/sdks-test:37f61a3
+          imagePullPolicy: Never
+          env:
+            - name: DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH
+              value: unix:/run/spire/agent-sockets/api.sock
+            - name: SPIFFE_SOCKET_PATH
+              value: unix:/run/spire/agent-sockets/api.sock
+            - name: SPIFFE_ENDPOINT_SOCKET
+              value: unix:/run/spire/agent-sockets/api.sock
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: false
+      volumes:
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/agent-sockets
+            type: Directory
+      restartPolicy: Never
+  backoffLimit: 1
+
+---
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: sdk-spiffe
+spec:
+  podSelector:
+    matchExpressions:
+      - key: batch.kubernetes.io/job-name
+        operator: In
+        values:
+          - sdks-test
+  spiffeIDTemplate: 'spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}'
+  autoPopulateDNSNames: true
