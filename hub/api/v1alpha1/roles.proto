@@ -4,13 +4,6 @@ package saas.v1alpha1;
 
 option go_package = "github.com/cisco-eti/phoenix-saas-be/api/saas/v1alpha1";
 
-enum ProductRole {
-  PRODUCT_ROLE_ORG_ADMIN = 0;
-  PRODUCT_ROLE_ADMIN = 1;
-  PRODUCT_ROLE_EDITOR = 2;
-  PRODUCT_ROLE_VIEWER = 3;
-}
-
 enum Role {
   ROLE_UNKNOWN = 0; // default value, should not be used
   ROLE_ORG_ADMIN = 1;

@@ -13,6 +13,18 @@ import (
 	"github.com/agntcy/dir/hub/sessionstore"
 )
 
+// A structure that combines an API key with its associated role name.
+type APIKeyWithRoleName struct {
+	ClientID string `json:"client_id"` // The client ID of the API key.
+	RoleName string `json:"role_name"` // The name of the role associated with the API key.
+}
+
+type APIKeyWithSecretWithRoleName struct {
+	ClientID string `json:"client_id"` // The client ID of the API key.
+	Secret   string `json:"secret"`    // The secret of the API key.
+	RoleName string `json:"role_name"` // The name of the role associated
+}
+
 // CreateAPIKey creates a new API key in the hub and returns the response.
 // It uses the provided session for authentication.
 func CreateAPIKey(
@@ -21,7 +33,7 @@ func CreateAPIKey(
 	role string,
 	organization any,
 	session *sessionstore.HubSession,
-) (*v1alpha1.CreateApiKeyResponse, error) {
+) (*APIKeyWithSecretWithRoleName, error) {
 	ctx = authUtils.AddAuthToContext(ctx, session)
 
 	resp, err := hc.CreateAPIKey(ctx, role, organization)
@@ -29,7 +41,20 @@ func CreateAPIKey(
 		return nil, fmt.Errorf("failed to create API key: %w", err)
 	}
 
-	return resp, nil
+	if resp == nil || resp.GetToken() == nil || resp.GetToken().GetApikey() == nil {
+		return nil, fmt.Errorf("invalid response from server: %v", resp)
+	}
+
+	roleName, ok := v1alpha1.Role_name[int32(resp.GetToken().GetApikey().GetRole())]
+	if !ok {
+		return nil, fmt.Errorf("invalid role: %v", resp.GetToken().GetApikey().GetRole())
+	}
+
+	return &APIKeyWithSecretWithRoleName{
+		ClientID: resp.GetToken().GetApikey().GetClientId(),
+		Secret:   resp.GetToken().GetSecret(),
+		RoleName: roleName,
+	}, nil
 }
 
 // DeleteAPIKey deletes an API key from the hub and returns the response.
@@ -57,7 +82,7 @@ func ListAPIKeys(
 	hc hubClient.Client,
 	organization any,
 	session *sessionstore.HubSession,
-) (*v1alpha1.ListApiKeyResponse, error) {
+) ([]*APIKeyWithRoleName, error) {
 	ctx = authUtils.AddAuthToContext(ctx, session)
 
 	resp, err := hc.ListAPIKeys(ctx, organization)
@@ -65,5 +90,19 @@ func ListAPIKeys(
 		return nil, fmt.Errorf("failed to list API keys: %w", err)
 	}
 
-	return resp, nil
+	apiKeysWithRoleNames := make([]*APIKeyWithRoleName, len(resp.GetApikeys()))
+
+	for i, apiKey := range resp.GetApikeys() {
+		roleName, ok := v1alpha1.Role_name[int32(apiKey.GetRole())]
+		if !ok {
+			return nil, fmt.Errorf("invalid role: %v", apiKey.GetRole())
+		}
+
+		apiKeysWithRoleNames[i] = &APIKeyWithRoleName{
+			ClientID: apiKey.GetClientId(),
+			RoleName: roleName,
+		}
+	}
+
+	return apiKeysWithRoleNames, nil
 }
