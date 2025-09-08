@@ -70,15 +70,9 @@ Examples:
 		}
 
 		// Authenticate using either API key or session file
-		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, clientID, secret)
+		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, clientID, secret, false)
 		if err != nil {
 			return err
-		}
-
-		// Check for credentials
-		if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress, false); err != nil {
-			// this error need to be return without modification in order to be displayed
-			return err //nolint:wrapcheck
 		}
 
 		hc, err := hubClient.New(currentSession.HubBackendAddress)

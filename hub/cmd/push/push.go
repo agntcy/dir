@@ -55,7 +55,7 @@ Examples:
   export DIRCTL_CLIENT_ID=your_client_id
   export DIRCTL_CLIENT_SECRET=your_secret
   dirctl hub push owner/repo-name model.json
-  
+
   # Push using session file (after login)
   dirctl hub login
   dirctl hub push owner/repo-name model.json`,
@@ -70,15 +70,9 @@ Examples:
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		// Authenticate using either API key or session file
-		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, clientID, secret)
+		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, clientID, secret, false)
 		if err != nil {
 			return err
-		}
-
-		// Check for credentials
-		if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress, false); err != nil {
-			// this error need to be return without modification in order to be displayed
-			return err //nolint:wrapcheck
 		}
 
 		hc, err := hubClient.New(currentSession.HubBackendAddress)
