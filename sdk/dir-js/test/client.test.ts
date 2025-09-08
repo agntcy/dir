@@ -1,17 +1,17 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-import {describe, test, beforeAll, afterAll, expect} from 'vitest';
+import { describe, test, beforeAll, afterAll, expect } from 'vitest';
 
-import {execSync} from 'node:child_process';
-import {readFileSync, rmSync} from 'node:fs';
-import {env} from 'node:process';
-import {create} from '@bufbuild/protobuf';
+import { execSync } from 'node:child_process';
+import { readFileSync, rmSync } from 'node:fs';
+import { env } from 'node:process';
+import { create } from '@bufbuild/protobuf';
 
-import {validate as isValidUUID} from 'uuid';
-import {v4 as uuidv4} from 'uuid';
+import { validate as isValidUUID } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
-import {Client, Config, models} from '../src';
+import { Client, Config, models } from '../src';
 
 /**
  * Generate test records with unique names.
@@ -74,7 +74,10 @@ describe('Client', () => {
     expect(env.DIRCTL_PATH).toBeDefined();
 
     // Initialize the client
-    client = new Client(Config.loadFromEnv());
+    let config = Config.loadFromEnv();
+    let grpcTransport = await Client.createGRPCTransport(config);
+
+    client = new Client(grpcTransport, config);
   });
 
   afterAll(async () => {
@@ -298,21 +301,29 @@ describe('Client', () => {
   });
 
   test('sign_and_verify', async () => {
+    const shellEnv = { ...env };
+
+    if (shellEnv['OIDC_TOKEN'] || '' == '' &&
+      shellEnv['OIDC_PROVIDER_URL'] || '' == '') {
+      console.log("Local interactive mode is not supported inside KinD cluster, skipping");
+      return;
+    }
+
     const records = genRecords(2, 'sign_verify');
     const recordRefs = await client.push(records);
 
-    const shellEnv = {...env};
+
     const keyPassword = 'testing-key';
 
     // Clean up any existing keys
-    rmSync('cosign.key', {force: true});
-    rmSync('cosign.pub', {force: true});
+    rmSync('cosign.key', { force: true });
+    rmSync('cosign.pub', { force: true });
 
     try {
       // Generate key pair
       const cosignPath = env['COSIGN_PATH'] || 'cosign';
       execSync(`${cosignPath} generate-key-pair`, {
-        env: {...shellEnv, COSIGN_PASSWORD: keyPassword},
+        env: { ...shellEnv, COSIGN_PASSWORD: keyPassword },
         encoding: 'utf8',
         stdio: 'pipe',
       });
@@ -370,7 +381,7 @@ describe('Client', () => {
       try {
         client.sign(
           create(models.sign_v1.SignRequestSchema, {
-            recordRef: {cid: 'invalid-cid'},
+            recordRef: { cid: 'invalid-cid' },
             provider: {
               request: {
                 case: 'key',
@@ -392,8 +403,8 @@ describe('Client', () => {
       expect.fail(`Sign and verify test failed: ${error}`);
     } finally {
       // Clean up keys
-      rmSync('cosign.key', {force: true});
-      rmSync('cosign.pub', {force: true});
+      rmSync('cosign.key', { force: true });
+      rmSync('cosign.pub', { force: true });
     }
   }, 30000);
 

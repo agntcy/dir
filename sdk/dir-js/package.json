@@ -40,11 +40,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250917104837-762975861d20.1",
+    "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250917154729-bf1030b77d42.1",
     "@bufbuild/protobuf": "^2.8.0",
     "@connectrpc/connect": "^2.1.0",
     "@connectrpc/connect-node": "^2.1.0",
-    "@grpc/grpc-js": "^1.13.4"
+    "@grpc/grpc-js": "^1.13.4",
+    "spiffe": "^0.4.0"
   },
   "devDependencies": {
     "@microsoft/api-extractor": "^7.52.13",

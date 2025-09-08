@@ -5,14 +5,13 @@ description = "Directory SDK"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "agntcy-dir-grpc-python==1.75.0.1.20250917104837+762975861d20"
+    "agntcy-dir-grpc-python==1.75.0.1.20250917121230+a7e88d4f0f48",
+    "spiffe>=0.2.2",
+    "spiffe-tls>=0.2.1",
 ]
 
 [dependency-groups]
-dev = [
-    "pytest>=8.4.1",
-    "uuid>=1.30",
-]
+dev = ["pytest>=8.4.1", "uuid>=1.30"]
 
 [[tool.uv.index]]
 url = "https://buf.build/gen/python"

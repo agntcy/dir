@@ -1,19 +1,19 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
-import {env} from 'node:process';
-import {writeFileSync} from 'node:fs';
-import {execSync} from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { env } from 'node:process';
+import { writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 
 import {
   Client as GrpcClient,
   createClient,
   Transport,
 } from '@connectrpc/connect';
-import {createGrpcTransport} from '@connectrpc/connect-node';
-
+import { createGrpcTransport } from '@connectrpc/connect-node';
+import { createClient as createClientSpiffe, X509SVID } from 'spiffe';
 import * as models from '../models';
 
 /**
@@ -25,19 +25,29 @@ import * as models from '../models';
 export class Config {
   static DEFAULT_SERVER_ADDRESS = '0.0.0.0:8888';
   static DEFAULT_DIRCTL_PATH = 'dirctl';
+  static DEFAULT_SPIFFE_ENDPOINT_SOCKET = '';
   serverAddress: string;
   dirctlPath: string;
+  spiffeEndpointSocket: string;
 
   /**
    * Creates a new Config instance.
    *
    * @param serverAddress - The server address to connect to. Defaults to '0.0.0.0:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
+   * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
+    spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET
   ) {
+
+    // use https protocol when spiffe used
+    if (spiffeEndpointSocket != Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET) {
+      serverAddress = `https://${serverAddress}`;
+    }
+
     // add protocol prefix if not set
     // use unsafe http unless spire is used
     if (
@@ -49,6 +59,7 @@ export class Config {
 
     this.serverAddress = serverAddress;
     this.dirctlPath = dirctlPath;
+    this.spiffeEndpointSocket = spiffeEndpointSocket;
   }
 
   /**
@@ -70,8 +81,9 @@ export class Config {
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
     const dirctlPath = env['DIRCTL_PATH'] || Config.DEFAULT_DIRCTL_PATH;
+    const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
 
-    return new Config(serverAddress, dirctlPath);
+    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath);
   }
 }
 
@@ -106,6 +118,7 @@ export class Client {
   /**
    * Initialize the client with the given configuration.
    *
+   * @param grpcTransport - Required for GRPC communication. Can be created with Client.createGRPCTransport(config)
    * @param config - Optional client configuration. If null, loads from environment
    *                variables using Config.loadFromEnv()
    *
@@ -114,34 +127,97 @@ export class Client {
    * @example
    * ```typescript
    * // Load config from environment
-   * const client = new Client();
+   * const grpcTransport = await Client.createGRPCTransport(config);
+   * const client = new Client(grpcTransport);
    *
    * // Use custom config
    * const config = new Config('localhost:9999');
-   * const client = new Client(config);
+   * const grpcTransport = await Client.createGRPCTransport(config);
+   * const client = new Client(grpcTransport, config);
    * ```
    */
-  constructor(config?: Config) {
+  constructor(grpcTransport: Transport, config?: Config) {
     // Load config from environment if not provided
     if (!config) {
       config = Config.loadFromEnv();
     }
     this.config = config;
 
-    // Create transport settings for gRPC client
-    const transport: Transport = createGrpcTransport({
-      baseUrl: this.config.serverAddress,
-    });
-
     // Set clients for all services
-    this.storeClient = createClient(models.store_v1.StoreService, transport);
+    this.storeClient = createClient(models.store_v1.StoreService, grpcTransport);
     this.routingClient = createClient(
       models.routing_v1.RoutingService,
-      transport,
+      grpcTransport,
     );
-    this.searchClient = createClient(models.search_v1.SearchService, transport);
-    this.signClient = createClient(models.sign_v1.SignService, transport);
-    this.syncClient = createClient(models.store_v1.SyncService, transport);
+    this.searchClient = createClient(models.search_v1.SearchService, grpcTransport);
+    this.signClient = createClient(models.sign_v1.SignService, grpcTransport);
+    this.syncClient = createClient(models.store_v1.SyncService, grpcTransport);
+  }
+
+  static convertToPEM(bytes: Uint8Array, label: string): string {
+    // Convert Uint8Array to base64 string
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64String = btoa(binary);
+
+    // Split base64 string into 64-character lines
+    const lines = base64String.match(/.{1,64}/g) || [];
+
+    // Build PEM formatted string with headers and footers
+    const pem = [
+      `-----BEGIN ${label}-----`,
+      ...lines,
+      `-----END ${label}-----`
+    ].join('\n');
+
+    return pem;
+  }
+
+  static async createGRPCTransport(config: Config): Promise<Transport> {
+    if (config.spiffeEndpointSocket === '') {
+      // Create transport settings for gRPC client
+      const transport: Transport = createGrpcTransport({
+        baseUrl: config.serverAddress,
+      });
+
+      return transport;
+    }
+
+    const client = createClientSpiffe(config.spiffeEndpointSocket);
+
+    let svid: X509SVID = {
+      spiffeId: '',
+      x509Svid: new Uint8Array(),
+      x509SvidKey: new Uint8Array(),
+      bundle: new Uint8Array(),
+      hint: ''
+    };
+
+    const svidStream = client.fetchX509SVID({});
+    for await (const message of svidStream.responses) {
+      message.svids.forEach((_svid) => {
+        svid = _svid;
+      })
+
+      if (message.svids.length > 0) {
+        break
+      }
+    }
+
+    // Create transport settings for gRPC client
+    const transport = createGrpcTransport({
+      baseUrl: config.serverAddress,
+      nodeOptions: {
+        ca: this.convertToPEM(svid.bundle, "TRUSTED CERTIFICATE"),
+        cert: this.convertToPEM(svid.x509Svid, "CERTIFICATE"),
+        key: this.convertToPEM(svid.x509SvidKey, "PRIVATE KEY"),
+      },
+    });
+
+    return transport;
   }
 
   /**
@@ -668,7 +744,7 @@ export class Client {
     // Execute command
     execSync(
       `${this.config.dirctlPath} sign "${cid}" --key "${tmp_key_filename}"`,
-      {env: {...shell_env}, encoding: 'utf8', stdio: 'pipe'},
+      { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
     );
   }
 
@@ -718,7 +794,7 @@ export class Client {
 
     // Execute command
     execSync(`${command} --oidc-client-id "${oidc_client_id}"`, {
-      env: {...env},
+      env: { ...env },
       encoding: 'utf8',
       stdio: 'pipe',
     });
