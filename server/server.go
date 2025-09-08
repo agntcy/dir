@@ -125,8 +125,13 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Create a server
 	grpcServer := grpc.NewServer(serverOpts...)
 
+	storeController, err := controller.NewStoreController(storeAPI, databaseAPI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create store controller: %w", err)
+	}
+
 	// Register APIs
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
+	storev1.RegisterStoreServiceServer(grpcServer, storeController)
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI))

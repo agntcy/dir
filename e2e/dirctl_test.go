@@ -75,14 +75,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			name:              "V3_Record_OASF_v0.5.0",
 			fileName:          "record_v3_test.json",
 			jsonData:          expectedRecordV3JSON,
-			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v3",
-			expectedSkillIDs:  []string{"10201", "10702"},
+			expectedAgentName: "oasf.agntcy.org/multi-modal-agent",
+			expectedSkillIDs:  []string{"10101", "10103"},
 			expectedSkillNames: []string{
-				"Natural Language Processing/Text Completion",
-				"Natural Language Processing/Problem Solving",
+				"schema.oasf.agntcy.org/skills/contextual_comprehension",
+				"schema.oasf.agntcy.org/skills/entity_recognition",
 			},
-			expectedLocator:   "docker-image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedExtension: "schema.oasf.agntcy.org/features/runtime/framework:v0.0.0",
+			expectedLocator:   "docker_image:ghcr.io/oasf/multi-modal-agent",
+			expectedExtension: "schema.oasf.agntcy.org/features/model:1.0.0",
 		},
 	}
 

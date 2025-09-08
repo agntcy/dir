@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"io"
 
+	validationv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/validation/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/oasf-sdk/validation/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -29,16 +31,23 @@ var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
 	storev1.UnimplementedStoreServiceServer
-	store types.StoreAPI
-	db    types.DatabaseAPI
+	store     types.StoreAPI
+	db        types.DatabaseAPI
+	validator *service.ValidationService
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI) (storev1.StoreServiceServer, error) {
+	validator, err := service.NewValidationService()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validation service: %w", err)
+	}
+
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
 		db:                              db,
-	}
+		validator:                       validator,
+	}, nil
 }
 
 func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
@@ -55,6 +64,25 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to receive record: %v", err)
+		}
+
+		if recordV3 := record.GetV3(); recordV3 != nil {
+			req := &validationv1.ValidateRecordRequest{
+				Record: recordV3,
+			}
+
+			isValid, errors, err := s.validator.ValidateRecord(req)
+			if err != nil {
+				storeLogger.Error("Failed to validate record", "error", err)
+
+				return status.Errorf(codes.Internal, "failed to validate record: %v", err)
+			}
+
+			if !isValid {
+				storeLogger.Warn("Record validation failed", "errors", errors)
+
+				return status.Errorf(codes.InvalidArgument, "record validation failed: %v", errors)
+			}
 		}
 
 		// Validate record and get CID

@@ -100,8 +100,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		// Should find the local record with expected labels
 		gomega.Expect(output1).To(gomega.ContainSubstring(cid))
 		gomega.Expect(output1).To(gomega.ContainSubstring("Local Record"))
-		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/Natural Language Processing/Text Completion"))
-		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/Natural Language Processing/Problem Solving"))
+		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/schema.oasf.agntcy.org/skills/contextual_comprehension"))
+		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/schema.oasf.agntcy.org/skills/entity_recognition"))
 
 		// Reset CLI state again before testing Peer2
 		utils.ResetCLIState()

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	validationv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/validation/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/store/oci"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -20,6 +21,9 @@ import (
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/zot"
+	"github.com/agntcy/oasf-sdk/validation/service"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -47,6 +51,9 @@ type MonitorService struct {
 
 	// ORAS repository client
 	repo *remote.Repository
+
+	// Validation
+	validator *service.ValidationService
 }
 
 // NewMonitorService creates a new monitor service.
@@ -57,6 +64,11 @@ func NewMonitorService(db types.DatabaseAPI, store types.StoreAPI, ociConfig oci
 		return nil, fmt.Errorf("failed to create ORAS repository client: %w", err)
 	}
 
+	validator, err := service.NewValidationService()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create validation service: %w", err)
+	}
+
 	return &MonitorService{
 		db:            db,
 		store:         store,
@@ -64,6 +76,7 @@ func NewMonitorService(db types.DatabaseAPI, store types.StoreAPI, ociConfig oci
 		checkInterval: monitorConfig.CheckInterval,
 		activeSyncs:   make(map[string]struct{}),
 		repo:          repo,
+		validator:     validator,
 	}, nil
 }
 
@@ -365,6 +378,25 @@ func (s *MonitorService) indexRecord(ctx context.Context, tag string) error {
 	record, err := s.store.Pull(ctx, recordRef)
 	if err != nil {
 		return fmt.Errorf("failed to pull record from local store: %w", err)
+	}
+
+	if recordV3 := record.GetV3(); recordV3 != nil {
+		req := &validationv1.ValidateRecordRequest{
+			Record: recordV3,
+		}
+
+		isValid, errors, err := s.validator.ValidateRecord(req)
+		if err != nil {
+			logger.Error("Failed to validate record", "error", err)
+
+			return status.Errorf(codes.Internal, "failed to validate record: %v", err)
+		}
+
+		if !isValid {
+			logger.Warn("Record validation failed", "errors", errors)
+
+			return status.Errorf(codes.InvalidArgument, "record validation failed: %v", errors)
+		}
 	}
 
 	// Add to database
