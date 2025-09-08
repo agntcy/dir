@@ -7,6 +7,7 @@ package push
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/agntcy/dir/cli/util/agent"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
@@ -65,14 +66,18 @@ Examples:
 
 	// API key authentication flags
 	var clientID, secret string
+
 	cmd.Flags().StringVar(&clientID, "client-id", "", "API key client ID for authentication")
 	cmd.Flags().StringVar(&secret, "secret", "", "API key secret for authentication")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		cmd.SetOut(os.Stdout)
+		cmd.SetErr(os.Stderr)
+
 		// Authenticate using either API key or session file
 		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, clientID, secret, false)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get or create session: %w", err)
 		}
 
 		hc, err := hubClient.New(currentSession.HubBackendAddress)

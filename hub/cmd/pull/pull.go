@@ -7,6 +7,7 @@ package pull
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	hubClient "github.com/agntcy/dir/hub/client/hub"
 	hubOptions "github.com/agntcy/dir/hub/cmd/options"
@@ -61,6 +62,7 @@ Examples:
 
 	// API key authentication flags
 	var clientID, secret string
+
 	cmd.Flags().StringVar(&clientID, "client-id", "", "API key client ID for authentication")
 	cmd.Flags().StringVar(&secret, "secret", "", "API key secret for authentication")
 
@@ -69,10 +71,13 @@ Examples:
 			return errors.New("agent id is the only required argument")
 		}
 
+		cmd.SetOut(os.Stdout)
+		cmd.SetErr(os.Stderr)
+
 		// Authenticate using either API key or session file
 		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, clientID, secret, false)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get or create session: %w", err)
 		}
 
 		hc, err := hubClient.New(currentSession.HubBackendAddress)

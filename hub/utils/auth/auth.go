@@ -32,7 +32,7 @@ func CheckForCreds(cmd *cobra.Command, currentSession *sessionstore.HubSession, 
 	return nil
 }
 
-// resolveAPIKeyCredentials Returns the effective clientID and secret, with JSON decoding applied if needed
+// resolveAPIKeyCredentials returns the effective clientID and secret, with JSON decoding applied if needed.
 func resolveAPIKeyCredentials(clientID, secret string) (string, string, string) {
 	effectiveClientID := clientID
 	effectiveSecret := secret
@@ -43,6 +43,7 @@ func resolveAPIKeyCredentials(clientID, secret string) (string, string, string) 
 		if err := json.Unmarshal([]byte(`"`+effectiveSecret+`"`), &decodedSecret); err == nil {
 			effectiveSecret = decodedSecret
 		}
+
 		return effectiveClientID, effectiveSecret, "command opts"
 	}
 
@@ -55,6 +56,7 @@ func resolveAPIKeyCredentials(clientID, secret string) (string, string, string) 
 		if err := json.Unmarshal([]byte(`"`+envSecret+`"`), &decodedSecret); err == nil {
 			envSecret = decodedSecret
 		}
+
 		return envClientID, envSecret, "environment variables"
 	}
 
@@ -64,27 +66,36 @@ func resolveAPIKeyCredentials(clientID, secret string) (string, string, string) 
 // GetOrCreateSession gets session from context or creates in-memory session with API key with the following priority:
 // 1. API key from command opts
 // 2. API key from environment variables
-// 3. Existing session from context (session file created via 'dirctl hub login')
+// 3. Existing session from context (session file created via 'dirctl hub login').
 func GetOrCreateSession(cmd *cobra.Command, serverAddress, clientID, secret string, jsonOutput bool) (*sessionstore.HubSession, error) {
 	effectiveClientID, effectiveSecret, source := resolveAPIKeyCredentials(clientID, secret)
 	if source == "" {
 		source = "session file"
 	}
-	fmt.Printf("Using API key authentication from %s\n", source)
+
+	fmt.Fprintf(cmd.OutOrStdout(), "Using API key authentication from %s\n", source)
 
 	// If API key credentials are available, use in-memory session.
 	if effectiveClientID != "" && effectiveSecret != "" {
-		return baseauth.CreateInMemorySessionFromAPIKey(cmd.Context(), serverAddress, effectiveClientID, effectiveSecret)
+		session, err := baseauth.CreateInMemorySessionFromAPIKey(cmd.Context(), serverAddress, effectiveClientID, effectiveSecret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create in-memory session: %w", err)
+		}
+
+		return session, nil
 	}
+
 	// Use existing session from context.
 	ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 	currentSession, ok := ctxSession.(*sessionstore.HubSession)
+
 	if !ok || currentSession == nil {
 		return nil, errors.New("could not get current hub session")
 	}
 
 	if err := CheckForCreds(cmd, currentSession, serverAddress, jsonOutput); err != nil {
-		return nil, err
+		// this error need to be return without modification in order to be displayed
+		return nil, err //nolint:wrapcheck
 	}
 
 	return currentSession, nil
