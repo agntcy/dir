@@ -31,11 +31,11 @@ Parameters:
 
 Authentication:
   API key authentication can be provided via:
-  1. Environment variables: DIRCTL_CLIENT_ID and DIRCTL_CLIENT_SECRET
-  2. Command flags: --client-id and --secret
+  1. Command flags: --client-id and --secret
+  2. Environment variables: DIRCTL_CLIENT_ID and DIRCTL_CLIENT_SECRET
   3. Session file created via 'dirctl hub login'
 
-  Environment variables take precedence over command flags, which take precedence over session file.
+  Command flags take precedence over environment variables, which take precedence over session file.
 
 Examples:
   # Pull agent by digest
