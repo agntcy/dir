@@ -79,13 +79,20 @@ func NewClient(baseURL string, httpClient *http.Client, apiKeyClientID string) C
 	}
 }
 
-func (c *client) GetAccessTokenFromAPIKey(ctx context.Context, username string, secret string) (*GetAccessTokenResponse, error) {
+func (c *client) GetAccessTokenFromAPIKey(ctx context.Context, username string, base64Secret string) (*GetAccessTokenResponse, error) {
 	requestURL := fmt.Sprintf("%s%s", c.baseURL, AccessTokenEndpoint)
 
+	// Decode the base64 secret to get the plain text original secret.
+	secretBytes, err := base64.StdEncoding.DecodeString(base64Secret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 secret: %w", err)
+	}
+
+	// IAM expects unescaped secret
 	data := url.Values{}
 	data.Set("grant_type", AccessTokenGrantType)
 	data.Set("username", username)
-	data.Set("password", secret)
+	data.Set("password", string(secretBytes))
 	data.Set("scope", AccessTokenScope)
 	data.Set("client_id", c.apiKeyClientID)
 
@@ -109,12 +116,18 @@ func (c *client) GetAccessTokenFromAPIKey(ctx context.Context, username string, 
 /*
 This is based on https://developer.okta.com/docs/guides/implement-grant-type/clientcreds/main/#request-for-token
 */
-func (c *client) GetAccessTokenFromOkta(ctx context.Context, clientID string, secret string) (*GetAccessTokenResponse, error) {
+func (c *client) GetAccessTokenFromOkta(ctx context.Context, clientID string, base64Secret string) (*GetAccessTokenResponse, error) {
 	// The request URL for the Okta API to get an access token.
 	requestURL := fmt.Sprintf("%s%s", c.baseURL, AccessTokenEndpoint)
 
+	// Decode the base64 secret to concatenate with client id.
+	secretBytes, err := base64.StdEncoding.DecodeString(base64Secret)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64 secret: %w", err)
+	}
+
 	// The auth header for the request, which includes the client ID and secret.
-	authToken := fmt.Sprintf("%s:%s", clientID, secret)
+	authToken := fmt.Sprintf("%s:%s", clientID, string(secretBytes))
 	authHeader := "Basic " + base64.StdEncoding.EncodeToString([]byte(authToken))
 
 	// The body for the request, which includes the grant type and scope.

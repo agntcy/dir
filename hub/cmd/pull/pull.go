@@ -7,11 +7,11 @@ package pull
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	hubClient "github.com/agntcy/dir/hub/client/hub"
 	hubOptions "github.com/agntcy/dir/hub/cmd/options"
 	service "github.com/agntcy/dir/hub/service"
-	"github.com/agntcy/dir/hub/sessionstore"
 	authUtils "github.com/agntcy/dir/hub/utils/auth"
 	"github.com/spf13/cobra"
 )
@@ -30,33 +30,54 @@ Parameters:
                 - sha256:<hash>    : Pull by digest
                 - <repo>:<version> : Pull by repository and version
 
+Authentication:
+  API key authentication can be provided via:
+  1. Command flags: --client-id and --secret
+  2. Environment variables: DIRCTL_CLIENT_ID and DIRCTL_CLIENT_SECRET
+  3. Session file created via 'dirctl hub login'
+
+  Command flags take precedence over environment variables, which take precedence over session file.
+
 Examples:
   # Pull agent by digest
   dirctl hub pull sha256:1234567890abcdef...
 
   # Pull agent by repository and version
+  dirctl hub pull owner/repo-name:v1.0.0
+
+  # Pull using API key authentication via flags
+  dirctl hub pull owner/repo-name:v1.0.0 --client-id YOUR_CLIENT_ID --secret YOUR_SECRET
+
+  # Pull using API key authentication via environment variables
+  export DIRCTL_CLIENT_ID=your_client_id
+  export DIRCTL_CLIENT_SECRET=your_secret
+  dirctl hub pull owner/repo-name:v1.0.0
+
+  # Pull using session file (after login)
+  dirctl hub login
   dirctl hub pull owner/repo-name:v1.0.0`,
 	}
 
 	opts := hubOptions.NewHubPullOptions(hubOpts)
+
+	// API key authentication flags
+	var clientID, secret string
+
+	cmd.Flags().StringVar(&clientID, "client-id", "", "API key client ID for authentication")
+	cmd.Flags().StringVar(&secret, "secret", "", "API key secret for authentication")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return errors.New("agent id is the only required argument")
 		}
 
-		// Retrieve session from context
-		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
+		cmd.SetOut(os.Stdout)
+		cmd.SetErr(os.Stderr)
 
-		currentSession, ok := ctxSession.(*sessionstore.HubSession)
-		if !ok || currentSession == nil {
-			return errors.New("could not get current hub session")
-		}
-
-		// Check for credentials
-		if err := authUtils.CheckForCreds(cmd, currentSession, opts.ServerAddress, false); err != nil {
-			// this error need to be return without modification in order to be displayed
-			return err //nolint:wrapcheck
+		// Authenticate using either API key or session file
+		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, clientID, secret, false)
+		if err != nil {
+			return fmt.Errorf("failed to get or create session: %w", err)
 		}
 
 		hc, err := hubClient.New(currentSession.HubBackendAddress)

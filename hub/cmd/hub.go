@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/agntcy/dir/hub/client/okta"
 	"github.com/agntcy/dir/hub/cmd/apikey"
@@ -42,8 +43,14 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 
 	opts := options.NewHubOptions(baseOption, cmd)
 
+	var noCache bool
+
+	cmd.PersistentFlags().BoolVar(&noCache, "no-cache", false, "Skip session file operations and use only API key authentication")
+
 	//nolint:contextcheck // context is set via cmd.SetContext(ctx) and accessed via cmd.Context()
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
+		cmd.SetOut(os.Stdout)
+		cmd.SetErr(os.Stderr)
 		opts.Complete()
 
 		sessionStore := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
@@ -80,8 +87,13 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 			}
 		}
 
-		if err := sessionStore.SaveHubSession(opts.ServerAddress, currentSession); err != nil {
-			return fmt.Errorf("failed to save updated session with auth config: %w", err)
+		// If --no-cache is specified, skip all session file operations
+		if cmd.Flags().Changed("no-cache") {
+			fmt.Fprintf(cmd.OutOrStdout(), "Skipping session file operations due to --no-cache flag\n")
+		} else {
+			if err := sessionStore.SaveHubSession(opts.ServerAddress, currentSession); err != nil {
+				return fmt.Errorf("failed to save updated session with auth config: %w", err)
+			}
 		}
 
 		// Attach the session to cmd.Context()
