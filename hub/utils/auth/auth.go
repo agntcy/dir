@@ -4,7 +4,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -32,31 +31,21 @@ func CheckForCreds(cmd *cobra.Command, currentSession *sessionstore.HubSession, 
 	return nil
 }
 
-// resolveAPIKeyCredentials returns the effective clientID and secret, with JSON decoding applied if needed.
+// resolveAPIKeyCredentials returns the effective clientID and secret (base64-encoded).
 func resolveAPIKeyCredentials(clientID, secret string) (string, string, string) {
 	effectiveClientID := clientID
 	effectiveSecret := secret
 
-	// Decode JSON-encoded strings from CLI flags if both are provided.
+	// CLI opts take priority
 	if effectiveClientID != "" && effectiveSecret != "" {
-		var decodedSecret string
-		if err := json.Unmarshal([]byte(`"`+effectiveSecret+`"`), &decodedSecret); err == nil {
-			effectiveSecret = decodedSecret
-		}
-
 		return effectiveClientID, effectiveSecret, "command opts"
 	}
 
-	// Only use env vars if both are provided
+	// Environment variables
 	envClientID := os.Getenv("DIRCTL_CLIENT_ID")
 	envSecret := os.Getenv("DIRCTL_CLIENT_SECRET")
 
 	if envClientID != "" && envSecret != "" {
-		var decodedSecret string
-		if err := json.Unmarshal([]byte(`"`+envSecret+`"`), &decodedSecret); err == nil {
-			envSecret = decodedSecret
-		}
-
 		return envClientID, envSecret, "environment variables"
 	}
 
@@ -67,6 +56,7 @@ func resolveAPIKeyCredentials(clientID, secret string) (string, string, string) 
 // 1. API key from command opts
 // 2. API key from environment variables
 // 3. Existing session from context (session file created via 'dirctl hub login').
+// Secret must be provided as base64-encoded.
 func GetOrCreateSession(cmd *cobra.Command, serverAddress, clientID, secret string, jsonOutput bool) (*sessionstore.HubSession, error) {
 	effectiveClientID, effectiveSecret, source := resolveAPIKeyCredentials(clientID, secret)
 	if source == "" {

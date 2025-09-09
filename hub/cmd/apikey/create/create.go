@@ -4,6 +4,7 @@
 package create
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -90,6 +91,9 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 		return fmt.Errorf("failed to create API key: %w", err)
 	}
 
+	// Base64 encode the secret after creation.
+	encodedSecret := base64.StdEncoding.EncodeToString([]byte(apikeyWithSecret.Secret))
+
 	// Apikeywithsecret will not be shown for security reasons. Use apikey instead.
 	apikey := &service.APIKeyWithRoleName{
 		ClientID: apikeyWithSecret.ClientID,
@@ -100,9 +104,10 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 		fmt.Fprintf(cmd.OutOrStdout(), "API Key created successfully:\n")
 	}
 
+	// Store the base64-encoded secret in the session.
 	currentSession.APIKeyAccess = &sessionstore.APIKey{
 		ClientID: apikeyWithSecret.ClientID,
-		Secret:   apikeyWithSecret.Secret,
+		Secret:   encodedSecret,
 	}
 
 	// Save session with new api key
