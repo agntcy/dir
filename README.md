@@ -1,5 +1,6 @@
 # Directory
 
+[![CI](https://github.com/agntcy/dir/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/ci.yaml)
 [![Coverage](https://codecov.io/gh/agntcy/dir/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir)
 [![Coverage Workflow](https://github.com/agntcy/dir/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/coverage.yml)
 
