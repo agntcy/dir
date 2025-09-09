@@ -1,0 +1,32 @@
+codecov:
+  require_ci_to_pass: false
+  notify:
+    after_n_builds: 1
+
+comment:
+  layout: "files, functions, diff, flags, tree"
+  require_changes: false
+  require_base: false
+  require_head: true
+  behavior: default
+
+coverage:
+  precision: 1
+  round: nearest
+  range: 40..90
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 2%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+    changes: false
+
+ignore:
+  - "**/*.pb.go"
+  - "**/mock_*.go"
+  - "e2e/**"
+  - "**/testdata/**"
