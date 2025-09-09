@@ -4,7 +4,6 @@
 package e2e
 
 import (
-	"bytes"
 	"context"
 	"strings"
 	"time"
@@ -116,11 +115,11 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 			// Load the record once per version context (inline initialization)
 			var err error
-			record, err = corev1.LoadOASFFromReader(bytes.NewReader(version.jsonData))
+			record, err = corev1.UnmarshalRecord(version.jsonData)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Use canonical marshaling for CID validation
-			canonicalData, err = record.MarshalOASF()
+			canonicalData, err = record.Marshal()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Step 1: Push
@@ -140,7 +139,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Get canonical data from pulled record for comparison
-				pulledCanonicalData, err := pulledRecord.MarshalOASF()
+				pulledCanonicalData, err := pulledRecord.Marshal()
 				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				// Compare pushed and pulled records using canonical data

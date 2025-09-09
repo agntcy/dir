@@ -7,7 +7,7 @@ package localfs
 import (
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/store/localfs/config"
 	"github.com/stretchr/testify/assert"

@@ -4,7 +4,7 @@
 package adapters
 
 import (
-	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v3"
+	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
 	"github.com/agntcy/dir/server/types"
 )
 

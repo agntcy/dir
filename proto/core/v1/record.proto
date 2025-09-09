@@ -5,9 +5,7 @@ syntax = "proto3";
 
 package core.v1;
 
-import "objects/v1/agent.proto";
-import "objects/v2/agent_record.proto";
-import "objects/v3/record.proto";
+import "google/protobuf/struct.proto";
 
 // Defines a reference or a globally unique content identifier of a record.
 message RecordRef {
@@ -32,13 +30,18 @@ message RecordMeta {
   string created_at = 4;
 }
 
-// Record unifies different versions of records into a single message.
-// It allows for backward compatibility and easier handling of different
-// record versions in the same service or application.
+// Record is a generic object that encapsulates data of different Record types.
+//
+// OASF Object is an abstract type that serves as a base for all OASF objects,
+// while Record is a concrete implementation of OASF Object used in DIR API
+// to represent and handle Record object types. OASF Object and Record are
+// interchangeable and are represented using the same structure.
+//
+// OASF-SDK (https://github.com/agntcy/oasf-sdk) is used to handle serialization, 
+// deserialization, and validation of Record objects.
+//
+// Record Base Object: https://buf.build/agntcy/oasf/docs/main:core.v1#core.v1.Object
+// Record Data Schema: https://schema.oasf.outshift.com/0.7.0/objects/record
 message Record {
-  oneof data {
-    objects.v1.Agent v1 = 1;
-    objects.v2.AgentRecord v2 = 2;
-    objects.v3.Record v3 = 3;
-  }
+  google.protobuf.Struct data = 1;
 }

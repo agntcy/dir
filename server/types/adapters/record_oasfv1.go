@@ -6,7 +6,7 @@ package adapters
 import (
 	"fmt"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	"github.com/agntcy/dir/server/types"
 )
 

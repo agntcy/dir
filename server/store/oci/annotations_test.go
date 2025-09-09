@@ -6,8 +6,8 @@ package oci
 import (
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
-	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v3"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
 )

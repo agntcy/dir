@@ -7,7 +7,6 @@ package routing.v1;
 
 import "google/protobuf/empty.proto";
 import "routing/v1/routing_service.proto";
-import "store/v1/object.proto";
 
 // PublicationService manages publication requests for announcing records to the DHT.
 // 

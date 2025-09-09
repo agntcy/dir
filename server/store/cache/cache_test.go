@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"

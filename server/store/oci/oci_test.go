@@ -9,9 +9,9 @@ import (
 	"os"
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v1"
-	objectsv2 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v2"
-	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/objects/v3"
+	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	objectsv2 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
+	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"

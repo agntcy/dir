@@ -31,8 +31,6 @@ func (r *RecordAdapter) GetRecordData() types.RecordData {
 	switch data := r.record.GetData().(type) {
 	case *corev1.Record_V1:
 		return NewV1DataAdapter(data.V1)
-	case *corev1.Record_V2:
-		return NewV2DataAdapter(data.V2)
 	case *corev1.Record_V3:
 		return NewV3DataAdapter(data.V3)
 	default:
