@@ -658,12 +658,14 @@ tasks:
   deploy:kubernetes:network:
     aliases: [deploy:network]
     desc: Deploy a network of Directory servers in Kubernetes (1 bootstrap + 3 peers)
-    deps:
-      - deploy:kubernetes:network:bootstrap
     vars:
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
     cmds:
+      # Deploy bootstrap with explicit var passing (not as dependency)
+      - task: deploy:kubernetes:network:bootstrap
+        vars:
+          PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
       # Create zot configuration for each peer using helper task
       - for:
           matrix:
