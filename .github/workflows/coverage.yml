@@ -1,9 +1,9 @@
 name: Coverage
 
 on:
-  pull_request:
-    branches: [ main ]
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
 
 permissions:
@@ -14,9 +14,6 @@ jobs:
   coverage:
     name: Go Coverage (multi-module)
     runs-on: ubuntu-latest
-    env:
-      GO111MODULE: on
-  CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,14 +44,6 @@ jobs:
       - name: Run per-module coverage task
         run: task test:unit:coverage:html
 
-      - name: Validate Codecov token (optional)
-        run: |
-          if [ -z "${CODECOV_TOKEN}" ]; then
-            echo "::notice::CODECOV_TOKEN not set; public repos don't require a token. Set one if this becomes private or you use Codecov Enterprise.";
-          else
-            echo "Codecov token configured (masked).";
-          fi
-
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -66,7 +55,7 @@ jobs:
           flags: per-module
           fail_ci_if_error: false
           verbose: true
-          token: ${{ env.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload HTML reports as artifact
         uses: actions/upload-artifact@v4
