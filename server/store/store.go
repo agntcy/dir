@@ -18,9 +18,9 @@ const (
 
 // TODO: add options for adding cache.
 func New(opts types.APIOptions) (types.StoreAPI, error) {
-	switch provider := Provider(opts.Config().Provider); provider {
+	switch provider := Provider(opts.Config().Store.Provider); provider {
 	case OCI:
-		store, err := oci.New(opts.Config().OCI)
+		store, err := oci.New(opts.Config().Store.OCI)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OCI store: %w", err)
 		}

@@ -74,31 +74,6 @@ Make sure Docker is installed with Buildx.
 
 Use `Taskfile` for all related development operations such as testing, validating, deploying, and working with the project.
 
-### Coverage & Badges
-
-CI runs a multi‑module coverage workflow (`coverage.yml`) on pushes and pull requests targeting `main`. It executes `task test:unit:coverage:html`, uploads per‑module Go coverage profiles to Codecov, and comments a summary on PRs.
-
-Local quick run:
-
-```bash
-task test:unit:coverage:html
-open coverage-api.html   # or any module html file
-```
-
-The coverage badge shown near the top of this README tracks the `main` branch:
-
-```markdown
-[![Coverage](https://codecov.io/gh/agntcy/dir/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir)
-```
-
-To display a badge for another branch, append `branch=<branch>`:
-
-```markdown
-![Feature Coverage](https://codecov.io/gh/agntcy/dir/branch/your-feature/graph/badge.svg)
-```
-
-Ignored files & directories for reporting are configured in `codecov.yml` (e.g. generated `*.pb.go`, `testdata`, `e2e`). Adjust thresholds or add per‑module flags there if needed.
-
 ### Clone the repository
 
 ```bash

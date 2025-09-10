@@ -131,7 +131,7 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	}
 
 	// Get OCI configuration to determine registry details
-	ociConfig := c.opts.Config().OCI
+	ociConfig := c.opts.Config().Store.OCI
 
 	// Build registry URL based on configuration
 	registryURL := ociConfig.RegistryAddress

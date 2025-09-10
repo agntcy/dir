@@ -33,7 +33,7 @@ type Service struct {
 
 // New creates a new sync service.
 func New(db types.DatabaseAPI, store types.StoreAPI, opts types.APIOptions) (*Service, error) {
-	monitorService, err := monitor.NewMonitorService(db, store, opts.Config().OCI, opts.Config().Sync.RegistryMonitor)
+	monitorService, err := monitor.NewMonitorService(db, store, opts.Config().Store.OCI, opts.Config().Sync.RegistryMonitor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create registry monitor service: %w", err)
 	}

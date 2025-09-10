@@ -16,26 +16,31 @@ apiserver:
     # listen_address: "0.0.0.0:8888"
     # healthcheck_address: "0.0.0.0:8889"
 
-    provider: "oci"
+    # Store settings for the storage backend.
+    store:
+      # Storage provider to use.
+      provider: "oci"
 
-    # OCI-backed store
-    oci:
-      # Path to a local directory that will be to hold data instead of remote.
-      # If this is set to non-empty value, only local store will be used.
-      # local_dir: ""
+      # OCI-backed store
+      oci:
+        # Path to a local directory that will be to hold data instead of remote.
+        # If this is set to non-empty value, only local store will be used.
+        # local_dir: ""
 
-      # Registry address to connect to
-      registry_address: "dir-zot.dir-server.svc.cluster.local:5000"
+        # Cache directory to use for metadata.
+        # cache_dir: ""
 
-      # All data will be stored under this repo.
-      # Objects are pushed as tags, manifests, and blobs.
-      # repository_name: ""
+        # Registry address to connect to
+        registry_address: "dir-zot.dir-server.svc.cluster.local:5000"
+        # All data will be stored under this repo.
+        # Objects are pushed as tags, manifests, and blobs.
+        # repository_name: ""
 
-      # Auth credentials to use.
-      auth_config:
-        insecure: "true"
-        access_token: access-token
-        refresh_token: refresh-token
+        # Auth credentials to use.
+        auth_config:
+          insecure: "true"
+          access_token: access-token
+          refresh_token: refresh-token
 
     # Routing settings for the peer-to-peer network.
     routing: {}

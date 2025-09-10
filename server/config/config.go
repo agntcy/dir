@@ -13,6 +13,7 @@ import (
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
+	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	sync "github.com/agntcy/dir/server/sync/config"
 	syncmonitor "github.com/agntcy/dir/server/sync/monitor/config"
@@ -22,20 +23,17 @@ import (
 )
 
 const (
-	DefaultEnvPrefix = "DIRECTORY_SERVER"
+	// Config params.
+
+	DefaultEnvPrefix  = "DIRECTORY_SERVER"
+	DefaultConfigName = "server.config"
+	DefaultConfigType = "yml"
+	DefaultConfigPath = "/etc/agntcy/dir"
 
 	// API configuration.
 
 	DefaultListenAddress      = "0.0.0.0:8888"
 	DefaultHealthCheckAddress = "0.0.0.0:8889"
-
-	// Provider configuration.
-
-	DefaultProvider = "oci"
-
-	DefaultConfigName = "server.config"
-	DefaultConfigType = "yml"
-	DefaultConfigPath = "/etc/agntcy/dir"
 )
 
 var logger = logging.Logger("config")
@@ -48,9 +46,8 @@ type Config struct {
 	// Authz configuration
 	Authz authz.Config `json:"authz,omitempty" mapstructure:"authz"`
 
-	// Provider configuration
-	Provider string     `json:"provider,omitempty" mapstructure:"provider"`
-	OCI      oci.Config `json:"oci,omitempty"      mapstructure:"oci"`
+	// Store configuration
+	Store store.Config `json:"store,omitempty" mapstructure:"store"`
 
 	// Routing configuration
 	Routing routing.Config `json:"routing,omitempty" mapstructure:"routing"`
@@ -111,33 +108,30 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("authz.trust_domain", "")
 
 	//
-	// Provider configuration
+	// Store configuration
 	//
-	_ = v.BindEnv("provider")
-	v.SetDefault("provider", DefaultProvider)
+	_ = v.BindEnv("store.provider")
+	v.SetDefault("store.provider", store.DefaultProvider)
 
-	//
-	// OCI configuration
-	//
-	_ = v.BindEnv("oci.local_dir")
-	v.SetDefault("oci.local_dir", "")
+	_ = v.BindEnv("store.oci.local_dir")
+	v.SetDefault("store.oci.local_dir", "")
 
-	_ = v.BindEnv("oci.cache_dir")
-	v.SetDefault("oci.cache_dir", "")
+	_ = v.BindEnv("store.oci.cache_dir")
+	v.SetDefault("store.oci.cache_dir", "")
 
-	_ = v.BindEnv("oci.registry_address")
-	v.SetDefault("oci.registry_address", oci.DefaultRegistryAddress)
+	_ = v.BindEnv("store.oci.registry_address")
+	v.SetDefault("store.oci.registry_address", oci.DefaultRegistryAddress)
 
-	_ = v.BindEnv("oci.repository_name")
-	v.SetDefault("oci.repository_name", oci.DefaultRepositoryName)
+	_ = v.BindEnv("store.oci.repository_name")
+	v.SetDefault("store.oci.repository_name", oci.DefaultRepositoryName)
 
-	_ = v.BindEnv("oci.auth_config.insecure")
-	v.SetDefault("oci.auth_config.insecure", oci.DefaultAuthConfigInsecure)
+	_ = v.BindEnv("store.oci.auth_config.insecure")
+	v.SetDefault("store.oci.auth_config.insecure", oci.DefaultAuthConfigInsecure)
 
-	_ = v.BindEnv("oci.auth_config.username")
-	_ = v.BindEnv("oci.auth_config.password")
-	_ = v.BindEnv("oci.auth_config.access_token")
-	_ = v.BindEnv("oci.auth_config.refresh_token")
+	_ = v.BindEnv("store.oci.auth_config.username")
+	_ = v.BindEnv("store.oci.auth_config.password")
+	_ = v.BindEnv("store.oci.auth_config.access_token")
+	_ = v.BindEnv("store.oci.auth_config.refresh_token")
 
 	//
 	// Routing configuration

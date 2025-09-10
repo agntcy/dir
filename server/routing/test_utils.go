@@ -12,6 +12,7 @@ import (
 	"github.com/agntcy/dir/server/config"
 	routingconfig "github.com/agntcy/dir/server/routing/config"
 	"github.com/agntcy/dir/server/store"
+	storeconfig "github.com/agntcy/dir/server/store/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
@@ -29,9 +30,11 @@ func newTestServer(t *testing.T, ctx context.Context, bootPeers []string) *route
 	// Use a unique temporary directory for each test to avoid datastore sharing
 	opts := types.NewOptions(
 		&config.Config{
-			Provider: string(store.OCI),
-			OCI: ociconfig.Config{
-				LocalDir: t.TempDir(),
+			Store: storeconfig.Config{
+				Provider: string(store.OCI),
+				OCI: ociconfig.Config{
+					LocalDir: t.TempDir(),
+				},
 			},
 			Routing: routingconfig.Config{
 				ListenAddress:   "/ip4/0.0.0.0/tcp/0",
