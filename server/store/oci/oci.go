@@ -87,7 +87,7 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 
 	// Marshal the record using canonical JSON marshaling first
 	// This ensures consistent bytes for both CID calculation and storage
-	recordBytes, err := record.MarshalOASF()
+	recordBytes, err := record.Marshal()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to marshal record: %v", err)
 	}
@@ -265,7 +265,7 @@ func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.Record
 	}
 
 	// Unmarshal canonical JSON data back to Record
-	record, err := corev1.UnmarshalOASF(recordData)
+	record, err := corev1.UnmarshalRecord(recordData)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unmarshal record for CID %s: %v", ref.GetCid(), err)
 	}

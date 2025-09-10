@@ -98,6 +98,18 @@ func (r *Record) Marshal() ([]byte, error) {
 	return canonicalBytes, nil
 }
 
+func (r *Record) GetSchemaVersion() string {
+	if r == nil || r.GetData() == nil {
+		return ""
+	}
+
+	// Get schema version from raw using OASF SDK
+	schemaVersion, _ := converter.GetRecordSchemaVersion(&oasfcorev1.Object{
+		Data: r.GetData(),
+	})
+	return schemaVersion
+}
+
 // Decode decodes the Record's data into a concrete type using the OASF SDK.
 func (r *Record) Decode() (*decodingv1.DecodeRecordResponse, error) {
 	if r == nil || r.GetData() == nil {

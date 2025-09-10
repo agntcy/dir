@@ -30,8 +30,8 @@ func (r *Record) GetCid() string {
 	return r.RecordCID
 }
 
-func (r *Record) GetRecordData() types.RecordData {
-	return &RecordDataAdapter{record: r}
+func (r *Record) GetRecordData() (types.RecordData, error) {
+	return &RecordDataAdapter{record: r}, nil
 }
 
 // RecordDataAdapter adapts SQLite Record to central RecordData interface.
@@ -109,13 +109,19 @@ func (r *RecordDataAdapter) GetPreviousRecordCid() string {
 }
 
 func (d *DB) AddRecord(record types.Record) error {
-	recordData := record.GetRecordData()
+	// Extract record data
+	recordData, err := record.GetRecordData()
+	if err != nil {
+		return fmt.Errorf("failed to get record data: %w", err)
+	}
+
+	// Get CID
 	cid := record.GetCid()
 
 	// Check if record already exists
 	var existingRecord Record
 
-	err := d.gormDB.Where("record_cid = ?", cid).First(&existingRecord).Error
+	err = d.gormDB.Where("record_cid = ?", cid).First(&existingRecord).Error
 	if err == nil {
 		// Record exists, skip insert
 		logger.Debug("Record already exists in search database, skipping insert", "record_cid", existingRecord.RecordCID, "cid", cid)

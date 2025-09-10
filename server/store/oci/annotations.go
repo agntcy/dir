@@ -22,22 +22,15 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 
 	// Use adapter pattern to get version-agnostic access to record data
 	adapter := adapters.NewRecordAdapter(record)
-	recordData := adapter.GetRecordData()
+	recordData, err := adapter.GetRecordData()
 
-	if recordData == nil {
+	if err != nil {
 		// Return minimal annotations if no valid data
 		return annotations
 	}
 
-	// Determine OASF version
-	switch record.GetData().(type) {
-	case *corev1.Record_V1:
-		annotations[ManifestKeyOASFVersion] = "v0.3.1"
-	case *corev1.Record_V2:
-		annotations[ManifestKeyOASFVersion] = "v0.4.0"
-	case *corev1.Record_V3:
-		annotations[ManifestKeyOASFVersion] = "v0.5.0"
-	}
+	// Add version details
+	annotations[ManifestKeyOASFVersion] = record.GetSchemaVersion()
 
 	// Core identity fields (version-agnostic via adapter)
 	if name := recordData.GetName(); name != "" {

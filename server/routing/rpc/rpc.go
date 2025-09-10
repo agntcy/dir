@@ -97,7 +97,7 @@ func (r *RPCAPI) Pull(ctx context.Context, in *corev1.RecordRef, out *PullRespon
 		return status.Errorf(st.Code(), "failed to pull: %s", st.Message())
 	}
 
-	canonicalBytes, err := record.MarshalOASF()
+	canonicalBytes, err := record.Marshal()
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to marshal record: %v", err)
 	}
@@ -167,7 +167,7 @@ func (s *Service) Pull(ctx context.Context, peer peer.ID, req *corev1.RecordRef)
 		return nil, status.Errorf(codes.Internal, "failed to call remote peer: %v", err)
 	}
 
-	record, err := corev1.UnmarshalOASF(resp.Data)
+	record, err := corev1.UnmarshalRecord(resp.Data)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unmarshal record: %v", err)
 	}

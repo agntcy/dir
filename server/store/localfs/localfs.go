@@ -71,7 +71,7 @@ func (c *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 	}
 
 	// Marshal record for file storage
-	recordBytes, err := record.MarshalOASF()
+	recordBytes, err := record.Marshal()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to marshal record: %v", err)
 	}
@@ -164,7 +164,7 @@ func (c *store) Pull(_ context.Context, ref *corev1.RecordRef) (*corev1.Record, 
 	}
 
 	// Unmarshal OASF data back to Record (consistent with MarshalOASF used in Push)
-	record, err := corev1.UnmarshalOASF(recordData)
+	record, err := corev1.UnmarshalRecord(recordData)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to unmarshal OASF record: %v", err)
 	}

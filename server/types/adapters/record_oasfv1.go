@@ -12,11 +12,11 @@ import (
 
 // V1DataAdapter adapts objectsv1.Agent to types.RecordData interface.
 type V1DataAdapter struct {
-	agent *objectsv1.Agent
+	agent *objectsv1.Record
 }
 
 // NewV1DataAdapter creates a new V1DataAdapter.
-func NewV1DataAdapter(agent *objectsv1.Agent) *V1DataAdapter {
+func NewV1DataAdapter(agent *objectsv1.Record) *V1DataAdapter {
 	return &V1DataAdapter{agent: agent}
 }
 

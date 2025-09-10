@@ -6,10 +6,13 @@ package adapters
 import (
 	"fmt"
 
+	decodingv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/decoding/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+var _ types.Record = (*RecordAdapter)(nil)
 
 // RecordAdapter adapts corev1.Record to types.Record interface.
 type RecordAdapter struct {
@@ -27,14 +30,20 @@ func (r *RecordAdapter) GetCid() string {
 }
 
 // GetRecordData implements types.Record interface.
-func (r *RecordAdapter) GetRecordData() types.RecordData {
-	switch data := r.record.GetData().(type) {
-	case *corev1.Record_V1:
-		return NewV1DataAdapter(data.V1)
-	case *corev1.Record_V3:
-		return NewV3DataAdapter(data.V3)
+func (r *RecordAdapter) GetRecordData() (types.RecordData, error) {
+	// Decode record
+	decoded, err := r.record.Decode()
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode record: %w", err)
+	}
+
+	switch data := decoded.GetRecord().(type) {
+	case *decodingv1.DecodeRecordResponse_V1Alpha0:
+		return NewV1DataAdapter(data.V1Alpha0), nil
+	case *decodingv1.DecodeRecordResponse_V1Alpha1:
+		return NewV3DataAdapter(data.V1Alpha1), nil
 	default:
-		return nil
+		return nil, fmt.Errorf("unsupported record type: %T", data)
 	}
 }
 

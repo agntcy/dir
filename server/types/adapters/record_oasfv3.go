@@ -119,7 +119,7 @@ func (a *V3DataAdapter) GetExtensions() []types.Extension {
 		return nil
 	}
 
-	extensions := a.record.GetExtensions()
+	extensions := a.record.GetModules()
 	result := make([]types.Extension, len(extensions))
 
 	for i, extension := range extensions {
@@ -222,11 +222,11 @@ func (s *V3SignatureAdapter) GetContentBundle() string {
 
 // V3ExtensionAdapter adapts objectsv3.Extension to types.Extension interface.
 type V3ExtensionAdapter struct {
-	extension *objectsv3.Extension
+	extension *objectsv3.Module
 }
 
 // NewV3ExtensionAdapter creates a new V3ExtensionAdapter.
-func NewV3ExtensionAdapter(extension *objectsv3.Extension) *V3ExtensionAdapter {
+func NewV3ExtensionAdapter(extension *objectsv3.Module) *V3ExtensionAdapter {
 	return &V3ExtensionAdapter{extension: extension}
 }
 
@@ -254,7 +254,8 @@ func (e *V3ExtensionAdapter) GetVersion() string {
 		return ""
 	}
 
-	return e.extension.GetVersion()
+	// TODO: not implemented in OASFV3 yet
+	return ""
 }
 
 // GetData implements types.Extension interface.

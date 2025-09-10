@@ -5,7 +5,7 @@ package types
 
 type Record interface {
 	GetCid() string
-	GetRecordData() RecordData
+	GetRecordData() (RecordData, error)
 }
 
 type RecordMeta interface {
