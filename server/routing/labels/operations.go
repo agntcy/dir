@@ -15,6 +15,8 @@ import (
 
 var labelLogger = logging.Logger("labels")
 
+const featuresSchemaPrefix = "schema.oasf.agntcy.org/features/"
+
 // GetLabels extracts all labels from a record across all supported namespaces.
 // This is a pure function that can be used by both local and remote routing operations.
 //
@@ -52,7 +54,8 @@ func GetLabels(record *corev1.Record) []Label {
 
 	// Extract record features from extensions
 	for _, ext := range recordData.GetExtensions() {
-		featureLabel := Label(LabelTypeFeature.Prefix() + ext.GetName())
+		name := strings.TrimPrefix(ext.GetName(), featuresSchemaPrefix)
+		featureLabel := Label(LabelTypeFeature.Prefix() + name)
 		labels = append(labels, featureLabel)
 	}
 
