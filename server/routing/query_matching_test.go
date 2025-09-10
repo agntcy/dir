@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +16,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 	testCases := []struct {
 		name     string
 		query    *routingv1.RecordQuery
-		labels   []string
+		labels   []labels.Label
 		expected bool
 	}{
 		// Skill queries
@@ -25,7 +26,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
 				Value: "AI",
 			},
-			labels:   []string{"/skills/AI", "/skills/web-development"},
+			labels:   []labels.Label{labels.Label("/skills/AI"), labels.Label("/skills/web-development")},
 			expected: true,
 		},
 		{
@@ -34,7 +35,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
 				Value: "AI",
 			},
-			labels:   []string{"/skills/AI/ML", "/skills/web-development"},
+			labels:   []labels.Label{labels.Label("/skills/AI/ML"), labels.Label("/skills/web-development")},
 			expected: true,
 		},
 		{
@@ -43,7 +44,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
 				Value: "blockchain",
 			},
-			labels:   []string{"/skills/AI", "/skills/web-development"},
+			labels:   []labels.Label{labels.Label("/skills/AI"), labels.Label("/skills/web-development")},
 			expected: false,
 		},
 		{
@@ -52,7 +53,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
 				Value: "AI/ML/deep-learning",
 			},
-			labels:   []string{"/skills/AI/ML", "/skills/web-development"},
+			labels:   []labels.Label{labels.Label("/skills/AI/ML"), labels.Label("/skills/web-development")},
 			expected: false,
 		},
 
@@ -63,7 +64,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
 				Value: "docker-image",
 			},
-			labels:   []string{"/locators/docker-image", "/skills/AI"},
+			labels:   []labels.Label{labels.Label("/locators/docker-image"), labels.Label("/skills/AI")},
 			expected: true,
 		},
 		{
@@ -72,7 +73,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
 				Value: "git-repo",
 			},
-			labels:   []string{"/locators/docker-image", "/skills/AI"},
+			labels:   []labels.Label{labels.Label("/locators/docker-image"), labels.Label("/skills/AI")},
 			expected: false,
 		},
 
@@ -83,7 +84,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED,
 				Value: "anything",
 			},
-			labels:   []string{"/skills/AI"},
+			labels:   []labels.Label{labels.Label("/skills/AI")},
 			expected: true,
 		},
 		{
@@ -92,7 +93,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED,
 				Value: "anything",
 			},
-			labels:   []string{},
+			labels:   []labels.Label{},
 			expected: true,
 		},
 
@@ -103,7 +104,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
 				Value: "AI",
 			},
-			labels:   []string{},
+			labels:   []labels.Label{},
 			expected: false,
 		},
 		{
@@ -112,7 +113,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
 				Value: "ai", // lowercase
 			},
-			labels:   []string{"/skills/AI"}, // uppercase
+			labels:   []labels.Label{labels.Label("/skills/AI")}, // uppercase
 			expected: false,
 		},
 	}
@@ -130,12 +131,17 @@ func TestMatchesAllQueries(t *testing.T) {
 	testCID := "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi"
 
 	// Mock label retriever that returns predefined labels
-	mockLabelRetriever := func(_ context.Context, cid string) []string {
+	mockLabelRetriever := func(_ context.Context, cid string) []labels.Label {
 		if cid == testCID {
-			return []string{"/skills/AI", "/skills/AI/ML", "/domains/technology", "/locators/docker-image"}
+			return []labels.Label{
+				labels.Label("/skills/AI"),
+				labels.Label("/skills/AI/ML"),
+				labels.Label("/domains/technology"),
+				labels.Label("/locators/docker-image"),
+			}
 		}
 
-		return []string{}
+		return []labels.Label{}
 	}
 
 	testCases := []struct {
@@ -290,7 +296,7 @@ func TestGetMatchingQueries(t *testing.T) {
 func TestQueryMatchingEdgeCases(t *testing.T) {
 	t.Run("nil_query", func(t *testing.T) {
 		// This should not panic
-		result := QueryMatchesLabels(nil, []string{"/skills/AI"})
+		result := QueryMatchesLabels(nil, []labels.Label{labels.Label("/skills/AI")})
 		assert.False(t, result)
 	})
 
@@ -299,7 +305,7 @@ func TestQueryMatchingEdgeCases(t *testing.T) {
 			Type:  routingv1.RecordQueryType(999), // Unknown type
 			Value: "test",
 		}
-		result := QueryMatchesLabels(query, []string{"/skills/AI"})
+		result := QueryMatchesLabels(query, []labels.Label{labels.Label("/skills/AI")})
 		assert.False(t, result)
 	})
 
@@ -308,7 +314,7 @@ func TestQueryMatchingEdgeCases(t *testing.T) {
 			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
 			Value: "",
 		}
-		result := QueryMatchesLabels(query, []string{"/skills/"})
+		result := QueryMatchesLabels(query, []labels.Label{labels.Label("/skills/")})
 		assert.True(t, result) // Empty value matches "/skills/" prefix
 	})
 
@@ -327,16 +333,28 @@ func TestQueryMatchingIntegration(t *testing.T) {
 	ctx := t.Context()
 
 	// Test with a more complex label retriever
-	complexLabelRetriever := func(_ context.Context, cid string) []string {
+	complexLabelRetriever := func(_ context.Context, cid string) []labels.Label {
 		switch cid {
 		case "ai-record":
-			return []string{"/skills/AI", "/skills/AI/ML", "/skills/AI/NLP"}
+			return []labels.Label{
+				labels.Label("/skills/AI"),
+				labels.Label("/skills/AI/ML"),
+				labels.Label("/skills/AI/NLP"),
+			}
 		case "web-record":
-			return []string{"/skills/web-development", "/skills/javascript", "/locators/git-repo"}
+			return []labels.Label{
+				labels.Label("/skills/web-development"),
+				labels.Label("/skills/javascript"),
+				labels.Label("/locators/git-repo"),
+			}
 		case "mixed-record":
-			return []string{"/skills/AI", "/skills/web-development", "/locators/docker-image"}
+			return []labels.Label{
+				labels.Label("/skills/AI"),
+				labels.Label("/skills/web-development"),
+				labels.Label("/locators/docker-image"),
+			}
 		default:
-			return []string{}
+			return []labels.Label{}
 		}
 	}
 

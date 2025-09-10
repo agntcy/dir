@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
 	"github.com/ipfs/go-datastore"
 )
@@ -39,36 +40,38 @@ type Metrics struct {
 	Data map[string]LabelMetric `json:"data"` // Map of label name → frequency count
 }
 
-func (m *Metrics) increment(label string) {
-	if _, ok := m.Data[label]; !ok {
-		m.Data[label] = LabelMetric{
-			Name:  label,
+func (m *Metrics) increment(label labels.Label) {
+	labelStr := label.String()
+	if _, ok := m.Data[labelStr]; !ok {
+		m.Data[labelStr] = LabelMetric{
+			Name:  labelStr,
 			Total: 0,
 		}
 	}
 
-	m.Data[label] = LabelMetric{
-		Name:  label,
-		Total: m.Data[label].Total + 1,
+	m.Data[labelStr] = LabelMetric{
+		Name:  labelStr,
+		Total: m.Data[labelStr].Total + 1,
 	}
 }
 
-func (m *Metrics) decrement(label string) {
-	if _, ok := m.Data[label]; !ok {
+func (m *Metrics) decrement(label labels.Label) {
+	labelStr := label.String()
+	if _, ok := m.Data[labelStr]; !ok {
 		return
 	}
 
-	currentTotal := m.Data[label].Total
+	currentTotal := m.Data[labelStr].Total
 	if currentTotal > 0 {
-		m.Data[label] = LabelMetric{
-			Name:  label,
+		m.Data[labelStr] = LabelMetric{
+			Name:  labelStr,
 			Total: currentTotal - 1,
 		}
 	}
 
 	// Remove the label from the map if the total is zero.
-	if m.Data[label].Total == 0 {
-		delete(m.Data, label)
+	if m.Data[labelStr].Total == 0 {
+		delete(m.Data, labelStr)
 	}
 }
 

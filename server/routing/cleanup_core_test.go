@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/server/datastore"
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -45,7 +46,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 		}
 
 		for _, tl := range testLabels {
-			enhancedKey := BuildEnhancedLabelKey(tl.label, testCID, tl.peerID)
+			enhancedKey := labels.BuildEnhancedLabelKey(labels.Label(tl.label), testCID, tl.peerID)
 			err = dstore.Put(ctx, ipfsdatastore.NewKey(enhancedKey), []byte("metadata"))
 			require.NoError(t, err)
 		}
@@ -61,7 +62,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 
 		// Verify label cleanup
 		for _, tl := range testLabels {
-			enhancedKey := BuildEnhancedLabelKey(tl.label, testCID, tl.peerID)
+			enhancedKey := labels.BuildEnhancedLabelKey(labels.Label(tl.label), testCID, tl.peerID)
 			exists, err := dstore.Has(ctx, ipfsdatastore.NewKey(enhancedKey))
 			require.NoError(t, err)
 
@@ -79,12 +80,12 @@ func TestCleanup_CoreLogic(t *testing.T) {
 
 		testCases := []struct {
 			name     string
-			metadata *LabelMetadata
+			metadata *labels.LabelMetadata
 			isStale  bool
 		}{
 			{
 				name: "fresh_label",
-				metadata: &LabelMetadata{
+				metadata: &labels.LabelMetadata{
 					Timestamp: now.Add(-time.Hour),
 					LastSeen:  now.Add(-time.Hour),
 				},
@@ -92,7 +93,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 			},
 			{
 				name: "stale_label",
-				metadata: &LabelMetadata{
+				metadata: &labels.LabelMetadata{
 					Timestamp: now.Add(-MaxLabelAge - time.Hour),
 					LastSeen:  now.Add(-MaxLabelAge - time.Hour),
 				},
@@ -100,7 +101,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 			},
 			{
 				name: "borderline_fresh",
-				metadata: &LabelMetadata{
+				metadata: &labels.LabelMetadata{
 					Timestamp: now.Add(-MaxLabelAge + time.Minute),
 					LastSeen:  now.Add(-MaxLabelAge + time.Minute),
 				},
@@ -108,7 +109,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 			},
 			{
 				name: "borderline_stale",
-				metadata: &LabelMetadata{
+				metadata: &labels.LabelMetadata{
 					Timestamp: now.Add(-MaxLabelAge - time.Minute),
 					LastSeen:  now.Add(-MaxLabelAge - time.Minute),
 				},
@@ -153,7 +154,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				// Test the core filtering logic
-				keyPeerID := ExtractPeerIDFromKey(tc.key)
+				keyPeerID := labels.ExtractPeerIDFromKey(tc.key)
 				isRemote := (keyPeerID != localPeerID) || (keyPeerID == "")
 				assert.Equal(t, tc.expected, isRemote)
 			})
@@ -179,7 +180,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, label := range labelsToDelete {
-			enhancedKey := BuildEnhancedLabelKey(label, testCID, localPeerID)
+			enhancedKey := labels.BuildEnhancedLabelKey(labels.Label(label), testCID, localPeerID)
 			err = dstore.Put(ctx, ipfsdatastore.NewKey(enhancedKey), []byte("metadata"))
 			require.NoError(t, err)
 		}
@@ -232,43 +233,31 @@ func simulateCleanupLabelsForCID(ctx context.Context, dstore types.Datastore, ci
 		keysDeleted++
 	}
 
-	// Find and remove all label keys for this CID
-	namespaces := []string{"/skills/", "/domains/", "/features/", "/locators/"}
+	// Find and remove all label keys for this CID using shared namespace iteration
+	entries, err := QueryAllNamespaces(ctx, dstore, true) // Include locators for complete cleanup
+	if err != nil {
+		return false
+	}
 
-	for _, namespace := range namespaces {
-		labelResults, err := dstore.Query(ctx, query.Query{
-			Prefix: namespace,
-		})
+	for _, entry := range entries {
+		// Parse enhanced key
+		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
+			// Delete malformed keys
+			if err := batch.Delete(ctx, ipfsdatastore.NewKey(entry.Key)); err == nil {
+				keysDeleted++
+			}
+
 			continue
 		}
 
-		for result := range labelResults.Next() {
-			if result.Error != nil {
-				continue
-			}
-
-			// Parse enhanced key
-			_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
-			if err != nil {
-				// Delete malformed keys
-				if err := batch.Delete(ctx, ipfsdatastore.NewKey(result.Key)); err == nil {
-					keysDeleted++
-				}
-
-				continue
-			}
-
-			// Check if this key matches our CID and is from local peer
-			if keyCID == cid && keyPeerID == localPeerID {
-				labelKey := ipfsdatastore.NewKey(result.Key)
-				if err := batch.Delete(ctx, labelKey); err == nil {
-					keysDeleted++
-				}
+		// Check if this key matches our CID and is from local peer
+		if keyCID == cid && keyPeerID == localPeerID {
+			labelKey := ipfsdatastore.NewKey(entry.Key)
+			if err := batch.Delete(ctx, labelKey); err == nil {
+				keysDeleted++
 			}
 		}
-
-		labelResults.Close()
 	}
 
 	// Commit the batch deletion

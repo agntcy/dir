@@ -6,6 +6,7 @@ package validators
 import (
 	"testing"
 
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -330,65 +331,69 @@ func TestValidators_Select(t *testing.T) {
 	}
 }
 
-func TestNamespaceType(t *testing.T) {
+func TestLabelTypeIntegration(t *testing.T) {
+	// Test that LabelType works correctly with validators
 	// Test String() method
-	assert.Equal(t, "skills", NamespaceSkills.String())
-	assert.Equal(t, "domains", NamespaceDomains.String())
-	assert.Equal(t, "features", NamespaceFeatures.String())
+	assert.Equal(t, "skills", labels.LabelTypeSkill.String())
+	assert.Equal(t, "domains", labels.LabelTypeDomain.String())
+	assert.Equal(t, "features", labels.LabelTypeFeature.String())
+	assert.Equal(t, "locators", labels.LabelTypeLocator.String())
 
 	// Test Prefix() method
-	assert.Equal(t, "/skills/", NamespaceSkills.Prefix())
-	assert.Equal(t, "/domains/", NamespaceDomains.Prefix())
-	assert.Equal(t, "/features/", NamespaceFeatures.Prefix())
+	assert.Equal(t, "/skills/", labels.LabelTypeSkill.Prefix())
+	assert.Equal(t, "/domains/", labels.LabelTypeDomain.Prefix())
+	assert.Equal(t, "/features/", labels.LabelTypeFeature.Prefix())
+	assert.Equal(t, "/locators/", labels.LabelTypeLocator.Prefix())
 
 	// Test IsValid() method
-	assert.True(t, NamespaceSkills.IsValid())
-	assert.True(t, NamespaceDomains.IsValid())
-	assert.True(t, NamespaceFeatures.IsValid())
-	assert.False(t, NamespaceType("invalid").IsValid())
+	assert.True(t, labels.LabelTypeSkill.IsValid())
+	assert.True(t, labels.LabelTypeDomain.IsValid())
+	assert.True(t, labels.LabelTypeFeature.IsValid())
+	assert.True(t, labels.LabelTypeLocator.IsValid())
+	assert.False(t, labels.LabelType("invalid").IsValid())
 
-	// Test ParseNamespace() function
-	ns, valid := ParseNamespace("skills")
+	// Test ParseLabelType() function
+	lt, valid := labels.ParseLabelType("skills")
 	assert.True(t, valid)
-	assert.Equal(t, NamespaceSkills, ns)
+	assert.Equal(t, labels.LabelTypeSkill, lt)
 
-	ns, valid = ParseNamespace("invalid")
+	lt, valid = labels.ParseLabelType("invalid")
 	assert.False(t, valid)
-	assert.Equal(t, NamespaceType(""), ns)
+	assert.Equal(t, labels.LabelTypeUnknown, lt)
 
-	// Test AllNamespaces() function
-	all := AllNamespaces()
+	// Test AllLabelTypes() function
+	all := labels.AllLabelTypes()
 	assert.Len(t, all, 4)
-	assert.Contains(t, all, NamespaceSkills)
-	assert.Contains(t, all, NamespaceDomains)
-	assert.Contains(t, all, NamespaceFeatures)
-	assert.Contains(t, all, NamespaceLocators)
+	assert.Contains(t, all, labels.LabelTypeSkill)
+	assert.Contains(t, all, labels.LabelTypeDomain)
+	assert.Contains(t, all, labels.LabelTypeFeature)
+	assert.Contains(t, all, labels.LabelTypeLocator)
 
-	// Test IsValidNamespaceKey() function
-	assert.True(t, IsValidNamespaceKey("/skills/golang/CID123"))
-	assert.True(t, IsValidNamespaceKey("/domains/web/CID123"))
-	assert.True(t, IsValidNamespaceKey("/features/chat/CID123"))
-	assert.True(t, IsValidNamespaceKey("/locators/docker-image/CID123"))
-	assert.False(t, IsValidNamespaceKey("/invalid/test/CID123"))
-	assert.False(t, IsValidNamespaceKey("/records/CID123"))
-	assert.False(t, IsValidNamespaceKey("skills/golang/CID123")) // missing leading slash
+	// Test IsValidLabelKey() function
+	assert.True(t, labels.IsValidLabelKey("/skills/golang/CID123"))
+	assert.True(t, labels.IsValidLabelKey("/domains/web/CID123"))
+	assert.True(t, labels.IsValidLabelKey("/features/chat/CID123"))
+	assert.True(t, labels.IsValidLabelKey("/locators/docker-image/CID123"))
+	assert.False(t, labels.IsValidLabelKey("/invalid/test/CID123"))
+	assert.False(t, labels.IsValidLabelKey("/records/CID123"))
+	assert.False(t, labels.IsValidLabelKey("skills/golang/CID123")) // missing leading slash
 
-	// Test GetNamespaceFromKey() function
-	ns, found := GetNamespaceFromKey("/skills/golang/CID123")
+	// Test GetLabelTypeFromKey() function
+	lt, found := labels.GetLabelTypeFromKey("/skills/golang/CID123")
 	assert.True(t, found)
-	assert.Equal(t, NamespaceSkills, ns)
+	assert.Equal(t, labels.LabelTypeSkill, lt)
 
-	ns, found = GetNamespaceFromKey("/domains/web/CID123")
+	lt, found = labels.GetLabelTypeFromKey("/domains/web/CID123")
 	assert.True(t, found)
-	assert.Equal(t, NamespaceDomains, ns)
+	assert.Equal(t, labels.LabelTypeDomain, lt)
 
-	ns, found = GetNamespaceFromKey("/features/chat/CID123")
+	lt, found = labels.GetLabelTypeFromKey("/features/chat/CID123")
 	assert.True(t, found)
-	assert.Equal(t, NamespaceFeatures, ns)
+	assert.Equal(t, labels.LabelTypeFeature, lt)
 
-	ns, found = GetNamespaceFromKey("/invalid/test/CID123")
+	lt, found = labels.GetLabelTypeFromKey("/invalid/test/CID123")
 	assert.False(t, found)
-	assert.Equal(t, NamespaceType(""), ns)
+	assert.Equal(t, labels.LabelTypeUnknown, lt)
 }
 
 func TestCreateLabelValidators(t *testing.T) {
@@ -396,16 +401,16 @@ func TestCreateLabelValidators(t *testing.T) {
 
 	// Test that all expected validators are created
 	assert.Len(t, validators, 4)
-	assert.Contains(t, validators, NamespaceSkills.String())
-	assert.Contains(t, validators, NamespaceDomains.String())
-	assert.Contains(t, validators, NamespaceFeatures.String())
-	assert.Contains(t, validators, NamespaceLocators.String())
+	assert.Contains(t, validators, labels.LabelTypeSkill.String())
+	assert.Contains(t, validators, labels.LabelTypeDomain.String())
+	assert.Contains(t, validators, labels.LabelTypeFeature.String())
+	assert.Contains(t, validators, labels.LabelTypeLocator.String())
 
 	// Test that validators are of correct types
-	assert.IsType(t, &SkillValidator{}, validators[NamespaceSkills.String()])
-	assert.IsType(t, &DomainValidator{}, validators[NamespaceDomains.String()])
-	assert.IsType(t, &FeatureValidator{}, validators[NamespaceFeatures.String()])
-	assert.IsType(t, &LocatorValidator{}, validators[NamespaceLocators.String()])
+	assert.IsType(t, &SkillValidator{}, validators[labels.LabelTypeSkill.String()])
+	assert.IsType(t, &DomainValidator{}, validators[labels.LabelTypeDomain.String()])
+	assert.IsType(t, &FeatureValidator{}, validators[labels.LabelTypeFeature.String()])
+	assert.IsType(t, &LocatorValidator{}, validators[labels.LabelTypeLocator.String()])
 }
 
 func TestValidateLabelKey(t *testing.T) {
@@ -525,28 +530,28 @@ func TestBaseValidator_validateKeyFormat(t *testing.T) {
 		{
 			name:              "valid key format",
 			key:               "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
-			expectedNamespace: NamespaceSkills.String(),
+			expectedNamespace: labels.LabelTypeSkill.String(),
 			wantError:         false,
 			expectedParts:     []string{"", "skills", "programming", "golang", "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku", "Peer1"},
 		},
 		{
 			name:              "invalid format - too few parts",
 			key:               "/skills/programming",
-			expectedNamespace: NamespaceSkills.String(),
+			expectedNamespace: labels.LabelTypeSkill.String(),
 			wantError:         true,
 			errorMsg:          "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
 		},
 		{
 			name:              "wrong namespace",
 			key:               "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
-			expectedNamespace: NamespaceSkills.String(),
+			expectedNamespace: labels.LabelTypeSkill.String(),
 			wantError:         true,
 			errorMsg:          "invalid namespace: expected skills, got domains",
 		},
 		{
 			name:              "invalid CID",
 			key:               "/skills/programming/golang/invalid-cid/Peer1",
-			expectedNamespace: NamespaceSkills.String(),
+			expectedNamespace: labels.LabelTypeSkill.String(),
 			wantError:         true,
 			errorMsg:          "invalid CID format",
 		},

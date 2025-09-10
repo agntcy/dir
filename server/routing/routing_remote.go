@@ -12,6 +12,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/routing/rpc"
 	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
@@ -31,11 +32,65 @@ import (
 var remoteLogger = logging.Logger("routing/remote")
 
 // NamespaceEntry contains processed namespace query data.
-// This is used by getAllNamespaceEntries to return individual entries with resource management handled internally.
+// This is used by namespace iteration functions for routing operations.
 type NamespaceEntry struct {
 	Namespace string
 	Key       string
 	Value     []byte
+}
+
+// QueryAllNamespaces queries all supported label namespaces and returns processed entries.
+// This centralizes namespace iteration and datastore querying, eliminating code duplication
+// between local and remote routing operations. All resource management is handled internally.
+func QueryAllNamespaces(ctx context.Context, dstore types.Datastore, includeLocators bool) ([]NamespaceEntry, error) {
+	var entries []NamespaceEntry
+
+	// Define which namespaces to query
+	namespaces := []string{
+		labels.LabelTypeSkill.Prefix(),
+		labels.LabelTypeDomain.Prefix(),
+		labels.LabelTypeFeature.Prefix(),
+	}
+
+	// Include locators namespace if requested (local routing needs it, remote might not)
+	if includeLocators {
+		namespaces = append(namespaces, labels.LabelTypeLocator.Prefix())
+	}
+
+	for _, namespace := range namespaces {
+		// Check for context cancellation
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("namespace query canceled: %w", ctx.Err())
+		default:
+		}
+
+		results, err := dstore.Query(ctx, query.Query{Prefix: namespace})
+		if err != nil {
+			remoteLogger.Warn("Failed to query namespace", "namespace", namespace, "error", err)
+
+			continue
+		}
+
+		// Process results and handle cleanup
+		func() {
+			defer results.Close()
+
+			for result := range results.Next() {
+				if result.Error != nil {
+					continue
+				}
+
+				entries = append(entries, NamespaceEntry{
+					Namespace: namespace,
+					Key:       result.Key,
+					Value:     result.Value,
+				})
+			}
+		}()
+	}
+
+	return entries, nil
 }
 
 // routeRemote handles routing across the network with pull-based label caching.
@@ -80,9 +135,9 @@ func newRemote(ctx context.Context,
 
 				labelValidators := validators.CreateLabelValidators()
 				validator := record.NamespacedValidator{
-					validators.NamespaceSkills.String():   labelValidators[validators.NamespaceSkills.String()],
-					validators.NamespaceDomains.String():  labelValidators[validators.NamespaceDomains.String()],
-					validators.NamespaceFeatures.String(): labelValidators[validators.NamespaceFeatures.String()],
+					labels.LabelTypeSkill.String():   labelValidators[labels.LabelTypeSkill.String()],
+					labels.LabelTypeDomain.String():  labelValidators[labels.LabelTypeDomain.String()],
+					labels.LabelTypeFeature.String(): labelValidators[labels.LabelTypeFeature.String()],
 				}
 
 				return []dht.Option{
@@ -195,7 +250,7 @@ func (r *routeRemote) searchRemoteRecords(ctx context.Context, queries []*routin
 	remoteLogger.Debug("Starting remote search with OR logic and minimum threshold", "queries", len(queries), "minMatchScore", minMatchScore, "localPeerID", localPeerID)
 
 	// Query all namespaces to find remote records
-	entries, err := r.getAllNamespaceEntries(ctx)
+	entries, err := QueryAllNamespaces(ctx, r.dstore, false) // Remote doesn't need locators namespace
 	if err != nil {
 		remoteLogger.Error("Failed to get namespace entries for search", "error", err)
 
@@ -207,7 +262,7 @@ func (r *routeRemote) searchRemoteRecords(ctx context.Context, queries []*routin
 			break
 		}
 
-		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
+		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			remoteLogger.Warn("Failed to parse enhanced label key", "key", entry.Key, "error", err)
 
@@ -285,10 +340,10 @@ func (r *routeRemote) calculateMatchScore(ctx context.Context, cid string, queri
 }
 
 // getRemoteRecordLabels gets labels for a remote record by finding all enhanced keys for this CID/PeerID.
-func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID string) []string {
-	var labels []string
+func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID string) []labels.Label {
+	var labelList []labels.Label
 
-	entries, err := r.getAllNamespaceEntries(ctx)
+	entries, err := QueryAllNamespaces(ctx, r.dstore, false) // Remote doesn't need locators namespace
 	if err != nil {
 		remoteLogger.Error("Failed to get namespace entries for labels", "error", err)
 
@@ -296,17 +351,17 @@ func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID str
 	}
 
 	for _, entry := range entries {
-		label, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
+		label, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}
 
 		if keyCID == cid && keyPeerID == peerID {
-			labels = append(labels, label)
+			labelList = append(labelList, label)
 		}
 	}
 
-	return labels
+	return labelList
 }
 
 // createPeerInfo creates a Peer message from a PeerID string.
@@ -316,54 +371,6 @@ func (r *routeRemote) createPeerInfo(peerID string) *routingv1.Peer {
 		Id: peerID,
 		// Addresses could be populated from DHT peerstore if needed
 	}
-}
-
-// getAllNamespaceEntries queries all supported namespaces and returns processed entries.
-// This centralizes namespace iteration and datastore querying, eliminating code duplication.
-// All resource management is handled internally.
-func (r *routeRemote) getAllNamespaceEntries(ctx context.Context) ([]NamespaceEntry, error) {
-	var entries []NamespaceEntry
-
-	namespaces := []string{
-		validators.NamespaceSkills.Prefix(),
-		validators.NamespaceDomains.Prefix(),
-		validators.NamespaceFeatures.Prefix(),
-	}
-
-	for _, namespace := range namespaces {
-		// Check for context cancellation
-		select {
-		case <-ctx.Done():
-			return nil, fmt.Errorf("namespace query canceled: %w", ctx.Err())
-		default:
-		}
-
-		results, err := r.dstore.Query(ctx, query.Query{Prefix: namespace})
-		if err != nil {
-			remoteLogger.Warn("Failed to query namespace", "namespace", namespace, "error", err)
-
-			continue
-		}
-
-		// Process results and handle cleanup
-		func() {
-			defer results.Close()
-
-			for result := range results.Next() {
-				if result.Error != nil {
-					continue
-				}
-
-				entries = append(entries, NamespaceEntry{
-					Namespace: namespace,
-					Key:       result.Key,
-					Value:     result.Value,
-				})
-			}
-		}()
-	}
-
-	return entries, nil
 }
 
 func (r *routeRemote) handleNotify(ctx context.Context) {
@@ -415,8 +422,8 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 		return
 	}
 
-	labels := GetLabels(record)
-	if len(labels) == 0 {
+	labelList := labels.GetLabels(record)
+	if len(labelList) == 0 {
 		remoteLogger.Warn("No labels found in remote record", "cid", notif.Ref.GetCid(), "peer", peerIDStr)
 
 		return
@@ -425,10 +432,10 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 	now := time.Now()
 	cachedCount := 0
 
-	for _, label := range labels {
-		enhancedKey := BuildEnhancedLabelKey(label, notif.Ref.GetCid(), peerIDStr)
+	for _, label := range labelList {
+		enhancedKey := labels.BuildEnhancedLabelKey(label, notif.Ref.GetCid(), peerIDStr)
 
-		metadata := &LabelMetadata{
+		metadata := &labels.LabelMetadata{
 			Timestamp: now,
 			LastSeen:  now,
 		}
@@ -449,13 +456,13 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 	}
 
 	remoteLogger.Info("Successfully cached remote record labels via pull-based discovery",
-		"cid", notif.Ref.GetCid(), "peer", peerIDStr, "totalLabels", len(labels), "cached", cachedCount)
+		"cid", notif.Ref.GetCid(), "peer", peerIDStr, "totalLabels", len(labelList), "cached", cachedCount)
 }
 
 // hasRemoteRecordCached checks if we already have cached labels for this remote record.
 // This helps avoid duplicate work and identifies reannouncement events.
 func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID string) bool {
-	entries, err := r.getAllNamespaceEntries(ctx)
+	entries, err := QueryAllNamespaces(ctx, r.dstore, false) // Remote doesn't need locators namespace
 	if err != nil {
 		remoteLogger.Error("Failed to get namespace entries for cache check", "error", err)
 
@@ -464,7 +471,7 @@ func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID str
 
 	for _, entry := range entries {
 		// Parse enhanced key to check if it matches our CID/PeerID
-		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
+		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}
@@ -479,7 +486,7 @@ func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID str
 
 // updateLabelMetadataTimestamp updates the lastSeen timestamp for a single cached label entry.
 func (r *routeRemote) updateLabelMetadataTimestamp(ctx context.Context, key string, value []byte, timestamp time.Time) error {
-	var metadata LabelMetadata
+	var metadata labels.LabelMetadata
 	if err := json.Unmarshal(value, &metadata); err != nil {
 		return fmt.Errorf("failed to unmarshal label metadata: %w", err)
 	}
@@ -505,7 +512,7 @@ func (r *routeRemote) updateRemoteRecordLastSeen(ctx context.Context, cid, peerI
 	now := time.Now()
 	updatedCount := 0
 
-	entries, err := r.getAllNamespaceEntries(ctx)
+	entries, err := QueryAllNamespaces(ctx, r.dstore, false) // Remote doesn't need locators namespace
 	if err != nil {
 		remoteLogger.Error("Failed to get namespace entries for lastSeen update", "error", err)
 
@@ -514,7 +521,7 @@ func (r *routeRemote) updateRemoteRecordLastSeen(ctx context.Context, cid, peerI
 
 	for _, entry := range entries {
 		// Parse enhanced key to check if it matches our CID/PeerID
-		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
+		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}

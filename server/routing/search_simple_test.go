@@ -13,10 +13,9 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
-	"github.com/agntcy/dir/server/routing/validators"
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
 	ipfsdatastore "github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -60,8 +59,8 @@ func TestSearch_CoreLogic(t *testing.T) {
 	// Store test label metadata
 	for _, td := range testData {
 		for _, label := range td.labels {
-			enhancedKey := BuildEnhancedLabelKey(label, td.cid, td.peerID)
-			metadata := &LabelMetadata{
+			enhancedKey := labels.BuildEnhancedLabelKey(labels.Label(label), td.cid, td.peerID)
+			metadata := &labels.LabelMetadata{
 				Timestamp: time.Now(),
 				LastSeen:  time.Now(),
 			}
@@ -259,69 +258,54 @@ func simulateSearch(ctx context.Context, dstore types.Datastore, localPeerID str
 	processedCount := 0
 	limitInt := int(limit)
 
-	// Query all namespaces
-	namespaces := []string{
-		validators.NamespaceSkills.Prefix(),
-		validators.NamespaceDomains.Prefix(),
-		validators.NamespaceFeatures.Prefix(),
+	// Query all namespaces using shared function
+	entries, err := QueryAllNamespaces(ctx, dstore, false) // Test doesn't need locators
+	if err != nil {
+		return results
 	}
 
-	for _, namespace := range namespaces {
+	for _, entry := range entries {
 		if limitInt > 0 && processedCount >= limitInt {
 			break
 		}
 
-		labelResults, err := dstore.Query(ctx, query.Query{
-			Prefix: namespace,
-		})
+		// Parse enhanced key
+		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}
-		defer labelResults.Close()
 
-		for result := range labelResults.Next() {
-			if result.Error != nil {
-				continue
+		// Filter for REMOTE records only
+		if keyPeerID == localPeerID {
+			continue
+		}
+
+		// Avoid duplicates
+		if processedCIDs[keyCID] {
+			continue
+		}
+
+		// Check if matches all queries
+		if testMatchesAllQueriesSimple(ctx, dstore, keyCID, queries, keyPeerID) {
+			// Calculate score safely
+			score := safeIntToUint32(len(queries))
+			if len(queries) == 0 {
+				score = 1
 			}
 
-			// Parse enhanced key
-			_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
-			if err != nil {
-				continue
-			}
+			if score >= minMatchScore {
+				results = append(results, &routingv1.SearchResponse{
+					RecordRef:    &corev1.RecordRef{Cid: keyCID},
+					Peer:         &routingv1.Peer{Id: keyPeerID},
+					MatchQueries: queries,
+					MatchScore:   score,
+				})
 
-			// Filter for REMOTE records only
-			if keyPeerID == localPeerID {
-				continue
-			}
+				processedCIDs[keyCID] = true
+				processedCount++
 
-			// Avoid duplicates
-			if processedCIDs[keyCID] {
-				continue
-			}
-
-			// Check if matches all queries
-			if testMatchesAllQueriesSimple(ctx, dstore, keyCID, queries, keyPeerID) {
-				// Calculate score safely
-				score := safeIntToUint32(len(queries))
-				if len(queries) == 0 {
-					score = 1
-				}
-
-				if score >= minMatchScore {
-					results = append(results, &routingv1.SearchResponse{
-						RecordRef:    &corev1.RecordRef{Cid: keyCID},
-						Peer:         &routingv1.Peer{Id: keyPeerID},
-						MatchQueries: queries,
-						MatchScore:   score,
-					})
-
-					processedCIDs[keyCID] = true
-					processedCount++
-
-					if limitInt > 0 && processedCount >= limitInt {
-						break
-					}
+				if limitInt > 0 && processedCount >= limitInt {
+					break
 				}
 			}
 		}
@@ -336,44 +320,33 @@ func testMatchesAllQueriesSimple(ctx context.Context, dstore types.Datastore, ci
 		return true
 	}
 
-	// Get labels for this CID/PeerID
-	var labels []string
-
-	namespaces := []string{
-		validators.NamespaceSkills.Prefix(),
-		validators.NamespaceDomains.Prefix(),
-		validators.NamespaceFeatures.Prefix(),
+	// Get labels for this CID/PeerID using shared namespace iteration
+	entries, err := QueryAllNamespaces(ctx, dstore, false) // Test doesn't need locators
+	if err != nil {
+		return false
 	}
 
-	for _, namespace := range namespaces {
-		results, err := dstore.Query(ctx, query.Query{
-			Prefix: namespace,
-		})
+	var labelStrings []string
+
+	for _, entry := range entries {
+		label, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}
 
-		for result := range results.Next() {
-			if result.Error != nil {
-				continue
-			}
-
-			label, keyCID, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
-			if err != nil {
-				continue
-			}
-
-			if keyCID == cid && keyPeerID == peerID {
-				labels = append(labels, label)
-			}
+		if keyCID == cid && keyPeerID == peerID {
+			labelStrings = append(labelStrings, label.String())
 		}
-
-		results.Close()
 	}
 
-	// Use shared query matching logic
-	labelRetriever := func(_ context.Context, _ string) []string {
-		return labels
+	// Use shared query matching logic - convert strings to labels
+	labelRetriever := func(_ context.Context, _ string) []labels.Label {
+		labelList := make([]labels.Label, len(labelStrings))
+		for i, labelStr := range labelStrings {
+			labelList[i] = labels.Label(labelStr)
+		}
+
+		return labelList
 	}
 
 	return MatchesAllQueries(ctx, cid, queries, labelRetriever)

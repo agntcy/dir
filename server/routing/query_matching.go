@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/routing/validators"
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -17,7 +17,7 @@ var queryLogger = logging.Logger("routing/query")
 // LabelRetriever function type for injecting different label retrieval strategies.
 // This allows us to use the same query matching logic for both local and remote scenarios
 // while keeping the label retrieval implementation separate.
-type LabelRetriever func(ctx context.Context, cid string) []string
+type LabelRetriever func(ctx context.Context, cid string) []labels.Label
 
 // MatchesAllQueries checks if a record matches ALL provided queries using injected label retrieval.
 // This implements AND logic - all queries must match for the record to be considered a match.
@@ -57,7 +57,7 @@ func MatchesAllQueries(
 // differences between local and remote implementations.
 //
 //nolint:gocognit,cyclop // Complex but necessary logic for handling all query types with exact and prefix matching
-func QueryMatchesLabels(query *routingv1.RecordQuery, labels []string) bool {
+func QueryMatchesLabels(query *routingv1.RecordQuery, labelList []labels.Label) bool {
 	if query == nil {
 		return false
 	}
@@ -65,16 +65,21 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labels []string) bool {
 	switch query.GetType() {
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL:
 		// Check if any skill label matches the query
-		skillPrefix := validators.NamespaceSkills.Prefix()
-		targetSkill := skillPrefix + query.GetValue()
+		targetSkill := labels.LabelTypeSkill.Prefix() + query.GetValue()
 
-		for _, label := range labels {
+		for _, label := range labelList {
+			// Type-safe filtering: only check skill labels
+			if label.Type() != labels.LabelTypeSkill {
+				continue
+			}
+
+			labelStr := label.String()
 			// Exact match: /skills/category1/class1 matches "category1/class1"
-			if label == targetSkill {
+			if labelStr == targetSkill {
 				return true
 			}
 			// Prefix match: /skills/category2/class2 matches "category2"
-			if strings.HasPrefix(label, targetSkill+"/") {
+			if strings.HasPrefix(labelStr, targetSkill+"/") {
 				return true
 			}
 		}
@@ -83,12 +88,16 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labels []string) bool {
 
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
 		// Unified locator handling - use proper namespace prefix (fixing remote implementation)
-		locatorPrefix := validators.NamespaceLocators.Prefix()
-		targetLocator := locatorPrefix + query.GetValue()
+		targetLocator := labels.LabelTypeLocator.Prefix() + query.GetValue()
 
-		for _, label := range labels {
+		for _, label := range labelList {
+			// Type-safe filtering: only check locator labels
+			if label.Type() != labels.LabelTypeLocator {
+				continue
+			}
+
 			// Exact match: /locators/docker-image matches "docker-image"
-			if label == targetLocator {
+			if label.String() == targetLocator {
 				return true
 			}
 		}
@@ -97,16 +106,21 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labels []string) bool {
 
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN:
 		// Check if any domain label matches the query
-		domainPrefix := validators.NamespaceDomains.Prefix()
-		targetDomain := domainPrefix + query.GetValue()
+		targetDomain := labels.LabelTypeDomain.Prefix() + query.GetValue()
 
-		for _, label := range labels {
+		for _, label := range labelList {
+			// Type-safe filtering: only check domain labels
+			if label.Type() != labels.LabelTypeDomain {
+				continue
+			}
+
+			labelStr := label.String()
 			// Exact match: /domains/research matches "research"
-			if label == targetDomain {
+			if labelStr == targetDomain {
 				return true
 			}
 			// Prefix match: /domains/research/subfield matches "research"
-			if strings.HasPrefix(label, targetDomain+"/") {
+			if strings.HasPrefix(labelStr, targetDomain+"/") {
 				return true
 			}
 		}
@@ -115,16 +129,21 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labels []string) bool {
 
 	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_FEATURE:
 		// Check if any feature label matches the query
-		featurePrefix := validators.NamespaceFeatures.Prefix()
-		targetFeature := featurePrefix + query.GetValue()
+		targetFeature := labels.LabelTypeFeature.Prefix() + query.GetValue()
 
-		for _, label := range labels {
+		for _, label := range labelList {
+			// Type-safe filtering: only check feature labels
+			if label.Type() != labels.LabelTypeFeature {
+				continue
+			}
+
+			labelStr := label.String()
 			// Exact match: /features/runtime/language matches "runtime/language"
-			if label == targetFeature {
+			if labelStr == targetFeature {
 				return true
 			}
 			// Prefix match: /features/runtime/language/python matches "runtime/language"
-			if strings.HasPrefix(label, targetFeature+"/") {
+			if strings.HasPrefix(labelStr, targetFeature+"/") {
 				return true
 			}
 		}
@@ -148,7 +167,7 @@ func GetMatchingQueries(labelKey string, queries []*routingv1.RecordQuery) []*ro
 	var matchingQueries []*routingv1.RecordQuery
 
 	// Extract label from the enhanced key
-	label, _, _, err := ParseEnhancedLabelKey(labelKey)
+	label, _, _, err := labels.ParseEnhancedLabelKey(labelKey)
 	if err != nil {
 		queryLogger.Warn("Failed to parse enhanced label key for query matching", "key", labelKey, "error", err)
 
@@ -157,7 +176,7 @@ func GetMatchingQueries(labelKey string, queries []*routingv1.RecordQuery) []*ro
 
 	// Check which queries this label satisfies
 	for _, query := range queries {
-		if QueryMatchesLabels(query, []string{label}) {
+		if QueryMatchesLabels(query, []labels.Label{label}) {
 			matchingQueries = append(matchingQueries, query)
 		}
 	}

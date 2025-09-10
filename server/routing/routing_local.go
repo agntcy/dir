@@ -11,7 +11,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/routing/validators"
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-datastore"
@@ -83,10 +83,10 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 	// Update metrics for all record labels and store them locally for queries
 	// Note: This handles ALL local storage for both local-only and network scenarios
 	// Network announcements are handled separately by routing_remote when peers are available
-	labels := GetLabels(record)
-	for _, label := range labels {
+	labelList := labels.GetLabels(record)
+	for _, label := range labelList {
 		// Create minimal metadata (PeerID and CID now in key)
-		metadata := &LabelMetadata{
+		metadata := &labels.LabelMetadata{
 			Timestamp: time.Now(),
 			LastSeen:  time.Now(),
 		}
@@ -98,7 +98,7 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 		}
 
 		// Store with enhanced self-descriptive key: /skills/AI/CID123/Peer1
-		enhancedKey := BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
+		enhancedKey := labels.BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
 
 		labelKey := datastore.NewKey(enhancedKey)
 		if err := batch.Put(ctx, labelKey, metadataBytes); err != nil {
@@ -183,12 +183,18 @@ func (r *routeLocal) listLocalRecords(ctx context.Context, queries []*routingv1.
 		// Check if this record matches all queries (AND relationship)
 		if r.matchesAllQueries(ctx, cid, queries) {
 			// Get labels for this record
-			labels := r.getRecordLabelsEfficiently(ctx, cid)
+			internalLabels := r.getRecordLabelsEfficiently(ctx, cid)
+
+			// Convert []Label to []string for gRPC API boundary
+			apiLabels := make([]string, len(internalLabels))
+			for i, label := range internalLabels {
+				apiLabels[i] = label.String()
+			}
 
 			// Send the response
 			outCh <- &routingv1.ListResponse{
 				RecordRef: &corev1.RecordRef{Cid: cid},
-				Labels:    labels,
+				Labels:    apiLabels,
 			}
 
 			processedCount++
@@ -211,54 +217,34 @@ func (r *routeLocal) matchesAllQueries(ctx context.Context, cid string, queries 
 // getRecordLabelsEfficiently gets labels for a record by extracting them from datastore keys.
 // This completely avoids expensive Pull operations by using the fact that labels are stored as keys.
 // This function is designed to be resilient - it never returns an error, only logs warnings.
-func (r *routeLocal) getRecordLabelsEfficiently(ctx context.Context, cid string) []string {
-	var labels []string
+func (r *routeLocal) getRecordLabelsEfficiently(ctx context.Context, cid string) []labels.Label {
+	var labelList []labels.Label
 
-	// Query each namespace to find labels for this CID
-	namespaces := []string{
-		validators.NamespaceSkills.Prefix(),
-		validators.NamespaceDomains.Prefix(),
-		validators.NamespaceFeatures.Prefix(),
-		validators.NamespaceLocators.Prefix(),
+	// Use shared namespace iteration function (includes locators for local routing)
+	entries, err := QueryAllNamespaces(ctx, r.dstore, true) // Local routing needs locators namespace
+	if err != nil {
+		localLogger.Error("Failed to get namespace entries for labels", "cid", cid, "error", err)
+
+		return labelList
 	}
 
-	for _, namespace := range namespaces {
-		// Query all keys in this namespace
-		results, err := r.dstore.Query(ctx, query.Query{
-			Prefix: namespace,
-		})
+	// Find keys for this CID and local peer: "/skills/AI/ML/CID123/Peer1"
+	for _, entry := range entries {
+		// Parse the enhanced key to get components
+		label, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
-			localLogger.Warn("Failed to query namespace for labels", "namespace", namespace, "cid", cid, "error", err)
+			localLogger.Warn("Failed to parse enhanced label key", "key", entry.Key, "error", err)
 
 			continue
 		}
 
-		// Find keys for this CID and local peer: "/skills/AI/ML/CID123/Peer1"
-		for result := range results.Next() {
-			if result.Error != nil {
-				localLogger.Warn("Error reading label key", "key", result.Key, "error", result.Error)
-
-				continue
-			}
-
-			// Parse the enhanced key to get components
-			label, keyCID, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
-			if err != nil {
-				localLogger.Warn("Failed to parse enhanced label key", "key", result.Key, "error", err)
-
-				continue
-			}
-
-			// Check if this key matches our CID and is from local peer
-			if keyCID == cid && keyPeerID == r.localPeerID {
-				labels = append(labels, label)
-			}
+		// Check if this key matches our CID and is from local peer
+		if keyCID == cid && keyPeerID == r.localPeerID {
+			labelList = append(labelList, label)
 		}
-
-		results.Close()
 	}
 
-	return labels
+	return labelList
 }
 
 func (r *routeLocal) Unpublish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
@@ -291,11 +277,11 @@ func (r *routeLocal) Unpublish(ctx context.Context, ref *corev1.RecordRef, recor
 	}
 
 	// keep track of all record labels
-	labels := GetLabels(record)
+	labelList := labels.GetLabels(record)
 
-	for _, label := range labels {
+	for _, label := range labelList {
 		// Delete enhanced key with CID and PeerID
-		enhancedKey := BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
+		enhancedKey := labels.BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
 
 		labelKey := datastore.NewKey(enhancedKey)
 		if err := batch.Delete(ctx, labelKey); err != nil {

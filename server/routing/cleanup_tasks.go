@@ -12,7 +12,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
-	validators "github.com/agntcy/dir/server/routing/validators"
+	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
@@ -35,7 +35,7 @@ type remoteLabelFilter struct {
 func (f *remoteLabelFilter) Filter(e query.Entry) bool {
 	// With enhanced keys, we can check PeerID directly from the key
 	// Key format: /skills/AI/CID123/Peer1
-	keyPeerID := ExtractPeerIDFromKey(e.Key)
+	keyPeerID := labels.ExtractPeerIDFromKey(e.Key)
 	if keyPeerID == "" {
 		// Invalid key format, assume remote to be safe
 		return true
@@ -195,7 +195,7 @@ func (c *CleanupManager) cleanupStaleRemoteLabels(ctx context.Context) error {
 	// We'll query each namespace separately and combine results
 	var allResults []query.Result
 
-	for _, namespace := range validators.AllNamespaces() {
+	for _, namespace := range labels.AllLabelTypes() {
 		nsResults, err := c.dstore.Query(ctx, query.Query{
 			Prefix: namespace.Prefix(),
 			Filters: []query.Filter{
@@ -231,7 +231,7 @@ func (c *CleanupManager) cleanupStaleRemoteLabels(ctx context.Context) error {
 		}
 
 		// Parse enhanced key to get peer information
-		_, _, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
+		_, _, keyPeerID, err := labels.ParseEnhancedLabelKey(result.Key)
 		if err != nil {
 			cleanupLogger.Warn("Failed to parse enhanced label key, marking for deletion",
 				"key", result.Key, "error", err)
@@ -241,7 +241,7 @@ func (c *CleanupManager) cleanupStaleRemoteLabels(ctx context.Context) error {
 			continue
 		}
 
-		var metadata LabelMetadata
+		var metadata labels.LabelMetadata
 		if err := json.Unmarshal(result.Value, &metadata); err != nil {
 			cleanupLogger.Warn("Failed to parse label metadata, marking for deletion",
 				"key", result.Key, "error", err)
@@ -330,7 +330,7 @@ func (c *CleanupManager) cleanupLabelsForCID(ctx context.Context, cid string) bo
 	// Find and remove all label keys for this CID across all namespaces
 	localPeerID := c.server.Host().ID().String()
 
-	for _, namespace := range validators.AllNamespaces() {
+	for _, namespace := range labels.AllLabelTypes() {
 		// Query labels in this namespace that match our CID
 		labelResults, err := c.dstore.Query(ctx, query.Query{
 			Prefix: namespace.Prefix(),
@@ -345,7 +345,7 @@ func (c *CleanupManager) cleanupLabelsForCID(ctx context.Context, cid string) bo
 
 		for result := range labelResults.Next() {
 			// Parse enhanced key to get CID and PeerID
-			_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
+			_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(result.Key)
 			if err != nil {
 				cleanupLogger.Warn("Failed to parse enhanced label key during cleanup, deleting",
 					"key", result.Key, "error", err)
