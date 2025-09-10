@@ -33,6 +33,8 @@ func CollectItems[T any](itemsChan <-chan T) []T {
 
 // CompareOASFRecords compares two OASF JSON records with version-aware logic.
 // This function automatically detects OASF versions and uses appropriate comparison logic.
+//
+//nolint:wrapcheck
 func CompareOASFRecords(json1, json2 []byte) (bool, error) {
 	record1, err := corev1.UnmarshalRecord(json1)
 	if err != nil {

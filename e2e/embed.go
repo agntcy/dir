@@ -11,8 +11,5 @@ import _ "embed"
 //go:embed testdata/record_v1.json
 var expectedRecordV1JSON []byte
 
-//go:embed testdata/record_v2.json
-var expectedRecordV2JSON []byte
-
 //go:embed testdata/record_v3.json
 var expectedRecordV3JSON []byte

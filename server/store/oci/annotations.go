@@ -22,8 +22,8 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 
 	// Use adapter pattern to get version-agnostic access to record data
 	adapter := adapters.NewRecordAdapter(record)
-	recordData, err := adapter.GetRecordData()
 
+	recordData, err := adapter.GetRecordData()
 	if err != nil {
 		// Return minimal annotations if no valid data
 		return annotations

@@ -5,6 +5,7 @@ package corev1
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	decodingv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/decoding/v1"
@@ -20,6 +21,7 @@ var defaultValidator *validator.Validator
 
 func init() {
 	var err error
+
 	defaultValidator, err = validator.New()
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize OASF-SDK validator: %v", err))
@@ -109,16 +111,18 @@ func (r *Record) GetSchemaVersion() string {
 	schemaVersion, _ := converter.GetRecordSchemaVersion(&oasfcorev1.Object{
 		Data: r.GetData(),
 	})
+
 	return schemaVersion
 }
 
 // Decode decodes the Record's data into a concrete type using the OASF SDK.
 func (r *Record) Decode() (*decodingv1.DecodeRecordResponse, error) {
 	if r == nil || r.GetData() == nil {
-		return nil, fmt.Errorf("record is nil")
+		return nil, errors.New("record is nil")
 	}
 
 	// Decode the record using OASF SDK
+	//nolint:wrapcheck
 	return converter.DecodeRecord(&oasfcorev1.Object{
 		Data: r.GetData(),
 	})
@@ -127,10 +131,11 @@ func (r *Record) Decode() (*decodingv1.DecodeRecordResponse, error) {
 // Validate validates the Record's data against its embedded schema using the OASF SDK.
 func (r *Record) Validate() (bool, []string, error) {
 	if r == nil || r.GetData() == nil {
-		return false, nil, fmt.Errorf("record is nil")
+		return false, nil, errors.New("record is nil")
 	}
 
 	// Validate the record using OASF SDK
+	//nolint:wrapcheck
 	return defaultValidator.ValidateRecord(&validationv1.ValidateRecordRequest{
 		Record: &oasfcorev1.Object{
 			Data: r.GetData(),
@@ -164,6 +169,7 @@ func UnmarshalRecord(data []byte) (*Record, error) {
 
 func NewRecordV1alpha0(record *typesv1alpha0.Record) *Record {
 	data, _ := converter.StructToProto(record)
+
 	return &Record{
 		Data: data,
 	}
@@ -171,6 +177,7 @@ func NewRecordV1alpha0(record *typesv1alpha0.Record) *Record {
 
 func NewRecordV1alpha1(record *typesv1alpha1.Record) *Record {
 	data, _ := converter.StructToProto(record)
+
 	return &Record{
 		Data: data,
 	}

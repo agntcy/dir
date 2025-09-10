@@ -245,12 +245,14 @@ func TestRecord_Validate(t *testing.T) {
 				if tt.wantValid {
 					t.Errorf("Validate() unexpected error: %v", err)
 				}
+
 				return
 			}
 
 			if valid != tt.wantValid {
 				t.Errorf("Validate() got valid = %v, errors = %v, want %v", valid, errors, tt.wantValid)
 			}
+
 			if !valid && len(errors) == 0 {
 				t.Errorf("Validate() expected errors for invalid record, got none")
 			}
@@ -343,11 +345,13 @@ func TestRecord_Decode(t *testing.T) {
 				if !tt.wantFail {
 					t.Errorf("Decode() unexpected error: %v", err)
 				}
+
 				return
 			}
 
 			if got == nil || got.Record == nil {
 				t.Errorf("Decode() got nil record, want %v", tt.wantResp)
+
 				return
 			}
 
@@ -359,17 +363,23 @@ func TestRecord_Decode(t *testing.T) {
 }
 
 func toV0Proto(t *testing.T, recordV0 *oasfv1alpha0.Record) *structpb.Struct {
+	t.Helper()
+
 	res, err := converter.StructToProto(recordV0)
 	if err != nil {
 		t.Fatalf("Failed to convert record: %v", err)
 	}
+
 	return res
 }
 
 func toV1Proto(t *testing.T, recordV1 *oasfv1alpha1.Record) *structpb.Struct {
+	t.Helper()
+
 	res, err := converter.StructToProto(recordV1)
 	if err != nil {
 		t.Fatalf("Failed to convert record: %v", err)
 	}
+
 	return res
 }

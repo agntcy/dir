@@ -1,7 +1,7 @@
 {
   "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
   "version": "v3.0.0",
-  "schema_version": "v0.5.0",
+  "schema_version": "v0.7.0",
   "description": "Research agent for Cisco's marketing strategy.",
   "authors": ["Cisco Systems"],
   "created_at": "2025-03-19T17:06:37Z",
@@ -29,36 +29,26 @@
       "name": "research"
     }
   ],
-  "extensions": [
+  "modules": [
     {
       "name": "license",
-      "version": "v1.0.0",
       "data": {
         "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
         "license": "Apache-2.0"
       }
     },
     {
-      "name": "schema.oasf.agntcy.org/features/runtime/framework",
-      "version": "v0.0.0",
+      "name": "runtime/framework",
       "data": {
         "name": "crewai",
         "version": "0.55.2"
       }
     },
     {
-      "name": "schema.oasf.agntcy.org/features/runtime/language",
-      "version": "v0.0.0",
+      "name": "runtime/language",
       "data": {
         "type": "python",
         "version": "\u003e=3.11,\u003c3.13"
-      }
-    },
-    {
-      "name": "schema.oasf.agntcy.org/domains/research",
-      "version": "v1.0.0",
-      "data": {
-        "description": "Research agent for Cisco's marketing strategy."
       }
     }
   ]

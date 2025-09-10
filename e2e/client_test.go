@@ -84,17 +84,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			expectedFeatureLabel: "/features/runtime/framework",
 		},
 		{
-			name:     "V2_AgentRecord_OASF_v0.4.0",
-			jsonData: expectedRecordV2JSON,
-			expectedSkillLabels: []string{
-				"/skills/Natural Language Processing/Text Completion",
-				"/skills/Natural Language Processing/Problem Solving",
-			},
-			expectedDomainLabel:  "/domains/research",
-			expectedFeatureLabel: "/features/runtime/framework",
-		},
-		{
-			name:     "V3_Record_OASF_v0.5.0",
+			name:     "V3_Record_OASF_v0.7.0",
 			jsonData: expectedRecordV3JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",

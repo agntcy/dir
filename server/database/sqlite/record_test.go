@@ -34,8 +34,10 @@ func (r *TestRecord) GetRecordData() (types.RecordData, error) {
 
 func mustGetRecordData(t *testing.T, record types.Record) types.RecordData {
 	t.Helper()
+
 	data, err := record.GetRecordData()
 	require.NoError(t, err)
+
 	return data
 }
 
