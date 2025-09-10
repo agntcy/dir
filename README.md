@@ -1,5 +1,9 @@
 # Directory
 
+[![CI](https://github.com/agntcy/dir/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/ci.yaml)
+[![Coverage](https://codecov.io/gh/agntcy/dir/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir)
+[![Coverage Workflow](https://github.com/agntcy/dir/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/coverage.yml)
+
 The Directory (dir) allows publication, exchange, and discovery of information about records over a distributed peer-to-peer network.
 It leverages [OASF](https://github.com/agntcy/oasf) to describe AI agents and provides a set of APIs and tools to store, publish, and discover records across the network by their attributes and constraints.
 Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous system integration and testing across different versions, environments, and features.
@@ -69,6 +73,31 @@ Make sure Docker is installed with Buildx.
 ## Development
 
 Use `Taskfile` for all related development operations such as testing, validating, deploying, and working with the project.
+
+### Coverage & Badges
+
+CI runs a multi‑module coverage workflow (`coverage.yml`) on pushes and pull requests targeting `main`. It executes `task test:unit:coverage:html`, uploads per‑module Go coverage profiles to Codecov, and comments a summary on PRs.
+
+Local quick run:
+
+```bash
+task test:unit:coverage:html
+open coverage-api.html   # or any module html file
+```
+
+The coverage badge shown near the top of this README tracks the `main` branch:
+
+```markdown
+[![Coverage](https://codecov.io/gh/agntcy/dir/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir)
+```
+
+To display a badge for another branch, append `branch=<branch>`:
+
+```markdown
+![Feature Coverage](https://codecov.io/gh/agntcy/dir/branch/your-feature/graph/badge.svg)
+```
+
+Ignored files & directories for reporting are configured in `codecov.yml` (e.g. generated `*.pb.go`, `testdata`, `e2e`). Adjust thresholds or add per‑module flags there if needed.
 
 ### Clone the repository
 
