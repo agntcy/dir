@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
@@ -828,7 +828,7 @@ func TestV1SkillFormats_EdgeCases(t *testing.T) {
 			}`, tc.name, tc.skillJSON)
 
 			// Test parsing
-			var agent objectsv1.Record
+			var agent typesv1alpha0.Record
 			err := json.Unmarshal([]byte(agentJSON), &agent)
 			require.NoError(t, err, "JSON unmarshal should succeed")
 
@@ -838,7 +838,7 @@ func TestV1SkillFormats_EdgeCases(t *testing.T) {
 			skill := skills[0]
 
 			// Use the V1SkillAdapter to get the properly formatted name
-			adapter := adapters.NewV1SkillAdapter(skill)
+			adapter := adapters.NewV1Alpha0SkillAdapter(skill)
 
 			assert.Equal(t, tc.expectedName, adapter.GetName(), "Skill name should match")
 			assert.Equal(t, tc.expectedID, skill.GetClassUid(), "Skill ID should match")

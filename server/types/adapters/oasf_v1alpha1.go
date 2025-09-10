@@ -4,22 +4,23 @@
 package adapters
 
 import (
-	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/oasf-sdk/core/converter"
 )
 
-// V3DataAdapter adapts objectsv3.Record to types.RecordData interface.
-type V3DataAdapter struct {
-	record *objectsv3.Record
+// V1Alpha1Adapter adapts typesv1alpha1.Record to types.RecordData interface.
+type V1Alpha1Adapter struct {
+	record *typesv1alpha1.Record
 }
 
-// NewV3DataAdapter creates a new V3DataAdapter.
-func NewV3DataAdapter(record *objectsv3.Record) *V3DataAdapter {
-	return &V3DataAdapter{record: record}
+// NewV1Alpha1Adapter creates a new V1Alpha1Adapter.
+func NewV1Alpha1Adapter(record *typesv1alpha1.Record) *V1Alpha1Adapter {
+	return &V1Alpha1Adapter{record: record}
 }
 
 // GetAnnotations implements types.RecordData interface.
-func (a *V3DataAdapter) GetAnnotations() map[string]string {
+func (a *V1Alpha1Adapter) GetAnnotations() map[string]string {
 	if a.record == nil {
 		return nil
 	}
@@ -28,7 +29,7 @@ func (a *V3DataAdapter) GetAnnotations() map[string]string {
 }
 
 // GetSchemaVersion implements types.RecordData interface.
-func (a *V3DataAdapter) GetSchemaVersion() string {
+func (a *V1Alpha1Adapter) GetSchemaVersion() string {
 	if a.record == nil {
 		return ""
 	}
@@ -37,7 +38,7 @@ func (a *V3DataAdapter) GetSchemaVersion() string {
 }
 
 // GetName implements types.RecordData interface.
-func (a *V3DataAdapter) GetName() string {
+func (a *V1Alpha1Adapter) GetName() string {
 	if a.record == nil {
 		return ""
 	}
@@ -46,7 +47,7 @@ func (a *V3DataAdapter) GetName() string {
 }
 
 // GetVersion implements types.RecordData interface.
-func (a *V3DataAdapter) GetVersion() string {
+func (a *V1Alpha1Adapter) GetVersion() string {
 	if a.record == nil {
 		return ""
 	}
@@ -55,7 +56,7 @@ func (a *V3DataAdapter) GetVersion() string {
 }
 
 // GetDescription implements types.RecordData interface.
-func (a *V3DataAdapter) GetDescription() string {
+func (a *V1Alpha1Adapter) GetDescription() string {
 	if a.record == nil {
 		return ""
 	}
@@ -64,7 +65,7 @@ func (a *V3DataAdapter) GetDescription() string {
 }
 
 // GetAuthors implements types.RecordData interface.
-func (a *V3DataAdapter) GetAuthors() []string {
+func (a *V1Alpha1Adapter) GetAuthors() []string {
 	if a.record == nil {
 		return nil
 	}
@@ -73,7 +74,7 @@ func (a *V3DataAdapter) GetAuthors() []string {
 }
 
 // GetCreatedAt implements types.RecordData interface.
-func (a *V3DataAdapter) GetCreatedAt() string {
+func (a *V1Alpha1Adapter) GetCreatedAt() string {
 	if a.record == nil {
 		return ""
 	}
@@ -82,7 +83,7 @@ func (a *V3DataAdapter) GetCreatedAt() string {
 }
 
 // GetSkills implements types.RecordData interface.
-func (a *V3DataAdapter) GetSkills() []types.Skill {
+func (a *V1Alpha1Adapter) GetSkills() []types.Skill {
 	if a.record == nil {
 		return nil
 	}
@@ -91,14 +92,14 @@ func (a *V3DataAdapter) GetSkills() []types.Skill {
 	result := make([]types.Skill, len(skills))
 
 	for i, skill := range skills {
-		result[i] = NewV3SkillAdapter(skill)
+		result[i] = NewV1Alpha1SkillAdapter(skill)
 	}
 
 	return result
 }
 
 // GetLocators implements types.RecordData interface.
-func (a *V3DataAdapter) GetLocators() []types.Locator {
+func (a *V1Alpha1Adapter) GetLocators() []types.Locator {
 	if a.record == nil {
 		return nil
 	}
@@ -107,14 +108,14 @@ func (a *V3DataAdapter) GetLocators() []types.Locator {
 	result := make([]types.Locator, len(locators))
 
 	for i, locator := range locators {
-		result[i] = NewV3LocatorAdapter(locator)
+		result[i] = NewV1Alpha1LocatorAdapter(locator)
 	}
 
 	return result
 }
 
 // GetExtensions implements types.RecordData interface.
-func (a *V3DataAdapter) GetExtensions() []types.Extension {
+func (a *V1Alpha1Adapter) GetExtensions() []types.Extension {
 	if a.record == nil {
 		return nil
 	}
@@ -123,23 +124,23 @@ func (a *V3DataAdapter) GetExtensions() []types.Extension {
 	result := make([]types.Extension, len(extensions))
 
 	for i, extension := range extensions {
-		result[i] = NewV3ExtensionAdapter(extension)
+		result[i] = NewV1Alpha1ExtensionAdapter(extension)
 	}
 
 	return result
 }
 
 // GetSignature implements types.RecordData interface.
-func (a *V3DataAdapter) GetSignature() types.Signature {
+func (a *V1Alpha1Adapter) GetSignature() types.Signature {
 	if a.record == nil || a.record.GetSignature() == nil {
 		return nil
 	}
 
-	return NewV3SignatureAdapter(a.record.GetSignature())
+	return NewV1Alpha1SignatureAdapter(a.record.GetSignature())
 }
 
 // GetPreviousRecordCid implements types.RecordData interface.
-func (a *V3DataAdapter) GetPreviousRecordCid() string {
+func (a *V1Alpha1Adapter) GetPreviousRecordCid() string {
 	if a.record == nil {
 		return ""
 	}
@@ -147,18 +148,18 @@ func (a *V3DataAdapter) GetPreviousRecordCid() string {
 	return a.record.GetPreviousRecordCid()
 }
 
-// V3SignatureAdapter adapts objectsv3.Signature to types.Signature interface.
-type V3SignatureAdapter struct {
-	signature *objectsv3.Signature
+// V1Alpha1SignatureAdapter adapts typesv1alpha1.Signature to types.Signature interface.
+type V1Alpha1SignatureAdapter struct {
+	signature *typesv1alpha1.Signature
 }
 
-// NewV3SignatureAdapter creates a new V3SignatureAdapter.
-func NewV3SignatureAdapter(signature *objectsv3.Signature) *V3SignatureAdapter {
-	return &V3SignatureAdapter{signature: signature}
+// NewV1Alpha1SignatureAdapter creates a new V1Alpha1SignatureAdapter.
+func NewV1Alpha1SignatureAdapter(signature *typesv1alpha1.Signature) *V1Alpha1SignatureAdapter {
+	return &V1Alpha1SignatureAdapter{signature: signature}
 }
 
 // GetAnnotations implements types.Signature interface.
-func (s *V3SignatureAdapter) GetAnnotations() map[string]string {
+func (s *V1Alpha1SignatureAdapter) GetAnnotations() map[string]string {
 	if s.signature == nil {
 		return nil
 	}
@@ -167,7 +168,7 @@ func (s *V3SignatureAdapter) GetAnnotations() map[string]string {
 }
 
 // GetSignedAt implements types.Signature interface.
-func (s *V3SignatureAdapter) GetSignedAt() string {
+func (s *V1Alpha1SignatureAdapter) GetSignedAt() string {
 	if s.signature == nil {
 		return ""
 	}
@@ -176,7 +177,7 @@ func (s *V3SignatureAdapter) GetSignedAt() string {
 }
 
 // GetAlgorithm implements types.Signature interface.
-func (s *V3SignatureAdapter) GetAlgorithm() string {
+func (s *V1Alpha1SignatureAdapter) GetAlgorithm() string {
 	if s.signature == nil {
 		return ""
 	}
@@ -185,7 +186,7 @@ func (s *V3SignatureAdapter) GetAlgorithm() string {
 }
 
 // GetSignature implements types.Signature interface.
-func (s *V3SignatureAdapter) GetSignature() string {
+func (s *V1Alpha1SignatureAdapter) GetSignature() string {
 	if s.signature == nil {
 		return ""
 	}
@@ -194,7 +195,7 @@ func (s *V3SignatureAdapter) GetSignature() string {
 }
 
 // GetCertificate implements types.Signature interface.
-func (s *V3SignatureAdapter) GetCertificate() string {
+func (s *V1Alpha1SignatureAdapter) GetCertificate() string {
 	if s.signature == nil {
 		return ""
 	}
@@ -203,7 +204,7 @@ func (s *V3SignatureAdapter) GetCertificate() string {
 }
 
 // GetContentType implements types.Signature interface.
-func (s *V3SignatureAdapter) GetContentType() string {
+func (s *V1Alpha1SignatureAdapter) GetContentType() string {
 	if s.signature == nil {
 		return ""
 	}
@@ -212,7 +213,7 @@ func (s *V3SignatureAdapter) GetContentType() string {
 }
 
 // GetContentBundle implements types.Signature interface.
-func (s *V3SignatureAdapter) GetContentBundle() string {
+func (s *V1Alpha1SignatureAdapter) GetContentBundle() string {
 	if s.signature == nil {
 		return ""
 	}
@@ -220,18 +221,18 @@ func (s *V3SignatureAdapter) GetContentBundle() string {
 	return s.signature.GetContentBundle()
 }
 
-// V3ExtensionAdapter adapts objectsv3.Extension to types.Extension interface.
-type V3ExtensionAdapter struct {
-	extension *objectsv3.Module
+// V1Alpha1ExtensionAdapter adapts typesv1alpha1.Extension to types.Extension interface.
+type V1Alpha1ExtensionAdapter struct {
+	extension *typesv1alpha1.Module
 }
 
-// NewV3ExtensionAdapter creates a new V3ExtensionAdapter.
-func NewV3ExtensionAdapter(extension *objectsv3.Module) *V3ExtensionAdapter {
-	return &V3ExtensionAdapter{extension: extension}
+// NewV1Alpha1ExtensionAdapter creates a new V1Alpha1ExtensionAdapter.
+func NewV1Alpha1ExtensionAdapter(extension *typesv1alpha1.Module) *V1Alpha1ExtensionAdapter {
+	return &V1Alpha1ExtensionAdapter{extension: extension}
 }
 
 // GetAnnotations implements types.Extension interface.
-func (e *V3ExtensionAdapter) GetAnnotations() map[string]string {
+func (e *V1Alpha1ExtensionAdapter) GetAnnotations() map[string]string {
 	if e.extension == nil {
 		return nil
 	}
@@ -240,7 +241,7 @@ func (e *V3ExtensionAdapter) GetAnnotations() map[string]string {
 }
 
 // GetName implements types.Extension interface.
-func (e *V3ExtensionAdapter) GetName() string {
+func (e *V1Alpha1ExtensionAdapter) GetName() string {
 	if e.extension == nil {
 		return ""
 	}
@@ -249,36 +250,41 @@ func (e *V3ExtensionAdapter) GetName() string {
 }
 
 // GetVersion implements types.Extension interface.
-func (e *V3ExtensionAdapter) GetVersion() string {
+func (e *V1Alpha1ExtensionAdapter) GetVersion() string {
 	if e.extension == nil {
 		return ""
 	}
 
-	// TODO: not implemented in OASFV3 yet
+	// TODO: not implemented
 	return ""
 }
 
 // GetData implements types.Extension interface.
-func (e *V3ExtensionAdapter) GetData() map[string]any {
+func (e *V1Alpha1ExtensionAdapter) GetData() map[string]any {
 	if e.extension == nil || e.extension.GetData() == nil {
 		return nil
 	}
 
-	return convertStructToMap(e.extension.GetData())
+	resp, err := converter.ProtoToStruct[map[string]any](e.extension.GetData())
+	if err != nil {
+		return nil
+	}
+
+	return *resp
 }
 
-// V3SkillAdapter adapts objectsv3.Skill to types.Skill interface.
-type V3SkillAdapter struct {
-	skill *objectsv3.Skill
+// V1Alpha1SkillAdapter adapts typesv1alpha1.Skill to types.Skill interface.
+type V1Alpha1SkillAdapter struct {
+	skill *typesv1alpha1.Skill
 }
 
-// NewV3SkillAdapter creates a new V3SkillAdapter.
-func NewV3SkillAdapter(skill *objectsv3.Skill) *V3SkillAdapter {
-	return &V3SkillAdapter{skill: skill}
+// NewV1Alpha1SkillAdapter creates a new V1Alpha1SkillAdapter.
+func NewV1Alpha1SkillAdapter(skill *typesv1alpha1.Skill) *V1Alpha1SkillAdapter {
+	return &V1Alpha1SkillAdapter{skill: skill}
 }
 
 // GetAnnotations implements types.Skill interface.
-func (s *V3SkillAdapter) GetAnnotations() map[string]string {
+func (s *V1Alpha1SkillAdapter) GetAnnotations() map[string]string {
 	if s.skill == nil {
 		return nil
 	}
@@ -287,7 +293,7 @@ func (s *V3SkillAdapter) GetAnnotations() map[string]string {
 }
 
 // GetName implements types.Skill interface.
-func (s *V3SkillAdapter) GetName() string {
+func (s *V1Alpha1SkillAdapter) GetName() string {
 	if s.skill == nil {
 		return ""
 	}
@@ -296,7 +302,7 @@ func (s *V3SkillAdapter) GetName() string {
 }
 
 // GetID implements types.Skill interface.
-func (s *V3SkillAdapter) GetID() uint64 {
+func (s *V1Alpha1SkillAdapter) GetID() uint64 {
 	if s.skill == nil {
 		return 0
 	}
@@ -304,18 +310,18 @@ func (s *V3SkillAdapter) GetID() uint64 {
 	return uint64(s.skill.GetId())
 }
 
-// V3LocatorAdapter adapts objectsv3.Locator to types.Locator interface.
-type V3LocatorAdapter struct {
-	locator *objectsv3.Locator
+// V1Alpha1LocatorAdapter adapts typesv1alpha1.Locator to types.Locator interface.
+type V1Alpha1LocatorAdapter struct {
+	locator *typesv1alpha1.Locator
 }
 
-// NewV3LocatorAdapter creates a new V3LocatorAdapter.
-func NewV3LocatorAdapter(locator *objectsv3.Locator) *V3LocatorAdapter {
-	return &V3LocatorAdapter{locator: locator}
+// NewV1Alpha1LocatorAdapter creates a new V1Alpha1LocatorAdapter.
+func NewV1Alpha1LocatorAdapter(locator *typesv1alpha1.Locator) *V1Alpha1LocatorAdapter {
+	return &V1Alpha1LocatorAdapter{locator: locator}
 }
 
 // GetAnnotations implements types.Locator interface.
-func (l *V3LocatorAdapter) GetAnnotations() map[string]string {
+func (l *V1Alpha1LocatorAdapter) GetAnnotations() map[string]string {
 	if l.locator == nil {
 		return nil
 	}
@@ -324,7 +330,7 @@ func (l *V3LocatorAdapter) GetAnnotations() map[string]string {
 }
 
 // GetType implements types.Locator interface.
-func (l *V3LocatorAdapter) GetType() string {
+func (l *V1Alpha1LocatorAdapter) GetType() string {
 	if l.locator == nil {
 		return ""
 	}
@@ -333,7 +339,7 @@ func (l *V3LocatorAdapter) GetType() string {
 }
 
 // GetURL implements types.Locator interface.
-func (l *V3LocatorAdapter) GetURL() string {
+func (l *V1Alpha1LocatorAdapter) GetURL() string {
 	if l.locator == nil {
 		return ""
 	}
@@ -342,7 +348,7 @@ func (l *V3LocatorAdapter) GetURL() string {
 }
 
 // GetSize implements types.Locator interface.
-func (l *V3LocatorAdapter) GetSize() uint64 {
+func (l *V1Alpha1LocatorAdapter) GetSize() uint64 {
 	if l.locator == nil {
 		return 0
 	}
@@ -351,7 +357,7 @@ func (l *V3LocatorAdapter) GetSize() uint64 {
 }
 
 // GetDigest implements types.Locator interface.
-func (l *V3LocatorAdapter) GetDigest() string {
+func (l *V1Alpha1LocatorAdapter) GetDigest() string {
 	if l.locator == nil {
 		return ""
 	}

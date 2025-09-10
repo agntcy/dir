@@ -6,8 +6,8 @@ package oci
 import (
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
-	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
 )
@@ -83,7 +83,7 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "V1 basic record",
-			record: corev1.NewRecordV1alpha0(&objectsv1.Record{
+			record: corev1.New(&typesv1alpha0.Record{
 				Name:          "test-agent",
 				Version:       "1.0.0",
 				Description:   "Test agent description",
@@ -105,19 +105,19 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "V1 with skills and extensions",
-			record: corev1.NewRecordV1alpha0(&objectsv1.Record{
+			record: corev1.New(&typesv1alpha0.Record{
 				Name:          "skill-agent",
 				Version:       "2.0.0",
 				SchemaVersion: "v0.3.1",
-				Skills: []*objectsv1.Skill{
+				Skills: []*typesv1alpha0.Skill{
 					{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
 					{CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
 				},
-				Locators: []*objectsv1.Locator{
+				Locators: []*typesv1alpha0.Locator{
 					{Type: "docker"},
 					{Type: "helm"},
 				},
-				Extensions: []*objectsv1.Extension{
+				Extensions: []*typesv1alpha0.Extension{
 					{Name: "security"},
 					{Name: "monitoring"},
 				},
@@ -139,12 +139,12 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "V1 basic record",
-			record: corev1.NewRecordV1alpha1(&objectsv3.Record{
+			record: corev1.New(&typesv1alpha1.Record{
 				Name:          "test-record-v2",
 				Version:       "2.0.0",
 				SchemaVersion: "v0.7.0",
 				Description:   "Test record v2 description",
-				Skills: []*objectsv3.Skill{
+				Skills: []*typesv1alpha1.Skill{
 					{Name: "nlp-skill"},
 				},
 				PreviousRecordCid: stringPtr("QmPreviousCID123"),
@@ -162,11 +162,11 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "Record with signature",
-			record: corev1.NewRecordV1alpha0(&objectsv1.Record{
+			record: corev1.New(&typesv1alpha0.Record{
 				Name:          "signed-agent",
 				Version:       "1.0.0",
 				SchemaVersion: "v0.3.1",
-				Signature: &objectsv1.Signature{
+				Signature: &typesv1alpha0.Signature{
 					Algorithm: "ed25519",
 					SignedAt:  "2023-01-01T12:00:00Z",
 					Signature: "signature-bytes",
@@ -346,7 +346,7 @@ func TestParseManifestAnnotations(t *testing.T) {
 
 func TestExtractManifestAnnotations_EdgeCases(t *testing.T) {
 	t.Run("Record with empty data", func(t *testing.T) {
-		record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+		record := corev1.New(&typesv1alpha0.Record{
 			SchemaVersion: "v0.3.1",
 		})
 
@@ -372,14 +372,14 @@ func TestExtractManifestAnnotations_EdgeCases(t *testing.T) {
 func TestRoundTripConversion(t *testing.T) {
 	// Test that we can extract manifest annotations and parse them back correctly
 	// NOTE: This test uses V1 format where skills have "categoryName/className" structure
-	originalRecord := corev1.NewRecordV1alpha0(&objectsv1.Record{
+	originalRecord := corev1.New(&typesv1alpha0.Record{
 		Name:          "roundtrip-agent",
 		Version:       "1.0.0",
 		Description:   "Test roundtrip conversion",
 		SchemaVersion: "v0.3.1",
 		CreatedAt:     "2023-01-01T00:00:00Z",
 		Authors:       []string{"author1", "author2"},
-		Skills: []*objectsv1.Skill{
+		Skills: []*typesv1alpha0.Skill{
 			{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
 		},
 		Annotations: map[string]string{

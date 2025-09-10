@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
-	objectsv3 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
@@ -38,13 +38,13 @@ var (
 func TestStorePushLookupPullDelete(t *testing.T) {
 	store := loadLocalStore(t)
 
-	agent := &objectsv1.Record{
+	agent := &typesv1alpha0.Record{
 		Name:          "test-agent",
 		SchemaVersion: "v0.3.1",
 		Description:   "A test agent",
 	}
 
-	record := corev1.NewRecordV1alpha0(agent)
+	record := corev1.New(agent)
 
 	// Calculate CID for the record
 	recordCID := record.GetCid()
@@ -115,13 +115,13 @@ func BenchmarkRemoteStore(b *testing.B) {
 
 func benchmarkStep(store types.StoreAPI) {
 	// Create test record
-	agent := &objectsv1.Record{
+	agent := &typesv1alpha0.Record{
 		Name:          "bench-agent",
 		SchemaVersion: "v0.3.1",
 		Description:   "A benchmark agent",
 	}
 
-	record := corev1.NewRecordV1alpha0(agent)
+	record := corev1.New(agent)
 
 	// Record is ready for push operation
 
@@ -194,12 +194,12 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 	}{
 		{
 			name: "V1_Agent_CategoryClass_Skills",
-			record: corev1.NewRecordV1alpha0(&objectsv1.Record{
+			record: corev1.New(&typesv1alpha0.Record{
 				Name:          "test-v1-agent",
 				Version:       "1.0.0",
 				SchemaVersion: "v0.3.1",
 				Description:   "Test v1 agent with hierarchical skills",
-				Skills: []*objectsv1.Skill{
+				Skills: []*typesv1alpha0.Skill{
 					{
 						CategoryName: stringPtr("Natural Language Processing"),
 						CategoryUid:  1,
@@ -213,7 +213,7 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 						ClassUid:     20301,
 					},
 				},
-				Locators: []*objectsv1.Locator{
+				Locators: []*typesv1alpha0.Locator{
 					{
 						Type: "docker-image",
 						Url:  "ghcr.io/agntcy/test-v1-agent",
@@ -259,12 +259,12 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 		},
 		{
 			name: "V3_Record_Simple_Skills",
-			record: corev1.NewRecordV1alpha1(&objectsv3.Record{
+			record: corev1.New(&typesv1alpha1.Record{
 				Name:          "test-v3-record",
 				Version:       "3.0.0",
 				SchemaVersion: "v0.7.0",
 				Description:   "Test v3 record with simple skills",
-				Skills: []*objectsv3.Skill{
+				Skills: []*typesv1alpha1.Skill{
 					{
 						Name: "Natural Language Processing",
 						Id:   10201,
@@ -274,7 +274,7 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 						Id:   20301,
 					},
 				},
-				Locators: []*objectsv3.Locator{
+				Locators: []*typesv1alpha1.Locator{
 					{
 						Type: "docker-image",
 						Url:  "ghcr.io/agntcy/test-v3-record",

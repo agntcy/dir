@@ -7,7 +7,7 @@ package localfs
 import (
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/store/localfs/config"
 	"github.com/stretchr/testify/assert"
@@ -22,14 +22,14 @@ func TestStore(t *testing.T) {
 	require.NoError(t, err, "failed to create store")
 
 	// Create test record
-	testAgent := &objectsv1.Record{
+	testAgent := &typesv1alpha0.Record{
 		Name:          "test-agent-123",
 		Description:   "A test agent for unit testing",
 		Version:       "1.0.0",
 		SchemaVersion: "v0.3.1", // Required field for OASF version detection
 	}
 
-	record := corev1.NewRecordV1alpha0(testAgent)
+	record := corev1.New(testAgent)
 
 	// Push record - store will calculate CID internally
 	pushedRef, err := store.Push(ctx, record)

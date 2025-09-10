@@ -8,11 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	decodingv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/decoding/v1"
 	validationv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/validation/v1"
 	oasfcorev1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/core/v1"
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
-	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
 	"github.com/agntcy/oasf-sdk/core/converter"
 	"github.com/agntcy/oasf-sdk/validation/validator"
 )
@@ -53,17 +50,6 @@ func (r *Record) GetCid() string {
 	cid, err := ConvertDigestToCID(digest)
 	if err != nil {
 		return ""
-	}
-
-	return cid
-}
-
-// MustGetCid is a convenience method that panics if CID calculation fails.
-// Use this only when you're certain the record is valid.
-func (r *Record) MustGetCid() string {
-	cid := r.GetCid()
-	if cid == "" {
-		panic("failed to calculate CID")
 	}
 
 	return cid
@@ -116,16 +102,23 @@ func (r *Record) GetSchemaVersion() string {
 }
 
 // Decode decodes the Record's data into a concrete type using the OASF SDK.
-func (r *Record) Decode() (*decodingv1.DecodeRecordResponse, error) {
+func (r *Record) Decode() (DecodedRecord, error) {
 	if r == nil || r.GetData() == nil {
 		return nil, errors.New("record is nil")
 	}
 
 	// Decode the record using OASF SDK
-	//nolint:wrapcheck
-	return converter.DecodeRecord(&oasfcorev1.Object{
+	decoded, err := converter.DecodeRecord(&oasfcorev1.Object{
 		Data: r.GetData(),
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode Record: %w", err)
+	}
+
+	// Wrap in our DecodedRecord interface
+	return &decodedRecord{
+		DecodeRecordResponse: decoded,
+	}, nil
 }
 
 // Validate validates the Record's data against its embedded schema using the OASF SDK.
@@ -165,20 +158,4 @@ func UnmarshalRecord(data []byte) (*Record, error) {
 	}
 
 	return record, nil
-}
-
-func NewRecordV1alpha0(record *typesv1alpha0.Record) *Record {
-	data, _ := converter.StructToProto(record)
-
-	return &Record{
-		Data: data,
-	}
-}
-
-func NewRecordV1alpha1(record *typesv1alpha1.Record) *Record {
-	data, _ := converter.StructToProto(record)
-
-	return &Record{
-		Data: data,
-	}
 }

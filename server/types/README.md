@@ -5,7 +5,7 @@ The `server/types` package provides a unified type system and interface abstract
 ## Overview
 
 The types system enables:
-- **Version-agnostic record processing** across OASF v0.3.1, v0.4.0, and v0.5.0
+- **Version-agnostic record processing** across OASF versions
 - **Unified API interfaces** for storage, search, and routing operations
 - **Adapter pattern implementation** for seamless version compatibility
 - **Rich filtering and search capabilities** with composable filter options
@@ -15,10 +15,10 @@ The types system enables:
 
 ```
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│   OASF v0.3.1       │    │   OASF v0.4.0       │    │   OASF v0.5.0       │
-│   (objects/v1)      │    │   (objects/v2)      │    │   (objects/v3)      │
+│   OASF v0.X.X       │    │   OASF v0.Y.Y       │    │   OASF v0.Z.Z       │
+│   (types/X)         │    │   (types/Y)         │    │   (types/Z)         │
 └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
-          │                          │                          │
+          │                           │                         │
           └─────────────┬─────────────┴─────────────┬───────────┘
                         │                           │
                 ┌─────────────────────┐    ┌─────────────────────┐
@@ -44,7 +44,7 @@ The record system provides unified interfaces for handling agent records regardl
 // Core record interface - all records implement this
 type Record interface {
     GetCid() string
-    GetRecordData() RecordData
+    GetRecordData() (RecordData, error)
 }
 
 // Metadata-only interface for fast lookups
@@ -136,142 +136,8 @@ The adapter pattern bridges the gap between different OASF versions, allowing th
 
 ### Core Adapter
 
-The main `RecordAdapter` automatically selects the appropriate version-specific adapter:
-
-```go
-type RecordAdapter struct {
-    record *corev1.Record
-}
-
-func NewRecordAdapter(record *corev1.Record) *RecordAdapter {
-    return &RecordAdapter{record: record}
-}
-
-func (r *RecordAdapter) GetRecordData() types.RecordData {
-    switch data := r.record.GetData().(type) {
-    case *corev1.Record_V1:
-        return NewV1DataAdapter(data.V1)  // OASF v0.3.1
-    case *corev1.Record_V2:
-        return NewV2DataAdapter(data.V2)  // OASF v0.4.0  
-    case *corev1.Record_V3:
-        return NewV3DataAdapter(data.V3)  // OASF v0.5.0
-    default:
-        return nil
-    }
-}
-```
-
-### Version-Specific Adapters
-
-Each OASF version has its own adapter that implements the unified interface:
-
-#### OASF v0.3.1 (V1) Adapter
-```go
-type V1DataAdapter struct {
-    agent *objectsv1.Agent
-}
-
-func (a *V1DataAdapter) GetSkills() []types.Skill {
-    skills := a.agent.GetSkills()
-    result := make([]types.Skill, len(skills))
-    
-    for i, skill := range skills {
-        result[i] = NewV1SkillAdapter(skill)
-    }
-    
-    return result
-}
-```
-
-#### OASF v0.5.0 (V3) Adapter
-```go
-type V3DataAdapter struct {
-    record *objectsv3.Record
-}
-
-func (a *V3DataAdapter) GetSkills() []types.Skill {
-    skills := a.record.GetSkills()
-    result := make([]types.Skill, len(skills))
-    
-    for i, skill := range skills {
-        result[i] = NewV3SkillAdapter(skill)
-    }
-    
-    return result
-}
-```
-
-### Version Differences Handling
-
-The adapters handle key differences between OASF versions:
-
-#### Skill Name Formats
-
-**OASF v0.3.1 (V1) - Hierarchical Skills:**
-```go
-// V1 skills use category/class format
-type V1SkillAdapter struct {
-    skill *objectsv1.Skill
-}
-
-func (s *V1SkillAdapter) GetName() string {
-    // Returns "categoryName/className" format
-    // Example: "nlp/processing", "ml/inference"
-    return s.skill.GetName()
-}
-
-// Original V1 structure:
-skill := &objectsv1.Skill{
-    CategoryName: stringPtr("nlp"),
-    ClassName:    stringPtr("processing"),
-}
-// Adapter returns: "nlp/processing"
-```
-
-**OASF v0.5.0 (V3) - Simple Skills:**
-```go
-// V3 skills use simple names
-type V3SkillAdapter struct {
-    skill *objectsv3.Skill
-}
-
-func (s *V3SkillAdapter) GetName() string {
-    // Returns simple name format
-    // Example: "natural-language-processing"
-    return s.skill.GetName()
-}
-
-// Original V3 structure:
-skill := &objectsv3.Skill{
-    Name: "natural-language-processing",
-}
-// Adapter returns: "natural-language-processing"
-```
-
-#### Data Type Conversions
-
-The adapters handle protobuf-to-Go type conversions:
-
-```go
-// Extension data conversion
-func (e *V1ExtensionAdapter) GetData() map[string]any {
-    if e.extension == nil || e.extension.GetData() == nil {
-        return nil
-    }
-    
-    // Convert protobuf Struct to Go map
-    return convertStructToMap(e.extension.GetData())
-}
-
-// Protobuf Struct → Go map conversion
-func convertStructToMap(s *structpb.Struct) map[string]any {
-    result := make(map[string]any)
-    for k, v := range s.GetFields() {
-        result[k] = convertValue(v)
-    }
-    return result
-}
-```
+The main [RecordAdapter](./adapters/record.go) automatically selects the appropriate version-specific adapter.
+Each OASF version has its own adapter that implements the unified interface.
 
 ## API Interfaces
 
@@ -456,28 +322,20 @@ The same function works with different OASF versions:
 
 ```go
 // OASF v0.3.1 record
-v1Record := &corev1.Record{
-    Data: &corev1.Record_V1{
-        V1: &objectsv1.Agent{
-            Name: "nlp-agent",
-            Skills: []*objectsv1.Skill{
-                {CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
-            },
-        },
+v1Record := corev1.New(&typesv1alpha0.Agent{
+    Name: "nlp-agent",
+    Skills: []*typesv1alpha0.Skill{
+        {CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
     },
-}
+})
 
-// OASF v0.5.0 record
-v3Record := &corev1.Record{
-    Data: &corev1.Record_V3{
-        V3: &objectsv3.Record{
-            Name: "nlp-agent",
-            Skills: []*objectsv3.Skill{
-                {Name: "natural-language-processing"},
-            },
-        },
+// OASF v0.7.0 record
+v3Record := corev1.New(&typesv1alpha1.Record{
+    Name: "nlp-agent",
+    Skills: []*typesv1alpha1.Skill{
+        {Name: "natural-language-processing"},
     },
-}
+})
 
 // Same processing function works for both
 ProcessAnyRecord(v1Record) // Works!

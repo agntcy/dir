@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
@@ -84,17 +84,17 @@ func (m *mockStore) Delete(_ context.Context, ref *corev1.RecordRef) error {
 
 func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	var (
-		testRecord = corev1.NewRecordV1alpha0(&objectsv1.Record{
+		testRecord = corev1.New(&typesv1alpha0.Record{
 			Name:          "test-agent-1",
 			SchemaVersion: "v0.3.1",
-			Skills: []*objectsv1.Skill{
+			Skills: []*typesv1alpha0.Skill{
 				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
 			},
 		})
-		testRecord2 = corev1.NewRecordV1alpha0(&objectsv1.Record{
+		testRecord2 = corev1.New(&typesv1alpha0.Record{
 			Name:          "test-agent-2",
 			SchemaVersion: "v0.3.1",
-			Skills: []*objectsv1.Skill{
+			Skills: []*typesv1alpha0.Skill{
 				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
 				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
 			},
@@ -214,10 +214,10 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	// Test data
 	var (
-		testRecord = corev1.NewRecordV1alpha0(&objectsv1.Record{
+		testRecord = corev1.New(&typesv1alpha0.Record{
 			Name:          "test-agent-multi",
 			SchemaVersion: "v0.3.1",
-			Skills: []*objectsv1.Skill{
+			Skills: []*typesv1alpha0.Skill{
 				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
 				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
 			},
@@ -314,10 +314,10 @@ func Benchmark_RouteLocal(b *testing.B) {
 	badgerRouter := newLocal(store, badgerDatastore, testPeerID)
 	inMemoryRouter := newLocal(store, inMemoryDatastore, testPeerID)
 
-	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+	record := corev1.New(&typesv1alpha0.Record{
 		Name:          "bench-agent",
 		SchemaVersion: "v0.3.1",
-		Skills: []*objectsv1.Skill{
+		Skills: []*typesv1alpha0.Skill{
 			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
 		},
 	})

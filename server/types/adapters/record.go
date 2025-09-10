@@ -6,10 +6,8 @@ package adapters
 import (
 	"fmt"
 
-	decodingv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/decoding/v1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var _ types.Record = (*RecordAdapter)(nil)
@@ -37,55 +35,13 @@ func (r *RecordAdapter) GetRecordData() (types.RecordData, error) {
 		return nil, fmt.Errorf("failed to decode record: %w", err)
 	}
 
-	switch data := decoded.GetRecord().(type) {
-	case *decodingv1.DecodeRecordResponse_V1Alpha0:
-		return NewV1DataAdapter(data.V1Alpha0), nil
-	case *decodingv1.DecodeRecordResponse_V1Alpha1:
-		return NewV3DataAdapter(data.V1Alpha1), nil
+	// Determine record type and create appropriate adapter
+	switch {
+	case decoded.HasV1Alpha0():
+		return NewV1Alpha0Adapter(decoded.GetV1Alpha0()), nil
+	case decoded.HasV1Alpha1():
+		return NewV1Alpha1Adapter(decoded.GetV1Alpha1()), nil
 	default:
-		return nil, fmt.Errorf("unsupported record type: %T", data)
-	}
-}
-
-// convertStructToMap converts a protobuf Struct to a map[string]any.
-func convertStructToMap(s *structpb.Struct) map[string]any {
-	if s == nil {
-		return nil
-	}
-
-	result := make(map[string]any)
-	for k, v := range s.GetFields() {
-		result[k] = convertValue(v)
-	}
-
-	return result
-}
-
-// convertValue converts a protobuf Value to any.
-func convertValue(v *structpb.Value) any {
-	if v == nil {
-		return nil
-	}
-
-	switch v := v.GetKind().(type) {
-	case *structpb.Value_NullValue:
-		return nil
-	case *structpb.Value_NumberValue:
-		return v.NumberValue
-	case *structpb.Value_StringValue:
-		return v.StringValue
-	case *structpb.Value_BoolValue:
-		return v.BoolValue
-	case *structpb.Value_StructValue:
-		return convertStructToMap(v.StructValue)
-	case *structpb.Value_ListValue:
-		result := make([]any, len(v.ListValue.GetValues()))
-		for i, item := range v.ListValue.GetValues() {
-			result[i] = convertValue(item)
-		}
-
-		return result
-	default:
-		return fmt.Sprintf("unsupported type: %T", v)
+		return nil, fmt.Errorf("unsupported record type: %T", decoded.GetRecord())
 	}
 }

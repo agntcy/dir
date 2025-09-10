@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
@@ -76,7 +76,7 @@ func TestCachedStore_Push(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+	record := corev1.New(&typesv1alpha0.Record{
 		Name:          "test-agent",
 		Description:   "Test agent",
 		Version:       "1.0.0",
@@ -119,7 +119,7 @@ func TestCachedStore_Pull_CacheHit(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+	record := corev1.New(&typesv1alpha0.Record{
 		Name:          "test-agent",
 		Description:   "Test agent",
 		Version:       "1.0.0",
@@ -158,7 +158,7 @@ func TestCachedStore_Pull_CacheMiss(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+	record := corev1.New(&typesv1alpha0.Record{
 		Name:          "test-agent",
 		Description:   "Test agent",
 		Version:       "1.0.0",
@@ -269,7 +269,7 @@ func TestCachedStore_Delete(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record and metadata
-	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+	record := corev1.New(&typesv1alpha0.Record{
 		Name:          "test-agent",
 		Description:   "Test agent",
 		Version:       "1.0.0",

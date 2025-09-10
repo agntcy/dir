@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
@@ -37,22 +37,22 @@ var integrationConfig = ociconfig.Config{
 
 // createTestRecord creates a comprehensive test record for integration testing.
 func createTestRecord() *corev1.Record {
-	return corev1.NewRecordV1alpha0(&objectsv1.Record{
+	return corev1.New(&typesv1alpha0.Record{
 		Name:          "integration-test-agent",
 		Version:       "v1.0.0",
 		Description:   "Integration test agent for OCI storage",
 		SchemaVersion: "v0.3.1",
 		CreatedAt:     "2023-01-01T00:00:00Z",
 		Authors:       []string{"integration-test@example.com"},
-		Skills: []*objectsv1.Skill{
+		Skills: []*typesv1alpha0.Skill{
 			{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
 			{CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
 		},
-		Locators: []*objectsv1.Locator{
+		Locators: []*typesv1alpha0.Locator{
 			{Type: "docker"},
 			{Type: "helm"},
 		},
-		Extensions: []*objectsv1.Extension{
+		Extensions: []*typesv1alpha0.Extension{
 			{Name: "security"},
 			{Name: "monitoring"},
 		},

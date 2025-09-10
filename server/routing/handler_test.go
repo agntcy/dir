@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	objectsv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -19,12 +19,12 @@ import (
 // A discovers it retrieves the key metadata from B.
 func TestHandler(t *testing.T) {
 	// Test data
-	testRecord := corev1.NewRecordV1alpha0(&objectsv1.Record{
+	testRecord := corev1.New(&typesv1alpha0.Record{
 		Name: "test-handler-agent",
-		Skills: []*objectsv1.Skill{
+		Skills: []*typesv1alpha0.Skill{
 			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
 		},
-		Locators: []*objectsv1.Locator{
+		Locators: []*typesv1alpha0.Locator{
 			{Type: "type1", Url: "url1"},
 		},
 	})

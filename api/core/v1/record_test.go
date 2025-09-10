@@ -1,15 +1,14 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package corev1
+package corev1_test
 
 import (
 	"testing"
 
-	decodingv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/decoding/v1"
 	oasfv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
-	"github.com/agntcy/oasf-sdk/core/converter"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -17,36 +16,32 @@ import (
 func TestRecord_GetCid(t *testing.T) {
 	tests := []struct {
 		name    string
-		record  *Record
+		record  *corev1.Record
 		want    string
 		wantErr bool
 	}{
 		{
 			name: "v0.3.1 agent record",
-			record: &Record{
-				Data: toV0Proto(t, &oasfv1alpha0.Record{
-					Name:          "test-agent",
-					SchemaVersion: "v0.3.1",
-					Description:   "A test agent",
-				}),
-			},
+			record: corev1.New(&oasfv1alpha0.Record{
+				Name:          "test-agent",
+				SchemaVersion: "v0.3.1",
+				Description:   "A test agent",
+			}),
 			wantErr: false,
 		},
 		{
 			name: "v0.5.0 record",
-			record: &Record{
-				Data: toV1Proto(t, &oasfv1alpha1.Record{
-					Name:          "test-agent-v2",
-					SchemaVersion: "v0.5.0",
-					Description:   "A test agent in v0.5.0 record",
-					Version:       "1.0.0",
-					Modules: []*oasfv1alpha1.Module{
-						{
-							Name: "test-extension",
-						},
+			record: corev1.New(&oasfv1alpha1.Record{
+				Name:          "test-agent-v2",
+				SchemaVersion: "v0.5.0",
+				Description:   "A test agent in v0.5.0 record",
+				Version:       "1.0.0",
+				Modules: []*oasfv1alpha1.Module{
+					{
+						Name: "test-extension",
 					},
-				}),
-			},
+				},
+			}),
 			wantErr: false,
 		},
 		{
@@ -56,7 +51,7 @@ func TestRecord_GetCid(t *testing.T) {
 		},
 		{
 			name:    "empty record",
-			record:  &Record{},
+			record:  &corev1.Record{},
 			wantErr: true, // Empty record should fail - no OASF data to marshal
 		},
 	}
@@ -85,21 +80,17 @@ func TestRecord_GetCid(t *testing.T) {
 
 func TestRecord_GetCid_Consistency(t *testing.T) {
 	// Create two identical v0.3.1 records.
-	record1 := &Record{
-		Data: toV1Proto(t, &oasfv1alpha1.Record{
-			Name:          "test-agent",
-			SchemaVersion: "v0.7.0",
-			Description:   "A test agent",
-		}),
-	}
+	record1 := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "v0.7.0",
+		Description:   "A test agent",
+	})
 
-	record2 := &Record{
-		Data: toV1Proto(t, &oasfv1alpha1.Record{
-			Name:          "test-agent",
-			SchemaVersion: "v0.7.0",
-			Description:   "A test agent",
-		}),
-	}
+	record2 := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "v0.7.0",
+		Description:   "A test agent",
+	})
 
 	// Both records should have the same CID.
 	cid1 := record1.GetCid()
@@ -110,21 +101,17 @@ func TestRecord_GetCid_Consistency(t *testing.T) {
 
 func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
 	// Create two different records
-	record1 := &Record{
-		Data: toV0Proto(t, &oasfv1alpha0.Record{
-			Name:          "test-agent",
-			SchemaVersion: "v0.3.1",
-			Description:   "A test agent",
-		}),
-	}
+	record1 := corev1.New(&oasfv1alpha0.Record{
+		Name:          "test-agent",
+		SchemaVersion: "v0.3.1",
+		Description:   "A test agent",
+	})
 
-	record2 := &Record{
-		Data: toV1Proto(t, &oasfv1alpha1.Record{
-			Name:          "test-agent",
-			SchemaVersion: "v0.7.0",
-			Description:   "A test agent",
-		}),
-	}
+	record2 := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "v0.7.0",
+		Description:   "A test agent",
+	})
 
 	// Both records should have the same CID.
 	cid1 := record1.GetCid()
@@ -133,84 +120,50 @@ func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
 	assert.NotEqual(t, cid1, cid2, "Different record versions should have different CIDs")
 }
 
-func TestRecord_MustGetCid(t *testing.T) {
-	record := &Record{
-		Data: toV1Proto(t, &oasfv1alpha1.Record{
-			Name:          "test-agent",
-			SchemaVersion: "v0.7.0",
-			Description:   "A test agent",
-		}),
-	}
-
-	// MustGetCid should not panic for valid record.
-	assert.NotPanics(t, func() {
-		cid := record.MustGetCid()
-		assert.NotEmpty(t, cid)
-	})
-
-	// MustGetCid should panic for nil record.
-	var nilRecord *Record
-
-	assert.Panics(t, func() {
-		nilRecord.MustGetCid()
-	})
-
-	// MustGetCid should panic for empty record (no OASF data).
-	emptyRecord := &Record{}
-
-	assert.Panics(t, func() {
-		emptyRecord.MustGetCid()
-	})
-}
-
 func TestRecord_Validate(t *testing.T) {
 	tests := []struct {
 		name      string
-		record    *Record
+		record    *corev1.Record
 		wantValid bool
 	}{
 		{
 			name: "valid v0.7.0 record",
-			record: &Record{
-				Data: toV1Proto(t, &oasfv1alpha1.Record{
-					Name:          "valid-agent-v2",
-					SchemaVersion: "v0.7.0",
-					Description:   "A valid agent record",
-					Version:       "1.0.0",
-					CreatedAt:     "2024-01-01T00:00:00Z",
-					Authors: []string{
-						"Jane Doe <jane.doe@example.com>",
+			record: corev1.New(&oasfv1alpha1.Record{
+				Name:          "valid-agent-v2",
+				SchemaVersion: "v0.7.0",
+				Description:   "A valid agent record",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+				Authors: []string{
+					"Jane Doe <jane.doe@example.com>",
+				},
+				Locators: []*oasfv1alpha1.Locator{
+					{
+						Type: "helm_chart",
+						Url:  "https://example.com/helm-chart.tgz",
 					},
-					Locators: []*oasfv1alpha1.Locator{
-						{
-							Type: "helm_chart",
-							Url:  "https://example.com/helm-chart.tgz",
-						},
+				},
+				Skills: []*oasfv1alpha1.Skill{
+					{
+						Name: "natural_language_processing/natural_language_understanding",
 					},
-					Skills: []*oasfv1alpha1.Skill{
-						{
-							Name: "natural_language_processing/natural_language_understanding",
-						},
+				},
+				Modules: []*oasfv1alpha1.Module{
+					{
+						Name: "test-extension",
 					},
-					Modules: []*oasfv1alpha1.Module{
-						{
-							Name: "test-extension",
-						},
-					},
-				}),
-			},
+				},
+			}),
 			wantValid: true,
 		},
 		{
 			name: "invalid v0.7.0 record (missing required fields)",
-			record: &Record{
-				Data: toV1Proto(t, &oasfv1alpha1.Record{
-					Name:          "invalid-agent-v2",
-					SchemaVersion: "v0.5.0",
-					Description:   "An invalid agent record in v0.5.0 format",
-					Version:       "1.0.0",
-				}),
-			},
+			record: corev1.New(&oasfv1alpha1.Record{
+				Name:          "invalid-agent-v2",
+				SchemaVersion: "v0.5.0",
+				Description:   "An invalid agent record in v0.5.0 format",
+				Version:       "1.0.0",
+			}),
 			wantValid: false,
 		},
 		{
@@ -220,12 +173,12 @@ func TestRecord_Validate(t *testing.T) {
 		},
 		{
 			name:      "empty record",
-			record:    &Record{},
+			record:    &corev1.Record{},
 			wantValid: false,
 		},
 		{
 			name: "record with invalid generic data",
-			record: &Record{
+			record: &corev1.Record{
 				Data: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"invalid_field": {
@@ -263,54 +216,42 @@ func TestRecord_Validate(t *testing.T) {
 func TestRecord_Decode(t *testing.T) {
 	tests := []struct {
 		name     string
-		record   *Record
-		wantResp *decodingv1.DecodeRecordResponse
+		record   *corev1.Record
+		wantResp interface{}
 		wantFail bool
 	}{
 		{
 			name: "valid v0.3.1 record",
-			record: &Record{
-				Data: toV0Proto(t, &oasfv1alpha0.Record{
-					Name:          "valid-agent-v2",
-					SchemaVersion: "v0.3.1",
-					Description:   "A valid agent record",
-					Version:       "1.0.0",
-					CreatedAt:     "2024-01-01T00:00:00Z",
-				}),
-			},
-			wantResp: &decodingv1.DecodeRecordResponse{
-				Record: &decodingv1.DecodeRecordResponse_V1Alpha0{
-					V1Alpha0: &oasfv1alpha0.Record{
-						Name:          "valid-agent-v2",
-						SchemaVersion: "v0.3.1",
-						Description:   "A valid agent record",
-						Version:       "1.0.0",
-						CreatedAt:     "2024-01-01T00:00:00Z",
-					},
-				},
+			record: corev1.New(&oasfv1alpha0.Record{
+				Name:          "valid-agent-v2",
+				SchemaVersion: "v0.3.1",
+				Description:   "A valid agent record",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+			}),
+			wantResp: &oasfv1alpha0.Record{
+				Name:          "valid-agent-v2",
+				SchemaVersion: "v0.3.1",
+				Description:   "A valid agent record",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
 			},
 		},
 		{
 			name: "valid v0.7.0 record",
-			record: &Record{
-				Data: toV1Proto(t, &oasfv1alpha1.Record{
-					Name:          "valid-agent-v2",
-					SchemaVersion: "v0.7.0",
-					Description:   "A valid agent record",
-					Version:       "1.0.0",
-					CreatedAt:     "2024-01-01T00:00:00Z",
-				}),
-			},
-			wantResp: &decodingv1.DecodeRecordResponse{
-				Record: &decodingv1.DecodeRecordResponse_V1Alpha1{
-					V1Alpha1: &oasfv1alpha1.Record{
-						Name:          "valid-agent-v2",
-						SchemaVersion: "v0.7.0",
-						Description:   "A valid agent record",
-						Version:       "1.0.0",
-						CreatedAt:     "2024-01-01T00:00:00Z",
-					},
-				},
+			record: corev1.New(&oasfv1alpha1.Record{
+				Name:          "valid-agent-v2",
+				SchemaVersion: "v0.7.0",
+				Description:   "A valid agent record",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+			}),
+			wantResp: &oasfv1alpha1.Record{
+				Name:          "valid-agent-v2",
+				SchemaVersion: "v0.7.0",
+				Description:   "A valid agent record",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
 			},
 		},
 		{
@@ -320,12 +261,12 @@ func TestRecord_Decode(t *testing.T) {
 		},
 		{
 			name:     "empty record",
-			record:   &Record{},
+			record:   &corev1.Record{},
 			wantFail: true,
 		},
 		{
 			name: "record with invalid generic data",
-			record: &Record{
+			record: &corev1.Record{
 				Data: &structpb.Struct{
 					Fields: map[string]*structpb.Value{
 						"invalid_field": {
@@ -349,37 +290,15 @@ func TestRecord_Decode(t *testing.T) {
 				return
 			}
 
-			if got == nil || got.Record == nil {
+			if got == nil {
 				t.Errorf("Decode() got nil record, want %v", tt.wantResp)
 
 				return
 			}
 
-			if !assert.EqualValues(t, tt.wantResp, got) {
+			if !assert.EqualValues(t, tt.wantResp, got.GetRecord()) {
 				t.Errorf("Decode() got %v, want %v", got, tt.wantResp)
 			}
 		})
 	}
-}
-
-func toV0Proto(t *testing.T, recordV0 *oasfv1alpha0.Record) *structpb.Struct {
-	t.Helper()
-
-	res, err := converter.StructToProto(recordV0)
-	if err != nil {
-		t.Fatalf("Failed to convert record: %v", err)
-	}
-
-	return res
-}
-
-func toV1Proto(t *testing.T, recordV1 *oasfv1alpha1.Record) *structpb.Struct {
-	t.Helper()
-
-	res, err := converter.StructToProto(recordV1)
-	if err != nil {
-		t.Fatalf("Failed to convert record: %v", err)
-	}
-
-	return res
 }

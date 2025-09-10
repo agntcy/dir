@@ -268,29 +268,25 @@ All tags are normalized for OCI compliance:
 For an AWS EC2 management agent with ORAS-calculated CID:
 
 ```go
-record := &corev1.Record{
-    Data: &corev1.Record_V3{
-        V3: &objectsv3.Record{
-            Name:    "aws-ec2-agent",
-            Version: "1.2.0",
-            Skills: []*objectsv3.Skill{
-                {Name: "ec2-management"},
-                {Name: "auto-scaling"},
-            },
-            Locators: []*objectsv3.Locator{
-                {Type: "docker"},
-                {Type: "helm"},
-            },
-            Extensions: []*objectsv3.Extension{
-                {Name: "monitoring"},
-            },
-            Annotations: map[string]string{
-                "team":    "platform",
-                "project": "cloud-automation",
-            },
-        },
+record := corev1.New(&typesv1alpha0.Record{
+    Name:    "aws-ec2-agent",
+    Version: "1.2.0",
+    Skills: []*typesv1alpha0.Skill{
+        {Name: "ec2-management"},
+        {Name: "auto-scaling"},
     },
-}
+    Locators: []*typesv1alpha0.Locator{
+        {Type: "docker"},
+        {Type: "helm"},
+    },
+    Extensions: []*typesv1alpha0.Extension{
+        {Name: "monitoring"},
+    },
+    Annotations: map[string]string{
+        "team":    "platform",
+        "project": "cloud-automation",
+    },
+})
 
 // Generated tags (CID calculated from ORAS digest):
 tags := []string{
@@ -323,7 +319,7 @@ The system supports multiple OASF versions with automatic detection:
 #### OASF v0.3.1 (objects/v1)
 ```go
 // Skills use hierarchical format
-skills := []*objectsv1.Skill{
+skills := []*typesv1alpha0.Skill{
     {CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
     {CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
 }
@@ -333,7 +329,7 @@ skills := []*objectsv1.Skill{
 #### OASF v0.5.0 (objects/v3)
 ```go
 // Skills use simple names
-skills := []*objectsv3.Skill{
+skills := []*typesv1alpha0.Skill{
     {Name: "natural-language-processing"},
     {Name: "machine-learning"},
 }
