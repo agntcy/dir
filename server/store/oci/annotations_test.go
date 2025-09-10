@@ -83,18 +83,14 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "V1 basic record",
-			record: &corev1.Record{
-				Data: &corev1.Record_V1{
-					V1: &objectsv1.Agent{
-						Name:          "test-agent",
-						Version:       "1.0.0",
-						Description:   "Test agent description",
-						SchemaVersion: "v0.3.1",
-						CreatedAt:     "2023-01-01T00:00:00Z",
-						Authors:       []string{"author1", "author2"},
-					},
-				},
-			},
+			record: corev1.NewRecordV1alpha0(&objectsv1.Record{
+				Name:          "test-agent",
+				Version:       "1.0.0",
+				Description:   "Test agent description",
+				SchemaVersion: "v0.3.1",
+				CreatedAt:     "2023-01-01T00:00:00Z",
+				Authors:       []string{"author1", "author2"},
+			}),
 			contains: map[string]string{
 				manifestDirObjectTypeKey: "record",
 				ManifestKeyOASFVersion:   "v0.3.1",
@@ -109,30 +105,27 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "V1 with skills and extensions",
-			record: &corev1.Record{
-				Data: &corev1.Record_V1{
-					V1: &objectsv1.Agent{
-						Name:    "skill-agent",
-						Version: "2.0.0",
-						Skills: []*objectsv1.Skill{
-							{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
-							{CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
-						},
-						Locators: []*objectsv1.Locator{
-							{Type: "docker"},
-							{Type: "helm"},
-						},
-						Extensions: []*objectsv1.Extension{
-							{Name: "security"},
-							{Name: "monitoring"},
-						},
-						Annotations: map[string]string{
-							"custom1": "value1",
-							"custom2": "value2",
-						},
-					},
+			record: corev1.NewRecordV1alpha0(&objectsv1.Record{
+				Name:          "skill-agent",
+				Version:       "2.0.0",
+				SchemaVersion: "v0.3.1",
+				Skills: []*objectsv1.Skill{
+					{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
+					{CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
 				},
-			},
+				Locators: []*objectsv1.Locator{
+					{Type: "docker"},
+					{Type: "helm"},
+				},
+				Extensions: []*objectsv1.Extension{
+					{Name: "security"},
+					{Name: "monitoring"},
+				},
+				Annotations: map[string]string{
+					"custom1": "value1",
+					"custom2": "value2",
+				},
+			}),
 			contains: map[string]string{
 				ManifestKeyName:    "skill-agent",
 				ManifestKeyVersion: "2.0.0",
@@ -146,21 +139,18 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "V1 basic record",
-			record: &corev1.Record{
-				Data: &corev1.Record_V3{
-					V3: &objectsv3.Record{
-						Name:        "test-record-v2",
-						Version:     "2.0.0",
-						Description: "Test record v2 description",
-						Skills: []*objectsv3.Skill{
-							{Name: "nlp-skill"},
-						},
-						PreviousRecordCid: stringPtr("QmPreviousCID123"),
-					},
+			record: corev1.NewRecordV1alpha1(&objectsv3.Record{
+				Name:          "test-record-v2",
+				Version:       "2.0.0",
+				SchemaVersion: "v0.7.0",
+				Description:   "Test record v2 description",
+				Skills: []*objectsv3.Skill{
+					{Name: "nlp-skill"},
 				},
-			},
+				PreviousRecordCid: stringPtr("QmPreviousCID123"),
+			}),
 			contains: map[string]string{
-				ManifestKeyOASFVersion: "v0.5.0",
+				ManifestKeyOASFVersion: "v0.7.0",
 				ManifestKeyName:        "test-record-v2",
 				ManifestKeyVersion:     "2.0.0",
 				ManifestKeyDescription: "Test record v2 description",
@@ -172,19 +162,16 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "Record with signature",
-			record: &corev1.Record{
-				Data: &corev1.Record_V1{
-					V1: &objectsv1.Agent{
-						Name:    "signed-agent",
-						Version: "1.0.0",
-						Signature: &objectsv1.Signature{
-							Algorithm: "ed25519",
-							SignedAt:  "2023-01-01T12:00:00Z",
-							Signature: "signature-bytes",
-						},
-					},
+			record: corev1.NewRecordV1alpha0(&objectsv1.Record{
+				Name:          "signed-agent",
+				Version:       "1.0.0",
+				SchemaVersion: "v0.3.1",
+				Signature: &objectsv1.Signature{
+					Algorithm: "ed25519",
+					SignedAt:  "2023-01-01T12:00:00Z",
+					Signature: "signature-bytes",
 				},
-			},
+			}),
 			contains: map[string]string{
 				ManifestKeyName:          "signed-agent",
 				ManifestKeySigned:        "true",
@@ -359,11 +346,9 @@ func TestParseManifestAnnotations(t *testing.T) {
 
 func TestExtractManifestAnnotations_EdgeCases(t *testing.T) {
 	t.Run("Record with empty data", func(t *testing.T) {
-		record := &corev1.Record{
-			Data: &corev1.Record_V1{
-				V1: &objectsv1.Agent{},
-			},
-		}
+		record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+			SchemaVersion: "v0.3.1",
+		})
 
 		result := extractManifestAnnotations(record)
 
@@ -387,24 +372,20 @@ func TestExtractManifestAnnotations_EdgeCases(t *testing.T) {
 func TestRoundTripConversion(t *testing.T) {
 	// Test that we can extract manifest annotations and parse them back correctly
 	// NOTE: This test uses V1 format where skills have "categoryName/className" structure
-	originalRecord := &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: &objectsv1.Agent{
-				Name:          "roundtrip-agent",
-				Version:       "1.0.0",
-				Description:   "Test roundtrip conversion",
-				SchemaVersion: "v0.3.1",
-				CreatedAt:     "2023-01-01T00:00:00Z",
-				Authors:       []string{"author1", "author2"},
-				Skills: []*objectsv1.Skill{
-					{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
-				},
-				Annotations: map[string]string{
-					"custom": "value",
-				},
-			},
+	originalRecord := corev1.NewRecordV1alpha0(&objectsv1.Record{
+		Name:          "roundtrip-agent",
+		Version:       "1.0.0",
+		Description:   "Test roundtrip conversion",
+		SchemaVersion: "v0.3.1",
+		CreatedAt:     "2023-01-01T00:00:00Z",
+		Authors:       []string{"author1", "author2"},
+		Skills: []*objectsv1.Skill{
+			{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
 		},
-	}
+		Annotations: map[string]string{
+			"custom": "value",
+		},
+	})
 
 	// Extract annotations
 	manifestAnnotations := extractManifestAnnotations(originalRecord)

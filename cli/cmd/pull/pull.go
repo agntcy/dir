@@ -51,38 +51,20 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}
 
-	// Extract the OASF object from the Record based on version
-	var oasfData interface{}
-
-	var rawData []byte
-
-	switch data := record.GetData().(type) {
-	case *corev1.Record_V1:
-		oasfData = data.V1
-		rawData, err = json.Marshal(data.V1)
-	case *corev1.Record_V2:
-		oasfData = data.V2
-		rawData, err = json.Marshal(data.V2)
-	case *corev1.Record_V3:
-		oasfData = data.V3
-		rawData, err = json.Marshal(data.V3)
-	default:
-		return errors.New("unsupported record type")
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to marshal OASF object: %w", err)
-	}
-
 	// If raw format flag is set, print and exit
 	if opts.FormatRaw {
+		rawData, err := record.Marshal()
+		if err != nil {
+			return fmt.Errorf("failed to marshal record to raw format: %w", err)
+		}
+
 		presenter.Print(cmd, string(rawData))
 
 		return nil
 	}
 
 	// Pretty-print the OASF object
-	output, err := json.MarshalIndent(oasfData, "", "  ")
+	output, err := json.MarshalIndent(record.GetData(), "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal OASF object to JSON: %w", err)
 	}

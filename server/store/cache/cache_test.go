@@ -76,15 +76,14 @@ func TestCachedStore_Push(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: &objectsv1.Agent{
-				Name:        "test-agent",
-				Description: "Test agent",
-				Version:     "1.0.0",
-			},
-		},
-	}
+	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+		Name:          "test-agent",
+		Description:   "Test agent",
+		Version:       "1.0.0",
+		SchemaVersion: "v0.3.1",
+	})
+	decoded, err := record.Decode()
+	require.NoError(t, err)
 
 	recordCID := record.GetCid()
 	require.NotEmpty(t, recordCID, "record should have a CID")
@@ -108,7 +107,9 @@ func TestCachedStore_Push(t *testing.T) {
 	// Test that record can be pulled from cache (verifies it was cached)
 	pulledRecord, err := cachedStore.Pull(ctx, expectedRef)
 	require.NoError(t, err)
-	assert.Equal(t, record.GetV1().GetName(), pulledRecord.GetV1().GetName())
+	pulledDecoded, err := pulledRecord.Decode()
+	require.NoError(t, err)
+	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded.GetV1Alpha0().GetName())
 
 	// Verify mock was called only once (push), not for the pull (cache hit)
 	mockStore.AssertExpectations(t)
@@ -118,15 +119,14 @@ func TestCachedStore_Pull_CacheHit(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: &objectsv1.Agent{
-				Name:        "test-agent",
-				Description: "Test agent",
-				Version:     "1.0.0",
-			},
-		},
-	}
+	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+		Name:          "test-agent",
+		Description:   "Test agent",
+		Version:       "1.0.0",
+		SchemaVersion: "v0.3.1",
+	})
+	decoded, err := record.Decode()
+	require.NoError(t, err)
 
 	recordCID := record.GetCid()
 	require.NotEmpty(t, recordCID, "record should have a CID")
@@ -140,13 +140,15 @@ func TestCachedStore_Pull_CacheHit(t *testing.T) {
 	require.True(t, ok, "Wrap should return *cachedStore")
 
 	// Pre-cache the record
-	err := cachedStore.cacheRecord(ctx, record)
+	err = cachedStore.cacheRecord(ctx, record)
 	require.NoError(t, err)
 
 	// Test Pull - should hit cache and not call source store
 	pulledRecord, err := cachedStore.Pull(ctx, ref)
 	require.NoError(t, err)
-	assert.Equal(t, record.GetV1().GetName(), pulledRecord.GetV1().GetName())
+	pulledDecoded, err := pulledRecord.Decode()
+	require.NoError(t, err)
+	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded.GetV1Alpha0().GetName())
 
 	// Verify mock was NOT called (cache hit)
 	mockStore.AssertNotCalled(t, "Pull")
@@ -156,15 +158,14 @@ func TestCachedStore_Pull_CacheMiss(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: &objectsv1.Agent{
-				Name:        "test-agent",
-				Description: "Test agent",
-				Version:     "1.0.0",
-			},
-		},
-	}
+	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+		Name:          "test-agent",
+		Description:   "Test agent",
+		Version:       "1.0.0",
+		SchemaVersion: "v0.3.1",
+	})
+	decoded, err := record.Decode()
+	require.NoError(t, err)
 
 	recordCID := record.GetCid()
 	ref := &corev1.RecordRef{Cid: recordCID}
@@ -180,12 +181,16 @@ func TestCachedStore_Pull_CacheMiss(t *testing.T) {
 	// Test Pull - should miss cache and call source store
 	pulledRecord, err := cachedStore.Pull(ctx, ref)
 	require.NoError(t, err)
-	assert.Equal(t, record.GetV1().GetName(), pulledRecord.GetV1().GetName())
+	pulledDecoded, err := pulledRecord.Decode()
+	require.NoError(t, err)
+	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded.GetV1Alpha0().GetName())
 
 	// Test that subsequent pull hits cache (verifies it was cached after first pull)
 	pulledRecord2, err := cachedStore.Pull(ctx, ref)
 	require.NoError(t, err)
-	assert.Equal(t, record.GetV1().GetName(), pulledRecord2.GetV1().GetName())
+	pulledDecoded2, err := pulledRecord2.Decode()
+	require.NoError(t, err)
+	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded2.GetV1Alpha0().GetName())
 
 	// Verify mock was called only once (first pull), not for the second pull (cache hit)
 	mockStore.AssertExpectations(t)
@@ -264,15 +269,12 @@ func TestCachedStore_Delete(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record and metadata
-	record := &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: &objectsv1.Agent{
-				Name:        "test-agent",
-				Description: "Test agent",
-				Version:     "1.0.0",
-			},
-		},
-	}
+	record := corev1.NewRecordV1alpha0(&objectsv1.Record{
+		Name:          "test-agent",
+		Description:   "Test agent",
+		Version:       "1.0.0",
+		SchemaVersion: "v0.3.1",
+	})
 
 	recordCID := record.GetCid()
 	ref := &corev1.RecordRef{Cid: recordCID}

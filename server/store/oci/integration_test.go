@@ -37,35 +37,31 @@ var integrationConfig = ociconfig.Config{
 
 // createTestRecord creates a comprehensive test record for integration testing.
 func createTestRecord() *corev1.Record {
-	return &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: &objectsv1.Agent{
-				Name:          "integration-test-agent",
-				Version:       "v1.0.0",
-				Description:   "Integration test agent for OCI storage",
-				SchemaVersion: "v0.3.1",
-				CreatedAt:     "2023-01-01T00:00:00Z",
-				Authors:       []string{"integration-test@example.com"},
-				Skills: []*objectsv1.Skill{
-					{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
-					{CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
-				},
-				Locators: []*objectsv1.Locator{
-					{Type: "docker"},
-					{Type: "helm"},
-				},
-				Extensions: []*objectsv1.Extension{
-					{Name: "security"},
-					{Name: "monitoring"},
-				},
-				Annotations: map[string]string{
-					"team":        "integration-test",
-					"environment": "test",
-					"project":     "oci-storage",
-				},
-			},
+	return corev1.NewRecordV1alpha0(&objectsv1.Record{
+		Name:          "integration-test-agent",
+		Version:       "v1.0.0",
+		Description:   "Integration test agent for OCI storage",
+		SchemaVersion: "v0.3.1",
+		CreatedAt:     "2023-01-01T00:00:00Z",
+		Authors:       []string{"integration-test@example.com"},
+		Skills: []*objectsv1.Skill{
+			{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
+			{CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
 		},
-	}
+		Locators: []*objectsv1.Locator{
+			{Type: "docker"},
+			{Type: "helm"},
+		},
+		Extensions: []*objectsv1.Extension{
+			{Name: "security"},
+			{Name: "monitoring"},
+		},
+		Annotations: map[string]string{
+			"team":        "integration-test",
+			"environment": "test",
+			"project":     "oci-storage",
+		},
+	})
 }
 
 // setupIntegrationStore creates a store connected to the local zot registry.
@@ -277,8 +273,10 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 		require.NotNil(t, pulledRecord, "Pull should return record")
 
 		// Verify pulled record matches original
-		originalAgent := record.GetV1()
-		pulledAgent := pulledRecord.GetV1()
+		decodedOriginalAgent, _ := record.Decode()
+		originalAgent := decodedOriginalAgent.GetV1Alpha0()
+		decodedPulledAgent, _ := pulledRecord.Decode()
+		pulledAgent := decodedPulledAgent.GetV1Alpha0()
 
 		assert.Equal(t, originalAgent.GetName(), pulledAgent.GetName())
 		assert.Equal(t, originalAgent.GetVersion(), pulledAgent.GetVersion())

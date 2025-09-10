@@ -10,6 +10,8 @@ import (
 	decodingv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/decoding/v1"
 	validationv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/validation/v1"
 	oasfcorev1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/core/v1"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
 	"github.com/agntcy/oasf-sdk/core/converter"
 	"github.com/agntcy/oasf-sdk/validation/validator"
 )
@@ -138,12 +140,38 @@ func (r *Record) Validate() (bool, []string, error) {
 
 // UnmarshalRecord unmarshals canonical Record JSON bytes to a Record.
 func UnmarshalRecord(data []byte) (*Record, error) {
+	// Load data from JSON bytes
 	dataStruct, err := converter.JsonToProto(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Record: %w", err)
 	}
 
-	return &Record{
+	// Construct a record
+	record := &Record{
 		Data: dataStruct,
-	}, nil
+	}
+
+	// If we can decode the record, then it is structurally valid.
+	// Loaded record may be syntactically valid but semantically invalid (e.g. missing required fields).
+	// We leave full semantic validation to the caller.
+	_, err = record.Decode()
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode Record: %w", err)
+	}
+
+	return record, nil
+}
+
+func NewRecordV1alpha0(record *typesv1alpha0.Record) *Record {
+	data, _ := converter.StructToProto(record)
+	return &Record{
+		Data: data,
+	}
+}
+
+func NewRecordV1alpha1(record *typesv1alpha1.Record) *Record {
+	data, _ := converter.StructToProto(record)
+	return &Record{
+		Data: data,
+	}
 }

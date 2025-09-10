@@ -19,19 +19,15 @@ import (
 // A discovers it retrieves the key metadata from B.
 func TestHandler(t *testing.T) {
 	// Test data
-	testRecord := &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: &objectsv1.Agent{
-				Name: "test-handler-agent",
-				Skills: []*objectsv1.Skill{
-					{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-				},
-				Locators: []*objectsv1.Locator{
-					{Type: "type1", Url: "url1"},
-				},
-			},
+	testRecord := corev1.NewRecordV1alpha0(&objectsv1.Record{
+		Name: "test-handler-agent",
+		Skills: []*objectsv1.Skill{
+			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
 		},
-	}
+		Locators: []*objectsv1.Locator{
+			{Type: "type1", Url: "url1"},
+		},
+	})
 	testRef := &corev1.RecordRef{Cid: testRecord.GetCid()}
 
 	// create demo network

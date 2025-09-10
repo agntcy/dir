@@ -69,8 +69,15 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Load OASF data (supports v1, v2, v3) into a Record
-	record, err := corev1.LoadOASFFromReader(source)
+	// Read and close the source
+	sourceData, err := io.ReadAll(source)
+	if err != nil {
+		return fmt.Errorf("failed to read source data: %w", err)
+	}
+	source.Close()
+
+	// Load OASF data into a Record
+	record, err := corev1.UnmarshalRecord(sourceData)
 	if err != nil {
 		return fmt.Errorf("failed to load OASF: %w", err)
 	}

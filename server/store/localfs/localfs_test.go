@@ -22,18 +22,14 @@ func TestStore(t *testing.T) {
 	require.NoError(t, err, "failed to create store")
 
 	// Create test record
-	testAgent := &objectsv1.Agent{
+	testAgent := &objectsv1.Record{
 		Name:          "test-agent-123",
 		Description:   "A test agent for unit testing",
 		Version:       "1.0.0",
 		SchemaVersion: "v0.3.1", // Required field for OASF version detection
 	}
 
-	record := &corev1.Record{
-		Data: &corev1.Record_V1{
-			V1: testAgent,
-		},
-	}
+	record := corev1.NewRecordV1alpha0(testAgent)
 
 	// Push record - store will calculate CID internally
 	pushedRef, err := store.Push(ctx, record)
@@ -56,8 +52,9 @@ func TestStore(t *testing.T) {
 	require.NoError(t, err, "pull failed")
 
 	// Verify record data (don't check CID from pulled record since we're moving away from Record.GetCid)
-	assert.NotNil(t, fetchedRecord.GetV1(), "should have v1 data")
-	fetchedAgent := fetchedRecord.GetV1()
+	decoded, _ := fetchedRecord.Decode()
+	assert.NotNil(t, decoded.GetV1Alpha0(), "should have v1 data")
+	fetchedAgent := decoded.GetV1Alpha0()
 	assert.Equal(t, testAgent.GetName(), fetchedAgent.GetName(), "agent name should match")
 	assert.Equal(t, testAgent.GetDescription(), fetchedAgent.GetDescription(), "agent description should match")
 	assert.Equal(t, testAgent.GetVersion(), fetchedAgent.GetVersion(), "agent version should match")

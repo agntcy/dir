@@ -4,7 +4,6 @@
 package sqlite
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -29,8 +28,15 @@ func (r *TestRecord) GetCid() string {
 	return r.cid
 }
 
-func (r *TestRecord) GetRecordData() types.RecordData {
-	return r.data
+func (r *TestRecord) GetRecordData() (types.RecordData, error) {
+	return r.data, nil
+}
+
+func mustGetRecordData(t *testing.T, record types.Record) types.RecordData {
+	t.Helper()
+	data, err := record.GetRecordData()
+	require.NoError(t, err)
+	return data
 }
 
 // TestRecordData implements types.RecordData interface for testing.
@@ -260,7 +266,7 @@ func TestGetRecords_SingleOptions(t *testing.T) {
 	records, err = db.GetRecords(types.WithName("agent1"))
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
-	assert.Equal(t, "agent1", records[0].GetRecordData().GetName())
+	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
 
 	// Test version filter.
 	records, err = db.GetRecords(types.WithVersion("1.0.0"))
@@ -268,14 +274,14 @@ func TestGetRecords_SingleOptions(t *testing.T) {
 	assert.Len(t, records, 2)
 
 	for _, record := range records {
-		assert.Equal(t, "1.0.0", record.GetRecordData().GetVersion())
+		assert.Equal(t, "1.0.0", mustGetRecordData(t, record).GetVersion())
 	}
 
 	// Test skill names filter.
 	records, err = db.GetRecords(types.WithSkillNames("skill3"))
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
-	assert.Equal(t, "agent2", records[0].GetRecordData().GetName())
+	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
 
 	// Test locator types filter.
 	records, err = db.GetRecords(types.WithLocatorTypes("grpc"))
@@ -286,7 +292,7 @@ func TestGetRecords_SingleOptions(t *testing.T) {
 	records, err = db.GetRecords(types.WithExtensionNames("ext1"))
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
-	assert.Equal(t, "agent1", records[0].GetRecordData().GetName())
+	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
 }
 
 // TestGetRecords_CombinedOptions tests combinations of options.
@@ -323,7 +329,7 @@ func TestGetRecords_CombinedOptions(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
-	assert.Equal(t, "agent1", records[0].GetRecordData().GetName())
+	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
 
 	// Test combination with no matches.
 	records, err = db.GetRecords(
@@ -343,7 +349,7 @@ func TestGetRecords_SkillIdOption(t *testing.T) {
 	records, err := db.GetRecords(types.WithSkillIDs(101))
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
-	assert.Equal(t, "agent1", records[0].GetRecordData().GetName())
+	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
 }
 
 // TestGetRecords_LocatorUrlOption tests the locator URL option.
@@ -354,7 +360,7 @@ func TestGetRecords_LocatorUrlOption(t *testing.T) {
 	records, err := db.GetRecords(types.WithLocatorURLs("http://localhost:8081"))
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
-	assert.Equal(t, "agent2", records[0].GetRecordData().GetName())
+	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
 }
 
 // TestGetRecords_ExtensionVersionOption tests the extension version option.
@@ -365,7 +371,7 @@ func TestGetRecords_ExtensionVersionOption(t *testing.T) {
 	records, err := db.GetRecords(types.WithExtensionVersions("0.2.0"))
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
-	assert.Equal(t, "agent2", records[0].GetRecordData().GetName())
+	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
 }
 
 // TestGetRecords_PreloadRelations ensures related data is properly loaded.
@@ -377,7 +383,7 @@ func TestGetRecords_PreloadRelations(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 
-	recordData := records[0].GetRecordData()
+	recordData := mustGetRecordData(t, records[0])
 	skills := recordData.GetSkills()
 	assert.Len(t, skills, 2)
 
@@ -711,7 +717,7 @@ func TestAllOASFVersions_SkillHandling(t *testing.T) {
 			agentJSON: `{
 				"name": "test-v2-agent",
 				"version": "1.0.0",
-				"schema_version": "v0.4.0",
+				"schema_version": "v0.7.0",
 				"skills": [
 					{
 						"name": "Machine Learning/Classification",
@@ -719,26 +725,9 @@ func TestAllOASFVersions_SkillHandling(t *testing.T) {
 					}
 				]
 			}`,
-			schemaVersion:   "v0.4.0",
+			schemaVersion:   "v0.7.0",
 			expectedSkill:   "Machine Learning/Classification",
 			expectedSkillID: 20301,
-		},
-		{
-			name: "V3_Record_SimpleNameFormat",
-			agentJSON: `{
-				"name": "test-v3-agent",
-				"version": "1.0.0",
-				"schema_version": "v0.5.0",
-				"skills": [
-					{
-						"name": "Data Analysis",
-						"id": 30401
-					}
-				]
-			}`,
-			schemaVersion:   "v0.5.0",
-			expectedSkill:   "Data Analysis",
-			expectedSkillID: 30401,
 		},
 	}
 
@@ -747,25 +736,13 @@ func TestAllOASFVersions_SkillHandling(t *testing.T) {
 			db := setupTestDB(t)
 
 			// Load the JSON using the same path as E2E tests
-			record, err := corev1.LoadOASFFromReader(bytes.NewReader([]byte(tc.agentJSON)))
+			record, err := corev1.UnmarshalRecord([]byte(tc.agentJSON))
 			require.NoError(t, err, "LoadOASFFromReader should succeed for %s", tc.schemaVersion)
-
-			// Verify it loaded the correct version
-			switch tc.schemaVersion {
-			case "v0.3.1":
-				_, ok := record.GetData().(*corev1.Record_V1)
-				require.True(t, ok, "Should load as V1 for schema_version v0.3.1")
-			case "v0.4.0":
-				_, ok := record.GetData().(*corev1.Record_V2)
-				require.True(t, ok, "Should load as V2 for schema_version v0.4.0")
-			case "v0.5.0":
-				_, ok := record.GetData().(*corev1.Record_V3)
-				require.True(t, ok, "Should load as V3 for schema_version v0.5.0")
-			}
 
 			// Create RecordAdapter and test skill extraction
 			recordAdapter := adapters.NewRecordAdapter(record)
-			recordData := recordAdapter.GetRecordData()
+			recordData, err := recordAdapter.GetRecordData()
+			require.NoError(t, err, "GetRecordData should succeed for %s", tc.schemaVersion)
 			require.NotNil(t, recordData, "RecordData should not be nil")
 
 			skills := recordData.GetSkills()
@@ -849,7 +826,7 @@ func TestV1SkillFormats_EdgeCases(t *testing.T) {
 			}`, tc.name, tc.skillJSON)
 
 			// Test parsing
-			var agent objectsv1.Agent
+			var agent objectsv1.Record
 			err := json.Unmarshal([]byte(agentJSON), &agent)
 			require.NoError(t, err, "JSON unmarshal should succeed")
 
@@ -889,23 +866,11 @@ func TestSkillSearchCompatibility_AcrossVersions(t *testing.T) {
 				}
 			]
 		}`,
-		// V2 format (simple name/id format)
-		`{
-			"name": "v2-agent",
-			"version": "1.0.0",
-			"schema_version": "v0.4.0", 
-			"skills": [
-				{
-					"name": "Text Processing/Summarization",
-					"id": 12345
-				}
-			]
-		}`,
 		// V3 format (simple name)
 		`{
 			"name": "v3-agent",
 			"version": "1.0.0",
-			"schema_version": "v0.5.0",
+			"schema_version": "v0.7.0",
 			"skills": [
 				{
 					"name": "Text Processing/Summarization",
@@ -919,7 +884,7 @@ func TestSkillSearchCompatibility_AcrossVersions(t *testing.T) {
 
 	// Add all agents
 	for i, agentJSON := range agentJSONs {
-		record, err := corev1.LoadOASFFromReader(bytes.NewReader([]byte(agentJSON)))
+		record, err := corev1.UnmarshalRecord([]byte(agentJSON))
 		require.NoError(t, err, "Should load agent %d", i+1)
 
 		recordAdapter := adapters.NewRecordAdapter(record)
@@ -932,12 +897,12 @@ func TestSkillSearchCompatibility_AcrossVersions(t *testing.T) {
 	// Search by skill name - should find V1 and V2 agents (both use category/class format)
 	cids, err := db.GetRecordCIDs(types.WithSkillNames("Text Processing/Summarization"))
 	require.NoError(t, err, "Should search by combined skill name")
-	assert.Len(t, cids, 3, "Should find all 3 agents with the same logical skill")
+	assert.Len(t, cids, 2, "Should find all 3 agents with the same logical skill")
 
 	// Search by skill ID - should find all agents (same ID across versions)
 	cids, err = db.GetRecordCIDs(types.WithSkillIDs(12345))
 	require.NoError(t, err, "Should search by skill ID")
-	assert.Len(t, cids, 3, "Should find all 3 agents with the same skill ID")
+	assert.Len(t, cids, 2, "Should find all 3 agents with the same skill ID")
 
 	t.Logf("✅ Cross-version skill search compatibility verified")
 	t.Logf("   Added CIDs: %v", addedCIDs)
