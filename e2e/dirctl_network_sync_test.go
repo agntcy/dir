@@ -18,8 +18,6 @@ import (
 
 // Using peer addresses from utils.constants
 
-// expectedRecordV2JSON is now embedded in dirctl_test.go and reused here
-
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", func() {
 	var cli *utils.CLI
 	var syncID string
@@ -33,7 +31,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(tempV3Path), 0o755)
-	_ = os.WriteFile(tempV3Path, expectedRecordV3JSON, 0o600)
+	_ = os.WriteFile(tempV3Path, expectedRecordV1Alpha1JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -126,7 +124,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			output := cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), expectedRecordV3JSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), expectedRecordV1Alpha1JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})

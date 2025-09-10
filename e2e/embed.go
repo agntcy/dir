@@ -8,8 +8,8 @@ import _ "embed"
 // Embedded test data files used across multiple test suites.
 // This centralizes all test data to avoid duplication and ensure consistency.
 
-//go:embed testdata/record_v1.json
-var expectedRecordV1JSON []byte
+//go:embed testdata/record_v1alpha0.json
+var expectedRecordV1Alpha0JSON []byte
 
-//go:embed testdata/record_v3.json
-var expectedRecordV3JSON []byte
+//go:embed testdata/record_v1alpha1.json
+var expectedRecordV1Alpha1JSON []byte

@@ -75,7 +75,7 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		return fmt.Errorf("failed to read source data: %w", err)
 	}
 
-	source.Close()
+	defer source.Close()
 
 	// Load OASF data into a Record
 	record, err := corev1.UnmarshalRecord(sourceData)
