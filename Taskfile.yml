@@ -883,13 +883,13 @@ tasks:
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: 'local'
     cmds:
-      # - defer: { task: deploy:kubernetes:local:cleanup }
+      - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
-      #- task: deploy:kubernetes:local
-      #  vars:
-      #    DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
+      - task: deploy:kubernetes:local
+        vars:
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
       - task: deploy:kubernetes:local:port-forward
       # Run tests
       - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
