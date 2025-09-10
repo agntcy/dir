@@ -5,8 +5,6 @@ syntax = "proto3";
 
 package store.v1;
 
-import "google/protobuf/empty.proto";
-
 // SyncService provides functionality for synchronizing objects between Directory nodes.
 // 
 // This service enables one-way synchronization from a remote Directory node to the local node,
