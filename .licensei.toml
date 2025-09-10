@@ -26,8 +26,8 @@ ignored = [
   "modernc.org/libc", # BSD-3-Clause https://gitlab.com/cznic/libc/-/blob/master/LICENSE
   "modernc.org/mathutil", # BSD-3-Clausehttps://gitlab.com/cznic/mathutil/-/blob/master/LICENSE
   "modernc.org/memory", # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
-  "gitlab.com/gitlab-org/api/client-go" # Apache License 2.0 https://gitlab.com/gitlab-org/api/client-go/-/blob/main/LICENSE
-  "github.com/xeipuuv/gojsonpointer" # Apache License 2.0 https://github.com/xeipuuv/gojsonpointer/blob/master/LICENSE-APACHE-2.0.txt
-  "github.com/xeipuuv/gojsonreference" # Apache License 2.0 https://github.com/xeipuuv/gojsonreference/blob/master/LICENSE-APACHE-2.0.txt
-  "github.com/xeipuuv/gojsonschema" # Apache License 2.0 https://github.com/xeipuuv/gojsonschema/blob/master/LICENSE-APACHE-2.0.txt
+  "gitlab.com/gitlab-org/api/client-go", # Apache License 2.0 https://gitlab.com/gitlab-org/api/client-go/-/blob/main/LICENSE
+  "github.com/xeipuuv/gojsonpointer", # Apache License 2.0 https://github.com/xeipuuv/gojsonpointer/blob/master/LICENSE-APACHE-2.0.txt
+  "github.com/xeipuuv/gojsonreference", # Apache License 2.0 https://github.com/xeipuuv/gojsonreference/blob/master/LICENSE-APACHE-2.0.txt
+  "github.com/xeipuuv/gojsonschema", # Apache License 2.0 https://github.com/xeipuuv/gojsonschema/blob/master/LICENSE-APACHE-2.0.txt
 ]
