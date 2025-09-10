@@ -505,6 +505,12 @@ tasks:
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      # Generate credentials
+      HTPASSWD_USERNAME: "apiserver"
+      HTPASSWD_PASSWORD:
+        sh: openssl rand -hex 16
+      HTPASSWD_AUTH_HEADER:
+        sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -512,6 +518,9 @@ tasks:
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
+          HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
+          HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
+          HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
 
       # Deploy chart
       - |
@@ -521,9 +530,9 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
-          --set apiserver.config.oci.auth_config.username="apiserver" \
-          --set apiserver.config.oci.auth_config.password="0af3b0256b006f0f779fa4ae75e67b0c" \
-          --set apiserver.zot.authHeader="YXBpc2VydmVyOjBhZjNiMDI1NmIwMDZmMGY3NzlmYTRhZTc1ZTY3YjBj" \
+          --set apiserver.config.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
+          --set apiserver.config.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
+          --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -660,6 +669,12 @@ tasks:
       # Helm args
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      # Generate credentials
+      HTPASSWD_USERNAME: "apiserver"
+      HTPASSWD_PASSWORD:
+        sh: openssl rand -hex 16
+      HTPASSWD_AUTH_HEADER:
+        sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
     cmds:
       # Generate private key if it doesn't exist
       - |
@@ -675,6 +690,9 @@ tasks:
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config-bootstrap
+          HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
+          HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
+          HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
 
       # Deploy the bootstrap server using Helm
       - |
@@ -691,9 +709,9 @@ tasks:
           --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
           --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
           --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
-          --set apiserver.config.oci.auth_config.username="apiserver" \
-          --set apiserver.config.oci.auth_config.password="0af3b0256b006f0f779fa4ae75e67b0c" \
-          --set apiserver.zot.authHeader="YXBpc2VydmVyOjBhZjNiMDI1NmIwMDZmMGY3NzlmYTRhZTc1ZTY3YjBj" \
+          --set apiserver.config.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
+          --set apiserver.config.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
+          --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -707,6 +725,12 @@ tasks:
     vars:
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      # Generate credentials
+      HTPASSWD_USERNAME: "apiserver"
+      HTPASSWD_PASSWORD:
+        sh: openssl rand -hex 16
+      HTPASSWD_AUTH_HEADER:
+        sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
     cmds:
       # Deploy bootstrap with explicit var passing (not as dependency)
       - task: deploy:kubernetes:network:bootstrap
@@ -719,6 +743,9 @@ tasks:
         task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config-{{ .ITEM.PEER }}
+          HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
+          HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
+          HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
 
       # Deploy the peer servers using Helm
       - for:
@@ -736,9 +763,9 @@ tasks:
             --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.{{ .ITEM.PEER }}.svc.cluster.local:8888" \
             --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
             --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
-            --set apiserver.config.oci.auth_config.username="apiserver" \
-            --set apiserver.config.oci.auth_config.password="0af3b0256b006f0f779fa4ae75e67b0c" \
-            --set apiserver.zot.authHeader="YXBpc2VydmVyOjBhZjNiMDI1NmIwMDZmMGY3NzlmYTRhZTc1ZTY3YjBj" \
+            --set apiserver.config.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
+            --set apiserver.config.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
+            --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \
@@ -814,7 +841,7 @@ tasks:
             },
             "accessControl": {
               "adminPolicy": {
-                  "users": ["apiserver"],
+                  "users": ["{{ .HTPASSWD_USERNAME }}"],
                   "actions": ["read", "create", "update", "delete"]
               }
             }
@@ -840,9 +867,10 @@ tasks:
           exit 1
         fi
 
-      # Create htpasswd file locally first
+
+      # Create htpasswd file locally using task variables
       - |
-        echo 'apiserver:$2a$10$v/HJ1GAjgU1uBVKrAtATFuKkzxkpsFLnDYBJefQp4RzBypxoXELsO' > /tmp/zot-htpasswd
+        htpasswd -cBb /tmp/zot-htpasswd "{{ .HTPASSWD_USERNAME }}" "{{ .HTPASSWD_PASSWORD }}"
 
       # Copy htpasswd file to node and set permissions
       - |
@@ -1491,6 +1519,13 @@ tasks:
       - chmod +x cosign-{{.COSIGN_VERSION}}
     status:
       - test -x cosign-{{.COSIGN_VERSION}}
+
+  deps:htpasswd:
+    desc: Install htpasswd
+    dir: '{{ .BIN_DIR }}'
+    internal: true
+    cmds:
+      - npm install -g htpasswd
 
   ##
   ## Helm
