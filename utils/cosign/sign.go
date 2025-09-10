@@ -12,7 +12,9 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/cosign/v2/pkg/oci/mutate"
 	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
@@ -235,6 +237,8 @@ type AttachSignatureOptions struct {
 	ImageRef  string
 	Signature string
 	Payload   string
+	Username  string
+	Password  string
 }
 
 // AttachSignature attaches a signature to an OCI image using cosign.
@@ -249,7 +253,20 @@ func AttachSignature(_ context.Context, opts *AttachSignatureOptions) error {
 		return fmt.Errorf("failed to create static signature: %w", err)
 	}
 
-	se, err := ociremote.SignedEntity(ref)
+	// Remote options for authentication
+	remoteOpts := []ociremote.Option{}
+	if opts.Username != "" && opts.Password != "" {
+		remoteOpts = append(remoteOpts, ociremote.WithRemoteOptions(
+			remote.WithAuth(
+				&authn.Basic{
+					Username: opts.Username,
+					Password: opts.Password,
+				},
+			),
+		))
+	}
+
+	se, err := ociremote.SignedEntity(ref, remoteOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to create signed entity: %w", err)
 	}
@@ -260,7 +277,7 @@ func AttachSignature(_ context.Context, opts *AttachSignatureOptions) error {
 		return fmt.Errorf("failed to attach signature to entity: %w", err)
 	}
 
-	err = ociremote.WriteSignatures(ref.Context(), newSE)
+	err = ociremote.WriteSignatures(ref.Context(), newSE, remoteOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to write signatures: %w", err)
 	}
