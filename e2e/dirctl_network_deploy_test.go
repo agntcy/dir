@@ -27,7 +27,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 	}
 	tempPath := filepath.Join(tempDir, "record_v3_network_test.json")
 
-	// Create directory and write V3 record data
+	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
 	_ = os.WriteFile(tempPath, expectedRecordV1Alpha1JSON, 0o600)
 

@@ -29,9 +29,9 @@ func GetLabels(record *corev1.Record) []Label {
 	// Use adapter pattern to get version-agnostic access to record data
 	adapter := adapters.NewRecordAdapter(record)
 
-	recordData := adapter.GetRecordData()
-	if recordData == nil {
-		labelLogger.Error("failed to get record data")
+	recordData, err := adapter.GetRecordData()
+	if err != nil {
+		labelLogger.Error("failed to get record data", "err", err)
 
 		return nil
 	}

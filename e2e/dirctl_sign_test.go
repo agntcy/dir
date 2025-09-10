@@ -15,7 +15,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-// Using the shared record V3 data from embed.go
+// Using the shared record data from embed.go
 
 // Test constants.
 const (

@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	clicmd "github.com/agntcy/dir/cli/cmd"
 	searchcmd "github.com/agntcy/dir/cli/cmd/search"
 	"github.com/spf13/cobra"
@@ -29,6 +30,18 @@ func CollectItems[T any](itemsChan <-chan T) []T {
 	}
 
 	return items
+}
+
+// CollectListItems collects all list items from a channel into a slice.
+// Wrapper around generic CollectItems for routing list operations.
+func CollectListItems(itemsChan <-chan *routingv1.ListResponse) []*routingv1.ListResponse {
+	return CollectItems(itemsChan)
+}
+
+// CollectSearchItems collects all search items from a channel into a slice.
+// Wrapper around generic CollectItems for routing search operations.
+func CollectSearchItems(searchChan <-chan *routingv1.SearchResponse) []*routingv1.SearchResponse {
+	return CollectItems(searchChan)
 }
 
 // CompareOASFRecords compares two OASF JSON records with version-aware logic.

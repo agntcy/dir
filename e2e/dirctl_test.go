@@ -110,7 +110,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					"JSON comparison should not error for %s", version.name)
 				gomega.Expect(equal).To(gomega.BeTrue(),
 					"PUSH/PULL MISMATCH for %s: Original and pulled record should be identical. "+
-						"This indicates data loss during push/pull cycle - possibly the V3 skills issue!", version.name)
+						"This indicates data loss during push/pull cycle - possibly the skills issue!", version.name)
 			})
 
 			// Step 4: Verify duplicate push returns same CID (depends on push)

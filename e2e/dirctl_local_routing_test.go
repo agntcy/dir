@@ -25,9 +25,9 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 	}
 	tempPath := filepath.Join(tempDir, "record_v3_local_routing_test.json")
 
-	// Create directory and write V3 record data
+	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
-	_ = os.WriteFile(tempPath, expectedRecordV3JSON, 0o600)
+	_ = os.WriteFile(tempPath, expectedRecordV1Alpha1JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeLocal {
