@@ -13,7 +13,6 @@ import (
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
-	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	sync "github.com/agntcy/dir/server/sync/config"
 	syncmonitor "github.com/agntcy/dir/server/sync/monitor/config"
@@ -50,9 +49,8 @@ type Config struct {
 	Authz authz.Config `json:"authz,omitempty" mapstructure:"authz"`
 
 	// Provider configuration
-	Provider string         `json:"provider,omitempty" mapstructure:"provider"`
-	LocalFS  localfs.Config `json:"localfs,omitempty"  mapstructure:"localfs"`
-	OCI      oci.Config     `json:"oci,omitempty"      mapstructure:"oci"`
+	Provider string     `json:"provider,omitempty" mapstructure:"provider"`
+	OCI      oci.Config `json:"oci,omitempty"      mapstructure:"oci"`
 
 	// Routing configuration
 	Routing routing.Config `json:"routing,omitempty" mapstructure:"routing"`
@@ -117,12 +115,6 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("provider")
 	v.SetDefault("provider", DefaultProvider)
-
-	//
-	// LocalFS configuration
-	//
-	_ = v.BindEnv("localfs.dir")
-	v.SetDefault("localfs.dir", localfs.DefaultDir)
 
 	//
 	// OCI configuration

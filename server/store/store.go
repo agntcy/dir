@@ -6,7 +6,6 @@ package store
 import (
 	"fmt"
 
-	"github.com/agntcy/dir/server/store/localfs"
 	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/server/types"
 )
@@ -14,21 +13,12 @@ import (
 type Provider string
 
 const (
-	LocalFS = Provider("localfs")
-	OCI     = Provider("oci")
+	OCI = Provider("oci")
 )
 
 // TODO: add options for adding cache.
 func New(opts types.APIOptions) (types.StoreAPI, error) {
 	switch provider := Provider(opts.Config().Provider); provider {
-	case LocalFS:
-		store, err := localfs.New(opts.Config().LocalFS)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create localfs store: %w", err)
-		}
-
-		return store, nil
-
 	case OCI:
 		store, err := oci.New(opts.Config().OCI)
 		if err != nil {

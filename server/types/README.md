@@ -628,7 +628,7 @@ for _, record := range records {
 - **`google.golang.org/protobuf`** - Protocol buffer support
 
 ### Integration Points
-- **Storage Layer** - OCI, LocalFS implementations
+- **Storage Layer** - OCI implementations
 - **Search Layer** - SQLite, in-memory implementations  
 - **Routing Layer** - P2P networking implementations
 - **Config System** - Server configuration management

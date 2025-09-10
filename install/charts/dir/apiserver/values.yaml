@@ -43,9 +43,6 @@ config:
       access_token: access-token
       refresh_token: refresh-token
 
-  # localfs:
-  #   dir: ""
-
   # Routing settings for the peer-to-peer network.
   routing: {}
     # Address to use for routing

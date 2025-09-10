@@ -13,7 +13,6 @@ import (
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
-	localfs "github.com/agntcy/dir/server/store/localfs/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	sync "github.com/agntcy/dir/server/sync/config"
 	monitor "github.com/agntcy/dir/server/sync/monitor/config"
@@ -32,7 +31,6 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_LISTEN_ADDRESS":                       "example.com:8889",
 				"DIRECTORY_SERVER_HEALTHCHECK_ADDRESS":                  "example.com:18888",
 				"DIRECTORY_SERVER_PROVIDER":                             "provider",
-				"DIRECTORY_SERVER_LOCALFS_DIR":                          "local-dir-fs",
 				"DIRECTORY_SERVER_OCI_LOCAL_DIR":                        "local-dir",
 				"DIRECTORY_SERVER_OCI_REGISTRY_ADDRESS":                 "example.com:5001",
 				"DIRECTORY_SERVER_OCI_REPOSITORY_NAME":                  "test-dir",
@@ -61,9 +59,6 @@ func TestConfig(t *testing.T) {
 				ListenAddress:      "example.com:8889",
 				HealthCheckAddress: "example.com:18888",
 				Provider:           "provider",
-				LocalFS: localfs.Config{
-					Dir: "local-dir-fs",
-				},
 				OCI: oci.Config{
 					LocalDir:        "local-dir",
 					RegistryAddress: "example.com:5001",
@@ -117,9 +112,6 @@ func TestConfig(t *testing.T) {
 				ListenAddress:      DefaultListenAddress,
 				HealthCheckAddress: DefaultHealthCheckAddress,
 				Provider:           DefaultProvider,
-				LocalFS: localfs.Config{
-					Dir: localfs.DefaultDir,
-				},
 				OCI: oci.Config{
 					RegistryAddress: oci.DefaultRegistryAddress,
 					RepositoryName:  oci.DefaultRepositoryName,
