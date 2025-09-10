@@ -44,6 +44,12 @@ func (r *RecordDataAdapter) GetAnnotations() map[string]string {
 	return make(map[string]string)
 }
 
+func (r *RecordDataAdapter) GetDomains() []types.Domain {
+	// SQLite records don't store domains, return empty slice
+	// TODO: add support for domains
+	return []types.Domain{}
+}
+
 func (r *RecordDataAdapter) GetSchemaVersion() string {
 	// Default schema version for search records
 	return "v1"

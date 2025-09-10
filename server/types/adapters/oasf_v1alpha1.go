@@ -98,6 +98,22 @@ func (a *V1Alpha1Adapter) GetSkills() []types.Skill {
 	return result
 }
 
+// GetDomains implements types.RecordData.
+func (a *V1Alpha1Adapter) GetDomains() []types.Domain {
+	if a.record == nil {
+		return nil
+	}
+
+	domains := a.record.GetDomains()
+	result := make([]types.Domain, len(domains))
+
+	for i, domain := range domains {
+		result[i] = NewV1Alpha1DomainAdapter(domain)
+	}
+
+	return result
+}
+
 // GetLocators implements types.RecordData interface.
 func (a *V1Alpha1Adapter) GetLocators() []types.Locator {
 	if a.record == nil {
@@ -363,4 +379,45 @@ func (l *V1Alpha1LocatorAdapter) GetDigest() string {
 	}
 
 	return l.locator.GetDigest()
+}
+
+// V1Alpha1SkillAdapter adapts typesv1alpha1.Skill to types.Skill interface.
+type V1Alpha1DomainAdapter struct {
+	domain *typesv1alpha1.Domain
+}
+
+// NewV1Alpha1DomainAdapter creates a new V1Alpha1DomainAdapter.
+func NewV1Alpha1DomainAdapter(domain *typesv1alpha1.Domain) *V1Alpha1DomainAdapter {
+	if domain == nil {
+		return nil
+	}
+
+	return &V1Alpha1DomainAdapter{domain: domain}
+}
+
+// GetAnnotations implements types.Domain interface.
+func (d *V1Alpha1DomainAdapter) GetAnnotations() map[string]string {
+	if d.domain == nil {
+		return nil
+	}
+
+	return d.domain.GetAnnotations()
+}
+
+// GetName implements types.Domain interface.
+func (d *V1Alpha1DomainAdapter) GetName() string {
+	if d.domain == nil {
+		return ""
+	}
+
+	return d.domain.GetName()
+}
+
+// GetID implements types.Domain interface.
+func (d *V1Alpha1DomainAdapter) GetID() uint64 {
+	if d.domain == nil {
+		return 0
+	}
+
+	return uint64(d.domain.GetId())
 }

@@ -44,22 +44,16 @@ func GetLabels(record *corev1.Record) []Label {
 		labels = append(labels, skillLabel)
 	}
 
-	// Extract record domains from extensions
-	for _, ext := range recordData.GetExtensions() {
-		if strings.HasPrefix(ext.GetName(), DomainSchemaPrefix) {
-			domain := ext.GetName()[len(DomainSchemaPrefix):]
-			domainLabel := Label(LabelTypeDomain.Prefix() + domain)
-			labels = append(labels, domainLabel)
-		}
+	// Extract record domains
+	for _, domain := range recordData.GetDomains() {
+		domainLabel := Label(LabelTypeDomain.Prefix() + domain.GetName())
+		labels = append(labels, domainLabel)
 	}
 
 	// Extract record features from extensions
 	for _, ext := range recordData.GetExtensions() {
-		if strings.HasPrefix(ext.GetName(), FeaturesSchemaPrefix) {
-			feature := ext.GetName()[len(FeaturesSchemaPrefix):]
-			featureLabel := Label(LabelTypeFeature.Prefix() + feature)
-			labels = append(labels, featureLabel)
-		}
+		featureLabel := Label(LabelTypeFeature.Prefix() + ext.GetName())
+		labels = append(labels, featureLabel)
 	}
 
 	// Extract record locators

@@ -160,8 +160,4 @@ func (m *LabelMetadata) Update() {
 const (
 	// Enhanced format: /type/label/CID/PeerID splits into ["", "type", "label", "CID", "PeerID"] = 5 parts.
 	MinLabelKeyParts = 5
-
-	// Schema prefixes for extracting labels from record extensions.
-	DomainSchemaPrefix   = "schema.oasf.agntcy.org/domains/"
-	FeaturesSchemaPrefix = "schema.oasf.agntcy.org/features/"
 )

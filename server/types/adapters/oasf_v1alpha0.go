@@ -5,11 +5,14 @@ package adapters
 
 import (
 	"fmt"
+	"strings"
 
 	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/oasf-sdk/core/converter"
 )
+
+const featuresSchemaPrefix = "schema.oasf.agntcy.org/features/"
 
 // V1Alpha0Adapter adapts typesv1alpha0.Record to types.RecordData interface.
 type V1Alpha0Adapter struct {
@@ -37,6 +40,13 @@ func (a *V1Alpha0Adapter) GetSchemaVersion() string {
 	}
 
 	return a.record.GetSchemaVersion()
+}
+
+// GetDomains implements types.RecordData.
+//
+// NOTE: V1Alpha0 doesn't have domains, so we return an empty slice.
+func (a *V1Alpha0Adapter) GetDomains() []types.Domain {
+	return []types.Domain{}
 }
 
 // GetName implements types.RecordData interface.
@@ -242,7 +252,7 @@ func (e *V1Alpha0ExtensionAdapter) GetName() string {
 		return ""
 	}
 
-	return e.extension.GetName()
+	return strings.TrimPrefix(e.extension.GetName(), featuresSchemaPrefix)
 }
 
 // GetVersion implements types.Extension interface.

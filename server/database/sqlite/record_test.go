@@ -94,6 +94,10 @@ func (r *TestRecordData) GetSignature() types.Signature {
 	return nil
 }
 
+func (r *TestRecordData) GetDomains() []types.Domain {
+	return nil
+}
+
 func (r *TestRecordData) GetPreviousRecordCid() string {
 	return ""
 }

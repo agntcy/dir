@@ -32,6 +32,7 @@ type RecordData interface {
 	GetCreatedAt() string
 	GetSkills() []Skill
 	GetLocators() []Locator
+	GetDomains() []Domain
 	GetExtensions() []Extension
 	GetSignature() Signature
 	GetPreviousRecordCid() string
@@ -54,7 +55,15 @@ type Extension interface {
 	GetData() map[string]any
 }
 
+//nolint:iface
 type Skill interface {
+	GetAnnotations() map[string]string
+	GetName() string
+	GetID() uint64
+}
+
+//nolint:iface
+type Domain interface {
 	GetAnnotations() map[string]string
 	GetName() string
 	GetID() uint64
