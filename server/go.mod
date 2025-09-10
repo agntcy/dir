@@ -9,11 +9,11 @@ replace (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.8-20250909112931-52543f366c53.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.8-20250909115813-c8b395e06aba.1
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
 	github.com/agntcy/dir/api v0.2.6
 	github.com/agntcy/dir/utils v0.2.6
+	github.com/agntcy/oasf-sdk/core v0.0.0-20250909144735-c3026c591d1b
 	github.com/casbin/casbin/v2 v2.120.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/ipfs/go-datastore v0.8.2
@@ -35,6 +35,7 @@ require (
 )
 
 require (
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.8-20250909112931-52543f366c53.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go v0.121.1 // indirect
 	cloud.google.com/go/auth v0.16.2 // indirect
@@ -51,7 +52,6 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.53.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/agntcy/oasf-sdk/core v0.0.0-20250909144735-c3026c591d1b // indirect
 	github.com/agntcy/oasf-sdk/validation v0.0.0-20250909144735-c3026c591d1b // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/avast/retry-go/v4 v4.6.1 // indirect

@@ -32,16 +32,10 @@ message RecordMeta {
 
 // Record is a generic object that encapsulates data of different Record types.
 //
-// OASF Object is an abstract type that serves as a base for all OASF objects,
-// while Record is a concrete implementation of OASF Object used in DIR API
-// to represent and handle Record object types. OASF Object and Record are
-// interchangeable and are represented using the same structure.
+// Supported schemas:
 //
-// OASF-SDK (https://github.com/agntcy/oasf-sdk) is used to handle serialization, 
-// deserialization, and validation of Record objects.
-//
-// Record Base Object: https://buf.build/agntcy/oasf/docs/main:core.v1#core.v1.Object
-// Record Data Schema: https://schema.oasf.outshift.com/0.7.0/objects/record
+// v0.3.1: https://schema.oasf.outshift.com/0.3.1/objects/agent
+// v0.7.0: https://schema.oasf.outshift.com/0.7.0/objects/record
 message Record {
   google.protobuf.Struct data = 1;
 }
