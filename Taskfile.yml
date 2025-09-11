@@ -530,8 +530,8 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
-          --set apiserver.config.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
-          --set apiserver.config.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
+          --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
+          --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
           --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -709,8 +709,8 @@ tasks:
           --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
           --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
           --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
-          --set apiserver.config.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
-          --set apiserver.config.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
+          --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
+          --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
           --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
           --namespace "bootstrap" \
           --create-namespace \
@@ -763,8 +763,8 @@ tasks:
             --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.{{ .ITEM.PEER }}.svc.cluster.local:8888" \
             --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
             --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
-            --set apiserver.config.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
-            --set apiserver.config.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
+            --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
+            --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
             --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
