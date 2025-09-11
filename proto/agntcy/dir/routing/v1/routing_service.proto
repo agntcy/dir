@@ -3,13 +3,13 @@
 
 syntax = "proto3";
 
-package routing.v1;
+package agntcy.dir.routing.v1;
 
-import "core/v1/record.proto";
+import "agntcy/dir/core/v1/record.proto";
+import "agntcy/dir/routing/v1/peer.proto";
+import "agntcy/dir/routing/v1/record_query.proto";
+import "agntcy/dir/search/v1/record_query.proto";
 import "google/protobuf/empty.proto";
-import "routing/v1/peer.proto";
-import "routing/v1/record_query.proto";
-import "search/v1/record_query.proto";
 
 // Defines an interface for announcement and discovery
 // of records across interconnected network.

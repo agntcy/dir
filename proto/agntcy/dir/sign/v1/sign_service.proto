@@ -3,9 +3,9 @@
 
 syntax = "proto3";
 
-package sign.v1;
+package agntcy.dir.sign.v1;
 
-import "core/v1/record.proto";
+import "agntcy/dir/core/v1/record.proto";
 
 service SignService {
   // Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase

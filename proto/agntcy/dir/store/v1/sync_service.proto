@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-package store.v1;
+package agntcy.dir.store.v1;
 
 // SyncService provides functionality for synchronizing objects between Directory nodes.
 // 

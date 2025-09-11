@@ -3,9 +3,9 @@
 
 syntax = "proto3";
 
-package routing.v1;
+package agntcy.dir.routing.v1;
 
-import "routing/v1/routing_service.proto";
+import "agntcy/dir/routing/v1/routing_service.proto";
 
 // PublicationService manages publication requests for announcing records to the DHT.
 // 
