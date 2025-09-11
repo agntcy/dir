@@ -3,7 +3,7 @@ name = "agntcy-dir"
 version = "0.1.0"
 description = "Directory SDK"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
     "agntcy-dir-grpc-python==1.75.0.1.20250917121230+a7e88d4f0f48",
     "spiffe>=0.2.2",

@@ -105,7 +105,7 @@ Common gRPC status codes:
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - [uv](https://github.com/astral-sh/uv) - Package manager
 - [dirctl](https://github.com/agntcy/dir/releases) - Directory CLI binary
 - Directory server instance (see setup below)
