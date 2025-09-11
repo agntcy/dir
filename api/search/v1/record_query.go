@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //nolint:mnd
-package searchv1
+package v1
 
 var ValidQueryTypes []string
 
