@@ -195,10 +195,13 @@ class TestClient(unittest.TestCase):
             # self.assertIsNone(e) # Uncomment when the service implemented
 
     def test_sign_and_verify(self) -> None:
+        shell_env = os.environ.copy()
+
+        if shell_env.get("OIDC_TOKEN", "") == "" and shell_env.get("OIDC_PROVIDER_URL", "") == "":
+            self.skipTest("Local interactive mode is not supported inside KinD cluster, skipping")
+
         records = self.gen_records(2, "sign_verify")
         record_refs = self.client.push(records=records)
-
-        shell_env = os.environ.copy()
 
         key_password = "testing-key"
         shell_env["COSIGN_PASSWORD"] = key_password
