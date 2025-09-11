@@ -3,7 +3,7 @@
 
 module-sets:
   agent-directory:
-    version: v0.2.11
+    version: v0.2.13
     modules:
       - github.com/agntcy/dir/api
       - github.com/agntcy/dir/cli
