@@ -3,34 +3,33 @@
 
 from google.protobuf.json_format import MessageToJson
 
-from agntcy_dir.client import Client, Config
-from agntcy_dir.models import *
+from agntcy.dir_sdk.client import Client, Config
+from agntcy.dir_sdk.models import *
 
 
 def generate_record(name):
     return core_v1.Record(
-        v3=objects_v3.Record(
-            name=name,
-            schema_version="v0.5.0",
-            skills=[
-                objects_v3.Skill(
-                    name="Natural Language Processing",
-                ),
+        data={
+            "name": name,
+            "schema_version": "v0.7.0",
+            "skills": [
+                {
+                    "name": "Natural Language Processing",
+                },
             ],
-            locators=[
-                objects_v3.Locator(
-                    type="ipv4",
-                    url="127.0.0.1",
-                ),
+            "locators": [
+                {
+                    "type": "ipv4",
+                    "url": "127.0.0.1",
+                },
             ],
-            extensions=[
-                objects_v3.Extension(
-                    name="runtime/prompt",
-                    version="v1",
-                ),
+            "extensions": [
+                {
+                    "name": "runtime/prompt",
+                },
             ],
-            signature=objects_v3.Signature(),
-        ),
+            "signature": {},
+        },
     )
 
 

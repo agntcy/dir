@@ -7,8 +7,9 @@ import subprocess
 import unittest
 import uuid
 
-from agntcy_dir.client import Client
-from agntcy_dir.models import *
+from agntcy.dir_sdk.client import Client
+from agntcy.dir_sdk.models import *
+from google.protobuf.struct_pb2 import Struct
 
 
 class TestClient(unittest.TestCase):
@@ -72,7 +73,11 @@ class TestClient(unittest.TestCase):
 
     def test_list(self) -> None:
         records = self.gen_records(1, "list")
-        _ = self.client.push(records=records)
+        record_refs = self.client.push(records=records)
+        self.client.publish(routing_v1.PublishRequest(
+            record_refs=routing_v1.RecordRefs(refs=record_refs),
+        ))
+
         list_query = routing_v1.RecordQuery(
             type=routing_v1.RECORD_QUERY_TYPE_LOCATOR,
             value="docker-image",
@@ -300,30 +305,29 @@ class TestClient(unittest.TestCase):
     def gen_records(self, count: int, test_function_name: str) -> list[core_v1.Record]:
         records: list[core_v1.Record] = [
             core_v1.Record(
-                v3=objects_v3.Record(
-                    name=f"{test_function_name}-{index}",
-                    version="v3",
-                    schema_version="v0.5.0",
-                    skills=[
-                        objects_v3.Skill(
-                            name="Natural Language Processing",
-                            id=1,
-                        ),
+                data={
+                    "name": f"{test_function_name}-{index}",
+                    "version": "v3",
+                    "schema_version": "v0.7.0",
+                    "skills": [
+                        {
+                            "name": "Natural Language Processing",
+                            "id": 1,
+                        },
                     ],
-                    locators=[
-                        objects_v3.Locator(
-                            type="docker-image",
-                            url="127.0.0.1",
-                        ),
+                    "locators": [
+                        {
+                            "type": "docker-image",
+                            "url": "127.0.0.1",
+                        },
                     ],
-                    extensions=[
-                        objects_v3.Extension(
-                            name="runtime/prompt",
-                            version="v1",
-                        ),
+                    "modules": [
+                        {
+                            "name": "runtime/prompt"
+                        },
                     ],
-                    signature=objects_v3.Signature(),
-                ),
+                    "signature": {},
+                }
             )
             for index in range(count)
         ]
