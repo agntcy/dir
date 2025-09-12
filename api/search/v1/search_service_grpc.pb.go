@@ -5,9 +5,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: search/v1/search_service.proto
+// source: agntcy/dir/search/v1/search_service.proto
 
-package searchv1
+package v1
 
 import (
 	context "context"
@@ -22,7 +22,7 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SearchService_Search_FullMethodName = "/search.v1.SearchService/Search"
+	SearchService_Search_FullMethodName = "/agntcy.dir.search.v1.SearchService/Search"
 )
 
 // SearchServiceClient is the client API for SearchService service.
@@ -139,7 +139,7 @@ func (x *searchServiceSearchServer) Send(m *SearchResponse) error {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SearchService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "search.v1.SearchService",
+	ServiceName: "agntcy.dir.search.v1.SearchService",
 	HandlerType: (*SearchServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
@@ -149,5 +149,5 @@ var SearchService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "search/v1/search_service.proto",
+	Metadata: "agntcy/dir/search/v1/search_service.proto",
 }

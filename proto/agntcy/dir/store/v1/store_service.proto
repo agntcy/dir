@@ -3,10 +3,10 @@
 
 syntax = "proto3";
 
-package store.v1;
+package agntcy.dir.store.v1;
 
-import "core/v1/record.proto";
-import "sign/v1/sign_service.proto";
+import "agntcy/dir/core/v1/record.proto";
+import "agntcy/dir/sign/v1/sign_service.proto";
 import "google/protobuf/empty.proto";
 
 // Defines an interface for content-addressable storage

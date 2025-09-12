@@ -7,23 +7,31 @@ managed:
   disable:
     - module: buf.build/googleapis/googleapis
   override:
-    # Override for local proto files (core, etc.)
-    - file_option: go_package_prefix
-      value: github.com/agntcy/dir/api
-      module: buf.build/agntcy/dir
-    # Override for OASF module to use the official Go module
-    - file_option: go_package_prefix
-      value: buf.build/gen/go/agntcy/oasf/protocolbuffers/go
-      module: buf.build/agntcy/oasf
+    # Map specific paths to desired Go packages
+    - path: agntcy/dir/core/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/core/v1
+    - path: agntcy/dir/routing/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/routing/v1
+    - path: agntcy/dir/search/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/search/v1
+    - path: agntcy/dir/sign/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/sign/v1
+    - path: agntcy/dir/store/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/store/v1
 plugins:
   # Stubs for Golang
   - remote: buf.build/protocolbuffers/go:v1.36.5
     out: ../api
     opt:
-      - paths=source_relative
+      - module=github.com/agntcy/dir/api
   - remote: buf.build/grpc/go:v1.5.1
     out: ../api
     opt:
-      - paths=source_relative
+      - module=github.com/agntcy/dir/api
       - require_unimplemented_servers=false
       - use_generic_streams_experimental=false

@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-package search.v1;
+package agntcy.dir.search.v1;
 
 // A query to match the record against during discovery.
 // For example:

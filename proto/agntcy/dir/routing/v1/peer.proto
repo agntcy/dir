@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-package routing.v1;
+package agntcy.dir.routing.v1;
 
 message Peer {
   // ID of a given peer, typically described by a protocol.

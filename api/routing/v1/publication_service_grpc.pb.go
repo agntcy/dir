@@ -5,9 +5,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: routing/v1/publication_service.proto
+// source: agntcy/dir/routing/v1/publication_service.proto
 
-package routingv1
+package v1
 
 import (
 	context "context"
@@ -22,9 +22,9 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	PublicationService_CreatePublication_FullMethodName = "/routing.v1.PublicationService/CreatePublication"
-	PublicationService_ListPublications_FullMethodName  = "/routing.v1.PublicationService/ListPublications"
-	PublicationService_GetPublication_FullMethodName    = "/routing.v1.PublicationService/GetPublication"
+	PublicationService_CreatePublication_FullMethodName = "/agntcy.dir.routing.v1.PublicationService/CreatePublication"
+	PublicationService_ListPublications_FullMethodName  = "/agntcy.dir.routing.v1.PublicationService/ListPublications"
+	PublicationService_GetPublication_FullMethodName    = "/agntcy.dir.routing.v1.PublicationService/GetPublication"
 )
 
 // PublicationServiceClient is the client API for PublicationService service.
@@ -233,7 +233,7 @@ func _PublicationService_GetPublication_Handler(srv interface{}, ctx context.Con
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PublicationService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "routing.v1.PublicationService",
+	ServiceName: "agntcy.dir.routing.v1.PublicationService",
 	HandlerType: (*PublicationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -252,5 +252,5 @@ var PublicationService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "routing/v1/publication_service.proto",
+	Metadata: "agntcy/dir/routing/v1/publication_service.proto",
 }

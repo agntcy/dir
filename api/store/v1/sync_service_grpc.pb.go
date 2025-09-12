@@ -5,9 +5,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: store/v1/sync_service.proto
+// source: agntcy/dir/store/v1/sync_service.proto
 
-package storev1
+package v1
 
 import (
 	context "context"
@@ -22,11 +22,11 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SyncService_CreateSync_FullMethodName                 = "/store.v1.SyncService/CreateSync"
-	SyncService_ListSyncs_FullMethodName                  = "/store.v1.SyncService/ListSyncs"
-	SyncService_GetSync_FullMethodName                    = "/store.v1.SyncService/GetSync"
-	SyncService_DeleteSync_FullMethodName                 = "/store.v1.SyncService/DeleteSync"
-	SyncService_RequestRegistryCredentials_FullMethodName = "/store.v1.SyncService/RequestRegistryCredentials"
+	SyncService_CreateSync_FullMethodName                 = "/agntcy.dir.store.v1.SyncService/CreateSync"
+	SyncService_ListSyncs_FullMethodName                  = "/agntcy.dir.store.v1.SyncService/ListSyncs"
+	SyncService_GetSync_FullMethodName                    = "/agntcy.dir.store.v1.SyncService/GetSync"
+	SyncService_DeleteSync_FullMethodName                 = "/agntcy.dir.store.v1.SyncService/DeleteSync"
+	SyncService_RequestRegistryCredentials_FullMethodName = "/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials"
 )
 
 // SyncServiceClient is the client API for SyncService service.
@@ -309,7 +309,7 @@ func _SyncService_RequestRegistryCredentials_Handler(srv interface{}, ctx contex
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SyncService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "store.v1.SyncService",
+	ServiceName: "agntcy.dir.store.v1.SyncService",
 	HandlerType: (*SyncServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -336,5 +336,5 @@ var SyncService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "store/v1/sync_service.proto",
+	Metadata: "agntcy/dir/store/v1/sync_service.proto",
 }

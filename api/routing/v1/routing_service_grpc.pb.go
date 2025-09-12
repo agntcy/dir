@@ -5,9 +5,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: routing/v1/routing_service.proto
+// source: agntcy/dir/routing/v1/routing_service.proto
 
-package routingv1
+package v1
 
 import (
 	context "context"
@@ -23,10 +23,10 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	RoutingService_Publish_FullMethodName   = "/routing.v1.RoutingService/Publish"
-	RoutingService_Unpublish_FullMethodName = "/routing.v1.RoutingService/Unpublish"
-	RoutingService_Search_FullMethodName    = "/routing.v1.RoutingService/Search"
-	RoutingService_List_FullMethodName      = "/routing.v1.RoutingService/List"
+	RoutingService_Publish_FullMethodName   = "/agntcy.dir.routing.v1.RoutingService/Publish"
+	RoutingService_Unpublish_FullMethodName = "/agntcy.dir.routing.v1.RoutingService/Unpublish"
+	RoutingService_Search_FullMethodName    = "/agntcy.dir.routing.v1.RoutingService/Search"
+	RoutingService_List_FullMethodName      = "/agntcy.dir.routing.v1.RoutingService/List"
 )
 
 // RoutingServiceClient is the client API for RoutingService service.
@@ -316,7 +316,7 @@ func (x *routingServiceListServer) Send(m *ListResponse) error {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var RoutingService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "routing.v1.RoutingService",
+	ServiceName: "agntcy.dir.routing.v1.RoutingService",
 	HandlerType: (*RoutingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -340,5 +340,5 @@ var RoutingService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "routing/v1/routing_service.proto",
+	Metadata: "agntcy/dir/routing/v1/routing_service.proto",
 }

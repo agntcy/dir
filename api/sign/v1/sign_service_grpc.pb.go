@@ -5,9 +5,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: sign/v1/sign_service.proto
+// source: agntcy/dir/sign/v1/sign_service.proto
 
-package signv1
+package v1
 
 import (
 	context "context"
@@ -22,8 +22,8 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SignService_Sign_FullMethodName   = "/sign.v1.SignService/Sign"
-	SignService_Verify_FullMethodName = "/sign.v1.SignService/Verify"
+	SignService_Sign_FullMethodName   = "/agntcy.dir.sign.v1.SignService/Sign"
+	SignService_Verify_FullMethodName = "/agntcy.dir.sign.v1.SignService/Verify"
 )
 
 // SignServiceClient is the client API for SignService service.
@@ -147,7 +147,7 @@ func _SignService_Verify_Handler(srv interface{}, ctx context.Context, dec func(
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SignService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "sign.v1.SignService",
+	ServiceName: "agntcy.dir.sign.v1.SignService",
 	HandlerType: (*SignServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -160,5 +160,5 @@ var SignService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "sign/v1/sign_service.proto",
+	Metadata: "agntcy/dir/sign/v1/sign_service.proto",
 }

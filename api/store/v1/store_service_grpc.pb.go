@@ -5,9 +5,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: store/v1/store_service.proto
+// source: agntcy/dir/store/v1/store_service.proto
 
-package storev1
+package v1
 
 import (
 	context "context"
@@ -24,12 +24,12 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	StoreService_Push_FullMethodName         = "/store.v1.StoreService/Push"
-	StoreService_Pull_FullMethodName         = "/store.v1.StoreService/Pull"
-	StoreService_Lookup_FullMethodName       = "/store.v1.StoreService/Lookup"
-	StoreService_Delete_FullMethodName       = "/store.v1.StoreService/Delete"
-	StoreService_PushReferrer_FullMethodName = "/store.v1.StoreService/PushReferrer"
-	StoreService_PullReferrer_FullMethodName = "/store.v1.StoreService/PullReferrer"
+	StoreService_Push_FullMethodName         = "/agntcy.dir.store.v1.StoreService/Push"
+	StoreService_Pull_FullMethodName         = "/agntcy.dir.store.v1.StoreService/Pull"
+	StoreService_Lookup_FullMethodName       = "/agntcy.dir.store.v1.StoreService/Lookup"
+	StoreService_Delete_FullMethodName       = "/agntcy.dir.store.v1.StoreService/Delete"
+	StoreService_PushReferrer_FullMethodName = "/agntcy.dir.store.v1.StoreService/PushReferrer"
+	StoreService_PullReferrer_FullMethodName = "/agntcy.dir.store.v1.StoreService/PullReferrer"
 )
 
 // StoreServiceClient is the client API for StoreService service.
@@ -508,7 +508,7 @@ func (x *storeServicePullReferrerServer) Recv() (*PullReferrerRequest, error) {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var StoreService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "store.v1.StoreService",
+	ServiceName: "agntcy.dir.store.v1.StoreService",
 	HandlerType: (*StoreServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
@@ -548,5 +548,5 @@ var StoreService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "store/v1/store_service.proto",
+	Metadata: "agntcy/dir/store/v1/store_service.proto",
 }

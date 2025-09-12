@@ -3,9 +3,9 @@
 
 syntax = "proto3";
 
-package search.v1;
+package agntcy.dir.search.v1;
 
-import "search/v1/record_query.proto";
+import "agntcy/dir/search/v1/record_query.proto";
 
 service SearchService {
   // List records that this peer is currently providing that match the given parameters.
