@@ -4,7 +4,7 @@ codecov:
     after_n_builds: 1
 
 comment:
-  layout: "files, functions, diff, flags, tree"
+  layout: 'files,diff,flags,tree'
   require_changes: false
   require_base: false
   require_head: true
