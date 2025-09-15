@@ -1,7 +1,11 @@
 # Directory Security Trust Schema
 
-## SPIRE Overview
+## Overview
+
+Directory is a system designed to provide secure, authenticated, and authorized access to services and resources across multiple environments and organizations. It leverages SPIRE (SPIFFE Runtime Environment) to manage workload identities and enable zero-trust security principles.
+
 SPIRE (SPIFFE Runtime Environment) is an open-source system that provides automated, cryptographically secure identities to workloads in modern infrastructure. It implements the SPIFFE (Secure Production Identity Framework For Everyone) standard, enabling zero-trust security by assigning each workload a unique, verifiable identity (SVID).
+
 In the Directory project, SPIRE is used to:
 - Securely identify and authenticate workloads (services, applications, etc.)
 - Enable mutual TLS (mTLS) between services
@@ -12,6 +16,7 @@ In the Directory project, SPIRE is used to:
 ## Authentication and Authorization
 
 ### Authentication
+
 SPIRE provides strong, cryptographically verifiable identities (SPIFFE IDs) to every workload. These identities are used for:
 - **Workload Authentication:** Every service, whether running in Kubernetes, on a VM, or on bare metal, receives a unique SPIFFE ID (e.g., `spiffe://dir.example/ns/default/sa/my-service`).
 - **Cross-Organization Authentication:** Through federation, workloads from different organizations or clusters can mutually authenticate using their SPIFFE IDs, without the need to implement custom cross-org authentication logic.
@@ -22,7 +27,14 @@ SPIRE provides strong, cryptographically verifiable identities (SPIFFE IDs) to e
 - Provides a standard, interoperable identity for every workload, regardless of where it runs.
 - Enables secure, automated trust establishment between independent organizations or clusters.
 
+#### How Directory uses SPIRE for Authentication
+
+- **Workload Identity:** Each Directory component (API server, clients, etc.) is assigned a SPIFFE ID based on its SPIRE Agent configuration.
+- **Cross-Organization Authentication:** Directory can authenticate workloads from other organizations or clusters using their SPIFFE IDs, enabling secure communication without custom integration.
+- **Mutual TLS (mTLS):** Directory can establish mTLS connections between components using the SVIDs issued by SPIRE, ensuring secure and authenticated communication.
+
 ### Authorization
+
 SPIRE itself does not enforce authorization, but it enables fine-grained authorization by providing strong workload identities:
 - **Policy-Based Access Control:** Applications and infrastructure can use SPIFFE IDs to define and enforce access policies (e.g., only workloads with a specific SPIFFE ID can access a sensitive API).
 - **Attribute-Based Authorization:** SPIFFE IDs can encode attributes (namespace, service account, environment) that can be used in authorization decisions.
@@ -33,10 +45,28 @@ SPIRE itself does not enforce authorization, but it enables fine-grained authori
 - Simplifies policy management by using a standard identity format (SPIFFE ID) across all environments.
 - Makes it possible to securely authorize workloads from federated domains (e.g., partner orgs, multi-cloud, hybrid setups) without custom integration.
 
-## Architecture: Topology Setup
-The Directory's security trust schema supports both single and federated trust domains, with SPIRE deployed across various environments:
+#### How Directory uses SPIRE for Authorization
+
+- **Policy Enforcement:** Directory components can enforce access control policies based on the SPIFFE IDs of incoming requests, ensuring that only authorized workloads can access specific services or APIs.
+- **Attribute-Based Access Control:** Directory can leverage attributes encoded in SPIFFE IDs to implement fine-grained access control policies.
+- **Federated Authorization:** Directory can use SPIFFE IDs to authorize workloads from other organizations or clusters, enabling secure collaboration without custom integration.
+
+Currently, Directory implements static authorization policies based on SPIFFE IDs, with plans to enhance this with dynamic, attribute-based policies in future releases. The Authorization policies are enforced based on external trust domains in the following manner:
+
+| API Method                        | Authorized Trust Domains                    |
+| --------------------------------- | ------------------------------------------- |
+| `*`                               | Your own trust domain (e.g., `dir.example`) |
+| `Store.Pull`                      | External Trust domain                       |
+| `Store.Lookup`                    | External Trust domain                       |
+| `Store.PullReferrer`              | External Trust domain                       |
+| `Sync.RequestRegistryCredentials` | External Trust domain                       |
+
+## Topology
+
+The Directory's security trust schema supports both single and federated trust domain topology setup, with SPIRE deployed across various environments:
 
 ### Single Trust Domain
+
 - **SPIRE Server**: Central authority for the trust domain
 - **SPIRE Agents**: Deployed in different environments, connect to the SPIRE Server
     - Kubernetes clusters (as DaemonSets or sidecars)
@@ -57,6 +87,7 @@ flowchart LR
 ```
 
 ### Federated Trust Domains
+
 - Each environment (e.g., cluster, organization) runs its own SPIRE Server and agents
 - SPIRE Servers exchange bundles to establish federation
 - Enables secure, authenticated communication between workloads in different domains
@@ -81,11 +112,13 @@ flowchart TD
 
 ## Deployment
 
-### SPIRE Server Deployment
+### SPIRE Server
+
 - Deployed as a Kubernetes service (or on VMs)
 - Configured with a unique trust domain name (e.g., `dir.example`)
 - Federation enabled to allow cross-domain trust
 - Exposes a bundle endpoint for federation
+
 ```bash
 export TRUST_DOMAIN="my-service.local"
 export SERVICE_TYPE="LoadBalancer"
@@ -111,13 +144,16 @@ helm upgrade spire spire \
     --timeout "15m"
 ```
 
-### SPIRE Agent Deployment
+### SPIRE Agent
+
 - Deployed as DaemonSets in Kubernetes, or as services on VMs/bare metal
 - Connect to the SPIRE Server to obtain workload identities
 - Attest workloads and provide SVIDs via the Workload API
 
+### Directory
 
-### Directory SPIRE-enabled Deployment
+Directory components can be deployed in the trust domain and configured to use SPIRE for identity:
+
 ```yaml
 spire:
   enabled: true
@@ -132,7 +168,8 @@ spire:
         ${DIRCTL_BUNDLE_CONTENT}
 ```
 
-### Example: End-to-End Deployment
+## Test Example
+
 - Two Kubernetes Kind clusters are created (one for each trust domain)
 - SPIRE Servers and Agents are deployed in each cluster
 - Federation is established between the clusters
