@@ -1,9 +1,20 @@
 # Javascript
 node_modules/
-dist/
 *-lock.json
-jsconfig.json
 
-# Tests
-*.key
-*.pub
+# Build output
+dist/
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local

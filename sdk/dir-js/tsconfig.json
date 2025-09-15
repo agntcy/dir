@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "esnext",
+    "lib": ["es2018"],
+    "outDir": "./dist",
+    "types": ["jest", "node"],
+    "rootDir": "./",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": false,
+    "resolveJsonModule": true,
+    "moduleResolution": "bundler",
+    "noEmitOnError": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/tests/**/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
