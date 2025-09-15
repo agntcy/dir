@@ -21,19 +21,37 @@
   ],
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist",
-    "test": "npm run build && jest"
+    "clean": "gts clean",
+    "test": "vitest run",
+    "lint": "gts lint",
+    "compile": "tsc",
+    "fix": "gts fix",
+    "prepare": "npm run compile",
+    "pretest": "npm run compile",
+    "posttest": "npm run lint"
   },
   "dependencies": {
     "@buf/agntcy_dir.community_timostamm-protobuf-ts": "^2.11.1-20250915154105-152c4b7b4ec6.1",
     "@grpc/grpc-js": "^1.13.4",
     "@protobuf-ts/grpc-transport": "^2.11.1",
-    "@protobuf-ts/runtime": "^2.11.1"
+    "@protobuf-ts/runtime": "^2.11.1",
+    "@protobuf-ts/runtime-rpc": "^2.11.1"
   },
   "devDependencies": {
-    "@types/node": "^22.18.3",
+    "@types/node": "^22.7.5",
     "@types/uuid": "^10.0.0",
-    "typescript": "^5.9.2",
-    "uuid": "^11.1.0"
+    "typescript": "^5.6.3",
+    "uuid": "^11.1.0",
+    "vitest": "^3.2.4",
+    "gts": "^6.0.2"
+  },
+  "vitest": {
+    "test": {
+      "globals": true,
+      "environment": "node",
+      "include": [
+        "test/**/*.test.ts"
+      ]
+    }
   }
 }
