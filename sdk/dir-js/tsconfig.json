@@ -5,15 +5,9 @@
     "outDir": "./dist",
     "declaration": true,
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node"
   },
   "include": [
-    "**/*.ts",
-    "test/**/*.ts"
-  ],
-  "ts-node": {
-    "compilerOptions": {
-      "module": "ES2020"
-    }
-  }
+    "src/**/*.ts",
+  ]
 }
