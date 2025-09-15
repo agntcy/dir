@@ -17,7 +17,10 @@ import (
 // ConvertDigestToCID converts an OCI digest to a CID string.
 // Uses the same CID parameters as the original Record.GetCid(): CIDv1, codec 1, SHA2-256.
 func ConvertDigestToCID(digest ocidigest.Digest) (string, error) {
-	// Validate that the digest uses SHA256
+	// Validate digest
+	if err := digest.Validate(); err != nil {
+		return "", fmt.Errorf("invalid digest format: %s", digest)
+	}
 	if digest.Algorithm() != ocidigest.SHA256 {
 		return "", fmt.Errorf("unsupported digest algorithm %s, only SHA256 is supported", digest.Algorithm())
 	}
