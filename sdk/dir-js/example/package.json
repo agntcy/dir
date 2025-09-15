@@ -1,0 +1,9 @@
+{
+  "name": "dir-example",
+  "version": "0.0.0",
+  "scripts": {
+    "example": "node example.js"
+  },
+  "dependencies": {
+  }
+}

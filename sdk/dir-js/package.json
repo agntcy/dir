@@ -1,0 +1,32 @@
+{
+  "name": "agntcy-dir",
+  "version": "0.1.0",
+  "description": "Directory client SDK",
+  "homepage": "https://github.com/agntcy/dir#readme",
+  "bugs": {
+    "url": "https://github.com/agntcy/dir/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agntcy/dir.git"
+  },
+  "license": "Apache-2.0",
+  "author": "",
+  "type": "commonjs",
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250915154105-152c4b7b4ec6.1",
+    "@connectrpc/connect": "^2.1.0",
+    "@connectrpc/connect-node": "^2.1.0",
+    "@grpc/grpc-js": "^1.13.4",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "jest": "^30.0.5"
+  },
+  "jest": {
+    "slowTestThreshold": 60
+  }
+}

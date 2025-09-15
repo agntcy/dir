@@ -1,0 +1,9 @@
+# Javascript
+node_modules/
+dist/
+*-lock.json
+jsconfig.json
+
+# Tests
+*.key
+*.pub
