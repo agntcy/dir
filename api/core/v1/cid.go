@@ -21,6 +21,7 @@ func ConvertDigestToCID(digest ocidigest.Digest) (string, error) {
 	if err := digest.Validate(); err != nil {
 		return "", fmt.Errorf("invalid digest format: %s", digest)
 	}
+
 	if digest.Algorithm() != ocidigest.SHA256 {
 		return "", fmt.Errorf("unsupported digest algorithm %s, only SHA256 is supported", digest.Algorithm())
 	}

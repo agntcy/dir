@@ -38,8 +38,10 @@ func TestCalculateDigest(t *testing.T) {
 			gotDigest, err := CalculateDigest(tt.data)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CalculateDigest() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if gotDigest.String() != tt.wantDigest {
 				t.Errorf("CalculateDigest() = %v, want %v", gotDigest, tt.wantDigest)
 			}
@@ -81,8 +83,10 @@ func TestConvertDigestToCID(t *testing.T) {
 			gotCID, err := ConvertDigestToCID(ocidigest.Digest(tt.digest))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ConvertDigestToCID() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if gotCID != tt.wantCID {
 				t.Errorf("ConvertDigestToCID() = %v, want %v", gotCID, tt.wantCID)
 			}
@@ -124,8 +128,10 @@ func TestConvertCIDToDigest(t *testing.T) {
 			gotDigest, err := ConvertCIDToDigest(tt.cid)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ConvertCIDToDigest() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if gotDigest.String() != tt.wantDigest {
 				t.Errorf("ConvertCIDToDigest() = %v, want %v", gotDigest.String(), tt.wantDigest)
 			}
