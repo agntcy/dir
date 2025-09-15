@@ -4,7 +4,7 @@
     "module": "esnext",
     "lib": ["es2018"],
     "outDir": "./dist",
-    "types": ["jest", "node"],
+    "types": ["node"],
     "rootDir": "./",
     "strict": true,
     "esModuleInterop": true,
@@ -15,7 +15,7 @@
     "declarationMap": true,
     "sourceMap": false,
     "resolveJsonModule": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "noEmitOnError": true,
     "isolatedModules": true
   },

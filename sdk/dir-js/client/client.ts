@@ -7,10 +7,10 @@ import process from 'node:process';
 import { writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
-import { createGrpcTransport } from "@connectrpc/connect-node";
-import { Client as GRPCClient, createClient } from "@connectrpc/connect";
+import { ChannelCredentials } from "@grpc/grpc-js";
 
 import * as models from '../models';
+import { GrpcTransport } from '@protobuf-ts/grpc-transport';
 
 /**
  * Configuration class for the AGNTCY Directory client.
@@ -80,11 +80,11 @@ class Config {
  */
 class Client {
     config: Config;
-    storeClient: GRPCClient<typeof models.store_v1.StoreService>;
-    routingClient: GRPCClient<typeof models.routing_v1.RoutingService>;
-    searchClient: GRPCClient<typeof models.search_v1.SearchService>;
-    signClient: GRPCClient<typeof models.sign_v1.SignService>;
-    syncClient: GRPCClient<typeof models.store_v1.SyncService>;
+    storeClient: models.store_v1.StoreServiceClient;
+    routingClient: models.routing_v1.RoutingServiceClient;
+    searchClient: models.search_v1.SearchServiceClient;
+    signClient: models.sign_v1.SignServiceClient;
+    syncClient: models.store_v1.SyncServiceClient;
 
     /**
      * Initialize the client with the given configuration.
@@ -112,19 +112,17 @@ class Client {
         this.config = config;
 
         // Create transport settings for gRPC client
-        const transport = createGrpcTransport({
-            baseUrl: this.config.serverAddress,
-            // Interceptors apply to all calls running through this transport.
-            // TODO: Register interceptors for SPIRE
-            interceptors: [],
+        const transport = new GrpcTransport({
+            host: "localhost:5000",
+            channelCredentials: ChannelCredentials.createInsecure(),
         });
 
         // Set clients for all services
-        this.storeClient = createClient(models.store_v1.StoreService, transport);
-        this.routingClient = createClient(models.routing_v1.RoutingService, transport);
-        this.searchClient = createClient(models.search_v1.SearchService, transport);
-        this.signClient = createClient(models.sign_v1.SignService, transport);
-        this.syncClient = createClient(models.store_v1.SyncService, transport);
+        this.storeClient = new models.store_v1.StoreServiceClient(transport);
+        this.routingClient = new models.routing_v1.RoutingServiceClient(transport);
+        this.searchClient = new models.search_v1.SearchServiceClient(transport);
+        this.signClient = new models.sign_v1.SignServiceClient(transport);
+        this.syncClient = new models.store_v1.SyncServiceClient(transport);
     }
 
     /**
@@ -148,17 +146,17 @@ class Client {
      */
     async push(records: models.core_v1.Record[]): Promise<models.core_v1.RecordRef[]> {
         try {
-            // Create async generator for input records
-            async function* recordGenerator() {
-                for (const record of records) {
-                    yield record;
-                }
-            }
-
-            // Execute bidirectional streaming call
+            const call = this.storeClient.push();
             const responses: models.core_v1.RecordRef[] = [];
-            
-            for await (const response of this.storeClient.push(recordGenerator())) {
+
+            // Send records
+            for (const record of records) {
+                await call.requests.send(record);
+            }
+            await call.requests.complete();
+
+            // Collect responses
+            for await (const response of call.responses) {
                 responses.push(response);
             }
 
@@ -188,17 +186,17 @@ class Client {
      */
     async push_referrer(requests: models.store_v1.PushReferrerRequest[]): Promise<models.store_v1.PushReferrerResponse[]> {
         try {
-            // Create async generator for input requests
-            async function* requestGenerator() {
-                for (const request of requests) {
-                    yield request;
-                }
-            }
-
-            // Execute bidirectional streaming call
+            const call = this.storeClient.pushReferrer();
             const responses: models.store_v1.PushReferrerResponse[] = [];
             
-            for await (const response of this.storeClient.pushReferrer(requestGenerator())) {
+            // Send requests
+            for (const request of requests) {
+                await call.requests.send(request);
+            }
+            await call.requests.complete();
+
+            // Collect responses
+            for await (const response of call.responses) {
                 responses.push(response);
             }
 
@@ -230,17 +228,17 @@ class Client {
      */
     async pull(refs: models.core_v1.RecordRef[]): Promise<models.core_v1.Record[]> {
         try {
-            // Create async generator for input refs
-            async function* refGenerator() {
-                for (const ref of refs) {
-                    yield ref;
-                }
-            }
-
-            // Execute bidirectional streaming call
+            const call = this.storeClient.pull();
             const records: models.core_v1.Record[] = [];
-            
-            for await (const response of this.storeClient.pull(refGenerator())) {
+
+            // Send requests
+            for (const ref of refs) {
+                await call.requests.send(ref);
+            }
+            await call.requests.complete();
+
+            // Collect responses
+            for await (const response of call.responses) {
                 records.push(response);
             }
 
@@ -273,17 +271,17 @@ class Client {
      */
     async pull_referrer(requests: models.store_v1.PullReferrerRequest[]): Promise<models.store_v1.PullReferrerResponse[]> {
         try {
-            // Create async generator for input requests
-            async function* requestGenerator() {
-                for (const request of requests) {
-                    yield request;
-                }
-            }
-
-            // Execute bidirectional streaming call
+            const call = this.storeClient.pullReferrer();
             const responses: models.store_v1.PullReferrerResponse[] = [];
             
-            for await (const response of this.storeClient.pullReferrer(requestGenerator())) {
+            // Send requests
+            for (const request of requests) {
+                await call.requests.send(request);
+            }
+            await call.requests.complete();
+
+            // Collect responses
+            for await (const response of call.responses) {
                 responses.push(response);
             }
 
@@ -316,10 +314,12 @@ class Client {
      */
     async search(request: models.search_v1.SearchRequest): Promise<models.search_v1.SearchResponse[]> {
         try {
-            // Execute server streaming call
-            const results: models.search_v1.SearchResponse[] = [];
+            // Send requests
+            const call = this.searchClient.search(request);
             
-            for await (const response of this.searchClient.search(request)) {
+            // Collect responses
+            const results: models.search_v1.SearchResponse[] = [];
+            for await (const response of call.responses) {
                 results.push(response);
             }
 
@@ -352,17 +352,17 @@ class Client {
      */
     async lookup(refs: models.core_v1.RecordRef[]): Promise<models.core_v1.RecordMeta[]> {
         try {
-            // Create async generator for input refs
-            async function* refGenerator() {
-                for (const ref of refs) {
-                    yield ref;
-                }
-            }
-
-            // Execute bidirectional streaming call
+            const call = this.storeClient.lookup();
             const recordMetas: models.core_v1.RecordMeta[] = [];
-            
-            for await (const response of this.storeClient.lookup(refGenerator())) {
+
+            // Send requests
+            for (const ref of refs) {
+                await call.requests.send(ref);
+            }
+            await call.requests.complete();
+
+            // Collect responses
+            for await (const response of call.responses) {
                 recordMetas.push(response);
             }
 
@@ -394,10 +394,12 @@ class Client {
      */
     async list(request: models.routing_v1.ListRequest): Promise<models.routing_v1.ListResponse[]> {
         try {
-            // Execute server streaming call
-            const results: models.routing_v1.ListResponse[] = [];
+            // Send requests
+            const call = this.routingClient.list(request);
             
-            for await (const response of this.routingClient.list(request)) {
+            // Collect responses
+            const results: models.routing_v1.ListResponse[] = [];
+            for await (const response of call.responses) {
                 results.push(response);
             }
 
@@ -480,15 +482,15 @@ class Client {
      */
     async delete(refs: models.core_v1.RecordRef[]): Promise<void> {
         try {
-            // Create async generator for input refs
-            async function* refGenerator() {
-                for (const ref of refs) {
-                    yield ref;
-                }
+            // Send requests
+            const call = this.storeClient.delete();
+            for (const ref of refs) {
+                await call.requests.send(ref);
             }
+            await call.requests.complete();
 
-            // Execute client streaming call (no response to collect)
-            await this.storeClient.delete(refGenerator());
+            // Wait for completion (no response data expected)
+            await call;
         } catch (error) {
             throw error;
         }
@@ -520,13 +522,13 @@ class Client {
      * ```
      */
     sign(req: models.sign_v1.SignRequest, oidc_client_id = "sigstore") {
-        switch (req.provider?.request.case) {
+        switch (req.provider?.request.oneofKind) {
             case "oidc":
-                const oidc_provider = req.provider.request.value as models.sign_v1.SignWithOIDC;
+                const oidc_provider = req.provider.request.oidc;
                 return this.__sign_with_oidc(req.recordRef?.cid || "", oidc_provider, oidc_client_id);
 
             case "key":
-                const key_provider = req.provider.request.value as models.sign_v1.SignWithKey;
+                const key_provider = req.provider.request.key;
                 return this.__sign_with_key(req.recordRef?.cid || "", key_provider);
 
             default:
@@ -558,7 +560,7 @@ class Client {
     async verify(request: models.sign_v1.VerifyRequest): Promise<models.sign_v1.VerifyResponse> {
         try {
             const response = await this.signClient.verify(request);
-            return response;
+            return response.response;
         } catch (error) {
             throw error;
         }
@@ -588,7 +590,7 @@ class Client {
     async create_sync(request: models.store_v1.CreateSyncRequest): Promise<models.store_v1.CreateSyncResponse> {
         try {
             const response = await this.syncClient.createSync(request);
-            return response;
+            return response.response;
         } catch (error) {
             throw error;
         }
@@ -619,10 +621,12 @@ class Client {
      */
     async list_syncs(request: models.store_v1.ListSyncsRequest): Promise<models.store_v1.ListSyncsItem[]> {
         try {
-            // Execute server streaming call
-            const results: any[] = [];
+            // Send requests
+            const call = this.syncClient.listSyncs(request);
             
-            for await (const response of this.syncClient.listSyncs(request)) {
+            // Collect responses
+            const results: models.store_v1.ListSyncsItem[] = [];
+            for await (const response of call.responses) {
                 results.push(response);
             }
 
@@ -656,7 +660,7 @@ class Client {
     async get_sync(request: models.store_v1.GetSyncRequest): Promise<models.store_v1.GetSyncResponse> {
         try {
             const response = await this.syncClient.getSync(request);
-            return response;
+            return response.response;
         } catch (error) {
             throw error;
         }

@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+import { describe, test, beforeAll, afterAll, expect, vi } from 'vitest';
 import { execSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import process from 'node:process';
@@ -8,9 +9,9 @@ import process from 'node:process';
 import { validate as isValidUUID } from 'uuid';
 import { v4 as uuidv4 } from 'uuid';
 
-// Import the compiled JavaScript modules for compatibility
-const { models } = require('../../dist/models');
-const { Client, Config } = require('../../dist/client');
+import { Client, Config } from '../client';
+import * as models from '../../models';
+
 
 /**
  * Generate test records with unique names.
@@ -70,7 +71,7 @@ function genRecords(count: number, testFunctionName: string): any[] {
 describe('Client', () => {
     let client: any;
 
-    beforeAll(() => {
+    beforeAll(async () => {
         // Verify that DIRCTL_PATH is set in the environment
         expect(process.env.DIRCTL_PATH).toBeDefined();
         
@@ -117,15 +118,15 @@ describe('Client', () => {
         const records = genRecords(1, "search");
         await client.push(records);
 
-        const searchQuery = new models.search_v1.RecordQuery({
-            type: models.search_v1.RECORD_QUERY_TYPE_SKILL_ID,
+        const searchQuery: models.search_v1.RecordQuery = {
+            type: models.search_v1.RecordQueryType.SKILL_ID,
             value: '10201'
-        });
+        };
 
-        const searchRequest = new models.search_v1.SearchRequest({
+        const searchRequest: models.search_v1.SearchRequest = {
             queries: [searchQuery],
             limit: 2
-        });
+        };
 
         const objects = await client.search(searchRequest);
 
@@ -156,38 +157,37 @@ describe('Client', () => {
         const records = genRecords(1, "publish");
         const recordRefs = await client.push(records);
         
-        const publishRequest = new models.routing_v1.PublishRequest({
-            recordRefs: new models.routing_v1.RecordRefs({ refs: recordRefs })
+        await client.publish({
+            request: { 
+                oneofKind: "recordRefs",
+                recordRefs: recordRefs,
+            }
         });
-
-        try {
-            await client.publish(publishRequest);
-        } catch (error) {
-            fail(`Publish should not throw error: ${error}`);
-        }
     });
 
     test('list', async () => {
         const records = genRecords(1, "list");
         const recordRefs = await client.push(records);
-        await client.publish(new models.routing_v1.PublishRequest({
-            recordRefs: new models.routing_v1.RecordRefs({ refs: recordRefs })
-        }));
+
+        // Publish records
+        await client.publish({
+            request: { 
+                oneofKind: "recordRefs",
+                recordRefs: recordRefs,
+            }
+        });
 
         // Sleep to allow the publication to be indexed
         await new Promise(resolve => setTimeout(resolve, 5000));
 
         // Query for records in the domain
-        const query = new models.routing_v1.RecordQuery({
-            type: models.routing_v1.RECORD_QUERY_TYPE_DOMAIN,
+        const query: models.routing_v1.RecordQuery = {
+            type: models.routing_v1.RecordQueryType.DOMAIN,
             value: 'technology/networking'
-        });
-
-        const listRequest = new models.routing_v1.ListRequest({
+        };
+        const objects = await client.list({
             queries: [query]
         });
-
-        const objects = await client.list(listRequest);
 
         expect(objects).not.toBeNull();
         expect(objects).toBeInstanceOf(Array);
@@ -202,51 +202,52 @@ describe('Client', () => {
         const records = genRecords(1, "unpublish");
         const recordRefs = await client.push(records);
 
-        const publishRecordRefs = new models.routing_v1.RecordRefs({ refs: recordRefs });
-        const unpublishRequest = new models.routing_v1.UnpublishRequest({ 
-            recordRefs: publishRecordRefs 
+        // Publish records
+        await client.publish({
+            request: { 
+                oneofKind: "recordRefs",
+                recordRefs: recordRefs,
+            }
         });
 
-        try {
-            await client.unpublish(unpublishRequest);
-        } catch (error) {
-            fail(`Unpublish should not throw error: ${error}`);
-        }
+        // Unpublish
+            await client.unpublish({
+            request: {
+                oneofKind: "recordRefs",
+                recordRefs: recordRefs,
+            }
+        });
     });
 
     test('delete', async () => {
         const records = genRecords(1, "delete");
         const recordRefs = await client.push(records);
 
-        try {
-            await client.delete(recordRefs);
-        } catch (error) {
-            fail(`Delete should not throw error: ${error}`);
-        }
+        await client.delete(recordRefs);
     });
 
     test('pushReferrer', async () => {
         const records = genRecords(2, "pushReferrer");
         const recordRefs = await client.push(records);
 
-        const exampleSignature = new models.sign_v1.Signature();
-        const requests = recordRefs.map((recordRef: any) => 
-            new models.store_v1.PushReferrerRequest({
-                recordRef: recordRef,
-                signature: exampleSignature
-            })
+        const requests: models.store_v1.PushReferrerRequest[] = recordRefs.map(
+            (recordRef: models.core_v1.RecordRef): models.store_v1.PushReferrerRequest => {
+                return {
+                    recordRef: recordRef,
+                    options: {
+                        oneofKind: "signature",
+                        signature: {} as models.sign_v1.Signature,
+                    },
+                };
+            }
         );
 
-        try {
-            const response = await client.push_referrer(requests);
-            expect(response).not.toBeNull();
-            expect(response).toHaveLength(2);
-            
-            for (const r of response) {
-                expect(r).toBeInstanceOf(models.store_v1.PushReferrerResponse);
-            }
-        } catch (error) {
-            fail(`Push referrer should not throw error: ${error}`);
+        const response = await client.push_referrer(requests);
+        expect(response).not.toBeNull();
+        expect(response).toHaveLength(2);
+        
+        for (const r of response) {
+            expect(r).toBeInstanceOf(models.store_v1.PushReferrerResponse);
         }
     });
 
@@ -254,27 +255,24 @@ describe('Client', () => {
         const records = genRecords(2, "pullReferrer");
         const recordRefs = await client.push(records);
 
-        const requests = recordRefs.map((recordRef: any) => 
-            new models.store_v1.PullReferrerRequest({
-                recordRef: recordRef,
-                pullSignature: false
-            })
+        const requests: models.store_v1.PullReferrerRequest[] = recordRefs.map(
+            (recordRef: models.core_v1.RecordRef): models.store_v1.PullReferrerRequest => {
+                return {
+                    recordRef: recordRef,
+                    options: {
+                        oneofKind: "pullSignature",
+                        pullSignature: true,
+                    },
+                };
+            }
         );
 
-        try {
-            const response = await client.pull_referrer(requests);
-            expect(response).not.toBeNull();
-            expect(response).toHaveLength(2);
-            
-            for (const r of response) {
-                expect(r).toBeInstanceOf(models.store_v1.PullReferrerResponse);
-            }
-        } catch (error) {
-            // Remove when service is implemented
-            if (error instanceof Error && error.message.includes("pull referrer not implemented")) {
-                return;
-            }
-            fail(`Pull referrer should not throw error: ${error}`);
+        const response = await client.pull_referrer(requests);
+        expect(response).not.toBeNull();
+        expect(response).toHaveLength(2);
+        
+        for (const r of response) {
+            expect(r).toBeInstanceOf(models.store_v1.PullReferrerResponse);
         }
     });
 
@@ -301,45 +299,40 @@ describe('Client', () => {
                 }
             );
 
-            // Read the private key
+            // Read configuration data
             const keyFile = readFileSync('cosign.key');
-
-            // Create signing providers
-            const keyProvider = new models.sign_v1.SignWithKey({
-                privateKey: keyFile,
-                password: Buffer.from(keyPassword, 'utf-8')
-            });
-
             const token = shellEnv["OIDC_TOKEN"] || "";
             const providerUrl = shellEnv["OIDC_PROVIDER_URL"] || "";
             const clientId = shellEnv["OIDC_CLIENT_ID"] || "sigstore";
 
-            const oidcOptions = new models.sign_v1.SignWithOIDC.SignOpts({
-                oidcProviderUrl: providerUrl
-            });
-
-            const oidcProvider = new models.sign_v1.SignWithOIDC({
-                idToken: token,
-                options: oidcOptions
-            });
-
-            const requestKeyProvider = new models.sign_v1.SignRequestProvider({
-                key: keyProvider
-            });
-
-            const requestOidcProvider = new models.sign_v1.SignRequestProvider({
-                oidc: oidcProvider
-            });
-
-            const keyRequest = new models.sign_v1.SignRequest({
+            // Create signing providers
+            const keyRequest: models.sign_v1.SignRequest = {
                 recordRef: recordRefs[0],
-                provider: requestKeyProvider
-            });
+                provider: {
+                    request: {
+                        oneofKind: "key",
+                        key: {
+                            privateKey: keyFile,
+                            password: Buffer.from(keyPassword, 'utf-8')
+                        },
+                    }
+                }
+            };
 
-            const oidcRequest = new models.sign_v1.SignRequest({
+            const oidcRequest: models.sign_v1.SignRequest = {
                 recordRef: recordRefs[1],
-                provider: requestOidcProvider
-            });
+                provider: {
+                    request: {
+                        oneofKind: "oidc",
+                        oidc: {
+                            idToken: token,
+                            options: {
+                                oidcProviderUrl: providerUrl
+                            }
+                        }
+                    }
+                }
+            };
 
             // Sign test
             const keyCommandResult = client.sign(keyRequest);
@@ -350,23 +343,29 @@ describe('Client', () => {
 
             // Verify test
             for (const ref of recordRefs) {
-                const request = new models.sign_v1.VerifyRequest({
+                const response = await client.verify({
                     recordRef: ref
                 });
-
-                const response = await client.verify(request);
                 expect(response.success).toBe(true);
             }
 
             // Test invalid CID
-            const invalidRequest = new models.sign_v1.SignRequest({
-                recordRef: new models.core_v1.RecordRef({ cid: "invalid-cid" }),
-                provider: requestKeyProvider
-            });
+            const invalidRequest: models.sign_v1.SignRequest = {
+                recordRef: { cid: "invalid-cid" },
+                provider: {
+                    request: {
+                        oneofKind: "key",
+                        key: {
+                            privateKey: Uint8Array.from([]),
+                            password: Uint8Array.from([])
+                        },
+                    }
+                }
+            };
 
             try {
                 client.sign(invalidRequest);
-                fail("Should have thrown error for invalid CID");
+                expect.fail("Should have thrown error for invalid CID");
             } catch (error) {
                 if (error instanceof Error) {
                     expect(error.message).toContain("Failed to sign the object");
@@ -374,7 +373,7 @@ describe('Client', () => {
             }
 
         } catch (error) {
-            fail(`Sign and verify test failed: ${error}`);
+            expect.fail(`Sign and verify test failed: ${error}`);
         } finally {
             // Clean up keys
             rmSync("cosign.key", { force: true });
@@ -383,42 +382,35 @@ describe('Client', () => {
     }, 30000);
 
     test('sync', async () => {
-        try {
-            const createRequest = new models.store_v1.CreateSyncRequest({
-                remoteDirectoryUrl: process.env["DIRECTORY_SERVER_PEER1_ADDRESS"] || "0.0.0.0:8891"
-            });
+        // Create sync
+        const createResponse = await client.create_sync({
+            remoteDirectoryUrl: process.env["DIRECTORY_SERVER_PEER1_ADDRESS"] || "0.0.0.0:8891"
+        });
+        expect(createResponse).toBeInstanceOf(models.store_v1.CreateSyncResponse);
 
-            const createResponse = await client.create_sync(createRequest);
-            expect(createResponse).toBeInstanceOf(models.store_v1.CreateSyncResponse);
+        const syncId = createResponse.syncId;
+        expect(isValidUUID(syncId)).toBe(true);
 
-            const syncId = createResponse.syncId;
-            expect(isValidUUID(syncId)).toBe(true);
+        // List syncs
+        const listRequest: models.store_v1.ListSyncsRequest = {};
+        const listResponse = await client.list_syncs(listRequest);
+        expect(listResponse).toBeInstanceOf(Array);
 
-            const listRequest = new models.store_v1.ListSyncsRequest();
-            const listResponse = await client.list_syncs(listRequest);
-            expect(listResponse).toBeInstanceOf(Array);
-
-            for (const syncItem of listResponse) {
-                expect(syncItem).toBeInstanceOf(models.store_v1.ListSyncsItem);
-                expect(isValidUUID(syncItem.syncId)).toBe(true);
-            }
-
-            const getRequest = new models.store_v1.GetSyncRequest({
-                syncId: syncId
-            });
-
-            const getResponse = await client.get_sync(getRequest);
-            expect(getResponse).toBeInstanceOf(models.store_v1.GetSyncResponse);
-            expect(getResponse.syncId).toEqual(syncId);
-
-            const deleteRequest = new models.store_v1.DeleteSyncRequest({
-                syncId: syncId
-            });
-            
-            await client.delete_sync(deleteRequest);
-
-        } catch (error) {
-            fail(`Sync test should not throw error: ${error}`);
+        for (const syncItem of listResponse) {
+            expect(syncItem).toBeInstanceOf(models.store_v1.ListSyncsItem);
+            expect(isValidUUID(syncItem.syncId)).toBe(true);
         }
+
+        // Get sync
+        const getResponse = await client.get_sync({
+            syncId: syncId
+        });
+        expect(getResponse).toBeInstanceOf(models.store_v1.GetSyncResponse);
+        expect(getResponse.syncId).toEqual(syncId);
+
+        // Delete sync
+        await client.delete_sync({
+            syncId: syncId
+        });
     });
 });
