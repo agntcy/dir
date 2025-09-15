@@ -27,11 +27,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
-	tempV3Path := filepath.Join(tempDir, "record_v3_sync_test.json")
+	tempPath := filepath.Join(tempDir, "record_sync_test.json")
 
 	// Create directory and write record data
-	_ = os.MkdirAll(filepath.Dir(tempV3Path), 0o755)
-	_ = os.WriteFile(tempV3Path, expectedRecordV070JSON, 0o600)
+	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
+	_ = os.WriteFile(tempPath, expectedRecordV070SyncJSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -88,10 +88,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		var cid string
 
 		ginkgo.It("should push record_v3.json to peer 1", func() {
-			cid = cli.Push(tempV3Path).OnServer(utils.Peer1Addr).ShouldSucceed()
+			cid = cli.Push(tempPath).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
-			utils.LoadAndValidateCID(cid, tempV3Path)
+			utils.LoadAndValidateCID(cid, tempPath)
 		})
 
 		ginkgo.It("should fail to pull record_v3.json from peer 2", func() {
