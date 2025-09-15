@@ -14,5 +14,5 @@ var expectedRecordV031JSON []byte
 //go:embed testdata/record_v070.json
 var expectedRecordV070JSON []byte
 
-//go:embed testdata/record_v070_sync.json
+//go:embed testdata/record_v070_sync_v4.json
 var expectedRecordV070SyncJSON []byte
