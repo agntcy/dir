@@ -8,6 +8,7 @@ type WorkItem struct {
 	Type               WorkItemType
 	SyncID             string
 	RemoteDirectoryURL string
+	CIDs               []string
 }
 
 // WorkItemType represents the type of sync task.

@@ -49,13 +49,9 @@ message CreateSyncRequest {
   // - "https://directory.example.com:9443"
   string remote_directory_url = 1;
 
-  // TODO: Future enhancement - Filtering options for selective synchronization.
-  // This may include filtering by object type, annotations, etc.
-  // SyncFilter filter = 2;
-
-  // TODO: Future enhancement - Scheduling options for periodic synchronization.
-  // This will allow setting up recurring sync operations.
-  // SyncSchedule schedule = 3;
+  // List of CIDs to synchronize from the remote Directory.
+  // If empty, all objects will be synchronized.
+  repeated string cids = 2;
 }
 
 // CreateSyncResponse contains the result of creating a new synchronization operation.

@@ -43,7 +43,7 @@ func (c *syncCtlr) CreateSync(_ context.Context, req *storev1.CreateSyncRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid remote directory URL: %v", err)
 	}
 
-	id, err := c.db.CreateSync(req.GetRemoteDirectoryUrl())
+	id, err := c.db.CreateSync(req.GetRemoteDirectoryUrl(), req.GetCids())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sync: %w", err)
 	}

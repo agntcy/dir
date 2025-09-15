@@ -12,9 +12,10 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
-func (c *Client) CreateSync(ctx context.Context, remoteURL string) (string, error) {
+func (c *Client) CreateSync(ctx context.Context, remoteURL string, cids []string) (string, error) {
 	meta, err := c.SyncServiceClient.CreateSync(ctx, &storev1.CreateSyncRequest{
 		RemoteDirectoryUrl: remoteURL,
+		Cids:               cids,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to create sync: %w", err)

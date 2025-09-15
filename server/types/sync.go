@@ -8,5 +8,6 @@ import storev1 "github.com/agntcy/dir/api/store/v1"
 type SyncObject interface {
 	GetID() string
 	GetRemoteDirectoryURL() string
+	GetCIDs() []string
 	GetStatus() storev1.SyncStatus
 }

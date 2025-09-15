@@ -19,6 +19,7 @@ type Sync struct {
 	ID                 string             `gorm:"not null;index"`
 	RemoteDirectoryURL string             `gorm:"not null"`
 	RemoteRegistryURL  string             `gorm:"not null"`
+	CIDs               []string           `gorm:"serializer:json;not null"`
 	Status             storev1.SyncStatus `gorm:"not null"`
 }
 
@@ -34,14 +35,19 @@ func (sync *Sync) GetRemoteRegistryURL() string {
 	return sync.RemoteRegistryURL
 }
 
+func (sync *Sync) GetCIDs() []string {
+	return sync.CIDs
+}
+
 func (sync *Sync) GetStatus() storev1.SyncStatus {
 	return sync.Status
 }
 
-func (d *DB) CreateSync(remoteURL string) (string, error) {
+func (d *DB) CreateSync(remoteURL string, cids []string) (string, error) {
 	sync := &Sync{
 		ID:                 uuid.NewString(),
 		RemoteDirectoryURL: remoteURL,
+		CIDs:               cids,
 		Status:             storev1.SyncStatus_SYNC_STATUS_PENDING,
 	}
 
@@ -157,6 +163,20 @@ func (d *DB) GetSyncRemoteRegistry(syncID string) (string, error) {
 	}
 
 	return sync.GetRemoteRegistryURL(), nil
+}
+
+func (d *DB) GetSyncCIDs(syncID string) ([]string, error) {
+	syncObj, err := d.GetSyncByID(syncID)
+	if err != nil {
+		return nil, err
+	}
+
+	sync, ok := syncObj.(*Sync)
+	if !ok {
+		return nil, gorm.ErrInvalidData
+	}
+
+	return sync.GetCIDs(), nil
 }
 
 func (d *DB) DeleteSync(syncID string) error {

@@ -8,12 +8,17 @@ var opts = &options{}
 type options struct {
 	Limit  uint32
 	Offset uint32
+	CIDs   []string
 }
 
 //nolint:mnd
 func init() {
-	flags := listCmd.Flags()
+	// Add flags for list command
+	listFlags := listCmd.Flags()
+	listFlags.Uint32Var(&opts.Limit, "limit", 100, "Maximum number of sync operations to return (default: 100)")
+	listFlags.Uint32Var(&opts.Offset, "offset", 0, "Number of sync operations to skip (for pagination)")
 
-	flags.Uint32Var(&opts.Limit, "limit", 100, "Maximum number of sync operations to return (default: 100)")
-	flags.Uint32Var(&opts.Offset, "offset", 0, "Number of sync operations to skip (for pagination)")
+	// Add flags for create command
+	createFlags := createCmd.Flags()
+	createFlags.StringSliceVar(&opts.CIDs, "cids", []string{}, "List of CIDs to synchronize from the remote Directory. If empty, all objects will be synchronized.")
 }

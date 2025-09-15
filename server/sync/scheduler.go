@@ -91,6 +91,7 @@ func (s *Scheduler) processPendingSyncCreations(ctx context.Context) error {
 			Type:               synctypes.WorkItemTypeSyncCreate,
 			SyncID:             sync.GetID(),
 			RemoteDirectoryURL: sync.GetRemoteDirectoryURL(),
+			CIDs:               sync.GetCIDs(),
 		}
 
 		if err := s.dispatchWorkItem(ctx, workItem); err != nil {
@@ -117,6 +118,7 @@ func (s *Scheduler) processPendingSyncDeletions(ctx context.Context) error {
 			Type:               synctypes.WorkItemTypeSyncDelete,
 			SyncID:             sync.GetID(),
 			RemoteDirectoryURL: sync.GetRemoteDirectoryURL(),
+			CIDs:               sync.GetCIDs(),
 		}
 
 		if err := s.dispatchWorkItem(ctx, workItem); err != nil {

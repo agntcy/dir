@@ -152,7 +152,7 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	}
 
 	// Update zot configuration with sync extension to trigger sync
-	if err := w.addRegistryToZotSync(ctx, remoteRegistryURL); err != nil {
+	if err := w.addRegistryToZotSync(ctx, remoteRegistryURL, item.CIDs); err != nil {
 		return fmt.Errorf("failed to add registry to zot sync: %w", err)
 	}
 
@@ -237,7 +237,7 @@ func (w *Worker) writeZotConfig(zotConfig *zotconfig.Config) error {
 }
 
 // addRegistryToZotSync adds a registry to the zot sync configuration.
-func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL string) error {
+func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL string, cids []string) error {
 	logger.Debug("Adding registry to zot sync", "worker_id", w.id, "remote_url", remoteDirectoryURL)
 
 	// Validate input
@@ -283,6 +283,30 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 		}
 	}
 
+	var syncContent []zotconfig.SyncContent
+
+	if len(cids) > 0 {
+		// Create a regex to match the CIDs
+		cidsRegex := strings.Join(cids, "|")
+		regex := fmt.Sprintf("^(%s)$", cidsRegex)
+
+		// Add the regex to the sync content
+		syncContent = []zotconfig.SyncContent{
+			{
+				Prefix: ociconfig.DefaultRepositoryName,
+				Tags: &zotconfig.SyncContentTags{
+					Regex: regex,
+				},
+			},
+		}
+	} else {
+		syncContent = []zotconfig.SyncContent{
+			{
+				Prefix: ociconfig.DefaultRepositoryName,
+			},
+		}
+	}
+
 	registry := zotconfig.SyncRegistryConfig{
 		URLs:         []string{registryURL},
 		OnDemand:     false, // Disable OnDemand for proactive sync
@@ -290,11 +314,7 @@ func (w *Worker) addRegistryToZotSync(_ context.Context, remoteDirectoryURL stri
 		MaxRetries:   zotconfig.DefaultMaxRetries,
 		RetryDelay:   zotconfig.DefaultRetryDelay,
 		TLSVerify:    toPtr(false),
-		Content: []zotconfig.SyncContent{
-			{
-				Prefix: ociconfig.DefaultRepositoryName,
-			},
-		},
+		Content:      syncContent,
 	}
 	syncConfig.Registries = append(syncConfig.Registries, registry)
 

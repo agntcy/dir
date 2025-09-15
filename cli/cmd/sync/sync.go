@@ -29,10 +29,10 @@ The operation is asynchronous and returns a sync ID for tracking progress.
 
 Examples:
   dir sync create https://directory.example.com
-  dir sync create http://localhost:8080`,
+  dir sync create http://localhost:8080 --cids cid1,cid2,cid3`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runCreateSync(cmd, args[0])
+		return runCreateSync(cmd, args[0], opts.CIDs)
 	},
 }
 
@@ -82,7 +82,7 @@ func init() {
 	Command.AddCommand(deleteCmd)
 }
 
-func runCreateSync(cmd *cobra.Command, remoteURL string) error {
+func runCreateSync(cmd *cobra.Command, remoteURL string, cids []string) error {
 	// Validate remote URL
 	if remoteURL == "" {
 		return errors.New("remote URL is required")
@@ -93,7 +93,7 @@ func runCreateSync(cmd *cobra.Command, remoteURL string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	syncID, err := client.CreateSync(cmd.Context(), remoteURL)
+	syncID, err := client.CreateSync(cmd.Context(), remoteURL, cids)
 	if err != nil {
 		return fmt.Errorf("failed to create sync: %w", err)
 	}
