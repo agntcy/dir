@@ -19,25 +19,32 @@ const (
 
 // Zot sync config structures based on official zot documentation
 // Required to avoid dependency conflicts with zot registry
-// Reference: https://zotregistry.dev/v2.0.1/admin-guide/admin-configuration/
+// Reference: https://zotregistry.dev/v2.1.8/admin-guide/admin-configuration/
 type SyncContent struct {
-	Prefix      string `json:"prefix"`
-	Destination string `json:"destination,omitempty"`
-	Tags        *struct {
-		Regex  string `json:"regex,omitempty"`
-		Semver bool   `json:"semver,omitempty"`
-	} `json:"tags,omitempty"`
+	Prefix      string           `json:"Prefix"`
+	Destination string           `json:"Destination,omitempty"`
+	Tags        *SyncContentTags `json:"Tags,omitempty"`
+	StripPrefix bool             `json:"StripPrefix,omitempty"`
+}
+
+type SyncContentTags struct {
+	Regex        string  `json:"Regex,omitempty"`
+	ExcludeRegex *string `json:"ExcludeRegex,omitempty"`
+	Semver       *bool   `json:"Semver,omitempty"`
 }
 
 type SyncRegistryConfig struct {
-	URLs         []string      `json:"urls"`
-	OnDemand     bool          `json:"onDemand"`
-	Content      []SyncContent `json:"content,omitempty"`
-	TLSVerify    *bool         `json:"tlsVerify,omitempty"`
-	MaxRetries   int           `json:"maxRetries,omitempty"`
-	RetryDelay   string        `json:"retryDelay,omitempty"`
-	PollInterval string        `json:"pollInterval,omitempty"`
-	OnlySigned   bool          `json:"onlySigned,omitempty"`
+	URLs             []string      `json:"URLs"`
+	OnDemand         bool          `json:"OnDemand"`
+	Content          []SyncContent `json:"Content,omitempty"`
+	TLSVerify        *bool         `json:"TLSVerify,omitempty"`
+	MaxRetries       int           `json:"MaxRetries,omitempty"`
+	RetryDelay       string        `json:"RetryDelay,omitempty"`
+	PollInterval     string        `json:"PollInterval,omitempty"`
+	OnlySigned       *bool         `json:"OnlySigned,omitempty"`
+	CertDir          string        `json:"CertDir,omitempty"`
+	CredentialHelper string        `json:"CredentialHelper,omitempty"`
+	PreserveDigest   bool          `json:"PreserveDigest,omitempty"`
 }
 
 type CredentialsFile map[string]Credentials
@@ -48,9 +55,10 @@ type Credentials struct {
 }
 
 type SyncConfig struct {
-	Enable          *bool                `json:"enable,omitempty"`
-	CredentialsFile string               `json:"credentialsFile,omitempty"`
-	Registries      []SyncRegistryConfig `json:"registries,omitempty"`
+	Enable          *bool                `json:"Enable,omitempty"`
+	CredentialsFile string               `json:"CredentialsFile,omitempty"`
+	DownloadDir     string               `json:"DownloadDir,omitempty"`
+	Registries      []SyncRegistryConfig `json:"Registries,omitempty"`
 }
 
 type TrustConfig struct {
