@@ -23,6 +23,7 @@ type Record struct {
 	Skills     []Skill     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators   []Locator   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Extensions []Extension `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Modules    []Module    `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 // Implement central Record interface.
@@ -104,6 +105,15 @@ func (r *RecordDataAdapter) GetExtensions() []types.Extension {
 	return extensions
 }
 
+func (r *RecordDataAdapter) GetModules() []types.Module {
+	modules := make([]types.Module, len(r.record.Modules))
+	for i, module := range r.record.Modules {
+		modules[i] = &module
+	}
+
+	return modules
+}
+
 func (r *RecordDataAdapter) GetSignature() types.Signature {
 	// SQLite records don't store signature information
 	return nil
@@ -148,6 +158,7 @@ func (d *DB) AddRecord(record types.Record) error {
 		Skills:     convertSkills(recordData.GetSkills(), cid),
 		Locators:   convertLocators(recordData.GetLocators(), cid),
 		Extensions: convertExtensions(recordData.GetExtensions(), cid),
+		Modules:    convertModules(recordData.GetModules(), cid),
 	}
 
 	// Let GORM handle the entire creation with associations
@@ -156,7 +167,7 @@ func (d *DB) AddRecord(record types.Record) error {
 	}
 
 	logger.Debug("Added new record with associations to SQLite database", "record_cid", sqliteRecord.RecordCID, "cid", cid,
-		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "extensions", len(sqliteRecord.Extensions))
+		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "extensions", len(sqliteRecord.Extensions), "modules", len(sqliteRecord.Modules))
 
 	return nil
 }
@@ -192,7 +203,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 
 	// Execute the query to get records.
 	var dbRecords []Record
-	if err := query.Preload("Skills").Preload("Locators").Preload("Extensions").Find(&dbRecords).Error; err != nil {
+	if err := query.Preload("Skills").Preload("Locators").Preload("Extensions").Preload("Modules").Find(&dbRecords).Error; err != nil {
 		return nil, fmt.Errorf("failed to query records: %w", err)
 	}
 

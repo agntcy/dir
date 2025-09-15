@@ -12,10 +12,10 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
-	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/routing/rpc"
 	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -262,7 +262,7 @@ func (r *routeRemote) searchRemoteRecords(ctx context.Context, queries []*routin
 			break
 		}
 
-		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
+		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			remoteLogger.Warn("Failed to parse enhanced label key", "key", entry.Key, "error", err)
 
@@ -351,7 +351,7 @@ func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID str
 	}
 
 	for _, entry := range entries {
-		label, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
+		label, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}
@@ -422,7 +422,7 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 		return
 	}
 
-	labelList := labels.GetLabels(record)
+	labelList := GetLabelsFromRecord(record)
 	if len(labelList) == 0 {
 		remoteLogger.Warn("No labels found in remote record", "cid", notif.Ref.GetCid(), "peer", peerIDStr)
 
@@ -433,7 +433,7 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 	cachedCount := 0
 
 	for _, label := range labelList {
-		enhancedKey := labels.BuildEnhancedLabelKey(label, notif.Ref.GetCid(), peerIDStr)
+		enhancedKey := BuildEnhancedLabelKey(label, notif.Ref.GetCid(), peerIDStr)
 
 		metadata := &labels.LabelMetadata{
 			Timestamp: now,
@@ -471,7 +471,7 @@ func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID str
 
 	for _, entry := range entries {
 		// Parse enhanced key to check if it matches our CID/PeerID
-		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
+		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}
@@ -521,7 +521,7 @@ func (r *routeRemote) updateRemoteRecordLastSeen(ctx context.Context, cid, peerI
 
 	for _, entry := range entries {
 		// Parse enhanced key to check if it matches our CID/PeerID
-		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
+		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}

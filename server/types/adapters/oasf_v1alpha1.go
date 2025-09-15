@@ -6,6 +6,7 @@ package adapters
 import (
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
 )
 
@@ -13,6 +14,12 @@ import (
 type V1Alpha1Adapter struct {
 	record *typesv1alpha1.Record
 }
+
+// Compile-time interface checks.
+var (
+	_ types.RecordData    = (*V1Alpha1Adapter)(nil)
+	_ types.LabelProvider = (*V1Alpha1Adapter)(nil)
+)
 
 // NewV1Alpha1Adapter creates a new V1Alpha1Adapter.
 func NewV1Alpha1Adapter(record *typesv1alpha1.Record) *V1Alpha1Adapter {
@@ -141,6 +148,22 @@ func (a *V1Alpha1Adapter) GetExtensions() []types.Extension {
 
 	for i, extension := range extensions {
 		result[i] = NewV1Alpha1ExtensionAdapter(extension)
+	}
+
+	return result
+}
+
+// GetModules implements types.RecordData interface.
+func (a *V1Alpha1Adapter) GetModules() []types.Module {
+	if a.record == nil {
+		return nil
+	}
+
+	modules := a.record.GetModules()
+	result := make([]types.Module, len(modules))
+
+	for i, module := range modules {
+		result[i] = NewV1Alpha1ModuleAdapter(module)
 	}
 
 	return result
@@ -420,4 +443,131 @@ func (d *V1Alpha1DomainAdapter) GetID() uint64 {
 	}
 
 	return uint64(d.domain.GetId())
+}
+
+// V1Alpha1ModuleAdapter adapts typesv1alpha1.Module to types.Module interface.
+type V1Alpha1ModuleAdapter struct {
+	module *typesv1alpha1.Module
+}
+
+// NewV1Alpha1ModuleAdapter creates a new V1Alpha1ModuleAdapter.
+func NewV1Alpha1ModuleAdapter(module *typesv1alpha1.Module) *V1Alpha1ModuleAdapter {
+	return &V1Alpha1ModuleAdapter{module: module}
+}
+
+// GetName implements types.Module interface.
+func (m *V1Alpha1ModuleAdapter) GetName() string {
+	if m.module == nil {
+		return ""
+	}
+
+	return m.module.GetName()
+}
+
+// GetData implements types.Module interface.
+func (m *V1Alpha1ModuleAdapter) GetData() map[string]any {
+	if m.module == nil || m.module.GetData() == nil {
+		return nil
+	}
+
+	resp, err := decoder.ProtoToStruct[map[string]any](m.module.GetData())
+	if err != nil {
+		return nil
+	}
+
+	return *resp
+}
+
+// GetSkillLabels implements types.LabelProvider interface.
+func (a *V1Alpha1Adapter) GetSkillLabels() []labels.Label {
+	if a.record == nil {
+		return nil
+	}
+
+	skills := a.record.GetSkills()
+	result := make([]labels.Label, 0, len(skills))
+
+	for _, skill := range skills {
+		// Reuse the existing skill adapter logic for name formatting
+		skillAdapter := NewV1Alpha1SkillAdapter(skill)
+		skillName := skillAdapter.GetName()
+
+		skillLabel := labels.Label(labels.LabelTypeSkill.Prefix() + skillName)
+		result = append(result, skillLabel)
+	}
+
+	return result
+}
+
+// GetLocatorLabels implements types.LabelProvider interface.
+func (a *V1Alpha1Adapter) GetLocatorLabels() []labels.Label {
+	if a.record == nil {
+		return nil
+	}
+
+	locators := a.record.GetLocators()
+	result := make([]labels.Label, 0, len(locators))
+
+	for _, locator := range locators {
+		locatorAdapter := NewV1Alpha1LocatorAdapter(locator)
+		locatorType := locatorAdapter.GetType()
+
+		locatorLabel := labels.Label(labels.LabelTypeLocator.Prefix() + locatorType)
+		result = append(result, locatorLabel)
+	}
+
+	return result
+}
+
+// GetDomainLabels implements types.LabelProvider interface.
+func (a *V1Alpha1Adapter) GetDomainLabels() []labels.Label {
+	if a.record == nil {
+		return nil
+	}
+
+	domains := a.record.GetDomains()
+	result := make([]labels.Label, 0, len(domains))
+
+	for _, domain := range domains {
+		domainAdapter := NewV1Alpha1DomainAdapter(domain)
+		domainName := domainAdapter.GetName()
+
+		domainLabel := labels.Label(labels.LabelTypeDomain.Prefix() + domainName)
+		result = append(result, domainLabel)
+	}
+
+	return result
+}
+
+// GetModuleLabels implements types.LabelProvider interface.
+func (a *V1Alpha1Adapter) GetModuleLabels() []labels.Label {
+	if a.record == nil {
+		return nil
+	}
+
+	modules := a.record.GetModules()
+	result := make([]labels.Label, 0, len(modules))
+
+	for _, mod := range modules {
+		moduleAdapter := NewV1Alpha1ModuleAdapter(mod)
+		moduleName := moduleAdapter.GetName()
+
+		// V1Alpha1 modules don't have schema prefixes, use name directly
+		featureLabel := labels.Label(labels.LabelTypeFeature.Prefix() + moduleName)
+		result = append(result, featureLabel)
+	}
+
+	return result
+}
+
+// GetAllLabels implements types.LabelProvider interface.
+func (a *V1Alpha1Adapter) GetAllLabels() []labels.Label {
+	var allLabels []labels.Label
+
+	allLabels = append(allLabels, a.GetSkillLabels()...)
+	allLabels = append(allLabels, a.GetDomainLabels()...)
+	allLabels = append(allLabels, a.GetModuleLabels()...)
+	allLabels = append(allLabels, a.GetLocatorLabels()...)
+
+	return allLabels
 }

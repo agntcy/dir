@@ -13,8 +13,8 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
-	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/labels"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,7 +59,7 @@ func TestSearch_CoreLogic(t *testing.T) {
 	// Store test label metadata
 	for _, td := range testData {
 		for _, label := range td.labels {
-			enhancedKey := labels.BuildEnhancedLabelKey(labels.Label(label), td.cid, td.peerID)
+			enhancedKey := BuildEnhancedLabelKey(labels.Label(label), td.cid, td.peerID)
 			metadata := &labels.LabelMetadata{
 				Timestamp: time.Now(),
 				LastSeen:  time.Now(),
@@ -270,7 +270,7 @@ func simulateSearch(ctx context.Context, dstore types.Datastore, localPeerID str
 		}
 
 		// Parse enhanced key
-		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
+		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}
@@ -329,7 +329,7 @@ func testMatchesAllQueriesSimple(ctx context.Context, dstore types.Datastore, ci
 	var labelStrings []string
 
 	for _, entry := range entries {
-		label, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
+		label, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			continue
 		}

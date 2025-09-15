@@ -12,8 +12,8 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
-	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -35,7 +35,7 @@ type remoteLabelFilter struct {
 func (f *remoteLabelFilter) Filter(e query.Entry) bool {
 	// With enhanced keys, we can check PeerID directly from the key
 	// Key format: /skills/AI/CID123/Peer1
-	keyPeerID := labels.ExtractPeerIDFromKey(e.Key)
+	keyPeerID := ExtractPeerIDFromKey(e.Key)
 	if keyPeerID == "" {
 		// Invalid key format, assume remote to be safe
 		return true
@@ -231,7 +231,7 @@ func (c *CleanupManager) cleanupStaleRemoteLabels(ctx context.Context) error {
 		}
 
 		// Parse enhanced key to get peer information
-		_, _, keyPeerID, err := labels.ParseEnhancedLabelKey(result.Key)
+		_, _, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
 		if err != nil {
 			cleanupLogger.Warn("Failed to parse enhanced label key, marking for deletion",
 				"key", result.Key, "error", err)
@@ -345,7 +345,7 @@ func (c *CleanupManager) cleanupLabelsForCID(ctx context.Context, cid string) bo
 
 		for result := range labelResults.Next() {
 			// Parse enhanced key to get CID and PeerID
-			_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(result.Key)
+			_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(result.Key)
 			if err != nil {
 				cleanupLogger.Warn("Failed to parse enhanced label key during cleanup, deleting",
 					"key", result.Key, "error", err)

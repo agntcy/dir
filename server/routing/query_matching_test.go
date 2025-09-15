@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/routing/labels"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/stretchr/testify/assert"
 )
 

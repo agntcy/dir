@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/routing/labels"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -167,7 +167,7 @@ func GetMatchingQueries(labelKey string, queries []*routingv1.RecordQuery) []*ro
 	var matchingQueries []*routingv1.RecordQuery
 
 	// Extract label from the enhanced key
-	label, _, _, err := labels.ParseEnhancedLabelKey(labelKey)
+	label, _, _, err := ParseEnhancedLabelKey(labelKey)
 	if err != nil {
 		queryLogger.Warn("Failed to parse enhanced label key for query matching", "key", labelKey, "error", err)
 

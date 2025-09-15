@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/server/datastore"
-	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/labels"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +46,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 		}
 
 		for _, tl := range testLabels {
-			enhancedKey := labels.BuildEnhancedLabelKey(labels.Label(tl.label), testCID, tl.peerID)
+			enhancedKey := BuildEnhancedLabelKey(labels.Label(tl.label), testCID, tl.peerID)
 			err = dstore.Put(ctx, ipfsdatastore.NewKey(enhancedKey), []byte("metadata"))
 			require.NoError(t, err)
 		}
@@ -62,7 +62,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 
 		// Verify label cleanup
 		for _, tl := range testLabels {
-			enhancedKey := labels.BuildEnhancedLabelKey(labels.Label(tl.label), testCID, tl.peerID)
+			enhancedKey := BuildEnhancedLabelKey(labels.Label(tl.label), testCID, tl.peerID)
 			exists, err := dstore.Has(ctx, ipfsdatastore.NewKey(enhancedKey))
 			require.NoError(t, err)
 
@@ -154,7 +154,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				// Test the core filtering logic
-				keyPeerID := labels.ExtractPeerIDFromKey(tc.key)
+				keyPeerID := ExtractPeerIDFromKey(tc.key)
 				isRemote := (keyPeerID != localPeerID) || (keyPeerID == "")
 				assert.Equal(t, tc.expected, isRemote)
 			})
@@ -180,7 +180,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, label := range labelsToDelete {
-			enhancedKey := labels.BuildEnhancedLabelKey(labels.Label(label), testCID, localPeerID)
+			enhancedKey := BuildEnhancedLabelKey(labels.Label(label), testCID, localPeerID)
 			err = dstore.Put(ctx, ipfsdatastore.NewKey(enhancedKey), []byte("metadata"))
 			require.NoError(t, err)
 		}
@@ -241,7 +241,7 @@ func simulateCleanupLabelsForCID(ctx context.Context, dstore types.Datastore, ci
 
 	for _, entry := range entries {
 		// Parse enhanced key
-		_, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
+		_, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			// Delete malformed keys
 			if err := batch.Delete(ctx, ipfsdatastore.NewKey(entry.Key)); err == nil {

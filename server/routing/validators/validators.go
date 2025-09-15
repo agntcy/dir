@@ -8,11 +8,25 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/agntcy/dir/server/routing/labels"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	record "github.com/libp2p/go-libp2p-record"
 )
+
+// Import routing utilities for label validation
+// Note: Since validators is a sub-package of routing, it can import from the parent
+
+// IsValidLabelKey checks if a key starts with any valid label type prefix.
+func IsValidLabelKey(key string) bool {
+	for _, labelType := range labels.AllLabelTypes() {
+		if strings.HasPrefix(key, labelType.Prefix()) {
+			return true
+		}
+	}
+
+	return false
+}
 
 var validatorLogger = logging.Logger("routing/validators")
 
@@ -406,7 +420,7 @@ func ExtractCIDFromLabelKey(labelKey string) (string, error) {
 	}
 
 	// Validate it's a proper label key
-	if !labels.IsValidLabelKey(labelKey) {
+	if !IsValidLabelKey(labelKey) {
 		return "", errors.New("invalid namespace in label key")
 	}
 

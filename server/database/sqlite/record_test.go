@@ -48,6 +48,7 @@ type TestRecordData struct {
 	skills     []types.Skill
 	locators   []types.Locator
 	extensions []types.Extension
+	modules    []types.Module
 }
 
 func (r *TestRecordData) GetAnnotations() map[string]string {
@@ -100,6 +101,10 @@ func (r *TestRecordData) GetDomains() []types.Domain {
 
 func (r *TestRecordData) GetPreviousRecordCid() string {
 	return ""
+}
+
+func (r *TestRecordData) GetModules() []types.Module {
+	return r.modules
 }
 
 // Test implementations of Skill, Locator, Extension.
@@ -166,6 +171,18 @@ func (e *TestExtension) GetData() map[string]any {
 	return make(map[string]any)
 }
 
+type TestModule struct {
+	name string
+}
+
+func (m *TestModule) GetName() string {
+	return m.name
+}
+
+func (m *TestModule) GetData() map[string]any {
+	return make(map[string]any)
+}
+
 func setupTestDB(t *testing.T) *DB {
 	t.Helper()
 
@@ -174,7 +191,7 @@ func setupTestDB(t *testing.T) *DB {
 	})
 	require.NoError(t, err)
 
-	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Extension{}, &Sync{})
+	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Extension{}, &Module{}, &Sync{})
 	require.NoError(t, err)
 
 	return &DB{
@@ -202,6 +219,9 @@ func createTestData(t *testing.T, db *DB) {
 				extensions: []types.Extension{
 					&TestExtension{name: "ext1", version: "0.1.0"},
 				},
+				modules: []types.Module{
+					&TestModule{name: "module1"},
+				},
 			},
 		},
 		&TestRecord{
@@ -219,6 +239,10 @@ func createTestData(t *testing.T, db *DB) {
 					&TestExtension{name: "ext2", version: "0.2.0"},
 					&TestExtension{name: "ext3", version: "0.3.0"},
 				},
+				modules: []types.Module{
+					&TestModule{name: "module2"},
+					&TestModule{name: "module3"},
+				},
 			},
 		},
 		&TestRecord{
@@ -233,6 +257,7 @@ func createTestData(t *testing.T, db *DB) {
 					&TestLocator{locType: "grpc", url: "localhost:8082"},
 				},
 				extensions: []types.Extension{},
+				modules:    []types.Module{},
 			},
 		},
 	}

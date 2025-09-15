@@ -4,12 +4,24 @@
 package validators
 
 import (
+	"strings"
 	"testing"
 
-	"github.com/agntcy/dir/server/routing/labels"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// Add utility functions for testing.
+func GetLabelTypeFromKey(key string) (labels.LabelType, bool) {
+	for _, labelType := range labels.AllLabelTypes() {
+		if strings.HasPrefix(key, labelType.Prefix()) {
+			return labelType, true
+		}
+	}
+
+	return labels.LabelTypeUnknown, false
+}
 
 func TestSkillValidator_Validate(t *testing.T) {
 	validator := &SkillValidator{}
@@ -370,28 +382,28 @@ func TestLabelTypeIntegration(t *testing.T) {
 	assert.Contains(t, all, labels.LabelTypeLocator)
 
 	// Test IsValidLabelKey() function
-	assert.True(t, labels.IsValidLabelKey("/skills/golang/CID123"))
-	assert.True(t, labels.IsValidLabelKey("/domains/web/CID123"))
-	assert.True(t, labels.IsValidLabelKey("/features/chat/CID123"))
-	assert.True(t, labels.IsValidLabelKey("/locators/docker-image/CID123"))
-	assert.False(t, labels.IsValidLabelKey("/invalid/test/CID123"))
-	assert.False(t, labels.IsValidLabelKey("/records/CID123"))
-	assert.False(t, labels.IsValidLabelKey("skills/golang/CID123")) // missing leading slash
+	assert.True(t, IsValidLabelKey("/skills/golang/CID123"))
+	assert.True(t, IsValidLabelKey("/domains/web/CID123"))
+	assert.True(t, IsValidLabelKey("/features/chat/CID123"))
+	assert.True(t, IsValidLabelKey("/locators/docker-image/CID123"))
+	assert.False(t, IsValidLabelKey("/invalid/test/CID123"))
+	assert.False(t, IsValidLabelKey("/records/CID123"))
+	assert.False(t, IsValidLabelKey("skills/golang/CID123")) // missing leading slash
 
 	// Test GetLabelTypeFromKey() function
-	lt, found := labels.GetLabelTypeFromKey("/skills/golang/CID123")
+	lt, found := GetLabelTypeFromKey("/skills/golang/CID123")
 	assert.True(t, found)
 	assert.Equal(t, labels.LabelTypeSkill, lt)
 
-	lt, found = labels.GetLabelTypeFromKey("/domains/web/CID123")
+	lt, found = GetLabelTypeFromKey("/domains/web/CID123")
 	assert.True(t, found)
 	assert.Equal(t, labels.LabelTypeDomain, lt)
 
-	lt, found = labels.GetLabelTypeFromKey("/features/chat/CID123")
+	lt, found = GetLabelTypeFromKey("/features/chat/CID123")
 	assert.True(t, found)
 	assert.Equal(t, labels.LabelTypeFeature, lt)
 
-	lt, found = labels.GetLabelTypeFromKey("/invalid/test/CID123")
+	lt, found = GetLabelTypeFromKey("/invalid/test/CID123")
 	assert.False(t, found)
 	assert.Equal(t, labels.LabelTypeUnknown, lt)
 }

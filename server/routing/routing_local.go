@@ -11,8 +11,8 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -83,7 +83,7 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 	// Update metrics for all record labels and store them locally for queries
 	// Note: This handles ALL local storage for both local-only and network scenarios
 	// Network announcements are handled separately by routing_remote when peers are available
-	labelList := labels.GetLabels(record)
+	labelList := GetLabelsFromRecord(record)
 	for _, label := range labelList {
 		// Create minimal metadata (PeerID and CID now in key)
 		metadata := &labels.LabelMetadata{
@@ -98,7 +98,7 @@ func (r *routeLocal) Publish(ctx context.Context, ref *corev1.RecordRef, record 
 		}
 
 		// Store with enhanced self-descriptive key: /skills/AI/CID123/Peer1
-		enhancedKey := labels.BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
+		enhancedKey := BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
 
 		labelKey := datastore.NewKey(enhancedKey)
 		if err := batch.Put(ctx, labelKey, metadataBytes); err != nil {
@@ -231,7 +231,7 @@ func (r *routeLocal) getRecordLabelsEfficiently(ctx context.Context, cid string)
 	// Find keys for this CID and local peer: "/skills/AI/ML/CID123/Peer1"
 	for _, entry := range entries {
 		// Parse the enhanced key to get components
-		label, keyCID, keyPeerID, err := labels.ParseEnhancedLabelKey(entry.Key)
+		label, keyCID, keyPeerID, err := ParseEnhancedLabelKey(entry.Key)
 		if err != nil {
 			localLogger.Warn("Failed to parse enhanced label key", "key", entry.Key, "error", err)
 
@@ -277,11 +277,11 @@ func (r *routeLocal) Unpublish(ctx context.Context, ref *corev1.RecordRef, recor
 	}
 
 	// keep track of all record labels
-	labelList := labels.GetLabels(record)
+	labelList := GetLabelsFromRecord(record)
 
 	for _, label := range labelList {
 		// Delete enhanced key with CID and PeerID
-		enhancedKey := labels.BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
+		enhancedKey := BuildEnhancedLabelKey(label, ref.GetCid(), r.localPeerID)
 
 		labelKey := datastore.NewKey(enhancedKey)
 		if err := batch.Delete(ctx, labelKey); err != nil {

@@ -22,8 +22,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/agntcy/dir/server/routing/labels"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/labels"
 	"github.com/ipfs/go-datastore"
 )
 
