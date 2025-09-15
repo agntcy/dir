@@ -8,10 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	validationv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/validation/v1"
-	oasfcorev1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/core/v1"
-	"github.com/agntcy/oasf-sdk/core/converter"
-	"github.com/agntcy/oasf-sdk/validation/validator"
+	"github.com/agntcy/oasf-sdk/pkg/decoder"
+	"github.com/agntcy/oasf-sdk/pkg/validator"
 )
 
 var defaultValidator *validator.Validator
@@ -94,9 +92,7 @@ func (r *Record) GetSchemaVersion() string {
 	}
 
 	// Get schema version from raw using OASF SDK
-	schemaVersion, _ := converter.GetRecordSchemaVersion(&oasfcorev1.Object{
-		Data: r.GetData(),
-	})
+	schemaVersion, _ := decoder.GetRecordSchemaVersion(r.GetData())
 
 	return schemaVersion
 }
@@ -108,9 +104,7 @@ func (r *Record) Decode() (DecodedRecord, error) {
 	}
 
 	// Decode the record using OASF SDK
-	decoded, err := converter.DecodeRecord(&oasfcorev1.Object{
-		Data: r.GetData(),
-	})
+	decoded, err := decoder.DecodeRecord(r.GetData())
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode Record: %w", err)
 	}
@@ -129,17 +123,13 @@ func (r *Record) Validate() (bool, []string, error) {
 
 	// Validate the record using OASF SDK
 	//nolint:wrapcheck
-	return defaultValidator.ValidateRecord(&validationv1.ValidateRecordRequest{
-		Record: &oasfcorev1.Object{
-			Data: r.GetData(),
-		},
-	})
+	return defaultValidator.ValidateRecord(r.GetData())
 }
 
 // UnmarshalRecord unmarshals canonical Record JSON bytes to a Record.
 func UnmarshalRecord(data []byte) (*Record, error) {
 	// Load data from JSON bytes
-	dataStruct, err := converter.JsonToProto(data)
+	dataStruct, err := decoder.JsonToProto(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal Record: %w", err)
 	}

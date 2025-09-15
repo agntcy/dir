@@ -4,9 +4,9 @@
 package adapters
 
 import (
-	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/oasf-sdk/core/converter"
+	"github.com/agntcy/oasf-sdk/pkg/decoder"
 )
 
 // V1Alpha1Adapter adapts typesv1alpha1.Record to types.RecordData interface.
@@ -281,7 +281,7 @@ func (e *V1Alpha1ExtensionAdapter) GetData() map[string]any {
 		return nil
 	}
 
-	resp, err := converter.ProtoToStruct[map[string]any](e.extension.GetData())
+	resp, err := decoder.ProtoToStruct[map[string]any](e.extension.GetData())
 	if err != nil {
 		return nil
 	}

@@ -1,7 +1,7 @@
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.8-20250909112931-52543f366c53.1 h1:/7HK46q4Ga++N//VVfsQ8yDiv4N5RdW/jrWtYwY0qmU=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.8-20250909112931-52543f366c53.1/go.mod h1:vOrSlbVjitTtgQ4VTeiTqEpqLT0n/z49a4itrToWLCQ=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.8-20250909115813-c8b395e06aba.1 h1:P4dUwkeJdVBsDW+TX0aANH8YstZyi/9KR1EwTUE5STg=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.8-20250909115813-c8b395e06aba.1/go.mod h1:yidgN7N1nE24Nh9x+4FiRtacE4aI/4Ypggr0knbkPnA=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250915083413-97472ce2fb9f.1 h1:Cn5vYUduDXq/RZwI8uSpEE+IJ1BCnKPOHrbaKH73iMw=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250915083413-97472ce2fb9f.1/go.mod h1:uTsOo9jnzYqVE9RVbE0CJBKn1S9aNcDS/0OFp1nwurw=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250915080448-a3d79079b9ac.1 h1:XOfbLw9mZkwe7qW9TSoQ+vZnJH/h6eFic3jVET81/7k=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250915080448-a3d79079b9ac.1/go.mod h1:0oAU8mfSDwDA9l2HycLTYpJ2Ifn3YO5rI2xJP1XwPzs=
 cel.dev/expr v0.24.0 h1:56OvJKSH3hDGL0ml5uSxZmz3/3Pq4tJ+fb1unVLAFcY=
 cel.dev/expr v0.24.0/go.mod h1:hLPLo1W4QUmuYdA72RBX06QTs6MXw941piREPl3Yfiw=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
@@ -703,10 +703,8 @@ github.com/ThalesIgnite/crypto11 v1.2.5 h1:1IiIIEqYmBvUYFeMnHqRft4bwf/O36jryEUpY
 github.com/ThalesIgnite/crypto11 v1.2.5/go.mod h1:ILDKtnCKiQ7zRoNxcp36Y1ZR8LBPmR2E23+wTQe/MlE=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/oasf-sdk/core v0.0.0-20250909144735-c3026c591d1b h1:koQvXxa4FuoBY37ci5SYf71eZzlOI6npZpT042klMsw=
-github.com/agntcy/oasf-sdk/core v0.0.0-20250909144735-c3026c591d1b/go.mod h1:V12rpyRUukcVBi+4mplqZFr2od340+Ojflah5labwaE=
-github.com/agntcy/oasf-sdk/validation v0.0.0-20250909144735-c3026c591d1b h1:mfPXtUHYrOiEUgo+bN5HsB2yU7JdnVq29bm/dwayxxc=
-github.com/agntcy/oasf-sdk/validation v0.0.0-20250909144735-c3026c591d1b/go.mod h1:03ECRo23sgzhMlJnXwYM6xcko2raI4C6GAi+/dIXXDw=
+github.com/agntcy/oasf-sdk/pkg v0.0.0-20250915092450-6b95f6678b22 h1:vsOmkVO8AcpzeXc8rAbXBq/gvIH9Ku8S2WHEim+MH8g=
+github.com/agntcy/oasf-sdk/pkg v0.0.0-20250915092450-6b95f6678b22/go.mod h1:7hlTa7Wd65g9Msu3ZKthvD0Q7SKaMjgAb2ya289OHUU=
 github.com/ajstarks/deck v0.0.0-20200831202436-30c9fc6549a9/go.mod h1:JynElWSGnm/4RlzPXRlREEwqTHAN3T56Bv2ITsFT3gY=
 github.com/ajstarks/deck/generate v0.0.0-20210309230005-c3f852c02e19/go.mod h1:T13YZdzov6OU0A1+RfKZiZN9ca6VeKdBdyDV+BY97Tk=
 github.com/ajstarks/svgo v0.0.0-20180226025133-644b8db467af/go.mod h1:K08gAheRH3/J6wwsYMMT4xOr94bZjxIelGM0+d/wbFw=
@@ -2609,8 +2607,8 @@ google.golang.org/protobuf v1.28.0/go.mod h1:HV8QOd/L58Z+nl8r43ehVNZIU/HEI6OcFqw
 google.golang.org/protobuf v1.28.1/go.mod h1:HV8QOd/L58Z+nl8r43ehVNZIU/HEI6OcFqwMG9pJV4I=
 google.golang.org/protobuf v1.29.1/go.mod h1:HV8QOd/L58Z+nl8r43ehVNZIU/HEI6OcFqwMG9pJV4I=
 google.golang.org/protobuf v1.30.0/go.mod h1:HV8QOd/L58Z+nl8r43ehVNZIU/HEI6OcFqwMG9pJV4I=
-google.golang.org/protobuf v1.36.8 h1:xHScyCOEuuwZEc6UtSOvPbAT4zRh0xcNRYekJwfqyMc=
-google.golang.org/protobuf v1.36.8/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
+google.golang.org/protobuf v1.36.9 h1:w2gp2mA27hUeUzj9Ex9FBjsBm40zfaDtEWow293U7Iw=
+google.golang.org/protobuf v1.36.9/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

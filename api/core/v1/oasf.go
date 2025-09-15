@@ -4,10 +4,10 @@
 package v1
 
 import (
-	decodingv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/decoding/v1"
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha0"
-	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/types/v1alpha1"
-	"github.com/agntcy/oasf-sdk/core/converter"
+	decodingv1 "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go/agntcy/oasfsdk/decoding/v1"
+	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
+	"github.com/agntcy/oasf-sdk/pkg/decoder"
 )
 
 // DecodedRecord is an interface representing a decoded OASF record.
@@ -46,7 +46,7 @@ func (d *decodedRecord) GetRecord() any {
 
 // New creates a Record for a supported OASF typed record.
 func New[T typesv1alpha1.Record | typesv1alpha0.Record](record *T) *Record {
-	data, _ := converter.StructToProto(record)
+	data, _ := decoder.StructToProto(record)
 
 	return &Record{
 		Data: data,
