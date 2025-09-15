@@ -18,7 +18,7 @@ import * as models from '../models';
  * This class manages configuration settings for connecting to the Directory service
  * and provides default values and environment-based configuration loading.
  */
-class Config {
+export class Config {
   static DEFAULT_SERVER_ADDRESS = '0.0.0.0:8888';
   static DEFAULT_DIRCTL_PATH = 'dirctl';
   serverAddress: string;
@@ -83,7 +83,7 @@ class Config {
  * const records = await client.push([record]);
  * ```
  */
-class Client {
+export class Client {
   config: Config;
   storeClient: models.store_v1.StoreServiceClient;
   routingClient: models.routing_v1.RoutingServiceClient;
@@ -757,5 +757,3 @@ class Client {
     };
   }
 }
-
-export {Config, Client};

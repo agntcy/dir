@@ -10,7 +10,7 @@ import {validate as isValidUUID} from 'uuid';
 import {v4 as uuidv4} from 'uuid';
 import {Struct} from '@buf/agntcy_dir.community_timostamm-protobuf-ts/google/protobuf/struct_pb';
 
-import {Client, Config, models} from '../src';
+import {Client, Config, models} from '../dist/src';
 
 /**
  * Generate test records with unique names.
