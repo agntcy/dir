@@ -1,18 +1,14 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
-import {env} from 'node:process';
+import os from 'node:os';
+import path from 'node:path';
+import process from 'node:process';
 import {writeFileSync} from 'node:fs';
 import {execSync} from 'node:child_process';
 
-import {
-  Client as GrpcClient,
-  createClient,
-  Transport,
-} from '@connectrpc/connect';
-import {createGrpcTransport} from '@connectrpc/connect-node';
+import {ChannelCredentials} from '@grpc/grpc-js';
+import {GrpcTransport} from '@protobuf-ts/grpc-transport';
 
 import * as models from '../models';
 
@@ -22,7 +18,7 @@ import * as models from '../models';
  * This class manages configuration settings for connecting to the Directory service
  * and provides default values and environment-based configuration loading.
  */
-export class Config {
+class Config {
   static DEFAULT_SERVER_ADDRESS = '0.0.0.0:8888';
   static DEFAULT_DIRCTL_PATH = 'dirctl';
   serverAddress: string;
@@ -38,15 +34,6 @@ export class Config {
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
   ) {
-    // add protocol prefix if not set
-    // use unsafe http unless spire is used
-    if (
-      !serverAddress.startsWith('http://') &&
-      !serverAddress.startsWith('https://')
-    ) {
-      serverAddress = `http://${serverAddress}`;
-    }
-
     this.serverAddress = serverAddress;
     this.dirctlPath = dirctlPath;
   }
@@ -68,8 +55,9 @@ export class Config {
    */
   static loadFromEnv(prefix = 'DIRECTORY_CLIENT_') {
     const serverAddress =
-      env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
-    const dirctlPath = env['DIRCTL_PATH'] || Config.DEFAULT_DIRCTL_PATH;
+      process.env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
+    const dirctlPath =
+      process.env[`${prefix}DIRCTL_PATH`] || Config.DEFAULT_DIRCTL_PATH;
 
     return new Config(serverAddress, dirctlPath);
   }
@@ -95,13 +83,13 @@ export class Config {
  * const records = await client.push([record]);
  * ```
  */
-export class Client {
+class Client {
   config: Config;
-  storeClient: GrpcClient<typeof models.store_v1.StoreService>;
-  routingClient: GrpcClient<typeof models.routing_v1.RoutingService>;
-  searchClient: GrpcClient<typeof models.search_v1.SearchService>;
-  signClient: GrpcClient<typeof models.sign_v1.SignService>;
-  syncClient: GrpcClient<typeof models.store_v1.SyncService>;
+  storeClient: models.store_v1.StoreServiceClient;
+  routingClient: models.routing_v1.RoutingServiceClient;
+  searchClient: models.search_v1.SearchServiceClient;
+  signClient: models.sign_v1.SignServiceClient;
+  syncClient: models.store_v1.SyncServiceClient;
 
   /**
    * Initialize the client with the given configuration.
@@ -129,28 +117,17 @@ export class Client {
     this.config = config;
 
     // Create transport settings for gRPC client
-    const transport: Transport = createGrpcTransport({
-      baseUrl: this.config.serverAddress,
+    const transport = new GrpcTransport({
+      host: 'localhost:5000',
+      channelCredentials: ChannelCredentials.createInsecure(),
     });
 
     // Set clients for all services
-    this.storeClient = createClient(models.store_v1.StoreService, transport);
-    this.routingClient = createClient(
-      models.routing_v1.RoutingService,
-      transport,
-    );
-    this.searchClient = createClient(models.search_v1.SearchService, transport);
-    this.signClient = createClient(models.sign_v1.SignService, transport);
-    this.syncClient = createClient(models.store_v1.SyncService, transport);
-  }
-
-  /**
-   * Request generator helper function for streaming requests.
-   */
-  private async *requestGenerator<T>(reqs: T[]): AsyncIterable<T> {
-    for (const req of reqs) {
-      yield req;
-    }
+    this.storeClient = new models.store_v1.StoreServiceClient(transport);
+    this.routingClient = new models.routing_v1.RoutingServiceClient(transport);
+    this.searchClient = new models.search_v1.SearchServiceClient(transport);
+    this.signClient = new models.sign_v1.SignServiceClient(transport);
+    this.syncClient = new models.store_v1.SyncServiceClient(transport);
   }
 
   /**
@@ -175,11 +152,17 @@ export class Client {
   async push(
     records: models.core_v1.Record[],
   ): Promise<models.core_v1.RecordRef[]> {
+    const call = this.storeClient.push();
     const responses: models.core_v1.RecordRef[] = [];
 
-    for await (const response of this.storeClient.push(
-      this.requestGenerator(records),
-    )) {
+    // Send records
+    for (const record of records) {
+      await call.requests.send(record);
+    }
+    await call.requests.complete();
+
+    // Collect responses
+    for await (const response of call.responses) {
       responses.push(response);
     }
 
@@ -207,11 +190,17 @@ export class Client {
   async push_referrer(
     requests: models.store_v1.PushReferrerRequest[],
   ): Promise<models.store_v1.PushReferrerResponse[]> {
+    const call = this.storeClient.pushReferrer();
     const responses: models.store_v1.PushReferrerResponse[] = [];
 
-    for await (const response of this.storeClient.pushReferrer(
-      this.requestGenerator(requests),
-    )) {
+    // Send requests
+    for (const request of requests) {
+      await call.requests.send(request);
+    }
+    await call.requests.complete();
+
+    // Collect responses
+    for await (const response of call.responses) {
       responses.push(response);
     }
 
@@ -241,11 +230,17 @@ export class Client {
   async pull(
     refs: models.core_v1.RecordRef[],
   ): Promise<models.core_v1.Record[]> {
+    const call = this.storeClient.pull();
     const records: models.core_v1.Record[] = [];
 
-    for await (const response of this.storeClient.pull(
-      this.requestGenerator(refs),
-    )) {
+    // Send requests
+    for (const ref of refs) {
+      await call.requests.send(ref);
+    }
+    await call.requests.complete();
+
+    // Collect responses
+    for await (const response of call.responses) {
       records.push(response);
     }
 
@@ -276,11 +271,17 @@ export class Client {
   async pull_referrer(
     requests: models.store_v1.PullReferrerRequest[],
   ): Promise<models.store_v1.PullReferrerResponse[]> {
+    const call = this.storeClient.pullReferrer();
     const responses: models.store_v1.PullReferrerResponse[] = [];
 
-    for await (const response of this.storeClient.pullReferrer(
-      this.requestGenerator(requests),
-    )) {
+    // Send requests
+    for (const request of requests) {
+      await call.requests.send(request);
+    }
+    await call.requests.complete();
+
+    // Collect responses
+    for await (const response of call.responses) {
       responses.push(response);
     }
 
@@ -311,13 +312,16 @@ export class Client {
   async search(
     request: models.search_v1.SearchRequest,
   ): Promise<models.search_v1.SearchResponse[]> {
-    const responses: models.search_v1.SearchResponse[] = [];
+    // Send requests
+    const call = this.searchClient.search(request);
 
-    for await (const response of this.searchClient.search(request)) {
-      responses.push(response);
+    // Collect responses
+    const results: models.search_v1.SearchResponse[] = [];
+    for await (const response of call.responses) {
+      results.push(response);
     }
 
-    return responses;
+    return results;
   }
 
   /**
@@ -344,11 +348,17 @@ export class Client {
   async lookup(
     refs: models.core_v1.RecordRef[],
   ): Promise<models.core_v1.RecordMeta[]> {
+    const call = this.storeClient.lookup();
     const recordMetas: models.core_v1.RecordMeta[] = [];
 
-    for await (const response of this.storeClient.lookup(
-      this.requestGenerator(refs),
-    )) {
+    // Send requests
+    for (const ref of refs) {
+      await call.requests.send(ref);
+    }
+    await call.requests.complete();
+
+    // Collect responses
+    for await (const response of call.responses) {
       recordMetas.push(response);
     }
 
@@ -378,9 +388,12 @@ export class Client {
   async list(
     request: models.routing_v1.ListRequest,
   ): Promise<models.routing_v1.ListResponse[]> {
-    const results: models.routing_v1.ListResponse[] = [];
+    // Send requests
+    const call = this.routingClient.list(request);
 
-    for await (const response of this.routingClient.list(request)) {
+    // Collect responses
+    const results: models.routing_v1.ListResponse[] = [];
+    for await (const response of call.responses) {
       results.push(response);
     }
 
@@ -451,7 +464,15 @@ export class Client {
    * ```
    */
   async delete(refs: models.core_v1.RecordRef[]): Promise<void> {
-    await this.storeClient.delete(this.requestGenerator(refs));
+    // Send requests
+    const call = this.storeClient.delete();
+    for (const ref of refs) {
+      await call.requests.send(ref);
+    }
+    await call.requests.complete();
+
+    // Wait for completion (no response data expected)
+    await call;
   }
 
   /**
@@ -479,22 +500,20 @@ export class Client {
    * console.log(`Signature: ${response.signature}`);
    * ```
    */
-  sign(req: models.sign_v1.SignRequest, oidc_client_id = 'sigstore'): void {
-    switch (req.provider?.request.case) {
+  sign(req: models.sign_v1.SignRequest, oidc_client_id = 'sigstore') {
+    switch (req.provider?.request.oneofKind) {
       case 'oidc':
-        this.__sign_with_oidc(
+        return this.__sign_with_oidc(
           req.recordRef?.cid || '',
-          req.provider.request.value,
+          req.provider.request.oidc,
           oidc_client_id,
         );
-        return;
 
       case 'key':
-        this.__sign_with_key(
+        return this.__sign_with_key(
           req.recordRef?.cid || '',
-          req.provider.request.value,
+          req.provider.request.key,
         );
-        return;
 
       default:
         throw new Error('unsupported provider was supplied');
@@ -525,7 +544,8 @@ export class Client {
   async verify(
     request: models.sign_v1.VerifyRequest,
   ): Promise<models.sign_v1.VerifyResponse> {
-    return await this.signClient.verify(request);
+    const response = await this.signClient.verify(request);
+    return response.response;
   }
 
   /**
@@ -552,7 +572,8 @@ export class Client {
   async create_sync(
     request: models.store_v1.CreateSyncRequest,
   ): Promise<models.store_v1.CreateSyncResponse> {
-    return await this.syncClient.createSync(request);
+    const response = await this.syncClient.createSync(request);
+    return response.response;
   }
 
   /**
@@ -581,9 +602,12 @@ export class Client {
   async list_syncs(
     request: models.store_v1.ListSyncsRequest,
   ): Promise<models.store_v1.ListSyncsItem[]> {
-    const results: models.store_v1.ListSyncsItem[] = [];
+    // Send requests
+    const call = this.syncClient.listSyncs(request);
 
-    for await (const response of this.syncClient.listSyncs(request)) {
+    // Collect responses
+    const results: models.store_v1.ListSyncsItem[] = [];
+    for await (const response of call.responses) {
       results.push(response);
     }
 
@@ -614,7 +638,8 @@ export class Client {
   async get_sync(
     request: models.store_v1.GetSyncRequest,
   ): Promise<models.store_v1.GetSyncResponse> {
-    return await this.syncClient.getSync(request);
+    const response = await this.syncClient.getSync(request);
+    return response.response;
   }
 
   /**
@@ -639,7 +664,8 @@ export class Client {
   async delete_sync(
     request: models.store_v1.DeleteSyncRequest,
   ): Promise<models.store_v1.DeleteSyncResponse> {
-    return await this.syncClient.deleteSync(request);
+    const response = await this.syncClient.deleteSync(request);
+    return response;
   }
 
   /**
@@ -656,20 +682,28 @@ export class Client {
    *
    * @private
    */
-  private __sign_with_key(cid: string, req: models.sign_v1.SignWithKey): void {
+  __sign_with_key(
+    cid: string,
+    req: models.sign_v1.SignWithKey,
+  ): models.sign_v1.SignResponse {
     // Write private key to a temporary file
-    const tmp_key_filename = join(tmpdir(), '.p.key');
+    const tmp_key_filename = path.join(os.tmpdir(), '.p.key');
     writeFileSync(tmp_key_filename, String(req.privateKey));
 
-    // Prepare environment for command
-    const shell_env = env;
-    shell_env['COSIGN_PASSWORD'] = String(req.password);
+    // Prepare environment for signing command
+    const shell_env = process.env;
+    shell_env['COSIGN_PASSWORD'] = String(req.privateKey);
 
-    // Execute command
-    execSync(
+    // Execute signing command
+    const output = execSync(
       `${this.config.dirctlPath} sign "${cid}" --key "${tmp_key_filename}"`,
       {env: {...shell_env}, encoding: 'utf8', stdio: 'pipe'},
     );
+
+    // Return signature
+    return {
+      signature: JSON.parse(output.trim()) as models.sign_v1.Signature,
+    };
   }
 
   /**
@@ -687,40 +721,41 @@ export class Client {
    *
    * @private
    */
-  private __sign_with_oidc(
+  __sign_with_oidc(
     cid: string,
     req: models.sign_v1.SignWithOIDC,
     oidc_client_id: string,
-  ): void {
-    // Prepare command
+  ) {
+    // Prepare command for signing
     let command = `${this.config.dirctlPath} sign "${cid}"`;
     if (req.idToken !== '') {
       command = `${command} --oidc-token "${req.idToken}"`;
     }
-    if (
-      req.options?.oidcProviderUrl !== undefined &&
-      req.options.oidcProviderUrl !== ''
-    ) {
-      command = `${command} --oidc-provider-url "${req.options.oidcProviderUrl}"`;
+    if (req.options?.oidcProviderUrl !== '') {
+      command = `${command} --oidc-provider-url "${req.options?.oidcProviderUrl}"`;
     }
-    if (req.options?.fulcioUrl !== undefined && req.options.fulcioUrl !== '') {
-      command = `${command} --fulcio-url "${req.options.fulcioUrl}"`;
+    if (req.options?.fulcioUrl !== '') {
+      command = `${command} --fulcio-url "${req.options?.fulcioUrl}"`;
     }
-    if (req.options?.rekorUrl !== undefined && req.options.rekorUrl !== '') {
-      command = `${command} --rekor-url "${req.options.rekorUrl}"`;
+    if (req.options?.rekorUrl !== '') {
+      command = `${command} --rekor-url "${req.options?.rekorUrl}"`;
     }
-    if (
-      req.options?.timestampUrl !== undefined &&
-      req.options.timestampUrl !== ''
-    ) {
-      command = `${command} --timestamp-url "${req.options.timestampUrl}"`;
+    if (req.options?.timestampUrl !== '') {
+      command = `${command} --timestamp-url "${req.options?.timestampUrl}"`;
     }
 
-    // Execute command
-    execSync(`${command} --oidc-client-id "${oidc_client_id}"`, {
-      env: {...env},
+    // Execute signing command
+    const output = execSync(`${command} --oidc-client-id "${oidc_client_id}"`, {
+      env: {...process.env},
       encoding: 'utf8',
       stdio: 'pipe',
     });
+
+    // Return signature
+    return {
+      signature: JSON.parse(output.trim()) as models.sign_v1.Signature,
+    };
   }
 }
+
+export {Config, Client};
