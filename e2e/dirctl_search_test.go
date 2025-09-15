@@ -46,7 +46,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			recordPath = filepath.Join(tempDir, "record.json")
 
 			// Write test record to temp location
-			err = os.WriteFile(recordPath, expectedRecordV1Alpha1JSON, 0o600)
+			err = os.WriteFile(recordPath, expectedRecordV070JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Push the record to the store for searching

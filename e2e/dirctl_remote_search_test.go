@@ -29,7 +29,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 
 	// Create directory and write V1Alpha1 record data
 	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
-	_ = os.WriteFile(tempPath, expectedRecordV1Alpha1JSON, 0o600)
+	_ = os.WriteFile(tempPath, expectedRecordV070JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {

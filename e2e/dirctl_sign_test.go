@@ -73,7 +73,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Write test record to temp location
-			err = os.WriteFile(paths.record, expectedRecordV1Alpha1JSON, 0o600)
+			err = os.WriteFile(paths.record, expectedRecordV070JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Generate cosign key pair for all tests
