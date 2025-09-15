@@ -1,5 +1,5 @@
 [project]
-name = "agtncy-dir"
+name = "agntcy-dir"
 version = "0.1.0"
 description = "Directory SDK"
 readme = "README.md"
