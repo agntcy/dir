@@ -4,12 +4,12 @@
 import os
 import pathlib
 import subprocess
+import time
 import unittest
 import uuid
 
 from agntcy.dir_sdk.client import Client
 from agntcy.dir_sdk.models import *
-from google.protobuf.struct_pb2 import Struct
 
 
 class TestClient(unittest.TestCase):
@@ -78,9 +78,13 @@ class TestClient(unittest.TestCase):
             record_refs=routing_v1.RecordRefs(refs=record_refs),
         ))
 
+        # Sleep to allow the publication to be indexed
+        time.sleep(5)
+
+        # Query for records in the domain
         list_query = routing_v1.RecordQuery(
-            type=routing_v1.RECORD_QUERY_TYPE_LOCATOR,
-            value="docker-image",
+            type=routing_v1.RECORD_QUERY_TYPE_DOMAIN,
+            value="technology/networking",
         )
 
         list_request = routing_v1.ListRequest(queries=[list_query])
@@ -98,7 +102,7 @@ class TestClient(unittest.TestCase):
 
         search_query = search_v1.RecordQuery(
             type=search_v1.RECORD_QUERY_TYPE_SKILL_ID,
-            value="1",
+            value="10201",
         )
 
         search_request = search_v1.SearchRequest(queries=[search_query], limit=2)
@@ -303,30 +307,42 @@ class TestClient(unittest.TestCase):
             assert e is None
 
     def gen_records(self, count: int, test_function_name: str) -> list[core_v1.Record]:
+        """
+        Generate test records with unique names.
+        Schema: https://schema.oasf.outshift.com/0.7.0/objects/record
+        """
         records: list[core_v1.Record] = [
             core_v1.Record(
                 data={
-                    "name": f"{test_function_name}-{index}",
-                    "version": "v3",
+                    "name": f"agntcy-{test_function_name}-{index}-{str(uuid.uuid4())[:8]}",
+                    "version": "v3.0.0",
                     "schema_version": "v0.7.0",
+                    "description": "Research agent for Cisco's marketing strategy.",
+                    "authors": ["Cisco Systems"],
+                    "created_at": "2025-03-19T17:06:37Z",
                     "skills": [
                         {
-                            "name": "Natural Language Processing",
-                            "id": 1,
+                            "name": "natural_language_processing/natural_language_generation/text_completion",
+                            "id": 10201
                         },
+                        {
+                            "name": "natural_language_processing/analytical_reasoning/problem_solving",
+                            "id": 10702
+                        }
                     ],
                     "locators": [
                         {
                             "type": "docker-image",
-                            "url": "127.0.0.1",
-                        },
+                            "url": "https://ghcr.io/agntcy/marketing-strategy"
+                        }
                     ],
-                    "modules": [
+                    "domains": [
                         {
-                            "name": "runtime/prompt"
-                        },
+                            "name": "technology/networking",
+                            "id": 103
+                        }
                     ],
-                    "signature": {},
+                    "modules": []
                 }
             )
             for index in range(count)
