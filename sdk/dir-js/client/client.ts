@@ -5,12 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { writeFileSync } from 'node:fs';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 
 import { createGrpcTransport } from "@connectrpc/connect-node";
 import { Client as GRPCClient, createClient } from "@connectrpc/connect";
 
-import * as models from '../models/models';
+import * as models from '../models';
 
 /**
  * Configuration class for the AGNTCY Directory client.
@@ -104,9 +104,9 @@ class Client {
      * const client = new Client(config);
      * ```
      */
-    constructor(config: Config = null) {
+    constructor(config?: Config) {
         // Load config from environment if not provided
-        if (config === null) {
+        if (!config) {
             config = Config.loadFromEnv();
         }
         this.config = config;
@@ -164,7 +164,6 @@ class Client {
 
             return responses;
         } catch (error) {
-            console.error('Push stream error:', error);
             throw error;
         }
     }
@@ -205,7 +204,6 @@ class Client {
 
             return responses;
         } catch (error) {
-            console.error('Push referrer stream error:', error);
             throw error;
         }
     }
@@ -248,7 +246,6 @@ class Client {
 
             return records;
         } catch (error) {
-            console.error('Pull stream error:', error);
             throw error;
         }
     }
@@ -292,7 +289,6 @@ class Client {
 
             return responses;
         } catch (error) {
-            console.error('Pull referrer stream error:', error);
             throw error;
         }
     }
@@ -329,7 +325,6 @@ class Client {
 
             return results;
         } catch (error) {
-            console.error('Search stream error:', error);
             throw error;
         }
     }
@@ -373,7 +368,6 @@ class Client {
 
             return recordMetas;
         } catch (error) {
-            console.error('Lookup stream error:', error);
             throw error;
         }
     }
@@ -409,7 +403,6 @@ class Client {
 
             return results;
         } catch (error) {
-            console.error('List stream error:', error);
             throw error;
         }
     }
@@ -437,7 +430,6 @@ class Client {
         try {
             await this.routingClient.publish(request);
         } catch (error) {
-            console.error('Publish error:', error);
             throw error;
         }
     }
@@ -465,7 +457,6 @@ class Client {
         try {
             await this.routingClient.unpublish(request);
         } catch (error) {
-            console.error('Unpublish error:', error);
             throw error;
         }
     }
@@ -499,7 +490,6 @@ class Client {
             // Execute client streaming call (no response to collect)
             await this.storeClient.delete(refGenerator());
         } catch (error) {
-            console.error('Delete stream error:', error);
             throw error;
         }
     }
@@ -530,14 +520,14 @@ class Client {
      * ```
      */
     sign(req: models.sign_v1.SignRequest, oidc_client_id = "sigstore") {
-        switch (req.provider.request.case) {
+        switch (req.provider?.request.case) {
             case "oidc":
                 const oidc_provider = req.provider.request.value as models.sign_v1.SignWithOIDC;
-                return this.__sign_with_oidc(req.recordRef?.cid, oidc_provider, oidc_client_id);
+                return this.__sign_with_oidc(req.recordRef?.cid || "", oidc_provider, oidc_client_id);
 
             case "key":
                 const key_provider = req.provider.request.value as models.sign_v1.SignWithKey;
-                return this.__sign_with_key(req.recordRef?.cid, key_provider);
+                return this.__sign_with_key(req.recordRef?.cid || "", key_provider);
 
             default:
                 throw new Error("unsupported provider was supplied");
@@ -570,7 +560,6 @@ class Client {
             const response = await this.signClient.verify(request);
             return response;
         } catch (error) {
-            console.error('Verify error:', error);
             throw error;
         }
     }
@@ -601,7 +590,6 @@ class Client {
             const response = await this.syncClient.createSync(request);
             return response;
         } catch (error) {
-            console.error('Create sync error:', error);
             throw error;
         }
     }
@@ -640,7 +628,6 @@ class Client {
 
             return results;
         } catch (error) {
-            console.error('List syncs stream error:', error);
             throw error;
         }
     }
@@ -671,7 +658,6 @@ class Client {
             const response = await this.syncClient.getSync(request);
             return response;
         } catch (error) {
-            console.error('Get sync error:', error);
             throw error;
         }
     }
@@ -700,7 +686,6 @@ class Client {
             const response = await this.syncClient.deleteSync(request);
             return response;
         } catch (error) {
-            console.error('Delete sync error:', error);
             throw error;
         }
     }
@@ -745,7 +730,12 @@ class Client {
 
         // Return signature response
         var signResp = {} as models.sign_v1.SignResponse;
-        signResp.signature = output.trim();
+        try {
+            const signatureData = JSON.parse(output.trim());
+            signResp.signature = signatureData as models.sign_v1.Signature;
+        } catch (parseError) {
+            throw new Error("Failed to parse signature output: " + parseError);
+        }
 
         return signResp;
     }
@@ -771,17 +761,17 @@ class Client {
         if (req.idToken !== "") {
             command = `${command} --oidc-token "${req.idToken}"`
         }
-        if (req.options.oidcProviderUrl !== "") {
-            command = `${command} --oidc-provider-url "${req.options.oidcProviderUrl}"`
+        if (req.options?.oidcProviderUrl !== "") {
+            command = `${command} --oidc-provider-url "${req.options?.oidcProviderUrl}"`
         }
-        if (req.options.fulcioUrl !== "") {
-            command = `${command} --fulcio-url "${req.options.fulcioUrl}"`
+        if (req.options?.fulcioUrl !== "") {
+            command = `${command} --fulcio-url "${req.options?.fulcioUrl}"`
         }
-        if (req.options.rekorUrl !== "") {
-            command = `${command} --rekor-url "${req.options.rekorUrl}"`
+        if (req.options?.rekorUrl !== "") {
+            command = `${command} --rekor-url "${req.options?.rekorUrl}"`
         }
-        if (req.options.timestampUrl !== "") {
-            command = `${command} --timestamp-url "${req.options.timestampUrl}"`
+        if (req.options?.timestampUrl !== "") {
+            command = `${command} --timestamp-url "${req.options?.timestampUrl}"`
         }
 
         // Execute signing command
@@ -797,13 +787,15 @@ class Client {
 
         // Return signature response
         var signResp = {} as models.sign_v1.SignResponse;
-        signResp.signature = output.trim();
+        try {
+            const signatureData = JSON.parse(output.trim());
+            signResp.signature = signatureData as models.sign_v1.Signature;
+        } catch (parseError) {
+            throw new Error("Failed to parse signature output: " + parseError);
+        }
 
         return signResp;
     }
 }
 
-module.exports = {
-    Config,
-    Client,
-};
+export { Config, Client };
