@@ -258,6 +258,8 @@ tasks:
       - task: build
     cmds:
       - task: deploy:kubernetes:network
+        vars:
+          PUBLICATION_SCHEDULER_INTERVAL: 1s
       - task: deploy:kubernetes:network:port-forward
 
   sdk:test-env:delete:
@@ -288,7 +290,7 @@ tasks:
         export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
         export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
 
-        '{{.UV_BIN}}' run python -m unittest
+        '{{.UV_BIN}}' run pytest
 
   sdk:test:javascript:
     desc: Test javascript client SDK package
@@ -350,6 +352,8 @@ tasks:
   server:start:
     desc: Start Directory server
     dir: server/cmd
+    env:
+      DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
     cmds:
       - defer: { task: server:store:stop }
       - task: server:store:start

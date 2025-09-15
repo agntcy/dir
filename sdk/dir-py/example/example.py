@@ -3,34 +3,48 @@
 
 from google.protobuf.json_format import MessageToJson
 
-from agntcy_dir.client import Client, Config
-from agntcy_dir.models import *
+from agntcy.dir_sdk.client import Client, Config
+from agntcy.dir_sdk.models import core_v1, search_v1, routing_v1
 
 
 def generate_record(name):
     return core_v1.Record(
-        v3=objects_v3.Record(
-            name=name,
-            schema_version="v0.5.0",
-            skills=[
-                objects_v3.Skill(
-                    name="Natural Language Processing",
-                ),
+        data={
+            "name": name,
+            "version": "v1.0.0",
+            "schema_version": "v0.7.0",
+            "description": "My example agent",
+            "authors": ["AGNTCY"],
+            "created_at": "2025-03-19T17:06:37Z",
+            "skills": [
+                {
+                    "name": "natural_language_processing/natural_language_generation/text_completion",
+                    "id": 10201
+                },
+                {
+                    "name": "natural_language_processing/analytical_reasoning/problem_solving",
+                    "id": 10702
+                }
             ],
-            locators=[
-                objects_v3.Locator(
-                    type="ipv4",
-                    url="127.0.0.1",
-                ),
+            "locators": [
+                {
+                    "type": "docker-image",
+                    "url": "https://ghcr.io/agntcy/marketing-strategy"
+                }
             ],
-            extensions=[
-                objects_v3.Extension(
-                    name="runtime/prompt",
-                    version="v1",
-                ),
+            "domains": [
+                {
+                    "name": "technology/networking",
+                    "id": 103
+                }
             ],
-            signature=objects_v3.Signature(),
-        ),
+            "modules": [
+                {
+                    "name": "runtime/a2a",
+                    "data": {}
+                }
+            ]
+        },
     )
 
 

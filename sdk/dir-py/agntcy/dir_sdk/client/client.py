@@ -16,8 +16,8 @@ from collections.abc import Sequence
 
 import grpc
 
-from agntcy_dir.client.config import Config
-from agntcy_dir.models import (
+from agntcy.dir_sdk.client.config import Config
+from agntcy.dir_sdk.models import (
     core_v1,
     routing_v1,
     search_v1,

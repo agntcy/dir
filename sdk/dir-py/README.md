@@ -60,7 +60,7 @@ export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
 export DIRCTL_PATH="/path/to/dirctl"
 
 # Or configure directly
-from agntcy_dir.client import Config, Client
+from agntcy.dir_sdk.client import Config, Client
 
 config = Config(
     server_address="localhost:8888",
@@ -75,7 +75,7 @@ The SDK primarily raises `grpc.RpcError` exceptions for gRPC communication issue
 
 ```python
 import grpc
-from agntcy_dir.client import Client
+from agntcy.dir_sdk.client import Client
 
 try:
     client = Client()
