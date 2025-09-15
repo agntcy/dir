@@ -47,6 +47,7 @@ vars:
   COSIGN_BIN: '{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}'
   HUB_API_VERSION: 'main'
   HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
+  ZOT_VERSION: '2.1.8'
 
 tasks:
   ##
@@ -371,7 +372,7 @@ tasks:
     desc: Start local OCI registry server for storage
     internal: true
     vars:
-      IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:v2.1.1
+      IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:{{.ZOT_VERSION}}
     deps:
       - task: server:store:pull
         vars:

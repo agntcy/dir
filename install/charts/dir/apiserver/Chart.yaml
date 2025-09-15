@@ -28,5 +28,5 @@ appVersion: "1.16.0"
 
 dependencies:
   - name: zot
-    version: "0.1.66"
+    version: "0.1.81"
     repository: "http://zotregistry.dev/helm-charts"

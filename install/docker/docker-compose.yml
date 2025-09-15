@@ -24,7 +24,7 @@ services:
       start_period: 10s
 
   zot:
-    image: ghcr.io/project-zot/zot:v2.1.2
+    image: ghcr.io/project-zot/zot:v2.1.8
     ports:
       - 5555:5000
     deploy:
