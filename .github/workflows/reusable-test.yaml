@@ -158,5 +158,4 @@ jobs:
       - name: Test SDKs
         run: |
           task sdk:test:python
-          # TODO: enable when JS SDK tests are available
-          # task sdk:test:javascript
+          task sdk:test:javascript

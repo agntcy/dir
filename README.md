@@ -139,7 +139,7 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 - **Python** - [github.com/agntcy/dir/sdk/dir-py](./sdk/dir-py/)
 
-- **Javascript** - [github.com/agntcy/dir/sdk/javascript](https://pkg.go.dev/github.com/agntcy/dir/sdk/javascript)
+- **Javascript** - [github.com/agntcy/dir/sdk/dir-js](./sdk/dir-js/)
 
 ## Deployment
 
