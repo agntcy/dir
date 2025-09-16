@@ -64,8 +64,10 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey) (host.Host, erro
 				// Only add the dir address if dirAPIAddr is not empty
 				if dirAPIAddr != "" {
 					dirAddr := ma.StringCast("/dir/" + dirAPIAddr)
+
 					return append(addrs, dirAddr)
 				}
+
 				return addrs
 			},
 		),

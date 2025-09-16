@@ -134,6 +134,13 @@ func (s *SyncCommands) Create(url string) *CommandBuilder {
 	return s.cli.Command("sync").WithArgs("create", url)
 }
 
+func (s *SyncCommands) CreateFromStdin(input string) *StdinCommandBuilder {
+	return &StdinCommandBuilder{
+		CommandBuilder: s.cli.Command("sync").WithArgs("create", "--stdin"),
+		stdinInput:     input,
+	}
+}
+
 func (s *SyncCommands) List() *CommandBuilder {
 	return s.cli.Command("sync").WithArgs("list")
 }
@@ -155,6 +162,79 @@ type CommandBuilder struct {
 	timeout     time.Duration
 	outputFile  string
 	suppressErr bool
+}
+
+// StdinCommandBuilder extends CommandBuilder to handle stdin input.
+type StdinCommandBuilder struct {
+	*CommandBuilder
+	stdinInput string
+}
+
+// OnServer sets the server address for StdinCommandBuilder.
+func (s *StdinCommandBuilder) OnServer(addr string) *StdinCommandBuilder {
+	s.CommandBuilder.OnServer(addr)
+
+	return s
+}
+
+// WithTimeout sets the timeout for StdinCommandBuilder.
+func (s *StdinCommandBuilder) WithTimeout(timeout time.Duration) *StdinCommandBuilder {
+	s.CommandBuilder.WithTimeout(timeout)
+
+	return s
+}
+
+// Execute runs the command with stdin input and returns output and error.
+func (s *StdinCommandBuilder) Execute() (string, error) {
+	args := append([]string{s.command}, s.args...)
+
+	if s.serverAddr != "" {
+		args = append(args, "--server-addr", s.serverAddr)
+	}
+
+	if s.outputFile != "" {
+		args = append(args, "--output", s.outputFile)
+	}
+
+	var outputBuffer bytes.Buffer
+
+	var errorBuffer bytes.Buffer
+
+	cmd := clicmd.RootCmd
+
+	// Store original stdin to restore later
+	originalIn := cmd.InOrStdin()
+
+	cmd.SetOut(&outputBuffer)
+
+	if s.suppressErr {
+		cmd.SetErr(&errorBuffer) // Capture stderr to suppress it
+	}
+
+	// Set stdin input
+	cmd.SetIn(strings.NewReader(s.stdinInput))
+	cmd.SetArgs(args)
+
+	err := cmd.Execute()
+	output := strings.TrimSpace(outputBuffer.String())
+
+	// Restore original stdin
+	cmd.SetIn(originalIn)
+
+	if err != nil {
+		return output, fmt.Errorf("command execution failed: %w", err)
+	}
+
+	return output, nil
+}
+
+// ShouldSucceed executes the command with stdin and expects success.
+func (s *StdinCommandBuilder) ShouldSucceed() string {
+	output, err := s.Execute()
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(),
+		fmt.Sprintf("Command '%s %s' should succeed", s.command, strings.Join(s.args, " ")))
+
+	return output
 }
 
 func (c *CommandBuilder) WithArgs(args ...string) *CommandBuilder {

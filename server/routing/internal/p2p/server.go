@@ -121,7 +121,6 @@ func start(ctx context.Context, opts *options) <-chan status {
 		defer cancel()
 
 		// Create host
-		// TODO: remove this once we have a proper directory API server
 		host, err := newHost(opts.ListenAddress, opts.DirectoryAPIAddress, opts.Key)
 		if err != nil {
 			statusCh <- status{Err: err}

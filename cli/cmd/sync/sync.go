@@ -8,9 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
-	"strings"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -215,7 +213,7 @@ type SearchResult struct {
 
 func runCreateSyncFromStdin(cmd *cobra.Command) error {
 	// Parse the search output from stdin
-	results, err := parseSearchOutput(os.Stdin)
+	results, err := parseSearchOutput(cmd.InOrStdin())
 	if err != nil {
 		return fmt.Errorf("failed to parse search output: %w", err)
 	}
@@ -250,6 +248,7 @@ func parseSearchOutput(input io.Reader) ([]SearchResult, error) {
 		// Match record line: "Record: <CID>"
 		if matches := recordRegex.FindStringSubmatch(line); len(matches) > 1 {
 			currentCID = matches[1]
+
 			continue
 		}
 
@@ -314,7 +313,7 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 
 			continue
 		}
-		
+
 		// Create sync operation
 		syncID, err := client.CreateSync(cmd.Context(), syncInfo.APIAddress, syncInfo.CIDs)
 		if err != nil {
@@ -323,8 +322,7 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 			continue
 		}
 
-		presenter.Printf(cmd, "✓ Sync created with ID: %s\n", syncID)
-		presenter.Printf(cmd, "  CIDs: %s\n", strings.Join(syncInfo.CIDs, ", "))
+		presenter.Printf(cmd, "Sync created with ID: %s\n", syncID)
 		presenter.Printf(cmd, "\n")
 
 		totalSyncs++

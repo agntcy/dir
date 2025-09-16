@@ -86,11 +86,19 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			utils.LoadAndValidateCID(cid, recordV4Path)
 		})
 
+		ginkgo.It("should publish record_v070_sync_v4.json", func() {
+			cli.Routing().Publish(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
+		})
+
 		ginkgo.It("should push record_v070_sync_v5.json to peer 1", func() {
 			cidV5 = cli.Push(recordV5Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(cidV5, recordV5Path)
+		})
+
+		ginkgo.It("should publish record_v070_sync_v5.json", func() {
+			cli.Routing().Publish(cidV5).OnServer(utils.Peer1Addr).ShouldSucceed()
 		})
 
 		ginkgo.It("should fail to pull record_v070_sync_v4.json from peer 2", func() {
@@ -154,31 +162,33 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 		})
 
-		ginkgo.It("should create sync from peer 1 to peer 3 with only one cid", func() {
-			output := cli.Sync().Create(utils.Peer1InternalAddr).OnServer(utils.Peer3Addr).WithArgs("--cids", cid).ShouldSucceed()
+		ginkgo.It("should create sync from peer 1 to peer 3 using routing search piped to sync create", func() {
+			// First run routing search to find records with the skill "Audio"
+			searchOutput := cli.Routing().Search().WithArgs("--skill", "Audio").OnServer(utils.Peer3Addr).ShouldSucceed()
+
+			// Pipe the search output to sync create --stdin
+			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			gomega.Expect(output).To(gomega.ContainSubstring("Sync created with ID: "))
-			syncID = strings.TrimPrefix(output, "Sync created with ID: ")
 		})
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
 			// Poll sync status until it changes from PENDING to IN_PROGRESS
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer3Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
-			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
+			_ = cli.Sync().List().OnServer(utils.Peer3Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
 		})
 
-		ginkgo.It("should succeed to pull record_v070_sync_v4.json from peer 3 after sync", func() {
-			output := cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldSucceed()
+		ginkgo.It("should succeed to pull record_v070_sync_v5.json from peer 3 after sync", func() {
+			output := cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), expectedRecordV070SyncJSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), expectedRecordV070SyncV5JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 
-		ginkgo.It("should fail to pull record_v070_sync_v5.json from peer 3 after sync", func() {
-			_ = cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldFail()
+		ginkgo.It("should fail to pull record_v070_sync_v4.json from peer 3 after sync", func() {
+			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()
 		})
 	})
 })

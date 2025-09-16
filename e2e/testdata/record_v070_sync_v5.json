@@ -10,12 +10,8 @@
   },
   "skills": [
     {
-      "name": "Natural Language Processing/Text Completion",
-      "id": 10201
-    },
-    {
-      "name": "Natural Language Processing/Problem Solving",
-      "id": 10702
+      "name": "Audio/Audio Classification",
+      "id": 301
     }
   ],
   "locators": [
