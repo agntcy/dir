@@ -47,6 +47,7 @@
     "@grpc/grpc-js": "^1.13.4"
   },
   "devDependencies": {
+    "@microsoft/api-extractor": "^7.52.13",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/node": "^22.7.5",
