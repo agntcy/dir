@@ -1,3 +1,7 @@
+# Javascript
 node_modules/
+*-lock.json
+
+# Build output
 dist/
 *.tsbuildinfo

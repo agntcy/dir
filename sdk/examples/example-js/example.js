@@ -1,51 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-const core_record_pb2 = require('@buf/agntcy_dir.grpc_node/core/v1/record_pb');
-const extension_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/extension_pb');
-const record_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/record_pb');
-const signature_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/signature_pb');
-const skill_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/skill_pb');
-const locator_pb2 = require('@buf/agntcy_oasf.grpc_web/objects/v3/locator_pb');
-const record_query_type = require('@buf/agntcy_dir.grpc_web/routing/v1/record_query_pb');
-const routing_types = require('@buf/agntcy_dir.grpc_node/routing/v1/routing_service_pb');
-const search_types = require('@buf/agntcy_dir.grpc_node/search/v1/search_service_pb')
-const search_query_type = require('@buf/agntcy_dir.grpc_node/search/v1/record_query_pb')
-const { Client, Config } = require('agntcy-dir-sdk/v1/client');
-
-function printAsJson(obj) {
-    let obj_dict = protoToJson(obj);
-    obj_dict = convertUint64FieldsToInt(obj_dict);
-    const obj_json = JSON.stringify(obj_dict);
-
-    return obj_json;
-}
-
-
-function convertUint64FieldsToInt(obj) {
-    if (Array.isArray(obj)) {
-        obj.forEach(convertUint64FieldsToInt);
-    } else if (obj && typeof obj === 'object') {
-        for (const [key, value] of Object.entries(obj)) {
-            if (
-                (key === 'category_uid' || key === 'class_uid') &&
-                typeof value === 'string' &&
-                /^\d+$/.test(value)
-            ) {
-                obj[key] = Number(value);
-            } else if (Array.isArray(value)) {
-                value.forEach(convertUint64FieldsToInt);
-            } else if (typeof value === 'object' && value !== null) {
-                convertUint64FieldsToInt(value);
-            }
-        }
-    }
-    return obj;
-}
-
-function protoToJson(protoMsg) {
-    return protoMsg.toObject ? protoMsg.toObject() : protoMsg;
-}
+const { Client, Config } = require('agntcy-dir/client/client');
 
 function generateRecords(names) {
     const test_records = [];

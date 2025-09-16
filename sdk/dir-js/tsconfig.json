@@ -5,9 +5,20 @@
     "outDir": "./dist",
     "declaration": true,
     "strict": true,
-    "moduleResolution": "node"
+    "esModuleInterop": true,
+    "moduleResolution": "bundler",
+    "module": "preserve",
+    "lib": [
+      "ES2017",
+      // DOM for the fetch and streams API
+      "DOM",
+      // ES2018.AsyncIterable for AsyncIterator
+      "ES2018.AsyncIterable"
+    ]
   },
   "include": [
     "src/**/*.ts",
+    "test/**/*.ts",
+    "./.eslintrc.json"
   ]
 }
