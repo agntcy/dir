@@ -129,18 +129,15 @@ export DIRECTORY_CLIENT_SERVER_ADDRESS="your-server:8888"
 ### 2. SDK Installation
 
 ```bash
-# Initialize your project
-uv init
-
 # Add the Directory SDK
 uv add agntcy-dir --index https://buf.build/gen/python
 ```
 
 ### Usage Examples
 
-See the [Example Python Project](./example) for a complete working example that demonstrates all SDK features.
+See the [Example Python Project](../examples/example-py/) for a complete working example that demonstrates all SDK features.
 
 ```bash
-# Run the comprehensive example
+uv sync
 uv run example.py
 ```
