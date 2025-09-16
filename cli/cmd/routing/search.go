@@ -157,7 +157,9 @@ func runSearchCommand(cmd *cobra.Command) error {
 
 		// Display result information
 		presenter.Printf(cmd, "Record: %s\n", result.GetRecordRef().GetCid())
-		presenter.Printf(cmd, "  Provider: %s\n", result.GetPeer().GetId())
+		presenter.Printf(cmd, "  Provider:\n")
+		presenter.Printf(cmd, "    id %s\n", result.GetPeer().GetId())
+		presenter.Printf(cmd, "    api address %s\n", result.GetPeer().GetAddrs()[0])
 		presenter.Printf(cmd, "  Match Score: %d/%d\n", result.GetMatchScore(), len(queries))
 
 		// Display matching queries
