@@ -1,11 +1,7 @@
 {
-  "extends": "./node_modules/gts/tsconfig-google.json",
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "./dist",
-    "declaration": true,
-    "strict": true,
-    "resolveJsonModule": true,
     "moduleResolution": "node",
     "module": "es2020",
     "target": "es2017",
@@ -14,9 +10,22 @@
       "ES2017",
       // DOM for the fetch and streams API
       "DOM",
-      // ES2018.AsyncIterable for AsyncIterator
-      "ES2018.AsyncIterable"
+      // ESNext.AsyncIterable for AsyncIterator
+      "ESNext.AsyncIterable"
     ],
+    "declaration": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "composite": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitOnError": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "pretty": true,
+    "sourceMap": true,
+    "stripInternal": true
   },
   "include": [
     "src/**/*.ts",
@@ -29,6 +38,15 @@
   "ts-node": {
     "compilerOptions": {
       "module": "ES2020"
+    }
+  },
+  "vitest": {
+    "test": {
+      "globals": true,
+      "environment": "node",
+      "include": [
+        "test/**/*.test.ts"
+      ]
     }
   }
 }

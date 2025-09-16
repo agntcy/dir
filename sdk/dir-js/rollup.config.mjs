@@ -23,7 +23,6 @@ const externalDeps = [
   'node:process',
   'node:fs',
   'node:child_process',
-  'vite',
   '@buf/agntcy_dir.bufbuild_es'
 ];
 
