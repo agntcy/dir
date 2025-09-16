@@ -1,6 +1,8 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+import {describe, test, beforeAll, afterAll, expect} from 'vitest';
+
 import {execSync} from 'node:child_process';
 import {readFileSync, rmSync} from 'node:fs';
 import {env} from 'node:process';

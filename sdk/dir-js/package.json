@@ -32,12 +32,12 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "clean": "gts clean",
-    "test": "vitest run",
-    "lint": "gts lint",
-    "fix": "gts fix",
-    "pretest": "npm run build"
+    "build": "rollup -c && api-extractor run --local --verbose",
+    "clean": "rm -rf dist/",
+    "lint": "eslint '**/*.ts'",
+    "fix": "eslint '**/*.ts' --fix",
+    "pretest": "npm run build",
+    "test": "vitest run"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.8.0",
@@ -46,10 +46,13 @@
     "@grpc/grpc-js": "^1.13.4"
   },
   "devDependencies": {
+    "@rollup/plugin-json": "^6.1.0",
     "@types/node": "^22.7.5",
     "@types/uuid": "^10.0.0",
-    "gts": "^6.0.2",
-    "typescript": "^5.6.3",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.0",
     "uuid": "^11.1.0",
     "vitest": "^3.2.4"
   },
@@ -61,13 +64,16 @@
       "optional": false
     }
   },
-  "vitest": {
-    "test": {
-      "globals": true,
-      "environment": "node",
-      "include": [
-        "test/**/*.test.ts"
-      ]
-    }
-  }
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "tmp": "^0.2.4"
+  },
+  "files": [
+    "dist/agntcy-dir.d.ts",
+    "dist/index.mjs",
+    "dist/index.cjs",
+    "dist/index.mjs.map"
+  ]
 }
