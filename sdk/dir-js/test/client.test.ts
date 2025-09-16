@@ -1,10 +1,9 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-import {describe, test, beforeAll, afterAll, expect} from 'vitest';
 import {execSync} from 'node:child_process';
 import {readFileSync, rmSync} from 'node:fs';
-import process from 'node:process';
+import {env} from 'node:process';
 import {create} from '@bufbuild/protobuf';
 
 import {validate as isValidUUID} from 'uuid';
@@ -70,7 +69,7 @@ describe('Client', () => {
 
   beforeAll(async () => {
     // Verify that DIRCTL_PATH is set in the environment
-    expect(process.env.DIRCTL_PATH).toBeDefined();
+    expect(env.DIRCTL_PATH).toBeDefined();
 
     // Initialize the client
     client = new Client(Config.loadFromEnv());
@@ -300,7 +299,7 @@ describe('Client', () => {
     const records = genRecords(2, 'sign_verify');
     const recordRefs = await client.push(records);
 
-    const shellEnv = {...process.env};
+    const shellEnv = {...env};
     const keyPassword = 'testing-key';
 
     // Clean up any existing keys
@@ -309,7 +308,7 @@ describe('Client', () => {
 
     try {
       // Generate key pair
-      const cosignPath = process.env['COSIGN_PATH'] || 'cosign';
+      const cosignPath = env['COSIGN_PATH'] || 'cosign';
       execSync(`${cosignPath} generate-key-pair`, {
         env: {...shellEnv, COSIGN_PASSWORD: keyPassword},
         encoding: 'utf8',
@@ -401,7 +400,7 @@ describe('Client', () => {
     const createResponse = await client.create_sync(
       create(models.store_v1.CreateSyncRequestSchema, {
         remoteDirectoryUrl:
-          process.env['DIRECTORY_SERVER_PEER1_ADDRESS'] || '0.0.0.0:8891',
+          env['DIRECTORY_SERVER_PEER1_ADDRESS'] || '0.0.0.0:8891',
       }),
     );
     expect(createResponse).toBeTypeOf(

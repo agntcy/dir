@@ -1,17 +1,12 @@
-// Copyright AGNTCY Contributors (https://github.com/agntcy)
-// SPDX-License-Identifier: Apache-2.0
-
 import json from '@rollup/plugin-json';
 import {readFileSync} from 'fs';
 import typescript from 'rollup-plugin-typescript2';
-import { nodeResolve } from '@rollup/plugin-node-resolve';
 
 const pkg = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
 );
 
 const rollupPlugins = [
-  nodeResolve(),
   typescript({
     tsconfigOverride: {
       exclude: ['test/**'],
@@ -20,6 +15,16 @@ const rollupPlugins = [
   json({
     preferConst: true,
   }),
+];
+
+const externalDeps = [
+  'node:os',
+  'node:path',
+  'node:process',
+  'node:fs',
+  'node:child_process',
+  'vite',
+  '@buf/agntcy_dir.bufbuild_es'
 ];
 
 export default [
@@ -32,6 +37,7 @@ export default [
       sourcemap: true,
     },
     plugins: rollupPlugins,
+    external: externalDeps,
   },
 
   // Cross CJS module (dist/index.cjs)
@@ -43,5 +49,6 @@ export default [
       sourcemap: true,
     },
     plugins: rollupPlugins,
+    external: externalDeps,
   },
 ];
