@@ -4,12 +4,12 @@
 package sync
 
 import (
-	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"regexp"
 
+	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -30,7 +30,7 @@ var createCmd = &cobra.Command{
 	Long: `Create initiates a new synchronization operation from a remote Directory node.
 The operation is asynchronous and returns a sync ID for tracking progress.
 
-When --stdin flag is used, the command parses routing search output from stdin
+When --stdin flag is used, the command parses JSON routing search output from stdin
 and creates sync operations for each provider found in the search results.
 
 Usage examples:
@@ -42,7 +42,7 @@ Usage examples:
   dir sync create http://localhost:8080 --cids cid1,cid2,cid3
 
 3. Create sync from routing search output:
-  dirctl routing search --skill "AI" | dirctl sync create --stdin`,
+  dirctl routing search --skill "AI" --json | dirctl sync create --stdin`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if opts.Stdin {
 			return cobra.MaximumNArgs(0)(cmd, args)
@@ -205,12 +205,6 @@ func runDeleteSync(cmd *cobra.Command, syncID string) error {
 	return nil
 }
 
-// SearchResult represents a parsed search result.
-type SearchResult struct {
-	CID        string
-	APIAddress string // API address for the provider
-}
-
 func runCreateSyncFromStdin(cmd *cobra.Command) error {
 	// Parse the search output from stdin
 	results, err := parseSearchOutput(cmd.InOrStdin())
@@ -231,46 +225,21 @@ func runCreateSyncFromStdin(cmd *cobra.Command) error {
 	return createSyncOperations(cmd, peerResults)
 }
 
-func parseSearchOutput(input io.Reader) ([]SearchResult, error) {
-	var results []SearchResult
-
-	scanner := bufio.NewScanner(input)
-
-	// Regular expressions to match the search output format
-	recordRegex := regexp.MustCompile(`^Record: (.+)$`)
-	apiAddressRegex := regexp.MustCompile(`^    api address (.+)$`)
-
-	var currentCID string
-
-	for scanner.Scan() {
-		line := scanner.Text() // Don't trim the line, preserve exact spacing
-
-		// Match record line: "Record: <CID>"
-		if matches := recordRegex.FindStringSubmatch(line); len(matches) > 1 {
-			currentCID = matches[1]
-
-			continue
-		}
-
-		// Match API address line: "    api address <address>"
-		if matches := apiAddressRegex.FindStringSubmatch(line); len(matches) > 1 && currentCID != "" {
-			apiAddress := matches[1]
-
-			results = append(results, SearchResult{
-				CID:        currentCID,
-				APIAddress: apiAddress,
-			})
-
-			// Reset for next record
-			currentCID = ""
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
+func parseSearchOutput(input io.Reader) ([]*routingv1.SearchResponse, error) {
+	// Read JSON input from routing search --json
+	inputBytes, err := io.ReadAll(input)
+	if err != nil {
 		return nil, fmt.Errorf("error reading input: %w", err)
 	}
 
-	return results, nil
+	var searchResponses []*routingv1.SearchResponse
+
+	err = json.Unmarshal(inputBytes, &searchResponses)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	return searchResponses, nil
 }
 
 // PeerSyncInfo holds sync information for a peer (grouped by API address).
@@ -279,17 +248,30 @@ type PeerSyncInfo struct {
 	CIDs       []string
 }
 
-func groupResultsByAPIAddress(results []SearchResult) map[string]PeerSyncInfo {
+func groupResultsByAPIAddress(results []*routingv1.SearchResponse) map[string]PeerSyncInfo {
 	peerResults := make(map[string]PeerSyncInfo)
 
 	for _, result := range results {
-		if existing, exists := peerResults[result.APIAddress]; exists {
-			existing.CIDs = append(existing.CIDs, result.CID)
-			peerResults[result.APIAddress] = existing
+		// Get the first API address if available
+		var apiAddress string
+		if result.GetPeer() != nil && len(result.GetPeer().GetAddrs()) > 0 {
+			apiAddress = result.GetPeer().GetAddrs()[0]
+		}
+
+		// Skip results without API address
+		if apiAddress == "" {
+			continue
+		}
+
+		cid := result.GetRecordRef().GetCid()
+
+		if existing, exists := peerResults[apiAddress]; exists {
+			existing.CIDs = append(existing.CIDs, cid)
+			peerResults[apiAddress] = existing
 		} else {
-			peerResults[result.APIAddress] = PeerSyncInfo{
-				APIAddress: result.APIAddress,
-				CIDs:       []string{result.CID},
+			peerResults[apiAddress] = PeerSyncInfo{
+				APIAddress: apiAddress,
+				CIDs:       []string{cid},
 			}
 		}
 	}

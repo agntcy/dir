@@ -163,8 +163,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should create sync from peer 1 to peer 3 using routing search piped to sync create", func() {
-			// First run routing search to find records with the skill "Audio"
-			searchOutput := cli.Routing().Search().WithArgs("--skill", "Audio").OnServer(utils.Peer3Addr).ShouldSucceed()
+			// First run routing search to find records with the skill "Audio" and get the json output
+			searchOutput := cli.Routing().Search().WithArgs("--skill", "Audio").WithArgs("--json").OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			// Pipe the search output to sync create --stdin
 			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldSucceed()

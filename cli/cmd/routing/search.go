@@ -4,6 +4,7 @@
 package routing
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -54,6 +55,7 @@ var searchOpts struct {
 	Features []string
 	Limit    uint32
 	MinScore uint32
+	JSON     bool
 }
 
 const (
@@ -70,6 +72,7 @@ func init() {
 	searchCmd.Flags().StringArrayVar(&searchOpts.Features, "feature", nil, "Search for records with specific feature (can be repeated)")
 	searchCmd.Flags().Uint32Var(&searchOpts.Limit, "limit", defaultSearchLimit, "Maximum number of results to return")
 	searchCmd.Flags().Uint32Var(&searchOpts.MinScore, "min-score", defaultMinScore, "Minimum match score (number of queries that must match)")
+	searchCmd.Flags().BoolVar(&searchOpts.JSON, "json", false, "Output results in JSON format")
 
 	// Add examples in flag help
 	searchCmd.Flags().Lookup("skill").Usage = "Search for records with specific skill (e.g., --skill 'AI' --skill 'ML')"
@@ -151,6 +154,33 @@ func runSearchCommand(cmd *cobra.Command) error {
 	}
 
 	// Process and display results
+	if searchOpts.JSON {
+		return outputJSONResults(cmd, resultCh)
+	}
+
+	return outputTextResults(cmd, resultCh, queries)
+}
+
+func outputJSONResults(cmd *cobra.Command, resultCh <-chan *routingv1.SearchResponse) error {
+	results := make([]*routingv1.SearchResponse, 0)
+
+	// Collect all results
+	for result := range resultCh {
+		results = append(results, result)
+	}
+
+	// Output JSON directly from the API response
+	output, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	presenter.Print(cmd, string(output)+"\n")
+
+	return nil
+}
+
+func outputTextResults(cmd *cobra.Command, resultCh <-chan *routingv1.SearchResponse, queries []*routingv1.RecordQuery) error {
 	resultCount := 0
 	for result := range resultCh {
 		resultCount++
