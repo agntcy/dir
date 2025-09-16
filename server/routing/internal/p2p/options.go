@@ -24,6 +24,7 @@ type APIRegistrer func(host.Host) error
 type options struct {
 	Key             crypto.PrivKey
 	ListenAddress   string
+	DirectoryAPIAddress string
 	BootstrapPeers  []peer.AddrInfo
 	RefreshInterval time.Duration
 	Randevous       string

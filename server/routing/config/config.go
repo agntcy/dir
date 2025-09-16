@@ -16,6 +16,9 @@ type Config struct {
 	// Address to use for routing
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
 
+	// Address to use for sync operations
+	DirectoryAPIAddress string `json:"directory_api_address,omitempty" mapstructure:"directory_api_address"`
+
 	// Peers to use for bootstrapping.
 	// We can choose between public and private peers.
 	BootstrapPeers []string `json:"bootstrap_peers,omitempty" mapstructure:"bootstrap_peers"`

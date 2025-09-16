@@ -24,6 +24,8 @@ import (
 	"github.com/libp2p/go-libp2p-kad-dht/providers"
 	record "github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -366,11 +368,33 @@ func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID str
 
 // createPeerInfo creates a Peer message from a PeerID string.
 func (r *routeRemote) createPeerInfo(peerID string) *routingv1.Peer {
-	// TODO: Could be enhanced to include actual peer addresses if available
+	dirAPIAddr := r.getDirectoryAPIAddress(peerID)
+
 	return &routingv1.Peer{
-		Id: peerID,
-		// Addresses could be populated from DHT peerstore if needed
+		Id:    peerID,
+		Addrs: []string{dirAPIAddr},
 	}
+}
+
+func (r *routeRemote) getDirectoryAPIAddress(peerID string) string {
+	multiaddrs := r.server.Host().Peerstore().Addrs(peer.ID(peerID))
+	remoteLogger.Info("Looking up peer addresses", "peerID", peerID, "multiaddrs", multiaddrs)
+
+	for _, addr := range multiaddrs {
+		protocols := addr.Protocols()
+		for _, protocol := range protocols {
+			if protocol.Code == 65535 { // dir protocol
+				value, err := addr.ValueForProtocol(65535)
+				if err != nil {
+					remoteLogger.Error("Failed to get dir protocol value", "peerID", peerID, "addr", addr.String(), "error", err)
+				} else {
+					return value
+				}
+			}
+		}
+	}
+
+	return ""
 }
 
 func (r *routeRemote) handleNotify(ctx context.Context) {
@@ -400,6 +424,19 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 
 		return
 	}
+
+	// Add the peer's addresses to our peerstore so we can contact them later
+	if len(notif.Peer.Addrs) > 0 {
+		// Use PermanentAddrTTL to ensure addresses persist and don't get cleaned up
+		r.server.Host().Peerstore().AddAddrs(notif.Peer.ID, notif.Peer.Addrs, peerstore.PermanentAddrTTL)
+		remoteLogger.Info("Added peer addresses to peerstore with permanent TTL", "peer", peerIDStr, "addrs", notif.Peer.Addrs)
+
+		// REMOVE Verify they were added
+		storedAddrs := r.server.Host().Peerstore().Addrs(notif.Peer.ID)
+		remoteLogger.Info("Verified addresses in peerstore after adding", "peer", peerIDStr, "storedAddrs", storedAddrs)
+	}
+
+	// Store
 
 	if r.hasRemoteRecordCached(ctx, notif.Ref.GetCid(), peerIDStr) {
 		// This is a reannouncement - update lastSeen timestamps

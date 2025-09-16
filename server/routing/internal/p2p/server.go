@@ -121,7 +121,8 @@ func start(ctx context.Context, opts *options) <-chan status {
 		defer cancel()
 
 		// Create host
-		host, err := newHost(opts.ListenAddress, opts.Key)
+		// TODO: remove this once we have a proper directory API server
+		host, err := newHost(opts.ListenAddress, "agntcy-dir-apiserver.peer3.svc.cluster.local:8888", opts.Key)
 		if err != nil {
 			statusCh <- status{Err: err}
 
