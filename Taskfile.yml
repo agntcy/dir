@@ -251,7 +251,7 @@ tasks:
     desc: Build javascript client SDK package
     dir: ./sdk/dir-js
     cmds:
-      - npm ci
+      - npm run build
 
   sdk:test-env:create:
     desc: Create Kubernetes cluster test environment

@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 import json from '@rollup/plugin-json';
 import {readFileSync} from 'fs';
 import typescript from 'rollup-plugin-typescript2';

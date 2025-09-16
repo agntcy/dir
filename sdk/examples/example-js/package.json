@@ -6,6 +6,6 @@
     "example": "node example.js"
   },
   "dependencies": {
-    "agntcy-dir": "^0.1.2"
+    "agntcy-dir": "file:../../dir-js"
   }
 }
