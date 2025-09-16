@@ -65,16 +65,8 @@ func ValidateCIDAgainstData(cidString string, originalData []byte) {
 	// First validate CID format
 	ValidateCID(cidString)
 
-	// Canonicalize the original data
-	canonicalData, err := MarshalOASFCanonical(originalData)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to canonicalize data")
-
-	// Calculate what the CID should be for this canonical data
-	digest, err := corev1.CalculateDigest(canonicalData)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to calculate digest")
-
-	expectedCID, err := corev1.ConvertDigestToCID(digest)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to convert digest to CID")
+	expectedCID := CalculateCIDFromData(originalData)
+	gomega.Expect(expectedCID).NotTo(gomega.BeEmpty(), "Should be able to calculate CID from data")
 
 	// Verify the CID matches what we expect
 	gomega.Expect(cidString).To(gomega.Equal(expectedCID),
@@ -90,6 +82,32 @@ func LoadAndValidateCID(cidString string, filePath string) {
 
 	// Validate CID against the file data
 	ValidateCIDAgainstData(cidString, data)
+}
+
+// CalculateCIDFromFile calculates the CID for the record file.
+func CalculateCIDFromFile(filePath string) string {
+	// Load the file
+	data, err := os.ReadFile(filePath)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to read file "+filePath)
+
+	// Calculate the CID
+	return CalculateCIDFromData(data)
+}
+
+// CalculateCIDFromData calculates the CID for the record data.
+func CalculateCIDFromData(data []byte) string {
+	// Canonicalize the original data
+	canonicalData, err := MarshalOASFCanonical(data)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to canonicalize data")
+
+	// Calculate what the CID should be for this canonical data
+	digest, err := corev1.CalculateDigest(canonicalData)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to calculate digest")
+
+	cid, err := corev1.ConvertDigestToCID(digest)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to convert digest to CID")
+
+	return cid
 }
 
 // ValidateCIDPrefix validates that a CID starts with expected prefixes.

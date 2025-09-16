@@ -134,7 +134,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			output := cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
-			equal, err := utils.CompareOASFRecords([]byte(output), expectedRecordV070SyncJSON)
+			equal, err := utils.CompareOASFRecords([]byte(output), expectedRecordV070SyncV4JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
@@ -189,6 +189,18 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		ginkgo.It("should fail to pull record_v070_sync_v4.json from peer 3 after sync", func() {
 			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()
+		})
+	})
+
+	ginkgo.Context("cleanup records that might have been synced", func() {
+		ginkgo.It("should cleanup records from peer 2", func() {
+			cidV070 := utils.CalculateCIDFromFile("testdata/record_v070.json")
+			gomega.Expect(cidV070).NotTo(gomega.BeEmpty())
+			cli.Delete(cidV070).OnServer(utils.Peer2Addr)
+
+			cidV031 := utils.CalculateCIDFromFile("testdata/record_v031.json")
+			gomega.Expect(cidV031).NotTo(gomega.BeEmpty())
+			cli.Delete(cidV031).OnServer(utils.Peer2Addr)
 		})
 	})
 })
