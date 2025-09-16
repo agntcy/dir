@@ -268,6 +268,38 @@ tasks:
       - task: deploy:kubernetes:network:port-forward:cleanup
       - task: deploy:kubernetes:network:cleanup
 
+  sdk:test-env:spiffe:load-test-image:
+    desc: Load the SDK tests into KinD
+    cmds:
+      - '{{.BAKE_ENV}} docker buildx bake sdks-test {{.IMAGE_BAKE_OPTS}}'
+      - '{{.KUBECTL_BIN}} config use-context kind-dir.example'
+      - '{{.KIND_BIN}} load docker-image ghcr.io/agntcy/sdks-test:{{.IMAGE_TAG}} --name dir.example'
+
+  sdk:test:all:spiffe:
+    desc: Test all client SDK pacakges with spiffe
+    dir: ./e2e/sdk
+    cmds:
+      - '{{.KUBECTL_BIN}} config use-context kind-dir.example'
+      - '{{.HELM_BIN}} uninstall sdk-tests --wait --keep-history --ignore-not-found > /dev/null || true'
+      - '{{.HELM_BIN}} install --replace --timeout 1m --wait --wait-for-jobs sdk-tests ./chart -f chart/values.yaml --set image.tag={{.IMAGE_TAG}} > /dev/null || true'
+      - |
+        status=$({{.KUBECTL_BIN}} get job sdks-test -o jsonpath='{.status.conditions[0].type}')
+        status_value=$({{.KUBECTL_BIN}} get job sdks-test -o jsonpath='{.status.conditions[0].status}')
+
+        if [[ "$status" == "SuccessCriteriaMet" ]] && [[ "$status_value" == "True" ]]; then
+          echo "SDKs test are finished successfully! ✅"
+          exit 0
+        fi
+
+        if [[ "$status" == "FailureTarget" ]] && [[ "$status_value" == "True" ]]; then
+          {{.KUBECTL_BIN}} logs jobs/sdks-test
+          echo "SDKs test are failed! ❎"
+          exit 1
+        fi
+
+        echo "Unknown error happend, check logs! ⚠️"
+        exit 1
+
   sdk:test:all:
     desc: Test all client SDK packages
     ignore_error: true
@@ -822,54 +854,54 @@ tasks:
     desc: Extended per-module coverage run with summaries & HTML (non-regression)
     cmds:
       - |
-          set -euo pipefail
-          echo "[coverage] Cleaning previous coverage artifacts"
-          rm -f coverage-*.out coverage-summary.txt test-report-*.json coverage-*.html || true
+        set -euo pipefail
+        echo "[coverage] Cleaning previous coverage artifacts"
+        rm -f coverage-*.out coverage-summary.txt test-report-*.json coverage-*.html || true
       - |
-          set -euo pipefail
-          modules="api client server cli"
-          for m in $modules; do
-            if [ -d "$m" ]; then
-              echo "[coverage] Testing module: $m"
-              (
-                cd "$m"
-                if go test ./... -covermode=atomic -coverprofile "../coverage-$m.out" -json 2>&1 | tee "../test-report-$m.json" >/dev/null; then
-                  echo "[coverage] Completed: $m"
-                else
-                  status=$?
-                  echo "[coverage][warn] Tests failed in $m (exit $status); continuing"
-                fi
-                if [ ! -s "../coverage-$m.out" ]; then
-                  echo "mode: atomic" > "../coverage-$m.out"
-                fi
-              )
-            fi
-          done
-      - |
-          set -euo pipefail
-          echo "[coverage] Generating per-module summaries"
-          : > coverage-summary.txt
-          modules="api client server cli"
-          for m in $modules; do
-            if [ -f "coverage-$m.out" ]; then
-              if (cd "$m" && go tool cover -func=../coverage-$m.out > ../coverage-$m.func.txt 2>/dev/null); then
-                tail -n1 coverage-$m.func.txt | sed "s/^total:/[$m] total:/" >> coverage-summary.txt || true
+        set -euo pipefail
+        modules="api client server cli"
+        for m in $modules; do
+          if [ -d "$m" ]; then
+            echo "[coverage] Testing module: $m"
+            (
+              cd "$m"
+              if go test ./... -covermode=atomic -coverprofile "../coverage-$m.out" -json 2>&1 | tee "../test-report-$m.json" >/dev/null; then
+                echo "[coverage] Completed: $m"
               else
-                echo "[$m] total: (error generating summary)" >> coverage-summary.txt
+                status=$?
+                echo "[coverage][warn] Tests failed in $m (exit $status); continuing"
               fi
-            fi
-          done
-          echo "[coverage] Summary:"; cat coverage-summary.txt
+              if [ ! -s "../coverage-$m.out" ]; then
+                echo "mode: atomic" > "../coverage-$m.out"
+              fi
+            )
+          fi
+        done
       - |
-          set -euo pipefail
-          echo "[coverage] Generating HTML reports"
-          modules="api client server cli"
-          for m in $modules; do
-            if [ -f "coverage-$m.out" ] && [ -d "$m" ]; then
-              (cd "$m" && go tool cover -html=../coverage-$m.out -o ../coverage-$m.html || true)
+        set -euo pipefail
+        echo "[coverage] Generating per-module summaries"
+        : > coverage-summary.txt
+        modules="api client server cli"
+        for m in $modules; do
+          if [ -f "coverage-$m.out" ]; then
+            if (cd "$m" && go tool cover -func=../coverage-$m.out > ../coverage-$m.func.txt 2>/dev/null); then
+              tail -n1 coverage-$m.func.txt | sed "s/^total:/[$m] total:/" >> coverage-summary.txt || true
+            else
+              echo "[$m] total: (error generating summary)" >> coverage-summary.txt
             fi
-          done
-          echo "[coverage] Generated HTML files:"; ls -1 coverage-*.html 2>/dev/null | sed 's/^/  - /' || echo "  (none)"
+          fi
+        done
+        echo "[coverage] Summary:"; cat coverage-summary.txt
+      - |
+        set -euo pipefail
+        echo "[coverage] Generating HTML reports"
+        modules="api client server cli"
+        for m in $modules; do
+          if [ -f "coverage-$m.out" ] && [ -d "$m" ]; then
+            (cd "$m" && go tool cover -html=../coverage-$m.out -o ../coverage-$m.html || true)
+          fi
+        done
+        echo "[coverage] Generated HTML files:"; ls -1 coverage-*.html 2>/dev/null | sed 's/^/  - /' || echo "  (none)"
 
   bench:
     desc: Run bench tests on codebase

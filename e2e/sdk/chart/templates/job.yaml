@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sdks-test
+spec:
+  template:
+    spec:
+      containers:
+        - name: sdks-test
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: Never
+          env:
+            - name: DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH
+              value: unix:/run/spire/agent-sockets/api.sock
+          volumeMounts:
+            - name: spire-agent-socket
+              mountPath: /run/spire/agent-sockets
+              readOnly: false
+      volumes:
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/agent-sockets
+            type: Directory
+      restartPolicy: Never
+  backoffLimit: 0

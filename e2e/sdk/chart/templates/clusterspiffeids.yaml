@@ -1,0 +1,13 @@
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: sdks-test
+spec:
+  podSelector:
+    matchExpressions:
+      - key: batch.kubernetes.io/job-name
+        operator: In
+        values:
+          - sdks-test
+  spiffeIDTemplate: {{ "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}" }}
+  autoPopulateDNSNames: true
