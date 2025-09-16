@@ -1,8 +1,9 @@
 {
   "name": "agntcy-dir",
   "version": "0.1.0",
+  "type": "module",
   "description": "Directory SDK",
-  "homepage": "https://github.com/agntcy/dir#readme",
+  "homepage": "https://github.com/agntcy/dir",
   "bugs": {
     "url": "https://github.com/agntcy/dir/issues"
   },
@@ -24,9 +25,8 @@
     "clean": "gts clean",
     "test": "vitest run",
     "lint": "gts lint",
-    "compile": "tsc",
     "fix": "gts fix",
-    "pretest": "npm run compile"
+    "pretest": "npm run build"
   },
   "dependencies": {
     "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250915154105-152c4b7b4ec6.1",
