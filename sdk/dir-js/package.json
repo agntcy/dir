@@ -1,6 +1,6 @@
 {
   "name": "agntcy-dir",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Directory SDK",
   "homepage": "https://github.com/agntcy/dir",
   "bugs": {
@@ -40,6 +40,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250915154105-152c4b7b4ec6.1",
     "@bufbuild/protobuf": "^2.8.0",
     "@connectrpc/connect": "^2.1.0",
     "@connectrpc/connect-node": "^2.1.0",
@@ -47,6 +48,7 @@
   },
   "devDependencies": {
     "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/node": "^22.7.5",
     "@types/uuid": "^10.0.0",
     "rollup-plugin-typescript2": "^0.36.0",
@@ -55,14 +57,6 @@
     "typescript-eslint": "^8.44.0",
     "uuid": "^11.1.0",
     "vitest": "^3.2.4"
-  },
-  "peerDependencies": {
-    "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250915154105-152c4b7b4ec6.1"
-  },
-  "peerDependenciesMeta": {
-    "@buf/agntcy_dir.bufbuild_es": {
-      "optional": false
-    }
   },
   "engines": {
     "node": ">=20.0.0"

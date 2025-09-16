@@ -2,16 +2,16 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "./dist",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "module": "es2020",
-    "target": "es2017",
+    "target": "es2018",
     "lib": [
       // ES2017 for async/await
       "ES2017",
       // DOM for the fetch and streams API
       "DOM",
-      // ESNext.AsyncIterable for AsyncIterator
-      "ESNext.AsyncIterable"
+      // ES2018.AsyncIterable for AsyncIterator
+      "ES2018.AsyncIterable"
     ],
     "declaration": true,
     "strict": true,

@@ -1,45 +1,49 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-const { Client, Config, models } = await import('agntcy-dir');
+import { Client, Config, models } from 'agntcy-dir';
 
 function generateRecords(names) {
-    return names.map(name => {
-        name=`${name}`,
-        version="v1.0.0",
-        schema_version="v0.7.0",
-        description="My example agent",
-        authors=["AGNTCY"],
-        created_at="2025-03-19T17:06:37Z",
-        skills=[
+    return names.map(name => JSON.parse(`
+{
+    "data": {
+        "name": "${name}",
+        "version": "v1.0.0",
+        "schema_version": "v0.7.0",
+        "description": "My example agent",
+        "authors": ["AGNTCY"],
+        "created_at": "2025-03-19T17:06:37Z",
+        "skills": [
             {
-                name: "natural_language_processing/natural_language_generation/text_completion",
-                id: 10201
+                "name": "natural_language_processing/natural_language_generation/text_completion",
+                "id": 10201
             },
             {
-                name: "natural_language_processing/analytical_reasoning/problem_solving",
-                id: 10702
+                "name": "natural_language_processing/analytical_reasoning/problem_solving",
+                "id": 10702
             }
         ],
-        locators=[
+        "locators": [
             {
-                type: "docker-image",
-                url: "https://ghcr.io/agntcy/marketing-strategy"
+                "type": "docker-image",
+                "url": "https://ghcr.io/agntcy/marketing-strategy"
             }
         ],
-        domains=[
+        "domains": [
             {
-                name: "technology/networking",
-                id: 103
+                "name": "technology/networking",
+                "id": 103
             }
         ],
-        modules=[
+        "modules": [
             {
-                name: "runtime/a2a",
-                data: {}
+                "name": "runtime/a2a",
+                "data": {}
             }
         ]
-    });
+    }
+}
+        `));
 }
 
 (async () => {
@@ -64,7 +68,7 @@ function generateRecords(names) {
     // Lookup objects
     const metadatas = await client.lookup(pushed_refs);
     metadatas.forEach(metadata => {
-        console.log('Lookup result:', printAsJson(new core_record_pb2.RecordMeta(metadata)));
+        console.log('Lookup result:', metadata);
     });
 
     // Search objects
@@ -98,11 +102,11 @@ function generateRecords(names) {
         ],
     });
     list_response.forEach(r => {
-        console.log('Listed objects:', printAsJson(new routing_types.ListResponse(r)));
+        console.log('Listed objects:', r);
     });
 
     // Unpublish objects
-    client.unpublish({
+    await client.unpublish({
         request: {
             case: "recordRefs",
             value: {
