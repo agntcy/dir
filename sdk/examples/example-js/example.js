@@ -1,154 +1,118 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-const { Client, Config } = require('agntcy-dir/client/client');
+const { Client, Config, models } = await import('agntcy-dir');
 
 function generateRecords(names) {
-    const test_records = [];
-
-    names.forEach(name => {
-        const exampleRecord = new record_pb2.Record();
-        exampleRecord.setName(name);
-        exampleRecord.setVersion('v3');
-        exampleRecord.setSchemaVersion("v0.5.0");
-
-        const skill = new skill_pb2.Skill();
-        skill.setName('Natural Language Processing');
-        skill.setId(1);
-        exampleRecord.addSkills(skill);
-
-        const locator = new locator_pb2.Locator();
-        locator.setType("ipv4")
-        locator.setUrl("127.0.0.1");
-        exampleRecord.addLocators(locator);
-
-        const extension = new extension_pb2.Extension();
-        extension.setName('schema.oasf.agntcy.org/domains/domain-1');
-        extension.setVersion('v1');
-        exampleRecord.addExtensions(extension);
-
-        const signature = new signature_pb2.Signature();
-        exampleRecord.setSignature(signature);
-
-        const test_record = new core_record_pb2.Record();
-        test_record.setV3(exampleRecord);
-
-        test_records.push(test_record);
+    return names.map(name => {
+        name=`${name}`,
+        version="v1.0.0",
+        schema_version="v0.7.0",
+        description="My example agent",
+        authors=["AGNTCY"],
+        created_at="2025-03-19T17:06:37Z",
+        skills=[
+            {
+                name: "natural_language_processing/natural_language_generation/text_completion",
+                id: 10201
+            },
+            {
+                name: "natural_language_processing/analytical_reasoning/problem_solving",
+                id: 10702
+            }
+        ],
+        locators=[
+            {
+                type: "docker-image",
+                url: "https://ghcr.io/agntcy/marketing-strategy"
+            }
+        ],
+        domains=[
+            {
+                name: "technology/networking",
+                id: 103
+            }
+        ],
+        modules=[
+            {
+                name: "runtime/a2a",
+                data: {}
+            }
+        ]
     });
-
-    return test_records;
 }
 
 (async () => {
+    // Create client
     const client = new Client(new Config());
 
-    // Create records object
+    // Create record objects
     const records = generateRecords(['example-record', 'example-record2']);
 
-    // Push objects to store
-    let refs;
+    // Push objects
+    const pushed_refs = await client.push(records);
+    pushed_refs.forEach(ref => {
+        console.log('Pushed object ref:', ref);
+    });
 
-    try {
-        response = await client.push(records);
-        refs = response;
+    // Pull objects
+    const pulled_records = await client.pull(pushed_refs);
+    pulled_records.forEach(pulled_record => {
+        console.log('Pulled object:', pulled_record);
+    });
 
-        refs.forEach(ref => {
-            console.log('Pushed object ref:', printAsJson(ref));
-        });
-    } catch (err) {
-        console.error('Push error:', err);
-        return;
-    }
+    // Lookup objects
+    const metadatas = await client.lookup(pushed_refs);
+    metadatas.forEach(metadata => {
+        console.log('Lookup result:', printAsJson(new core_record_pb2.RecordMeta(metadata)));
+    });
 
-    // Pull objects from the store
-    let pulledRecords;
-    try {
-        response = await client.pull(refs);
-        pulledRecords = response;
+    // Search objects
+    const search_response = await client.search({
+        queries: [{
+            type: models.search_v1.RecordQueryType.SKILL_ID,
+            value: "10201"
+        }],
+        limit: 3
+    });
+    console.log('Search result:', search_response);
 
-        pulledRecords.forEach(pulledRecord => {
-            console.log('Pulled object:', printAsJson(new core_record_pb2.Record(pulledRecord)));
-        });
-    } catch (err) {
-        console.error('Pull error:', err);
-        return;
-    }
+    // Publish objects
+    await client.publish({
+        request: {
+            case: "recordRefs",
+            value: {
+                refs: pushed_refs,
+            }
+        }
+    });
+    console.log('Objects published.');
 
-    // Search object
-    let search_query = new search_query_type.RecordQuery();
-    search_query.setType(search_query_type.RecordQueryType.RECORD_QUERY_TYPE_SKILL);
-    search_query.setValue('/skills/Natural Language Processing/Text Completion');
+    // List objects in the routing table
+    const list_response = await client.list({
+        queries: [
+            {
+                type: models.routing_v1.RecordQueryType.SKILL,
+                value: 'natural_language_processing/analytical_reasoning/problem_solving'
+            }
+        ],
+    });
+    list_response.forEach(r => {
+        console.log('Listed objects:', printAsJson(new routing_types.ListResponse(r)));
+    });
 
-    const queries = [search_query];
+    // Unpublish objects
+    client.unpublish({
+        request: {
+            case: "recordRefs",
+            value: {
+                refs: pushed_refs,
+            }
+        }
+    });
+    console.log('Objects unpublished.');
 
-    let search_request = new search_types.SearchRequest();
-    search_request.setQueriesList(queries);
-    search_request.setLimit(3);
-
-    try {
-        search_response = await client.search(search_request);
-        console.log('Search result:', printAsJson(search_response));
-    } catch (err) {
-        console.error('Search error:', err);
-        return;
-    }
-
-    // Lookup the object (gets metadata)
-    let metadatas;
-    try {
-        metadatas = await client.lookup(refs);
-        metadatas.forEach(metadata => {
-            console.log('Lookup result:', printAsJson(new core_record_pb2.RecordMeta(metadata)));
-        });
-    } catch (err) {
-        console.error('Lookup error:', err);
-        return;
-    }
-
-    let publish_request = new routing_types.PublishRequest();
-    publish_request.setRecordCid(refs[0].u[0]);
-
-    // Publish the object
-    try {
-        client.publish(publish_request);
-        console.log('Object published.');
-    } catch (err) {
-        console.error('Publish error:', err);
-    }
-
-    // List objects in the store
-    const query = new record_query_type.RecordQuery();
-    query.setType(record_query_type.RECORD_QUERY_TYPE_SKILL);
-    query.setValue('/skills/Natural Language Processing/Text Completion');
-    const listRequest = new routing_types.ListRequest();
-    listRequest.addQueries(query);
-
-    try {
-        list_response = await client.list(listRequest);
-        list_response.forEach(r => {
-            console.log('Listed objects:', printAsJson(new routing_types.ListResponse(r)));
-        });
-    } catch (err) {
-        console.error('List error:', err);
-    }
-
-    let unpublish_request = new routing_types.UnpublishRequest();
-    unpublish_request.setRecordCid(refs[0].u[0]);
-
-    // Unpublish the object
-    try {
-        client.unpublish(unpublish_request);
-
-        console.log('Object unpublished.');
-    } catch (err) {
-        console.error('Unpublish error:', err);
-    }
-
-    // Delete the object
-    try {
-        await client.delete(refs);
-        console.log('Object deleted.');
-    } catch (err) {
-        console.error('Delete error:', err);
-    }
+    // Delete objects
+    await client.delete(pushed_refs);
+    console.log('Objects deleted.');
 })();

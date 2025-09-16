@@ -1,7 +1,6 @@
 {
   "name": "agntcy-dir",
   "version": "0.1.0",
-  "type": "module",
   "description": "Directory SDK",
   "homepage": "https://github.com/agntcy/dir",
   "bugs": {
@@ -20,6 +19,18 @@
     "typescript",
     "javascript"
   ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "typings": "dist/agntcy-dir.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/agntcy-dir.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.mjs"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "clean": "gts clean",
@@ -29,7 +40,6 @@
     "pretest": "npm run build"
   },
   "dependencies": {
-    "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250915154105-152c4b7b4ec6.1",
     "@bufbuild/protobuf": "^2.8.0",
     "@connectrpc/connect": "^2.1.0",
     "@connectrpc/connect-node": "^2.1.0",
@@ -42,6 +52,14 @@
     "typescript": "^5.6.3",
     "uuid": "^11.1.0",
     "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250915154105-152c4b7b4ec6.1"
+  },
+  "peerDependenciesMeta": {
+    "@buf/agntcy_dir.bufbuild_es": {
+      "optional": false
+    }
   },
   "vitest": {
     "test": {

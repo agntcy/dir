@@ -1,9 +1,9 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-import * as os from 'node:os';
-import * as path from 'node:path';
-import * as process from 'node:process';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {env} from 'node:process';
 import {writeFileSync} from 'node:fs';
 import {execSync} from 'node:child_process';
 
@@ -68,8 +68,8 @@ export class Config {
    */
   static loadFromEnv(prefix = 'DIRECTORY_CLIENT_') {
     const serverAddress =
-      process.env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
-    const dirctlPath = process.env['DIRCTL_PATH'] || Config.DEFAULT_DIRCTL_PATH;
+      env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
+    const dirctlPath = env['DIRCTL_PATH'] || Config.DEFAULT_DIRCTL_PATH;
 
     return new Config(serverAddress, dirctlPath);
   }
@@ -656,13 +656,13 @@ export class Client {
    *
    * @private
    */
-  __sign_with_key(cid: string, req: models.sign_v1.SignWithKey): void {
+  private __sign_with_key(cid: string, req: models.sign_v1.SignWithKey): void {
     // Write private key to a temporary file
-    const tmp_key_filename = path.join(os.tmpdir(), '.p.key');
+    const tmp_key_filename = join(tmpdir(), '.p.key');
     writeFileSync(tmp_key_filename, String(req.privateKey));
 
     // Prepare environment for command
-    const shell_env = process.env;
+    const shell_env = env;
     shell_env['COSIGN_PASSWORD'] = String(req.password);
 
     // Execute command
@@ -687,7 +687,7 @@ export class Client {
    *
    * @private
    */
-  __sign_with_oidc(
+  private __sign_with_oidc(
     cid: string,
     req: models.sign_v1.SignWithOIDC,
     oidc_client_id: string,
@@ -718,7 +718,7 @@ export class Client {
 
     // Execute command
     execSync(`${command} --oidc-client-id "${oidc_client_id}"`, {
-      env: {...process.env},
+      env: {...env},
       encoding: 'utf8',
       stdio: 'pipe',
     });
