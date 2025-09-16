@@ -22,15 +22,15 @@ import (
 type APIRegistrer func(host.Host) error
 
 type options struct {
-	Key             crypto.PrivKey
-	ListenAddress   string
+	Key                 crypto.PrivKey
+	ListenAddress       string
 	DirectoryAPIAddress string
-	BootstrapPeers  []peer.AddrInfo
-	RefreshInterval time.Duration
-	Randevous       string
-	APIRegistrer    APIRegistrer
-	ProviderStore   providers.ProviderStore
-	DHTCustomOpts   func(host.Host) ([]dht.Option, error)
+	BootstrapPeers      []peer.AddrInfo
+	RefreshInterval     time.Duration
+	Randevous           string
+	APIRegistrer        APIRegistrer
+	ProviderStore       providers.ProviderStore
+	DHTCustomOpts       func(host.Host) ([]dht.Option, error)
 }
 
 type Option func(*options) error
@@ -92,6 +92,14 @@ func WithIdentityKeyPath(keyPath string) Option {
 func WithListenAddress(addr string) Option {
 	return func(opts *options) error {
 		opts.ListenAddress = addr
+
+		return nil
+	}
+}
+
+func WithDirectoryAPIAddress(addr string) Option {
+	return func(opts *options) error {
+		opts.DirectoryAPIAddress = addr
 
 		return nil
 	}

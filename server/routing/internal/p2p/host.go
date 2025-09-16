@@ -13,12 +13,19 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// Add dir protocol to the host
+const (
+	DirProtocol     = "dir"
+	DirProtocolCode = 65535
+)
+
+// Add dir protocol to the host.
+//
+//nolint:mnd
 func init() {
 	err := ma.AddProtocol(ma.Protocol{
-		Name:  "dir",
-		Code:  65535,
-		VCode: ma.CodeToVarint(65535),
+		Name:  DirProtocol,
+		Code:  DirProtocolCode,
+		VCode: ma.CodeToVarint(DirProtocolCode),
 		Size:  ma.LengthPrefixedVarSize,
 		Transcoder: ma.NewTranscoderFromFunctions(
 			// String to bytes encoder
@@ -54,7 +61,12 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey) (host.Host, erro
 		// Add directory API address to the host address factory
 		libp2p.AddrsFactory(
 			func(addrs []ma.Multiaddr) []ma.Multiaddr {
-				return append(addrs, ma.StringCast(fmt.Sprintf("/dir/%s", dirAPIAddr)))
+				// Only add the dir address if dirAPIAddr is not empty
+				if dirAPIAddr != "" {
+					dirAddr := ma.StringCast("/dir/" + dirAPIAddr)
+					return append(addrs, dirAddr)
+				}
+				return addrs
 			},
 		),
 		// Use the keypair we generated
