@@ -4,21 +4,31 @@
     "rootDir": ".",
     "outDir": "./dist",
     "declaration": true,
-    "strict": true,
     "esModuleInterop": true,
+    "strict": true,
     "moduleResolution": "bundler",
-    "module": "preserve",
+    "module": "ESNext",
+    "target": "ES2020",
     "lib": [
       "ES2017",
       // DOM for the fetch and streams API
       "DOM",
       // ES2018.AsyncIterable for AsyncIterator
       "ES2018.AsyncIterable"
-    ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@buf/agntcy_dir.community_timostamm-protobuf-ts/google/protobuf/*": [
+        "node_modules/@buf/agntcy_dir.community_timostamm-protobuf-ts/google/protobuf/*"
+      ]
+    }
   },
   "include": [
     "src/**/*.ts",
-    "test/**/*.ts",
-    "./.eslintrc.json"
+    "test/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
   ]
 }
