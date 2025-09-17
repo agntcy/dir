@@ -137,20 +137,21 @@ jobs:
 
       - name: Add dependencies for SDKs testing
         env:
-          IMAGE_REPO: ${{ inputs.image_repo }}
-          IMAGE_TAG: ${{ inputs.image_tag }}
           CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test.yaml@${{ github.ref }}"
-          KIND_CLUSTER_NAME: "sdk-test"
         run: |
           task sdk:deps:common
-          task sdk:test-env:create
-          task deploy:kubernetes:network:port-forward
           task sdk:deps:cicd:iodc-token-generation >> $GITHUB_ENV
 
       - name: Test Python SDK
+        env:
+          IMAGE_REPO: ${{ inputs.image_repo }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           task sdk:test:python
 
       - name: Test JavaScript SDK
+        env:
+          IMAGE_REPO: ${{ inputs.image_repo }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           task sdk:test:javascript
