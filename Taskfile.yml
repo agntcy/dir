@@ -260,12 +260,10 @@ tasks:
       - task: deploy:kubernetes:network
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: 1s
-      - task: deploy:kubernetes:network:port-forward
 
   sdk:test-env:delete:
     desc: Delete Kubernetes cluster test environment
     cmds:
-      - task: deploy:kubernetes:network:port-forward:cleanup
       - task: deploy:kubernetes:network:cleanup
 
   sdk:test:all:
@@ -294,8 +292,6 @@ tasks:
   sdk:test:javascript:
     desc: Test javascript client SDK package
     dir: ./sdk/dir-js
-    deps:
-      - task: sdk:deps:common
     env:
       DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
       DIRECTORY_SERVER_PEER1_ADDRESS: '0.0.0.0:8891'

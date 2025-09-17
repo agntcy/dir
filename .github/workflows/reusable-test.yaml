@@ -160,7 +160,7 @@ jobs:
         run: |
           task sdk:deps:common
           task sdk:test-env:create
-          task sdk:deps:cicd:iodc-token-generation
+          task sdk:deps:cicd:iodc-token-generation >> $GITHUB_ENV
 
       - name: Test Python SDK
         run: |
