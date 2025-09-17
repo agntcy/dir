@@ -5,7 +5,7 @@ description = "Directory SDK"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "agntcy-dir-grpc-python==1.74.1.1.20250915124801+5c32f2c99bec"
+    "agntcy-dir-grpc-python==1.75.0.1.20250917104837+762975861d20"
 ]
 
 [dependency-groups]
