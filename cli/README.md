@@ -4,6 +4,12 @@ The Directory CLI provides comprehensive command-line tools for interacting with
 
 ## Installation
 
+### From Brew Tap
+```bash
+brew tap agntcy/dir https://github.com/agntcy/dir/
+brew install dirctl
+```
+
 ### From Release Binaries
 ```bash
 # Download from GitHub Releases
