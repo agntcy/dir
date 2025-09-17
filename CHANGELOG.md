@@ -13,7 +13,7 @@ This release delivers foundational improvements to security schema,
 storage services, network capabilities, and user/developer experience.
 
 **Zero-Trust Security Architecture**
-- Complete SPIFFE/SPIRE identity framework with federation support
+- X.509-based SPIFFE/SPIRE identity framework with federation support
 - Policy-based authorization framework with fine-grained access controls
 - Secure mTLS communication across all services
 - OCI-native PKI with client- and server-side verification capabilities
