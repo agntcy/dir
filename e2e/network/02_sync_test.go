@@ -110,6 +110,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		ginkgo.It("should push record_v070_sync_v5.json to peer 1", func() {
 			cidV5 = cli.Push(recordV5Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
+			// Track CID for cleanup
+			RegisterCIDForCleanup(cidV5, "sync")
+
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(cidV5, recordV5Path)
 		})
@@ -177,12 +180,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			// Poll sync status until it changes from DELETE_PENDING to DELETED
 			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("DELETED", 120*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
-
-			// CLEANUP: This is the last test in this Describe block
-			// Clean up sync test records to ensure isolation from subsequent test files
-			ginkgo.DeferCleanup(func() {
-				CleanupNetworkRecords(syncTestCIDs, "sync tests")
-			})
 		})
 
 		ginkgo.It("should create sync from peer 1 to peer 3 using routing search piped to sync create", func() {
@@ -212,6 +209,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		ginkgo.It("should fail to pull record_v070_sync_v4.json from peer 3 after sync", func() {
 			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()
+
+			// CLEANUP: This is the last test in the sync functionality Context
+			// Clean up sync test records to ensure isolation from subsequent test files
+			ginkgo.DeferCleanup(func() {
+				CleanupNetworkRecords(syncTestCIDs, "sync tests")
+			})
 		})
 	})
 })
