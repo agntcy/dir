@@ -216,6 +216,7 @@ tasks:
     cmds:
       - task: deps:cosign
       - task: cli:compile
+      - task: sdk:deps:javascript
 
   sdk:deps:cicd:iodc-token-generation:
     desc: Get Fulcio OIDC token for CICD
@@ -255,8 +256,6 @@ tasks:
 
   sdk:test-env:create:
     desc: Create Kubernetes cluster test environment
-    deps:
-      - task: build
     cmds:
       - task: deploy:kubernetes:network
         vars:
@@ -280,7 +279,6 @@ tasks:
     desc: Test python client SDK package
     dir: ./sdk/dir-py
     deps:
-      - task: sdk:deps:common
       - task: deps:uv
     env:
       DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
