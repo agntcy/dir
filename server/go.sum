@@ -1,9 +1,5 @@
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250915083413-97472ce2fb9f.1 h1:Cn5vYUduDXq/RZwI8uSpEE+IJ1BCnKPOHrbaKH73iMw=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250915083413-97472ce2fb9f.1/go.mod h1:uTsOo9jnzYqVE9RVbE0CJBKn1S9aNcDS/0OFp1nwurw=
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1 h1:bV9FW6wfv5OtSGRRZITEmwEGsWsdCMQdKaim59RUup8=
 buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1/go.mod h1:uTsOo9jnzYqVE9RVbE0CJBKn1S9aNcDS/0OFp1nwurw=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250915080448-a3d79079b9ac.1 h1:XOfbLw9mZkwe7qW9TSoQ+vZnJH/h6eFic3jVET81/7k=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250915080448-a3d79079b9ac.1/go.mod h1:0oAU8mfSDwDA9l2HycLTYpJ2Ifn3YO5rI2xJP1XwPzs=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1 h1:/woChozR+ReghDHPp9vwdetbBpqfDxHYUH9Iso+Bsww=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1/go.mod h1:0oAU8mfSDwDA9l2HycLTYpJ2Ifn3YO5rI2xJP1XwPzs=
 cel.dev/expr v0.24.0 h1:56OvJKSH3hDGL0ml5uSxZmz3/3Pq4tJ+fb1unVLAFcY=
@@ -707,8 +703,6 @@ github.com/ThalesIgnite/crypto11 v1.2.5 h1:1IiIIEqYmBvUYFeMnHqRft4bwf/O36jryEUpY
 github.com/ThalesIgnite/crypto11 v1.2.5/go.mod h1:ILDKtnCKiQ7zRoNxcp36Y1ZR8LBPmR2E23+wTQe/MlE=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/oasf-sdk/pkg v0.0.0-20250915092450-6b95f6678b22 h1:vsOmkVO8AcpzeXc8rAbXBq/gvIH9Ku8S2WHEim+MH8g=
-github.com/agntcy/oasf-sdk/pkg v0.0.0-20250915092450-6b95f6678b22/go.mod h1:7hlTa7Wd65g9Msu3ZKthvD0Q7SKaMjgAb2ya289OHUU=
 github.com/agntcy/oasf-sdk/pkg v0.0.5 h1:ooQqaGZw0bVc+RpplXDiekn1Ju5mWaBiTxTSxlKGYY4=
 github.com/agntcy/oasf-sdk/pkg v0.0.5/go.mod h1:7hlTa7Wd65g9Msu3ZKthvD0Q7SKaMjgAb2ya289OHUU=
 github.com/ajstarks/deck v0.0.0-20200831202436-30c9fc6549a9/go.mod h1:JynElWSGnm/4RlzPXRlREEwqTHAN3T56Bv2ITsFT3gY=

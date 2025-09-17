@@ -189,8 +189,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			// Verify initial state - peer 3 should not have any records
 			ginkgo.GinkgoWriter.Printf("Step 1: Verifying peer 3 initial state...")
-			cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()   // v4 (NLP) should not exist
-			cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldFail() // v5 (Audio) should not exist
+			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()   // v4 (NLP) should not exist
+			_ = cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldFail() // v5 (Audio) should not exist
 			ginkgo.GinkgoWriter.Printf("✅ Confirmed: Peer 3 has no records initially")
 
 			// Run routing search to find records with "Audio" skill
