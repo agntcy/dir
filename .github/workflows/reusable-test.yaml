@@ -164,8 +164,10 @@ jobs:
 
       - name: Test Python SDK
         run: |
+          task deploy:kubernetes:network:port-forward
           task sdk:test:python
 
       - name: Test JavaScript SDK
         run: |
+          task deploy:kubernetes:network:port-forward
           task sdk:test:javascript
