@@ -9,11 +9,11 @@ replace (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250915080448-a3d79079b9ac.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
 	github.com/agntcy/dir/api v0.2.6
 	github.com/agntcy/dir/utils v0.2.6
-	github.com/agntcy/oasf-sdk/pkg v0.0.0-20250915092450-6b95f6678b22
+	github.com/agntcy/oasf-sdk/pkg v0.0.5
 	github.com/casbin/casbin/v2 v2.120.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/ipfs/go-datastore v0.8.2
@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250915083413-97472ce2fb9f.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go v0.121.1 // indirect
 	cloud.google.com/go/auth v0.16.2 // indirect
