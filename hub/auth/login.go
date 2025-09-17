@@ -110,19 +110,3 @@ func HasLoginCreds(currentSession *sessionstore.HubSession) bool {
 
 	return tokens.AccessToken != "" && tokens.IDToken != "" && tokens.RefreshToken != ""
 }
-
-func HasAPIKey(currentSession *sessionstore.HubSession) bool {
-	if currentSession == nil || currentSession.APIKeyAccess == nil {
-		return false
-	}
-
-	return currentSession.APIKeyAccess.ClientID != "" && currentSession.APIKeyAccess.Secret != ""
-}
-
-func HasAPIKeyCreds(currentSession *sessionstore.HubSession) bool {
-	if currentSession == nil || currentSession.APIKeyAccessToken == nil {
-		return false
-	}
-
-	return currentSession.APIKeyAccessToken.AccessToken != "" && currentSession.APIKeyAccessToken.IDToken != "" && currentSession.APIKeyAccessToken.RefreshToken != ""
-}

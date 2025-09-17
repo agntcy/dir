@@ -17,11 +17,9 @@ type HubSessions struct {
 
 // HubSession represents a user session, including tokens, current organization, user, and auth config.
 type HubSession struct {
-	Tokens            *Tokens `json:"tokens"`
-	User              string  `json:"user"`
-	APIKeyAccess      *APIKey `json:"api_key_access,omitempty"`
-	APIKeyAccessToken *Tokens `json:"access_token"`
-	*AuthConfig       `json:"auth_config,omitempty"`
+	Tokens      *Tokens `json:"tokens"`
+	User        string  `json:"user"`
+	*AuthConfig `json:"auth_config,omitempty"`
 }
 
 // Tokens holds ID, refresh, and access tokens for a session.
@@ -40,9 +38,4 @@ type AuthConfig struct {
 	IdpIssuerAddress   string `json:"idp_issuer"`
 	HubBackendAddress  string `json:"hub_backend"`
 	APIKeyClientID     string `json:"api_key_client_id"`
-}
-
-type APIKey struct {
-	ClientID string `json:"client_id"`
-	Secret   string `json:"secret"`
 }

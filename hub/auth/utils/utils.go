@@ -18,11 +18,6 @@ func AddAuthToContext(ctx context.Context, session *sessionstore.HubSession) con
 			return metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+t.AccessToken))
 		}
 	}
-	// Otherwise, using API key access token if present
-	if session != nil && session.APIKeyAccessToken != nil && session.APIKeyAccessToken.AccessToken != "" {
-		return metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+session.APIKeyAccessToken.AccessToken))
-	}
-
 	return ctx
 }
 

@@ -16,7 +16,6 @@ import (
 	service "github.com/agntcy/dir/hub/service"
 	"github.com/agntcy/dir/hub/sessionstore"
 	authUtils "github.com/agntcy/dir/hub/utils/auth"
-	"github.com/agntcy/dir/hub/utils/file"
 	"github.com/spf13/cobra"
 )
 
@@ -103,18 +102,6 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 
 	if !opts.JSONOutput {
 		fmt.Fprintf(cmd.OutOrStdout(), "API Key created successfully:\n")
-	}
-
-	// Store the base64-encoded secret in the session.
-	currentSession.APIKeyAccess = &sessionstore.APIKey{
-		ClientID: apikeyWithSecret.ClientID,
-		Secret:   encodedSecret,
-	}
-
-	// Save session with new api key
-	sessionStore := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
-	if err := sessionStore.SaveHubSession(opts.ServerAddress, currentSession); err != nil {
-		return fmt.Errorf("failed to save tokens: %w", err)
 	}
 
 	// Output API key details
