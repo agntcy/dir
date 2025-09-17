@@ -89,6 +89,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Login to ghcr.io
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: notused
+          password: ${{ secrets.GITHUB_TOKEN  }}
+
       - name: Setup Taskfile
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
@@ -106,23 +113,6 @@ jobs:
           node-version: '22.x'
           registry-url: https://registry.npmjs.org/
           scope: "@agntcy"
-
-      - name: Setup Kind cluster
-        shell: bash
-        run: |
-          # Create cluster config
-          KIND_CONFIG_FILE=$(mktemp -p /tmp)
-          cat <<EOF > $KIND_CONFIG_FILE
-          kind: Cluster
-          apiVersion: kind.x-k8s.io/v1alpha4
-          networking:
-            apiServerAddress: "127.0.0.1"
-            apiServerPort: 6443
-          EOF
-
-          # Create cluster
-          kind create cluster --config $KIND_CONFIG_FILE --name kind
-          kubectl cluster-info
 
       - name: Download artifacts
         uses: actions/download-artifact@v4.1.9
@@ -146,17 +136,21 @@ jobs:
             ${{ runner.os }}-node-packages-
 
       - name: Add dependencies for SDKs testing
+        env:
+          IMAGE_REPO: ${{ inputs.image_repo }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test.yaml@${{ github.ref }}"
+          KIND_CLUSTER_NAME: "sdk-test"
         run: |
-          CLIENT_ID="https://github.com/${{ github.repository }}/.github/workflows/reusable-test.yaml@${{ github.ref }}"
-
           task sdk:deps:common
-          task sdk:deps:javascript
           task sdk:test-env:create
+          task deploy:kubernetes:network:port-forward
+          task sdk:deps:cicd:iodc-token-generation >> $GITHUB_ENV
 
-          task sdk:deps:cicd:iodc-token-generation CLIENT_ID=$CLIENT_ID >> $GITHUB_ENV
-
-      - name: Test SDKs
+      - name: Test Python SDK
         run: |
           task sdk:test:python
-          # TODO: enable when JS SDK tests are available
-          # task sdk:test:javascript
+
+      - name: Test JavaScript SDK
+        run: |
+          task sdk:test:javascript

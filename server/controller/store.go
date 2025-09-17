@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
@@ -159,6 +160,10 @@ func (s storeCtrl) Delete(stream storev1.StoreService_DeleteServer) error {
 		recordRef, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
 			storeLogger.Debug("Delete stream completed")
+
+			if err := stream.SendAndClose(&emptypb.Empty{}); err != nil {
+				return status.Errorf(codes.Internal, "failed to send response: %v", err)
+			}
 
 			return nil
 		}

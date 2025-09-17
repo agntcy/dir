@@ -20,36 +20,6 @@ Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous s
 
 Check the [Usage Scenarios](https://docs.agntcy.org/dir/scenarios/) for a full walkthrough of all the Directory features.
 
-### CLI Commands
-
-The Directory CLI (`dirctl`) provides comprehensive tools for interacting with the system:
-
-#### **Storage Operations**
-- `dirctl push <file>` - Store records in the system
-- `dirctl pull <cid>` - Retrieve records by CID
-- `dirctl delete <cid>` - Remove records from storage
-- `dirctl info <cid>` - Show record metadata
-
-#### **Routing Operations**
-- `dirctl routing publish <cid>` - Announce records for network discovery
-- `dirctl routing unpublish <cid>` - Remove records from network discovery
-- `dirctl routing list [--skill <skill>] [--locator <type>]` - Query local published records
-- `dirctl routing search [--skill <skill>] [--locator <type>]` - Discover remote records
-- `dirctl routing info` - Show routing statistics and summaries
-
-#### **Search & Discovery**
-- `dirctl search [--query <key=value>]` - General content search across records
-
-#### **Security & Verification**
-- `dirctl sign <cid> --key <keyfile>` - Sign records for integrity
-- `dirctl verify <record> <signature> --key <keyfile>` - Verify record signatures
-
-#### **Synchronization**
-- `dirctl sync create <url>` - Create peer synchronization
-- `dirctl sync list` - List active synchronizations
-
-For detailed usage examples and comprehensive documentation, see [cli/README.md](./cli/README.md).
-
 ## Source tree
 
 - [api](./api) - gRPC specification for data models and services
@@ -135,11 +105,11 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 ### SDKs
 
-- **Golang** - [github.com/agntcy/dir/api](https://pkg.go.dev/github.com/agntcy/dir/api), [github.com/agntcy/dir/cli](https://pkg.go.dev/github.com/agntcy/dir/cli), [github.com/agntcy/dir/server](https://pkg.go.dev/github.com/agntcy/dir/server)
+- **Golang** - [github.com/agntcy/dir/client](https://pkg.go.dev/github.com/agntcy/dir/client)
 
 - **Python** - [github.com/agntcy/dir/sdk/dir-py](./sdk/dir-py/)
 
-- **Javascript** - [github.com/agntcy/dir/sdk/javascript](https://pkg.go.dev/github.com/agntcy/dir/sdk/javascript)
+- **Javascript** - [github.com/agntcy/dir/sdk/dir-js](./sdk/dir-js/)
 
 ## Deployment
 

@@ -1,0 +1,77 @@
+{
+  "name": "agntcy-dir",
+  "version": "0.1.0",
+  "description": "Directory SDK",
+  "homepage": "https://github.com/agntcy/dir",
+  "bugs": {
+    "url": "https://github.com/agntcy/dir/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agntcy/dir.git"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "sdk",
+    "client",
+    "directory",
+    "agntcy",
+    "typescript",
+    "javascript"
+  ],
+  "type": "module",
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "typings": "dist/agntcy-dir.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/agntcy-dir.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "rollup -c && api-extractor run --local --verbose",
+    "clean": "rm -rf dist/",
+    "lint": "eslint '**/*.ts'",
+    "fix": "eslint '**/*.ts' --fix",
+    "pretest": "npm run build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250915154105-152c4b7b4ec6.1",
+    "@bufbuild/protobuf": "^2.8.0",
+    "@connectrpc/connect": "^2.1.0",
+    "@connectrpc/connect-node": "^2.1.0",
+    "@grpc/grpc-js": "^1.13.4"
+  },
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.52.13",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@types/node": "^22.7.5",
+    "@types/uuid": "^10.0.0",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.0",
+    "uuid": "^11.1.0",
+    "vitest": "^3.2.4"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.50.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "tmp": "^0.2.4"
+  },
+  "files": [
+    "dist/agntcy-dir.d.ts",
+    "dist/index.mjs",
+    "dist/index.cjs",
+    "dist/index.mjs.map"
+  ]
+}

@@ -216,6 +216,7 @@ tasks:
     cmds:
       - task: deps:cosign
       - task: cli:compile
+      - task: sdk:deps:javascript
 
   sdk:deps:cicd:iodc-token-generation:
     desc: Get Fulcio OIDC token for CICD
@@ -249,24 +250,20 @@ tasks:
 
   sdk:build:javascript:
     desc: Build javascript client SDK package
-    dir: ./sdk/javascript
+    dir: ./sdk/dir-js
     cmds:
-      - npm ci
+      - npm run build
 
   sdk:test-env:create:
     desc: Create Kubernetes cluster test environment
-    deps:
-      - task: build
     cmds:
       - task: deploy:kubernetes:network
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: 1s
-      - task: deploy:kubernetes:network:port-forward
 
   sdk:test-env:delete:
     desc: Delete Kubernetes cluster test environment
     cmds:
-      - task: deploy:kubernetes:network:port-forward:cleanup
       - task: deploy:kubernetes:network:cleanup
 
   sdk:test:all:
@@ -280,7 +277,6 @@ tasks:
     desc: Test python client SDK package
     dir: ./sdk/dir-py
     deps:
-      - task: sdk:deps:common
       - task: deps:uv
     env:
       DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
@@ -295,9 +291,7 @@ tasks:
 
   sdk:test:javascript:
     desc: Test javascript client SDK package
-    dir: ./sdk/javascript
-    deps:
-      - task: sdk:deps:common
+    dir: ./sdk/dir-js
     env:
       DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
       DIRECTORY_SERVER_PEER1_ADDRESS: '0.0.0.0:8891'
@@ -311,7 +305,7 @@ tasks:
 
   sdk:deps:javascript:
     desc: Install deps for javascript SDK package
-    dir: ./sdk/javascript
+    dir: ./sdk/dir-js
     cmds:
       - npm install
 
@@ -336,7 +330,7 @@ tasks:
 
   sdk:release:javascript:
     desc: Release javascript client SDK package
-    dir: ./sdk/javascript
+    dir: ./sdk/dir-js
     env:
       NODE_AUTH_TOKEN: '{{ .NODE_AUTH_TOKEN }}'
     cmds:

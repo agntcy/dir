@@ -10,4 +10,4 @@ dependencies = [
 url = "https://buf.build/gen/python"
 
 [tool.uv.sources]
-agntcy-dir = { path = "../", editable = true }
+agntcy-dir = { path = "../../dir-py", editable = true }

@@ -88,26 +88,6 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@3e0aec4d80787158d308d7b364cb1b702e7feb7f # v4.0.0
 
-      #
-      # Setup cluster
-      #
-      - name: Setup Kind cluster
-        shell: bash
-        run: |
-          # Create cluster config
-          KIND_CONFIG_FILE=$(mktemp -p /tmp)
-          cat <<EOF > $KIND_CONFIG_FILE
-          kind: Cluster
-          apiVersion: kind.x-k8s.io/v1alpha4
-          networking:
-            apiServerAddress: "127.0.0.1"
-            apiServerPort: 6443
-          EOF
-
-          # Create cluster
-          kind create cluster --config $KIND_CONFIG_FILE --name kind
-          kubectl cluster-info
-
       - name: Download artifacts
         uses: actions/download-artifact@v4.1.9
         with:
@@ -132,4 +112,7 @@ jobs:
           IMAGE_TAG: ${{ inputs.image_tag }}
           E2E_COMPILE_OUTPUT_DIR: tmp
         run: |
+          # Use a random cluster name to avoid conflicts in concurrent runs.
+          # Kind cluster names must be lowercase and can contain only letters and numbers.
+          export KIND_CLUSTER_NAME=test-$(openssl rand -base64 12 | tr -dc 'a-z0-9')
           task ${{ inputs.taskfile-task }}

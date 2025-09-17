@@ -1,13 +1,16 @@
-# Directory Python SDK
+# Directory JavaScript SDK
 
 ## Overview
 
-Dir Python SDK provides a simple way to interact with the Directory API.
-It allows developers to integrate and use Directory functionality from their Python applications with ease.
+Dir JavaScript SDK provides a simple way to interact with the Directory API.
+It allows developers to integrate and use Directory functionality from their applications with ease.
+The SDK supports both JavaScript and TypeScript applications.
+
+**Note for users:** The SDK is intended for use in Node.js applications and will not work in Web applications.
 
 ## Features
 
-The Directory Python SDK provides comprehensive access to all Directory APIs with a simple, intuitive interface:
+The Directory SDK provides comprehensive access to all Directory APIs with a simple, intuitive interface:
 
 ### **Store API**
 - **Record Management**: Push records to the store and pull them by reference
@@ -38,75 +41,43 @@ Requires [dirctl](https://github.com/agntcy/dir/releases) binary to perform sign
 
 ## Installation
 
-Install the SDK using [uv](https://github.com/astral-sh/uv)
+Install the SDK using one of available JS package managers like [npm](https://www.npmjs.com/)
 
 1. Initialize the project:
 ```bash
-uv init
+npm init -y
 ```
 
 2. Add the SDK to your project:
 ```bash
-uv add agntcy-dir --index https://buf.build/gen/python
+npm install agntcy-dir
 ```
 
 ## Configuration
 
 The SDK can be configured via environment variables or direct instantiation:
 
-```python
-# Environment variables
-export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
-export DIRCTL_PATH="/path/to/dirctl"
+```js
+// Environment variables
+process.env.DIRECTORY_CLIENT_SERVER_ADDRESS = "localhost:8888";
+process.env.DIRCTL_PATH = "/path/to/dirctl";
 
-# Or configure directly
-from agntcy.dir_sdk.client import Config, Client
+// Or configure directly
+import {Config, Client} from 'agntcy-dir';
 
-config = Config(
-    server_address="localhost:8888",
-    dirctl_path="/usr/local/bin/dirctl"
-)
-client = Client(config)
+const config = new Config(
+    serverAddress="localhost:8888",
+    dirctlPath="/usr/local/bin/dirctl"
+);
+const client = new Client(config);
 ```
-
-## Error Handling
-
-The SDK primarily raises `grpc.RpcError` exceptions for gRPC communication issues and `RuntimeError` for configuration problems:
-
-```python
-import grpc
-from agntcy.dir_sdk.client import Client
-
-try:
-    client = Client()
-    records = client.list(list_request)
-except grpc.RpcError as e:
-    # Handle gRPC errors
-    if e.code() == grpc.StatusCode.NOT_FOUND:
-        print("Resource not found")
-    elif e.code() == grpc.StatusCode.UNAVAILABLE:
-        print("Server unavailable")
-    else:
-        print(f"gRPC error: {e.details()}")
-except RuntimeError as e:
-    # Handle configuration or subprocess errors
-    print(f"Runtime error: {e}")
-```
-
-Common gRPC status codes:
-- `NOT_FOUND`: Resource doesn't exist
-- `ALREADY_EXISTS`: Resource already exists
-- `UNAVAILABLE`: Server is down or unreachable
-- `PERMISSION_DENIED`: Authentication/authorization failure
-- `INVALID_ARGUMENT`: Invalid request parameters
-
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- [uv](https://github.com/astral-sh/uv) - Package manager
+- [NodeJS](https://nodejs.org/en/) - JavaScript runtime
+- [npm](https://www.npmjs.com/) - Package manager
 - [dirctl](https://github.com/agntcy/dir/releases) - Directory CLI binary
 - Directory server instance (see setup below)
 
@@ -130,14 +101,14 @@ export DIRECTORY_CLIENT_SERVER_ADDRESS="your-server:8888"
 
 ```bash
 # Add the Directory SDK
-uv add agntcy-dir --index https://buf.build/gen/python
+npm install agntcy-dir
 ```
 
 ### Usage Examples
 
-See the [Example Python Project](../examples/example-py/) for a complete working example that demonstrates all SDK features.
+See the [Example JavaScript Project](../examples/example-js/) for a complete working example that demonstrates all SDK features.
 
 ```bash
-uv sync
-uv run example.py
+npm install
+npm run example
 ```

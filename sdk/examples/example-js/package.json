@@ -1,0 +1,11 @@
+{
+  "name": "dir-example",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "example": "node example.js"
+  },
+  "dependencies": {
+    "agntcy-dir": "file:../../dir-js"
+  }
+}

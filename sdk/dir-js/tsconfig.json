@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist",
+    "moduleResolution": "bundler",
+    "module": "es2020",
+    "target": "es2018",
+    "lib": [
+      // ES2017 for async/await
+      "ES2017",
+      // DOM for the fetch and streams API
+      "DOM",
+      // ES2018.AsyncIterable for AsyncIterator
+      "ES2018.AsyncIterable"
+    ],
+    "declaration": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "composite": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitOnError": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "pretty": true,
+    "sourceMap": true,
+    "stripInternal": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+  ],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "ES2020"
+    }
+  },
+  "vitest": {
+    "test": {
+      "globals": true,
+      "environment": "node",
+      "include": [
+        "test/**/*.test.ts"
+      ]
+    }
+  }
+}
