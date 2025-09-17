@@ -1,20 +1,24 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package network
 
 import (
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/agntcy/dir/e2e/config"
-	"github.com/agntcy/dir/e2e/utils"
+	"github.com/agntcy/dir/e2e/shared/config"
+	"github.com/agntcy/dir/e2e/shared/testdata"
+	"github.com/agntcy/dir/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 // Test file dedicated to testing remote routing search functionality with OR logic and minMatchScore
+
+// Package-level variables for cleanup (accessible by AfterSuite)
+// CIDs are now tracked in network_suite_test.go
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing search with OR logic", func() {
 	var cli *utils.CLI
@@ -29,7 +33,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 
 	// Create directory and write V1Alpha1 record data
 	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
-	_ = os.WriteFile(tempPath, expectedRecordV070JSON, 0o600)
+	_ = os.WriteFile(tempPath, testdata.ExpectedRecordV070JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -44,14 +48,17 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 	})
 
 	ginkgo.Context("setup for remote search testing", func() {
-		ginkgo.It("should push record to peer 1", func() {
+		ginkgo.It("should push record_v070.json to peer 1", func() {
 			cid = cli.Push(tempPath).OnServer(utils.Peer1Addr).ShouldSucceed()
+
+			// Track CID for cleanup
+			RegisterCIDForCleanup(cid, "search")
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(cid, tempPath)
 		})
 
-		ginkgo.It("should publish record to routing on peer 1 only", func() {
+		ginkgo.It("should publish record_v070.json to routing on peer 1 only", func() {
 			// ONLY publish on Peer 1 - this creates the scenario:
 			// - Peer 1: has record locally (published)
 			// - Peer 2: will see it as remote via DHT
@@ -226,6 +233,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 			gomega.Expect(output).To(gomega.ContainSubstring("Use --skill, --locator, --domain, or --feature flags"))
 
 			ginkgo.GinkgoWriter.Printf("✅ SUCCESS: Empty queries properly rejected with helpful error message")
+
+			// CLEANUP: This is the last test in this Describe block
+			// Clean up search test records to ensure isolation from subsequent test files
+			ginkgo.DeferCleanup(func() {
+				CleanupNetworkRecords(remoteSearchTestCIDs, "search tests")
+			})
 		})
 	})
 })

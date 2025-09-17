@@ -1,15 +1,15 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package local
 
 import (
 	_ "embed"
 	"os"
 	"path/filepath"
 
-	"github.com/agntcy/dir/e2e/config"
-	"github.com/agntcy/dir/e2e/utils"
+	"github.com/agntcy/dir/e2e/shared/config"
+	"github.com/agntcy/dir/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )

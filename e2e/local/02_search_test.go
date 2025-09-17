@@ -1,14 +1,15 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package local
 
 import (
 	"os"
 	"path/filepath"
 
-	"github.com/agntcy/dir/e2e/config"
-	"github.com/agntcy/dir/e2e/utils"
+	"github.com/agntcy/dir/e2e/shared/config"
+	"github.com/agntcy/dir/e2e/shared/testdata"
+	"github.com/agntcy/dir/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -46,7 +47,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			recordPath = filepath.Join(tempDir, "record.json")
 
 			// Write test record to temp location
-			err = os.WriteFile(recordPath, expectedRecordV070JSON, 0o600)
+			err = os.WriteFile(recordPath, testdata.ExpectedRecordV070JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Push the record to the store for searching

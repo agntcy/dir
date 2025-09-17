@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package client
 
 import (
 	"context"
@@ -11,14 +11,15 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/client"
-	"github.com/agntcy/dir/e2e/config"
-	"github.com/agntcy/dir/e2e/utils"
+	"github.com/agntcy/dir/e2e/shared/config"
+	"github.com/agntcy/dir/e2e/shared/testdata"
+	"github.com/agntcy/dir/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 // convertLabelsToRecordQueries converts legacy label format to RecordQuery format for e2e tests.
-func convertLabelsToRecordQueries(labels []string) []*routingv1.RecordQuery {
+func convertLabelsToClientRecordQueries(labels []string) []*routingv1.RecordQuery {
 	var queries []*routingv1.RecordQuery
 
 	for _, label := range labels {
@@ -75,7 +76,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 	}{
 		{
 			name:     "V1_Agent_OASF_v0.3.1",
-			jsonData: expectedRecordV031JSON,
+			jsonData: testdata.ExpectedRecordV031JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
@@ -84,7 +85,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		},
 		{
 			name:     "V3_Record_OASF_v0.7.0",
-			jsonData: expectedRecordV070JSON,
+			jsonData: testdata.ExpectedRecordV070JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
@@ -155,7 +156,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			// Step 4: List by one label (depends on publish)
 			ginkgo.It("should list published record by one label", func() {
 				// Convert skill label to RecordQuery
-				queries := convertLabelsToRecordQueries([]string{version.expectedSkillLabels[0]})
+				queries := convertLabelsToClientRecordQueries([]string{version.expectedSkillLabels[0]})
 
 				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
 					Queries: queries,
@@ -176,7 +177,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			// Step 5: List by multiple labels (depends on publish)
 			ginkgo.It("should list published record by multiple labels", func() {
 				// Convert all skill labels to RecordQueries
-				queries := convertLabelsToRecordQueries(version.expectedSkillLabels)
+				queries := convertLabelsToClientRecordQueries(version.expectedSkillLabels)
 
 				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
 					Queries: queries,
@@ -235,7 +236,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			// Step 7: Search routing for remote records (depends on publish)
 			ginkgo.It("should search routing for remote records", func() {
 				// Convert skill labels to RecordQuery format
-				queries := convertLabelsToRecordQueries([]string{version.expectedSkillLabels[0]})
+				queries := convertLabelsToClientRecordQueries([]string{version.expectedSkillLabels[0]})
 
 				searchChan, err := c.SearchRouting(ctx, &routingv1.SearchRequest{
 					Queries:       queries,
@@ -268,7 +269,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			// Step 8: Verify unpublished record is not found (depends on unpublish)
 			ginkgo.It("should not find unpublished record", func() {
 				// Convert skill label to RecordQuery
-				queries := convertLabelsToRecordQueries([]string{version.expectedSkillLabels[0]})
+				queries := convertLabelsToClientRecordQueries([]string{version.expectedSkillLabels[0]})
 
 				itemsChan, err := c.List(ctx, &routingv1.ListRequest{
 					Queries: queries,

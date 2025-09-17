@@ -1,20 +1,24 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package network
 
 import (
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/agntcy/dir/e2e/config"
-	"github.com/agntcy/dir/e2e/utils"
+	"github.com/agntcy/dir/e2e/shared/config"
+	"github.com/agntcy/dir/e2e/shared/testdata"
+	"github.com/agntcy/dir/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 // Using peer addresses from utils.constants
+
+// Package-level variables for cleanup (accessible by AfterSuite)
+// CIDs are now tracked in network_suite_test.go
 
 var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi peer deployment", ginkgo.Ordered, func() {
 	var cli *utils.CLI
@@ -25,11 +29,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
-	tempPath := filepath.Join(tempDir, "record_v3_network_test.json")
+	tempPath := filepath.Join(tempDir, "record_v070_network_test.json")
 
 	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
-	_ = os.WriteFile(tempPath, expectedRecordV070JSON, 0o600)
+	_ = os.WriteFile(tempPath, testdata.ExpectedRecordV070JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -40,29 +44,32 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		cli = utils.NewCLI()
 	})
 
-	ginkgo.It("should push an record to peer 1", func() {
+	ginkgo.It("should push record_v070.json to peer 1", func() {
 		cid = cli.Push(tempPath).OnServer(utils.Peer1Addr).ShouldSucceed()
+
+		// Track CID for cleanup
+		RegisterCIDForCleanup(cid, "deploy")
 
 		// Validate that the returned CID correctly represents the pushed data
 		utils.LoadAndValidateCID(cid, tempPath)
 	})
 
-	ginkgo.It("should pull the record from peer 1", func() {
+	ginkgo.It("should pull record_v070.json from peer 1", func() {
 		cli.Pull(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
 	})
 
-	ginkgo.It("should fail to pull the record from peer 2", func() {
+	ginkgo.It("should fail to pull record_v070.json from peer 2", func() {
 		_ = cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldFail()
 	})
 
-	ginkgo.It("should publish an record to the network on peer 1", func() {
+	ginkgo.It("should publish record_v070.json to the network on peer 1", func() {
 		cli.Routing().Publish(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 		// Wait at least 10 seconds to ensure the record is published.
 		time.Sleep(15 * time.Second)
 	})
 
-	ginkgo.It("should fail publish an record to the network on peer 2 that does not store the record", func() {
+	ginkgo.It("should fail publish record_v070.json to the network on peer 2 that does not store the record", func() {
 		_ = cli.Routing().Publish(cid).OnServer(utils.Peer2Addr).ShouldFail()
 	})
 
@@ -152,5 +159,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 
 		// Check if DHT propagation is working by looking for the actual CID
 		gomega.Expect(output).To(gomega.ContainSubstring(cid))
+
+		// CLEANUP: This is the last test in this Describe block
+		// Clean up deploy test records to ensure isolation from subsequent test files
+		ginkgo.DeferCleanup(func() {
+			CleanupNetworkRecords(deployTestCIDs, "deploy tests")
+		})
 	})
 })

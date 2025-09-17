@@ -882,8 +882,40 @@ tasks:
       - task: test:e2e:local
       - task: test:e2e:network
 
+  test:e2e:local:cli:
+    desc: Run only local CLI tests (with dedicated infrastructure)
+    aliases: [e2e:local:cli]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+    env:
+      DIRECTORY_E2E_DEPLOYMENT_MODE: 'local'
+    cmds:
+      - defer: { task: deploy:kubernetes:local:cleanup }
+      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - task: deploy:kubernetes:local
+        vars:
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
+      - task: deploy:kubernetes:local:port-forward
+      - 'go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+
+  test:e2e:client:
+    desc: Run only client library tests (with dedicated infrastructure)
+    aliases: [e2e:client]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+    env:
+      DIRECTORY_E2E_DEPLOYMENT_MODE: 'local'
+    cmds:
+      - defer: { task: deploy:kubernetes:local:cleanup }
+      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - task: deploy:kubernetes:local
+        vars:
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
+      - task: deploy:kubernetes:local:port-forward
+      - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+
   test:e2e:local:
-    desc: Run end-to-end tests for local deployment
+    desc: Run end-to-end tests for local deployment (Client library + CLI tests)
     aliases: [e2e:local]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
@@ -892,21 +924,21 @@ tasks:
     cmds:
       - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
-      # Bootstrap
-      # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
+      # Bootstrap infrastructure once for both test suites
       - task: deploy:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
       - task: deploy:kubernetes:local:port-forward
-      # Run tests
-      - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
+      # Run client library tests first (faster feedback)
+      - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+      # Run local CLI tests second (same infrastructure)
+      - 'go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
 
   test:e2e:network:
-    desc: Run end-to-end tests for network deployment
+    desc: Run end-to-end tests for network deployment (Multi-peer CLI tests)
     aliases: [e2e:network]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: 'network'
     cmds:
@@ -918,8 +950,8 @@ tasks:
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
       - task: deploy:kubernetes:network:port-forward
-      # Run tests
-      - 'go -C ./e2e test -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v .'
+      # Run network tests with proper isolation and cleanup
+      - 'go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
 
   # TODO: move spire out from here
   # TODO: change to Ingress services instead of LoadBalancer

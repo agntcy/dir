@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package local
 
 import (
 	_ "embed"
@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/agntcy/dir/e2e/config"
-	"github.com/agntcy/dir/e2e/utils"
+	"github.com/agntcy/dir/e2e/shared/config"
+	"github.com/agntcy/dir/e2e/shared/testdata"
+	"github.com/agntcy/dir/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -48,7 +49,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		{
 			name:              "V1_Agent_OASF_v0.3.1",
 			fileName:          "record_v1_test.json",
-			jsonData:          expectedRecordV031JSON,
+			jsonData:          testdata.ExpectedRecordV031JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v1",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
@@ -61,7 +62,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		{
 			name:              "V3_Record_OASF_v0.7.0",
 			fileName:          "record_v3_test.json",
-			jsonData:          expectedRecordV070JSON,
+			jsonData:          testdata.ExpectedRecordV070JSON,
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v3",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{

@@ -1,19 +1,47 @@
 # E2E Test Suite Documentation
 
-This directory contains comprehensive end-to-end tests for the Directory system, covering both client library APIs and CLI commands across different deployment modes.
+This directory contains comprehensive end-to-end tests for the Directory system, organized into separate packages by deployment mode and API type for better isolation and maintainability.
 
-## 📁 Test File Organization
+## 🏗️ Test Suite Architecture
 
-**Total**: 7 test files with 103+ test cases across Local and Network deployment modes
+**Structure**: 3 separate test suites with 103+ test cases organized by deployment mode and API type
 
-### 🏠 **Local Single-Node Tests**
+```
+e2e/
+├── shared/                          # package shared - Common utilities
+│   ├── config/                      # Deployment mode configuration
+│   ├── utils/                       # CLI helpers, validation utilities
+│   └── testdata/                    # Test record files with embedding
+├── local/                           # package local - CLI tests (local mode)
+│   ├── local_suite_test.go         # TestLocalE2E(t *testing.T)
+│   ├── 01_storage_test.go          # Storage operations
+│   ├── 02_search_test.go           # Search functionality
+│   ├── 03_routing_test.go          # Local routing operations
+│   ├── 04_signature_test.go        # Signature workflows
+│   └── 05_network_cmd_test.go      # Network command utilities
+├── client/                          # package client - Go library tests (local mode)
+│   ├── client_suite_test.go        # TestClientE2E(t *testing.T)
+│   └── 01_client_test.go           # Client library APIs
+└── network/                         # package network - CLI tests (network mode)
+    ├── network_suite_test.go        # TestNetworkE2E(t *testing.T)
+    ├── cleanup.go                   # Inter-test cleanup utilities
+    ├── 01_deploy_test.go            # Multi-peer deployment
+    ├── 02_sync_test.go              # Peer synchronization
+    └── 03_search_test.go            # Remote routing search
+```
 
-#### **`dirctl_test.go`** - CLI Storage & Search Operations (Local Mode)
+## 📦 Test Packages
+
+### 🏠 **Local Package** (`e2e/local/`)
 **Deployment**: Local single node  
+**Focus**: CLI commands in local deployment mode  
+**Suite**: `TestLocalE2E(t *testing.T)`
+
+#### **`01_storage_test.go`** - CLI Storage & Search Operations
 **Focus**: Core CLI commands with OASF version compatibility
 
 **Test Cases:**
-- `should successfully push a record` - Tests `dirctl push` with V1/V2/V3 record formats
+- `should successfully push a record` - Tests `dirctl push` with v0.3.1/v0.7.0 record formats
 - `should successfully pull an existing record` - Tests `dirctl pull` functionality  
 - `should return identical record when pulled after push` - Validates data integrity across push/pull cycle
 - `should push the same record again and return the same cid` - Tests CID determinism
@@ -24,13 +52,30 @@ This directory contains comprehensive end-to-end tests for the Directory system,
 - `should fail to pull a deleted record` - Validates deletion actually removes records
 
 **Key Features:**
-- OASF version compatibility (V1, V2, V3)
+- OASF version compatibility (v0.3.1, v0.7.0)
 - JSON data integrity validation
 - CID determinism testing
 - General search API testing (searchv1, not routing)
 
-#### **`dirctl_local_routing_test.go`** - Routing Commands (Local Mode) 🆕
-**Deployment**: Local single node  
+#### **`02_search_test.go`** - Search Functionality with Wildcards
+**Focus**: Advanced search patterns and wildcard support
+
+**Test Cases:**
+- Exact match searches (no wildcards)
+- Wildcard searches with `*` pattern (name, version, skill, locator, extension fields)
+- Wildcard searches with `?` pattern (single character matching)
+- Wildcard searches with `[]` list patterns (character classes and ranges)
+- Mixed wildcard patterns and complex combinations
+- Negative tests for non-matching patterns
+- Edge cases and special characters
+
+**Key Features:**
+- Comprehensive wildcard pattern testing
+- Complex search query validation
+- Pattern matching edge cases
+- Error handling for invalid patterns
+
+#### **`03_routing_test.go`** - Local Routing Commands
 **Focus**: Complete routing subcommand testing in local environment
 
 **Test Cases:**
@@ -64,98 +109,7 @@ This directory contains comprehensive end-to-end tests for the Directory system,
 - Command integration testing
 - Help and guidance message validation
 
-#### **`client_test.go`** - Client Library API Tests (Local Mode)  
-**Deployment**: Local single node  
-**Focus**: Client library API methods with OASF version compatibility
-
-**Test Cases:**
-- `should push a record to store` - Tests `c.Push()` client method
-- `should pull a record from store` - Tests `c.Pull()` client method
-- `should publish a record` - Tests `c.Publish()` routing method
-- `should list published record by one label` - Tests `c.List()` with single query
-- `should list published record by multiple labels` - Tests `c.List()` with multiple queries (AND logic)
-- `should list published record by feature and domain labels` - Tests domain/feature support (currently skipped)
-- `should search routing for remote records` - Tests `c.SearchRouting()` method (NEW)
-- `should unpublish a record` - Tests `c.Unpublish()` routing method
-- `should not find unpublished record` - Validates unpublish removes routing announcements
-- `should delete a record from store` - Tests `c.Delete()` storage method
-- `should not find deleted record in store` - Validates delete removes from storage
-
-**Key Features:**
-- Direct client library API testing
-- Routing API validation (publish, list, unpublish, search)
-- OASF version compatibility
-- RecordQuery API testing
-
-### 🌐 **Network Multi-Peer Tests**
-
-#### **`dirctl_network_deploy_test.go`** - Multi-Peer Routing Operations
-**Deployment**: Network with multiple peers  
-**Focus**: Multi-peer routing, DHT operations, local vs remote behavior
-
-**Test Cases:**
-- `should push a record to peer 1` - Tests storage on specific peer
-- `should pull the record from peer 1` - Tests local retrieval
-- `should fail to pull the record from peer 2` - Validates records are peer-specific
-- `should publish a record to the network on peer 1` - Tests DHT announcement (NEW: uses `routing publish`)
-- `should fail publish a record to the network on peer 2` - Tests publish validation
-- `should list local records correctly (List is local-only)` - Tests local-only list behavior (NEW: uses `routing list`)
-- `should list by skill correctly on local vs remote peers` - Validates local vs remote filtering (NEW: uses `routing list`)
-- `should show routing info statistics` - Tests routing statistics command (NEW)
-- `should discover remote records via routing search` - Tests network-wide discovery (NEW)
-
-**Key Features:**
-- Multi-peer DHT testing
-- Local vs remote record validation  
-- Network announcement and discovery
-- NEW: Complete routing subcommand testing
-
-#### **`dirctl_network_sync_test.go`** - Peer-to-Peer Synchronization
-**Deployment**: Network with multiple peers  
-**Focus**: Sync service operations, peer-to-peer data replication
-
-**Test Cases:**
-- `should accept valid remote URL format` - Tests sync creation with remote URLs
-- `should execute without arguments and return a list with the created sync` - Tests `sync list` command
-- `should accept a sync ID argument and return the sync status` - Tests `sync status` command
-- `should accept a sync ID argument and delete the sync` - Tests `sync delete` command
-- `should return deleted status` - Validates sync deletion
-- `should push record_v2.json to peer 1` - Setup for sync testing
-- `should fail to pull record_v2.json from peer 2` - Validates initial isolation
-- `should create sync from peer 1 to peer 2` - Tests sync creation between peers
-- `should list the sync` - Tests sync listing on target peer
-- `should wait for sync to complete` - Tests sync completion monitoring
-- `should succeed to pull record_v2.json from peer 2 after sync` - Validates sync transferred data
-- `should succeed to search for record_v2.json from peer 2 after sync` - Tests search after sync
-- `should delete sync from peer 2` - Tests sync cleanup
-- `should wait for delete to complete` - Tests sync deletion completion
-
-**Key Features:**
-- Peer-to-peer synchronization testing
-- Sync lifecycle management
-- Data replication validation
-- Uses general search API (searchv1, not routing)
-
-#### **`dirctl_network_cmd_test.go`** - Network Command Utilities
-**Deployment**: Network mode  
-**Focus**: Network-specific CLI utilities and key management
-
-**Test Cases:**
-- `should generate a peer ID from a valid ED25519 key` - Tests `network info` with existing key
-- `should fail with non-existent key file` - Tests error handling for missing keys
-- `should fail with empty key path` - Tests validation of key path parameter
-- `should generate a new peer ID and save the key to specified output` - Tests `network init` key generation
-- `should fail when output directory doesn't exist and cannot be created` - Tests error handling for invalid paths
-
-**Key Features:**
-- Network identity management
-- Key generation and validation
-- CLI utility testing
-
-### 🔐 **Security & Signing Tests**
-
-#### **`dirctl_sign_test.go`** - Cryptographic Signing Operations
-**Deployment**: Local single node  
+#### **`04_signature_test.go`** - Cryptographic Signing Operations
 **Focus**: Record signing, verification, and cryptographic operations
 
 **Test Cases:**
@@ -171,39 +125,256 @@ This directory contains comprehensive end-to-end tests for the Directory system,
 - Key management testing
 - Signature verification validation
 
-## 📋 **Test Execution Modes:**
+#### **`05_network_cmd_test.go`** - Network Command Utilities
+**Focus**: Network-specific CLI utilities and key management (local mode)
 
-### **🏠 Local Mode Tests:**
-Execute with single node deployment for testing core functionality:
+**Test Cases:**
+- `should generate a peer ID from a valid ED25519 key` - Tests `network info` with existing key
+- `should fail with non-existent key file` - Tests error handling for missing keys
+- `should fail with empty key path` - Tests validation of key path parameter
+- `should generate a new peer ID and save the key to specified output` - Tests `network init` key generation
+- `should fail when output directory doesn't exist and cannot be created` - Tests error handling for invalid paths
 
-- **`dirctl_test.go`** - Storage operations and general search (searchv1)
-- **`dirctl_local_routing_test.go`** - Complete routing subcommand testing
-- **`client_test.go`** - Client library API methods  
-- **`dirctl_sign_test.go`** - Cryptographic operations
+**Key Features:**
+- Network identity management
+- Key generation and validation
+- CLI utility testing
 
-### **🌐 Network Mode Tests:**
-Execute with multi-peer deployment for testing distributed functionality:
+### 📚 **Client Package** (`e2e/client/`)
+**Deployment**: Local single node  
+**Focus**: Go client library API methods  
+**Suite**: `TestClientE2E(t *testing.T)`
 
-- **`dirctl_network_deploy_test.go`** - Multi-peer routing and DHT operations
-- **`dirctl_network_sync_test.go`** - Peer-to-peer synchronization
-- **`dirctl_network_cmd_test.go`** - Network utilities and key management
+#### **`01_client_test.go`** - Client Library API Tests
+**Focus**: Client library API methods with OASF version compatibility
+
+**Test Cases:**
+- `should push a record to store` - Tests `c.Push()` client method
+- `should pull a record from store` - Tests `c.Pull()` client method
+- `should publish a record` - Tests `c.Publish()` routing method
+- `should list published record by one label` - Tests `c.List()` with single query
+- `should list published record by multiple labels` - Tests `c.List()` with multiple queries (AND logic)
+- `should list published record by feature and domain labels` - Tests domain/feature support (currently skipped)
+- `should search routing for remote records` - Tests `c.SearchRouting()` method
+- `should unpublish a record` - Tests `c.Unpublish()` routing method
+- `should not find unpublished record` - Validates unpublish removes routing announcements
+- `should delete a record from store` - Tests `c.Delete()` storage method
+- `should not find deleted record in store` - Validates delete removes from storage
+
+**Key Features:**
+- Direct client library API testing
+- Routing API validation (publish, list, unpublish, search)
+- OASF version compatibility (v0.3.1, v0.7.0)
+- RecordQuery API testing
+
+### 🌐 **Network Package** (`e2e/network/`)
+**Deployment**: Network with multiple peers  
+**Focus**: CLI commands in network deployment mode with proper test isolation  
+**Suite**: `TestNetworkE2E(t *testing.T)`
+
+#### **`01_deploy_test.go`** - Multi-Peer Routing Operations
+**Focus**: Multi-peer routing, DHT operations, local vs remote behavior
+
+**Test Cases:**
+- `should push record_v070.json to peer 1` - Tests storage on specific peer
+- `should pull record_v070.json from peer 1` - Tests local retrieval
+- `should fail to pull record_v070.json from peer 2` - Validates records are peer-specific
+- `should publish record_v070.json to the network on peer 1` - Tests DHT announcement
+- `should fail publish record_v070.json to the network on peer 2` - Tests publish validation
+- `should list local records correctly (List is local-only)` - Tests local-only list behavior
+- `should list by skill correctly on local vs remote peers` - Validates local vs remote filtering
+- `should show routing info statistics` - Tests routing statistics command
+- `should discover remote records via routing search` - Tests network-wide discovery
+
+**Key Features:**
+- Multi-peer DHT testing
+- Local vs remote record validation  
+- Network announcement and discovery
+- Complete routing subcommand testing
+- **Cleanup**: `DeferCleanup` ensures clean state for subsequent tests
+
+#### **`02_sync_test.go`** - Peer-to-Peer Synchronization
+**Focus**: Sync service operations, peer-to-peer data replication
+
+**Test Cases:**
+- `should accept valid remote URL format` - Tests sync creation with remote URLs
+- `should execute without arguments and return a list with the created sync` - Tests `sync list` command
+- `should accept a sync ID argument and return the sync status` - Tests `sync status` command
+- `should accept a sync ID argument and delete the sync` - Tests `sync delete` command
+- `should return deleted status` - Validates sync deletion
+- `should push record_v070_sync.json to peer 1` - Setup for sync testing
+- `should fail to pull record_v070_sync.json from peer 2` - Validates initial isolation
+- `should create sync from peer 1 to peer 2` - Tests sync creation between peers
+- `should list the sync` - Tests sync listing on target peer
+- `should wait for sync to complete` - Tests sync completion monitoring
+- `should succeed to pull record_v070_sync.json from peer 2 after sync` - Validates sync transferred data
+- `should succeed to search for record_v070_sync.json from peer 2 after sync` - Tests search after sync
+- `should verify the record_v070_sync.json from peer 2 after sync` - Tests verification after sync
+- `should delete sync from peer 2` - Tests sync cleanup
+- `should wait for delete to complete` - Tests sync deletion completion
+
+**Key Features:**
+- Peer-to-peer synchronization testing
+- Sync lifecycle management
+- Data replication validation
+- Uses general search API (searchv1, not routing)
+- **Cleanup**: `DeferCleanup` ensures clean state for subsequent tests
+
+#### **`03_search_test.go`** - Remote Routing Search with OR Logic
+**Focus**: Remote routing search functionality with OR logic and minMatchScore
+
+**Test Cases:**
+- `should push record_v070.json to peer 1` - Setup record for search tests
+- `should publish record_v070.json to routing on peer 1 only` - Creates remote search scenario
+- `should verify setup - peer 1 has local record, peer 2 does not` - Validates test setup
+- `should debug: test working pattern first (minScore=1)` - Tests basic search functionality
+- `should debug: test exact skill matching (minScore=1)` - Tests exact skill searches
+- `should debug: test two skills with minScore=2` - Tests multiple skill matching
+- `should demonstrate OR logic success - minScore=2 finds record` - Tests OR logic with partial matches
+- `should demonstrate threshold filtering - minScore=3 filters out record` - Tests score thresholds
+- `should demonstrate single query match - minScore=1 finds record` - Tests single query scenarios
+- `should demonstrate all queries match - minScore=2 with 2 real queries` - Tests complete matches
+- `should handle minScore=0 (should default to minScore=1)` - Tests edge case handling
+- `should handle empty queries with appropriate error` - Tests error handling
+
+**Key Features:**
+- Remote routing search testing (routingv1)
+- OR logic and minMatchScore validation
+- DHT discovery testing
+- Complex search query scenarios
+- **Cleanup**: `DeferCleanup` ensures clean state after all tests
+
+#### **`cleanup.go`** - Inter-Test Cleanup Utilities
+**Focus**: Shared cleanup utilities for network test isolation
+
+**Functions:**
+- `CleanupNetworkRecords()` - Removes CIDs from all peers (unpublish + delete)
+- `RegisterCIDForCleanup()` - Tracks CIDs for cleanup by test file
+- `CleanupAllNetworkTests()` - Comprehensive cleanup for AfterSuite
+
+**Key Features:**
+- **Solves test contamination**: Ensures clean state between test files
+- **Multi-peer cleanup**: Removes records from all peers (Peer1, Peer2, Peer3)
+- **Dual operations**: Both unpublish (routing) and delete (storage)
+- **Graceful handling**: Continues cleanup even if individual operations fail
+
+## 🚀 **Test Execution Commands:**
+
+### **All E2E Tests:**
+```bash
+# Run all e2e tests (client → local CLI → network CLI)
+task test:e2e
+task e2e
+```
+
+### **Local Deployment Tests:**
+```bash
+# Run local tests (client library + CLI with shared infrastructure)
+task test:e2e:local
+task e2e:local
+
+# Run individual test suites (with dedicated infrastructure)
+task test:e2e:client        # Client library tests only
+task test:e2e:local:cli     # Local CLI tests only
+```
+
+### **Network Deployment Tests:**
+```bash
+# Run network tests (multi-peer CLI with proper cleanup)
+task test:e2e:network
+task e2e:network
+```
+
+## 📋 **Test Execution Flow:**
+
+### **🏠 Local Mode Execution:**
+```
+task test:e2e:local:
+├── 🏗️  Setup local Kubernetes (single node)
+├── 🔗  Setup port-forwarding
+├── 📚  Run client library tests (Go APIs)
+├── ⚙️   Run local CLI tests (dirctl commands)
+└── 🧹  Cleanup infrastructure
+```
+
+### **🌐 Network Mode Execution:**
+```
+task test:e2e:network:
+├── 🏗️  Setup network Kubernetes (multi-peer)
+├── 🔗  Setup port-forwarding
+├── 🚀  Run 01_deploy_test.go → DeferCleanup → Clean all peers
+├── 🔄  Run 02_sync_test.go → DeferCleanup → Clean all peers  
+├── 🔍  Run 03_search_test.go → DeferCleanup → Clean all peers
+└── 🧹  Cleanup infrastructure
+```
+
+## 🎯 **Package Organization Benefits:**
+
+### **✅ True Isolation:**
+- **Local vs Network**: Separate Go packages prevent cross-contamination
+- **CLI vs Client**: Different test suites for different API types
+- **Inter-test cleanup**: Network tests clean up between files using `cleanup.go`
+
+### **✅ Maintainability:**
+- **Focused packages**: Each package has clear responsibility
+- **Numbered files**: Predictable execution order within packages
+- **Shared utilities**: Common code in `shared/` package
+- **Clean architecture**: Logical separation of concerns
+
+### **✅ Performance:**
+- **Shared infrastructure**: Local tests share single deployment
+- **Parallel capability**: Different packages can run independently
+- **Efficient cleanup**: Targeted cleanup only where needed
 
 ## 🎯 **Key Test Features:**
 
 ### **✅ Comprehensive Coverage:**
 - **103+ test cases** across all major functionality
-- **OASF version compatibility** (V1, V2, V3)
+- **OASF version compatibility** (v0.3.1, v0.7.0)
 - **Both API types** - Client library and CLI commands
 - **Error handling** - Validation of failure scenarios
 - **Integration testing** - Multi-step workflows
 
 ### **✅ Search API Testing:**
-- **General Search** (searchv1) - Tested in `dirctl_test.go` and sync tests
-- **Routing Search** (routingv1) - Tested in `client_test.go` and routing tests
-- **Network Discovery** - Multi-peer search scenarios in network tests
+- **General Search** (searchv1) - Tested in `local/01_storage_test.go` and `network/02_sync_test.go`
+- **Routing Search** (routingv1) - Tested in `client/01_client_test.go`, `local/03_routing_test.go`, and `network/` tests
+- **Network Discovery** - Multi-peer search scenarios in `network/03_search_test.go`
+- **Wildcard Patterns** - Comprehensive pattern testing in `local/02_search_test.go`
 
 ### **✅ Routing Operations:**
 - **Complete lifecycle** - Publish → List → Search → Unpublish
-- **Local vs Remote** - Clear distinction and validation
+- **Local vs Remote** - Clear distinction and validation in network tests
 - **Statistics** - Routing info and summary data
 - **Error scenarios** - Comprehensive failure case testing
+- **Test Isolation** - Proper cleanup between network test files
+
+### **✅ Architecture Improvements:**
+- **Package separation** - True isolation between deployment modes
+- **API type separation** - CLI tests vs Go library tests in separate packages
+- **Controlled execution** - Numbered files ensure predictable test order
+- **Efficient infrastructure** - Shared deployment for compatible test suites
+- **Robust cleanup** - Inter-test cleanup prevents contamination
+
+## 🛠️ **Development Workflow:**
+
+### **Working on Local Features:**
+```bash
+# Fast feedback during development
+task test:e2e:client        # Test Go library changes
+
+# Full local testing
+task test:e2e:local         # Test both client and CLI
+```
+
+### **Working on Network Features:**
+```bash
+# Test specific network functionality
+task test:e2e:network       # Test multi-peer scenarios with proper cleanup
+```
+
+### **Debugging Test Issues:**
+```bash
+# Run individual test files (with Ginkgo focus)
+go test -C ./e2e/network . -ginkgo.focus="Deploy"
+go test -C ./e2e/local . -ginkgo.focus="Storage"
+```

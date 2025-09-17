@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package e2e
+package local
 
 import (
 	_ "embed"
@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/agntcy/dir/e2e/config"
-	"github.com/agntcy/dir/e2e/utils"
+	"github.com/agntcy/dir/e2e/shared/config"
+	"github.com/agntcy/dir/e2e/shared/testdata"
+	"github.com/agntcy/dir/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -19,11 +20,11 @@ import (
 
 // Test constants.
 const (
-	tempDirPrefix = "sign-test"
+	signTempDirPrefix = "sign-test"
 )
 
 // Test file paths helper.
-type testPaths struct {
+type signTestPaths struct {
 	tempDir         string
 	record          string
 	privateKey      string
@@ -32,11 +33,11 @@ type testPaths struct {
 	signatureOutput string
 }
 
-func setupTestPaths() *testPaths {
-	tempDir, err := os.MkdirTemp("", tempDirPrefix)
+func setupSignTestPaths() *signTestPaths {
+	tempDir, err := os.MkdirTemp("", signTempDirPrefix)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	return &testPaths{
+	return &signTestPaths{
 		tempDir:         tempDir,
 		record:          filepath.Join(tempDir, "record.json"),
 		signature:       filepath.Join(tempDir, "signature.json"),
@@ -61,7 +62,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 
 	// Test params
 	var (
-		paths *testPaths
+		paths *signTestPaths
 		cid   string
 	)
 
@@ -69,11 +70,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		// Setup: Create temporary directory and files for the entire workflow
 		ginkgo.BeforeAll(func() {
 			var err error
-			paths = setupTestPaths()
+			paths = setupSignTestPaths()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Write test record to temp location
-			err = os.WriteFile(paths.record, expectedRecordV070JSON, 0o600)
+			err = os.WriteFile(paths.record, testdata.ExpectedRecordV070JSON, 0o600)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Generate cosign key pair for all tests
