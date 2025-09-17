@@ -2,13 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 module-sets:
-  agent-directory:
+  directory:
     version: v0.2.13
     modules:
       - github.com/agntcy/dir/api
-      - github.com/agntcy/dir/cli
       - github.com/agntcy/dir/client
       - github.com/agntcy/dir/server
       - github.com/agntcy/dir/e2e
       - github.com/agntcy/dir/utils
+
+  cli:
+    version: v0.2.13
+    modules:
+      - github.com/agntcy/dir/cli
       - github.com/agntcy/dir/hub
