@@ -11,10 +11,10 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250915080448-a3d79079b9ac.1
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
+	github.com/agntcy/dir/api v0.2.11
+	github.com/agntcy/dir/utils v0.2.11
 	github.com/agntcy/oasf-sdk/pkg v0.0.0-20250915092450-6b95f6678b22
 	github.com/casbin/casbin/v2 v2.120.0
-	github.com/agntcy/dir/api v0.2.7
-	github.com/agntcy/dir/utils v0.2.7
 	github.com/glebarez/sqlite v1.11.0
 	github.com/ipfs/go-datastore v0.8.2
 	github.com/libp2p/go-libp2p v0.41.0
