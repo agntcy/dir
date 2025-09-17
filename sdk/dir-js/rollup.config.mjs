@@ -22,6 +22,10 @@ const rollupPlugins = [
   }),
 ];
 
+const externalPackages = [
+  'spiffe',
+];
+
 export default [
   // Cross ES module (dist/index.mjs)
   {
@@ -32,6 +36,7 @@ export default [
       sourcemap: true,
     },
     plugins: rollupPlugins,
+    external: externalPackages,
   },
 
   // Cross CJS module (dist/index.cjs)
@@ -43,5 +48,6 @@ export default [
       sourcemap: true,
     },
     plugins: rollupPlugins,
+    external: externalPackages,
   },
 ];
