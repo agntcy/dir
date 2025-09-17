@@ -8,5 +8,5 @@ It re-exports all the models from the generated code into dedicated namespaces s
 For example, instead of importing `RecordMeta` from the generated code, use:
 
 ```js
-import { RecordMeta } from 'agntcy.dir_sdk.models.core_v1';
+import { RecordMeta } from 'agntcy-dir/models/core_v1';
 ```
