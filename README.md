@@ -124,7 +124,7 @@ All release binaries are distributed via [GitHub Releases](https://github.com/ag
 
 ### SDKs
 
-- **Golang** - [github.com/agntcy/dir/client](https://pkg.go.dev/github.com/agntcy/dir/client)
+- **Golang** - [github.com/agntcy/dir/client](./client)
 
 - **Python** - [github.com/agntcy/dir/sdk/dir-py](./sdk/dir-py/)
 
