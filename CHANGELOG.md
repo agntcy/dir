@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Key Highlights
 
 This release delivers foundational improvements to security schema,
-storage services, network capabilities, and user/developer experience.
+storage services, network capabilities, and user/developer experience,
+with a focus on:
 
 **Zero-Trust Security Architecture**
 - X.509-based SPIFFE/SPIRE identity framework with federation support
@@ -18,23 +19,23 @@ storage services, network capabilities, and user/developer experience.
 - Secure mTLS communication across all services
 - OCI-native PKI with client- and server-side verification capabilities
 
-**Content Standardization and Identification**
+**Content Standardization**
 - Unified Core v1 API with multi-version support for OASF objects
 - Deterministic CID generation using canonical JSON marshaling
 - Cross-language and service consistency with CIDv1 record addressing
 - OCI-native object storage and relationship management
 
-**Advanced Search & Discovery**
+**Search & Discovery**
 - Local search with wildcard and pattern matching support
 - Network-wide record discovery with prefix-based search capabilities  
 - DHT-based routing for distributed service announcement and discovery
 
-**Robust Data Synchronization**
+**Data Synchronization**
 - Full and partial index synchronization with CID selection
 - Automated sync workflows for simple data migration and replication
 - Post-sync verification checks and search capabilities across records
 
-**Enhanced Developer Experience**
+**Developer Experience**
 - Native Client SDKs for Golang, JavaScript, TypeScript, and Python
 - Standardized CLI and SDK tooling with consistent interfaces
 - Decoupled signing workflows for easier usage and integration
