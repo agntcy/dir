@@ -5,48 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.3.0] - 2025-09-17
 
 ### Key Highlights
 
-- Deterministic CID data identification using Canonical JSON
-- Multi-version OASF object support with unified Core API
-- Local Search with wildcard and pattern matching query support
-- Full and Partial Data Synchronization between Directory servers
-- Routing Announcement and Discovery with prefix matching
-- SPIRE-based Security Trust Schema with Federation, Authentication, and Authorization
-- Client SDK tooling for Javascript, Typescript, and Python
-- OCI-native Signatures and Public Key Infrastructure (PKI) for Records
+This release delivers foundational improvements to security schema,
+storage services, network capabilities, and user/developer experience.
 
-### 🔗 Deterministic CIDs with Canonical JSON
-- Canonical JSON marshaling for records ensures cross-language determinism
-- CIDs computed using CIDv1 + SHA2-256 from canonical bytes
-- Version-aware content addressing across `v1`, `v2`, and `v3` record schemas
+**Zero-Trust Security Architecture**
+- Complete SPIFFE/SPIRE identity framework with federation support
+- Policy-based authorization framework with fine-grained access controls
+- Secure mTLS communication across all services
+- OCI-native PKI with client- and server-side verification capabilities
 
-### 🧠 Unified Record Model (Core v1)
-- New `core/v1` record API consolidates multi-version object support via `oneof`
-- Clean separation of object definitions in `objects/v1`, `v2`, and `v3`
-- Backward-compatible adapters and tests across versions
+**Content Standardization and Identification**
+- Unified Core v1 API with multi-version support for OASF objects
+- Deterministic CID generation using canonical JSON marshaling
+- Cross-language and service consistency with CIDv1 record addressing
+- OCI-native object storage and relationship management
 
-### 🔎 Network-wide Search API
-- Search across the network using a `RecordQuery` interface
-- Wildcard support (`*`) and label-based discovery in distributed environments
-- Foundations for indexing and cross-node discovery
+**Advanced Search & Discovery**
+- Local search with wildcard and pattern matching support
+- Network-wide record discovery with prefix-based search capabilities  
+- DHT-based routing for distributed service announcement and discovery
 
-### 🗃️ Storage & OCI Signing
-- Migration to OCI-native signatures
-- Rich OCI annotations and tag helpers for structured metadata
-- Improved caching and synchronization (full-index sync)
-- Server-side verification integration with Zot
+**Robust Data Synchronization**
+- Full and partial index synchronization with CID selection
+- Automated sync workflows for simple data migration and replication
+- Post-sync verification checks and search capabilities across records
 
-### 🔐 Security & Identity
-- SPIFFE/SPIRE integration for secure identity
-- Optional client-side verification fallback for flexible trust models
-
-### 🧰 SDKs and Tooling
-- JS and Python SDKs updated with consistent gRPC APIs
-- Improved examples and standardized tooling
-- CLI commands streamlined and refactored
+**Enhanced Developer Experience**
+- Native Client SDKs for Golang, JavaScript, TypeScript, and Python
+- Standardized CLI and SDK tooling with consistent interfaces
+- Decoupled signing workflows for easier usage and integration
+- Kubernetes deployment with SPIRE and Federation support
 
 ### Compatibility Matrix
 
