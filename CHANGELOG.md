@@ -171,6 +171,8 @@ done
 - **chore(deps)**: Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 (#314)
 - **chore(deps)**: Bump github.com/go-viper/mapstructure/v2 from 2.2.1 to 2.3.0 (#200)
 
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.2.13...v0.3.0)
+
 ---
 
 ## [v0.2.13] - Previous Release
