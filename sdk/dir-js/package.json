@@ -59,6 +59,9 @@
     "uuid": "^11.1.0",
     "vitest": "^3.2.4"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.50.2"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
