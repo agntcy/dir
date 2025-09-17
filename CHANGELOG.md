@@ -56,8 +56,8 @@ The following matrix shows compatibility between different component versions:
 
 | Helm Chart                 | Version | Deploys Component    | Minimum Requirements |
 | -------------------------- | ------- | -------------------- | -------------------- |
-| **dir/helm-charts/dir**    | v0.1.1  | dir-apiserver v0.3.0 | Kubernetes 1.20+     |
-| **dir/helm-charts/dirctl** | v0.1.1  | dirctl v0.3.0        | Kubernetes 1.20+     |
+| **dir/helm-charts/dir**    | v0.3.0  | dir-apiserver v0.3.0 | Kubernetes 1.20+     |
+| **dir/helm-charts/dirctl** | v0.3.0  | dirctl v0.3.0        | Kubernetes 1.20+     |
 
 #### Compatibility Notes
 
