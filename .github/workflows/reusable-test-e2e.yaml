@@ -112,7 +112,7 @@ jobs:
           IMAGE_TAG: ${{ inputs.image_tag }}
           E2E_COMPILE_OUTPUT_DIR: tmp
         run: |
-          # Use a random cluster name to avoid conflicts in concurrent runs
-          # replace all uppercase to lowercase
+          # Use a random cluster name to avoid conflicts in concurrent runs.
+          # Kind cluster names must be lowercase and can contain only letters and numbers.
           export KIND_CLUSTER_NAME=test-$(openssl rand -base64 12 | tr -dc 'a-z0-9')
           task ${{ inputs.taskfile-task }}
