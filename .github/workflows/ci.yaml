@@ -108,7 +108,6 @@ jobs:
           task gen
           if [[ -n "$(git status --porcelain)" ]]; then
             echo "There are uncommitted changes after running 'task gen'. Please commit these changes."
-            git status --porcelain
             exit 1
           fi
 
