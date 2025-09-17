@@ -202,21 +202,30 @@ e2e/
 - `should accept a sync ID argument and return the sync status` - Tests `sync status` command
 - `should accept a sync ID argument and delete the sync` - Tests `sync delete` command
 - `should return deleted status` - Validates sync deletion
-- `should push record_v070_sync.json to peer 1` - Setup for sync testing
-- `should fail to pull record_v070_sync.json from peer 2` - Validates initial isolation
+- `should push record_v070_sync_v4.json to peer 1` - Setup for sync testing
+- `should publish record_v070_sync_v4.json` - Tests routing publish for sync records
+- `should push record_v070_sync_v5.json to peer 1` - Setup second record for multi-peer sync
+- `should publish record_v070_sync_v5.json` - Tests routing publish for second record
+- `should fail to pull record_v070_sync_v4.json from peer 2` - Validates initial isolation
 - `should create sync from peer 1 to peer 2` - Tests sync creation between peers
 - `should list the sync` - Tests sync listing on target peer
 - `should wait for sync to complete` - Tests sync completion monitoring
-- `should succeed to pull record_v070_sync.json from peer 2 after sync` - Validates sync transferred data
-- `should succeed to search for record_v070_sync.json from peer 2 after sync` - Tests search after sync
-- `should verify the record_v070_sync.json from peer 2 after sync` - Tests verification after sync
+- `should succeed to pull record_v070_sync_v4.json from peer 2 after sync` - Validates sync transferred data
+- `should succeed to search for record_v070_sync_v4.json from peer 2 after sync` - Tests search after sync
+- `should verify the record_v070_sync_v4.json from peer 2 after sync` - Tests verification after sync
 - `should delete sync from peer 2` - Tests sync cleanup
 - `should wait for delete to complete` - Tests sync deletion completion
+- `should create sync from peer 1 to peer 3 using routing search piped to sync create` - Tests advanced sync creation with routing search
+- `should wait for sync to complete` - Tests sync completion for peer 3
+- `should succeed to pull record_v070_sync_v5.json from peer 3 after sync` - Validates selective sync (Audio skill)
+- `should fail to pull record_v070_sync_v4.json from peer 3 after sync` - Validates sync filtering by skills
 
 **Key Features:**
 - Peer-to-peer synchronization testing
-- Sync lifecycle management
+- Sync lifecycle management  
 - Data replication validation
+- Multi-peer sync scenarios (peer 1 → peer 2, peer 1 → peer 3)
+- Selective sync based on routing search and skill filtering
 - Uses general search API (searchv1, not routing)
 - **Cleanup**: `DeferCleanup` ensures clean state for subsequent tests
 

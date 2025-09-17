@@ -4,6 +4,7 @@
 package network
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -24,9 +25,18 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 	var cli *utils.CLI
 	var syncID string
 
-	// Use embedded test data files (no temp files needed)
-	recordV4Path := filepath.Join("shared", "testdata", "record_v070_sync_v4.json")
-	recordV5Path := filepath.Join("shared", "testdata", "record_v070_sync_v5.json")
+	// Setup temp files for CLI commands (CLI needs actual files on disk)
+	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
+	if tempDir == "" {
+		tempDir = os.TempDir()
+	}
+	recordV4Path := filepath.Join(tempDir, "record_v070_sync_v4_test.json")
+	recordV5Path := filepath.Join(tempDir, "record_v070_sync_v5_test.json")
+
+	// Create directory and write record data
+	_ = os.MkdirAll(filepath.Dir(recordV4Path), 0o755)
+	_ = os.WriteFile(recordV4Path, testdata.ExpectedRecordV070SyncV4JSON, 0o600)
+	_ = os.WriteFile(recordV5Path, testdata.ExpectedRecordV070SyncV5JSON, 0o600)
 
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeNetwork {
@@ -202,18 +212,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		ginkgo.It("should fail to pull record_v070_sync_v4.json from peer 3 after sync", func() {
 			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()
-		})
-	})
-
-	ginkgo.Context("cleanup records that might have been synced", func() {
-		ginkgo.It("should cleanup records from peer 2", func() {
-			cidV070 := utils.CalculateCIDFromFile("testdata/record_v070.json")
-			gomega.Expect(cidV070).NotTo(gomega.BeEmpty())
-			cli.Delete(cidV070).OnServer(utils.Peer2Addr)
-
-			cidV031 := utils.CalculateCIDFromFile("testdata/record_v031.json")
-			gomega.Expect(cidV031).NotTo(gomega.BeEmpty())
-			cli.Delete(cidV031).OnServer(utils.Peer2Addr)
 		})
 	})
 })
