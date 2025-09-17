@@ -95,8 +95,9 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 	encodedSecret := base64.StdEncoding.EncodeToString([]byte(apikeyWithSecret.Secret))
 
 	// Apikeywithsecret will not be shown for security reasons. Use apikey instead.
-	apikey := &service.APIKeyWithRoleName{
+	apikey := &service.APIKeyWithSecretWithRoleName{
 		ClientID: apikeyWithSecret.ClientID,
+		Secret:   encodedSecret,
 		RoleName: apikeyWithSecret.RoleName,
 	}
 
