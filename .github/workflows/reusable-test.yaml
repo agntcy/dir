@@ -114,23 +114,6 @@ jobs:
           registry-url: https://registry.npmjs.org/
           scope: "@agntcy"
 
-      - name: Setup Kind cluster
-        shell: bash
-        run: |
-          # Create cluster config
-          KIND_CONFIG_FILE=$(mktemp -p /tmp)
-          cat <<EOF > $KIND_CONFIG_FILE
-          kind: Cluster
-          apiVersion: kind.x-k8s.io/v1alpha4
-          networking:
-            apiServerAddress: "127.0.0.1"
-            apiServerPort: 6443
-          EOF
-
-          # Create cluster
-          kind create cluster --config $KIND_CONFIG_FILE --name kind
-          kubectl cluster-info
-
       - name: Download artifacts
         uses: actions/download-artifact@v4.1.9
         with:
@@ -157,17 +140,17 @@ jobs:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
           CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test.yaml@${{ github.ref }}"
+          KIND_CLUSTER_NAME: "sdk-test"
         run: |
           task sdk:deps:common
           task sdk:test-env:create
+          task deploy:kubernetes:network:port-forward
           task sdk:deps:cicd:iodc-token-generation >> $GITHUB_ENV
 
       - name: Test Python SDK
         run: |
-          task deploy:kubernetes:network:port-forward
           task sdk:test:python
 
       - name: Test JavaScript SDK
         run: |
-          task deploy:kubernetes:network:port-forward
           task sdk:test:javascript
