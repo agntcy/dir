@@ -260,10 +260,12 @@ tasks:
       - task: deploy:kubernetes:network
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: 1s
+      - task: deploy:kubernetes:network:port-forward
 
   sdk:test-env:delete:
     desc: Delete Kubernetes cluster test environment
     cmds:
+      - task: deploy:kubernetes:network:port-forward:cleanup
       - task: deploy:kubernetes:network:cleanup
 
   sdk:test:all:
@@ -282,7 +284,10 @@ tasks:
       DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
       DIRECTORY_SERVER_PEER1_ADDRESS: '0.0.0.0:8891'
       DIRECTORY_SERVER_PEER2_ADDRESS: '0.0.0.0:8892'
+      KIND_CLUSTER_NAME: 'sdk-py-test'
     cmds:
+      - task: sdk:test-env:create
+      - defer: { task: sdk:test-env:delete }
       - |
         export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
         export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
@@ -296,7 +301,10 @@ tasks:
       DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
       DIRECTORY_SERVER_PEER1_ADDRESS: '0.0.0.0:8891'
       DIRECTORY_SERVER_PEER2_ADDRESS: '0.0.0.0:8892'
+      KIND_CLUSTER_NAME: 'sdk-js-test'
     cmds:
+      - task: sdk:test-env:create
+      - defer: { task: sdk:test-env:delete }
       - |
         export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
         export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
