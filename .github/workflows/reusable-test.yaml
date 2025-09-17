@@ -155,7 +155,10 @@ jobs:
 
           task sdk:deps:cicd:iodc-token-generation CLIENT_ID=$CLIENT_ID >> $GITHUB_ENV
 
-      - name: Test SDKs
+      - name: Test Python SDK
         run: |
           task sdk:test:python
+
+      - name: Test JavaScript SDK
+        run: |
           task sdk:test:javascript
