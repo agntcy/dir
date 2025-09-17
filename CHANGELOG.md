@@ -7,13 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Key Highlights
+
+- Deterministic CID data identification using Canonical JSON
+- Multi-version OASF object support with unified Core API
+- Local Search with wildcard and pattern matching query support
+- Full and Partial Data Synchronization between Directory servers
+- Routing Announcement and Discovery with prefix matching
+- SPIRE-based Security Trust Schema with Federation, Authentication, and Authorization
+- Client SDK tooling for Javascript, Typescript, and Python
+- OCI-native Signatures and Public Key Infrastructure (PKI) for Records
+
+### 🔗 Deterministic CIDs with Canonical JSON
+- Canonical JSON marshaling for records ensures cross-language determinism
+- CIDs computed using CIDv1 + SHA2-256 from canonical bytes
+- Version-aware content addressing across `v1`, `v2`, and `v3` record schemas
+
+### 🧠 Unified Record Model (Core v1)
+- New `core/v1` record API consolidates multi-version object support via `oneof`
+- Clean separation of object definitions in `objects/v1`, `v2`, and `v3`
+- Backward-compatible adapters and tests across versions
+
+### 🔎 Network-wide Search API
+- Search across the network using a `RecordQuery` interface
+- Wildcard support (`*`) and label-based discovery in distributed environments
+- Foundations for indexing and cross-node discovery
+
+### 🗃️ Storage & OCI Signing
+- Migration to OCI-native signatures
+- Rich OCI annotations and tag helpers for structured metadata
+- Improved caching and synchronization (full-index sync)
+- Server-side verification integration with Zot
+
+### 🔐 Security & Identity
+- SPIFFE/SPIRE integration for secure identity
+- Optional client-side verification fallback for flexible trust models
+
+### 🧰 SDKs and Tooling
+- JS and Python SDKs updated with consistent gRPC APIs
+- Improved examples and standardized tooling
+- CLI commands streamlined and refactored
+
+### Compatibility Matrix
+
+The following matrix shows compatibility between different component versions:
+
+| Core Component    | Version | Compatible With                                |
+| ----------------- | ------- | ---------------------------------------------- |
+| **dir-apiserver** | v0.3.0  | oasf v0.3.x, oasf v0.3.x                       |
+| **dirctl**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.3.x |
+| **dir-go**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.3.x |
+| **dir-py**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.3.x |
+| **dir-js**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.3.x |
+
+#### Helm Chart Compatibility
+
+| Helm Chart                 | Version | Deploys Component    | Minimum Requirements |
+| -------------------------- | ------- | -------------------- | -------------------- |
+| **dir/helm-charts/dir**    | v0.1.1  | dir-apiserver v0.3.0 | Kubernetes 1.20+     |
+| **dir/helm-charts/dirctl** | v0.1.1  | dirctl v0.3.0        | Kubernetes 1.20+     |
+
+#### Compatibility Notes
+
+- **Full OASF support** is available across all core components
+- **dir-apiserver v0.3.0** introduces breaking changes to the API layer
+- **dirctl v0.3.0** introduces breaking changes to the CLI usage
+- **dir-go v0.3.0** introduces breaking changes to the SDK usage
+- Older versions of **dir-apiserver** are **not compatible** with **dir-apiserver v0.3.0**
+- Older versions of client components are **not compatible** with **dir-apiserver v0.3.0**
+- Older versions of helm charts are **not compatible** with **dir-apiserver v0.3.0**
+- Data must be manually migrated from older **dir-apiserver** versions to **dir-apiserver v0.3.0**
+
+#### Migration Guide
+
+Data from the OCI storage layer in the Directory can be migrated by repushing via new API endpoints.
+For example:
+
+```bash
+repo=localhost:5000/dir
+for tag in $(oras repo tags $repo); do
+    digest=$(oras resolve $repo:$tag)
+    oras blob fetch --output - $repo@$digest | dirctl push --stdin
+done
+```
+
 ### Added
 - **API**: Implement Search API for network-wide record discovery using RecordQuery interface (#362)
 - **API**: Add initial authorization framework (#330)
 - **API**: Add distributed label-based announce/discovery via DHT (#285)
-- **API**: Add wildcard search support with * pattern matching (#355)
+- **API**: Add wildcard search support with pattern matching (#355)
 - **API**: Add max replicasets to keep in deployment (#207)
 - **API**: Add sync API (#199)
+- **CI**: Add Codecov workflow & docs (#380)
+- **CI**: Introduce BSR (#212)
 - **SDK**: Add SDK release process (#216)
 - **SDK**: Add more gRPC services (#294)
 - **SDK**: Add gRPC client code and example for JavaScript SDK (#248)
@@ -21,6 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SDK**: Add sign and verification (#337)
 - **SDK**: Add testing solution for CI (#269)
 - **SDK**: Standardize Python SDK tooling for Directory (#371)
+- **SDK**: Add TypeScript/JavaScript DIR Client SDK (#407)
 - **Security**: Implement server-side verification with zot (#286)
 - **Security**: Use SPIFFE/SPIRE to enable security schema (#210)
 - **Security**: Add spire federation support (#295)
@@ -32,23 +119,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Storage**: Add custom type for error handling (#189)
 - **Storage**: Add sign and verify gRPC service (#201)
 - **Storage**: Add new hub https://hub.agntcy.org/directory (#202)
-- **CI**: Add Codecov workflow & docs (#380)
-- **CI**: Add npm caching for SDK (#339)
-- **CI**: Introduce BSR (#212)
+- **Storage**: Add cid-based synchronisation support (#401)
 
 ### Changed
 - **API**: Switch to generic OASF objects across codebase (#381)
 - **API**: Version upgrade of API services (#225)
 - **API**: Update sync API and add credential RPC (#217)
-- **API**: Refactor domain interfaces to align with OASF schema
+- **API**: Refactor domain interfaces to align with OASF schema (#397)
 - **API**: Rename v1alpha2 to v1 (#258)
-- **API**: Migrate record signature to OCI native signature (#250)
-- **API**: Store implementations and digest/CID calculation (#238)
+- **CI**: Find better place for proto APIs (#384)
+- **CI**: Reduce flaky jobs for SDK (#339)
+- **CI**: Update codebase with proto namespace changes (#398)
+- **CI**: Update CI task gen to ignore buf lock file changes (#275)
+- **CI**: Update brew formula version (#372, #263, #257, #247)
+- **CI**: Bump Go (#221)
+- **CI**: Update Directory proto imports for SDKs (#421)
+- **CI**: Bump OASF SDK version to v0.0.5 (#424)
+- **Documentation**: Update usage documentation for record generation (#287)
+- **Documentation**: Add and update README for refactored SDKs (#273)
+- **Documentation**: Update README to reflect new usage documentation link and remove USAGE.md file (#332)
+- **Documentation**: Update documentation setup (#394)
 - **SDK**: Move and refactor Python SDK code (#229)
 - **SDK**: Bump package versions for release (#274)
 - **SDK**: Bump versions for release (#249)
 - **SDK**: Support streams & update docs (#284)
 - **SDK**: Update API code and add example code for Python SDK (#237)
+- **Storage**: Migrate record signature to OCI native signature (#250)
+- **Storage**: Store implementations and digest/CID calculation (#238)
 - **Storage**: Standardize and cleanup store providers (#385)
 - **Storage**: Improve logging to suppress misleading errors in database and routing layers (#289)
 - **Storage**: Refactor E2E Test Suite & Utilities Enhancement (#268)
@@ -60,15 +157,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Storage**: Refactor: remove redundant proto files (#219)
 - **Storage**: Refactor: remove Legacy List API and Migrate to RecordQuery-Based System (#342)
 - **Storage**: Refactor: remove Python code generation (#215)
-- **Documentation**: Update usage documentation for record generation (#287)
-- **Documentation**: Add and update README for refactored SDKs (#273)
-- **Documentation**: Update README to reflect new usage documentation link and remove USAGE.md file (#332)
-- **Documentation**: Update documentation setup (#394)
-- **CI**: Update codebase with proto namespace changes (#398)
-- **CI**: Update CI task gen to ignore buf lock file changes (#275)
-- **CI**: Update brew formula version (#372, #263, #257, #247)
-- **CI**: Bump Go (#221)
-- **CI**: Pin OASF buf version (#312)
 
 ### Fixed
 - **API**: Resolve buf proto API namespacing issues (#393)
@@ -77,15 +165,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **API**: Suppress command usage display on runtime errors (#290)
 - **API**: Quick-fix for e2e CLI cmd state handling (#270)
 - **API**: Fix/CI task gen (#271)
+- **CI**: Allow dir-hub-maintainers release (#402)
 - **SDK**: Fix Python SDK imports and tests (#403)
 - **SDK**: Fix codeowners file (#404)
+- **SDK**: Flaky SDK CICD tests (#422)
 - **Storage**: Add separate maintainers for hub CLI directory (#375)
 - **Storage**: Update agent directory default location (#226)
-- **CI**: Allow dir-hub-maintainers release (#402)
+- **Storage**: Flaky e2e test and restructure test suites (#416)
+- **Storage**: E2E sync test cleanup (#423)
 
 ### Dependencies
 - **chore(deps)**: Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 (#314)
 - **chore(deps)**: Bump github.com/go-viper/mapstructure/v2 from 2.2.1 to 2.3.0 (#200)
+
+---
 
 ## [v0.2.13] - Previous Release
 
