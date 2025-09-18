@@ -2,17 +2,11 @@ module github.com/agntcy/dir/hub
 
 go 1.24.5
 
-// TODO: remove this once we refactor the hub to use the new API
-replace (
-	github.com/agntcy/dir/api => github.com/agntcy/dir/api v0.2.6
-	github.com/agntcy/dir/cli => github.com/agntcy/dir/cli v0.2.6
-	github.com/agntcy/dir/client => github.com/agntcy/dir/client v0.2.6
-)
+replace github.com/agntcy/dirhub/backport/api => github.com/agntcy/dir/api v0.2.13
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.7-20250717185734-6c6e0d3c608e.1
-	github.com/agntcy/dir/api v0.2.11
-	github.com/agntcy/dir/cli v0.2.11
+	github.com/agntcy/dirhub/backport/api v0.0.0-00010101000000-000000000000
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
@@ -30,6 +24,7 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/go-cid v0.5.0 // indirect
@@ -51,6 +46,7 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	go.opentelemetry.io/otel v1.36.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
