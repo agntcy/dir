@@ -67,10 +67,14 @@ import {Config, Client} from 'agntcy-dir';
 
 const config = new Config(
     serverAddress="localhost:8888",
-    dirctlPath="/usr/local/bin/dirctl",
-    spiffeEndpointSocket="/tmp/agent.sock" // Optional, used for SPIRE-based mTLS
+    dirctlPath="/usr/local/bin/dirctl"
 );
 const client = new Client(config);
+
+// Use SPIRE for mTLS communication
+const config = new Config(spiffeEndpointSocket="/tmp/agent.sock");
+const transport = await Client.createGRPCTransport(config);
+const spiffeClient = new Client(config, transport);
 ```
 
 ## Getting Started
