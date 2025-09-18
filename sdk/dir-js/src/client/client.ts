@@ -42,7 +42,6 @@ export class Config {
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET
   ) {
-
     // use https protocol when spiffe used
     if (spiffeEndpointSocket != Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET) {
       serverAddress = `https://${serverAddress}`;
@@ -78,9 +77,12 @@ export class Config {
    * ```
    */
   static loadFromEnv(prefix = 'DIRECTORY_CLIENT_') {
+    // Load dirctl path from env without env prefix
+    const dirctlPath = env['DIRCTL_PATH'] || Config.DEFAULT_DIRCTL_PATH;
+
+    // Load other config values with env prefix
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
-    const dirctlPath = env['DIRCTL_PATH'] || Config.DEFAULT_DIRCTL_PATH;
     const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
 
     return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath);
@@ -118,30 +120,40 @@ export class Client {
   /**
    * Initialize the client with the given configuration.
    *
-   * @param grpcTransport - Required for GRPC communication. Can be created with Client.createGRPCTransport(config)
    * @param config - Optional client configuration. If null, loads from environment
    *                variables using Config.loadFromEnv()
+   * @param grpcTransport - Optional transport to use for gRPC communication. 
+   *                Can be created with Client.createGRPCTransport(config)
    *
    * @throws {Error} If unable to establish connection to the server or configuration is invalid
    *
    * @example
    * ```typescript
    * // Load config from environment
-   * const grpcTransport = await Client.createGRPCTransport(config);
-   * const client = new Client(grpcTransport);
+   * const client = new Client();
    *
    * // Use custom config
    * const config = new Config('localhost:9999');
    * const grpcTransport = await Client.createGRPCTransport(config);
-   * const client = new Client(grpcTransport, config);
+   * const client = new Client(config, grpcTransport);
    * ```
    */
-  constructor(grpcTransport: Transport, config?: Config) {
+  constructor();
+  constructor(config?: Config);
+  constructor(config?: Config, grpcTransport?: Transport);
+  constructor(config?: Config, grpcTransport?: Transport) {
     // Load config from environment if not provided
     if (!config) {
       config = Config.loadFromEnv();
     }
     this.config = config;
+
+    // if no transport provided, use insecure transport
+    if (!grpcTransport) {
+      grpcTransport = createGrpcTransport({
+        baseUrl: config.serverAddress,
+      });
+    }
 
     // Set clients for all services
     this.storeClient = createClient(models.store_v1.StoreService, grpcTransport);
@@ -154,7 +166,7 @@ export class Client {
     this.syncClient = createClient(models.store_v1.SyncService, grpcTransport);
   }
 
-  static convertToPEM(bytes: Uint8Array, label: string): string {
+  private static convertToPEM(bytes: Uint8Array, label: string): string {
     // Convert Uint8Array to base64 string
     let binary = '';
     const len = bytes.byteLength;
@@ -177,8 +189,8 @@ export class Client {
   }
 
   static async createGRPCTransport(config: Config): Promise<Transport> {
+    // If no spiffe socket provided, use insecure transport
     if (config.spiffeEndpointSocket === '') {
-      // Create transport settings for gRPC client
       const transport: Transport = createGrpcTransport({
         baseUrl: config.serverAddress,
       });
@@ -186,14 +198,15 @@ export class Client {
       return transport;
     }
 
+    // Otherwise, create secure transport with spiffe
     const client = createClientSpiffe(config.spiffeEndpointSocket);
 
     let svid: X509SVID = {
       spiffeId: '',
+      hint: '',
       x509Svid: new Uint8Array(),
       x509SvidKey: new Uint8Array(),
       bundle: new Uint8Array(),
-      hint: ''
     };
 
     const svidStream = client.fetchX509SVID({});

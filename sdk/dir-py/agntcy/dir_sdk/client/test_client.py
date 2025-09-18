@@ -195,24 +195,24 @@ class TestClient(unittest.TestCase):
             # self.assertIsNone(e) # Uncomment when the service implemented
 
     def test_sign_and_verify(self) -> None:
-        shell_env = os.environ.copy()
-
-        if shell_env.get("OIDC_TOKEN", "") == "" and shell_env.get("OIDC_PROVIDER_URL", "") == "":
-            self.skipTest("Local interactive mode is not supported inside KinD cluster, skipping")
-
         records = self.gen_records(2, "sign_verify")
         record_refs = self.client.push(records=records)
 
-        key_password = "testing-key"
-        shell_env["COSIGN_PASSWORD"] = key_password
-
-        # Avoid interactive question about override
+        # Remove existing cosign keys if any
         try:
             pathlib.Path("cosign.key").unlink()
             pathlib.Path("cosign.pub").unlink()
         except FileNotFoundError:
-            pass  # Clean state found
+            pass # Clean state found
 
+        # Prepare cosign key pair
+        key_password = "testing-key"
+
+        # Set environment variable for cosign password
+        shell_env = os.environ.copy()
+        shell_env["COSIGN_PASSWORD"] = key_password
+
+        # Generate a key pair using cosign
         cosign_path = os.getenv("COSIGN_PATH", "cosign")
         command = (cosign_path, "generate-key-pair")
         subprocess.run(command, check=True, capture_output=True, env=shell_env)
@@ -220,47 +220,50 @@ class TestClient(unittest.TestCase):
         with open("cosign.key", "rb") as reader:
             key_file = reader.read()
 
+        # Prepare Key signing request
         key_provider = sign_v1.SignWithKey(
             private_key=key_file,
             password=key_password.encode("utf-8"),
         )
 
+        request_key_provider = sign_v1.SignRequestProvider(key=key_provider)
+        key_request = sign_v1.SignRequest(
+            record_ref=record_refs[0],
+            provider=request_key_provider,
+        )
+
+        # Prepare OIDC signing request
         token = shell_env.get("OIDC_TOKEN", "")
         provider_url = shell_env.get("OIDC_PROVIDER_URL", "")
         client_id = shell_env.get("OIDC_CLIENT_ID", "sigstore")
 
         oidc_options = sign_v1.SignWithOIDC.SignOpts(oidc_provider_url=provider_url)
         oidc_provider = sign_v1.SignWithOIDC(id_token=token, options=oidc_options)
-
-        request_key_provider = sign_v1.SignRequestProvider(key=key_provider)
         request_oidc_provider = sign_v1.SignRequestProvider(oidc=oidc_provider)
-
-        key_request = sign_v1.SignRequest(
-            record_ref=record_refs[0],
-            provider=request_key_provider,
-        )
         oidc_request = sign_v1.SignRequest(
             record_ref=record_refs[1],
             provider=request_oidc_provider,
         )
 
         try:
-            # Sign test
+            # Sign and verify using Key signing
             self.client.sign(key_request)
-            self.client.sign(oidc_request, client_id)
+            response = self.client.verify(sign_v1.VerifyRequest(record_ref=record_refs[0]))
+            assert response.success is True
 
-            # Verify test
-            for ref in record_refs:
-                request = sign_v1.VerifyRequest(record_ref=ref)
-                response = self.client.verify(request)
-
+            # Sign and verify using OIDC signing if set
+            if shell_env.get("OIDC_TOKEN", "") != "" and shell_env.get("OIDC_PROVIDER_URL", "") != "":
+                self.client.sign(oidc_request, client_id)
+                response = self.client.verify(sign_v1.VerifyRequest(record_ref=record_refs[1]))
                 assert response.success is True
+
         except Exception as e:
             assert e is None
         finally:
             pathlib.Path("cosign.key").unlink()
             pathlib.Path("cosign.pub").unlink()
 
+        # Test invalid sign request
         invalid_request = sign_v1.SignRequest(
             record_ref=core_v1.RecordRef(cid="invalid-cid"),
             provider=request_key_provider,

@@ -22,15 +22,17 @@ class Config:
     @staticmethod
     def load_from_env(env_prefix: str = "DIRECTORY_CLIENT_") -> "Config":
         """Load configuration from environment variables."""
-        server_address = os.environ.get(
-            f"{env_prefix}SERVER_ADDRESS",
-            Config.DEFAULT_SERVER_ADDRESS,
-        )
+        # Get dirctl path from environment variable without prefix
         dirctl_path = os.environ.get(
             "DIRCTL_PATH",
             Config.DEFAULT_DIRCTL_PATH,
         )
 
+        # Use prefixed environment variables for other settings
+        server_address = os.environ.get(
+            f"{env_prefix}SERVER_ADDRESS",
+            Config.DEFAULT_SERVER_ADDRESS,
+        )
         spiffe_socket_path = os.environ.get(
             f"{env_prefix}SPIFFE_SOCKET_PATH",
             Config.DEFAULT_SPIFFE_SOCKET_PATH,

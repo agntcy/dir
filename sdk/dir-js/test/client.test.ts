@@ -74,10 +74,10 @@ describe('Client', () => {
     expect(env.DIRCTL_PATH).toBeDefined();
 
     // Initialize the client
-    let config = Config.loadFromEnv();
-    let grpcTransport = await Client.createGRPCTransport(config);
+    const config = Config.loadFromEnv();
+    const grpcTransport = await Client.createGRPCTransport(config);
 
-    client = new Client(grpcTransport, config);
+    client = new Client(config, grpcTransport);
   });
 
   afterAll(async () => {

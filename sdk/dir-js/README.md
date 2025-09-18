@@ -67,7 +67,8 @@ import {Config, Client} from 'agntcy-dir';
 
 const config = new Config(
     serverAddress="localhost:8888",
-    dirctlPath="/usr/local/bin/dirctl"
+    dirctlPath="/usr/local/bin/dirctl",
+    spiffeEndpointSocket="/tmp/agent.sock" // Optional, used for SPIRE-based mTLS
 );
 const client = new Client(config);
 ```

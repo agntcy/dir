@@ -64,7 +64,8 @@ from agntcy.dir_sdk.client import Config, Client
 
 config = Config(
     server_address="localhost:8888",
-    dirctl_path="/usr/local/bin/dirctl"
+    dirctl_path="/usr/local/bin/dirctl",
+    spiffe_socket_path="/tmp/agent.sock" # Optional, used for SPIRE-based mTLS
 )
 client = Client(config)
 ```

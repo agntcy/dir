@@ -8,19 +8,13 @@ Directory services including routing, search, store, and signing operations.
 """
 
 import builtins
-import inspect
-import json
 import logging
 import os
-import ssl
 import subprocess
 import tempfile
 from collections.abc import Sequence
-from ssl import SSLContext
 
 import grpc
-from OpenSSL import crypto
-from OpenSSL.SSL import TLS_SERVER_METHOD
 from cryptography.hazmat.primitives import serialization
 from spiffe import WorkloadApiClient, X509Source, X509Bundle
 from spiffetls import create_ssl_context, dial, tlsconfig
@@ -68,7 +62,8 @@ class Client:
             config = Config.load_from_env()
         self.config = config
 
-        channel = self.__create_grpc_channel__()
+        # Create gRPC channel
+        channel = self.__create_grpc_channel()
 
         # Initialize service clients
         self.store_client = store_v1.StoreServiceStub(channel)
@@ -77,44 +72,39 @@ class Client:
         self.sign_client = sign_v1.SignServiceStub(channel)
         self.sync_client = store_v1.SyncServiceStub(channel)
 
-    def __create_grpc_channel__(self) -> grpc.Channel:
-        # Create insecure gRPC channel
+    def __create_grpc_channel(self) -> grpc.Channel:
+        # Create insecure gRPC channel if no SPIFFE socket is provided
         if self.config.spiffe_socket_path == "":
             channel = grpc.insecure_channel(self.config.server_address)
             return channel
 
-        try:
-            workload_client = WorkloadApiClient(socket_path=self.config.spiffe_socket_path)
-            x509_src = X509Source(workload_api_client=workload_client, socket_path=self.config.spiffe_socket_path, timeout_in_seconds=60)
+        # Otherwise, create secure gRPC channel using SPIFFE
+        workload_client = WorkloadApiClient(socket_path=self.config.spiffe_socket_path)
+        x509_src = X509Source(workload_api_client=workload_client, socket_path=self.config.spiffe_socket_path, timeout_in_seconds=60)
 
-            root_ca = b''
-            for b in x509_src.bundles:
-                for a in b.x509_authorities:
-                    root_ca += a.public_bytes(encoding=serialization.Encoding.PEM)
+        root_ca = b''
+        for b in x509_src.bundles:
+            for a in b.x509_authorities:
+                root_ca += a.public_bytes(encoding=serialization.Encoding.PEM)
 
-            private_key = x509_src.svid.private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
+        private_key = x509_src.svid.private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
 
-            public_leaf = x509_src.svid.leaf.public_bytes(encoding=serialization.Encoding.PEM)
+        public_leaf = x509_src.svid.leaf.public_bytes(encoding=serialization.Encoding.PEM)
 
-            credentials = grpc.ssl_channel_credentials(
-                root_certificates=root_ca,
-                private_key=private_key,
-                certificate_chain=public_leaf,
-            )
+        credentials = grpc.ssl_channel_credentials(
+            root_certificates=root_ca,
+            private_key=private_key,
+            certificate_chain=public_leaf,
+        )
 
-            channel = grpc.secure_channel(
-                target=self.config.server_address,
-                credentials=credentials,
-            )
-
-            return channel
-
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize SPIFFE sources: {e}")
+        channel = grpc.secure_channel(
+            target=self.config.server_address,
+            credentials=credentials,
+        )
 
     def publish(
         self,
