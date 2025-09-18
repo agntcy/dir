@@ -63,6 +63,12 @@ config := &client.Config{
     ServerAddress: "localhost:8888",
 }
 client := client.New(client.WithConfig(config))
+
+// Use SPIRE for mTLS communication
+config := &client.Config{
+    SpiffeSocketPath: "/tmp/agent.sock",
+}
+client := client.New(client.WithConfig(config))
 ```
 
 ## Getting Started
