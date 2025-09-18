@@ -26,6 +26,7 @@ RUN npm install
 
 WORKDIR /tmp
 
-RUN printf "#!/bin/sh\n\n cd ./dir-py && uv run pytest\n cd .. \n cd ./dir-js/ && npm run test" >> entrypoint.sh && chmod +x entrypoint.sh
+RUN printf "#!/bin/sh\n\ncd ./dir-py && uv run pytest\npy_status=\$?\ncd ..\ncd ./dir-js && npm run test\njs_status=\$?\n\nif [ \$py_status -ne 0 ] || [ \$js_status -ne 0 ]; then\n  exit 1\nfi" >> entrypoint.sh && chmod +x entrypoint.sh
+
 
 ENTRYPOINT [ "/tmp/entrypoint.sh" ]
