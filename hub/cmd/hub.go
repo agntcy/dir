@@ -19,6 +19,8 @@ import (
 	"github.com/agntcy/dir/hub/cmd/orgs"
 	"github.com/agntcy/dir/hub/cmd/pull"
 	"github.com/agntcy/dir/hub/cmd/push"
+	"github.com/agntcy/dir/hub/cmd/sign"
+	"github.com/agntcy/dir/hub/cmd/verify"
 	"github.com/agntcy/dir/hub/config"
 	"github.com/agntcy/dir/hub/sessionstore"
 	"github.com/agntcy/dir/hub/utils/file"
@@ -111,6 +113,8 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 		orgs.NewCommand(opts),
 		apikey.NewCommand(opts),
 		info.NewCommand(opts),
+		sign.Command,
+		verify.Command,
 	)
 
 	return cmd
