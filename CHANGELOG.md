@@ -113,6 +113,7 @@ done
 - **Storage**: Add sign and verify gRPC service (#201)
 - **Storage**: Add new hub https://hub.agntcy.org/directory (#202)
 - **Storage**: Add cid-based synchronisation support (#401)
+- **Storage**: Add rich manifest annotations (#236)
 
 ### Changed
 - **API**: Switch to generic OASF objects across codebase (#381)
