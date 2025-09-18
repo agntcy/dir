@@ -39,8 +39,8 @@ Examples:
 				cmd.SetOut(os.Stdout)
 				cmd.SetErr(os.Stderr)
 				_ = cmd.Help()
-
-				return nil
+				
+				return errors.New("missing required argument: organization ID")
 			}
 
 			return nil
@@ -48,6 +48,11 @@ Examples:
 	}
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		// Check if organization ID is provided
+		if len(args) == 0 {
+			return errors.New("missing required argument: organization ID")
+		}
+
 		// Retrieve session from context
 		ctxSession := cmd.Context().Value(sessionstore.SessionContextKey)
 		currentSession, ok := ctxSession.(*sessionstore.HubSession)
