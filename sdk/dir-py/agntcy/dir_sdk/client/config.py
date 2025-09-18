@@ -13,7 +13,7 @@ class Config:
         self,
         server_address: str = DEFAULT_SERVER_ADDRESS,
         dirctl_path: str = DEFAULT_DIRCTL_PATH,
-        spiffe_socket_path: str | str = DEFAULT_SPIFFE_SOCKET_PATH,
+        spiffe_socket_path: str = DEFAULT_SPIFFE_SOCKET_PATH,
     ) -> None:
         self.server_address = server_address
         self.dirctl_path = dirctl_path
