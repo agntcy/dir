@@ -42,18 +42,18 @@ export class Config {
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET
   ) {
-    // use https protocol when spiffe used
-    if (spiffeEndpointSocket != Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET) {
-      serverAddress = `https://${serverAddress}`;
-    }
-
     // add protocol prefix if not set
     // use unsafe http unless spire is used
     if (
       !serverAddress.startsWith('http://') &&
       !serverAddress.startsWith('https://')
     ) {
-      serverAddress = `http://${serverAddress}`;
+      // use https protocol when spiffe used
+      if (spiffeEndpointSocket != Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET) {
+        serverAddress = `https://${serverAddress}`;
+      } else {
+        serverAddress = `http://${serverAddress}`;
+      }
     }
 
     this.serverAddress = serverAddress;
