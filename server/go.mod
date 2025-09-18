@@ -11,8 +11,8 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1
 	github.com/Portshift/go-utils v0.0.0-20220421083203-89265d8a6487
-	github.com/agntcy/dir/api v0.2.13
-	github.com/agntcy/dir/utils v0.2.13
+	github.com/agntcy/dir/api v0.3.0
+	github.com/agntcy/dir/utils v0.3.0
 	github.com/agntcy/oasf-sdk/pkg v0.0.5
 	github.com/casbin/casbin/v2 v2.120.0
 	github.com/glebarez/sqlite v1.11.0

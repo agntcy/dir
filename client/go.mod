@@ -8,8 +8,8 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.2.13
-	github.com/agntcy/dir/utils v0.2.13
+	github.com/agntcy/dir/api v0.3.0
+	github.com/agntcy/dir/utils v0.3.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/spf13/viper v1.20.1
 	github.com/spiffe/go-spiffe/v2 v2.5.0

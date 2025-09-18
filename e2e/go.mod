@@ -12,10 +12,10 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.2.13
-	github.com/agntcy/dir/cli v0.2.13
-	github.com/agntcy/dir/client v0.2.13
-	github.com/agntcy/dir/utils v0.2.13
+	github.com/agntcy/dir/api v0.3.0
+	github.com/agntcy/dir/cli v0.3.0
+	github.com/agntcy/dir/client v0.3.0
+	github.com/agntcy/dir/utils v0.3.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.23.0
 	github.com/onsi/gomega v1.36.2
@@ -44,7 +44,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/hub v0.2.13 // indirect
+	github.com/agntcy/dir/hub v0.3.0 // indirect
 	github.com/agntcy/dirhub/backport/api v0.0.0-00010101000000-000000000000 // indirect
 	github.com/agntcy/oasf-sdk/pkg v0.0.5 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
