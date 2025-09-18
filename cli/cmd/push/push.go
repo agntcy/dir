@@ -51,18 +51,23 @@ Usage examples:
 			return errors.New("if no path defined --stdin flag must be set")
 		}
 
+		// if path is empty, read from stdin
+		if path == "" {
+			return runCommand(cmd, cmd.InOrStdin())
+		}
+
+		// otherwise, read from file
 		source, err := os.Open(path)
 		if err != nil {
 			return fmt.Errorf("could not open file %s: %w", path, err)
 		}
+		defer source.Close()
 
 		return runCommand(cmd, source)
 	},
 }
 
-func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
-	defer source.Close()
-
+func runCommand(cmd *cobra.Command, source io.Reader) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
@@ -74,8 +79,6 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	if err != nil {
 		return fmt.Errorf("failed to read source data: %w", err)
 	}
-
-	defer source.Close()
 
 	// Load OASF data into a Record
 	record, err := corev1.UnmarshalRecord(sourceData)

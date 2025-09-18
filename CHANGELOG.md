@@ -47,11 +47,11 @@ The following matrix shows compatibility between different component versions:
 
 | Core Component    | Version | Compatible With                                |
 | ----------------- | ------- | ---------------------------------------------- |
-| **dir-apiserver** | v0.3.0  | oasf v0.3.x, oasf v0.3.x                       |
-| **dirctl**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.3.x |
-| **dir-go**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.3.x |
-| **dir-py**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.3.x |
-| **dir-js**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.3.x |
+| **dir-apiserver** | v0.3.0  | oasf v0.3.x, oasf v0.7.x                       |
+| **dirctl**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.7.x |
+| **dir-go**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.7.x |
+| **dir-py**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.7.x |
+| **dir-js**        | v0.3.0  | dir-apiserver v0.3.0, oasf v0.3.x, oasf v0.7.x |
 
 #### Helm Chart Compatibility
 
