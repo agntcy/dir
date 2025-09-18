@@ -37,6 +37,11 @@ linters-settings:
     # Allow local `replace` directives. Default is false.
     replace-local: true
 
+    # Allow specific replace directives.
+    # TODO: remove once hub is properly integrated into CLI
+    replace-allow-list:
+      - github.com/agntcy/dirhub/backport/api
+
   cyclop:
     max-complexity: 15
 
