@@ -8,7 +8,7 @@ package saasv1alpha1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	_ "github.com/agntcy/dir/api/core/v1alpha1"
+	_ "github.com/agntcy/dirhub/backport/api/core/v1alpha1"
 	_ "google.golang.org/genproto/googleapis/api"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

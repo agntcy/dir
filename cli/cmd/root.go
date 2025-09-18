@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/cmd/delete"
+	hubCmd "github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/network"
 	"github.com/agntcy/dir/cli/cmd/pull"
@@ -21,6 +22,7 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
+	"github.com/agntcy/dir/hub"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +69,7 @@ func init() {
 		// routing commands (all under routing subcommand)
 		routing.Command, // Contains: publish, unpublish, list, search
 		network.Command,
-		// hubCmd.NewCommand(hub.NewHub()), // REMOVED: Hub functionality
+		hubCmd.NewCommand(hub.NewHub()),
 		// search commands
 		search.Command, // General search (searchv1)
 		// sync commands

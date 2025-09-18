@@ -7,9 +7,9 @@ package push
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
-	"github.com/agntcy/dir/cli/util/agent"
 	hubClient "github.com/agntcy/dir/hub/client/hub"
 	hubOptions "github.com/agntcy/dir/hub/cmd/options"
 	"github.com/agntcy/dir/hub/service"
@@ -94,14 +94,14 @@ Examples:
 			fpath = args[1]
 		}
 
-		reader, err := agent.GetReader(fpath, opts.FromStdIn)
+		reader, err := getReader(fpath, opts.FromStdIn)
 		if err != nil {
 			return fmt.Errorf("failed to get reader: %w", err)
 		}
 
-		agentBytes, err := agent.GetAgentBytes(reader)
+		agentBytes, err := io.ReadAll(reader)
 		if err != nil {
-			return fmt.Errorf("failed to get agent bytes: %w", err)
+			return fmt.Errorf("failed to read data: %w", err)
 		}
 
 		// TODO: Push based on repoName and version misleading
@@ -118,4 +118,21 @@ Examples:
 	}
 
 	return cmd
+}
+
+func getReader(fpath string, fromStdin bool) (io.ReadCloser, error) {
+	if fpath == "" && !fromStdin {
+		return nil, errors.New("if no path defined --stdin flag must be set")
+	}
+
+	if fpath != "" {
+		file, err := os.Open(fpath)
+		if err != nil {
+			return nil, fmt.Errorf("could not open file %s: %w", fpath, err)
+		}
+
+		return file, nil
+	}
+
+	return io.NopCloser(os.Stdin), nil
 }
