@@ -13,6 +13,7 @@ import (
 
 	"github.com/agntcy/dir/cli/presenter"
 	agentUtils "github.com/agntcy/dir/hub/utils/agent"
+	"github.com/agntcy/dir/utils/cosign"
 	corev1alpha1 "github.com/agntcy/dirhub/backport/api/core/v1alpha1"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
@@ -75,8 +76,12 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
+	signingData, err := cosign.GeneratePayload(agentDigest.String())
+	if err != nil {
+		return fmt.Errorf("failed to generate signing payload: %w", err)
+	}
 
-	if err := verifySignature(agentDigest.String(), []byte(sig), []byte(pubKey)); err != nil {
+	if err := verifySignature(string(signingData), []byte(sig), []byte(pubKey)); err != nil {
 		return fmt.Errorf("failed to verify agent signature: %w", err)
 	}
 

@@ -74,7 +74,16 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
-	signingData := agentDigest.String()
+
+	// We have to generate the signing payload this way rather than
+	// signing the digest directly, because cosign signs the payload
+	// in this format and we need to be compatible with that for OCI verification.
+	// Otherwise, we would have to generate this payload ourselves during
+	// migration for each record rather than simply importing the data.
+	signingData, err := cosign.GeneratePayload(agentDigest.String())
+	if err != nil {
+		return fmt.Errorf("failed to generate signing payload: %w", err)
+	}
 
 	//nolint:nestif,gocritic
 	if opts.Key != "" {
