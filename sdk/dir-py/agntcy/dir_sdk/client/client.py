@@ -16,7 +16,7 @@ from collections.abc import Sequence
 
 import grpc
 from cryptography.hazmat.primitives import serialization
-from spiffe import WorkloadApiClient, X509Source, X509Bundle
+from spiffe import WorkloadApiClient, X509Bundle, X509Source
 from spiffetls import create_ssl_context, dial, tlsconfig
 from spiffetls.tlsconfig.authorize import authorize_any
 
@@ -80,9 +80,13 @@ class Client:
 
         # Otherwise, create secure gRPC channel using SPIFFE
         workload_client = WorkloadApiClient(socket_path=self.config.spiffe_socket_path)
-        x509_src = X509Source(workload_api_client=workload_client, socket_path=self.config.spiffe_socket_path, timeout_in_seconds=60)
+        x509_src = X509Source(
+            workload_api_client=workload_client,
+            socket_path=self.config.spiffe_socket_path,
+            timeout_in_seconds=60,
+        )
 
-        root_ca = b''
+        root_ca = b""
         for b in x509_src.bundles:
             for a in b.x509_authorities:
                 root_ca += a.public_bytes(encoding=serialization.Encoding.PEM)
@@ -90,10 +94,12 @@ class Client:
         private_key = x509_src.svid.private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
+            encryption_algorithm=serialization.NoEncryption(),
         )
 
-        public_leaf = x509_src.svid.leaf.public_bytes(encoding=serialization.Encoding.PEM)
+        public_leaf = x509_src.svid.leaf.public_bytes(
+            encoding=serialization.Encoding.PEM
+        )
 
         credentials = grpc.ssl_channel_credentials(
             root_certificates=root_ca,
@@ -105,6 +111,8 @@ class Client:
             target=self.config.server_address,
             credentials=credentials,
         )
+
+        return channel
 
     def publish(
         self,
@@ -851,10 +859,12 @@ class Client:
             if oidc_signer.id_token:
                 command.extend(["--oidc-token", oidc_signer.id_token])
             if oidc_signer.options.oidc_provider_url:
-                command.extend([
-                    "--oidc-provider-url",
-                    oidc_signer.options.oidc_provider_url,
-                ])
+                command.extend(
+                    [
+                        "--oidc-provider-url",
+                        oidc_signer.options.oidc_provider_url,
+                    ]
+                )
             if oidc_signer.options.fulcio_url:
                 command.extend(["--fulcio-url", oidc_signer.options.fulcio_url])
             if oidc_signer.options.rekor_url:
