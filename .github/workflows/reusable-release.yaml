@@ -40,6 +40,9 @@ jobs:
   chart:
     name: Helm chart
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: [dir, dirctl]
     steps:
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
@@ -60,23 +63,18 @@ jobs:
 
       - name: Helm update
         shell: bash
-        run: helm dependency update install/charts/dir
+        run: helm dependency update install/charts/${{ matrix.chart }}
 
       - name: Helm lint
         shell: bash
-        run: helm lint install/charts/dir --with-subcharts
-
-      - name: Set chart name
-        id: chart-name
-        shell: bash
-        run: echo "value=${{ github.event.repository.name }}" >> "$GITHUB_OUTPUT"
+        run: helm lint install/charts/${{ matrix.chart }} --with-subcharts
 
       - name: Helm package
         id: build
         shell: bash
         run: |
-          helm package install/charts/dir --dependency-update --version ${{ inputs.release_tag }}
-          echo "package=${{ steps.chart-name.outputs.value }}-${{ inputs.release_tag }}.tgz" >> "$GITHUB_OUTPUT"
+          helm package install/charts/${{ matrix.chart }} --dependency-update --version ${{ inputs.release_tag }}
+          echo "package=${{ matrix.chart }}-${{ inputs.release_tag }}.tgz" >> "$GITHUB_OUTPUT"
 
       - name: Helm push to GHCR OCI registry
         shell: bash
