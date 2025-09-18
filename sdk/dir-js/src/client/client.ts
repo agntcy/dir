@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { env } from 'node:process';
 import { writeFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 
 import {
   Client as GrpcClient,
@@ -122,7 +122,7 @@ export class Client {
    *
    * @param config - Optional client configuration. If null, loads from environment
    *                variables using Config.loadFromEnv()
-   * @param grpcTransport - Optional transport to use for gRPC communication. 
+   * @param grpcTransport - Optional transport to use for gRPC communication.
    *                Can be created with Client.createGRPCTransport(config)
    *
    * @throws {Error} If unable to establish connection to the server or configuration is invalid
@@ -755,8 +755,8 @@ export class Client {
     shell_env['COSIGN_PASSWORD'] = String(req.password);
 
     // Execute command
-    execSync(
-      `${this.config.dirctlPath} sign "${cid}" --key "${tmp_key_filename}"`,
+    spawnSync(
+      `${this.config.dirctlPath}`, ["sign", cid, "--key", tmp_key_filename],
       { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
     );
   }
@@ -782,31 +782,31 @@ export class Client {
     oidc_client_id: string,
   ): void {
     // Prepare command
-    let command = `${this.config.dirctlPath} sign "${cid}"`;
+    let commandArgs = ["sign", cid];
     if (req.idToken !== '') {
-      command = `${command} --oidc-token "${req.idToken}"`;
+      commandArgs.push(...["--oidc-token", req.idToken]);
     }
     if (
       req.options?.oidcProviderUrl !== undefined &&
       req.options.oidcProviderUrl !== ''
     ) {
-      command = `${command} --oidc-provider-url "${req.options.oidcProviderUrl}"`;
+      commandArgs.push(...["--oidc-provider-url", req.options.oidcProviderUrl]);
     }
     if (req.options?.fulcioUrl !== undefined && req.options.fulcioUrl !== '') {
-      command = `${command} --fulcio-url "${req.options.fulcioUrl}"`;
+      commandArgs.push(...["--fulcio-url", req.options.fulcioUrl]);
     }
     if (req.options?.rekorUrl !== undefined && req.options.rekorUrl !== '') {
-      command = `${command} --rekor-url "${req.options.rekorUrl}"`;
+      commandArgs.push(...["--rekor-url", req.options.rekorUrl]);
     }
     if (
       req.options?.timestampUrl !== undefined &&
       req.options.timestampUrl !== ''
     ) {
-      command = `${command} --timestamp-url "${req.options.timestampUrl}"`;
+      commandArgs.push(...["--timestamp-url", req.options.timestampUrl]);
     }
 
     // Execute command
-    execSync(`${command} --oidc-client-id "${oidc_client_id}"`, {
+    spawnSync(`${this.config.dirctlPath}`, commandArgs, {
       env: { ...env },
       encoding: 'utf8',
       stdio: 'pipe',

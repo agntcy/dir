@@ -802,13 +802,14 @@ class Client:
                 shell_env["COSIGN_PASSWORD"] = key_signer.password.decode("utf-8")
 
                 # Build and execute the signing command
-                command = (
+                command = [
                     self.config.dirctl_path,
                     "sign",
                     record_ref.cid,
                     "--key",
                     tmp_key_file.name,
-                )
+                ]
+                
                 subprocess.run(
                     command,
                     check=True,
