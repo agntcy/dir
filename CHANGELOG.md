@@ -31,7 +31,7 @@ with a focus on:
 - DHT-based routing for distributed service announcement and discovery
 
 **Data Synchronization**
-- Full and partial/CID-based data synchronization
+- Full and partial index synchronization with CID selection
 - Automated sync workflows for simple data migration and replication
 - Post-sync verification checks and search capabilities across records
 
