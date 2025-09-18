@@ -30,13 +30,28 @@ Parameters:
   --role      <role>      Role name. One of ['ROLE_ORG_ADMIN', 'ROLE_ADMIN', 'ROLE_EDITOR', 'ROLE_VIEWER']
   --org-id    <org_id>    Organization ID
   --org-name  <org_name>  Organization Name
+  --json                  Output in JSON format (default: env file format)
+
+Output:
+  By default, the command outputs the API key in environment variable format:
+  DIRCTL_CLIENT_ID=<client_id>
+  DIRCTL_CLIENT_SECRET=<secret>
+
+  With --json flag, it outputs in JSON format:
+  {
+    "client_id": "<client_id>",
+    "secret": "<secret>"
+  }
 
 Example:
   # Create a new API key with role OrgAdmin for organization "MyOrg"
   dirctl hub apikey create --role ROLE_ORG_ADMIN --org-name MyOrg
 
   # Create a new API key with role OrgAdmin for organization with ID 935a67e3-0276-4f61-b1ff-000fb163eedd
-  dirctl hub apikey create --role ROLE_ORG_ADMIN --org-id "935a67e3-0276-4f61-b1ff-000fb163eedd"`,
+  dirctl hub apikey create --role ROLE_ORG_ADMIN --org-id "935a67e3-0276-4f61-b1ff-000fb163eedd"
+
+  # Create a new API key and output in JSON format
+  dirctl hub apikey create --role ROLE_ORG_ADMIN --org-name MyOrg --json`,
 	}
 
 	opts := options.NewAPIKeyCreateOptions(hubOpts, cmd)
@@ -93,27 +108,25 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 	// Base64 encode the secret after creation.
 	encodedSecret := base64.StdEncoding.EncodeToString([]byte(apikeyWithSecret.Secret))
 
-	// Apikeywithsecret will not be shown for security reasons. Use apikey instead.
-	apikey := &service.APIKeyWithSecretWithRoleName{
+	// Create API key structure with encoded secret for output
+	apikey := &service.APIKeyWithSecret{
 		ClientID: apikeyWithSecret.ClientID,
 		Secret:   encodedSecret,
-		RoleName: apikeyWithSecret.RoleName,
 	}
 
-	if !opts.JSONOutput {
-		fmt.Fprintf(cmd.OutOrStdout(), "API Key created successfully:\n")
-	}
+	if opts.JSONOutput {
+		// Output JSON format for API key details
+		prettyModel, err := json.MarshalIndent(apikey, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal API key: %w", err)
+		}
 
-	// Output API key details
-	prettyModel, err := json.MarshalIndent(apikey, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal API key: %w", err)
-	}
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", string(prettyModel))
+	} else {
+		// Output in environment file format
+		fmt.Fprintf(cmd.OutOrStdout(), "DIRCTL_CLIENT_ID=%s\n", apikey.ClientID)
+		fmt.Fprintf(cmd.OutOrStdout(), "DIRCTL_CLIENT_SECRET=%s\n\n", apikey.Secret)
 
-	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", string(prettyModel))
-
-	if !opts.JSONOutput {
-		fmt.Fprintf(cmd.OutOrStdout(), "The API Key has been added to your session file.\n")
 	}
 
 	return nil

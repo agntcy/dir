@@ -4,11 +4,13 @@
 package auth
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 
 	baseauth "github.com/agntcy/dir/hub/auth"
+	"github.com/agntcy/dir/hub/service"
 	"github.com/agntcy/dir/hub/sessionstore"
 	"github.com/spf13/cobra"
 )
@@ -22,13 +24,28 @@ func CheckForCreds(cmd *cobra.Command, currentSession *sessionstore.HubSession, 
 }
 
 // resolveAPIKeyCredentials returns the effective clientID and secret (base64-encoded).
-func resolveAPIKeyCredentials(clientID, secret string) (string, string) {
-	effectiveClientID := clientID
-	effectiveSecret := secret
+// It checks sources in the following order of priority:
+// 1. API key file (if provided)
+// 2. Environment variables
+func resolveAPIKeyCredentials(clientID, secret, apikeyFile string) (string, string, error) {
+	// Check API key file if provided
+	if apikeyFile != "" {
+		fileContent, err := os.ReadFile(apikeyFile)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to read API key file: %w", err)
+		}
 
-	// CLI opts take priority
-	if effectiveClientID != "" && effectiveSecret != "" {
-		return effectiveClientID, effectiveSecret
+		// Parse JSON file content to extract clientID and secret
+		var apiKey service.APIKeyWithSecret
+		if err := json.Unmarshal(fileContent, &apiKey); err != nil {
+			return "", "", fmt.Errorf("failed to parse API key file as JSON: %w", err)
+		}
+
+		if apiKey.ClientID == "" || apiKey.Secret == "" {
+			return "", "", fmt.Errorf("API key file must contain both client_id and secret fields")
+		}
+
+		return apiKey.ClientID, apiKey.Secret, nil
 	}
 
 	// Environment variables
@@ -36,19 +53,24 @@ func resolveAPIKeyCredentials(clientID, secret string) (string, string) {
 	envSecret := os.Getenv("DIRCTL_CLIENT_SECRET")
 
 	if envClientID != "" && envSecret != "" {
-		return envClientID, envSecret
+		return envClientID, envSecret, nil
 	}
 
-	return effectiveClientID, effectiveSecret
+	// Return empty values if no authentication source was found
+	// This will trigger the session-based authentication flow
+	return "", "", nil
 }
 
 // GetOrCreateSession gets session from context or creates in-memory session with API key with the following priority:
-// 1. API key from command opts
+// 1. API key from file (if provided via apikeyFile)
 // 2. API key from environment variables
 // 3. Existing session from context (session file created via 'dirctl hub login').
 // Secret must be provided as base64-encoded.
-func GetOrCreateSession(cmd *cobra.Command, serverAddress, clientID, secret string, jsonOutput bool) (*sessionstore.HubSession, error) {
-	effectiveClientID, effectiveSecret := resolveAPIKeyCredentials(clientID, secret)
+func GetOrCreateSession(cmd *cobra.Command, serverAddress, clientID, secret, apikeyFile string, jsonOutput bool) (*sessionstore.HubSession, error) {
+	effectiveClientID, effectiveSecret, err := resolveAPIKeyCredentials(clientID, secret, apikeyFile)
+	if err != nil {
+		return nil, err
+	}
 
 	// If API key credentials are available, use in-memory session.
 	if effectiveClientID != "" && effectiveSecret != "" {

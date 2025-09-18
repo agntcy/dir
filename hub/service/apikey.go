@@ -19,10 +19,10 @@ type APIKeyWithRoleName struct {
 	RoleName string `json:"role_name"` // The name of the role associated with the API key.
 }
 
-type APIKeyWithSecretWithRoleName struct {
+// APIKeyWithSecret is a structure containing API key credentials.
+type APIKeyWithSecret struct {
 	ClientID string `json:"client_id"` // The client ID of the API key.
 	Secret   string `json:"secret"`    // The secret of the API key.
-	RoleName string `json:"role_name"` // The name of the role associated
 }
 
 // CreateAPIKey creates a new API key in the hub and returns the response.
@@ -33,7 +33,7 @@ func CreateAPIKey(
 	role string,
 	organization any,
 	session *sessionstore.HubSession,
-) (*APIKeyWithSecretWithRoleName, error) {
+) (*APIKeyWithSecret, error) {
 	ctx = authUtils.AddAuthToContext(ctx, session)
 
 	resp, err := hc.CreateAPIKey(ctx, role, organization)
@@ -45,15 +45,19 @@ func CreateAPIKey(
 		return nil, fmt.Errorf("invalid response from server: %v", resp)
 	}
 
+	// Verify that the role in the response matches the requested role
 	roleName, ok := v1alpha1.Role_name[int32(resp.GetToken().GetApikey().GetRole())]
 	if !ok {
-		return nil, fmt.Errorf("invalid role: %v", resp.GetToken().GetApikey().GetRole())
+		return nil, fmt.Errorf("invalid role in response: %v", resp.GetToken().GetApikey().GetRole())
+	}
+	
+	if roleName != role {
+		return nil, fmt.Errorf("role mismatch: requested %s, received %s", role, roleName)
 	}
 
-	return &APIKeyWithSecretWithRoleName{
+	return &APIKeyWithSecret{
 		ClientID: resp.GetToken().GetApikey().GetClientId(),
 		Secret:   resp.GetToken().GetSecret(),
-		RoleName: roleName,
 	}, nil
 }
 

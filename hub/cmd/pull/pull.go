@@ -32,11 +32,11 @@ Parameters:
 
 Authentication:
   API key authentication can be provided via:
-  1. Command flags: --client-id and --secret
+  1. API key file: --apikey-file (JSON file with API key credentials)
   2. Environment variables: DIRCTL_CLIENT_ID and DIRCTL_CLIENT_SECRET
   3. Session file created via 'dirctl hub login'
 
-  Command flags take precedence over environment variables, which take precedence over session file.
+  API key file takes precedence over environment variables, which take precedence over session file.
 
 Examples:
   # Pull agent by digest
@@ -45,8 +45,13 @@ Examples:
   # Pull agent by repository and version
   dirctl hub pull owner/repo-name:v1.0.0
 
-  # Pull using API key authentication via flags
-  dirctl hub pull owner/repo-name:v1.0.0 --client-id YOUR_CLIENT_ID --secret YOUR_SECRET
+  # Pull using API key file (JSON format)
+  # File content example:
+  # {
+  #   "client_id": "your-client-id",
+  #   "secret": "your-secret"
+  # }
+  dirctl hub pull owner/repo-name:v1.0.0 --apikey-file /path/to/apikey.json
 
   # Pull using API key authentication via environment variables
   export DIRCTL_CLIENT_ID=your_client_id
@@ -61,10 +66,9 @@ Examples:
 	opts := hubOptions.NewHubPullOptions(hubOpts)
 
 	// API key authentication flags
-	var clientID, secret string
+	var apikeyFile string
 
-	cmd.Flags().StringVar(&clientID, "client-id", "", "API key client ID for authentication")
-	cmd.Flags().StringVar(&secret, "secret", "", "API key secret for authentication")
+	cmd.Flags().StringVar(&apikeyFile, "apikey-file", "", "Path to a JSON file containing API key credentials (format: {\"client_id\": \"...\", \"secret\": \"...\"})")
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
@@ -74,8 +78,8 @@ Examples:
 		cmd.SetOut(os.Stdout)
 		cmd.SetErr(os.Stderr)
 
-		// Authenticate using either API key or session file
-		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, clientID, secret, false)
+		// Authenticate using either API key file or session file
+		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, "", "", apikeyFile, false)
 		if err != nil {
 			return fmt.Errorf("failed to get or create session: %w", err)
 		}
