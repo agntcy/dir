@@ -68,6 +68,7 @@ jobs:
       - name: Build the Javascript package
         if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' }}
         run: |
+          task sdk:deps:javascript
           task sdk:build:javascript
 
       - name: Publish the Python SDK
