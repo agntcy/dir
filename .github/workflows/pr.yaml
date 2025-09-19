@@ -24,11 +24,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          requireScope: false
           ignoreLabels: |
             ignore-semantic-pr
+          # Types should match the types defined in the Conventional Commits specification.
+          # See: https://www.conventionalcommits.org/en/v1.0.0
           types: |
-            BREAKING
             build
             chore
             ci
@@ -41,6 +41,31 @@ jobs:
             style
             test
             release
+          # Scopes should match the components within the directory repo.
+          # For example, if you are making a change to the API component,
+          # the scope should be "dir/api".
+          # Components:
+          # Dir (dir/): api, server, client
+          # SDK (sdk/): go, js, py
+          # CLI (cli/): dir, hub
+          # Helm (helm/): helm
+          scopes: |
+            dir
+            dir/api
+            dir/server
+            dir/client
+            sdk
+            sdk/go
+            sdk/js
+            sdk/py
+            cli
+            cli/dir
+            cli/hub
+            helm
+            helm/dir
+            helm/dirctl
+            docker
+          requireScope: true
 
       # Leave a comment if linter reports an error
       - uses: marocchino/sticky-pull-request-comment@52423e01640425a022ef5fd42c6fb5f633a02728 # v2.9.1
@@ -58,9 +83,40 @@ jobs:
             ${{ steps.lint_pr_title.outputs.error_message }}
             ```
 
+            Examples:
+
+            ```
+            - feat(dir/api): add new authentication endpoint
+            - fix(sdk/js): resolve issue with token refresh
+            ```
+
       # Hide error message if the PR title has been fixed
       - if: ${{ steps.lint_pr_title.outputs.error_message == null }}
         uses: marocchino/sticky-pull-request-comment@52423e01640425a022ef5fd42c6fb5f633a02728 # v2.9.1
         with:
           header: pr-title-lint-error
           delete: true
+
+  label:
+    name: Label PR Size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: codelytv/pr-size-labeler@1c3422395d899286d5ee2c809fd5aed264d5eb9b # v1.10.2
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/XS'
+          xs_max_size: '50'
+          s_label: 'size/S'
+          s_max_size: '200'
+          m_label: 'size/M'
+          m_max_size: '1000'
+          l_label: 'size/L'
+          l_max_size: '2000'
+          xl_label: 'size/XL'
+          fail_if_xl: 'false'
+          message_if_xl: >
+            This PR exceeds the recommended size of 2000 lines.
+            Please make sure you are NOT addressing multiple issues with one PR.
+            Note that this PR might take longer to review due to large size.
+          files_to_ignore: |
+            "*.md"
