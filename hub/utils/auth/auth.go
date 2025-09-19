@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:revive,unparam
 package auth
 
 import (
@@ -25,8 +26,8 @@ func CheckForCreds(cmd *cobra.Command, currentSession *sessionstore.HubSession, 
 
 // resolveAPIKeyCredentials returns the effective clientID and secret (base64-encoded).
 // It checks sources in the following order of priority:
-// 1. API key file (if provided)
-// 2. Environment variables
+//  1. API key file (if provided)
+//  2. Environment variables
 func resolveAPIKeyCredentials(clientID, secret, apikeyFile string) (string, string, error) {
 	// Check API key file if provided
 	if apikeyFile != "" {
@@ -42,7 +43,7 @@ func resolveAPIKeyCredentials(clientID, secret, apikeyFile string) (string, stri
 		}
 
 		if apiKey.ClientID == "" || apiKey.Secret == "" {
-			return "", "", fmt.Errorf("API key file must contain both client_id and secret fields")
+			return "", "", errors.New("API key file must contain both client_id and secret fields")
 		}
 
 		return apiKey.ClientID, apiKey.Secret, nil

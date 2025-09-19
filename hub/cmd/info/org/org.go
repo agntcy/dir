@@ -39,7 +39,7 @@ Examples:
 				cmd.SetOut(os.Stdout)
 				cmd.SetErr(os.Stderr)
 				_ = cmd.Help()
-				
+
 				return errors.New("missing required argument: organization ID")
 			}
 

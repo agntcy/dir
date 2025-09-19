@@ -126,7 +126,6 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyCreateOption
 		// Output in environment file format
 		fmt.Fprintf(cmd.OutOrStdout(), "DIRCTL_CLIENT_ID=%s\n", apikey.ClientID)
 		fmt.Fprintf(cmd.OutOrStdout(), "DIRCTL_CLIENT_SECRET=%s\n\n", apikey.Secret)
-
 	}
 
 	return nil

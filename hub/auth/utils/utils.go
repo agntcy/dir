@@ -18,6 +18,7 @@ func AddAuthToContext(ctx context.Context, session *sessionstore.HubSession) con
 			return metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+t.AccessToken))
 		}
 	}
+
 	return ctx
 }
 

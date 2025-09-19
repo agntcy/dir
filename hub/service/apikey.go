@@ -50,7 +50,7 @@ func CreateAPIKey(
 	if !ok {
 		return nil, fmt.Errorf("invalid role in response: %v", resp.GetToken().GetApikey().GetRole())
 	}
-	
+
 	if roleName != role {
 		return nil, fmt.Errorf("role mismatch: requested %s, received %s", role, roleName)
 	}
