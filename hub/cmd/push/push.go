@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package push provides the CLI command for pushing models to the Agent Hub.
+// Package push provides the CLI command for pushing records to the Agent Hub.
 package push
 
 import (
@@ -18,18 +18,18 @@ import (
 )
 
 // NewCommand creates the "push" command for the Agent Hub CLI.
-// It pushes a model to the hub by repository name or ID, reading the model from a file or stdin.
+// It pushes a record to the hub by repository name or ID, reading the record from a file or stdin.
 // Returns the configured *cobra.Command.
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "push <org-name>/<name> {<model.json> | --stdin} ",
-		Short: "Push model to Agent Hub",
-		Long: `Push a model to the Agent Hub.
+		Use:   "push <repository> {<record.json> | --stdin} ",
+		Short: "Push record to Agent Hub",
+		Long: `Push a record to the Agent Hub.
 
 Parameters:
-  <repository>    Repository name in the format of '<org-name>/<name>'
-  <model.json>    Path to the model file (optional)
-  --stdin         Read model from standard input (optional)
+  <repository>    Repository name or repository ID. Note that the repository name must be in the format '<org-name>/<name>' and match the name in the record being pushed.
+  <record.json>   Path to the record file (optional)
+  --stdin         Read record from standard input (optional)
 
 Authentication:
   API key authentication can be provided via:
@@ -40,14 +40,14 @@ Authentication:
   API key file takes precedence over environment variables, which take precedence over session file.
 
 Examples:
-  # Push model to a repository by name
-  dirctl hub push org-name/repo-name model.json
+  # Push record to a repository by name
+  dirctl hub push repo-name record.json
 
-  # Push model to a repository by ID
-  dirctl hub push 123e4567-e89b-12d3-a456-426614174000 model.json
+  # Push record to a repository by ID
+  dirctl hub push 123e4567-e89b-12d3-a456-426614174000 record.json
 
-  # Push model from stdin
-  dirctl hub push org-name/repo-name --stdin < model.json
+  # Push record from stdin
+  dirctl hub push repo-name --stdin < record.json
 
   # Push using API key file (JSON format)
   # File content example:
@@ -55,16 +55,16 @@ Examples:
   #   "client_id": "your-client-id",
   #   "secret": "your-secret"
   # }
-  dirctl hub push org-name/repo-name model.json --apikey-file /path/to/apikey.json
+  dirctl hub push repo-name record.json --apikey-file /path/to/apikey.json
 
   # Push using API key authentication via environment variables
   export DIRCTL_CLIENT_ID=your_client_id
   export DIRCTL_CLIENT_SECRET=your_secret
-  dirctl hub push org-name/repo-name model.json
+  dirctl hub push repo-name record.json
 
   # Push using session file (after login)
   dirctl hub login
-  dirctl hub push org-name/repo-name model.json`,
+  dirctl hub push repo-name record.json`,
 	}
 
 	opts := hubOptions.NewHubPushOptions(hubOpts, cmd)
@@ -72,7 +72,7 @@ Examples:
 	// API key authentication flags
 	var apikeyFile string
 
-	cmd.Flags().StringVar(&apikeyFile, "apikey-file", "", "Path to a JSON file containing API key credentials (format: {\"client_id\": \"...\", \"secret\": \"...\"})")
+	cmd.Flags().StringVar(&apikeyFile, "apikey-file", "", `Path to a JSON file containing API key credentials (format: {"client_id": "...", "secret": "..."})`)
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		cmd.SetOut(os.Stdout)
@@ -90,7 +90,7 @@ Examples:
 		}
 
 		if len(args) > 2 { //nolint:mnd
-			return errors.New("the following arguments could be given: <repository>:<version> [model.json]")
+			return errors.New("the following arguments could be given: <repository>:<version> [record.json]")
 		}
 
 		fpath := ""

@@ -17,13 +17,13 @@ import (
 )
 
 // NewCommand creates the "pull" command for the Agent Hub CLI.
-// It pulls an agent from the hub by digest or repository:version and prints the result.
+// It pulls a record from the hub by digest or repository:version and prints the result.
 // Returns the configured *cobra.Command.
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pull <agent_ref>",
-		Short: "Pull an agent from Agent Hub",
-		Long: `Pull an agent from the Agent Hub.
+		Short: "Pull a record from Agent Hub",
+		Long: `Pull a record from the Agent Hub.
 
 Parameters:
   <agent_ref>    Agent reference in one of the following formats:
@@ -42,8 +42,8 @@ Examples:
   # Pull agent by digest
   dirctl hub pull sha256:1234567890abcdef...
 
-  # Pull agent by repository and version
-  dirctl hub pull owner/repo-name:v1.0.0
+  # Pull agent by repository name and version
+  dirctl hub pull repo-name:v1.0.0
 
   # Pull using API key file (JSON format)
   # File content example:
@@ -51,16 +51,16 @@ Examples:
   #   "client_id": "your-client-id",
   #   "secret": "your-secret"
   # }
-  dirctl hub pull owner/repo-name:v1.0.0 --apikey-file /path/to/apikey.json
+  dirctl hub pull repo-name:v1.0.0 --apikey-file /path/to/apikey.json
 
   # Pull using API key authentication via environment variables
   export DIRCTL_CLIENT_ID=your_client_id
   export DIRCTL_CLIENT_SECRET=your_secret
-  dirctl hub pull owner/repo-name:v1.0.0
+  dirctl hub pull repo-name:v1.0.0
 
   # Pull using session file (after login)
   dirctl hub login
-  dirctl hub pull owner/repo-name:v1.0.0`,
+  dirctl hub pull repo-name:v1.0.0`,
 	}
 
 	opts := hubOptions.NewHubPullOptions(hubOpts)
@@ -68,7 +68,7 @@ Examples:
 	// API key authentication flags
 	var apikeyFile string
 
-	cmd.Flags().StringVar(&apikeyFile, "apikey-file", "", "Path to a JSON file containing API key credentials (format: {\"client_id\": \"...\", \"secret\": \"...\"})")
+	cmd.Flags().StringVar(&apikeyFile, "apikey-file", "", `Path to a JSON file containing API key credentials (format: {"client_id": "...", "secret": "..."})`)
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
