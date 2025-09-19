@@ -1,0 +1,117 @@
+###
+# Lifecycle
+###
+- name: 'stale'
+  color: '795648'
+  description: 'Denotes an issue or PR that has become stale and will be auto-closed.'
+- name: 'no-stale'
+  color: 'd3e1f1'
+  description: 'Denotes an issue or PR that should be preserved from going stale.'
+
+###
+# Size labels
+###
+- name: 'size/XS'
+  color: '009900'
+  description: 'Denotes a PR that changes 0-49 lines'
+- name: 'size/S'
+  color: '77bb02'
+  description: 'Denotes a PR that changes 50-199 lines'
+- name: 'size/M'
+  color: 'eebb03'
+  description: 'Denotes a PR that changes 200-999 lines'
+- name: 'size/L'
+  color: 'ee9902'
+  description: 'Denotes a PR that changes 1000-1999 lines'
+- name: 'size/XL'
+  color: 'ed5500'
+  description: 'Denotes a PR that changes 2000+ lines'
+
+###
+# Kind
+###
+- name: 'kind/docs'
+  color: 'c7def7'
+  description: 'Categorizes issue or PR as related to documentation.'
+- name: 'kind/feature'
+  color: 'c7def7'
+  description: 'Categorizes issue or PR as related to a new feature.'
+- name: 'kind/refactor'
+  color: 'c7def7'
+  description: 'Categorizes issue or PR as related to cleaning up code, process, or technical debt.'
+- name: 'kind/support'
+  color: 'c7def7'
+  description: 'Categorizes issue or PR as support questions.'
+- name: 'kind/test'
+  color: 'c7def7'
+  description: 'Categorizes issue or PR as related to testing.'
+- name: 'kind/bug'
+  color: 'e11d21'
+  description: 'Categorizes issue or PR as related to a bug.'
+- name: 'kind/security'
+  color: 'e11d21'
+  description: 'Categorizes issue or PR as related to security.'
+- name: 'kind/regression'
+  color: 'e11d21'
+  description: 'Categorizes issue or PR as related to a regression from a prior release.'
+
+###
+# Components / Scopes
+###
+
+# Dir Core:
+- name: 'scope/dir'
+  color: '0052cc'
+- name: 'scope/dir/api'
+  color: '0052cc'
+- name: 'scope/dir/server'
+  color: '0052cc'
+- name: 'scope/dir/client'
+  color: '0052cc'
+
+# SDK:
+- name: 'scope/sdk'
+  color: '0052cc'
+- name: 'scope/sdk/go'
+  color: '0052cc'
+- name: 'scope/sdk/js'
+  color: '0052cc'
+- name: 'scope/sdk/py'
+  color: '0052cc'
+
+# CLI:
+- name: 'scope/cli'
+  color: '0052cc'
+- name: 'scope/cli/dir'
+  color: '0052cc'
+- name: 'scope/cli/hub'
+  color: '0052cc'
+
+# Helm:
+- name: 'scope/helm'
+  color: '0052cc'
+- name: 'scope/helm/dir'
+  color: '0052cc'
+- name: 'scope/helm/dirctl'
+  color: '0052cc'
+- name: 'scope/docker'
+  color: '0052cc'
+
+###
+# Community
+###
+- name: 'triage/duplicate'
+  color: 'c31fb5'
+  description: 'This issue or PR already exists.'
+- name: 'triage/blocked'
+  color: 'bfa808'
+  description: 'This issue or PR is blocked by another issue or PR.'
+- name: 'triage/needs-information'
+  color: 'bfa808'
+  description: 'Indicates an issue or PR needs more information in order to work on it.'
+- name: 'triage/not-reproducible'
+  color: 'bfa808'
+  description: 'Indicates an issue or PR can not be reproduced as described.'
+- name: 'good first issue'
+  color: '7057ff'
+  description: 'Good for newcomers'
