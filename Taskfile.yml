@@ -1189,7 +1189,7 @@ tasks:
       FIX: '{{ .FIX | default "false" }}'
       FIX_FLAG: '{{if eq .FIX "true"}}--fix{{end}}'
       GO_MOD_DIR:
-        sh: find . -name go.mod -not -path "./hub*" -not -path "./tmp*" -exec dirname {} \;
+        sh: find . -name go.mod -not -path "./tmp*" -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: |

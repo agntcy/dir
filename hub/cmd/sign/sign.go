@@ -1,21 +1,28 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:revive,mnd
 package sign
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
-	agentUtils "github.com/agntcy/dir/hub/utils/agent"
 	"github.com/agntcy/dir/utils/cosign"
 	corev1alpha1 "github.com/agntcy/dirhub/backport/api/core/v1alpha1"
+	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
+	"github.com/sigstore/sigstore-go/pkg/root"
+	"github.com/sigstore/sigstore-go/pkg/sign"
 	"github.com/sigstore/sigstore/pkg/oauthflow"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var Command = &cobra.Command{
@@ -51,7 +58,7 @@ Usage examples:
 		}
 
 		// get source
-		source, err := agentUtils.GetReader(fpath, opts.FromStdin)
+		source, err := GetCmdReader(fpath, opts.FromStdin)
 		if err != nil {
 			return err //nolint:wrapcheck
 		}
@@ -66,24 +73,10 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 	if _, err := agent.LoadFromReader(source); err != nil {
 		return fmt.Errorf("failed to read data: %w", err)
 	}
+
 	defer source.Close() //nolint:errcheck
 
-	// Get data to sign, drop the existing signature if any
-	agent.Signature = nil
-	agentDigest, err := agentUtils.GetDigest(agent)
-	if err != nil {
-		return fmt.Errorf("failed to marshal agent: %w", err)
-	}
-
-	// We have to generate the signing payload this way rather than
-	// signing the digest directly, because cosign signs the payload
-	// in this format and we need to be compatible with that for OCI verification.
-	// Otherwise, we would have to generate this payload ourselves during
-	// migration for each record rather than simply importing the data.
-	signingData, err := cosign.GeneratePayload(agentDigest.String())
-	if err != nil {
-		return fmt.Errorf("failed to generate signing payload: %w", err)
-	}
+	var agentSigned *corev1alpha1.Agent
 
 	//nolint:nestif,gocritic
 	if opts.Key != "" {
@@ -100,33 +93,18 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		// Sign the agent using the provided key
-		signature, err := cosign.SignBlobWithKey(cmd.Context(), &cosign.SignBlobKeyOptions{
-			Payload:    []byte(signingData),
-			PrivateKey: rawKey,
-			Password:   pw,
-		})
+		agentSigned, err = SignWithKey(cmd.Context(), rawKey, pw, agent)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent with key: %w", err)
 		}
-
-		// Set agent signature
-		setAgentSignature(agent, signature.Signature, signature.PublicKey)
 	} else if opts.OIDCToken != "" {
 		// Sign the agent using the OIDC provider
-		signature, err := cosign.SignBlobWithOIDC(cmd.Context(), &cosign.SignBlobOIDCOptions{
-			Payload:         []byte(signingData),
-			IDToken:         opts.OIDCToken,
-			FulcioURL:       opts.FulcioURL,
-			RekorURL:        opts.RekorURL,
-			TimestampURL:    opts.TimestampURL,
-			OIDCProviderURL: opts.OIDCProviderURL,
-		})
+		var err error
+
+		agentSigned, err = SignOIDC(cmd.Context(), agent, opts.OIDCToken)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent: %w", err)
 		}
-
-		// Set agent signature
-		setAgentSignature(agent, signature.Signature, signature.PublicKey)
 	} else {
 		// Retrieve the token from the OIDC provider
 		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
@@ -135,36 +113,204 @@ func runCommand(cmd *cobra.Command, source io.ReadCloser) error {
 		}
 
 		// Sign the agent using the OIDC provider
-		signature, err := cosign.SignBlobWithOIDC(cmd.Context(), &cosign.SignBlobOIDCOptions{
-			Payload:         []byte(signingData),
-			IDToken:         token.RawString,
-			FulcioURL:       opts.FulcioURL,
-			RekorURL:        opts.RekorURL,
-			TimestampURL:    opts.TimestampURL,
-			OIDCProviderURL: opts.OIDCProviderURL,
-		})
+		agentSigned, err = SignOIDC(cmd.Context(), agent, token.RawString)
 		if err != nil {
 			return fmt.Errorf("failed to sign agent: %w", err)
 		}
-
-		// Set agent signature
-		setAgentSignature(agent, signature.Signature, signature.PublicKey)
 	}
 
 	// Print signed agent
-	signedAgentJSON, err := json.MarshalIndent(agent, "", "  ")
+	signedAgentJSON, err := json.MarshalIndent(agentSigned, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal agent: %w", err)
 	}
 
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s\n", string(signedAgentJSON))
+	fmt.Fprintf(cmd.OutOrStdout(), "%s\n", string(signedAgentJSON))
 
 	return nil
 }
 
-func setAgentSignature(agent *corev1alpha1.Agent, signature, certificate string) {
-	agent.Signature = &corev1alpha1.Signature{
-		Signature:   signature,
-		Certificate: certificate,
+func SignOIDC(ctx context.Context, agent *corev1alpha1.Agent, idToken string) (*corev1alpha1.Agent, error) {
+	// Validate request.
+	if agent == nil {
+		return nil, errors.New("agent must be set")
 	}
+
+	// Load signing options.
+	var signOpts sign.BundleOptions
+	{
+		// Define config to use for signing.
+		signingConfig, err := root.NewSigningConfig(
+			root.SigningConfigMediaType02,
+			// Fulcio URLs
+			[]root.Service{
+				{
+					URL:                 opts.FulcioURL,
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			// OIDC Provider URLs
+			// Usage and requirements: https://docs.sigstore.dev/certificate_authority/oidc-in-fulcio/
+			[]root.Service{
+				{
+					URL:                 opts.OIDCProviderURL,
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			// Rekor URLs
+			[]root.Service{
+				{
+					URL:                 opts.RekorURL,
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			root.ServiceConfiguration{
+				Selector: v1.ServiceSelector_ANY,
+			},
+			[]root.Service{
+				{
+					URL:                 opts.TimestampURL,
+					MajorAPIVersion:     1,
+					ValidityPeriodStart: time.Now().Add(-time.Hour),
+					ValidityPeriodEnd:   time.Now().Add(time.Hour),
+				},
+			},
+			root.ServiceConfiguration{
+				Selector: v1.ServiceSelector_ANY,
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create signing config: %w", err)
+		}
+
+		// Use fulcio to sign the agent.
+		fulcioURL, err := root.SelectService(signingConfig.FulcioCertificateAuthorityURLs(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select fulcio URL: %w", err)
+		}
+
+		fulcioOpts := &sign.FulcioOptions{
+			BaseURL: fulcioURL,
+			Timeout: 30 * time.Second,
+			Retries: 1,
+		}
+		signOpts.CertificateProvider = sign.NewFulcio(fulcioOpts)
+		signOpts.CertificateProviderOptions = &sign.CertificateProviderOptions{
+			IDToken: idToken,
+		}
+
+		// Use timestamp authortiy to sign the agent.
+		tsaURLs, err := root.SelectServices(signingConfig.TimestampAuthorityURLs(),
+			signingConfig.TimestampAuthorityURLsConfig(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select timestamp authority URL: %w", err)
+		}
+
+		for _, tsaURL := range tsaURLs {
+			tsaOpts := &sign.TimestampAuthorityOptions{
+				URL:     tsaURL,
+				Timeout: 30 * time.Second,
+				Retries: 1,
+			}
+			signOpts.TimestampAuthorities = append(signOpts.TimestampAuthorities, sign.NewTimestampAuthority(tsaOpts))
+		}
+
+		// Use rekor to sign the agent.
+		rekorURLs, err := root.SelectServices(signingConfig.RekorLogURLs(),
+			signingConfig.RekorLogURLsConfig(), []uint32{1}, time.Now())
+		if err != nil {
+			return nil, fmt.Errorf("failed to select rekor URL: %w", err)
+		}
+
+		for _, rekorURL := range rekorURLs {
+			rekorOpts := &sign.RekorOptions{
+				BaseURL: rekorURL,
+				Timeout: 90 * time.Second,
+				Retries: 1,
+			}
+			signOpts.TransparencyLogs = append(signOpts.TransparencyLogs, sign.NewRekor(rekorOpts))
+		}
+	}
+
+	// Generate an ephemeral keypair for signing.
+	signKeypair, err := sign.NewEphemeralKeypair(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ephemeral keypair: %w", err)
+	}
+
+	return Sign(ctx, agent, signKeypair, signOpts)
+}
+
+func SignWithKey(ctx context.Context, privKey []byte, pw []byte, agent *corev1alpha1.Agent) (*corev1alpha1.Agent, error) {
+	// Generate a keypair from the provided private key bytes.
+	// The keypair hint is derived from the public key and will be used for verification.
+	signKeypair, err := cosign.LoadKeypair(privKey, pw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create keypair: %w", err)
+	}
+
+	return Sign(ctx, agent, signKeypair, sign.BundleOptions{})
+}
+
+func Sign(_ context.Context, agent *corev1alpha1.Agent, signKeypair sign.Keypair, signOpts sign.BundleOptions) (*corev1alpha1.Agent, error) {
+	// Reset the signature field in the agent.
+	// This is required as the agent may have been signed before,
+	// but also because this ensures signing idempotency.
+	agent.Signature = nil
+
+	// Convert the agent to JSON.
+	agentJSON, err := json.Marshal(agent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal agent: %w", err)
+	}
+
+	// Sign the agent JSON data.
+	sigBundle, err := sign.Bundle(&sign.PlainData{Data: agentJSON}, signKeypair, signOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign agent: %w", err)
+	}
+
+	certData := sigBundle.GetVerificationMaterial()
+	sigData := sigBundle.GetMessageSignature()
+
+	// Extract data from the signature bundle.
+	sigBundleJSON, err := protojson.Marshal(sigBundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal bundle: %w", err)
+	}
+
+	// Update the agent with the signature details.
+	agent.Signature = &corev1alpha1.Signature{
+		Algorithm:     sigData.GetMessageDigest().GetAlgorithm().String(),
+		Signature:     base64.StdEncoding.EncodeToString(sigData.GetSignature()),
+		Certificate:   base64.StdEncoding.EncodeToString(certData.GetCertificate().GetRawBytes()),
+		ContentType:   sigBundle.GetMediaType(),
+		ContentBundle: base64.StdEncoding.EncodeToString(sigBundleJSON),
+		SignedAt:      time.Now().Format(time.RFC3339),
+	}
+
+	return agent, nil
+}
+
+func GetCmdReader(fpath string, fromStdin bool) (io.ReadCloser, error) {
+	if fpath == "" && !fromStdin {
+		return nil, errors.New("if no path defined --stdin flag must be set")
+	}
+
+	if fpath != "" {
+		file, err := os.Open(fpath)
+		if err != nil {
+			return nil, fmt.Errorf("could not open file %s: %w", fpath, err)
+		}
+
+		return file, nil
+	}
+
+	return os.Stdin, nil
 }

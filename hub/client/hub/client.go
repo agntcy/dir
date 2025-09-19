@@ -14,8 +14,8 @@ import (
 	"io"
 	"strings"
 
-	corev1alpha1 "github.com/agntcy/dirhub/backport/api/core/v1alpha1"
 	v1alpha1 "github.com/agntcy/dir/hub/api/v1alpha1"
+	corev1alpha1 "github.com/agntcy/dirhub/backport/api/core/v1alpha1"
 	"github.com/opencontainers/go-digest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
