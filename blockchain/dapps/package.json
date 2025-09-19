@@ -1,0 +1,20 @@
+{
+  "name": "agent-store-dapp",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "npx hardhat compile && npx hardhat test --network hardhat",
+    "compile": "npx hardhat compile",
+    "deploy": "npx hardhat compile && npx hardhat deploy",
+    "gobind": "abigen --sol contracts/AgentStore.sol --pkg agentstore --out bindings/go/agentstore/agentstore.go"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^3.0.3",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
+    "@types/node": "^22.18.1",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "hardhat": "^3.0.6",
+    "typescript": "~5.8.0",
+    "viem": "^2.37.5"
+  },
+  "type": "module"
+}
