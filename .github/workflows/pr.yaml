@@ -26,12 +26,16 @@ jobs:
         with:
           ignoreLabels: |
             ignore-semantic-pr
+          # Configure additional validation for the subject based on a regex.
+          # This example ensures the subject doesn't start with an uppercase character.
+          subjectPattern: ^(?![A-Z]).+$
           # Types should match the types defined in the Conventional Commits specification.
           # See: https://www.conventionalcommits.org/en/v1.0.0
           types: |
             build
             chore
             ci
+            deps
             docs
             feat
             fix
@@ -45,10 +49,13 @@ jobs:
           # For example, if you are making a change to the API component,
           # the scope should be "dir/api".
           # Components:
-          # Dir (dir/): api, server, client
-          # SDK (sdk/): go, js, py
-          # CLI (cli/): dir, hub
-          # Helm (helm/): helm
+          # - Dir (dir/): api, server, client
+          # - SDK (sdk/): go, js, py
+          # - CLI (cli/): dir, hub
+          # - Helm (helm/): dir, dirctl
+          # - Docker (docker/): docker
+          # Project:
+          # - project (project/): *
           scopes: |
             dir
             dir/api
@@ -65,6 +72,7 @@ jobs:
             helm/dir
             helm/dirctl
             docker
+            project/.*
           requireScope: true
 
       # Leave a comment if linter reports an error
@@ -88,6 +96,7 @@ jobs:
             ```
             - feat(dir/api): add new authentication endpoint
             - fix(sdk/js): resolve issue with token refresh
+            - chore(sdk/js): resolve issue with token refresh
             ```
 
       # Hide error message if the PR title has been fixed
