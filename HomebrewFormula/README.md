@@ -8,8 +8,6 @@
 ## How to install a formula
 ```bash
     brew install dirctl
-    # or with extension
-    brew install dirctl --with-hub
 ```
 
 ## How to remove an installed formula
