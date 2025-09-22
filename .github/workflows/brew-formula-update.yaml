@@ -10,6 +10,15 @@ description: |
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      create-pr:
+        type: boolean
+        default: true
+        description: Enable to create PR
+      run-without-diff:
+        type: boolean
+        default: false
+        description: Run even if there are no changes.
   release:
     types: [released]
 
@@ -78,7 +87,7 @@ jobs:
           fi
 
       - name: Test new formula
-        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 }}
+        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 || inputs.run-without-diff == true || inputs.run-without-diff == 'true' }}
         run: |
           apt update && apt install curl git -y
 
@@ -86,11 +95,17 @@ jobs:
 
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-          brew install --build-from-source ./HomebrewFormula/dirctl.rb --verbose
+          # Make local formula for testing from the repo homebrew formula file
+          brew tap-new --no-git agntcy/dir-test
+
+          FORMULA_DIR="$(brew --repository)/Library/Taps/agntcy/homebrew-dir-test/Formula/"
+          cp ./HomebrewFormula/dirctl.rb "$FORMULA_DIR"
+
+          brew install agntcy/dir-test/dirctl --verbose
 
           dirctl --help
 
       - name: Create PR
-        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 }}
+        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 &&  inputs.create-pr == true || inputs.create-pr == 'true'  }}
         run: |
           gh pr create --title "chore: update brew formula to ${{ steps.release-infos.outputs.LATEST_VERSION }}" --body "This PR is created by brew-formula-update workflow."
