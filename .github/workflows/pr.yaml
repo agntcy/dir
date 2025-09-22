@@ -98,8 +98,8 @@ jobs:
             ```
             - feat(dir/api): add new authentication endpoint
             - fix(sdk/js): resolve issue with token refresh
-            - chore(sdk/js): resolve issue with token refresh
-            - chore(custom-area): resolve issue with token refresh
+            - chore(sdk/js): update dependencies
+            - chore(custom-area): changes to .gitignore file
             ```
 
       # Hide error message if the PR title has been fixed
