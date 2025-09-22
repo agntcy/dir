@@ -48,14 +48,16 @@ jobs:
           # Scopes should match the components within the directory repo.
           # For example, if you are making a change to the API component,
           # the scope should be "dir/api".
-          # Components:
+          #
+          # Components (optional):
           # - Dir (dir/): api, server, client
           # - SDK (sdk/): go, js, py
           # - CLI (cli/): dir, hub
           # - Helm (helm/): dir, dirctl
           # - Docker (docker/): docker
-          # Project:
-          # - project (project/): *
+          #
+          # TODO: Add additional scopes based on use-cases/components as needed.
+          # For now, allow users to use (.*) as a special case that can have any scope.
           scopes: |
             dir
             dir/api
@@ -72,7 +74,7 @@ jobs:
             helm/dir
             helm/dirctl
             docker
-            project/.*
+            .*
           requireScope: true
 
       # Leave a comment if linter reports an error
@@ -97,6 +99,7 @@ jobs:
             - feat(dir/api): add new authentication endpoint
             - fix(sdk/js): resolve issue with token refresh
             - chore(sdk/js): resolve issue with token refresh
+            - chore(custom-area): resolve issue with token refresh
             ```
 
       # Hide error message if the PR title has been fixed

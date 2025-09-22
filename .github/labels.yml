@@ -56,45 +56,45 @@
   description: 'Categorizes issue or PR as related to a regression from a prior release.'
 
 ###
-# Components / Scopes
+# Components / Area
 ###
 
 # Dir Core:
-- name: 'scope/dir'
+- name: 'area/dir'
   color: '0052cc'
-- name: 'scope/dir/api'
+- name: 'area/dir/api'
   color: '0052cc'
-- name: 'scope/dir/server'
+- name: 'area/dir/server'
   color: '0052cc'
-- name: 'scope/dir/client'
+- name: 'area/dir/client'
   color: '0052cc'
 
 # SDK:
-- name: 'scope/sdk'
+- name: 'area/sdk'
   color: '0052cc'
-- name: 'scope/sdk/go'
+- name: 'area/sdk/go'
   color: '0052cc'
-- name: 'scope/sdk/js'
+- name: 'area/sdk/js'
   color: '0052cc'
-- name: 'scope/sdk/py'
+- name: 'area/sdk/py'
   color: '0052cc'
 
 # CLI:
-- name: 'scope/cli'
+- name: 'area/cli'
   color: '0052cc'
-- name: 'scope/cli/dir'
+- name: 'area/cli/dir'
   color: '0052cc'
-- name: 'scope/cli/hub'
+- name: 'area/cli/hub'
   color: '0052cc'
 
 # Helm:
-- name: 'scope/helm'
+- name: 'area/helm'
   color: '0052cc'
-- name: 'scope/helm/dir'
+- name: 'area/helm/dir'
   color: '0052cc'
-- name: 'scope/helm/dirctl'
+- name: 'area/helm/dirctl'
   color: '0052cc'
-- name: 'scope/docker'
+- name: 'area/docker'
   color: '0052cc'
 
 ###
