@@ -31,7 +31,7 @@ runs:
         fi
 
         ## Download binary
-        curl -sSLf "https://github.com/agntcy/dir/releases/download/v0.3.0/dirctl-${{ inputs.os }}-${{ inputs.arch }}" -o dirctl
+        curl -sSLf "https://github.com/agntcy/dir/releases/download/$TAG/dirctl-${{ inputs.os }}-${{ inputs.arch }}" -o dirctl
         chmod +x dirctl
 
         ## Add to PATH
