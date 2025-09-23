@@ -511,6 +511,9 @@ tasks:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
         sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
+      HTPASSWD_SYNC_USERNAME: "sync-user"
+      HTPASSWD_SYNC_PASSWORD:
+        sh: openssl rand -hex 16
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -521,6 +524,8 @@ tasks:
           HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
           HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
           HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
+          HTPASSWD_SYNC_USERNAME: "{{ .HTPASSWD_SYNC_USERNAME }}"
+          HTPASSWD_SYNC_PASSWORD: "{{ .HTPASSWD_SYNC_PASSWORD }}"
 
       # Deploy chart
       - |
@@ -533,6 +538,8 @@ tasks:
           --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
           --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
           --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
+          --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
+          --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -675,6 +682,9 @@ tasks:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
         sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
+      HTPASSWD_SYNC_USERNAME: "sync-user"
+      HTPASSWD_SYNC_PASSWORD:
+        sh: openssl rand -hex 16
     cmds:
       # Generate private key if it doesn't exist
       - |
@@ -693,6 +703,8 @@ tasks:
           HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
           HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
           HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
+          HTPASSWD_SYNC_USERNAME: "{{ .HTPASSWD_SYNC_USERNAME }}"
+          HTPASSWD_SYNC_PASSWORD: "{{ .HTPASSWD_SYNC_PASSWORD }}"
 
       # Deploy the bootstrap server using Helm
       - |
@@ -712,6 +724,8 @@ tasks:
           --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
           --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
           --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
+          --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
+          --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -731,6 +745,9 @@ tasks:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
         sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
+      HTPASSWD_SYNC_USERNAME: "sync-user"
+      HTPASSWD_SYNC_PASSWORD:
+        sh: openssl rand -hex 16
     cmds:
       # Deploy bootstrap with explicit var passing (not as dependency)
       - task: deploy:kubernetes:network:bootstrap
@@ -746,6 +763,8 @@ tasks:
           HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
           HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
           HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
+          HTPASSWD_SYNC_USERNAME: "{{ .HTPASSWD_SYNC_USERNAME }}"
+          HTPASSWD_SYNC_PASSWORD: "{{ .HTPASSWD_SYNC_PASSWORD }}"
 
       # Deploy the peer servers using Helm
       - for:
@@ -766,6 +785,8 @@ tasks:
             --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
             --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
             --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
+            --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
+            --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \
@@ -843,6 +864,18 @@ tasks:
               "adminPolicy": {
                   "users": ["{{ .HTPASSWD_USERNAME }}"],
                   "actions": ["read", "create", "update", "delete"]
+              },
+              "repositories": {
+                "**": {
+                    "anonymousPolicy": [],
+                    "defaultPolicy": ["read"],
+                    "policies": [
+                        {
+                            "actions": ["read"],
+                            "users": ["{{ .HTPASSWD_SYNC_USERNAME }}"]
+                        }
+                    ]
+                }
               }
             }
           },
@@ -871,6 +904,8 @@ tasks:
       # Create htpasswd file locally using task variables
       - |
         htpasswd -cBb /tmp/zot-htpasswd "{{ .HTPASSWD_USERNAME }}" "{{ .HTPASSWD_PASSWORD }}"
+        htpasswd -Bb /tmp/zot-htpasswd "{{ .HTPASSWD_SYNC_USERNAME }}" "{{ .HTPASSWD_SYNC_PASSWORD }}"
+        cat /tmp/zot-htpasswd
 
       # Copy htpasswd file to node and set permissions
       - |
