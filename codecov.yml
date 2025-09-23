@@ -5,6 +5,7 @@ codecov:
 
 comment:
   layout: "files,diff,flags,tree"
+  hide_project_coverage: false
   require_changes: false
   require_base: false
   require_head: true
