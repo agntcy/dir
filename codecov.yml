@@ -4,31 +4,11 @@ codecov:
     after_n_builds: 1
 
 comment:
-  layout: "header, diff, flags, components"
-  hide_project_coverage: false
+  layout: "files,diff,flags,tree"
   require_changes: false
   require_base: false
   require_head: true
   behavior: default
-
-component_management:
-  individual_components:
-    - component_id: module_api
-      name: api
-      paths:
-        - api/
-    - component_id: module_client
-      name: client
-      paths:
-        - client/
-    - component_id: module_server
-      name: server
-      paths:
-        - server/
-    - component_id: module_cli
-      name: cli
-      paths:
-        - cli/
 
 coverage:
   precision: 1

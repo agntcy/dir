@@ -78,6 +78,13 @@ jobs:
             coverage-*.func.txt
             coverage-*.out
 
+      - name: PR Comment summary
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          path: coverage-summary.txt
+
   sdk:
     name: SDK
     uses: ./.github/workflows/reusable-test-sdk.yaml
