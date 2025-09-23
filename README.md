@@ -6,7 +6,7 @@
 [![Coverage Workflow](https://github.com/agntcy/dir/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/coverage.yml)
 [![License](https://img.shields.io/github/license/agntcy/dir)](./LICENSE.md)
 
-[Buf Registry](https://buf.build/agntcy/dir) | [Go SDK](https://pkg.go.dev/github.com/agntcy/dir/client) | [Python SDK](https://pypi.org/project/agntcy-dir/) | [JavaScript SDK](https://www.npmjs.com/package/agntcy-dir) | [Documentation](https://docs.agntcy.org/dir/overview/)
+[Buf Registry](https://buf.build/agntcy/dir) | [Go SDK](https://pkg.go.dev/github.com/agntcy/dir/client) | [Python SDK](https://pypi.org/project/agntcy-dir/) | [JavaScript SDK](https://www.npmjs.com/package/agntcy-dir) | [GitHub Actions](https://github.com/agntcy/dir/tree/main/.github/actions/setup-dirctl) | [Documentation](https://docs.agntcy.org/dir/overview/)
 
 The Directory (dir) allows publication, exchange, and discovery of information about records over a distributed peer-to-peer network.
 It leverages [OASF](https://github.com/agntcy/oasf) to describe AI agents and provides a set of APIs and tools to store, publish, and discover records across the network by their attributes and constraints.

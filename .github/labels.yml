@@ -59,6 +59,11 @@
 # Components / Area
 ###
 
+# General:
+- name: 'buf skip breaking'
+  color: 'f9d0c4'
+  description: 'Denotes a PR that should skip breaking Buf change checks.'
+
 # Dir Core:
 - name: 'area/dir'
   color: '0052cc'

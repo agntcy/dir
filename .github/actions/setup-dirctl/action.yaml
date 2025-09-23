@@ -1,0 +1,45 @@
+name: Setup dirctl
+description: Set up dirctl CLI in your GitHub Actions workflow
+author: agntcy
+branding:
+  icon: settings
+  color: yellow
+inputs:
+  version:
+    description: Version of dirctl to install
+    required: false
+    default: "latest"
+  os:
+    description: Operating system of dirctl to install (linux, darwin, windows)
+    required: false
+    default: "linux"
+  arch:
+    description: Architecture of dirctl to install (amd64, arm64)
+    required: false
+    default: "amd64"
+runs:
+  using: "composite"
+  steps:
+    - name: Download binary
+      shell: bash
+      run: |
+        ## If latest, resolve tag
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          TAG=$(curl -sSLf "https://api.github.com/repos/agntcy/dir/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        else
+          TAG="${{ inputs.version }}"
+        fi
+
+        ## Download binary
+        curl -sSLf "https://github.com/agntcy/dir/releases/download/v0.3.0/dirctl-${{ inputs.os }}-${{ inputs.arch }}" -o dirctl
+        chmod +x dirctl
+
+        ## Add to PATH
+        mkdir -p "$PWD/bin"
+        mv dirctl "$PWD/bin/dirctl"
+        echo "$PWD/bin" >> $GITHUB_PATH
+
+    - name: Verify binary
+      shell: bash
+      run: |
+        dirctl version

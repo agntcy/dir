@@ -1,0 +1,26 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Demo - Dir CLI
+
+description: |
+  This workflow demonstrates how to use the Dir CLI in GitHub Actions.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    env:
+      ACTIONS_STEP_DEBUG: true
+    steps:
+      - name: Setup dirctl
+        uses: agntcy/dir/.github/actions/setup-dirctl@feat/gh-action
+
+      - name: Check dirctl version
+        run: |
+          echo "Running version command"
+          dirctl version
+
+      # TODO Start server and run push/publish commands
