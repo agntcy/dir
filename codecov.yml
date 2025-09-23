@@ -10,6 +10,8 @@ comment:
   require_base: false
   require_head: true
   behavior: default
+  after_n_builds: 1
+  show_carryforward_flags: true
 
 coverage:
   precision: 1
@@ -27,6 +29,24 @@ coverage:
         threshold: 1%
         informational: true
     changes: false
+
+flags:
+  api:
+    carryforward: true
+    paths:
+      - api/
+  client:
+    carryforward: true
+    paths:
+      - client/
+  server:
+    carryforward: true
+    paths:
+      - server/
+  cli:
+    carryforward: true
+    paths:
+      - cli/
 
 ignore:
   - "**/*.pb.go"
