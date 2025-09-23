@@ -76,17 +76,17 @@ jobs:
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
-      - name: Install deps
-        shell: bash
-        run : |
-          task deps
-
-      - name: Setup Node env
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
           registry-url: https://registry.npmjs.org/
           scope: "@agntcy"
+
+      - name: Install deps
+        shell: bash
+        run : |
+          task deps
 
       - name: Build the Javascript package
         run: |

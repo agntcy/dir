@@ -35,21 +35,19 @@ jobs:
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
-      - name: Create lint cache directory
-        run: mkdir -p /tmp/.lint-cache
-
       - name: Setup lint cache
-        uses: actions/cache@v4.2.3
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: |
-            /tmp/.lint-cache
+            ~/.cache/golangci-lint
+            ~/.cache/go-build
           key: lint-cache-${{ runner.os }}-${{ hashFiles('**/*.sum') }}
           restore-keys: |
             lint-cache-${{ runner.os }}-
 
       - name: Lint Go
         run: |
-          GOLANGCI_LINT_CACHE=/tmp/.lint-cache task lint:go
+          task lint:go
 
       - name: Lint Buf
         run: |
@@ -58,6 +56,8 @@ jobs:
   license:
     name: License
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
@@ -69,9 +69,7 @@ jobs:
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
       - name: Setup license cache
-        uses: actions/cache@v4.2.3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: |
             **/.licensei.cache
@@ -80,8 +78,6 @@ jobs:
             license-cache-${{ runner.os }}-
 
       - name: License cache
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           task license:cache
 
@@ -89,8 +85,8 @@ jobs:
         run: |
           task license
 
-  verify-code:
-    name: Verify Code
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -110,83 +106,41 @@ jobs:
             exit 1
           fi
 
-  prepare-build:
-    name: Prepare Build
-    needs:
-      - lint
-      - license
-      - verify-code
-    outputs:
-      targets: ${{ steps.targets.outputs.targets }}
-      image_tag: ${{ steps.resolve.outputs.image_tag }}
-      release_tag: ${{ steps.resolve.outputs.release_tag }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-        with:
-          fetch-depth: 0
-
-      - name: Resolve build details
-        id: resolve
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For push from PR, resolve to <PR number>-<commit sha>
-            image_tag="${{ format('pr{0}-{1}', github.event.pull_request.number, github.sha) }}"
-          else
-            # For push, resolve to <commit sha>
-            image_tag="${{ format('{0}', github.sha) }}"
-          fi
-
-          # Export vars
-          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
-          echo "release_tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-
-      - name: List targets
-        id: targets
-        uses: docker/bake-action/subaction/list-targets@a4d7f0b5b91c14a296d792d4ec53a9db17f02e67 # v5.5.0
-
   build:
     name: Build
     needs:
-      - prepare-build
-    strategy:
-      fail-fast: false
-      matrix:
-        targets: ${{ fromJson(needs.prepare-build.outputs.targets) }}
+      - lint
+      - license
+      - verify
     uses: ./.github/workflows/reusable-build.yaml
     with:
-      bake_target: ${{ matrix.targets }}
       image_repo: ghcr.io/agntcy
-      image_tag: ${{ needs.prepare-build.outputs.image_tag }}
+      image_tag: ${{ github.sha }}
 
   test:
     name: Test
     needs:
-      - prepare-build
       - build
     uses: ./.github/workflows/reusable-test.yaml
     with:
       image_repo: ghcr.io/agntcy
-      image_tag: ${{ needs.prepare-build.outputs.image_tag }}
+      image_tag: ${{ github.sha }}
 
   release:
     name: Release
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     needs:
-      - prepare-build
-      - build
       - test
     uses: ./.github/workflows/reusable-release.yaml
     with:
       image_repo: ghcr.io/agntcy
-      release_tag: ${{ needs.prepare-build.outputs.release_tag }}
-      bake_targets: ${{ needs.prepare-build.outputs.targets }}
+      release_tag: ${{ github.ref_name }}
 
   integration:
     name: Run integration tests
     runs-on: ubuntu-latest
-    needs: [release]
+    needs:
+      - release
     steps:
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
@@ -204,8 +158,6 @@ jobs:
     # https://github.com/actions/toolkit/issues/581
     if: ${{ !cancelled() && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'failure') }}
     needs:
-      - prepare-build
-      - build
       - test
       - release
     runs-on: ubuntu-latest

@@ -14,21 +14,12 @@ on:
         required: true
         type: string
         description: "Release tag for all components."
-      bake_targets:
-        required: true
-        type: string
-        description: "Bake targets to build and push"
 
 jobs:
-  images:
-    name: Images
-    strategy:
-      fail-fast: false
-      matrix:
-        targets: ${{ fromJson(inputs.bake_targets) }}
+  image:
+    name: Image
     uses: ./.github/workflows/reusable-build.yaml
     with:
-      bake_target: ${{ matrix.targets }}
       image_repo: ${{ inputs.image_repo }}
       image_tag: ${{ inputs.release_tag }}
       push: true
@@ -89,6 +80,13 @@ jobs:
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.5'
+          check-latest: true
+          cache-dependency-path: "**/*.sum"
+
       - name: Build
         run: |
           task cli:compile:all
@@ -110,7 +108,7 @@ jobs:
   release:
     name: Release
     needs:
-      - images
+      - image
       - chart
       - cli
       - sdk

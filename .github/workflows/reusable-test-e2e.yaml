@@ -1,7 +1,7 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-name: Test
+name: Test E2E
 
 on:
   workflow_call:
@@ -14,16 +14,18 @@ on:
         required: true
         type: string
         description: 'Image tag to use.'
-      taskfile-task:
-        required: false
-        default: "test:e2e"
-        type: string
-        description: 'Taskfile task to run'
 
 jobs:
   e2e:
-    name: E2E
+    name: Test ${{ matrix.label }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - task: test:e2e:local
+            label: "Local"
+          - task: test:e2e:network
+            label: "Network"
     steps:
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
@@ -48,6 +50,21 @@ jobs:
           check-latest: true
           cache-dependency-path: "**/*.sum"
 
+      - name: Cache Go modules and build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-e2e-${{ runner.os }}-${{ matrix.task }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-e2e-${{ runner.os }}-${{ matrix.task }}-
+            go-e2e-${{ runner.os }}-
+            go-${{ runner.os }}-
+
+      - name: Setup Cosign
+        uses: sigstore/cosign-installer@v3.8.2
+
       - name: Download artifacts
         uses: actions/download-artifact@v4.1.9
         with:
@@ -62,7 +79,7 @@ jobs:
           docker images
 
       - name: Compile CLI
-        if: ${{ inputs.taskfile-task == 'test:e2e:network' }}
+        if: ${{ matrix.task == 'test:e2e:network' }}
         run: |
           task cli:compile
 
@@ -75,4 +92,4 @@ jobs:
           # Use a random cluster name to avoid conflicts in concurrent runs.
           # Kind cluster names must be lowercase and can contain only letters and numbers.
           export KIND_CLUSTER_NAME=test-$(openssl rand -base64 12 | tr -dc 'a-z0-9')
-          task ${{ inputs.taskfile-task }}
+          task ${{ matrix.task }}

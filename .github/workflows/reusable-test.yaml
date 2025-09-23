@@ -18,6 +18,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 jobs:
   unit:
@@ -40,6 +41,17 @@ jobs:
           check-latest: true
           cache-dependency-path: "**/*.sum"
 
+      - name: Cache Go modules and build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-test-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-test-${{ runner.os }}-
+            go-${{ runner.os }}-
+
       - name: Run unit tests
         run: task test:unit:coverage:html
 
@@ -54,7 +66,7 @@ jobs:
           flags: per-module
           fail_ci_if_error: false
           verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
 
       - name: Upload HTML reports as artifact
         uses: actions/upload-artifact@v4
@@ -73,18 +85,9 @@ jobs:
       image_repo: ${{ inputs.image_repo }}
       image_tag: ${{ inputs.image_tag }}
 
-  e2e-local:
-    name: Local
+  e2e:
+    name: E2E
     uses: ./.github/workflows/reusable-test-e2e.yaml
     with:
       image_repo: ${{ inputs.image_repo }}
       image_tag: ${{ inputs.image_tag }}
-      taskfile-task: "test:e2e:local"
-
-  e2e-network:
-    name: Network
-    uses: ./.github/workflows/reusable-test-e2e.yaml
-    with:
-      image_repo: ${{ inputs.image_repo }}
-      image_tag: ${{ inputs.image_tag }}
-      taskfile-task: "test:e2e:network"

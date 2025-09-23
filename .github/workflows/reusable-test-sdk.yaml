@@ -1,7 +1,7 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-name: Test
+name: Test SDK
 
 on:
   workflow_call:
@@ -55,7 +55,7 @@ jobs:
 
       - name: Add dependencies for SDKs testing
         env:
-          CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test.yaml@${{ github.ref }}"
+          CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test-sdk.yaml@${{ github.ref }}"
         run: |
           task sdk:deps:common
           task sdk:deps:cicd:iodc-token-generation >> $GITHUB_ENV
@@ -68,7 +68,7 @@ jobs:
           task sdk:test:python
 
   javascript:
-    name: Javascript
+    name: JavaScript
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -111,13 +111,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: '~/.npm'
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          key: node-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-packages-
+            node-${{ runner.os }}-
 
       - name: Add dependencies for SDKs testing
         env:
-          CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test.yaml@${{ github.ref }}"
+          CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test-sdk.yaml@${{ github.ref }}"
         run: |
           task sdk:deps:common
           task sdk:deps:cicd:iodc-token-generation >> $GITHUB_ENV
