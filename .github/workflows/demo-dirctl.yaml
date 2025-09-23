@@ -16,11 +16,16 @@ jobs:
       ACTIONS_STEP_DEBUG: true
     steps:
       - name: Setup dirctl
-        uses: agntcy/dir/.github/actions/setup-dirctl@feat/gh-action
+        uses: agntcy/dir/.github/actions/setup-dirctl@main
 
       - name: Check dirctl version
         run: |
           echo "Running version command"
           dirctl version
 
-      # TODO Start server and run push/publish commands
+      # Continue developer flows such as:
+      # - Push
+      # - Verify
+      # - Publish
+      # - Search
+      # - Discover
