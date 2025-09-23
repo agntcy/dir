@@ -37,6 +37,8 @@ jobs:
     name: Python
     if: ${{ inputs.python-release == true || inputs.python-release == 'true' }}
     runs-on: ubuntu-latest
+    env:
+      UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
@@ -58,7 +60,7 @@ jobs:
 
       - name: Publish the Python SDK
         run: |
-          task sdk:release:python UV_PUBLISH_TOKEN=${{ secrets.PYPI_API_TOKEN }}
+          task sdk:release:python
 
   javascript:
     name: JavaScript
