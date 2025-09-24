@@ -39,6 +39,7 @@
     "pretest": "npm run build",
     "test": "vitest run"
   },
+  "packageManager": "npm@11.6.0",
   "dependencies": {
     "@buf/agntcy_dir.bufbuild_es": "^2.8.0-20250917154729-bf1030b77d42.1",
     "@bufbuild/protobuf": "^2.8.0",
