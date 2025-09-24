@@ -118,19 +118,55 @@ jobs:
     steps:
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
+        env:
+          GITHUB_TOKEN : ${{ secrets.GITHUB_TOKEN  }}
         with:
-          token: ${{ secrets.GITHUB_TOKEN  }}
           tag_name: ${{ inputs.release_tag }}
-          name: Release ${{ inputs.release_tag }}
+          release_name: Release ${{ inputs.release_tag }}
           draft: true
           prerelease: false
-          files: |
-            bin/dirctl-darwin-amd64
-            bin/dirctl-darwin-arm64
-            bin/dirctl-linux-amd64
-            bin/dirctl-linux-arm64
-            bin/dirctl-windows-amd64
+
+  upload:
+    name: Upload Asset
+    needs:
+      - release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
+        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: artifacts
+          path: bin
+
+      - name: Verify file
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
+        run: |
+          ls -l bin
+          file bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Upload Release Asset
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
+        id: upload-release-asset
+        uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
+        env:
+          GITHUB_TOKEN : ${{ secrets.GITHUB_TOKEN  }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
+          asset_name: dirctl-${{ matrix.os }}-${{ matrix.arch }}
+          asset_content_type: application/octet-stream
 
   brew:
     name: Update Brew
