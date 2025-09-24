@@ -867,14 +867,8 @@ tasks:
               },
               "repositories": {
                 "**": {
-                    "anonymousPolicy": [],
-                    "defaultPolicy": ["read"],
-                    "policies": [
-                        {
-                            "actions": ["read"],
-                            "users": ["{{ .HTPASSWD_SYNC_USERNAME }}"]
-                        }
-                    ]
+                  "anonymousPolicy": [],
+                  "defaultPolicy": ["read"]
                 }
               }
             }

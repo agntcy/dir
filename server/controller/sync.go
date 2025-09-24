@@ -143,10 +143,10 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	return &storev1.RequestRegistryCredentialsResponse{
 		Success:           true,
 		RemoteRegistryUrl: registryURL,
-		Credentials:       &storev1.RequestRegistryCredentialsResponse_BasicAuth{
+		Credentials: &storev1.RequestRegistryCredentialsResponse_BasicAuth{
 			BasicAuth: &storev1.BasicAuthCredentials{
-				Username: syncConfig.AuthConfig.Username,
-				Password: syncConfig.AuthConfig.Password,
+				Username: syncConfig.Username,
+				Password: syncConfig.Password,
 			},
 		},
 	}, nil
