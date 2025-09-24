@@ -50,7 +50,6 @@ jobs:
           key: go-test-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             go-test-${{ runner.os }}-
-            go-${{ runner.os }}-
 
       - name: Run unit tests
         run: task test:unit:coverage:html
