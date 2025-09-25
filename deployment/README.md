@@ -1,4 +1,4 @@
-# Directory - Public Staging Instance 🚀
+# Directory - Public Staging Instance
 
 Welcome to the **Directory Public Staging Environment** - your gateway to testing and developing
 with the decentralized AI agent discovery network! This environment provides a fully functional
