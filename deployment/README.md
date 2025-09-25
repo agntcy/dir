@@ -221,7 +221,7 @@ trustDomainBundle: |-
 
 **💡 How to get your trust bundle:**
 ```bash
-# Export your SPIRE server's trust bundle
+# Export your SPIRE server trust bundle
 spire-server bundle show -format spiffe > your-trust-bundle.json
 ```
 
@@ -305,7 +305,6 @@ curl https://spire.directory.agntcy.org/
 - **GitHub Issues**: [Open an issue](https://github.com/agntcy/dir/issues) for bugs and feature requests
 - **Discussions**: [GitHub Discussions](https://github.com/agntcy/dir/discussions) for questions and community help
 - **Documentation**: [Full Documentation](https://docs.agntcy.org/dir/overview/)
-- **Email**: [support@agntcy.org](mailto:support@agntcy.org) for urgent issues
 
 ---
 
