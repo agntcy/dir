@@ -1,0 +1,33 @@
+# Trust domain defines the namespace for all SPIFFE IDs
+# in this organization.
+trustDomain: example.com
+
+# Bundle Endpoint defines publicly accessible SPIRE server
+# address for the trust domain.
+bundleEndpointURL: https://spire.example.com
+
+# Bundle endpoint profile defines how to access the bundle endpoint.
+bundleEndpointProfile:
+  type: https_spiffe
+  endpointSPIFFEID: spiffe://example.com/spire/server
+trustDomainBundle: |-
+  {
+    "keys":[
+        {
+          "use":"x509-svid",
+          "kty":"RSA",
+          "n":"8R9MrCeszoPtDGZpkHBpb47vFKs45Wlj9nVgIgEjnCiX0G6WaxAB0JQTbhRkYdTc7LSYAqlF_MfX5oCrV_oJAAWRiFphSQSDpOhS0_qrF1M8fRDXnfHVHp2zg3Yqmyl-bZGynoT9OyDTmHBxhG8hFevMDEixto74Om6U4ODF4jsbhq86fK1ruE8olzt6yjp3dAUIArG0pGZVZu_Tcem57touP-6K_CVmWUfeZ7jnxEB_GGbpNCTu01hRLgGcliRTCxiqIJCOLEAPPtpnQfJbhAkpKA4hk34jiYebcM8wBwXXGznxXP-W5jQyj4W0RgZR1VgUq2N3lB3g1HRVGUPJnQ",
+          "e":"AQAB",
+          "x5c":[
+              "MIIDwzCCAqugAwIBAgIRANxjNA2KCu9kvwnGdCrBh4owDQYJKoZIhvcNAQELBQAwaTENMAsGA1UEBhMEQVJQQTEQMA4GA1UEChMHRXhhbXBsZTEUMBIGA1UEAxMLZXhhbXBsZS5vcmcxMDAuBgNVBAUTJzI5Mjk0NTI1MjIxOTY2NDA5MzY2MzkzMTgzNzMwMTYwNTM2OTczODAeFw0yNTA5MjQwOTQ3MjlaFw0yNTA5MjUwOTQ3MzlaMGkxDTALBgNVBAYTBEFSUEExEDAOBgNVBAoTB0V4YW1wbGUxFDASBgNVBAMTC2V4YW1wbGUub3JnMTAwLgYDVQQFEycyOTI5NDUyNTIyMTk2NjQwOTM2NjM5MzE4MzczMDE2MDUzNjk3MzgwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDxH0ysJ6zOg+0MZmmQcGlvju8UqzjlaWP2dWAiASOcKJfQbpZrEAHQlBNuFGRh1NzstJgCqUX8x9fmgKtX+gkABZGIWmFJBIOk6FLT+qsXUzx9ENed8dUenbODdiqbKX5tkbKehP07INOYcHGEbyEV68wMSLG2jvg6bpTg4MXiOxuGrzp8rWu4TyiXO3rKOnd0BQgCsbSkZlVm79Nx6bnu2i4/7or8JWZZR95nuOfEQH8YZuk0JO7TWFEuAZyWJFMLGKogkI4sQA8+2mdB8luECSkoDiGTfiOJh5twzzAHBdcbOfFc/5bmNDKPhbRGBlHVWBSrY3eUHeDUdFUZQ8mdAgMBAAGjZjBkMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQXgatmyg7yy0nt+qyl2tAgCY1JQDAiBgNVHREEGzAZhhdzcGlmZmU6Ly9kaXJjdGwuZXhhbXBsZTANBgkqhkiG9w0BAQsFAAOCAQEAYG/2vrFDqv1KJfHyCaOm9gnsFh+gDHmi5c+FZzSUHGfboAnXqDoK88OacN1IDuaz0L00Cg8NnLSB9R+OMQSskFbsHnU4HcL7fwWaXETe1pFqX23EkhFusCZuNVQD2hGm7Ih/fPKuJDLCgs6n6HrnlocmY61mNFQ22265tCOG9VCq4YwdaHpKC8Zf7EOFndpH5WWol9CZLkVHtESrIlNuGOk/4fQZKHW+2qwdNDVu6p3WRQUtnW1KtxUtXtft8DlpkV8eun+rUQg9QyVqkLwnSy85r6VER8/BHNLEaI+kB1MuK6nWKjGd4YZxLZaWw8aAc48NMjXPcDlKXLMmOxve2w=="
+          ]
+        },
+        {
+          "use":"jwt-svid",
+          "kty":"RSA",
+          "kid":"Yj2EQ0UuIoFznj1grWhYhi3wrDuH1HuN",
+          "n":"2tUCDMIk5w76sW0_PUcRDEeaLBcL_PWTyGoiT89cxBjfZ64_Iq1VZfSEz0N1YwCY9A_fj6NdenkbgiIjjBIsaQUQiOR3ytLyxMg5ikt-6Nu7pSatMFMbzQZx4ucuLxgRvPoCOWM_-ToKNDFt2cZbP0trpncBgjX_SA_SxOYLuNFht-eos7wrsZE4e0Ev3d7SEfCeyRLVve28vF3lfY-LKMxNp7NFMMHFGIA_KRqHiit3E4EA3A0Qr87Xz2MjbakMoyNakCUmjKkor2ahfxJR-yw3VFO7A3QG2J0xxjp5uCRhA5G_GVI1qXhVrorWyv4oBp-j2zguhNBNoepIpHZuOw",
+          "e":"AQAB"
+        }
+    ]
+  }
