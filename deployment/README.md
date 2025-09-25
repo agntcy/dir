@@ -1,6 +1,16 @@
 # Directory - Public Staging Instance 🚀
 
-Welcome to the **Directory Public Staging Environment** - your gateway to testing and developing
+Welcome to the **Directory Publi2. **Configure the client**:
+   ```bash
+   # Set the Directory API server address
+   dirctl config set server-address api.directory.agntcy.org
+   
+   # Configure SPIRE socket for mTLS authentication
+   dirctl config set spiffe-socket-path /tmp/spire-agent/public.sock
+   
+   # Verify configuration
+   dirctl config list
+   ```ging Environment** - your gateway to testing and developing
 with the decentralized AI agent discovery network! This environment provides a fully functional
 Directory instance for development, testing, and exploration purposes.
 
@@ -54,19 +64,19 @@ Directory is a decentralized peer-to-peer network that enables:
 Before you begin, ensure you have:
 - [ ] A SPIRE server setup in your organization
 - [ ] Basic understanding of SPIFFE/SPIRE concepts
-- [ ] Directory client SDK or CLI tool available
+- [ ] Directory client SDK or CLI tools available
 
 ### Prepare Your Environment
 
-#### Option 1: Using Directory CLI (Fastest)
+#### Option 1: Using Directory CLI
 
 1. **Install the CLI**:
    ```bash
    # Using Homebrew (Linux/macOS)
-   brew tap agntcy/dir https://github.com/agntcy/dir/
+   brew tap agntcy/dir https://github.com/agntcy/dir
    brew install dirctl
-
-   # Or download from releases
+   
+   # Or download directly from releases
    curl -L https://github.com/agntcy/dir/releases/latest/download/dirctl-linux-amd64 -o dirctl
    chmod +x dirctl
    sudo mv dirctl /usr/local/bin/
@@ -74,17 +84,27 @@ Before you begin, ensure you have:
 
 2. **Configure the client**:
    ```bash
+   # Set the Directory API server address  
    dirctl config set server-address api.directory.agntcy.org
+   
+   # Configure SPIRE socket for mTLS authentication
    dirctl config set spiffe-socket-path /tmp/spire-agent/public.sock
+   
+   # Verify configuration
+   dirctl config list
    ```
 
 3. **Test the connection**:
    ```bash
-   dirctl ping
-   # Expected: ✅ Connected to Directory API at api.directory.agntcy.org
+   # Test basic connectivity
+   dirctl list
+   # Expected: Successfully lists records (or empty if none exist)
+   
+   # Alternative: Check server status
+   curl -s https://api.directory.agntcy.org/health || echo "Server reachable"
    ```
 
-#### Option 2: Using SDK Integration
+#### Option 2: Using Directory Client SDK
 
 Choose your preferred language:
 
@@ -102,26 +122,23 @@ import (
 )
 
 func main() {
-    // Create client configuration
+    // Create client with SPIRE support
     config := &client.Config{
         ServerAddress:     "api.directory.agntcy.org",
         SpiffeSocketPath:  "/tmp/spire-agent/public.sock",
     }
-    
-    // Initialize client
-    c, err := client.New(config)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer c.Close()
-    
+    client, _ := client.New(client.WithConfig(config))
+
     // Test connection
-    ctx := context.Background()
-    if err := c.Ping(ctx); err != nil {
-        log.Fatal("Failed to connect:", err)
+    _, err := client.Ping(context.Background())
+    if err != nil {
+        log.Printf("❌ Connection failed: %v", err)
+        return
     }
-    
+
     log.Println("✅ Connected to Directory!")
+
+    // Run workflows...
 }
 ```
 </details>
@@ -130,18 +147,16 @@ func main() {
 <summary><strong>🐍 Python SDK</strong></summary>
 
 ```python
-from agntcy_dir import DirectoryClient, Config
+from agntcy.dir_sdk.client import Config, Client
 
 def main():
-    # Create client configuration
+    # Create client with SPIRE support
     config = Config(
         server_address="api.directory.agntcy.org",
         spiffe_socket_path="/tmp/spire-agent/public.sock"
     )
-    
-    # Initialize client
-    client = DirectoryClient(config)
-    
+    client = Client(config)
+
     # Test connection
     try:
         client.ping()
@@ -149,38 +164,43 @@ def main():
     except Exception as e:
         print(f"❌ Connection failed: {e}")
 
+    # Run workflows...
+
 if __name__ == "__main__":
     main()
 ```
 </details>
 
 <details>
-<summary><strong>🟨 JavaScript SDK</strong></summary>
+<summary><strong>🟨 JavaScript/Node.js SDK</strong></summary>
 
 ```javascript
-const { DirectoryClient } = require('agntcy-dir');
+import {Config, Client} from 'agntcy-dir';
 
 async function main() {
-    // Create client configuration
-    const config = {
-        serverAddress: 'api.directory.agntcy.org',
-        spiffeSocketPath: '/tmp/spire-agent/public.sock'
-    };
-    
-    // Initialize client
-    const client = new DirectoryClient(config);
-    
+    // Create client with SPIRE support
+    const config = new Config({
+        serverAddress: "api.directory.agntcy.org",
+        spiffeEndpointSocket: "/tmp/spire-agent/public.sock",
+    });
+    const transport = await Client.createGRPCTransport(config);
+    const client = new Client(config, transport);
+
     // Test connection
     try {
         await client.ping();
         console.log('✅ Connected to Directory!');
     } catch (error) {
-        console.error('❌ Connection failed:', error);
+        console.error('❌ Connection failed:', error.message);
     }
+
+    // Run workflows...
 }
 
 main();
 ```
+
+**Note**: This SDK is intended for Node.js applications only and will not work in web browsers.
 </details>
 
 ### Federation Setup (Required)
@@ -231,7 +251,7 @@ spire-server bundle show -format spiffe > your-trust-bundle.json
    ```
 
 3. **Submit a Pull Request**:
-   - Title: `Federation Request: Add [Your Organization]`
+   - Title: `build(dir): federation request for [Your Organization]`
    - Description: Brief description of your organization and use case
    - Files: Include your completed federation configuration
 
