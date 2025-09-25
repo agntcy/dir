@@ -159,7 +159,7 @@ if __name__ == "__main__":
 </details>
 
 <details>
-<summary><strong>JavaScript/Node.js SDK</strong></summary>
+<summary><strong>JavaScript SDK</strong></summary>
 
 ```javascript
 import {Config, Client} from 'agntcy-dir';
