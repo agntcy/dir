@@ -1,62 +1,306 @@
-# Directory - Public Good Instance
+# Directory - Public Staging Instance 🚀
 
-There is a public staging environment with versions of Directory API, 
-with its own SPIRE-based roots of trust.
+Welcome to the **Directory Public Staging Environment** - your gateway to testing and developing
+with the decentralized AI agent discovery network! This environment provides a fully functional
+Directory instance for development, testing, and exploration purposes.
 
-The endpoints are as follows:
+## 🎯 What is Directory?
 
-- https://api.directory.agntcy.org - Directory API Service
-- https://spire.directory.agntcy.org - Directory SPIRE Server API for federation
-- https://status.directory.agntcy.org - Status Page for Directory services
+Directory is a decentralized peer-to-peer network that enables:
+- **AI Agent Discovery**: Find agents by capabilities like skills, domains, and modules
+- **Secure Publication**: Publish agent metadata with cryptographic verification
+- **Network Federation**: Connect multiple Directory instances securely
+- **Capability Matching**: Match agent capabilities to specific requirements
 
-**NOTE**: The staging environment provides neither SLO guarantees nor the same protection of data.
-This environment is meant for development and testing only. It is not appropriate to use for production purposes.
+## 📊 Architecture Overview
 
-## Onboarding
+```
+┌─────────────────────┐    ┌──────────────────────┐    ┌─────────────────────┐
+│   Your Application  │    │  Directory Network   │    │  Other Federation   │
+│                     │    │                      │    │     Members         │
+│  ┌─────────────┐    │    │ ┌──────────────────┐ │    │                     │
+│  │ Directory   │◄───┼────┼►│ Directory API    │ │    │ ┌─────────────────┐ │
+│  │ Client SDK  │    │    │ │ Service          │ │    │ │   Partner Org   │ │
+│  └─────────────┘    │    │ └──────────────────┘ │    │ │   Directory     │ │
+│                     │    │                      │    │ │   Instances     │ │
+│  ┌─────────────┐    │    │ ┌──────────────────┐ │◄───┼─┤                 │ │
+│  │ SPIRE Agent │◄───┼────┼►│ SPIRE Server     │ │    │ └─────────────────┘ │
+│  └─────────────┘    │    │ │ (Federation)     │ │    │                     │
+└─────────────────────┘    │ └──────────────────┘ │    └─────────────────────┘
+                           └──────────────────────┘
+```
 
-To join the staging environment, you need to be added to the SPIRE server as a trusted federation member.
-You can request this by opening a PR in the [agntcy/dir](https://github.com/agntcy/dir) repository with the details of your SPIRE server.
+## 🌐 Available Endpoints
 
-You will need to provide the following details:
-- **SPIRE Server Endpoint** - The endpoint of your SPIRE server.
-- **Trust Domain** - The trust domain for your organization.
-- **Root CA** - The root CA certificate of the SPIRE server.
+| Service              | URL                                   | Purpose                                     |
+| -------------------- | ------------------------------------- | ------------------------------------------- |
+| **Directory API**    | `https://api.directory.agntcy.org`    | Main API for agent discovery and management |
+| **SPIRE Federation** | `https://spire.directory.agntcy.org`  | SPIRE server for secure identity federation |
+| **Status Dashboard** | `https://status.directory.agntcy.org` | Real-time service status and monitoring     |
 
-You can find the full example in the [onboarding/spire.template.yaml](onboarding/spire.template.yaml) file.
-An example configuration for your SPIRE server might look like this
+## ⚠️ Important Notice
+
+**This is a staging environment for development and testing only.**
+
+- ❌ No SLA guarantees
+- ❌ No data persistence guarantees  
+- ❌ Not suitable for production use
+- ✅ Useful for development, testing, and exploration
+
+## 🚀 Quick Start Guide
+
+### Prerequisites
+
+Before you begin, ensure you have:
+- [ ] A SPIRE server setup in your organization
+- [ ] Basic understanding of SPIFFE/SPIRE concepts
+- [ ] Directory client SDK or CLI tool available
+
+### Prepare Your Environment
+
+#### Option 1: Using Directory CLI (Fastest)
+
+1. **Install the CLI**:
+   ```bash
+   # Using Homebrew (Linux/macOS)
+   brew tap agntcy/dir https://github.com/agntcy/dir/
+   brew install dirctl
+
+   # Or download from releases
+   curl -L https://github.com/agntcy/dir/releases/latest/download/dirctl-linux-amd64 -o dirctl
+   chmod +x dirctl
+   sudo mv dirctl /usr/local/bin/
+   ```
+
+2. **Configure the client**:
+   ```bash
+   dirctl config set server-address api.directory.agntcy.org
+   dirctl config set spiffe-socket-path /tmp/spire-agent/public.sock
+   ```
+
+3. **Test the connection**:
+   ```bash
+   dirctl ping
+   # Expected: ✅ Connected to Directory API at api.directory.agntcy.org
+   ```
+
+#### Option 2: Using SDK Integration
+
+Choose your preferred language:
+
+<details>
+<summary><strong>🐹 Go SDK</strong></summary>
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    
+    "github.com/agntcy/dir/client"
+)
+
+func main() {
+    // Create client configuration
+    config := &client.Config{
+        ServerAddress:     "api.directory.agntcy.org",
+        SpiffeSocketPath:  "/tmp/spire-agent/public.sock",
+    }
+    
+    // Initialize client
+    c, err := client.New(config)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer c.Close()
+    
+    // Test connection
+    ctx := context.Background()
+    if err := c.Ping(ctx); err != nil {
+        log.Fatal("Failed to connect:", err)
+    }
+    
+    log.Println("✅ Connected to Directory!")
+}
+```
+</details>
+
+<details>
+<summary><strong>🐍 Python SDK</strong></summary>
+
+```python
+from agntcy_dir import DirectoryClient, Config
+
+def main():
+    # Create client configuration
+    config = Config(
+        server_address="api.directory.agntcy.org",
+        spiffe_socket_path="/tmp/spire-agent/public.sock"
+    )
+    
+    # Initialize client
+    client = DirectoryClient(config)
+    
+    # Test connection
+    try:
+        client.ping()
+        print("✅ Connected to Directory!")
+    except Exception as e:
+        print(f"❌ Connection failed: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+</details>
+
+<details>
+<summary><strong>🟨 JavaScript SDK</strong></summary>
+
+```javascript
+const { DirectoryClient } = require('agntcy-dir');
+
+async function main() {
+    // Create client configuration
+    const config = {
+        serverAddress: 'api.directory.agntcy.org',
+        spiffeSocketPath: '/tmp/spire-agent/public.sock'
+    };
+    
+    // Initialize client
+    const client = new DirectoryClient(config);
+    
+    // Test connection
+    try {
+        await client.ping();
+        console.log('✅ Connected to Directory!');
+    } catch (error) {
+        console.error('❌ Connection failed:', error);
+    }
+}
+
+main();
+```
+</details>
+
+### Federation Setup (Required)
+
+To interact with the Directory, you need to establish a trusted federation between your SPIRE server and the Directory SPIRE server.
+
+### Step 1: Prepare Your Federation Request
+
+Create a file with your SPIRE server details using the template below:
 
 ```yaml
-trustDomain: example.com
-bundleEndpointURL: https://spire.example.com
+# onboarding/your-org.com.yaml
+trustDomain: your-org.com
+bundleEndpointURL: https://spire.your-org.com
 bundleEndpointProfile:
   type: https_spiffe
-  endpointSPIFFEID: spiffe://example.com/spire/server
+  endpointSPIFFEID: spiffe://your-org.com/spire/server
 trustDomainBundle: |-
-    # Your certificate data here
+  {
+    "keys": [
+      {
+        "use": "x509-svid",
+        "kty": "RSA",
+        "n": "your-public-key-here...",
+        "e": "AQAB",
+        "x5c": ["your-certificate-chain-here..."]
+      }
+    ]
+  }
 ```
 
-In addition to being onboarded, you also need to configure your own SPIRE server to trust the Directory SPIRE server as a federation peer.
-You can find the Public Directory SPIRE server details at [spire.directory.yaml](spire.directory.yaml).
-
-## Usage
-
-Once you are onboarded, you can use the public Directory API by configuring your client to interact with it.
-
-```yaml
-# Server address of the public Directory API
-serverAddress: spire.directory.agntcy.org
-
-# SPIRE Agent Socket Path for Workload API.
-# It assumes that your SPIRE setup is already
-# configured to federate with Directory SPIRE server.
-spiffeSocketPath: /tmp/spire-agent/public.sock
+**💡 How to get your trust bundle:**
+```bash
+# Export your SPIRE server's trust bundle
+spire-server bundle show -format spiffe > your-trust-bundle.json
 ```
 
-## Support
+### Step 2: Submit Federation Request
 
-For support, please open an issue in the [agntcy/dir](https://github.com/agntcy/dir) repository.
-For urgent issues, you can reach out via email to [support@agntcy.org](mailto:support@agntcy.org).
+1. **Fork the repository**: Go to https://github.com/agntcy/dir and click "Fork"
 
-## Legal
+2. **Create your federation file**:
+   ```bash
+   git clone https://github.com/your-username/dir.git
+   cd dir/deployment/onboarding/
+   cp spire.template.yaml your-org.com.yaml
+   # Edit your-org.com.yaml with your details
+   ```
 
-By using the staging environment, you agree to the [Terms of Service](https://docs.agntcy.org/dir/public_instance/terms) and [Privacy Policy](https://docs.agntcy.org/dir/public_instance/privacy).
+3. **Submit a Pull Request**:
+   - Title: `Federation Request: Add [Your Organization]`
+   - Description: Brief description of your organization and use case
+   - Files: Include your completed federation configuration
+
+### Step 3: Configure Your SPIRE Server
+
+Add the Directory SPIRE server as a federation peer in your SPIRE server configuration
+by obtaining the [Directory trust bundle](spire.directory.yaml).
+
+Save the trust bundle to the specified path.
+
+### Step 4: Verify Federation
+
+```bash
+# Check federation status
+spire-server federation list
+
+# Should show federated trust domain
+spire-server federation show --trustDomain dir.agntcy.org
+```
+
+## 📚 Use Cases
+
+You can find various usage examples at [docs.agntcy.org](https://docs.agntcy.org/dir/scenarios/).
+
+## 🔧 Troubleshooting
+
+### Connection Issues
+
+**Problem**: Cannot connect to Directory API
+```bash
+# Check SPIRE agent status
+spire-agent api fetch x509-svid
+
+# Verify network connectivity
+curl -v https://api.directory.agntcy.org
+
+# Check client configuration
+dirctl config list
+```
+
+### Federation Issues
+
+**Problem**: SPIRE federation not working
+```bash
+# Verify trust bundle exchange
+spire-server federation show --trustDomain dir.agntcy.org
+
+# Test bundle endpoint connectivity
+curl https://spire.directory.agntcy.org/
+```
+
+### Common Error Messages
+
+| Error                                           | Solution                                                   |
+| ----------------------------------------------- | ---------------------------------------------------------- |
+| `connection refused`                            | Check if SPIRE agent is running and socket path is correct |
+| `x509: certificate signed by unknown authority` | Verify trust bundle configuration                          |
+| `context deadline exceeded`                     | Check network connectivity and firewall settings           |
+| `permission denied`                             | Ensure proper SPIFFE ID registration and policies          |
+
+## 🆘 Getting Help
+
+### Community Support
+- **GitHub Issues**: [Open an issue](https://github.com/agntcy/dir/issues) for bugs and feature requests
+- **Discussions**: [GitHub Discussions](https://github.com/agntcy/dir/discussions) for questions and community help
+- **Documentation**: [Full Documentation](https://docs.agntcy.org/dir/overview/)
+- **Email**: [support@agntcy.org](mailto:support@agntcy.org) for urgent issues
+
+---
+
+**Ready to get started?** 🎉 Follow the [Quick Start Guide](https://docs.agntcy.org/dir/getting-started/) or
+check out our [Usage and Examples](https://docs.agntcy.org/dir/scenarios/) for sample applications!
