@@ -24,13 +24,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Signature is the data associated with a single Record.
-// Multiple signatures can be associated with a single Record, ie 1:n relationship.
+// Signature is the signing data associated with a Record.
+// Multiple signatures can be associated with a single Record,
+// ie 1 record : N record signatures.
 //
-// It is stored via OCI Referrer API with `agntcy.dir.sign.v1.Signature`
-// as the artifact type and Record as the subject.
+// Storage and management of signatures is provided via
+// StoreService as a RecordReferrer object.
 //
-// Mapping to ReferrerObject:
+// Signature can be encoded into RecordReferrer object as follows:
 //
 //	type = "agntcy.dir.sign.v1.Signature"
 //	data = Signature message encoded as JSON
