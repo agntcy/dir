@@ -1,18 +1,17 @@
 # Directory - Public Staging Instance 🚀
 
-Welcome to the **Directory Publi2. **Configure the client**:
-   ```bash
-   # Set the Directory API server address
-   dirctl config set server-address api.directory.agntcy.org
-   
-   # Configure SPIRE socket for mTLS authentication
-   dirctl config set spiffe-socket-path /tmp/spire-agent/public.sock
-   
-   # Verify configuration
-   dirctl config list
-   ```ging Environment** - your gateway to testing and developing
+Welcome to the **Directory Public Staging Environment** - your gateway to testing and developing
 with the decentralized AI agent discovery network! This environment provides a fully functional
 Directory instance for development, testing, and exploration purposes.
+
+## Table of Contents
+- [What is Directory?](#-what-is-directory)
+- [Architecture Overview](#-architecture-overview)
+- [Available Endpoints](#-available-endpoints)
+- [Quick Start Guide](#-quick-start-guide)
+- [Use Cases](#-use-cases)
+- [Troubleshooting](#-troubleshooting)
+- [Getting Help](#-getting-help)
 
 ## 🎯 What is Directory?
 
@@ -21,6 +20,13 @@ Directory is a decentralized peer-to-peer network that enables:
 - **Secure Publication**: Publish agent metadata with cryptographic verification
 - **Network Federation**: Connect multiple Directory instances securely
 - **Capability Matching**: Match agent capabilities to specific requirements
+
+**⚠️ Important Notice:** This is a staging environment for development and testing only.
+
+- ❌ No SLA guarantees
+- ❌ No data persistence guarantees  
+- ❌ Not suitable for production use
+- ✅ Useful for development, testing, and exploration
 
 ## 📊 Architecture Overview
 
@@ -47,15 +53,6 @@ Directory is a decentralized peer-to-peer network that enables:
 | **Directory API**    | `https://api.directory.agntcy.org`    | Main API for agent discovery and management |
 | **SPIRE Federation** | `https://spire.directory.agntcy.org`  | SPIRE server for secure identity federation |
 | **Status Dashboard** | `https://status.directory.agntcy.org` | Real-time service status and monitoring     |
-
-## ⚠️ Important Notice
-
-**This is a staging environment for development and testing only.**
-
-- ❌ No SLA guarantees
-- ❌ No data persistence guarantees  
-- ❌ Not suitable for production use
-- ✅ Useful for development, testing, and exploration
 
 ## 🚀 Quick Start Guide
 
@@ -84,24 +81,14 @@ Before you begin, ensure you have:
 
 2. **Configure the client**:
    ```bash
-   # Set the Directory API server address  
    dirctl config set server-address api.directory.agntcy.org
-   
-   # Configure SPIRE socket for mTLS authentication
    dirctl config set spiffe-socket-path /tmp/spire-agent/public.sock
-   
-   # Verify configuration
-   dirctl config list
    ```
 
 3. **Test the connection**:
    ```bash
-   # Test basic connectivity
-   dirctl list
-   # Expected: Successfully lists records (or empty if none exist)
-   
-   # Alternative: Check server status
-   curl -s https://api.directory.agntcy.org/health || echo "Server reachable"
+   dirctl ping
+   # Expected: ✅ Connected to Directory API at api.directory.agntcy.org
    ```
 
 #### Option 2: Using Directory Client SDK
@@ -109,7 +96,7 @@ Before you begin, ensure you have:
 Choose your preferred language:
 
 <details>
-<summary><strong>🐹 Go SDK</strong></summary>
+<summary><strong>Go SDK</strong></summary>
 
 ```go
 package main
@@ -144,7 +131,7 @@ func main() {
 </details>
 
 <details>
-<summary><strong>🐍 Python SDK</strong></summary>
+<summary><strong>Python SDK</strong></summary>
 
 ```python
 from agntcy.dir_sdk.client import Config, Client
@@ -172,7 +159,7 @@ if __name__ == "__main__":
 </details>
 
 <details>
-<summary><strong>🟨 JavaScript/Node.js SDK</strong></summary>
+<summary><strong>JavaScript/Node.js SDK</strong></summary>
 
 ```javascript
 import {Config, Client} from 'agntcy-dir';
@@ -251,7 +238,7 @@ spire-server bundle show -format spiffe > your-trust-bundle.json
    ```
 
 3. **Submit a Pull Request**:
-   - Title: `build(dir): federation request for [Your Organization]`
+   - Title: `federation(<Trust Domain>): add [Your Organization]`
    - Description: Brief description of your organization and use case
    - Files: Include your completed federation configuration
 
