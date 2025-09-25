@@ -7,7 +7,6 @@ package agntcy.dir.store.v1;
 
 import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/sign/v1/signature.proto";
-import "agntcy/dir/store/v1/referrer.proto";
 import "google/protobuf/empty.proto";
 
 // Defines an interface for content-addressable storage
@@ -58,8 +57,8 @@ message PushReferrerRequest {
     // Public key to be stored as a referrer for the record and uploaded as a file to zot for verification
     string public_key = 3;
 
-    // Referrer object to be stored for the record
-    RecordReferrer referrer = 4;
+    // RecordReferrer object to be stored for the record
+    core.v1.RecordReferrer referrer = 4;
   }
 }
 
@@ -84,7 +83,7 @@ message PullReferrerRequest {
     // Pull public key referrer
     bool pull_public_key = 3;
 
-    // Referrer type to be pulled
+    // Record referrer type to be pulled
     string referrer_type = 4;
   }
 }
@@ -98,7 +97,7 @@ message PullReferrerResponse {
     // Public key to be fetched as a referrer
     string public_key = 2;
 
-    // Referrer object
-    RecordReferrer referrer = 3;
+    // RecordReferrer object associated with the record
+    core.v1.RecordReferrer referrer = 3;
   }
 }

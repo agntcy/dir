@@ -39,3 +39,24 @@ message RecordMeta {
 message Record {
   google.protobuf.Struct data = 1;
 }
+
+// RecordReferrer represents a referrer object or an association
+// to a record. The actual structure of the referrer object can vary
+// depending on the type of referrer (e.g., signature, public key, etc.).
+//
+// RecordReferrer types in the `agntcy.dir.` namespace are reserved for
+// Directory-specific schemas and will be validated across Dir services.
+message RecordReferrer {
+    // The type of the referrer.
+    // For example, "agntcy.dir.sign.v1.Signature" for signatures.
+    string type = 1;
+
+    // Annotations attached to the referrer object.
+    map<string, string> annotations = 2;
+
+    // Record reference to which this referrer is associated.
+    core.v1.RecordRef record_ref = 3;
+
+    // The actual data of the referrer.
+    google.protobuf.Struct data = 4;
+}
