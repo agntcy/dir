@@ -29,6 +29,8 @@ const (
 // SignServiceClient is the client API for SignService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// SignService provides methods to sign and verify records.
 type SignServiceClient interface {
 	// Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
 	Sign(ctx context.Context, in *SignRequest, opts ...grpc.CallOption) (*SignResponse, error)
@@ -67,6 +69,8 @@ func (c *signServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts 
 // SignServiceServer is the server API for SignService service.
 // All implementations should embed UnimplementedSignServiceServer
 // for forward compatibility.
+//
+// SignService provides methods to sign and verify records.
 type SignServiceServer interface {
 	// Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
 	Sign(context.Context, *SignRequest) (*SignResponse, error)
