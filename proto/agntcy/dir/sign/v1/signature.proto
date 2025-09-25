@@ -11,7 +11,7 @@ package agntcy.dir.sign.v1;
 // It is stored via OCI Referrer API with `agntcy.dir.sign.v1.Signature`
 // as the artifact type and Record as the subject.
 //
-// Mapping to ReferrerObject:
+// Signature can be encoded into RecordReferrer object as follows:
 //   type = "agntcy.dir.sign.v1.Signature"
 //   data = Signature message encoded as JSON
 message Signature {
