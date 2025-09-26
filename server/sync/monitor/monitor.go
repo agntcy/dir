@@ -420,10 +420,10 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 		Config: &zot.VerifyConfig{
 			RegistryAddress: s.ociConfig.RegistryAddress,
 			RepositoryName:  s.ociConfig.RepositoryName,
-			Username:        s.ociConfig.Username,
-			Password:        s.ociConfig.Password,
-			AccessToken:     s.ociConfig.AccessToken,
-			Insecure:        s.ociConfig.Insecure,
+			Username:        s.ociConfig.AuthConfig.Username,
+			Password:        s.ociConfig.AuthConfig.Password,
+			AccessToken:     s.ociConfig.AuthConfig.AccessToken,
+			Insecure:        s.ociConfig.AuthConfig.Insecure,
 		},
 		PublicKey: publicKey,
 	}

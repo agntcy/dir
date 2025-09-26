@@ -64,6 +64,26 @@ config:
     # Datastore to use for routing persistance.
     # datastore_dir: ""
 
+  # Sync configuration
+  sync:
+    # How frequently the scheduler checks for pending syncs
+    scheduler_interval: "30s"
+    
+    # Maximum number of sync workers running concurrently
+    worker_count: 1
+    
+    # Timeout for individual sync operations
+    worker_timeout: "10m"
+    
+    # Registry monitor configuration
+    registry_monitor:
+      check_interval: "30s"
+    
+    # Authentication configuration for sync operations
+    auth_config:
+      username: ""
+      password: ""
+
 # create PVC for routing/cache data
 pvc:
   create: false

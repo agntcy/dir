@@ -237,6 +237,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			_ = cli.Sync().List().OnServer(utils.Peer3Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
 
 			ginkgo.GinkgoWriter.Printf("✅ Selective sync completed (Zot OCI transfer finished)")
+
+			// Wait for 60 seconds to ensure the sync is complete (reduce flakiness)
+			time.Sleep(60 * time.Second)
 		})
 
 		ginkgo.It("should succeed to pull record_v070_sync_v5.json from peer 3 after sync", func() {

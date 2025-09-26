@@ -290,6 +290,8 @@ func (s *store) attachSignatureWithCosign(ctx context.Context, recordCID string,
 		ImageRef:  imageRef,
 		Signature: signature.GetSignature(),
 		Payload:   signature.GetAnnotations()["payload"],
+		Username:  s.config.AuthConfig.Username,
+		Password:  s.config.AuthConfig.Password,
 	}
 
 	// Attach signature using utility function
@@ -338,9 +340,9 @@ func (s *store) buildZotConfig() *zot.VerifyConfig {
 	return &zot.VerifyConfig{
 		RegistryAddress: s.config.RegistryAddress,
 		RepositoryName:  s.config.RepositoryName,
-		Username:        s.config.Username,
-		Password:        s.config.Password,
-		AccessToken:     s.config.AccessToken,
-		Insecure:        s.config.Insecure,
+		Username:        s.config.AuthConfig.Username,
+		Password:        s.config.AuthConfig.Password,
+		AccessToken:     s.config.AuthConfig.AccessToken,
+		Insecure:        s.config.AuthConfig.Insecure,
 	}
 }

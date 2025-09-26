@@ -49,6 +49,8 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_SYNC_WORKER_COUNT":                    "1",
 				"DIRECTORY_SERVER_SYNC_REGISTRY_MONITOR_CHECK_INTERVAL": "10s",
 				"DIRECTORY_SERVER_SYNC_WORKER_TIMEOUT":                  "10s",
+				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":            "sync-user",
+				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":            "sync-password",
 				"DIRECTORY_SERVER_AUTHZ_ENABLED":                        "true",
 				"DIRECTORY_SERVER_AUTHZ_SOCKET_PATH":                    "/test/agent.sock",
 				"DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN":                   "dir.com",
@@ -94,6 +96,10 @@ func TestConfig(t *testing.T) {
 					WorkerTimeout:     10 * time.Second,
 					RegistryMonitor: monitor.Config{
 						CheckInterval: 10 * time.Second,
+					},
+					AuthConfig: sync.AuthConfig{
+						Username: "sync-user",
+						Password: "sync-password",
 					},
 				},
 				Authz: authz.Config{
