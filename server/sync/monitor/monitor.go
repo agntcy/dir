@@ -367,6 +367,15 @@ func (s *MonitorService) indexRecord(ctx context.Context, tag string) error {
 		return fmt.Errorf("failed to pull record from local store: %w", err)
 	}
 
+	isValid, validationErrors, err := record.Validate()
+	if err != nil {
+		return fmt.Errorf("failed to validate record: %w", err)
+	}
+
+	if !isValid {
+		return fmt.Errorf("record validation failed: %v", validationErrors)
+	}
+
 	// Add to database
 	recordAdapter := adapters.NewRecordAdapter(record)
 	if err := s.db.AddRecord(recordAdapter); err != nil {

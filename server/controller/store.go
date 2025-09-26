@@ -18,12 +18,7 @@ import (
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
-)
-
-const (
-	maxRecordSize = 1024 * 1024 * 4 // 4MB
 )
 
 var storeLogger = logging.Logger("controller/store")
@@ -58,10 +53,13 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 			return status.Errorf(codes.Internal, "failed to receive record: %v", err)
 		}
 
-		// Validate record and get CID
-		_, err = s.validateAndGetCID(record)
+		isValid, validationErrors, err := record.Validate()
 		if err != nil {
-			return err
+			return status.Errorf(codes.Internal, "failed to validate record: %v", err)
+		}
+
+		if !isValid {
+			return status.Errorf(codes.InvalidArgument, "record validation failed: %v", validationErrors)
 		}
 
 		pushedRef, err := s.pushRecordToStore(stream.Context(), record)
@@ -423,43 +421,6 @@ func (s storeCtrl) pullPublicKeyReferrer(ctx context.Context, request *storev1.P
 			PublicKey: publicKey,
 		},
 	}
-}
-
-// validateRecord performs common record validation logic.
-func (s storeCtrl) validateRecord(record *corev1.Record) error {
-	// Validate record has data
-	if record.GetData() == nil {
-		return status.Error(codes.InvalidArgument, "record has no data")
-	}
-
-	// Validate record size (4MB limit for v1alpha2 API)
-	recordSize := proto.Size(record)
-	if recordSize > maxRecordSize {
-		storeLogger.Warn("Record exceeds size limit", "size", recordSize, "limit", maxRecordSize)
-
-		return status.Errorf(codes.InvalidArgument, "record size %d bytes exceeds maximum allowed size of %d bytes (4MB)", recordSize, maxRecordSize)
-	}
-
-	return nil
-}
-
-// validateAndGetCID validates a record and gets its CID.
-func (s storeCtrl) validateAndGetCID(record *corev1.Record) (string, error) {
-	if err := s.validateRecord(record); err != nil {
-		return "", err
-	}
-
-	// Calculate CID for the record
-	recordCID := record.GetCid()
-	if recordCID == "" {
-		storeLogger.Error("Failed to calculate record CID")
-
-		return "", status.Error(codes.Internal, "failed to calculate record CID")
-	}
-
-	storeLogger.Debug("CID calculated successfully", "cid", recordCID)
-
-	return recordCID, nil
 }
 
 // pushRecordToStore pushes a record to the store and adds it to the search index.

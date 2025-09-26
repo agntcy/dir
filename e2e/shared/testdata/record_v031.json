@@ -3,7 +3,9 @@
   "version": "v1.0.0",
   "schema_version": "v0.3.1",
   "description": "Research agent for Cisco's marketing strategy.",
-  "authors": ["Cisco Systems"],
+  "authors": [
+    "Cisco Systems"
+  ],
   "created_at": "2025-03-19T17:06:37Z",
   "annotations": {
     "key": "value"
@@ -54,5 +56,16 @@
       }
     }
   ],
-  "signature": {}
+  "signature": {
+    "algorithm": "ES256",
+    "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t",
+    "content_bundle": "eyJ0ZXN0IjogInZhbHVlIn0=",
+    "content_type": "application/json",
+    "signature": "MEUCIQDTest123Signature456789",
+    "signed_at": "2025-09-11T10:00:00Z",
+    "annotations": {
+      "signer": "test-authority",
+      "purpose": "testing"
+    }
+  }
 }

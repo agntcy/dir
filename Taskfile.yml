@@ -406,7 +406,7 @@ tasks:
     desc: Start local OCI registry server for storage
     internal: true
     vars:
-      IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:{{.ZOT_VERSION}}
+      IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:v{{.ZOT_VERSION}}
     deps:
       - task: server:store:pull
         vars:

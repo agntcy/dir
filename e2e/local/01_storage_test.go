@@ -66,10 +66,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v3",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
-				"Natural Language Processing/Text Completion",
-				"Natural Language Processing/Problem Solving",
+				"natural_language_processing/natural_language_generation/text_completion",
+				"natural_language_processing/analytical_reasoning/problem_solving",
 			},
-			expectedLocator:   "docker-image:https://ghcr.io/agntcy/marketing-strategy",
+			expectedLocator:   "docker_image:https://ghcr.io/agntcy/marketing-strategy",
 			expectedExtension: "runtime/framework",
 		},
 	}

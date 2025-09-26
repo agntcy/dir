@@ -82,16 +82,16 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should list records by skill filter", func() {
-			output := cli.Routing().List().WithSkill("Natural Language Processing").ShouldSucceed()
+			output := cli.Routing().List().WithSkill("natural_language_processing/natural_language_generation/text_completion").ShouldSucceed()
 
 			// Should find records with NLP skills
 			gomega.Expect(output).To(gomega.ContainSubstring("Local Record"))
 			gomega.Expect(output).To(gomega.ContainSubstring(cid))
-			gomega.Expect(output).To(gomega.ContainSubstring("/skills/Natural Language Processing"))
+			gomega.Expect(output).To(gomega.ContainSubstring("/skills/natural_language_processing"))
 		})
 
 		ginkgo.It("should list records by specific skill", func() {
-			output := cli.Routing().List().WithSkill("Natural Language Processing/Text Completion").ShouldSucceed()
+			output := cli.Routing().List().WithSkill("natural_language_processing/natural_language_generation/text_completion").ShouldSucceed()
 
 			// Should find records with specific skill
 			gomega.Expect(output).To(gomega.ContainSubstring("Local Record"))
@@ -99,7 +99,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 		})
 
 		ginkgo.It("should list records by locator filter", func() {
-			output := cli.Routing().List().WithLocator("docker-image").ShouldSucceed()
+			output := cli.Routing().List().WithLocator("docker_image").ShouldSucceed()
 
 			// Should find records with docker-image locator
 			gomega.Expect(output).To(gomega.ContainSubstring("Local Record"))
@@ -108,8 +108,8 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 
 		ginkgo.It("should list records with multiple filters (AND logic)", func() {
 			output := cli.Routing().List().
-				WithSkill("Natural Language Processing").
-				WithLocator("docker-image").
+				WithSkill("natural_language_processing/natural_language_generation/text_completion").
+				WithLocator("docker_image").
 				ShouldSucceed()
 
 			// Should find records matching both criteria
@@ -199,7 +199,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 			gomega.Expect(output).To(gomega.ContainSubstring("Local Routing Summary"))
 			gomega.Expect(output).To(gomega.ContainSubstring("Total Records: 1"))
 			gomega.Expect(output).To(gomega.ContainSubstring("Skills Distribution"))
-			gomega.Expect(output).To(gomega.ContainSubstring("Natural Language Processing"))
+			gomega.Expect(output).To(gomega.ContainSubstring("natural_language_processing/natural_language_generation/text_completion"))
 		})
 
 		ginkgo.It("should show helpful tips in routing info", func() {

@@ -87,10 +87,10 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			name:     "V3_Record_OASF_v0.7.0",
 			jsonData: testdata.ExpectedRecordV070JSON,
 			expectedSkillLabels: []string{
-				"/skills/Natural Language Processing/Text Completion",
-				"/skills/Natural Language Processing/Problem Solving",
+				"natural_language_processing/natural_language_generation/text_completion",
+				"natural_language_processing/analytical_reasoning/problem_solving",
 			},
-			expectedDomainLabel:  "/domains/research",
+			expectedDomainLabel:  "/domains/life_science/biotechnology",
 			expectedFeatureLabel: "/features/runtime/framework",
 		},
 	}
@@ -202,7 +202,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				if version.expectedDomainLabel != "" {
 					domainQuery := &routingv1.RecordQuery{
 						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
-						Value: "research", // From record_v3.json extension
+						Value: "life_science/biotechnology", // From record_v3.json extension
 					}
 					domainItemsChan, err := c.List(ctx, &routingv1.ListRequest{
 						Queries: []*routingv1.RecordQuery{domainQuery},

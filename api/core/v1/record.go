@@ -10,6 +10,11 @@ import (
 
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
+	"google.golang.org/protobuf/proto"
+)
+
+const (
+	maxRecordSize = 1024 * 1024 * 4 // 4MB
 )
 
 var defaultValidator *validator.Validator
@@ -118,7 +123,12 @@ func (r *Record) Decode() (DecodedRecord, error) {
 // Validate validates the Record's data against its embedded schema using the OASF SDK.
 func (r *Record) Validate() (bool, []string, error) {
 	if r == nil || r.GetData() == nil {
-		return false, nil, errors.New("record is nil")
+		return false, []string{"record is nil"}, nil
+	}
+
+	recordSize := proto.Size(r)
+	if recordSize > maxRecordSize {
+		return false, []string{fmt.Sprintf("record size %d bytes exceeds maximum allowed size of %d bytes (4MB)", recordSize, maxRecordSize)}, nil
 	}
 
 	// Validate the record using OASF SDK

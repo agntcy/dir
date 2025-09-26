@@ -80,7 +80,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 			ginkgo.It("should find record by exact skill name match", func() {
 				output := cli.Search().
-					WithQuery("skill-name", "Natural Language Processing/Text Completion").
+					WithQuery("skill-name", "natural_language_processing/natural_language_generation/text_completion").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -94,7 +94,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 			ginkgo.It("should find record by exact locator match", func() {
 				output := cli.Search().
-					WithQuery("locator", "docker-image:https://ghcr.io/agntcy/marketing-strategy").
+					WithQuery("locator", "docker_image:https://ghcr.io/agntcy/marketing-strategy").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -164,7 +164,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("skill name wildcards", func() {
 				ginkgo.It("should find record with skill name prefix wildcard", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "Natural Language*").
+						WithQuery("skill-name", "natural_language*").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -185,7 +185,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 				ginkgo.It("should find record with different skill using wildcard", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "*Problem Solving").
+						WithQuery("skill-name", "*problem_solving").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -194,7 +194,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("locator wildcards", func() {
 				ginkgo.It("should find record with locator prefix wildcard", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:*").
+						WithQuery("locator", "docker_image:*").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -208,7 +208,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 				ginkgo.It("should find record with locator middle wildcard", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:*ghcr.io*marketing-strategy").
+						WithQuery("locator", "docker_image:*ghcr.io*marketing-strategy").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -302,21 +302,21 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("skill name question mark wildcards", func() {
 				ginkgo.It("should find record with question mark in skill name", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "Natural Language Processing/Text Completio?").
+						WithQuery("skill-name", "natural_language_processing/natural_language_generation/text_completio?").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with question mark replacing single word character", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "?atural Language Processing/Text Completion").
+						WithQuery("skill-name", "?atural_language_processing/natural_language_generation/text_completion").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with multiple question marks in skill name", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "Natural Langua?? Processing/Text Completion").
+						WithQuery("skill-name", "natural_langua??_processing/natural_language_generation/text_completion").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -325,21 +325,21 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("locator question mark wildcards", func() {
 				ginkgo.It("should find record with question mark in protocol", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:http?://ghcr.io/agntcy/marketing-strategy").
+						WithQuery("locator", "docker_image:http?://ghcr.io/agntcy/marketing-strategy").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with question mark in domain", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:https://ghcr.i?/agntcy/marketing-strategy").
+						WithQuery("locator", "docker_image:https://ghcr.i?/agntcy/marketing-strategy").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with question mark in path", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:https://ghcr.io/agntcy/marketing-strateg?").
+						WithQuery("locator", "docker_image:https://ghcr.io/agntcy/marketing-strateg?").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -371,7 +371,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 				ginkgo.It("should find record with both wildcards in skill name", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "Natural*Processing/Text Completio?").
+						WithQuery("skill-name", "natural*processing/natural_language_generation/text_completio?").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -435,21 +435,21 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("skill name list wildcards", func() {
 				ginkgo.It("should find record with character list in skill name", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "[MN]atural Language Processing/Text Completion").
+						WithQuery("skill-name", "[mn]atural_language_processing/natural_language_generation/text_completion").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with alphabetic range in skill name", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "[A-Z]atural Language Processing/Text Completion").
+						WithQuery("skill-name", "[A-Z]atural_language_processing/natural_language_generation/text_completion").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with negated character class in skill name", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "Natural Language Processing/Text [^D-Z]ompletion").
+						WithQuery("skill-name", "natural_language_processing/natural_language_generation/text_[^D-Z]ompletion").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -458,21 +458,21 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("locator list wildcards", func() {
 				ginkgo.It("should find record with character list in protocol", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:[ht]ttps://ghcr.io/agntcy/marketing-strategy").
+						WithQuery("locator", "docker_image:[ht]ttps://ghcr.io/agntcy/marketing-strategy").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with alphabetic range in domain", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:https://[a-z]hcr.io/agntcy/marketing-strategy").
+						WithQuery("locator", "docker_image:https://[a-z]hcr.io/agntcy/marketing-strategy").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with negated range in path", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:https://ghcr.io/agntcy/marketing-strateg[^0-9]").
+						WithQuery("locator", "docker_image:https://ghcr.io/agntcy/marketing-strateg[^0-9]").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -518,7 +518,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 				ginkgo.It("should find record with multiple list wildcards", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:https://[g]hcr.io/agntcy/marketing-strateg[y]").
+						WithQuery("locator", "docker_image:https://[g]hcr.io/agntcy/marketing-strateg[y]").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -534,14 +534,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 				ginkgo.It("should find record with mixed character classes", func() {
 					output := cli.Search().
-						WithQuery("skill-name", "[A-Z]atural [A-Z]anguage [A-Z]rocessing/Text [A-Z]ompletion").
+						WithQuery("skill-name", "[A-Z]atural_[A-Z]anguage_[A-Z]rocessing/natural_language_generation/text_[A-Z]ompletion").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with complex negated pattern", func() {
 					output := cli.Search().
-						WithQuery("locator", "docker-image:https://ghcr.io/agntcy/marketing-strateg[^0-9xz]").
+						WithQuery("locator", "docker_image:https://ghcr.io/agntcy/marketing-strateg[^0-9xz]").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -553,7 +553,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 				output := cli.Search().
 					WithQuery("name", "*cisco*").
 					WithQuery("version", "v3.*").
-					WithQuery("skill-name", "*Language*").
+					WithQuery("skill-name", "*language*").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -562,7 +562,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 				output := cli.Search().
 					WithQuery("skill-id", "10201").
 					WithQuery("name", "*marketing-strategy*").
-					WithQuery("locator", "docker-image:*").
+					WithQuery("locator", "docker_image:*").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
