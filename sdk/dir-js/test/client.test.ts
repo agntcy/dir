@@ -47,7 +47,7 @@ function genRecords(
           ],
           locators: [
             {
-              type: 'docker-image',
+              type: 'docker_image',
               url: 'https://ghcr.io/agntcy/marketing-strategy',
             },
           ],
