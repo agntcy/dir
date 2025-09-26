@@ -23,9 +23,6 @@ const (
 	// DefaultZotConfigPath is the default path to the zot configuration file.
 	DefaultZotConfigPath = "/etc/zot/config.json"
 
-	// DefaultCredentialsPath is the default path to the zot credentials file.
-	DefaultCredentialsPath = "/etc/zot/credentials.json"
-
 	// DefaultPollInterval is the default interval for polling new content.
 	DefaultPollInterval = time.Second * 60
 
