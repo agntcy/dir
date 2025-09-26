@@ -18,7 +18,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	zotsyncconfig "zotregistry.dev/zot/pkg/extensions/config/sync"
-
 )
 
 // Worker processes sync work items.
@@ -115,7 +114,7 @@ func (w *Worker) deleteSync(_ context.Context, item synctypes.WorkItem) error {
 	}
 
 	// Remove registry from zot configuration
-	if err := zotutils.RemoveRegistryFromZotSync(zotutils.DefaultZotConfigPath, remoteRegistryURL); err != nil {
+	if err := zotutils.RemoveRegistryFromSyncConfig(zotutils.DefaultZotConfigPath, remoteRegistryURL); err != nil {
 		return fmt.Errorf("failed to remove registry from zot sync: %w", err)
 	}
 
@@ -150,7 +149,7 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	}
 
 	// Update zot configuration with sync extension to trigger sync
-	if err := zotutils.AddRegistryToZotSync(zotutils.DefaultZotConfigPath, remoteRegistryURL, ociconfig.DefaultRepositoryName, zotsyncconfig.Credentials{
+	if err := zotutils.AddRegistryToSyncConfig(zotutils.DefaultZotConfigPath, remoteRegistryURL, ociconfig.DefaultRepositoryName, zotsyncconfig.Credentials{
 		Username: credentials.Username,
 		Password: credentials.Password,
 	}, item.CIDs); err != nil {

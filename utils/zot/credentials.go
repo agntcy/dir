@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package zot
 
 import (
@@ -11,10 +14,9 @@ import (
 )
 
 const (
-		// DefaultCredentialsPath is the default path to the zot credentials file.
-	DefaultCredentialsPath = "/etc/zot/credentials.json"
+	// DefaultCredentialsPath is the default path to the zot credentials file.
+	DefaultCredentialsPath = "/etc/zot/credentials.json" //nolint:gosec
 )
-
 
 // updateCredentialsFile updates a credentials file for zot sync.
 func updateCredentialsFile(filePath string, remoteRegistryURL string, credentials zotsyncconfig.Credentials) error {

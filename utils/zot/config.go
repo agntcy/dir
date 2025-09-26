@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package zot
 
 import (
@@ -44,8 +47,8 @@ func writeConfigFile(filePath string, zotConfig *zotconfig.Config) error {
 	return nil
 }
 
-// addRegistryToZotSync adds a registry to the zot sync configuration.
-func AddRegistryToZotSync(filePath string, remoteRegistryURL string, remoteRepositoryName string, credentials zotsyncconfig.Credentials, cids []string) error {
+// addRegistryToSyncConfig adds a registry to the zot sync configuration.
+func AddRegistryToSyncConfig(filePath string, remoteRegistryURL string, remoteRepositoryName string, credentials zotsyncconfig.Credentials, cids []string) error {
 	logger.Debug("Adding registry to zot sync", "remote_url", remoteRegistryURL)
 
 	// Validate input
@@ -154,8 +157,8 @@ func AddRegistryToZotSync(filePath string, remoteRegistryURL string, remoteRepos
 	return nil
 }
 
-// removeRegistryFromZotSync removes a registry from the zot sync configuration.
-func RemoveRegistryFromZotSync(filePath string, remoteRegistryURL string) error {
+// removeRegistryFromSyncConfig removes a registry from the zot sync configuration.
+func RemoveRegistryFromSyncConfig(filePath string, remoteRegistryURL string) error {
 	logger.Debug("Removing registry from zot sync", "remote_registry_url", remoteRegistryURL)
 
 	// Validate input
