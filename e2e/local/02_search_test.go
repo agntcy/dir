@@ -597,7 +597,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 				output := cli.Search().
 					WithQuery("skill-id", "10201").
 					WithQuery("name", "*marketing-strategy-v?").
-					WithQuery("locator", "docker-image:http?://*").
+					WithQuery("locator", "docker_image:http?://*").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -606,7 +606,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 				output := cli.Search().
 					WithQuery("name", "*[c]isco*").
 					WithQuery("version", "v[0-9].?.0").
-					WithQuery("skill-name", "[A-Z]atural*Processing*").
+					WithQuery("skill-name", "[A-Z]atural*processing*").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -615,7 +615,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 				output := cli.Search().
 					WithQuery("skill-id", "10201").
 					WithQuery("name", "*marketing-strategy-v[0-9]").
-					WithQuery("locator", "docker-image:https://[a-z]hcr.io/*").
+					WithQuery("locator", "docker_image:https://[a-z]hcr.io/*").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -726,7 +726,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 			ginkgo.It("should handle question mark with special characters in URLs", func() {
 				output := cli.Search().
-					WithQuery("locator", "docker-image:https://ghcr.i?/agntcy/marketing-strategy").
+					WithQuery("locator", "docker_image:https://ghcr.i?/agntcy/marketing-strategy").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -754,7 +754,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 			ginkgo.It("should handle list wildcards with special URL characters", func() {
 				output := cli.Search().
-					WithQuery("locator", "docker-image:https://[a-z]hcr.io/agntcy/marketing-strategy").
+					WithQuery("locator", "docker_image:https://[a-z]hcr.io/agntcy/marketing-strategy").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})

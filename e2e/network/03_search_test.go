@@ -90,7 +90,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 			// First, let's replicate the WORKING test pattern from dirctl_network_deploy_test.go
 			// This should work since the original test works
 			output := cli.Routing().Search().
-				WithSkill("Natural Language Processing"). // Same as working test - should match via prefix
+				WithSkill("natural_language_processing"). // Same as working test - should match via prefix
 				WithMinScore(1).                          // Explicit minScore=1 (same as default)
 				WithLimit(10).
 				OnServer(utils.Peer2Addr). // Search FROM Peer 2 to find Peer 1's records
@@ -106,8 +106,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 		ginkgo.It("should debug: test exact skill matching (minScore=1)", func() {
 			// Test exact skill matching with minScore=1
 			output := cli.Routing().Search().
-				WithSkill("Natural Language Processing/Text Completion"). // Exact match - should work
-				WithMinScore(1).                                          // Only need 1 match
+				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Exact match - should work
+				WithMinScore(1).                                                                      // Only need 1 match
 				WithLimit(10).
 				OnServer(utils.Peer2Addr).
 				ShouldSucceed()
@@ -122,9 +122,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 		ginkgo.It("should debug: test two skills with minScore=2", func() {
 			// Test two exact skills with minScore=2 (should match both and pass threshold)
 			output := cli.Routing().Search().
-				WithSkill("Natural Language Processing/Text Completion"). // Query 1 - ✅ should match
-				WithSkill("Natural Language Processing/Problem Solving"). // Query 2 - ✅ should match
-				WithMinScore(2).                                          // Need both queries to match
+				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Query 1 - ✅ should match
+				WithSkill("natural_language_processing/analytical_reasoning/problem_solving").        // Query 2 - ✅ should match
+				WithMinScore(2).                                                                      // Need both queries to match
 				WithLimit(10).
 				OnServer(utils.Peer2Addr).
 				ShouldSucceed()
@@ -139,10 +139,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 		ginkgo.It("should demonstrate OR logic success - minScore=2 finds record", func() {
 			// Now test the full OR logic: 2 real skills + 1 fake skill, requiring minScore=2
 			output := cli.Routing().Search().
-				WithSkill("Natural Language Processing/Text Completion"). // Query 1 - ✅ should match
-				WithSkill("Natural Language Processing/Problem Solving"). // Query 2 - ✅ should match
-				WithSkill("NonexistentSkill").                            // Query 3 - ❌ won't match
-				WithMinScore(2).                                          // Only need 2/3 queries to match
+				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Query 1 - ✅ should match
+				WithSkill("natural_language_processing/analytical_reasoning/problem_solving").        // Query 2 - ✅ should match
+				WithSkill("NonexistentSkill").                                                        // Query 3 - ❌ won't match
+				WithMinScore(2).                                                                      // Only need 2/3 queries to match
 				WithLimit(10).
 				OnServer(utils.Peer2Addr).
 				ShouldSucceed()
@@ -158,10 +158,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 			// Test threshold filtering: same queries but higher minScore should find NO records
 			// Same 2/3 queries match, but now we require minScore=3 (all queries must match)
 			output := cli.Routing().Search().
-				WithSkill("Natural Language Processing/Text Completion"). // Query 1 - ✅ matches
-				WithSkill("Natural Language Processing/Problem Solving"). // Query 2 - ✅ matches
-				WithSkill("NonexistentSkill").                            // Query 3 - ❌ doesn't match
-				WithMinScore(3).                                          // Require ALL 3 queries to match
+				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Query 1 - ✅ should match
+				WithSkill("natural_language_processing/analytical_reasoning/problem_solving").        // Query 2 - ✅ should match
+				WithSkill("NonexistentSkill").                                                        // Query 3 - ❌ doesn't match
+				WithMinScore(3).                                                                      // Require ALL 3 queries to match
 				WithLimit(10).
 				OnServer(utils.Peer2Addr). // Search FROM Peer 2 to find Peer 1's records
 				ShouldSucceed()            // Should succeed but return "No remote records found"
@@ -178,8 +178,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 		ginkgo.It("should demonstrate single query match - minScore=1 finds record", func() {
 			// Test with single query to verify basic functionality
 			cli.Routing().Search().
-				WithSkill("Natural Language Processing/Text Completion"). // Query 1 - ✅ should match
-				WithMinScore(1).                                          // Only need 1 query to match
+				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Query 1 - ✅ should match
+				WithMinScore(1).                                                                      // Only need 1 query to match
 				WithLimit(10).
 				OnServer(utils.Peer2Addr).                   // Search FROM Peer 2 to find Peer 1's records
 				ShouldEventuallyContain(cid, 60*time.Second) // Shorter timeout since DHT is already propagated
@@ -190,9 +190,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 		ginkgo.It("should demonstrate all queries match - minScore=2 with 2 real queries", func() {
 			// Test with 2 real queries that should both match, requiring both (minScore=2)
 			cli.Routing().Search().
-				WithSkill("Natural Language Processing/Text Completion"). // Query 1 - ✅ should match
-				WithSkill("Natural Language Processing/Problem Solving"). // Query 2 - ✅ should match
-				WithMinScore(2).                                          // Need both queries to match
+				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Query 1 - ✅ should match
+				WithSkill("natural_language_processing/analytical_reasoning/problem_solving").        // Query 2 - ✅ should match
+				WithMinScore(2).                                                                      // Need both queries to match
 				WithLimit(10).
 				OnServer(utils.Peer2Addr).                   // Search FROM Peer 2 to find Peer 1's records
 				ShouldEventuallyContain(cid, 60*time.Second) // Shorter timeout since DHT is already propagated
@@ -206,8 +206,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 			// Test edge case: minScore=0 should default to minScore=1 per proto specification
 			// Proto: "If not set, it will return records that match at least one query"
 			output := cli.Routing().Search().
-				WithSkill("Natural Language Processing/Text Completion"). // Query that WILL match
-				WithMinScore(0).                                          // Should default to 1
+				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Query 1 - ✅ should match
+				WithMinScore(0).                                                                      // Should default to 1
 				WithLimit(10).
 				OnServer(utils.Peer2Addr).
 				ShouldSucceed()

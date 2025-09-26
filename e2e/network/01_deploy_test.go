@@ -102,19 +102,19 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		utils.ResetCLIState()
 
 		// Test Peer1 (published the record) - should find it locally
-		output1 := cli.Routing().List().WithSkill("Natural Language Processing").OnServer(utils.Peer1Addr).ShouldSucceed()
+		output1 := cli.Routing().List().WithSkill("natural_language_processing").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 		// Should find the local record with expected labels
 		gomega.Expect(output1).To(gomega.ContainSubstring(cid))
 		gomega.Expect(output1).To(gomega.ContainSubstring("Local Record"))
-		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/Natural Language Processing/Text Completion"))
-		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/Natural Language Processing/Problem Solving"))
+		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/natural_language_processing/natural_language_generation/text_completion"))
+		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/natural_language_processing/analytical_reasoning/problem_solving"))
 
 		// Reset CLI state again before testing Peer2
 		utils.ResetCLIState()
 
 		// Test Peer2 (did NOT publish the record) - should not find it locally
-		output2 := cli.Routing().List().WithSkill("Natural Language Processing").OnServer(utils.Peer2Addr).ShouldSucceed()
+		output2 := cli.Routing().List().WithSkill("natural_language_processing").OnServer(utils.Peer2Addr).ShouldSucceed()
 
 		// Should NOT find the record locally, but should show helpful message
 		gomega.Expect(output2).NotTo(gomega.ContainSubstring(cid))
@@ -151,7 +151,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		// Test routing search from Peer2 to discover records published by Peer1
 		// This tests whether DHT propagation is working in the e2e environment
 		output := cli.Routing().Search().
-			WithSkill("Natural Language Processing").
+			WithSkill("natural_language_processing").
 			WithLimit(10).
 			OnServer(utils.Peer2Addr).ShouldSucceed()
 

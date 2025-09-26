@@ -3,30 +3,32 @@
   "version": "v4.0.0",
   "schema_version": "v0.7.0",
   "description": "Research agent for Cisco's marketing strategy.",
-  "authors": ["Cisco Systems"],
+  "authors": [
+    "Cisco Systems"
+  ],
   "created_at": "2025-03-19T17:06:37Z",
   "annotations": {
     "key": "value"
   },
   "skills": [
     {
-      "name": "Natural Language Processing/Text Completion",
+      "name": "natural_language_processing/natural_language_generation/text_completion",
       "id": 10201
     },
     {
-      "name": "Natural Language Processing/Problem Solving",
+      "name": "natural_language_processing/analytical_reasoning/problem_solving",
       "id": 10702
     }
   ],
   "locators": [
     {
-      "type": "docker-image",
+      "type": "docker_image",
       "url": "https://ghcr.io/agntcy/marketing-strategy"
     }
   ],
   "domains": [
     {
-      "name": "research"
+      "name": "life_science/biotechnology"
     }
   ],
   "modules": [

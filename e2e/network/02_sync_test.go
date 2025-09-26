@@ -194,9 +194,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("✅ Confirmed: Peer 3 has no records initially")
 
 			// Run routing search to find records with "Audio" skill
-			ginkgo.GinkgoWriter.Printf("Step 2: Running routing search for 'Audio' skill...")
-			ginkgo.GinkgoWriter.Printf("Command: dirctl routing search --skill Audio --json")
-			searchOutput := cli.Routing().Search().WithArgs("--skill", "Audio").WithArgs("--json").OnServer(utils.Peer3Addr).ShouldSucceed()
+			ginkgo.GinkgoWriter.Printf("Step 2: Running routing search for 'audio/audio_classification' skill...")
+			ginkgo.GinkgoWriter.Printf("Command: dirctl routing search --skill audio/audio_classification --json")
+			searchOutput := cli.Routing().Search().WithArgs("--skill", "audio/audio_classification").WithArgs("--json").OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			ginkgo.GinkgoWriter.Printf("Routing search output: %s", searchOutput)
 
