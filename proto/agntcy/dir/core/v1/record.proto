@@ -51,12 +51,16 @@ message RecordReferrer {
     // For example, "agntcy.dir.sign.v1.Signature" for signatures.
     string type = 1;
 
-    // Annotations attached to the referrer object.
-    map<string, string> annotations = 2;
-
     // Record reference to which this referrer is associated.
-    core.v1.RecordRef record_ref = 3;
+    core.v1.RecordRef record_ref = 2;
+
+    // Annotations attached to the referrer object.
+    map<string, string> annotations = 3;
+
+    // Creation timestamp of the record in the RFC3339 format.
+    // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+    string created_at = 4;
 
     // The actual data of the referrer.
-    google.protobuf.Struct data = 4;
+    google.protobuf.Struct data = 5;
 }

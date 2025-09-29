@@ -83,8 +83,11 @@ message PullReferrerRequest {
     // Pull public key referrer
     bool pull_public_key = 3;
 
-    // Record referrer type to be pulled
-    string referrer_type = 4;
+    // Pull all referrers associated with the record
+    bool pull_referrers = 4;
+
+    // Pull specific referrer type associated with the record
+    string pull_referrer_type = 5;
   }
 }
 
