@@ -277,7 +277,12 @@ func AttachSignature(_ context.Context, opts *AttachSignatureOptions) error {
 		return fmt.Errorf("failed to attach signature to entity: %w", err)
 	}
 
-	err = ociremote.WriteSignatures(ref.Context(), newSE, remoteOpts...)
+	digest, err := ociremote.ResolveDigest(ref, remoteOpts...)
+	if err != nil {
+		return fmt.Errorf("resolving digest: %w", err)
+	}
+
+	err = ociremote.WriteSignaturesExperimentalOCI(digest, newSE, remoteOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to write signatures: %w", err)
 	}

@@ -67,15 +67,12 @@ func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Si
 		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
 	}
 
-	// Cosign uses format like "sha256-abc123.sig" (dash instead of colon)
-	cosignTag := strings.Replace(recordManifestDesc.Digest.String(), ":", "-", 1) + ".sig"
-
-	signatureManifestDesc, err := s.repo.Resolve(ctx, cosignTag)
+	signatureManifestDesc, err := s.findReferrerByType(ctx, recordManifestDesc, SignatureArtifactType, s.isSignatureReferrer)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "no signature found for record CID %s: %v", recordCID, err)
 	}
 
-	return s.extractSignatureFromManifest(ctx, signatureManifestDesc)
+	return s.extractSignatureFromManifest(ctx, *signatureManifestDesc)
 }
 
 // extractSignatureFromManifest extracts signature data from a cosign signature manifest.
@@ -198,28 +195,28 @@ func (s *store) PullPublicKey(ctx context.Context, recordCID string) (string, er
 		return "", status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
 	}
 
-	publicKeyManifestDesc, err := s.findPublicKeyReferrer(ctx, recordManifestDesc)
+	publicKeyManifestDesc, err := s.findReferrerByType(ctx, recordManifestDesc, PublicKeyArtifactMediaType, s.isPublicKeyReferrer)
 	if err != nil {
-		return "", err
+		return "", status.Errorf(codes.NotFound, "no public key found for record CID %s: %v", recordCID, err)
 	}
 
 	return s.extractPublicKeyFromManifest(ctx, *publicKeyManifestDesc, recordCID)
 }
 
 // findPublicKeyReferrer searches for a public key artifact that references the given record manifest.
-func (s *store) findPublicKeyReferrer(ctx context.Context, recordManifestDesc ocispec.Descriptor) (*ocispec.Descriptor, error) {
+func (s *store) findReferrerByType(ctx context.Context, recordManifestDesc ocispec.Descriptor, referrerType string, isReferrer func(ctx context.Context, referrer ocispec.Descriptor) bool) (*ocispec.Descriptor, error) {
 	referrersLister, ok := s.repo.(ReferrersLister)
 	if !ok {
 		return nil, status.Errorf(codes.Unimplemented, "repository does not support OCI referrers API")
 	}
 
-	var publicKeyManifestDesc *ocispec.Descriptor
+	var referrerManifestDesc *ocispec.Descriptor
 
 	err := referrersLister.Referrers(ctx, recordManifestDesc, "", func(referrers []ocispec.Descriptor) error {
 		for _, referrer := range referrers {
-			if s.isPublicKeyReferrer(ctx, referrer) {
+			if isReferrer(ctx, referrer) {
 				referrersLogger.Debug("Found matching public key referrer", "digest", referrer.Digest.String())
-				publicKeyManifestDesc = &referrer
+				referrerManifestDesc = &referrer
 
 				return nil // Found public key, stop searching
 			}
@@ -231,11 +228,11 @@ func (s *store) findPublicKeyReferrer(ctx context.Context, recordManifestDesc oc
 		return nil, status.Errorf(codes.Internal, "failed to query referrers: %v", err)
 	}
 
-	if publicKeyManifestDesc == nil {
-		return nil, status.Errorf(codes.NotFound, "no public key referrer found")
+	if referrerManifestDesc == nil {
+		return nil, status.Errorf(codes.NotFound, "no %s referrer found", referrerType)
 	}
 
-	return publicKeyManifestDesc, nil
+	return referrerManifestDesc, nil
 }
 
 // isPublicKeyReferrer checks if the given referrer descriptor points to a public key artifact.
@@ -249,6 +246,15 @@ func (s *store) isPublicKeyReferrer(ctx context.Context, referrer ocispec.Descri
 
 	// Check if this manifest contains a public key layer
 	return len(manifest.Layers) > 0 && manifest.Layers[0].MediaType == PublicKeyArtifactMediaType
+}
+
+func (s *store) isSignatureReferrer(ctx context.Context, referrer ocispec.Descriptor) bool {
+	manifest, err := s.fetchAndParseManifestFromDescriptor(ctx, referrer)
+	if err != nil {
+		return false
+	}
+
+	return len(manifest.Layers) > 0 && manifest.Layers[0].MediaType == SignatureArtifactType
 }
 
 // extractPublicKeyFromManifest extracts the public key data from a public key manifest.
