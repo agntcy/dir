@@ -176,6 +176,9 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("sync.registry_monitor.check_interval")
 	v.SetDefault("sync.registry_monitor.check_interval", syncmonitor.DefaultCheckInterval)
 
+	_ = v.BindEnv("sync.auth_config.username")
+	_ = v.BindEnv("sync.auth_config.password")
+
 	//
 	// Publication configuration
 	//

@@ -132,6 +132,7 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 
 	// Get OCI configuration to determine registry details
 	ociConfig := c.opts.Config().Store.OCI
+	syncConfig := c.opts.Config().Sync
 
 	// Build registry URL based on configuration
 	registryURL := ociConfig.RegistryAddress
@@ -139,11 +140,15 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 		registryURL = ociconfig.DefaultRegistryAddress
 	}
 
-	// TODO Skip credentials generation for now
 	return &storev1.RequestRegistryCredentialsResponse{
 		Success:           true,
 		RemoteRegistryUrl: registryURL,
-		Credentials:       nil,
+		Credentials: &storev1.RequestRegistryCredentialsResponse_BasicAuth{
+			BasicAuth: &storev1.BasicAuthCredentials{
+				Username: syncConfig.Username,
+				Password: syncConfig.Password,
+			},
+		},
 	}, nil
 }
 
