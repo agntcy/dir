@@ -100,7 +100,7 @@ func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) (*
 	}
 
 	signature := response.GetSignature()
-	if signature == nil {
+	if signature == nil || signature.GetSignature() == "" {
 		return nil, errors.New("no signature found in referrer response")
 	}
 
