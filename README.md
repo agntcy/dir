@@ -3,7 +3,6 @@
 ![GitHub Release (latest by date)](https://img.shields.io/github/v/release/agntcy/dir)
 [![CI](https://github.com/agntcy/dir/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/ci.yaml)
 [![Coverage](https://codecov.io/gh/agntcy/dir/branch/main/graph/badge.svg)](https://codecov.io/gh/agntcy/dir)
-[![Coverage Workflow](https://github.com/agntcy/dir/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/agntcy/dir/actions/workflows/coverage.yml)
 [![License](https://img.shields.io/github/license/agntcy/dir)](./LICENSE.md)
 
 [Buf Registry](https://buf.build/agntcy/dir) | [Go SDK](https://pkg.go.dev/github.com/agntcy/dir/client) | [Python SDK](https://pypi.org/project/agntcy-dir/) | [JavaScript SDK](https://www.npmjs.com/package/agntcy-dir) | [GitHub Actions](https://github.com/agntcy/dir/tree/main/.github/actions/setup-dirctl) | [Documentation](https://docs.agntcy.org/dir/overview/)
