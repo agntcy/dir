@@ -79,4 +79,8 @@ const (
 
 	// Custom annotations prefix.
 	ManifestKeyCustomPrefix = manifestDirObjectKeyPrefix + "/custom."
+
+	// Fallback values for error recovery scenarios.
+	// Used when parsing corrupted storage, legacy records, or external modifications.
+	FallbackSchemaVersion = "v0.3.1"
 )

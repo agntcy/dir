@@ -206,7 +206,7 @@ func TestParseManifestAnnotations(t *testing.T) {
 			name:        "Nil annotations",
 			annotations: nil,
 			expected: &corev1.RecordMeta{
-				SchemaVersion: "v0.3.1", // fallback
+				SchemaVersion: FallbackSchemaVersion,
 				Annotations:   make(map[string]string),
 			},
 		},
@@ -214,7 +214,7 @@ func TestParseManifestAnnotations(t *testing.T) {
 			name:        "Empty annotations",
 			annotations: map[string]string{},
 			expected: &corev1.RecordMeta{
-				SchemaVersion: "v0.3.1", // fallback
+				SchemaVersion: FallbackSchemaVersion,
 				Annotations:   make(map[string]string),
 			},
 		},
@@ -247,7 +247,7 @@ func TestParseManifestAnnotations(t *testing.T) {
 				ManifestKeyAuthors: "author1,author2",
 			},
 			expected: &corev1.RecordMeta{
-				SchemaVersion: "v0.3.1", // fallback
+				SchemaVersion: FallbackSchemaVersion,
 				Annotations: map[string]string{
 					MetadataKeyName:         "skill-agent",
 					MetadataKeySkills:       "nlp,ml,vision",
@@ -266,7 +266,7 @@ func TestParseManifestAnnotations(t *testing.T) {
 				ManifestKeySignedAt:      "2023-01-01T12:00:00Z",
 			},
 			expected: &corev1.RecordMeta{
-				SchemaVersion: "v0.3.1", // fallback
+				SchemaVersion: FallbackSchemaVersion,
 				Annotations: map[string]string{
 					MetadataKeyName:          "secure-agent",
 					MetadataKeySigned:        "true",
@@ -283,7 +283,7 @@ func TestParseManifestAnnotations(t *testing.T) {
 				ManifestKeyCustomPrefix + "custom2": "value2",
 			},
 			expected: &corev1.RecordMeta{
-				SchemaVersion: "v0.3.1", // fallback
+				SchemaVersion: FallbackSchemaVersion,
 				Annotations: map[string]string{
 					MetadataKeyName: "custom-agent",
 					"custom1":       "value1",
@@ -301,7 +301,7 @@ func TestParseManifestAnnotations(t *testing.T) {
 				ManifestKeyPreviousCid:  "QmPrevious123",
 			},
 			expected: &corev1.RecordMeta{
-				SchemaVersion: "v0.3.1", // fallback
+				SchemaVersion: FallbackSchemaVersion,
 				Annotations: map[string]string{
 					MetadataKeyName:              "full-agent",
 					MetadataKeySkills:            "nlp,ml",

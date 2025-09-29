@@ -125,8 +125,8 @@ func parseManifestAnnotations(annotations map[string]string) *corev1.RecordMeta 
 		Annotations: make(map[string]string),
 	}
 
-	// Set fallback schema version first
-	recordMeta.SchemaVersion = "v0.3.1" // fallback default
+	// Set fallback schema version first for error recovery scenarios
+	recordMeta.SchemaVersion = FallbackSchemaVersion
 
 	if annotations == nil {
 		return recordMeta
