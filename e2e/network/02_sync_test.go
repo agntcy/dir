@@ -24,6 +24,8 @@ import (
 var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", func() {
 	var cli *utils.CLI
 	var syncID string
+	var privateKeyPath string
+	var tempKeyDir string
 
 	// Setup temp files for CLI commands (CLI needs actual files on disk)
 	tempDir := os.Getenv("E2E_COMPILE_OUTPUT_DIR")
@@ -91,9 +93,36 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 	})
 
-	ginkgo.Context("sync functionality", func() {
+	ginkgo.Context("sync functionality", ginkgo.Ordered, func() {
 		var cid string
 		var cidV5 string
+
+		// Setup cosign key pair for signing tests
+		ginkgo.BeforeAll(func() {
+			var err error
+			tempKeyDir, err = os.MkdirTemp("", "sync-test-keys")
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Generate cosign key pair
+			utils.GenerateCosignKeyPair(tempKeyDir)
+			privateKeyPath = filepath.Join(tempKeyDir, "cosign.key")
+
+			// Verify key file was created
+			gomega.Expect(privateKeyPath).To(gomega.BeAnExistingFile())
+
+			// Set cosign password for signing
+			err = os.Setenv("COSIGN_PASSWORD", utils.TestPassword)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		})
+
+		// Cleanup cosign keys after all tests
+		ginkgo.AfterAll(func() {
+			os.Unsetenv("COSIGN_PASSWORD")
+			if tempKeyDir != "" {
+				err := os.RemoveAll(tempKeyDir)
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			}
+		})
 
 		ginkgo.It("should push record_v070_sync_v4.json to peer 1", func() {
 			cid = cli.Push(recordV4Path).OnServer(utils.Peer1Addr).ShouldSucceed()
@@ -103,6 +132,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(cid, recordV4Path)
+
+			// Sign the record
+			output := cli.Sign(cid, privateKeyPath).OnServer(utils.Peer1Addr).ShouldSucceed()
+			ginkgo.GinkgoWriter.Printf("Sign output: %s", output)
 		})
 
 		ginkgo.It("should publish record_v070_sync_v4.json", func() {
@@ -117,6 +150,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(cidV5, recordV5Path)
+
+			// Sign the record
+			output := cli.Sign(cidV5, privateKeyPath).OnServer(utils.Peer1Addr).ShouldSucceed()
+			ginkgo.GinkgoWriter.Printf("Sign output: %s", output)
 		})
 
 		ginkgo.It("should publish record_v070_sync_v5.json", func() {
@@ -169,7 +206,10 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should verify the record_v070_sync_v4.json from peer 2 after sync", func() {
-			cli.Verify(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
+			output := cli.Verify(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
+
+			// Verify the output
+			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is trusted!"))
 		})
 
 		// Delete sync from peer 2
@@ -185,93 +225,54 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should create sync from peer 1 to peer 3 using routing search piped to sync create", func() {
-			ginkgo.GinkgoWriter.Printf("=== Phase 3: Selective Sync Test (Peer 1 → Peer 3) ===")
-
-			// Verify initial state - peer 3 should not have any records
-			ginkgo.GinkgoWriter.Printf("Step 1: Verifying peer 3 initial state...")
+			ginkgo.GinkgoWriter.Printf("Verifying initial state - peer 3 should not have any records\n")
 			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()   // v4 (NLP) should not exist
 			_ = cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldFail() // v5 (Audio) should not exist
-			ginkgo.GinkgoWriter.Printf("✅ Confirmed: Peer 3 has no records initially")
 
-			// Run routing search to find records with "Audio" skill
-			ginkgo.GinkgoWriter.Printf("Step 2: Running routing search for 'audio/audio_classification' skill...")
-			ginkgo.GinkgoWriter.Printf("Command: dirctl routing search --skill audio/audio_classification --json")
-			searchOutput := cli.Routing().Search().WithArgs("--skill", "audio/audio_classification").WithArgs("--json").OnServer(utils.Peer3Addr).ShouldSucceed()
+			ginkgo.GinkgoWriter.Printf("Running routing search for 'audio' skill\n")
+			searchOutput := cli.Routing().Search().WithArgs("--skill", "audio").WithArgs("--json").OnServer(utils.Peer3Addr).ShouldSucceed()
 
-			ginkgo.GinkgoWriter.Printf("Routing search output: %s", searchOutput)
+			ginkgo.GinkgoWriter.Printf("Routing search output: %s\n", searchOutput)
+			gomega.Expect(searchOutput).To(gomega.ContainSubstring(cidV5))
 
-			// Analyze what CIDs were found
-			ginkgo.GinkgoWriter.Printf("Step 3: Analyzing search results...")
-			if strings.Contains(searchOutput, cid) {
-				ginkgo.GinkgoWriter.Printf("🚨 UNEXPECTED: v4 record (NLP skills) found in Audio search!")
-				ginkgo.GinkgoWriter.Printf("   CID: %s (should NOT be found for Audio skill)", cid)
-			} else {
-				ginkgo.GinkgoWriter.Printf("✅ EXPECTED: v4 record (NLP skills) NOT found in Audio search")
-				ginkgo.GinkgoWriter.Printf("   CID: %s correctly filtered out", cid)
-			}
-
-			if strings.Contains(searchOutput, cidV5) {
-				ginkgo.GinkgoWriter.Printf("✅ EXPECTED: v5 record (Audio skills) found in Audio search")
-				ginkgo.GinkgoWriter.Printf("   CID: %s correctly matches Audio skill", cidV5)
-			} else {
-				ginkgo.GinkgoWriter.Printf("🚨 UNEXPECTED: v5 record (Audio skills) NOT found in Audio search!")
-				ginkgo.GinkgoWriter.Printf("   CID: %s should be found for Audio skill", cidV5)
-			}
-
-			// Create selective sync using search results
-			ginkgo.GinkgoWriter.Printf("Step 4: Creating selective sync with filtered CIDs...")
-			ginkgo.GinkgoWriter.Printf("Command: dirctl sync create --stdin (piped from routing search)")
+			ginkgo.GinkgoWriter.Printf("Creating sync by tag with 'Audio' search output\n")
 			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldSucceed()
-
-			ginkgo.GinkgoWriter.Printf("Sync creation output: %s", output)
 			gomega.Expect(output).To(gomega.ContainSubstring("Sync created with ID: "))
-			ginkgo.GinkgoWriter.Printf("✅ Selective sync created successfully")
 		})
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
-			ginkgo.GinkgoWriter.Printf("Step 5: Waiting for selective sync to complete...")
-			ginkgo.GinkgoWriter.Printf("Monitoring sync status: PENDING → IN_PROGRESS")
-
-			// Poll sync status until it changes from PENDING to IN_PROGRESS
 			_ = cli.Sync().List().OnServer(utils.Peer3Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
-
-			ginkgo.GinkgoWriter.Printf("✅ Selective sync completed (Zot OCI transfer finished)")
 
 			// Wait for 60 seconds to ensure the sync is complete (reduce flakiness)
 			time.Sleep(60 * time.Second)
 		})
 
 		ginkgo.It("should succeed to pull record_v070_sync_v5.json from peer 3 after sync", func() {
-			ginkgo.GinkgoWriter.Printf("Step 6: Verifying Audio record (v5) was synced to peer 3...")
-			ginkgo.GinkgoWriter.Printf("Command: dirctl pull %s (Audio-skilled record)", cidV5)
-
 			output := cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
 			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070SyncV5JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(equal).To(gomega.BeTrue())
+		})
 
-			ginkgo.GinkgoWriter.Printf("✅ SUCCESS: Audio record correctly synced to peer 3")
-			ginkgo.GinkgoWriter.Printf("   CID: %s", cidV5)
-			ginkgo.GinkgoWriter.Printf("   Content matches expected v070_sync_v5.json")
+		ginkgo.It("should succeed to search for record_v070_sync_v5.json from peer 3 after sync", func() {
+			// Search should eventually return the cid in peer 2 (retry until monitor indexes the record)
+			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v5").OnServer(utils.Peer3Addr).ShouldEventuallyContain(cidV5, 240*time.Second)
+
+			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
+		})
+
+		ginkgo.It("should verify the record_v070_sync_v5.json from peer 3 after sync", func() {
+			output := cli.Verify(cidV5).OnServer(utils.Peer3Addr).ShouldSucceed()
+
+			// Verify the output
+			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is trusted!"))
 		})
 
 		ginkgo.It("should fail to pull record_v070_sync_v4.json from peer 3 after sync", func() {
-			ginkgo.GinkgoWriter.Printf("Step 7: Verifying NLP record (v4) was NOT synced to peer 3...")
-			ginkgo.GinkgoWriter.Printf("Command: dirctl pull %s (NLP-skilled record - should fail)", cid)
-
 			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()
-
-			ginkgo.GinkgoWriter.Printf("✅ SUCCESS: NLP record correctly filtered out by selective sync")
-			ginkgo.GinkgoWriter.Printf("   CID: %s (NOT available on peer 3)", cid)
-			ginkgo.GinkgoWriter.Printf("=== SELECTIVE SYNC TEST COMPLETED SUCCESSFULLY ===")
-			ginkgo.GinkgoWriter.Printf("Summary:")
-			ginkgo.GinkgoWriter.Printf("  - Routing search found only Audio-skilled records")
-			ginkgo.GinkgoWriter.Printf("  - Sync transferred only filtered CIDs")
-			ginkgo.GinkgoWriter.Printf("  - Audio record available on peer 3: ✅")
-			ginkgo.GinkgoWriter.Printf("  - NLP record NOT available on peer 3: ✅")
 
 			// CLEANUP: This is the last test in the sync functionality Context
 			// Clean up sync test records to ensure isolation from subsequent test files
