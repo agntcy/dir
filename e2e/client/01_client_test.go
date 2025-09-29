@@ -82,7 +82,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
 			},
-			expectedModuleLabel: "/modules/schema.oasf.agntcy.org/features/runtime/language", // From record_v031.json extensions
+			expectedModuleLabel: "/modules/runtime/language", // From record_v031.json extensions (schema prefix stripped)
 		},
 		{
 			name:     "Record_v070_Agent",
