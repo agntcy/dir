@@ -25,21 +25,17 @@ body:
       description: Please describe what you expected would happen
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: version
     attributes:
       label: Affected Version
       description: |
-        If applicable, provide the version number or release tag where this
-        issue was encountered
-      options:
-        - v1.0.0
-        - v1.0.1
-        - v1.0.2
-        - v1.0.3
-      default: 0
+        Please specify the version where this issue was encountered.
+        Common versions: v0.3.0, v0.2.13, main (development)
+        You can find all releases at: https://github.com/agntcy/dir/releases
+      placeholder: "e.g., v0.3.0 or main"
     validations:
-      required: false
+      required: true
   - type: textarea
     id: steps
     attributes:
