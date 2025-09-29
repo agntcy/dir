@@ -67,7 +67,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	defer c.Close()
 
-	// Test cases for each OASF version (reusing same structure as dirctl_test.go)
+	// Test cases for each OASF version (matches testdata files)
 	testVersions := []struct {
 		name                string
 		jsonData            []byte
@@ -76,23 +76,23 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		expectedModuleLabel string
 	}{
 		{
-			name:     "V1_Agent_OASF_v0.3.1",
+			name:     "Record_v031_Agent",
 			jsonData: testdata.ExpectedRecordV031JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
 			},
-			expectedModuleLabel: "/modules/runtime/framework",
+			expectedModuleLabel: "/modules/schema.oasf.agntcy.org/features/runtime/language", // From record_v031.json extensions
 		},
 		{
-			name:     "V3_Record_OASF_v0.7.0",
+			name:     "Record_v070_Agent",
 			jsonData: testdata.ExpectedRecordV070JSON,
 			expectedSkillLabels: []string{
-				"natural_language_processing/natural_language_generation/text_completion",
-				"natural_language_processing/analytical_reasoning/problem_solving",
+				"/skills/natural_language_processing/natural_language_generation/text_completion",
+				"/skills/natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedDomainLabel: "/domains/life_science/biotechnology",
-			expectedModuleLabel: "/modules/runtime/framework",
+			expectedModuleLabel: "/modules/runtime/language", // From record_v070.json modules
 		},
 	}
 
@@ -203,7 +203,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				if version.expectedDomainLabel != "" {
 					domainQuery := &routingv1.RecordQuery{
 						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
-						Value: "life_science/biotechnology", // From record_v3.json module
+						Value: "life_science/biotechnology", // From record_v070.json domains
 					}
 					domainItemsChan, err := c.List(ctx, &routingv1.ListRequest{
 						Queries: []*routingv1.RecordQuery{domainQuery},
@@ -216,20 +216,19 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 					gomega.Expect(domainResults[0].GetRecordRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
 				}
 
-				// Test module query
-				moduleQuery := &routingv1.RecordQuery{
-					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-					Value: "runtime/language", // From record_v3.json module
-				}
-				moduleItemsChan, err := c.List(ctx, &routingv1.ListRequest{
-					Queries: []*routingv1.RecordQuery{moduleQuery},
-					Limit:   utils.Ptr[uint32](10),
-				})
-				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+				// Test module query using the expected module label from test data
+				moduleQueries := convertLabelsToClientRecordQueries([]string{version.expectedModuleLabel})
+				if len(moduleQueries) > 0 {
+					moduleItemsChan, err := c.List(ctx, &routingv1.ListRequest{
+						Queries: moduleQueries,
+						Limit:   utils.Ptr[uint32](10),
+					})
+					gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-				moduleResults := utils.CollectListItems(moduleItemsChan)
-				gomega.Expect(moduleResults).ToNot(gomega.BeEmpty(), "Should find record with module query")
-				gomega.Expect(moduleResults[0].GetRecordRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
+					moduleResults := utils.CollectListItems(moduleItemsChan)
+					gomega.Expect(moduleResults).ToNot(gomega.BeEmpty(), "Should find record with module query")
+					gomega.Expect(moduleResults[0].GetRecordRef().GetCid()).To(gomega.Equal(recordRef.GetCid()))
+				}
 
 				ginkgo.GinkgoWriter.Printf("✅ SUCCESS: Queries working correctly")
 			})
