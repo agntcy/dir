@@ -52,7 +52,7 @@ var searchOpts struct {
 	Skills   []string
 	Locators []string
 	Domains  []string
-	Features []string
+	Modules  []string
 	Limit    uint32
 	MinScore uint32
 	JSON     bool
@@ -69,7 +69,7 @@ func init() {
 	searchCmd.Flags().StringArrayVar(&searchOpts.Skills, "skill", nil, "Search for records with specific skill (can be repeated)")
 	searchCmd.Flags().StringArrayVar(&searchOpts.Locators, "locator", nil, "Search for records with specific locator type (can be repeated)")
 	searchCmd.Flags().StringArrayVar(&searchOpts.Domains, "domain", nil, "Search for records with specific domain (can be repeated)")
-	searchCmd.Flags().StringArrayVar(&searchOpts.Features, "feature", nil, "Search for records with specific feature (can be repeated)")
+	searchCmd.Flags().StringArrayVar(&searchOpts.Modules, "module", nil, "Search for records with specific module (can be repeated)")
 	searchCmd.Flags().Uint32Var(&searchOpts.Limit, "limit", defaultSearchLimit, "Maximum number of results to return")
 	searchCmd.Flags().Uint32Var(&searchOpts.MinScore, "min-score", defaultMinScore, "Minimum match score (number of queries that must match)")
 	searchCmd.Flags().BoolVar(&searchOpts.JSON, "json", false, "Output results in JSON format")
@@ -78,7 +78,7 @@ func init() {
 	searchCmd.Flags().Lookup("skill").Usage = "Search for records with specific skill (e.g., --skill 'AI' --skill 'ML')"
 	searchCmd.Flags().Lookup("locator").Usage = "Search for records with specific locator type (e.g., --locator 'docker-image')"
 	searchCmd.Flags().Lookup("domain").Usage = "Search for records with specific domain (e.g., --domain 'research' --domain 'analytics')"
-	searchCmd.Flags().Lookup("feature").Usage = "Search for records with specific feature (e.g., --feature 'runtime/language' --feature 'runtime/framework')"
+	searchCmd.Flags().Lookup("module").Usage = "Search for records with specific module (e.g., --module 'runtime/language' --module 'runtime/framework')"
 }
 
 func runSearchCommand(cmd *cobra.Command) error {
@@ -89,7 +89,7 @@ func runSearchCommand(cmd *cobra.Command) error {
 	}
 
 	// Build queries from flags
-	queries := make([]*routingv1.RecordQuery, 0, len(searchOpts.Skills)+len(searchOpts.Locators)+len(searchOpts.Domains)+len(searchOpts.Features))
+	queries := make([]*routingv1.RecordQuery, 0, len(searchOpts.Skills)+len(searchOpts.Locators)+len(searchOpts.Domains)+len(searchOpts.Modules))
 
 	// Add skill queries
 	for _, skill := range searchOpts.Skills {
@@ -115,20 +115,20 @@ func runSearchCommand(cmd *cobra.Command) error {
 		})
 	}
 
-	// Add feature queries
-	for _, feature := range searchOpts.Features {
+	// Add module queries
+	for _, module := range searchOpts.Modules {
 		queries = append(queries, &routingv1.RecordQuery{
-			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_FEATURE,
-			Value: feature,
+			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+			Value: module,
 		})
 	}
 
 	// Validate that we have at least some criteria
 	if len(queries) == 0 {
-		presenter.Printf(cmd, "No search criteria specified. Use --skill, --locator, --domain, or --feature flags.\n")
+		presenter.Printf(cmd, "No search criteria specified. Use --skill, --locator, --domain, or --module flags.\n")
 		presenter.Printf(cmd, "Examples:\n")
 		presenter.Printf(cmd, "  dirctl routing search --skill 'AI' --locator 'docker-image'\n")
-		presenter.Printf(cmd, "  dirctl routing search --domain 'research' --feature 'runtime/language'\n")
+		presenter.Printf(cmd, "  dirctl routing search --domain 'research' --module 'runtime/language'\n")
 
 		return nil
 	}

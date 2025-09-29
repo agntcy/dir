@@ -127,7 +127,7 @@ message ListResponse {
   // The record that matches the list queries.
   core.v1.RecordRef record_ref = 1;
 
-  // Labels associated with this record (skills, domains, features)
+  // Labels associated with this record (skills, domains, modules)
   // Derived from the record content for CLI display purposes
   repeated string labels = 2;
 }

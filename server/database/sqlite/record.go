@@ -20,10 +20,9 @@ type Record struct {
 	Name      string `gorm:"not null"`
 	Version   string `gorm:"not null"`
 
-	Skills     []Skill     `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Locators   []Locator   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Extensions []Extension `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
-	Modules    []Module    `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Modules  []Module  `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 // Implement central Record interface.
@@ -96,15 +95,6 @@ func (r *RecordDataAdapter) GetLocators() []types.Locator {
 	return locators
 }
 
-func (r *RecordDataAdapter) GetExtensions() []types.Extension {
-	extensions := make([]types.Extension, len(r.record.Extensions))
-	for i, extension := range r.record.Extensions {
-		extensions[i] = &extension
-	}
-
-	return extensions
-}
-
 func (r *RecordDataAdapter) GetModules() []types.Module {
 	modules := make([]types.Module, len(r.record.Modules))
 	for i, module := range r.record.Modules {
@@ -152,13 +142,12 @@ func (d *DB) AddRecord(record types.Record) error {
 
 	// Build complete Record with all associations
 	sqliteRecord := &Record{
-		RecordCID:  cid,
-		Name:       recordData.GetName(),
-		Version:    recordData.GetVersion(),
-		Skills:     convertSkills(recordData.GetSkills(), cid),
-		Locators:   convertLocators(recordData.GetLocators(), cid),
-		Extensions: convertExtensions(recordData.GetExtensions(), cid),
-		Modules:    convertModules(recordData.GetModules(), cid),
+		RecordCID: cid,
+		Name:      recordData.GetName(),
+		Version:   recordData.GetVersion(),
+		Skills:    convertSkills(recordData.GetSkills(), cid),
+		Locators:  convertLocators(recordData.GetLocators(), cid),
+		Modules:   convertModules(recordData.GetModules(), cid),
 	}
 
 	// Let GORM handle the entire creation with associations
@@ -167,7 +156,7 @@ func (d *DB) AddRecord(record types.Record) error {
 	}
 
 	logger.Debug("Added new record with associations to SQLite database", "record_cid", sqliteRecord.RecordCID, "cid", cid,
-		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "extensions", len(sqliteRecord.Extensions), "modules", len(sqliteRecord.Modules))
+		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "modules", len(sqliteRecord.Modules))
 
 	return nil
 }
@@ -203,7 +192,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 
 	// Execute the query to get records.
 	var dbRecords []Record
-	if err := query.Preload("Skills").Preload("Locators").Preload("Extensions").Preload("Modules").Find(&dbRecords).Error; err != nil {
+	if err := query.Preload("Skills").Preload("Locators").Preload("Modules").Find(&dbRecords).Error; err != nil {
 		return nil, fmt.Errorf("failed to query records: %w", err)
 	}
 
@@ -257,7 +246,7 @@ func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
 }
 
 // RemoveRecord removes a record from the search database by CID.
-// Uses CASCADE DELETE to automatically remove related Skills, Locators, and Extensions.
+// Uses CASCADE DELETE to automatically remove related Skills, Locators, and Modules.
 func (d *DB) RemoveRecord(cid string) error {
 	result := d.gormDB.Where("record_cid = ?", cid).Delete(&Record{})
 
@@ -327,19 +316,12 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 	}
 
-	// Handle extension filters with wildcard support.
-	if len(cfg.ExtensionNames) > 0 || len(cfg.ExtensionVersions) > 0 {
-		query = query.Joins("JOIN extensions ON extensions.record_cid = records.record_cid")
+	// Handle module filters with wildcard support.
+	if len(cfg.ModuleNames) > 0 {
+		query = query.Joins("JOIN modules ON modules.record_cid = records.record_cid")
 
-		if len(cfg.ExtensionNames) > 0 {
-			condition, args := utils.BuildWildcardCondition("extensions.name", cfg.ExtensionNames)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
-
-		if len(cfg.ExtensionVersions) > 0 {
-			condition, args := utils.BuildWildcardCondition("extensions.version", cfg.ExtensionVersions)
+		if len(cfg.ModuleNames) > 0 {
+			condition, args := utils.BuildWildcardCondition("modules.name", cfg.ModuleNames)
 			if condition != "" {
 				query = query.Where(condition, args...)
 			}

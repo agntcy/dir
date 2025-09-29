@@ -196,13 +196,13 @@ func resetRoutingCommandFlags() {
 					resetStringArrayFlag(subCmd, "skill")
 					resetStringArrayFlag(subCmd, "locator")
 					resetStringArrayFlag(subCmd, "domain")
-					resetStringArrayFlag(subCmd, "feature")
+					resetStringArrayFlag(subCmd, "module")
 				case "search":
 					// Reset search command flags and underlying variables
 					resetStringArrayFlag(subCmd, "skill")
 					resetStringArrayFlag(subCmd, "locator")
 					resetStringArrayFlag(subCmd, "domain")
-					resetStringArrayFlag(subCmd, "feature")
+					resetStringArrayFlag(subCmd, "module")
 				}
 			}
 		}

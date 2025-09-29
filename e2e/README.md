@@ -62,7 +62,7 @@ e2e/
 
 **Test Cases:**
 - Exact match searches (no wildcards)
-- Wildcard searches with `*` pattern (name, version, skill, locator, extension fields)
+- Wildcard searches with `*` pattern (name, version, skill, locator, module fields)
 - Wildcard searches with `?` pattern (single character matching)
 - Wildcard searches with `[]` list patterns (character classes and ranges)
 - Mixed wildcard patterns and complex combinations

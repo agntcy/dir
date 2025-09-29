@@ -4,16 +4,15 @@
 package types
 
 type RecordFilters struct {
-	Limit             int
-	Offset            int
-	Name              string
-	Version           string
-	SkillIDs          []uint64
-	SkillNames        []string
-	LocatorTypes      []string
-	LocatorURLs       []string
-	ExtensionNames    []string
-	ExtensionVersions []string
+	Limit        int
+	Offset       int
+	Name         string
+	Version      string
+	SkillIDs     []uint64
+	SkillNames   []string
+	LocatorTypes []string
+	LocatorURLs  []string
+	ModuleNames  []string
 }
 
 type FilterOption func(*RecordFilters)
@@ -74,16 +73,9 @@ func WithLocatorURLs(urls ...string) FilterOption {
 	}
 }
 
-// WithExtensionNames RecordFilters records by extension names.
-func WithExtensionNames(names ...string) FilterOption {
+// WithModuleNames RecordFilters records by module names.
+func WithModuleNames(names ...string) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.ExtensionNames = names
-	}
-}
-
-// WithExtensionVersions RecordFilters records by extension versions.
-func WithExtensionVersions(versions ...string) FilterOption {
-	return func(sc *RecordFilters) {
-		sc.ExtensionVersions = versions
+		sc.ModuleNames = names
 	}
 }

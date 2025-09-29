@@ -127,23 +127,23 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labelList []labels.Label) 
 
 		return false
 
-	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_FEATURE:
-		// Check if any feature label matches the query
-		targetFeature := labels.LabelTypeFeature.Prefix() + query.GetValue()
+	case routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE:
+		// Check if any module label matches the query
+		targetModule := labels.LabelTypeModule.Prefix() + query.GetValue()
 
 		for _, label := range labelList {
-			// Type-safe filtering: only check feature labels
-			if label.Type() != labels.LabelTypeFeature {
+			// Type-safe filtering: only check module labels
+			if label.Type() != labels.LabelTypeModule {
 				continue
 			}
 
 			labelStr := label.String()
-			// Exact match: /features/runtime/language matches "runtime/language"
-			if labelStr == targetFeature {
+			// Exact match: /modules/runtime/language matches "runtime/language"
+			if labelStr == targetModule {
 				return true
 			}
-			// Prefix match: /features/runtime/language/python matches "runtime/language"
-			if strings.HasPrefix(labelStr, targetFeature+"/") {
+			// Prefix match: /modules/runtime/language/python matches "runtime/language"
+			if strings.HasPrefix(labelStr, targetModule+"/") {
 				return true
 			}
 		}

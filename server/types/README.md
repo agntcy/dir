@@ -78,7 +78,7 @@ type RecordData interface {
     // Capabilities
     GetSkills() []Skill
     GetLocators() []Locator
-    GetExtensions() []Extension
+    GetModules() []Module
     
     // Security & Versioning
     GetSignature() Signature
@@ -110,11 +110,9 @@ type Locator interface {
     GetDigest() string
 }
 
-// Extensions provide additional functionality
-type Extension interface {
-    GetAnnotations() map[string]string
+// Modules provide additional functionality
+type Module interface {
     GetName() string
-    GetVersion() string
     GetData() map[string]any
 }
 
@@ -209,8 +207,7 @@ WithVersion(version string)    // Exact version match
 // Capability filtering  
 WithSkillIDs(ids ...uint64)           // Filter by skill IDs
 WithSkillNames(names ...string)       // Filter by skill names
-WithExtensionNames(names ...string)   // Filter by extension names
-WithExtensionVersions(versions ...string) // Filter by extension versions
+WithModuleNames(names ...string)   // Filter by module names
 
 // Infrastructure filtering
 WithLocatorTypes(types ...string)     // Filter by deployment types
@@ -234,7 +231,7 @@ records, err := search.GetRecords(
 
 // Search for agents by organization
 records, err := search.GetRecords(
-    WithExtensionNames("monitoring"),
+    WithModuleNames("monitoring"),
     WithLocatorTypes("kubernetes", "helm"),
     WithOffset(20),
     WithLimit(10),
@@ -351,7 +348,7 @@ func FindProductionAgents(search SearchAPI) ([]Record, error) {
     // Find production-ready agents with specific capabilities
     return search.GetRecords(
         WithSkillNames("production-monitoring", "error-handling"),
-        WithExtensionNames("security", "logging"),
+        WithModuleNames("security", "logging"),
         WithLocatorTypes("kubernetes"),
         WithLimit(20),
     )
@@ -361,7 +358,7 @@ func FindDevelopmentAgents(search SearchAPI, team string) ([]Record, error) {
     // Find development agents for a specific team
     return search.GetRecords(
         WithName("*-dev"),  // Development naming pattern
-        WithExtensionNames("debugging", "testing"),
+        WithModuleNames("debugging", "testing"),
         WithLocatorTypes("docker"),
         WithLimit(50),
     )

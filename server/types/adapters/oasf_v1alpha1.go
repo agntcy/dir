@@ -137,22 +137,6 @@ func (a *V1Alpha1Adapter) GetLocators() []types.Locator {
 	return result
 }
 
-// GetExtensions implements types.RecordData interface.
-func (a *V1Alpha1Adapter) GetExtensions() []types.Extension {
-	if a.record == nil {
-		return nil
-	}
-
-	extensions := a.record.GetModules()
-	result := make([]types.Extension, len(extensions))
-
-	for i, extension := range extensions {
-		result[i] = NewV1Alpha1ExtensionAdapter(extension)
-	}
-
-	return result
-}
-
 // GetModules implements types.RecordData interface.
 func (a *V1Alpha1Adapter) GetModules() []types.Module {
 	if a.record == nil {
@@ -258,58 +242,6 @@ func (s *V1Alpha1SignatureAdapter) GetContentBundle() string {
 	}
 
 	return s.signature.GetContentBundle()
-}
-
-// V1Alpha1ExtensionAdapter adapts typesv1alpha1.Extension to types.Extension interface.
-type V1Alpha1ExtensionAdapter struct {
-	extension *typesv1alpha1.Module
-}
-
-// NewV1Alpha1ExtensionAdapter creates a new V1Alpha1ExtensionAdapter.
-func NewV1Alpha1ExtensionAdapter(extension *typesv1alpha1.Module) *V1Alpha1ExtensionAdapter {
-	return &V1Alpha1ExtensionAdapter{extension: extension}
-}
-
-// GetAnnotations implements types.Extension interface.
-func (e *V1Alpha1ExtensionAdapter) GetAnnotations() map[string]string {
-	if e.extension == nil {
-		return nil
-	}
-
-	return e.extension.GetAnnotations()
-}
-
-// GetName implements types.Extension interface.
-func (e *V1Alpha1ExtensionAdapter) GetName() string {
-	if e.extension == nil {
-		return ""
-	}
-
-	return e.extension.GetName()
-}
-
-// GetVersion implements types.Extension interface.
-func (e *V1Alpha1ExtensionAdapter) GetVersion() string {
-	if e.extension == nil {
-		return ""
-	}
-
-	// TODO: not implemented
-	return ""
-}
-
-// GetData implements types.Extension interface.
-func (e *V1Alpha1ExtensionAdapter) GetData() map[string]any {
-	if e.extension == nil || e.extension.GetData() == nil {
-		return nil
-	}
-
-	resp, err := decoder.ProtoToStruct[map[string]any](e.extension.GetData())
-	if err != nil {
-		return nil
-	}
-
-	return *resp
 }
 
 // V1Alpha1SkillAdapter adapts typesv1alpha1.Skill to types.Skill interface.
@@ -552,9 +484,9 @@ func (a *V1Alpha1Adapter) GetModuleLabels() []labels.Label {
 		moduleAdapter := NewV1Alpha1ModuleAdapter(mod)
 		moduleName := moduleAdapter.GetName()
 
-		// V1Alpha1 modules don't have schema prefixes, use name directly
-		featureLabel := labels.Label(labels.LabelTypeFeature.Prefix() + moduleName)
-		result = append(result, featureLabel)
+		// V1Alpha1 modules don't have schema prefixes, use name directly with /modules prefix
+		moduleLabel := labels.Label(labels.LabelTypeModule.Prefix() + moduleName)
+		result = append(result, moduleLabel)
 	}
 
 	return result

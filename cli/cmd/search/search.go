@@ -29,7 +29,7 @@ Usage examples:
 		--query "skill-id=10201" \
 		--query "skill-name=Text Completion" \
 		--query "locator=docker-image:https://example.com/docker-image" \
-		--query "extension=my-custom-extension-name:v1.0.0" 
+		--query "module=my-custom-module-name" 
 
 2. Wildcard search examples:
 
@@ -45,8 +45,8 @@ Usage examples:
 	# Find agents with HTTP-based locators
 	dirctl search --query "locator=http*"
 	
-	# Find agents with plugin extensions
-	dirctl search --query "extension=*-plugin*"
+	# Find agents with plugin modules
+	dirctl search --query "module=*-plugin*"
 
 3. Question mark wildcard (? matches exactly one character):
 

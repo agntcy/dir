@@ -50,7 +50,7 @@ func QueryAllNamespaces(ctx context.Context, dstore types.Datastore, includeLoca
 	namespaces := []string{
 		labels.LabelTypeSkill.Prefix(),
 		labels.LabelTypeDomain.Prefix(),
-		labels.LabelTypeFeature.Prefix(),
+		labels.LabelTypeModule.Prefix(),
 	}
 
 	// Include locators namespace if requested (local routing needs it, remote might not)
@@ -137,9 +137,9 @@ func newRemote(ctx context.Context,
 
 				labelValidators := validators.CreateLabelValidators()
 				validator := record.NamespacedValidator{
-					labels.LabelTypeSkill.String():   labelValidators[labels.LabelTypeSkill.String()],
-					labels.LabelTypeDomain.String():  labelValidators[labels.LabelTypeDomain.String()],
-					labels.LabelTypeFeature.String(): labelValidators[labels.LabelTypeFeature.String()],
+					labels.LabelTypeSkill.String():  labelValidators[labels.LabelTypeSkill.String()],
+					labels.LabelTypeDomain.String(): labelValidators[labels.LabelTypeDomain.String()],
+					labels.LabelTypeModule.String(): labelValidators[labels.LabelTypeModule.String()],
 				}
 
 				return []dht.Option{

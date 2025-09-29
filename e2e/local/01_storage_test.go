@@ -44,7 +44,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		expectedSkillIDs   []string
 		expectedSkillNames []string
 		expectedLocator    string
-		expectedExtension  string
+		expectedModule     string
 	}{
 		{
 			name:              "V1_Agent_OASF_v0.3.1",
@@ -56,8 +56,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"Natural Language Processing/Text Completion",
 				"Natural Language Processing/Problem Solving",
 			},
-			expectedLocator:   "docker-image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedExtension: "schema.oasf.agntcy.org/features/runtime/framework:v0.0.0",
+			expectedLocator: "docker-image:https://ghcr.io/agntcy/marketing-strategy",
+			expectedModule:  "schema.oasf.agntcy.org/features/runtime/framework",
 		},
 		{
 			name:              "V3_Record_OASF_v0.7.0",
@@ -69,8 +69,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"natural_language_processing/natural_language_generation/text_completion",
 				"natural_language_processing/analytical_reasoning/problem_solving",
 			},
-			expectedLocator:   "docker_image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedExtension: "runtime/framework",
+			expectedLocator: "docker_image:https://ghcr.io/agntcy/marketing-strategy",
+			expectedModule:  "runtime/framework",
 		},
 	}
 
@@ -130,12 +130,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					WithQuery("skill-id", version.expectedSkillIDs[0]).
 					WithQuery("skill-name", version.expectedSkillNames[0])
 
-				// Add locator and extension queries only if they exist (not empty for minimal test)
+				// Add locator and module queries only if they exist (not empty for minimal test)
 				if version.expectedLocator != "" {
 					search = search.WithQuery("locator", version.expectedLocator)
 				}
-				if version.expectedExtension != "" {
-					search = search.WithQuery("extension", version.expectedExtension)
+				if version.expectedModule != "" {
+					search = search.WithQuery("module", version.expectedModule)
 				}
 
 				search.ShouldReturn(cid)
@@ -156,12 +156,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					WithQuery("skill-id", version.expectedSkillIDs[1]).
 					WithQuery("skill-name", version.expectedSkillNames[1])
 
-				// Add locator and extension queries only if they exist (not empty for minimal test)
+				// Add locator and module queries only if they exist (not empty for minimal test)
 				if version.expectedLocator != "" {
 					search = search.WithQuery("locator", version.expectedLocator)
 				}
-				if version.expectedExtension != "" {
-					search = search.WithQuery("extension", version.expectedExtension)
+				if version.expectedModule != "" {
+					search = search.WithQuery("module", version.expectedModule)
 				}
 
 				search.ShouldReturn(cid)

@@ -171,7 +171,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 			"/skills/AI",
 			"/skills/ML",
 			"/domains/tech",
-			"/features/nlp",
+			"/modules/nlp",
 		}
 
 		// Store record and labels

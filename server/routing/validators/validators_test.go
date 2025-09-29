@@ -197,8 +197,8 @@ func TestDomainValidator_Validate(t *testing.T) {
 }
 
 //nolint:dupl // Similar test structure is intentional for different validators
-func TestFeatureValidator_Validate(t *testing.T) {
-	validator := &FeatureValidator{}
+func TestModuleValidator_Validate(t *testing.T) {
+	validator := &ModuleValidator{}
 
 	tests := []struct {
 		name      string
@@ -208,20 +208,20 @@ func TestFeatureValidator_Validate(t *testing.T) {
 		errorMsg  string
 	}{
 		{
-			name:      "valid features key with single feature",
-			key:       "/features/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			name:      "valid modules key with single module",
+			key:       "/modules/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: false,
 		},
 		{
-			name:      "valid features key with nested feature path",
-			key:       "/features/ai/reasoning/logical/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2",
+			name:      "valid modules key with nested module path",
+			key:       "/modules/ai/reasoning/logical/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2",
 			value:     []byte{},
 			wantError: false,
 		},
 		{
-			name:      "valid features key with value",
-			key:       "/features/search/semantic/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
+			name:      "valid modules key with value",
+			key:       "/modules/search/semantic/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
 			value:     []byte("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
 			wantError: false,
 		},
@@ -230,25 +230,25 @@ func TestFeatureValidator_Validate(t *testing.T) {
 			key:       "/domains/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
-			errorMsg:  "invalid namespace: expected features, got domains",
+			errorMsg:  "invalid namespace: expected modules, got domains",
 		},
 		{
-			name:      "missing feature path",
-			key:       "/features/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			name:      "missing module path",
+			key:       "/modules/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
 		},
 		{
 			name:      "invalid CID format",
-			key:       "/features/llm/invalid-cid/Peer1",
+			key:       "/modules/llm/invalid-cid/Peer1",
 			value:     []byte{},
 			wantError: true,
 			errorMsg:  "invalid CID format",
 		},
 		{
 			name:      "invalid value CID",
-			key:       "/features/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			key:       "/modules/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
 			value:     []byte("invalid-cid-value"),
 			wantError: true,
 			errorMsg:  "invalid CID in value",
@@ -305,9 +305,9 @@ func TestValidators_Select(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:      "features validator - no valid values",
-			validator: &FeatureValidator{},
-			key:       "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
+			name:      "modules validator - no valid values",
+			validator: &ModuleValidator{},
+			key:       "/modules/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
 			values: [][]byte{
 				[]byte("invalid-cid-1"),
 				[]byte("invalid-cid-2"),
@@ -348,19 +348,19 @@ func TestLabelTypeIntegration(t *testing.T) {
 	// Test String() method
 	assert.Equal(t, "skills", labels.LabelTypeSkill.String())
 	assert.Equal(t, "domains", labels.LabelTypeDomain.String())
-	assert.Equal(t, "features", labels.LabelTypeFeature.String())
+	assert.Equal(t, "modules", labels.LabelTypeModule.String())
 	assert.Equal(t, "locators", labels.LabelTypeLocator.String())
 
 	// Test Prefix() method
 	assert.Equal(t, "/skills/", labels.LabelTypeSkill.Prefix())
 	assert.Equal(t, "/domains/", labels.LabelTypeDomain.Prefix())
-	assert.Equal(t, "/features/", labels.LabelTypeFeature.Prefix())
+	assert.Equal(t, "/modules/", labels.LabelTypeModule.Prefix())
 	assert.Equal(t, "/locators/", labels.LabelTypeLocator.Prefix())
 
 	// Test IsValid() method
 	assert.True(t, labels.LabelTypeSkill.IsValid())
 	assert.True(t, labels.LabelTypeDomain.IsValid())
-	assert.True(t, labels.LabelTypeFeature.IsValid())
+	assert.True(t, labels.LabelTypeModule.IsValid())
 	assert.True(t, labels.LabelTypeLocator.IsValid())
 	assert.False(t, labels.LabelType("invalid").IsValid())
 
@@ -378,13 +378,13 @@ func TestLabelTypeIntegration(t *testing.T) {
 	assert.Len(t, all, 4)
 	assert.Contains(t, all, labels.LabelTypeSkill)
 	assert.Contains(t, all, labels.LabelTypeDomain)
-	assert.Contains(t, all, labels.LabelTypeFeature)
+	assert.Contains(t, all, labels.LabelTypeModule)
 	assert.Contains(t, all, labels.LabelTypeLocator)
 
 	// Test IsValidLabelKey() function
 	assert.True(t, IsValidLabelKey("/skills/golang/CID123"))
 	assert.True(t, IsValidLabelKey("/domains/web/CID123"))
-	assert.True(t, IsValidLabelKey("/features/chat/CID123"))
+	assert.True(t, IsValidLabelKey("/modules/chat/CID123"))
 	assert.True(t, IsValidLabelKey("/locators/docker-image/CID123"))
 	assert.False(t, IsValidLabelKey("/invalid/test/CID123"))
 	assert.False(t, IsValidLabelKey("/records/CID123"))
@@ -399,9 +399,9 @@ func TestLabelTypeIntegration(t *testing.T) {
 	assert.True(t, found)
 	assert.Equal(t, labels.LabelTypeDomain, lt)
 
-	lt, found = GetLabelTypeFromKey("/features/chat/CID123")
+	lt, found = GetLabelTypeFromKey("/modules/chat/CID123")
 	assert.True(t, found)
-	assert.Equal(t, labels.LabelTypeFeature, lt)
+	assert.Equal(t, labels.LabelTypeModule, lt)
 
 	lt, found = GetLabelTypeFromKey("/invalid/test/CID123")
 	assert.False(t, found)
@@ -415,13 +415,13 @@ func TestCreateLabelValidators(t *testing.T) {
 	assert.Len(t, validators, 4)
 	assert.Contains(t, validators, labels.LabelTypeSkill.String())
 	assert.Contains(t, validators, labels.LabelTypeDomain.String())
-	assert.Contains(t, validators, labels.LabelTypeFeature.String())
+	assert.Contains(t, validators, labels.LabelTypeModule.String())
 	assert.Contains(t, validators, labels.LabelTypeLocator.String())
 
 	// Test that validators are of correct types
 	assert.IsType(t, &SkillValidator{}, validators[labels.LabelTypeSkill.String()])
 	assert.IsType(t, &DomainValidator{}, validators[labels.LabelTypeDomain.String()])
-	assert.IsType(t, &FeatureValidator{}, validators[labels.LabelTypeFeature.String()])
+	assert.IsType(t, &ModuleValidator{}, validators[labels.LabelTypeModule.String()])
 	assert.IsType(t, &LocatorValidator{}, validators[labels.LabelTypeLocator.String()])
 }
 
@@ -443,8 +443,8 @@ func TestValidateLabelKey(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:      "valid features key",
-			key:       "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			name:      "valid modules key",
+			key:       "/modules/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
 			wantError: false,
 		},
 		{
@@ -514,9 +514,9 @@ func TestFormatLabelKey(t *testing.T) {
 		},
 		{
 			name:     "single component label",
-			label:    "/features/llm",
+			label:    "/modules/llm",
 			cid:      "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
-			expected: "/features/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			expected: "/modules/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
 		},
 	}
 
@@ -651,9 +651,9 @@ func BenchmarkDomainValidator_Validate(b *testing.B) {
 	}
 }
 
-func BenchmarkFeatureValidator_Validate(b *testing.B) {
-	validator := &FeatureValidator{}
-	key := "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3"
+func BenchmarkModuleValidator_Validate(b *testing.B) {
+	validator := &ModuleValidator{}
+	key := "/modules/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3"
 	value := []byte{}
 
 	b.ResetTimer()
@@ -684,8 +684,8 @@ func TestExtractCIDFromLabelKey(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:      "valid features key",
-			labelKey:  "/features/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
+			name:      "valid modules key",
+			labelKey:  "/modules/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
 			wantCID:   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
 			wantError: false,
 		},

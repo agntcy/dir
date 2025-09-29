@@ -15,7 +15,7 @@ func init() {
 		3: "skill-id",
 		4: "skill-name",
 		5: "locator",
-		6: "extension",
+		6: "module",
 	}
 	RecordQueryType_value = map[string]int32{
 		"":            0,
@@ -25,7 +25,7 @@ func init() {
 		"skill-id":    3,
 		"skill-name":  4,
 		"locator":     5,
-		"extension":   6,
+		"module":      6,
 	}
 
 	ValidQueryTypes = []string{
@@ -34,6 +34,6 @@ func init() {
 		"skill-id",
 		"skill-name",
 		"locator",
-		"extension",
+		"module",
 	}
 }

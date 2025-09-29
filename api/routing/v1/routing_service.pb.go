@@ -484,7 +484,7 @@ type ListResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The record that matches the list queries.
 	RecordRef *v1.RecordRef `protobuf:"bytes,1,opt,name=record_ref,json=recordRef,proto3" json:"record_ref,omitempty"`
-	// Labels associated with this record (skills, domains, features)
+	// Labels associated with this record (skills, domains, modules)
 	// Derived from the record content for CLI display purposes
 	Labels        []string `protobuf:"bytes,2,rep,name=labels,proto3" json:"labels,omitempty"`
 	unknownFields protoimpl.UnknownFields

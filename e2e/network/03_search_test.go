@@ -230,7 +230,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 
 			// Should get helpful error message, not crash or return all records
 			gomega.Expect(output).To(gomega.ContainSubstring("No search criteria specified"))
-			gomega.Expect(output).To(gomega.ContainSubstring("Use --skill, --locator, --domain, or --feature flags"))
+			gomega.Expect(output).To(gomega.ContainSubstring("Use --skill, --locator, --domain, or --module flags"))
 
 			ginkgo.GinkgoWriter.Printf("✅ SUCCESS: Empty queries properly rejected with helpful error message")
 

@@ -10,7 +10,7 @@ package agntcy.dir.routing.v1;
 //  { type: RECORD_QUERY_TYPE_SKILL, value: "Natural Language Processing" }
 //  { type: RECORD_QUERY_TYPE_LOCATOR, value: "helm-chart" }
 //  { type: RECORD_QUERY_TYPE_DOMAIN, value: "research" }
-//  { type: RECORD_QUERY_TYPE_FEATURE, value: "runtime/language" }
+//  { type: RECORD_QUERY_TYPE_MODULE, value: "runtime/language" }
 message RecordQuery {
   // The type of the query to match against.
   RecordQueryType type = 1;
@@ -33,6 +33,6 @@ enum RecordQueryType {
   // Query for a domain name.
   RECORD_QUERY_TYPE_DOMAIN = 3;
 
-  // Query for a feature name.
-  RECORD_QUERY_TYPE_FEATURE = 4;
+  // Query for a module name.
+  RECORD_QUERY_TYPE_MODULE = 4;
 }

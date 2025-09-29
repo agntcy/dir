@@ -27,9 +27,9 @@ const (
 	MetadataKeyAuthors       = "authors"
 
 	// Capability Discovery (simple keys).
-	MetadataKeySkills         = "skills"
-	MetadataKeyLocatorTypes   = "locator-types"
-	MetadataKeyExtensionNames = "extension-names"
+	MetadataKeySkills       = "skills"
+	MetadataKeyLocatorTypes = "locator-types"
+	MetadataKeyModuleNames  = "module-names"
 
 	// Security (simple keys).
 	MetadataKeySigned        = "signed"
@@ -48,7 +48,7 @@ const (
 	MetadataKeyAuthorsCount      = "authors-count"
 	MetadataKeySkillsCount       = "skills-count"
 	MetadataKeyLocatorTypesCount = "locator-types-count"
-	MetadataKeyExtensionCount    = "extension-names-count"
+	MetadataKeyModuleCount       = "module-names-count"
 
 	// Derived from MetadataKey constants to ensure consistency.
 
@@ -65,9 +65,9 @@ const (
 	ManifestKeyAuthors       = manifestDirObjectKeyPrefix + "/" + MetadataKeyAuthors
 
 	// Capability Discovery (derived from MetadataKey constants).
-	ManifestKeySkills         = manifestDirObjectKeyPrefix + "/" + MetadataKeySkills
-	ManifestKeyLocatorTypes   = manifestDirObjectKeyPrefix + "/" + MetadataKeyLocatorTypes
-	ManifestKeyExtensionNames = manifestDirObjectKeyPrefix + "/" + MetadataKeyExtensionNames
+	ManifestKeySkills       = manifestDirObjectKeyPrefix + "/" + MetadataKeySkills
+	ManifestKeyLocatorTypes = manifestDirObjectKeyPrefix + "/" + MetadataKeyLocatorTypes
+	ManifestKeyModuleNames  = manifestDirObjectKeyPrefix + "/" + MetadataKeyModuleNames
 
 	// Security & Integrity (mixed: some derived, some standalone).
 	ManifestKeySigned        = manifestDirObjectKeyPrefix + "/" + MetadataKeySigned

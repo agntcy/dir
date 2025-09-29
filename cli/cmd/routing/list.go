@@ -56,7 +56,7 @@ var listOpts struct {
 	Skills   []string
 	Locators []string
 	Domains  []string
-	Features []string
+	Modules  []string
 	Limit    uint32
 }
 
@@ -66,14 +66,14 @@ func init() {
 	listCmd.Flags().StringArrayVar(&listOpts.Skills, "skill", nil, "Filter by skill (can be repeated)")
 	listCmd.Flags().StringArrayVar(&listOpts.Locators, "locator", nil, "Filter by locator type (can be repeated)")
 	listCmd.Flags().StringArrayVar(&listOpts.Domains, "domain", nil, "Filter by domain (can be repeated)")
-	listCmd.Flags().StringArrayVar(&listOpts.Features, "feature", nil, "Filter by feature (can be repeated)")
+	listCmd.Flags().StringArrayVar(&listOpts.Modules, "module", nil, "Filter by module (can be repeated)")
 	listCmd.Flags().Uint32Var(&listOpts.Limit, "limit", 0, "Maximum number of results (0 = no limit)")
 
 	// Add examples in flag help
 	listCmd.Flags().Lookup("skill").Usage = "Filter by skill (e.g., --skill 'AI' --skill 'web-development')"
 	listCmd.Flags().Lookup("locator").Usage = "Filter by locator type (e.g., --locator 'docker-image')"
 	listCmd.Flags().Lookup("domain").Usage = "Filter by domain (e.g., --domain 'research' --domain 'analytics')"
-	listCmd.Flags().Lookup("feature").Usage = "Filter by feature (e.g., --feature 'runtime/language' --feature 'runtime/framework')"
+	listCmd.Flags().Lookup("module").Usage = "Filter by module (e.g., --module 'runtime/language' --module 'runtime/framework')"
 	listCmd.Flags().Lookup("cid").Usage = "List specific record by CID"
 }
 
@@ -90,7 +90,7 @@ func runListCommand(cmd *cobra.Command) error {
 	}
 
 	// Build queries from flags
-	queries := make([]*routingv1.RecordQuery, 0, len(listOpts.Skills)+len(listOpts.Locators)+len(listOpts.Domains)+len(listOpts.Features))
+	queries := make([]*routingv1.RecordQuery, 0, len(listOpts.Skills)+len(listOpts.Locators)+len(listOpts.Domains)+len(listOpts.Modules))
 
 	// Add skill queries
 	for _, skill := range listOpts.Skills {
@@ -116,11 +116,11 @@ func runListCommand(cmd *cobra.Command) error {
 		})
 	}
 
-	// Add feature queries
-	for _, feature := range listOpts.Features {
+	// Add module queries
+	for _, module := range listOpts.Modules {
 		queries = append(queries, &routingv1.RecordQuery{
-			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_FEATURE,
-			Value: feature,
+			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+			Value: module,
 		})
 	}
 

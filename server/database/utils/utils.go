@@ -77,23 +77,9 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 				}
 			}
 
-		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_EXTENSION:
-			e := strings.SplitN(query.GetValue(), ":", 2) //nolint:mnd
-
-			if len(e) == 1 && strings.TrimSpace(e[0]) != "" {
-				options = append(options, types.WithExtensionNames(e[0]))
-
-				break
-			}
-
-			if len(e) == 2 { //nolint:mnd
-				if strings.TrimSpace(e[0]) != "" {
-					options = append(options, types.WithExtensionNames(e[0]))
-				}
-
-				if strings.TrimSpace(e[1]) != "" {
-					options = append(options, types.WithExtensionVersions(e[1]))
-				}
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE:
+			if strings.TrimSpace(query.GetValue()) != "" {
+				options = append(options, types.WithModuleNames(query.GetValue()))
 			}
 
 		default:

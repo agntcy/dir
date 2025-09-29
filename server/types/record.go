@@ -35,7 +35,6 @@ type RecordData interface {
 	GetSkills() []Skill
 	GetLocators() []Locator
 	GetDomains() []Domain
-	GetExtensions() []Extension
 	GetModules() []Module
 	GetSignature() Signature
 	GetPreviousRecordCid() string
@@ -49,13 +48,6 @@ type Signature interface {
 	GetCertificate() string
 	GetContentType() string
 	GetContentBundle() string
-}
-
-type Extension interface {
-	GetAnnotations() map[string]string
-	GetName() string
-	GetVersion() string
-	GetData() map[string]any
 }
 
 type Module interface {

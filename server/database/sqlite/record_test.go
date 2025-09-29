@@ -43,12 +43,11 @@ func mustGetRecordData(t *testing.T, record types.Record) types.RecordData {
 
 // TestRecordData implements types.RecordData interface for testing.
 type TestRecordData struct {
-	name       string
-	version    string
-	skills     []types.Skill
-	locators   []types.Locator
-	extensions []types.Extension
-	modules    []types.Module
+	name     string
+	version  string
+	skills   []types.Skill
+	locators []types.Locator
+	modules  []types.Module
 }
 
 func (r *TestRecordData) GetAnnotations() map[string]string {
@@ -87,10 +86,6 @@ func (r *TestRecordData) GetLocators() []types.Locator {
 	return r.locators
 }
 
-func (r *TestRecordData) GetExtensions() []types.Extension {
-	return r.extensions
-}
-
 func (r *TestRecordData) GetSignature() types.Signature {
 	return nil
 }
@@ -107,7 +102,7 @@ func (r *TestRecordData) GetModules() []types.Module {
 	return r.modules
 }
 
-// Test implementations of Skill, Locator, Extension.
+// Test implementations of Skill, Locator, Module.
 type TestSkill struct {
 	id   uint64
 	name string
@@ -150,27 +145,6 @@ func (l *TestLocator) GetDigest() string {
 	return ""
 }
 
-type TestExtension struct {
-	name    string
-	version string
-}
-
-func (e *TestExtension) GetAnnotations() map[string]string {
-	return make(map[string]string)
-}
-
-func (e *TestExtension) GetName() string {
-	return e.name
-}
-
-func (e *TestExtension) GetVersion() string {
-	return e.version
-}
-
-func (e *TestExtension) GetData() map[string]any {
-	return make(map[string]any)
-}
-
 type TestModule struct {
 	name string
 }
@@ -191,7 +165,7 @@ func setupTestDB(t *testing.T) *DB {
 	})
 	require.NoError(t, err)
 
-	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Extension{}, &Module{}, &Sync{})
+	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Module{}, &Sync{})
 	require.NoError(t, err)
 
 	return &DB{
@@ -216,9 +190,6 @@ func createTestData(t *testing.T, db *DB) {
 				locators: []types.Locator{
 					&TestLocator{locType: "grpc", url: "localhost:8080"},
 				},
-				extensions: []types.Extension{
-					&TestExtension{name: "ext1", version: "0.1.0"},
-				},
 				modules: []types.Module{
 					&TestModule{name: "module1"},
 				},
@@ -234,10 +205,6 @@ func createTestData(t *testing.T, db *DB) {
 				},
 				locators: []types.Locator{
 					&TestLocator{locType: "http", url: "http://localhost:8081"},
-				},
-				extensions: []types.Extension{
-					&TestExtension{name: "ext2", version: "0.2.0"},
-					&TestExtension{name: "ext3", version: "0.3.0"},
 				},
 				modules: []types.Module{
 					&TestModule{name: "module2"},
@@ -256,8 +223,7 @@ func createTestData(t *testing.T, db *DB) {
 				locators: []types.Locator{
 					&TestLocator{locType: "grpc", url: "localhost:8082"},
 				},
-				extensions: []types.Extension{},
-				modules:    []types.Module{},
+				modules: []types.Module{},
 			},
 		},
 	}
@@ -319,8 +285,8 @@ func TestGetRecords_SingleOptions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, records, 2)
 
-	// Test extension names filter.
-	records, err = db.GetRecords(types.WithExtensionNames("ext1"))
+	// Test module names filter.
+	records, err = db.GetRecords(types.WithModuleNames("module1"))
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
@@ -365,10 +331,10 @@ func TestGetRecords_CombinedOptions(t *testing.T) {
 	// Test combination with no matches.
 	records, err = db.GetRecords(
 		types.WithVersion("1.0.0"),
-		types.WithExtensionNames("ext2"),
+		types.WithModuleNames("module2"),
 	)
 	require.NoError(t, err)
-	assert.Empty(t, records)
+	assert.Empty(t, records) // module2 is on agent2 which has version 2.0.0, not 1.0.0
 }
 
 // TestGetRecords_SkillIdOption tests the skill ID option.
@@ -394,17 +360,6 @@ func TestGetRecords_LocatorUrlOption(t *testing.T) {
 	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
 }
 
-// TestGetRecords_ExtensionVersionOption tests the extension version option.
-func TestGetRecords_ExtensionVersionOption(t *testing.T) {
-	db := setupTestDB(t)
-	createTestData(t, db)
-
-	records, err := db.GetRecords(types.WithExtensionVersions("0.2.0"))
-	require.NoError(t, err)
-	assert.Len(t, records, 1)
-	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
-}
-
 // TestGetRecords_PreloadRelations ensures related data is properly loaded.
 func TestGetRecords_PreloadRelations(t *testing.T) {
 	db := setupTestDB(t)
@@ -421,8 +376,8 @@ func TestGetRecords_PreloadRelations(t *testing.T) {
 	locators := recordData.GetLocators()
 	assert.Len(t, locators, 1)
 
-	extensions := recordData.GetExtensions()
-	assert.Len(t, extensions, 1)
+	modules := recordData.GetModules()
+	assert.Len(t, modules, 1)
 }
 
 // TestGetRecords_ZeroOptions tests that providing no options works properly.
@@ -499,8 +454,8 @@ func TestAddRecord_VerifyRelatedDataInsertion(t *testing.T) {
 			locators: []types.Locator{
 				&TestLocator{locType: "docker-image", url: "https://example.com/test"},
 			},
-			extensions: []types.Extension{
-				&TestExtension{name: "test-extension", version: "1.0.0"},
+			modules: []types.Module{
+				&TestModule{name: "test-module"},
 			},
 		},
 	}
@@ -527,11 +482,11 @@ func TestAddRecord_VerifyRelatedDataInsertion(t *testing.T) {
 	require.Len(t, cids, 1, "Should find record by locator type")
 	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by locator")
 
-	// Verify extension-based search works
-	cids, err = db.GetRecordCIDs(types.WithExtensionNames("test-extension"))
-	require.NoError(t, err, "Extension search should succeed")
-	require.Len(t, cids, 1, "Should find record by extension name")
-	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by extension")
+	// Verify module-based search works
+	cids, err = db.GetRecordCIDs(types.WithModuleNames("test-module"))
+	require.NoError(t, err, "Module search should succeed")
+	require.Len(t, cids, 1, "Should find record by module name")
+	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by module")
 
 	t.Logf("✅ AddRecord properly inserted all related data")
 }
@@ -552,8 +507,8 @@ func TestRemoveRecord_VerifyRelatedDataDeletion(t *testing.T) {
 			locators: []types.Locator{
 				&TestLocator{locType: "grpc", url: "localhost:9090"},
 			},
-			extensions: []types.Extension{
-				&TestExtension{name: "delete-extension", version: "2.0.0"},
+			modules: []types.Module{
+				&TestModule{name: "delete-module"},
 			},
 		},
 	}
@@ -583,9 +538,9 @@ func TestRemoveRecord_VerifyRelatedDataDeletion(t *testing.T) {
 	require.NoError(t, err, "Locator search should succeed even after deletion")
 	assert.Empty(t, cids, "Should not find record by locator after deletion")
 
-	cids, err = db.GetRecordCIDs(types.WithExtensionNames("delete-extension"))
-	require.NoError(t, err, "Extension search should succeed even after deletion")
-	assert.Empty(t, cids, "Should not find record by extension after deletion")
+	cids, err = db.GetRecordCIDs(types.WithModuleNames("delete-module"))
+	require.NoError(t, err, "Module search should succeed even after deletion")
+	assert.Empty(t, cids, "Should not find record by module after deletion")
 
 	t.Logf("✅ RemoveRecord properly deleted all related data")
 }
@@ -606,8 +561,8 @@ func TestE2EScenario_AddSearchDeleteSearch(t *testing.T) {
 			locators: []types.Locator{
 				&TestLocator{locType: "docker-image", url: "https://ghcr.io/agntcy/marketing-strategy"},
 			},
-			extensions: []types.Extension{
-				&TestExtension{name: "schema.oasf.agntcy.org/features/runtime/framework", version: "v0.0.0"},
+			modules: []types.Module{
+				&TestModule{name: "schema.oasf.agntcy.org/features/runtime/framework"},
 			},
 		},
 	}
@@ -624,7 +579,7 @@ func TestE2EScenario_AddSearchDeleteSearch(t *testing.T) {
 		types.WithSkillIDs(10201),
 		types.WithSkillNames("Natural Language Processing/Text Completion"),
 		types.WithLocatorTypes("docker-image"),
-		types.WithExtensionNames("schema.oasf.agntcy.org/features/runtime/framework"),
+		types.WithModuleNames("schema.oasf.agntcy.org/features/runtime/framework"),
 	}
 
 	cids, err := db.GetRecordCIDs(searchFilters...)
@@ -654,7 +609,7 @@ func TestE2EScenario_AddSearchDeleteSearch(t *testing.T) {
 		{"skill-id", types.WithSkillIDs(10201)},
 		{"skill-name", types.WithSkillNames("Natural Language Processing/Text Completion")},
 		{"locator", types.WithLocatorTypes("docker-image")},
-		{"extension", types.WithExtensionNames("schema.oasf.agntcy.org/features/runtime/framework")},
+		{"module", types.WithModuleNames("schema.oasf.agntcy.org/features/runtime/framework")},
 	}
 
 	for _, test := range individualTests {
@@ -682,8 +637,8 @@ func TestDuplicateAddRecord_VerifyIdempotency(t *testing.T) {
 			locators: []types.Locator{
 				&TestLocator{locType: "http", url: "http://duplicate.example.com"},
 			},
-			extensions: []types.Extension{
-				&TestExtension{name: "duplicate-extension", version: "1.0.0"},
+			modules: []types.Module{
+				&TestModule{name: "duplicate-module"},
 			},
 		},
 	}

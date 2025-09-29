@@ -20,7 +20,7 @@ message RecordQuery {
   // The query value to match against.
   // Supports wildcard patterns:
   //   '*' - matches zero or more characters
-  //   '?' - matches exactly one character  
+  //   '?' - matches exactly one character
   //   '[]' - matches any character within brackets (e.g., [0-9], [a-z], [abc])
   string value = 2;
 }
@@ -50,7 +50,7 @@ enum RecordQueryType {
   // Supports wildcard patterns: "http*", "ftp*", "*docker*", "[hf]tt[ps]*"
   RECORD_QUERY_TYPE_LOCATOR = 5;
 
-  // Query for an extension.
-  // Supports wildcard patterns: "*-plugin", "*-extension", "core*", "ext-?", "plugin-[0-9]"
-  RECORD_QUERY_TYPE_EXTENSION = 6;
+  // Query for a module.
+  // Supports wildcard patterns: "*-plugin", "*-module", "core*", "mod-?", "plugin-[0-9]"
+  RECORD_QUERY_TYPE_MODULE = 6;
 }

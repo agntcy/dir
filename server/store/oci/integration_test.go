@@ -218,10 +218,10 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 			"org.agntcy.dir/created-at":     "2023-01-01T00:00:00Z",
 			"org.agntcy.dir/authors":        "integration-test@example.com",
 			// NOTE: V1 skills use "categoryName/className" hierarchical format
-			"org.agntcy.dir/skills":          "nlp/processing,ml/inference",
-			"org.agntcy.dir/locator-types":   "docker,helm",
-			"org.agntcy.dir/extension-names": "security,monitoring",
-			"org.agntcy.dir/signed":          "false",
+			"org.agntcy.dir/skills":        "nlp/processing,ml/inference",
+			"org.agntcy.dir/locator-types": "docker,helm",
+			"org.agntcy.dir/module-names":  "security,monitoring",
+			"org.agntcy.dir/signed":        "false",
 		}
 
 		for key, expectedValue := range expectedAnnotations {

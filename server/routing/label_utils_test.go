@@ -35,11 +35,11 @@ func TestBuildEnhancedLabelKey(t *testing.T) {
 			expected: "/domains/research/CID456/Peer2",
 		},
 		{
-			name:     "feature_label",
-			label:    labels.Label("/features/runtime/framework"),
+			name:     "module_label",
+			label:    labels.Label("/modules/runtime/framework"),
 			cid:      "CID789",
 			peerID:   "Peer3",
-			expected: "/features/runtime/framework/CID789/Peer3",
+			expected: "/modules/runtime/framework/CID789/Peer3",
 		},
 		{
 			name:     "locator_label",
@@ -85,9 +85,9 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 			expectError:   false,
 		},
 		{
-			name:          "valid_feature_key",
-			key:           "/features/runtime/framework/CID789/Peer3",
-			expectedLabel: labels.Label("/features/runtime/framework"),
+			name:          "valid_module_key",
+			key:           "/modules/runtime/framework/CID789/Peer3",
+			expectedLabel: labels.Label("/modules/runtime/framework"),
 			expectedCID:   "CID789",
 			expectedPeer:  "Peer3",
 			expectError:   false,
@@ -193,8 +193,8 @@ func TestIsValidLabelKey(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "valid_feature_key",
-			key:      "/features/runtime/CID123/Peer1",
+			name:     "valid_module_key",
+			key:      "/modules/runtime/CID123/Peer1",
 			expected: true,
 		},
 		{
@@ -253,9 +253,9 @@ func TestGetLabelTypeFromKey(t *testing.T) {
 			expectedOK:   true,
 		},
 		{
-			name:         "feature_key",
-			key:          "/features/runtime/CID123/Peer1",
-			expectedType: labels.LabelTypeFeature,
+			name:         "module_key",
+			key:          "/modules/runtime/CID123/Peer1",
+			expectedType: labels.LabelTypeModule,
 			expectedOK:   true,
 		},
 		{
@@ -345,7 +345,7 @@ func TestGetLabelsFromRecord(t *testing.T) {
 		// Check expected labels are present
 		assert.Contains(t, labelStrings, "/skills/Natural Language Processing/Text Completion")
 		assert.Contains(t, labelStrings, "/locators/docker-image")
-		assert.Contains(t, labelStrings, "/features/runtime/framework") // Schema prefix stripped
+		assert.Contains(t, labelStrings, "/modules/runtime/framework") // Schema prefix stripped
 	})
 
 	t.Run("valid_v1alpha1_record", func(t *testing.T) {
@@ -403,7 +403,7 @@ func TestGetLabelsFromRecord(t *testing.T) {
 		assert.Contains(t, labelStrings, "/skills/Machine Learning/Classification")
 		assert.Contains(t, labelStrings, "/domains/healthcare/medical_technology")
 		assert.Contains(t, labelStrings, "/locators/http")
-		assert.Contains(t, labelStrings, "/features/security/authentication") // Direct module name
+		assert.Contains(t, labelStrings, "/modules/security/authentication") // Direct module name
 	})
 
 	t.Run("invalid_record", func(t *testing.T) {
@@ -449,8 +449,8 @@ func TestParseEnhancedLabelKeyInternal(t *testing.T) {
 		},
 		{
 			name:          "valid_complex_key",
-			key:           "/features/runtime/framework/security/CID456/Peer2",
-			expectedLabel: "/features/runtime/framework/security",
+			key:           "/modules/runtime/framework/security/CID456/Peer2",
+			expectedLabel: "/modules/runtime/framework/security",
 			expectedCID:   "CID456",
 			expectedPeer:  "Peer2",
 			expectError:   false,
@@ -518,7 +518,7 @@ func TestParseEnhancedLabelKey_RoundTrip(t *testing.T) {
 	}{
 		{labels.Label("/skills/AI/ML"), "CID123", "Peer1"},
 		{labels.Label("/domains/research"), "CID456", "Peer2"},
-		{labels.Label("/features/runtime/framework/security"), "CID789", "Peer3"},
+		{labels.Label("/modules/runtime/framework/security"), "CID789", "Peer3"},
 		{labels.Label("/locators/docker-image"), "CID999", "Peer4"},
 	}
 

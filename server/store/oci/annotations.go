@@ -78,14 +78,14 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 		annotations[ManifestKeyLocatorTypes] = strings.Join(locatorTypes, ",")
 	}
 
-	// Extract extension names
-	if extensions := recordData.GetExtensions(); len(extensions) > 0 {
-		extensionNames := make([]string, len(extensions))
-		for i, extension := range extensions {
-			extensionNames[i] = extension.GetName()
+	// Extract module names
+	if modules := recordData.GetModules(); len(modules) > 0 {
+		moduleNames := make([]string, len(modules))
+		for i, module := range modules {
+			moduleNames[i] = module.GetName()
 		}
 
-		annotations[ManifestKeyExtensionNames] = strings.Join(extensionNames, ",")
+		annotations[ManifestKeyModuleNames] = strings.Join(moduleNames, ",")
 	}
 
 	// Security metadata
@@ -180,10 +180,10 @@ func parseManifestAnnotations(annotations map[string]string) *corev1.RecordMeta 
 		recordMeta.Annotations[MetadataKeyLocatorTypesCount] = strconv.Itoa(len(locatorList))
 	}
 
-	if extensionNames := annotations[ManifestKeyExtensionNames]; extensionNames != "" {
-		recordMeta.Annotations[MetadataKeyExtensionNames] = extensionNames // comma-separated
-		extensionList := parseCommaSeparated(extensionNames)
-		recordMeta.Annotations[MetadataKeyExtensionCount] = strconv.Itoa(len(extensionList))
+	if moduleNames := annotations[ManifestKeyModuleNames]; moduleNames != "" {
+		recordMeta.Annotations[MetadataKeyModuleNames] = moduleNames // comma-separated
+		moduleList := parseCommaSeparated(moduleNames)
+		recordMeta.Annotations[MetadataKeyModuleCount] = strconv.Itoa(len(moduleList))
 	}
 
 	// Security information (structured and easily accessible)

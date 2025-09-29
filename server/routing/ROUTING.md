@@ -111,7 +111,7 @@ The routing system uses a self-descriptive key format that embeds all essential 
 ```
 /skills/AI/Machine Learning/baeabc123.../12D3KooWExample...
 /domains/technology/web/baedef456.../12D3KooWOther...
-/features/search/semantic/baeghi789.../12D3KooWAnother...
+/modules/search/semantic/baeghi789.../12D3KooWAnother...
 ```
 
 ### Benefits
@@ -242,7 +242,7 @@ The Publish operation announces records for discovery by storing metadata in bot
 - `WRITE`: `"/records/CID123" → (empty)` - Mark as local record
 - `WRITE`: `"/skills/AI/ML/CID123/Peer1" → LabelMetadata` - Store enhanced label metadata
 - `WRITE`: `"/domains/tech/CID123/Peer1" → LabelMetadata` - Store enhanced domain metadata
-- `WRITE`: `"/features/search/CID123/Peer1" → LabelMetadata` - Store enhanced feature metadata
+- `WRITE`: `"/modules/search/CID123/Peer1" → LabelMetadata` - Store enhanced module metadata
 - `WRITE`: `"/metrics" → JSON` - Update metrics
 
 **DHT Storage (Distributed Network):**
@@ -318,9 +318,9 @@ The List operation efficiently queries local records with optional filtering. It
     │  │       ├─ READ: dstore.Query("/domains/")   [READ: KV]                  │
     │  │       │   └─ Find: "/domains/tech/CID123/Peer1"                        │
     │  │       │   └─ Extract: "/domains/tech"                                  │
-    │  │       └─ READ: dstore.Query("/features/")  [READ: KV]                  │
-    │  │           └─ Find: "/features/search/CID123/Peer1"                     │
-    │  │           └─ Extract: "/features/search"                               │
+    │  │       └─ READ: dstore.Query("/modules/")  [READ: KV]                  │
+    │  │           └─ Find: "/modules/search/CID123/Peer1"                     │
+    │  │           └─ Extract: "/modules/search"                               │
     │  │                                                                         │
     │  │   └─ queryMatchesLabels(query, labels):                                │
     │  │       └─ Check if ALL queries match labels (AND logic)                │
@@ -341,7 +341,7 @@ The List operation efficiently queries local records with optional filtering. It
 - `READ`: `"/records/*"` - Get all local record CIDs
 - `READ`: `"/skills/*"` - Extract skill labels for each CID
 - `READ`: `"/domains/*"` - Extract domain labels for each CID
-- `READ`: `"/features/*"` - Extract feature labels for each CID
+- `READ`: `"/modules/*"` - Extract module labels for each CID
 
 **DHT Storage (Distributed Network):**
 - ❌ **NO ACCESS** - List is local-only operation!
@@ -395,11 +395,11 @@ PHASE 2: LOCAL PEER DISCOVERS AND CACHES
                     │  3. Pull: service.Pull(ctx, peerID, recordRef)             │
                     │     └─ RPC call to remote peer                             │
                     │  4. Extract: GetLabels(record)                             │
-                    │     └─ Parse skills, domains, features from content        │
+                    │     └─ Parse skills, domains, modules from content        │
                     │  5. Cache: Enhanced keys locally                           │
                     │     ├─ "/skills/AI/CID123/RemotePeer" → LabelMetadata      │
                     │     ├─ "/domains/research/CID123/RemotePeer" → LabelMetadata│
-                    │     └─ "/features/runtime/CID123/RemotePeer" → LabelMetadata│
+                    │     └─ "/modules/runtime/CID123/RemotePeer" → LabelMetadata│
                     └─────────────────────┬───────────────────────────────────────┘
                                           │
                                           ▼
@@ -407,7 +407,7 @@ PHASE 3: USER SEARCHES FOR REMOTE RECORDS
                     ┌─────────────────────────────────────────────────────────────┐
                     │                 SEARCH REQUEST                              │
                     │                (gRPC Controller)                           │
-                    │               + RecordQuery[] (skills/domains/features)    │
+                    │               + RecordQuery[] (skills/domains/modules)    │
                     │               + MinMatchScore (OR logic threshold)          │
                     └─────────────────────┬───────────────────────────────────────┘
                                           │
@@ -421,8 +421,8 @@ PHASE 3: USER SEARCHES FOR REMOTE RECORDS
     │  │   └─ Find: "/skills/AI/CID123/RemotePeer1" (cached via pull)           │
     │  ├─ READ: dstore.Query("/domains/")          [READ: KV]                    │
     │  │   └─ Find: "/domains/research/CID123/RemotePeer1" (cached via pull)    │
-    │  └─ READ: dstore.Query("/features/")         [READ: KV]                    │
-    │      └─ Find: "/features/runtime/CID123/RemotePeer1" (cached via pull)    │
+    │  └─ READ: dstore.Query("/modules/")         [READ: KV]                    │
+    │      └─ Find: "/modules/runtime/CID123/RemotePeer1" (cached via pull)    │
     │                                                                             │
     │  STEP 2: Filter for REMOTE Records Only                                   │
     │  ├─ ParseEnhancedLabelKey(key) → (label, cid, peerID)                     │
@@ -452,7 +452,7 @@ PHASE 3: USER SEARCHES FOR REMOTE RECORDS
 
 **Pull-Based Label Discovery (Background Process):**
 - `RPC`: `service.Pull(ctx, remotePeerID, recordRef)` - Fetch content from remote peer
-- `EXTRACT`: `GetLabels(record)` - Extract skills/domains/features from content  
+- `EXTRACT`: `GetLabels(record)` - Extract skills/domains/modules from content  
 - `CACHE`: Store enhanced keys locally for fast search
 
 **Search Query Execution (User Request):**
@@ -463,7 +463,7 @@ PHASE 3: USER SEARCHES FOR REMOTE RECORDS
 **Local KV Storage (Routing Datastore):**
 - `READ`: `"/skills/*"` - Query cached remote skill labels (via pull-based discovery)
 - `READ`: `"/domains/*"` - Query cached remote domain labels (via pull-based discovery)
-- `READ`: `"/features/*"` - Query cached remote feature labels (via pull-based discovery)
+- `READ`: `"/modules/*"` - Query cached remote module labels (via pull-based discovery)
 - **Filter**: Only process keys where `peerID != localPeerID`
 
 **DHT Storage (Distributed Network):**
@@ -545,11 +545,11 @@ return score >= minMatchScore  // Threshold filtering
 1. **SKILL** (`RECORD_QUERY_TYPE_SKILL`)
 2. **LOCATOR** (`RECORD_QUERY_TYPE_LOCATOR`)  
 3. **DOMAIN** (`RECORD_QUERY_TYPE_DOMAIN`)
-4. **FEATURE** (`RECORD_QUERY_TYPE_FEATURE`)
+4. **MODULE** (`RECORD_QUERY_TYPE_MODULE`)
 
 **Matching Rules:**
 
-**Skills & Domains & Features (Hierarchical Matching):**
+**Skills & Domains & Modules (Hierarchical Matching):**
 ```
 Query: "AI" matches:
 ✅ /skills/AI (exact match)
@@ -596,13 +596,13 @@ dirctl routing search --skill "AI" --skill "Python" --min-score 2
 dirctl routing search \
   --skill "AI" \
   --domain "research" \
-  --feature "runtime/python" \
+  --module "runtime/python" \
   --min-score 2
 
 # Results:
 # Record A: [skills/AI, domains/research] → Score: 2/3 → ✅ Returned
 # Record B: [skills/AI] → Score: 1/3 → ❌ Filtered out
-# Record C: [domains/research, features/runtime/python] → Score: 2/3 → ✅ Returned  
+# Record C: [domains/research, modules/runtime/python] → Score: 2/3 → ✅ Returned  
 ```
 
 ### Pull-Based Discovery Benefits
@@ -660,7 +660,7 @@ dirctl routing search \
 **API Robustness:**
 - **Query Deduplication**: Server defends against client bugs
 - **Production Safety**: Proper defaults and validation
-- **Complete Query Support**: Skills, locators, domains, features all supported
+- **Complete Query Support**: Skills, locators, domains, modules all supported
 - **OR Logic**: Flexible matching with minimum threshold control
 
 ### Migration Notes

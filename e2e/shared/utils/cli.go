@@ -457,8 +457,8 @@ func (l *RoutingListBuilder) WithDomain(domain string) *RoutingListBuilder {
 	return l
 }
 
-func (l *RoutingListBuilder) WithFeature(feature string) *RoutingListBuilder {
-	l.args = append(l.args, "--feature", feature)
+func (l *RoutingListBuilder) WithModule(module string) *RoutingListBuilder {
+	l.args = append(l.args, "--module", module)
 
 	return l
 }
@@ -492,8 +492,8 @@ func (s *RoutingSearchBuilder) WithDomain(domain string) *RoutingSearchBuilder {
 	return s
 }
 
-func (s *RoutingSearchBuilder) WithFeature(feature string) *RoutingSearchBuilder {
-	s.args = append(s.args, "--feature", feature)
+func (s *RoutingSearchBuilder) WithModule(module string) *RoutingSearchBuilder {
+	s.args = append(s.args, "--module", module)
 
 	return s
 }

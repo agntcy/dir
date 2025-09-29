@@ -20,7 +20,7 @@ const (
 	LabelTypeUnknown LabelType = ""
 	LabelTypeSkill   LabelType = "skills"
 	LabelTypeDomain  LabelType = "domains"
-	LabelTypeFeature LabelType = "features"
+	LabelTypeModule  LabelType = "modules"
 	LabelTypeLocator LabelType = "locators"
 )
 
@@ -42,7 +42,7 @@ func (lt LabelType) Prefix() string {
 // IsValid checks if the label type is one of the supported types.
 func (lt LabelType) IsValid() bool {
 	switch lt {
-	case LabelTypeSkill, LabelTypeDomain, LabelTypeFeature, LabelTypeLocator:
+	case LabelTypeSkill, LabelTypeDomain, LabelTypeModule, LabelTypeLocator:
 		return true
 	case LabelTypeUnknown:
 		return false
@@ -53,7 +53,7 @@ func (lt LabelType) IsValid() bool {
 
 // AllLabelTypes returns all supported label types.
 func AllLabelTypes() []LabelType {
-	return []LabelType{LabelTypeSkill, LabelTypeDomain, LabelTypeFeature, LabelTypeLocator}
+	return []LabelType{LabelTypeSkill, LabelTypeDomain, LabelTypeModule, LabelTypeLocator}
 }
 
 // ParseLabelType converts a string to LabelType if valid.
@@ -92,8 +92,8 @@ func (l Label) Type() LabelType {
 		return LabelTypeSkill
 	case strings.HasPrefix(s, LabelTypeDomain.Prefix()):
 		return LabelTypeDomain
-	case strings.HasPrefix(s, LabelTypeFeature.Prefix()):
-		return LabelTypeFeature
+	case strings.HasPrefix(s, LabelTypeModule.Prefix()):
+		return LabelTypeModule
 	case strings.HasPrefix(s, LabelTypeLocator.Prefix()):
 		return LabelTypeLocator
 	default:

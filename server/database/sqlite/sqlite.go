@@ -44,7 +44,7 @@ func New(path string) (*DB, error) {
 	}
 
 	// Migrate record-related schema
-	if err := db.AutoMigrate(Record{}, Extension{}, Locator{}, Skill{}, Module{}); err != nil {
+	if err := db.AutoMigrate(Record{}, Locator{}, Skill{}, Module{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate record schema: %w", err)
 	}
 

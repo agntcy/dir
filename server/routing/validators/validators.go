@@ -235,25 +235,25 @@ func (v *DomainValidator) Select(key string, values [][]byte) (int, error) {
 	return v.selectFirstValid(key, values, v.Validate)
 }
 
-// FeatureValidator validates DHT records for feature-based content discovery.
-type FeatureValidator struct {
+// ModuleValidator validates DHT records for module-based content discovery.
+type ModuleValidator struct {
 	BaseValidator
 }
 
-// Validate validates a features DHT record.
-// Key format: /features/<feature_path>/<cid>
-// Future: Can validate against feature specifications, versions, etc.
-func (v *FeatureValidator) Validate(key string, value []byte) error {
-	validatorLogger.Debug("Validating features DHT record", "key", key)
+// Validate validates a modules DHT record.
+// Key format: /modules/<module_path>/<cid>
+// Future: Can validate against module specifications, versions, etc.
+func (v *ModuleValidator) Validate(key string, value []byte) error {
+	validatorLogger.Debug("Validating modules DHT record", "key", key)
 
 	// Basic format validation
-	parts, err := v.validateKeyFormat(key, labels.LabelTypeFeature.String())
+	parts, err := v.validateKeyFormat(key, labels.LabelTypeModule.String())
 	if err != nil {
 		return err
 	}
 
-	// Features-specific validation
-	if err := v.validateFeaturesSpecific(parts); err != nil {
+	// Modules-specific validation
+	if err := v.validateModulesSpecific(parts); err != nil {
 		return err
 	}
 
@@ -262,36 +262,36 @@ func (v *FeatureValidator) Validate(key string, value []byte) error {
 		return err
 	}
 
-	validatorLogger.Debug("Features DHT record validation successful", "key", key)
+	validatorLogger.Debug("Modules DHT record validation successful", "key", key)
 
 	return nil
 }
 
-// validateFeaturesSpecific performs features-specific validation logic.
-func (v *FeatureValidator) validateFeaturesSpecific(parts []string) error {
-	// parts[0] = "", parts[1] = "features", parts[2:len-2] = feature path components, parts[len-2] = cid, parts[len-1] = peer_id
-	// Enhanced format: /features/<feature_path>/<cid>/<peer_id>
+// validateModulesSpecific performs modules-specific validation logic.
+func (v *ModuleValidator) validateModulesSpecific(parts []string) error {
+	// parts[0] = "", parts[1] = "modules", parts[2:len-2] = module path components, parts[len-2] = cid, parts[len-1] = peer_id
+	// Enhanced format: /modules/<module_path>/<cid>/<peer_id>
 	if len(parts) < labels.MinLabelKeyParts {
-		return errors.New("features key must have format: /features/<feature_path>/<cid>/<peer_id>")
+		return errors.New("modules key must have format: /modules/<module_path>/<cid>/<peer_id>")
 	}
 
-	// Extract feature path (everything between "features" and CID)
-	featureParts := parts[2 : len(parts)-2] // Exclude CID and PeerID
-	if len(featureParts) == 0 {
-		return errors.New("feature path cannot be empty")
+	// Extract module path (everything between "modules" and CID)
+	moduleParts := parts[2 : len(parts)-2] // Exclude CID and PeerID
+	if len(moduleParts) == 0 {
+		return errors.New("module path cannot be empty")
 	}
 
-	// Future: validate against feature specifications
-	// feature := strings.Join(featureParts, "/")
-	// if !v.isValidFeature(feature) {
-	//     return errors.New("invalid feature: " + feature)
+	// Future: validate against module specifications
+	// module := strings.Join(moduleParts, "/")
+	// if !v.isValidModule(module) {
+	//     return errors.New("invalid module: " + module)
 	// }
 
 	return nil
 }
 
-// Select chooses between multiple values for features records.
-func (v *FeatureValidator) Select(key string, values [][]byte) (int, error) {
+// Select chooses between multiple values for modules records.
+func (v *ModuleValidator) Select(key string, values [][]byte) (int, error) {
 	return v.selectFirstValid(key, values, v.Validate)
 }
 
@@ -367,7 +367,7 @@ func CreateLabelValidators() map[string]record.Validator {
 	return map[string]record.Validator{
 		labels.LabelTypeSkill.String():   &SkillValidator{},
 		labels.LabelTypeDomain.String():  &DomainValidator{},
-		labels.LabelTypeFeature.String(): &FeatureValidator{},
+		labels.LabelTypeModule.String():  &ModuleValidator{},
 		labels.LabelTypeLocator.String(): &LocatorValidator{},
 	}
 }
