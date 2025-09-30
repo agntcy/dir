@@ -234,7 +234,7 @@ func simulateCleanupLabelsForCID(ctx context.Context, dstore types.Datastore, ci
 	}
 
 	// Find and remove all label keys for this CID using shared namespace iteration
-	entries, err := QueryAllNamespaces(ctx, dstore, true) // Include locators for complete cleanup
+	entries, err := QueryAllNamespaces(ctx, dstore)
 	if err != nil {
 		return false
 	}

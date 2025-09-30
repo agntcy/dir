@@ -77,6 +77,82 @@ func TestQueryMatchesLabels(t *testing.T) {
 			expected: false,
 		},
 
+		// Domain queries
+		{
+			name: "domain_exact_match",
+			query: &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+				Value: "healthcare",
+			},
+			labels:   []labels.Label{labels.Label("/domains/healthcare"), labels.Label("/skills/AI")},
+			expected: true,
+		},
+		{
+			name: "domain_prefix_match",
+			query: &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+				Value: "healthcare",
+			},
+			labels:   []labels.Label{labels.Label("/domains/healthcare/diagnostics"), labels.Label("/skills/AI")},
+			expected: true,
+		},
+		{
+			name: "domain_no_match",
+			query: &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+				Value: "finance",
+			},
+			labels:   []labels.Label{labels.Label("/domains/healthcare"), labels.Label("/skills/AI")},
+			expected: false,
+		},
+		{
+			name: "domain_partial_no_match",
+			query: &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+				Value: "healthcare/diagnostics/radiology",
+			},
+			labels:   []labels.Label{labels.Label("/domains/healthcare/diagnostics"), labels.Label("/skills/AI")},
+			expected: false,
+		},
+
+		// Module queries
+		{
+			name: "module_exact_match",
+			query: &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+				Value: "runtime/language",
+			},
+			labels:   []labels.Label{labels.Label("/modules/runtime/language"), labels.Label("/skills/AI")},
+			expected: true,
+		},
+		{
+			name: "module_prefix_match",
+			query: &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+				Value: "runtime",
+			},
+			labels:   []labels.Label{labels.Label("/modules/runtime/language"), labels.Label("/skills/AI")},
+			expected: true,
+		},
+		{
+			name: "module_no_match",
+			query: &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+				Value: "security",
+			},
+			labels:   []labels.Label{labels.Label("/modules/runtime/language"), labels.Label("/skills/AI")},
+			expected: false,
+		},
+		{
+			name: "module_partial_no_match",
+			query: &routingv1.RecordQuery{
+				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+				Value: "runtime/language/python/3.9",
+			},
+			labels:   []labels.Label{labels.Label("/modules/runtime/language"), labels.Label("/skills/AI")},
+			expected: false,
+		},
+
 		// Unspecified queries
 		{
 			name: "unspecified_always_matches",
@@ -137,6 +213,7 @@ func TestMatchesAllQueries(t *testing.T) {
 				labels.Label("/skills/AI"),
 				labels.Label("/skills/AI/ML"),
 				labels.Label("/domains/technology"),
+				labels.Label("/modules/runtime/language"),
 				labels.Label("/locators/docker-image"),
 			}
 		}
@@ -209,6 +286,51 @@ func TestMatchesAllQueries(t *testing.T) {
 			expected: false, // AND logic - all must match
 		},
 		{
+			name: "domain_query_matches",
+			cid:  testCID,
+			queries: []*routingv1.RecordQuery{
+				{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+					Value: "technology",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "module_query_matches",
+			cid:  testCID,
+			queries: []*routingv1.RecordQuery{
+				{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+					Value: "runtime/language",
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "all_query_types_match",
+			cid:  testCID,
+			queries: []*routingv1.RecordQuery{
+				{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
+					Value: "AI",
+				},
+				{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+					Value: "technology",
+				},
+				{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+					Value: "runtime/language",
+				},
+				{
+					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
+					Value: "docker-image",
+				},
+			},
+			expected: true, // All should match
+		},
+		{
 			name: "unknown_cid",
 			cid:  "unknown-cid",
 			queries: []*routingv1.RecordQuery{
@@ -240,6 +362,14 @@ func TestGetMatchingQueries(t *testing.T) {
 			Value: "web-development",
 		},
 		{
+			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+			Value: "healthcare",
+		},
+		{
+			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+			Value: "runtime/language",
+		},
+		{
 			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
 			Value: "docker-image",
 		},
@@ -268,6 +398,18 @@ func TestGetMatchingQueries(t *testing.T) {
 			labelKey:          "/locators/docker-image/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/peer1",
 			expectedMatches:   1,
 			expectedQueryType: routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
+		},
+		{
+			name:              "domain_matches",
+			labelKey:          "/domains/healthcare/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/peer1",
+			expectedMatches:   1,
+			expectedQueryType: routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
+		},
+		{
+			name:              "module_matches",
+			labelKey:          "/modules/runtime/language/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/peer1",
+			expectedMatches:   1,
+			expectedQueryType: routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
 		},
 		{
 			name:            "no_matches",
@@ -351,6 +493,8 @@ func TestQueryMatchingIntegration(t *testing.T) {
 			return []labels.Label{
 				labels.Label("/skills/AI"),
 				labels.Label("/skills/web-development"),
+				labels.Label("/domains/healthcare"),
+				labels.Label("/modules/runtime/language"),
 				labels.Label("/locators/docker-image"),
 			}
 		default:

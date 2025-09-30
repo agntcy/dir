@@ -516,7 +516,7 @@ SEARCH EXECUTION (per user query):
 
 **Read Pattern**: 
 - **Discovery**: `O(1)` RPC call per new remote record
-- **Search**: `O(3×M)` KV reads where M = number of cached remote labels
+- **Search**: `O(4×M)` KV reads where M = number of cached remote labels (skills, domains, modules, locators)
 
 ### OR Logic with Minimum Threshold
 

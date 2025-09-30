@@ -220,8 +220,8 @@ func (r *routeLocal) matchesAllQueries(ctx context.Context, cid string, queries 
 func (r *routeLocal) getRecordLabelsEfficiently(ctx context.Context, cid string) []labels.Label {
 	var labelList []labels.Label
 
-	// Use shared namespace iteration function (includes locators for local routing)
-	entries, err := QueryAllNamespaces(ctx, r.dstore, true) // Local routing needs locators namespace
+	// Use shared namespace iteration function
+	entries, err := QueryAllNamespaces(ctx, r.dstore)
 	if err != nil {
 		localLogger.Error("Failed to get namespace entries for labels", "cid", cid, "error", err)
 

@@ -259,7 +259,7 @@ func simulateSearch(ctx context.Context, dstore types.Datastore, localPeerID str
 	limitInt := int(limit)
 
 	// Query all namespaces using shared function
-	entries, err := QueryAllNamespaces(ctx, dstore, false) // Test doesn't need locators
+	entries, err := QueryAllNamespaces(ctx, dstore)
 	if err != nil {
 		return results
 	}
@@ -321,7 +321,7 @@ func testMatchesAllQueriesSimple(ctx context.Context, dstore types.Datastore, ci
 	}
 
 	// Get labels for this CID/PeerID using shared namespace iteration
-	entries, err := QueryAllNamespaces(ctx, dstore, false) // Test doesn't need locators
+	entries, err := QueryAllNamespaces(ctx, dstore)
 	if err != nil {
 		return false
 	}

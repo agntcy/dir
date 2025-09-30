@@ -43,19 +43,15 @@ type NamespaceEntry struct {
 // QueryAllNamespaces queries all supported label namespaces and returns processed entries.
 // This centralizes namespace iteration and datastore querying, eliminating code duplication
 // between local and remote routing operations. All resource management is handled internally.
-func QueryAllNamespaces(ctx context.Context, dstore types.Datastore, includeLocators bool) ([]NamespaceEntry, error) {
+func QueryAllNamespaces(ctx context.Context, dstore types.Datastore) ([]NamespaceEntry, error) {
 	var entries []NamespaceEntry
 
-	// Define which namespaces to query
+	// Query all label namespaces
 	namespaces := []string{
 		labels.LabelTypeSkill.Prefix(),
 		labels.LabelTypeDomain.Prefix(),
 		labels.LabelTypeModule.Prefix(),
-	}
-
-	// Include locators namespace if requested (local routing needs it, remote might not)
-	if includeLocators {
-		namespaces = append(namespaces, labels.LabelTypeLocator.Prefix())
+		labels.LabelTypeLocator.Prefix(),
 	}
 
 	for _, namespace := range namespaces {
@@ -252,7 +248,7 @@ func (r *routeRemote) searchRemoteRecords(ctx context.Context, queries []*routin
 	remoteLogger.Debug("Starting remote search with OR logic and minimum threshold", "queries", len(queries), "minMatchScore", minMatchScore, "localPeerID", localPeerID)
 
 	// Query all namespaces to find remote records
-	entries, err := QueryAllNamespaces(ctx, r.dstore, false) // Remote doesn't need locators namespace
+	entries, err := QueryAllNamespaces(ctx, r.dstore)
 	if err != nil {
 		remoteLogger.Error("Failed to get namespace entries for search", "error", err)
 
@@ -345,7 +341,7 @@ func (r *routeRemote) calculateMatchScore(ctx context.Context, cid string, queri
 func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID string) []labels.Label {
 	var labelList []labels.Label
 
-	entries, err := QueryAllNamespaces(ctx, r.dstore, false) // Remote doesn't need locators namespace
+	entries, err := QueryAllNamespaces(ctx, r.dstore)
 	if err != nil {
 		remoteLogger.Error("Failed to get namespace entries for labels", "error", err)
 
@@ -523,7 +519,7 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 // hasRemoteRecordCached checks if we already have cached labels for this remote record.
 // This helps avoid duplicate work and identifies reannouncement events.
 func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID string) bool {
-	entries, err := QueryAllNamespaces(ctx, r.dstore, false) // Remote doesn't need locators namespace
+	entries, err := QueryAllNamespaces(ctx, r.dstore)
 	if err != nil {
 		remoteLogger.Error("Failed to get namespace entries for cache check", "error", err)
 
@@ -573,7 +569,7 @@ func (r *routeRemote) updateRemoteRecordLastSeen(ctx context.Context, cid, peerI
 	now := time.Now()
 	updatedCount := 0
 
-	entries, err := QueryAllNamespaces(ctx, r.dstore, false) // Remote doesn't need locators namespace
+	entries, err := QueryAllNamespaces(ctx, r.dstore)
 	if err != nil {
 		remoteLogger.Error("Failed to get namespace entries for lastSeen update", "error", err)
 
