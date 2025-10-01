@@ -158,6 +158,13 @@ func (s Server) Routing() types.RoutingAPI { return s.routing }
 func (s Server) Database() types.DatabaseAPI { return s.database }
 
 func (s Server) Close() {
+	// Stop routing service (closes GossipSub, p2p server, DHT)
+	if s.routing != nil {
+		if err := s.routing.Stop(); err != nil {
+			logger.Error("Failed to stop routing service", "error", err)
+		}
+	}
+
 	// Stop sync service if running
 	if s.syncService != nil {
 		if err := s.syncService.Stop(); err != nil {

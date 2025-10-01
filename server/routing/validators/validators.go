@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/agntcy/dir/server/types/labels"
+	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	record "github.com/libp2p/go-libp2p-record"
@@ -19,7 +19,7 @@ import (
 
 // IsValidLabelKey checks if a key starts with any valid label type prefix.
 func IsValidLabelKey(key string) bool {
-	for _, labelType := range labels.AllLabelTypes() {
+	for _, labelType := range types.AllLabelTypes() {
 		if strings.HasPrefix(key, labelType.Prefix()) {
 			return true
 		}
@@ -38,7 +38,7 @@ func (v *BaseValidator) validateKeyFormat(key string, expectedNamespace string) 
 	// Parse enhanced key format: /<namespace>/<specific_path>/<cid>/<peer_id>
 	// Minimum parts: ["", "namespace", "path", "cid", "peer_id"]
 	parts := strings.Split(key, "/")
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return nil, errors.New("invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>")
 	}
 
@@ -120,7 +120,7 @@ func (v *SkillValidator) Validate(key string, value []byte) error {
 	validatorLogger.Debug("Validating skills DHT record", "key", key)
 
 	// Basic format validation
-	parts, err := v.validateKeyFormat(key, labels.LabelTypeSkill.String())
+	parts, err := v.validateKeyFormat(key, types.LabelTypeSkill.String())
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (v *SkillValidator) Validate(key string, value []byte) error {
 func (v *SkillValidator) validateSkillsSpecific(parts []string) error {
 	// parts[0] = "", parts[1] = "skills", parts[2:len-2] = skill path components, parts[len-2] = cid, parts[len-1] = peer_id
 	// Enhanced format: /skills/<skill_path>/<cid>/<peer_id>
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return errors.New("skills key must have format: /skills/<skill_path>/<cid>/<peer_id>")
 	}
 
@@ -187,7 +187,7 @@ func (v *DomainValidator) Validate(key string, value []byte) error {
 	validatorLogger.Debug("Validating domains DHT record", "key", key)
 
 	// Basic format validation
-	parts, err := v.validateKeyFormat(key, labels.LabelTypeDomain.String())
+	parts, err := v.validateKeyFormat(key, types.LabelTypeDomain.String())
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func (v *DomainValidator) Validate(key string, value []byte) error {
 func (v *DomainValidator) validateDomainsSpecific(parts []string) error {
 	// parts[0] = "", parts[1] = "domains", parts[2:len-2] = domain path components, parts[len-2] = cid, parts[len-1] = peer_id
 	// Enhanced format: /domains/<domain_path>/<cid>/<peer_id>
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return errors.New("domains key must have format: /domains/<domain_path>/<cid>/<peer_id>")
 	}
 
@@ -247,7 +247,7 @@ func (v *ModuleValidator) Validate(key string, value []byte) error {
 	validatorLogger.Debug("Validating modules DHT record", "key", key)
 
 	// Basic format validation
-	parts, err := v.validateKeyFormat(key, labels.LabelTypeModule.String())
+	parts, err := v.validateKeyFormat(key, types.LabelTypeModule.String())
 	if err != nil {
 		return err
 	}
@@ -271,7 +271,7 @@ func (v *ModuleValidator) Validate(key string, value []byte) error {
 func (v *ModuleValidator) validateModulesSpecific(parts []string) error {
 	// parts[0] = "", parts[1] = "modules", parts[2:len-2] = module path components, parts[len-2] = cid, parts[len-1] = peer_id
 	// Enhanced format: /modules/<module_path>/<cid>/<peer_id>
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return errors.New("modules key must have format: /modules/<module_path>/<cid>/<peer_id>")
 	}
 
@@ -307,7 +307,7 @@ func (v *LocatorValidator) Validate(key string, value []byte) error {
 	validatorLogger.Debug("Validating locators DHT record", "key", key)
 
 	// Basic format validation
-	parts, err := v.validateKeyFormat(key, labels.LabelTypeLocator.String())
+	parts, err := v.validateKeyFormat(key, types.LabelTypeLocator.String())
 	if err != nil {
 		return err
 	}
@@ -331,7 +331,7 @@ func (v *LocatorValidator) Validate(key string, value []byte) error {
 func (v *LocatorValidator) validateLocatorsSpecific(parts []string) error {
 	// parts[0] = "", parts[1] = "locators", parts[2:len-2] = locator path components, parts[len-2] = cid, parts[len-1] = peer_id
 	// Enhanced format: /locators/<locator_type>/<cid>/<peer_id>
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return errors.New("locators key must have format: /locators/<locator_type>/<cid>/<peer_id>")
 	}
 
@@ -365,22 +365,22 @@ func (v *LocatorValidator) Select(key string, values [][]byte) (int, error) {
 // CreateLabelValidators creates separate validators for each label namespace.
 func CreateLabelValidators() map[string]record.Validator {
 	return map[string]record.Validator{
-		labels.LabelTypeSkill.String():   &SkillValidator{},
-		labels.LabelTypeDomain.String():  &DomainValidator{},
-		labels.LabelTypeModule.String():  &ModuleValidator{},
-		labels.LabelTypeLocator.String(): &LocatorValidator{},
+		types.LabelTypeSkill.String():   &SkillValidator{},
+		types.LabelTypeDomain.String():  &DomainValidator{},
+		types.LabelTypeModule.String():  &ModuleValidator{},
+		types.LabelTypeLocator.String(): &LocatorValidator{},
 	}
 }
 
 // ValidateLabelKey validates a label key format before storing in DHT.
 func ValidateLabelKey(key string) error {
 	parts := strings.Split(key, "/")
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return errors.New("invalid key format: expected /<namespace>/<label_path>/<cid>")
 	}
 
 	namespace := parts[1]
-	if _, valid := labels.ParseLabelType(namespace); !valid {
+	if _, valid := types.ParseLabelType(namespace); !valid {
 		return errors.New("unsupported namespace: " + namespace)
 	}
 
@@ -415,7 +415,7 @@ func FormatLabelKey(label, cidStr string) string {
 // Example: "/skills/golang/CID123/Peer1" → "CID123", nil.
 func ExtractCIDFromLabelKey(labelKey string) (string, error) {
 	parts := strings.Split(labelKey, "/")
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return "", errors.New("invalid enhanced key format: expected /<namespace>/<label_path>/<cid>/<peer_id>")
 	}
 

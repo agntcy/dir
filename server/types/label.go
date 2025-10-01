@@ -1,10 +1,11 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package labels provides unified label types and operations for the routing system.
-// This package serves as the single source of truth for all label-related functionality,
-// eliminating the previous split between validators/namespaces and routing/labels.
-package labels
+package types
+
+// Label types and operations for the routing system.
+// This file provides unified label types including Label, LabelType, and LabelMetadata,
+// along with utilities for label extraction and manipulation.
 
 import (
 	"errors"
@@ -118,7 +119,9 @@ func (l Label) Value() string {
 	return strings.TrimPrefix(string(l), namespace)
 }
 
-// The PeerID and CID are stored in the key structure: /skills/AI/CID123/Peer1.
+// LabelMetadata stores temporal information about a label announcement.
+// The label itself is stored in the datastore key structure: /skills/AI/CID123/Peer1
+// where the metadata tracks when the label was first announced and last seen.
 type LabelMetadata struct {
 	Timestamp time.Time `json:"timestamp"` // When label was first announced
 	LastSeen  time.Time `json:"last_seen"` // When label was last seen/refreshed
@@ -161,3 +164,35 @@ const (
 	// Enhanced format: /type/label/CID/PeerID splits into ["", "type", "label", "CID", "PeerID"] = 5 parts.
 	MinLabelKeyParts = 5
 )
+
+// GetLabelsFromRecord extracts labels from a record using the LabelProvider interface.
+// This function works at the types interface level, making it usable from any package
+// without circular dependencies.
+//
+// The caller is responsible for wrapping concrete record types (e.g., *corev1.Record)
+// with the appropriate adapter before calling this function.
+//
+// Example:
+//
+//	adapter := adapters.NewRecordAdapter(corev1Record)
+//	labels := types.GetLabelsFromRecord(adapter)
+//
+// Returns:
+//   - []Label: List of all labels extracted from the record
+//   - nil: If record is nil, has no data, or doesn't implement LabelProvider
+func GetLabelsFromRecord(record Record) []Label {
+	if record == nil {
+		return nil
+	}
+
+	recordData, err := record.GetRecordData()
+	if err != nil {
+		return nil
+	}
+
+	if provider, ok := recordData.(LabelProvider); ok {
+		return provider.GetAllLabels()
+	}
+
+	return nil
+}

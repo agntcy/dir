@@ -152,6 +152,14 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("routing.datastore_dir", "")
 
 	//
+	// Routing GossipSub configuration
+	// Note: Only enable/disable is configurable. Protocol parameters (topic, message size)
+	// are hardcoded in server/routing/pubsub/constants.go for network compatibility.
+	//
+	_ = v.BindEnv("routing.gossipsub.enabled")
+	v.SetDefault("routing.gossipsub.enabled", routing.DefaultGossipSubEnabled)
+
+	//
 	// Database configuration
 	//
 	_ = v.BindEnv("database.db_type")

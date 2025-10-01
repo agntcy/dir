@@ -23,7 +23,6 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/labels"
 	"github.com/ipfs/go-datastore"
 )
 
@@ -40,7 +39,7 @@ type Metrics struct {
 	Data map[string]LabelMetric `json:"data"` // Map of label name → frequency count
 }
 
-func (m *Metrics) increment(label labels.Label) {
+func (m *Metrics) increment(label types.Label) {
 	labelStr := label.String()
 	if _, ok := m.Data[labelStr]; !ok {
 		m.Data[labelStr] = LabelMetric{
@@ -55,7 +54,7 @@ func (m *Metrics) increment(label labels.Label) {
 	}
 }
 
-func (m *Metrics) decrement(label labels.Label) {
+func (m *Metrics) decrement(label types.Label) {
 	labelStr := label.String()
 	if _, ok := m.Data[labelStr]; !ok {
 		return

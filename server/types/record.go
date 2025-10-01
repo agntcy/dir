@@ -3,8 +3,6 @@
 
 package types
 
-import "github.com/agntcy/dir/server/types/labels"
-
 type Record interface {
 	GetCid() string
 	GetRecordData() (RecordData, error)
@@ -80,9 +78,9 @@ type Locator interface {
 // LabelProvider provides routing labels for different record components.
 // Implementations should handle version-specific label generation logic.
 type LabelProvider interface {
-	GetSkillLabels() []labels.Label
-	GetDomainLabels() []labels.Label
-	GetModuleLabels() []labels.Label
-	GetLocatorLabels() []labels.Label
-	GetAllLabels() []labels.Label
+	GetSkillLabels() []Label
+	GetDomainLabels() []Label
+	GetModuleLabels() []Label
+	GetLocatorLabels() []Label
+	GetAllLabels() []Label
 }

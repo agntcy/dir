@@ -6,8 +6,7 @@ package routing
 import (
 	"testing"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/server/types/labels"
+	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,35 +14,35 @@ import (
 func TestBuildEnhancedLabelKey(t *testing.T) {
 	testCases := []struct {
 		name     string
-		label    labels.Label
+		label    types.Label
 		cid      string
 		peerID   string
 		expected string
 	}{
 		{
 			name:     "skill_label",
-			label:    labels.Label("/skills/AI/ML"),
+			label:    types.Label("/skills/AI/ML"),
 			cid:      "CID123",
 			peerID:   "Peer1",
 			expected: "/skills/AI/ML/CID123/Peer1",
 		},
 		{
 			name:     "domain_label",
-			label:    labels.Label("/domains/research"),
+			label:    types.Label("/domains/research"),
 			cid:      "CID456",
 			peerID:   "Peer2",
 			expected: "/domains/research/CID456/Peer2",
 		},
 		{
 			name:     "module_label",
-			label:    labels.Label("/modules/runtime/framework"),
+			label:    types.Label("/modules/runtime/framework"),
 			cid:      "CID789",
 			peerID:   "Peer3",
 			expected: "/modules/runtime/framework/CID789/Peer3",
 		},
 		{
 			name:     "locator_label",
-			label:    labels.Label("/locators/docker-image"),
+			label:    types.Label("/locators/docker-image"),
 			cid:      "CID999",
 			peerID:   "Peer4",
 			expected: "/locators/docker-image/CID999/Peer4",
@@ -62,7 +61,7 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 	testCases := []struct {
 		name          string
 		key           string
-		expectedLabel labels.Label
+		expectedLabel types.Label
 		expectedCID   string
 		expectedPeer  string
 		expectError   bool
@@ -71,7 +70,7 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 		{
 			name:          "valid_skill_key",
 			key:           "/skills/AI/ML/CID123/Peer1",
-			expectedLabel: labels.Label("/skills/AI/ML"),
+			expectedLabel: types.Label("/skills/AI/ML"),
 			expectedCID:   "CID123",
 			expectedPeer:  "Peer1",
 			expectError:   false,
@@ -79,7 +78,7 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 		{
 			name:          "valid_domain_key",
 			key:           "/domains/research/healthcare/CID456/Peer2",
-			expectedLabel: labels.Label("/domains/research/healthcare"),
+			expectedLabel: types.Label("/domains/research/healthcare"),
 			expectedCID:   "CID456",
 			expectedPeer:  "Peer2",
 			expectError:   false,
@@ -87,7 +86,7 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 		{
 			name:          "valid_module_key",
 			key:           "/modules/runtime/framework/CID789/Peer3",
-			expectedLabel: labels.Label("/modules/runtime/framework"),
+			expectedLabel: types.Label("/modules/runtime/framework"),
 			expectedCID:   "CID789",
 			expectedPeer:  "Peer3",
 			expectError:   false,
@@ -107,7 +106,7 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 		{
 			name:          "minimal_valid_key",
 			key:           "/skills/AI/CID123/Peer1",
-			expectedLabel: labels.Label("/skills/AI"),
+			expectedLabel: types.Label("/skills/AI"),
 			expectedCID:   "CID123",
 			expectedPeer:  "Peer1",
 			expectError:   false,
@@ -121,7 +120,7 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 			if tc.expectError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
-				assert.Equal(t, labels.Label(""), label)
+				assert.Equal(t, types.Label(""), label)
 				assert.Equal(t, "", cid)
 				assert.Equal(t, "", peerID)
 			} else {
@@ -237,49 +236,49 @@ func TestGetLabelTypeFromKey(t *testing.T) {
 	testCases := []struct {
 		name         string
 		key          string
-		expectedType labels.LabelType
+		expectedType types.LabelType
 		expectedOK   bool
 	}{
 		{
 			name:         "skill_key",
 			key:          "/skills/AI/ML/CID123/Peer1",
-			expectedType: labels.LabelTypeSkill,
+			expectedType: types.LabelTypeSkill,
 			expectedOK:   true,
 		},
 		{
 			name:         "domain_key",
 			key:          "/domains/research/CID123/Peer1",
-			expectedType: labels.LabelTypeDomain,
+			expectedType: types.LabelTypeDomain,
 			expectedOK:   true,
 		},
 		{
 			name:         "module_key",
 			key:          "/modules/runtime/CID123/Peer1",
-			expectedType: labels.LabelTypeModule,
+			expectedType: types.LabelTypeModule,
 			expectedOK:   true,
 		},
 		{
 			name:         "locator_key",
 			key:          "/locators/docker-image/CID123/Peer1",
-			expectedType: labels.LabelTypeLocator,
+			expectedType: types.LabelTypeLocator,
 			expectedOK:   true,
 		},
 		{
 			name:         "invalid_key",
 			key:          "/invalid/test/CID123/Peer1",
-			expectedType: labels.LabelTypeUnknown,
+			expectedType: types.LabelTypeUnknown,
 			expectedOK:   false,
 		},
 		{
 			name:         "records_key",
 			key:          "/records/CID123",
-			expectedType: labels.LabelTypeUnknown,
+			expectedType: types.LabelTypeUnknown,
 			expectedOK:   false,
 		},
 		{
 			name:         "empty_key",
 			key:          "",
-			expectedType: labels.LabelTypeUnknown,
+			expectedType: types.LabelTypeUnknown,
 			expectedOK:   false,
 		},
 	}
@@ -291,142 +290,6 @@ func TestGetLabelTypeFromKey(t *testing.T) {
 			assert.Equal(t, tc.expectedOK, ok)
 		})
 	}
-}
-
-func TestGetLabelsFromRecord(t *testing.T) {
-	t.Run("valid_v1alpha0_record", func(t *testing.T) {
-		// Create a valid v1alpha0 record JSON
-		recordJSON := `{
-			"name": "test-agent",
-			"version": "1.0.0",
-			"schema_version": "v0.3.1",
-			"authors": ["test"],
-			"created_at": "2023-01-01T00:00:00Z",
-			"skills": [
-				{
-					"category_name": "Natural Language Processing",
-					"category_uid": 1,
-					"class_name": "Text Completion",
-					"class_uid": 10201
-				}
-			],
-			"locators": [
-				{
-					"type": "docker-image",
-					"url": "https://example.com/test",
-					"size": 1000,
-					"digest": "sha256:abc123"
-				}
-			],
-			"extensions": [
-				{
-					"name": "schema.oasf.agntcy.org/features/runtime/framework",
-					"version": "v0.0.0",
-					"data": {}
-				}
-			]
-		}`
-
-		record, err := corev1.UnmarshalRecord([]byte(recordJSON))
-		require.NoError(t, err)
-
-		labels := GetLabelsFromRecord(record)
-		require.NotNil(t, labels)
-
-		// Should have at least skill, locator, and module labels
-		assert.GreaterOrEqual(t, len(labels), 3)
-
-		// Convert to strings for easier assertion
-		labelStrings := make([]string, len(labels))
-		for i, label := range labels {
-			labelStrings[i] = label.String()
-		}
-
-		// Check expected labels are present
-		assert.Contains(t, labelStrings, "/skills/Natural Language Processing/Text Completion")
-		assert.Contains(t, labelStrings, "/locators/docker-image")
-		assert.Contains(t, labelStrings, "/modules/runtime/framework") // Schema prefix stripped
-	})
-
-	t.Run("valid_v1alpha1_record", func(t *testing.T) {
-		// Create a valid v1alpha1 record JSON
-		recordJSON := `{
-			"name": "test-agent-v2",
-			"version": "2.0.0",
-			"schema_version": "0.7.0",
-			"authors": ["test"],
-			"created_at": "2023-01-01T00:00:00Z",
-			"skills": [
-				{
-					"name": "Machine Learning/Classification",
-					"id": 20301
-				}
-			],
-			"domains": [
-				{
-					"name": "healthcare/medical_technology",
-					"id": 905
-				}
-			],
-			"locators": [
-				{
-					"type": "http",
-					"url": "https://example.com/v2",
-					"size": 2000,
-					"digest": "sha256:def456"
-				}
-			],
-			"modules": [
-				{
-					"name": "security/authentication",
-					"data": {}
-				}
-			]
-		}`
-
-		record, err := corev1.UnmarshalRecord([]byte(recordJSON))
-		require.NoError(t, err)
-
-		labels := GetLabelsFromRecord(record)
-		require.NotNil(t, labels)
-
-		// Should have skill, domain, locator, and module labels
-		assert.GreaterOrEqual(t, len(labels), 4)
-
-		// Convert to strings for easier assertion
-		labelStrings := make([]string, len(labels))
-		for i, label := range labels {
-			labelStrings[i] = label.String()
-		}
-
-		// Check expected labels are present
-		assert.Contains(t, labelStrings, "/skills/Machine Learning/Classification")
-		assert.Contains(t, labelStrings, "/domains/healthcare/medical_technology")
-		assert.Contains(t, labelStrings, "/locators/http")
-		assert.Contains(t, labelStrings, "/modules/security/authentication") // Direct module name
-	})
-
-	t.Run("invalid_record", func(t *testing.T) {
-		// Create invalid JSON that will fail to unmarshal
-		invalidJSON := `{"invalid": json}`
-
-		record, err := corev1.UnmarshalRecord([]byte(invalidJSON))
-		if err != nil {
-			// If unmarshaling fails, we can't test GetLabelsFromRecord
-			t.Skip("Invalid JSON test skipped - unmarshal failed as expected")
-
-			return
-		}
-
-		labels := GetLabelsFromRecord(record)
-		// Should handle gracefully and return nil or empty slice
-		assert.Empty(t, labels)
-	})
-
-	t.Run("nil_record", func(t *testing.T) {
-		labels := GetLabelsFromRecord(nil)
-		assert.Nil(t, labels)
-	})
 }
 
 func TestParseEnhancedLabelKeyInternal(t *testing.T) {
@@ -512,14 +375,14 @@ func TestParseEnhancedLabelKeyInternal(t *testing.T) {
 func TestParseEnhancedLabelKey_RoundTrip(t *testing.T) {
 	// Test that BuildEnhancedLabelKey and ParseEnhancedLabelKey are inverse operations
 	testCases := []struct {
-		label  labels.Label
+		label  types.Label
 		cid    string
 		peerID string
 	}{
-		{labels.Label("/skills/AI/ML"), "CID123", "Peer1"},
-		{labels.Label("/domains/research"), "CID456", "Peer2"},
-		{labels.Label("/modules/runtime/framework/security"), "CID789", "Peer3"},
-		{labels.Label("/locators/docker-image"), "CID999", "Peer4"},
+		{types.Label("/skills/AI/ML"), "CID123", "Peer1"},
+		{types.Label("/domains/research"), "CID456", "Peer2"},
+		{types.Label("/modules/runtime/framework/security"), "CID789", "Peer3"},
+		{types.Label("/locators/docker-image"), "CID999", "Peer4"},
 	}
 
 	for _, tc := range testCases {
@@ -539,7 +402,7 @@ func TestParseEnhancedLabelKey_RoundTrip(t *testing.T) {
 }
 
 func BenchmarkBuildEnhancedLabelKey(b *testing.B) {
-	label := labels.Label("/skills/AI/ML")
+	label := types.Label("/skills/AI/ML")
 	cid := "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
 	peerID := "12D3KooWBhvJH9k6u7S5Q8Z8u7S5Q8Z8u7S5Q8Z8u7S5Q8Z8u7S5Q8"
 

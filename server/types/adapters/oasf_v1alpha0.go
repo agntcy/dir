@@ -9,7 +9,6 @@ import (
 
 	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/labels"
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
 )
 
@@ -364,20 +363,20 @@ func (m *V1Alpha0ModuleAdapter) GetData() map[string]any {
 }
 
 // GetSkillLabels implements types.LabelProvider interface.
-func (a *V1Alpha0Adapter) GetSkillLabels() []labels.Label {
+func (a *V1Alpha0Adapter) GetSkillLabels() []types.Label {
 	if a.record == nil {
 		return nil
 	}
 
 	skills := a.record.GetSkills()
-	result := make([]labels.Label, 0, len(skills))
+	result := make([]types.Label, 0, len(skills))
 
 	for _, skill := range skills {
 		// Reuse the existing skill adapter logic for name formatting
 		skillAdapter := NewV1Alpha0SkillAdapter(skill)
 		skillName := skillAdapter.GetName()
 
-		skillLabel := labels.Label(labels.LabelTypeSkill.Prefix() + skillName)
+		skillLabel := types.Label(types.LabelTypeSkill.Prefix() + skillName)
 		result = append(result, skillLabel)
 	}
 
@@ -385,19 +384,19 @@ func (a *V1Alpha0Adapter) GetSkillLabels() []labels.Label {
 }
 
 // GetLocatorLabels implements types.LabelProvider interface.
-func (a *V1Alpha0Adapter) GetLocatorLabels() []labels.Label {
+func (a *V1Alpha0Adapter) GetLocatorLabels() []types.Label {
 	if a.record == nil {
 		return nil
 	}
 
 	locators := a.record.GetLocators()
-	result := make([]labels.Label, 0, len(locators))
+	result := make([]types.Label, 0, len(locators))
 
 	for _, locator := range locators {
 		locatorAdapter := NewV1Alpha0LocatorAdapter(locator)
 		locatorType := locatorAdapter.GetType()
 
-		locatorLabel := labels.Label(labels.LabelTypeLocator.Prefix() + locatorType)
+		locatorLabel := types.Label(types.LabelTypeLocator.Prefix() + locatorType)
 		result = append(result, locatorLabel)
 	}
 
@@ -405,26 +404,26 @@ func (a *V1Alpha0Adapter) GetLocatorLabels() []labels.Label {
 }
 
 // GetDomainLabels implements types.LabelProvider interface.
-func (a *V1Alpha0Adapter) GetDomainLabels() []labels.Label {
+func (a *V1Alpha0Adapter) GetDomainLabels() []types.Label {
 	// V1Alpha0 doesn't have domains, return empty slice
-	return []labels.Label{}
+	return []types.Label{}
 }
 
 // GetModuleLabels implements types.LabelProvider interface.
-func (a *V1Alpha0Adapter) GetModuleLabels() []labels.Label {
+func (a *V1Alpha0Adapter) GetModuleLabels() []types.Label {
 	if a.record == nil {
 		return nil
 	}
 
 	extensions := a.record.GetExtensions()
-	result := make([]labels.Label, 0, len(extensions))
+	result := make([]types.Label, 0, len(extensions))
 
 	for _, ext := range extensions {
 		extensionName := ext.GetName()
 
 		// Handle v0.3.1 schema prefix for features - now map to modules
 		name := strings.TrimPrefix(extensionName, featuresSchemaPrefix)
-		moduleLabel := labels.Label(labels.LabelTypeModule.Prefix() + name)
+		moduleLabel := types.Label(types.LabelTypeModule.Prefix() + name)
 		result = append(result, moduleLabel)
 	}
 
@@ -432,8 +431,8 @@ func (a *V1Alpha0Adapter) GetModuleLabels() []labels.Label {
 }
 
 // GetAllLabels implements types.LabelProvider interface.
-func (a *V1Alpha0Adapter) GetAllLabels() []labels.Label {
-	var allLabels []labels.Label
+func (a *V1Alpha0Adapter) GetAllLabels() []types.Label {
+	var allLabels []types.Label
 
 	allLabels = append(allLabels, a.GetSkillLabels()...)
 	allLabels = append(allLabels, a.GetDomainLabels()...)

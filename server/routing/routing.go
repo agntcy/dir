@@ -16,7 +16,6 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
@@ -68,9 +67,9 @@ func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (type
 	return mainRounter, nil
 }
 
-func (r *route) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
+func (r *route) Publish(ctx context.Context, record types.Record) error {
 	// Always publish data locally for archival/querying
-	err := r.local.Publish(ctx, ref, record)
+	err := r.local.Publish(ctx, record)
 	if err != nil {
 		st := status.Convert(err)
 
@@ -79,7 +78,7 @@ func (r *route) Publish(ctx context.Context, ref *corev1.RecordRef, record *core
 
 	// Only publish to network if peers are available
 	if r.hasPeersInRoutingTable() {
-		err = r.remote.Publish(ctx, ref, record)
+		err = r.remote.Publish(ctx, record)
 		if err != nil {
 			st := status.Convert(err)
 
@@ -102,8 +101,8 @@ func (r *route) Search(ctx context.Context, req *routingv1.SearchRequest) (<-cha
 	return r.remote.Search(ctx, req)
 }
 
-func (r *route) Unpublish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
-	err := r.local.Unpublish(ctx, ref, record)
+func (r *route) Unpublish(ctx context.Context, record types.Record) error {
+	err := r.local.Unpublish(ctx, record)
 	if err != nil {
 		st := status.Convert(err)
 
@@ -112,5 +111,18 @@ func (r *route) Unpublish(ctx context.Context, ref *corev1.RecordRef, record *co
 
 	// no need to explicitly handle unpublishing from the network
 	// TODO clarify if network sync trigger is needed here
+	return nil
+}
+
+// Stop stops the routing services and releases resources.
+// This should be called during server shutdown to clean up gracefully.
+func (r *route) Stop() error {
+	// Stop remote routing (includes GossipSub and p2p server)
+	if r.remote != nil {
+		if err := r.remote.Stop(); err != nil {
+			return fmt.Errorf("failed to stop remote routing: %w", err)
+		}
+	}
+
 	return nil
 }

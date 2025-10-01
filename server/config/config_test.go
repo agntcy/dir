@@ -83,6 +83,9 @@ func TestConfig(t *testing.T) {
 						"/ip4/1.1.1.1/tcp/2",
 					},
 					KeyPath: "/path/to/key",
+					GossipSub: routing.GossipSubConfig{
+						Enabled: true, // Default value
+					},
 				},
 				Database: database.Config{
 					DBType: "sqlite",
@@ -133,6 +136,9 @@ func TestConfig(t *testing.T) {
 				Routing: routing.Config{
 					ListenAddress:  routing.DefaultListenAddress,
 					BootstrapPeers: routing.DefaultBootstrapPeers,
+					GossipSub: routing.GossipSubConfig{
+						Enabled: routing.DefaultGossipSubEnabled,
+					},
 				},
 				Database: database.Config{
 					DBType: database.DefaultDBType,

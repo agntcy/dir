@@ -11,7 +11,6 @@ import (
 
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/labels"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +45,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 		}
 
 		for _, tl := range testLabels {
-			enhancedKey := BuildEnhancedLabelKey(labels.Label(tl.label), testCID, tl.peerID)
+			enhancedKey := BuildEnhancedLabelKey(types.Label(tl.label), testCID, tl.peerID)
 			err = dstore.Put(ctx, ipfsdatastore.NewKey(enhancedKey), []byte("metadata"))
 			require.NoError(t, err)
 		}
@@ -62,7 +61,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 
 		// Verify label cleanup
 		for _, tl := range testLabels {
-			enhancedKey := BuildEnhancedLabelKey(labels.Label(tl.label), testCID, tl.peerID)
+			enhancedKey := BuildEnhancedLabelKey(types.Label(tl.label), testCID, tl.peerID)
 			exists, err := dstore.Has(ctx, ipfsdatastore.NewKey(enhancedKey))
 			require.NoError(t, err)
 
@@ -80,12 +79,12 @@ func TestCleanup_CoreLogic(t *testing.T) {
 
 		testCases := []struct {
 			name     string
-			metadata *labels.LabelMetadata
+			metadata *types.LabelMetadata
 			isStale  bool
 		}{
 			{
 				name: "fresh_label",
-				metadata: &labels.LabelMetadata{
+				metadata: &types.LabelMetadata{
 					Timestamp: now.Add(-time.Hour),
 					LastSeen:  now.Add(-time.Hour),
 				},
@@ -93,7 +92,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 			},
 			{
 				name: "stale_label",
-				metadata: &labels.LabelMetadata{
+				metadata: &types.LabelMetadata{
 					Timestamp: now.Add(-MaxLabelAge - time.Hour),
 					LastSeen:  now.Add(-MaxLabelAge - time.Hour),
 				},
@@ -101,7 +100,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 			},
 			{
 				name: "borderline_fresh",
-				metadata: &labels.LabelMetadata{
+				metadata: &types.LabelMetadata{
 					Timestamp: now.Add(-MaxLabelAge + time.Minute),
 					LastSeen:  now.Add(-MaxLabelAge + time.Minute),
 				},
@@ -109,7 +108,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 			},
 			{
 				name: "borderline_stale",
-				metadata: &labels.LabelMetadata{
+				metadata: &types.LabelMetadata{
 					Timestamp: now.Add(-MaxLabelAge - time.Minute),
 					LastSeen:  now.Add(-MaxLabelAge - time.Minute),
 				},
@@ -180,7 +179,7 @@ func TestCleanup_CoreLogic(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, label := range labelsToDelete {
-			enhancedKey := BuildEnhancedLabelKey(labels.Label(label), testCID, localPeerID)
+			enhancedKey := BuildEnhancedLabelKey(types.Label(label), testCID, localPeerID)
 			err = dstore.Put(ctx, ipfsdatastore.NewKey(enhancedKey), []byte("metadata"))
 			require.NoError(t, err)
 		}
