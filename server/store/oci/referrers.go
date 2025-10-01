@@ -9,6 +9,7 @@ import (
 	"io"
 	"strings"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/logging"
@@ -16,6 +17,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"oras.land/oras-go/v2"
 )
 
@@ -27,6 +29,9 @@ const (
 
 	// SignatureArtifactType defines the media type for cosign signature layers.
 	SignatureArtifactType = "application/vnd.dev.cosign.simplesigning.v1+json"
+
+	// ReferrerArtifactMediaType defines the media type for referrer blobs.
+	DefaultReferrerArtifactMediaType = "application/vnd.agntcy.dir.referrer.v1+json"
 )
 
 // ReferrerMatcher defines a function type for matching OCI referrer descriptors.
@@ -86,7 +91,7 @@ func (s *store) PullSignatures(ctx context.Context, recordCID string) ([]*signv1
 		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
 	}
 
-	signatureManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, SignatureArtifactType, s.MediaTypeReferrerMatcher(SignatureArtifactType))
+	signatureManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, s.MediaTypeReferrerMatcher(SignatureArtifactType))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to find signatures for record CID %s: %v", recordCID, err)
 	}
@@ -236,7 +241,7 @@ func (s *store) PullPublicKeys(ctx context.Context, recordCID string) ([]string,
 		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
 	}
 
-	publicKeyManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, PublicKeyArtifactMediaType, s.MediaTypeReferrerMatcher(PublicKeyArtifactMediaType))
+	publicKeyManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, s.MediaTypeReferrerMatcher(PublicKeyArtifactMediaType))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to find public keys for record CID %s: %v", recordCID, err)
 	}
@@ -267,7 +272,7 @@ func (s *store) PullPublicKeys(ctx context.Context, recordCID string) ([]string,
 }
 
 // findReferrersByType searches for all referrer artifacts of the specified type that reference the given record manifest.
-func (s *store) findReferrersByType(ctx context.Context, recordManifestDesc ocispec.Descriptor, referrerType string, matcher ReferrerMatcher) ([]ocispec.Descriptor, error) {
+func (s *store) findReferrersByType(ctx context.Context, recordManifestDesc ocispec.Descriptor, matcher ReferrerMatcher) ([]ocispec.Descriptor, error) {
 	referrersLister, ok := s.repo.(ReferrersLister)
 	if !ok {
 		return nil, status.Errorf(codes.Unimplemented, "repository does not support OCI referrers API")
@@ -277,8 +282,16 @@ func (s *store) findReferrersByType(ctx context.Context, recordManifestDesc ocis
 
 	err := referrersLister.Referrers(ctx, recordManifestDesc, "", func(referrers []ocispec.Descriptor) error {
 		for _, referrer := range referrers {
+			// If no matcher is provided, we assume all referrers are matching
+			if matcher == nil {
+				referrersLogger.Debug("Found matching referrer", "digest", referrer.Digest.String(), "mediaType", referrer.MediaType)
+				foundReferrers = append(foundReferrers, referrer)
+
+				continue
+			}
+
 			if matcher(ctx, referrer) {
-				referrersLogger.Debug("Found matching referrer", "type", referrerType, "digest", referrer.Digest.String(), "mediaType", referrer.MediaType)
+				referrersLogger.Debug("Found matching referrer", "digest", referrer.Digest.String(), "mediaType", referrer.MediaType)
 				foundReferrers = append(foundReferrers, referrer)
 			}
 		}
@@ -386,4 +399,201 @@ func (s *store) buildZotConfig() *zot.VerifyConfig {
 		AccessToken:     s.config.AuthConfig.AccessToken,
 		Insecure:        s.config.AuthConfig.Insecure,
 	}
+}
+
+// PushReferrer pushes a generic RecordReferrer as an OCI artifact that references a record as its subject.
+func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
+	referrersLogger.Debug("Pushing generic referrer to OCI store", "recordCID", recordCID, "type", referrer.GetType())
+
+	if referrer == nil {
+		return status.Error(codes.InvalidArgument, "referrer is required") //nolint:wrapcheck
+	}
+
+	if recordCID == "" {
+		return status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
+	}
+
+	if referrer.GetType() == "" {
+		return status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
+	}
+
+	// Marshal the referrer to JSON
+	referrerBytes, err := protojson.Marshal(referrer)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to marshal referrer: %v", err)
+	}
+
+	referrerType := referrer.GetType()
+	if referrer.GetType() == "" {
+		referrerType = DefaultReferrerArtifactMediaType
+	}
+
+	// Push the referrer blob
+	blobDesc, err := oras.PushBytes(ctx, s.repo, referrerType, referrerBytes)
+	if err != nil {
+		return fmt.Errorf("failed to push referrer blob: %w", err)
+	}
+
+	// Resolve the record manifest to get its descriptor for the subject field
+	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve record manifest for subject: %w", err)
+	}
+
+	// Create annotations for the referrer manifest
+	annotations := make(map[string]string)
+	annotations["agntcy.dir.referrer.type"] = referrer.GetType()
+
+	if referrer.GetCreatedAt() != "" {
+		annotations["agntcy.dir.referrer.created_at"] = referrer.GetCreatedAt()
+	}
+	// Add custom annotations from the referrer
+	for key, value := range referrer.GetAnnotations() {
+		annotations["agntcy.dir.referrer.annotation."+key] = value
+	}
+
+	// Create the referrer manifest with proper OCI subject field
+	manifestDesc, err := oras.PackManifest(ctx, s.repo, oras.PackManifestVersion1_1, ocispec.MediaTypeImageManifest,
+		oras.PackManifestOptions{
+			Subject:             &recordManifestDesc,
+			ManifestAnnotations: annotations,
+			Layers: []ocispec.Descriptor{
+				blobDesc,
+			},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to pack referrer manifest: %w", err)
+	}
+
+	referrersLogger.Debug("Referrer pushed successfully", "digest", manifestDesc.Digest.String(), "type", referrer.GetType())
+
+	return nil
+}
+
+// PullReferrersByType retrieves all referrers of a specific type for a given record CID.
+func (s *store) PullReferrersByType(ctx context.Context, recordCID string, referrerType string) ([]*corev1.RecordReferrer, error) {
+	referrersLogger.Debug("Pulling referrers by type from OCI store", "recordCID", recordCID, "type", referrerType)
+
+	if recordCID == "" {
+		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
+	}
+
+	if referrerType == "" {
+		return nil, status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
+	}
+
+	// Get the record manifest descriptor
+	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
+	}
+
+	// Find referrers using the matcher
+	referrerDescs, err := s.findReferrersByType(ctx, recordManifestDesc, s.MediaTypeReferrerMatcher(referrerType))
+	if err != nil {
+		return nil, fmt.Errorf("failed to find referrers: %w", err)
+	}
+
+	if len(referrerDescs) == 0 {
+		referrersLogger.Debug("No referrers found", "recordCID", recordCID, "type", referrerType)
+
+		return []*corev1.RecordReferrer{}, nil
+	}
+
+	// Extract referrer data from each manifest
+	referrers := make([]*corev1.RecordReferrer, 0, len(referrerDescs))
+
+	for _, desc := range referrerDescs {
+		referrer, err := s.extractReferrerFromManifest(ctx, desc, recordCID)
+		if err != nil {
+			referrersLogger.Error("Failed to extract referrer from manifest", "digest", desc.Digest.String(), "error", err)
+
+			continue // Skip this referrer but continue with others
+		}
+
+		referrers = append(referrers, referrer)
+	}
+
+	referrersLogger.Debug("Successfully pulled referrers by type", "recordCID", recordCID, "type", referrerType, "count", len(referrers))
+
+	return referrers, nil
+}
+
+// PullAllReferrers retrieves all referrers for a given record CID.
+func (s *store) PullAllReferrers(ctx context.Context, recordCID string) ([]*corev1.RecordReferrer, error) {
+	referrersLogger.Debug("Pulling all referrers from OCI store", "recordCID", recordCID)
+
+	if recordCID == "" {
+		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
+	}
+
+	// Get the record manifest descriptor
+	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
+	}
+
+	// Find referrers using the matcher
+	referrerDescs, err := s.findReferrersByType(ctx, recordManifestDesc, nil) // All referrers
+	if err != nil {
+		return nil, fmt.Errorf("failed to find referrers: %w", err)
+	}
+
+	if len(referrerDescs) == 0 {
+		referrersLogger.Debug("No referrers found", "recordCID", recordCID)
+
+		return []*corev1.RecordReferrer{}, nil
+	}
+
+	// Extract referrer data from each manifest
+	referrers := make([]*corev1.RecordReferrer, 0, len(referrerDescs))
+
+	for _, desc := range referrerDescs {
+		referrer, err := s.extractReferrerFromManifest(ctx, desc, recordCID)
+		if err != nil {
+			referrersLogger.Error("Failed to extract referrer from manifest", "digest", desc.Digest.String(), "error", err)
+
+			continue // Skip this referrer but continue with others
+		}
+
+		referrers = append(referrers, referrer)
+	}
+
+	referrersLogger.Debug("Successfully pulled all referrers", "recordCID", recordCID, "count", len(referrers))
+
+	return referrers, nil
+}
+
+// extractReferrerFromManifest extracts the referrer data from a referrer manifest.
+func (s *store) extractReferrerFromManifest(ctx context.Context, manifestDesc ocispec.Descriptor, recordCID string) (*corev1.RecordReferrer, error) {
+	manifest, err := s.fetchAndParseManifestFromDescriptor(ctx, manifestDesc)
+	if err != nil {
+		return nil, err // Error already includes proper gRPC status
+	}
+
+	if len(manifest.Layers) == 0 {
+		return nil, status.Errorf(codes.Internal, "referrer manifest has no layers")
+	}
+
+	blobDesc := manifest.Layers[0]
+
+	reader, err := s.repo.Fetch(ctx, blobDesc)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "referrer blob not found for CID %s: %v", recordCID, err)
+	}
+	defer reader.Close()
+
+	referrerData, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to read referrer data for CID %s: %v", recordCID, err)
+	}
+
+	// Unmarshal the referrer from JSON
+	var referrer corev1.RecordReferrer
+	if err := protojson.Unmarshal(referrerData, &referrer); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unmarshal referrer for CID %s: %v", recordCID, err)
+	}
+
+	return &referrer, nil
 }

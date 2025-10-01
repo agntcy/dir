@@ -43,3 +43,15 @@ type SignatureStoreAPI interface {
 	// Pull all public keys from content store
 	PullPublicKeys(context.Context, string) ([]string, error)
 }
+
+// ReferrerStoreAPI handles management of generic record referrers.
+type ReferrerStoreAPI interface {
+	// Push referrer to content store
+	PushReferrer(context.Context, string, *corev1.RecordReferrer) error
+
+	// Pull referrers from content store by type
+	PullReferrersByType(context.Context, string, string) ([]*corev1.RecordReferrer, error)
+
+	// Pull all referrers from content store
+	PullAllReferrers(context.Context, string) ([]*corev1.RecordReferrer, error)
+}
