@@ -14,6 +14,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	ociutils "github.com/agntcy/dir/utils/oci"
 	sigs "github.com/sigstore/cosign/v2/pkg/signature"
 )
 
@@ -50,44 +51,66 @@ func (c *Client) verifyClientSide(ctx context.Context, recordCID string) (bool, 
 	logger.Debug("Starting client-side verification", "recordCID", recordCID)
 
 	// Retrieve signature from OCI referrers
-	signature, err := c.pullSignatureReferrer(ctx, recordCID)
+	signatures, err := c.pullSignatureReferrer(ctx, recordCID)
 	if err != nil {
 		return false, fmt.Errorf("failed to pull signature referrer: %w", err)
 	}
 
-	// Get the payload from the signature annotations
-	payload := signature.GetAnnotations()["payload"]
+	if len(signatures) == 0 {
+		return false, errors.New("no signature found in referrer responses")
+	}
 
 	// Retrieve public key from OCI referrers
-	publicKey, err := c.pullPublicKeyReferrer(ctx, recordCID)
+	publicKeys, err := c.pullPublicKeyReferrer(ctx, recordCID)
 	if err != nil {
 		return false, fmt.Errorf("failed to pull public key referrer: %w", err)
 	}
 
-	// Verify signature using cosign
-	verifier, err := sigs.LoadPublicKeyRaw([]byte(publicKey), crypto.SHA256)
-	if err != nil {
-		return false, fmt.Errorf("failed to get public key: %w", err)
+	if len(publicKeys) == 0 {
+		return false, errors.New("no public key found in referrer responses")
 	}
 
-	// Decode base64 signature if needed
-	signatureBytes, err := base64.StdEncoding.DecodeString(signature.GetSignature())
-	if err != nil {
-		// If decoding fails, assume it's already raw bytes
-		signatureBytes = []byte(signature.GetSignature())
+	// Compare all public keys with all signatures
+	for _, publicKey := range publicKeys {
+		for _, signature := range signatures {
+			// Get the payload from the signature annotations
+			payload := signature.GetAnnotations()["payload"]
+
+			// Verify signature using cosign
+			verifier, err := sigs.LoadPublicKeyRaw([]byte(publicKey), crypto.SHA256)
+			if err != nil {
+				// Skip this public key if it's invalid, try the next one
+				logger.Debug("Failed to load public key, skipping", "error", err)
+
+				continue
+			}
+
+			// Decode base64 signature if needed
+			signatureBytes, err := base64.StdEncoding.DecodeString(signature.GetSignature())
+			if err != nil {
+				// If decoding fails, assume it's already raw bytes
+				signatureBytes = []byte(signature.GetSignature())
+			}
+
+			err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader([]byte(payload)))
+			if err != nil {
+				// Verification failed for this combination, try the next one
+				logger.Debug("Signature verification failed, trying next combination", "error", err)
+
+				continue
+			}
+
+			// If the signature is verified against this public key, return true
+			return true, nil
+		}
 	}
 
-	err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader([]byte(payload)))
-	if err != nil {
-		return false, fmt.Errorf("failed to verify signature: %w", err)
-	}
-
-	return true, nil
+	return false, nil
 }
 
 // pullSignatureReferrer retrieves the signature referrer for a record.
-func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) (*signv1.Signature, error) {
-	response, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
+func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) ([]*signv1.Signature, error) {
+	resultCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
@@ -99,32 +122,44 @@ func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) (*
 		return nil, fmt.Errorf("failed to pull signature referrer: %w", err)
 	}
 
-	signature := response.GetSignature()
-	if signature == nil || signature.GetSignature() == "" {
-		return nil, errors.New("no signature found in referrer response")
+	signatures := make([]*signv1.Signature, 0)
+
+	// Get the all signature responses
+	for response := range resultCh {
+		signature := response.GetSignature()
+		if signature != nil && signature.GetSignature() != "" {
+			signatures = append(signatures, signature)
+		}
 	}
 
-	return signature, nil
+	return signatures, nil
 }
 
 // pullPublicKeyReferrer retrieves the public key referrer for a record.
-func (c *Client) pullPublicKeyReferrer(ctx context.Context, recordCID string) (string, error) {
-	response, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
+func (c *Client) pullPublicKeyReferrer(ctx context.Context, recordCID string) ([]string, error) {
+	resultCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
-		Options: &storev1.PullReferrerRequest_PullPublicKey{
-			PullPublicKey: true,
+		Options: &storev1.PullReferrerRequest_PullReferrerType{
+			PullReferrerType: ociutils.PublicKeyArtifactMediaType,
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to pull public key referrer: %w", err)
+		return nil, fmt.Errorf("failed to pull public key referrer: %w", err)
 	}
 
-	publicKey := response.GetPublicKey()
-	if publicKey == "" {
-		return "", errors.New("no public key found in referrer response")
+	publicKeys := make([]string, 0)
+
+	// Get the all public key responses
+	for response := range resultCh {
+		publicKey, err := response.GetReferrer().GetPublicKey()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get public key: %w", err)
+		}
+
+		publicKeys = append(publicKeys, publicKey)
 	}
 
-	return publicKey, nil
+	return publicKeys, nil
 }

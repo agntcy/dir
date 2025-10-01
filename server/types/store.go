@@ -34,12 +34,18 @@ type SignatureStoreAPI interface {
 	// Push signature to content store
 	PushSignature(context.Context, string, *signv1.Signature) error
 
-	// Push public key to content store
-	PushPublicKey(context.Context, string, string) error
+	// Pull all signatures from content store
+	PullSignatures(context.Context, string) ([]*signv1.Signature, error)
 
-	// Pull signature from content store
-	PullSignature(context.Context, string) (*signv1.Signature, error)
+	// Upload public key to zot for verification
+	UploadPublicKey(context.Context, string) error
+}
 
-	// Pull public key from content store
-	PullPublicKey(context.Context, string) (string, error)
+// ReferrerStoreAPI handles management of generic record referrers.
+type ReferrerStoreAPI interface {
+	// Push referrer to content store
+	PushReferrer(context.Context, string, *corev1.RecordReferrer) error
+
+	// Walk referrers individually for a given record CID and optional type filter
+	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
 }

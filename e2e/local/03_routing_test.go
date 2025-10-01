@@ -52,7 +52,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 			output := cli.Routing().Publish(cid).ShouldSucceed()
 
 			// Should confirm successful publishing
-			gomega.Expect(output).To(gomega.ContainSubstring("Successfully published"))
+			gomega.Expect(output).To(gomega.ContainSubstring("Successfully submitted publication request"))
 			gomega.Expect(output).To(gomega.ContainSubstring(cid))
 
 			// Wait for publish operation to complete (publishing is asynchronous)
