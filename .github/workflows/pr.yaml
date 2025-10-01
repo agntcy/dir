@@ -45,6 +45,7 @@ jobs:
             style
             test
             release
+            federation
           # Scopes should match the components within the directory repo.
           # For example, if you are making a change to the API component,
           # the scope should be "dir/api".
