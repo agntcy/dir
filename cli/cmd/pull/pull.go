@@ -12,6 +12,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	ociutils "github.com/agntcy/dir/utils/oci"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,14 @@ Usage examples:
 1. Pull by cid and output
 
 	dirctl pull <cid>
+
+2. Pull by cid and output public key
+
+	dirctl pull <cid> --public-key
+
+3. Pull by cid and output signature
+
+	dirctl pull <cid> --signature
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
@@ -77,15 +86,25 @@ func runCommand(cmd *cobra.Command, cid string) error {
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
 			},
-			Options: &storev1.PullReferrerRequest_PullPublicKey{
-				PullPublicKey: true,
+			Options: &storev1.PullReferrerRequest_PullReferrerType{
+				PullReferrerType: ociutils.PublicKeyArtifactMediaType,
 			},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to pull public key: %w", err)
 		}
 
-		presenter.Print(cmd, "Public key: "+response.GetPublicKey())
+		publicKeyValue, ok := response.GetReferrer().GetData().AsMap()["publicKey"]
+		if !ok {
+			return errors.New("publicKey field not found in referrer data")
+		}
+
+		publicKey, ok := publicKeyValue.(string)
+		if !ok {
+			return errors.New("publicKey field is not a string")
+		}
+
+		presenter.Println(cmd, "Public key: "+publicKey)
 	}
 
 	if opts.Signature {
@@ -102,7 +121,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 			return fmt.Errorf("failed to pull signature: %w", err)
 		}
 
-		presenter.Print(cmd, "Signature: "+response.GetSignature().GetSignature())
+		presenter.Println(cmd, "Signature: "+response.GetSignature().GetSignature())
 	}
 
 	return nil

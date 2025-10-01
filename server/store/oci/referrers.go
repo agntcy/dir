@@ -13,6 +13,7 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/logging"
+	ociutils "github.com/agntcy/dir/utils/oci"
 	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
@@ -22,17 +23,6 @@ import (
 )
 
 var referrersLogger = logging.Logger("store/oci/referrers")
-
-const (
-	// PublicKeyArtifactMediaType defines the media type for public key blobs.
-	PublicKeyArtifactMediaType = "application/vnd.agntcy.dir.publickey.v1+pem"
-
-	// SignatureArtifactType defines the media type for cosign signature layers.
-	SignatureArtifactType = "application/vnd.dev.cosign.simplesigning.v1+json"
-
-	// ReferrerArtifactMediaType defines the media type for referrer blobs.
-	DefaultReferrerArtifactMediaType = "application/vnd.agntcy.dir.referrer.v1+json"
-)
 
 // ReferrerMatcher defines a function type for matching OCI referrer descriptors.
 // It returns true if the descriptor matches the expected referrer type.
@@ -91,7 +81,7 @@ func (s *store) PullSignatures(ctx context.Context, recordCID string) ([]*signv1
 		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
 	}
 
-	signatureManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, s.MediaTypeReferrerMatcher(SignatureArtifactType))
+	signatureManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, s.MediaTypeReferrerMatcher(ociutils.SignatureArtifactType))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to find signatures for record CID %s: %v", recordCID, err)
 	}
@@ -135,8 +125,8 @@ func (s *store) extractSignatureFromManifest(ctx context.Context, manifestDesc o
 	signatureBlobDesc := manifest.Layers[0]
 
 	// Validate layer media type
-	if signatureBlobDesc.MediaType != SignatureArtifactType {
-		referrersLogger.Warn("Unexpected signature blob media type", "expected", SignatureArtifactType, "actual", signatureBlobDesc.MediaType)
+	if signatureBlobDesc.MediaType != ociutils.SignatureArtifactType {
+		referrersLogger.Warn("Unexpected signature blob media type", "expected", ociutils.SignatureArtifactType, "actual", signatureBlobDesc.MediaType)
 	}
 
 	// Fetch the signature data
@@ -172,16 +162,12 @@ func (s *store) extractSignatureFromManifest(ctx context.Context, manifestDesc o
 	}, nil
 }
 
-// PushPublicKey pushes a public key as an OCI artifact that references a record as its subject.
-func (s *store) PushPublicKey(ctx context.Context, recordCID string, publicKey string) error {
-	referrersLogger.Debug("Pushing public key to OCI store", "recordCID", recordCID)
+// UploadPublicKey uploads a public key to zot for signature verification.
+func (s *store) UploadPublicKey(ctx context.Context, publicKey string) error {
+	referrersLogger.Debug("Uploading public key to zot for signature verification")
 
 	if len(publicKey) == 0 {
 		return status.Error(codes.InvalidArgument, "public key is required") //nolint:wrapcheck
-	}
-
-	if recordCID == "" {
-		return status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
 	// Upload the public key to zot for signature verification
@@ -196,79 +182,9 @@ func (s *store) PushPublicKey(ctx context.Context, recordCID string, publicKey s
 		return status.Errorf(codes.Internal, "failed to upload public key to zot for verification: %v", err)
 	}
 
-	referrersLogger.Debug("Successfully uploaded public key to zot for verification", "recordCID", recordCID)
-
-	// Push the public key blob
-	blobDesc, err := oras.PushBytes(ctx, s.repo, PublicKeyArtifactMediaType, []byte(publicKey))
-	if err != nil {
-		return fmt.Errorf("failed to push public key blob: %w", err)
-	}
-
-	// Resolve the record manifest to get its descriptor for the subject field
-	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
-	if err != nil {
-		return fmt.Errorf("failed to resolve record manifest for subject: %w", err)
-	}
-
-	// Create the public key manifest with proper OCI subject field
-	manifestDesc, err := oras.PackManifest(ctx, s.repo, oras.PackManifestVersion1_1, ocispec.MediaTypeImageManifest,
-		oras.PackManifestOptions{
-			Subject: &recordManifestDesc,
-			Layers: []ocispec.Descriptor{
-				blobDesc,
-			},
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to pack public key manifest: %w", err)
-	}
-
-	referrersLogger.Debug("Public key pushed successfully", "digest", manifestDesc.Digest.String())
+	referrersLogger.Debug("Successfully uploaded public key to zot for verification")
 
 	return nil
-}
-
-// PullPublicKeys retrieves all public keys for a given record CID by finding all public key artifacts that reference the record.
-func (s *store) PullPublicKeys(ctx context.Context, recordCID string) ([]string, error) {
-	referrersLogger.Debug("Pulling all public keys from OCI store", "recordCID", recordCID)
-
-	if recordCID == "" {
-		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
-	}
-
-	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
-	}
-
-	publicKeyManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, s.MediaTypeReferrerMatcher(PublicKeyArtifactMediaType))
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to find public keys for record CID %s: %v", recordCID, err)
-	}
-
-	if len(publicKeyManifestDescs) == 0 {
-		referrersLogger.Debug("No public keys found", "recordCID", recordCID)
-
-		return []string{}, nil
-	}
-
-	// Extract public key data from each manifest
-	publicKeys := make([]string, 0, len(publicKeyManifestDescs))
-
-	for _, desc := range publicKeyManifestDescs {
-		publicKey, err := s.extractPublicKeyFromManifest(ctx, desc, recordCID)
-		if err != nil {
-			referrersLogger.Error("Failed to extract public key from manifest", "digest", desc.Digest.String(), "error", err)
-
-			continue // Skip this public key but continue with others
-		}
-
-		publicKeys = append(publicKeys, publicKey)
-	}
-
-	referrersLogger.Debug("Successfully pulled public keys", "recordCID", recordCID, "count", len(publicKeys))
-
-	return publicKeys, nil
 }
 
 // findReferrersByType searches for all referrer artifacts of the specified type that reference the given record manifest.
@@ -303,33 +219,6 @@ func (s *store) findReferrersByType(ctx context.Context, recordManifestDesc ocis
 	}
 
 	return foundReferrers, nil
-}
-
-// extractPublicKeyFromManifest extracts the public key data from a public key manifest.
-func (s *store) extractPublicKeyFromManifest(ctx context.Context, manifestDesc ocispec.Descriptor, recordCID string) (string, error) {
-	manifest, err := s.fetchAndParseManifestFromDescriptor(ctx, manifestDesc)
-	if err != nil {
-		return "", err // Error already includes proper gRPC status
-	}
-
-	if len(manifest.Layers) == 0 {
-		return "", status.Errorf(codes.Internal, "public key manifest has no layers")
-	}
-
-	blobDesc := manifest.Layers[0]
-
-	reader, err := s.repo.Fetch(ctx, blobDesc)
-	if err != nil {
-		return "", status.Errorf(codes.NotFound, "public key blob not found for CID %s: %v", recordCID, err)
-	}
-	defer reader.Close()
-
-	publicKeyData, err := io.ReadAll(reader)
-	if err != nil {
-		return "", status.Errorf(codes.Internal, "failed to read public key data for CID %s: %v", recordCID, err)
-	}
-
-	return string(publicKeyData), nil
 }
 
 // attachSignatureWithCosign uses cosign attach signature to attach a signature to a record in the OCI registry.
@@ -425,7 +314,7 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 
 	referrerType := referrer.GetType()
 	if referrer.GetType() == "" {
-		referrerType = DefaultReferrerArtifactMediaType
+		referrerType = ociutils.DefaultReferrerArtifactMediaType
 	}
 
 	// Push the referrer blob

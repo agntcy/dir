@@ -54,9 +54,6 @@ message PushReferrerRequest {
     // Signature to be stored as a referrer for the record
     sign.v1.Signature signature = 2;
 
-    // Public key to be stored as a referrer for the record and uploaded as a file to zot for verification
-    string public_key = 3;
-
     // RecordReferrer object to be stored for the record
     core.v1.RecordReferrer referrer = 4;
   }
@@ -96,9 +93,6 @@ message PullReferrerResponse {
   oneof response {
     // Signature to be fetched as a referrer
     sign.v1.Signature signature = 1;
-
-    // Public key to be fetched as a referrer
-    string public_key = 2;
 
     // RecordReferrer object associated with the record
     core.v1.RecordReferrer referrer = 3;

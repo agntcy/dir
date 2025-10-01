@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
+	ociutils "github.com/agntcy/dir/utils/oci"
 	"github.com/agntcy/dir/utils/zot"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -400,7 +402,7 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 
 	// Try to use signature storage if the store supports it
 	ociStore, ok := s.store.(interface {
-		PullPublicKeys(context.Context, string) ([]string, error)
+		PullReferrersByType(context.Context, string, string) ([]*corev1.RecordReferrer, error)
 	})
 	if !ok {
 		logger.Error("Store does not support public key upload, skipping", "tag", tag)
@@ -409,12 +411,22 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 	}
 
 	// Pull public key from OCI store
-	publicKeys, err := ociStore.PullPublicKeys(ctx, tag)
+	referrers, err := ociStore.PullReferrersByType(ctx, tag, ociutils.PublicKeyArtifactMediaType)
 	if err != nil {
 		return fmt.Errorf("failed to pull public key: %w", err)
 	}
 
-	for _, publicKey := range publicKeys {
+	for _, referrer := range referrers {
+		publicKeyValue, ok := referrer.GetData().AsMap()["publicKey"]
+		if !ok {
+			return errors.New("publicKey field not found in referrer data")
+		}
+
+		publicKey, ok := publicKeyValue.(string)
+		if !ok {
+			return errors.New("publicKey field is not a string")
+		}
+
 		// Upload the public key to zot for signature verification
 		// This enables zot to mark this signature as "trusted" in verification queries
 		uploadOpts := &zot.UploadPublicKeyOptions{

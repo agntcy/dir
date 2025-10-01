@@ -13,6 +13,10 @@ func Print(cmd *cobra.Command, args ...interface{}) {
 	_, _ = fmt.Fprint(cmd.OutOrStdout(), args...)
 }
 
+func Println(cmd *cobra.Command, args ...interface{}) {
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), args...)
+}
+
 func Printf(cmd *cobra.Command, format string, args ...interface{}) {
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), format, args...)
 }

@@ -14,6 +14,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	ociutils "github.com/agntcy/dir/utils/oci"
 	sigs "github.com/sigstore/cosign/v2/pkg/signature"
 )
 
@@ -113,15 +114,24 @@ func (c *Client) pullPublicKeyReferrer(ctx context.Context, recordCID string) (s
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
-		Options: &storev1.PullReferrerRequest_PullPublicKey{
-			PullPublicKey: true,
+		Options: &storev1.PullReferrerRequest_PullReferrerType{
+			PullReferrerType: ociutils.PublicKeyArtifactMediaType,
 		},
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to pull public key referrer: %w", err)
 	}
 
-	publicKey := response.GetPublicKey()
+	publicKeyValue, ok := response.GetReferrer().GetData().AsMap()["publicKey"]
+	if !ok {
+		return "", errors.New("publicKey field not found in referrer data")
+	}
+
+	publicKey, ok := publicKeyValue.(string)
+	if !ok {
+		return "", errors.New("publicKey field is not a string")
+	}
+
 	if publicKey == "" {
 		return "", errors.New("no public key found in referrer response")
 	}
