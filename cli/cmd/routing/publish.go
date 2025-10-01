@@ -80,9 +80,9 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 	}
 
 	// Success
-	presenter.Printf(cmd, "Successfully published!\n")
-	presenter.Printf(cmd, "Record is now discoverable by other peers.\n")
-	presenter.Printf(cmd, "Use 'dirctl routing search' from other peers to find this record.\n")
+	presenter.Printf(cmd, "Successfully submitted publication request!\n")
+	presenter.Printf(cmd, "Record will be discoverable by other peers once the publication service processes the request.\n")
+	presenter.Printf(cmd, "Use 'dirctl routing search' from other peers to find this record after publication completes.\n")
 
 	return nil
 }
