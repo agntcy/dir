@@ -72,9 +72,9 @@ func (s *store) PushSignature(ctx context.Context, recordCID string, signature *
 	return nil
 }
 
-// PullSignature pulls a signature from the OCI store.
-func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Signature, error) {
-	referrersLogger.Debug("Pulling signature from OCI store", "recordCID", recordCID)
+// PullSignatures pulls all signatures from the OCI store for a given record CID.
+func (s *store) PullSignatures(ctx context.Context, recordCID string) ([]*signv1.Signature, error) {
+	referrersLogger.Debug("Pulling all signatures from OCI store", "recordCID", recordCID)
 
 	if recordCID == "" {
 		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
@@ -86,12 +86,34 @@ func (s *store) PullSignature(ctx context.Context, recordCID string) (*signv1.Si
 		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
 	}
 
-	signatureManifestDesc, err := s.findReferrerByType(ctx, recordManifestDesc, SignatureArtifactType, s.MediaTypeReferrerMatcher(SignatureArtifactType))
+	signatureManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, SignatureArtifactType, s.MediaTypeReferrerMatcher(SignatureArtifactType))
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "no signature found for record CID %s: %v", recordCID, err)
+		return nil, status.Errorf(codes.Internal, "failed to find signatures for record CID %s: %v", recordCID, err)
 	}
 
-	return s.extractSignatureFromManifest(ctx, *signatureManifestDesc)
+	if len(signatureManifestDescs) == 0 {
+		referrersLogger.Debug("No signatures found", "recordCID", recordCID)
+
+		return []*signv1.Signature{}, nil
+	}
+
+	// Extract signature data from each manifest
+	signatures := make([]*signv1.Signature, 0, len(signatureManifestDescs))
+
+	for _, desc := range signatureManifestDescs {
+		signature, err := s.extractSignatureFromManifest(ctx, desc)
+		if err != nil {
+			referrersLogger.Error("Failed to extract signature from manifest", "digest", desc.Digest.String(), "error", err)
+
+			continue // Skip this signature but continue with others
+		}
+
+		signatures = append(signatures, signature)
+	}
+
+	referrersLogger.Debug("Successfully pulled signatures", "recordCID", recordCID, "count", len(signatures))
+
+	return signatures, nil
 }
 
 // extractSignatureFromManifest extracts signature data from a cosign signature manifest.
@@ -201,43 +223,63 @@ func (s *store) PushPublicKey(ctx context.Context, recordCID string, publicKey s
 	return nil
 }
 
-// PullPublicKey retrieves a public key for a given record CID by finding the public key artifact that references the record.
-func (s *store) PullPublicKey(ctx context.Context, recordCID string) (string, error) {
-	referrersLogger.Debug("Pulling public key from OCI store", "recordCID", recordCID)
+// PullPublicKeys retrieves all public keys for a given record CID by finding all public key artifacts that reference the record.
+func (s *store) PullPublicKeys(ctx context.Context, recordCID string) ([]string, error) {
+	referrersLogger.Debug("Pulling all public keys from OCI store", "recordCID", recordCID)
 
 	if recordCID == "" {
-		return "", status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
+		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
 	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
 	if err != nil {
-		return "", status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
+		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
 	}
 
-	publicKeyManifestDesc, err := s.findReferrerByType(ctx, recordManifestDesc, PublicKeyArtifactMediaType, s.MediaTypeReferrerMatcher(PublicKeyArtifactMediaType))
+	publicKeyManifestDescs, err := s.findReferrersByType(ctx, recordManifestDesc, PublicKeyArtifactMediaType, s.MediaTypeReferrerMatcher(PublicKeyArtifactMediaType))
 	if err != nil {
-		return "", status.Errorf(codes.NotFound, "no public key found for record CID %s: %v", recordCID, err)
+		return nil, status.Errorf(codes.Internal, "failed to find public keys for record CID %s: %v", recordCID, err)
 	}
 
-	return s.extractPublicKeyFromManifest(ctx, *publicKeyManifestDesc, recordCID)
+	if len(publicKeyManifestDescs) == 0 {
+		referrersLogger.Debug("No public keys found", "recordCID", recordCID)
+
+		return []string{}, nil
+	}
+
+	// Extract public key data from each manifest
+	publicKeys := make([]string, 0, len(publicKeyManifestDescs))
+
+	for _, desc := range publicKeyManifestDescs {
+		publicKey, err := s.extractPublicKeyFromManifest(ctx, desc, recordCID)
+		if err != nil {
+			referrersLogger.Error("Failed to extract public key from manifest", "digest", desc.Digest.String(), "error", err)
+
+			continue // Skip this public key but continue with others
+		}
+
+		publicKeys = append(publicKeys, publicKey)
+	}
+
+	referrersLogger.Debug("Successfully pulled public keys", "recordCID", recordCID, "count", len(publicKeys))
+
+	return publicKeys, nil
 }
 
-// findReferrerByType searches for a referrer artifact of the specified type that references the given record manifest.
-func (s *store) findReferrerByType(ctx context.Context, recordManifestDesc ocispec.Descriptor, referrerType string, matcher ReferrerMatcher) (*ocispec.Descriptor, error) {
+// findReferrersByType searches for all referrer artifacts of the specified type that reference the given record manifest.
+func (s *store) findReferrersByType(ctx context.Context, recordManifestDesc ocispec.Descriptor, referrerType string, matcher ReferrerMatcher) ([]ocispec.Descriptor, error) {
 	referrersLister, ok := s.repo.(ReferrersLister)
 	if !ok {
 		return nil, status.Errorf(codes.Unimplemented, "repository does not support OCI referrers API")
 	}
 
-	var foundReferrer *ocispec.Descriptor
+	var foundReferrers []ocispec.Descriptor
 
 	err := referrersLister.Referrers(ctx, recordManifestDesc, "", func(referrers []ocispec.Descriptor) error {
 		for _, referrer := range referrers {
 			if matcher(ctx, referrer) {
 				referrersLogger.Debug("Found matching referrer", "type", referrerType, "digest", referrer.Digest.String(), "mediaType", referrer.MediaType)
-				foundReferrer = &referrer
-
-				return nil // Found matching referrer, stop searching
+				foundReferrers = append(foundReferrers, referrer)
 			}
 		}
 
@@ -247,11 +289,7 @@ func (s *store) findReferrerByType(ctx context.Context, recordManifestDesc ocisp
 		return nil, status.Errorf(codes.Internal, "failed to query referrers for manifest %s: %v", recordManifestDesc.Digest.String(), err)
 	}
 
-	if foundReferrer == nil {
-		return nil, status.Errorf(codes.NotFound, "no %s referrer found for manifest %s", referrerType, recordManifestDesc.Digest.String())
-	}
-
-	return foundReferrer, nil
+	return foundReferrers, nil
 }
 
 // extractPublicKeyFromManifest extracts the public key data from a public key manifest.

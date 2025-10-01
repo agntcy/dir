@@ -400,7 +400,7 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 
 	// Try to use signature storage if the store supports it
 	ociStore, ok := s.store.(interface {
-		PullPublicKey(context.Context, string) (string, error)
+		PullPublicKeys(context.Context, string) ([]string, error)
 	})
 	if !ok {
 		logger.Error("Store does not support public key upload, skipping", "tag", tag)
@@ -409,31 +409,33 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 	}
 
 	// Pull public key from OCI store
-	publicKey, err := ociStore.PullPublicKey(ctx, tag)
+	publicKeys, err := ociStore.PullPublicKeys(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to pull public key: %w", err)
 	}
 
-	// Upload the public key to zot for signature verification
-	// This enables zot to mark this signature as "trusted" in verification queries
-	uploadOpts := &zot.UploadPublicKeyOptions{
-		Config: &zot.VerifyConfig{
-			RegistryAddress: s.ociConfig.RegistryAddress,
-			RepositoryName:  s.ociConfig.RepositoryName,
-			Username:        s.ociConfig.AuthConfig.Username,
-			Password:        s.ociConfig.AuthConfig.Password,
-			AccessToken:     s.ociConfig.AuthConfig.AccessToken,
-			Insecure:        s.ociConfig.AuthConfig.Insecure,
-		},
-		PublicKey: publicKey,
+	for _, publicKey := range publicKeys {
+		// Upload the public key to zot for signature verification
+		// This enables zot to mark this signature as "trusted" in verification queries
+		uploadOpts := &zot.UploadPublicKeyOptions{
+			Config: &zot.VerifyConfig{
+				RegistryAddress: s.ociConfig.RegistryAddress,
+				RepositoryName:  s.ociConfig.RepositoryName,
+				Username:        s.ociConfig.AuthConfig.Username,
+				Password:        s.ociConfig.AuthConfig.Password,
+				AccessToken:     s.ociConfig.AuthConfig.AccessToken,
+				Insecure:        s.ociConfig.AuthConfig.Insecure,
+			},
+			PublicKey: publicKey,
+		}
+
+		err = zot.UploadPublicKey(ctx, uploadOpts)
+		if err != nil {
+			return fmt.Errorf("failed to upload public key to zot for verification: %w", err)
+		}
 	}
 
-	err = zot.UploadPublicKey(ctx, uploadOpts)
-	if err != nil {
-		return fmt.Errorf("failed to upload public key to zot for verification: %w", err)
-	}
-
-	logger.Debug("Successfully uploaded public key to zot for verification", "tag", tag)
+	logger.Debug("Successfully uploaded public keys to zot for verification", "tag", tag)
 
 	return nil
 }

@@ -37,9 +37,9 @@ type SignatureStoreAPI interface {
 	// Push public key to content store
 	PushPublicKey(context.Context, string, string) error
 
-	// Pull signature from content store
-	PullSignature(context.Context, string) (*signv1.Signature, error)
+	// Pull all signatures from content store
+	PullSignatures(context.Context, string) ([]*signv1.Signature, error)
 
-	// Pull public key from content store
-	PullPublicKey(context.Context, string) (string, error)
+	// Pull all public keys from content store
+	PullPublicKeys(context.Context, string) ([]string, error)
 }

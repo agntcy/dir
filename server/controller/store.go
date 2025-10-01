@@ -329,98 +329,125 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 			return err
 		}
 
-		var response *storev1.PullReferrerResponse
-
 		switch request.GetOptions().(type) {
 		case *storev1.PullReferrerRequest_PullSignature:
 			storeLogger.Debug("Pulling signature referrer", "cid", request.GetRecordRef().GetCid())
 
-			response = s.pullSignatureReferrer(stream.Context(), request)
+			if err := s.pullSignatureReferrer(stream.Context(), request, stream); err != nil {
+				return err
+			}
 		case *storev1.PullReferrerRequest_PullPublicKey:
 			storeLogger.Debug("Pulling public key referrer", "cid", request.GetRecordRef().GetCid())
 
-			response = s.pullPublicKeyReferrer(stream.Context(), request)
+			if err := s.pullPublicKeyReferrer(stream.Context(), request, stream); err != nil {
+				return err
+			}
 		default:
 			storeLogger.Debug("Unknown referrer type, skipping")
 
 			continue
 		}
-
-		if err := stream.Send(response); err != nil {
-			return status.Errorf(codes.Internal, "failed to send pull referrer response: %v", err)
-		}
 	}
 }
 
-func (s storeCtrl) pullSignatureReferrer(ctx context.Context, request *storev1.PullReferrerRequest) *storev1.PullReferrerResponse {
+func (s storeCtrl) pullSignatureReferrer(ctx context.Context, request *storev1.PullReferrerRequest, stream storev1.StoreService_PullReferrerServer) error {
 	storeLogger.Debug("Pulling signature referrer", "cid", request.GetRecordRef().GetCid())
 
 	// Try to use signature storage if the store supports it
 	sigStore, ok := s.store.(interface {
-		PullSignature(context.Context, string) (*signv1.Signature, error)
+		PullSignatures(context.Context, string) ([]*signv1.Signature, error)
 	})
 	if !ok {
 		storeLogger.Error("Signature storage not supported by current store implementation")
 
-		return &storev1.PullReferrerResponse{
+		response := &storev1.PullReferrerResponse{
 			Response: &storev1.PullReferrerResponse_Signature{
 				Signature: nil,
 			},
 		}
+
+		return stream.Send(response)
 	}
 
-	signature, err := sigStore.PullSignature(ctx, request.GetRecordRef().GetCid())
+	signatures, err := sigStore.PullSignatures(ctx, request.GetRecordRef().GetCid())
 	if err != nil {
 		storeLogger.Error("Failed to pull signature for record", "error", err, "cid", request.GetRecordRef().GetCid())
 
-		return &storev1.PullReferrerResponse{
+		response := &storev1.PullReferrerResponse{
 			Response: &storev1.PullReferrerResponse_Signature{
 				Signature: nil,
 			},
 		}
+
+		return stream.Send(response)
 	}
 
-	return &storev1.PullReferrerResponse{
-		Response: &storev1.PullReferrerResponse_Signature{
-			Signature: signature,
-		},
+	for _, signature := range signatures {
+		response := &storev1.PullReferrerResponse{
+			Response: &storev1.PullReferrerResponse_Signature{
+				Signature: signature,
+			},
+		}
+
+		if err := stream.Send(response); err != nil {
+			return status.Errorf(codes.Internal, "failed to send signature response: %v", err)
+		}
+
+		storeLogger.Debug("Signature streamed successfully", "cid", request.GetRecordRef().GetCid())
 	}
+
+	return nil
 }
 
-func (s storeCtrl) pullPublicKeyReferrer(ctx context.Context, request *storev1.PullReferrerRequest) *storev1.PullReferrerResponse {
+func (s storeCtrl) pullPublicKeyReferrer(ctx context.Context, request *storev1.PullReferrerRequest, stream storev1.StoreService_PullReferrerServer) error {
 	storeLogger.Debug("Pulling public key referrer", "cid", request.GetRecordRef().GetCid())
 
 	// Try to use signature storage if the store supports it
 	sigStore, ok := s.store.(interface {
-		PullPublicKey(context.Context, string) (string, error)
+		PullPublicKeys(context.Context, string) ([]string, error)
 	})
 
 	if !ok {
 		storeLogger.Error("Public key storage not supported by current store implementation")
 
-		return &storev1.PullReferrerResponse{
+		response := &storev1.PullReferrerResponse{
 			Response: &storev1.PullReferrerResponse_PublicKey{
 				PublicKey: "",
 			},
 		}
+
+		return stream.Send(response)
 	}
 
-	publicKey, err := sigStore.PullPublicKey(ctx, request.GetRecordRef().GetCid())
+	publicKeys, err := sigStore.PullPublicKeys(ctx, request.GetRecordRef().GetCid())
 	if err != nil {
 		storeLogger.Error("Failed to pull public key for record", "error", err, "cid", request.GetRecordRef().GetCid())
 
-		return &storev1.PullReferrerResponse{
+		response := &storev1.PullReferrerResponse{
 			Response: &storev1.PullReferrerResponse_PublicKey{
 				PublicKey: "",
 			},
 		}
+
+		return stream.Send(response)
 	}
 
-	return &storev1.PullReferrerResponse{
-		Response: &storev1.PullReferrerResponse_PublicKey{
-			PublicKey: publicKey,
-		},
+	// Stream each public key as a separate response
+	for _, publicKey := range publicKeys {
+		response := &storev1.PullReferrerResponse{
+			Response: &storev1.PullReferrerResponse_PublicKey{
+				PublicKey: publicKey,
+			},
+		}
+
+		if err := stream.Send(response); err != nil {
+			return status.Errorf(codes.Internal, "failed to send public key response: %v", err)
+		}
+
+		storeLogger.Debug("Public key streamed successfully", "cid", request.GetRecordRef().GetCid())
 	}
+
+	return nil
 }
 
 // pushRecordToStore pushes a record to the store and adds it to the search index.
