@@ -258,7 +258,12 @@ describe('Client', () => {
           recordRef: recordRef,
           options: {
             case: 'signature',
-            value: {},
+            value: {
+              signature: 'dGVzdC1zaWduYXR1cmU=',
+              annotations: {
+                payload: 'test-payload-data'
+              }
+            },
           },
         });
       },
@@ -277,6 +282,35 @@ describe('Client', () => {
     const records = genRecords(2, 'pullReferrer');
     const recordRefs = await client.push(records);
 
+    // Push signatures to these records first
+    const pushRequests: models.store_v1.PushReferrerRequest[] = recordRefs.map(
+      (
+        recordRef: models.core_v1.RecordRef,
+      ): models.store_v1.PushReferrerRequest => {
+        return create(models.store_v1.PushReferrerRequestSchema, {
+          recordRef: recordRef,
+          options: {
+            case: 'signature',
+            value: {
+              signature: 'dGVzdC1zaWduYXR1cmU=',
+              annotations: {
+                payload: 'test-payload-data'
+              }
+            },
+          },
+        });
+      },
+    );
+
+    const pushResponse = await client.push_referrer(pushRequests);
+    expect(pushResponse).not.toBeNull();
+    expect(pushResponse).toHaveLength(2);
+
+    for (const r of pushResponse) {
+      expect(r).toBeTypeOf(typeof models.store_v1.PushReferrerResponseSchema);
+    }
+
+    // Now pull the signatures back
     const requests: models.store_v1.PullReferrerRequest[] = recordRefs.map(
       (
         recordRef: models.core_v1.RecordRef,
