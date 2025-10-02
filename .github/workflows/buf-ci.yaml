@@ -4,8 +4,10 @@
 name: Buf CI
 
 on:
+  push:
+  delete:
   pull_request:
-    types: 
+    types:
       - opened
       - synchronize
       - reopened
