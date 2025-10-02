@@ -402,7 +402,7 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 
 	// Try to use signature storage if the store supports it
 	ociStore, ok := s.store.(interface {
-		PullReferrersByType(context.Context, string, string) ([]*corev1.RecordReferrer, error)
+		WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
 	})
 	if !ok {
 		logger.Error("Store does not support public key upload, skipping", "tag", tag)
@@ -410,13 +410,8 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 		return nil
 	}
 
-	// Pull public key from OCI store
-	referrers, err := ociStore.PullReferrersByType(ctx, tag, ociutils.PublicKeyArtifactMediaType)
-	if err != nil {
-		return fmt.Errorf("failed to pull public key: %w", err)
-	}
-
-	for _, referrer := range referrers {
+	// Walk public key referrers from OCI store
+	walkFn := func(referrer *corev1.RecordReferrer) error {
 		publicKeyValue, ok := referrer.GetData().AsMap()["publicKey"]
 		if !ok {
 			return errors.New("publicKey field not found in referrer data")
@@ -441,10 +436,18 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 			PublicKey: publicKey,
 		}
 
-		err = zot.UploadPublicKey(ctx, uploadOpts)
+		err := zot.UploadPublicKey(ctx, uploadOpts)
 		if err != nil {
 			return fmt.Errorf("failed to upload public key to zot for verification: %w", err)
 		}
+
+		return nil // Continue walking
+	}
+
+	// Walk public key referrers
+	err := ociStore.WalkReferrers(ctx, tag, ociutils.PublicKeyArtifactMediaType, walkFn)
+	if err != nil {
+		return fmt.Errorf("failed to walk public key referrers: %w", err)
 	}
 
 	logger.Debug("Successfully uploaded public keys to zot for verification", "tag", tag)

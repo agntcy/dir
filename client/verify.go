@@ -153,18 +153,9 @@ func (c *Client) pullPublicKeyReferrer(ctx context.Context, recordCID string) ([
 
 	// Get the all public key responses
 	for response := range resultCh {
-		if response.GetReferrer() == nil {
-			continue
-		}
-
-		publicKeyValue, ok := response.GetReferrer().GetData().AsMap()["publicKey"]
-		if !ok {
-			continue
-		}
-
-		publicKey, ok := publicKeyValue.(string)
-		if !ok || publicKey == "" {
-			continue
+		publicKey, err := response.GetReferrer().GetPublicKey()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get public key: %w", err)
 		}
 
 		publicKeys = append(publicKeys, publicKey)

@@ -360,98 +360,78 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 	return nil
 }
 
-// PullReferrersByType retrieves all referrers of a specific type for a given record CID.
-func (s *store) PullReferrersByType(ctx context.Context, recordCID string, referrerType string) ([]*corev1.RecordReferrer, error) {
-	referrersLogger.Debug("Pulling referrers by type from OCI store", "recordCID", recordCID, "type", referrerType)
+// WalkReferrers walks through referrers for a given record CID, calling walkFn for each referrer.
+// If referrerType is empty, all referrers are walked, otherwise only referrers of the specified type.
+func (s *store) WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error {
+	referrersLogger.Debug("Walking referrers from OCI store", "recordCID", recordCID, "type", referrerType)
 
 	if recordCID == "" {
-		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
+		return status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
-	if referrerType == "" {
-		return nil, status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
+	if walkFn == nil {
+		return status.Error(codes.InvalidArgument, "walkFn is required") //nolint:wrapcheck
 	}
 
 	// Get the record manifest descriptor
 	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
+		return status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
 	}
 
-	// Find referrers using the matcher
-	referrerDescs, err := s.findReferrersByType(ctx, recordManifestDesc, s.MediaTypeReferrerMatcher(referrerType))
-	if err != nil {
-		return nil, fmt.Errorf("failed to find referrers: %w", err)
+	// Determine the matcher based on referrerType
+	var matcher ReferrerMatcher
+	if referrerType != "" {
+		matcher = s.MediaTypeReferrerMatcher(referrerType)
 	}
 
-	if len(referrerDescs) == 0 {
-		referrersLogger.Debug("No referrers found", "recordCID", recordCID, "type", referrerType)
-
-		return []*corev1.RecordReferrer{}, nil
+	// Use the OCI referrers API to walk through referrers efficiently
+	referrersLister, ok := s.repo.(ReferrersLister)
+	if !ok {
+		return status.Errorf(codes.Unimplemented, "repository does not support OCI referrers API")
 	}
 
-	// Extract referrer data from each manifest
-	referrers := make([]*corev1.RecordReferrer, 0, len(referrerDescs))
+	var walkErr error
 
-	for _, desc := range referrerDescs {
-		referrer, err := s.extractReferrerFromManifest(ctx, desc, recordCID)
-		if err != nil {
-			referrersLogger.Error("Failed to extract referrer from manifest", "digest", desc.Digest.String(), "error", err)
+	err = referrersLister.Referrers(ctx, recordManifestDesc, "", func(referrers []ocispec.Descriptor) error {
+		for _, referrerDesc := range referrers {
+			// Apply matcher if specified
+			if matcher != nil && !matcher(ctx, referrerDesc) {
+				continue
+			}
 
-			continue // Skip this referrer but continue with others
+			// Extract referrer data from manifest
+			referrer, err := s.extractReferrerFromManifest(ctx, referrerDesc, recordCID)
+			if err != nil {
+				referrersLogger.Error("Failed to extract referrer from manifest", "digest", referrerDesc.Digest.String(), "error", err)
+
+				continue // Skip this referrer but continue with others
+			}
+
+			// Call the walk function
+			if err := walkFn(referrer); err != nil {
+				walkErr = err
+
+				return err // Stop walking on error
+			}
+
+			referrersLogger.Debug("Referrer processed successfully", "digest", referrerDesc.Digest.String(), "type", referrer.GetType())
 		}
 
-		referrers = append(referrers, referrer)
+		return nil // Continue with next batch
+	})
+
+	if walkErr != nil {
+		return walkErr
 	}
 
-	referrersLogger.Debug("Successfully pulled referrers by type", "recordCID", recordCID, "type", referrerType, "count", len(referrers))
-
-	return referrers, nil
-}
-
-// PullAllReferrers retrieves all referrers for a given record CID.
-func (s *store) PullAllReferrers(ctx context.Context, recordCID string) ([]*corev1.RecordReferrer, error) {
-	referrersLogger.Debug("Pulling all referrers from OCI store", "recordCID", recordCID)
-
-	if recordCID == "" {
-		return nil, status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
-	}
-
-	// Get the record manifest descriptor
-	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "failed to resolve record manifest for CID %s: %v", recordCID, err)
+		return status.Errorf(codes.Internal, "failed to walk referrers for manifest %s: %v", recordManifestDesc.Digest.String(), err)
 	}
 
-	// Find referrers using the matcher
-	referrerDescs, err := s.findReferrersByType(ctx, recordManifestDesc, nil) // All referrers
-	if err != nil {
-		return nil, fmt.Errorf("failed to find referrers: %w", err)
-	}
+	referrersLogger.Debug("Successfully walked referrers", "recordCID", recordCID, "type", referrerType)
 
-	if len(referrerDescs) == 0 {
-		referrersLogger.Debug("No referrers found", "recordCID", recordCID)
-
-		return []*corev1.RecordReferrer{}, nil
-	}
-
-	// Extract referrer data from each manifest
-	referrers := make([]*corev1.RecordReferrer, 0, len(referrerDescs))
-
-	for _, desc := range referrerDescs {
-		referrer, err := s.extractReferrerFromManifest(ctx, desc, recordCID)
-		if err != nil {
-			referrersLogger.Error("Failed to extract referrer from manifest", "digest", desc.Digest.String(), "error", err)
-
-			continue // Skip this referrer but continue with others
-		}
-
-		referrers = append(referrers, referrer)
-	}
-
-	referrersLogger.Debug("Successfully pulled all referrers", "recordCID", recordCID, "count", len(referrers))
-
-	return referrers, nil
+	return nil
 }
 
 // extractReferrerFromManifest extracts the referrer data from a referrer manifest.

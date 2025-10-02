@@ -97,18 +97,9 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 		// Get all public key responses
 		for response := range resultCh {
-			if response.GetReferrer() == nil {
-				continue
-			}
-
-			publicKeyValue, ok := response.GetReferrer().GetData().AsMap()["publicKey"]
-			if !ok {
-				continue
-			}
-
-			publicKey, ok := publicKeyValue.(string)
-			if !ok || publicKey == "" {
-				continue
+			publicKey, err := response.GetReferrer().GetPublicKey()
+			if err != nil {
+				return fmt.Errorf("failed to get public key: %w", err)
 			}
 
 			presenter.Println(cmd, "Public key: "+publicKey)

@@ -496,7 +496,7 @@ func (s storeCtrl) pullAllReferrers(ctx context.Context, request *storev1.PullRe
 
 	// Try to use referrer storage if the store supports it
 	refStore, ok := s.store.(interface {
-		PullAllReferrers(context.Context, string) ([]*corev1.RecordReferrer, error)
+		WalkReferrers(context.Context, string, string, func(*corev1.RecordReferrer) error) error
 	})
 	if !ok {
 		storeLogger.Error("Referrer storage not supported by current store implementation")
@@ -504,14 +504,8 @@ func (s storeCtrl) pullAllReferrers(ctx context.Context, request *storev1.PullRe
 		return stream.Send(&storev1.PullReferrerResponse{})
 	}
 
-	referrers, err := refStore.PullAllReferrers(ctx, request.GetRecordRef().GetCid())
-	if err != nil {
-		storeLogger.Error("Failed to pull referrers for record", "error", err, "cid", request.GetRecordRef().GetCid())
-
-		return stream.Send(&storev1.PullReferrerResponse{})
-	}
-
-	for _, referrer := range referrers {
+	// Use WalkReferrers with a callback that streams each referrer
+	walkFn := func(referrer *corev1.RecordReferrer) error {
 		response := &storev1.PullReferrerResponse{
 			Response: &storev1.PullReferrerResponse_Referrer{
 				Referrer: referrer,
@@ -523,6 +517,16 @@ func (s storeCtrl) pullAllReferrers(ctx context.Context, request *storev1.PullRe
 		}
 
 		storeLogger.Debug("Referrer streamed successfully", "cid", request.GetRecordRef().GetCid())
+
+		return nil
+	}
+
+	// Walk all referrers (empty referrerType means all types)
+	err := refStore.WalkReferrers(ctx, request.GetRecordRef().GetCid(), "", walkFn)
+	if err != nil {
+		storeLogger.Error("Failed to walk referrers for record", "error", err, "cid", request.GetRecordRef().GetCid())
+
+		return stream.Send(&storev1.PullReferrerResponse{})
 	}
 
 	return nil
@@ -533,7 +537,7 @@ func (s storeCtrl) pullReferrersByType(ctx context.Context, request *storev1.Pul
 
 	// Try to use referrer storage if the store supports it
 	refStore, ok := s.store.(interface {
-		PullReferrersByType(context.Context, string, string) ([]*corev1.RecordReferrer, error)
+		WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
 	})
 	if !ok {
 		storeLogger.Error("Referrer storage not supported by current store implementation")
@@ -541,14 +545,8 @@ func (s storeCtrl) pullReferrersByType(ctx context.Context, request *storev1.Pul
 		return stream.Send(&storev1.PullReferrerResponse{})
 	}
 
-	referrers, err := refStore.PullReferrersByType(ctx, request.GetRecordRef().GetCid(), request.GetPullReferrerType())
-	if err != nil {
-		storeLogger.Error("Failed to pull referrers by type for record", "error", err, "cid", request.GetRecordRef().GetCid(), "type", request.GetPullReferrerType())
-
-		return stream.Send(&storev1.PullReferrerResponse{})
-	}
-
-	for _, referrer := range referrers {
+	// Use WalkReferrers with a callback that streams each referrer
+	walkFn := func(referrer *corev1.RecordReferrer) error {
 		response := &storev1.PullReferrerResponse{
 			Response: &storev1.PullReferrerResponse_Referrer{
 				Referrer: referrer,
@@ -560,6 +558,16 @@ func (s storeCtrl) pullReferrersByType(ctx context.Context, request *storev1.Pul
 		}
 
 		storeLogger.Debug("Referrer streamed successfully", "cid", request.GetRecordRef().GetCid(), "type", request.GetPullReferrerType())
+
+		return nil
+	}
+
+	// Walk referrers of the specified type
+	err := refStore.WalkReferrers(ctx, request.GetRecordRef().GetCid(), request.GetPullReferrerType(), walkFn)
+	if err != nil {
+		storeLogger.Error("Failed to walk referrers by type for record", "error", err, "cid", request.GetRecordRef().GetCid(), "type", request.GetPullReferrerType())
+
+		return stream.Send(&storev1.PullReferrerResponse{})
 	}
 
 	return nil

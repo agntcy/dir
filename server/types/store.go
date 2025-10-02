@@ -46,9 +46,6 @@ type ReferrerStoreAPI interface {
 	// Push referrer to content store
 	PushReferrer(context.Context, string, *corev1.RecordReferrer) error
 
-	// Pull referrers from content store by type
-	PullReferrersByType(context.Context, string, string) ([]*corev1.RecordReferrer, error)
-
-	// Pull all referrers from content store
-	PullAllReferrers(context.Context, string) ([]*corev1.RecordReferrer, error)
+	// Walk referrers individually for a given record CID and optional type filter
+	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
 }
