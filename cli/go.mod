@@ -43,7 +43,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
 	github.com/agntcy/dirhub/backport/api v0.0.0-00010101000000-000000000000 // indirect
-	github.com/agntcy/oasf-sdk/pkg v0.0.5 // indirect
+	github.com/agntcy/oasf-sdk/pkg v0.0.6 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/avast/retry-go/v4 v4.6.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect

@@ -15,105 +15,15 @@ permissions:
   pull-requests: write
 
 jobs:
-  validate:
-    name: Validate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: amannn/action-semantic-pull-request@0723387faaf9b38adef4775cd42cfd5155ed6017 # v5.5.3
-        id: lint_pr_title
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          ignoreLabels: |
-            ignore-semantic-pr
-          # Configure additional validation for the subject based on a regex.
-          # This example ensures the subject doesn't start with an uppercase character.
-          subjectPattern: ^(?![A-Z]).+$
-          # Types should match the types defined in the Conventional Commits specification.
-          # See: https://www.conventionalcommits.org/en/v1.0.0
-          types: |
-            build
-            chore
-            ci
-            deps
-            docs
-            feat
-            fix
-            perf
-            refactor
-            revert
-            style
-            test
-            release
-          # Scopes should match the components within the directory repo.
-          # For example, if you are making a change to the API component,
-          # the scope should be "dir/api".
-          #
-          # Components (optional):
-          # - Dir (dir/): api, server, client
-          # - SDK (sdk/): go, js, py
-          # - CLI (cli/): dir, hub
-          # - Helm (helm/): dir, dirctl
-          # - Docker (docker/): docker
-          #
-          # TODO: Add additional scopes based on use-cases/components as needed.
-          # For now, allow users to use (.*) as a special case that can have any scope.
-          scopes: |
-            dir
-            dir/api
-            dir/server
-            dir/client
-            sdk
-            sdk/go
-            sdk/js
-            sdk/py
-            cli
-            cli/dir
-            cli/hub
-            helm
-            helm/dir
-            helm/dirctl
-            docker
-            .*
-          requireScope: true
-
-      # Leave a comment if linter reports an error
-      - uses: marocchino/sticky-pull-request-comment@52423e01640425a022ef5fd42c6fb5f633a02728 # v2.9.1
-        if: always() && (steps.lint_pr_title.outputs.error_message != null)
-        with:
-          header: pr-title-lint-error
-          message: |
-            Hey there and thank you for opening this pull request! 👋🏼
-            
-            We require pull request titles to follow the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/),
-            and it looks like your proposed title needs to be adjusted.
-
-            Details:
-            
-            ```
-            ${{ steps.lint_pr_title.outputs.error_message }}
-            ```
-
-            Examples:
-
-            ```
-            - feat(dir/api): add new authentication endpoint
-            - fix(sdk/js): resolve issue with token refresh
-            - chore(deps): update dependencies
-            ```
-
-      # Hide error message if the PR title has been fixed
-      - if: ${{ steps.lint_pr_title.outputs.error_message == null }}
-        uses: marocchino/sticky-pull-request-comment@52423e01640425a022ef5fd42c6fb5f633a02728 # v2.9.1
-        with:
-          header: pr-title-lint-error
-          delete: true
+  validate_pr_title:
+    name: Validate PR Title
+    uses: ./.github/workflows/lint-pr-title.yaml
 
   label:
     name: Label
     runs-on: ubuntu-latest
     steps:
-      - uses: codelytv/pr-size-labeler@1c3422395d899286d5ee2c809fd5aed264d5eb9b # v1.10.2
+      - uses: codelytv/pr-size-labeler@4ec67706cd878fbc1c8db0a5dcd28b6bb412e85a # v1.10.3
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           xs_label: 'size/XS'

@@ -257,16 +257,16 @@ tasks:
   sdk:test-env:create:
     desc: Create Kubernetes cluster test environment
     cmds:
-      - task: deploy:kubernetes:network
+      - task: deploy:kubernetes:local
         vars:
-          PUBLICATION_SCHEDULER_INTERVAL: 1s
-      - task: deploy:kubernetes:network:port-forward
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+      - task: deploy:kubernetes:local:port-forward
 
   sdk:test-env:delete:
     desc: Delete Kubernetes cluster test environment
     cmds:
-      - task: deploy:kubernetes:network:port-forward:cleanup
-      - task: deploy:kubernetes:network:cleanup
+      - task: deploy:kubernetes:local:port-forward:cleanup
+      - task: deploy:kubernetes:local:cleanup
 
   sdk:test-env:spiffe:load-test-image:
     desc: Load the SDK tests into KinD
@@ -313,9 +313,6 @@ tasks:
     deps:
       - task: deps:uv
     env:
-      DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
-      DIRECTORY_SERVER_PEER1_ADDRESS: '0.0.0.0:8891'
-      DIRECTORY_SERVER_PEER2_ADDRESS: '0.0.0.0:8892'
       KIND_CLUSTER_NAME: 'sdk-py-test'
     cmds:
       - task: sdk:test-env:create
@@ -330,9 +327,6 @@ tasks:
     desc: Test javascript client SDK package
     dir: ./sdk/dir-js
     env:
-      DIRECTORY_CLIENT_SERVER_ADDRESS: '0.0.0.0:8890'
-      DIRECTORY_SERVER_PEER1_ADDRESS: '0.0.0.0:8891'
-      DIRECTORY_SERVER_PEER2_ADDRESS: '0.0.0.0:8892'
       KIND_CLUSTER_NAME: 'sdk-js-test'
     cmds:
       - task: sdk:test-env:create
@@ -506,12 +500,12 @@ tasks:
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
       # Generate credentials
-      HTPASSWD_USERNAME: "apiserver"
+      HTPASSWD_USERNAME: 'apiserver'
       HTPASSWD_PASSWORD:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
         sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
-      HTPASSWD_SYNC_USERNAME: "sync-user"
+      HTPASSWD_SYNC_USERNAME: 'sync-user'
       HTPASSWD_SYNC_PASSWORD:
         sh: openssl rand -hex 16
     cmds:
@@ -521,11 +515,11 @@ tasks:
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
-          HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
-          HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
-          HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
-          HTPASSWD_SYNC_USERNAME: "{{ .HTPASSWD_SYNC_USERNAME }}"
-          HTPASSWD_SYNC_PASSWORD: "{{ .HTPASSWD_SYNC_PASSWORD }}"
+          HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME }}'
+          HTPASSWD_PASSWORD: '{{ .HTPASSWD_PASSWORD }}'
+          HTPASSWD_AUTH_HEADER: '{{ .HTPASSWD_AUTH_HEADER }}'
+          HTPASSWD_SYNC_USERNAME: '{{ .HTPASSWD_SYNC_USERNAME }}'
+          HTPASSWD_SYNC_PASSWORD: '{{ .HTPASSWD_SYNC_PASSWORD }}'
 
       # Deploy chart
       - |
@@ -677,12 +671,12 @@ tasks:
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
       # Generate credentials
-      HTPASSWD_USERNAME: "apiserver"
+      HTPASSWD_USERNAME: 'apiserver'
       HTPASSWD_PASSWORD:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
         sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
-      HTPASSWD_SYNC_USERNAME: "sync-user"
+      HTPASSWD_SYNC_USERNAME: 'sync-user'
       HTPASSWD_SYNC_PASSWORD:
         sh: openssl rand -hex 16
     cmds:
@@ -700,11 +694,11 @@ tasks:
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config-bootstrap
-          HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
-          HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
-          HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
-          HTPASSWD_SYNC_USERNAME: "{{ .HTPASSWD_SYNC_USERNAME }}"
-          HTPASSWD_SYNC_PASSWORD: "{{ .HTPASSWD_SYNC_PASSWORD }}"
+          HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME }}'
+          HTPASSWD_PASSWORD: '{{ .HTPASSWD_PASSWORD }}'
+          HTPASSWD_AUTH_HEADER: '{{ .HTPASSWD_AUTH_HEADER }}'
+          HTPASSWD_SYNC_USERNAME: '{{ .HTPASSWD_SYNC_USERNAME }}'
+          HTPASSWD_SYNC_PASSWORD: '{{ .HTPASSWD_SYNC_PASSWORD }}'
 
       # Deploy the bootstrap server using Helm
       - |
@@ -740,12 +734,12 @@ tasks:
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
       # Generate credentials
-      HTPASSWD_USERNAME: "apiserver"
+      HTPASSWD_USERNAME: 'apiserver'
       HTPASSWD_PASSWORD:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
         sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
-      HTPASSWD_SYNC_USERNAME: "sync-user"
+      HTPASSWD_SYNC_USERNAME: 'sync-user'
       HTPASSWD_SYNC_PASSWORD:
         sh: openssl rand -hex 16
     cmds:
@@ -760,11 +754,11 @@ tasks:
         task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config-{{ .ITEM.PEER }}
-          HTPASSWD_USERNAME: "{{ .HTPASSWD_USERNAME }}"
-          HTPASSWD_PASSWORD: "{{ .HTPASSWD_PASSWORD }}"
-          HTPASSWD_AUTH_HEADER: "{{ .HTPASSWD_AUTH_HEADER }}"
-          HTPASSWD_SYNC_USERNAME: "{{ .HTPASSWD_SYNC_USERNAME }}"
-          HTPASSWD_SYNC_PASSWORD: "{{ .HTPASSWD_SYNC_PASSWORD }}"
+          HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME }}'
+          HTPASSWD_PASSWORD: '{{ .HTPASSWD_PASSWORD }}'
+          HTPASSWD_AUTH_HEADER: '{{ .HTPASSWD_AUTH_HEADER }}'
+          HTPASSWD_SYNC_USERNAME: '{{ .HTPASSWD_SYNC_USERNAME }}'
+          HTPASSWD_SYNC_PASSWORD: '{{ .HTPASSWD_SYNC_PASSWORD }}'
 
       # Deploy the peer servers using Helm
       - for:
@@ -893,7 +887,6 @@ tasks:
           echo "Failed to create zot config file: {{ .ZOT_CONFIG_DIR }}/config.json"
           exit 1
         fi
-
 
       # Create htpasswd file locally using task variables
       - |
