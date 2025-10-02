@@ -45,6 +45,7 @@ Usage examples:
 	},
 }
 
+//nolint:cyclop
 func runCommand(cmd *cobra.Command, cid string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
@@ -82,7 +83,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	if opts.PublicKey {
 		// Pull the public key for the record
-		response, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
 			},
@@ -94,22 +95,29 @@ func runCommand(cmd *cobra.Command, cid string) error {
 			return fmt.Errorf("failed to pull public key: %w", err)
 		}
 
-		publicKeyValue, ok := response.GetReferrer().GetData().AsMap()["publicKey"]
-		if !ok {
-			return errors.New("publicKey field not found in referrer data")
-		}
+		// Get all public key responses
+		for response := range resultCh {
+			if response.GetReferrer() == nil {
+				continue
+			}
 
-		publicKey, ok := publicKeyValue.(string)
-		if !ok {
-			return errors.New("publicKey field is not a string")
-		}
+			publicKeyValue, ok := response.GetReferrer().GetData().AsMap()["publicKey"]
+			if !ok {
+				continue
+			}
 
-		presenter.Println(cmd, "Public key: "+publicKey)
+			publicKey, ok := publicKeyValue.(string)
+			if !ok || publicKey == "" {
+				continue
+			}
+
+			presenter.Println(cmd, "Public key: "+publicKey)
+		}
 	}
 
 	if opts.Signature {
 		// Pull the signature for the record
-		response, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
 			},
@@ -121,7 +129,13 @@ func runCommand(cmd *cobra.Command, cid string) error {
 			return fmt.Errorf("failed to pull signature: %w", err)
 		}
 
-		presenter.Println(cmd, "Signature: "+response.GetSignature().GetSignature())
+		// Get all signature responses
+		for response := range resultCh {
+			signature := response.GetSignature()
+			if signature != nil && signature.GetSignature() != "" {
+				presenter.Println(cmd, "Signature: "+signature.GetSignature())
+			}
+		}
 	}
 
 	return nil

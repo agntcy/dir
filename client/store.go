@@ -5,7 +5,9 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -226,8 +228,8 @@ func (c *Client) PushReferrer(ctx context.Context, req *storev1.PushReferrerRequ
 	return nil
 }
 
-// PullReferrer retrieves a signature using the PullReferrer RPC.
-func (c *Client) PullReferrer(ctx context.Context, req *storev1.PullReferrerRequest) (*storev1.PullReferrerResponse, error) {
+// PullReferrer retrieves all referrers using the PullReferrer RPC.
+func (c *Client) PullReferrer(ctx context.Context, req *storev1.PullReferrerRequest) (<-chan *storev1.PullReferrerResponse, error) {
 	// Create streaming client
 	stream, err := c.StoreServiceClient.PullReferrer(ctx)
 	if err != nil {
@@ -244,11 +246,32 @@ func (c *Client) PullReferrer(ctx context.Context, req *storev1.PullReferrerRequ
 		return nil, fmt.Errorf("failed to close send stream: %w", err)
 	}
 
-	// Receive response
-	response, err := stream.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive pull referrer response: %w", err)
-	}
+	resultCh := make(chan *storev1.PullReferrerResponse)
 
-	return response, nil
+	go func() {
+		defer close(resultCh)
+
+		for {
+			response, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			if err != nil {
+				logger.Error("failed to receive pull referrer response", "error", err)
+
+				return
+			}
+
+			select {
+			case resultCh <- response:
+			case <-ctx.Done():
+				logger.Error("context cancelled while receiving pull referrer response", "error", ctx.Err())
+
+				return
+			}
+		}
+	}()
+
+	return resultCh, nil
 }
