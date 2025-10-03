@@ -215,9 +215,11 @@ func newRemote(parentCtx context.Context,
 	go routeAPI.handleNotify()
 
 	routeAPI.wg.Add(1)
+	//nolint:contextcheck // Intentionally passing routing context to child goroutine for lifecycle management
 	go routeAPI.cleanupManager.StartLabelRepublishTask(routeAPI.ctx, &routeAPI.wg)
 
 	routeAPI.wg.Add(1)
+	//nolint:contextcheck // Intentionally passing routing context to child goroutine for lifecycle management
 	go routeAPI.cleanupManager.StartRemoteLabelCleanupTask(routeAPI.ctx, &routeAPI.wg)
 
 	return routeAPI, nil
