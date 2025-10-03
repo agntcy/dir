@@ -32,7 +32,7 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 	}
 
 	// Fall back to client-side verification
-	logger.Debug("Server verification failed, falling back to client-side verification")
+	logger.Info("Server verification failed, falling back to client-side verification")
 
 	var errMsg string
 
