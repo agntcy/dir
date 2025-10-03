@@ -15,7 +15,7 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	cosignutils "github.com/agntcy/dir/utils/cosign"
-	ociutils "github.com/agntcy/dir/utils/oci"
+	referrerutils "github.com/agntcy/dir/utils/referrer"
 	sigs "github.com/sigstore/cosign/v2/pkg/signature"
 )
 
@@ -120,13 +120,13 @@ func (c *Client) verifyClientSide(ctx context.Context, recordCID string) (bool, 
 
 // pullSignatureReferrer retrieves the signature referrer for a record.
 func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) ([]*signv1.Signature, error) {
+	signatureType := referrerutils.SignatureArtifactType
+
 	resultCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
-		Options: &storev1.PullReferrerRequest_PullSignature{
-			PullSignature: true,
-		},
+		ReferrerType: &signatureType,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull signature referrer: %w", err)
@@ -134,10 +134,17 @@ func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) ([
 
 	signatures := make([]*signv1.Signature, 0)
 
-	// Get the all signature responses
+	// Get all signature responses and decode them from referrer data
 	for response := range resultCh {
-		signature := response.GetSignature()
-		if signature != nil && signature.GetSignature() != "" {
+		referrer := response.GetReferrer()
+		if referrer != nil && referrer.GetType() == referrerutils.SignatureArtifactType {
+			signature, err := referrerutils.DecodeSignatureFromReferrer(referrer)
+			if err != nil {
+				logger.Error("Failed to decode signature from referrer", "error", err)
+
+				continue
+			}
+
 			signatures = append(signatures, signature)
 		}
 	}
@@ -147,13 +154,13 @@ func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) ([
 
 // pullPublicKeyReferrer retrieves the public key referrer for a record.
 func (c *Client) pullPublicKeyReferrer(ctx context.Context, recordCID string) ([]string, error) {
+	publicKeyType := referrerutils.PublicKeyArtifactMediaType
+
 	resultCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
-		Options: &storev1.PullReferrerRequest_PullReferrerType{
-			PullReferrerType: ociutils.PublicKeyArtifactMediaType,
-		},
+		ReferrerType: &publicKeyType,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull public key referrer: %w", err)
@@ -161,14 +168,19 @@ func (c *Client) pullPublicKeyReferrer(ctx context.Context, recordCID string) ([
 
 	publicKeys := make([]string, 0)
 
-	// Get the all public key responses
+	// Get all public key responses and extract the public key from referrer data
 	for response := range resultCh {
-		publicKey, err := response.GetReferrer().GetPublicKey()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get public key: %w", err)
-		}
+		referrer := response.GetReferrer()
+		if referrer != nil && referrer.GetType() == referrerutils.PublicKeyArtifactMediaType {
+			publicKey, err := referrerutils.DecodePublicKeyFromReferrer(referrer)
+			if err != nil {
+				logger.Error("Failed to decode public key from referrer", "error", err)
 
-		publicKeys = append(publicKeys, publicKey)
+				continue
+			}
+
+			publicKeys = append(publicKeys, publicKey)
+		}
 	}
 
 	return publicKeys, nil
