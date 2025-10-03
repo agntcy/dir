@@ -7,7 +7,6 @@ import (
 	"context"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	signv1 "github.com/agntcy/dir/api/sign/v1"
 )
 
 // StoreAPI handles management of content-addressable object storage.
@@ -29,17 +28,11 @@ type StoreAPI interface {
 	// List(context.Context, func(*corev1.RecordRef) error) error
 }
 
-// SignatureStoreAPI handles management of OCI signature artifacts.
-type SignatureStoreAPI interface {
-	// Push signature to content store
-	PushSignature(context.Context, string, *signv1.Signature) error
+// ReferrerStoreAPI handles management of generic record referrers.
+type ReferrerStoreAPI interface {
+	// Push referrer to content store
+	PushReferrer(context.Context, string, *corev1.RecordReferrer) error
 
-	// Push public key to content store
-	PushPublicKey(context.Context, string, string) error
-
-	// Pull signature from content store
-	PullSignature(context.Context, string) (*signv1.Signature, error)
-
-	// Pull public key from content store
-	PullPublicKey(context.Context, string) (string, error)
+	// Walk referrers individually for a given record CID and optional type filter
+	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
 }

@@ -12,6 +12,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	referrerutils "github.com/agntcy/dir/utils/referrer"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,14 @@ Usage examples:
 1. Pull by cid and output
 
 	dirctl pull <cid>
+
+2. Pull by cid and output public key
+
+	dirctl pull <cid> --public-key
+
+3. Pull by cid and output signature
+
+	dirctl pull <cid> --signature
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
@@ -36,6 +45,7 @@ Usage examples:
 	},
 }
 
+//nolint:cyclop
 func runCommand(cmd *cobra.Command, cid string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
@@ -72,37 +82,53 @@ func runCommand(cmd *cobra.Command, cid string) error {
 	presenter.Print(cmd, string(output))
 
 	if opts.PublicKey {
-		// Pull the public key for the record
-		response, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+		publicKeyType := referrerutils.PublicKeyArtifactMediaType
+
+		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
 			},
-			Options: &storev1.PullReferrerRequest_PullPublicKey{
-				PullPublicKey: true,
-			},
+			ReferrerType: &publicKeyType,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to pull public key: %w", err)
 		}
 
-		presenter.Print(cmd, "Public key: "+response.GetPublicKey())
+		for response := range resultCh {
+			publicKey, err := referrerutils.DecodePublicKeyFromReferrer(response.GetReferrer())
+			if err != nil {
+				return fmt.Errorf("failed to decode public key from referrer: %w", err)
+			}
+
+			if publicKey != "" {
+				presenter.Println(cmd, "Public key: "+publicKey)
+			}
+		}
 	}
 
 	if opts.Signature {
-		// Pull the signature for the record
-		response, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
+		signatureType := referrerutils.SignatureArtifactType
+
+		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
 			},
-			Options: &storev1.PullReferrerRequest_PullSignature{
-				PullSignature: true,
-			},
+			ReferrerType: &signatureType,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to pull signature: %w", err)
 		}
 
-		presenter.Print(cmd, "Signature: "+response.GetSignature().GetSignature())
+		for response := range resultCh {
+			signature, err := referrerutils.DecodeSignatureFromReferrer(response.GetReferrer())
+			if err != nil {
+				return fmt.Errorf("failed to decode cosign signature from referrer: %w", err)
+			}
+
+			if signature != nil {
+				presenter.Println(cmd, "Signature: "+signature.GetSignature())
+			}
+		}
 	}
 
 	return nil
