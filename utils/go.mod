@@ -173,4 +173,7 @@ require (
 	lukechampine.com/blake3 v1.4.0 // indirect
 )
 
-replace github.com/agntcy/dir/api => ../api
+replace (
+	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/server => ../server
+)
