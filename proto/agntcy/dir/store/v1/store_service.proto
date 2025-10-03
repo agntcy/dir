@@ -6,7 +6,6 @@ syntax = "proto3";
 package agntcy.dir.store.v1;
 
 import "agntcy/dir/core/v1/record.proto";
-import "agntcy/dir/sign/v1/signature.proto";
 import "google/protobuf/empty.proto";
 
 // Defines an interface for content-addressable storage
@@ -49,14 +48,8 @@ message PushReferrerRequest {
   // Record reference
   core.v1.RecordRef record_ref = 1;
 
-  // Push referrer options
-  oneof options {
-    // Signature to be stored as a referrer for the record
-    sign.v1.Signature signature = 2;
-
-    // RecordReferrer object to be stored for the record
-    core.v1.RecordReferrer referrer = 4;
-  }
+  // RecordReferrer object to be stored for the record
+  core.v1.RecordReferrer referrer = 2;
 }
 
 // PushReferrerResponse
@@ -73,28 +66,13 @@ message PullReferrerRequest {
   // Record reference
   core.v1.RecordRef record_ref = 1;
 
-  oneof options {
-    // Pull signature referrer
-    bool pull_signature = 2;
-
-    // Pull public key referrer
-    bool pull_public_key = 3;
-
-    // Pull all referrers associated with the record
-    bool pull_referrers = 4;
-
-    // Pull specific referrer type associated with the record
-    string pull_referrer_type = 5;
-  }
+  // Record referrer type to be pulled
+  // If not provided, all referrers will be pulled
+  optional string referrer_type = 2;
 }
 
 // PullReferrerResponse is returned after successfully fetching a record referrer.
 message PullReferrerResponse {
-  oneof response {
-    // Signature to be fetched as a referrer
-    sign.v1.Signature signature = 1;
-
-    // RecordReferrer object associated with the record
-    core.v1.RecordReferrer referrer = 3;
-  }
+  // RecordReferrer object associated with the record
+  core.v1.RecordReferrer referrer = 1;
 }
