@@ -141,7 +141,12 @@ class TestClient(unittest.TestCase):
         record_refs = self.client.push(records=records)
 
         try:
-            example_signature = sign_v1.Signature()
+            example_signature = sign_v1.Signature(
+                signature="dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                annotations={
+                    "payload": "test-payload-data"
+                }
+            )
             request = [
                 store_v1.PushReferrerRequest(
                     record_ref=record_refs[0],
@@ -168,15 +173,38 @@ class TestClient(unittest.TestCase):
         records = self.gen_records(2, "pull_referrer")
         record_refs = self.client.push(records=records)
 
+        # Push referrers to these records
+        example_signature = sign_v1.Signature(
+            signature="dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+            annotations={
+                "payload": "test-payload-data"
+            }
+        )
+        request = [
+            store_v1.PushReferrerRequest(
+                record_ref=record_refs[0],
+                signature=example_signature,
+            ),
+            store_v1.PushReferrerRequest(
+                record_ref=record_refs[1],
+                signature=example_signature,
+            ),
+        ]
+        response = self.client.push_referrer(req=request)
+        assert response is not None
+        assert len(response) == 2
+        for r in response:
+            assert isinstance(r, store_v1.PushReferrerResponse)
+
         try:
             request = [
                 store_v1.PullReferrerRequest(
                     record_ref=record_refs[0],
-                    pull_signature=False,
+                    pull_signature=True,
                 ),
                 store_v1.PullReferrerRequest(
                     record_ref=record_refs[1],
-                    pull_signature=False,
+                    pull_signature=True,
                 ),
             ]
 

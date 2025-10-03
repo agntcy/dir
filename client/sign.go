@@ -12,6 +12,8 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/utils/cosign"
+	ociutils "github.com/agntcy/dir/utils/oci"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type SignOpts struct {
@@ -151,13 +153,24 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 }
 
 func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, signature *signv1.Signature, publicKey string) error {
+	// convert public key to struct
+	publicKeyStruct, err := structpb.NewStruct(map[string]any{
+		"publicKey": publicKey,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to convert public key to struct: %w", err)
+	}
+
 	// Push public key to store
-	err := c.PushReferrer(ctx, &storev1.PushReferrerRequest{
+	err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
-		Options: &storev1.PushReferrerRequest_PublicKey{
-			PublicKey: publicKey,
+		Options: &storev1.PushReferrerRequest_Referrer{
+			Referrer: &corev1.RecordReferrer{
+				Type: ociutils.PublicKeyArtifactMediaType,
+				Data: publicKeyStruct,
+			},
 		},
 	})
 	if err != nil {
