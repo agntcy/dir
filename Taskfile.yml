@@ -270,8 +270,10 @@ tasks:
 
   sdk:test-env:spiffe:load-test-image:
     desc: Load the SDK tests into KinD
+    vars:
+      GOARCH: '{{ .GOARCH | default ARCH }}'
     cmds:
-      - '{{.BAKE_ENV}} docker buildx bake sdks-test {{.IMAGE_BAKE_OPTS}}'
+      - '{{.BAKE_ENV}} docker buildx bake sdks-test --set *.platform=linux/{{.GOARCH}} {{.IMAGE_BAKE_OPTS}}'
       - '{{.KUBECTL_BIN}} config use-context kind-dir.example'
       - '{{.KIND_BIN}} load docker-image ghcr.io/agntcy/sdks-test:{{.IMAGE_TAG}} --name dir.example'
 
@@ -558,16 +560,36 @@ tasks:
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
       HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
+
+      # Generate credentials
+      HTPASSWD_USERNAME: 'apiserver'
+      HTPASSWD_PASSWORD:
+        sh: openssl rand -hex 16
+      HTPASSWD_AUTH_HEADER:
+        sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
+      HTPASSWD_SYNC_USERNAME: 'sync-user'
+      HTPASSWD_SYNC_PASSWORD:
+        sh: openssl rand -hex 16
     cmds:
       - task: deploy:zot:config
         vars:
           ZOT_CONFIG_DIR: /opt/zot-config
+          HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME }}'
+          HTPASSWD_PASSWORD: '{{ .HTPASSWD_PASSWORD }}'
+          HTPASSWD_AUTH_HEADER: '{{ .HTPASSWD_AUTH_HEADER }}'
+          HTPASSWD_SYNC_USERNAME: '{{ .HTPASSWD_SYNC_USERNAME }}'
+          HTPASSWD_SYNC_PASSWORD: '{{ .HTPASSWD_SYNC_PASSWORD }}'
       - |
         {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
+          --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
+          --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
+          --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
+          --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
+          --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -1164,6 +1186,7 @@ tasks:
         vars:
           KIND_CLUSTER_NAME: '{{ .DIR_TRUST_DOMAIN }}'
           HELM_EXTRA_ARGS: '-f /tmp/server-federation.yaml'
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
 
       # Get DIR API server address
       - task: deploy:kubernetes:context
