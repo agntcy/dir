@@ -7,7 +7,6 @@ import (
 	"context"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	signv1 "github.com/agntcy/dir/api/sign/v1"
 )
 
 // StoreAPI handles management of content-addressable object storage.
@@ -27,18 +26,6 @@ type StoreAPI interface {
 	// List all available records
 	// Needed for bootstrapping
 	// List(context.Context, func(*corev1.RecordRef) error) error
-}
-
-// SignatureStoreAPI handles management of OCI signature artifacts.
-type SignatureStoreAPI interface {
-	// Push signature to content store
-	PushSignature(context.Context, string, *signv1.Signature) error
-
-	// Pull all signatures from content store
-	PullSignatures(context.Context, string) ([]*signv1.Signature, error)
-
-	// Upload public key to zot for verification
-	UploadPublicKey(context.Context, string) error
 }
 
 // ReferrerStoreAPI handles management of generic record referrers.
