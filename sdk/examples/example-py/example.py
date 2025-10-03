@@ -12,7 +12,7 @@ def generate_record(name):
         data={
             "name": name,
             "version": "v1.0.0",
-            "schema_version": "v0.7.0",
+            "schema_version": "0.7.0",
             "description": "My example agent",
             "authors": ["AGNTCY"],
             "created_at": "2025-03-19T17:06:37Z",

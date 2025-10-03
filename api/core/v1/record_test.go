@@ -82,13 +82,13 @@ func TestRecord_GetCid_Consistency(t *testing.T) {
 	// Create two identical v0.3.1 records.
 	record1 := corev1.New(&oasfv1alpha1.Record{
 		Name:          "test-agent",
-		SchemaVersion: "v0.7.0",
+		SchemaVersion: "0.7.0",
 		Description:   "A test agent",
 	})
 
 	record2 := corev1.New(&oasfv1alpha1.Record{
 		Name:          "test-agent",
-		SchemaVersion: "v0.7.0",
+		SchemaVersion: "0.7.0",
 		Description:   "A test agent",
 	})
 
@@ -103,13 +103,13 @@ func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
 	// Create two different records
 	record1 := corev1.New(&oasfv1alpha0.Record{
 		Name:          "test-agent",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.3.1",
 		Description:   "A test agent",
 	})
 
 	record2 := corev1.New(&oasfv1alpha1.Record{
 		Name:          "test-agent",
-		SchemaVersion: "v0.7.0",
+		SchemaVersion: "0.7.0",
 		Description:   "A test agent",
 	})
 
@@ -127,10 +127,10 @@ func TestRecord_Validate(t *testing.T) {
 		wantValid bool
 	}{
 		{
-			name: "valid v0.7.0 record",
+			name: "valid 0.7.0 record",
 			record: corev1.New(&oasfv1alpha1.Record{
 				Name:          "valid-agent-v2",
-				SchemaVersion: "v0.7.0",
+				SchemaVersion: "0.7.0",
 				Description:   "A valid agent record",
 				Version:       "1.0.0",
 				CreatedAt:     "2024-01-01T00:00:00Z",
@@ -157,7 +157,7 @@ func TestRecord_Validate(t *testing.T) {
 			wantValid: true,
 		},
 		{
-			name: "invalid v0.7.0 record (missing required fields)",
+			name: "invalid 0.7.0 record (missing required fields)",
 			record: corev1.New(&oasfv1alpha1.Record{
 				Name:          "invalid-agent-v2",
 				SchemaVersion: "v0.5.0",
@@ -238,17 +238,17 @@ func TestRecord_Decode(t *testing.T) {
 			},
 		},
 		{
-			name: "valid v0.7.0 record",
+			name: "valid 0.7.0 record",
 			record: corev1.New(&oasfv1alpha1.Record{
 				Name:          "valid-agent-v2",
-				SchemaVersion: "v0.7.0",
+				SchemaVersion: "0.7.0",
 				Description:   "A valid agent record",
 				Version:       "1.0.0",
 				CreatedAt:     "2024-01-01T00:00:00Z",
 			}),
 			wantResp: &oasfv1alpha1.Record{
 				Name:          "valid-agent-v2",
-				SchemaVersion: "v0.7.0",
+				SchemaVersion: "0.7.0",
 				Description:   "A valid agent record",
 				Version:       "1.0.0",
 				CreatedAt:     "2024-01-01T00:00:00Z",

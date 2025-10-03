@@ -322,7 +322,7 @@ class TestClient(unittest.TestCase):
                 data={
                     "name": f"agntcy-{test_function_name}-{index}-{str(uuid.uuid4())[:8]}",
                     "version": "v3.0.0",
-                    "schema_version": "v0.7.0",
+                    "schema_version": "0.7.0",
                     "description": "Research agent for Cisco's marketing strategy.",
                     "authors": ["Cisco Systems"],
                     "created_at": "2025-03-19T17:06:37Z",

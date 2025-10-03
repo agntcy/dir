@@ -142,7 +142,7 @@ func TestExtractManifestAnnotations(t *testing.T) {
 			record: corev1.New(&typesv1alpha1.Record{
 				Name:          "test-record-v2",
 				Version:       "2.0.0",
-				SchemaVersion: "v0.7.0",
+				SchemaVersion: "0.7.0",
 				Description:   "Test record v2 description",
 				Skills: []*typesv1alpha1.Skill{
 					{Name: "nlp-skill"},
@@ -150,7 +150,7 @@ func TestExtractManifestAnnotations(t *testing.T) {
 				PreviousRecordCid: stringPtr("QmPreviousCID123"),
 			}),
 			contains: map[string]string{
-				ManifestKeyOASFVersion: "v0.7.0",
+				ManifestKeyOASFVersion: "0.7.0",
 				ManifestKeyName:        "test-record-v2",
 				ManifestKeyVersion:     "2.0.0",
 				ManifestKeyDescription: "Test record v2 description",

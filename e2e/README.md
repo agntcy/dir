@@ -41,7 +41,7 @@ e2e/
 **Focus**: Core CLI commands with OASF version compatibility
 
 **Test Cases:**
-- `should successfully push a record` - Tests `dirctl push` with v0.3.1/v0.7.0 record formats
+- `should successfully push a record` - Tests `dirctl push` with 0.3.1/0.7.0 record formats
 - `should successfully pull an existing record` - Tests `dirctl pull` functionality  
 - `should return identical record when pulled after push` - Validates data integrity across push/pull cycle
 - `should push the same record again and return the same cid` - Tests CID determinism
@@ -52,7 +52,7 @@ e2e/
 - `should fail to pull a deleted record` - Validates deletion actually removes records
 
 **Key Features:**
-- OASF version compatibility (v0.3.1, v0.7.0)
+- OASF version compatibility (0.3.1, 0.7.0)
 - JSON data integrity validation
 - CID determinism testing
 - General search API testing (searchv1, not routing)
@@ -164,7 +164,7 @@ e2e/
 **Key Features:**
 - Direct client library API testing
 - Routing API validation (publish, list, unpublish, search)
-- OASF version compatibility (v0.3.1, v0.7.0)
+- OASF version compatibility (0.3.1, 0.7.0)
 - RecordQuery API testing
 
 ### 🌐 **Network Package** (`e2e/network/`)
@@ -339,7 +339,7 @@ task test:e2e:network:
 
 ### **✅ Comprehensive Coverage:**
 - **103+ test cases** across all major functionality
-- **OASF version compatibility** (v0.3.1, v0.7.0)
+- **OASF version compatibility** (0.3.1, 0.7.0)
 - **Both API types** - Client library and CLI commands
 - **Error handling** - Validation of failure scenarios
 - **Integration testing** - Multi-step workflows

@@ -1,7 +1,7 @@
 {
-  "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
-  "version": "v3.0.0",
-  "schema_version": "v0.7.0",
+  "name": "directory.agntcy.org/cisco/marketing-strategy-v5",
+  "version": "v5.0.0",
+  "schema_version": "0.7.0",
   "description": "Research agent for Cisco's marketing strategy.",
   "authors": [
     "Cisco Systems"
@@ -12,12 +12,8 @@
   },
   "skills": [
     {
-      "name": "natural_language_processing/natural_language_generation/text_completion",
-      "id": 10201
-    },
-    {
-      "name": "natural_language_processing/analytical_reasoning/problem_solving",
-      "id": 10702
+      "name": "audio/audio_classification",
+      "id": 301
     }
   ],
   "locators": [

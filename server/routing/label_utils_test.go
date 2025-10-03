@@ -353,7 +353,7 @@ func TestGetLabelsFromRecord(t *testing.T) {
 		recordJSON := `{
 			"name": "test-agent-v2",
 			"version": "2.0.0",
-			"schema_version": "v0.7.0",
+			"schema_version": "0.7.0",
 			"authors": ["test"],
 			"created_at": "2023-01-01T00:00:00Z",
 			"skills": [

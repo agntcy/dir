@@ -76,7 +76,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		expectedModuleLabel string
 	}{
 		{
-			name:     "Record_v031_Agent",
+			name:     "Record_031_Agent",
 			jsonData: testdata.ExpectedRecordV031JSON,
 			expectedSkillLabels: []string{
 				"/skills/Natural Language Processing/Text Completion",
@@ -85,14 +85,14 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			expectedModuleLabel: "/modules/runtime/language", // From record_v031.json extensions (schema prefix stripped)
 		},
 		{
-			name:     "Record_v070_Agent",
+			name:     "Record_070_Agent",
 			jsonData: testdata.ExpectedRecordV070JSON,
 			expectedSkillLabels: []string{
 				"/skills/natural_language_processing/natural_language_generation/text_completion",
 				"/skills/natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedDomainLabel: "/domains/life_science/biotechnology",
-			expectedModuleLabel: "/modules/runtime/language", // From record_v070.json modules
+			expectedModuleLabel: "/modules/runtime/language", // From record_070.json modules
 		},
 	}
 
@@ -203,7 +203,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				if version.expectedDomainLabel != "" {
 					domainQuery := &routingv1.RecordQuery{
 						Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN,
-						Value: "life_science/biotechnology", // From record_v070.json domains
+						Value: "life_science/biotechnology", // From record_070.json domains
 					}
 					domainItemsChan, err := c.List(ctx, &routingv1.ListRequest{
 						Queries: []*routingv1.RecordQuery{domainQuery},

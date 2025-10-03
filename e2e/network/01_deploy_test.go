@@ -29,7 +29,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
-	tempPath := filepath.Join(tempDir, "record_v070_network_test.json")
+	tempPath := filepath.Join(tempDir, "record_070_network_test.json")
 
 	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(tempPath), 0o755)
@@ -44,7 +44,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		cli = utils.NewCLI()
 	})
 
-	ginkgo.It("should push record_v070.json to peer 1", func() {
+	ginkgo.It("should push record_070.json to peer 1", func() {
 		cid = cli.Push(tempPath).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 		// Track CID for cleanup
@@ -54,22 +54,22 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		utils.LoadAndValidateCID(cid, tempPath)
 	})
 
-	ginkgo.It("should pull record_v070.json from peer 1", func() {
+	ginkgo.It("should pull record_070.json from peer 1", func() {
 		cli.Pull(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
 	})
 
-	ginkgo.It("should fail to pull record_v070.json from peer 2", func() {
+	ginkgo.It("should fail to pull record_070.json from peer 2", func() {
 		_ = cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldFail()
 	})
 
-	ginkgo.It("should publish record_v070.json to the network on peer 1", func() {
+	ginkgo.It("should publish record_070.json to the network on peer 1", func() {
 		cli.Routing().Publish(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 		// Wait at least 10 seconds to ensure the record is published.
 		time.Sleep(15 * time.Second)
 	})
 
-	ginkgo.It("should fail publish record_v070.json to the network on peer 2 that does not store the record", func() {
+	ginkgo.It("should fail publish record_070.json to the network on peer 2 that does not store the record", func() {
 		_ = cli.Routing().Publish(cid).OnServer(utils.Peer2Addr).ShouldFail()
 	})
 

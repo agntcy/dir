@@ -31,7 +31,7 @@ function genRecords(
         data: {
           name: `agntcy-${testFunctionName}-${index}-${uuidv4().substring(0, 8)}`,
           version: 'v3.0.0',
-          schema_version: 'v0.7.0',
+          schema_version: '0.7.0',
           description: "Research agent for Cisco's marketing strategy.",
           authors: ['Cisco Systems'],
           created_at: '2025-03-19T17:06:37Z',

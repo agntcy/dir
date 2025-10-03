@@ -326,7 +326,7 @@ v1Record := corev1.New(&typesv1alpha0.Agent{
     },
 })
 
-// OASF v0.7.0 record
+// OASF 0.7.0 record
 v3Record := corev1.New(&typesv1alpha1.Record{
     Name: "nlp-agent",
     Skills: []*typesv1alpha1.Skill{

@@ -32,8 +32,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 	if tempDir == "" {
 		tempDir = os.TempDir()
 	}
-	recordV4Path := filepath.Join(tempDir, "record_v070_sync_v4_test.json")
-	recordV5Path := filepath.Join(tempDir, "record_v070_sync_v5_test.json")
+	recordV4Path := filepath.Join(tempDir, "record_070_sync_v4_test.json")
+	recordV5Path := filepath.Join(tempDir, "record_070_sync_v5_test.json")
 
 	// Create directory and write record data
 	_ = os.MkdirAll(filepath.Dir(recordV4Path), 0o755)
@@ -124,7 +124,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			}
 		})
 
-		ginkgo.It("should push record_v070_sync_v4.json to peer 1", func() {
+		ginkgo.It("should push record_070_sync_v4.json to peer 1", func() {
 			cid = cli.Push(recordV4Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
@@ -138,11 +138,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Sign output: %s", output)
 		})
 
-		ginkgo.It("should publish record_v070_sync_v4.json", func() {
+		ginkgo.It("should publish record_070_sync_v4.json", func() {
 			cli.Routing().Publish(cid).OnServer(utils.Peer1Addr).ShouldSucceed()
 		})
 
-		ginkgo.It("should push record_v070_sync_v5.json to peer 1", func() {
+		ginkgo.It("should push record_070_sync_v5.json to peer 1", func() {
 			cidV5 = cli.Push(recordV5Path).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
@@ -156,11 +156,11 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Sign output: %s", output)
 		})
 
-		ginkgo.It("should publish record_v070_sync_v5.json", func() {
+		ginkgo.It("should publish record_070_sync_v5.json", func() {
 			cli.Routing().Publish(cidV5).OnServer(utils.Peer1Addr).ShouldSucceed()
 		})
 
-		ginkgo.It("should fail to pull record_v070_sync_v4.json from peer 2", func() {
+		ginkgo.It("should fail to pull record_070_sync_v4.json from peer 2", func() {
 			_ = cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldFail()
 		})
 
@@ -189,7 +189,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			time.Sleep(60 * time.Second)
 		})
 
-		ginkgo.It("should succeed to pull record_v070_sync_v4.json from peer 2 after sync", func() {
+		ginkgo.It("should succeed to pull record_070_sync_v4.json from peer 2 after sync", func() {
 			output := cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
@@ -198,14 +198,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 
-		ginkgo.It("should succeed to search for record_v070_sync_v4.json from peer 2 after sync", func() {
+		ginkgo.It("should succeed to search for record_070_sync_v4.json from peer 2 after sync", func() {
 			// Search should eventually return the cid in peer 2 (retry until monitor indexes the record)
 			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v4").OnServer(utils.Peer2Addr).ShouldEventuallyContain(cid, 240*time.Second)
 
 			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
 		})
 
-		ginkgo.It("should verify the record_v070_sync_v4.json from peer 2 after sync", func() {
+		ginkgo.It("should verify the record_070_sync_v4.json from peer 2 after sync", func() {
 			output := cli.Verify(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Verify the output
@@ -248,7 +248,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			time.Sleep(60 * time.Second)
 		})
 
-		ginkgo.It("should succeed to pull record_v070_sync_v5.json from peer 3 after sync", func() {
+		ginkgo.It("should succeed to pull record_070_sync_v5.json from peer 3 after sync", func() {
 			output := cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
@@ -257,21 +257,21 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			gomega.Expect(equal).To(gomega.BeTrue())
 		})
 
-		ginkgo.It("should succeed to search for record_v070_sync_v5.json from peer 3 after sync", func() {
+		ginkgo.It("should succeed to search for record_070_sync_v5.json from peer 3 after sync", func() {
 			// Search should eventually return the cid in peer 2 (retry until monitor indexes the record)
 			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v5").OnServer(utils.Peer3Addr).ShouldEventuallyContain(cidV5, 240*time.Second)
 
 			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
 		})
 
-		ginkgo.It("should verify the record_v070_sync_v5.json from peer 3 after sync", func() {
+		ginkgo.It("should verify the record_070_sync_v5.json from peer 3 after sync", func() {
 			output := cli.Verify(cidV5).OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			// Verify the output
 			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is trusted!"))
 		})
 
-		ginkgo.It("should fail to pull record_v070_sync_v4.json from peer 3 after sync", func() {
+		ginkgo.It("should fail to pull record_070_sync_v4.json from peer 3 after sync", func() {
 			_ = cli.Pull(cid).OnServer(utils.Peer3Addr).ShouldFail()
 
 			// CLEANUP: This is the last test in the sync functionality Context

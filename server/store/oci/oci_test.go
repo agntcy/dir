@@ -262,7 +262,7 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 			record: corev1.New(&typesv1alpha1.Record{
 				Name:          "test-v3-record",
 				Version:       "3.0.0",
-				SchemaVersion: "v0.7.0",
+				SchemaVersion: "0.7.0",
 				Description:   "Test v3 record with simple skills",
 				Skills: []*typesv1alpha1.Skill{
 					{

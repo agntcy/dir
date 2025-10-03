@@ -703,7 +703,7 @@ func TestAllOASFVersions_SkillHandling(t *testing.T) {
 			agentJSON: `{
 				"name": "test-v2-agent",
 				"version": "1.0.0",
-				"schema_version": "v0.7.0",
+				"schema_version": "0.7.0",
 				"skills": [
 					{
 						"name": "Machine Learning/Classification",
@@ -711,7 +711,7 @@ func TestAllOASFVersions_SkillHandling(t *testing.T) {
 					}
 				]
 			}`,
-			schemaVersion:   "v0.7.0",
+			schemaVersion:   "0.7.0",
 			expectedSkill:   "Machine Learning/Classification",
 			expectedSkillID: 20301,
 		},
@@ -856,7 +856,7 @@ func TestSkillSearchCompatibility_AcrossVersions(t *testing.T) {
 		`{
 			"name": "v3-agent",
 			"version": "1.0.0",
-			"schema_version": "v0.7.0",
+			"schema_version": "0.7.0",
 			"skills": [
 				{
 					"name": "Text Processing/Summarization",

@@ -48,7 +48,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 	})
 
 	ginkgo.Context("setup for remote search testing", func() {
-		ginkgo.It("should push record_v070.json to peer 1", func() {
+		ginkgo.It("should push record_070.json to peer 1", func() {
 			cid = cli.Push(tempPath).OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
@@ -58,7 +58,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 			utils.LoadAndValidateCID(cid, tempPath)
 		})
 
-		ginkgo.It("should publish record_v070.json to routing on peer 1 only", func() {
+		ginkgo.It("should publish record_070.json to routing on peer 1 only", func() {
 			// ONLY publish on Peer 1 - this creates the scenario:
 			// - Peer 1: has record locally (published)
 			// - Peer 2: will see it as remote via DHT
