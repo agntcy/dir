@@ -1,5 +1,3 @@
-# Copyright AGNTCY Contributors (https://github.com/agntcy)
-# SPDX-License-Identifier: Apache-2.0
 
 version: '3'
 
@@ -33,7 +31,7 @@ vars:
   PROTOC_BIN: '{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}'
   BUFBUILD_VERSION: '1.50.1'
   BUFBUILD_BIN: '{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}'
-  GO_VERSION: '1.24.5'
+  GO_VERSION: '1.24.4'
   MULTIMOD_VERSION: '0.17.0'
   MULTIMOD_BIN: '{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}'
   GOLANGCI_LINT_VERSION: '1.64.7'
@@ -1067,6 +1065,139 @@ tasks:
       - task: deploy:kubernetes:network:port-forward
       # Run network tests with proper isolation and cleanup
       - 'go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+
+  abigen:install:
+    desc: Install abigen tool from go-ethereum
+    deps:
+      - deps:bin-dir
+    cmds:
+      - GOBIN={{.BIN_DIR}} go install github.com/ethereum/go-ethereum/cmd/abigen@v1.14.8
+
+  abigen:generate:
+    desc: Generate Go bindings for AgentStore smart contract
+    deps:
+      - abigen:install
+    cmds:
+      - |
+          jq .abi blockchain/personal-chain/artifacts/contracts/AgentStore.sol/AgentStore.json > /tmp/AgentStore.abi.json
+          {{.BIN_DIR}}/abigen \
+            --pkg agentstore \
+            --out blockchain/dapps/bindings/go/agentstore/agentstore.go \
+            --abi /tmp/AgentStore.abi.json \
+            --type AgentStore
+
+  trustless:start:
+    desc: "Start trustless local chain service (KinD, Helm, port-forward)"
+    vars:
+      HELM_NAMESPACE: "personal-chain"
+      HELM_CHART_PATH: "blockchain/charts/chain"
+      IMAGE_REPO: "personal-chain"
+      IMAGE_TAG: "latest"
+      KIND_CLUSTER_NAME: "trustless-chain"
+    cmds:
+      - |
+          # Create KinD cluster
+          {{ .KIND_BIN }} create cluster --name {{ .KIND_CLUSTER_NAME }}
+      - |
+          # Load Docker image into KinD
+          {{ .KIND_BIN }} load docker-image {{ .IMAGE_REPO }}:{{ .IMAGE_TAG }} --name {{ .KIND_CLUSTER_NAME }}
+      - |
+          # Deploy Helm chart for personal-chain
+          {{ .HELM_BIN }} upgrade --install personal-chain {{ .HELM_CHART_PATH }} \
+            --set image.repository={{ .IMAGE_REPO }} \
+            --set image.tag={{ .IMAGE_TAG }} \
+            --namespace {{ .HELM_NAMESPACE }} \
+            --create-namespace \
+            --wait --timeout 5m
+      - |
+          # Port-forward JSON-RPC port
+          {{ .KUBECTL_BIN }} port-forward svc/personal-chain 8545:8545 -n {{ .HELM_NAMESPACE }} &
+          sleep 10
+      - |
+          # Wait for chain to be accessible before deploying contract
+          for i in {1..15}; do
+            if curl -s http://localhost:8545 > /dev/null; then
+              echo "Chain is accessible on localhost:8545"; break
+            fi
+            echo "Waiting for chain... ($i)"; sleep 2
+            if [ $i -eq 15 ]; then echo "Chain not accessible after waiting."; exit 1; fi
+          done
+          # Deploy AgentStore smart contract using Hardhat
+          cd blockchain/personal-chain
+          npx hardhat run scripts/deploy.js --network localhost
+      - |
+          # Wait for chain to be accessible
+          for i in {1..15}; do
+            if curl -s http://localhost:8545 > /dev/null; then
+              echo "Chain is accessible on localhost:8545"; break
+            fi
+            echo "Waiting for chain... ($i)"; sleep 2
+            if [ $i -eq 15 ]; then echo "Chain not accessible after waiting."; exit 1; fi
+          done
+
+  trustless:stop:
+    desc: "Stop trustless local chain service (KinD, Helm, port-forward)"
+    vars:
+      KIND_CLUSTER_NAME: "trustless-chain"
+    cmds:
+      - |
+          # Delete KinD cluster
+          {{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}
+
+
+  test:trustless:local:
+    desc: "Run trustless local test: deploy chain Helm chart on KinD and verify JSON-RPC endpoint"
+    vars:
+      HELM_NAMESPACE: "personal-chain"
+      HELM_CHART_PATH: "blockchain/charts/chain"
+      IMAGE_REPO: "personal-chain"
+      IMAGE_TAG: "latest"
+      KIND_CLUSTER_NAME: "trustless-chain"
+    cmds:
+      - defer: { task: deploy:kubernetes:local:cleanup, vars: { KIND_CLUSTER_NAME: trustless-chain } }
+      - |
+          # Create KinD cluster
+          {{ .KIND_BIN }} create cluster --name {{ .KIND_CLUSTER_NAME }}
+      - |
+          # Load Docker image into KinD
+          {{ .KIND_BIN }} load docker-image {{ .IMAGE_REPO }}:{{ .IMAGE_TAG }} --name {{ .KIND_CLUSTER_NAME }}
+      - |
+          # Deploy Helm chart for personal-chain
+          {{ .HELM_BIN }} upgrade --install personal-chain {{ .HELM_CHART_PATH }} \
+            --set image.repository={{ .IMAGE_REPO }} \
+            --set image.tag={{ .IMAGE_TAG }} \
+            --namespace {{ .HELM_NAMESPACE }} \
+            --create-namespace \
+            --wait --timeout 5m
+      - |
+          # Port-forward JSON-RPC port
+          {{ .KUBECTL_BIN }} port-forward svc/personal-chain 8545:8545 -n {{ .HELM_NAMESPACE }} &
+          sleep 10
+      - |
+          # Wait for chain to be accessible before deploying contract
+          for i in {1..15}; do
+            if curl -s http://localhost:8545 > /dev/null; then
+              echo "Chain is accessible on localhost:8545"; break
+            fi
+            echo "Waiting for chain... ($i)"; sleep 2
+            if [ $i -eq 15 ]; then echo "Chain not accessible after waiting."; exit 1; fi
+          done
+          # Deploy AgentStore smart contract using Hardhat
+          cd blockchain/personal-chain
+          npx hardhat run scripts/deploy.js --network localhost
+      - |
+          # Test JSON-RPC endpoint (eth_blockNumber)
+          RESPONSE=$(curl -s -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' -H "Content-Type: application/json" http://localhost:8545)
+          echo "eth_blockNumber response: $RESPONSE"
+          if echo "$RESPONSE" | grep -q '"result"'; then
+            echo "Test passed: Chain is running and responding."
+          else
+            echo "Test failed: No result in response." && exit 1
+          fi
+      - |
+          # Cleanup port-forward
+          pkill -f 'port-forward svc/personal-chain'
+
 
   # TODO: move spire out from here
   # TODO: change to Ingress services instead of LoadBalancer
