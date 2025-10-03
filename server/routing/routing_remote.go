@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -16,7 +17,7 @@ import (
 	"github.com/agntcy/dir/server/routing/rpc"
 	validators "github.com/agntcy/dir/server/routing/validators"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/labels"
+	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -49,10 +50,10 @@ func QueryAllNamespaces(ctx context.Context, dstore types.Datastore) ([]Namespac
 
 	// Query all label namespaces
 	namespaces := []string{
-		labels.LabelTypeSkill.Prefix(),
-		labels.LabelTypeDomain.Prefix(),
-		labels.LabelTypeModule.Prefix(),
-		labels.LabelTypeLocator.Prefix(),
+		types.LabelTypeSkill.Prefix(),
+		types.LabelTypeDomain.Prefix(),
+		types.LabelTypeModule.Prefix(),
+		types.LabelTypeLocator.Prefix(),
 	}
 
 	for _, namespace := range namespaces {
@@ -101,18 +102,29 @@ type routeRemote struct {
 	dstore         types.Datastore
 	cleanupManager *CleanupManager
 	pubsubManager  *pubsub.Manager // GossipSub manager for label announcements (nil if disabled)
+
+	// Lifecycle management
+	//nolint:containedctx // Context needed for managing lifecycle of multiple long-running goroutines (handleNotify, cleanup tasks)
+	ctx    context.Context    // Routing subsystem context
+	cancel context.CancelFunc // Cancel function for graceful shutdown
+	wg     sync.WaitGroup     // Tracks all background goroutines
 }
 
-func newRemote(ctx context.Context,
+func newRemote(parentCtx context.Context,
 	storeAPI types.StoreAPI,
 	dstore types.Datastore,
 	opts types.APIOptions,
 ) (*routeRemote, error) {
+	// Create routing subsystem context for lifecycle management of background tasks
+	routingCtx, cancel := context.WithCancel(parentCtx)
+
 	// Create routing
 	routeAPI := &routeRemote{
 		storeAPI: storeAPI,
 		notifyCh: make(chan *handlerSync, NotificationChannelSize),
 		dstore:   dstore,
+		ctx:      routingCtx,
+		cancel:   cancel,
 	}
 
 	refreshInterval := RefreshInterval
@@ -120,7 +132,8 @@ func newRemote(ctx context.Context,
 		refreshInterval = opts.Config().Routing.RefreshInterval
 	}
 
-	server, err := p2p.New(ctx,
+	// Use parent context for p2p server (should live as long as the server)
+	server, err := p2p.New(parentCtx,
 		p2p.WithListenAddress(opts.Config().Routing.ListenAddress),
 		p2p.WithDirectoryAPIAddress(opts.Config().Routing.DirectoryAPIAddress),
 		p2p.WithBootstrapAddrs(opts.Config().Routing.BootstrapPeers),
@@ -136,9 +149,9 @@ func newRemote(ctx context.Context,
 
 				labelValidators := validators.CreateLabelValidators()
 				validator := record.NamespacedValidator{
-					labels.LabelTypeSkill.String():  labelValidators[labels.LabelTypeSkill.String()],
-					labels.LabelTypeDomain.String(): labelValidators[labels.LabelTypeDomain.String()],
-					labels.LabelTypeModule.String(): labelValidators[labels.LabelTypeModule.String()],
+					types.LabelTypeSkill.String():  labelValidators[types.LabelTypeSkill.String()],
+					types.LabelTypeDomain.String(): labelValidators[types.LabelTypeDomain.String()],
+					types.LabelTypeModule.String(): labelValidators[types.LabelTypeModule.String()],
 				}
 
 				return []dht.Option{
@@ -175,7 +188,8 @@ func newRemote(ctx context.Context,
 	// Protocol parameters (topic, message size) are defined in pubsub.constants
 	// and are NOT configurable to ensure network-wide compatibility
 	if opts.Config().Routing.GossipSub.Enabled {
-		pubsubManager, err := pubsub.New(ctx, server.Host())
+		// Use parent context for GossipSub (should live as long as the server)
+		pubsubManager, err := pubsub.New(parentCtx, server.Host())
 		if err != nil {
 			defer server.Close()
 
@@ -185,91 +199,90 @@ func newRemote(ctx context.Context,
 		routeAPI.pubsubManager = pubsubManager
 
 		// Set callback for received label announcements
-		pubsubManager.SetOnLabelAnnouncement(routeAPI.handleLabelAnnouncement)
+		pubsubManager.SetOnRecordPublishEvent(routeAPI.handleRecordPublishEvent)
 
 		remoteLogger.Info("GossipSub label announcements enabled")
 	} else {
 		remoteLogger.Info("GossipSub disabled, using DHT+Pull fallback only")
 	}
 
-	// Pass publishToNetwork as callback to avoid circular dependency
+	// Pass Publish as callback to avoid circular dependency
 	// The method value captures routeAPI's state (server, pubsubManager)
-	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.publishToNetwork)
+	routeAPI.cleanupManager = NewCleanupManager(dstore, storeAPI, server, routeAPI.Publish)
 
-	go routeAPI.handleNotify(ctx)
+	// Start all background goroutines with routing context
+	routeAPI.wg.Add(1)
+	go routeAPI.handleNotify()
 
-	go routeAPI.cleanupManager.StartLabelRepublishTask(ctx)
+	routeAPI.wg.Add(1)
+	go routeAPI.cleanupManager.StartLabelRepublishTask(routeAPI.ctx, &routeAPI.wg)
 
-	routeAPI.cleanupManager.StartRemoteLabelCleanupTask(ctx)
+	routeAPI.wg.Add(1)
+	go routeAPI.cleanupManager.StartRemoteLabelCleanupTask(routeAPI.ctx, &routeAPI.wg)
 
 	return routeAPI, nil
 }
 
-// publishToNetwork is the core publishing logic shared by Publish and republishing tasks.
-// It announces a record's CID and labels to the network via DHT and GossipSub.
-//
-// This method captures receiver state (server, pubsubManager) and can be passed
-// as a callback to CleanupManager without creating circular dependencies.
+// Publish announces a record to the network via DHT and GossipSub.
+// This method is part of the RoutingAPI interface and is also used
+// by CleanupManager for republishing via method value injection.
 //
 // Flow:
-//  1. Parse and validate CID
+//  1. Validate and extract CID from record
 //  2. Announce CID to DHT (critical - returns error if fails)
-//  3. Publish labels via GossipSub (best-effort - logs warning if fails)
+//  3. Publish record via GossipSub (best-effort - logs warning if fails)
 //
 // Parameters:
 //   - ctx: Operation context
-//   - cidStr: Content ID as string
-//   - record: Record to extract labels from
+//   - record: Record interface (caller must wrap corev1.Record with adapter)
 //
 // Returns:
-//   - error: If critical operations fail (CID parsing, DHT announcement)
-func (r *routeRemote) publishToNetwork(ctx context.Context, cidStr string, record *corev1.Record) error {
-	// Parse and validate CID
+//   - error: If critical operations fail (validation, CID parsing, DHT announcement)
+func (r *routeRemote) Publish(ctx context.Context, record types.Record) error {
+	// Validation
+	if record == nil {
+		return status.Error(codes.InvalidArgument, "record is required") //nolint:wrapcheck
+	}
+
+	// Extract and validate CID
+	cidStr := record.GetCid()
+	if cidStr == "" {
+		return status.Error(codes.InvalidArgument, "record has no CID") //nolint:wrapcheck
+	}
+
+	remoteLogger.Debug("Publishing record to network", "cid", cidStr)
+
+	// Parse CID
 	decodedCID, err := cid.Decode(cidStr)
 	if err != nil {
-		return fmt.Errorf("failed to parse CID: %w", err)
+		return status.Errorf(codes.InvalidArgument, "invalid CID %q: %v", cidStr, err)
 	}
 
 	// 1. Announce CID to DHT network (content discovery)
 	err = r.server.DHT().Provide(ctx, decodedCID, true)
 	if err != nil {
-		return fmt.Errorf("failed to announce CID to DHT: %w", err)
+		return status.Errorf(codes.Internal, "failed to announce CID to DHT: %v", err)
 	}
 
-	// 2. Publish labels via GossipSub (if enabled)
+	// 2. Publish record via GossipSub (if enabled)
 	// This provides efficient label propagation to ALL subscribed peers
 	if r.pubsubManager != nil {
-		labelList := GetLabelsFromRecord(record)
-		if len(labelList) > 0 {
-			if err := r.pubsubManager.PublishLabels(ctx, cidStr, labelList); err != nil {
-				// Log warning but don't fail - DHT announcement already succeeded
-				// Remote peers can still discover via DHT+Pull fallback
-				remoteLogger.Warn("Failed to publish labels via GossipSub",
-					"cid", cidStr,
-					"error", err,
-					"fallback", "DHT+Pull will handle discovery")
-			} else {
-				remoteLogger.Debug("Successfully published labels via GossipSub",
-					"cid", cidStr,
-					"labels", len(labelList),
-					"topicPeers", len(r.pubsubManager.GetTopicPeers()))
-			}
+		if err := r.pubsubManager.PublishRecord(ctx, record); err != nil {
+			// Log warning but don't fail - DHT announcement already succeeded
+			// Remote peers can still discover via DHT+Pull fallback
+			remoteLogger.Warn("Failed to publish record via GossipSub",
+				"cid", cidStr,
+				"error", err,
+				"fallback", "DHT+Pull will handle discovery")
+		} else {
+			remoteLogger.Debug("Successfully published record via GossipSub",
+				"cid", cidStr,
+				"topicPeers", len(r.pubsubManager.GetTopicPeers()))
 		}
 	}
 
-	return nil
-}
-
-func (r *routeRemote) Publish(ctx context.Context, ref *corev1.RecordRef, record *corev1.Record) error {
-	remoteLogger.Debug("Publishing record to network", "ref", ref)
-
-	// Use shared publishing logic
-	if err := r.publishToNetwork(ctx, ref.GetCid(), record); err != nil {
-		return status.Errorf(codes.Internal, "%v", err)
-	}
-
 	remoteLogger.Debug("Successfully announced record to network",
-		"cid", ref.GetCid(),
+		"cid", cidStr,
 		"dhtPeers", r.server.DHT().RoutingTable().Size(),
 		"gossipSubEnabled", r.pubsubManager != nil)
 
@@ -411,8 +424,8 @@ func (r *routeRemote) calculateMatchScore(ctx context.Context, cid string, queri
 }
 
 // getRemoteRecordLabels gets labels for a remote record by finding all enhanced keys for this CID/PeerID.
-func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID string) []labels.Label {
-	var labelList []labels.Label
+func (r *routeRemote) getRemoteRecordLabels(ctx context.Context, cid, peerID string) []types.Label {
+	var labelList []types.Label
 
 	entries, err := QueryAllNamespaces(ctx, r.dstore)
 	if err != nil {
@@ -482,19 +495,22 @@ func (r *routeRemote) getDirectoryAPIAddress(ctx context.Context, peerID string)
 	return ""
 }
 
-func (r *routeRemote) handleNotify(ctx context.Context) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+func (r *routeRemote) handleNotify() {
+	defer r.wg.Done()
+
+	cleanupLogger.Debug("Started DHT provider notification handler")
 
 	// Process DHT provider notifications and handle pull-based label discovery
 	for {
 		select {
-		case <-ctx.Done():
+		case <-r.ctx.Done():
+			cleanupLogger.Debug("DHT provider notification handler stopped")
+
 			return
 		case notif := <-r.notifyCh:
 			// All announcements are now CID provider announcements
 			// Labels are discovered via pull-based mechanism
-			r.handleCIDProviderNotification(ctx, notif)
+			r.handleCIDProviderNotification(r.ctx, notif)
 		}
 	}
 }
@@ -574,7 +590,9 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 		return
 	}
 
-	labelList := GetLabelsFromRecord(record)
+	adapter := adapters.NewRecordAdapter(record)
+
+	labelList := types.GetLabelsFromRecord(adapter)
 	if len(labelList) == 0 {
 		remoteLogger.Warn("No labels found in remote record",
 			"cid", notif.Ref.GetCid(),
@@ -589,7 +607,7 @@ func (r *routeRemote) handleCIDProviderNotification(ctx context.Context, notif *
 	for _, label := range labelList {
 		enhancedKey := BuildEnhancedLabelKey(label, notif.Ref.GetCid(), peerIDStr)
 
-		metadata := &labels.LabelMetadata{
+		metadata := &types.LabelMetadata{
 			Timestamp: now,
 			LastSeen:  now,
 		}
@@ -646,43 +664,43 @@ func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID str
 	return false
 }
 
-// handleLabelAnnouncement processes incoming label announcements from GossipSub.
+// handleRecordPublishEvent processes incoming record publication events from GossipSub.
 // This is the primary label discovery mechanism when GossipSub is enabled.
 // It converts the wire format to storage format using existing infrastructure.
 //
 // Flow:
 //  1. Skip own announcements (already cached locally)
-//  2. Convert []string labels to labels.Label
+//  2. Convert []string labels to types.Label
 //  3. Build enhanced keys: /skills/AI/CID/PeerID
-//  4. Store labels.LabelMetadata in datastore
+//  4. Store types.LabelMetadata in datastore
 //
 // This completely avoids pulling the entire record from remote peers,
 // providing ~95% bandwidth savings and ~5-20ms propagation time.
-func (r *routeRemote) handleLabelAnnouncement(ctx context.Context, ann *pubsub.LabelAnnouncement) {
+func (r *routeRemote) handleRecordPublishEvent(ctx context.Context, event *pubsub.RecordPublishEvent) {
 	// Skip our own announcements (already cached during local Publish)
-	if ann.PeerID == r.server.Host().ID().String() {
+	if event.PeerID == r.server.Host().ID().String() {
 		return
 	}
 
 	remoteLogger.Info("Caching labels from GossipSub announcement",
-		"cid", ann.CID,
-		"peer", ann.PeerID,
-		"labels", len(ann.Labels))
+		"cid", event.CID,
+		"peer", event.PeerID,
+		"labels", len(event.Labels))
 
 	now := time.Now()
 	cachedCount := 0
 
 	// Convert wire format ([]string) to storage format using existing infrastructure
-	for _, labelStr := range ann.Labels {
-		label := labels.Label(labelStr)
+	for _, labelStr := range event.Labels {
+		label := types.Label(labelStr)
 
 		// Use existing BuildEnhancedLabelKey function
-		enhancedKey := BuildEnhancedLabelKey(label, ann.CID, ann.PeerID)
+		enhancedKey := BuildEnhancedLabelKey(label, event.CID, event.PeerID)
 
-		// Use existing labels.LabelMetadata structure
-		metadata := &labels.LabelMetadata{
-			Timestamp: ann.Timestamp, // When label was announced
-			LastSeen:  now,           // When we received it
+		// Use existing types.LabelMetadata structure
+		metadata := &types.LabelMetadata{
+			Timestamp: event.Timestamp, // When label was announced
+			LastSeen:  now,             // When we received it
 		}
 
 		metadataBytes, err := json.Marshal(metadata)
@@ -705,15 +723,15 @@ func (r *routeRemote) handleLabelAnnouncement(ctx context.Context, ann *pubsub.L
 	}
 
 	remoteLogger.Info("Successfully cached labels from GossipSub",
-		"cid", ann.CID,
-		"peer", ann.PeerID,
-		"total", len(ann.Labels),
+		"cid", event.CID,
+		"peer", event.PeerID,
+		"total", len(event.Labels),
 		"cached", cachedCount)
 }
 
 // updateLabelMetadataTimestamp updates the lastSeen timestamp for a single cached label entry.
 func (r *routeRemote) updateLabelMetadataTimestamp(ctx context.Context, key string, value []byte, timestamp time.Time) error {
-	var metadata labels.LabelMetadata
+	var metadata types.LabelMetadata
 	if err := json.Unmarshal(value, &metadata); err != nil {
 		return fmt.Errorf("failed to unmarshal label metadata: %w", err)
 	}
@@ -766,4 +784,39 @@ func (r *routeRemote) updateRemoteRecordLastSeen(ctx context.Context, cid, peerI
 
 	remoteLogger.Debug("Updated lastSeen timestamps for reannounced record",
 		"cid", cid, "peer", peerID, "updatedLabels", updatedCount)
+}
+
+// Stop stops the remote routing services and releases resources.
+// This should be called during server shutdown to clean up gracefully.
+func (r *routeRemote) Stop() error {
+	remoteLogger.Info("Stopping routing subsystem")
+
+	// Cancel routing context to stop all background goroutines:
+	// - handleNotify (DHT provider notifications)
+	// - StartLabelRepublishTask (periodic republishing)
+	// - StartRemoteLabelCleanupTask (stale label cleanup)
+	r.cancel()
+
+	// Wait for all goroutines to finish gracefully
+	r.wg.Wait()
+	remoteLogger.Debug("All routing background tasks stopped")
+
+	// Close GossipSub manager if enabled
+	if r.pubsubManager != nil {
+		if err := r.pubsubManager.Close(); err != nil {
+			remoteLogger.Error("Failed to close GossipSub manager", "error", err)
+
+			return fmt.Errorf("failed to close pubsub manager: %w", err)
+		}
+
+		remoteLogger.Debug("GossipSub manager closed")
+	}
+
+	// Close p2p server (host and DHT)
+	r.server.Close()
+	remoteLogger.Debug("P2P server closed")
+
+	remoteLogger.Info("Routing subsystem stopped successfully")
+
+	return nil
 }

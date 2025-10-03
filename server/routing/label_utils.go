@@ -8,28 +8,25 @@ import (
 	"fmt"
 	"strings"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/adapters"
-	"github.com/agntcy/dir/server/types/labels"
 )
 
 // Key manipulation utilities for routing operations.
 // These functions handle the enhanced label key format: /namespace/value/CID/PeerID
 
 // Example: Label("/skills/AI/ML") → "/skills/AI/ML/CID123/Peer1".
-func BuildEnhancedLabelKey(label labels.Label, cid, peerID string) string {
+func BuildEnhancedLabelKey(label types.Label, cid, peerID string) string {
 	return fmt.Sprintf("%s/%s/%s", label.String(), cid, peerID)
 }
 
 // Example: "/skills/AI/ML/CID123/Peer1" → (Label("/skills/AI/ML"), "CID123", "Peer1", nil).
-func ParseEnhancedLabelKey(key string) (labels.Label, string, string, error) {
+func ParseEnhancedLabelKey(key string) (types.Label, string, string, error) {
 	labelStr, cid, peerID, err := parseEnhancedLabelKeyInternal(key)
 	if err != nil {
-		return labels.Label(""), "", "", err
+		return types.Label(""), "", "", err
 	}
 
-	return labels.Label(labelStr), cid, peerID, nil
+	return types.Label(labelStr), cid, peerID, nil
 }
 
 // parseEnhancedLabelKeyInternal contains the actual parsing logic.
@@ -40,7 +37,7 @@ func parseEnhancedLabelKeyInternal(key string) (string, string, string, error) {
 	}
 
 	parts := strings.Split(key, "/")
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return "", "", "", errors.New("key must have at least namespace/path/CID/PeerID")
 	}
 
@@ -58,7 +55,7 @@ func parseEnhancedLabelKeyInternal(key string) (string, string, string, error) {
 // ExtractPeerIDFromKey extracts just the PeerID from a self-descriptive key.
 func ExtractPeerIDFromKey(key string) string {
 	parts := strings.Split(key, "/")
-	if len(parts) < labels.MinLabelKeyParts {
+	if len(parts) < types.MinLabelKeyParts {
 		return ""
 	}
 
@@ -68,7 +65,7 @@ func ExtractPeerIDFromKey(key string) string {
 // IsValidLabelKey checks if a key starts with any valid label type prefix.
 // Returns true if the key starts with /skills/, /domains/, /features/, or /locators/.
 func IsValidLabelKey(key string) bool {
-	for _, labelType := range labels.AllLabelTypes() {
+	for _, labelType := range types.AllLabelTypes() {
 		if strings.HasPrefix(key, labelType.Prefix()) {
 			return true
 		}
@@ -79,29 +76,12 @@ func IsValidLabelKey(key string) bool {
 
 // GetLabelTypeFromKey extracts the label type from a key.
 // Returns the label type and true if found, or LabelTypeUnknown and false if not found.
-func GetLabelTypeFromKey(key string) (labels.LabelType, bool) {
-	for _, labelType := range labels.AllLabelTypes() {
+func GetLabelTypeFromKey(key string) (types.LabelType, bool) {
+	for _, labelType := range types.AllLabelTypes() {
 		if strings.HasPrefix(key, labelType.Prefix()) {
 			return labelType, true
 		}
 	}
 
-	return labels.LabelTypeUnknown, false
-}
-
-// GetLabelsFromRecord extracts labels using the new LabelProvider interface.
-// This replaces the old centralized labels.GetLabels() function.
-func GetLabelsFromRecord(record *corev1.Record) []labels.Label {
-	adapter := adapters.NewRecordAdapter(record)
-
-	recordData, err := adapter.GetRecordData()
-	if err != nil {
-		return nil
-	}
-
-	if provider, ok := recordData.(types.LabelProvider); ok {
-		return provider.GetAllLabels()
-	}
-
-	return nil
+	return types.LabelTypeUnknown, false
 }

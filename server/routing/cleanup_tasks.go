@@ -8,12 +8,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"sync"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/routing/internal/p2p"
+	"github.com/agntcy/dir/server/routing/pubsub"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/labels"
+	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
@@ -50,23 +52,23 @@ type CleanupManager struct {
 	dstore      types.Datastore
 	storeAPI    types.StoreAPI
 	server      *p2p.Server
-	publishFunc func(context.Context, string, *corev1.Record) error // Publishing callback (captures routeRemote state)
+	publishFunc pubsub.PublishEventHandler // Publishing callback (captures routeRemote state)
 }
 
 // NewCleanupManager creates a new cleanup manager with the required dependencies.
-// The publishFunc is injected from routeRemote.publishToNetwork to avoid circular dependencies
+// The publishFunc is injected from routeRemote.Publish to avoid circular dependencies
 // while still providing access to DHT and GossipSub publishing logic.
 //
 // Parameters:
 //   - dstore: Datastore for label storage
 //   - storeAPI: Store API for record operations
 //   - server: P2P server for DHT operations
-//   - publishFunc: Callback for publishing (from routeRemote.publishToNetwork)
+//   - publishFunc: Callback for publishing (from routeRemote.Publish, see pubsub.PublishEventHandler)
 func NewCleanupManager(
 	dstore types.Datastore,
 	storeAPI types.StoreAPI,
 	server *p2p.Server,
-	publishFunc func(context.Context, string, *corev1.Record) error,
+	publishFunc pubsub.PublishEventHandler,
 ) *CleanupManager {
 	return &CleanupManager{
 		dstore:      dstore,
@@ -78,16 +80,22 @@ func NewCleanupManager(
 
 // StartLabelRepublishTask starts a background task that periodically republishes local
 // CID provider announcements to keep content discoverable (provider records expire after ProviderRecordTTL).
-func (c *CleanupManager) StartLabelRepublishTask(ctx context.Context) {
+// The wg parameter is used to track this goroutine in the parent's WaitGroup.
+func (c *CleanupManager) StartLabelRepublishTask(ctx context.Context, wg *sync.WaitGroup) {
 	ticker := time.NewTicker(RepublishInterval)
-	defer ticker.Stop()
 
 	cleanupLogger.Info("Started CID provider republishing task", "interval", RepublishInterval)
+
+	defer func() {
+		ticker.Stop()
+		wg.Done()
+		cleanupLogger.Debug("CID provider republishing task stopped")
+	}()
 
 	for {
 		select {
 		case <-ctx.Done():
-			cleanupLogger.Info("CID provider republishing task stopped")
+			cleanupLogger.Info("CID provider republishing task stopping (context cancelled)")
 
 			return
 		case <-ticker.C:
@@ -98,27 +106,30 @@ func (c *CleanupManager) StartLabelRepublishTask(ctx context.Context) {
 
 // StartRemoteLabelCleanupTask starts a background task that periodically cleans up stale remote labels.
 // This is critical for the pull-based architecture to remove cached labels from offline or deleted remote content.
-func (c *CleanupManager) StartRemoteLabelCleanupTask(ctx context.Context) {
-	cleanupLogger.Info("Starting remote label cleanup task", "interval", CleanupInterval)
-
+// The wg parameter is used to track this goroutine in the parent's WaitGroup.
+func (c *CleanupManager) StartRemoteLabelCleanupTask(ctx context.Context, wg *sync.WaitGroup) {
 	ticker := time.NewTicker(CleanupInterval)
 
-	go func() {
-		defer ticker.Stop()
+	cleanupLogger.Info("Starting remote label cleanup task", "interval", CleanupInterval)
 
-		for {
-			select {
-			case <-ctx.Done():
-				cleanupLogger.Info("Remote label cleanup task stopped")
+	defer func() {
+		ticker.Stop()
+		wg.Done()
+		cleanupLogger.Debug("Remote label cleanup task stopped")
+	}()
 
-				return
-			case <-ticker.C:
-				if err := c.cleanupStaleRemoteLabels(ctx); err != nil {
-					cleanupLogger.Error("Failed to cleanup stale remote labels", "error", err)
-				}
+	for {
+		select {
+		case <-ctx.Done():
+			cleanupLogger.Info("Remote label cleanup task stopping (context cancelled)")
+
+			return
+		case <-ticker.C:
+			if err := c.cleanupStaleRemoteLabels(ctx); err != nil {
+				cleanupLogger.Error("Failed to cleanup stale remote labels", "error", err)
 			}
 		}
-	}()
+	}
 }
 
 // republishLocalProviders republishes all local CID provider announcements and labels
@@ -181,9 +192,12 @@ func (c *CleanupManager) republishLocalProviders(ctx context.Context) {
 			continue
 		}
 
+		// Wrap record with adapter for interface-based publishing
+		adapter := adapters.NewRecordAdapter(record)
+
 		// Use injected publishing function (handles both DHT and GossipSub)
-		// This reuses routeRemote.publishToNetwork logic without circular dependency
-		if err := c.publishFunc(ctx, cidStr, record); err != nil {
+		// This reuses routeRemote.Publish logic without circular dependency
+		if err := c.publishFunc(ctx, adapter); err != nil {
 			cleanupLogger.Warn("Failed to republish record to network",
 				"cid", cidStr,
 				"error", err)
@@ -222,7 +236,7 @@ func (c *CleanupManager) cleanupStaleRemoteLabels(ctx context.Context) error {
 	// We'll query each namespace separately and combine results
 	var allResults []query.Result
 
-	for _, namespace := range labels.AllLabelTypes() {
+	for _, namespace := range types.AllLabelTypes() {
 		nsResults, err := c.dstore.Query(ctx, query.Query{
 			Prefix: namespace.Prefix(),
 			Filters: []query.Filter{
@@ -268,7 +282,7 @@ func (c *CleanupManager) cleanupStaleRemoteLabels(ctx context.Context) error {
 			continue
 		}
 
-		var metadata labels.LabelMetadata
+		var metadata types.LabelMetadata
 		if err := json.Unmarshal(result.Value, &metadata); err != nil {
 			cleanupLogger.Warn("Failed to parse label metadata, marking for deletion",
 				"key", result.Key, "error", err)
@@ -357,7 +371,7 @@ func (c *CleanupManager) cleanupLabelsForCID(ctx context.Context, cid string) bo
 	// Find and remove all label keys for this CID across all namespaces
 	localPeerID := c.server.Host().ID().String()
 
-	for _, namespace := range labels.AllLabelTypes() {
+	for _, namespace := range types.AllLabelTypes() {
 		// Query labels in this namespace that match our CID
 		labelResults, err := c.dstore.Query(ctx, query.Query{
 			Prefix: namespace.Prefix(),

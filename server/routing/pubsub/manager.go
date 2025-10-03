@@ -5,10 +5,11 @@ package pubsub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/agntcy/dir/server/types/labels"
+	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -38,8 +39,8 @@ type Manager struct {
 	localPeerID string
 	topicName   string // Topic name (protocol constant)
 
-	// Callback invoked when label announcement is received
-	onLabelAnnouncement func(context.Context, *LabelAnnouncement)
+	// Callback invoked when record publish event is received
+	onRecordPublishEvent func(context.Context, *RecordPublishEvent)
 }
 
 // New creates a new GossipSub manager for label announcements.
@@ -103,34 +104,53 @@ func New(ctx context.Context, h host.Host) (*Manager, error) {
 	return manager, nil
 }
 
-// PublishLabels announces labels for a record to the network.
+// PublishRecord announces a record's labels to the network.
 // This is called when a record is stored locally and should be
 // discoverable by remote peers.
 //
 // Flow:
-//  1. Convert labels.Label to wire format ([]string)
-//  2. Create and validate LabelAnnouncement
-//  3. Publish to GossipSub topic
-//  4. GossipSub mesh propagates to all subscribed peers
+//  1. Extract CID and labels from record
+//  2. Convert types.Label to wire format ([]string)
+//  3. Create and validate RecordPublishEvent
+//  4. Publish to GossipSub topic
+//  5. GossipSub mesh propagates to all subscribed peers
 //
 // Parameters:
 //   - ctx: Context for operation timeout/cancellation
-//   - cid: Content ID of the record
-//   - labelList: List of labels extracted from the record
+//   - record: The record interface (caller must wrap concrete types with adapter)
 //
 // Returns:
 //   - error: If validation or publishing fails
 //
 // Note: This is non-blocking. GossipSub handles propagation asynchronously.
-func (m *Manager) PublishLabels(ctx context.Context, cid string, labelList []labels.Label) error {
-	// Convert labels.Label to strings for wire format
+func (m *Manager) PublishRecord(ctx context.Context, record types.Record) error {
+	if record == nil {
+		return errors.New("record is nil")
+	}
+
+	// Extract CID from record
+	cid := record.GetCid()
+	if cid == "" {
+		return errors.New("record has no CID")
+	}
+
+	// Extract labels from record (uses shared label extraction logic)
+	labelList := types.GetLabelsFromRecord(record)
+	if len(labelList) == 0 {
+		// No labels to publish (not an error, just nothing to do)
+		logger.Debug("Record has no labels, skipping GossipSub announcement", "cid", cid)
+
+		return nil
+	}
+
+	// Convert types.Label to strings for wire format
 	labelStrings := make([]string, len(labelList))
 	for i, label := range labelList {
 		labelStrings[i] = label.String()
 	}
 
 	// Create announcement with current timestamp
-	announcement := &LabelAnnouncement{
+	announcement := &RecordPublishEvent{
 		CID:       cid,
 		PeerID:    m.localPeerID,
 		Labels:    labelStrings,
@@ -153,7 +173,7 @@ func (m *Manager) PublishLabels(ctx context.Context, cid string, labelList []lab
 		return fmt.Errorf("failed to publish announcement: %w", err)
 	}
 
-	logger.Info("Published label announcement",
+	logger.Info("Published record announcement",
 		"cid", cid,
 		"labels", len(labelList),
 		"topicPeers", len(m.topic.ListPeers()),
@@ -162,7 +182,7 @@ func (m *Manager) PublishLabels(ctx context.Context, cid string, labelList []lab
 	return nil
 }
 
-// SetOnLabelAnnouncement sets the callback for received label announcements.
+// SetOnRecordPublishEvent sets the callback for received record publication events.
 // This callback is invoked for each valid announcement received from remote peers.
 //
 // The callback should:
@@ -179,8 +199,8 @@ func (m *Manager) PublishLabels(ctx context.Context, cid string, labelList []lab
 //	        // ... store in datastore ...
 //	    }
 //	})
-func (m *Manager) SetOnLabelAnnouncement(fn func(context.Context, *LabelAnnouncement)) {
-	m.onLabelAnnouncement = fn
+func (m *Manager) SetOnRecordPublishEvent(fn func(context.Context, *RecordPublishEvent)) {
+	m.onRecordPublishEvent = fn
 }
 
 // handleMessages is the main message processing loop.
@@ -221,7 +241,7 @@ func (m *Manager) handleMessages() {
 		}
 
 		// Parse and validate announcement
-		announcement, err := UnmarshalLabelAnnouncement(msg.Data)
+		announcement, err := UnmarshalRecordPublishEvent(msg.Data)
 		if err != nil {
 			logger.Warn("Received invalid label announcement",
 				"from", msg.ReceivedFrom,
@@ -238,9 +258,9 @@ func (m *Manager) handleMessages() {
 			"labels", len(announcement.Labels))
 
 		// Invoke callback for processing
-		if m.onLabelAnnouncement != nil {
+		if m.onRecordPublishEvent != nil {
 			// Use context from Manager, not from message
-			m.onLabelAnnouncement(m.ctx, announcement)
+			m.onRecordPublishEvent(m.ctx, announcement)
 		}
 	}
 }

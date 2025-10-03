@@ -6,7 +6,6 @@ package types
 import (
 	"context"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -16,7 +15,8 @@ type Peer = peer.AddrInfo
 // RoutingAPI handles management of the routing layer.
 type RoutingAPI interface {
 	// Publish record to the network
-	Publish(context.Context, *corev1.RecordRef, *corev1.Record) error
+	// The caller must wrap concrete record types (e.g. *corev1.Record) with adapters.NewRecordAdapter()
+	Publish(context.Context, Record) error
 
 	// List all records that this peer is currently providing (local-only operation)
 	List(context.Context, *routingv1.ListRequest) (<-chan *routingv1.ListResponse, error)
@@ -25,7 +25,12 @@ type RoutingAPI interface {
 	Search(context.Context, *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error)
 
 	// Unpublish record from the network
-	Unpublish(context.Context, *corev1.RecordRef, *corev1.Record) error
+	// The caller must wrap concrete record types (e.g. *corev1.Record) with adapters.NewRecordAdapter()
+	Unpublish(context.Context, Record) error
+
+	// Stop stops the routing services and releases resources
+	// Should be called during server shutdown for graceful cleanup
+	Stop() error
 }
 
 // PublicationAPI handles management of publication tasks.
