@@ -7,20 +7,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/agntcy/dir/server/types/labels"
+	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // Add utility functions for testing.
-func GetLabelTypeFromKey(key string) (labels.LabelType, bool) {
-	for _, labelType := range labels.AllLabelTypes() {
+func GetLabelTypeFromKey(key string) (types.LabelType, bool) {
+	for _, labelType := range types.AllLabelTypes() {
 		if strings.HasPrefix(key, labelType.Prefix()) {
 			return labelType, true
 		}
 	}
 
-	return labels.LabelTypeUnknown, false
+	return types.LabelTypeUnknown, false
 }
 
 func TestSkillValidator_Validate(t *testing.T) {
@@ -180,6 +180,20 @@ func TestDomainValidator_Validate(t *testing.T) {
 			wantError: true,
 			errorMsg:  "invalid CID in value",
 		},
+		{
+			name:      "missing CID",
+			key:       "/domains/ai//Peer1",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "missing CID in key",
+		},
+		{
+			name:      "missing PeerID",
+			key:       "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
+		},
 	}
 
 	for _, tt := range tests {
@@ -253,6 +267,121 @@ func TestModuleValidator_Validate(t *testing.T) {
 			wantError: true,
 			errorMsg:  "invalid CID in value",
 		},
+		{
+			name:      "missing CID",
+			key:       "/modules/llm//Peer1",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "missing CID in key",
+		},
+		{
+			name:      "missing PeerID",
+			key:       "/modules/llm/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.Validate(tt.key, tt.value)
+
+			if tt.wantError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+//nolint:dupl // Similar test structure is intentional for different validators
+func TestLocatorValidator_Validate(t *testing.T) {
+	validator := &LocatorValidator{}
+
+	tests := []struct {
+		name      string
+		key       string
+		value     []byte
+		wantError bool
+		errorMsg  string
+	}{
+		{
+			name:      "valid locators key with single locator type",
+			key:       "/locators/docker-image/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			value:     []byte{},
+			wantError: false,
+		},
+		{
+			name:      "valid locators key with nested locator path",
+			key:       "/locators/container/docker/alpine/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2",
+			value:     []byte{},
+			wantError: false,
+		},
+		{
+			name:      "valid locators key with value",
+			key:       "/locators/npm-package/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3",
+			value:     []byte("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
+			wantError: false,
+		},
+		{
+			name:      "invalid namespace",
+			key:       "/modules/docker-image/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "invalid namespace: expected locators, got modules",
+		},
+		{
+			name:      "missing locator type",
+			key:       "/locators/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
+		},
+		{
+			name:      "invalid CID format",
+			key:       "/locators/docker-image/invalid-cid/Peer1",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "invalid CID format",
+		},
+		{
+			name:      "invalid value CID",
+			key:       "/locators/docker-image/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			value:     []byte("invalid-cid-value"),
+			wantError: true,
+			errorMsg:  "invalid CID in value",
+		},
+		{
+			name:      "empty locator path component",
+			key:       "/locators//docker-image/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "locator path component cannot be empty at position 1",
+		},
+		{
+			name:      "empty locator path component in middle",
+			key:       "/locators/container//alpine/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "locator path component cannot be empty at position 2",
+		},
+		{
+			name:      "missing CID",
+			key:       "/locators/docker-image//Peer1",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "missing CID in key",
+		},
+		{
+			name:      "missing PeerID",
+			key:       "/locators/docker-image/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+			value:     []byte{},
+			wantError: true,
+			errorMsg:  "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
+		},
 	}
 
 	for _, tt := range tests {
@@ -317,6 +446,17 @@ func TestValidators_Select(t *testing.T) {
 			errorMsg:  "no valid values found",
 		},
 		{
+			name:      "locators validator - select first valid value",
+			validator: &LocatorValidator{},
+			key:       "/locators/docker-image/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
+			values: [][]byte{
+				[]byte("bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
+				[]byte("invalid-cid"),
+			},
+			wantIndex: 0,
+			wantError: false,
+		},
+		{
 			name:      "empty values slice",
 			validator: &SkillValidator{},
 			key:       "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
@@ -346,40 +486,40 @@ func TestValidators_Select(t *testing.T) {
 func TestLabelTypeIntegration(t *testing.T) {
 	// Test that LabelType works correctly with validators
 	// Test String() method
-	assert.Equal(t, "skills", labels.LabelTypeSkill.String())
-	assert.Equal(t, "domains", labels.LabelTypeDomain.String())
-	assert.Equal(t, "modules", labels.LabelTypeModule.String())
-	assert.Equal(t, "locators", labels.LabelTypeLocator.String())
+	assert.Equal(t, "skills", types.LabelTypeSkill.String())
+	assert.Equal(t, "domains", types.LabelTypeDomain.String())
+	assert.Equal(t, "modules", types.LabelTypeModule.String())
+	assert.Equal(t, "locators", types.LabelTypeLocator.String())
 
 	// Test Prefix() method
-	assert.Equal(t, "/skills/", labels.LabelTypeSkill.Prefix())
-	assert.Equal(t, "/domains/", labels.LabelTypeDomain.Prefix())
-	assert.Equal(t, "/modules/", labels.LabelTypeModule.Prefix())
-	assert.Equal(t, "/locators/", labels.LabelTypeLocator.Prefix())
+	assert.Equal(t, "/skills/", types.LabelTypeSkill.Prefix())
+	assert.Equal(t, "/domains/", types.LabelTypeDomain.Prefix())
+	assert.Equal(t, "/modules/", types.LabelTypeModule.Prefix())
+	assert.Equal(t, "/locators/", types.LabelTypeLocator.Prefix())
 
 	// Test IsValid() method
-	assert.True(t, labels.LabelTypeSkill.IsValid())
-	assert.True(t, labels.LabelTypeDomain.IsValid())
-	assert.True(t, labels.LabelTypeModule.IsValid())
-	assert.True(t, labels.LabelTypeLocator.IsValid())
-	assert.False(t, labels.LabelType("invalid").IsValid())
+	assert.True(t, types.LabelTypeSkill.IsValid())
+	assert.True(t, types.LabelTypeDomain.IsValid())
+	assert.True(t, types.LabelTypeModule.IsValid())
+	assert.True(t, types.LabelTypeLocator.IsValid())
+	assert.False(t, types.LabelType("invalid").IsValid())
 
 	// Test ParseLabelType() function
-	lt, valid := labels.ParseLabelType("skills")
+	lt, valid := types.ParseLabelType("skills")
 	assert.True(t, valid)
-	assert.Equal(t, labels.LabelTypeSkill, lt)
+	assert.Equal(t, types.LabelTypeSkill, lt)
 
-	lt, valid = labels.ParseLabelType("invalid")
+	lt, valid = types.ParseLabelType("invalid")
 	assert.False(t, valid)
-	assert.Equal(t, labels.LabelTypeUnknown, lt)
+	assert.Equal(t, types.LabelTypeUnknown, lt)
 
 	// Test AllLabelTypes() function
-	all := labels.AllLabelTypes()
+	all := types.AllLabelTypes()
 	assert.Len(t, all, 4)
-	assert.Contains(t, all, labels.LabelTypeSkill)
-	assert.Contains(t, all, labels.LabelTypeDomain)
-	assert.Contains(t, all, labels.LabelTypeModule)
-	assert.Contains(t, all, labels.LabelTypeLocator)
+	assert.Contains(t, all, types.LabelTypeSkill)
+	assert.Contains(t, all, types.LabelTypeDomain)
+	assert.Contains(t, all, types.LabelTypeModule)
+	assert.Contains(t, all, types.LabelTypeLocator)
 
 	// Test IsValidLabelKey() function
 	assert.True(t, IsValidLabelKey("/skills/golang/CID123"))
@@ -393,19 +533,19 @@ func TestLabelTypeIntegration(t *testing.T) {
 	// Test GetLabelTypeFromKey() function
 	lt, found := GetLabelTypeFromKey("/skills/golang/CID123")
 	assert.True(t, found)
-	assert.Equal(t, labels.LabelTypeSkill, lt)
+	assert.Equal(t, types.LabelTypeSkill, lt)
 
 	lt, found = GetLabelTypeFromKey("/domains/web/CID123")
 	assert.True(t, found)
-	assert.Equal(t, labels.LabelTypeDomain, lt)
+	assert.Equal(t, types.LabelTypeDomain, lt)
 
 	lt, found = GetLabelTypeFromKey("/modules/chat/CID123")
 	assert.True(t, found)
-	assert.Equal(t, labels.LabelTypeModule, lt)
+	assert.Equal(t, types.LabelTypeModule, lt)
 
 	lt, found = GetLabelTypeFromKey("/invalid/test/CID123")
 	assert.False(t, found)
-	assert.Equal(t, labels.LabelTypeUnknown, lt)
+	assert.Equal(t, types.LabelTypeUnknown, lt)
 }
 
 func TestCreateLabelValidators(t *testing.T) {
@@ -413,16 +553,16 @@ func TestCreateLabelValidators(t *testing.T) {
 
 	// Test that all expected validators are created
 	assert.Len(t, validators, 4)
-	assert.Contains(t, validators, labels.LabelTypeSkill.String())
-	assert.Contains(t, validators, labels.LabelTypeDomain.String())
-	assert.Contains(t, validators, labels.LabelTypeModule.String())
-	assert.Contains(t, validators, labels.LabelTypeLocator.String())
+	assert.Contains(t, validators, types.LabelTypeSkill.String())
+	assert.Contains(t, validators, types.LabelTypeDomain.String())
+	assert.Contains(t, validators, types.LabelTypeModule.String())
+	assert.Contains(t, validators, types.LabelTypeLocator.String())
 
 	// Test that validators are of correct types
-	assert.IsType(t, &SkillValidator{}, validators[labels.LabelTypeSkill.String()])
-	assert.IsType(t, &DomainValidator{}, validators[labels.LabelTypeDomain.String()])
-	assert.IsType(t, &ModuleValidator{}, validators[labels.LabelTypeModule.String()])
-	assert.IsType(t, &LocatorValidator{}, validators[labels.LabelTypeLocator.String()])
+	assert.IsType(t, &SkillValidator{}, validators[types.LabelTypeSkill.String()])
+	assert.IsType(t, &DomainValidator{}, validators[types.LabelTypeDomain.String()])
+	assert.IsType(t, &ModuleValidator{}, validators[types.LabelTypeModule.String()])
+	assert.IsType(t, &LocatorValidator{}, validators[types.LabelTypeLocator.String()])
 }
 
 func TestValidateLabelKey(t *testing.T) {
@@ -542,28 +682,28 @@ func TestBaseValidator_validateKeyFormat(t *testing.T) {
 		{
 			name:              "valid key format",
 			key:               "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
-			expectedNamespace: labels.LabelTypeSkill.String(),
+			expectedNamespace: types.LabelTypeSkill.String(),
 			wantError:         false,
 			expectedParts:     []string{"", "skills", "programming", "golang", "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku", "Peer1"},
 		},
 		{
 			name:              "invalid format - too few parts",
 			key:               "/skills/programming",
-			expectedNamespace: labels.LabelTypeSkill.String(),
+			expectedNamespace: types.LabelTypeSkill.String(),
 			wantError:         true,
 			errorMsg:          "invalid key format: expected /<namespace>/<specific_path>/<cid>/<peer_id>",
 		},
 		{
 			name:              "wrong namespace",
 			key:               "/domains/ai/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1",
-			expectedNamespace: labels.LabelTypeSkill.String(),
+			expectedNamespace: types.LabelTypeSkill.String(),
 			wantError:         true,
 			errorMsg:          "invalid namespace: expected skills, got domains",
 		},
 		{
 			name:              "invalid CID",
 			key:               "/skills/programming/golang/invalid-cid/Peer1",
-			expectedNamespace: labels.LabelTypeSkill.String(),
+			expectedNamespace: types.LabelTypeSkill.String(),
 			wantError:         true,
 			errorMsg:          "invalid CID format",
 		},
@@ -654,6 +794,18 @@ func BenchmarkDomainValidator_Validate(b *testing.B) {
 func BenchmarkModuleValidator_Validate(b *testing.B) {
 	validator := &ModuleValidator{}
 	key := "/modules/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3"
+	value := []byte{}
+
+	b.ResetTimer()
+
+	for range b.N {
+		_ = validator.Validate(key, value)
+	}
+}
+
+func BenchmarkLocatorValidator_Validate(b *testing.B) {
+	validator := &LocatorValidator{}
+	key := "/locators/docker-image/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1"
 	value := []byte{}
 
 	b.ResetTimer()

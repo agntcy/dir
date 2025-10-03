@@ -13,6 +13,7 @@ var (
 	deployTestCIDs       []string
 	syncTestCIDs         []string
 	remoteSearchTestCIDs []string
+	gossipsubTestCIDs    []string
 )
 
 // This ensures clean state between different test files (Describe blocks).
@@ -62,6 +63,8 @@ func RegisterCIDForCleanup(cid, testFile string) {
 		syncTestCIDs = append(syncTestCIDs, cid)
 	case "search":
 		remoteSearchTestCIDs = append(remoteSearchTestCIDs, cid)
+	case "gossipsub":
+		gossipsubTestCIDs = append(gossipsubTestCIDs, cid)
 	default:
 		ginkgo.GinkgoWriter.Printf("Warning: Unknown test file %s for CID %s", testFile, cid)
 	}
@@ -73,6 +76,7 @@ func CleanupAllNetworkTests() {
 	allCIDs = append(allCIDs, deployTestCIDs...)
 	allCIDs = append(allCIDs, syncTestCIDs...)
 	allCIDs = append(allCIDs, remoteSearchTestCIDs...)
+	allCIDs = append(allCIDs, gossipsubTestCIDs...)
 
 	CleanupNetworkRecords(allCIDs, "all network tests")
 }

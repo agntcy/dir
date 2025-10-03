@@ -43,7 +43,7 @@ apiserver:
           refresh_token: refresh-token
 
     # Routing settings for the peer-to-peer network.
-    routing: {}
+    routing:
       # Address to use for routing
       # listen_address: "/ipv4/0.0.0.0/tcp/5555"
 
@@ -56,6 +56,13 @@ apiserver:
       # bootstrap_peers:
       #   - /ip4/1.1.1.1/tcp/1
       #   - /ip4/1.1.1.1/tcp/2
+
+      # GossipSub configuration for efficient label announcements
+      # When enabled, labels are propagated via GossipSub mesh to ALL subscribed peers
+      # When disabled, falls back to DHT+Pull mechanism (higher bandwidth, limited reach)
+      # Default: true (recommended for production)
+      gossipsub:
+        enabled: true
 
     # Sync configuration
     sync:

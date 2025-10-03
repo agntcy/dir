@@ -14,7 +14,6 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/labels"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,8 +58,8 @@ func TestSearch_CoreLogic(t *testing.T) {
 	// Store test label metadata
 	for _, td := range testData {
 		for _, label := range td.labels {
-			enhancedKey := BuildEnhancedLabelKey(labels.Label(label), td.cid, td.peerID)
-			metadata := &labels.LabelMetadata{
+			enhancedKey := BuildEnhancedLabelKey(types.Label(label), td.cid, td.peerID)
+			metadata := &types.LabelMetadata{
 				Timestamp: time.Now(),
 				LastSeen:  time.Now(),
 			}
@@ -340,10 +339,10 @@ func testMatchesAllQueriesSimple(ctx context.Context, dstore types.Datastore, ci
 	}
 
 	// Use shared query matching logic - convert strings to labels
-	labelRetriever := func(_ context.Context, _ string) []labels.Label {
-		labelList := make([]labels.Label, len(labelStrings))
+	labelRetriever := func(_ context.Context, _ string) []types.Label {
+		labelList := make([]types.Label, len(labelStrings))
 		for i, labelStr := range labelStrings {
-			labelList[i] = labels.Label(labelStr)
+			labelList[i] = types.Label(labelStr)
 		}
 
 		return labelList

@@ -11,7 +11,6 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/labels"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,8 +41,8 @@ func TestRemoteSearch_ORLogicWithMinMatchScore(t *testing.T) {
 
 	// Store enhanced label announcements in datastore (simulating DHT cache)
 	for _, label := range skillLabels {
-		enhancedKey := BuildEnhancedLabelKey(labels.Label(label), testCID, testPeerID)
-		metadata := &labels.LabelMetadata{
+		enhancedKey := BuildEnhancedLabelKey(types.Label(label), testCID, testPeerID)
+		metadata := &types.LabelMetadata{
 			Timestamp: time.Now(),
 			LastSeen:  time.Now(),
 		}

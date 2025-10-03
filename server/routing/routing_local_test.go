@@ -19,6 +19,7 @@ import (
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	ipfsdatastore "github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
@@ -29,11 +30,20 @@ const testPeerID = "test-peer-id"
 func TestPublish_InvalidObject(t *testing.T) {
 	r := &routeLocal{localPeerID: testPeerID}
 
-	t.Run("Invalid object", func(t *testing.T) {
-		err := r.Publish(t.Context(), nil, &corev1.Record{})
+	t.Run("nil record", func(t *testing.T) {
+		err := r.Publish(t.Context(), nil)
 
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "record reference is required")
+		assert.ErrorContains(t, err, "record is required")
+	})
+
+	t.Run("record with no CID", func(t *testing.T) {
+		record := &corev1.Record{}
+		adapter := adapters.NewRecordAdapter(record)
+		err := r.Publish(t.Context(), adapter)
+
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "record has no CID")
 	})
 }
 
@@ -135,11 +145,13 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Publish first record
-	err = r.Publish(t.Context(), testRef, testRecord)
+	adapter := adapters.NewRecordAdapter(testRecord)
+	err = r.Publish(t.Context(), adapter)
 	assert.NoError(t, err)
 
 	// Publish second record
-	err = r.Publish(t.Context(), testRef2, testRecord2)
+	adapter2 := adapters.NewRecordAdapter(testRecord2)
+	err = r.Publish(t.Context(), adapter2)
 	assert.NoError(t, err)
 
 	for k, v := range validQueriesWithExpectedObjectRef {
@@ -187,7 +199,8 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	}
 
 	// Unpublish second record
-	err = r.Unpublish(t.Context(), testRef2, testRecord2)
+	adapterUnpub := adapters.NewRecordAdapter(testRecord2)
+	err = r.Unpublish(t.Context(), adapterUnpub)
 	assert.NoError(t, err)
 
 	// Try to list second record using RecordQuery
@@ -241,7 +254,8 @@ func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Publish first record
-	err = r.Publish(t.Context(), testRef, testRecord)
+	adapter := adapters.NewRecordAdapter(testRecord)
+	err = r.Publish(t.Context(), adapter)
 	assert.NoError(t, err)
 
 	t.Run("Valid multi skill query", func(t *testing.T) {
@@ -321,21 +335,22 @@ func Benchmark_RouteLocal(b *testing.B) {
 			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
 		},
 	})
-	ref := &corev1.RecordRef{Cid: record.GetCid()}
 
 	_, err := store.Push(b.Context(), record)
 	assert.NoError(b, err)
 
 	b.Run("Badger DB Publish and Unpublish", func(b *testing.B) {
+		adapter := adapters.NewRecordAdapter(record)
 		for b.Loop() {
-			_ = badgerRouter.Publish(b.Context(), ref, record)
-			err := badgerRouter.Unpublish(b.Context(), ref, record)
+			_ = badgerRouter.Publish(b.Context(), adapter)
+			err := badgerRouter.Unpublish(b.Context(), adapter)
 			assert.NoError(b, err)
 		}
 	})
 
 	b.Run("Badger DB List", func(b *testing.B) {
-		_ = badgerRouter.Publish(b.Context(), ref, record)
+		adapter := adapters.NewRecordAdapter(record)
+		_ = badgerRouter.Publish(b.Context(), adapter)
 		for b.Loop() {
 			_, err := badgerRouter.List(b.Context(), &routingv1.ListRequest{
 				Queries: []*routingv1.RecordQuery{
@@ -350,15 +365,17 @@ func Benchmark_RouteLocal(b *testing.B) {
 	})
 
 	b.Run("In memory DB Publish and Unpublish", func(b *testing.B) {
+		adapter := adapters.NewRecordAdapter(record)
 		for b.Loop() {
-			_ = inMemoryRouter.Publish(b.Context(), ref, record)
-			err := inMemoryRouter.Unpublish(b.Context(), ref, record)
+			_ = inMemoryRouter.Publish(b.Context(), adapter)
+			err := inMemoryRouter.Unpublish(b.Context(), adapter)
 			assert.NoError(b, err)
 		}
 	})
 
 	b.Run("In memory DB List", func(b *testing.B) {
-		_ = inMemoryRouter.Publish(b.Context(), ref, record)
+		adapter := adapters.NewRecordAdapter(record)
+		_ = inMemoryRouter.Publish(b.Context(), adapter)
 		for b.Loop() {
 			_, err := inMemoryRouter.List(b.Context(), &routingv1.ListRequest{
 				Queries: []*routingv1.RecordQuery{

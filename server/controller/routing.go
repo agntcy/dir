@@ -9,6 +9,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -107,7 +108,10 @@ func (c *routingCtlr) Unpublish(ctx context.Context, req *routingv1.UnpublishReq
 			return nil, status.Errorf(st.Code(), "failed to get record: %s", st.Message())
 		}
 
-		err = c.routing.Unpublish(ctx, ref, record)
+		// Wrap record with adapter for interface-based unpublishing
+		adapter := adapters.NewRecordAdapter(record)
+
+		err = c.routing.Unpublish(ctx, adapter)
 		if err != nil {
 			st := status.Convert(err)
 
