@@ -1077,6 +1077,8 @@ tasks:
   # TODO: change to Ingress services instead of LoadBalancer
   test:spire:
     desc: Test SPIRE federation setup between DIR and DIRCTL clusters
+    deps:
+      - task: helm:gen
     vars:
       DIR_TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN | default "dir.example" }}'
       DIRCTL_TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN | default "dirctl.example" }}'
