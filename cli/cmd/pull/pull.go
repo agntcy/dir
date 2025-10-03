@@ -12,7 +12,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	ociutils "github.com/agntcy/dir/utils/oci"
+	referrerutils "github.com/agntcy/dir/utils/referrer"
 	"github.com/spf13/cobra"
 )
 
@@ -82,48 +82,48 @@ func runCommand(cmd *cobra.Command, cid string) error {
 	presenter.Print(cmd, string(output))
 
 	if opts.PublicKey {
-		// Pull the public key for the record
+		publicKeyType := referrerutils.PublicKeyArtifactMediaType
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
 			},
-			Options: &storev1.PullReferrerRequest_PullReferrerType{
-				PullReferrerType: ociutils.PublicKeyArtifactMediaType,
-			},
+			ReferrerType: &publicKeyType,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to pull public key: %w", err)
 		}
 
-		// Get all public key responses
 		for response := range resultCh {
-			publicKey, err := response.GetReferrer().GetPublicKey()
+			publicKey, err := referrerutils.DecodePublicKeyFromReferrer(response.GetReferrer())
 			if err != nil {
-				return fmt.Errorf("failed to get public key: %w", err)
+				return fmt.Errorf("failed to decode public key from referrer: %w", err)
 			}
 
-			presenter.Println(cmd, "Public key: "+publicKey)
+			if publicKey != "" {
+				presenter.Println(cmd, "Public key: "+publicKey)
+			}
 		}
 	}
 
 	if opts.Signature {
-		// Pull the signature for the record
+		signatureType := referrerutils.SignatureArtifactType
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
 			},
-			Options: &storev1.PullReferrerRequest_PullSignature{
-				PullSignature: true,
-			},
+			ReferrerType: &signatureType,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to pull signature: %w", err)
 		}
 
-		// Get all signature responses
 		for response := range resultCh {
-			signature := response.GetSignature()
-			if signature != nil && signature.GetSignature() != "" {
+			signature, err := referrerutils.DecodeCosignSignatureFromReferrer(response.GetReferrer())
+			if err != nil {
+				return fmt.Errorf("failed to decode cosign signature from referrer: %w", err)
+			}
+
+			if signature != nil {
 				presenter.Println(cmd, "Signature: "+signature.GetSignature())
 			}
 		}
