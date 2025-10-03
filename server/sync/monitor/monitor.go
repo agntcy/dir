@@ -20,7 +20,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
-	ociutils "github.com/agntcy/dir/utils/oci"
+	referrerutils "github.com/agntcy/dir/utils/referrer"
 	"github.com/agntcy/dir/utils/zot"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -445,7 +445,7 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 	}
 
 	// Walk public key referrers
-	err := ociStore.WalkReferrers(ctx, tag, ociutils.PublicKeyArtifactMediaType, walkFn)
+	err := ociStore.WalkReferrers(ctx, tag, referrerutils.PublicKeyArtifactMediaType, walkFn)
 	if err != nil {
 		return fmt.Errorf("failed to walk public key referrers: %w", err)
 	}

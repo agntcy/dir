@@ -83,6 +83,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	if opts.PublicKey {
 		publicKeyType := referrerutils.PublicKeyArtifactMediaType
+
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
@@ -107,6 +108,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	if opts.Signature {
 		signatureType := referrerutils.SignatureArtifactType
+
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
 				Cid: cid,
@@ -118,7 +120,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		}
 
 		for response := range resultCh {
-			signature, err := referrerutils.DecodeCosignSignatureFromReferrer(response.GetReferrer())
+			signature, err := referrerutils.DecodeSignatureFromReferrer(response.GetReferrer())
 			if err != nil {
 				return fmt.Errorf("failed to decode cosign signature from referrer: %w", err)
 			}
