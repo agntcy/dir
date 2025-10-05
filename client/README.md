@@ -48,25 +48,91 @@ go get github.com/agntcy/dir/client
 
 ## Configuration
 
-The SDK can be configured via environment variables or direct instantiation:
+The SDK can be configured via environment variables or direct instantiation.
 
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server address | `0.0.0.0:8888` |
+| `DIRECTORY_CLIENT_AUTH_MODE` | Authentication mode: `mtls`, `jwt`, or empty for insecure | `""` (insecure) |
+| `DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH` | SPIFFE Workload API socket path | `""` |
+| `DIRECTORY_CLIENT_JWT_AUDIENCE` | JWT audience for JWT authentication | `""` |
+
+### Authentication
+
+The SDK supports three authentication modes:
+
+#### 1. Insecure (No Authentication)
+
+For local development only. Not recommended for production.
+
+**Environment Variables:**
+```bash
+export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
+# AUTH_MODE is empty or not set
+```
+
+**Code Example:**
 ```go
 import "github.com/agntcy/dir/client"
 
-// Environment variables
-os.Setenv("DIRECTORY_CLIENT_SERVER_ADDRESS", "localhost:8888")
-os.Setenv("DIRCTL_PATH", "/path/to/dirctl")
-client := client.New()
-
-// Or configure directly
 config := &client.Config{
     ServerAddress: "localhost:8888",
+    // AuthMode is empty - insecure connection
 }
 client := client.New(client.WithConfig(config))
+```
 
-// Use SPIRE for mTLS communication
+#### 2. mTLS (Mutual TLS with X.509-SVID)
+
+Recommended for production. Requires SPIRE agent.
+
+**Environment Variables:**
+```bash
+export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
+export DIRECTORY_CLIENT_AUTH_MODE="mtls"
+export DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH="unix:///run/spire/agent-sockets/api.sock"
+```
+
+**Code Example:**
+```go
+import "github.com/agntcy/dir/client"
+
 config := &client.Config{
-    SpiffeSocketPath: "/tmp/agent.sock",
+    ServerAddress:    "localhost:8888",
+    AuthMode:         "mtls",
+    SpiffeSocketPath: "unix:///run/spire/agent-sockets/api.sock",
+}
+client := client.New(client.WithConfig(config))
+```
+
+#### 3. JWT (JWT-SVID)
+
+Alternative to mTLS for client authentication. Requires SPIRE agent.
+
+> **Note**: In JWT mode, the server presents its X.509-SVID via TLS for server 
+> authentication and encryption, while the client authenticates using a JWT-SVID. 
+> This provides both transport security and client authentication, following the 
+> [official SPIFFE JWT pattern](https://github.com/spiffe/go-spiffe/tree/main/examples/spiffe-jwt).
+
+**Environment Variables:**
+```bash
+export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
+export DIRECTORY_CLIENT_AUTH_MODE="jwt"
+export DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH="unix:///run/spire/agent-sockets/api.sock"
+export DIRECTORY_CLIENT_JWT_AUDIENCE="spiffe://example.org/dir-server"
+```
+
+**Code Example:**
+```go
+import "github.com/agntcy/dir/client"
+
+config := &client.Config{
+    ServerAddress:    "localhost:8888",
+    AuthMode:         "jwt",
+    SpiffeSocketPath: "unix:///run/spire/agent-sockets/api.sock",
+    JWTAudience:      "spiffe://example.org/dir-server",
 }
 client := client.New(client.WithConfig(config))
 ```

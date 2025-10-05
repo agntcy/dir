@@ -58,23 +58,51 @@ npm install agntcy-dir
 The SDK can be configured via environment variables or direct instantiation:
 
 ```js
-// Environment variables
+// Environment variables (insecure mode)
 process.env.DIRECTORY_CLIENT_SERVER_ADDRESS = "localhost:8888";
 process.env.DIRCTL_PATH = "/path/to/dirctl";
+
+// Environment variables (mTLS authentication)
+process.env.DIRECTORY_CLIENT_SERVER_ADDRESS = "localhost:8888";
+process.env.DIRECTORY_CLIENT_AUTH_MODE = "mtls";
+process.env.DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH = "/tmp/agent.sock";
+
+// Environment variables (JWT authentication)
+process.env.DIRECTORY_CLIENT_SERVER_ADDRESS = "localhost:8888";
+process.env.DIRECTORY_CLIENT_AUTH_MODE = "jwt";
+process.env.DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH = "/tmp/agent.sock";
+process.env.DIRECTORY_CLIENT_JWT_AUDIENCE = "spiffe://example.org/dir-server";
 
 // Or configure directly
 import {Config, Client} from 'agntcy-dir';
 
+// Insecure mode (default, for development only)
 const config = new Config(
     serverAddress="localhost:8888",
     dirctlPath="/usr/local/bin/dirctl"
 );
 const client = new Client(config);
 
-// Use SPIRE for mTLS communication
-const config = new Config(spiffeEndpointSocket="/tmp/agent.sock");
-const transport = await Client.createGRPCTransport(config);
-const spiffeClient = new Client(config, transport);
+// mTLS authentication with SPIRE
+const mtlsConfig = new Config(
+    "localhost:8888", 
+    "/usr/local/bin/dirctl",
+    "/tmp/agent.sock",  // SPIFFE socket path
+    "mtls"  // auth mode
+);
+const mtlsTransport = await Client.createGRPCTransport(mtlsConfig);
+const mtlsClient = new Client(mtlsConfig, mtlsTransport);
+
+// JWT authentication with SPIRE
+const jwtConfig = new Config(
+    "localhost:8888",
+    "/usr/local/bin/dirctl",
+    "/tmp/agent.sock",  // SPIFFE socket path
+    "jwt",  // auth mode
+    "spiffe://example.org/dir-server"  // JWT audience
+);
+const jwtTransport = await Client.createGRPCTransport(jwtConfig);
+const jwtClient = new Client(jwtConfig, jwtTransport);
 ```
 
 ## Getting Started

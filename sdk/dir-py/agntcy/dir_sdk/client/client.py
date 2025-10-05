@@ -32,6 +32,81 @@ from agntcy.dir_sdk.models import (
 logger = logging.getLogger("client")
 
 
+class JWTAuthInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor,
+                          grpc.StreamUnaryClientInterceptor, grpc.StreamStreamClientInterceptor):
+    """gRPC interceptor that adds JWT-SVID authentication to requests."""
+
+    def __init__(self, socket_path: str, audience: str) -> None:
+        """Initialize the JWT auth interceptor.
+
+        Args:
+            socket_path: Path to the SPIFFE Workload API socket
+            audience: JWT audience claim for token validation
+
+        """
+        self.socket_path = socket_path
+        self.audience = audience
+        self._workload_client = WorkloadApiClient(socket_path=socket_path)
+
+    def _get_jwt_token(self) -> str:
+        """Fetch a JWT-SVID from the SPIRE Workload API.
+
+        Returns:
+            JWT token string
+
+        Raises:
+            RuntimeError: If unable to fetch JWT-SVID
+
+        """
+        try:
+            # Fetch JWT-SVID with the configured audience
+            jwt_svid = self._workload_client.fetch_jwt_svid(audiences=[self.audience])
+            if jwt_svid and jwt_svid.token:
+                return jwt_svid.token
+            msg = "Failed to fetch JWT-SVID: empty token"
+            raise RuntimeError(msg)
+        except Exception as e:
+            msg = f"Failed to fetch JWT-SVID: {e}"
+            raise RuntimeError(msg) from e
+
+    def _add_jwt_metadata(self, client_call_details):
+        """Add JWT token to request metadata."""
+        token = self._get_jwt_token()
+        metadata = []
+        if client_call_details.metadata is not None:
+            metadata = list(client_call_details.metadata)
+        metadata.append(("authorization", f"Bearer {token}"))
+
+        return grpc._interceptor._ClientCallDetails(
+            method=client_call_details.method,
+            timeout=client_call_details.timeout,
+            metadata=metadata,
+            credentials=client_call_details.credentials,
+            wait_for_ready=client_call_details.wait_for_ready,
+            compression=client_call_details.compression,
+        )
+
+    def intercept_unary_unary(self, continuation, client_call_details, request):
+        """Intercept unary-unary RPC calls."""
+        new_details = self._add_jwt_metadata(client_call_details)
+        return continuation(new_details, request)
+
+    def intercept_unary_stream(self, continuation, client_call_details, request):
+        """Intercept unary-stream RPC calls."""
+        new_details = self._add_jwt_metadata(client_call_details)
+        return continuation(new_details, request)
+
+    def intercept_stream_unary(self, continuation, client_call_details, request_iterator):
+        """Intercept stream-unary RPC calls."""
+        new_details = self._add_jwt_metadata(client_call_details)
+        return continuation(new_details, request_iterator)
+
+    def intercept_stream_stream(self, continuation, client_call_details, request_iterator):
+        """Intercept stream-stream RPC calls."""
+        new_details = self._add_jwt_metadata(client_call_details)
+        return continuation(new_details, request_iterator)
+
+
 class Client:
     """High-level client for interacting with AGNTCY Directory services.
 
@@ -73,12 +148,24 @@ class Client:
         self.sync_client = store_v1.SyncServiceStub(channel)
 
     def __create_grpc_channel(self) -> grpc.Channel:
-        # Create insecure gRPC channel if no SPIFFE socket is provided
-        if self.config.spiffe_socket_path == "":
-            channel = grpc.insecure_channel(self.config.server_address)
-            return channel
+        # Handle different authentication modes
+        if self.config.auth_mode == "insecure":
+            return grpc.insecure_channel(self.config.server_address)
+        elif self.config.auth_mode == "jwt":
+            return self.__create_jwt_channel()
+        elif self.config.auth_mode == "mtls":
+            return self.__create_mtls_channel()
+        else:
+            msg = f"Unsupported auth mode: {self.config.auth_mode}"
+            raise ValueError(msg)
 
-        # Otherwise, create secure gRPC channel using SPIFFE
+    def __create_mtls_channel(self) -> grpc.Channel:
+        """Create a secure gRPC channel using SPIFFE mTLS."""
+        if self.config.spiffe_socket_path == "":
+            msg = "SPIFFE socket path is required for mTLS authentication"
+            raise ValueError(msg)
+
+        # Create secure gRPC channel using SPIFFE
         workload_client = WorkloadApiClient(socket_path=self.config.spiffe_socket_path)
         x509_src = X509Source(
             workload_api_client=workload_client,
@@ -111,6 +198,29 @@ class Client:
             target=self.config.server_address,
             credentials=credentials,
         )
+
+        return channel
+
+    def __create_jwt_channel(self) -> grpc.Channel:
+        """Create a gRPC channel with JWT authentication."""
+        if self.config.spiffe_socket_path == "":
+            msg = "SPIFFE socket path is required for JWT authentication"
+            raise ValueError(msg)
+
+        if self.config.jwt_audience == "":
+            msg = "JWT audience is required for JWT authentication"
+            raise ValueError(msg)
+
+        # Create JWT interceptor
+        jwt_interceptor = JWTAuthInterceptor(
+            socket_path=self.config.spiffe_socket_path,
+            audience=self.config.jwt_audience
+        )
+
+        # Create insecure channel with JWT interceptor
+        # Note: JWT provides authentication, but for production you may want TLS for transport security
+        channel = grpc.insecure_channel(self.config.server_address)
+        channel = grpc.intercept_channel(channel, jwt_interceptor)
 
         return channel
 

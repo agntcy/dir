@@ -5,25 +5,31 @@ package config
 
 import "errors"
 
-// Config contains configuration for AuthZ services.
+// Config contains configuration for authorization (AuthZ) services.
+// Authorization is separate from authentication (AuthN) - it receives
+// an authenticated SPIFFE ID from the context and makes policy decisions.
 type Config struct {
-	// Indicates if the services are enabled
+	// Indicates if authorization is enabled
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-	// Spiffe socket path
-	SocketPath string `json:"socket_path,omitempty" mapstructure:"socket_path"`
-
-	// Spiffe trust domain
+	// Trust domain for this Directory server
+	// Used to distinguish internal vs external requests
 	TrustDomain string `json:"trust_domain,omitempty" mapstructure:"trust_domain"`
+
+	// Optional: Path to Casbin model file (uses embedded model if not specified)
+	ModelPath string `json:"model_path,omitempty" mapstructure:"model_path"`
+
+	// Optional: Path to Casbin policy file (uses default policies if not specified)
+	PolicyPath string `json:"policy_path,omitempty" mapstructure:"policy_path"`
 }
 
 func (c *Config) Validate() error {
-	if c.SocketPath == "" {
-		return errors.New("socket path is required")
+	if !c.Enabled {
+		return nil
 	}
 
 	if c.TrustDomain == "" {
-		return errors.New("trust domain is required")
+		return errors.New("trust domain is required for authorization")
 	}
 
 	return nil

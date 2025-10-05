@@ -10,10 +10,11 @@ import { spawnSync } from 'node:child_process';
 import {
   Client as GrpcClient,
   createClient,
+  Interceptor,
   Transport,
 } from '@connectrpc/connect';
 import { createGrpcTransport } from '@connectrpc/connect-node';
-import { createClient as createClientSpiffe, X509SVID } from 'spiffe';
+import { createClient as createClientSpiffe, X509SVID, JWTSVID } from 'spiffe';
 import * as models from '../models';
 
 /**
@@ -26,9 +27,13 @@ export class Config {
   static DEFAULT_SERVER_ADDRESS = '0.0.0.0:8888';
   static DEFAULT_DIRCTL_PATH = 'dirctl';
   static DEFAULT_SPIFFE_ENDPOINT_SOCKET = '';
+  static DEFAULT_AUTH_MODE = 'insecure';
+  static DEFAULT_JWT_AUDIENCE = '';
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
+  authMode: 'insecure' | 'mtls' | 'jwt';
+  jwtAudience: string;
 
   /**
    * Creates a new Config instance.
@@ -36,20 +41,24 @@ export class Config {
    * @param serverAddress - The server address to connect to. Defaults to '0.0.0.0:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
+   * @param authMode - Authentication mode: 'insecure', 'mtls', or 'jwt'. Defaults to 'insecure'
+   * @param jwtAudience - JWT audience for JWT authentication. Required when authMode is 'jwt'
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
-    spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET
+    spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
+    authMode: 'insecure' | 'mtls' | 'jwt' = Config.DEFAULT_AUTH_MODE as 'insecure' | 'mtls' | 'jwt',
+    jwtAudience = Config.DEFAULT_JWT_AUDIENCE
   ) {
     // add protocol prefix if not set
-    // use unsafe http unless spire is used
+    // use unsafe http unless spire/auth is used
     if (
       !serverAddress.startsWith('http://') &&
       !serverAddress.startsWith('https://')
     ) {
-      // use https protocol when spiffe used
-      if (spiffeEndpointSocket != Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET) {
+      // use https protocol when mTLS or JWT auth is used
+      if (authMode === 'mtls' || authMode === 'jwt') {
         serverAddress = `https://${serverAddress}`;
       } else {
         serverAddress = `http://${serverAddress}`;
@@ -59,6 +68,8 @@ export class Config {
     this.serverAddress = serverAddress;
     this.dirctlPath = dirctlPath;
     this.spiffeEndpointSocket = spiffeEndpointSocket;
+    this.authMode = authMode;
+    this.jwtAudience = jwtAudience;
   }
 
   /**
@@ -84,8 +95,10 @@ export class Config {
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
     const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
+    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as 'insecure' | 'mtls' | 'jwt';
+    const jwtAudience = env[`${prefix}JWT_AUDIENCE`] || Config.DEFAULT_JWT_AUDIENCE;
 
-    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath);
+    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience);
   }
 }
 
@@ -189,16 +202,30 @@ export class Client {
   }
 
   static async createGRPCTransport(config: Config): Promise<Transport> {
-    // If no spiffe socket provided, use insecure transport
-    if (config.spiffeEndpointSocket === '') {
-      const transport: Transport = createGrpcTransport({
-        baseUrl: config.serverAddress,
-      });
+    // Handle different authentication modes
+    switch (config.authMode) {
+      case 'insecure':
+        return createGrpcTransport({
+          baseUrl: config.serverAddress,
+        });
 
-      return transport;
+      case 'jwt':
+        return await this.createJWTTransport(config);
+
+      case 'mtls':
+        return await this.createMTLSTransport(config);
+
+      default:
+        throw new Error(`Unsupported auth mode: ${config.authMode}`);
+    }
+  }
+
+  private static async createMTLSTransport(config: Config): Promise<Transport> {
+    if (config.spiffeEndpointSocket === '') {
+      throw new Error('SPIFFE socket path is required for mTLS authentication');
     }
 
-    // Otherwise, create secure transport with spiffe
+    // Create secure transport with SPIFFE mTLS
     const client = createClientSpiffe(config.spiffeEndpointSocket);
 
     let svid: X509SVID = {
@@ -228,6 +255,52 @@ export class Client {
         cert: this.convertToPEM(svid.x509Svid, "CERTIFICATE"),
         key: this.convertToPEM(svid.x509SvidKey, "PRIVATE KEY"),
       },
+    });
+
+    return transport;
+  }
+
+  private static async createJWTTransport(config: Config): Promise<Transport> {
+    if (config.spiffeEndpointSocket === '') {
+      throw new Error('SPIFFE socket path is required for JWT authentication');
+    }
+
+    if (config.jwtAudience === '') {
+      throw new Error('JWT audience is required for JWT authentication');
+    }
+
+    // Create SPIFFE client
+    const client = createClientSpiffe(config.spiffeEndpointSocket);
+
+    // Create JWT interceptor that fetches and injects JWT tokens
+    const jwtInterceptor: Interceptor = (next) => async (req) => {
+      // Fetch JWT-SVID from SPIRE
+      let jwtToken = '';
+      const jwtStream = client.fetchJWTSVID({ audience: [config.jwtAudience] });
+      
+      for await (const message of jwtStream.responses) {
+        if (message.svids.length > 0) {
+          jwtToken = message.svids[0].svid;
+          break;
+        }
+      }
+
+      if (jwtToken === '') {
+        throw new Error('Failed to fetch JWT-SVID from SPIRE');
+      }
+
+      // Add JWT token to request headers
+      req.header.set('authorization', `Bearer ${jwtToken}`);
+
+      return await next(req);
+    };
+
+    // Create transport with JWT interceptor
+    // Note: For JWT, we can use insecure transport as JWT provides authentication
+    // In production, you may want to use TLS for transport security
+    const transport = createGrpcTransport({
+      baseUrl: config.serverAddress,
+      interceptors: [jwtInterceptor],
     });
 
     return transport;

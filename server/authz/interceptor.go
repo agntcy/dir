@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
+	"github.com/agntcy/dir/server/authn"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -15,32 +15,50 @@ import (
 
 type InterceptorFn func(ctx context.Context, apiMethod string) error
 
-// Interceptor returns a gRPC interceptor that performs authorization checks.
+// NewInterceptor returns a gRPC interceptor that performs authorization checks.
+// It expects the SPIFFE ID to already be in the context (set by the authn interceptor).
 //
 //nolint:wrapcheck
 func NewInterceptor(authorizer *Authorizer) InterceptorFn {
 	return func(ctx context.Context, apiMethod string) error {
-		sid, ok := grpccredentials.PeerIDFromContext(ctx)
+		// Get SPIFFE ID from context (set by authentication interceptor)
+		sid, ok := authn.SpiffeIDFromContext(ctx)
 		if !ok {
+			logger.Error("Authorization failed: no SPIFFE ID in context", "method", apiMethod)
+
 			return status.Error(codes.Unauthenticated, "not authenticated")
 		}
 
 		trustDomain := sid.TrustDomain().String()
 
+		// Perform authorization check
 		allowed, err := authorizer.Authorize(trustDomain, apiMethod)
 		if err != nil {
 			logger.Error("Authorization error",
 				"error", err,
 				"method", apiMethod,
 				"trust_domain", trustDomain,
+				"spiffe_id", sid.String(),
 			)
 
 			return status.Error(codes.Internal, fmt.Sprintf("something went wrong: %v", err))
 		}
 
 		if !allowed {
+			logger.Warn("Authorization denied",
+				"method", apiMethod,
+				"trust_domain", trustDomain,
+				"spiffe_id", sid.String(),
+			)
+
 			return status.Error(codes.PermissionDenied, "not allowed to access "+apiMethod)
 		}
+
+		logger.Debug("Authorization successful",
+			"method", apiMethod,
+			"trust_domain", trustDomain,
+			"spiffe_id", sid.String(),
+		)
 
 		return nil
 	}

@@ -17,6 +17,7 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/api/version"
+	"github.com/agntcy/dir/server/authn"
 	"github.com/agntcy/dir/server/authz"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
@@ -42,6 +43,7 @@ type Server struct {
 	routing            types.RoutingAPI
 	database           types.DatabaseAPI
 	syncService        *sync.Service
+	authnService       *authn.Service
 	authzService       *authz.Service
 	publicationService *publication.Service
 	healthzServer      *healthz.Server
@@ -105,6 +107,18 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create sync service: %w", err)
 	}
 
+	// Create JWT authentication service if enabled
+	var authnService *authn.Service
+	if cfg.Authn.Enabled {
+		authnService, err = authn.New(ctx, cfg.Authn)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create authn service: %w", err)
+		}
+
+		//nolint:contextcheck
+		serverOpts = append(serverOpts, authnService.GetServerOptions()...)
+	}
+
 	var authzService *authz.Service
 	if cfg.Authz.Enabled {
 		authzService, err = authz.New(ctx, cfg.Authz)
@@ -142,6 +156,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		routing:            routingAPI,
 		database:           databaseAPI,
 		syncService:        syncService,
+		authnService:       authnService,
 		authzService:       authzService,
 		publicationService: publicationService,
 		healthzServer:      healthz.NewHealthServer(cfg.HealthCheckAddress),
@@ -169,6 +184,13 @@ func (s Server) Close() {
 	if s.syncService != nil {
 		if err := s.syncService.Stop(); err != nil {
 			logger.Error("Failed to stop sync service", "error", err)
+		}
+	}
+
+	// Stop authn service if running
+	if s.authnService != nil {
+		if err := s.authnService.Stop(); err != nil {
+			logger.Error("Failed to stop authn service", "error", err)
 		}
 	}
 

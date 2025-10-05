@@ -55,19 +55,49 @@ uv add agntcy-dir --index https://buf.build/gen/python
 The SDK can be configured via environment variables or direct instantiation:
 
 ```python
-# Environment variables
+# Environment variables (insecure mode, default)
 export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
 export DIRCTL_PATH="/path/to/dirctl"
+
+# Environment variables (mTLS authentication)
+export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
+export DIRECTORY_CLIENT_AUTH_MODE="mtls"
+export DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH="/tmp/agent.sock"
+
+# Environment variables (JWT authentication)
+export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
+export DIRECTORY_CLIENT_AUTH_MODE="jwt"
+export DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH="/tmp/agent.sock"
+export DIRECTORY_CLIENT_JWT_AUDIENCE="spiffe://example.org/dir-server"
 
 # Or configure directly
 from agntcy.dir_sdk.client import Config, Client
 
+# Insecure mode (default, for development only)
 config = Config(
     server_address="localhost:8888",
-    dirctl_path="/usr/local/bin/dirctl",
-    spiffe_socket_path="/tmp/agent.sock" # Optional, used for SPIRE-based mTLS
+    dirctl_path="/usr/local/bin/dirctl"
 )
 client = Client(config)
+
+# mTLS authentication with SPIRE
+mtls_config = Config(
+    server_address="localhost:8888",
+    dirctl_path="/usr/local/bin/dirctl",
+    spiffe_socket_path="/tmp/agent.sock",
+    auth_mode="mtls"
+)
+mtls_client = Client(mtls_config)
+
+# JWT authentication with SPIRE
+jwt_config = Config(
+    server_address="localhost:8888",
+    dirctl_path="/usr/local/bin/dirctl",
+    spiffe_socket_path="/tmp/agent.sock",
+    auth_mode="jwt",
+    jwt_audience="spiffe://example.org/dir-server"
+)
+jwt_client = Client(jwt_config)
 ```
 
 ## Error Handling

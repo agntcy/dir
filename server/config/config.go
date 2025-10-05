@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
@@ -42,6 +43,9 @@ type Config struct {
 	// API configuration
 	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
 	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
+
+	// Authn configuration (JWT authentication)
+	Authn authn.Config `json:"authn,omitempty" mapstructure:"authn"`
 
 	// Authz configuration
 	Authz authz.Config `json:"authz,omitempty" mapstructure:"authz"`
@@ -96,13 +100,25 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("healthcheck_address", DefaultHealthCheckAddress)
 
 	//
-	// Authz configuration
+	// Authn configuration (authentication: JWT or mTLS)
+	//
+	_ = v.BindEnv("authn.enabled")
+	v.SetDefault("authn.enabled", "false")
+
+	_ = v.BindEnv("authn.mode")
+	v.SetDefault("authn.mode", "mtls")
+
+	_ = v.BindEnv("authn.socket_path")
+	v.SetDefault("authn.socket_path", "")
+
+	_ = v.BindEnv("authn.audiences")
+	v.SetDefault("authn.audiences", "")
+
+	//
+	// Authz configuration (authorization policies)
 	//
 	_ = v.BindEnv("authz.enabled")
 	v.SetDefault("authz.enabled", "false")
-
-	_ = v.BindEnv("authz.socket_path")
-	v.SetDefault("authz.socket_path", "")
 
 	_ = v.BindEnv("authz.trust_domain")
 	v.SetDefault("authz.trust_domain", "")

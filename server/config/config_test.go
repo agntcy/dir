@@ -107,7 +107,6 @@ func TestConfig(t *testing.T) {
 				},
 				Authz: authz.Config{
 					Enabled:     true,
-					SocketPath:  "/test/agent.sock",
 					TrustDomain: "dir.com",
 				},
 				Publication: publication.Config{
