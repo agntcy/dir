@@ -12,7 +12,6 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/utils/cosign"
-	"github.com/agntcy/dir/utils/referrer"
 )
 
 type SignOpts struct {
@@ -156,8 +155,12 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, sig
 		return errors.New("record CID is required")
 	}
 
-	// Create public key referrer using the encoding package
-	publicKeyReferrer, err := referrer.EncodePublicKeyToReferrer(publicKey)
+	// Create public key referrer
+	pk := &signv1.PublicKey{
+		Key: publicKey,
+	}
+
+	publicKeyReferrer, err := pk.MarshalReferrer()
 	if err != nil {
 		return fmt.Errorf("failed to encode public key to referrer: %w", err)
 	}
@@ -173,8 +176,8 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, sig
 		return fmt.Errorf("failed to store public key: %w", err)
 	}
 
-	// Create signature referrer using the encoding package
-	signatureReferrer, err := referrer.EncodeSignatureToReferrer(signature)
+	// Create signature referrer
+	signatureReferrer, err := signature.MarshalReferrer()
 	if err != nil {
 		return fmt.Errorf("failed to encode signature to referrer: %w", err)
 	}

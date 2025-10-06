@@ -15,7 +15,6 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	cosignutils "github.com/agntcy/dir/utils/cosign"
-	referrerutils "github.com/agntcy/dir/utils/referrer"
 	sigs "github.com/sigstore/cosign/v2/pkg/signature"
 )
 
@@ -120,7 +119,7 @@ func (c *Client) verifyClientSide(ctx context.Context, recordCID string) (bool, 
 
 // pullSignatureReferrer retrieves the signature referrer for a record.
 func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) ([]*signv1.Signature, error) {
-	signatureType := referrerutils.SignatureArtifactType
+	signatureType := corev1.SignatureReferrerType
 
 	resultCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef: &corev1.RecordRef{
@@ -137,9 +136,9 @@ func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) ([
 	// Get all signature responses and decode them from referrer data
 	for response := range resultCh {
 		referrer := response.GetReferrer()
-		if referrer != nil && referrer.GetType() == referrerutils.SignatureArtifactType {
-			signature, err := referrerutils.DecodeSignatureFromReferrer(referrer)
-			if err != nil {
+		if referrer != nil {
+			signature := &signv1.Signature{}
+			if err := signature.UnmarshalReferrer(referrer); err != nil {
 				logger.Error("Failed to decode signature from referrer", "error", err)
 
 				continue
@@ -154,7 +153,7 @@ func (c *Client) pullSignatureReferrer(ctx context.Context, recordCID string) ([
 
 // pullPublicKeyReferrer retrieves the public key referrer for a record.
 func (c *Client) pullPublicKeyReferrer(ctx context.Context, recordCID string) ([]string, error) {
-	publicKeyType := referrerutils.PublicKeyArtifactMediaType
+	publicKeyType := corev1.PublicKeyReferrerType
 
 	resultCh, err := c.PullReferrer(ctx, &storev1.PullReferrerRequest{
 		RecordRef: &corev1.RecordRef{
@@ -171,15 +170,15 @@ func (c *Client) pullPublicKeyReferrer(ctx context.Context, recordCID string) ([
 	// Get all public key responses and extract the public key from referrer data
 	for response := range resultCh {
 		referrer := response.GetReferrer()
-		if referrer != nil && referrer.GetType() == referrerutils.PublicKeyArtifactMediaType {
-			publicKey, err := referrerutils.DecodePublicKeyFromReferrer(referrer)
-			if err != nil {
+		if referrer != nil {
+			publicKey := &signv1.PublicKey{}
+			if err := publicKey.UnmarshalReferrer(referrer); err != nil {
 				logger.Error("Failed to decode public key from referrer", "error", err)
 
 				continue
 			}
 
-			publicKeys = append(publicKeys, publicKey)
+			publicKeys = append(publicKeys, publicKey.GetKey())
 		}
 	}
 

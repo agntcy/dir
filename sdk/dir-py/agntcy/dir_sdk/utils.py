@@ -12,10 +12,9 @@ import json
 from agntcy.dir_sdk.models import core_v1, sign_v1
 
 
-# Media type constants matching the Go implementation
-SIGNATURE_ARTIFACT_TYPE = "application/vnd.dev.cosign.simplesigning.v1+json"
-PUBLIC_KEY_ARTIFACT_MEDIA_TYPE = "application/vnd.dev.cosign.simplesigning.v1.publickey+pem"
-DEFAULT_REFERRER_ARTIFACT_MEDIA_TYPE = "application/vnd.agntcy.dir.referrer.v1+json"
+# Referrer type constants using proto full names (for high-level API)
+SIGNATURE_REFERRER_TYPE = "agntcy.dir.sign.v1.Signature"
+PUBLIC_KEY_REFERRER_TYPE = "agntcy.dir.sign.v1.PublicKey"
 
 
 def encode_signature_to_referrer(signature: sign_v1.Signature) -> core_v1.RecordReferrer:
@@ -61,7 +60,7 @@ def encode_signature_to_referrer(signature: sign_v1.Signature) -> core_v1.Record
     # Create and return the RecordReferrer
     # Python protobuf automatically converts dict to Struct for data field
     return core_v1.RecordReferrer(
-        type=SIGNATURE_ARTIFACT_TYPE,
+        type=SIGNATURE_REFERRER_TYPE,
         data=data_dict,
     )
 
@@ -157,12 +156,12 @@ def encode_public_key_to_referrer(public_key: str) -> core_v1.RecordReferrer:
     # Create the data dict with public key
     # Python protobuf automatically converts dict to Struct for data field
     data_dict = {
-        "public_key": public_key,
+        "key": public_key,
     }
     
     # Create and return the RecordReferrer
     return core_v1.RecordReferrer(
-        type=PUBLIC_KEY_ARTIFACT_MEDIA_TYPE,
+        type=PUBLIC_KEY_REFERRER_TYPE,
         data=data_dict,
     )
 
@@ -191,10 +190,10 @@ def decode_public_key_from_referrer(referrer: core_v1.RecordReferrer) -> str:
     # Convert Struct to dict
     data = dict(referrer.data)
     
-    if "public_key" not in data:
+    if "key" not in data:
         raise ValueError("Public key not found in referrer data")
     
-    public_key = data["public_key"]
+    public_key = data["key"]
     if not isinstance(public_key, str):
         raise ValueError("Public key must be a string")
     

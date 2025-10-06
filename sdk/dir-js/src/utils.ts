@@ -16,13 +16,9 @@ import {
 } from '@buf/agntcy_dir.bufbuild_es/agntcy/dir/core/v1/record_pb';
 import type { JsonObject } from '@bufbuild/protobuf';
 
-// Media type constants matching the Go implementation
-export const SIGNATURE_ARTIFACT_TYPE =
-    'application/vnd.dev.cosign.simplesigning.v1+json';
-export const PUBLIC_KEY_ARTIFACT_MEDIA_TYPE =
-    'application/vnd.dev.cosign.simplesigning.v1.publickey+pem';
-export const DEFAULT_REFERRER_ARTIFACT_MEDIA_TYPE =
-    'application/vnd.agntcy.dir.referrer.v1+json';
+// Referrer type constants
+export const SIGNATURE_REFERRER_TYPE = 'agntcy.dir.sign.v1.Signature';
+export const PUBLIC_KEY_REFERRER_TYPE = 'agntcy.dir.sign.v1.PublicKey';
 
 /**
  * Encode a Signature object into a RecordReferrer.
@@ -67,7 +63,7 @@ export function encodeSignatureToReferrer(
     // Create and return the RecordReferrer
     // The data field accepts JsonObject directly
     return create(RecordReferrerSchema, {
-        type: SIGNATURE_ARTIFACT_TYPE,
+        type: SIGNATURE_REFERRER_TYPE,
         data: dataObject as JsonObject,
     });
 }
@@ -188,13 +184,13 @@ export function encodePublicKeyToReferrer(publicKey: string): RecordReferrer {
 
     // Create the data object with public key
     const dataObject: Record<string, unknown> = {
-        public_key: publicKey,
+        key: publicKey,
     };
 
     // Create and return the RecordReferrer
     // The data field accepts JsonObject directly
     return create(RecordReferrerSchema, {
-        type: PUBLIC_KEY_ARTIFACT_MEDIA_TYPE,
+        type: PUBLIC_KEY_REFERRER_TYPE,
         data: dataObject as JsonObject,
     });
 }
@@ -222,11 +218,11 @@ export function decodePublicKeyFromReferrer(referrer: RecordReferrer): string {
     // The data field is already a JsonObject
     const data = referrer.data as Record<string, unknown>;
 
-    if (!('public_key' in data)) {
+    if ('key' in data) {
         throw new Error('Public key not found in referrer data');
     }
 
-    const publicKey = data.public_key;
+    const publicKey = data.key;
     if (typeof publicKey !== 'string') {
         throw new Error('Public key must be a string');
     }

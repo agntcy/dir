@@ -209,11 +209,11 @@ class TestClient(unittest.TestCase):
         #     request = [
         #         store_v1.PullReferrerRequest(
         #             record_ref=record_refs[0],
-        #             referrer_type=utils.SIGNATURE_ARTIFACT_TYPE,
+        #             referrer_type=utils.SIGNATURE_REFERRER_TYPE,
         #         ),
         #         store_v1.PullReferrerRequest(
         #             record_ref=record_refs[1],
-        #             referrer_type=utils.SIGNATURE_ARTIFACT_TYPE,
+        #             referrer_type=utils.SIGNATURE_REFERRER_TYPE,
         #         ),
         #     ]
 

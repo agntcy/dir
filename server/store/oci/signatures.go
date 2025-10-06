@@ -11,7 +11,6 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
-	referrerutils "github.com/agntcy/dir/utils/referrer"
 	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
@@ -23,8 +22,8 @@ func (s *store) pushSignature(ctx context.Context, recordCID string, referrer *c
 	referrersLogger.Debug("Pushing signature artifact to OCI store", "recordCID", recordCID)
 
 	// Decode the signature from the referrer
-	signature, err := referrerutils.DecodeSignatureFromReferrer(referrer)
-	if err != nil {
+	signature := &signv1.Signature{}
+	if err := signature.UnmarshalReferrer(referrer); err != nil {
 		return status.Errorf(codes.Internal, "failed to decode signature from referrer: %v", err)
 	}
 
@@ -33,8 +32,7 @@ func (s *store) pushSignature(ctx context.Context, recordCID string, referrer *c
 	}
 
 	// Use cosign attach signature to attach the signature to the record
-	err = s.attachSignatureWithCosign(ctx, recordCID, signature)
-	if err != nil {
+	if err := s.attachSignatureWithCosign(ctx, recordCID, signature); err != nil {
 		return status.Errorf(codes.Internal, "failed to attach signature with cosign: %v", err)
 	}
 
@@ -48,12 +46,13 @@ func (s *store) uploadPublicKey(ctx context.Context, referrer *corev1.RecordRefe
 	referrersLogger.Debug("Uploading public key to zot for signature verification")
 
 	// Decode the public key from the referrer
-	publicKey, err := referrerutils.DecodePublicKeyFromReferrer(referrer)
-	if err != nil {
+	pk := &signv1.PublicKey{}
+	if err := pk.UnmarshalReferrer(referrer); err != nil {
 		return status.Errorf(codes.Internal, "failed to get public key from referrer: %v", err)
 	}
 
-	if len(publicKey) == 0 {
+	publicKey := pk.GetKey()
+	if publicKey == "" {
 		return status.Error(codes.InvalidArgument, "public key is required") //nolint:wrapcheck
 	}
 
@@ -64,8 +63,7 @@ func (s *store) uploadPublicKey(ctx context.Context, referrer *corev1.RecordRefe
 		PublicKey: publicKey,
 	}
 
-	err = zot.UploadPublicKey(ctx, uploadOpts)
-	if err != nil {
+	if err := zot.UploadPublicKey(ctx, uploadOpts); err != nil {
 		return status.Errorf(codes.Internal, "failed to upload public key to zot for verification: %v", err)
 	}
 
@@ -142,12 +140,14 @@ func (s *store) convertCosignSignatureToReferrer(blobDesc ocispec.Descriptor, da
 		return nil, status.Errorf(codes.Internal, "no signature value found in annotations")
 	}
 
-	referrer, err := referrerutils.EncodeSignatureToReferrer(&signv1.Signature{
+	signature := &signv1.Signature{
 		Signature: signatureValue,
 		Annotations: map[string]string{
 			"payload": string(data),
 		},
-	})
+	}
+
+	referrer, err := signature.MarshalReferrer()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to encode signature to referrer: %v", err)
 	}

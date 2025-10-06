@@ -322,7 +322,7 @@ describe('Client', () => {
     //   ): models.store_v1.PullReferrerRequest => {
     //     return create(models.store_v1.PullReferrerRequestSchema, {
     //       recordRef: recordRef,
-    //       referrerType: utils.SIGNATURE_ARTIFACT_TYPE,
+    //       referrerType: utils.SIGNATURE_REFERRER_TYPE,
     //     });
     //   },
     // );

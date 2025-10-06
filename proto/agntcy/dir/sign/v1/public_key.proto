@@ -1,0 +1,14 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.sign.v1;
+
+// PublicKey is the public key data associated with a Record.
+// Multiple public keys can be associated with a single Record.
+message PublicKey {
+	// PEM-encoded public key string.
+	string key = 1;
+}
+

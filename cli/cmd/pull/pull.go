@@ -9,10 +9,10 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
-	referrerutils "github.com/agntcy/dir/utils/referrer"
 	"github.com/spf13/cobra"
 )
 
@@ -82,7 +82,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 	presenter.Print(cmd, string(output))
 
 	if opts.PublicKey {
-		publicKeyType := referrerutils.PublicKeyArtifactMediaType
+		publicKeyType := corev1.PublicKeyReferrerType
 
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
@@ -95,19 +95,19 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		}
 
 		for response := range resultCh {
-			publicKey, err := referrerutils.DecodePublicKeyFromReferrer(response.GetReferrer())
-			if err != nil {
+			publicKey := &signv1.PublicKey{}
+			if err := publicKey.UnmarshalReferrer(response.GetReferrer()); err != nil {
 				return fmt.Errorf("failed to decode public key from referrer: %w", err)
 			}
 
-			if publicKey != "" {
-				presenter.Println(cmd, "Public key: "+publicKey)
+			if publicKey.GetKey() != "" {
+				presenter.Println(cmd, "Public key: "+publicKey.GetKey())
 			}
 		}
 	}
 
 	if opts.Signature {
-		signatureType := referrerutils.SignatureArtifactType
+		signatureType := corev1.SignatureReferrerType
 
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
@@ -120,12 +120,12 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		}
 
 		for response := range resultCh {
-			signature, err := referrerutils.DecodeSignatureFromReferrer(response.GetReferrer())
-			if err != nil {
-				return fmt.Errorf("failed to decode cosign signature from referrer: %w", err)
+			signature := &signv1.Signature{}
+			if err := signature.UnmarshalReferrer(response.GetReferrer()); err != nil {
+				return fmt.Errorf("failed to decode signature from referrer: %w", err)
 			}
 
-			if signature != nil {
+			if signature.GetSignature() != "" {
 				presenter.Println(cmd, "Signature: "+signature.GetSignature())
 			}
 		}

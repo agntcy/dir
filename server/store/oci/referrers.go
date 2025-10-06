@@ -10,7 +10,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/utils/logging"
-	referrerutils "github.com/agntcy/dir/utils/referrer"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -45,8 +44,11 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 		return status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
 	}
 
+	// Map API type to internal OCI artifact type
+	ociArtifactType := apiToOCIType(referrer.GetType())
+
 	// If the referrer is a public key, upload it to zot for signature verification
-	if referrer.GetType() == referrerutils.PublicKeyArtifactMediaType {
+	if ociArtifactType == PublicKeyArtifactMediaType {
 		err := s.uploadPublicKey(ctx, referrer)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to upload public key: %v", err)
@@ -54,7 +56,7 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 	}
 
 	// If the referrer is a signature, use cosign to attach the signature to the record instead of pushing it as a blob
-	if referrer.GetType() == referrerutils.SignatureArtifactType {
+	if ociArtifactType == SignatureArtifactType {
 		err := s.pushSignature(ctx, recordCID, referrer)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to push signature: %v", err)
@@ -69,13 +71,8 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 		return status.Errorf(codes.Internal, "failed to marshal referrer: %v", err)
 	}
 
-	referrerType := referrer.GetType()
-	if referrer.GetType() == "" {
-		referrerType = referrerutils.DefaultReferrerArtifactMediaType
-	}
-
-	// Push the referrer blob
-	blobDesc, err := oras.PushBytes(ctx, s.repo, referrerType, referrerBytes)
+	// Push the referrer blob using internal OCI artifact type
+	blobDesc, err := oras.PushBytes(ctx, s.repo, ociArtifactType, referrerBytes)
 	if err != nil {
 		return fmt.Errorf("failed to push referrer blob: %w", err)
 	}
@@ -138,8 +135,12 @@ func (s *store) WalkReferrers(ctx context.Context, recordCID string, referrerTyp
 
 	// Determine the matcher based on referrerType
 	var matcher ReferrerMatcher
+
 	if referrerType != "" {
-		matcher = s.MediaTypeReferrerMatcher(referrerType)
+		// Map API type to internal OCI artifact type for matching
+		ociArtifactType := apiToOCIType(referrerType)
+
+		matcher = s.MediaTypeReferrerMatcher(ociArtifactType)
 	}
 
 	// Use the OCI referrers API to walk through referrers efficiently
@@ -218,7 +219,7 @@ func (s *store) extractReferrerFromManifest(ctx context.Context, manifestDesc oc
 	referrer := &corev1.RecordReferrer{}
 
 	// If the referrer is not a signature, unmarshal the referrer from JSON
-	if blobDesc.MediaType != referrerutils.SignatureArtifactType {
+	if blobDesc.MediaType != SignatureArtifactType {
 		// Unmarshal the referrer from JSON
 		if err := protojson.Unmarshal(referrerData, referrer); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to unmarshal referrer for CID %s: %v", recordCID, err)
@@ -228,6 +229,11 @@ func (s *store) extractReferrerFromManifest(ctx context.Context, manifestDesc oc
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to convert cosign signature to referrer: %v", err)
 		}
+	}
+
+	// Map internal OCI artifact type back to Dir API type
+	if referrer.GetType() != "" {
+		referrer.Type = ociToAPIType(referrer.GetType())
 	}
 
 	return referrer, nil
