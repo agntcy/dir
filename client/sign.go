@@ -153,6 +153,18 @@ func (c *Client) SignWithKey(ctx context.Context, req *signv1.SignRequest) (*sig
 }
 
 func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, signature *signv1.Signature, publicKey string) error {
+	if recordCID == "" {
+		return errors.New("record CID is required")
+	}
+
+	if publicKey == "" {
+		return errors.New("public key is required")
+	}
+
+	if signature == nil || signature.GetSignature() == "" {
+		return errors.New("signature is required and must not be empty")
+	}
+
 	// convert public key to struct
 	publicKeyStruct, err := structpb.NewStruct(map[string]any{
 		"publicKey": publicKey,

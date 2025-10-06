@@ -274,9 +274,18 @@ func (s storeCtrl) pushSignatureReferrer(ctx context.Context, request *storev1.P
 func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferrerRequest) *storev1.PushReferrerResponse {
 	storeLogger.Debug("Pushing referrer", "cid", request.GetRecordRef().GetCid(), "type", request.GetReferrer().GetType())
 
+	if request.GetReferrer() == nil {
+		errMsg := "referrer is required"
+
+		return &storev1.PushReferrerResponse{
+			Success:      false,
+			ErrorMessage: &errMsg,
+		}
+	}
+
 	if request.GetReferrer().GetType() == ociutils.PublicKeyArtifactMediaType {
-		publicKeyValue, ok := request.GetReferrer().GetData().AsMap()["publicKey"]
-		if !ok {
+		publicKey, err := request.GetReferrer().GetPublicKey()
+		if err != nil {
 			errMsg := "publicKey field not found in referrer data"
 
 			return &storev1.PushReferrerResponse{
@@ -285,17 +294,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 			}
 		}
 
-		publicKey, ok := publicKeyValue.(string)
-		if !ok {
-			errMsg := "publicKey field is not a string"
-
-			return &storev1.PushReferrerResponse{
-				Success:      false,
-				ErrorMessage: &errMsg,
-			}
-		}
-
-		err := s.uploadPublicKey(ctx, request.GetRecordRef().GetCid(), publicKey)
+		err = s.uploadPublicKey(ctx, request.GetRecordRef().GetCid(), publicKey)
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to upload public key: %v", err)
 
@@ -338,6 +337,10 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 
 func (s storeCtrl) uploadPublicKey(ctx context.Context, recordCID string, publicKey string) error {
 	storeLogger.Debug("Uploading public key", "cid", recordCID)
+
+	if publicKey == "" {
+		return errors.New("public key is required")
+	}
 
 	ociStore, ok := s.store.(interface {
 		UploadPublicKey(context.Context, string) error
