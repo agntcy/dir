@@ -20,7 +20,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agntcy-dir-grpc-python", specifier = "==1.75.0.1.20250917121230+a7e88d4f0f48" },
+    { name = "agntcy-dir-grpc-python", specifier = "==1.75.1.1.20251006091049+3deef34c3b26" },
     { name = "spiffe", specifier = ">=0.2.2" },
     { name = "spiffe-tls", specifier = ">=0.2.1" },
 ]
@@ -33,38 +33,38 @@ dev = [
 
 [[package]]
 name = "agntcy-dir-grpc-python"
-version = "1.75.0.1.20250917121230+a7e88d4f0f48"
+version = "1.75.1.1.20251006091049+3deef34c3b26"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "agntcy-dir-protocolbuffers-python" },
     { name = "grpcio" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/agntcy-dir-grpc-python/agntcy_dir_grpc_python-1.75.0.1.20250917121230+a7e88d4f0f48-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/agntcy-dir-grpc-python/agntcy_dir_grpc_python-1.75.1.1.20251006091049+3deef34c3b26-py3-none-any.whl" },
 ]
 
 [[package]]
 name = "agntcy-dir-protocolbuffers-pyi"
-version = "32.1.0.1.20250917121230+a7e88d4f0f48"
+version = "32.1.0.2.20251006091049+3deef34c3b26"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "protobuf" },
     { name = "types-protobuf" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/agntcy-dir-protocolbuffers-pyi/agntcy_dir_protocolbuffers_pyi-32.1.0.1.20250917121230+a7e88d4f0f48-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/agntcy-dir-protocolbuffers-pyi/agntcy_dir_protocolbuffers_pyi-32.1.0.2.20251006091049+3deef34c3b26-py3-none-any.whl" },
 ]
 
 [[package]]
 name = "agntcy-dir-protocolbuffers-python"
-version = "32.1.0.1.20250917121230+a7e88d4f0f48"
+version = "32.1.0.2.20251006091049+3deef34c3b26"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "agntcy-dir-protocolbuffers-pyi" },
     { name = "protobuf" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/agntcy-dir-protocolbuffers-python/agntcy_dir_protocolbuffers_python-32.1.0.1.20250917121230+a7e88d4f0f48-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/agntcy-dir-protocolbuffers-python/agntcy_dir_protocolbuffers_python-32.1.0.2.20251006091049+3deef34c3b26-py3-none-any.whl" },
 ]
 
 [[package]]
@@ -471,11 +471,11 @@ wheels = [
 
 [[package]]
 name = "types-protobuf"
-version = "6.30.2.20250822"
+version = "6.32.1.20250918"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/61/68/0c7144be5c6dc16538e79458839fc914ea494481c7e64566de4ecc0c3682/types_protobuf-6.30.2.20250822.tar.gz", hash = "sha256:faacbbe87bd8cba4472361c0bd86f49296bd36f7761e25d8ada4f64767c1bde9", size = 62379 }
+sdist = { url = "https://files.pythonhosted.org/packages/69/5a/bd06c2dbb77ebd4ea764473c9c4c014c7ba94432192cb965a274f8544b9d/types_protobuf-6.32.1.20250918.tar.gz", hash = "sha256:44ce0ae98475909ca72379946ab61a4435eec2a41090821e713c17e8faf5b88f", size = 63780 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/52/64/b926a6355993f712d7828772e42b9ae942f2d306d25072329805c374e729/types_protobuf-6.30.2.20250822-py3-none-any.whl", hash = "sha256:5584c39f7e36104b5f8bdfd31815fa1d5b7b3455a79ddddc097b62320f4b1841", size = 76523 },
+    { url = "https://files.pythonhosted.org/packages/37/5a/8d93d4f4af5dc3dd62aa4f020deae746b34b1d94fb5bee1f776c6b7e9d6c/types_protobuf-6.32.1.20250918-py3-none-any.whl", hash = "sha256:22ba6133d142d11cc34d3788ad6dead2732368ebb0406eaa7790ea6ae46c8d0b", size = 77885 },
 ]
 
 [[package]]
