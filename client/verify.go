@@ -14,6 +14,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	cosignutils "github.com/agntcy/dir/utils/cosign"
 	ociutils "github.com/agntcy/dir/utils/oci"
 	sigs "github.com/sigstore/cosign/v2/pkg/signature"
 )
@@ -50,6 +51,17 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 func (c *Client) verifyClientSide(ctx context.Context, recordCID string) (bool, error) {
 	logger.Debug("Starting client-side verification", "recordCID", recordCID)
 
+	// Generate the expected payload for this record CID
+	digest, err := corev1.ConvertCIDToDigest(recordCID)
+	if err != nil {
+		return false, fmt.Errorf("failed to convert CID to digest: %w", err)
+	}
+
+	expectedPayload, err := cosignutils.GeneratePayload(digest.String())
+	if err != nil {
+		return false, fmt.Errorf("failed to generate expected payload: %w", err)
+	}
+
 	// Retrieve signature from OCI referrers
 	signatures, err := c.pullSignatureReferrer(ctx, recordCID)
 	if err != nil {
@@ -73,9 +85,6 @@ func (c *Client) verifyClientSide(ctx context.Context, recordCID string) (bool, 
 	// Compare all public keys with all signatures
 	for _, publicKey := range publicKeys {
 		for _, signature := range signatures {
-			// Get the payload from the signature annotations
-			payload := signature.GetAnnotations()["payload"]
-
 			// Verify signature using cosign
 			verifier, err := sigs.LoadPublicKeyRaw([]byte(publicKey), crypto.SHA256)
 			if err != nil {
@@ -92,7 +101,8 @@ func (c *Client) verifyClientSide(ctx context.Context, recordCID string) (bool, 
 				signatureBytes = []byte(signature.GetSignature())
 			}
 
-			err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader([]byte(payload)))
+			// Verify signature against the expected payload
+			err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(expectedPayload))
 			if err != nil {
 				// Verification failed for this combination, try the next one
 				logger.Debug("Signature verification failed, trying next combination", "error", err)
