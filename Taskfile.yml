@@ -217,6 +217,7 @@ tasks:
       - task: deps:cosign
       - task: cli:compile
       - task: sdk:deps:javascript
+      - task: sdk:deps:python
 
   sdk:deps:cicd:iodc-token-generation:
     desc: Get Fulcio OIDC token for CICD
@@ -313,7 +314,7 @@ tasks:
     desc: Test python client SDK package
     dir: ./sdk/dir-py
     deps:
-      - task: deps:uv
+      - task: sdk:deps:python
     env:
       KIND_CLUSTER_NAME: 'sdk-py-test'
     cmds:
@@ -340,6 +341,14 @@ tasks:
         export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
 
         npm run test
+
+  sdk:deps:python:
+    desc: Install deps for python SDK package
+    dir: ./sdk/dir-py
+    deps:
+      - task: deps:uv
+    cmds:
+      - '{{.UV_BIN}} sync --all-packages'
 
   sdk:deps:javascript:
     desc: Install deps for javascript SDK package

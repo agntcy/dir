@@ -3,7 +3,7 @@ ARG IMAGE_TAG=latest
 FROM ghcr.io/agntcy/dir-ctl:${IMAGE_TAG} AS dirctl-bin
 FROM ghcr.io/sigstore/cosign/cosign:v2.4.1 AS cosign-bin
 
-FROM ghcr.io/astral-sh/uv:python3.13-alpine
+FROM astral/uv:0.8.23-python3.12-alpine
 
 COPY --from=dirctl-bin /dirctl /bin/dirctl
 COPY --from=cosign-bin /ko-app/cosign /bin/cosign
@@ -17,7 +17,7 @@ COPY ./sdk /tmp/
 
 WORKDIR /tmp/dir-py
 
-RUN uv sync
+RUN uv sync --all-packages
 
 RUN apk add --update --no-cache nodejs npm
 
