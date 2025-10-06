@@ -7,8 +7,6 @@ kind: ConfigMap
 metadata:
   name: {{ $config.name }}
 data:
-  {{- range $key, $value := $config.data }}
-  {{ $key }}: |
-    {{ $value | nindent 4 }}
-  {{- end }}
+  record.json: |
+    {{- $.Files.Get "files/record.json" | nindent 4 }}
 {{- end }}

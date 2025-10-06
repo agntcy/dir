@@ -6,7 +6,7 @@ global:
   cronjob:
     failedJobsHistoryLimit: 10
     successfulJobsHistoryLimit: 10
-    concurrencyPolicy: "Forbid"
+    concurrencyPolicy: 'Forbid'
 
 # Image config
 image:
@@ -20,25 +20,25 @@ cronjobs:
   # Search cronjob
   search:
     enabled: true
-    schedule: "* * * * *"
+    schedule: '* * * * *'
     args:
-      - "search"
+      - 'search'
 
   # Lookup cronjob
   lookup:
     enabled: true
-    schedule: "* * * * *"
+    schedule: '* * * * *'
     args:
-      - "info"
-      - "baeareiglp6uzpr2z5jg4qynvubgp55ucyldcnklzwbj7olgc4pn6e2vyau"
+      - 'info'
+      - 'baeareiesad3lyuacjirp6gxudrzheltwbodtsg7ieqpox36w5j637rchwq'
 
   # Push cronjob
   push:
     enabled: true
-    schedule: "* * * * *"
+    schedule: '* * * * *'
     args:
-      - "push"
-      - "/examples/record.json"
+      - 'push'
+      - '/examples/record.json'
     volumes:
       - name: record-json
         configMap:
@@ -66,42 +66,12 @@ spire:
 # Config maps config (shared across all cronjobs)
 configMaps:
   - name: example-record
-    data:
-      record.json: |
-        {
-          "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
-          "version": "v3.0.0",
-          "schema_version": "v0.5.0",
-          "description": "Research agent for Cisco's marketing strategy.",
-          "authors": ["Cisco Systems"],
-          "created_at": "2025-03-19T17:06:37Z",
-          "annotations": {
-            "key": "value"
-          },
-          "skills": [
-            {
-              "name": "Natural Language Processing/Text Completion",
-              "id": 10201
-            }
-          ],
-          "locators": [
-            {
-              "type": "docker-image",
-              "url": "https://ghcr.io/agntcy/marketing-strategy"
-            }
-          ],
-          "domains": [
-            {
-              "name": "research"
-            }
-          ]
-        }
 
 # Service account config
 serviceAccount:
   create: false
   annotations: {}
-  name: ""
+  name: ''
 
 # Security context
 securityContext:
