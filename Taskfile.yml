@@ -40,7 +40,7 @@ vars:
   GOLANGCI_LINT_BIN: '{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}'
   LICENSEI_VERSION: '0.9.0'
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
-  UV_VERSION: '0.6.1'
+  UV_VERSION: '0.8.23'
   UV_BIN: '{{ .BIN_DIR }}/uv-{{.UV_VERSION}}'
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
   COSIGN_VERSION: '2.5.3'
