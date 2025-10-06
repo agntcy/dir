@@ -20,8 +20,8 @@ permissions:
   contents: read
 
 jobs:
-  spire-deploy:
-    name: SPIRE KinD
+  federation:
+    name: SPIRE federation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
