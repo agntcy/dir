@@ -14,7 +14,7 @@ import {
   Transport,
 } from '@connectrpc/connect';
 import { createGrpcTransport } from '@connectrpc/connect-node';
-import { createClient as createClientSpiffe, X509SVID, JWTSVID } from 'spiffe';
+import { createClient as createClientSpiffe, X509SVID } from 'spiffe';
 import * as models from '../models';
 
 /**
@@ -275,19 +275,19 @@ export class Client {
     // Create JWT interceptor that fetches and injects JWT tokens
     const jwtInterceptor: Interceptor = (next) => async (req) => {
       // Fetch JWT-SVID from SPIRE
-      let jwtToken = '';
-      const jwtStream = client.fetchJWTSVID({ audience: [config.jwtAudience] });
+      // Note: spiffeId is empty string to use the workload's default identity
+      const jwtCall = client.fetchJWTSVID({ 
+        spiffeId: '', 
+        audience: [config.jwtAudience] 
+      });
       
-      for await (const message of jwtStream.responses) {
-        if (message.svids.length > 0) {
-          jwtToken = message.svids[0].svid;
-          break;
-        }
+      const response = await jwtCall.response;
+      
+      if (!response.svids || response.svids.length === 0) {
+        throw new Error('Failed to fetch JWT-SVID from SPIRE: no SVIDs returned');
       }
 
-      if (jwtToken === '') {
-        throw new Error('Failed to fetch JWT-SVID from SPIRE');
-      }
+      const jwtToken = response.svids[0].svid;
 
       // Add JWT token to request headers
       req.header.set('authorization', `Bearer ${jwtToken}`);
