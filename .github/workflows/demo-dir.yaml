@@ -79,10 +79,10 @@ jobs:
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir push command on Peer 1"
-            bin/dirctl push e2e/testdata/record_v1.json --server-addr 127.0.0.1:8890 > digest.txt
+            bin/dirctl push e2e/shared/testdata/record_070.json --server-addr 127.0.0.1:8890 > digest.txt
           else
             echo "Running dir push command"
-            bin/dirctl push e2e/testdata/record_v1.json > digest.txt
+            bin/dirctl push e2e/shared/testdata/record_070.json > digest.txt
           fi
           echo "Pushed image digest:"
           cat digest.txt
@@ -200,7 +200,7 @@ jobs:
       - name: Push record
         run: |
           echo "Pushing record"
-          bin/dirctl push e2e/testdata/record_v1.json > digest.txt
+          bin/dirctl push e2e/shared/testdata/record_070.json > digest.txt
 
       - name: Sign record
         run: |
@@ -261,7 +261,7 @@ jobs:
       - name: Push record
         run: |
           echo "Pushing record"
-          bin/dirctl push e2e/testdata/record_v1.json > digest.txt
+          bin/dirctl push e2e/shared/testdata/record_070.json > digest.txt
 
       - name: Sign record
         run: |
