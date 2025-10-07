@@ -61,11 +61,6 @@ config:
     #   - /ip4/1.1.1.1/tcp/1
     #   - /ip4/1.1.1.1/tcp/2
 
-    # DHT routing table refresh interval.
-    # Fast refresh for e2e testing (1s vs 30s production default)
-    # This ensures tests don't timeout waiting for peer discovery
-    refresh_interval: "1s"
-
     # Datastore to use for routing persistance.
     # datastore_dir: ""
 
