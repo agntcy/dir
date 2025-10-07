@@ -1,0 +1,171 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "packages": {
+    "server": {
+      "release-type": "go",
+      "component": "dir-apiserver",
+      "package-name": "dir-apiserver",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "draft": false,
+      "prerelease": false,
+      "include-v-in-tag": true,
+      "tag-separator": "/",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "install/charts/dir/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json", 
+          "path": "install/charts/dir/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        }
+      ]
+    },
+    "cli": {
+      "release-type": "go",
+      "component": "dirctl",
+      "package-name": "dirctl",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "draft": false,
+      "prerelease": false,
+      "include-v-in-tag": true,
+      "tag-separator": "/",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "install/charts/dirctl/Chart.yaml",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "install/charts/dirctl/Chart.yaml", 
+          "jsonpath": "$.appVersion"
+        }
+      ]
+    },
+    "client": {
+      "release-type": "go",
+      "component": "dir-go",
+      "package-name": "dir-go",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "draft": false,
+      "prerelease": false,
+      "include-v-in-tag": true,
+      "tag-separator": "/"
+    },
+    "sdk/dir-py": {
+      "release-type": "python",
+      "component": "dir-py",
+      "package-name": "dir-py",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "draft": false,
+      "prerelease": false,
+      "include-v-in-tag": true,
+      "tag-separator": "/",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "sdk/dir-py/pyproject.toml",
+          "jsonpath": "$.project.version"
+        }
+      ]
+    },
+    "sdk/dir-js": {
+      "release-type": "node",
+      "component": "dir-js",
+      "package-name": "dir-js",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "draft": false,
+      "prerelease": false,
+      "include-v-in-tag": true,
+      "tag-separator": "/",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "sdk/dir-js/package.json",
+          "jsonpath": "$.version"
+        }
+      ]
+    }
+  },
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features",
+      "hidden": false
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes",
+      "hidden": false
+    },
+    {
+      "type": "perf",
+      "section": "Performance Improvements",
+      "hidden": false
+    },
+    {
+      "type": "revert",
+      "section": "Reverts",
+      "hidden": false
+    },
+    {
+      "type": "docs",
+      "section": "Documentation",
+      "hidden": false
+    },
+    {
+      "type": "style",
+      "section": "Styles",
+      "hidden": true
+    },
+    {
+      "type": "chore",
+      "section": "Miscellaneous Chores",
+      "hidden": true
+    },
+    {
+      "type": "refactor",
+      "section": "Code Refactoring",
+      "hidden": false
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    },
+    {
+      "type": "build",
+      "section": "Build System",
+      "hidden": false
+    },
+    {
+      "type": "ci",
+      "section": "Continuous Integration",
+      "hidden": true
+    }
+  ],
+  "group-pull-request-title-pattern": "chore: release ${component} ${version}",
+  "separate-pull-requests": true,
+  "plugins": [
+    {
+      "type": "cargo-workspace"
+    },
+    {
+      "type": "node-workspace"
+    }
+  ]
+}

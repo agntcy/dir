@@ -1,0 +1,255 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      server_release_created: ${{ steps.release.outputs['server--release_created'] }}
+      cli_release_created: ${{ steps.release.outputs['cli--release_created'] }}
+      client_release_created: ${{ steps.release.outputs['client--release_created'] }}
+      dir_py_release_created: ${{ steps.release.outputs['sdk/dir-py--release_created'] }}
+      dir_js_release_created: ${{ steps.release.outputs['sdk/dir-js--release_created'] }}
+      server_tag_name: ${{ steps.release.outputs['server--tag_name'] }}
+      cli_tag_name: ${{ steps.release.outputs['cli--tag_name'] }}
+      client_tag_name: ${{ steps.release.outputs['client--tag_name'] }}
+      dir_py_tag_name: ${{ steps.release.outputs['sdk/dir-py--tag_name'] }}
+      dir_js_tag_name: ${{ steps.release.outputs['sdk/dir-js--tag_name'] }}
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build and publish dir-apiserver
+  build-server:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.server_release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/dir-apiserver:${{ needs.release-please.outputs.server_tag_name }}
+            ghcr.io/${{ github.repository }}/dir-apiserver:latest
+          platforms: linux/amd64,linux/arm64
+
+      - name: Package Helm Chart
+        run: |
+          helm package install/charts/dir --version ${{ needs.release-please.outputs.server_tag_name }} --app-version ${{ needs.release-please.outputs.server_tag_name }}
+
+      - name: Upload Helm Chart to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.release-please.outputs.server_tag_name }}
+          files: dir-*.tgz
+
+  # Build and publish dirctl
+  build-cli:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.cli_release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build CLI binaries
+        run: |
+          cd cli
+          GOOS=linux GOARCH=amd64 go build -o dirctl-linux-amd64 .
+          GOOS=linux GOARCH=arm64 go build -o dirctl-linux-arm64 .
+          GOOS=darwin GOARCH=amd64 go build -o dirctl-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -o dirctl-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 go build -o dirctl-windows-amd64.exe .
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./cli
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/dirctl:${{ needs.release-please.outputs.cli_tag_name }}
+            ghcr.io/${{ github.repository }}/dirctl:latest
+          platforms: linux/amd64,linux/arm64
+
+      - name: Package Helm Chart
+        run: |
+          helm package install/charts/dirctl --version ${{ needs.release-please.outputs.cli_tag_name }} --app-version ${{ needs.release-please.outputs.cli_tag_name }}
+
+      - name: Upload binaries and Helm chart to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.release-please.outputs.cli_tag_name }}
+          files: |
+            cli/dirctl-*
+            dirctl-*.tgz
+
+  # Build and publish dir-go
+  build-client:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.client_release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Test Go client
+        run: |
+          cd client
+          go mod tidy
+          go test ./...
+
+      - name: Create Go module archive
+        run: |
+          cd client
+          git archive --format=tar.gz --prefix=dir-go-${{ needs.release-please.outputs.client_tag_name }}/ HEAD > ../dir-go-${{ needs.release-please.outputs.client_tag_name }}.tar.gz
+
+      - name: Upload Go client to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.release-please.outputs.client_tag_name }}
+          files: dir-go-*.tar.gz
+
+  # Build and publish dir-py
+  build-python:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.dir_py_release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build Python package
+        run: |
+          cd sdk/dir-py
+          python -m build
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          cd sdk/dir-py
+          twine upload dist/*
+
+      - name: Upload Python package to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.release-please.outputs.dir_py_tag_name }}
+          files: sdk/dir-py/dist/*
+
+  # Build and publish dir-js
+  build-javascript:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.dir_js_release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: |
+          cd sdk/dir-js
+          npm ci
+
+      - name: Run tests
+        run: |
+          cd sdk/dir-js
+          npm test
+
+      - name: Build package
+        run: |
+          cd sdk/dir-js
+          npm run build
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd sdk/dir-js
+          npm publish
+
+      - name: Create package archive
+        run: |
+          cd sdk/dir-js
+          npm pack
+
+      - name: Upload JavaScript package to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.release-please.outputs.dir_js_tag_name }}
+          files: sdk/dir-js/*.tgz
