@@ -17,19 +17,13 @@ var signLogger = logging.Logger("controller/sign")
 
 type signCtrl struct {
 	signv1.UnimplementedSignServiceServer
-	store types.SignatureStoreAPI
+	store types.StoreAPI
 }
 
 // NewSignController creates a new sign service controller.
 func NewSignController(store types.StoreAPI) signv1.SignServiceServer {
-	// Check if store supports signature operations
-	var sigStore types.SignatureStoreAPI
-	if s, ok := store.(types.SignatureStoreAPI); ok {
-		sigStore = s
-	}
-
 	return &signCtrl{
-		store: sigStore,
+		store: store,
 	}
 }
 

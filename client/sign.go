@@ -12,8 +12,6 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/utils/cosign"
-	ociutils "github.com/agntcy/dir/utils/oci"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type SignOpts struct {
@@ -157,46 +155,39 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, sig
 		return errors.New("record CID is required")
 	}
 
-	if publicKey == "" {
-		return errors.New("public key is required")
+	// Create public key referrer
+	pk := &signv1.PublicKey{
+		Key: publicKey,
 	}
 
-	if signature == nil || signature.GetSignature() == "" {
-		return errors.New("signature is required and must not be empty")
-	}
-
-	// convert public key to struct
-	publicKeyStruct, err := structpb.NewStruct(map[string]any{
-		"publicKey": publicKey,
-	})
+	publicKeyReferrer, err := pk.MarshalReferrer()
 	if err != nil {
-		return fmt.Errorf("failed to convert public key to struct: %w", err)
+		return fmt.Errorf("failed to encode public key to referrer: %w", err)
 	}
 
-	// Push public key to store
+	// Push public key to store as a referrer
 	err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
-		Options: &storev1.PushReferrerRequest_Referrer{
-			Referrer: &corev1.RecordReferrer{
-				Type: ociutils.PublicKeyArtifactMediaType,
-				Data: publicKeyStruct,
-			},
-		},
+		Referrer: publicKeyReferrer,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to store public key: %w", err)
 	}
 
-	// Push signature to store
+	// Create signature referrer
+	signatureReferrer, err := signature.MarshalReferrer()
+	if err != nil {
+		return fmt.Errorf("failed to encode signature to referrer: %w", err)
+	}
+
+	// Push signature to store as a referrer
 	err = c.PushReferrer(ctx, &storev1.PushReferrerRequest{
 		RecordRef: &corev1.RecordRef{
 			Cid: recordCID,
 		},
-		Options: &storev1.PushReferrerRequest_Signature{
-			Signature: signature,
-		},
+		Referrer: signatureReferrer,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to store signature: %w", err)

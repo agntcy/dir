@@ -326,6 +326,8 @@ tasks:
   sdk:test:javascript:
     desc: Test javascript client SDK package
     dir: ./sdk/dir-js
+    deps:
+      - task: sdk:deps:javascript
     env:
       KIND_CLUSTER_NAME: 'sdk-js-test'
     cmds:
