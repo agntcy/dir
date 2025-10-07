@@ -24,7 +24,6 @@ type Client struct {
 
 	config     *Config
 	authClient *workloadapi.Client
-	jwtSource  *workloadapi.JWTSource
 }
 
 func New(opts ...Option) (*Client, error) {
@@ -57,14 +56,6 @@ func New(opts ...Option) (*Client, error) {
 }
 
 func (c *Client) Close() error {
-	// Close JWT source if it exists
-	if c.jwtSource != nil {
-		if err := c.jwtSource.Close(); err != nil {
-			// Log but continue to close authClient
-			_ = err
-		}
-	}
-
 	// Close auth client if it exists
 	if c.authClient != nil {
 		//nolint:wrapcheck

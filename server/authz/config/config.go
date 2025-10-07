@@ -15,12 +15,6 @@ type Config struct {
 	// Trust domain for this Directory server
 	// Used to distinguish internal vs external requests
 	TrustDomain string `json:"trust_domain,omitempty" mapstructure:"trust_domain"`
-
-	// Optional: Path to Casbin model file (uses embedded model if not specified)
-	ModelPath string `json:"model_path,omitempty" mapstructure:"model_path"`
-
-	// Optional: Path to Casbin policy file (uses default policies if not specified)
-	PolicyPath string `json:"policy_path,omitempty" mapstructure:"policy_path"`
 }
 
 func (c *Config) Validate() error {

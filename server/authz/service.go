@@ -34,7 +34,7 @@ func New(_ context.Context, cfg config.Config) (*Service, error) {
 		return nil, fmt.Errorf("failed to create authorizer: %w", err)
 	}
 
-	logger.Info("Authorization service initialized", "model_path", cfg.ModelPath, "policy_path", cfg.PolicyPath)
+	logger.Info("Authorization service initialized", "trust_domain", cfg.TrustDomain)
 
 	return &Service{
 		authorizer: authorizer,
