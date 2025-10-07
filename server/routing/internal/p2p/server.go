@@ -12,7 +12,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	discovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	"github.com/libp2p/go-libp2p/p2p/host/autorelay"
 )
 
 var logger = logging.Logger("p2p")
@@ -132,6 +134,9 @@ func start(ctx context.Context, opts *options) <-chan status {
 		defer host.Close()
 		logger.Debug("Host created", "id", host.ID(), "addresses", host.Addrs())
 
+		// Enable mDNS for local network peer discovery
+		setupMDNS(host)
+
 		// Create DHT
 		var customDhtOpts []dht.Option
 		if opts.DHTCustomOpts != nil {
@@ -150,6 +155,13 @@ func start(ctx context.Context, opts *options) <-chan status {
 			return
 		}
 		defer kdht.Close()
+
+		// Enable AutoRelay with DHT as peer source for finding relay candidates.
+		// AutoRelay makes NAT'd peers reachable by establishing relay circuits.
+		// The DHT routing table is queried to find potential relay peers.
+		if err := setupAutoRelay(host, kdht); err != nil {
+			logger.Warn("Failed to setup AutoRelay", "error", err)
+		}
 
 		// Advertise to rendezvous for initial peer discovery.
 		// Peer discovery is now handled automatically by:
@@ -211,4 +223,98 @@ func start(ctx context.Context, opts *options) <-chan status {
 	}()
 
 	return statusCh
+}
+
+// setupAutoRelay enables AutoRelay with DHT as the peer source for finding relay candidates.
+// AutoRelay provides guaranteed connectivity for NAT'd peers by establishing relay circuits.
+// The DHT routing table is used to discover potential relay peers (public nodes).
+func setupAutoRelay(h host.Host, kdht *dht.IpfsDHT) error {
+	// Create a peer source function that queries DHT for relay candidates
+	peerSource := func(ctx context.Context, numPeers int) <-chan peer.AddrInfo {
+		peerChan := make(chan peer.AddrInfo)
+
+		go func() {
+			defer close(peerChan)
+
+			// Get peers from DHT routing table
+			// These are likely good relay candidates (public, well-connected)
+			routingTable := kdht.RoutingTable()
+			peers := routingTable.ListPeers()
+
+			// Send up to numPeers candidates
+			count := 0
+			for _, p := range peers {
+				if count >= numPeers {
+					break
+				}
+
+				// Get peer's address info from peerstore
+				addrs := h.Peerstore().Addrs(p)
+				if len(addrs) > 0 {
+					select {
+					case peerChan <- peer.AddrInfo{ID: p, Addrs: addrs}:
+						count++
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+
+			logger.Debug("Provided relay candidates from DHT",
+				"requested", numPeers,
+				"provided", count)
+		}()
+
+		return peerChan
+	}
+
+	// Enable AutoRelay with DHT-based peer source
+	_, err := autorelay.NewAutoRelay(h, autorelay.WithPeerSource(peerSource))
+	if err != nil {
+		return fmt.Errorf("failed to enable AutoRelay: %w", err)
+	}
+
+	logger.Info("AutoRelay enabled with DHT peer source")
+
+	return nil
+}
+
+// mdnsNotifee handles mDNS peer discovery events.
+type mdnsNotifee struct {
+	host host.Host
+}
+
+// HandlePeerFound is called when mDNS discovers a peer on the local network.
+func (n *mdnsNotifee) HandlePeerFound(pi peer.AddrInfo) {
+	// Connect to discovered local peer
+	if err := n.host.Connect(context.Background(), pi); err != nil {
+		logger.Debug("Failed to connect to mDNS discovered peer",
+			"peer", pi.ID,
+			"error", err)
+
+		return
+	}
+
+	logger.Info("Connected to local peer via mDNS",
+		"peer", pi.ID,
+		"addrs", pi.Addrs)
+}
+
+// setupMDNS enables mDNS discovery for local network peers.
+// Peers on the same LAN will discover each other in < 1 second without bootstrap nodes.
+// This is useful for development, testing, and enterprise LAN deployments.
+func setupMDNS(h host.Host) {
+	notifee := &mdnsNotifee{host: h}
+
+	service := mdns.NewMdnsService(h, MDNSServiceName, notifee)
+	if err := service.Start(); err != nil {
+		logger.Warn("Failed to start mDNS discovery",
+			"service", MDNSServiceName,
+			"error", err)
+
+		return
+	}
+
+	logger.Info("mDNS local discovery enabled",
+		"service", MDNSServiceName)
 }

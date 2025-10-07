@@ -86,14 +86,17 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey) (host.Host, erro
 		// Let's prevent our peer from having too many
 		// connections by attaching a connection manager.
 		libp2p.ConnectionManager(connMgr),
+		// Enable hole punching to upgrade relay connections to direct.
+		// When two NAT'd peers connect via relay, hole punching attempts to
+		// establish a direct connection through simultaneous dialing (DCUtR protocol).
+		// Success rate: ~70-80%. Falls back to relay if hole punching fails.
+		libp2p.EnableHolePunching(),
 		// Attempt to open ports using uPNP for NATed hosts.
 		libp2p.NATPortMap(),
-		// If you want to help other peers to figure out if they are behind
-		// NATs, you can launch the server-side of AutoNAT too (AutoRelay
-		// already runs the client)
-		//
-		// This service is highly rate-limited and should not cause any
-		// performance issues.
+		// Enable AutoNAT service to help other peers detect if they are behind NAT.
+		// This is the server-side component that responds to NAT detection requests.
+		// Note: AutoNAT client (for detecting our own NAT status) runs automatically.
+		// This service is highly rate-limited and should not cause any performance issues.
 		libp2p.EnableNATService(),
 	)
 	if err != nil {

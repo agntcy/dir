@@ -38,3 +38,7 @@ const (
 // MeshPeerTaggingInterval defines how often GossipSub mesh peers are re-tagged
 // to protect them from Connection Manager pruning as mesh topology changes.
 const MeshPeerTaggingInterval = 30 * time.Second
+
+// mDNS service name for local network peer discovery.
+// This is used to identify DIR peers on the same LAN.
+const MDNSServiceName = "agntcy-dir-local-discovery"
