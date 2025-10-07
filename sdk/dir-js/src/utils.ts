@@ -15,10 +15,7 @@ import {
     RecordReferrerSchema,
 } from '@buf/agntcy_dir.bufbuild_es/agntcy/dir/core/v1/record_pb';
 import type { JsonObject } from '@bufbuild/protobuf';
-
-// Referrer type constants
-export const SIGNATURE_REFERRER_TYPE = 'agntcy.dir.sign.v1.Signature';
-export const PUBLIC_KEY_REFERRER_TYPE = 'agntcy.dir.sign.v1.PublicKey';
+import * as models from './models';
 
 /**
  * Encode a Signature object into a RecordReferrer.
@@ -63,7 +60,7 @@ export function encodeSignatureToReferrer(
     // Create and return the RecordReferrer
     // The data field accepts JsonObject directly
     return create(RecordReferrerSchema, {
-        type: SIGNATURE_REFERRER_TYPE,
+        type: models.sign_v1.SignatureSchema.typeName,
         data: dataObject as JsonObject,
     });
 }
@@ -190,7 +187,7 @@ export function encodePublicKeyToReferrer(publicKey: string): RecordReferrer {
     // Create and return the RecordReferrer
     // The data field accepts JsonObject directly
     return create(RecordReferrerSchema, {
-        type: PUBLIC_KEY_REFERRER_TYPE,
+        type: models.sign_v1.PublicKeySchema.typeName,
         data: dataObject as JsonObject,
     });
 }
@@ -218,7 +215,7 @@ export function decodePublicKeyFromReferrer(referrer: RecordReferrer): string {
     // The data field is already a JsonObject
     const data = referrer.data as Record<string, unknown>;
 
-    if ('key' in data) {
+    if (!('key' in data)) {
         throw new Error('Public key not found in referrer data');
     }
 

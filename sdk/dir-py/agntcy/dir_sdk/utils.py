@@ -12,11 +12,6 @@ import json
 from agntcy.dir_sdk.models import core_v1, sign_v1
 
 
-# Referrer type constants using proto full names (for high-level API)
-SIGNATURE_REFERRER_TYPE = "agntcy.dir.sign.v1.Signature"
-PUBLIC_KEY_REFERRER_TYPE = "agntcy.dir.sign.v1.PublicKey"
-
-
 def encode_signature_to_referrer(signature: sign_v1.Signature) -> core_v1.RecordReferrer:
     """Encode a Signature object into a RecordReferrer.
     
@@ -60,7 +55,7 @@ def encode_signature_to_referrer(signature: sign_v1.Signature) -> core_v1.Record
     # Create and return the RecordReferrer
     # Python protobuf automatically converts dict to Struct for data field
     return core_v1.RecordReferrer(
-        type=SIGNATURE_REFERRER_TYPE,
+        type=sign_v1.Signature.DESCRIPTOR.full_name(),
         data=data_dict,
     )
 
@@ -161,7 +156,7 @@ def encode_public_key_to_referrer(public_key: str) -> core_v1.RecordReferrer:
     
     # Create and return the RecordReferrer
     return core_v1.RecordReferrer(
-        type=PUBLIC_KEY_REFERRER_TYPE,
+        type=sign_v1.PublicKey.DESCRIPTOR.full_name(),
         data=data_dict,
     )
 
