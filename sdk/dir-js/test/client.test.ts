@@ -334,12 +334,6 @@ describe('Client', () => {
   test('sign_and_verify', async () => {
     const shellEnv = { ...env };
 
-    if (shellEnv['OIDC_TOKEN'] || '' == '' &&
-      shellEnv['OIDC_PROVIDER_URL'] || '' == '') {
-      console.log("Local interactive mode is not supported inside KinD cluster, skipping");
-      return;
-    }
-
     const records = genRecords(2, 'sign_verify');
     const recordRefs = await client.push(records);
 
@@ -396,7 +390,12 @@ describe('Client', () => {
 
       // Sign test
       client.sign(keyRequest);
-      client.sign(oidcRequest, clientId);
+
+      if ((shellEnv['OIDC_TOKEN'] || '') != '' && (shellEnv['OIDC_PROVIDER_URL'] || '') != '') {
+        client.sign(oidcRequest, clientId);
+      } else {
+        recordRefs.pop(); // NOTE: Drop the unsigned record if no OIDC tested
+      }
 
       // Verify test
       for (const ref of recordRefs) {
@@ -405,6 +404,8 @@ describe('Client', () => {
             recordRef: ref,
           }),
         );
+
+        console.log(response);
         expect(response.success).toBe(true);
       }
 
@@ -431,6 +432,7 @@ describe('Client', () => {
         }
       }
     } catch (error) {
+      console.log(error)
       expect.fail(`Sign and verify test failed: ${error}`);
     } finally {
       // Clean up keys

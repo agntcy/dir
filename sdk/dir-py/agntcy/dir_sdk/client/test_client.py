@@ -296,15 +296,17 @@ class TestClient(unittest.TestCase):
         try:
             # Sign and verify using Key signing
             self.client.sign(key_request)
-            response = self.client.verify(sign_v1.VerifyRequest(record_ref=record_refs[0]))
-            assert response.success is True
 
             # Sign and verify using OIDC signing if set
             if shell_env.get("OIDC_TOKEN", "") != "" and shell_env.get("OIDC_PROVIDER_URL", "") != "":
                 self.client.sign(oidc_request, client_id)
-                response = self.client.verify(sign_v1.VerifyRequest(record_ref=record_refs[1]))
-                assert response.success is True
+            else:
+                record_refs.pop() # NOTE: Drop the unsigned record if no OIDC tested
 
+            for ref in record_refs:
+                response = self.client.verify(sign_v1.VerifyRequest(record_ref=ref))
+                assert response.success is True
+                
         except Exception as e:
             assert e is None
         finally:
