@@ -4,6 +4,7 @@
 package routing
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -59,7 +60,8 @@ func runUnpublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	presenter.Printf(cmd, "Unpublishing record with CID: %s\n", recordRef.GetCid())
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
 
 	// Start unpublishing using the same RecordRef
 	if err := c.Unpublish(cmd.Context(), &routingv1.UnpublishRequest{
@@ -72,10 +74,27 @@ func runUnpublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to unpublish: %w", err)
 	}
 
-	// Success
-	presenter.Printf(cmd, "Successfully unpublished!\n")
-	presenter.Printf(cmd, "Record is no longer discoverable by other peers.\n")
-	presenter.Printf(cmd, "The record still exists in local storage.\n")
+	// Output in the appropriate format
+	switch outputOpts.Format {
+	case presenter.FormatJSON:
+		result := map[string]interface{}{
+			"cid":     recordRef.GetCid(),
+			"status":  "unpublished",
+			"message": "Record is no longer discoverable by other peers",
+		}
+
+		output, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+
+		presenter.Println(cmd, string(output))
+	case presenter.FormatRaw:
+		presenter.Println(cmd, recordRef.GetCid())
+	case presenter.FormatHuman:
+		presenter.Printf(cmd, "Successfully unpublished record with CID: %s\n", recordRef.GetCid())
+		presenter.Printf(cmd, "Record is no longer discoverable by other peers.\n")
+	}
 
 	return nil
 }

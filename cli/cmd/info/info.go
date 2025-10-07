@@ -1,10 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package info
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -13,6 +13,11 @@ import (
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	// Add output format flags
+	presenter.AddOutputFlags(Command)
+}
 
 var Command = &cobra.Command{
 	Use:   "info",
@@ -48,14 +53,9 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}
 
-	// Marshal metadata for nice preview
-	output, err := json.MarshalIndent(&info, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal record to JSON: %w", err)
-	}
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
 
-	// Print the metadata
-	presenter.Print(cmd, string(output))
-
-	return nil
+	// Output in the appropriate format
+	return presenter.OutputStructuredData(cmd, outputOpts, "info", info)
 }

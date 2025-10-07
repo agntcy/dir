@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package search
 
 import (
@@ -108,13 +109,19 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to search: %w", err)
 	}
 
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
+
+	// Collect results and convert to interface{} slice
+	results := make([]interface{}, 0, opts.Limit)
+
 	for recordCid := range ch {
 		if recordCid == "" {
 			continue
 		}
 
-		presenter.Print(cmd, recordCid+"\n")
+		results = append(results, recordCid)
 	}
 
-	return nil
+	return presenter.OutputMultipleValues(cmd, outputOpts, "record CIDs", results)
 }

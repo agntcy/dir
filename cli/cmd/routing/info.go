@@ -4,6 +4,7 @@
 package routing
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -41,6 +42,11 @@ Note: For network-wide statistics, use 'dirctl routing search' with broad querie
 	},
 }
 
+func init() {
+	// Add output format flags
+	presenter.AddOutputFlags(infoCmd)
+}
+
 func runInfoCommand(cmd *cobra.Command) error {
 	// Get the client from the context
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
@@ -48,7 +54,8 @@ func runInfoCommand(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
-	presenter.Printf(cmd, "Local Routing Summary:\n\n")
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
 
 	// Get all local records
 	resultCh, err := c.List(cmd.Context(), &routingv1.ListRequest{
@@ -58,9 +65,36 @@ func runInfoCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to list local records: %w", err)
 	}
 
-	// Collect and display statistics
+	// Collect statistics
 	stats := collectRoutingStatistics(resultCh)
+
+	// Output in the appropriate format
+	if outputOpts.Format == presenter.FormatJSON {
+		return outputJSONStatistics(cmd, stats)
+	}
+
+	// Default human-readable format
+	presenter.Printf(cmd, "Local Routing Summary:\n\n")
 	displayRoutingStatistics(cmd, stats)
+
+	return nil
+}
+
+// outputJSONStatistics outputs routing statistics in JSON format.
+func outputJSONStatistics(cmd *cobra.Command, stats *routingStatistics) error {
+	result := map[string]interface{}{
+		"totalRecords": stats.totalRecords,
+		"skills":       stats.skillCounts,
+		"locators":     stats.locatorCounts,
+		"otherLabels":  stats.otherLabels,
+	}
+
+	output, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	presenter.Print(cmd, string(output)+"\n")
 
 	return nil
 }

@@ -399,6 +399,12 @@ func (s *SearchBuilder) WithOffset(offset int) *SearchBuilder {
 	return s
 }
 
+func (s *SearchBuilder) WithArgs(args ...string) *SearchBuilder {
+	s.args = append(s.args, args...)
+
+	return s
+}
+
 func (s *SearchBuilder) Execute() (string, error) {
 	// Build search arguments
 	for key, value := range s.queries {

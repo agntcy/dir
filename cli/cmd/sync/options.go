@@ -3,6 +3,8 @@
 
 package sync
 
+import "github.com/agntcy/dir/cli/presenter"
+
 var opts = &options{}
 
 type options struct {
@@ -23,4 +25,10 @@ func init() {
 	createFlags := createCmd.Flags()
 	createFlags.StringSliceVar(&opts.CIDs, "cids", []string{}, "List of CIDs to synchronize from the remote Directory. If empty, all objects will be synchronized.")
 	createFlags.BoolVar(&opts.Stdin, "stdin", false, "Parse routing search output from stdin to create sync operations for each provider")
+
+	// Add output format flags to all sync subcommands
+	presenter.AddOutputFlags(createCmd)
+	presenter.AddOutputFlags(listCmd)
+	presenter.AddOutputFlags(statusCmd)
+	presenter.AddOutputFlags(deleteCmd)
 }

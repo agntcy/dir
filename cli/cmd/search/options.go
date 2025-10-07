@@ -3,6 +3,8 @@
 
 package search
 
+import "github.com/agntcy/dir/cli/presenter"
+
 var opts = &options{}
 
 type options struct {
@@ -19,4 +21,7 @@ func init() {
 	flags.Uint32Var(&opts.Offset, "offset", 0, "Pagination offset (default: 0)")
 
 	flags.VarP(&opts.Query, "query", "q", "Search query terms")
+
+	// Add output format flags
+	presenter.AddOutputFlags(Command)
 }

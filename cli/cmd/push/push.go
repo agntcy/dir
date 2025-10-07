@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-//nolint:dupword
+//nolint:dupword,wrapcheck
 package push
 
 import (
@@ -101,7 +101,9 @@ func runCommand(cmd *cobra.Command, source io.Reader) error {
 		}
 	}
 
-	presenter.Print(cmd, recordRef.GetCid())
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
 
-	return nil
+	// Output in the appropriate format
+	return presenter.OutputSingleValue(cmd, outputOpts, "cid", "Pushed record with CID", recordRef.GetCid())
 }

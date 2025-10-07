@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package sync
 
 import (
@@ -121,9 +122,11 @@ func runCreateSync(cmd *cobra.Command, remoteURL string, cids []string) error {
 		return fmt.Errorf("failed to create sync: %w", err)
 	}
 
-	presenter.Printf(cmd, "Sync created with ID: %s", syncID)
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
 
-	return nil
+	// Output in the appropriate format
+	return presenter.OutputSingleValue(cmd, outputOpts, "syncId", "Sync created with ID", syncID)
 }
 
 func runListSyncs(cmd *cobra.Command) error {
@@ -140,24 +143,27 @@ func runListSyncs(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to list syncs: %w", err)
 	}
 
+	// Collect results
+	var results []interface{}
+
 	for {
 		select {
 		case sync, ok := <-itemCh:
 			if !ok {
 				// Channel closed, all items received
-				return nil
+				goto done
 			}
 
-			presenter.Printf(cmd,
-				"ID %s Status %s RemoteDirectoryUrl %s\n",
-				sync.GetSyncId(),
-				sync.GetStatus(),
-				sync.GetRemoteDirectoryUrl(),
-			)
+			results = append(results, sync)
 		case <-cmd.Context().Done():
 			return fmt.Errorf("context cancelled while listing syncs: %w", cmd.Context().Err())
 		}
 	}
+done:
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
+
+	return presenter.OutputMultipleValues(cmd, outputOpts, "syncs", results)
 }
 
 func runGetSyncStatus(cmd *cobra.Command, syncID string) error {
@@ -176,14 +182,10 @@ func runGetSyncStatus(cmd *cobra.Command, syncID string) error {
 		return fmt.Errorf("failed to get sync status: %w", err)
 	}
 
-	presenter.Printf(cmd,
-		"ID %s Status %s RemoteDirectoryUrl %s\n",
-		sync.GetSyncId(),
-		storev1.SyncStatus_name[int32(sync.GetStatus())],
-		sync.GetRemoteDirectoryUrl(),
-	)
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
 
-	return nil
+	return presenter.OutputSingleValue(cmd, outputOpts, "status", "Sync status", sync.GetStatus())
 }
 
 func runDeleteSync(cmd *cobra.Command, syncID string) error {
@@ -202,7 +204,10 @@ func runDeleteSync(cmd *cobra.Command, syncID string) error {
 		return fmt.Errorf("failed to delete sync: %w", err)
 	}
 
-	return nil
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
+
+	return presenter.OutputSingleValue(cmd, outputOpts, "syncId", "Sync deleted with ID", syncID)
 }
 
 func runCreateSyncFromStdin(cmd *cobra.Command) error {
@@ -288,6 +293,8 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 	totalSyncs := 0
 	totalCIDs := 0
 
+	syncIDs := make([]interface{}, 0, len(peerResults))
+
 	for apiAddress, syncInfo := range peerResults {
 		if syncInfo.APIAddress == "" {
 			presenter.Printf(cmd, "WARNING: No API address found for peer\n")
@@ -304,14 +311,14 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 			continue
 		}
 
-		presenter.Printf(cmd, "Sync created with ID: %s\n", syncID)
-		presenter.Printf(cmd, "\n")
+		syncIDs = append(syncIDs, syncID)
 
 		totalSyncs++
 		totalCIDs += len(syncInfo.CIDs)
 	}
 
-	presenter.Printf(cmd, "Summary: Created %d sync operation(s) for %d CID(s)\n", totalSyncs, totalCIDs)
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
 
-	return nil
+	return presenter.OutputMultipleValues(cmd, outputOpts, "sync IDs", syncIDs)
 }

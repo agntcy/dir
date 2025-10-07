@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-//nolint:predeclared
+//nolint:predeclared,wrapcheck
 package delete
 
 import (
@@ -13,6 +13,11 @@ import (
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	// Add output format flags
+	presenter.AddOutputFlags(Command)
+}
 
 var Command = &cobra.Command{
 	Use:   "delete",
@@ -48,7 +53,9 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to delete record: %w", err)
 	}
 
-	presenter.Printf(cmd, "Deleted record with cid: %s\n", cid)
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
 
-	return nil
+	// Output in the appropriate format
+	return presenter.OutputSingleValue(cmd, outputOpts, "cid", "Deleted record with CID", cid)
 }

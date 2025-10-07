@@ -4,6 +4,7 @@
 package routing
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -62,8 +63,6 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	presenter.Printf(cmd, "Publishing record with CID: %s\n", recordRef.GetCid())
-
 	// Start publishing using the same RecordRef
 	if err := c.Publish(cmd.Context(), &routingv1.PublishRequest{
 		Request: &routingv1.PublishRequest_RecordRefs{
@@ -79,10 +78,30 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to publish: %w", err)
 	}
 
-	// Success
-	presenter.Printf(cmd, "Successfully submitted publication request!\n")
-	presenter.Printf(cmd, "Record will be discoverable by other peers once the publication service processes the request.\n")
-	presenter.Printf(cmd, "Use 'dirctl routing search' from other peers to find this record after publication completes.\n")
+	// Get output options
+	outputOpts := presenter.GetOutputOptions(cmd)
+
+	// Output in the appropriate format
+	switch outputOpts.Format {
+	case presenter.FormatJSON:
+		result := map[string]interface{}{
+			"cid":     recordRef.GetCid(),
+			"status":  "Successfully submitted publication request",
+			"message": "Record will be discoverable by other peers once the publication service processes the request",
+		}
+
+		output, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+
+		presenter.Println(cmd, string(output))
+	case presenter.FormatRaw:
+		presenter.Println(cmd, recordRef.GetCid())
+	case presenter.FormatHuman:
+		presenter.Printf(cmd, "Successfully submitted publication request with CID: %s\n", recordRef.GetCid())
+		presenter.Printf(cmd, "Record will be discoverable by other peers once the publication service processes the request.\n")
+	}
 
 	return nil
 }

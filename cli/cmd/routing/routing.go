@@ -4,6 +4,7 @@
 package routing
 
 import (
+	"github.com/agntcy/dir/cli/presenter"
 	"github.com/spf13/cobra"
 )
 
@@ -45,4 +46,8 @@ func init() {
 	Command.AddCommand(listCmd)
 	Command.AddCommand(searchCmd)
 	Command.AddCommand(infoCmd)
+
+	// Add output format flags to routing subcommands
+	presenter.AddOutputFlags(publishCmd)
+	presenter.AddOutputFlags(unpublishCmd)
 }
