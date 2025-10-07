@@ -10,6 +10,7 @@ import (
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -58,6 +59,26 @@ func newDHT(ctx context.Context, host host.Host, bootstrapPeers []peer.AddrInfo,
 	}
 
 	wg.Wait()
+
+	// Tag and protect bootstrap peers to prevent Connection Manager from pruning them.
+	// Bootstrap peers are critical for network entry and should never be disconnected.
+	if host.ConnManager() != nil {
+		for _, p := range bootstrapPeers {
+			// Check if we're actually connected (connection might have failed)
+			if host.Network().Connectedness(p.ID) == network.Connected {
+				// Tag with high priority
+				host.ConnManager().TagPeer(p.ID, "bootstrap", PeerPriorityBootstrap)
+
+				// Protect (never disconnect)
+				host.ConnManager().Protect(p.ID, "bootstrap")
+
+				logger.Info("Protected bootstrap peer",
+					"peer", p.ID.String(),
+					"tag", "bootstrap",
+					"priority", PeerPriorityBootstrap)
+			}
+		}
+	}
 
 	return kdht, nil
 }

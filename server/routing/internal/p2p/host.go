@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
+	connmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	libp2ptls "github.com/libp2p/go-libp2p/p2p/security/tls"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -47,15 +48,16 @@ func init() {
 
 // newHost creates a new host libp2p host.
 func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey) (host.Host, error) {
-	// Select connection manager
-	// connMgr, err := connmgr.NewConnManager(
-	// 	100, //nolint:mnd
-	// 	400, //nolint:mnd
-	// 	connmgr.WithGracePeriod(time.Minute),
-	// )
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to create p2p host connection manager: %w", err)
-	// }
+	// Create connection manager to limit and manage peer connections.
+	// This prevents resource exhaustion and enables smart peer pruning based on priority.
+	connMgr, err := connmgr.NewConnManager(
+		ConnMgrLowWater,  // Minimum connections (DHT + GossipSub + buffer)
+		ConnMgrHighWater, // Maximum connections (prevents resource exhaustion)
+		connmgr.WithGracePeriod(ConnMgrGracePeriod), // Protect new connections
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create p2p host connection manager: %w", err)
+	}
 	// Create host
 	host, err := libp2p.New(
 		// Add directory API address to the host address factory
@@ -83,7 +85,7 @@ func newHost(listenAddr, dirAPIAddr string, key crypto.PrivKey) (host.Host, erro
 		libp2p.DefaultMuxers,
 		// Let's prevent our peer from having too many
 		// connections by attaching a connection manager.
-		// libp2p.ConnectionManager(connMgr),
+		libp2p.ConnectionManager(connMgr),
 		// Attempt to open ports using uPNP for NATed hosts.
 		libp2p.NATPortMap(),
 		// If you want to help other peers to figure out if they are behind

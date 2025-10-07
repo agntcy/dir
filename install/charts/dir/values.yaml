@@ -50,14 +50,14 @@ apiserver:
       # Path to private key file for peer ID.
       # key_path: /tmp/agntcy-dir/node.privkey
 
-      # Nodes to use for bootstrapping of the DHT.
-      # We read initial routing tables here and get introduced
-      # to the network.
-      # bootstrap_peers:
-      #   - /ip4/1.1.1.1/tcp/1
-      #   - /ip4/1.1.1.1/tcp/2
+    # Nodes to use for bootstrapping of the DHT.
+    # We read initial routing tables here and get introduced
+    # to the network.
+    # bootstrap_peers:
+    #   - /ip4/1.1.1.1/tcp/1
+    #   - /ip4/1.1.1.1/tcp/2
 
-      # GossipSub configuration for efficient label announcements
+    # GossipSub configuration for efficient label announcements
       # When enabled, labels are propagated via GossipSub mesh to ALL subscribed peers
       # When disabled, falls back to DHT+Pull mechanism (higher bandwidth, limited reach)
       # Default: true (recommended for production)

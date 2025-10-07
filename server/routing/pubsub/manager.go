@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/agntcy/dir/server/routing/internal/p2p"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -299,4 +300,45 @@ func (m *Manager) Close() error {
 	}
 
 	return nil
+}
+
+// TagMeshPeers tags all current GossipSub mesh peers with high priority
+// to prevent them from being pruned by the Connection Manager.
+//
+// Mesh peers are critical for fast label propagation (5-20ms delivery).
+// If mesh peers are pruned, the mesh must rebuild, causing temporary
+// degradation in GossipSub performance.
+//
+// This method should be called:
+//   - After GossipSub initialization
+//   - Periodically (e.g., every 30 seconds) as mesh changes
+//   - Or in response to mesh events (advanced)
+//
+// Priority: 50 points (high, but below bootstrap's 100)
+//
+// Safety:
+//   - Safe to call even if Connection Manager is nil (no-op)
+//   - Safe to call when mesh is empty (no-op)
+//   - Safe to call multiple times (re-tagging is harmless)
+func (m *Manager) TagMeshPeers() {
+	if m == nil || m.host.ConnManager() == nil {
+		return // No-op if manager or connection manager not available
+	}
+
+	peers := m.topic.ListPeers()
+
+	if len(peers) == 0 {
+		logger.Debug("No mesh peers to tag")
+
+		return
+	}
+
+	for _, p := range peers {
+		m.host.ConnManager().TagPeer(p, "gossipsub-mesh", p2p.PeerPriorityGossipSubMesh)
+	}
+
+	logger.Debug("Tagged GossipSub mesh peers",
+		"count", len(peers),
+		"priority", p2p.PeerPriorityGossipSubMesh,
+		"topic", m.topicName)
 }

@@ -201,6 +201,9 @@ func newRemote(parentCtx context.Context,
 		// Set callback for received label announcements
 		pubsubManager.SetOnRecordPublishEvent(routeAPI.handleRecordPublishEvent)
 
+		// Start periodic mesh peer tagging to protect them from Connection Manager pruning
+		routeAPI.startMeshPeerTagging()
+
 		remoteLogger.Info("GossipSub label announcements enabled")
 	} else {
 		remoteLogger.Info("GossipSub disabled, using DHT+Pull fallback only")
@@ -515,6 +518,53 @@ func (r *routeRemote) handleNotify() {
 			r.handleCIDProviderNotification(r.ctx, notif)
 		}
 	}
+}
+
+// startMeshPeerTagging starts a background goroutine that periodically tags
+// GossipSub mesh peers to protect them from Connection Manager pruning.
+//
+// GossipSub mesh changes over time as peers join/leave and mesh prunes/grafts.
+// This periodic tagging ensures current mesh peers are always protected with
+// high priority (50 points), preventing the Connection Manager from disconnecting
+// them when connection limits are reached.
+//
+// The goroutine:
+//   - Tags mesh peers immediately (initial protection)
+//   - Re-tags every 30 seconds (maintain protection as mesh changes)
+//   - Stops when routing context is cancelled (clean shutdown)
+//
+// This method should only be called when GossipSub is enabled.
+func (r *routeRemote) startMeshPeerTagging() {
+	if r.pubsubManager == nil {
+		return // Safety check: only run if GossipSub is enabled
+	}
+
+	// Tag mesh peers initially
+	r.pubsubManager.TagMeshPeers()
+
+	// Start periodic tagging goroutine
+	r.wg.Add(1)
+
+	go func() {
+		defer r.wg.Done()
+
+		ticker := time.NewTicker(p2p.MeshPeerTaggingInterval)
+		defer ticker.Stop()
+
+		remoteLogger.Info("Started periodic GossipSub mesh peer tagging",
+			"interval", p2p.MeshPeerTaggingInterval)
+
+		for {
+			select {
+			case <-r.ctx.Done():
+				remoteLogger.Debug("Stopping mesh peer tagging")
+
+				return
+			case <-ticker.C:
+				r.pubsubManager.TagMeshPeers()
+			}
+		}
+	}()
 }
 
 // handleCIDProviderNotification implements fallback label discovery via DHT+Pull.

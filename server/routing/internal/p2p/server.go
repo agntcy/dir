@@ -12,6 +12,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	discovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 )
 
 var logger = logging.Logger("p2p")
@@ -150,9 +151,28 @@ func start(ctx context.Context, opts *options) <-chan status {
 		}
 		defer kdht.Close()
 
-		// Start peer discovery if requested
+		// Advertise to rendezvous for initial peer discovery.
+		// Peer discovery is now handled automatically by:
+		//   - DHT: Bootstrap() connects to bootstrap peers at startup
+		//   - DHT: RoutingTableRefreshPeriod() maintains routing table (every 30s)
+		//   - GossipSub: Mesh maintenance with peer exchange (if enabled)
+		//   - Connection Manager: Maintains healthy connection count (50-200)
+		//
+		// The custom discover() polling loop has been removed as it was redundant
+		// with DHT's built-in peer discovery and caused excessive polling (60/min).
 		if opts.Randevous != "" {
-			go discover(ctx, host, kdht, opts.Randevous)
+			routingDiscovery := discovery.NewRoutingDiscovery(kdht)
+
+			_, err := routingDiscovery.Advertise(ctx, opts.Randevous)
+			if err != nil {
+				logger.Warn("Failed to advertise to rendezvous",
+					"rendezvous", opts.Randevous,
+					"error", err)
+			} else {
+				logger.Info("Advertised to rendezvous (discovery handled by DHT)",
+					"rendezvous", opts.Randevous)
+			}
+			// Note: No continuous polling - DHT handles peer discovery automatically
 		}
 
 		// Register services. Only available on non-bootstrap nodes.
