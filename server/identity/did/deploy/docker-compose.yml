@@ -1,0 +1,28 @@
+services:
+  pds:
+    container_name: pds
+    # image: ghcr.io/bluesky-social/pds:0.4
+    build:
+      context: .
+      # Adds pdsadmin utility into image
+      dockerfile_inline: |
+        FROM ghcr.io/bluesky-social/pds:0.4
+        RUN apk add bash curl openssl jq util-linux-misc
+        RUN curl --silent --show-error --fail --output '/usr/local/bin/pdsadmin' 'https://raw.githubusercontent.com/bluesky-social/pds/main/pdsadmin.sh'
+        RUN sed -i 's/--force/-f/g' /usr/local/bin/pdsadmin
+        RUN chmod +x /usr/local/bin/pdsadmin
+    restart: always
+    volumes:
+      - ./pds:/pds
+      - ./pds.env:/pds/pds.env
+    env_file:
+      - ./pds.env
+  
+  web:
+    image: nginx
+    restart: always
+    network_mode: host
+    depends_on:
+      - pds
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
