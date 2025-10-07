@@ -172,9 +172,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 				logger.Info("Advertised to rendezvous (discovery handled by DHT)",
 					"rendezvous", opts.Randevous)
 			}
-			// Note: No continuous polling - DHT handles peer discovery automatically
 		}
-
 		// Register services. Only available on non-bootstrap nodes.
 		if opts.APIRegistrer != nil && len(opts.BootstrapPeers) > 0 {
 			err := opts.APIRegistrer(host)
