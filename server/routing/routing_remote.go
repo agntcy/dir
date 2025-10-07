@@ -720,23 +720,32 @@ func (r *routeRemote) hasRemoteRecordCached(ctx context.Context, cid, peerID str
 // This is the primary label discovery mechanism when GossipSub is enabled.
 // It converts the wire format to storage format using existing infrastructure.
 //
+// Parameters:
+//   - ctx: Operation context
+//   - authenticatedPeerID: Cryptographically verified peer ID from msg.ReceivedFrom
+//   - event: The announcement payload (CID, labels, timestamp)
+//
 // Flow:
 //  1. Skip own announcements (already cached locally)
 //  2. Convert []string labels to types.Label
 //  3. Build enhanced keys: /skills/AI/CID/PeerID
 //  4. Store types.LabelMetadata in datastore
 //
+// Security:
+//   - Uses authenticatedPeerID from libp2p transport (cannot be spoofed)
+//   - Prevents malicious peers from poisoning the label cache
+//
 // This completely avoids pulling the entire record from remote peers,
 // providing ~95% bandwidth savings and ~5-20ms propagation time.
-func (r *routeRemote) handleRecordPublishEvent(ctx context.Context, event *pubsub.RecordPublishEvent) {
+func (r *routeRemote) handleRecordPublishEvent(ctx context.Context, authenticatedPeerID string, event *pubsub.RecordPublishEvent) {
 	// Skip our own announcements (already cached during local Publish)
-	if event.PeerID == r.server.Host().ID().String() {
+	if authenticatedPeerID == r.server.Host().ID().String() {
 		return
 	}
 
 	remoteLogger.Info("Caching labels from GossipSub announcement",
 		"cid", event.CID,
-		"peer", event.PeerID,
+		"peer", authenticatedPeerID,
 		"labels", len(event.Labels))
 
 	now := time.Now()
@@ -746,8 +755,8 @@ func (r *routeRemote) handleRecordPublishEvent(ctx context.Context, event *pubsu
 	for _, labelStr := range event.Labels {
 		label := types.Label(labelStr)
 
-		// Use existing BuildEnhancedLabelKey function
-		enhancedKey := BuildEnhancedLabelKey(label, event.CID, event.PeerID)
+		// Use authenticated peer ID (cryptographically verified by libp2p)
+		enhancedKey := BuildEnhancedLabelKey(label, event.CID, authenticatedPeerID)
 
 		// Use existing types.LabelMetadata structure
 		metadata := &types.LabelMetadata{
@@ -776,7 +785,7 @@ func (r *routeRemote) handleRecordPublishEvent(ctx context.Context, event *pubsu
 
 	remoteLogger.Info("Successfully cached labels from GossipSub",
 		"cid", event.CID,
-		"peer", event.PeerID,
+		"peer", authenticatedPeerID,
 		"total", len(event.Labels),
 		"cached", cachedCount)
 }

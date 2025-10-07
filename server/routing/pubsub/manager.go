@@ -40,8 +40,12 @@ type Manager struct {
 	localPeerID string
 	topicName   string // Topic name (protocol constant)
 
-	// Callback invoked when record publish event is received
-	onRecordPublishEvent func(context.Context, *RecordPublishEvent)
+	// Callback invoked when record publish event is received.
+	// Parameters:
+	//   - context.Context: Operation context
+	//   - string: Authenticated peer ID (from msg.ReceivedFrom, cryptographically verified)
+	//   - *RecordPublishEvent: The announcement payload
+	onRecordPublishEvent func(context.Context, string, *RecordPublishEvent)
 }
 
 // New creates a new GossipSub manager for label announcements.
@@ -151,9 +155,10 @@ func (m *Manager) PublishRecord(ctx context.Context, record types.Record) error 
 	}
 
 	// Create announcement with current timestamp
+	// Note: PeerID is not included in the wire format - recipients use
+	// the authenticated msg.ReceivedFrom from libp2p transport layer
 	announcement := &RecordPublishEvent{
 		CID:       cid,
-		PeerID:    m.localPeerID,
 		Labels:    labelStrings,
 		Timestamp: time.Now(),
 	}
@@ -186,21 +191,29 @@ func (m *Manager) PublishRecord(ctx context.Context, record types.Record) error 
 // SetOnRecordPublishEvent sets the callback for received record publication events.
 // This callback is invoked for each valid announcement received from remote peers.
 //
+// The callback receives:
+//   - ctx: Operation context
+//   - authenticatedPeerID: The peer's ID from msg.ReceivedFrom (cryptographically verified)
+//   - event: The announcement payload
+//
 // The callback should:
 //   - Convert wire format ([]string) to labels.Label
-//   - Build enhanced keys using BuildEnhancedLabelKey()
+//   - Build enhanced keys using BuildEnhancedLabelKey() with authenticatedPeerID
 //   - Store labels.LabelMetadata in datastore
+//
+// Security Note: Always use authenticatedPeerID (not any ID from the event payload)
+// as it's verified by libp2p's cryptographic transport layer.
 //
 // Example:
 //
-//	manager.SetOnLabelAnnouncement(func(ctx context.Context, ann *LabelAnnouncement) {
-//	    for _, labelStr := range ann.Labels {
+//	manager.SetOnRecordPublishEvent(func(ctx context.Context, authenticatedPeerID string, event *RecordPublishEvent) {
+//	    for _, labelStr := range event.Labels {
 //	        label := labels.Label(labelStr)
-//	        key := BuildEnhancedLabelKey(label, ann.CID, ann.PeerID)
+//	        key := BuildEnhancedLabelKey(label, event.CID, authenticatedPeerID)
 //	        // ... store in datastore ...
 //	    }
 //	})
-func (m *Manager) SetOnRecordPublishEvent(fn func(context.Context, *RecordPublishEvent)) {
+func (m *Manager) SetOnRecordPublishEvent(fn func(context.Context, string, *RecordPublishEvent)) {
 	m.onRecordPublishEvent = fn
 }
 
@@ -252,16 +265,19 @@ func (m *Manager) handleMessages() {
 			continue
 		}
 
+		// Extract authenticated peer ID from libp2p transport layer
+		// This is cryptographically verified and cannot be spoofed
+		authenticatedPeerID := msg.ReceivedFrom.String()
+
 		logger.Debug("Received label announcement",
-			"from", msg.ReceivedFrom,
+			"from", authenticatedPeerID,
 			"cid", announcement.CID,
-			"peer", announcement.PeerID,
 			"labels", len(announcement.Labels))
 
-		// Invoke callback for processing
+		// Invoke callback with authenticated peer ID
 		if m.onRecordPublishEvent != nil {
-			// Use context from Manager, not from message
-			m.onRecordPublishEvent(m.ctx, announcement)
+			// Pass authenticated peer ID as separate parameter for security
+			m.onRecordPublishEvent(m.ctx, authenticatedPeerID, announcement)
 		}
 	}
 }

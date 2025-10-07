@@ -40,15 +40,20 @@ type PublishEventHandler func(context.Context, types.Record) error
 // Protocol parameters: See constants.go for TopicLabels, MaxMessageSize, etc.
 // These are intentionally NOT configurable to ensure network-wide compatibility.
 //
+// Security Note:
+//   - PeerID is NOT included in the wire format to prevent spoofing
+//   - Instead, the authenticated sender (msg.ReceivedFrom) is passed separately to handlers
+//   - This ensures only cryptographically verified peer IDs are used for storage
+//
 // Conversion to storage format:
 //   - Wire: RecordPublishEvent with []string labels
+//   - Handler receives: authenticated PeerID from libp2p transport
 //   - Storage: Enhanced keys (/skills/AI/CID/PeerID) with types.LabelMetadata
 //
 // Example wire format:
 //
 //	{
 //	  "cid": "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
-//	  "peer_id": "12D3KooWD3bfmNbuuuT5Zch8fj9Cg9dQR2FpGm7JzCfCzPWZnxLn",
 //	  "labels": ["/skills/AI/ML", "/domains/research", "/modules/tensorflow"],
 //	  "timestamp": "2025-10-01T10:00:00Z"
 //	}
@@ -56,10 +61,6 @@ type RecordPublishEvent struct {
 	// CID is the content identifier of the record.
 	// This uniquely identifies the record being announced.
 	CID string `json:"cid"`
-
-	// PeerID is the libp2p peer ID of the node that has this record.
-	// This identifies which peer can provide the content.
-	PeerID string `json:"peer_id"`
 
 	// Labels is the list of label strings extracted from the record.
 	// Format: namespace-prefixed paths (e.g., "/skills/AI/ML")
@@ -73,13 +74,12 @@ type RecordPublishEvent struct {
 
 // Validate checks if the event is well-formed and safe to process.
 // This prevents malformed or malicious events from being processed.
+//
+// Note: PeerID validation is intentionally omitted as it's provided
+// separately by the authenticated libp2p transport layer (msg.ReceivedFrom).
 func (e *RecordPublishEvent) Validate() error {
 	if e.CID == "" {
 		return errors.New("missing CID")
-	}
-
-	if e.PeerID == "" {
-		return errors.New("missing PeerID")
 	}
 
 	if len(e.Labels) == 0 {
