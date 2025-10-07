@@ -599,6 +599,7 @@ tasks:
           --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
           --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
           --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
+          --set apiserver.log_level="DEBUG" \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -904,7 +905,7 @@ tasks:
             }
           },
           "log": {
-            "level": "info"
+            "level": "debug"
           },
           "extensions": {
             "search": {
