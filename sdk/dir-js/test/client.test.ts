@@ -405,7 +405,6 @@ describe('Client', () => {
           }),
         );
 
-        console.log(response);
         expect(response.success).toBe(true);
       }
 
@@ -432,7 +431,6 @@ describe('Client', () => {
         }
       }
     } catch (error) {
-      console.log(error)
       expect.fail(`Sign and verify test failed: ${error}`);
     } finally {
       // Clean up keys

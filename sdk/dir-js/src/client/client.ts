@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { env } from 'node:process';
 import { writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, SpawnSyncReturns } from 'node:child_process';
 
 import {
   Client as GrpcClient,
@@ -276,13 +276,13 @@ export class Client {
     const jwtInterceptor: Interceptor = (next) => async (req) => {
       // Fetch JWT-SVID from SPIRE
       // Note: spiffeId is empty string to use the workload's default identity
-      const jwtCall = client.fetchJWTSVID({ 
-        spiffeId: '', 
-        audience: [config.jwtAudience] 
+      const jwtCall = client.fetchJWTSVID({
+        spiffeId: '',
+        audience: [config.jwtAudience]
       });
-      
+
       const response = await jwtCall.response;
-      
+
       if (!response.svids || response.svids.length === 0) {
         throw new Error('Failed to fetch JWT-SVID from SPIRE: no SVIDs returned');
       }
@@ -642,24 +642,31 @@ export class Client {
    * ```
    */
   sign(req: models.sign_v1.SignRequest, oidc_client_id = 'sigstore'): void {
+
+    var output;
+
     switch (req.provider?.request.case) {
       case 'oidc':
-        this.__sign_with_oidc(
+        output = this.__sign_with_oidc(
           req.recordRef?.cid || '',
           req.provider.request.value,
           oidc_client_id,
         );
-        return;
+        break;
 
       case 'key':
-        this.__sign_with_key(
+        output = this.__sign_with_key(
           req.recordRef?.cid || '',
           req.provider.request.value,
         );
-        return;
+        break;
 
       default:
         throw new Error('unsupported provider was supplied');
+    }
+
+    if (output.status !== 0) {
+      throw output.error;
     }
   }
 
@@ -818,7 +825,7 @@ export class Client {
    *
    * @private
    */
-  private __sign_with_key(cid: string, req: models.sign_v1.SignWithKey): void {
+  private __sign_with_key(cid: string, req: models.sign_v1.SignWithKey): SpawnSyncReturns<string> {
     // Write private key to a temporary file
     const tmp_key_filename = join(tmpdir(), '.p.key');
     writeFileSync(tmp_key_filename, String(req.privateKey));
@@ -828,10 +835,12 @@ export class Client {
     shell_env['COSIGN_PASSWORD'] = String(req.password);
 
     // Execute command
-    spawnSync(
+    let output = spawnSync(
       `${this.config.dirctlPath}`, ["sign", cid, "--key", tmp_key_filename],
       { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
     );
+
+    return output;
   }
 
   /**
@@ -853,7 +862,7 @@ export class Client {
     cid: string,
     req: models.sign_v1.SignWithOIDC,
     oidc_client_id: string,
-  ): void {
+  ): SpawnSyncReturns<string> {
     // Prepare command
     let commandArgs = ["sign", cid];
     if (req.idToken !== '') {
@@ -879,10 +888,12 @@ export class Client {
     }
 
     // Execute command
-    spawnSync(`${this.config.dirctlPath}`, commandArgs, {
+    let output = spawnSync(`${this.config.dirctlPath}`, commandArgs, {
       env: { ...env },
       encoding: 'utf8',
       stdio: 'pipe',
     });
+
+    return output;
   }
 }
