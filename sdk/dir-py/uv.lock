@@ -20,7 +20,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agntcy-dir-grpc-python", specifier = "==1.75.1.1.20251006091049+3deef34c3b26" },
+    { name = "agntcy-dir-grpc-python", specifier = "==1.75.1.1.20251007090412+102a9af80c74" },
     { name = "spiffe", specifier = ">=0.2.2" },
     { name = "spiffe-tls", specifier = ">=0.2.1" },
 ]
@@ -33,38 +33,38 @@ dev = [
 
 [[package]]
 name = "agntcy-dir-grpc-python"
-version = "1.75.1.1.20251006091049+3deef34c3b26"
+version = "1.75.1.1.20251007090412+102a9af80c74"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "agntcy-dir-protocolbuffers-python" },
     { name = "grpcio" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/agntcy-dir-grpc-python/agntcy_dir_grpc_python-1.75.1.1.20251006091049+3deef34c3b26-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/agntcy-dir-grpc-python/agntcy_dir_grpc_python-1.75.1.1.20251007090412+102a9af80c74-py3-none-any.whl" },
 ]
 
 [[package]]
 name = "agntcy-dir-protocolbuffers-pyi"
-version = "32.1.0.2.20251006091049+3deef34c3b26"
+version = "32.1.0.2.20251007090412+102a9af80c74"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "protobuf" },
     { name = "types-protobuf" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/agntcy-dir-protocolbuffers-pyi/agntcy_dir_protocolbuffers_pyi-32.1.0.2.20251006091049+3deef34c3b26-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/agntcy-dir-protocolbuffers-pyi/agntcy_dir_protocolbuffers_pyi-32.1.0.2.20251007090412+102a9af80c74-py3-none-any.whl" },
 ]
 
 [[package]]
 name = "agntcy-dir-protocolbuffers-python"
-version = "32.1.0.2.20251006091049+3deef34c3b26"
+version = "32.1.0.2.20251007090412+102a9af80c74"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "agntcy-dir-protocolbuffers-pyi" },
     { name = "protobuf" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/agntcy-dir-protocolbuffers-python/agntcy_dir_protocolbuffers_python-32.1.0.2.20251006091049+3deef34c3b26-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/agntcy-dir-protocolbuffers-python/agntcy_dir_protocolbuffers_python-32.1.0.2.20251007090412+102a9af80c74-py3-none-any.whl" },
 ]
 
 [[package]]

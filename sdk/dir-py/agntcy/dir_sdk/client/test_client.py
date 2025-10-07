@@ -10,7 +10,6 @@ import uuid
 
 from agntcy.dir_sdk.client import Client
 from agntcy.dir_sdk.models import *
-from agntcy.dir_sdk import utils
 
 
 class TestClient(unittest.TestCase):
@@ -142,23 +141,30 @@ class TestClient(unittest.TestCase):
         record_refs = self.client.push(records=records)
 
         try:
-            example_signature = sign_v1.Signature(
-                signature="dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
-                annotations={
-                    "payload": "test-payload-data"
-                }
-            )
-            # Convert signature to referrer
-            signature_referrer = utils.encode_signature_to_referrer(example_signature)
-            
             request = [
                 store_v1.PushReferrerRequest(
                     record_ref=record_refs[0],
-                    referrer=signature_referrer,
+                    referrer=core_v1.RecordReferrer(
+                        type=sign_v1.Signature.DESCRIPTOR.full_name,
+                        data={
+                            "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                            "annotations": {
+                                "payload": "test-payload-data"
+                            }
+                        }
+                    ),
                 ),
                 store_v1.PushReferrerRequest(
                     record_ref=record_refs[1],
-                    referrer=signature_referrer,
+                    referrer=core_v1.RecordReferrer(
+                        type=sign_v1.Signature.DESCRIPTOR.full_name,
+                        data={
+                            "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                            "annotations": {
+                                "payload": "test-payload-data"
+                            }
+                        }
+                    ),
                 ),
             ]
 
@@ -178,24 +184,30 @@ class TestClient(unittest.TestCase):
         record_refs = self.client.push(records=records)
 
         # Push referrers to these records
-        example_signature = sign_v1.Signature(
-            signature="dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
-            annotations={
-                "payload": "test-payload-data"
-            }
-        )
-
-        # Convert signature to referrer
-        signature_referrer = utils.encode_signature_to_referrer(example_signature)
-        
         request = [
             store_v1.PushReferrerRequest(
                 record_ref=record_refs[0],
-                referrer=signature_referrer,
+                referrer=core_v1.RecordReferrer(
+                    type=sign_v1.Signature.DESCRIPTOR.full_name,
+                    data={
+                        "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                        "annotations": {
+                            "payload": "test-payload-data"
+                        }
+                    }
+                ),
             ),
             store_v1.PushReferrerRequest(
                 record_ref=record_refs[1],
-                referrer=signature_referrer,
+                referrer=core_v1.RecordReferrer(
+                    type=sign_v1.Signature.DESCRIPTOR.full_name,
+                    data={
+                        "signature": "dGVzdC1zaWduYXR1cmU=",  # base64 encoded "test-signature"
+                        "annotations": {
+                            "payload": "test-payload-data"
+                        }
+                    }
+                ),
             ),
         ]
         response = self.client.push_referrer(req=request)
@@ -204,32 +216,31 @@ class TestClient(unittest.TestCase):
         for r in response:
             assert isinstance(r, store_v1.PushReferrerResponse)
 
-        # TODO: Uncomment when https://github.com/agntcy/dir/issues/334 is fixed
-        # try:
-        #     request = [
-        #         store_v1.PullReferrerRequest(
-        #             record_ref=record_refs[0],
-        #             referrer_type=utils.SIGNATURE_REFERRER_TYPE,
-        #         ),
-        #         store_v1.PullReferrerRequest(
-        #             record_ref=record_refs[1],
-        #             referrer_type=utils.SIGNATURE_REFERRER_TYPE,
-        #         ),
-        #     ]
+        try:
+            request = [
+                store_v1.PullReferrerRequest(
+                    record_ref=record_refs[0],
+                    referrer_type=sign_v1.Signature.DESCRIPTOR.full_name,
+                ),
+                store_v1.PullReferrerRequest(
+                    record_ref=record_refs[1],
+                    referrer_type=sign_v1.Signature.DESCRIPTOR.full_name,
+                ),
+            ]
 
-        #     response = self.client.pull_referrer(req=request)
+            response = self.client.pull_referrer(req=request)
 
-        #     assert response is not None
-        #     assert len(response) == 2
+            assert response is not None
+            assert len(response) == 2
 
-        #     for r in response:
-        #         assert isinstance(r, store_v1.PullReferrerResponse)
-        # except Exception as e:
-        #     assert "pull referrer not implemented" in str(
-        #         e,
-        #     )  # Delete when the service implemented
+            for r in response:
+                assert isinstance(r, store_v1.PullReferrerResponse)
+        except Exception as e:
+            assert "pull referrer not implemented" in str(
+                e,
+            )  # Delete when the service implemented
 
-        #     # self.assertIsNone(e) # Uncomment when the service implemented
+            # self.assertIsNone(e) # Uncomment when the service implemented
 
     def test_sign_and_verify(self) -> None:
         records = self.gen_records(2, "sign_verify")

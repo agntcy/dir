@@ -11,7 +11,7 @@ import { create } from '@bufbuild/protobuf';
 import { validate as isValidUUID } from 'uuid';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Client, Config, models, utils } from '../src';
+import { Client, Config, models } from '../src';
 
 /**
  * Generate test records with unique names.
@@ -250,23 +250,21 @@ describe('Client', () => {
     const records = genRecords(2, 'pushReferrer');
     const recordRefs = await client.push(records);
 
-    const exampleSignature = create(models.sign_v1.SignatureSchema, {
-      signature: 'dGVzdC1zaWduYXR1cmU=',
-      annotations: {
-        payload: 'test-payload-data',
-      },
-    });
-
-    // Convert signature to referrer
-    const signatureReferrer = utils.encodeSignatureToReferrer(exampleSignature);
-
     const requests: models.store_v1.PushReferrerRequest[] = recordRefs.map(
       (
         recordRef: models.core_v1.RecordRef,
       ): models.store_v1.PushReferrerRequest => {
         return create(models.store_v1.PushReferrerRequestSchema, {
           recordRef: recordRef,
-          referrer: signatureReferrer,
+          referrer: create(models.core_v1.RecordReferrerSchema, {
+            type: models.sign_v1.SignatureSchema.typeName,
+            data: {
+              signature: 'dGVzdC1zaWduYXR1cmU=',
+              annotations: {
+                payload: 'test-payload-data',
+              },
+            },
+          }),
         });
       },
     );
@@ -285,23 +283,21 @@ describe('Client', () => {
     const recordRefs = await client.push(records);
 
     // Push signatures to these records first
-    const exampleSignature = create(models.sign_v1.SignatureSchema, {
-      signature: 'dGVzdC1zaWduYXR1cmU=',
-      annotations: {
-        payload: 'test-payload-data',
-      },
-    });
-
-    // Convert signature to referrer
-    const signatureReferrer = utils.encodeSignatureToReferrer(exampleSignature);
-
     const pushRequests: models.store_v1.PushReferrerRequest[] = recordRefs.map(
       (
         recordRef: models.core_v1.RecordRef,
       ): models.store_v1.PushReferrerRequest => {
         return create(models.store_v1.PushReferrerRequestSchema, {
           recordRef: recordRef,
-          referrer: signatureReferrer,
+          referrer: create(models.core_v1.RecordReferrerSchema, {
+            type: models.sign_v1.SignatureSchema.typeName,
+            data: {
+              signature: 'dGVzdC1zaWduYXR1cmU=',
+              annotations: {
+                payload: 'test-payload-data',
+              },
+            },
+          }),
         });
       },
     );
@@ -314,26 +310,25 @@ describe('Client', () => {
       expect(r).toBeTypeOf(typeof models.store_v1.PushReferrerResponseSchema);
     }
 
-    // TODO: Uncomment when https://github.com/agntcy/dir/issues/334 is fixed
-    // // Now pull the signatures back
-    // const requests: models.store_v1.PullReferrerRequest[] = recordRefs.map(
-    //   (
-    //     recordRef: models.core_v1.RecordRef,
-    //   ): models.store_v1.PullReferrerRequest => {
-    //     return create(models.store_v1.PullReferrerRequestSchema, {
-    //       recordRef: recordRef,
-    //       referrerType: utils.SIGNATURE_REFERRER_TYPE,
-    //     });
-    //   },
-    // );
+    // Now pull the signatures back
+    const requests: models.store_v1.PullReferrerRequest[] = recordRefs.map(
+      (
+        recordRef: models.core_v1.RecordRef,
+      ): models.store_v1.PullReferrerRequest => {
+        return create(models.store_v1.PullReferrerRequestSchema, {
+          recordRef: recordRef,
+          referrerType: models.sign_v1.SignatureSchema.typeName,
+        });
+      },
+    );
 
-    // const response = await client.pull_referrer(requests);
-    // expect(response).not.toBeNull();
-    // expect(response).toHaveLength(2);
+    const response = await client.pull_referrer(requests);
+    expect(response).not.toBeNull();
+    expect(response).toHaveLength(2);
 
-    // for (const r of response) {
-    //   expect(r).toBeTypeOf(typeof models.store_v1.PullReferrerResponseSchema);
-    // }
+    for (const r of response) {
+      expect(r).toBeTypeOf(typeof models.store_v1.PullReferrerResponseSchema);
+    }
   });
 
   test('sign_and_verify', async () => {
