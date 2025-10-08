@@ -7,11 +7,15 @@ spec:
     spec:
       containers:
         - name: sdks-test
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
           imagePullPolicy: Never
           env:
             - name: DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH
-              value: unix:/run/spire/agent-sockets/api.sock
+              value: '{{ .Values.config.spiffe_socket_path }}'
+            - name: DIRECTORY_CLIENT_AUTH_MODE
+              value: '{{ .Values.config.auth_mode }}'
+            - name: DIRECTORY_CLIENT_SERVER_ADDRESS
+              value: '{{ .Values.config.server_address }}'
           volumeMounts:
             - name: spire-agent-socket
               mountPath: /run/spire/agent-sockets
