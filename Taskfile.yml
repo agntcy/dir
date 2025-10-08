@@ -1175,6 +1175,11 @@ tasks:
         apiserver:
           service:
             type: LoadBalancer
+          config:
+            authn:
+              enabled: true
+            authz:
+              enabled: true
           spire:
             enabled: true
             trustDomain: {{ .DIR_TRUST_DOMAIN }}
