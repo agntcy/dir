@@ -61,12 +61,12 @@ func withAuth(ctx context.Context) Option {
 		switch o.config.AuthMode {
 		case "jwt":
 			return o.setupJWTAuth(ctx, client)
-		case "mtls":
-			return o.setupMTLSAuth(ctx, client)
+		case "x509":
+			return o.setupX509Auth(ctx, client)
 		default:
 			_ = client.Close()
 
-			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'mtls')", o.config.AuthMode)
+			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509')", o.config.AuthMode)
 		}
 	}
 }
@@ -108,7 +108,7 @@ func (o *options) setupJWTAuth(ctx context.Context, client *workloadapi.Client) 
 	return nil
 }
 
-func (o *options) setupMTLSAuth(ctx context.Context, client *workloadapi.Client) error {
+func (o *options) setupX509Auth(ctx context.Context, client *workloadapi.Client) error {
 	// Create SPIFFE x509 services
 	x509Src, err := workloadapi.NewX509Source(ctx, workloadapi.WithClient(client))
 	if err != nil {

@@ -22,7 +22,7 @@ class Config:
         self.server_address = server_address
         self.dirctl_path = dirctl_path
         self.spiffe_socket_path = spiffe_socket_path
-        self.auth_mode = auth_mode  # 'insecure', 'mtls', or 'jwt'
+        self.auth_mode = auth_mode  # 'insecure', 'x509', or 'jwt'
         self.jwt_audience = jwt_audience
 
     @staticmethod

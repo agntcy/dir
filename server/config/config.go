@@ -44,7 +44,7 @@ type Config struct {
 	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
 	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
 
-	// Authn configuration (JWT authentication)
+	// Authn configuration (JWT or X.509 authentication)
 	Authn authn.Config `json:"authn,omitempty" mapstructure:"authn"`
 
 	// Authz configuration
@@ -100,13 +100,13 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("healthcheck_address", DefaultHealthCheckAddress)
 
 	//
-	// Authn configuration (authentication: JWT or mTLS)
+	// Authn configuration (authentication: JWT or X.509)
 	//
 	_ = v.BindEnv("authn.enabled")
 	v.SetDefault("authn.enabled", "false")
 
 	_ = v.BindEnv("authn.mode")
-	v.SetDefault("authn.mode", "mtls")
+	v.SetDefault("authn.mode", "x509")
 
 	_ = v.BindEnv("authn.socket_path")
 	v.SetDefault("authn.socket_path", "")

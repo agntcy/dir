@@ -32,7 +32,7 @@ export class Config {
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
-  authMode: 'insecure' | 'mtls' | 'jwt';
+  authMode: 'insecure' | 'x509' | 'jwt';
   jwtAudience: string;
 
   /**
@@ -41,14 +41,14 @@ export class Config {
    * @param serverAddress - The server address to connect to. Defaults to '127.0.0.1:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
-   * @param authMode - Authentication mode: 'insecure', 'mtls', or 'jwt'. Defaults to 'insecure'
+   * @param authMode - Authentication mode: 'insecure', 'x509', or 'jwt'. Defaults to 'insecure'
    * @param jwtAudience - JWT audience for JWT authentication. Required when authMode is 'jwt'
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
-    authMode: 'insecure' | 'mtls' | 'jwt' = Config.DEFAULT_AUTH_MODE as 'insecure' | 'mtls' | 'jwt',
+    authMode: 'insecure' | 'x509' | 'jwt' = Config.DEFAULT_AUTH_MODE as 'insecure' | 'x509' | 'jwt',
     jwtAudience = Config.DEFAULT_JWT_AUDIENCE
   ) {
     // add protocol prefix if not set
@@ -57,8 +57,8 @@ export class Config {
       !serverAddress.startsWith('http://') &&
       !serverAddress.startsWith('https://')
     ) {
-      // use https protocol when mTLS or JWT auth is used
-      if (authMode === 'mtls' || authMode === 'jwt') {
+      // use https protocol when X.509 or JWT auth is used
+      if (authMode === 'x509' || authMode === 'jwt') {
         serverAddress = `https://${serverAddress}`;
       } else {
         serverAddress = `http://${serverAddress}`;
@@ -95,7 +95,7 @@ export class Config {
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
     const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
-    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as 'insecure' | 'mtls' | 'jwt';
+    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as 'insecure' | 'x509' | 'jwt';
     const jwtAudience = env[`${prefix}JWT_AUDIENCE`] || Config.DEFAULT_JWT_AUDIENCE;
 
     return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience);
@@ -212,20 +212,20 @@ export class Client {
       case 'jwt':
         return await this.createJWTTransport(config);
 
-      case 'mtls':
-        return await this.createMTLSTransport(config);
+      case 'x509':
+        return await this.createX509Transport(config);
 
       default:
         throw new Error(`Unsupported auth mode: ${config.authMode}`);
     }
   }
 
-  private static async createMTLSTransport(config: Config): Promise<Transport> {
+  private static async createX509Transport(config: Config): Promise<Transport> {
     if (config.spiffeEndpointSocket === '') {
-      throw new Error('SPIFFE socket path is required for mTLS authentication');
+      throw new Error('SPIFFE socket path is required for X.509 authentication');
     }
 
-    // Create secure transport with SPIFFE mTLS
+    // Create secure transport with SPIFFE X.509
     const client = createClientSpiffe(config.spiffeEndpointSocket);
 
     let svid: X509SVID = {
