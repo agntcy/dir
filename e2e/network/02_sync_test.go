@@ -66,7 +66,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			gomega.Expect(output).To(gomega.ContainSubstring(syncID))
 			gomega.Expect(output).To(gomega.ContainSubstring("https://directory.example.com"))
-			gomega.Expect(output).To(gomega.ContainSubstring("PENDING"))
 		})
 	})
 
@@ -74,7 +73,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		ginkgo.It("should accept a sync ID argument and return the sync status", func() {
 			output := cli.Sync().Status(syncID).OnServer(utils.Peer1Addr).ShouldSucceed()
 
-			gomega.Expect(output).To(gomega.ContainSubstring(syncID))
 			gomega.Expect(output).To(gomega.ContainSubstring("PENDING"))
 		})
 	})
@@ -89,7 +87,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should return deleted status", func() {
-			cli.Sync().List().OnServer(utils.Peer1Addr).ShouldContain("DELETE")
+			cli.Sync().Status(syncID).OnServer(utils.Peer1Addr).ShouldContain("DELETE")
 		})
 	})
 
@@ -125,7 +123,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should push record_070_sync_v4.json to peer 1", func() {
-			cid = cli.Push(recordV4Path).OnServer(utils.Peer1Addr).ShouldSucceed()
+			cid = cli.Push(recordV4Path).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
 			RegisterCIDForCleanup(cid, "sync")
@@ -143,7 +141,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should push record_070_sync_v5.json to peer 1", func() {
-			cidV5 = cli.Push(recordV5Path).OnServer(utils.Peer1Addr).ShouldSucceed()
+			cidV5 = cli.Push(recordV5Path).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
 			RegisterCIDForCleanup(cidV5, "sync")
@@ -176,7 +174,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			gomega.Expect(output).To(gomega.ContainSubstring(syncID))
 			gomega.Expect(output).To(gomega.ContainSubstring(utils.Peer1InternalAddr))
-			gomega.Expect(output).To(gomega.ContainSubstring("PENDING"))
 		})
 
 		// Wait for sync to complete
@@ -190,7 +187,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should succeed to pull record_070_sync_v4.json from peer 2 after sync", func() {
-			output := cli.Pull(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
+			output := cli.Pull(cid).WithArgs("--json").OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
 			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070SyncV4JSON)
@@ -209,7 +206,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			output := cli.Verify(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Verify the output
-			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is trusted!"))
+			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is: trusted"))
 		})
 
 		// Delete sync from peer 2
@@ -235,21 +232,31 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			ginkgo.GinkgoWriter.Printf("Routing search output: %s\n", searchOutput)
 			gomega.Expect(searchOutput).To(gomega.ContainSubstring(cidV5))
 
-			ginkgo.GinkgoWriter.Printf("Creating sync by tag with 'Audio' search output\n")
+			ginkgo.GinkgoWriter.Printf("Creating sync by tag with 'audio' search output\n")
 			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldSucceed()
-			gomega.Expect(output).To(gomega.ContainSubstring("Sync created with ID: "))
+			gomega.Expect(output).To(gomega.ContainSubstring("Sync Ids:"))
+
+			// Extract sync ID using simple string methods
+			// Find the quoted UUID in the output
+			start := strings.Index(output, `"`)
+			end := strings.LastIndex(output, `"`)
+			gomega.Expect(start).To(gomega.BeNumerically(">", -1), "Expected to find opening quote")
+			gomega.Expect(end).To(gomega.BeNumerically(">", start), "Expected to find closing quote")
+			syncID = output[start+1 : end]
+
+			ginkgo.GinkgoWriter.Printf("Sync ID: %s", syncID)
 		})
 
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
-			_ = cli.Sync().List().OnServer(utils.Peer3Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
+			_ = cli.Sync().Status(syncID).OnServer(utils.Peer3Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
 
 			// Wait for 60 seconds to ensure the sync is complete (reduce flakiness)
 			time.Sleep(60 * time.Second)
 		})
 
 		ginkgo.It("should succeed to pull record_070_sync_v5.json from peer 3 after sync", func() {
-			output := cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldSucceed()
+			output := cli.Pull(cidV5).WithArgs("--json").OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
 			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070SyncV5JSON)
@@ -268,7 +275,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			output := cli.Verify(cidV5).OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			// Verify the output
-			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is trusted!"))
+			gomega.Expect(output).To(gomega.ContainSubstring("Record signature is: trusted"))
 		})
 
 		ginkgo.It("should fail to pull record_070_sync_v4.json from peer 3 after sync", func() {

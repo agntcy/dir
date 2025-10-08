@@ -88,7 +88,7 @@ func OutputSingleValue(cmd *cobra.Command, opts OutputOptions, label string, mes
 // OutputMultipleValues outputs multiple values in the appropriate format.
 func OutputMultipleValues(cmd *cobra.Command, opts OutputOptions, label string, values []interface{}) error {
 	if len(values) == 0 {
-		Println(cmd, fmt.Sprintf("No %s to output", label))
+		Println(cmd, fmt.Sprintf("No %s found", label))
 
 		return nil
 	}

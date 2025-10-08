@@ -51,7 +51,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Push the record to the store for searching
-			recordCID = cli.Push(recordPath).ShouldSucceed()
+			recordCID = cli.Push(recordPath).WithArgs("--raw").ShouldSucceed()
 			gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
 		})
 

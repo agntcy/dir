@@ -5,6 +5,7 @@ package local
 
 import (
 	_ "embed"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -89,7 +90,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 1: Push
 			ginkgo.It("should successfully push an record", func() {
-				cid = cli.Push(tempPath).ShouldSucceed()
+				cid = cli.Push(tempPath).WithArgs("--raw").ShouldSucceed()
 
 				// Validate that the returned CID correctly represents the pushed data
 				utils.LoadAndValidateCID(cid, tempPath)
@@ -103,7 +104,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			// Step 3: Verify push/pull consistency (depends on pull)
 			ginkgo.It("should return identical record when pulled after push", func() {
 				// Pull the record and get the output JSON
-				pulledJSON := cli.Pull(cid).ShouldSucceed()
+				pulledJSON := cli.Pull(cid).WithArgs("--json").ShouldSucceed()
 
 				// Compare original embedded JSON with pulled JSON using version-aware comparison
 				equal, err := utils.CompareOASFRecords(version.jsonData, []byte(pulledJSON))
@@ -116,7 +117,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 4: Verify duplicate push returns same CID (depends on push)
 			ginkgo.It("should push the same record again and return the same cid", func() {
-				cli.Push(tempPath).ShouldReturn(cid)
+				cli.Push(tempPath).WithArgs("--raw").ShouldReturn(cid)
 			})
 
 			// Step 5: Search by first skill (depends on push)
@@ -126,6 +127,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				search := cli.Search().
 					WithLimit(10).
 					WithOffset(0).
+					WithArgs("--raw").
 					WithQuery("name", version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
 					WithQuery("skill-id", version.expectedSkillIDs[0]).
 					WithQuery("skill-name", version.expectedSkillNames[0])
@@ -138,7 +140,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					search = search.WithQuery("module", version.expectedModule)
 				}
 
-				search.ShouldReturn(cid)
+				search.ShouldReturn(fmt.Sprintf("[%s]", cid))
 			})
 
 			// Step 6: Search by second skill (depends on push)
@@ -152,6 +154,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				search := cli.Search().
 					WithLimit(10).
 					WithOffset(0).
+					WithArgs("--raw").
 					WithQuery("name", version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
 					WithQuery("skill-id", version.expectedSkillIDs[1]).
 					WithQuery("skill-name", version.expectedSkillNames[1])
@@ -164,7 +167,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					search = search.WithQuery("module", version.expectedModule)
 				}
 
-				search.ShouldReturn(cid)
+				search.ShouldReturn(fmt.Sprintf("[%s]", cid))
 			})
 
 			// Step 7: Test non-existent pull (independent test)
