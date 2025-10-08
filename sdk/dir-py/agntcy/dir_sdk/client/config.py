@@ -5,7 +5,7 @@ import os
 
 
 class Config:
-    DEFAULT_SERVER_ADDRESS = "0.0.0.0:8888"
+    DEFAULT_SERVER_ADDRESS = "127.0.0.1:8888"
     DEFAULT_DIRCTL_PATH = "dirctl"
     DEFAULT_SPIFFE_SOCKET_PATH = ""
     DEFAULT_AUTH_MODE = "insecure"

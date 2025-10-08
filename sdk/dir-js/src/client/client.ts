@@ -24,7 +24,7 @@ import * as models from '../models';
  * and provides default values and environment-based configuration loading.
  */
 export class Config {
-  static DEFAULT_SERVER_ADDRESS = '0.0.0.0:8888';
+  static DEFAULT_SERVER_ADDRESS = '127.0.0.1:8888';
   static DEFAULT_DIRCTL_PATH = 'dirctl';
   static DEFAULT_SPIFFE_ENDPOINT_SOCKET = '';
   static DEFAULT_AUTH_MODE = 'insecure';
@@ -38,7 +38,7 @@ export class Config {
   /**
    * Creates a new Config instance.
    *
-   * @param serverAddress - The server address to connect to. Defaults to '0.0.0.0:8888'
+   * @param serverAddress - The server address to connect to. Defaults to '127.0.0.1:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
    * @param authMode - Authentication mode: 'insecure', 'mtls', or 'jwt'. Defaults to 'insecure'
