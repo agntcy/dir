@@ -70,11 +70,8 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	// Output in the appropriate format
-	return presenter.OutputSingleValue(cmd, outputOpts, "status", "Record is", "signed")
+	return presenter.PrintMessage(cmd, "signature", "Record is", "signed")
 }
 
 func Sign(ctx context.Context, c *client.Client, recordCID string) error {

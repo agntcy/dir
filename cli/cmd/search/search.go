@@ -109,9 +109,6 @@ func runCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to search: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	// Collect results and convert to interface{} slice
 	results := make([]interface{}, 0, opts.Limit)
 
@@ -123,5 +120,5 @@ func runCommand(cmd *cobra.Command) error {
 		results = append(results, recordCid)
 	}
 
-	return presenter.OutputMultipleValues(cmd, outputOpts, "record CIDs", results)
+	return presenter.PrintMessage(cmd, "record CIDs", "Record CIDs found", results)
 }

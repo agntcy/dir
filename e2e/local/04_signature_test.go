@@ -128,6 +128,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		ginkgo.It("should pull a signature from the store", func() {
 			cli.Command("pull").
 				WithArgs(cid, "--signature").
+				WithArgs("--json").
 				ShouldContain("\"signature\":")
 		})
 

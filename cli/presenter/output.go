@@ -8,8 +8,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 // OutputFormat represents the different output formats available.
@@ -51,68 +49,34 @@ func AddOutputFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("raw", false, "Output raw values without formatting")
 }
 
-// OutputSingleValue outputs a single value in the appropriate format.
-func OutputSingleValue(cmd *cobra.Command, opts OutputOptions, label string, message string, value interface{}) error {
-	switch opts.Format {
-	case FormatJSON:
-		// For single values, output as JSON object
-		result := map[string]interface{}{
-			label: value,
-		}
+// PrintMessage outputs data in the appropriate format based on command flags.
+func PrintMessage(cmd *cobra.Command, title, message string, value any) error {
+	opts := GetOutputOptions(cmd)
 
-		output, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-
-		Print(cmd, string(output))
+	// Handle empty case for multiple values
+	if value == nil {
+		Println(cmd, fmt.Sprintf("No %s found", title))
 
 		return nil
+	}
 
+	// Handle slice/array with zero length
+	if slice, ok := value.([]interface{}); ok && len(slice) == 0 {
+		Println(cmd, fmt.Sprintf("No %s found", title))
+
+		return nil
+	}
+
+	switch opts.Format {
 	case FormatRaw:
 		// For raw format, output just the value
 		Print(cmd, fmt.Sprintf("%v", value))
 
 		return nil
 
-	case FormatHuman:
-		// For human-readable format, output with descriptive label
-		Println(cmd, fmt.Sprintf("%s: %v", message, value))
-
-		return nil
-	}
-
-	return nil
-}
-
-// OutputMultipleValues outputs multiple values in the appropriate format.
-func OutputMultipleValues(cmd *cobra.Command, opts OutputOptions, label string, values []interface{}) error {
-	if len(values) == 0 {
-		Println(cmd, fmt.Sprintf("No %s found", label))
-
-		return nil
-	}
-
-	return OutputStructuredData(cmd, opts, label, values)
-}
-
-// OutputStructuredData outputs structured data in the appropriate format.
-func OutputStructuredData(cmd *cobra.Command, opts OutputOptions, label string, data interface{}) error {
-	switch opts.Format {
-	case FormatRaw:
-		// For raw format, try to extract raw values
-		if rawData, ok := data.([]byte); ok {
-			Print(cmd, string(rawData))
-		} else {
-			// Fallback to string representation
-			Print(cmd, fmt.Sprintf("%v", data))
-		}
-
-		return nil
-
 	case FormatJSON:
-		// For JSON format, output the data as-is
-		output, err := json.MarshalIndent(data, "", "  ")
+		// For JSON format, output the value as JSON
+		output, err := json.MarshalIndent(value, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
@@ -122,15 +86,8 @@ func OutputStructuredData(cmd *cobra.Command, opts OutputOptions, label string, 
 		return nil
 
 	case FormatHuman:
-		Println(cmd, cases.Title(language.English).String(label)+":")
-
-		// For human format, output the data as a JSON object
-		output, err := json.MarshalIndent(data, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-
-		Print(cmd, string(output))
+		// For human-readable format, output with descriptive message
+		Println(cmd, fmt.Sprintf("%s: %s", message, fmt.Sprintf("%v", value)))
 
 		return nil
 	}

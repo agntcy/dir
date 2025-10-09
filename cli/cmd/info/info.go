@@ -53,9 +53,6 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	// Output in the appropriate format
-	return presenter.OutputStructuredData(cmd, outputOpts, "info", info)
+	return presenter.PrintMessage(cmd, "info", "Record information", info)
 }

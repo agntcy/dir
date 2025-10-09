@@ -209,6 +209,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Query 1 - ✅ should match
 				WithMinScore(0).                                                                      // Should default to 1
 				WithLimit(10).
+				WithArgs("--json").
 				OnServer(utils.Peer2Addr).
 				ShouldSucceed()
 

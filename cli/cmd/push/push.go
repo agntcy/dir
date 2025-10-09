@@ -101,9 +101,6 @@ func runCommand(cmd *cobra.Command, source io.Reader) error {
 		}
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	// Output in the appropriate format
-	return presenter.OutputSingleValue(cmd, outputOpts, "cid", "Pushed record with CID", recordRef.GetCid())
+	return presenter.PrintMessage(cmd, "record", "Pushed record with CID", recordRef.GetCid())
 }

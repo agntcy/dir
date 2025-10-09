@@ -158,8 +158,5 @@ func runSearchCommand(cmd *cobra.Command) error {
 		results = append(results, result)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
-	return presenter.OutputMultipleValues(cmd, outputOpts, "remote records", results)
+	return presenter.PrintMessage(cmd, "remote records", "Remote records found", results)
 }

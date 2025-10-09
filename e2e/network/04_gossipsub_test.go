@@ -280,6 +280,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 				WithDomain("life_science").               // Should match (record has life_science/biotechnology)
 				WithMinScore(2).                          // Both should match
 				WithLimit(10).
+				WithArgs("--json").
 				OnServer(utils.Peer2Addr).
 				ShouldSucceed()
 

@@ -62,13 +62,11 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 		return fmt.Errorf("failed to verify record with Zot: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	// Output in the appropriate format
+	status := "trusted"
 	if !response.GetSuccess() {
-		return presenter.OutputSingleValue(cmd, outputOpts, "status", "Record signature is", "not trusted")
+		status = "not trusted"
 	}
 
-	return presenter.OutputSingleValue(cmd, outputOpts, "status", "Record signature is", "trusted")
+	return presenter.PrintMessage(cmd, "signature", "Record signature is", status)
 }

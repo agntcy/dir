@@ -1,10 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package routing
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -78,30 +78,12 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to publish: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	// Output in the appropriate format
-	switch outputOpts.Format {
-	case presenter.FormatJSON:
-		result := map[string]interface{}{
-			"cid":     recordRef.GetCid(),
-			"status":  "Successfully submitted publication request",
-			"message": "Record will be discoverable by other peers once the publication service processes the request",
-		}
-
-		output, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-
-		presenter.Println(cmd, string(output))
-	case presenter.FormatRaw:
-		presenter.Println(cmd, recordRef.GetCid())
-	case presenter.FormatHuman:
-		presenter.Printf(cmd, "Successfully submitted publication request with CID: %s\n", recordRef.GetCid())
-		presenter.Printf(cmd, "Record will be discoverable by other peers once the publication service processes the request.\n")
+	result := map[string]interface{}{
+		"cid":     recordRef.GetCid(),
+		"status":  "Successfully submitted publication request",
+		"message": "Record will be discoverable by other peers once the publication service processes the request",
 	}
 
-	return nil
+	return presenter.PrintMessage(cmd, "Publish", "Successfully submitted publication request", result)
 }

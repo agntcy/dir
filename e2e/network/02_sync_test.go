@@ -234,12 +234,12 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 			ginkgo.GinkgoWriter.Printf("Creating sync by tag with 'audio' search output\n")
 			output := cli.Sync().CreateFromStdin(searchOutput).OnServer(utils.Peer3Addr).ShouldSucceed()
-			gomega.Expect(output).To(gomega.ContainSubstring("Sync Ids:"))
+			gomega.Expect(output).To(gomega.ContainSubstring("Sync IDs created:"))
 
 			// Extract sync ID using simple string methods
 			// Find the quoted UUID in the output
-			start := strings.Index(output, `"`)
-			end := strings.LastIndex(output, `"`)
+			start := strings.Index(output, `[`)
+			end := strings.LastIndex(output, `]`)
 			gomega.Expect(start).To(gomega.BeNumerically(">", -1), "Expected to find opening quote")
 			gomega.Expect(end).To(gomega.BeNumerically(">", start), "Expected to find closing quote")
 			syncID = output[start+1 : end]

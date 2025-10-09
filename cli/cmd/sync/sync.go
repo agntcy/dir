@@ -122,11 +122,8 @@ func runCreateSync(cmd *cobra.Command, remoteURL string, cids []string) error {
 		return fmt.Errorf("failed to create sync: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	// Output in the appropriate format
-	return presenter.OutputSingleValue(cmd, outputOpts, "syncId", "Sync created with ID", syncID)
+	return presenter.PrintMessage(cmd, "sync", "Sync created with ID", syncID)
 }
 
 func runListSyncs(cmd *cobra.Command) error {
@@ -160,10 +157,7 @@ func runListSyncs(cmd *cobra.Command) error {
 		}
 	}
 done:
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
-	return presenter.OutputMultipleValues(cmd, outputOpts, "syncs", results)
+	return presenter.PrintMessage(cmd, "syncs", "Sync results", results)
 }
 
 func runGetSyncStatus(cmd *cobra.Command, syncID string) error {
@@ -182,10 +176,7 @@ func runGetSyncStatus(cmd *cobra.Command, syncID string) error {
 		return fmt.Errorf("failed to get sync status: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
-	return presenter.OutputSingleValue(cmd, outputOpts, "status", "Sync status", sync.GetStatus())
+	return presenter.PrintMessage(cmd, "sync", "Sync status", sync.GetStatus())
 }
 
 func runDeleteSync(cmd *cobra.Command, syncID string) error {
@@ -204,10 +195,7 @@ func runDeleteSync(cmd *cobra.Command, syncID string) error {
 		return fmt.Errorf("failed to delete sync: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
-	return presenter.OutputSingleValue(cmd, outputOpts, "syncId", "Sync deleted with ID", syncID)
+	return presenter.PrintMessage(cmd, "sync", "Sync deleted with ID", syncID)
 }
 
 func runCreateSyncFromStdin(cmd *cobra.Command) error {
@@ -317,8 +305,5 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 		totalCIDs += len(syncInfo.CIDs)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
-	return presenter.OutputMultipleValues(cmd, outputOpts, "sync IDs", syncIDs)
+	return presenter.PrintMessage(cmd, "sync IDs", "Sync IDs created", syncIDs)
 }

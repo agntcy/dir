@@ -53,9 +53,6 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to delete record: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	// Output in the appropriate format
-	return presenter.OutputSingleValue(cmd, outputOpts, "cid", "Deleted record with CID", cid)
+	return presenter.PrintMessage(cmd, "record", "Deleted record with CID", cid)
 }

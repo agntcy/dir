@@ -61,12 +61,9 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}
 
-	// Get output options
-	outputOpts := presenter.GetOutputOptions(cmd)
-
 	if !opts.PublicKey && !opts.Signature {
 		// Handle different output formats
-		return presenter.OutputStructuredData(cmd, outputOpts, "record", record.GetData())
+		return presenter.PrintMessage(cmd, "record", "Record data", record.GetData())
 	}
 
 	publicKeys := make([]*signv1.PublicKey, 0)
@@ -155,5 +152,5 @@ func runCommand(cmd *cobra.Command, cid string) error {
 	}
 
 	// Output the structured data
-	return presenter.OutputStructuredData(cmd, outputOpts, "record", structuredData)
+	return presenter.PrintMessage(cmd, "record", "Record data with keys and signatures", structuredData)
 }
