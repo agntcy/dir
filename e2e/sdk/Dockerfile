@@ -11,7 +11,7 @@ COPY --from=cosign-bin /ko-app/cosign /bin/cosign
 ENV DIRCTL_PATH="/bin/dirctl"
 ENV DIRECTORY_CLIENT_SERVER_ADDRESS="dir-apiserver.dir-server.svc.cluster.local:8888"
 ENV DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH=""
-ENV DIRECTORY_CLIENT_AUTH_MODE="mtls"
+ENV DIRECTORY_CLIENT_AUTH_MODE="x509"
 
 WORKDIR /tmp/
 COPY ./sdk /tmp/

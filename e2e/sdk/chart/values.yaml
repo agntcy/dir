@@ -3,6 +3,6 @@ image:
   tag: latest
 
 config:
-  auth_mode: mtls
+  auth_mode: x509
   server_address: dir-apiserver.dir-server.svc.cluster.local:8888
   spiffe_socket_path: unix:/run/spire/agent-sockets/api.sock
