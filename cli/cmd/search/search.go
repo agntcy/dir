@@ -19,74 +19,76 @@ var Command = &cobra.Command{
 	Short: "Search for records",
 	Long: `Search for records in the directory using various filters and options.
 
+This command provides a consistent interface with routing search commands.
+
 Usage examples:
 
 1. Basic search with specific filters and limit:
 
 	dirctl search --limit 10 \
 		--offset 0 \
-		--query "name=my-agent-name" \
-		--query "version=v1.0.0" \
-		--query "skill-id=10201" \
-		--query "skill-name=Text Completion" \
-		--query "locator=docker-image:https://example.com/docker-image" \
-		--query "module=my-custom-module-name" 
+		--name "my-agent-name" \
+		--version "v1.0.0" \
+		--skill-id "10201" \
+		--skill "Text Completion" \
+		--locator "docker-image:https://example.com/docker-image" \
+		--module "my-custom-module-name" 
 
 2. Wildcard search examples:
 
 	# Find all web-related agents
-	dirctl search --query "name=web*"
+	dirctl search --name "web*"
 	
 	# Find all v1.x versions
-	dirctl search --query "version=v1.*"
+	dirctl search --version "v1.*"
 	
 	# Find agents with Python or JavaScript skills
-	dirctl search --query "skill-name=python*" --query "skill-name=*script"
+	dirctl search --skill "python*" --skill "*script"
 	
 	# Find agents with HTTP-based locators
-	dirctl search --query "locator=http*"
+	dirctl search --locator "http*"
 	
 	# Find agents with plugin modules
-	dirctl search --query "module=*-plugin*"
+	dirctl search --module "*-plugin*"
 
 3. Question mark wildcard (? matches exactly one character):
 
 	# Find version v1.0.x where x is any single digit
-	dirctl search --query "version=v1.0.?"
+	dirctl search --version "v1.0.?"
 	
 	# Find agents with 3-character names ending in "api"
-	dirctl search --query "name=???api"
+	dirctl search --name "???api"
 	
 	# Find skills with single character variations
-	dirctl search --query "skill-name=Pytho?"
+	dirctl search --skill "Pytho?"
 
 4. List wildcards ([] matches any character within brackets):
 
 	# Find agents with numeric suffixes
-	dirctl search --query "name=agent-[0-9]"
+	dirctl search --name "agent-[0-9]"
 	
 	# Find versions starting with v followed by any digit
-	dirctl search --query "version=v[0-9].*"
+	dirctl search --version "v[0-9].*"
 	
 	# Find skills starting with uppercase letters A-M
-	dirctl search --query "skill-name=[A-M]*"
+	dirctl search --skill "[A-M]*"
 	
 	# Find locators with specific protocols
-	dirctl search --query "locator=[hf]tt[ps]*"
+	dirctl search --locator "[hf]tt[ps]*"
 
 5. Complex wildcard patterns:
 
 	# Find API services with v2 versions
-	dirctl search --query "name=api-*-service" --query "version=v2.*"
+	dirctl search --name "api-*-service" --version "v2.*"
 	
 	# Find machine learning agents
-	dirctl search --query "skill-name=*machine*learning*"
+	dirctl search --skill "*machine*learning*"
 	
 	# Find agents with container locators
-	dirctl search --query "locator=*docker*" --query "locator=*container*"
+	dirctl search --locator "*docker*" --locator "*container*"
 	
 	# Combine different wildcard types
-	dirctl search --query "name=web-[0-9]?" --query "version=v?.*.?"
+	dirctl search --name "web-[0-9]?" --version "v?.*.?"
 
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -100,10 +102,13 @@ func runCommand(cmd *cobra.Command) error {
 		return errors.New("failed to get client from context")
 	}
 
+	// Build queries from direct field flags
+	queries := buildQueriesFromFlags()
+
 	ch, err := c.Search(cmd.Context(), &searchv1.SearchRequest{
 		Limit:   &opts.Limit,
 		Offset:  &opts.Offset,
-		Queries: opts.Query.ToAPIQueries(),
+		Queries: queries,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to search: %w", err)
@@ -121,4 +126,61 @@ func runCommand(cmd *cobra.Command) error {
 	}
 
 	return presenter.PrintMessage(cmd, "record CIDs", "Record CIDs found", results)
+}
+
+// buildQueriesFromFlags builds API queries.
+func buildQueriesFromFlags() []*searchv1.RecordQuery {
+	queries := make([]*searchv1.RecordQuery, 0,
+		len(opts.Names)+len(opts.Versions)+len(opts.SkillIDs)+
+			len(opts.SkillNames)+len(opts.Locators)+len(opts.Modules))
+
+	// Add name queries
+	for _, name := range opts.Names {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME,
+			Value: name,
+		})
+	}
+
+	// Add version queries
+	for _, version := range opts.Versions {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+			Value: version,
+		})
+	}
+
+	// Add skill-id queries
+	for _, skillID := range opts.SkillIDs {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID,
+			Value: skillID,
+		})
+	}
+
+	// Add skill-name queries
+	for _, skillName := range opts.SkillNames {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+			Value: skillName,
+		})
+	}
+
+	// Add locator queries
+	for _, locator := range opts.Locators {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
+			Value: locator,
+		})
+	}
+
+	// Add module queries
+	for _, module := range opts.Modules {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+			Value: module,
+		})
+	}
+
+	return queries
 }

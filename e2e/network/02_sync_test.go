@@ -197,7 +197,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		ginkgo.It("should succeed to search for record_070_sync_v4.json from peer 2 after sync", func() {
 			// Search should eventually return the cid in peer 2 (retry until monitor indexes the record)
-			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v4").OnServer(utils.Peer2Addr).ShouldEventuallyContain(cid, 240*time.Second)
+			output := cli.Search().WithName("directory.agntcy.org/cisco/marketing-strategy-v4").OnServer(utils.Peer2Addr).ShouldEventuallyContain(cid, 240*time.Second)
 
 			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
 		})
@@ -266,7 +266,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 
 		ginkgo.It("should succeed to search for record_070_sync_v5.json from peer 3 after sync", func() {
 			// Search should eventually return the cid in peer 2 (retry until monitor indexes the record)
-			output := cli.Search().WithQuery("name", "directory.agntcy.org/cisco/marketing-strategy-v5").OnServer(utils.Peer3Addr).ShouldEventuallyContain(cidV5, 240*time.Second)
+			output := cli.Search().WithName("directory.agntcy.org/cisco/marketing-strategy-v5").OnServer(utils.Peer3Addr).ShouldEventuallyContain(cidV5, 240*time.Second)
 
 			ginkgo.GinkgoWriter.Printf("Search found cid: %s", output)
 		})

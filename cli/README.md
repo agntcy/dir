@@ -221,23 +221,35 @@ General content search across all records using the search service.
 **Examples:**
 ```bash
 # Search by record name
-dirctl search --query "name=my-agent"
+dirctl search --name "my-agent"
 
 # Search by version
-dirctl search --query "version=v1.0.0"
+dirctl search --version "v1.0.0"
+
+# Search by skill name
+dirctl search --skill "natural_language_processing"
 
 # Search by skill ID
-dirctl search --query "skill-id=10201"
+dirctl search --skill-id "10201"
 
 # Complex search with multiple criteria
 dirctl search --limit 10 --offset 0 \
-  --query "name=my-agent" \
-  --query "skill-name=Text Completion" \
-  --query "locator=docker-image:https://example.com/image"
+  --name "my-agent" \
+  --skill "natural_language_processing/natural_language_generation/text_completion" \
+  --locator "docker-image:https://example.com/image"
+
+# Wildcard search examples
+dirctl search --name "web*" --version "v1.*"
+dirctl search --skill "python*" --skill "*script"
 ```
 
 **Flags:**
-- `--query <key=value>` - Search criteria (repeatable)
+- `--name <name>` - Search by record name (repeatable)
+- `--version <version>` - Search by version (repeatable)
+- `--skill <skill>` - Search by skill name (repeatable)
+- `--skill-id <id>` - Search by skill ID (repeatable)
+- `--locator <type>` - Search by locator type (repeatable)
+- `--module <module>` - Search by module (repeatable)
 - `--limit <number>` - Maximum results
 - `--offset <number>` - Result offset for pagination
 

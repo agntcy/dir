@@ -55,7 +55,14 @@ func (c *CLI) Delete(cid string) *CommandBuilder {
 func (c *CLI) Search() *SearchBuilder {
 	return &SearchBuilder{
 		CommandBuilder: c.Command("search"),
-		queries:        make(map[string]string),
+		names:          []string{},
+		versions:       []string{},
+		skillIDs:       []string{},
+		skillNames:     []string{},
+		locators:       []string{},
+		modules:        []string{},
+		limit:          0,
+		offset:         0,
 	}
 }
 
@@ -376,13 +383,48 @@ func (c *CommandBuilder) ShouldEventuallySucceed(timeout time.Duration) string {
 // SearchBuilder extends CommandBuilder with search-specific methods.
 type SearchBuilder struct {
 	*CommandBuilder
-	queries map[string]string
-	limit   int
-	offset  int
+	names      []string
+	versions   []string
+	skillIDs   []string
+	skillNames []string
+	locators   []string
+	modules    []string
+	limit      int
+	offset     int
 }
 
-func (s *SearchBuilder) WithQuery(key, value string) *SearchBuilder {
-	s.queries[key] = value
+func (s *SearchBuilder) WithName(name string) *SearchBuilder {
+	s.names = append(s.names, name)
+
+	return s
+}
+
+func (s *SearchBuilder) WithVersion(version string) *SearchBuilder {
+	s.versions = append(s.versions, version)
+
+	return s
+}
+
+func (s *SearchBuilder) WithSkillID(skillID string) *SearchBuilder {
+	s.skillIDs = append(s.skillIDs, skillID)
+
+	return s
+}
+
+func (s *SearchBuilder) WithSkillName(skillName string) *SearchBuilder {
+	s.skillNames = append(s.skillNames, skillName)
+
+	return s
+}
+
+func (s *SearchBuilder) WithLocator(locator string) *SearchBuilder {
+	s.locators = append(s.locators, locator)
+
+	return s
+}
+
+func (s *SearchBuilder) WithModule(module string) *SearchBuilder {
+	s.modules = append(s.modules, module)
 
 	return s
 }
@@ -406,9 +448,32 @@ func (s *SearchBuilder) WithArgs(args ...string) *SearchBuilder {
 }
 
 func (s *SearchBuilder) Execute() (string, error) {
-	// Build search arguments
-	for key, value := range s.queries {
-		s.args = append(s.args, "--query", fmt.Sprintf(`%s=%s`, key, value))
+	// Clear existing arguments to prevent accumulation between test cases
+	s.args = nil
+
+	// Build search arguments using new direct field flags
+	for _, name := range s.names {
+		s.args = append(s.args, "--name", name)
+	}
+
+	for _, version := range s.versions {
+		s.args = append(s.args, "--version", version)
+	}
+
+	for _, skillID := range s.skillIDs {
+		s.args = append(s.args, "--skill-id", skillID)
+	}
+
+	for _, skillName := range s.skillNames {
+		s.args = append(s.args, "--skill", skillName)
+	}
+
+	for _, locator := range s.locators {
+		s.args = append(s.args, "--locator", locator)
+	}
+
+	for _, module := range s.modules {
+		s.args = append(s.args, "--module", module)
 	}
 
 	if s.limit > 0 {

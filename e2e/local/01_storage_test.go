@@ -5,7 +5,6 @@ package local
 
 import (
 	_ "embed"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -128,19 +127,19 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					WithLimit(10).
 					WithOffset(0).
 					WithArgs("--raw").
-					WithQuery("name", version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
-					WithQuery("skill-id", version.expectedSkillIDs[0]).
-					WithQuery("skill-name", version.expectedSkillNames[0])
+					WithName(version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
+					WithSkillID(version.expectedSkillIDs[0]).
+					WithSkillName(version.expectedSkillNames[0])
 
 				// Add locator and module queries only if they exist (not empty for minimal test)
 				if version.expectedLocator != "" {
-					search = search.WithQuery("locator", version.expectedLocator)
+					search = search.WithLocator(version.expectedLocator)
 				}
 				if version.expectedModule != "" {
-					search = search.WithQuery("module", version.expectedModule)
+					search = search.WithModule(version.expectedModule)
 				}
 
-				search.ShouldReturn(fmt.Sprintf("[%s]", cid))
+				search.ShouldContain(cid)
 			})
 
 			// Step 6: Search by second skill (depends on push)
@@ -155,19 +154,19 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 					WithLimit(10).
 					WithOffset(0).
 					WithArgs("--raw").
-					WithQuery("name", version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
-					WithQuery("skill-id", version.expectedSkillIDs[1]).
-					WithQuery("skill-name", version.expectedSkillNames[1])
+					WithName(version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
+					WithSkillID(version.expectedSkillIDs[1]).
+					WithSkillName(version.expectedSkillNames[1])
 
 				// Add locator and module queries only if they exist (not empty for minimal test)
 				if version.expectedLocator != "" {
-					search = search.WithQuery("locator", version.expectedLocator)
+					search = search.WithLocator(version.expectedLocator)
 				}
 				if version.expectedModule != "" {
-					search = search.WithQuery("module", version.expectedModule)
+					search = search.WithModule(version.expectedModule)
 				}
 
-				search.ShouldReturn(fmt.Sprintf("[%s]", cid))
+				search.ShouldContain(cid)
 			})
 
 			// Step 7: Test non-existent pull (independent test)

@@ -167,14 +167,13 @@ func ResetSearchCommandState() {
 		cmd.Flags().Set("limit", "100")
 		cmd.Flags().Set("offset", "0")
 
-		// For the query flag, reset it by accessing the underlying value
-		if queryFlag := cmd.Flags().Lookup("query"); queryFlag != nil {
-			queryFlag.Changed = false
-			// Cast to the Query type and reset it
-			if queryValue, ok := queryFlag.Value.(*searchcmd.Query); ok {
-				*queryValue = searchcmd.Query{}
-			}
-		}
+		// Reset all string array flags
+		resetStringArrayFlag(cmd, "name")
+		resetStringArrayFlag(cmd, "version")
+		resetStringArrayFlag(cmd, "skill-id")
+		resetStringArrayFlag(cmd, "skill")
+		resetStringArrayFlag(cmd, "locator")
+		resetStringArrayFlag(cmd, "module")
 	}
 }
 
