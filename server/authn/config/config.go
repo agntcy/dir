@@ -8,12 +8,12 @@ import (
 	"fmt"
 )
 
-// AuthMode specifies the authentication mode (jwt or mtls).
+// AuthMode specifies the authentication mode (jwt or x509).
 type AuthMode string
 
 const (
 	AuthModeJWT  AuthMode = "jwt"
-	AuthModeMTLS AuthMode = "mtls"
+	AuthModeX509 AuthMode = "x509"
 )
 
 // Config contains configuration for authentication services.
@@ -21,7 +21,7 @@ type Config struct {
 	// Indicates if authentication is enabled
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-	// Authentication mode: "jwt" or "mtls"
+	// Authentication mode: "jwt" or "x509"
 	Mode AuthMode `json:"mode,omitempty" mapstructure:"mode"`
 
 	// SPIFFE socket path for authentication
@@ -45,10 +45,10 @@ func (c *Config) Validate() error {
 		if len(c.Audiences) == 0 {
 			return errors.New("at least one audience is required for JWT mode")
 		}
-	case AuthModeMTLS:
-		// No additional validation required for mTLS
+	case AuthModeX509:
+		// No additional validation required for X.509
 	default:
-		return fmt.Errorf("invalid auth mode: %s (must be 'jwt' or 'mtls')", c.Mode)
+		return fmt.Errorf("invalid auth mode: %s (must be 'jwt' or 'x509')", c.Mode)
 	}
 
 	return nil

@@ -17,14 +17,14 @@ apiserver:
     # healthcheck_address: "0.0.0.0:8889"
 
     # Authentication settings (handles identity verification)
-    # Supports both mTLS (X.509-SVID) and JWT (JWT-SVID) authentication
+    # Supports both X.509 (X.509-SVID) and JWT (JWT-SVID) authentication
     authn:
       # Enable authentication
       enabled: false
-      # Authentication mode: "mtls" or "jwt"
-      # - mtls: Uses X.509-SVID from mTLS peer certificates
+      # Authentication mode: "x509" or "jwt"
+      # - x509: Uses X.509-SVID from mutual TLS peer certificates
       # - jwt: Uses JWT-SVID from Authorization header
-      mode: "mtls"
+      mode: "x509"
       # SPIFFE Workload API socket path (injected by SPIRE agent)
       socket_path: "unix:///run/spire/agent-sockets/api.sock"
       # Expected audiences for JWT validation (only used in JWT mode)

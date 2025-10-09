@@ -153,19 +153,19 @@ class Client:
             return grpc.insecure_channel(self.config.server_address)
         elif self.config.auth_mode == "jwt":
             return self.__create_jwt_channel()
-        elif self.config.auth_mode == "mtls":
-            return self.__create_mtls_channel()
+        elif self.config.auth_mode == "x509":
+            return self.__create_x509_channel()
         else:
             msg = f"Unsupported auth mode: {self.config.auth_mode}"
             raise ValueError(msg)
 
-    def __create_mtls_channel(self) -> grpc.Channel:
-        """Create a secure gRPC channel using SPIFFE mTLS."""
+    def __create_x509_channel(self) -> grpc.Channel:
+        """Create a secure gRPC channel using SPIFFE X.509."""
         if self.config.spiffe_socket_path == "":
-            msg = "SPIFFE socket path is required for mTLS authentication"
+            msg = "SPIFFE socket path is required for X.509 authentication"
             raise ValueError(msg)
 
-        # Create secure gRPC channel using SPIFFE
+        # Create secure gRPC channel using SPIFFE X.509
         workload_client = WorkloadApiClient(socket_path=self.config.spiffe_socket_path)
         x509_src = X509Source(
             workload_api_client=workload_client,

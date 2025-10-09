@@ -62,9 +62,9 @@ The SDK can be configured via environment variables or direct instantiation:
 process.env.DIRECTORY_CLIENT_SERVER_ADDRESS = "localhost:8888";
 process.env.DIRCTL_PATH = "/path/to/dirctl";
 
-// Environment variables (mTLS authentication)
+// Environment variables (X.509 authentication)
 process.env.DIRECTORY_CLIENT_SERVER_ADDRESS = "localhost:8888";
-process.env.DIRECTORY_CLIENT_AUTH_MODE = "mtls";
+process.env.DIRECTORY_CLIENT_AUTH_MODE = "x509";
 process.env.DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH = "/tmp/agent.sock";
 
 // Environment variables (JWT authentication)
@@ -83,15 +83,15 @@ const config = new Config(
 );
 const client = new Client(config);
 
-// mTLS authentication with SPIRE
-const mtlsConfig = new Config(
+// X.509 authentication with SPIRE
+const x509Config = new Config(
     "localhost:8888", 
     "/usr/local/bin/dirctl",
     "/tmp/agent.sock",  // SPIFFE socket path
-    "mtls"  // auth mode
+    "x509"  // auth mode
 );
-const mtlsTransport = await Client.createGRPCTransport(mtlsConfig);
-const mtlsClient = new Client(mtlsConfig, mtlsTransport);
+const x509Transport = await Client.createGRPCTransport(x509Config);
+const x509Client = new Client(x509Config, x509Transport);
 
 // JWT authentication with SPIRE
 const jwtConfig = new Config(
