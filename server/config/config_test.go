@@ -66,7 +66,7 @@ func TestConfig(t *testing.T) {
 				HealthCheckAddress: "example.com:18888",
 				Authn: authn.Config{
 					Enabled:   false,
-					Mode:      authn.AuthModeMTLS, // Default from config.go:109
+					Mode:      authn.AuthModeX509, // Default from config.go:109
 					Audiences: []string{},
 				},
 				Store: store.Config{
@@ -132,7 +132,7 @@ func TestConfig(t *testing.T) {
 				HealthCheckAddress: DefaultHealthCheckAddress,
 				Authn: authn.Config{
 					Enabled:   false,
-					Mode:      authn.AuthModeMTLS, // Default from config.go:109
+					Mode:      authn.AuthModeX509, // Default from config.go:109
 					Audiences: []string{},
 				},
 				Store: store.Config{
