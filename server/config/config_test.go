@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
@@ -51,6 +52,8 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_SYNC_WORKER_TIMEOUT":                  "10s",
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":            "sync-user",
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":            "sync-password",
+				"DIRECTORY_SERVER_AUTHN_ENABLED":                        "false",
+				"DIRECTORY_SERVER_AUTHN_MODE":                           "mtls",
 				"DIRECTORY_SERVER_AUTHZ_ENABLED":                        "true",
 				"DIRECTORY_SERVER_AUTHZ_SOCKET_PATH":                    "/test/agent.sock",
 				"DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN":                   "dir.com",
@@ -61,6 +64,11 @@ func TestConfig(t *testing.T) {
 			ExpectedConfig: &Config{
 				ListenAddress:      "example.com:8889",
 				HealthCheckAddress: "example.com:18888",
+				Authn: authn.Config{
+					Enabled:   false,
+					Mode:      authn.AuthModeMTLS, // Default from config.go:109
+					Audiences: []string{},
+				},
 				Store: store.Config{
 					Provider: "provider",
 					OCI: oci.Config{
@@ -122,6 +130,11 @@ func TestConfig(t *testing.T) {
 			ExpectedConfig: &Config{
 				ListenAddress:      DefaultListenAddress,
 				HealthCheckAddress: DefaultHealthCheckAddress,
+				Authn: authn.Config{
+					Enabled:   false,
+					Mode:      authn.AuthModeMTLS, // Default from config.go:109
+					Audiences: []string{},
+				},
 				Store: store.Config{
 					Provider: store.DefaultProvider,
 					OCI: oci.Config{
