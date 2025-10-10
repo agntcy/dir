@@ -86,8 +86,63 @@ func (c *Client) Lookup(ctx context.Context, recordRef *corev1.RecordRef) (*core
 // LookupStream provides efficient streaming lookup operations using channels.
 // Record references are sent as they become available and metadata is returned as it's processed.
 // This method maintains a single gRPC stream for all operations, dramatically improving efficiency.
-func (c *Client) LookupStream(ctx context.Context, refs <-chan *corev1.RecordRef) <-chan LookupResult {
-	return streaming.LookupStream(ctx, refs, c.StoreServiceClient)
+func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.RecordRef, receiverFn DataReceiverFn[*corev1.RecordMeta]) (<-chan struct{}, error) {
+	// Validate input parameters
+	if refsCh == nil {
+		return nil, errors.New("refs channel is nil")
+	}
+	if receiverFn == nil {
+		return nil, errors.New("receiver function is nil")
+	}
+
+	// Create gRPC stream once
+	stream, err := c.StoreServiceClient.Lookup(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create lookup stream: %w", err)
+	}
+
+	// Done channel
+	doneCh := make(chan struct{})
+
+	// Process items
+	go func() {
+		// Close stream and send notification once the goroutine ends
+		defer stream.CloseSend()
+		defer close(doneCh)
+
+		// Process incoming record references
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case recordRef, ok := <-refsCh:
+				// Exit if channel is closed
+				if !ok {
+					return
+				}
+
+				// Send the record reference to the network buffer
+				// Handle the response and any error using the receiver function
+				err := stream.Send(recordRef)
+				if err != nil {
+					if recvErr := receiverFn(recordRef, nil, err); recvErr != nil {
+						return
+					}
+
+					continue
+				}
+
+				// Receive the response from the network buffer
+				// Handle the response and any error using the receiver function
+				response, err := stream.Recv()
+				if recvErr := receiverFn(recordRef, response, err); recvErr != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	return doneCh, nil
 }
 
 // Delete removes a record from the store using its reference.
@@ -98,7 +153,7 @@ func (c *Client) Delete(ctx context.Context, recordRef *corev1.RecordRef) error 
 // DeleteStream provides efficient streaming delete operations using channels.
 // Record references are sent as they become available and delete confirmations are returned as they're processed.
 // This method maintains a single gRPC stream for all operations, dramatically improving efficiency.
-func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordRef, receiverFn ReceiverFn) (<-chan struct{}, error) {
+func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordRef, receiverFn ErrReceiverFn) (<-chan struct{}, error) {
 	// Validate input parameters
 	if refsCh == nil {
 		return nil, errors.New("refs channel is nil")
@@ -123,19 +178,21 @@ func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordR
 		defer close(doneCh)
 
 		// Process incoming record references
-		for recordRef := range refsCh {
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				// Send the record reference to the server
-				err := stream.Send(recordRef)
-
-				// Handle returned data using the receiver function.
-				// If the receiver function returns an error, stop processing further items.
-				if receiverErr := receiverFn(recordRef, err); receiverErr != nil {
+			case recordRef, ok := <-refsCh:
+				// Once the channel is closed, send the data through the stream and exit.
+				// Handle any error using the receiver function.
+				if !ok {
+					_, err := stream.CloseAndRecv()
+					_ = receiverFn(err)
 					return
 				}
+
+				// Send the record reference to the network buffer
+				_ = stream.Send(recordRef)
 			}
 		}
 	}()
@@ -232,24 +289,23 @@ func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 		}
 	}()
 
-	// Use the streaming function
-	results := c.LookupStream(ctx, refChan)
-
+	// Use the self-contained streaming function
 	var metas []*corev1.RecordMeta
-
-	var firstError error
-
-	for result := range results {
-		if result.Error != nil && firstError == nil {
-			firstError = result.Error
+	var firstErr error
+	doneCh, err := c.LookupStream(ctx, refChan, func(ref *corev1.RecordRef, meta *corev1.RecordMeta, err error) error {
+		if err != nil {
+			firstErr = err // capture the first error
+			return err
 		}
-
-		if result.RecordMeta != nil {
-			metas = append(metas, result.RecordMeta)
-		}
+		metas = append(metas, meta)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
+	<-doneCh
 
-	return metas, firstError
+	return metas, firstErr
 }
 
 // DeleteBatch removes multiple records from the store in a single stream for efficiency.
@@ -269,13 +325,7 @@ func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 	}()
 
 	// Use the self-contained streaming function
-	doneCh, err := c.DeleteStream(ctx, refChan, func(ref *corev1.RecordRef, err error) error {
-		if err != nil {
-			// Stop processing on first error
-			return fmt.Errorf("failed to delete record %v: %w", ref, err)
-		}
-		return nil
-	})
+	doneCh, err := c.DeleteStream(ctx, refChan, func(err error) error { return err })
 	if err != nil {
 		return err
 	}
