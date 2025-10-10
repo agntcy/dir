@@ -22,11 +22,6 @@ type PushResult = streaming.PushResult
 // This is an alias to the streaming package's PullResult for clean API exposure.
 type PullResult = streaming.PullResult
 
-// ReceiverFn is a callback function that processes pulled records.
-// It receives the record reference, the record itself, and any error that occurred.
-// If the function returns an error, the stream processing will stop.
-type ReceiverFn[T any] func(*corev1.RecordRef, T, error) error
-
 // LookupResult represents the result of a lookup operation.
 // This is an alias to the streaming package's LookupResult for clean API exposure.
 type LookupResult = streaming.LookupResult
@@ -74,43 +69,6 @@ func (c *Client) PullStream(ctx context.Context, refs <-chan *corev1.RecordRef) 
 	return streaming.PullStream(ctx, refs, c.StoreServiceClient)
 }
 
-// PullStreamWithReceiver pulls items from refCh and runs receiverFn for every received record.
-// Stream is closed once receiverFn returns an error or the refCh is closed.
-// This method internally calls PullStream and processes results using the callback pattern.
-func (c *Client) PullStreamWithReceiver(ctx context.Context, refCh <-chan *corev1.RecordRef, receiverFn ReceiverFn[*corev1.Record]) error {
-	// Buffer refs to correlate them with results by index
-	var refs []*corev1.RecordRef
-	bufferedRefCh := make(chan *corev1.RecordRef, 10)
-
-	// Forward refs to the stream while storing them
-	go func() {
-		defer close(bufferedRefCh)
-		for ref := range refCh {
-			refs = append(refs, ref)
-			bufferedRefCh <- ref
-		}
-	}()
-
-	// Open a stream to server using the existing PullStream function
-	results := c.PullStream(ctx, bufferedRefCh)
-
-	// Process results with the receiver callback
-	for result := range results {
-		// Get the corresponding ref using the index
-		var ref *corev1.RecordRef
-		if result.Index < len(refs) {
-			ref = refs[result.Index]
-		}
-
-		// Call the receiver function with the ref, record, and any error
-		if err := receiverFn(ref, result.Record, result.Error); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // Lookup retrieves metadata for a record using its reference.
 func (c *Client) Lookup(ctx context.Context, recordRef *corev1.RecordRef) (*corev1.RecordMeta, error) {
 	// Convert single record ref to channel
@@ -140,8 +98,49 @@ func (c *Client) Delete(ctx context.Context, recordRef *corev1.RecordRef) error 
 // DeleteStream provides efficient streaming delete operations using channels.
 // Record references are sent as they become available and delete confirmations are returned as they're processed.
 // This method maintains a single gRPC stream for all operations, dramatically improving efficiency.
-func (c *Client) DeleteStream(ctx context.Context, refs <-chan *corev1.RecordRef, receiverFn streaming.ReceiverFn) (<-chan struct{}, error) {
-	return streaming.DeleteStream(ctx, c.StoreServiceClient, refs, receiverFn)
+func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordRef, receiverFn ReceiverFn) (<-chan struct{}, error) {
+	// Validate input parameters
+	if refsCh == nil {
+		return nil, errors.New("refs channel is nil")
+	}
+	if receiverFn == nil {
+		return nil, errors.New("receiver function is nil")
+	}
+
+	// Create gRPC stream once
+	stream, err := c.StoreServiceClient.Delete(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create delete stream: %w", err)
+	}
+
+	// Done channel
+	doneCh := make(chan struct{})
+
+	// Process items
+	go func() {
+		// Close stream and send notification once the goroutine ends
+		defer stream.CloseSend()
+		defer close(doneCh)
+
+		// Process incoming record references
+		for recordRef := range refsCh {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				// Send the record reference to the server
+				err := stream.Send(recordRef)
+
+				// Handle returned data using the receiver function.
+				// If the receiver function returns an error, stop processing further items.
+				if receiverErr := receiverFn(recordRef, err); receiverErr != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	return doneCh, nil
 }
 
 // PushBatch sends multiple records in a single stream for efficiency.
@@ -270,9 +269,10 @@ func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 	}()
 
 	// Use the self-contained streaming function
-	doneCh, err := streaming.DeleteStream(ctx, c.StoreServiceClient, refChan,
+	doneCh, err := c.DeleteStream(ctx, refChan,
 		func(ref *corev1.RecordRef, err error) error {
 			if err != nil {
+				// Stop processing on first error
 				return fmt.Errorf("failed to delete record %v: %w", ref, err)
 			}
 			return nil
