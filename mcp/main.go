@@ -34,23 +34,6 @@ func main() {
 		MIMEType:    "application/json",
 	}, ReadSchemaResource070)
 
-	// Add tool for creating OASF agent records
-	mcp.AddTool(server, &mcp.Tool{
-		Name: "agntcy_oasf_create_record",
-		Description: strings.TrimSpace(`
-Creates an AGNTCY OASF agent record from JSON and calculates its CID (Content Identifier).
-This tool performs basic structural validation and returns the CID that would be
-assigned to the record. The record must follow the OASF schema (0.3.1 or 0.7.0).
-
-Use this tool to:
-- Get the CID for a record before pushing it
-- Verify the record structure is parseable
-- Detect the OASF schema version
-
-For full OASF schema validation, use the agntcy_oasf_validate_record tool.
-		`),
-	}, tools.CreateRecord)
-
 	// Add tool for validating OASF agent records
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_oasf_validate_record",

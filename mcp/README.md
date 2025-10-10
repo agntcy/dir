@@ -1,22 +1,17 @@
 # MCP Server for Directory
 
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for creating and validating OASF agent records.
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for validating OASF agent records.
 
-## Tools
-
-### `agntcy_oasf_create_record`
-
-Creates an OASF agent record from JSON and returns its CID.
-
-**Input:** `record_json` (string)  
-**Output:** `success` (bool), `cid` (string), `schema_version` (string), `error_message` (string)
+## Tool
 
 ### `agntcy_oasf_validate_record`
 
-Validates an OASF agent record against its schema.
+Validates an OASF agent record against the OASF schema (0.3.1 or 0.7.0).
 
 **Input:** `record_json` (string)  
 **Output:** `valid` (bool), `schema_version` (string), `validation_errors` ([]string), `error_message` (string)
+
+AI assistants can create records by referencing the OASF schema resources and then validate them using this tool.
 
 ## Resources
 

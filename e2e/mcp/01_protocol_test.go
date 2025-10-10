@@ -291,7 +291,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			tools := result["tools"].([]interface{})
-			gomega.Expect(tools).To(gomega.HaveLen(2))
+			gomega.Expect(tools).To(gomega.HaveLen(1))
 
 			// Verify tool names
 			toolNames := make(map[string]bool)
@@ -301,52 +301,9 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 				ginkgo.GinkgoWriter.Printf("  - %s: %s\n", t["name"], t["description"])
 			}
 
-			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_oasf_create_record"))
 			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_oasf_validate_record"))
 
 			ginkgo.GinkgoWriter.Println("All tools listed successfully")
-		})
-
-		ginkgo.It("should create a valid 0.7.0 record and return CID", func() {
-			recordJSON := string(testdata.ExpectedRecordV070JSON)
-
-			req := MCPRequest{
-				JSONRPC: "2.0",
-				Method:  "tools/call",
-				Params: map[string]interface{}{
-					"name": "agntcy_oasf_create_record",
-					"arguments": map[string]interface{}{
-						"record_json": recordJSON,
-					},
-				},
-				ID: 3,
-			}
-
-			resp, err := client.SendRequest(req)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(resp.Error).To(gomega.BeNil())
-
-			// Parse result
-			var result map[string]interface{}
-			err = json.Unmarshal(resp.Result, &result)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			content := result["content"].([]interface{})
-			gomega.Expect(content).To(gomega.HaveLen(1))
-
-			output := content[0].(map[string]interface{})
-			gomega.Expect(output["type"]).To(gomega.Equal("text"))
-
-			// Parse the text output
-			var toolOutput map[string]interface{}
-			err = json.Unmarshal([]byte(output["text"].(string)), &toolOutput)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			gomega.Expect(toolOutput["success"]).To(gomega.BeTrue())
-			gomega.Expect(toolOutput["cid"]).NotTo(gomega.BeEmpty())
-			gomega.Expect(toolOutput["schema_version"]).To(gomega.Equal("0.7.0"))
-
-			ginkgo.GinkgoWriter.Printf("Record created successfully with CID: %s\n", toolOutput["cid"])
 		})
 
 		ginkgo.It("should validate a valid 0.7.0 record", func() {
