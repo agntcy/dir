@@ -1,4 +1,4 @@
-package streaming
+package client
 
 import corev1 "github.com/agntcy/dir/api/core/v1"
 
