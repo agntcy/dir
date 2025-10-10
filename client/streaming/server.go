@@ -28,6 +28,14 @@ type ServerStream[InT, OutT any] interface {
 // It returns a channel that signals when processing is done and an error if any validation fails.
 func NewServerStreamProcessor[InT, OutT any](ctx context.Context, stream ServerStream[InT, OutT], refsCh <-chan *InT, receiverFn ServerReceiverFn[InT, OutT]) (<-chan struct{}, error) {
 	// Validate input parameters
+	if ctx == nil {
+		return nil, errors.New("context is nil")
+	}
+
+	if stream == nil {
+		return nil, errors.New("stream is nil")
+	}
+
 	if refsCh == nil {
 		return nil, errors.New("refs channel is nil")
 	}
@@ -51,10 +59,18 @@ func NewServerStreamProcessor[InT, OutT any](ctx context.Context, stream ServerS
 			select {
 			case <-ctx.Done():
 				return
+
 			case recordRef, ok := <-refsCh:
 				// Exit if channel is closed
 				if !ok {
 					return
+				}
+
+				// Check context again before potentially blocking Send operation
+				select {
+				case <-ctx.Done():
+					return
+				default:
 				}
 
 				// Send the record reference to the network buffer

@@ -417,29 +417,42 @@ func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 		return nil, nil
 	}
 
-	// Convert slice to channel
+	// Convert slice to channel with context awareness
 	refChan := make(chan *corev1.RecordRef, len(recordRefs))
 	go func() {
 		defer close(refChan)
 
 		for _, ref := range recordRefs {
-			refChan <- ref
+			select {
+			case refChan <- ref:
+			case <-ctx.Done():
+				// Context cancelled, stop sending
+				return
+			}
 		}
 	}()
 
-	// Use the self-contained streaming function
-	var metas []*corev1.RecordMeta
-
-	var firstErr error
+	// Use channels to communicate results safely (no race conditions)
+	metaCh := make(chan *corev1.RecordMeta, len(recordRefs))
+	errCh := make(chan error, 1)
 
 	doneCh, err := c.LookupStream(ctx, refChan, func(_ *corev1.RecordRef, meta *corev1.RecordMeta, err error) error {
 		if err != nil {
-			firstErr = err // capture the first error
+			// Send error to channel (non-blocking, buffered channel)
+			select {
+			case errCh <- err:
+			default:
+			}
 
 			return err
 		}
 
-		metas = append(metas, meta)
+		// Send metadata to channel (thread-safe)
+		select {
+		case metaCh <- meta:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 
 		return nil
 	})
@@ -448,8 +461,21 @@ func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 	}
 
 	<-doneCh
+	close(metaCh)
 
-	return metas, firstErr
+	// Collect all metadata from channel (thread-safe)
+	metas := make([]*corev1.RecordMeta, 0, len(recordRefs))
+	for meta := range metaCh {
+		metas = append(metas, meta)
+	}
+
+	// Check for errors
+	select {
+	case err := <-errCh:
+		return metas, err
+	default:
+		return metas, nil
+	}
 }
 
 // LookupStream provides efficient streaming lookup operations using channels.
@@ -476,21 +502,30 @@ func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 		return nil
 	}
 
-	// Convert slice to channel
+	// Convert slice to channel with context awareness
 	refChan := make(chan *corev1.RecordRef, len(recordRefs))
 	go func() {
 		defer close(refChan)
 
 		for _, ref := range recordRefs {
-			refChan <- ref
+			select {
+			case refChan <- ref:
+			case <-ctx.Done():
+				// Context cancelled, stop sending
+				return
+			}
 		}
 	}()
 
-	// Use the self-contained streaming function
-	var firstErr error
+	// Use channel to communicate error safely (no race condition)
+	errCh := make(chan error, 1)
 
 	doneCh, err := c.DeleteStream(ctx, refChan, func(_ *emptypb.Empty, err error) error {
-		firstErr = err
+		// Send error to channel (non-blocking, buffered channel)
+		select {
+		case errCh <- err:
+		default:
+		}
 
 		return err
 	})
@@ -500,7 +535,13 @@ func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 
 	<-doneCh
 
-	return firstErr
+	// Retrieve error from channel (if any was sent)
+	select {
+	case err := <-errCh:
+		return err
+	default:
+		return nil
+	}
 }
 
 // DeleteStream provides efficient streaming delete operations using channels.
