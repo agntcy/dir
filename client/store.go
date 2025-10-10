@@ -269,15 +269,13 @@ func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 	}()
 
 	// Use the self-contained streaming function
-	doneCh, err := c.DeleteStream(ctx, refChan,
-		func(ref *corev1.RecordRef, err error) error {
-			if err != nil {
-				// Stop processing on first error
-				return fmt.Errorf("failed to delete record %v: %w", ref, err)
-			}
-			return nil
-		},
-	)
+	doneCh, err := c.DeleteStream(ctx, refChan, func(ref *corev1.RecordRef, err error) error {
+		if err != nil {
+			// Stop processing on first error
+			return fmt.Errorf("failed to delete record %v: %w", ref, err)
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
