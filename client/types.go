@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 package client
 
 import corev1 "github.com/agntcy/dir/api/core/v1"
