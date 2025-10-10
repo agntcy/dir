@@ -6,26 +6,22 @@ package streaming
 import (
 	"context"
 	"errors"
-
-	"google.golang.org/grpc"
 )
 
-// ClientReceiverFn is a callback function type for handling responses from the server.
-// It takes a pointer to the output type and an error as parameters, and returns an error.
-// This function is used to process the server's response after sending data through a gRPC stream.
-type ClientReceiverFn[OutT any] func(*OutT, error) error
-
-// ClientStream is a generic interface that defines the methods required for a gRPC client stream.
-type ClientStream[InT, OutT any] interface {
-	Send(*InT) error
-	CloseAndRecv() (*OutT, error)
-	grpc.ClientStream
-}
-
-// NewClientStreamProcessor creates and starts a goroutine to process incoming record references from a channel
-// and send them through a gRPC client stream. It also handles the server's response using a provided receiver function.
-// The function takes a context for cancellation, a gRPC client stream, a channel of input references, and a receiver function.
-// It returns a channel that signals when processing is done and an error if any validation fails.
+// NewClientStreamProcessor handles client streaming pattern (many inputs → one output).
+//
+// Pattern: Send → Send → Send → CloseAndRecv()
+//
+// This processor is ideal for operations where multiple requests are sent to the server,
+// and a single final response is received after all requests have been processed.
+//
+// The processor:
+// - Sends all inputs from the channel to the stream
+// - Closes the send side when input channel closes
+// - Receives the final response via CloseAndRecv()
+// - Calls the receiver function with the result
+//
+// Returns a done channel that closes when processing completes, and an error if validation fails.
 func NewClientStreamProcessor[InT, OutT any](ctx context.Context, stream ClientStream[InT, OutT], refsCh <-chan *InT, receiverFn ClientReceiverFn[OutT]) (<-chan struct{}, error) {
 	// Validate input parameters
 	if ctx == nil {
