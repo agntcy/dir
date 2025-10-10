@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -48,15 +47,16 @@ func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.Recor
 // This method is ideal for batch operations and takes full advantage of gRPC streaming.
 // The input channel allows you to send record refs as they become available.
 //
+// Uses concurrent bidirectional streaming pattern (Sender || Receiver) which maximizes
+// throughput by:
+// - Sending all requests without waiting for responses
+// - Receiving responses as they become available
+// - Fully utilizing network bandwidth
+// - Enabling server-side batching and pipelining
+//
 // Returns two channels:
 // - A channel of records as they are received from the server
 // - A channel for errors (buffered, will contain at most one error)
-//
-// The method ensures proper stream lifecycle management by:
-// - Running sender and receiver in separate goroutines for concurrent operation
-// - Properly closing the send side after all refs are sent
-// - Collecting and propagating any errors that occur
-// - Respecting context cancellation
 //
 // Usage:
 //
@@ -71,124 +71,34 @@ func (c *Client) PullStream(
 	ctx context.Context,
 	recordRefs <-chan *corev1.RecordRef,
 ) (<-chan *corev1.Record, <-chan error) {
-	recordsCh := make(chan *corev1.Record)
-	errCh := make(chan error, 1)
-
-	// Validate inputs
-	if ctx == nil {
-		errCh <- errors.New("context is nil")
-
+	// Create streaming client
+	stream, err := c.StoreServiceClient.Pull(ctx)
+	if err != nil {
+		recordsCh := make(chan *corev1.Record)
+		errCh := make(chan error, 1)
+		errCh <- fmt.Errorf("failed to create pull stream: %w", err)
 		close(recordsCh)
 		close(errCh)
-
 		return recordsCh, errCh
 	}
 
-	if recordRefs == nil {
-		errCh <- errors.New("recordRefs channel is nil")
+	// Use the generic bidirectional stream processor with record validation
+	recordsCh, errCh, validationErr := streaming.NewBidirectionalStreamProcessor(
+		ctx,
+		stream,
+		recordRefs,
+		func(record *corev1.Record) error {
+			if record == nil {
+				return errors.New("received nil record from stream")
+			}
+			return nil
+		},
+	)
 
-		close(recordsCh)
-		close(errCh)
-
+	// If validation setup failed, return the error immediately
+	if validationErr != nil {
 		return recordsCh, errCh
 	}
-
-	go func() {
-		defer close(recordsCh)
-		defer close(errCh)
-
-		// Create streaming client
-		stream, err := c.StoreServiceClient.Pull(ctx)
-		if err != nil {
-			errCh <- fmt.Errorf("failed to create pull stream: %w", err)
-
-			return
-		}
-
-		// WaitGroup to coordinate sender and receiver goroutines
-		var wg sync.WaitGroup
-
-		// Error channel for internal goroutine communication
-		internalErrCh := make(chan error, 2)
-
-		// Sender goroutine: send all record refs
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			for recordRef := range recordRefs {
-				// Check context before sending to avoid unnecessary work
-				select {
-				case <-ctx.Done():
-					internalErrCh <- ctx.Err()
-
-					return
-				default:
-				}
-
-				if err := stream.Send(recordRef); err != nil {
-					internalErrCh <- fmt.Errorf("failed to send record ref: %w", err)
-
-					return
-				}
-			}
-			// Close the send side when done sending
-			if err := stream.CloseSend(); err != nil {
-				internalErrCh <- fmt.Errorf("failed to close send stream: %w", err)
-			}
-		}()
-
-		// Receiver goroutine: receive all records
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			for {
-				record, err := stream.Recv()
-				if errors.Is(err, io.EOF) {
-					return
-				}
-
-				if err != nil {
-					internalErrCh <- fmt.Errorf("failed to receive record: %w", err)
-
-					return
-				}
-
-				// Validate received record
-				if record == nil {
-					internalErrCh <- errors.New("received nil record from stream")
-
-					return
-				}
-
-				select {
-				case recordsCh <- record:
-				case <-ctx.Done():
-					internalErrCh <- ctx.Err()
-
-					return
-				}
-			}
-		}()
-
-		// Wait for both goroutines to complete
-		wg.Wait()
-
-		// Collect the first error if any occurred
-		select {
-		case err := <-internalErrCh:
-			errCh <- err
-			// Drain any remaining error to avoid goroutine leak
-			select {
-			case <-internalErrCh:
-			default:
-			}
-		default:
-		}
-	}()
 
 	return recordsCh, errCh
 }
@@ -212,12 +122,16 @@ func (c *Client) Pull(ctx context.Context, recordRef *corev1.RecordRef) (*corev1
 // This is the most efficient method for processing large batches of records,
 // as it streams both input and output while processing records as they arrive.
 //
+// Uses sequential streaming pattern (Send → Recv → Send → Recv).
+// For high-performance scenarios with many records, consider using PullStream directly
+// which uses concurrent bidirectional streaming.
+//
 // The method will return the first error encountered, either from the stream or from the callback.
 // Processing stops immediately when an error occurs.
 func (c *Client) PullStreamWithCallback(
 	ctx context.Context,
 	recordRefs <-chan *corev1.RecordRef,
-	receiverFn streaming.ServerReceiverFn[corev1.RecordRef, corev1.Record],
+	receiverFn streaming.SequentialReceiverFn[corev1.RecordRef, corev1.Record],
 ) (<-chan struct{}, error) {
 	stream, err := c.StoreServiceClient.Pull(ctx)
 	if err != nil {
@@ -225,7 +139,7 @@ func (c *Client) PullStreamWithCallback(
 	}
 
 	//nolint:wrapcheck
-	return streaming.NewServerStreamProcessor(ctx, stream, recordRefs, receiverFn)
+	return streaming.NewSequentialStreamProcessor(ctx, stream, recordRefs, receiverFn)
 }
 
 // PullBatch retrieves multiple records in a single stream for efficiency.
@@ -481,14 +395,17 @@ func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 // LookupStream provides efficient streaming lookup operations using channels.
 // Record references are sent as they become available and metadata is returned as it's processed.
 // This method maintains a single gRPC stream for all operations, dramatically improving efficiency.
-func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.RecordRef, receiverFn streaming.ServerReceiverFn[corev1.RecordRef, corev1.RecordMeta]) (<-chan struct{}, error) {
+//
+// Uses sequential streaming pattern (Send → Recv → Send → Recv) which ensures
+// strict ordering of request-response pairs.
+func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.RecordRef, receiverFn streaming.SequentialReceiverFn[corev1.RecordRef, corev1.RecordMeta]) (<-chan struct{}, error) {
 	stream, err := c.StoreServiceClient.Lookup(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create lookup stream: %w", err)
 	}
 
 	//nolint:wrapcheck
-	return streaming.NewServerStreamProcessor(ctx, stream, refsCh, receiverFn)
+	return streaming.NewSequentialStreamProcessor(ctx, stream, refsCh, receiverFn)
 }
 
 // Delete removes a record from the store using its reference.
