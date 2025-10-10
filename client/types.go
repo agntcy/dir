@@ -15,3 +15,7 @@ type RefReceiverFn func(*corev1.RecordRef, error) error
 // DataReceiverFn is a callback function that processes records, and returns processed data.
 // It receives the record reference, processed data, and any error that occurred.
 type DataReceiverFn[T any] func(*corev1.RecordRef, T, error) error
+
+// RecordReceiverFn is a callback function that processes records.
+// It receives a record and should return an error if processing fails.
+type RecordReceiverFn func(*corev1.Record) error

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -41,31 +42,259 @@ func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.Recor
 	return recordRef, nil
 }
 
-// Pull retrieves a complete record from the store using its reference.
+// PullStream retrieves multiple records efficiently using a single bidirectional stream.
+// This method is ideal for batch operations and takes full advantage of gRPC streaming.
+// The input channel allows you to send record refs as they become available.
+//
+// Returns two channels:
+// - A channel of records as they are received from the server
+// - A channel for errors (buffered, will contain at most one error)
+//
+// The method ensures proper stream lifecycle management by:
+// - Running sender and receiver in separate goroutines for concurrent operation
+// - Properly closing the send side after all refs are sent
+// - Collecting and propagating any errors that occur
+// - Respecting context cancellation
+//
+// Usage:
+//
+//	recordsCh, errCh := client.PullStream(ctx, refsCh)
+//	for record := range recordsCh {
+//	    // process record
+//	}
+//	if err := <-errCh; err != nil {
+//	    // handle error
+//	}
+func (c *Client) PullStream(
+	ctx context.Context,
+	recordRefs <-chan *corev1.RecordRef,
+) (<-chan *corev1.Record, <-chan error) {
+	recordsCh := make(chan *corev1.Record)
+	errCh := make(chan error, 1)
+
+	// Validate inputs
+	if ctx == nil {
+		errCh <- errors.New("context is nil")
+		close(recordsCh)
+		close(errCh)
+		return recordsCh, errCh
+	}
+
+	if recordRefs == nil {
+		errCh <- errors.New("recordRefs channel is nil")
+		close(recordsCh)
+		close(errCh)
+		return recordsCh, errCh
+	}
+
+	go func() {
+		defer close(recordsCh)
+		defer close(errCh)
+
+		// Create streaming client
+		stream, err := c.StoreServiceClient.Pull(ctx)
+		if err != nil {
+			errCh <- fmt.Errorf("failed to create pull stream: %w", err)
+			return
+		}
+
+		// WaitGroup to coordinate sender and receiver goroutines
+		var wg sync.WaitGroup
+
+		// Error channel for internal goroutine communication
+		internalErrCh := make(chan error, 2)
+
+		// Sender goroutine: send all record refs
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for recordRef := range recordRefs {
+				// Check context before sending to avoid unnecessary work
+				select {
+				case <-ctx.Done():
+					internalErrCh <- ctx.Err()
+					return
+				default:
+				}
+
+				if err := stream.Send(recordRef); err != nil {
+					internalErrCh <- fmt.Errorf("failed to send record ref: %w", err)
+					return
+				}
+			}
+			// Close the send side when done sending
+			if err := stream.CloseSend(); err != nil {
+				internalErrCh <- fmt.Errorf("failed to close send stream: %w", err)
+			}
+		}()
+
+		// Receiver goroutine: receive all records
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				record, err := stream.Recv()
+				if errors.Is(err, io.EOF) {
+					return
+				}
+				if err != nil {
+					internalErrCh <- fmt.Errorf("failed to receive record: %w", err)
+					return
+				}
+
+				// Validate received record
+				if record == nil {
+					internalErrCh <- errors.New("received nil record from stream")
+					return
+				}
+
+				select {
+				case recordsCh <- record:
+				case <-ctx.Done():
+					internalErrCh <- ctx.Err()
+					return
+				}
+			}
+		}()
+
+		// Wait for both goroutines to complete
+		wg.Wait()
+
+		// Collect the first error if any occurred
+		select {
+		case err := <-internalErrCh:
+			errCh <- err
+			// Drain any remaining error to avoid goroutine leak
+			select {
+			case <-internalErrCh:
+			default:
+			}
+		default:
+		}
+	}()
+
+	return recordsCh, errCh
+}
+
+// Pull retrieves a single record from the store using its reference.
+// This is a convenience wrapper around PullBatch for single-record operations.
 func (c *Client) Pull(ctx context.Context, recordRef *corev1.RecordRef) (*corev1.Record, error) {
-	// Create streaming client
-	stream, err := c.StoreServiceClient.Pull(ctx)
+	records, err := c.PullBatch(ctx, []*corev1.RecordRef{recordRef})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pull stream: %w", err)
+		return nil, err
 	}
 
-	// Send record reference
-	if err := stream.Send(recordRef); err != nil {
-		return nil, fmt.Errorf("failed to send record ref: %w", err)
+	if len(records) != 1 {
+		return nil, errors.New("no data returned")
 	}
 
-	// Close send stream
-	if err := stream.CloseSend(); err != nil {
-		return nil, fmt.Errorf("failed to close send stream: %w", err)
-	}
+	return records[0], nil
+}
 
-	// Receive complete record
-	record, err := stream.Recv()
+// PullWithCallback retrieves a single record and processes it with the provided callback.
+// This is useful when you want to process the record immediately without storing it.
+func (c *Client) PullWithCallback(
+	ctx context.Context,
+	recordRef *corev1.RecordRef,
+	receiverFn RecordReceiverFn,
+) error {
+	record, err := c.Pull(ctx, recordRef)
 	if err != nil {
-		return nil, fmt.Errorf("failed to receive record: %w", err)
+		return err
 	}
 
-	return record, nil
+	if err := receiverFn(record); err != nil {
+		return fmt.Errorf("receiver callback failed: %w", err)
+	}
+
+	return nil
+}
+
+// PullStreamWithCallback retrieves multiple records and processes each with the callback.
+// This is the most efficient method for processing large batches of records,
+// as it streams both input and output while processing records as they arrive.
+//
+// The method will return the first error encountered, either from the stream or from the callback.
+// Processing stops immediately when an error occurs.
+func (c *Client) PullStreamWithCallback(
+	ctx context.Context,
+	recordRefs <-chan *corev1.RecordRef,
+	receiverFn RecordReceiverFn,
+) error {
+	recordsCh, errCh := c.PullStream(ctx, recordRefs)
+
+	for {
+		select {
+		case record, ok := <-recordsCh:
+			if !ok {
+				// Stream closed, check for errors
+				if err := <-errCh; err != nil {
+					return err
+				}
+				return nil
+			}
+
+			// Process record with callback
+			if err := receiverFn(record); err != nil {
+				return fmt.Errorf("receiver callback failed: %w", err)
+			}
+
+		case err := <-errCh:
+			return err
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+// PullBatch retrieves multiple records in a single stream for efficiency.
+// This is a convenience method that accepts a slice and returns a slice,
+// built on top of the streaming implementation for consistency.
+func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
+	if len(recordRefs) == 0 {
+		return nil, nil
+	}
+
+	// Convert slice to channel with context awareness
+	refsCh := make(chan *corev1.RecordRef, len(recordRefs))
+	go func() {
+		defer close(refsCh)
+		for _, ref := range recordRefs {
+			select {
+			case refsCh <- ref:
+			case <-ctx.Done():
+				// Context cancelled, stop sending
+				return
+			}
+		}
+	}()
+
+	// Get streaming channels
+	recordsCh, errCh := c.PullStream(ctx, refsCh)
+
+	// Collect all records
+	records := make([]*corev1.Record, 0, len(recordRefs))
+
+	for {
+		select {
+		case record, ok := <-recordsCh:
+			if !ok {
+				// Stream closed, check for errors
+				if err := <-errCh; err != nil {
+					return nil, err
+				}
+				return records, nil
+			}
+			records = append(records, record)
+
+		case err := <-errCh:
+			return nil, err
+
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 }
 
 // PushBatch sends multiple records in a single stream for efficiency.
@@ -108,47 +337,6 @@ func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*co
 	}
 
 	return refs, nil
-}
-
-// PullBatch retrieves multiple records in a single stream for efficiency.
-//
-//nolint:dupl // Similar structure to PushBatch but semantically different operations
-func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
-	if len(recordRefs) == 0 {
-		return nil, nil
-	}
-
-	// Create streaming client
-	stream, err := c.StoreServiceClient.Pull(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pull stream: %w", err)
-	}
-
-	// Send all record references
-	for i, recordRef := range recordRefs {
-		if err := stream.Send(recordRef); err != nil {
-			return nil, fmt.Errorf("failed to send record ref %d: %w", i, err)
-		}
-	}
-
-	// Close send stream
-	if err := stream.CloseSend(); err != nil {
-		return nil, fmt.Errorf("failed to close send stream: %w", err)
-	}
-
-	// Receive all records
-	var records []*corev1.Record //nolint:prealloc // We don't know the number of records in advance
-
-	for i := range recordRefs {
-		record, err := stream.Recv()
-		if err != nil {
-			return nil, fmt.Errorf("failed to receive record %d: %w", i, err)
-		}
-
-		records = append(records, record)
-	}
-
-	return records, nil
 }
 
 // PushReferrer stores a signature using the PushReferrer RPC.
