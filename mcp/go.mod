@@ -4,12 +4,14 @@ go 1.24.5
 
 toolchain go1.24.8
 
-require github.com/modelcontextprotocol/go-sdk v0.8.0
+require (
+	github.com/agntcy/oasf-sdk/pkg v0.0.8
+	github.com/modelcontextprotocol/go-sdk v0.8.0
+)
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1 // indirect
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1 // indirect
-	github.com/agntcy/oasf-sdk/pkg v0.0.7 // indirect
 	github.com/ipfs/go-cid v0.5.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect

@@ -5,25 +5,24 @@ package main
 
 import (
 	"context"
-	_ "embed"
 
+	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-//go:embed schemas/oasf-0.3.1.json
-var schemaOASF031 []byte
-
-//go:embed schemas/oasf-0.7.0.json
-var schemaOASF070 []byte
-
 // ReadSchemaResource031 reads the OASF 0.3.1 schema resource
 func ReadSchemaResource031(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	schemaContent, err := validator.GetSchemaContent("0.3.1")
+	if err != nil {
+		return nil, err
+	}
+
 	return &mcp.ReadResourceResult{
 		Contents: []*mcp.ResourceContents{
 			{
 				URI:      req.Params.URI,
 				MIMEType: "application/json",
-				Text:     string(schemaOASF031),
+				Text:     string(schemaContent),
 			},
 		},
 	}, nil
@@ -31,12 +30,17 @@ func ReadSchemaResource031(ctx context.Context, req *mcp.ReadResourceRequest) (*
 
 // ReadSchemaResource070 reads the OASF 0.7.0 schema resource
 func ReadSchemaResource070(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+	schemaContent, err := validator.GetSchemaContent("0.7.0")
+	if err != nil {
+		return nil, err
+	}
+
 	return &mcp.ReadResourceResult{
 		Contents: []*mcp.ResourceContents{
 			{
 				URI:      req.Params.URI,
 				MIMEType: "application/json",
-				Text:     string(schemaOASF070),
+				Text:     string(schemaContent),
 			},
 		},
 	}, nil
