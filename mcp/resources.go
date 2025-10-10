@@ -5,16 +5,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// ReadSchemaResource031 reads the OASF 0.3.1 schema resource
-func ReadSchemaResource031(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+// ReadSchemaResource031 reads the OASF 0.3.1 schema resource.
+func ReadSchemaResource031(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	schemaContent, err := validator.GetSchemaContent("0.3.1")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get OASF 0.3.1 schema: %w", err)
 	}
 
 	return &mcp.ReadResourceResult{
@@ -28,11 +29,11 @@ func ReadSchemaResource031(ctx context.Context, req *mcp.ReadResourceRequest) (*
 	}, nil
 }
 
-// ReadSchemaResource070 reads the OASF 0.7.0 schema resource
-func ReadSchemaResource070(ctx context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
+// ReadSchemaResource070 reads the OASF 0.7.0 schema resource.
+func ReadSchemaResource070(_ context.Context, req *mcp.ReadResourceRequest) (*mcp.ReadResourceResult, error) {
 	schemaContent, err := validator.GetSchemaContent("0.7.0")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get OASF 0.7.0 schema: %w", err)
 	}
 
 	return &mcp.ReadResourceResult{

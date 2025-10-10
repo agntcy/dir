@@ -11,22 +11,22 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// ValidateRecordInput represents the input for validating an agent record
+// ValidateRecordInput represents the input for validating an agent record.
 type ValidateRecordInput struct {
 	RecordJSON string `json:"record_json" jsonschema:"JSON string of the agent record to validate against OASF schema"`
 }
 
-// ValidateRecordOutput represents the output after validating an agent record
+// ValidateRecordOutput represents the output after validating an agent record.
 type ValidateRecordOutput struct {
-	Valid            bool     `json:"valid" jsonschema:"Whether the record is valid according to OASF schema validation"`
-	SchemaVersion    string   `json:"schema_version,omitempty" jsonschema:"Detected OASF schema version (e.g. 0.3.1 or 0.7.0)"`
+	Valid            bool     `json:"valid"                       jsonschema:"Whether the record is valid according to OASF schema validation"`
+	SchemaVersion    string   `json:"schema_version,omitempty"    jsonschema:"Detected OASF schema version (e.g. 0.3.1 or 0.7.0)"`
 	ValidationErrors []string `json:"validation_errors,omitempty" jsonschema:"List of validation error messages. Only present if valid=false. Use these to fix the record"`
-	ErrorMessage     string   `json:"error_message,omitempty" jsonschema:"General error message if validation process failed"`
+	ErrorMessage     string   `json:"error_message,omitempty"     jsonschema:"General error message if validation process failed"`
 }
 
 // ValidateRecord validates an agent record against the OASF schema.
 // This performs full OASF schema validation and returns detailed errors.
-func ValidateRecord(ctx context.Context, req *mcp.CallToolRequest, input ValidateRecordInput) (
+func ValidateRecord(_ context.Context, _ *mcp.CallToolRequest, input ValidateRecordInput) (
 	*mcp.CallToolResult,
 	ValidateRecordOutput,
 	error,
