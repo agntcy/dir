@@ -31,10 +31,6 @@ type ReceiverFn[T any] func(*corev1.RecordRef, T, error) error
 // This is an alias to the streaming package's LookupResult for clean API exposure.
 type LookupResult = streaming.LookupResult
 
-// DeleteResult represents the result of a delete operation.
-// This is an alias to the streaming package's DeleteResult for clean API exposure.
-type DeleteResult = streaming.DeleteResult
-
 // Push sends a complete record to the store and returns a record reference.
 // The record must be ≤4MB as per the v1 store service specification.
 func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
@@ -138,23 +134,14 @@ func (c *Client) LookupStream(ctx context.Context, refs <-chan *corev1.RecordRef
 
 // Delete removes a record from the store using its reference.
 func (c *Client) Delete(ctx context.Context, recordRef *corev1.RecordRef) error {
-	// Convert single record ref to channel
-	refs := make(chan *corev1.RecordRef, 1)
-	refs <- recordRef
-	close(refs)
-
-	// Use the self-contained streaming function
-	results := streaming.DeleteStream(ctx, refs, c.StoreServiceClient)
-	result := <-results
-
-	return result.Error
+	return c.DeleteBatch(ctx, []*corev1.RecordRef{recordRef})
 }
 
 // DeleteStream provides efficient streaming delete operations using channels.
 // Record references are sent as they become available and delete confirmations are returned as they're processed.
 // This method maintains a single gRPC stream for all operations, dramatically improving efficiency.
-func (c *Client) DeleteStream(ctx context.Context, refs <-chan *corev1.RecordRef) <-chan DeleteResult {
-	return streaming.DeleteStream(ctx, refs, c.StoreServiceClient)
+func (c *Client) DeleteStream(ctx context.Context, refs <-chan *corev1.RecordRef, receiverFn streaming.ReceiverFn) (<-chan struct{}, error) {
+	return streaming.DeleteStream(ctx, c.StoreServiceClient, refs, receiverFn)
 }
 
 // PushBatch sends multiple records in a single stream for efficiency.
@@ -282,15 +269,19 @@ func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 		}
 	}()
 
-	// Use the streaming function
-	results := c.DeleteStream(ctx, refChan)
-
-	// Return first error encountered
-	for result := range results {
-		if result.Error != nil {
-			return result.Error
-		}
+	// Use the self-contained streaming function
+	doneCh, err := streaming.DeleteStream(ctx, c.StoreServiceClient, refChan,
+		func(ref *corev1.RecordRef, err error) error {
+			if err != nil {
+				return fmt.Errorf("failed to delete record %v: %w", ref, err)
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return err
 	}
+	<-doneCh
 
 	return nil
 }
