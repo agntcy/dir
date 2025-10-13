@@ -1,54 +1,66 @@
-run:
-  timeout: 5m
-
+version: "2"
 linters:
-  # Enable all available linters.
-  # Default: false
-  enable-all: true
-
-  # Disable specific linter
-  # https://golangci-lint.run/usage/linters/#disabled-by-default
+  default: all
   disable:
-    - inamedparam # Allow unnamed args
-    - funlen # Allow long functions
-    - lll # Allow long lines
-    - gochecknoglobals # Allow global variables
-    - paralleltest # Allow missing t.Parallel() in tests
-    - godox # Allow TODOs
-    - tagliatelle # Allow json(camel)
-    - gochecknoinits # Allow init function
-    - nolintlint # Allow nolint
-    - varnamelen # Allow short var names
-    - ireturn # Allow returning with interfaces
-    - exhaustruct # Allow structures with uninitialized fields
     - depguard # Allow all package imports
-    - testpackage # Allow not having a test package
+    - embeddedstructfieldcheck # Allow embedded fields in any position
     - err113
-    - tenv # deprecated
-
-issues:
-  exclude-rules:
-    - path: types/adapters/record_oasfv.*\.go
-      linters:
-        - dupl
-
-linters-settings:
-  gomoddirectives:
-    # Allow local `replace` directives. Default is false.
-    replace-local: true
-
-    # Allow specific replace directives.
-    # TODO: remove once hub is properly integrated into CLI
-    replace-allow-list:
-      - github.com/agntcy/dirhub/backport/api
-
-  cyclop:
-    max-complexity: 15
-
-  goheader:
-    values:
-      regexp:
-        YEAR: 202[4-5]
-    template: |-
-      Copyright AGNTCY Contributors (https://github.com/agntcy)
-      SPDX-License-Identifier: Apache-2.0
+    - exhaustruct # Allow structures with uninitialized fields
+    - funcorder # Allow flexible function ordering within structs
+    - funlen # Allow long functions
+    - godoclint # Allow flexible godoc comment styles
+    - gochecknoglobals # Allow global variables
+    - gochecknoinits # Allow init function
+    - godox # Allow TODOs
+    - inamedparam # Allow unnamed args
+    - ireturn # Allow returning with interfaces
+    - lll # Allow long lines
+    - noinlineerr # Allow inline error handling
+    - nolintlint # Allow nolint
+    - paralleltest # Allow missing t.Parallel() in tests
+    - revive # Allow flexible code style conventions
+    - tagliatelle # Allow json(camel)
+    - testpackage # Allow not having a test package
+    - varnamelen # Allow short var names
+    - wsl # Deprecated
+  settings:
+    cyclop:
+      max-complexity: 15
+    goheader:
+      values:
+        regexp:
+          YEAR: 202[4-5]
+      template: |-
+        Copyright AGNTCY Contributors (https://github.com/agntcy)
+        SPDX-License-Identifier: Apache-2.0
+    gomoddirectives:
+      replace-allow-list:
+        - github.com/agntcy/dirhub/backport/api
+      replace-local: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+        path: types/adapters/record_oasfv.*\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
