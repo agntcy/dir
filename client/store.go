@@ -287,7 +287,10 @@ func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 	for {
 		select {
 		case err := <-result.ErrCh():
+			// If any error occurs, return immediately
 			return err
+		case <-result.ResCh():
+			// We don't expect any results, just confirmations
 		case <-result.DoneCh():
 			return nil
 		}
