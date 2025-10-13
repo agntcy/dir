@@ -7,12 +7,44 @@ package streaming
 // errors, and completion signals. It provides a structured way to handle
 // streaming responses.
 //
-// NOTES:
-//   - For ClientStream, the ResCh can receive a single result before the DoneCh is closed.
-//   - For BidiStream, the ResCh can receive multiple results until the DoneCh is closed.
+// Callers that handle StreamResult should:
+//  1. Range over the ResCh to process incoming results.
+//  2. Range over the ErrCh to handle errors as they occur.
+//  3. Monitor the DoneCh to know when processing is complete.
+//
+// If the caller does not subscribe to these channels, the processing
+// goroutines will block until the channels are read or the context is cancelled.
+//
+// Example usage:
+//
+//	for {
+//	    select {
+//	    case res := <-result.ResCh():
+//	        // Process result
+//	    case err := <-result.ErrCh():
+//	        // Handle error
+//	    case <-result.DoneCh():
+//	        // Processing is done
+//	        // Exit loop
+//	        return
+//	    }
+//	}
 type StreamResult[OutT any] interface {
+	// ResCh returns a read-only channel for receiving results of type *OutT.
+	// More than one result can be sent before the DoneCh is closed.
+	//
+	// NOTES:
+	//   - For ClientStream, the ResCh can receive a single result before the DoneCh is closed.
+	//   - For BidiStream, the ResCh can receive multiple results until the DoneCh is closed.
 	ResCh() <-chan *OutT
+
+	// ErrCh returns a read-only channel for receiving errors encountered during processing.
+	// Errors are sent to this channel as they occur.
+	// More than one error can be sent before the DoneCh is closed.
 	ErrCh() <-chan error
+
+	// DoneCh returns a read-only channel that is closed when processing is complete.
+	// It is used to signal that no more results or errors will be sent.
 	DoneCh() <-chan struct{}
 }
 
