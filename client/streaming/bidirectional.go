@@ -11,7 +11,36 @@ import (
 	"sync"
 )
 
-// 2. Use context cancellation to stop processing early.
+// NewBidirectionalStreamProcessor handles concurrent bidirectional streaming.
+//
+// Pattern: Sender || Receiver (parallel goroutines)
+//
+// This processor implements true bidirectional streaming with concurrent send and receive operations.
+// It spawns two independent goroutines:
+//   - Sender: Continuously sends inputs from the input channel
+//   - Receiver: Continuously receives outputs and sends them to the output channel
+//
+// This pattern maximizes throughput by:
+//   - Eliminating round-trip latency between requests
+//   - Allowing the server to batch/buffer/pipeline operations
+//   - Fully utilizing network bandwidth
+//   - Enabling concurrent processing on both client and server
+//
+// This is useful when:
+//   - High performance and throughput are needed
+//   - Processing large batches of data
+//   - Server can process requests in parallel or batches
+//   - Responses can arrive in any order or timing
+//   - Network latency is significant
+//
+// Returns:
+//   - result: StreamResult containing result, error, and done channels
+//   - error: Immediate error if validation fails
+//
+// The caller should:
+//  1. Range over result channels to process outputs and errors
+//  2. Check if the processing is done
+//  3. Use context cancellation to stop processing early
 func NewBidiStreamProcessor[InT, OutT any](
 	ctx context.Context,
 	stream BidiStream[InT, OutT],

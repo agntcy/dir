@@ -22,6 +22,13 @@ type ClientStream[InT, OutT any] interface {
 	grpc.ClientStream
 }
 
+// StreamResult encapsulates the channels for receiving streaming results,
+// errors, and completion signals. It provides a structured way to handle
+// streaming responses.
+//
+// NOTES:
+//   - For ClientStream, the ResCh can receive a single result before the DoneCh is closed.
+//   - For BidiStream, the ResCh can receive multiple results until the DoneCh is closed.
 type StreamResult[OutT any] interface {
 	ResCh() <-chan *OutT
 	ErrCh() <-chan error

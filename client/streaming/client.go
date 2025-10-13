@@ -9,7 +9,26 @@ import (
 	"fmt"
 )
 
-// 2. Use context cancellation to stop processing early.
+// NewClientStreamProcessor handles client streaming pattern (many inputs → one output).
+//
+// Pattern: Send → Send → Send → CloseAndRecv()
+//
+// This processor is ideal for operations where multiple requests are sent to the server,
+// and a single final response is received after all requests have been processed.
+//
+// The processor:
+//   - Sends all inputs from the channel to the stream
+//   - Closes the send side when input channel closes
+//   - Receives the final response via CloseAndRecv()
+//
+// Returns:
+//   - result: StreamResult containing result, error, and done channels
+//   - error: Immediate error if validation fails
+//
+// The caller should:
+//  1. Range over result channels to process outputs and errors
+//  2. Check if the processing is done
+//  3. Use context cancellation to stop processing early
 func NewClientStreamProcessor[InT, OutT any](
 	ctx context.Context,
 	stream ClientStream[InT, OutT],
