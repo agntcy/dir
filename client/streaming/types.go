@@ -5,6 +5,15 @@ package streaming
 
 import "google.golang.org/grpc"
 
+// BidiStream defines the interface for bidirectional streaming.
+// This pattern allows sending and receiving messages independently.
+type BidiStream[InT, OutT any] interface {
+	Send(*InT) error
+	Recv() (*OutT, error)
+	CloseSend() error
+	grpc.ClientStream
+}
+
 // ClientStream defines the interface for client streaming (many inputs → one output).
 // This pattern is used when sending multiple requests and receiving a single response.
 type ClientStream[InT, OutT any] interface {
@@ -13,23 +22,40 @@ type ClientStream[InT, OutT any] interface {
 	grpc.ClientStream
 }
 
-// BidirectionalStream defines the interface for bidirectional streaming.
-// This pattern allows sending and receiving messages independently.
-type BidirectionalStream[InT, OutT any] interface {
-	Send(*InT) error
-	Recv() (*OutT, error)
-	CloseSend() error
-	grpc.ClientStream
+type StreamResult[OutT any] interface {
+	ResCh() <-chan *OutT
+	ErrCh() <-chan error
+	DoneCh() <-chan struct{}
 }
 
-// ClientReceiverFn is a callback function for handling the final response in client streaming.
-// It receives the output and any error that occurred.
-type ClientReceiverFn[OutT any] func(*OutT, error) error
+type result[OutT any] struct {
+	resCh  chan *OutT
+	errCh  chan error
+	doneCh chan struct{}
+}
 
-// SequentialReceiverFn is a callback function for handling request-response pairs in sequential streaming.
-// It receives the input that was sent, the corresponding output, and any error.
-type SequentialReceiverFn[InT, OutT any] func(*InT, *OutT, error) error
+func newResult[OutT any]() *result[OutT] {
+	return &result[OutT]{
+		resCh:  make(chan *OutT),
+		errCh:  make(chan error, 1),
+		doneCh: make(chan struct{}),
+	}
+}
 
-// OutputValidatorFn is an optional function for validating outputs in bidirectional streaming.
-// It receives an output and returns an error if validation fails.
-type OutputValidatorFn[OutT any] func(*OutT) error
+func (r *result[OutT]) ResCh() <-chan *OutT {
+	return r.resCh
+}
+
+func (r *result[OutT]) ErrCh() <-chan error {
+	return r.errCh
+}
+
+func (r *result[OutT]) DoneCh() <-chan struct{} {
+	return r.doneCh
+}
+
+func (r *result[OutT]) close() {
+	close(r.resCh)
+	close(r.errCh)
+	close(r.doneCh)
+}

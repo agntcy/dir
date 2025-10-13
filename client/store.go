@@ -46,61 +46,14 @@ func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.Recor
 // PullStream retrieves multiple records efficiently using a single bidirectional stream.
 // This method is ideal for batch operations and takes full advantage of gRPC streaming.
 // The input channel allows you to send record refs as they become available.
-//
-// Uses concurrent bidirectional streaming pattern (Sender || Receiver) which maximizes
-// throughput by:
-// - Sending all requests without waiting for responses
-// - Receiving responses as they become available
-// - Fully utilizing network bandwidth
-// - Enabling server-side batching and pipelining
-//
-// Returns two channels:
-// - A channel of records as they are received from the server
-// - A channel for errors (buffered, will contain at most one error)
-//
-// Usage:
-//
-//	recordsCh, errCh := client.PullStream(ctx, refsCh)
-//	for record := range recordsCh {
-//	    // process record
-//	}
-//	if err := <-errCh; err != nil {
-//	    // handle error
-//	}
-func (c *Client) PullStream(
-	ctx context.Context,
-	recordRefs <-chan *corev1.RecordRef,
-) (<-chan *corev1.Record, <-chan error) {
-	// Create streaming client
+func (c *Client) PullStream(ctx context.Context, refsCh <-chan *corev1.RecordRef) (streaming.StreamResult[corev1.Record], error) {
 	stream, err := c.StoreServiceClient.Pull(ctx)
 	if err != nil {
-		recordsCh := make(chan *corev1.Record)
-		errCh := make(chan error, 1)
-		errCh <- fmt.Errorf("failed to create pull stream: %w", err)
-		close(recordsCh)
-		close(errCh)
-		return recordsCh, errCh
+		return nil, fmt.Errorf("failed to create pull stream: %w", err)
 	}
 
-	// Use the generic bidirectional stream processor with record validation
-	recordsCh, errCh, validationErr := streaming.NewBidirectionalStreamProcessor(
-		ctx,
-		stream,
-		recordRefs,
-		func(record *corev1.Record) error {
-			if record == nil {
-				return errors.New("received nil record from stream")
-			}
-			return nil
-		},
-	)
-
-	// If validation setup failed, return the error immediately
-	if validationErr != nil {
-		return recordsCh, errCh
-	}
-
-	return recordsCh, errCh
+	//nolint:wrapcheck
+	return streaming.NewBidiStreamProcessor(ctx, stream, refsCh)
 }
 
 // Pull retrieves a single record from the store using its reference.
@@ -118,78 +71,29 @@ func (c *Client) Pull(ctx context.Context, recordRef *corev1.RecordRef) (*corev1
 	return records[0], nil
 }
 
-// PullStreamWithCallback retrieves multiple records and processes each with the callback.
-// This is the most efficient method for processing large batches of records,
-// as it streams both input and output while processing records as they arrive.
-//
-// Uses sequential streaming pattern (Send → Recv → Send → Recv).
-// For high-performance scenarios with many records, consider using PullStream directly
-// which uses concurrent bidirectional streaming.
-//
-// The method will return the first error encountered, either from the stream or from the callback.
-// Processing stops immediately when an error occurs.
-func (c *Client) PullStreamWithCallback(
-	ctx context.Context,
-	recordRefs <-chan *corev1.RecordRef,
-	receiverFn streaming.SequentialReceiverFn[corev1.RecordRef, corev1.Record],
-) (<-chan struct{}, error) {
-	stream, err := c.StoreServiceClient.Pull(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pull stream: %w", err)
-	}
-
-	//nolint:wrapcheck
-	return streaming.NewSequentialStreamProcessor(ctx, stream, recordRefs, receiverFn)
-}
-
 // PullBatch retrieves multiple records in a single stream for efficiency.
 // This is a convenience method that accepts a slice and returns a slice,
 // built on top of the streaming implementation for consistency.
 func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
-	if len(recordRefs) == 0 {
-		return nil, nil
+	// Use channel to communicate error safely (no race condition)
+	result, err := c.PullStream(ctx, streaming.SliceToChan(ctx, recordRefs))
+	if err != nil {
+		return nil, err
 	}
 
-	// Convert slice to channel with context awareness
-	refsCh := make(chan *corev1.RecordRef, len(recordRefs))
-	go func() {
-		defer close(refsCh)
+	// Check for results
+	var errs error
 
-		for _, ref := range recordRefs {
-			select {
-			case refsCh <- ref:
-			case <-ctx.Done():
-				// Context cancelled, stop sending
-				return
-			}
-		}
-	}()
-
-	// Get streaming channels
-	recordsCh, errCh := c.PullStream(ctx, refsCh)
-
-	// Collect all records
-	records := make([]*corev1.Record, 0, len(recordRefs))
+	var metas []*corev1.Record
 
 	for {
 		select {
-		case record, ok := <-recordsCh:
-			if !ok {
-				// Stream closed, check for errors
-				if err := <-errCh; err != nil {
-					return nil, err
-				}
-
-				return records, nil
-			}
-
-			records = append(records, record)
-
-		case err := <-errCh:
-			return nil, err
-
-		case <-ctx.Done():
-			return nil, ctx.Err()
+		case err := <-result.ErrCh():
+			errs = errors.Join(errs, err)
+		case resp := <-result.ResCh():
+			metas = append(metas, resp)
+		case <-result.DoneCh():
+			return metas, errs
 		}
 	}
 }
@@ -327,68 +231,26 @@ func (c *Client) Lookup(ctx context.Context, recordRef *corev1.RecordRef) (*core
 
 // LookupBatch retrieves metadata for multiple records in a single stream for efficiency.
 func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.RecordMeta, error) {
-	if len(recordRefs) == 0 {
-		return nil, nil
-	}
-
-	// Convert slice to channel with context awareness
-	refChan := make(chan *corev1.RecordRef, len(recordRefs))
-	go func() {
-		defer close(refChan)
-
-		for _, ref := range recordRefs {
-			select {
-			case refChan <- ref:
-			case <-ctx.Done():
-				// Context cancelled, stop sending
-				return
-			}
-		}
-	}()
-
-	// Use channels to communicate results safely (no race conditions)
-	metaCh := make(chan *corev1.RecordMeta, len(recordRefs))
-	errCh := make(chan error, 1)
-
-	doneCh, err := c.LookupStream(ctx, refChan, func(_ *corev1.RecordRef, meta *corev1.RecordMeta, err error) error {
-		if err != nil {
-			// Send error to channel (non-blocking, buffered channel)
-			select {
-			case errCh <- err:
-			default:
-			}
-
-			return err
-		}
-
-		// Send metadata to channel (thread-safe)
-		select {
-		case metaCh <- meta:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-
-		return nil
-	})
+	// Use channel to communicate error safely (no race condition)
+	result, err := c.LookupStream(ctx, streaming.SliceToChan(ctx, recordRefs))
 	if err != nil {
 		return nil, err
 	}
 
-	<-doneCh
-	close(metaCh)
+	// Check for results
+	var errs error
 
-	// Collect all metadata from channel (thread-safe)
-	metas := make([]*corev1.RecordMeta, 0, len(recordRefs))
-	for meta := range metaCh {
-		metas = append(metas, meta)
-	}
+	var metas []*corev1.RecordMeta
 
-	// Check for errors
-	select {
-	case err := <-errCh:
-		return metas, err
-	default:
-		return metas, nil
+	for {
+		select {
+		case err := <-result.ErrCh():
+			errs = errors.Join(errs, err)
+		case resp := <-result.ResCh():
+			metas = append(metas, resp)
+		case <-result.DoneCh():
+			return metas, errs
+		}
 	}
 }
 
@@ -398,14 +260,14 @@ func (c *Client) LookupBatch(ctx context.Context, recordRefs []*corev1.RecordRef
 //
 // Uses sequential streaming pattern (Send → Recv → Send → Recv) which ensures
 // strict ordering of request-response pairs.
-func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.RecordRef, receiverFn streaming.SequentialReceiverFn[corev1.RecordRef, corev1.RecordMeta]) (<-chan struct{}, error) {
+func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.RecordRef) (streaming.StreamResult[corev1.RecordMeta], error) {
 	stream, err := c.StoreServiceClient.Lookup(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create lookup stream: %w", err)
 	}
 
 	//nolint:wrapcheck
-	return streaming.NewSequentialStreamProcessor(ctx, stream, refsCh, receiverFn)
+	return streaming.NewBidiStreamProcessor(ctx, stream, refsCh)
 }
 
 // Delete removes a record from the store using its reference.
@@ -415,62 +277,33 @@ func (c *Client) Delete(ctx context.Context, recordRef *corev1.RecordRef) error 
 
 // DeleteBatch removes multiple records from the store in a single stream for efficiency.
 func (c *Client) DeleteBatch(ctx context.Context, recordRefs []*corev1.RecordRef) error {
-	if len(recordRefs) == 0 {
-		return nil
-	}
-
-	// Convert slice to channel with context awareness
-	refChan := make(chan *corev1.RecordRef, len(recordRefs))
-	go func() {
-		defer close(refChan)
-
-		for _, ref := range recordRefs {
-			select {
-			case refChan <- ref:
-			case <-ctx.Done():
-				// Context cancelled, stop sending
-				return
-			}
-		}
-	}()
-
 	// Use channel to communicate error safely (no race condition)
-	errCh := make(chan error, 1)
-
-	doneCh, err := c.DeleteStream(ctx, refChan, func(_ *emptypb.Empty, err error) error {
-		// Send error to channel (non-blocking, buffered channel)
-		select {
-		case errCh <- err:
-		default:
-		}
-
-		return err
-	})
+	result, err := c.DeleteStream(ctx, streaming.SliceToChan(ctx, recordRefs))
 	if err != nil {
 		return err
 	}
 
-	<-doneCh
-
-	// Retrieve error from channel (if any was sent)
-	select {
-	case err := <-errCh:
-		return err
-	default:
-		return nil
+	// Check for results
+	for {
+		select {
+		case err := <-result.ErrCh():
+			return err
+		case <-result.DoneCh():
+			return nil
+		}
 	}
 }
 
 // DeleteStream provides efficient streaming delete operations using channels.
 // Record references are sent as they become available and delete confirmations are returned as they're processed.
 // This method maintains a single gRPC stream for all operations, dramatically improving efficiency.
-func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordRef, receiverFn streaming.ClientReceiverFn[emptypb.Empty]) (<-chan struct{}, error) {
-	// Create gRPC stream once
+func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordRef) (streaming.StreamResult[emptypb.Empty], error) {
+	// Create gRPC stream
 	stream, err := c.StoreServiceClient.Delete(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create delete stream: %w", err)
 	}
 
 	//nolint:wrapcheck
-	return streaming.NewClientStreamProcessor(ctx, stream, refsCh, receiverFn)
+	return streaming.NewClientStreamProcessor(ctx, stream, refsCh)
 }

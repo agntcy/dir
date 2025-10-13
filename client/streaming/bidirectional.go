@@ -11,109 +11,80 @@ import (
 	"sync"
 )
 
-// NewBidirectionalStreamProcessor handles concurrent bidirectional streaming.
-//
-// Pattern: Sender || Receiver (parallel goroutines)
-//
-// This processor implements true bidirectional streaming with concurrent send and receive operations.
-// It spawns two independent goroutines:
-// - Sender: Continuously sends inputs from the input channel
-// - Receiver: Continuously receives outputs and sends them to the output channel
-//
-// This pattern maximizes throughput by:
-// - Eliminating round-trip latency between requests
-// - Allowing the server to batch/buffer/pipeline operations
-// - Fully utilizing network bandwidth
-// - Enabling concurrent processing on both client and server
-//
-// This is useful when:
-// - High performance and throughput are needed
-// - Processing large batches of data
-// - Server can process requests in parallel or batches
-// - Responses can arrive in any order or timing
-// - Network latency is significant
-//
-// Returns:
-// - outputCh: Channel of output items as they arrive from the server
-// - errCh: Buffered error channel (contains at most one error)
-// - error: Immediate error if validation fails
-//
-// The caller should:
-// 1. Range over outputCh to process results
-// 2. Check errCh after outputCh closes to detect errors
-// 3. Use context cancellation to stop processing early
-func NewBidirectionalStreamProcessor[InT, OutT any](
+// 2. Use context cancellation to stop processing early.
+func NewBidiStreamProcessor[InT, OutT any](
 	ctx context.Context,
-	stream BidirectionalStream[InT, OutT],
+	stream BidiStream[InT, OutT],
 	inputCh <-chan *InT,
-	validateOutput OutputValidatorFn[OutT],
-) (<-chan *OutT, <-chan error, error) {
-	outputCh := make(chan *OutT)
-	errCh := make(chan error, 1)
-
+) (StreamResult[OutT], error) {
 	// Validate inputs
 	if ctx == nil {
-		errCh <- errors.New("context is nil")
-		close(outputCh)
-		close(errCh)
-		return outputCh, errCh, errors.New("context is nil")
+		return nil, errors.New("context is nil")
 	}
 
 	if stream == nil {
-		errCh <- errors.New("stream is nil")
-		close(outputCh)
-		close(errCh)
-		return outputCh, errCh, errors.New("stream is nil")
+		return nil, errors.New("stream is nil")
 	}
 
 	if inputCh == nil {
-		errCh <- errors.New("input channel is nil")
-		close(outputCh)
-		close(errCh)
-		return outputCh, errCh, errors.New("input channel is nil")
+		return nil, errors.New("input channel is nil")
 	}
 
-	go func() {
-		defer close(outputCh)
-		defer close(errCh)
+	// Create result channels
+	result := newResult[OutT]()
 
-		// WaitGroup to coordinate sender and receiver goroutines
+	// Start goroutines
+	go func() {
+		// Close result once the goroutine ends
+		defer result.close()
+
+		// WaitGroup to coordinate send/receive goroutines
 		var wg sync.WaitGroup
 
-		// Error channel for internal goroutine communication
-		internalErrCh := make(chan error, 2)
-
-		// Sender goroutine: send all inputs
+		// Goroutine [Sender]: send all inputs from inputCh to the network,
+		// then close the send side of the stream.
+		// On error, stop and report the error.
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
 
+			// Close the send side when done sending inputs
+			//nolint:errcheck
+			defer stream.CloseSend()
+
+			// Send input to the stream
+			//
+			// Note: stream.Send() is blocking if the internal buffer is full.
+			// This provides backpressure to the sender goroutine
+			// which in turn provides backpressure to the input channel
+			// and upstream producers.
+			//
+			// If the context is cancelled, Send() will return an error,
+			// which terminates this goroutine.
 			for input := range inputCh {
-				// Check context before sending to avoid unnecessary work
-				select {
-				case <-ctx.Done():
-					internalErrCh <- ctx.Err()
-					return
-				default:
-				}
-
 				if err := stream.Send(input); err != nil {
-					internalErrCh <- fmt.Errorf("failed to send: %w", err)
+					result.errCh <- fmt.Errorf("failed to send: %w", err)
+
 					return
 				}
-			}
-
-			// Close the send side when done sending
-			if err := stream.CloseSend(); err != nil {
-				internalErrCh <- fmt.Errorf("failed to close send stream: %w", err)
 			}
 		}()
 
-		// Receiver goroutine: receive all outputs
+		// Goroutine [Receiver]: receive all responses from API and send them to outputCh.
+		// On error, stop and report the error.
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
 
+			// Receive output from the stream
+			//
+			// Note: stream.Recv() is blocking until a message is available or
+			// an error occurs. This provides natural pacing with the server.
+			//
+			// If the context is cancelled, Send() will return an error,
+			// which terminates this goroutine.
 			for {
 				output, err := stream.Recv()
 				if errors.Is(err, io.EOF) {
@@ -121,42 +92,19 @@ func NewBidirectionalStreamProcessor[InT, OutT any](
 				}
 
 				if err != nil {
-					internalErrCh <- fmt.Errorf("failed to receive: %w", err)
+					result.errCh <- fmt.Errorf("failed to receive: %w", err)
+
 					return
 				}
 
-				// Optional validation
-				if validateOutput != nil {
-					if err := validateOutput(output); err != nil {
-						internalErrCh <- fmt.Errorf("validation failed: %w", err)
-						return
-					}
-				}
-
-				select {
-				case outputCh <- output:
-				case <-ctx.Done():
-					internalErrCh <- ctx.Err()
-					return
-				}
+				// Send output to the output channel
+				result.resCh <- output
 			}
 		}()
 
-		// Wait for both goroutines to complete
+		// Wait for all goroutines to complete
 		wg.Wait()
-
-		// Collect the first error if any occurred
-		select {
-		case err := <-internalErrCh:
-			errCh <- err
-			// Drain any remaining error to avoid goroutine leak
-			select {
-			case <-internalErrCh:
-			default:
-			}
-		default:
-		}
 	}()
 
-	return outputCh, errCh, nil
+	return result, nil
 }
