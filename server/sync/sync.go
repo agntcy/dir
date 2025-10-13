@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/sync/config"
 	"github.com/agntcy/dir/server/sync/monitor"
 	synctypes "github.com/agntcy/dir/server/sync/types"
@@ -23,6 +24,7 @@ type Service struct {
 	store          types.StoreAPI
 	config         config.Config
 	monitorService *monitor.MonitorService
+	eventBus       *events.SafeEventBus
 
 	scheduler *Scheduler
 	workers   []*Worker
@@ -43,6 +45,7 @@ func New(db types.DatabaseAPI, store types.StoreAPI, opts types.APIOptions) (*Se
 		store:          store,
 		config:         opts.Config().Sync,
 		monitorService: monitorService,
+		eventBus:       opts.EventBus(),
 		stopCh:         make(chan struct{}),
 	}, nil
 }
@@ -60,7 +63,7 @@ func (s *Service) Start(ctx context.Context) error {
 	// Create and start workers
 	s.workers = make([]*Worker, s.config.WorkerCount)
 	for i := range s.config.WorkerCount {
-		s.workers[i] = NewWorker(i, s.db, s.store, workQueue, s.config.WorkerTimeout, s.monitorService)
+		s.workers[i] = NewWorker(i, s.db, s.store, workQueue, s.config.WorkerTimeout, s.monitorService, s.eventBus)
 	}
 
 	// Start scheduler

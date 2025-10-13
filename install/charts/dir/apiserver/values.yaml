@@ -113,6 +113,21 @@ config:
       username: ""
       password: ""
 
+  # Events configuration
+  events:
+    # Channel buffer size per subscriber
+    # Larger buffers allow subscribers to fall behind temporarily without dropping events
+    # Default: 100
+    subscriber_buffer_size: 100
+    
+    # Enable logging when events are dropped due to slow consumers
+    # Default: true
+    log_slow_consumers: true
+    
+    # Enable debug logging of all published events (verbose in production)
+    # Default: false
+    log_published_events: false
+
   # Publication configuration
   publication:
     # How frequently the scheduler checks for pending publications

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -21,6 +22,7 @@ type Client struct {
 	searchv1.SearchServiceClient
 	storev1.SyncServiceClient
 	signv1.SignServiceClient
+	eventsv1.EventServiceClient
 
 	config     *Config
 	authClient *workloadapi.Client
@@ -50,6 +52,7 @@ func New(opts ...Option) (*Client, error) {
 		SearchServiceClient:  searchv1.NewSearchServiceClient(client),
 		SyncServiceClient:    storev1.NewSyncServiceClient(client),
 		SignServiceClient:    signv1.NewSignServiceClient(client),
+		EventServiceClient:   eventsv1.NewEventServiceClient(client),
 		config:               options.config,
 		authClient:           options.authClient,
 	}, nil

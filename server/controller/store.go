@@ -12,6 +12,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
@@ -24,15 +25,17 @@ var storeLogger = logging.Logger("controller/store")
 
 type storeCtrl struct {
 	storev1.UnimplementedStoreServiceServer
-	store types.StoreAPI
-	db    types.DatabaseAPI
+	store    types.StoreAPI
+	db       types.DatabaseAPI
+	eventBus *events.SafeEventBus
 }
 
-func NewStoreController(store types.StoreAPI, db types.DatabaseAPI) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, eventBus *events.SafeEventBus) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
 		db:                              db,
+		eventBus:                        eventBus,
 	}
 }
 
@@ -253,6 +256,11 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 	}
 
 	storeLogger.Debug("Referrer stored successfully", "cid", request.GetRecordRef().GetCid(), "type", request.GetReferrer().GetType())
+
+	// Emit RECORD_SIGNED event if this is a signature referrer
+	if request.GetReferrer().GetType() == corev1.SignatureReferrerType {
+		s.eventBus.RecordSigned(request.GetRecordRef().GetCid(), "client")
+	}
 
 	return &storev1.PushReferrerResponse{
 		Success: true,

@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/Portshift/go-utils/healthz"
+	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -22,6 +23,7 @@ import (
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/database"
+	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
@@ -42,6 +44,7 @@ type Server struct {
 	store              types.StoreAPI
 	routing            types.RoutingAPI
 	database           types.DatabaseAPI
+	eventService       *events.Service
 	syncService        *sync.Service
 	authnService       *authn.Service
 	authzService       *authz.Service
@@ -84,6 +87,13 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Load options
 	options := types.NewOptions(cfg)
 	serverOpts := []grpc.ServerOption{}
+
+	// Create event service first (so other services can emit events)
+	eventService := events.New()
+	safeEventBus := events.NewSafeEventBus(eventService.Bus())
+
+	// Add event bus to options for other services
+	options = options.WithEventBus(safeEventBus)
 
 	// Create APIs
 	storeAPI, err := store.New(options) //nolint:staticcheck
@@ -140,7 +150,8 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	grpcServer := grpc.NewServer(serverOpts...)
 
 	// Register APIs
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
+	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
+	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus()))
 	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI))
@@ -155,6 +166,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		store:              storeAPI,
 		routing:            routingAPI,
 		database:           databaseAPI,
+		eventService:       eventService,
 		syncService:        syncService,
 		authnService:       authnService,
 		authzService:       authzService,
@@ -173,6 +185,13 @@ func (s Server) Routing() types.RoutingAPI { return s.routing }
 func (s Server) Database() types.DatabaseAPI { return s.database }
 
 func (s Server) Close() {
+	// Stop event service
+	if s.eventService != nil {
+		if err := s.eventService.Stop(); err != nil {
+			logger.Error("Failed to stop event service", "error", err)
+		}
+	}
+
 	// Stop routing service (closes GossipSub, p2p server, DHT)
 	if s.routing != nil {
 		if err := s.routing.Stop(); err != nil {
