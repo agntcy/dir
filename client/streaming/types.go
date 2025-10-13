@@ -43,7 +43,7 @@ type result[OutT any] struct {
 
 func newResult[OutT any]() *result[OutT] {
 	return &result[OutT]{
-		resCh:  make(chan *OutT),
+		resCh:  make(chan *OutT, 1),
 		errCh:  make(chan error, 1),
 		doneCh: make(chan struct{}),
 	}
