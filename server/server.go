@@ -231,7 +231,7 @@ func (s Server) start(ctx context.Context) error {
 	}
 
 	// Create a listener on TCP port
-	listen, err := net.Listen("tcp", s.Options().Config().ListenAddress)
+	listen, err := net.Listen("tcp", s.Options().Config().ListenAddress) //nolint:noctx
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", s.Options().Config().ListenAddress, err)
 	}
@@ -241,6 +241,7 @@ func (s Server) start(ctx context.Context) error {
 	go func() {
 		// Start health check server
 		s.healthzServer.Start()
+
 		s.healthzServer.SetIsReady(true)
 		defer s.healthzServer.SetIsReady(false)
 

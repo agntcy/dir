@@ -156,7 +156,9 @@ func runListSyncs(cmd *cobra.Command) error {
 			return fmt.Errorf("context cancelled while listing syncs: %w", cmd.Context().Err())
 		}
 	}
+
 done:
+
 	return presenter.PrintMessage(cmd, "syncs", "Sync results", results)
 }
 

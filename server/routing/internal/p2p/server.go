@@ -132,6 +132,7 @@ func start(ctx context.Context, opts *options) <-chan status {
 		}
 
 		defer host.Close()
+
 		logger.Debug("Host created", "id", host.ID(), "addresses", host.Addrs())
 
 		// Enable mDNS for local network peer discovery

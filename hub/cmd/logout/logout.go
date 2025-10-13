@@ -36,12 +36,13 @@ func NewCommand(opts *options.HubOptions) *cobra.Command {
 			}
 			// Load session store for removal
 			sessionStore := sessionstore.NewFileSessionStore(fileUtils.GetSessionFilePath())
-			oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
+			oktaClient := okta.NewClient(currentSession.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient())
 
 			err := auth.Logout(opts, currentSession, sessionStore, oktaClient)
 			if err != nil {
 				return fmt.Errorf("failed to logout: %w", err)
 			}
+
 			fmt.Fprintln(cmd.OutOrStdout(), "Successfully logged out from Agent Hub")
 
 			return nil

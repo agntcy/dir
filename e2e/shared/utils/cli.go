@@ -358,6 +358,7 @@ func (c *CommandBuilder) ShouldEventuallyContain(substring string, timeout time.
 		if err != nil {
 			return ""
 		}
+
 		finalOutput = output
 
 		return output

@@ -21,6 +21,7 @@ func TestNetworkE2E(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
 	var err error
+
 	cfg, err = config.LoadConfig()
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

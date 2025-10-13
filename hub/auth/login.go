@@ -40,9 +40,9 @@ func Login(
 	errCh := make(chan error, 1)
 
 	handler := webserver.NewHandler(&webserver.Config{
-		ClientID:           currentSession.AuthConfig.ClientID,
-		IdpFrontendURL:     currentSession.AuthConfig.IdpFrontendAddress,
-		IdpBackendURL:      currentSession.AuthConfig.IdpBackendAddress,
+		ClientID:           currentSession.ClientID,
+		IdpFrontendURL:     currentSession.IdpFrontendAddress,
+		IdpBackendURL:      currentSession.IdpBackendAddress,
 		LocalWebserverPort: config.LocalWebserverPort,
 		OktaClient:         oktaClient,
 		SessionStore:       webserverSession,

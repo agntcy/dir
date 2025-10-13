@@ -33,12 +33,12 @@ func OpenBrowserForLogin(currentSession *sessionstore.HubSession, webserverSessi
 
 	if authUtils.IsIAMAuthConfig(currentSession) {
 		params.Add("redirectUri", fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort))
-		loginPageWithRedirect = fmt.Sprintf("%s/%s/%s?%s", currentSession.AuthConfig.IdpFrontendAddress, currentSession.AuthConfig.IdpProductID, loginPath, params.Encode())
+		loginPageWithRedirect = fmt.Sprintf("%s/%s/%s?%s", currentSession.IdpFrontendAddress, currentSession.IdpProductID, loginPath, params.Encode())
 	} else {
 		nonce, _ := oktaUtils.GenerateNonce()
 
 		loginPageWithRedirect = oktaClient.AuthorizeURL(&okta.AuthorizeRequest{
-			ClientID:      currentSession.AuthConfig.ClientID,
+			ClientID:      currentSession.ClientID,
 			RedirectURI:   fmt.Sprintf("http://localhost:%d", config.LocalWebserverPort),
 			RequestID:     "%7B%22url%22%3A%22/explore%22%7D",
 			S256Challenge: webserverSession.Challenge,

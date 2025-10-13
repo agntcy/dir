@@ -27,6 +27,7 @@ type options struct {
 func WithEnvConfig() Option {
 	return func(opts *options) error {
 		var err error
+
 		opts.config, err = LoadConfig()
 
 		return err

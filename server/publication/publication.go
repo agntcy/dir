@@ -67,6 +67,7 @@ func (s *Service) Start(ctx context.Context) error {
 
 	go func() {
 		defer s.wg.Done()
+
 		s.scheduler.Run(ctx, s.stopCh)
 	}()
 
@@ -76,6 +77,7 @@ func (s *Service) Start(ctx context.Context) error {
 
 		go func(w *Worker) {
 			defer s.wg.Done()
+
 			w.Run(ctx, s.stopCh)
 		}(worker)
 	}

@@ -82,7 +82,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repository any) (*
 		Annotations: parsedAgent.GetAnnotations(),
 	}
 
-	stream, err := c.AgentDirServiceClient.PushRecord(ctx)
+	stream, err := c.PushRecord(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create push stream: %w", err)
 	}
@@ -147,7 +147,7 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repository any) (*
 
 // PullAgent downloads an agent from the hub in chunks and returns the agent data or an error.
 func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullRecordRequest) ([]byte, error) {
-	stream, err := c.AgentDirServiceClient.PullRecord(ctx, request)
+	stream, err := c.PullRecord(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pull stream: %w", err)
 	}
@@ -235,7 +235,7 @@ func (c *client) ListAPIKeys(ctx context.Context, organization any) (*v1alpha1.L
 		return nil, fmt.Errorf("unknown organization type: %T", organization)
 	}
 
-	resp, err := c.ApiKeyServiceClient.ListApiKey(ctx, req)
+	resp, err := c.ListApiKey(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list API keys: %w", err)
 	}

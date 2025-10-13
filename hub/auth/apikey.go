@@ -53,7 +53,7 @@ func retrieveAccessTokenWithAPIKey(ctx context.Context, session *sessionstore.Hu
 		return errors.New("no session provided")
 	}
 
-	idpClient := idp.NewClient(session.AuthConfig.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient(), session.AuthConfig.APIKeyClientID)
+	idpClient := idp.NewClient(session.IdpIssuerAddress, httpUtils.CreateSecureHTTPClient(), session.APIKeyClientID)
 
 	var err error
 

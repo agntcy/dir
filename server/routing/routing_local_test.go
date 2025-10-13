@@ -7,7 +7,6 @@ package routing
 import (
 	"context"
 	"errors"
-	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -158,6 +157,7 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 		t.Run("Valid query: "+k, func(t *testing.T) {
 			// Convert label to RecordQuery
 			var queries []*routingv1.RecordQuery
+
 			if strings.HasPrefix(k, "/skills/") {
 				skillName := strings.TrimPrefix(k, "/skills/")
 				queries = append(queries, &routingv1.RecordQuery{
@@ -323,7 +323,7 @@ func Benchmark_RouteLocal(b *testing.B) {
 	store := newMockStore()
 	badgerDatastore := newBadgerDatastore(b)
 	inMemoryDatastore := newInMemoryDatastore(b)
-	localLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	localLogger = slog.New(slog.DiscardHandler)
 
 	badgerRouter := newLocal(store, badgerDatastore, testPeerID)
 	inMemoryRouter := newLocal(store, inMemoryDatastore, testPeerID)
@@ -350,6 +350,7 @@ func Benchmark_RouteLocal(b *testing.B) {
 
 	b.Run("Badger DB List", func(b *testing.B) {
 		adapter := adapters.NewRecordAdapter(record)
+
 		_ = badgerRouter.Publish(b.Context(), adapter)
 		for b.Loop() {
 			_, err := badgerRouter.List(b.Context(), &routingv1.ListRequest{
@@ -375,6 +376,7 @@ func Benchmark_RouteLocal(b *testing.B) {
 
 	b.Run("In memory DB List", func(b *testing.B) {
 		adapter := adapters.NewRecordAdapter(record)
+
 		_ = inMemoryRouter.Publish(b.Context(), adapter)
 		for b.Loop() {
 			_, err := inMemoryRouter.List(b.Context(), &routingv1.ListRequest{
