@@ -5,30 +5,36 @@ package config
 
 import (
 	"errors"
-	"fmt"
 )
 
-// AuthMode specifies the authentication mode (jwt or x509).
-type AuthMode string
+type AuthModeX509 struct {
+	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-const (
-	AuthModeJWT  AuthMode = "jwt"
-	AuthModeX509 AuthMode = "x509"
-)
+	// mTLS listen address (defaults to :8890)
+	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
+}
+
+type AuthModeJWT struct {
+	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
+	// TLS listen address (defaults to :8091)
+	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
+
+	// Expected audiences for JWT validation
+	Audiences []string `json:"audiences,omitempty" mapstructure:"audiences"`
+}
 
 // Config contains configuration for authentication services.
 type Config struct {
 	// Indicates if authentication is enabled
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-	// Authentication mode: "jwt" or "x509"
-	Mode AuthMode `json:"mode,omitempty" mapstructure:"mode"`
-
 	// SPIFFE socket path for authentication
 	SocketPath string `json:"socket_path,omitempty" mapstructure:"socket_path"`
 
-	// Expected audiences for JWT validation (only used in JWT mode)
-	Audiences []string `json:"audiences,omitempty" mapstructure:"audiences"`
+	X509 AuthModeX509 `json:"x509,omitempty" mapstructure:"x509"`
+
+	JWT AuthModeJWT `json:"jwt,omitempty" mapstructure:"jwt"`
 }
 
 func (c *Config) Validate() error {
@@ -40,15 +46,14 @@ func (c *Config) Validate() error {
 		return errors.New("socket path is required")
 	}
 
-	switch c.Mode {
-	case AuthModeJWT:
-		if len(c.Audiences) == 0 {
+	if c.X509.Enabled {
+		// No additional validation required for X.509
+	}
+
+	if c.JWT.Enabled {
+		if len(c.JWT.Audiences) == 0 {
 			return errors.New("at least one audience is required for JWT mode")
 		}
-	case AuthModeX509:
-		// No additional validation required for X.509
-	default:
-		return fmt.Errorf("invalid auth mode: %s (must be 'jwt' or 'x509')", c.Mode)
 	}
 
 	return nil
