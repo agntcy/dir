@@ -17,7 +17,7 @@ type ClientStream[InT, OutT any] interface {
 	CloseSend() error
 }
 
-// NewClientStreamProcessor handles client streaming pattern (many inputs → one output).
+// ProcessClientStream handles client streaming pattern (many inputs → one output).
 //
 // Pattern: Send → Send → Send → CloseAndRecv()
 //
@@ -37,7 +37,7 @@ type ClientStream[InT, OutT any] interface {
 //  1. Range over result channels to process outputs and errors
 //  2. Check if the processing is done
 //  3. Use context cancellation to stop processing early
-func NewClientStreamProcessor[InT, OutT any](
+func ProcessClientStream[InT, OutT any](
 	ctx context.Context,
 	stream ClientStream[InT, OutT],
 	inputCh <-chan *InT,

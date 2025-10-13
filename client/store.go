@@ -53,7 +53,7 @@ func (c *Client) PullStream(ctx context.Context, refsCh <-chan *corev1.RecordRef
 	}
 
 	//nolint:wrapcheck
-	return streaming.NewBidiStreamProcessor(ctx, stream, refsCh)
+	return streaming.ProcessBidiStream(ctx, stream, refsCh)
 }
 
 // Pull retrieves a single record from the store using its reference.
@@ -267,7 +267,7 @@ func (c *Client) LookupStream(ctx context.Context, refsCh <-chan *corev1.RecordR
 	}
 
 	//nolint:wrapcheck
-	return streaming.NewBidiStreamProcessor(ctx, stream, refsCh)
+	return streaming.ProcessBidiStream(ctx, stream, refsCh)
 }
 
 // Delete removes a record from the store using its reference.
@@ -305,5 +305,5 @@ func (c *Client) DeleteStream(ctx context.Context, refsCh <-chan *corev1.RecordR
 	}
 
 	//nolint:wrapcheck
-	return streaming.NewClientStreamProcessor(ctx, stream, refsCh)
+	return streaming.ProcessClientStream(ctx, stream, refsCh)
 }

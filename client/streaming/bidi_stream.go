@@ -19,7 +19,7 @@ type BidiStream[InT, OutT any] interface {
 	CloseSend() error
 }
 
-// NewBidirectionalStreamProcessor handles concurrent bidirectional streaming.
+// ProcessBidiStream handles concurrent bidirectional streaming.
 //
 // Pattern: Sender || Receiver (parallel goroutines)
 //
@@ -49,7 +49,7 @@ type BidiStream[InT, OutT any] interface {
 //  1. Range over result channels to process outputs and errors
 //  2. Check if the processing is done
 //  3. Use context cancellation to stop processing early
-func NewBidiStreamProcessor[InT, OutT any](
+func ProcessBidiStream[InT, OutT any](
 	ctx context.Context,
 	stream BidiStream[InT, OutT],
 	inputCh <-chan *InT,
