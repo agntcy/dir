@@ -3,25 +3,6 @@
 
 package streaming
 
-import "google.golang.org/grpc"
-
-// BidiStream defines the interface for bidirectional streaming.
-// This pattern allows sending and receiving messages independently.
-type BidiStream[InT, OutT any] interface {
-	Send(*InT) error
-	Recv() (*OutT, error)
-	CloseSend() error
-	grpc.ClientStream
-}
-
-// ClientStream defines the interface for client streaming (many inputs → one output).
-// This pattern is used when sending multiple requests and receiving a single response.
-type ClientStream[InT, OutT any] interface {
-	Send(*InT) error
-	CloseAndRecv() (*OutT, error)
-	grpc.ClientStream
-}
-
 // StreamResult encapsulates the channels for receiving streaming results,
 // errors, and completion signals. It provides a structured way to handle
 // streaming responses.
@@ -35,6 +16,7 @@ type StreamResult[OutT any] interface {
 	DoneCh() <-chan struct{}
 }
 
+// result is a concrete implementation of StreamResult.
 type result[OutT any] struct {
 	resCh  chan *OutT
 	errCh  chan error
@@ -61,6 +43,7 @@ func (r *result[OutT]) DoneCh() <-chan struct{} {
 	return r.doneCh
 }
 
+// close safely closes all channels in the result struct.
 func (r *result[OutT]) close() {
 	close(r.resCh)
 	close(r.errCh)

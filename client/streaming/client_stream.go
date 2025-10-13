@@ -7,7 +7,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"google.golang.org/grpc"
 )
+
+// ClientStream defines the interface for client streaming (many inputs → one output).
+// This pattern is used when sending multiple requests and receiving a single response.
+type ClientStream[InT, OutT any] interface {
+	Send(*InT) error
+	CloseAndRecv() (*OutT, error)
+	grpc.ClientStream
+}
 
 // NewClientStreamProcessor handles client streaming pattern (many inputs → one output).
 //
