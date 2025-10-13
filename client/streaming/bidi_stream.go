@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-
-	"google.golang.org/grpc"
 )
 
 // BidiStream defines the interface for bidirectional streaming.
@@ -19,7 +17,6 @@ type BidiStream[InT, OutT any] interface {
 	Send(*InT) error
 	Recv() (*OutT, error)
 	CloseSend() error
-	grpc.ClientStream
 }
 
 // NewBidirectionalStreamProcessor handles concurrent bidirectional streaming.

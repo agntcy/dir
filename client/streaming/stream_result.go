@@ -25,8 +25,8 @@ type result[OutT any] struct {
 
 func newResult[OutT any]() *result[OutT] {
 	return &result[OutT]{
-		resCh:  make(chan *OutT, 1),
-		errCh:  make(chan error, 1),
+		resCh:  make(chan *OutT),
+		errCh:  make(chan error),
 		doneCh: make(chan struct{}),
 	}
 }
@@ -43,9 +43,7 @@ func (r *result[OutT]) DoneCh() <-chan struct{} {
 	return r.doneCh
 }
 
-// close safely closes all channels in the result struct.
+// close closes only the control channel doneCh to signal completion.
 func (r *result[OutT]) close() {
-	close(r.resCh)
-	close(r.errCh)
 	close(r.doneCh)
 }
