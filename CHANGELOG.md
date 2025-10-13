@@ -9,39 +9,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Key Highlights
 
-This release focuses on enhanced security, networking improvements, developer tooling, 
-and operational stability, with significant advances in:
+This release delivers storage support for generic referrers,
+and improvements to security schema, network capabilities,
+operational stability, user/developer experience,
+with a focus on:
 
-**Enhanced Security & Authentication**
+**Security & Authentication**
 - JWT authentication and TLS communication support
 - Authenticated PeerID integration with libp2p transport
-- X.509 authentication improvements (renamed from mTLS)
 - Secure credential management for zot sync operations
 - OCI 1.1 referrers specification migration for signature attachments
 
-**Advanced Networking & Peer Connectivity**
+**Networking & Connectivity**
 - GossipSub implementation for efficient label announcements
-- Enhanced peer connectivity with AutoRelay, Hole Punching, and mDNS
+- Peer connectivity with AutoRelay, Hole Punching, and mDNS
 - Connection Manager implementation with removal of custom peer discovery
 - Improved routing search with better peer address handling
-- Locator-based remote record search capabilities
+- Locator-based record search capabilities across the network
 
-**Generic Record Support & Referrers**
+**Generic Record Referrers**
 - Support for storage and handling of generic record referrers
-- Enhanced referrer encoding across server and SDK components
-- Unified extensions to modules architecture
+- Referrer object encoding across server and SDK components
+- Application support via referrer (e.g., signatures, attestations)
 
 **Developer Experience & Tooling**
-- Streaming package for gRPC client functionality
-- Standardized CLI output formats and search command improvements
+- Streaming package for Golang gRPC client functionality
+- Standardized CLI output formats and command improvements
 - Reusable setup-dirctl GitHub Action for CI/CD workflows
-- Enhanced pipeline setup and project management tooling
-- Improved Helm chart support for multiple federation artifacts
 
 **Quality & Stability Improvements**
 - Comprehensive test suite enhancements including SPIRE tests
 - E2E network test stability with environment warm-up phases
-- Dependency updates including Go, golangci-lint, and libp2p
 - Bug fixes for API key formatting, file permissions, and documentation
 
 ### Compatibility Matrix
