@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/hub
 
-go 1.24.5
+go 1.25.2
 
 replace (
 	github.com/agntcy/dir/utils => ../utils

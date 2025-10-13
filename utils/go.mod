@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/utils
 
-go 1.24.5
+go 1.25.2
 
 require (
 	github.com/google/go-containerregistry v0.20.6
