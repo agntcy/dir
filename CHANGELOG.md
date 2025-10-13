@@ -9,10 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Key Highlights
 
-This release delivers storage support for generic referrers,
-and improvements to security schema, network capabilities,
-operational stability, user/developer experience,
-with a focus on:
+This release delivers improvements to application layer via generic referrers,
+security schema with JWT/TLS support, network capabilities, operational stability, 
+and developer experience, with a focus on:
 
 **Security & Authentication**
 - JWT authentication and TLS communication support
@@ -22,7 +21,6 @@ with a focus on:
 
 **Networking & Connectivity**
 - GossipSub implementation for efficient label announcements
-- Peer connectivity with AutoRelay, Hole Punching, and mDNS
 - Connection Manager implementation with removal of custom peer discovery
 - Improved routing search with better peer address handling
 - Locator-based record search capabilities across the network
