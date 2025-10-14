@@ -1111,6 +1111,7 @@ tasks:
     deps:
       - task: helm:gen
     vars:
+      AUTH_MODE: '{{ .AUTH_MODE | default "x509" }}' # or "jwt"
       DIR_TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN | default "dir.example" }}'
       DIRCTL_TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN | default "dirctl.example" }}'
     cmds:
@@ -1177,7 +1178,7 @@ tasks:
           config:
             authn:
               enabled: true
-              mode: "x509"
+              mode: "{{ .AUTH_MODE }}"
               audiences:
                 - "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
             authz:
@@ -1224,7 +1225,7 @@ tasks:
           - name: DIRECTORY_CLIENT_SERVER_ADDRESS
             value: ${DIR_SERVER_ADDRESS}
           - name: DIRECTORY_CLIENT_AUTH_MODE
-            value: "x509"
+            value: "{{ .AUTH_MODE }}"
           - name: DIRECTORY_CLIENT_JWT_AUDIENCE
             value: "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
         spire:
@@ -1251,7 +1252,7 @@ tasks:
           - name: DIRECTORY_CLIENT_SERVER_ADDRESS
             value: ${DIR_SERVER_ADDRESS}
           - name: DIRECTORY_CLIENT_AUTH_MODE
-            value: "x509"
+            value: "{{ .AUTH_MODE }}"
           - name: DIRECTORY_CLIENT_JWT_AUDIENCE
             value: "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
         spire:
