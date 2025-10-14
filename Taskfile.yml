@@ -1177,8 +1177,12 @@ tasks:
           config:
             authn:
               enabled: true
+              mode: "x509"
+              audiences:
+                - "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
             authz:
               enabled: true
+              trust_domain: {{ .DIR_TRUST_DOMAIN }}
           spire:
             enabled: true
             trustDomain: {{ .DIR_TRUST_DOMAIN }}
@@ -1219,6 +1223,10 @@ tasks:
         env:
           - name: DIRECTORY_CLIENT_SERVER_ADDRESS
             value: ${DIR_SERVER_ADDRESS}
+          - name: DIRECTORY_CLIENT_AUTH_MODE
+            value: "x509"
+          - name: DIRECTORY_CLIENT_JWT_AUDIENCE
+            value: "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
         spire:
           enabled: true
           trustDomain: {{ .DIR_TRUST_DOMAIN }}
@@ -1242,6 +1250,10 @@ tasks:
         env:
           - name: DIRECTORY_CLIENT_SERVER_ADDRESS
             value: ${DIR_SERVER_ADDRESS}
+          - name: DIRECTORY_CLIENT_AUTH_MODE
+            value: "x509"
+          - name: DIRECTORY_CLIENT_JWT_AUDIENCE
+            value: "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
         spire:
           enabled: true
           trustDomain: {{ .DIRCTL_TRUST_DOMAIN }}
