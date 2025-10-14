@@ -5,21 +5,24 @@ package types
 
 import "fmt"
 
+// ImporterFunc is a function that creates an Importer instance.
+type ImporterFunc func(config ImportConfig) (Importer, error)
+
 // Factory creates Importer instances based on registry type.
 type Factory struct {
-	importers map[RegistryType]func(config ImportConfig) (Importer, error)
+	importers map[RegistryType]ImporterFunc
 }
 
 // NewFactory creates a new importer factory.
 func NewFactory() *Factory {
 	return &Factory{
-		importers: make(map[RegistryType]func(config ImportConfig) (Importer, error)),
+		importers: make(map[RegistryType]ImporterFunc),
 	}
 }
 
-// Register registers a constructor function for a given registry type.
-func (f *Factory) Register(registryType RegistryType, constructor func(ImportConfig) (Importer, error)) {
-	f.importers[registryType] = constructor
+// Register registers a function that creates an Importer instance for a given registry type.
+func (f *Factory) Register(registryType RegistryType, fn ImporterFunc) {
+	f.importers[registryType] = fn
 }
 
 // Create creates a new Importer instance for the given configuration.
