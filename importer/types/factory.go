@@ -34,3 +34,20 @@ func (f *Factory) Create(config ImportConfig) (Importer, error) {
 
 	return constructor(config)
 }
+
+// RegisteredTypes returns a list of all registered registry types.
+func (f *Factory) RegisteredTypes() []RegistryType {
+	types := make([]RegistryType, 0, len(f.importers))
+	for t := range f.importers {
+		types = append(types, t)
+	}
+
+	return types
+}
+
+// IsRegistered checks if a registry type is registered.
+func (f *Factory) IsRegistered(registryType RegistryType) bool {
+	_, exists := f.importers[registryType]
+
+	return exists
+}
