@@ -6,16 +6,34 @@ package config
 import (
 	"errors"
 
-	"github.com/agntcy/dir/importer/types"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
-// Config represents importer configuration from CLI flags or config file.
+// RegistryType represents the type of external registry to import from.
+type RegistryType string
+
+const (
+	// RegistryTypeMCP represents the Model Context Protocol registry.
+	RegistryTypeMCP RegistryType = "mcp"
+
+	// FUTURE: RegistryTypeNANDA represents the NANDA registry.
+	// RegistryTypeNANDA RegistryType = "nanda".
+
+	// FUTURE:RegistryTypeA2A represents the Agent-to-Agent protocol registry.
+	// RegistryTypeA2A RegistryType = "a2a".
+)
+
+// ImportConfig contains configuration for an import operation.
 type Config struct {
-	RegistryType types.RegistryType
-	RegistryURL  string
-	Filters      map[string]string
-	BatchSize    int
-	DryRun       bool
+	RegistryType RegistryType      // Registry type identifier
+	RegistryURL  string            // Base URL of the registry
+	Filters      map[string]string // Registry-specific filters
+	Concurrency  int               // Number of concurrent workers (default: 5)
+	DryRun       bool              // If true, preview without actually importing
+
+	// StoreClient is the Store service client for pushing records.
+	// This should be provided by the CLI from the already initialized client.
+	StoreClient storev1.StoreServiceClient
 }
 
 // Validate checks if the configuration is valid.
@@ -28,8 +46,12 @@ func (c *Config) Validate() error {
 		return errors.New("registry URL is required")
 	}
 
-	if c.BatchSize <= 0 {
-		c.BatchSize = 10 // Set default batch size
+	if c.Concurrency <= 0 {
+		c.Concurrency = 5 // Set default concurrency
+	}
+
+	if c.StoreClient == nil {
+		return errors.New("store client is required")
 	}
 
 	return nil

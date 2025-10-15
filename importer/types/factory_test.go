@@ -8,6 +8,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/agntcy/dir/importer/config"
 )
 
 // mockImporter is a mock implementation for testing.
@@ -15,18 +17,18 @@ type mockImporter struct {
 	runCalled bool
 }
 
-func (m *mockImporter) Run(ctx context.Context, config ImportConfig) (*ImportResult, error) {
+func (m *mockImporter) Run(ctx context.Context, cfg config.Config) (*ImportResult, error) {
 	m.runCalled = true
 
 	return &ImportResult{TotalRecords: 10}, nil
 }
 
 // Mock constructor functions.
-func mockMCPConstructor(config ImportConfig) (Importer, error) {
+func mockMCPConstructor(cfg config.Config) (Importer, error) {
 	return &mockImporter{}, nil
 }
 
-func mockFailingConstructor(config ImportConfig) (Importer, error) {
+func mockFailingConstructor(cfg config.Config) (Importer, error) {
 	return nil, errors.New("construction failed")
 }
 
@@ -45,7 +47,7 @@ func TestFactory_Register(t *testing.T) {
 	factory := NewFactory()
 
 	// Register a constructor
-	factory.Register(RegistryTypeMCP, mockMCPConstructor)
+	factory.Register(config.RegistryTypeMCP, mockMCPConstructor)
 
 	// Verify it was registered
 	if len(factory.importers) != 1 {
@@ -56,14 +58,14 @@ func TestFactory_Register(t *testing.T) {
 func TestFactory_Create(t *testing.T) {
 	tests := []struct {
 		name          string
-		registryType  RegistryType
+		registryType  config.RegistryType
 		registerFirst bool
 		wantErr       bool
 		errContains   string
 	}{
 		{
 			name:          "successful creation",
-			registryType:  RegistryTypeMCP,
+			registryType:  config.RegistryTypeMCP,
 			registerFirst: true,
 			wantErr:       false,
 		},
@@ -84,12 +86,12 @@ func TestFactory_Create(t *testing.T) {
 				factory.Register(tt.registryType, mockMCPConstructor)
 			}
 
-			config := ImportConfig{
+			cfg := config.Config{
 				RegistryType: tt.registryType,
 				RegistryURL:  "https://example.com",
 			}
 
-			importer, err := factory.Create(config)
+			importer, err := factory.Create(cfg)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Factory.Create() error = %v, wantErr %v", err, tt.wantErr)
@@ -114,14 +116,14 @@ func TestFactory_Create(t *testing.T) {
 
 func TestFactory_CreateWithFailingConstructor(t *testing.T) {
 	factory := NewFactory()
-	factory.Register(RegistryTypeMCP, mockFailingConstructor)
+	factory.Register(config.RegistryTypeMCP, mockFailingConstructor)
 
-	config := ImportConfig{
-		RegistryType: RegistryTypeMCP,
+	cfg := config.Config{
+		RegistryType: config.RegistryTypeMCP,
 		RegistryURL:  "https://example.com",
 	}
 
-	importer, err := factory.Create(config)
+	importer, err := factory.Create(cfg)
 	if err == nil {
 		t.Error("Factory.Create() with failing constructor should return error")
 	}
@@ -139,13 +141,13 @@ func TestFactory_MultipleRegistrations(t *testing.T) {
 	factory := NewFactory()
 
 	// Register multiple types
-	factory.Register(RegistryTypeMCP, mockMCPConstructor)
+	factory.Register(config.RegistryTypeMCP, mockMCPConstructor)
 	factory.Register("custom", mockMCPConstructor)
 
 	// Verify both are accessible
-	config1 := ImportConfig{RegistryType: RegistryTypeMCP, RegistryURL: "https://mcp.example.com"}
+	cfg1 := config.Config{RegistryType: config.RegistryTypeMCP, RegistryURL: "https://mcp.example.com"}
 
-	importer1, err := factory.Create(config1)
+	importer1, err := factory.Create(cfg1)
 	if err != nil {
 		t.Errorf("Factory.Create() for MCP failed: %v", err)
 	}
@@ -154,9 +156,9 @@ func TestFactory_MultipleRegistrations(t *testing.T) {
 		t.Error("Factory.Create() for MCP returned nil")
 	}
 
-	config2 := ImportConfig{RegistryType: "custom", RegistryURL: "https://custom.example.com"}
+	cfg2 := config.Config{RegistryType: "custom", RegistryURL: "https://custom.example.com"}
 
-	importer2, err := factory.Create(config2)
+	importer2, err := factory.Create(cfg2)
 	if err != nil {
 		t.Errorf("Factory.Create() for custom failed: %v", err)
 	}
@@ -168,20 +170,20 @@ func TestFactory_MultipleRegistrations(t *testing.T) {
 
 func TestFactory_CreateMultipleInstancesWithDifferentURLs(t *testing.T) {
 	factory := NewFactory()
-	factory.Register(RegistryTypeMCP, mockMCPConstructor)
+	factory.Register(config.RegistryTypeMCP, mockMCPConstructor)
 
 	// Create two importers with different URLs
-	config1 := ImportConfig{
-		RegistryType: RegistryTypeMCP,
+	cfg1 := config.Config{
+		RegistryType: config.RegistryTypeMCP,
 		RegistryURL:  "https://registry1.example.com",
 	}
-	importer1, err1 := factory.Create(config1)
+	importer1, err1 := factory.Create(cfg1)
 
-	config2 := ImportConfig{
-		RegistryType: RegistryTypeMCP,
+	cfg2 := config.Config{
+		RegistryType: config.RegistryTypeMCP,
 		RegistryURL:  "https://registry2.example.com",
 	}
-	importer2, err2 := factory.Create(config2)
+	importer2, err2 := factory.Create(cfg2)
 
 	if err1 != nil || err2 != nil {
 		t.Errorf("Factory.Create() failed: err1=%v, err2=%v", err1, err2)

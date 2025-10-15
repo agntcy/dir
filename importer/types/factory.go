@@ -3,41 +3,45 @@
 
 package types
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/agntcy/dir/importer/config"
+)
 
 // ImporterFunc is a function that creates an Importer instance.
-type ImporterFunc func(config ImportConfig) (Importer, error)
+type ImporterFunc func(cfg config.Config) (Importer, error)
 
 // Factory creates Importer instances based on registry type.
 type Factory struct {
-	importers map[RegistryType]ImporterFunc
+	importers map[config.RegistryType]ImporterFunc
 }
 
 // NewFactory creates a new importer factory.
 func NewFactory() *Factory {
 	return &Factory{
-		importers: make(map[RegistryType]ImporterFunc),
+		importers: make(map[config.RegistryType]ImporterFunc),
 	}
 }
 
 // Register registers a function that creates an Importer instance for a given registry type.
-func (f *Factory) Register(registryType RegistryType, fn ImporterFunc) {
+func (f *Factory) Register(registryType config.RegistryType, fn ImporterFunc) {
 	f.importers[registryType] = fn
 }
 
 // Create creates a new Importer instance for the given configuration.
-func (f *Factory) Create(config ImportConfig) (Importer, error) {
-	constructor, exists := f.importers[config.RegistryType]
+func (f *Factory) Create(cfg config.Config) (Importer, error) {
+	constructor, exists := f.importers[cfg.RegistryType]
 	if !exists {
-		return nil, fmt.Errorf("unsupported registry type: %s", config.RegistryType)
+		return nil, fmt.Errorf("unsupported registry type: %s", cfg.RegistryType)
 	}
 
-	return constructor(config)
+	return constructor(cfg)
 }
 
 // RegisteredTypes returns a list of all registered registry types.
-func (f *Factory) RegisteredTypes() []RegistryType {
-	types := make([]RegistryType, 0, len(f.importers))
+func (f *Factory) RegisteredTypes() []config.RegistryType {
+	types := make([]config.RegistryType, 0, len(f.importers))
 	for t := range f.importers {
 		types = append(types, t)
 	}
@@ -46,7 +50,7 @@ func (f *Factory) RegisteredTypes() []RegistryType {
 }
 
 // IsRegistered checks if a registry type is registered.
-func (f *Factory) IsRegistered(registryType RegistryType) bool {
+func (f *Factory) IsRegistered(registryType config.RegistryType) bool {
 	_, exists := f.importers[registryType]
 
 	return exists
