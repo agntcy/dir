@@ -19,17 +19,24 @@ apiserver:
     # Authentication settings (handles identity verification)
     # Supports both X.509 (X.509-SVID) and JWT (JWT-SVID) authentication
     authn:
-      # Enable authentication
-      enabled: false
-      # Authentication mode: "x509" or "jwt"
-      # - x509: Uses X.509-SVID from mutual TLS peer certificates
-      # - jwt: Uses JWT-SVID from Authorization header
-      mode: "x509"
-      # SPIFFE Workload API socket path (injected by SPIRE agent)
-      socket_path: "unix:///run/spire/agent-sockets/api.sock"
-      # Expected audiences for JWT validation (only used in JWT mode)
-      audiences:
-        - "spiffe://example.org/dir-server"
+      insecure:
+        enable: true
+        listen_address: '0.0.0.0:8888'
+        healthcheck_address: '0.0.0.0:8889'
+
+        x509:
+          enable: true
+          listen_address: '0.0.0.0:8890'
+          healthcheck_address: ''
+          socket_path: 'unix:///run/spire/agent-sockets/api.sock'
+
+        jwt:
+          enable: true
+          listen_address: '0.0.0.0:8891'
+          healthcheck_address: ''
+          socket_path: 'unix:///run/spire/agent-sockets/api.sock'
+          audiences:
+            - 'spiffe://example.org/dir-server'
 
     # Authorization settings (handles access control policies)
     # Requires authentication to be enabled first
@@ -38,12 +45,12 @@ apiserver:
       enabled: false
       # Trust domain for this Directory server
       # Used to distinguish internal (same trust domain) vs external requests
-      trust_domain: "example.org"
+      trust_domain: 'example.org'
 
     # Store settings for the storage backend.
     store:
       # Storage provider to use.
-      provider: "oci"
+      provider: 'oci'
 
       # OCI-backed store
       oci:
@@ -55,14 +62,14 @@ apiserver:
         # cache_dir: ""
 
         # Registry address to connect to
-        registry_address: "dir-zot.dir-server.svc.cluster.local:5000"
+        registry_address: 'dir-zot.dir-server.svc.cluster.local:5000'
         # All data will be stored under this repo.
         # Objects are pushed as tags, manifests, and blobs.
         # repository_name: ""
 
         # Auth credentials to use.
         auth_config:
-          insecure: "true"
+          insecure: 'true'
           access_token: access-token
           refresh_token: refresh-token
 
@@ -91,33 +98,33 @@ apiserver:
     # Sync configuration
     sync:
       # How frequently the scheduler checks for pending syncs
-      scheduler_interval: "30s"
-      
+      scheduler_interval: '30s'
+
       # Maximum number of sync workers running concurrently
       worker_count: 1
-      
+
       # Timeout for individual sync operations
-      worker_timeout: "10m"
-      
+      worker_timeout: '10m'
+
       # Registry monitor configuration
       registry_monitor:
-        check_interval: "30s"
-      
+        check_interval: '30s'
+
       # Authentication configuration for sync operations
       auth_config:
-        username: ""
-        password: ""
+        username: ''
+        password: ''
 
     # Publication configuration
     publication:
       # How frequently the scheduler checks for pending publications
-      scheduler_interval: "1h"
-      
+      scheduler_interval: '1h'
+
       # Maximum number of publication workers running concurrently
       worker_count: 1
-      
+
       # Timeout for individual publication operations
-      worker_timeout: "30m"
+      worker_timeout: '30m'
   # SPIRE configuration
   spire:
     enabled: false
@@ -130,36 +137,36 @@ apiserver:
       #     type: https_web
 
   # Extra volume mounts for the apiserver container
-  extraVolumeMounts: 
-  - name: zot-config-storage
-    mountPath: /etc/zot
+  extraVolumeMounts:
+    - name: zot-config-storage
+      mountPath: /etc/zot
 
   # Extra volumes - shared between apiserver and zot for config hot reload
-  extraVolumes: 
-  - name: zot-config-storage
-    hostPath:
-      path: /opt/zot-config
-      type: DirectoryOrCreate
+  extraVolumes:
+    - name: zot-config-storage
+      hostPath:
+        path: /opt/zot-config
+        type: DirectoryOrCreate
 
   # Zot registry configuration (subchart)
   zot:
     # Disable default config mounting to use shared volume
     mountConfig: false
     mountSecret: false
-    
+
     # Share the same volume with apiserver for hot reload
     extraVolumeMounts:
       - name: zot-config-storage
         mountPath: /etc/zot
-    
+
     # Use the same hostPath for true volume sharing
     extraVolumes:
       - name: zot-config-storage
         hostPath:
           path: /opt/zot-config
           type: DirectoryOrCreate
-    
+
     # Configure zot to use the config file from the shared mounted volume
     extraArgs:
-      - "serve"
-      - "/etc/zot/config.json"
+      - 'serve'
+      - '/etc/zot/config.json'

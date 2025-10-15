@@ -40,9 +40,6 @@ const (
 var logger = logging.Logger("config")
 
 type Config struct {
-	// API configuration
-	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
-	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
 
 	// Authn configuration (JWT or X.509 authentication)
 	Authn authn.Config `json:"authn,omitempty" mapstructure:"authn"`
@@ -93,11 +90,11 @@ func LoadConfig() (*Config, error) {
 	//
 	// API configuration
 	//
-	_ = v.BindEnv("listen_address")
-	v.SetDefault("listen_address", DefaultListenAddress)
+	_ = v.BindEnv("authn.insecure.listen_address")
+	v.SetDefault("authn.insecure.listen_address", DefaultListenAddress)
 
-	_ = v.BindEnv("healthcheck_address")
-	v.SetDefault("healthcheck_address", DefaultHealthCheckAddress)
+	_ = v.BindEnv("authn.insecure.healthcheck_address")
+	v.SetDefault("authn.insecure.healthcheck_address", DefaultHealthCheckAddress)
 
 	//
 	// Authn configuration (authentication: JWT or X.509)

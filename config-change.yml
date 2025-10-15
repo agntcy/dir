@@ -1,0 +1,25 @@
+config:
+  # Authentication settings (handles identity verification)
+  # Supports both X.509 (X.509-SVID) and JWT (JWT-SVID) authentication
+  authn:
+    # Authentication mode: "x509" or "jwt"
+    # - x509: Uses X.509-SVID from mutual TLS peer certificates
+    # - jwt: Uses JWT-SVID from Authorization header
+    insecure:
+      enable: true
+      listen_address:
+      healthcheck_address:
+
+      x509:
+        enable: true
+        listen_address:
+        healthcheck_address:
+        socket_path: 'unix:///run/spire/agent-sockets/api.sock'
+
+      jwt:
+        enable: true
+        listen_address:
+        healthcheck_address:
+        socket_path: 'unix:///run/spire/agent-sockets/api.sock'
+        audiences:
+          - 'spiffe://example.org/dir-server'

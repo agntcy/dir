@@ -605,7 +605,8 @@ tasks:
           --install \
           --wait \
           --wait-for-jobs \
-          --timeout "15m"
+          --timeout "15m" \
+          --debug
 
   deploy:kubernetes:dirctl:
     desc: Deploy DIRCTL helm chart

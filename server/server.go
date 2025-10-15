@@ -18,6 +18,7 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/api/version"
 	"github.com/agntcy/dir/server/authn"
+	authnCfg "github.com/agntcy/dir/server/authn/config"
 	"github.com/agntcy/dir/server/authz"
 	"github.com/agntcy/dir/server/config"
 	"github.com/agntcy/dir/server/controller"
@@ -43,11 +44,11 @@ type Server struct {
 	routing            types.RoutingAPI
 	database           types.DatabaseAPI
 	syncService        *sync.Service
-	authnService       *authn.Service
+	authnServices      []*authn.Service
 	authzService       *authz.Service
 	publicationService *publication.Service
 	healthzServer      *healthz.Server
-	grpcServer         *grpc.Server
+	grpcServers        map[authnCfg.AuthMode]*grpc.Server
 }
 
 func Run(ctx context.Context, cfg *config.Config) error {
@@ -107,16 +108,38 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create sync service: %w", err)
 	}
 
-	// Create JWT authentication service if enabled
-	var authnService *authn.Service
-	if cfg.Authn.Enabled {
-		authnService, err = authn.New(ctx, cfg.Authn)
+	// Create publication service
+	publicationService, err := publication.New(databaseAPI, storeAPI, routingAPI, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create publication service: %w", err)
+	}
+
+	authOpts := make(map[authnCfg.AuthMode][]grpc.ServerOption)
+
+	var authnServices = []*authn.Service{}
+
+	if cfg.Authn.Insecure.Enabled {
+		authOpts[authnCfg.AuthInsecure] = []grpc.ServerOption{}
+	}
+
+	if cfg.Authn.X509.Enabled {
+		authnX509Service, err := authn.New(ctx, cfg.Authn, authnCfg.AuthX509)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create authn service: %w", err)
+			return nil, fmt.Errorf("failed to create x509 authn service: %w", err)
 		}
 
-		//nolint:contextcheck
-		serverOpts = append(serverOpts, authnService.GetServerOptions()...)
+		authOpts[authnCfg.AuthX509] = append(authOpts[authnCfg.AuthX509], authnX509Service.GetServerOptions()...)
+		authnServices = append(authnServices, authnX509Service)
+	}
+
+	if cfg.Authn.JWT.Enabled {
+		authnJWTService, err := authn.New(ctx, cfg.Authn, authnCfg.AuthJWT)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create jwt authn service: %w", err)
+		}
+
+		authOpts[authnCfg.AuthJWT] = append(authOpts[authnCfg.AuthJWT], authnJWTService.GetServerOptions()...)
+		authnServices = append(authnServices, authnJWTService)
 	}
 
 	var authzService *authz.Service
@@ -130,25 +153,26 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		serverOpts = append(serverOpts, authzService.GetServerOptions()...)
 	}
 
-	// Create publication service
-	publicationService, err := publication.New(databaseAPI, storeAPI, routingAPI, options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create publication service: %w", err)
+	grpcServers := make(map[authnCfg.AuthMode]*grpc.Server)
+
+	// Create the GRPC servers
+	for authMode, authOptions := range authOpts {
+		serverOpts = append(serverOpts, authOptions...)
+		grpcServer := grpc.NewServer(serverOpts...)
+
+		// Register APIs
+		storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
+		routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
+		routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
+		searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI))
+		storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
+		signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(storeAPI))
+
+		// Register server
+		reflection.Register(grpcServer)
+
+		grpcServers[authMode] = grpcServer
 	}
-
-	// Create a server
-	grpcServer := grpc.NewServer(serverOpts...)
-
-	// Register APIs
-	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI))
-	routingv1.RegisterRoutingServiceServer(grpcServer, controller.NewRoutingController(routingAPI, storeAPI, publicationService))
-	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
-	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI))
-	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
-	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(storeAPI))
-
-	// Register server
-	reflection.Register(grpcServer)
 
 	return &Server{
 		options:            options,
@@ -156,11 +180,11 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		routing:            routingAPI,
 		database:           databaseAPI,
 		syncService:        syncService,
-		authnService:       authnService,
+		authnServices:      authnServices,
 		authzService:       authzService,
 		publicationService: publicationService,
-		healthzServer:      healthz.NewHealthServer(cfg.HealthCheckAddress),
-		grpcServer:         grpcServer,
+		healthzServer:      healthz.NewHealthServer(cfg.Authn.Insecure.HealthCheckAddress),
+		grpcServers:        grpcServers,
 	}, nil
 }
 
@@ -187,10 +211,12 @@ func (s Server) Close() {
 		}
 	}
 
-	// Stop authn service if running
-	if s.authnService != nil {
-		if err := s.authnService.Stop(); err != nil {
-			logger.Error("Failed to stop authn service", "error", err)
+	// Stop authn services if running
+	if len(s.authnServices) > 0 {
+		for _, authn := range s.authnServices {
+			if err := authn.Stop(); err != nil {
+				logger.Error("Failed to stop authn service", "error", err)
+			}
 		}
 	}
 
@@ -208,7 +234,10 @@ func (s Server) Close() {
 		}
 	}
 
-	s.grpcServer.GracefulStop()
+	for authMode, server := range s.grpcServers {
+		logger.Info("Stop grpc server", "type", authMode)
+		server.GracefulStop()
+	}
 }
 
 func (s Server) start(ctx context.Context) error {
@@ -230,27 +259,34 @@ func (s Server) start(ctx context.Context) error {
 		logger.Info("Publication service started")
 	}
 
-	// Create a listener on TCP port
-	listen, err := net.Listen("tcp", s.Options().Config().ListenAddress) //nolint:noctx
-	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", s.Options().Config().ListenAddress, err)
+	for authMode, grpcServer := range s.grpcServers {
+		// Serve gRPC server in the background.
+		// If the server cannot be started, exit with code 1.
+		go func() {
+			listenAddr := ""
+			switch authMode {
+			case authnCfg.AuthInsecure:
+				listenAddr = s.Options().Config().Authn.Insecure.ListenAddress
+			case authnCfg.AuthX509:
+				listenAddr = s.Options().Config().Authn.X509.ListenAddress
+			case authnCfg.AuthJWT:
+				listenAddr = s.Options().Config().Authn.JWT.ListenAddress
+			}
+
+			// Create a listener on TCP port
+			listen, err := net.Listen("tcp", listenAddr) //nolint:noctx
+			if err != nil {
+				logger.Error(fmt.Sprintf("failed to listen on %s", listenAddr), "error", err)
+				return
+			}
+
+			logger.Info("Server starting", "address", listenAddr, "authMode", authMode)
+
+			if err := grpcServer.Serve(listen); err != nil {
+				logger.Error("Failed to start server", "error", err)
+			}
+		}()
 	}
-
-	// Serve gRPC server in the background.
-	// If the server cannot be started, exit with code 1.
-	go func() {
-		// Start health check server
-		s.healthzServer.Start()
-
-		s.healthzServer.SetIsReady(true)
-		defer s.healthzServer.SetIsReady(false)
-
-		logger.Info("Server starting", "address", s.Options().Config().ListenAddress)
-
-		if err := s.grpcServer.Serve(listen); err != nil {
-			logger.Error("Failed to start server", "error", err)
-		}
-	}()
 
 	return nil
 }

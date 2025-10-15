@@ -28,35 +28,43 @@ type Service struct {
 }
 
 // New creates a new authentication service (JWT or X.509 based on config).
-func New(ctx context.Context, cfg config.Config) (*Service, error) {
+func New(ctx context.Context, cfg config.Config, authMode config.AuthMode) (*Service, error) {
 	// Validate
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid authn config: %w", err)
 	}
 
-	// Create a client for SPIRE Workload API
-	client, err := workloadapi.New(ctx, workloadapi.WithAddr(cfg.SocketPath))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create workload API client: %w", err)
-	}
-
-	service := &Service{
-		mode:   cfg.Mode,
-		client: client,
+	var service = &Service{
+		mode: authMode,
 	}
 
 	// Initialize based on authentication mode
-	switch cfg.Mode {
-	case config.AuthModeJWT:
-		if err := service.initJWT(ctx, cfg); err != nil {
+	switch authMode {
+	case config.AuthJWT:
+		// Create a client for SPIRE Workload API
+		client, err := workloadapi.New(ctx, workloadapi.WithAddr(cfg.JWT.SocketPath))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create workload API client: %w", err)
+		}
+
+		service.client = client
+
+		if err := service.initJWT(ctx, cfg.JWT); err != nil {
 			_ = client.Close()
 
 			return nil, err
 		}
 
-		logger.Info("JWT authentication service initialized", "audiences", cfg.Audiences)
+		logger.Info("JWT authentication service initialized", "audiences", cfg.JWT.Audiences)
 
-	case config.AuthModeX509:
+	case config.AuthX509:
+		client, err := workloadapi.New(ctx, workloadapi.WithAddr(cfg.X509.SocketPath))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create workload API client: %w", err)
+		}
+
+		service.client = client
+
 		if err := service.initX509(ctx); err != nil {
 			_ = client.Close()
 
@@ -64,11 +72,6 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 		}
 
 		logger.Info("X.509 authentication service initialized")
-
-	default:
-		_ = client.Close()
-
-		return nil, fmt.Errorf("unsupported auth mode: %s", cfg.Mode)
 	}
 
 	return service, nil
@@ -77,7 +80,7 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 // initJWT initializes JWT authentication components.
 // For JWT mode, the server presents its X.509-SVID via TLS (for server authentication and encryption),
 // while clients authenticate using JWT-SVIDs. This follows the official SPIFFE JWT pattern.
-func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
+func (s *Service) initJWT(ctx context.Context, cfg config.AuthModeJWT) error {
 	// Create X.509 source for server's TLS certificate
 	x509Src, err := workloadapi.NewX509Source(ctx, workloadapi.WithClient(s.client))
 	if err != nil {
@@ -135,7 +138,7 @@ func (s *Service) initX509(ctx context.Context) error {
 // GetServerOptions returns gRPC server options for authentication.
 func (s *Service) GetServerOptions() []grpc.ServerOption {
 	switch s.mode {
-	case config.AuthModeJWT:
+	case config.AuthJWT:
 		// JWT mode: Server presents X.509-SVID via TLS, clients authenticate with JWT-SVID
 		return []grpc.ServerOption{
 			grpc.Creds(
@@ -145,7 +148,7 @@ func (s *Service) GetServerOptions() []grpc.ServerOption {
 			grpc.ChainStreamInterceptor(JWTStreamInterceptor(s.jwtSource, s.audiences)),
 		}
 
-	case config.AuthModeX509:
+	case config.AuthX509:
 		return []grpc.ServerOption{
 			grpc.Creds(
 				grpccredentials.MTLSServerCredentials(s.x509Src, s.bundleSrc, tlsconfig.AuthorizeAny()),
