@@ -10,10 +10,10 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.3.0
-	github.com/agntcy/dir/client v0.3.0
-	github.com/agntcy/dir/hub v0.3.0
-	github.com/agntcy/dir/utils v0.3.0
+	github.com/agntcy/dir/api v0.4.0
+	github.com/agntcy/dir/client v0.4.0
+	github.com/agntcy/dir/hub v0.4.0
+	github.com/agntcy/dir/utils v0.4.0
 	github.com/libp2p/go-libp2p v0.44.0
 	github.com/sigstore/sigstore v1.9.5
 	github.com/spf13/cobra v1.10.1

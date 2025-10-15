@@ -2,11 +2,14 @@ module github.com/agntcy/dir/hub
 
 go 1.25.2
 
+replace (
+	github.com/agntcy/dir/utils => ../utils
+)
+
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251007080819-beb134c6a773.1
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1
-	github.com/agntcy/dir/api v0.3.0
-	github.com/golang-jwt/jwt/v5 v5.3.0
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.7-20250717185734-6c6e0d3c608e.1
+	github.com/agntcy/dir/utils v0.3.0
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
