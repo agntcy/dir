@@ -60,7 +60,7 @@ class JWTAuthInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClien
         """
         try:
             # Fetch JWT-SVID with the configured audience
-            jwt_svid = self._workload_client.fetch_jwt_svid(audiences=[self.audience])
+            jwt_svid = self._workload_client.fetch_jwt_svid(audience=[self.audience])
             if jwt_svid and jwt_svid.token:
                 return jwt_svid.token
             msg = "Failed to fetch JWT-SVID: empty token"
