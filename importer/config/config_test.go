@@ -9,45 +9,14 @@ import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	storev1 "github.com/agntcy/dir/api/store/v1"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// mockStoreClient is a mock implementation of StoreServiceClient for testing.
-type mockStoreClient struct{}
+// mockClient is a mock implementation of ClientInterface for testing.
+type mockClient struct{}
 
-func (m *mockStoreClient) Push(ctx context.Context, opts ...grpc.CallOption) (storev1.StoreService_PushClient, error) {
-	return &mockPushClient{}, nil
+func (m *mockClient) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+	return &corev1.RecordRef{Cid: "mock-cid"}, nil
 }
-
-func (m *mockStoreClient) Pull(ctx context.Context, opts ...grpc.CallOption) (storev1.StoreService_PullClient, error) {
-	return nil, nil
-}
-
-func (m *mockStoreClient) Lookup(ctx context.Context, opts ...grpc.CallOption) (storev1.StoreService_LookupClient, error) {
-	return nil, nil
-}
-
-func (m *mockStoreClient) Delete(ctx context.Context, opts ...grpc.CallOption) (storev1.StoreService_DeleteClient, error) {
-	return nil, nil
-}
-
-func (m *mockStoreClient) PushReferrer(ctx context.Context, opts ...grpc.CallOption) (storev1.StoreService_PushReferrerClient, error) {
-	return nil, nil
-}
-
-func (m *mockStoreClient) PullReferrer(ctx context.Context, opts ...grpc.CallOption) (storev1.StoreService_PullReferrerClient, error) {
-	return nil, nil
-}
-
-// Mock streaming client.
-type mockPushClient struct{ grpc.ClientStream }
-
-func (m *mockPushClient) Send(r *corev1.Record) error           { return nil }
-func (m *mockPushClient) Recv() (*corev1.RecordRef, error)      { return &corev1.RecordRef{}, nil }
-func (m *mockPushClient) CloseSend() error                      { return nil }
-func (m *mockPushClient) CloseAndRecv() (*emptypb.Empty, error) { return &emptypb.Empty{}, nil }
 
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
@@ -62,7 +31,7 @@ func TestConfig_Validate(t *testing.T) {
 				RegistryType: RegistryTypeMCP,
 				RegistryURL:  "https://registry.example.com",
 				Concurrency:  10,
-				StoreClient:  &mockStoreClient{},
+				Client:       &mockClient{},
 			},
 			wantErr: false,
 		},
@@ -71,7 +40,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				RegistryURL: "https://registry.example.com",
 				Concurrency: 10,
-				StoreClient: &mockStoreClient{},
+				Client:      &mockClient{},
 			},
 			wantErr: true,
 			errMsg:  "registry type is required",
@@ -81,20 +50,20 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				RegistryType: RegistryTypeMCP,
 				Concurrency:  10,
-				StoreClient:  &mockStoreClient{},
+				Client:       &mockClient{},
 			},
 			wantErr: true,
 			errMsg:  "registry URL is required",
 		},
 		{
-			name: "missing store client",
+			name: "missing client",
 			config: Config{
 				RegistryType: RegistryTypeMCP,
 				RegistryURL:  "https://registry.example.com",
 				Concurrency:  10,
 			},
 			wantErr: true,
-			errMsg:  "store client is required",
+			errMsg:  "client is required",
 		},
 		{
 			name: "zero concurrency sets default",
@@ -102,7 +71,7 @@ func TestConfig_Validate(t *testing.T) {
 				RegistryType: RegistryTypeMCP,
 				RegistryURL:  "https://registry.example.com",
 				Concurrency:  0,
-				StoreClient:  &mockStoreClient{},
+				Client:       &mockClient{},
 			},
 			wantErr: false,
 		},
@@ -112,7 +81,7 @@ func TestConfig_Validate(t *testing.T) {
 				RegistryType: RegistryTypeMCP,
 				RegistryURL:  "https://registry.example.com",
 				Concurrency:  -1,
-				StoreClient:  &mockStoreClient{},
+				Client:       &mockClient{},
 			},
 			wantErr: false,
 		},

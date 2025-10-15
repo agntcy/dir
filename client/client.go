@@ -64,8 +64,3 @@ func (c *Client) Close() error {
 
 	return nil
 }
-
-// StoreClient returns the store service client for direct access.
-func (c *Client) StoreClient() storev1.StoreServiceClient {
-	return c.StoreServiceClient
-}

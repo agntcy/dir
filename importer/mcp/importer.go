@@ -129,28 +129,12 @@ func (i *Importer) processServer(ctx context.Context, response mcpapiv0.ServerRe
 	return nil
 }
 
-// pushRecord pushes a record to DIR using the store client.
+// pushRecord pushes a record to DIR using the client wrapper.
 func (i *Importer) pushRecord(ctx context.Context, record *corev1.Record, cfg config.Config) error {
-	// Create streaming client
-	stream, err := cfg.StoreClient.Push(ctx)
+	// Use the client Push method which handles streaming internally
+	_, err := cfg.Client.Push(ctx, record)
 	if err != nil {
-		return fmt.Errorf("failed to create push stream: %w", err)
-	}
-
-	// Send the record
-	if err := stream.Send(record); err != nil {
-		return fmt.Errorf("failed to send record: %w", err)
-	}
-
-	// Close the send direction and receive the response
-	if err := stream.CloseSend(); err != nil {
-		return fmt.Errorf("failed to close send: %w", err)
-	}
-
-	// Receive the RecordRef response
-	_, err = stream.Recv()
-	if err != nil {
-		return fmt.Errorf("failed to receive record ref: %w", err)
+		return fmt.Errorf("failed to push record: %w", err)
 	}
 
 	return nil

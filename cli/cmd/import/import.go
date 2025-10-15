@@ -75,8 +75,8 @@ func runImport(cmd *cobra.Command) error {
 	// Set the registry type from the string flag
 	cfg.RegistryType = config.RegistryType(registryType)
 
-	// Set the store client
-	cfg.StoreClient = c.StoreClient()
+	// Set the client
+	cfg.Client = c
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {

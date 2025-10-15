@@ -4,9 +4,10 @@
 package config
 
 import (
+	"context"
 	"errors"
 
-	storev1 "github.com/agntcy/dir/api/store/v1"
+	corev1 "github.com/agntcy/dir/api/core/v1"
 )
 
 // RegistryType represents the type of external registry to import from.
@@ -23,6 +24,12 @@ const (
 	// RegistryTypeA2A RegistryType = "a2a".
 )
 
+// ClientInterface defines the interface for the DIR client used by importers.
+// This allows for easier testing and mocking.
+type ClientInterface interface {
+	Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
+}
+
 // Config contains configuration for an import operation.
 type Config struct {
 	RegistryType RegistryType      // Registry type identifier
@@ -32,9 +39,9 @@ type Config struct {
 	Concurrency  int               // Number of concurrent workers (default: 5)
 	DryRun       bool              // If true, preview without actually importing
 
-	// StoreClient is the Store service client for pushing records.
+	// Client is the DIR client for pushing records.
 	// This should be provided by the CLI from the already initialized client.
-	StoreClient storev1.StoreServiceClient
+	Client ClientInterface
 }
 
 // Validate checks if the configuration is valid.
@@ -51,8 +58,8 @@ func (c *Config) Validate() error {
 		c.Concurrency = 5 // Set default concurrency
 	}
 
-	if c.StoreClient == nil {
-		return errors.New("store client is required")
+	if c.Client == nil {
+		return errors.New("client is required")
 	}
 
 	return nil
