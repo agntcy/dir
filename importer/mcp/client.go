@@ -61,7 +61,9 @@ func (c *Client) ListServersStream(ctx context.Context, filters map[string]strin
 	for key := range filters {
 		if !slices.Contains(supportedFilters, key) {
 			close(serverChan)
+
 			errChan <- fmt.Errorf("unsupported filter: %s", key)
+
 			close(errChan)
 
 			return serverChan, errChan

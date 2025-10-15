@@ -5,6 +5,7 @@ package mcp
 
 import (
 	"fmt"
+	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
@@ -28,16 +29,27 @@ func ConvertToOASF(response mcpapiv0.ServerResponse) (*corev1.Record, error) {
 	data["schema_version"] = "0.7.0"
 
 	// Created at (required, use publish time)
-	data["created_at"] = response.Meta.Official.PublishedAt.Format("2006-01-02T15:04:05.999999999Z07:00")
+	if response.Meta.Official != nil && !response.Meta.Official.PublishedAt.IsZero() {
+		data["created_at"] = response.Meta.Official.PublishedAt.Format("2006-01-02T15:04:05.999999999Z07:00")
+	} else {
+		data["created_at"] = time.Now().Format("2006-01-02T15:04:05.999999999Z07:00")
+	}
 
 	// Authors (required, default to empty array)
 	data["authors"] = []interface{}{}
 
 	// Locators (required, default to MCP)
+	locatorType := "source_code"
+
+	locatorURL := ""
+	if server.Repository.URL != "" {
+		locatorURL = server.Repository.URL
+	}
+
 	data["locators"] = []interface{}{
 		map[string]interface{}{
-			"type": "source_code",
-			"url":  server.Repository.URL,
+			"type": locatorType,
+			"url":  locatorURL,
 		},
 	}
 

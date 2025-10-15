@@ -23,7 +23,7 @@ const (
 	// RegistryTypeA2A RegistryType = "a2a".
 )
 
-// ImportConfig contains configuration for an import operation.
+// Config contains configuration for an import operation.
 type Config struct {
 	RegistryType RegistryType      // Registry type identifier
 	RegistryURL  string            // Base URL of the registry

@@ -18,6 +18,7 @@ import (
 var (
 	cfg          config.Config
 	registryType string
+	factory      *types.Factory
 )
 
 var Command = &cobra.Command{
@@ -26,7 +27,7 @@ var Command = &cobra.Command{
 	Long: `Import records from external registries into DIR.
 
 Supported registries:
-  - mcp: Model Context Protocol registry
+  - mcp: Model Context Protocol registry v0.1
 
 The import command fetches records from the specified registry and pushes
 them to DIR.
@@ -36,6 +37,7 @@ Examples:
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io
 
   # Import with filters
+  # Available filters: https://registry.modelcontextprotocol.io/docs#/operations/list-servers-v0.1#Query-Parameters
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --filter=updated_since=2025-08-07T13:15:04.280Z
 
   # Preview without importing
@@ -47,6 +49,10 @@ Examples:
 }
 
 func init() {
+	// Initialize factory and register importers once at startup
+	factory = types.NewFactory()
+	mcp.Register(factory)
+
 	// Add flags
 	Command.Flags().StringVar(&registryType, "type", "", "Registry type (mcp, a2a)")
 	Command.Flags().StringVar(&cfg.RegistryURL, "url", "", "Registry base URL")
@@ -77,11 +83,7 @@ func runImport(cmd *cobra.Command) error {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Create factory and register importers
-	factory := types.NewFactory()
-	mcp.Register(factory)
-
-	// Create importer instance
+	// Create importer instance from pre-initialized factory
 	importer, err := factory.Create(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create importer: %w", err)

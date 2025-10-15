@@ -54,15 +54,16 @@ func (c *CLI) Delete(cid string) *CommandBuilder {
 
 func (c *CLI) Search() *SearchBuilder {
 	return &SearchBuilder{
-		CommandBuilder: c.Command("search"),
-		names:          []string{},
-		versions:       []string{},
-		skillIDs:       []string{},
-		skillNames:     []string{},
-		locators:       []string{},
-		modules:        []string{},
-		limit:          0,
-		offset:         0,
+		CommandBuilder:   c.Command("search"),
+		names:            []string{},
+		versions:         []string{},
+		skillIDs:         []string{},
+		skillNames:       []string{},
+		locators:         []string{},
+		modules:          []string{},
+		outputFormatArgs: []string{},
+		limit:            0,
+		offset:           0,
 	}
 }
 
@@ -384,14 +385,15 @@ func (c *CommandBuilder) ShouldEventuallySucceed(timeout time.Duration) string {
 // SearchBuilder extends CommandBuilder with search-specific methods.
 type SearchBuilder struct {
 	*CommandBuilder
-	names      []string
-	versions   []string
-	skillIDs   []string
-	skillNames []string
-	locators   []string
-	modules    []string
-	limit      int
-	offset     int
+	names            []string
+	versions         []string
+	skillIDs         []string
+	skillNames       []string
+	locators         []string
+	modules          []string
+	outputFormatArgs []string
+	limit            int
+	offset           int
 }
 
 func (s *SearchBuilder) WithName(name string) *SearchBuilder {
@@ -443,7 +445,7 @@ func (s *SearchBuilder) WithOffset(offset int) *SearchBuilder {
 }
 
 func (s *SearchBuilder) WithArgs(args ...string) *SearchBuilder {
-	s.args = append(s.args, args...)
+	s.outputFormatArgs = append(s.outputFormatArgs, args...)
 
 	return s
 }
@@ -484,6 +486,9 @@ func (s *SearchBuilder) Execute() (string, error) {
 	if s.offset > 0 {
 		s.args = append(s.args, "--offset", strconv.Itoa(s.offset))
 	}
+
+	// Append any additional args (like --json, --raw) at the end
+	s.args = append(s.args, s.outputFormatArgs...)
 
 	return s.CommandBuilder.Execute()
 }
