@@ -2,9 +2,7 @@ module github.com/agntcy/dir/hub
 
 go 1.25.2
 
-replace (
-	github.com/agntcy/dir/api => ../api
-)
+replace github.com/agntcy/dir/api => ../api
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1
