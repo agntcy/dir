@@ -10,11 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Key Highlights
 
 This release delivers improvements to application layer via generic referrers,
-security schema with JWT/TLS support, network capabilities, operational stability, 
+security schema with JWT/X.509 support, network capabilities, operational stability, 
 and developer experience, with a focus on:
 
 **Security & Authentication**
-- JWT authentication and TLS communication support
+- Added JWT/X.509 over TLS versus mTLS for flexible authentication
 - Authenticated PeerID integration with libp2p transport
 - Secure credential management for zot sync operations
 - OCI 1.1 referrers specification migration for signature attachments
