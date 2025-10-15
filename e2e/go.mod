@@ -11,10 +11,10 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.3.0
+	github.com/agntcy/dir/api v0.4.0
 	github.com/agntcy/dir/cli v0.3.0
-	github.com/agntcy/dir/client v0.3.0
-	github.com/agntcy/dir/utils v0.3.0
+	github.com/agntcy/dir/client v0.4.0
+	github.com/agntcy/dir/utils v0.4.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.23.0
 	github.com/onsi/gomega v1.36.2

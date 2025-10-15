@@ -4,7 +4,7 @@ go 1.25.2
 
 replace github.com/agntcy/dir/api => ../api
 
-require github.com/agntcy/dir/api v0.3.0
+require github.com/agntcy/dir/api v0.4.0
 
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1 // indirect
