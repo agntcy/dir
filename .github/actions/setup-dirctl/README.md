@@ -11,7 +11,7 @@ The GITHUB_TOKEN has to have "public repo" access.
   uses: agntcy/dir/.github/actions/setup-dirctl@main
   with:
     # Default: latest
-    version: v0.3.0
+    version: v0.4.0
     # Default: linux
     os: linux
     # Default: amd64
