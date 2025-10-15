@@ -53,7 +53,7 @@ var supportedFilters = []string{
 }
 
 // ListServersStream streams servers from the MCP registry as they are fetched.
-func (c *Client) ListServersStream(ctx context.Context, filters map[string]string) (<-chan mcpapiv0.ServerResponse, <-chan error) {
+func (c *Client) ListServersStream(ctx context.Context, filters map[string]string, limit int) (<-chan mcpapiv0.ServerResponse, <-chan error) {
 	serverChan := make(chan mcpapiv0.ServerResponse)
 	errChan := make(chan error, 1)
 
@@ -73,6 +73,7 @@ func (c *Client) ListServersStream(ctx context.Context, filters map[string]strin
 		defer close(errChan)
 
 		cursor := ""
+		count := 0
 
 		for {
 			// Check context cancellation
@@ -94,12 +95,18 @@ func (c *Client) ListServersStream(ctx context.Context, filters map[string]strin
 
 			// Stream each server as soon as it's available
 			for _, server := range page {
+				// Check if limit is reached (limit <= 0 means no limit)
+				if limit > 0 && count >= limit {
+					return
+				}
+
 				select {
 				case <-ctx.Done():
 					errChan <- ctx.Err()
 
 					return
 				case serverChan <- server:
+					count++
 				}
 			}
 

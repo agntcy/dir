@@ -24,6 +24,26 @@ func ConvertToOASF(response mcpapiv0.ServerResponse) (*corev1.Record, error) {
 		"description": server.Description,
 	}
 
+	// Schema version (required, default to v0.7.0)
+	data["schema_version"] = "0.7.0"
+
+	// Created at (required, use publish time)
+	data["created_at"] = response.Meta.Official.PublishedAt.Format("2006-01-02T15:04:05.999999999Z07:00")
+
+	// Authors (required, default to empty array)
+	data["authors"] = []interface{}{}
+
+	// Locators (required, default to MCP)
+	data["locators"] = []interface{}{
+		map[string]interface{}{
+			"type": "source_code",
+			"url":  server.Repository.URL,
+		},
+	}
+
+	// Skills (required, default to empty array)
+	data["skills"] = []interface{}{}
+
 	// Convert to protobuf Struct
 	structData, err := structpb.NewStruct(data)
 	if err != nil {

@@ -28,6 +28,7 @@ type Config struct {
 	RegistryType RegistryType      // Registry type identifier
 	RegistryURL  string            // Base URL of the registry
 	Filters      map[string]string // Registry-specific filters
+	Limit        int               // Number of records to import (default: 0 for all)
 	Concurrency  int               // Number of concurrent workers (default: 5)
 	DryRun       bool              // If true, preview without actually importing
 

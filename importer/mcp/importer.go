@@ -40,7 +40,7 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 	var resultMu sync.Mutex
 
 	// Start streaming servers from MCP registry
-	serverChan, errChan := i.mcpClient.ListServersStream(ctx, cfg.Filters)
+	serverChan, errChan := i.mcpClient.ListServersStream(ctx, cfg.Filters, cfg.Limit)
 
 	// Worker pool for concurrent processing
 	var wg sync.WaitGroup
