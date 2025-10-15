@@ -34,8 +34,7 @@ linters:
         Copyright AGNTCY Contributors (https://github.com/agntcy)
         SPDX-License-Identifier: Apache-2.0
     gomoddirectives:
-      replace-allow-list:
-        - github.com/agntcy/dirhub/backport/api
+      replace-allow-list: []
       replace-local: true
   exclusions:
     generated: lax

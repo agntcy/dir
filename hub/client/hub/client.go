@@ -14,7 +14,6 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	v1alpha1 "github.com/agntcy/dir/hub/api/v1alpha1"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -126,6 +125,7 @@ func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullRecordRequ
 	}
 
 	record := recordResponse.GetModel()
+
 	b, err := record.GetData().MarshalJSON()
 	if err != nil {
 		return nil, fmt.Errorf("invalid record: %w", err)
