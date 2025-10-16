@@ -14,6 +14,13 @@ on:
         required: true
         type: string
         description: "Release tag for all components."
+    secrets:
+      PYPI_API_TOKEN:
+        description: "PyPI API token for publishing Python SDK"
+        required: true
+      NPMJS_TOKEN:
+        description: "NPM.js token for publishing JavaScript SDK"
+        required: true
 
 jobs:
   image:
@@ -104,6 +111,9 @@ jobs:
     with:
       javascript-release: true
       python-release: true
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      NPMJS_TOKEN: ${{ secrets.NPMJS_TOKEN }}
 
   release:
     name: Release
