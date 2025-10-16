@@ -26,6 +26,8 @@ jobs:
             label: "Local"
           - task: test:e2e:network
             label: "Network"
+          - task: test:e2e:spire
+            label: "Federation"
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -42,6 +44,9 @@ jobs:
       - name: Setup Taskfile
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      - name: Setup Cosign
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
 
       - name: Setup Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
@@ -62,8 +67,9 @@ jobs:
             go-e2e-${{ runner.os }}-
             go-${{ runner.os }}-
 
-      - name: Setup Cosign
-        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+      - name: Compile CLI
+        run: |
+          task cli:compile
 
       - name: Download artifacts
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
@@ -77,11 +83,6 @@ jobs:
             docker load --input "$image_archive"
           done
           docker images
-
-      - name: Compile CLI
-        if: ${{ matrix.task == 'test:e2e:network' }}
-        run: |
-          task cli:compile
 
       - name: Run end-to-end tests
         env:

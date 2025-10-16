@@ -3,8 +3,7 @@
 
 name: Demo - DIRCTL
 
-description: |
-  This workflow demonstrates how to use the Dir CLI in GitHub Actions.
+# This workflow demonstrates how to use the Dir CLI in GitHub Actions.
 
 on:
   workflow_dispatch:

@@ -28,6 +28,13 @@ on:
         type: boolean
         description: "Make a python SDK release."
         default: false
+    secrets:
+      PYPI_API_TOKEN:
+        description: "PyPI API token for publishing Python SDK"
+        required: true
+      NPMJS_TOKEN:
+        description: "NPM.js token for publishing JavaScript SDK" 
+        required: true
 
 permissions:
   contents: read
@@ -37,8 +44,6 @@ jobs:
     name: Python
     if: ${{ inputs.python-release == true || inputs.python-release == 'true' }}
     runs-on: ubuntu-latest
-    env:
-      UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -59,6 +64,8 @@ jobs:
           task sdk:build:python
 
       - name: Publish the Python SDK
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           task sdk:release:python
 
@@ -66,8 +73,6 @@ jobs:
     name: JavaScript
     if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' }}
     runs-on: ubuntu-latest
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPMJS_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -96,5 +101,7 @@ jobs:
           task sdk:build:javascript
 
       - name: Publish the Javascript SDK
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPMJS_TOKEN }}
         run: |
           task sdk:release:javascript
