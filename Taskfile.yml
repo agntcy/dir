@@ -48,6 +48,12 @@ vars:
   HUB_API_VERSION: 'main'
   ZOT_VERSION: '2.1.8'
 
+  ## Go module discovery
+  GO_MOD_DIR:
+    sh: find . -name go.mod -not -path "./tmp*" -exec dirname {} \;
+  GO_MOD_DIR_UNIT_TEST:
+    sh: find . -name go.mod -not -path "./e2e*" -not -path "./tmp*" -exec dirname {} \;
+
 tasks:
   ##
   ## General
@@ -943,29 +949,22 @@ tasks:
   test:unit:
     desc: Run unit tests on codebase
     aliases: [test]
-    deps: # run in parallel
-      - cli:test
-      - api:test
-      - client:test
-      - server:test
+    vars:
+      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
-      - echo "Success"
+      - for: { var: GO_MOD_DIR_UNIT_TEST }
+        cmd: |
+          echo "Running tests in {{.ITEM}}"
+          go -C {{.ITEM}} test ./... {{.EXTRA_ARGS}}
 
   test:unit:cover:
     desc: Run all unit tests with coverage and generate reports
-    deps:
-      - task: cli:test
-        vars:
-          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-cli.out -json > {{.ROOT_DIR}}/test-report-dir-cli.json'
-      - task: api:test
-        vars:
-          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-api.out -json > {{.ROOT_DIR}}/test-report-dir-api.json'
-      - task: client:test
-        vars:
-          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-client.out -json > {{.ROOT_DIR}}/test-report-dir-client.json'
-      - task: server:test
-        vars:
-          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-server.out -json > {{.ROOT_DIR}}/test-report-dir-server.json'
+    cmds:
+      - for: { var: GO_MOD_DIR_UNIT_TEST }
+        cmd: |
+          MODULE_NAME=$(basename {{.ITEM}})
+          echo "Running tests with coverage in {{.ITEM}}"
+          go -C {{.ITEM}} test ./... -coverprofile {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out -json > {{.ROOT_DIR}}/test-report-dir-${MODULE_NAME}.json
 
   test:unit:coverage:html:
     desc: Extended per-module coverage run with summaries & HTML (non-regression)
@@ -976,7 +975,11 @@ tasks:
         rm -f coverage-*.out coverage-summary.txt test-report-*.json coverage-*.html || true
       - |
         set -euo pipefail
-        modules="api client server cli"
+        # Build list of modules from GO_MOD_DIR_UNIT_TEST
+        modules=""
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
+        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
+        {{end}}
         for m in $modules; do
           if [ -d "$m" ]; then
             echo "[coverage] Testing module: $m"
@@ -998,7 +1001,11 @@ tasks:
         set -euo pipefail
         echo "[coverage] Generating per-module summaries"
         : > coverage-summary.txt
-        modules="api client server cli"
+        # Build list of modules from GO_MOD_DIR_UNIT_TEST
+        modules=""
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
+        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
+        {{end}}
         for m in $modules; do
           if [ -f "coverage-$m.out" ]; then
             if (cd "$m" && go tool cover -func=../coverage-$m.out > ../coverage-$m.func.txt 2>/dev/null); then
@@ -1012,7 +1019,11 @@ tasks:
       - |
         set -euo pipefail
         echo "[coverage] Generating HTML reports"
-        modules="api client server cli"
+        # Build list of modules from GO_MOD_DIR_UNIT_TEST
+        modules=""
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
+        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
+        {{end}}
         for m in $modules; do
           if [ -f "coverage-$m.out" ] && [ -d "$m" ]; then
             (cd "$m" && go tool cover -html=../coverage-$m.out -o ../coverage-$m.html || true)
@@ -1326,8 +1337,6 @@ tasks:
     vars:
       FIX: '{{ .FIX | default "false" }}'
       FIX_FLAG: '{{if eq .FIX "true"}}--fix{{end}}'
-      GO_MOD_DIR:
-        sh: find . -name go.mod -not -path "./tmp*" -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: |
@@ -1357,9 +1366,6 @@ tasks:
     desc: Check licenses
     deps:
       - task: deps:licensei
-    vars:
-      GO_MOD_DIR:
-        sh: find . -name go.mod -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} check --config {{.ROOT_DIR}}/.licensei.toml
@@ -1368,9 +1374,6 @@ tasks:
     desc: Check licenses
     deps:
       - task: deps:licensei
-    vars:
-      GO_MOD_DIR:
-        sh: find . -name go.mod -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
@@ -1529,9 +1532,6 @@ tasks:
 
   deps:tidy:
     desc: Ensure dependencies are up-to-date
-    vars:
-      GO_MOD_DIR:
-        sh: find . -name go.mod -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: go -C {{.ITEM}} mod tidy -go={{.GO_VERSION}}
