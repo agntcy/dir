@@ -63,14 +63,36 @@ type mockPusher struct {
 	pushed     []*corev1.Record
 }
 
-func (m *mockPusher) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
-	if m.shouldFail {
-		return nil, errors.New("push failed")
-	}
+func (m *mockPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.RecordRef, <-chan error) {
+	refCh := make(chan *corev1.RecordRef)
+	errCh := make(chan error)
 
-	m.pushed = append(m.pushed, record)
+	go func() {
+		defer close(refCh)
+		defer close(errCh)
 
-	return &corev1.RecordRef{Cid: "test-cid"}, nil
+		// Consume all records from the input channel
+		for record := range inputCh {
+			m.pushed = append(m.pushed, record)
+
+			if m.shouldFail {
+				select {
+				case errCh <- errors.New("push failed"):
+				case <-ctx.Done():
+					return
+				}
+			} else {
+				// Send success response
+				select {
+				case refCh <- &corev1.RecordRef{}:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return refCh, errCh
 }
 
 func TestPipeline_Run_Success(t *testing.T) {
@@ -85,9 +107,7 @@ func TestPipeline_Run_Success(t *testing.T) {
 
 	// Create pipeline
 	config := Config{
-		FetcherWorkers:     1,
 		TransformerWorkers: 2,
-		PusherWorkers:      1,
 		DryRun:             false,
 	}
 	p := New(fetcher, transformer, pusher, config)
@@ -128,9 +148,7 @@ func TestPipeline_Run_DryRun(t *testing.T) {
 
 	// Create pipeline with dry-run enabled
 	config := Config{
-		FetcherWorkers:     1,
 		TransformerWorkers: 2,
-		PusherWorkers:      1,
 		DryRun:             true,
 	}
 	p := New(fetcher, transformer, pusher, config)
@@ -167,9 +185,7 @@ func TestPipeline_Run_TransformError(t *testing.T) {
 
 	// Create pipeline
 	config := Config{
-		FetcherWorkers:     1,
 		TransformerWorkers: 2,
-		PusherWorkers:      1,
 		DryRun:             false,
 	}
 	p := New(fetcher, transformer, pusher, config)
@@ -210,9 +226,7 @@ func TestPipeline_Run_PushError(t *testing.T) {
 
 	// Create pipeline
 	config := Config{
-		FetcherWorkers:     1,
 		TransformerWorkers: 2,
-		PusherWorkers:      1,
 		DryRun:             false,
 	}
 	p := New(fetcher, transformer, pusher, config)
@@ -253,9 +267,7 @@ func TestPipeline_Run_FetchError(t *testing.T) {
 
 	// Create pipeline
 	config := Config{
-		FetcherWorkers:     1,
 		TransformerWorkers: 2,
-		PusherWorkers:      1,
 		DryRun:             false,
 	}
 	p := New(fetcher, transformer, pusher, config)
@@ -282,15 +294,7 @@ func TestPipeline_ConfigDefaults(t *testing.T) {
 	p := New(fetcher, transformer, pusher, config)
 
 	// Verify defaults are set
-	if p.config.FetcherWorkers != 1 {
-		t.Errorf("expected default FetcherWorkers=1, got %d", p.config.FetcherWorkers)
-	}
-
 	if p.config.TransformerWorkers != 5 {
 		t.Errorf("expected default TransformerWorkers=5, got %d", p.config.TransformerWorkers)
-	}
-
-	if p.config.PusherWorkers != 5 {
-		t.Errorf("expected default PusherWorkers=5, got %d", p.config.PusherWorkers)
 	}
 }

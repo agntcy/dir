@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/client/streaming"
 )
 
 // RegistryType represents the type of external registry to import from.
@@ -27,7 +28,7 @@ const (
 // ClientInterface defines the interface for the DIR client used by importers.
 // This allows for easier testing and mocking.
 type ClientInterface interface {
-	Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
+	PushStream(ctx context.Context, recordsCh <-chan *corev1.Record) (streaming.StreamResult[corev1.RecordRef], error)
 }
 
 // Config contains configuration for an import operation.

@@ -14,7 +14,10 @@ func TestFetcher_Fetch(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a fetcher pointing to a non-existent URL (will fail but tests structure)
-	fetcher := NewFetcher("http://localhost:9999", nil, 1)
+	fetcher, err := NewFetcher("http://localhost:9999", nil, 1)
+	if err != nil {
+		t.Fatalf("failed to create fetcher: %v", err)
+	}
 
 	dataCh, errCh := fetcher.Fetch(ctx)
 

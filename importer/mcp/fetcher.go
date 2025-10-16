@@ -38,41 +38,42 @@ var supportedFilters = []string{
 
 // Fetcher implements the pipeline.Fetcher interface for MCP registry.
 type Fetcher struct {
-	baseURL    string
+	url        *url.URL
 	httpClient *http.Client
 	filters    map[string]string
 	limit      int
 }
 
 // NewFetcher creates a new MCP fetcher.
-func NewFetcher(baseURL string, filters map[string]string, limit int) *Fetcher {
+func NewFetcher(baseURL string, filters map[string]string, limit int) (*Fetcher, error) {
+	// Parse and validate base URL
+	u, err := url.Parse(baseURL + "/servers")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse base URL: %w", err)
+	}
+
+	// Validate filters
+	for key := range filters {
+		if !slices.Contains(supportedFilters, key) {
+			return nil, fmt.Errorf("unsupported filter: %s", key)
+		}
+	}
+
 	return &Fetcher{
-		baseURL: baseURL,
+		url: u,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second, //nolint:mnd
 		},
 		filters: filters,
 		limit:   limit,
-	}
+	}, nil
 }
 
 // Fetch retrieves servers from the MCP registry and sends them to the output channel.
 func (f *Fetcher) Fetch(ctx context.Context) (<-chan interface{}, <-chan error) {
-	outputCh := make(chan interface{})
+	// Use buffered channel to allow fetcher to work ahead of transformers
+	outputCh := make(chan interface{}, 50) //nolint:mnd
 	errCh := make(chan error, 1)
-
-	// Validate filters
-	for key := range f.filters {
-		if !slices.Contains(supportedFilters, key) {
-			close(outputCh)
-
-			errCh <- fmt.Errorf("unsupported filter: %s", key)
-
-			close(errCh)
-
-			return outputCh, errCh
-		}
-	}
 
 	go func() {
 		defer close(outputCh)
@@ -130,14 +131,8 @@ func (f *Fetcher) Fetch(ctx context.Context) (<-chan interface{}, <-chan error) 
 
 // listServersPage fetches a single page of servers from the MCP registry.
 func (f *Fetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv0.ServerResponse, string, error) {
-	// Build URL with query parameters
-	u, err := url.Parse(f.baseURL + "/servers")
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to parse base URL: %w", err)
-	}
-
 	// Add filters as query parameters
-	query := u.Query()
+	query := f.url.Query()
 
 	for key, value := range f.filters {
 		if value != "" {
@@ -153,10 +148,10 @@ func (f *Fetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv
 	// Add limit parameter to control page size
 	query.Set("limit", strconv.Itoa(defaultPageLimit))
 
-	u.RawQuery = query.Encode()
+	f.url.RawQuery = query.Encode()
 
 	// Create request
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, f.url.String(), nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create request: %w", err)
 	}

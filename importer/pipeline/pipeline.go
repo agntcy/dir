@@ -28,15 +28,14 @@ type Transformer interface {
 
 // Pusher is an interface for pushing records to the destination (DIR).
 type Pusher interface {
-	// Push sends a record to the destination and returns any error.
-	Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
+	// Push pushes records to the destination and returns the result channel and error channel.
+	Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.RecordRef, <-chan error)
 }
 
 // Config contains configuration for the pipeline.
 type Config struct {
-	FetcherWorkers     int
+	// TransformerWorkers is the number of concurrent workers for the transformer stage.
 	TransformerWorkers int
-	PusherWorkers      int
 
 	// DryRun if true, skips the pusher stage.
 	DryRun bool
@@ -62,16 +61,8 @@ type Pipeline struct {
 // New creates a new pipeline instance.
 func New(fetcher Fetcher, transformer Transformer, pusher Pusher, config Config) *Pipeline {
 	// Set defaults
-	if config.FetcherWorkers <= 0 {
-		config.FetcherWorkers = 1
-	}
-
 	if config.TransformerWorkers <= 0 {
 		config.TransformerWorkers = 5
-	}
-
-	if config.PusherWorkers <= 0 {
-		config.PusherWorkers = 5
 	}
 
 	return &Pipeline{
@@ -93,14 +84,42 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 	transformedCh, transformErrCh := p.runTransformStage(ctx, fetchedCh, result)
 
 	// Stage 3: Push records (if not dry-run)
-	var pushErrCh <-chan error
+	var (
+		refCh     <-chan *corev1.RecordRef
+		pushErrCh <-chan error
+	)
+
 	if !p.config.DryRun {
-		pushErrCh = p.runPushStage(ctx, transformedCh, result)
+		refCh, pushErrCh = p.pusher.Push(ctx, transformedCh)
+
+		// Track successful pushes
+		go func() {
+			for ref := range refCh {
+				if ref != nil {
+					result.mu.Lock()
+					result.ImportedCount++
+					result.mu.Unlock()
+				}
+			}
+		}()
+	} else {
+		// In dry-run mode, drain the transformed channel to prevent blocking
+		go func() {
+			for range transformedCh {
+				// Just drain, don't process
+			}
+		}()
 	}
 
 	// Collect errors from all stages
 	var wg sync.WaitGroup
-	wg.Add(3) //nolint:mnd
+
+	numGoroutines := 2 // fetch and transform errors
+	if !p.config.DryRun {
+		numGoroutines++ // add push errors
+	}
+
+	wg.Add(numGoroutines)
 
 	// Collect fetch errors
 	go func() {
@@ -128,18 +147,21 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 		}
 	}()
 
-	// Collect push errors
-	go func() {
-		defer wg.Done()
+	// Collect push errors (only if not dry-run)
+	if !p.config.DryRun {
+		go func() {
+			defer wg.Done()
 
-		for err := range pushErrCh {
-			if err != nil {
-				result.mu.Lock()
-				result.Errors = append(result.Errors, err)
-				result.mu.Unlock()
+			for err := range pushErrCh {
+				if err != nil {
+					result.mu.Lock()
+					result.FailedCount++
+					result.Errors = append(result.Errors, err)
+					result.mu.Unlock()
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	wg.Wait()
 
@@ -209,60 +231,4 @@ func (p *Pipeline) runTransformStage(ctx context.Context, inputCh <-chan interfa
 	}()
 
 	return outputCh, errCh
-}
-
-// runPushStage runs the push stage with concurrent workers.
-func (p *Pipeline) runPushStage(ctx context.Context, inputCh <-chan *corev1.Record, result *Result) <-chan error {
-	errCh := make(chan error)
-
-	var wg sync.WaitGroup
-
-	// Start pusher workers
-	for range p.config.PusherWorkers {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case record, ok := <-inputCh:
-					if !ok {
-						return
-					}
-
-					// Push the record
-					_, err := p.pusher.Push(ctx, record)
-					if err != nil {
-						result.mu.Lock()
-						result.FailedCount++
-						result.mu.Unlock()
-
-						select {
-						case errCh <- fmt.Errorf("push error: %w", err):
-						case <-ctx.Done():
-							return
-						}
-
-						continue
-					}
-
-					// Track successful imports
-					result.mu.Lock()
-					result.ImportedCount++
-					result.mu.Unlock()
-				}
-			}
-		}()
-	}
-
-	// Close error channel when all workers are done
-	go func() {
-		wg.Wait()
-		close(errCh)
-	}()
-
-	return errCh
 }

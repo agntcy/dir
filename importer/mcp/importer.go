@@ -30,15 +30,17 @@ func NewImporter(cfg config.Config) (types.Importer, error) {
 // 3. Pusher: Pushes records to DIR.
 func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportResult, error) {
 	// Create pipeline stages
-	fetcher := NewFetcher(i.registryURL, cfg.Filters, cfg.Limit)
+	fetcher, err := NewFetcher(i.registryURL, cfg.Filters, cfg.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create fetcher: %w", err)
+	}
+
 	transformer := NewTransformer()
 	pusher := pipeline.NewClientPusher(cfg.Client)
 
 	// Configure pipeline with concurrency settings
 	pipelineConfig := pipeline.Config{
-		FetcherWorkers:     1,
 		TransformerWorkers: cfg.Concurrency,
-		PusherWorkers:      cfg.Concurrency / 2, //nolint:mnd
 		DryRun:             cfg.DryRun,
 	}
 
