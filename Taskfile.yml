@@ -922,7 +922,12 @@ tasks:
         cmd: |
           MODULE_NAME=$(basename {{.ITEM}})
           echo "Running tests with coverage in {{.ITEM}}"
-          go -C {{.ITEM}} test ./... -coverprofile {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out -json > {{.ROOT_DIR}}/test-report-dir-${MODULE_NAME}.json
+          go -C {{.ITEM}} test ./... -coverprofile {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp -json > {{.ROOT_DIR}}/test-report-dir-${MODULE_NAME}.json
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp ]; then
+            grep -v "\.pb\.go" {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp | grep -v "mock_.*\.go" > {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out || true
+            rm {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp
+          fi
 
   test:unit:coverage:html:
     desc: Extended per-module coverage run with summaries & HTML (non-regression)
@@ -943,13 +948,17 @@ tasks:
             echo "[coverage] Testing module: $m"
             (
               cd "$m"
-              if go test ./... -covermode=atomic -coverprofile "../coverage-$m.out" -json 2>&1 | tee "../test-report-$m.json" >/dev/null; then
+              if go test ./... -covermode=atomic -coverprofile "../coverage-$m.out.tmp" -json 2>&1 | tee "../test-report-$m.json" >/dev/null; then
                 echo "[coverage] Completed: $m"
               else
                 status=$?
                 echo "[coverage][warn] Tests failed in $m (exit $status); continuing"
               fi
-              if [ ! -s "../coverage-$m.out" ]; then
+              # Filter out generated files (matching codecov.yml ignores)
+              if [ -f "../coverage-$m.out.tmp" ]; then
+                grep -v "\.pb\.go" "../coverage-$m.out.tmp" | grep -v "mock_.*\.go" > "../coverage-$m.out" || echo "mode: atomic" > "../coverage-$m.out"
+                rm "../coverage-$m.out.tmp"
+              elif [ ! -s "../coverage-$m.out" ]; then
                 echo "mode: atomic" > "../coverage-$m.out"
               fi
             )
