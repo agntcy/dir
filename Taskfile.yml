@@ -436,6 +436,15 @@ tasks:
       - go -C . test -run=^$ -bench=. ./...
 
   ##
+  ## Importer
+  ##
+  importer:test:
+    desc: Unit test Importer code
+    dir: ./importer
+    cmds:
+      - go -C . test ./... {{.EXTRA_ARGS}}
+
+  ##
   ## Deploy
   ##
   deploy:kubernetes:setup-cluster:
