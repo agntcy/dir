@@ -211,16 +211,43 @@ class Client:
             msg = "JWT audience is required for JWT authentication"
             raise ValueError(msg)
 
+        # Create X509Source to get the SPIFFE bundle for TLS verification
+        # In JWT mode, the server presents its X.509-SVID via TLS for transport security
+        # The X509Source will handle fetching the bundle from the Workload API
+        workload_client = WorkloadApiClient(socket_path=self.config.spiffe_socket_path)
+        x509_source = X509Source(
+            workload_api_client=workload_client,
+            socket_path=self.config.spiffe_socket_path,
+            timeout_in_seconds=60,
+        )
+        
+        # Extract the CA certificates from all bundles
+        root_ca = b""
+        for bundle in x509_source.bundles:
+            for authority in bundle.x509_authorities:
+                root_ca += authority.public_bytes(encoding=serialization.Encoding.PEM)
+        
+        if not root_ca:
+            msg = "Failed to fetch X.509 bundle from SPIRE: no bundles returned"
+            raise RuntimeError(msg)
+
         # Create JWT interceptor
         jwt_interceptor = JWTAuthInterceptor(
             socket_path=self.config.spiffe_socket_path,
             audience=self.config.jwt_audience
         )
 
-        # Create insecure channel with JWT interceptor
-        # Note: JWT provides authentication, but for production you may want TLS for transport security
-        channel = grpc.insecure_channel(self.config.server_address)
+        # Create secure channel with JWT interceptor and TLS using SPIFFE bundle
+        # For JWT mode: Server presents X.509-SVID via TLS, clients authenticate with JWT-SVID
+        credentials = grpc.ssl_channel_credentials(root_certificates=root_ca)
+        channel = grpc.secure_channel(
+            target=self.config.server_address,
+            credentials=credentials,
+        )
         channel = grpc.intercept_channel(channel, jwt_interceptor)
+
+        # Close the X509Source since we only needed it to get the bundle
+        x509_source.close()
 
         return channel
 
