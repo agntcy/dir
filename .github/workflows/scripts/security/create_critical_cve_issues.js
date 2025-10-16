@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * create_critical_cve_issues.js (relocated under .github/workflows)
+ * create_critical_cve_issues.js
  * Scans downloaded Trivy SARIF artifacts and creates GitHub issues for unique CRITICAL CVEs.
  */
 const fs = require('fs');

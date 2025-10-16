@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# generate_trivy_summary.sh (relocated under .github/workflows)
+# generate_trivy_summary.sh
 # Reads Trivy SARIF artifacts and appends a Markdown table to $GITHUB_STEP_SUMMARY.
 
 if [[ -z "${GITHUB_STEP_SUMMARY:-}" ]]; then
