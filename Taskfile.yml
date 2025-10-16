@@ -1104,6 +1104,16 @@ tasks:
       # Run network tests with proper isolation and cleanup
       - 'go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
 
+  test:e2e:spire:
+    desc: Run end-to-end tests for SPIRE deployment
+    cmds:
+      # Run SPIRE deployment
+      - task: test:spire
+      # Run SDK tests
+      - task: sdk:deps:javascript
+      - task: sdk:test-env:spiffe:load-test-image
+      - task: sdk:test:all:spiffe
+
   # TODO: move spire out from here
   # TODO: change to Ingress services instead of LoadBalancer
   test:spire:

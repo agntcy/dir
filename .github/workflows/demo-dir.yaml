@@ -3,10 +3,9 @@
 
 name: Demo - DIR
 
-description: |
-  This workflow demonstrates how to use the Dir CLI with a Kind cluster and Helm chart.
-  It can be run in either local mode or network mode.
-  It includes steps for building, pushing, publishing, listing and pulling records.
+#  This workflow demonstrates how to use the Dir CLI with a Kind cluster and Helm chart.
+#  It can be run in either local mode or network mode.
+#  It includes steps for building, pushing, publishing, listing and pulling records.
 
 on:
   workflow_dispatch:
@@ -20,6 +19,7 @@ on:
         required: true
         type: boolean
         default: false
+        description: "Deploy in network mode"
 
 permissions:
   id-token: write

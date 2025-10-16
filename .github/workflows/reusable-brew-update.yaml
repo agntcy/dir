@@ -3,9 +3,8 @@
 
 name: Brew formula update
 
-description: |
-  This workflow automatize the brew formula file update process with replacing the version number to the latest,
-  recalculate all hash for the binaries and create a new PR with the changes.
+# This workflow automatize the brew formula file update process with replacing the version number to the latest,
+# recalculate all hash for the binaries and create a new PR with the changes.
 
 on:
   workflow_call:
