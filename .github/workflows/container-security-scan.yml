@@ -12,6 +12,7 @@ permissions:
   contents: read
   security-events: write # for uploading SARIF
   actions: read
+  issues: write # create issues for critical CVEs
 
 jobs:
   trivy-scan:
@@ -102,30 +103,8 @@ jobs:
 
       - name: Generate summary
         run: |
-          echo '## Container Security Scan Summary' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          files=$(ls trivy-artifacts/*/trivy-*.sarif 2>/dev/null || true)
-          if [ -z "$files" ]; then
-            echo "No SARIF files found in artifacts (check previous job logs)." >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
-          echo '| Image | Critical | High | Medium | Total | File |' >> $GITHUB_STEP_SUMMARY
-          echo '|-------|----------|------|--------|-------|------|' >> $GITHUB_STEP_SUMMARY
-          for f in $files; do
-            img=$(basename "$f" .sarif | sed 's/^trivy-//')
-            # Correct severity counting:
-            # 1. Bind each run to $run.
-            # 2. Iterate its results and look up the corresponding rule via result.ruleIndex.
-            # 3. Inspect rule.properties.tags for severity markers (CRITICAL/HIGH/MEDIUM).
-            # Note: Prior implementation produced 0 counts because it re-entered .runs[] inside the same object pipeline, losing context.
-            critical=$(jq -r '.runs[] as $run | [ $run.results[] | select(($run.tool.driver.rules[.ruleIndex].properties.tags // []) | index("CRITICAL")) ] | length' "$f" 2>/dev/null || echo 0)
-            high=$(jq -r '.runs[] as $run | [ $run.results[] | select(($run.tool.driver.rules[.ruleIndex].properties.tags // []) | index("HIGH")) ] | length' "$f" 2>/dev/null || echo 0)
-            medium=$(jq -r '.runs[] as $run | [ $run.results[] | select(($run.tool.driver.rules[.ruleIndex].properties.tags // []) | index("MEDIUM")) ] | length' "$f" 2>/dev/null || echo 0)
-            total=$(jq -r '[.runs[].results[]] | length' "$f" 2>/dev/null || echo 0)
-            echo "| $img | $critical | $high | $medium | $total | $(basename $f) |" >> $GITHUB_STEP_SUMMARY
-          done
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'Severity counts derived from rule tags (CRITICAL/HIGH/MEDIUM) mapped via result.ruleIndex.' >> $GITHUB_STEP_SUMMARY
+          chmod +x .github/workflows/scripts/security/generate_trivy_summary.sh
+          .github/workflows/scripts/security/generate_trivy_summary.sh
 
       - name: Fail if critical vulns found (optional gate)
         if: ${{ github.event_name != 'pull_request' }}
@@ -135,3 +114,14 @@ jobs:
           if [ "${found}" != "0" ]; then
             echo "Critical vulnerabilities detected. (Gate currently informational.)" >&2
           fi
+      - name: Create GitHub issues for critical CVEs
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "Installing dependencies for issue creation script";
+          npm init -y >/dev/null 2>&1 || true
+          npm install @octokit/rest@21 >/dev/null 2>&1
+          node .github/workflows/scripts/security/create_critical_cve_issues.js
