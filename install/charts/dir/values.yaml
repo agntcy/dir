@@ -12,6 +12,7 @@ apiserver:
   service:
     type: NodePort
 
+  # Server configuration
   config:
     # listen_address: "0.0.0.0:8888"
     # healthcheck_address: "0.0.0.0:8889"
@@ -118,6 +119,7 @@ apiserver:
       
       # Timeout for individual publication operations
       worker_timeout: "30m"
+
   # SPIRE configuration
   spire:
     enabled: false

@@ -16,31 +16,19 @@ import (
 )
 
 // Push sends a complete record to the store and returns a record reference.
+// This is a convenience wrapper around PushBatch for single-record operations.
 // The record must be ≤4MB as per the v1 store service specification.
 func (c *Client) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
-	// Create streaming client
-	stream, err := c.StoreServiceClient.Push(ctx)
+	refs, err := c.PushBatch(ctx, []*corev1.Record{record})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create push stream: %w", err)
+		return nil, err
 	}
 
-	// Send complete record (up to 4MB)
-	if err := stream.Send(record); err != nil {
-		return nil, fmt.Errorf("failed to send record: %w", err)
+	if len(refs) != 1 {
+		return nil, errors.New("no data returned")
 	}
 
-	// Close send stream
-	if err := stream.CloseSend(); err != nil {
-		return nil, fmt.Errorf("failed to close send stream: %w", err)
-	}
-
-	// Receive response for this record
-	recordRef, err := stream.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive record ref: %w", err)
-	}
-
-	return recordRef, nil
+	return refs[0], nil
 }
 
 // PullStream retrieves multiple records efficiently using a single bidirectional stream.
@@ -98,46 +86,44 @@ func (c *Client) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) 
 	}
 }
 
-// PushBatch sends multiple records in a single stream for efficiency.
-// This takes advantage of the streaming interface for batch operations.
-//
-//nolint:dupl // Similar structure to PullBatch but semantically different operations
-func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*corev1.RecordRef, error) {
-	if len(records) == 0 {
-		return nil, nil
-	}
-
-	// Create streaming client
+// PushStream uploads multiple records efficiently using a single bidirectional stream.
+// This method is ideal for batch operations and takes full advantage of gRPC streaming.
+// The input channel allows you to send records as they become available.
+func (c *Client) PushStream(ctx context.Context, recordsCh <-chan *corev1.Record) (streaming.StreamResult[corev1.RecordRef], error) {
 	stream, err := c.StoreServiceClient.Push(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create push stream: %w", err)
 	}
 
-	// Send all records
-	for i, record := range records {
-		if err := stream.Send(record); err != nil {
-			return nil, fmt.Errorf("failed to send record %d: %w", i, err)
+	//nolint:wrapcheck
+	return streaming.ProcessBidiStream(ctx, stream, recordsCh)
+}
+
+// PushBatch sends multiple records in a single stream for efficiency.
+// This is a convenience method that accepts a slice and returns a slice,
+// built on top of the streaming implementation for consistency.
+func (c *Client) PushBatch(ctx context.Context, records []*corev1.Record) ([]*corev1.RecordRef, error) {
+	// Use channel to communicate error safely (no race condition)
+	result, err := c.PushStream(ctx, streaming.SliceToChan(ctx, records))
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for results
+	var errs error
+
+	var refs []*corev1.RecordRef
+
+	for {
+		select {
+		case err := <-result.ErrCh():
+			errs = errors.Join(errs, err)
+		case resp := <-result.ResCh():
+			refs = append(refs, resp)
+		case <-result.DoneCh():
+			return refs, errs
 		}
 	}
-
-	// Close send stream
-	if err := stream.CloseSend(); err != nil {
-		return nil, fmt.Errorf("failed to close send stream: %w", err)
-	}
-
-	// Receive all responses
-	var refs []*corev1.RecordRef //nolint:prealloc // We don't know the number of records in advance
-
-	for i := range records {
-		recordRef, err := stream.Recv()
-		if err != nil {
-			return nil, fmt.Errorf("failed to receive record ref %d: %w", i, err)
-		}
-
-		refs = append(refs, recordRef)
-	}
-
-	return refs, nil
 }
 
 // PushReferrer stores a signature using the PushReferrer RPC.

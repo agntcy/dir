@@ -48,10 +48,20 @@ func PullAgent(
 }
 
 // ParseAgentID parses a string into an AgentIdentifier.
-// Accepts either a digest (sha256:<hash>) or repository:version format.
+// Accepts either a digest (sha256:<hash>), a repository:version format or a CID.
 func ParseAgentID(agentID string) (*v1alpha1.RecordIdentifier, error) {
 	// If the agentID starts with "sha256", treat it as a digest
 	if strings.HasPrefix(agentID, "sha256:") {
+		return &v1alpha1.RecordIdentifier{
+			Id: &v1alpha1.RecordIdentifier_Digest{
+				Digest: agentID,
+			},
+		}, nil
+	}
+
+	// Check if it looks like a CID
+	// FIXME: Maybe we should later have a dedicated field for CIDs
+	if strings.HasPrefix(agentID, "baeare") {
 		return &v1alpha1.RecordIdentifier{
 			Id: &v1alpha1.RecordIdentifier_Digest{
 				Digest: agentID,
@@ -72,7 +82,7 @@ func ParseAgentID(agentID string) (*v1alpha1.RecordIdentifier, error) {
 		}, nil
 	}
 
-	return nil, fmt.Errorf("invalid agent ID format: %s. Expected format is either 'sha256:<hash>' or '<repository>:<version>'", agentID)
+	return nil, fmt.Errorf("invalid agent ID format: %s. Expected format is either 'sha256:<hash>' a CID or '<repository>:<version>'", agentID)
 }
 
 // ParseRepoTagID parses a repository tag or ID string into the appropriate PushAgentRequest field.
