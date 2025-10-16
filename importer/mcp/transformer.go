@@ -4,6 +4,7 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -12,10 +13,36 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// ConvertToOASF converts an MCP server response to OASF format.
+// Transformer implements the pipeline.Transformer interface for MCP records.
+type Transformer struct{}
+
+// NewTransformer creates a new MCP transformer.
+func NewTransformer() *Transformer {
+	return &Transformer{}
+}
+
+// Transform converts an MCP server response to OASF format.
+func (t *Transformer) Transform(ctx context.Context, source interface{}) (*corev1.Record, error) {
+	// Convert interface{} to ServerResponse
+	response, ok := ServerResponseFromInterface(source)
+	if !ok {
+		return nil, fmt.Errorf("invalid source type: expected mcpapiv0.ServerResponse, got %T", source)
+	}
+
+	// Convert to OASF format
+	record, err := t.convertToOASF(response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert server %s:%s to OASF: %w",
+			response.Server.Name, response.Server.Version, err)
+	}
+
+	return record, nil
+}
+
+// convertToOASF converts an MCP server response to OASF format.
 // Note: This is a simplified conversion. Future versions will use OASF-SDK
 // for full schema validation and metadata extraction.
-func ConvertToOASF(response mcpapiv0.ServerResponse) (*corev1.Record, error) {
+func (t *Transformer) convertToOASF(response mcpapiv0.ServerResponse) (*corev1.Record, error) {
 	server := response.Server
 
 	// Create a struct with the MCP server data

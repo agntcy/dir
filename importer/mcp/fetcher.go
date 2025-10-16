@@ -22,22 +22,6 @@ const (
 	defaultPageLimit = 30
 )
 
-// Client is a REST API client for the MCP registry.
-type Client struct {
-	baseURL    string
-	httpClient *http.Client
-}
-
-// NewClient creates a new MCP registry client.
-func NewClient(baseURL string) *Client {
-	return &Client{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second, //nolint:mnd
-		},
-	}
-}
-
 // Supported filters https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters
 //   - search: Filter by server name (substring match)
 //   - version: Filter by version ('latest' for latest version, or an exact version like '1.2.3')
@@ -52,27 +36,47 @@ var supportedFilters = []string{
 	"cursor",
 }
 
-// ListServersStream streams servers from the MCP registry as they are fetched.
-func (c *Client) ListServersStream(ctx context.Context, filters map[string]string, limit int) (<-chan mcpapiv0.ServerResponse, <-chan error) {
-	serverChan := make(chan mcpapiv0.ServerResponse)
-	errChan := make(chan error, 1)
+// Fetcher implements the pipeline.Fetcher interface for MCP registry.
+type Fetcher struct {
+	baseURL    string
+	httpClient *http.Client
+	filters    map[string]string
+	limit      int
+}
+
+// NewFetcher creates a new MCP fetcher.
+func NewFetcher(baseURL string, filters map[string]string, limit int) *Fetcher {
+	return &Fetcher{
+		baseURL: baseURL,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second, //nolint:mnd
+		},
+		filters: filters,
+		limit:   limit,
+	}
+}
+
+// Fetch retrieves servers from the MCP registry and sends them to the output channel.
+func (f *Fetcher) Fetch(ctx context.Context) (<-chan interface{}, <-chan error) {
+	outputCh := make(chan interface{})
+	errCh := make(chan error, 1)
 
 	// Validate filters
-	for key := range filters {
+	for key := range f.filters {
 		if !slices.Contains(supportedFilters, key) {
-			close(serverChan)
+			close(outputCh)
 
-			errChan <- fmt.Errorf("unsupported filter: %s", key)
+			errCh <- fmt.Errorf("unsupported filter: %s", key)
 
-			close(errChan)
+			close(errCh)
 
-			return serverChan, errChan
+			return outputCh, errCh
 		}
 	}
 
 	go func() {
-		defer close(serverChan)
-		defer close(errChan)
+		defer close(outputCh)
+		defer close(errCh)
 
 		cursor := ""
 		count := 0
@@ -81,16 +85,16 @@ func (c *Client) ListServersStream(ctx context.Context, filters map[string]strin
 			// Check context cancellation
 			select {
 			case <-ctx.Done():
-				errChan <- ctx.Err()
+				errCh <- ctx.Err()
 
 				return
 			default:
 			}
 
 			// Fetch one page
-			page, nextCursor, err := c.listServersPage(ctx, filters, cursor)
+			page, nextCursor, err := f.listServersPage(ctx, cursor)
 			if err != nil {
-				errChan <- err
+				errCh <- err
 
 				return
 			}
@@ -98,16 +102,16 @@ func (c *Client) ListServersStream(ctx context.Context, filters map[string]strin
 			// Stream each server as soon as it's available
 			for _, server := range page {
 				// Check if limit is reached (limit <= 0 means no limit)
-				if limit > 0 && count >= limit {
+				if f.limit > 0 && count >= f.limit {
 					return
 				}
 
 				select {
 				case <-ctx.Done():
-					errChan <- ctx.Err()
+					errCh <- ctx.Err()
 
 					return
-				case serverChan <- server:
+				case outputCh <- server:
 					count++
 				}
 			}
@@ -121,13 +125,13 @@ func (c *Client) ListServersStream(ctx context.Context, filters map[string]strin
 		}
 	}()
 
-	return serverChan, errChan
+	return outputCh, errCh
 }
 
 // listServersPage fetches a single page of servers from the MCP registry.
-func (c *Client) listServersPage(ctx context.Context, filters map[string]string, cursor string) ([]mcpapiv0.ServerResponse, string, error) {
+func (f *Fetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv0.ServerResponse, string, error) {
 	// Build URL with query parameters
-	u, err := url.Parse(c.baseURL + "/servers")
+	u, err := url.Parse(f.baseURL + "/servers")
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to parse base URL: %w", err)
 	}
@@ -135,7 +139,7 @@ func (c *Client) listServersPage(ctx context.Context, filters map[string]string,
 	// Add filters as query parameters
 	query := u.Query()
 
-	for key, value := range filters {
+	for key, value := range f.filters {
 		if value != "" {
 			query.Set(key, value)
 		}
@@ -161,7 +165,7 @@ func (c *Client) listServersPage(ctx context.Context, filters map[string]string,
 
 	// TODO: Implement retry logic for transient failures
 	// Execute request
-	resp, err := c.httpClient.Do(req)
+	resp, err := f.httpClient.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to fetch servers: %w", err)
 	}
@@ -181,4 +185,12 @@ func (c *Client) listServersPage(ctx context.Context, filters map[string]string,
 	}
 
 	return registryResp.Servers, registryResp.Metadata.NextCursor, nil
+}
+
+// ServerResponseFromInterface converts an interface{} back to ServerResponse.
+// This is a helper for the transformer stage.
+func ServerResponseFromInterface(i interface{}) (mcpapiv0.ServerResponse, bool) {
+	resp, ok := i.(mcpapiv0.ServerResponse)
+
+	return resp, ok
 }
