@@ -16,9 +16,34 @@ image:
   pullPolicy: IfNotPresent
   pullSecrets: []
 
+# Server configuration
 config:
   # listen_address: "0.0.0.0:8888"
   # healthcheck_address: "0.0.0.0:8889"
+
+  # Authentication settings (handles identity verification)
+  # Supports both X.509 (X.509-SVID) and JWT (JWT-SVID) authentication
+  authn:
+    # Enable authentication
+    enabled: false
+    # Authentication mode: "x509" or "jwt"
+    # - x509: Uses X.509-SVID from mutual TLS peer certificates
+    # - jwt: Uses JWT-SVID from Authorization header
+    mode: "x509"
+    # SPIFFE Workload API socket path (injected by SPIRE agent)
+    socket_path: "unix:///run/spire/agent-sockets/api.sock"
+    # Expected audiences for JWT validation (only used in JWT mode)
+    audiences:
+      - "spiffe://example.org/dir-server"
+
+  # Authorization settings (handles access control policies)
+  # Requires authentication to be enabled first
+  authz:
+    # Enable authorization policies
+    enabled: false
+    # Trust domain for this Directory server
+    # Used to distinguish internal (same trust domain) vs external requests
+    trust_domain: "example.org"
 
   # Store settings for the storage backend.
   store:
@@ -61,9 +86,6 @@ config:
     #   - /ip4/1.1.1.1/tcp/1
     #   - /ip4/1.1.1.1/tcp/2
 
-    # Datastore to use for routing persistance.
-    # datastore_dir: ""
-
     # GossipSub configuration for efficient label announcements
     # When enabled, labels are propagated via GossipSub mesh to ALL subscribed peers
     # When disabled, falls back to DHT+Pull mechanism (higher bandwidth, limited reach)
@@ -91,13 +113,35 @@ config:
       username: ""
       password: ""
 
-# create PVC for routing/cache data
+  # Publication configuration
+  publication:
+    # How frequently the scheduler checks for pending publications
+    scheduler_interval: "1h"
+    
+    # Maximum number of publication workers running concurrently
+    worker_count: 1
+    
+    # Timeout for individual publication operations
+    worker_timeout: "30m"
+
+# SPIRE configuration
+spire:
+  enabled: false
+  trustDomain: example.org
+  federation: []
+    # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
+    # - trustDomain: dir-cluster
+    #   bundleEndpointURL: https://0.0.0.0:8081
+    #   bundleEndpointProfile:
+    #     type: https_web
+
+# Create PVC for routing/cache data
 pvc:
   create: false
   storageClassName: standard
   size: 1G
 
-# service exposes gRPC server api
+# Service exposes gRPC server api
 service:
   type: ClusterIP
   port: 8888
@@ -178,14 +222,3 @@ extraVolumeMounts: []
   #   mountPath: /etc/datastore
 
 revisionHistoryLimit: 2
-
-# SPIRE configuration
-spire:
-  enabled: false
-  trustDomain: example.org
-  federation: []
-    # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
-    # - trustDomain: dir-cluster
-    #   bundleEndpointURL: https://0.0.0.0:8081
-    #   bundleEndpointProfile:
-    #     type: https_web

@@ -63,9 +63,48 @@ spire:
     #   bundleEndpointProfile:
     #     type: https_web
 
+# Additional environment variables (applied to all cronjobs)
+env:
+  - name: DIRECTORY_CLIENT_SERVER_ADDRESS
+    value: dir-apiserver.dir-server.svc.cluster.local:8888
+  - name: DIRECTORY_CLIENT_AUTH_MODE
+    value: "" # Options: "x509", "jwt", or "" for no auth
+  - name: DIRECTORY_CLIENT_JWT_AUDIENCE
+    value: "" # Required if using JWT auth
+
 # Config maps config (shared across all cronjobs)
 configMaps:
   - name: example-record
+    data:
+      record.json: |
+        {
+          "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
+          "version": "v3.0.0",
+          "schema_version": "v0.5.0",
+          "description": "Research agent for Cisco's marketing strategy.",
+          "authors": ["Cisco Systems"],
+          "created_at": "2025-03-19T17:06:37Z",
+          "annotations": {
+            "key": "value"
+          },
+          "skills": [
+            {
+              "name": "Natural Language Processing/Text Completion",
+              "id": 10201
+            }
+          ],
+          "locators": [
+            {
+              "type": "docker-image",
+              "url": "https://ghcr.io/agntcy/marketing-strategy"
+            }
+          ],
+          "domains": [
+            {
+              "name": "research"
+            }
+          ]
+        }
 
 # Service account config
 serviceAccount:
@@ -87,11 +126,6 @@ resources:
   requests:
     cpu: 50m
     memory: 64Mi
-
-# Additional environment variables (applied to all cronjobs)
-env:
-  - name: DIRECTORY_CLIENT_SERVER_ADDRESS
-    value: dir-apiserver.dir-server.svc.cluster.local:8888
 
 # Default volumes (can be extended per cronjob)
 volumes: []

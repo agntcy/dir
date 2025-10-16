@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 {{- range $config := .Values.configMaps }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ $config.name }}
 data:
-  record.json: |
-    {{- $.Files.Get "files/record.json" | nindent 4 }}
+  {{- range $key, $value := $config.data }}
+  {{ $key }}: |
+    {{ $value | nindent 4 }}
+  {{- end }}
 {{- end }}

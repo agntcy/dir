@@ -5,23 +5,18 @@
 package hub
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	v1alpha1 "github.com/agntcy/dir/hub/api/v1alpha1"
-	corev1alpha1 "github.com/agntcy/dirhub/backport/api/core/v1alpha1"
-	"github.com/opencontainers/go-digest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
-
-const chunkSize = 4096 // 4KB
 
 // Client defines the interface for interacting with the Agent Hub backend for agent operations.
 type Client interface {
@@ -66,20 +61,36 @@ func New(serverAddr string) (*client, error) { //nolint:revive
 }
 
 // PushAgent uploads an agent to the hub in chunks and returns the response or an error.
-func (c *client) PushAgent(ctx context.Context, agent []byte, repository any) (*v1alpha1.PushRecordResponse, error) { //nolint:cyclop
-	var parsedAgent *corev1alpha1.Agent
-	if err := json.Unmarshal(agent, &parsedAgent); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal agent: %w", err)
+func (c *client) PushAgent(ctx context.Context, record []byte, repository any) (*v1alpha1.PushRecordResponse, error) { //nolint:cyclop
+	parsedRecord, err := corev1.UnmarshalRecord(record)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load OASF: %w", err)
 	}
 
-	d := digest.FromBytes(agent).String()
-	t := corev1alpha1.ObjectType_OBJECT_TYPE_AGENT.String()
+	recordName := parsedRecord.GetData().GetFields()["name"].GetStringValue()
+	if recordName == "" {
+		return nil, errors.New("record name is missing")
+	}
 
-	ref := &corev1alpha1.ObjectRef{
-		Digest:      d,
-		Type:        t,
-		Size:        uint64(len(agent)),
-		Annotations: parsedAgent.GetAnnotations(),
+	msg := &v1alpha1.PushRecordRequest{
+		Model: parsedRecord,
+	}
+
+	switch parsedRepo := repository.(type) {
+	case *v1alpha1.PushRecordRequest_RepositoryName:
+		msg.Repository = parsedRepo
+		if parsedRepo.RepositoryName != recordName {
+			return nil, fmt.Errorf("repository name mismatch: expected %s, got %s", recordName, parsedRepo.RepositoryName)
+		}
+	case *v1alpha1.PushRecordRequest_RepositoryId:
+		msg.Repository = parsedRepo
+	default:
+		return nil, fmt.Errorf("unknown repository type: %T", repository)
+	}
+
+	msg.OrganizationName, err = getOrganizationNameFromRepository(recordName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse organization name from record: %w", err)
 	}
 
 	stream, err := c.PushRecord(ctx)
@@ -87,54 +98,8 @@ func (c *client) PushAgent(ctx context.Context, agent []byte, repository any) (*
 		return nil, fmt.Errorf("failed to create push stream: %w", err)
 	}
 
-	buf := make([]byte, chunkSize)
-	agentReader := bytes.NewReader(agent)
-
-	for {
-		var n int
-
-		n, err = agentReader.Read(buf)
-		if err != nil && !errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("failed to read data: %w", err)
-		}
-
-		if n == 0 {
-			break
-		}
-
-		msg := &v1alpha1.PushRecordRequest{
-			Model: &corev1alpha1.Object{
-				Data: buf[:n],
-				Ref:  ref,
-			},
-		}
-
-		switch parsedRepo := repository.(type) {
-		case *v1alpha1.PushRecordRequest_RepositoryName:
-			msg.Repository = parsedRepo
-
-			if parsedRepo.RepositoryName != parsedAgent.GetName() {
-				return nil, fmt.Errorf("repository name mismatch: expected %s, got %s", parsedAgent.GetName(), parsedRepo.RepositoryName)
-			}
-
-			msg.OrganizationName, err = getOrganizationNameFromRepository(parsedRepo.RepositoryName)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse organization name from repository: %w", err)
-			}
-		case *v1alpha1.PushRecordRequest_RepositoryId:
-			msg.Repository = parsedRepo
-			// In this case, we read the organization name from the agent
-			msg.OrganizationName, err = getOrganizationNameFromRepository(parsedAgent.GetName())
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse organization name from agent: %w", err)
-			}
-		default:
-			return nil, fmt.Errorf("unknown repository type: %T", repository)
-		}
-
-		if err = stream.Send(msg); err != nil && !errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("could not send object: %w", err)
-		}
+	if err = stream.Send(msg); err != nil && !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("could not send object: %w", err)
 	}
 
 	resp, err := stream.CloseAndRecv()
@@ -152,24 +117,21 @@ func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullRecordRequ
 		return nil, fmt.Errorf("failed to create pull stream: %w", err)
 	}
 
-	var buffer bytes.Buffer
+	var recordResponse *v1alpha1.PullRecordResponse
 
-	for {
-		var chunk *v1alpha1.PullRecordResponse
-
-		chunk, err = stream.Recv()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to receive chunk: %w", err)
-		}
-
-		buffer.Write(chunk.GetModel().GetData())
+	recordResponse, err = stream.Recv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive response: %w", err)
 	}
 
-	return buffer.Bytes(), nil
+	record := recordResponse.GetModel()
+
+	b, err := record.GetData().MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("invalid record: %w", err)
+	}
+
+	return b, nil
 }
 
 func (c *client) CreateAPIKey(ctx context.Context, roleName string, organization any) (*v1alpha1.CreateApiKeyResponse, error) {

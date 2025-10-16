@@ -154,8 +154,3 @@ require (
 	gotest.tools/v3 v3.5.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 )
-
-replace (
-	github.com/agntcy/dir/api => ../api
-	github.com/agntcy/dir/server => ../server
-)

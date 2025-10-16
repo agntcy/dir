@@ -5,6 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] - 2025-10-15
+
+### Key Highlights
+
+This release delivers improvements to application layer via generic referrers,
+security schema with JWT/X.509 support, network capabilities, operational stability, 
+and developer experience, with a focus on:
+
+**Security & Authentication**
+- Added JWT/X.509 over TLS versus mTLS for flexible authentication
+- Authenticated PeerID integration with libp2p transport
+- Secure credential management for zot sync operations
+- OCI 1.1 referrers specification migration for signature attachments
+
+**Networking & Connectivity**
+- GossipSub implementation for efficient label announcements
+- Connection Manager implementation with removal of custom peer discovery
+- Improved routing search with better peer address handling
+- Locator-based record search capabilities across the network
+
+**Generic Record Referrers**
+- Support for storage and handling of generic record referrers
+- Referrer object encoding across server and SDK components
+- Application support via referrer (e.g., signatures, attestations)
+
+**Developer Experience & Tooling**
+- Streaming package for Golang gRPC client functionality
+- Standardized CLI output formats and command improvements
+- Reusable setup-dirctl GitHub Action for CI/CD workflows
+
+**Quality & Stability Improvements**
+- Comprehensive test suite enhancements including SPIRE tests
+- E2E network test stability with environment warm-up phases
+- Bug fixes for API key formatting, file permissions, and documentation
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With                              |
+| ---------------------- | ------- | -------------------------------------------- |
+| **dir-apiserver**      | v0.4.0  | oasf v0.3.x, v0.7.x                          |
+| **dirctl**             | v0.4.0  | dir-apiserver >= v0.3.0, oasf v0.3.x, v0.7.x |
+| **dir-go**             | v0.4.0  | dir-apiserver >= v0.3.0, oasf v0.3.x, v0.7.x |
+| **dir-py**             | v0.4.0  | dir-apiserver >= v0.3.0, oasf v0.3.x, v0.7.x |
+| **dir-js**             | v0.4.0  | dir-apiserver >= v0.3.0, oasf v0.3.x, v0.7.x |
+| **helm-charts/dir**    | v0.4.0  | dir-apiserver >= v0.3.0                      |
+| **helm-charts/dirctl** | v0.4.0  | dirctl >= v0.3.0                             |
+
+### Added
+- **Networking**: GossipSub for efficient label announcements (#472)
+- **Networking**: AutoRelay, Hole Punching, and mDNS for better peer connectivity (#503)
+- **Networking**: Connection Manager implementation (#495)
+- **Security**: JWT authentication and TLS communication support (#492)
+- **Security**: Authenticated PeerID from libp2p transport (#502)
+- **Storage**: Generic record referrers support (#451, #480)
+- **Storage**: Referrer encoding capabilities (#491, #499)
+- **API**: Server validator functionality (#456)
+- **SDK**: Streaming package for gRPC client (#527)
+- **CI**: Zot dependency for server config (#444)
+- **CI**: Reusable setup-dirctl GitHub Action (#441)
+- **CI**: SPIRE tests action (#488)
+- **CI**: Local tap for testing homebrew formulae (#437)
+
+### Changed
+- **Security**: Rename mTLS to x.509 for clarity (#508)
+- **Storage**: Secure credential management for zot sync operations (#457)
+- **API**: Unify extensions to modules architecture (#463)
+- **CLI**: Standardize CLI output formats (#509)
+- **CLI**: Update search command to use routing search command flags (#521)
+- **Docs**: Update SDK source and release links (#434)
+- **CI**: Improvements to pipeline and taskfile setup (#438, #442)
+- **CI**: Bump Go, golangci-lint and libp2p (#534)
+- **CI**: Bump OASF SDK to versions 0.0.6 and 0.0.7 (#481, #489)
+- **CI**: Bump brew tap to v0.3.0 (#435)
+
+### Fixed
+- **Networking**: Empty peer addresses in routing search results (#513)
+- **Networking**: Locator-based remote record search (#469)
+- **Networking**: E2E network test flakiness with environment warm-up (#516)
+- **Security**: Auth mode mTLS issues (#517)
+- **Security**: Cosign signature attachment migration to OCI 1.1 referrers spec (#464)
+- **Security**: Signature verification against expected payload (#493)
+- **Storage**: Demo testdata and flaky test removal (#504)
+- **SDK**: JavaScript package release issues (#432)
+- **CLI**: API key list format (#494)
+- **Docs**: Remove broken links from README (#458)
+- **Docs**: Fix push and pull documentation (#436)
+- **CI**: Support multiple federation artifacts via charts (#519)
+- **CI**: Enable push to buf registry on merge (#484)
+- **CI**: Bug report template to allow version input (#460)
+- **CI**: File permissions for hub/api/v1alpha1/* (#518)
+
+### Removed
+- **Networking**: Custom peer discovery (replaced with Connection Manager) (#495)
+- **CI**: Useless files in hub/ directory (#522)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.3.0...v0.4.0)
+
+---
+
 ## [v0.3.0] - 2025-09-19
 
 ### Key Highlights
@@ -167,10 +266,6 @@ done
 - **Storage**: Update agent directory default location (#226)
 - **Storage**: Flaky e2e test and restructure test suites (#416)
 - **Storage**: E2E sync test cleanup (#423)
-
-### Dependencies
-- **chore(deps)**: Bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 (#314)
-- **chore(deps)**: Bump github.com/go-viper/mapstructure/v2 from 2.2.1 to 2.3.0 (#200)
 
 [Full Changelog](https://github.com/agntcy/dir/compare/v0.2.13...v0.3.0)
 
