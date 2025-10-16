@@ -115,14 +115,16 @@ jobs:
           echo '|-------|----------|------|--------|-------|------|' >> $GITHUB_STEP_SUMMARY
           for f in $files; do
             img=$(basename "$f" .sarif | sed 's/^trivy-//')
-            critical=$(jq '[.runs[].results[] | select(.properties.severity=="CRITICAL")] | length' "$f" 2>/dev/null || echo 0)
-            high=$(jq '[.runs[].results[] | select(.properties.severity=="HIGH")] | length' "$f" 2>/dev/null || echo 0)
-            medium=$(jq '[.runs[].results[] | select(.properties.severity=="MEDIUM")] | length' "$f" 2>/dev/null || echo 0)
+            # Trivy SARIF embeds severity in rule properties.tags, the result refers to ruleIndex.
+            # Map result.ruleIndex to rule tags; count severities based on presence of tag and result level.
+            critical=$(jq '(.runs[].results[] | .ruleIndex as $ri | {lvl: .level, sev: (.runs[].tool.driver.rules[$ri].properties.tags // [])}) | select(.sev[]? == "CRITICAL") | length' "$f" 2>/dev/null || echo 0)
+            high=$(jq '(.runs[].results[] | .ruleIndex as $ri | {lvl: .level, sev: (.runs[].tool.driver.rules[$ri].properties.tags // [])}) | select(.sev[]? == "HIGH") | length' "$f" 2>/dev/null || echo 0)
+            medium=$(jq '(.runs[].results[] | .ruleIndex as $ri | {lvl: .level, sev: (.runs[].tool.driver.rules[$ri].properties.tags // [])}) | select(.sev[]? == "MEDIUM") | length' "$f" 2>/dev/null || echo 0)
             total=$(jq '[.runs[].results[]] | length' "$f" 2>/dev/null || echo 0)
             echo "| $img | $critical | $high | $medium | $total | $(basename $f) |" >> $GITHUB_STEP_SUMMARY
           done
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo 'Severity counts derive from Trivy SARIF .properties.severity fields.' >> $GITHUB_STEP_SUMMARY
+          echo 'Severity counts derived from rule tags (CRITICAL/HIGH/MEDIUM) mapped via result.ruleIndex.' >> $GITHUB_STEP_SUMMARY
 
       - name: Fail if critical vulns found (optional gate)
         if: ${{ github.event_name != 'pull_request' }}
