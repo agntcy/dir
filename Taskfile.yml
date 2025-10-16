@@ -146,21 +146,6 @@ tasks:
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 
-  api:test:
-    desc: Unit test API code
-    vars:
-      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    cmds:
-      - EXTRA_ARGS="{{.EXTRA_ARGS}}" task api:test:go
-
-  api:test:go:
-    desc: Unit test Go API code
-    vars:
-      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    dir: ./api
-    cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
-
   ##
   ## CLI
   ##
@@ -192,30 +177,9 @@ tasks:
             GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dirctl-{{.ITEM.OS}}-{{.ITEM.ARCH}} task cli:compile
           fi
 
-  cli:test:
-    desc: Unit test CLI code
-    dir: ./cli
-    cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
-
   ##
   ## Client SDK
   ##
-  client:test:
-    desc: Unit test Client code
-    vars:
-      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    cmds:
-      - EXTRA_ARGS="{{.EXTRA_ARGS}}" task client:test:go
-
-  client:test:go:
-    desc: Unit test Go Client code
-    dir: ./client
-    vars:
-      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
-
   sdk:deps:common:
     desc: Common dependencies for SDKs
     cmds:
@@ -464,12 +428,6 @@ tasks:
     internal: true
     cmds:
       - docker stop oci-registry
-
-  server:test:
-    desc: Unit test Directory server code
-    dir: ./server
-    cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
 
   server:bench:
     desc: Benchmark Directory server code
