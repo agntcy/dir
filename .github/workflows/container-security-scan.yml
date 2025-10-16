@@ -3,11 +3,9 @@
 name: Container Security Scan
 
 on:
-  push:
-    branches: [ main, "**" ]
-  pull_request:
+  # Nightly scan on main branch only; manual dispatch allowed.
   schedule:
-    - cron: '0 3 * * *' # Daily at 03:00 UTC
+    - cron: '0 3 * * *' # Daily at 03:00 UTC (runs on default branch context: main)
   workflow_dispatch:
 
 permissions:
