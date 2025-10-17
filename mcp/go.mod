@@ -1,12 +1,11 @@
 module github.com/agntcy/dir/mcp
 
-go 1.24.5
-
-toolchain go1.24.8
+go 1.25.2
 
 require (
 	github.com/agntcy/oasf-sdk/pkg v0.0.8
 	github.com/modelcontextprotocol/go-sdk v0.8.0
+	github.com/agntcy/dir/api v0.0.0
 )
 
 require (
@@ -30,10 +29,6 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
 	lukechampine.com/blake3 v1.4.0 // indirect
-)
-
-require (
-	github.com/agntcy/dir/api v0.0.0
 	github.com/google/jsonschema-go v0.3.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 )

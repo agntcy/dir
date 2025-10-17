@@ -6,6 +6,7 @@ package mcp
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -52,7 +53,7 @@ type MCPClient struct {
 
 // NewMCPClient starts an MCP server and returns a client to communicate with it.
 func NewMCPClient(binaryPath string) (*MCPClient, error) {
-	cmd := exec.Command(binaryPath)
+	cmd := exec.CommandContext(context.Background(), binaryPath)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -168,6 +169,7 @@ func getSchemaAndValidate(client *MCPClient, version string, requestID int) {
 
 	// Parse result
 	var result map[string]interface{}
+
 	err = json.Unmarshal(resp.Result, &result)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -183,6 +185,7 @@ func getSchemaAndValidate(client *MCPClient, version string, requestID int) {
 	gomega.Expect(ok).To(gomega.BeTrue())
 
 	var toolOutput map[string]interface{}
+
 	err = json.Unmarshal([]byte(textOutput), &toolOutput)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -194,6 +197,7 @@ func getSchemaAndValidate(client *MCPClient, version string, requestID int) {
 	gomega.Expect(ok).To(gomega.BeTrue())
 
 	var schema map[string]interface{}
+
 	err = json.Unmarshal([]byte(schemaStr), &schema)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	gomega.Expect(schema).To(gomega.HaveKey("$defs"))
@@ -218,6 +222,7 @@ func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestI
 	gomega.Expect(resp.Error).To(gomega.BeNil())
 
 	var result map[string]interface{}
+
 	err = json.Unmarshal(resp.Result, &result)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
@@ -233,6 +238,7 @@ func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestI
 	gomega.Expect(ok).To(gomega.BeTrue())
 
 	var toolOutput map[string]interface{}
+
 	err = json.Unmarshal([]byte(textOutput), &toolOutput)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
