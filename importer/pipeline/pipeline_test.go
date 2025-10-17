@@ -108,7 +108,6 @@ func TestPipeline_Run_Success(t *testing.T) {
 	// Create pipeline
 	config := Config{
 		TransformerWorkers: 2,
-		DryRun:             false,
 	}
 	p := New(fetcher, transformer, pusher, config)
 
@@ -136,7 +135,7 @@ func TestPipeline_Run_Success(t *testing.T) {
 	}
 }
 
-func TestPipeline_Run_DryRun(t *testing.T) {
+func TestDryRunPipeline_Run(t *testing.T) {
 	ctx := context.Background()
 
 	// Create mock stages
@@ -144,14 +143,12 @@ func TestPipeline_Run_DryRun(t *testing.T) {
 		items: []interface{}{"item1", "item2"},
 	}
 	transformer := &mockTransformer{}
-	pusher := &mockPusher{}
 
-	// Create pipeline with dry-run enabled
+	// Create dry-run pipeline (no pusher)
 	config := Config{
 		TransformerWorkers: 2,
-		DryRun:             true,
 	}
-	p := New(fetcher, transformer, pusher, config)
+	p := NewDryRun(fetcher, transformer, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -166,10 +163,6 @@ func TestPipeline_Run_DryRun(t *testing.T) {
 
 	if result.ImportedCount != 0 {
 		t.Errorf("expected 0 imported records (dry-run), got %d", result.ImportedCount)
-	}
-
-	if len(pusher.pushed) != 0 {
-		t.Errorf("expected 0 pushed records in dry-run, got %d", len(pusher.pushed))
 	}
 }
 
@@ -186,7 +179,6 @@ func TestPipeline_Run_TransformError(t *testing.T) {
 	// Create pipeline
 	config := Config{
 		TransformerWorkers: 2,
-		DryRun:             false,
 	}
 	p := New(fetcher, transformer, pusher, config)
 
@@ -227,7 +219,6 @@ func TestPipeline_Run_PushError(t *testing.T) {
 	// Create pipeline
 	config := Config{
 		TransformerWorkers: 2,
-		DryRun:             false,
 	}
 	p := New(fetcher, transformer, pusher, config)
 
@@ -268,7 +259,6 @@ func TestPipeline_Run_FetchError(t *testing.T) {
 	// Create pipeline
 	config := Config{
 		TransformerWorkers: 2,
-		DryRun:             false,
 	}
 	p := New(fetcher, transformer, pusher, config)
 

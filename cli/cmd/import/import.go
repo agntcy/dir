@@ -75,16 +75,13 @@ func runImport(cmd *cobra.Command) error {
 	// Set the registry type from the string flag
 	cfg.RegistryType = config.RegistryType(registryType)
 
-	// Set the client
-	cfg.Client = c
-
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Create importer instance from pre-initialized factory
-	importer, err := factory.Create(cfg)
+	// Create importer instance from pre-initialized factory, passing client separately
+	importer, err := factory.Create(c, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create importer: %w", err)
 	}

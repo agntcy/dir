@@ -39,10 +39,6 @@ type Config struct {
 	Limit        int               // Number of records to import (default: 0 for all)
 	Concurrency  int               // Number of concurrent workers (default: 5)
 	DryRun       bool              // If true, preview without actually importing
-
-	// Client is the DIR client for pushing records.
-	// This should be provided by the CLI from the already initialized client.
-	Client ClientInterface
 }
 
 // Validate checks if the configuration is valid.
@@ -57,10 +53,6 @@ func (c *Config) Validate() error {
 
 	if c.Concurrency <= 0 {
 		c.Concurrency = 5 // Set default concurrency
-	}
-
-	if c.Client == nil {
-		return errors.New("client is required")
 	}
 
 	return nil

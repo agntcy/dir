@@ -14,20 +14,22 @@ import (
 
 // Importer implements the Importer interface for MCP registry using a pipeline architecture.
 type Importer struct {
+	client      config.ClientInterface
 	registryURL string
 }
 
 // NewImporter creates a new MCP importer instance.
-func NewImporter(cfg config.Config) (types.Importer, error) {
+// The client parameter is used for pushing records to DIR.
+func NewImporter(client config.ClientInterface, cfg config.Config) (types.Importer, error) {
 	return &Importer{
+		client:      client,
 		registryURL: cfg.RegistryURL,
 	}, nil
 }
 
-// Run executes the import operation for the MCP registry using a three-stage pipeline:
-// 1. Fetcher: Retrieves MCP servers from the registry
-// 2. Transformer: Converts MCP servers to OASF format
-// 3. Pusher: Pushes records to DIR.
+// Run executes the import operation for the MCP registry using a pipeline:
+// - Normal mode: Three-stage pipeline (Fetcher -> Transformer -> Pusher)
+// - Dry-run mode: Two-stage pipeline (Fetcher -> Transformer).
 func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportResult, error) {
 	// Create pipeline stages
 	fetcher, err := NewFetcher(i.registryURL, cfg.Filters, cfg.Limit)
@@ -36,18 +38,26 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 	}
 
 	transformer := NewTransformer()
-	pusher := pipeline.NewClientPusher(cfg.Client)
 
 	// Configure pipeline with concurrency settings
 	pipelineConfig := pipeline.Config{
 		TransformerWorkers: cfg.Concurrency,
-		DryRun:             cfg.DryRun,
 	}
 
-	// Create and run pipeline
-	p := pipeline.New(fetcher, transformer, pusher, pipelineConfig)
+	// Create and run the appropriate pipeline based on dry-run mode
+	var pipelineResult *pipeline.Result
 
-	pipelineResult, err := p.Run(ctx)
+	if cfg.DryRun {
+		// Use dry-run pipeline (fetch and transform only)
+		p := pipeline.NewDryRun(fetcher, transformer, pipelineConfig)
+		pipelineResult, err = p.Run(ctx)
+	} else {
+		// Use full pipeline (fetch, transform, and push)
+		pusher := pipeline.NewClientPusher(i.client)
+		p := pipeline.New(fetcher, transformer, pusher, pipelineConfig)
+		pipelineResult, err = p.Run(ctx)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to run pipeline: %w", err)
 	}

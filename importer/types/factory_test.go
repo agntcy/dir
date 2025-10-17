@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/client/streaming"
 	"github.com/agntcy/dir/importer/config"
 )
 
@@ -23,12 +25,20 @@ func (m *mockImporter) Run(ctx context.Context, cfg config.Config) (*ImportResul
 	return &ImportResult{TotalRecords: 10}, nil
 }
 
+// mockClient is a mock implementation for testing.
+type mockClient struct{}
+
+func (m *mockClient) PushStream(ctx context.Context, recordsCh <-chan *corev1.Record) (streaming.StreamResult[corev1.RecordRef], error) {
+	// Mock implementation that satisfies the interface
+	return nil, nil //nolint:nilnil
+}
+
 // Mock constructor functions.
-func mockMCPConstructor(cfg config.Config) (Importer, error) {
+func mockMCPConstructor(client config.ClientInterface, cfg config.Config) (Importer, error) {
 	return &mockImporter{}, nil
 }
 
-func mockFailingConstructor(cfg config.Config) (Importer, error) {
+func mockFailingConstructor(client config.ClientInterface, cfg config.Config) (Importer, error) {
 	return nil, errors.New("construction failed")
 }
 
@@ -91,7 +101,8 @@ func TestFactory_Create(t *testing.T) {
 				RegistryURL:  "https://example.com",
 			}
 
-			importer, err := factory.Create(cfg)
+			mockCli := &mockClient{}
+			importer, err := factory.Create(mockCli, cfg)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Factory.Create() error = %v, wantErr %v", err, tt.wantErr)
@@ -123,7 +134,9 @@ func TestFactory_CreateWithFailingConstructor(t *testing.T) {
 		RegistryURL:  "https://example.com",
 	}
 
-	importer, err := factory.Create(cfg)
+	mockCli := &mockClient{}
+
+	importer, err := factory.Create(mockCli, cfg)
 	if err == nil {
 		t.Error("Factory.Create() with failing constructor should return error")
 	}
@@ -145,9 +158,10 @@ func TestFactory_MultipleRegistrations(t *testing.T) {
 	factory.Register("custom", mockMCPConstructor)
 
 	// Verify both are accessible
+	mockCli := &mockClient{}
 	cfg1 := config.Config{RegistryType: config.RegistryTypeMCP, RegistryURL: "https://mcp.example.com"}
 
-	importer1, err := factory.Create(cfg1)
+	importer1, err := factory.Create(mockCli, cfg1)
 	if err != nil {
 		t.Errorf("Factory.Create() for MCP failed: %v", err)
 	}
@@ -158,7 +172,7 @@ func TestFactory_MultipleRegistrations(t *testing.T) {
 
 	cfg2 := config.Config{RegistryType: "custom", RegistryURL: "https://custom.example.com"}
 
-	importer2, err := factory.Create(cfg2)
+	importer2, err := factory.Create(mockCli, cfg2)
 	if err != nil {
 		t.Errorf("Factory.Create() for custom failed: %v", err)
 	}
@@ -172,18 +186,20 @@ func TestFactory_CreateMultipleInstancesWithDifferentURLs(t *testing.T) {
 	factory := NewFactory()
 	factory.Register(config.RegistryTypeMCP, mockMCPConstructor)
 
+	mockCli := &mockClient{}
+
 	// Create two importers with different URLs
 	cfg1 := config.Config{
 		RegistryType: config.RegistryTypeMCP,
 		RegistryURL:  "https://registry1.example.com",
 	}
-	importer1, err1 := factory.Create(cfg1)
+	importer1, err1 := factory.Create(mockCli, cfg1)
 
 	cfg2 := config.Config{
 		RegistryType: config.RegistryTypeMCP,
 		RegistryURL:  "https://registry2.example.com",
 	}
-	importer2, err2 := factory.Create(cfg2)
+	importer2, err2 := factory.Create(mockCli, cfg2)
 
 	if err1 != nil || err2 != nil {
 		t.Errorf("Factory.Create() failed: err1=%v, err2=%v", err1, err2)

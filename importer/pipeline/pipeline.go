@@ -36,9 +36,6 @@ type Pusher interface {
 type Config struct {
 	// TransformerWorkers is the number of concurrent workers for the transformer stage.
 	TransformerWorkers int
-
-	// DryRun if true, skips the pusher stage.
-	DryRun bool
 }
 
 // Result contains the results of the pipeline execution.
@@ -73,7 +70,7 @@ func New(fetcher Fetcher, transformer Transformer, pusher Pusher, config Config)
 	}
 }
 
-// Run executes the pipeline.
+// Run executes the full pipeline with all three stages.
 func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 	result := &Result{}
 
@@ -81,34 +78,16 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 	fetchedCh, fetchErrCh := p.fetcher.Fetch(ctx)
 
 	// Stage 2: Transform records
-	transformedCh, transformErrCh := p.runTransformStage(ctx, fetchedCh, result)
+	transformedCh, transformErrCh := runTransformStage(ctx, p.transformer, p.config.TransformerWorkers, fetchedCh, result)
 
-	// Stage 3: Push records (if not dry-run)
-	var (
-		refCh     <-chan *corev1.RecordRef
-		pushErrCh <-chan error
-	)
-
-	if !p.config.DryRun {
-		refCh, pushErrCh = p.pusher.Push(ctx, transformedCh)
-	} else {
-		// In dry-run mode, drain the transformed channel to prevent blocking
-		go func() {
-			for range transformedCh {
-				// Just drain, don't process
-			}
-		}()
-	}
+	// Stage 3: Push records
+	refCh, pushErrCh := p.pusher.Push(ctx, transformedCh)
 
 	// Collect errors from all stages
 	var wg sync.WaitGroup
 
-	numGoroutines := 2 // fetch and transform errors
-	if !p.config.DryRun {
-		numGoroutines += 2 // add push errors and ref counting
-	}
-
-	wg.Add(numGoroutines)
+	// Fetch errors, transform errors, push errors, and ref counting
+	wg.Add(4) //nolint:mnd
 
 	// Collect fetch errors
 	go func() {
@@ -136,35 +115,107 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 		}
 	}()
 
-	// Collect push errors and track successful pushes (only if not dry-run)
-	if !p.config.DryRun {
-		// Track successful pushes
-		go func() {
-			defer wg.Done()
+	// Track successful pushes
+	go func() {
+		defer wg.Done()
 
-			for ref := range refCh {
-				if ref != nil {
-					result.mu.Lock()
-					result.ImportedCount++
-					result.mu.Unlock()
-				}
+		for ref := range refCh {
+			if ref != nil {
+				result.mu.Lock()
+				result.ImportedCount++
+				result.mu.Unlock()
 			}
-		}()
+		}
+	}()
 
-		// Track push errors
-		go func() {
-			defer wg.Done()
+	// Track push errors
+	go func() {
+		defer wg.Done()
 
-			for err := range pushErrCh {
-				if err != nil {
-					result.mu.Lock()
-					result.FailedCount++
-					result.Errors = append(result.Errors, err)
-					result.mu.Unlock()
-				}
+		for err := range pushErrCh {
+			if err != nil {
+				result.mu.Lock()
+				result.FailedCount++
+				result.Errors = append(result.Errors, err)
+				result.mu.Unlock()
 			}
-		}()
+		}
+	}()
+
+	wg.Wait()
+
+	return result, nil
+}
+
+// DryRunPipeline represents a two-stage pipeline for dry-run mode (fetch and transform only).
+type DryRunPipeline struct {
+	fetcher     Fetcher
+	transformer Transformer
+	config      Config
+}
+
+// NewDryRun creates a new dry-run pipeline instance that only fetches and transforms.
+func NewDryRun(fetcher Fetcher, transformer Transformer, config Config) *DryRunPipeline {
+	// Set defaults
+	if config.TransformerWorkers <= 0 {
+		config.TransformerWorkers = 5
 	}
+
+	return &DryRunPipeline{
+		fetcher:     fetcher,
+		transformer: transformer,
+		config:      config,
+	}
+}
+
+// Run executes the dry-run pipeline with only fetch and transform stages.
+func (p *DryRunPipeline) Run(ctx context.Context) (*Result, error) {
+	result := &Result{}
+
+	// Stage 1: Fetch records
+	fetchedCh, fetchErrCh := p.fetcher.Fetch(ctx)
+
+	// Stage 2: Transform records
+	transformedCh, transformErrCh := runTransformStage(ctx, p.transformer, p.config.TransformerWorkers, fetchedCh, result)
+
+	// Drain the transformed channel to prevent blocking
+	go func() {
+		for range transformedCh {
+			// Just drain, records are counted but not pushed
+		}
+	}()
+
+	// Collect errors from fetch and transform stages
+	var wg sync.WaitGroup
+
+	// Fetch errors and transform errors
+	wg.Add(2) //nolint:mnd
+
+	// Collect fetch errors
+	go func() {
+		defer wg.Done()
+
+		for err := range fetchErrCh {
+			if err != nil {
+				result.mu.Lock()
+				result.Errors = append(result.Errors, fmt.Errorf("fetch error: %w", err))
+				result.mu.Unlock()
+			}
+		}
+	}()
+
+	// Collect transform errors
+	go func() {
+		defer wg.Done()
+
+		for err := range transformErrCh {
+			if err != nil {
+				result.mu.Lock()
+				result.Errors = append(result.Errors, err)
+				result.mu.Unlock()
+			}
+		}
+	}()
 
 	wg.Wait()
 
@@ -172,14 +223,15 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 }
 
 // runTransformStage runs the transformation stage with concurrent workers.
-func (p *Pipeline) runTransformStage(ctx context.Context, inputCh <-chan interface{}, result *Result) (<-chan *corev1.Record, <-chan error) {
+// This is a shared function used by both Pipeline and DryRunPipeline.
+func runTransformStage(ctx context.Context, transformer Transformer, numWorkers int, inputCh <-chan interface{}, result *Result) (<-chan *corev1.Record, <-chan error) {
 	outputCh := make(chan *corev1.Record)
 	errCh := make(chan error)
 
 	var wg sync.WaitGroup
 
 	// Start transformer workers
-	for range p.config.TransformerWorkers {
+	for range numWorkers {
 		wg.Add(1)
 
 		go func() {
@@ -200,7 +252,7 @@ func (p *Pipeline) runTransformStage(ctx context.Context, inputCh <-chan interfa
 					result.mu.Unlock()
 
 					// Transform the record
-					record, err := p.transformer.Transform(ctx, source)
+					record, err := transformer.Transform(ctx, source)
 					if err != nil {
 						result.mu.Lock()
 						result.FailedCount++
@@ -215,7 +267,7 @@ func (p *Pipeline) runTransformStage(ctx context.Context, inputCh <-chan interfa
 						continue
 					}
 
-					// Send transformed record to next stage
+					// Send transformed record to output channel
 					select {
 					case outputCh <- record:
 					case <-ctx.Done():

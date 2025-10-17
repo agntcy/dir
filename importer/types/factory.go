@@ -10,7 +10,7 @@ import (
 )
 
 // ImporterFunc is a function that creates an Importer instance.
-type ImporterFunc func(cfg config.Config) (Importer, error)
+type ImporterFunc func(client config.ClientInterface, cfg config.Config) (Importer, error)
 
 // Factory creates Importer instances based on registry type.
 type Factory struct {
@@ -29,14 +29,14 @@ func (f *Factory) Register(registryType config.RegistryType, fn ImporterFunc) {
 	f.importers[registryType] = fn
 }
 
-// Create creates a new Importer instance for the given configuration.
-func (f *Factory) Create(cfg config.Config) (Importer, error) {
+// Create creates a new Importer instance for the given client and configuration.
+func (f *Factory) Create(client config.ClientInterface, cfg config.Config) (Importer, error) {
 	constructor, exists := f.importers[cfg.RegistryType]
 	if !exists {
 		return nil, fmt.Errorf("unsupported registry type: %s", cfg.RegistryType)
 	}
 
-	return constructor(cfg)
+	return constructor(client, cfg)
 }
 
 // RegisteredTypes returns a list of all registered registry types.

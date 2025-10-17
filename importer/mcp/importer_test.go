@@ -21,7 +21,6 @@ func TestNewImporter(t *testing.T) {
 			config: config.Config{
 				RegistryType: config.RegistryTypeMCP,
 				RegistryURL:  "https://registry.example.com",
-				Client:       &client.Client{},
 			},
 			wantErr: false,
 		},
@@ -29,7 +28,10 @@ func TestNewImporter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			importer, err := NewImporter(tt.config)
+			// Create a mock client
+			mockClient := &client.Client{}
+
+			importer, err := NewImporter(mockClient, tt.config)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewImporter() error = %v, wantErr %v", err, tt.wantErr)
 
