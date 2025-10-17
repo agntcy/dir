@@ -3,6 +3,7 @@ image:
   tag: latest
 
 config:
-  auth_mode: x509
+  auth_mode: jwt
   server_address: dir-apiserver.dir-server.svc.cluster.local:8888
   spiffe_socket_path: unix:/run/spire/agent-sockets/api.sock
+  jwt_audience: 'spiffe://dir.example/spire/server'

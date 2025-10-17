@@ -272,6 +272,27 @@ export class Client {
     // Create SPIFFE client
     const client = createClientSpiffe(config.spiffeEndpointSocket);
 
+    // Fetch X.509 bundle for verifying server's TLS certificate
+    // In JWT mode, the server presents its X.509-SVID via TLS for transport security
+    let bundle: Uint8Array | null = null;
+    const bundleStream = client.fetchX509Bundles({});
+    for await (const message of bundleStream.responses) {
+      // Get the first bundle from the bundles map
+      // bundles is a map<string, bytes> where bytes is ASN.1 DER encoded
+      for (const [_, bundleData] of Object.entries(message.bundles)) {
+        // Convert to a new Uint8Array to ensure type compatibility
+        bundle = new Uint8Array(bundleData);
+        break;
+      }
+      if (bundle !== null) {
+        break;
+      }
+    }
+
+    if (bundle === null || bundle.length === 0) {
+      throw new Error('Failed to fetch X.509 bundle from SPIRE: no bundles returned');
+    }
+
     // Create JWT interceptor that fetches and injects JWT tokens
     const jwtInterceptor: Interceptor = (next) => async (req) => {
       // Fetch JWT-SVID from SPIRE
@@ -295,12 +316,14 @@ export class Client {
       return await next(req);
     };
 
-    // Create transport with JWT interceptor
-    // Note: For JWT, we can use insecure transport as JWT provides authentication
-    // In production, you may want to use TLS for transport security
+    // Create transport with JWT interceptor and TLS using SPIFFE bundle
+    // For JWT mode: Server presents X.509-SVID via TLS, clients authenticate with JWT-SVID
     const transport = createGrpcTransport({
       baseUrl: config.serverAddress,
       interceptors: [jwtInterceptor],
+      nodeOptions: {
+        ca: this.convertToPEM(bundle, "CERTIFICATE"),
+      },
     });
 
     return transport;
