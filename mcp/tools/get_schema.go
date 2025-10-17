@@ -19,9 +19,9 @@ type GetSchemaInput struct {
 
 // GetSchemaOutput represents the output after getting OASF schema content.
 type GetSchemaOutput struct {
-	Version      string   `json:"version"                jsonschema:"The requested OASF schema version"`
-	Schema       string   `json:"schema"                 jsonschema:"The complete OASF schema JSON content"`
-	ErrorMessage string   `json:"error_message,omitempty" jsonschema:"Error message if schema retrieval failed"`
+	Version           string   `json:"version"                      jsonschema:"The requested OASF schema version"`
+	Schema            string   `json:"schema"                       jsonschema:"The complete OASF schema JSON content"`
+	ErrorMessage      string   `json:"error_message,omitempty"      jsonschema:"Error message if schema retrieval failed"`
 	AvailableVersions []string `json:"available_versions,omitempty" jsonschema:"List of available OASF schema versions"`
 }
 
@@ -43,16 +43,18 @@ func GetSchema(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaInput) 
 	// Validate the version parameter
 	if input.Version == "" {
 		return nil, GetSchemaOutput{
-			ErrorMessage:      fmt.Sprintf("Version parameter is required. Available versions: %s", strings.Join(availableVersions, ", ")),
+			ErrorMessage:      "Version parameter is required. Available versions: " + strings.Join(availableVersions, ", "),
 			AvailableVersions: availableVersions,
 		}, nil
 	}
 
 	// Check if the requested version is available
 	versionValid := false
+
 	for _, version := range availableVersions {
 		if input.Version == version {
 			versionValid = true
+
 			break
 		}
 	}

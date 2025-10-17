@@ -19,36 +19,17 @@ func main() {
 		Version: "v0.1.0",
 	}, nil)
 
-	// Register OASF schema resources
-	server.AddResource(&mcp.Resource{
-		URI:         "agntcy://oasf/schema/0.3.1",
-		Name:        "OASF Schema 0.3.1",
-		Description: "JSON Schema for OASF 0.3.1 agent records. Contains definitions for skills, domains, extensions, and validation rules.",
-		MIMEType:    "application/json",
-	}, ReadSchemaResource031)
-
-	server.AddResource(&mcp.Resource{
-		URI:         "agntcy://oasf/schema/0.7.0",
-		Name:        "OASF Schema 0.7.0",
-		Description: "JSON Schema for OASF 0.7.0 records. Contains definitions for skills, domains, modules, and validation rules.",
-		MIMEType:    "application/json",
-	}, ReadSchemaResource070)
-
-	// Add tool for validating OASF agent records
+	// Add tool for listing available OASF schema versions
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "agntcy_oasf_validate_record",
+		Name: "agntcy_oasf_list_versions",
 		Description: strings.TrimSpace(`
-Validates an AGNTCY OASF agent record against the OASF schema (0.3.1 or 0.7.0).
-This tool performs comprehensive validation including:
-- Required fields check
-- Field type validation
-- Schema-specific constraints
-- Domain and skill taxonomy validation
+Lists all available OASF schema versions supported by the server.
+This tool provides a simple way to discover what schema versions are available
+without having to make requests with specific version numbers.
 
-Returns detailed validation errors to help fix issues.
-Use this tool to ensure a record meets all OASF requirements before pushing.
+Use this tool to see what OASF schema versions you can work with.
 		`),
-	}, tools.ValidateRecord)
+	}, tools.ListVersions)
 
 	// Add tool for getting OASF schema content
 	mcp.AddTool(server, &mcp.Tool{
@@ -65,17 +46,21 @@ Use this tool to get the complete schema for reference when creating or validati
 		`),
 	}, tools.GetSchema)
 
-	// Add tool for listing available OASF schema versions
+	// Add tool for validating OASF agent records
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "agntcy_oasf_list_versions",
+		Name: "agntcy_oasf_validate_record",
 		Description: strings.TrimSpace(`
-Lists all available OASF schema versions supported by the server.
-This tool provides a simple way to discover what schema versions are available
-without having to make requests with specific version numbers.
+Validates an AGNTCY OASF agent record against the OASF schema (0.3.1 or 0.7.0).
+This tool performs comprehensive validation including:
+- Required fields check
+- Field type validation
+- Schema-specific constraints
+- Domain and skill taxonomy validation
 
-Use this tool to see what OASF schema versions you can work with.
+Returns detailed validation errors to help fix issues.
+Use this tool to ensure a record meets all OASF requirements before pushing.
 		`),
-	}, tools.ListVersions)
+	}, tools.ValidateRecord)
 
 	// Run the server over stdin/stdout
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {

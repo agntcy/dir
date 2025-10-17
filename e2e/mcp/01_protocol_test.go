@@ -148,6 +148,57 @@ func (c *MCPClient) GetStderrOutput() string {
 	return buf.String()
 }
 
+// Helper function to get OASF schema and validate it.
+func getSchemaAndValidate(client *MCPClient, version string, requestID int) {
+	req := MCPRequest{
+		JSONRPC: "2.0",
+		Method:  "tools/call",
+		Params: map[string]interface{}{
+			"name": "agntcy_oasf_get_schema",
+			"arguments": map[string]interface{}{
+				"version": version,
+			},
+		},
+		ID: requestID,
+	}
+
+	resp, err := client.SendRequest(req)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	gomega.Expect(resp.Error).To(gomega.BeNil())
+
+	// Parse result
+	var result map[string]interface{}
+	err = json.Unmarshal(resp.Result, &result)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	content, ok := result["content"].([]interface{})
+	gomega.Expect(ok).To(gomega.BeTrue())
+	gomega.Expect(content).To(gomega.HaveLen(1))
+
+	output, ok := content[0].(map[string]interface{})
+	gomega.Expect(ok).To(gomega.BeTrue())
+	gomega.Expect(output["type"]).To(gomega.Equal("text"))
+
+	textOutput, ok := output["text"].(string)
+	gomega.Expect(ok).To(gomega.BeTrue())
+
+	var toolOutput map[string]interface{}
+	err = json.Unmarshal([]byte(textOutput), &toolOutput)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	gomega.Expect(toolOutput["version"]).To(gomega.Equal(version))
+	gomega.Expect(toolOutput["schema"]).NotTo(gomega.BeEmpty())
+
+	// Verify it's valid JSON
+	schemaStr, ok := toolOutput["schema"].(string)
+	gomega.Expect(ok).To(gomega.BeTrue())
+
+	var schema map[string]interface{}
+	err = json.Unmarshal([]byte(schemaStr), &schema)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	gomega.Expect(schema).To(gomega.HaveKey("$defs"))
+}
+
 // Helper function to validate a record and parse the output.
 func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestID int) map[string]interface{} {
 	req := MCPRequest{
@@ -186,44 +237,6 @@ func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestI
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return toolOutput
-}
-
-// Helper function to read a schema resource.
-func readSchemaResource(client *MCPClient, schemaURI string, requestID int) {
-	req := MCPRequest{
-		JSONRPC: "2.0",
-		Method:  "resources/read",
-		Params: map[string]interface{}{
-			"uri": schemaURI,
-		},
-		ID: requestID,
-	}
-
-	resp, err := client.SendRequest(req)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	gomega.Expect(resp.Error).To(gomega.BeNil())
-
-	var result map[string]interface{}
-	err = json.Unmarshal(resp.Result, &result)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-	contents, ok := result["contents"].([]interface{})
-	gomega.Expect(ok).To(gomega.BeTrue())
-	gomega.Expect(contents).To(gomega.HaveLen(1))
-
-	content, ok := contents[0].(map[string]interface{})
-	gomega.Expect(ok).To(gomega.BeTrue())
-	gomega.Expect(content["uri"]).To(gomega.Equal(schemaURI))
-	gomega.Expect(content["mimeType"]).To(gomega.Equal("application/json"))
-	gomega.Expect(content["text"]).NotTo(gomega.BeEmpty())
-
-	textContent, ok := content["text"].(string)
-	gomega.Expect(ok).To(gomega.BeTrue())
-
-	var schema map[string]interface{}
-	err = json.Unmarshal([]byte(textContent), &schema)
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	gomega.Expect(schema).To(gomega.HaveKey("$defs"))
 }
 
 var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
@@ -292,12 +305,6 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			capabilities, ok := result["capabilities"].(map[string]interface{})
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(capabilities).To(gomega.HaveKey("tools"))
-			gomega.Expect(capabilities).To(gomega.HaveKey("resources"))
-
-			// Verify resource capabilities
-			resources, ok := capabilities["resources"].(map[string]interface{})
-			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(resources["listChanged"]).To(gomega.BeTrue())
 
 			ginkgo.GinkgoWriter.Printf("Server initialized successfully: %s %s\n",
 				serverInfo["name"], serverInfo["version"])
@@ -380,7 +387,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			tools, ok := result["tools"].([]interface{})
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(tools).To(gomega.HaveLen(1))
+			gomega.Expect(tools).To(gomega.HaveLen(3))
 
 			// Verify tool names
 			toolNames := make(map[string]bool)
@@ -395,6 +402,8 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 				ginkgo.GinkgoWriter.Printf("  - %s: %s\n", t["name"], t["description"])
 			}
 
+			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_oasf_list_versions"))
+			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_oasf_get_schema"))
 			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_oasf_validate_record"))
 
 			ginkgo.GinkgoWriter.Println("All tools listed successfully")
@@ -441,7 +450,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 		})
 	})
 
-	ginkgo.Context("Resources Listing and Reading", func() {
+	ginkgo.Context("Schema Tools", func() {
 		ginkgo.BeforeEach(func() {
 			// Initialize session
 			initReq := MCPRequest{
@@ -463,12 +472,15 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(resp.Error).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should list all available resources", func() {
+		ginkgo.It("should list available schema versions", func() {
 			req := MCPRequest{
 				JSONRPC: "2.0",
-				Method:  "resources/list",
-				Params:  map[string]interface{}{},
-				ID:      2,
+				Method:  "tools/call",
+				Params: map[string]interface{}{
+					"name":      "agntcy_oasf_list_versions",
+					"arguments": map[string]interface{}{},
+				},
+				ID: 2,
 			}
 
 			resp, err := client.SendRequest(req)
@@ -480,37 +492,83 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			resources, ok := result["resources"].([]interface{})
+			content, ok := result["content"].([]interface{})
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(resources).To(gomega.HaveLen(2))
+			gomega.Expect(content).To(gomega.HaveLen(1))
 
-			// Verify resource URIs
-			resourceURIs := make(map[string]bool)
-			for _, resource := range resources {
-				r, ok := resource.(map[string]interface{})
-				gomega.Expect(ok).To(gomega.BeTrue())
+			output, ok := content[0].(map[string]interface{})
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(output["type"]).To(gomega.Equal("text"))
 
-				uri, ok := r["uri"].(string)
-				gomega.Expect(ok).To(gomega.BeTrue())
+			textOutput, ok := output["text"].(string)
+			gomega.Expect(ok).To(gomega.BeTrue())
 
-				resourceURIs[uri] = true
-				ginkgo.GinkgoWriter.Printf("  - %s: %s\n", r["name"], r["description"])
+			var toolOutput map[string]interface{}
+			err = json.Unmarshal([]byte(textOutput), &toolOutput)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			availableVersions, ok := toolOutput["available_versions"].([]interface{})
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(availableVersions).To(gomega.ContainElement("0.3.1"))
+			gomega.Expect(availableVersions).To(gomega.ContainElement("0.7.0"))
+
+			count, ok := toolOutput["count"].(float64)
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(count).To(gomega.BeNumerically(">=", 2))
+
+			ginkgo.GinkgoWriter.Printf("Available versions: %v (count: %v)\n", availableVersions, count)
+		})
+
+		ginkgo.It("should get OASF 0.7.0 schema", func() {
+			getSchemaAndValidate(client, "0.7.0", 3)
+			ginkgo.GinkgoWriter.Println("OASF 0.7.0 schema retrieved successfully")
+		})
+
+		ginkgo.It("should get OASF 0.3.1 schema", func() {
+			getSchemaAndValidate(client, "0.3.1", 4)
+			ginkgo.GinkgoWriter.Println("OASF 0.3.1 schema retrieved successfully")
+		})
+
+		ginkgo.It("should return error for invalid schema version", func() {
+			req := MCPRequest{
+				JSONRPC: "2.0",
+				Method:  "tools/call",
+				Params: map[string]interface{}{
+					"name": "agntcy_oasf_get_schema",
+					"arguments": map[string]interface{}{
+						"version": "999.999.999",
+					},
+				},
+				ID: 5,
 			}
 
-			gomega.Expect(resourceURIs).To(gomega.HaveKey("agntcy://oasf/schema/0.3.1"))
-			gomega.Expect(resourceURIs).To(gomega.HaveKey("agntcy://oasf/schema/0.7.0"))
+			resp, err := client.SendRequest(req)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(resp.Error).To(gomega.BeNil())
 
-			ginkgo.GinkgoWriter.Println("All resources listed successfully")
-		})
+			// Parse result
+			var result map[string]interface{}
+			err = json.Unmarshal(resp.Result, &result)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-		ginkgo.It("should read OASF 0.7.0 schema resource", func() {
-			readSchemaResource(client, "agntcy://oasf/schema/0.7.0", 3)
-			ginkgo.GinkgoWriter.Println("OASF 0.7.0 schema resource read successfully")
-		})
+			content, ok := result["content"].([]interface{})
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(content).To(gomega.HaveLen(1))
 
-		ginkgo.It("should read OASF 0.3.1 schema resource", func() {
-			readSchemaResource(client, "agntcy://oasf/schema/0.3.1", 4)
-			ginkgo.GinkgoWriter.Println("OASF 0.3.1 schema resource read successfully")
+			output, ok := content[0].(map[string]interface{})
+			gomega.Expect(ok).To(gomega.BeTrue())
+
+			textOutput, ok := output["text"].(string)
+			gomega.Expect(ok).To(gomega.BeTrue())
+
+			var toolOutput map[string]interface{}
+			err = json.Unmarshal([]byte(textOutput), &toolOutput)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			gomega.Expect(toolOutput["error_message"]).NotTo(gomega.BeEmpty())
+			gomega.Expect(toolOutput["available_versions"]).NotTo(gomega.BeEmpty())
+
+			ginkgo.GinkgoWriter.Printf("Error message: %v\n", toolOutput["error_message"])
 		})
 	})
 })

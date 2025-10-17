@@ -18,14 +18,14 @@ type ListVersionsInput struct {
 
 // ListVersionsOutput represents the output after listing available OASF schema versions.
 type ListVersionsOutput struct {
-	AvailableVersions []string `json:"available_versions" jsonschema:"List of available OASF schema versions"`
-	Count             int      `json:"count"              jsonschema:"Number of available schema versions"`
+	AvailableVersions []string `json:"available_versions"      jsonschema:"List of available OASF schema versions"`
+	Count             int      `json:"count"                   jsonschema:"Number of available schema versions"`
 	ErrorMessage      string   `json:"error_message,omitempty" jsonschema:"Error message if version listing failed"`
 }
 
 // ListVersions retrieves the list of available OASF schema versions.
 // This tool provides a simple way to discover what schema versions are supported.
-func ListVersions(_ context.Context, _ *mcp.CallToolRequest, input ListVersionsInput) (
+func ListVersions(_ context.Context, _ *mcp.CallToolRequest, _ ListVersionsInput) (
 	*mcp.CallToolResult,
 	ListVersionsOutput,
 	error,
@@ -44,4 +44,3 @@ func ListVersions(_ context.Context, _ *mcp.CallToolRequest, input ListVersionsI
 		Count:             len(availableVersions),
 	}, nil
 }
-

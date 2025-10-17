@@ -1,63 +1,51 @@
 # MCP Server for Directory
 
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for validating OASF agent records.
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for working with OASF agent records.
 
 ## Tools
-
-### `agntcy_oasf_validate_record`
-
-Validates an OASF agent record against the OASF schema (0.3.1 or 0.7.0).
-
-**Input:** `record_json` (string)  
-**Output:** `valid` (bool), `schema_version` (string), `validation_errors` ([]string), `error_message` (string)
-
-AI assistants can create records by referencing the OASF schema resources and then validate them using this tool.
-
-### `agntcy_oasf_get_schema`
-
-Retrieves the complete OASF schema JSON content for the specified version.
-
-**Input:** `version` (string) - OASF schema version to retrieve (e.g., "0.3.1", "0.7.0") **Output:** `version` (string), `schema` (string), `available_versions` ([]string), `error_message` (string)
-
-This tool provides direct access to the full schema definition including all domain definitions, skill definitions, validation rules, and schema structure.
-The available versions are dynamically detected from the OASF SDK.
 
 ### `agntcy_oasf_list_versions`
 
 Lists all available OASF schema versions supported by the server.
 
-**Input:** None **Output:** `available_versions` ([]string), `count` (int), `error_message` (string)
+**Input:** None  
+**Output:** `available_versions` ([]string), `count` (int), `error_message` (string)
 
-This tool provides a simple way to discover what schema versions are available without having to make requests with specific version numbers.
+### `agntcy_oasf_get_schema`
 
-## Resources
+Retrieves the complete OASF schema JSON content for the specified version.
 
-The server exposes OASF JSON schemas as MCP resources:
+**Input:** `version` (string) - OASF schema version (e.g., "0.3.1", "0.7.0")  
+**Output:** `version` (string), `schema` (string), `available_versions` ([]string), `error_message` (string)
 
-- `agntcy://oasf/schema/0.7.0` - OASF 0.7.0 schema
-- `agntcy://oasf/schema/0.3.1` - OASF 0.3.1 schema
+### `agntcy_oasf_validate_record`
 
-## Building
+Validates an OASF agent record against the OASF schema.
 
-```bash
-cd mcp
-go build -o mcp
+**Input:** `record_json` (string)  
+**Output:** `valid` (bool), `schema_version` (string), `validation_errors` ([]string), `error_message` (string)
+
+## Setup
+
+To enable this MCP server in your IDE, follow the configuration instructions for your specific tool:
+
+- **Cursor**: [MCP Configuration Guide](https://docs.cursor.com/advanced/mcp)
+- **Claude Desktop**: [MCP Setup Instructions](https://modelcontextprotocol.io/quickstart/user)
+- **Other IDEs**: Check your IDE's documentation for MCP server configuration
+
+The MCP server binary is located at `mcp/mcp` (relative to the repository root). Use the absolute path to this binary in your IDE's MCP configuration.
+
+## Usage Guide
+
+### Creating an Agent Record
+
+**Prompt:**
+```
+I want to create a new OASF agent record from the repository in this directory. Can you help me?
 ```
 
-## Usage
-
-### Cursor
-
-Add to `~/.cursor/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "agntcy-dir": {
-      "command": "/absolute/path/to/dir/mcp/mcp"
-    }
-  }
-}
-```
-
-Restart your client after configuration.
+The AI will guide you through:
+1. Checking available schema versions
+2. Getting the appropriate schema
+3. Creating a valid record based on your requirements
+4. Validating the record
