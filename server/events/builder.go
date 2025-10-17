@@ -9,23 +9,24 @@ import (
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 )
 
-// EventBuilder provides a fluent interface for creating and publishing events.
+// EventBuilder provides a fluent interface for creating events.
+// It is decoupled from EventBus - use Build() to get the event,
+// then explicitly publish it with bus.Publish(event).
 type EventBuilder struct {
-	bus   *EventBus
 	event *Event
 }
 
-// NewBuilder creates a new event builder.
+// NewEventBuilder creates a new event builder.
 // The event is created with auto-generated ID and timestamp.
 //
 // Example:
 //
-//	bus.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "bafyxxx").
+//	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "bafyxxx").
 //	    WithLabels([]string{"/skills/AI"}).
-//	    Publish()
-func (b *EventBus) NewBuilder(eventType eventsv1.EventType, resourceID string) *EventBuilder {
+//	    Build()
+//	bus.Publish(event)
+func NewEventBuilder(eventType eventsv1.EventType, resourceID string) *EventBuilder {
 	return &EventBuilder{
-		bus:   b,
 		event: NewEvent(eventType, resourceID),
 	}
 }
@@ -61,14 +62,8 @@ func (eb *EventBuilder) WithMetadataMap(metadata map[string]string) *EventBuilde
 	return eb
 }
 
-// Publish publishes the event to the bus.
-func (eb *EventBuilder) Publish() {
-	if eb.bus != nil {
-		eb.bus.Publish(eb.event)
-	}
-}
-
-// Build returns the event without publishing (useful for testing).
+// Build returns the constructed event.
+// After building, publish it explicitly with bus.Publish(event).
 func (eb *EventBuilder) Build() *Event {
 	return eb.event
 }
@@ -78,63 +73,72 @@ func (eb *EventBuilder) Build() *Event {
 
 // RecordPushed publishes a record push event.
 func (b *EventBus) RecordPushed(cid string, labels []string) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, cid).
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, cid).
 		WithLabels(labels).
-		Publish()
+		Build()
+	b.Publish(event)
 }
 
 // RecordPulled publishes a record pull event.
 func (b *EventBus) RecordPulled(cid string, labels []string) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PULLED, cid).
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PULLED, cid).
 		WithLabels(labels).
-		Publish()
+		Build()
+	b.Publish(event)
 }
 
 // RecordDeleted publishes a record delete event.
 func (b *EventBus) RecordDeleted(cid string) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_DELETED, cid).
-		Publish()
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_DELETED, cid).
+		Build()
+	b.Publish(event)
 }
 
 // RecordPublished publishes a record publish event (announced to network).
 func (b *EventBus) RecordPublished(cid string, labels []string) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUBLISHED, cid).
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUBLISHED, cid).
 		WithLabels(labels).
-		Publish()
+		Build()
+	b.Publish(event)
 }
 
 // RecordUnpublished publishes a record unpublish event.
 func (b *EventBus) RecordUnpublished(cid string) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_UNPUBLISHED, cid).
-		Publish()
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_UNPUBLISHED, cid).
+		Build()
+	b.Publish(event)
 }
 
 // SyncCreated publishes a sync created event.
 func (b *EventBus) SyncCreated(syncID, remoteURL string) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_SYNC_CREATED, syncID).
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_SYNC_CREATED, syncID).
 		WithMetadata("remote_url", remoteURL).
-		Publish()
+		Build()
+	b.Publish(event)
 }
 
 // SyncCompleted publishes a sync completed event.
 func (b *EventBus) SyncCompleted(syncID, remoteURL string, recordCount int) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_SYNC_COMPLETED, syncID).
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_SYNC_COMPLETED, syncID).
 		WithMetadata("remote_url", remoteURL).
 		WithMetadata("record_count", strconv.Itoa(recordCount)).
-		Publish()
+		Build()
+	b.Publish(event)
 }
 
 // SyncFailed publishes a sync failed event.
 func (b *EventBus) SyncFailed(syncID, remoteURL, errorMsg string) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_SYNC_FAILED, syncID).
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_SYNC_FAILED, syncID).
 		WithMetadata("remote_url", remoteURL).
 		WithMetadata("error", errorMsg).
-		Publish()
+		Build()
+	b.Publish(event)
 }
 
 // RecordSigned publishes a record signed event.
 func (b *EventBus) RecordSigned(cid, signer string) {
-	b.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_SIGNED, cid).
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_SIGNED, cid).
 		WithMetadata("signer", signer).
-		Publish()
+		Build()
+	b.Publish(event)
 }

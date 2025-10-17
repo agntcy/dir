@@ -42,18 +42,6 @@ func (s *SafeEventBus) Unsubscribe(id string) {
 	}
 }
 
-// NewBuilder creates an event builder. Returns builder with nil bus if bus is nil.
-func (s *SafeEventBus) NewBuilder(eventType eventsv1.EventType, resourceID string) *EventBuilder {
-	if s.bus != nil {
-		return s.bus.NewBuilder(eventType, resourceID)
-	}
-	// Return a builder that won't publish (nil bus)
-	return &EventBuilder{
-		bus:   nil,
-		event: NewEvent(eventType, resourceID),
-	}
-}
-
 // Convenience methods - all nil-safe
 
 // RecordPushed publishes a record push event. No-op if bus is nil.

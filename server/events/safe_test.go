@@ -36,13 +36,14 @@ func TestSafeEventBusNilSafety(t *testing.T) {
 	// Test Unsubscribe - should not panic
 	safeBus.Unsubscribe("any-id") // Should not panic
 
-	// Test NewBuilder - should return builder but not publish
-	builder := safeBus.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test")
+	// Test builder independently (no longer coupled to bus)
+	builder := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test")
 	if builder == nil {
-		t.Error("Expected builder to be returned even with nil bus")
+		t.Error("Expected builder to be created")
 	}
 
-	builder.Publish() // Should not panic
+	builtEvent := builder.Build()
+	safeBus.Publish(builtEvent) // Should not panic with nil bus
 
 	// Test all convenience methods - should not panic
 	safeBus.RecordPushed("cid", []string{"/test"})
@@ -206,8 +207,8 @@ func TestSafeEventBusAllConvenienceMethods(t *testing.T) {
 func TestSafeEventBusBuilderWithNilBus(t *testing.T) {
 	safeBus := NewSafeEventBus(nil)
 
-	// Builder should be returned even with nil bus
-	builder := safeBus.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test")
+	// Builder is now independent - no need for bus
+	builder := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test")
 	if builder == nil {
 		t.Fatal("Expected builder to be returned")
 	}
@@ -218,8 +219,8 @@ func TestSafeEventBusBuilderWithNilBus(t *testing.T) {
 		t.Error("Expected event to be built")
 	}
 
-	// Publish should not panic (even though bus is nil)
-	builder.Publish() // Should be no-op
+	// Publish should not panic (SafeEventBus handles nil)
+	safeBus.Publish(event) // Should be no-op
 }
 
 func TestSafeEventBusBuilderWithRealBus(t *testing.T) {
@@ -232,28 +233,29 @@ func TestSafeEventBusBuilderWithRealBus(t *testing.T) {
 	subID, eventCh := safeBus.Subscribe(req)
 	defer safeBus.Unsubscribe(subID)
 
-	// Use builder through safe bus
-	safeBus.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "bafytest").
+	// Use builder independently, then publish explicitly
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "bafytest").
 		WithLabels([]string{"/skills/AI"}).
 		WithMetadata("key", testMetadataValue).
-		Publish()
+		Build()
+	safeBus.Publish(event)
 
 	// Wait for async delivery to complete
 	bus.WaitForAsyncPublish()
 
 	// Verify event received
 	select {
-	case event := <-eventCh:
-		if event.ResourceID != "bafytest" {
-			t.Errorf("Expected bafytest, got %s", event.ResourceID)
+	case receivedEvent := <-eventCh:
+		if receivedEvent.ResourceID != "bafytest" {
+			t.Errorf("Expected bafytest, got %s", receivedEvent.ResourceID)
 		}
 
-		if len(event.Labels) != 1 {
-			t.Errorf("Expected 1 label, got %d", len(event.Labels))
+		if len(receivedEvent.Labels) != 1 {
+			t.Errorf("Expected 1 label, got %d", len(receivedEvent.Labels))
 		}
 
-		if event.Metadata["key"] != testMetadataValue {
-			t.Errorf("Expected metadata key=value, got %v", event.Metadata)
+		if receivedEvent.Metadata["key"] != testMetadataValue {
+			t.Errorf("Expected metadata key=value, got %v", receivedEvent.Metadata)
 		}
 	default:
 		t.Error("Expected to receive event")

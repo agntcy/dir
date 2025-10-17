@@ -10,10 +10,8 @@ import (
 )
 
 func TestEventBuilder(t *testing.T) {
-	bus := NewEventBus()
-
-	// Build event with builder pattern
-	event := bus.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, TestCID123).
+	// Build event with builder pattern (no bus coupling)
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, TestCID123).
 		WithLabels([]string{"/skills/AI", "/domains/research"}).
 		WithMetadata("key1", "value1").
 		WithMetadata("key2", "value2").
@@ -42,15 +40,13 @@ func TestEventBuilder(t *testing.T) {
 }
 
 func TestEventBuilderWithMetadataMap(t *testing.T) {
-	bus := NewEventBus()
-
 	metadata := map[string]string{
 		"key1": "value1",
 		"key2": "value2",
 		"key3": "value3",
 	}
 
-	event := bus.NewBuilder(eventsv1.EventType_EVENT_TYPE_SYNC_CREATED, "sync-123").
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_SYNC_CREATED, "sync-123").
 		WithMetadataMap(metadata).
 		Build()
 
@@ -74,10 +70,11 @@ func TestEventBuilderPublish(t *testing.T) {
 	subID, eventCh := bus.Subscribe(req)
 	defer bus.Unsubscribe(subID)
 
-	// Use builder to publish
-	bus.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, TestCID123).
+	// Use builder to create event, then explicitly publish
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, TestCID123).
 		WithLabels([]string{"/skills/AI"}).
-		Publish()
+		Build()
+	bus.Publish(event)
 
 	// Wait for async delivery to complete
 	bus.WaitForAsyncPublish()
@@ -335,10 +332,8 @@ func TestRecordSignedConvenience(t *testing.T) {
 }
 
 func TestBuilderChaining(t *testing.T) {
-	bus := NewEventBus()
-
 	// Test that chaining returns the builder for fluent API
-	builder := bus.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test")
+	builder := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test")
 
 	// Each method should return the builder
 	result1 := builder.WithLabels([]string{"/test"})
@@ -358,10 +353,8 @@ func TestBuilderChaining(t *testing.T) {
 }
 
 func TestBuilderMetadataAccumulation(t *testing.T) {
-	bus := NewEventBus()
-
 	// Test that multiple WithMetadata calls accumulate
-	event := bus.NewBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test").
+	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test").
 		WithMetadata("key1", "value1").
 		WithMetadata("key2", "value2").
 		WithMetadataMap(map[string]string{"key3": "value3"}).
