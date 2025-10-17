@@ -1,10 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package pull
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -45,7 +45,7 @@ Usage examples:
 	},
 }
 
-//nolint:cyclop
+//nolint:cyclop,gocognit
 func runCommand(cmd *cobra.Command, cid string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
@@ -61,25 +61,12 @@ func runCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to pull data: %w", err)
 	}
 
-	// If raw format flag is set, print and exit
-	if opts.FormatRaw {
-		rawData, err := record.Marshal()
-		if err != nil {
-			return fmt.Errorf("failed to marshal record to raw format: %w", err)
-		}
-
-		presenter.Print(cmd, string(rawData))
-
-		return nil
+	if !opts.PublicKey && !opts.Signature {
+		// Handle different output formats
+		return presenter.PrintMessage(cmd, "record", "Record data", record.GetData())
 	}
 
-	// Pretty-print the OASF object
-	output, err := json.MarshalIndent(record.GetData(), "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal OASF object to JSON: %w", err)
-	}
-
-	presenter.Print(cmd, string(output))
+	publicKeys := make([]*signv1.PublicKey, 0)
 
 	if opts.PublicKey {
 		publicKeyType := corev1.PublicKeyReferrerType
@@ -101,10 +88,12 @@ func runCommand(cmd *cobra.Command, cid string) error {
 			}
 
 			if publicKey.GetKey() != "" {
-				presenter.Println(cmd, "Public key: "+publicKey.GetKey())
+				publicKeys = append(publicKeys, publicKey)
 			}
 		}
 	}
+
+	signatures := make([]*signv1.Signature, 0)
 
 	if opts.Signature {
 		signatureType := corev1.SignatureReferrerType
@@ -126,10 +115,42 @@ func runCommand(cmd *cobra.Command, cid string) error {
 			}
 
 			if signature.GetSignature() != "" {
-				presenter.Println(cmd, "Signature: "+signature.GetSignature())
+				signatures = append(signatures, signature)
 			}
 		}
 	}
 
-	return nil
+	// Create structured data object
+	structuredData := map[string]interface{}{
+		"record": map[string]interface{}{
+			"data": record.GetData(),
+		},
+	}
+
+	// Add public keys if any
+	if len(publicKeys) > 0 {
+		publicKeyData := make([]map[string]interface{}, len(publicKeys))
+		for i, pk := range publicKeys {
+			publicKeyData[i] = map[string]interface{}{
+				"key": pk.GetKey(),
+			}
+		}
+
+		structuredData["publicKeys"] = publicKeyData
+	}
+
+	// Add signatures if any
+	if len(signatures) > 0 {
+		signatureData := make([]map[string]interface{}, len(signatures))
+		for i, sig := range signatures {
+			signatureData[i] = map[string]interface{}{
+				"signature": sig.GetSignature(),
+			}
+		}
+
+		structuredData["signatures"] = signatureData
+	}
+
+	// Output the structured data
+	return presenter.PrintMessage(cmd, "record", "Record data with keys and signatures", structuredData)
 }

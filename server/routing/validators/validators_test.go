@@ -874,7 +874,7 @@ func TestExtractCIDFromLabelKey(t *testing.T) {
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMsg)
-				assert.Equal(t, "", cid)
+				assert.Empty(t, cid)
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantCID, cid)

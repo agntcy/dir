@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package verify
 
 import (
@@ -13,6 +14,11 @@ import (
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	// Add output format flags
+	presenter.AddOutputFlags(Command)
+}
 
 //nolint:mnd
 var Command = &cobra.Command{
@@ -56,11 +62,11 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 		return fmt.Errorf("failed to verify record with Zot: %w", err)
 	}
 
+	// Output in the appropriate format
+	status := "trusted"
 	if !response.GetSuccess() {
-		presenter.Printf(cmd, "Record signature is not trusted: %s", response.GetErrorMessage())
-	} else {
-		presenter.Printf(cmd, "Record signature is trusted!")
+		status = "not trusted"
 	}
 
-	return nil
+	return presenter.PrintMessage(cmd, "signature", "Record signature is", status)
 }

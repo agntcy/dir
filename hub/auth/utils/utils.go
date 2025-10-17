@@ -27,7 +27,7 @@ func IsIAMAuthConfig(currentSession *sessionstore.HubSession) bool {
 		return false
 	}
 
-	if currentSession.AuthConfig.IdpFrontendAddress != "" && currentSession.AuthConfig.IdpBackendAddress != "" {
+	if currentSession.IdpFrontendAddress != "" && currentSession.IdpBackendAddress != "" {
 		return true
 	}
 

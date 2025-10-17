@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package routing
 
 import (
@@ -59,8 +60,6 @@ func runUnpublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	presenter.Printf(cmd, "Unpublishing record with CID: %s\n", recordRef.GetCid())
-
 	// Start unpublishing using the same RecordRef
 	if err := c.Unpublish(cmd.Context(), &routingv1.UnpublishRequest{
 		Request: &routingv1.UnpublishRequest_RecordRefs{
@@ -72,10 +71,12 @@ func runUnpublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to unpublish: %w", err)
 	}
 
-	// Success
-	presenter.Printf(cmd, "Successfully unpublished!\n")
-	presenter.Printf(cmd, "Record is no longer discoverable by other peers.\n")
-	presenter.Printf(cmd, "The record still exists in local storage.\n")
+	// Output in the appropriate format
+	result := map[string]interface{}{
+		"cid":     recordRef.GetCid(),
+		"status":  "unpublished",
+		"message": "Record is no longer discoverable by other peers",
+	}
 
-	return nil
+	return presenter.PrintMessage(cmd, "Unpublish", "Successfully unpublished record", result)
 }

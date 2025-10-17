@@ -49,7 +49,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 
 	ginkgo.Context("setup for remote search testing", func() {
 		ginkgo.It("should push record_070.json to peer 1", func() {
-			cid = cli.Push(tempPath).OnServer(utils.Peer1Addr).ShouldSucceed()
+			cid = cli.Push(tempPath).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
 			RegisterCIDForCleanup(cid, "search")
@@ -209,12 +209,13 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for remote routing sear
 				WithSkill("natural_language_processing/natural_language_generation/text_completion"). // Query 1 - ✅ should match
 				WithMinScore(0).                                                                      // Should default to 1
 				WithLimit(10).
+				WithArgs("--json").
 				OnServer(utils.Peer2Addr).
 				ShouldSucceed()
 
 			// With minScore=0 defaulting to 1, should find record since query matches
 			gomega.Expect(output).To(gomega.ContainSubstring(cid))
-			gomega.Expect(output).To(gomega.ContainSubstring("Match Score: 1/1"))
+			gomega.Expect(output).To(gomega.ContainSubstring("\"match_score\": 1"))
 
 			ginkgo.GinkgoWriter.Printf("✅ SUCCESS: minScore=0 correctly defaults to minScore=1 per proto spec")
 		})

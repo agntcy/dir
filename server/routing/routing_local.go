@@ -142,6 +142,7 @@ func (r *routeLocal) List(ctx context.Context, req *routingv1.ListRequest) (<-ch
 	// Process in background with deduplicated queries
 	go func() {
 		defer close(outCh)
+
 		r.listLocalRecords(ctx, deduplicatedQueries, req.GetLimit(), outCh)
 	}()
 

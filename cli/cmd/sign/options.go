@@ -4,6 +4,7 @@
 package sign
 
 import (
+	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/spf13/pflag"
@@ -20,6 +21,9 @@ func init() {
 	flags := Command.Flags()
 
 	AddSigningFlags(flags)
+
+	// Add output format flags
+	presenter.AddOutputFlags(Command)
 }
 
 func AddSigningFlags(flags *pflag.FlagSet) {

@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package routing
 
 import (
@@ -62,8 +63,6 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to lookup: %w", err)
 	}
 
-	presenter.Printf(cmd, "Publishing record with CID: %s\n", recordRef.GetCid())
-
 	// Start publishing using the same RecordRef
 	if err := c.Publish(cmd.Context(), &routingv1.PublishRequest{
 		Request: &routingv1.PublishRequest_RecordRefs{
@@ -79,10 +78,12 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 		return fmt.Errorf("failed to publish: %w", err)
 	}
 
-	// Success
-	presenter.Printf(cmd, "Successfully submitted publication request!\n")
-	presenter.Printf(cmd, "Record will be discoverable by other peers once the publication service processes the request.\n")
-	presenter.Printf(cmd, "Use 'dirctl routing search' from other peers to find this record after publication completes.\n")
+	// Output in the appropriate format
+	result := map[string]interface{}{
+		"cid":     recordRef.GetCid(),
+		"status":  "Successfully submitted publication request",
+		"message": "Record will be discoverable by other peers once the publication service processes the request",
+	}
 
-	return nil
+	return presenter.PrintMessage(cmd, "Publish", "Successfully submitted publication request", result)
 }

@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 	})
 
 	ginkgo.It("should push record_070.json to peer 1", func() {
-		cid = cli.Push(tempPath).OnServer(utils.Peer1Addr).ShouldSucceed()
+		cid = cli.Push(tempPath).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 		// Track CID for cleanup
 		RegisterCIDForCleanup(cid, "deploy")
@@ -83,7 +83,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 
 		// Should find the local record
 		gomega.Expect(output).To(gomega.ContainSubstring(cid))
-		gomega.Expect(output).To(gomega.ContainSubstring("Local Record"))
+		gomega.Expect(output).To(gomega.ContainSubstring("Local records"))
 
 		// Reset CLI state before testing Peer2
 		utils.ResetCLIState()
@@ -93,8 +93,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		output2 := cli.Routing().List().WithCid(cid).OnServer(utils.Peer2Addr).ShouldSucceed()
 
 		// Should NOT find the record locally on Peer2
-		gomega.Expect(output2).To(gomega.ContainSubstring("not found in local records"))
-		gomega.Expect(output2).To(gomega.ContainSubstring("Use 'dirctl routing search' to find providers"))
+		gomega.Expect(output2).To(gomega.ContainSubstring("No local records found"))
 	})
 
 	ginkgo.It("should list by skill correctly on local vs remote peers", func() {
@@ -106,7 +105,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 
 		// Should find the local record with expected labels
 		gomega.Expect(output1).To(gomega.ContainSubstring(cid))
-		gomega.Expect(output1).To(gomega.ContainSubstring("Local Record"))
+		gomega.Expect(output1).To(gomega.ContainSubstring("Local records"))
 		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/natural_language_processing/natural_language_generation/text_completion"))
 		gomega.Expect(output1).To(gomega.ContainSubstring("/skills/natural_language_processing/analytical_reasoning/problem_solving"))
 

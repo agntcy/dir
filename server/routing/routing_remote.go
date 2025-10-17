@@ -216,6 +216,7 @@ func newRemote(parentCtx context.Context,
 
 	// Start all background goroutines with routing context
 	routeAPI.wg.Add(1)
+
 	go routeAPI.handleNotify()
 
 	routeAPI.wg.Add(1)
@@ -321,6 +322,7 @@ func (r *routeRemote) Search(ctx context.Context, req *routingv1.SearchRequest) 
 
 	go func() {
 		defer close(outCh)
+
 		r.searchRemoteRecords(ctx, deduplicatedQueries, req.GetLimit(), minMatchScore, outCh)
 	}()
 

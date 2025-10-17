@@ -59,9 +59,9 @@ The SDK can be configured via environment variables or direct instantiation:
 export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
 export DIRCTL_PATH="/path/to/dirctl"
 
-# Environment variables (mTLS authentication)
+# Environment variables (X.509 authentication)
 export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
-export DIRECTORY_CLIENT_AUTH_MODE="mtls"
+export DIRECTORY_CLIENT_AUTH_MODE="x509"
 export DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH="/tmp/agent.sock"
 
 # Environment variables (JWT authentication)
@@ -80,14 +80,14 @@ config = Config(
 )
 client = Client(config)
 
-# mTLS authentication with SPIRE
-mtls_config = Config(
+# X.509 authentication with SPIRE
+x509_config = Config(
     server_address="localhost:8888",
     dirctl_path="/usr/local/bin/dirctl",
     spiffe_socket_path="/tmp/agent.sock",
-    auth_mode="mtls"
+    auth_mode="x509"
 )
-mtls_client = Client(mtls_config)
+x509_client = Client(x509_config)
 
 # JWT authentication with SPIRE
 jwt_config = Config(

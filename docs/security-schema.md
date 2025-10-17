@@ -8,7 +8,7 @@ SPIRE (SPIFFE Runtime Environment) is an open-source system that provides automa
 
 In the Directory project, SPIRE is used to:
 - Securely identify and authenticate workloads (services, applications, etc.)
-- Enable mutual TLS (mTLS) between services
+- Enable authentication between services using JWT or X.509 SVIDs
 - Support dynamic, scalable, and multi-environment deployments
 - Enable interconnectivity between different organizations
 - Provide primitives for authorization logic
@@ -20,7 +20,7 @@ In the Directory project, SPIRE is used to:
 SPIRE provides strong, cryptographically verifiable identities (SPIFFE IDs) to every workload. These identities are used for:
 - **Workload Authentication:** Every service, whether running in Kubernetes, on a VM, or on bare metal, receives a unique SPIFFE ID (e.g., `spiffe://dir.example/ns/default/sa/my-service`).
 - **Cross-Organization Authentication:** Through federation, workloads from different organizations or clusters can mutually authenticate using their SPIFFE IDs, without the need to implement custom cross-org authentication logic.
-- **Mutual TLS (mTLS):** SPIRE issues SVIDs (X.509 certificates) that are used to establish mTLS connections, ensuring both parties are authenticated and communication is encrypted.
+- **Secure Communication:** SPIRE issues SVIDs (JWT or X.509) that are used for authentication and encrypted communication.
 
 **What problem does SPIRE solve?**
 - Eliminates the need to build and maintain custom authentication systems for each environment or organization.
@@ -31,7 +31,7 @@ SPIRE provides strong, cryptographically verifiable identities (SPIFFE IDs) to e
 
 - **Workload Identity:** Each Directory component (API server, clients, etc.) is assigned a SPIFFE ID based on its SPIRE Agent configuration.
 - **Cross-Organization Authentication:** Directory can authenticate workloads from other organizations or clusters using their SPIFFE IDs, enabling secure communication without custom integration.
-- **Mutual TLS (mTLS):** Directory can establish mTLS connections between components using the SVIDs issued by SPIRE, ensuring secure and authenticated communication.
+- **Secure Communication:** Directory establishes secure connections between components using the SVID certificates issued by SPIRE, ensuring secure and authenticated communication.
 
 ### Authorization
 

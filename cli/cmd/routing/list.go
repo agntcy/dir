@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package routing
 
 import (
@@ -75,6 +76,9 @@ func init() {
 	listCmd.Flags().Lookup("domain").Usage = "Filter by domain (e.g., --domain 'research' --domain 'analytics')"
 	listCmd.Flags().Lookup("module").Usage = "Filter by module (e.g., --module 'runtime/language' --module 'runtime/framework')"
 	listCmd.Flags().Lookup("cid").Usage = "List specific record by CID"
+
+	// Add output format flags
+	presenter.AddOutputFlags(listCmd)
 }
 
 func runListCommand(cmd *cobra.Command) error {
@@ -140,41 +144,13 @@ func runListCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to list: %w", err)
 	}
 
-	// Process and display results
-	resultCount := 0
+	// Collect results and convert to interface{} slice in a single loop
+	results := make([]interface{}, 0, listOpts.Limit)
 	for result := range resultCh {
-		resultCount++
-
-		// Display result information
-		presenter.Printf(cmd, "Local Record: %s\n", result.GetRecordRef().GetCid())
-
-		// Display labels
-		if len(result.GetLabels()) > 0 {
-			presenter.Printf(cmd, "  Labels:\n")
-
-			for _, label := range result.GetLabels() {
-				presenter.Printf(cmd, "    - %s\n", label)
-			}
-		}
-
-		presenter.Printf(cmd, "\n")
+		results = append(results, result)
 	}
 
-	if resultCount == 0 {
-		if len(queries) == 0 {
-			presenter.Printf(cmd, "No local records found.\n")
-			presenter.Printf(cmd, "Use 'dirctl push' and 'dirctl publish' to add records.\n")
-		} else {
-			presenter.Printf(cmd, "No local records found matching your criteria.\n")
-			presenter.Printf(cmd, "Try:\n")
-			presenter.Printf(cmd, "  - Broader search terms\n")
-			presenter.Printf(cmd, "  - 'dirctl routing search' to find records from other peers\n")
-		}
-	} else {
-		presenter.Printf(cmd, "Found %d local record(s)\n", resultCount)
-	}
-
-	return nil
+	return presenter.PrintMessage(cmd, "local records", "Local records found", results)
 }
 
 // listByCID lists a specific record by CID.
@@ -189,33 +165,14 @@ func listByCID(cmd *cobra.Command, c *client.Client, cid string) error {
 		return fmt.Errorf("failed to list: %w", err)
 	}
 
-	// Look for the specific CID
-	found := false
+	// Collect results and convert to interface{} slice in a single loop
+	results := make([]interface{}, 0, listOpts.Limit)
 
 	for result := range resultCh {
 		if result.GetRecordRef().GetCid() == cid {
-			found = true
-
-			presenter.Printf(cmd, "Local Record: %s\n", result.GetRecordRef().GetCid())
-
-			if len(result.GetLabels()) > 0 {
-				presenter.Printf(cmd, "  Labels:\n")
-
-				for _, label := range result.GetLabels() {
-					presenter.Printf(cmd, "    - %s\n", label)
-				}
-			}
-
-			break // Found the record, no need to continue
+			results = append(results, result)
 		}
 	}
 
-	if !found {
-		presenter.Printf(cmd, "Note: CID lookup should use Search API for network-wide provider discovery.\n\n")
-		presenter.Printf(cmd, "Checking if CID exists in local records:\n")
-		presenter.Printf(cmd, "CID %s not found in local records.\n", cid)
-		presenter.Printf(cmd, "Use 'dirctl routing search' to find providers across the network.\n")
-	}
-
-	return nil
+	return presenter.PrintMessage(cmd, "local records", "Local records found", results)
 }

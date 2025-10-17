@@ -396,6 +396,7 @@ func TestGetRecords_NilOption(t *testing.T) {
 	createTestData(t, db)
 
 	var nilOption types.FilterOption
+
 	records, err := db.GetRecords(nilOption)
 	require.Error(t, err)
 	assert.Nil(t, records)
@@ -813,6 +814,7 @@ func TestV1SkillFormats_EdgeCases(t *testing.T) {
 
 			// Test parsing
 			var agent typesv1alpha0.Record
+
 			err := json.Unmarshal([]byte(agentJSON), &agent)
 			require.NoError(t, err, "JSON unmarshal should succeed")
 

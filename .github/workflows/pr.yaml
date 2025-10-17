@@ -13,6 +13,7 @@ on:
 
 permissions:
   pull-requests: write
+  contents: read
 
 jobs:
   validate_pr_title:
@@ -42,3 +43,6 @@ jobs:
             Note that this PR might take longer to review due to large size.
           files_to_ignore: |
             "*.md"
+            "**/*.pb.go"
+            "**/go.sum"
+            "**/go.mod"

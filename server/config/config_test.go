@@ -52,8 +52,6 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_SYNC_WORKER_TIMEOUT":                  "10s",
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":            "sync-user",
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":            "sync-password",
-				"DIRECTORY_SERVER_AUTHN_ENABLED":                        "false",
-				"DIRECTORY_SERVER_AUTHN_MODE":                           "mtls",
 				"DIRECTORY_SERVER_AUTHZ_ENABLED":                        "true",
 				"DIRECTORY_SERVER_AUTHZ_SOCKET_PATH":                    "/test/agent.sock",
 				"DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN":                   "dir.com",
@@ -66,7 +64,7 @@ func TestConfig(t *testing.T) {
 				HealthCheckAddress: "example.com:18888",
 				Authn: authn.Config{
 					Enabled:   false,
-					Mode:      authn.AuthModeMTLS, // Default from config.go:109
+					Mode:      authn.AuthModeX509, // Default from config.go:109
 					Audiences: []string{},
 				},
 				Store: store.Config{
@@ -132,7 +130,7 @@ func TestConfig(t *testing.T) {
 				HealthCheckAddress: DefaultHealthCheckAddress,
 				Authn: authn.Config{
 					Enabled:   false,
-					Mode:      authn.AuthModeMTLS, // Default from config.go:109
+					Mode:      authn.AuthModeX509, // Default from config.go:109
 					Audiences: []string{},
 				},
 				Store: store.Config{

@@ -228,6 +228,7 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 			expectedLocatorCount: 2,
 			skillVerifier: func(t *testing.T, record *corev1.Record) {
 				t.Helper()
+
 				decoded, _ := record.Decode()
 				v1Agent := decoded.GetV1Alpha0()
 				require.NotNil(t, v1Agent, "should be v1 agent")
@@ -245,6 +246,7 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 			},
 			locatorVerifier: func(t *testing.T, record *corev1.Record) {
 				t.Helper()
+
 				decoded, _ := record.Decode()
 				v1Agent := decoded.GetV1Alpha0()
 				locators := v1Agent.GetLocators()
@@ -289,6 +291,7 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 			expectedLocatorCount: 2,
 			skillVerifier: func(t *testing.T, record *corev1.Record) {
 				t.Helper()
+
 				decoded, _ := record.Decode()
 				v3Record := decoded.GetV1Alpha1()
 				require.NotNil(t, v3Record, "should be v3 record")
@@ -304,6 +307,7 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 			},
 			locatorVerifier: func(t *testing.T, record *corev1.Record) {
 				t.Helper()
+
 				decoded, _ := record.Decode()
 				v3Record := decoded.GetV1Alpha1()
 				locators := v3Record.GetLocators()

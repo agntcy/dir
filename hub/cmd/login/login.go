@@ -45,7 +45,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		// Load session store for saving
 		sessionStore := sessionstore.NewFileSessionStore(file.GetSessionFilePath())
 		// Construct Okta client
-		oktaClient := okta.NewClient(currentSession.AuthConfig.IdpIssuerAddress, http.CreateSecureHTTPClient())
+		oktaClient := okta.NewClient(currentSession.IdpIssuerAddress, http.CreateSecureHTTPClient())
 		// Call auth.Login with loaded objects
 		updatedSession, err := auth.Login(cmd.Context(), oktaClient, currentSession)
 		if err != nil {
@@ -60,6 +60,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		ctx := authUtils.AddAuthToContext(cmd.Context(), updatedSession)
 
 		var loginSuccess bool
+
 		defer func() {
 			if !loginSuccess {
 				if logoutErr := auth.Logout(hubOptions, currentSession, sessionStore, oktaClient); logoutErr != nil {
@@ -88,7 +89,7 @@ func NewCommand(hubOptions *options.HubOptions) *cobra.Command {
 		loginSuccess = true
 
 		fmt.Fprintf(cmd.OutOrStdout(), "Successfully logged in to Agent Hub\nAddress: %s\nUser: %s\nClientID: %s\n",
-			opts.ServerAddress, updatedSession.User, updatedSession.AuthConfig.ClientID)
+			opts.ServerAddress, updatedSession.User, updatedSession.ClientID)
 
 		return nil
 	}

@@ -1,5 +1,6 @@
 {{- if eq .Values.spire.enabled true }}
 {{- range .Values.spire.federation }}
+---
 apiVersion: spire.spiffe.io/v1alpha1
 kind: ClusterFederatedTrustDomain
 metadata:

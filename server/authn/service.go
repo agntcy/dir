@@ -17,7 +17,7 @@ import (
 
 var logger = logging.Logger("authn")
 
-// Service manages authentication using SPIFFE (mTLS or JWT).
+// Service manages authentication using SPIFFE (X.509 or JWT).
 type Service struct {
 	mode      config.AuthMode
 	audiences []string
@@ -27,7 +27,7 @@ type Service struct {
 	bundleSrc *workloadapi.BundleSource
 }
 
-// New creates a new authentication service (JWT or mTLS based on config).
+// New creates a new authentication service (JWT or X.509 based on config).
 func New(ctx context.Context, cfg config.Config) (*Service, error) {
 	// Validate
 	if err := cfg.Validate(); err != nil {
@@ -56,14 +56,14 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 
 		logger.Info("JWT authentication service initialized", "audiences", cfg.Audiences)
 
-	case config.AuthModeMTLS:
-		if err := service.initMTLS(ctx); err != nil {
+	case config.AuthModeX509:
+		if err := service.initX509(ctx); err != nil {
 			_ = client.Close()
 
 			return nil, err
 		}
 
-		logger.Info("mTLS authentication service initialized")
+		logger.Info("X.509 authentication service initialized")
 
 	default:
 		_ = client.Close()
@@ -109,8 +109,8 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 	return nil
 }
 
-// initMTLS initializes mTLS authentication components.
-func (s *Service) initMTLS(ctx context.Context) error {
+// initX509 initializes X.509 authentication components.
+func (s *Service) initX509(ctx context.Context) error {
 	// Create a new X509 source which periodically refetches X509-SVIDs and X.509 bundles
 	x509Src, err := workloadapi.NewX509Source(ctx, workloadapi.WithClient(s.client))
 	if err != nil {
@@ -145,13 +145,13 @@ func (s *Service) GetServerOptions() []grpc.ServerOption {
 			grpc.ChainStreamInterceptor(JWTStreamInterceptor(s.jwtSource, s.audiences)),
 		}
 
-	case config.AuthModeMTLS:
+	case config.AuthModeX509:
 		return []grpc.ServerOption{
 			grpc.Creds(
 				grpccredentials.MTLSServerCredentials(s.x509Src, s.bundleSrc, tlsconfig.AuthorizeAny()),
 			),
-			grpc.ChainUnaryInterceptor(MTLSUnaryInterceptor()),
-			grpc.ChainStreamInterceptor(MTLSStreamInterceptor()),
+			grpc.ChainUnaryInterceptor(X509UnaryInterceptor()),
+			grpc.ChainStreamInterceptor(X509StreamInterceptor()),
 		}
 
 	default:

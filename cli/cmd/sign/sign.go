@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package sign
 
 import (
@@ -69,9 +70,8 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
-	presenter.Print(cmd, "Record signed successfully")
-
-	return nil
+	// Output in the appropriate format
+	return presenter.PrintMessage(cmd, "signature", "Record is", "signed")
 }
 
 func Sign(ctx context.Context, c *client.Client, recordCID string) error {

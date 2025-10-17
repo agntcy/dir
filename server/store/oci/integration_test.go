@@ -105,6 +105,7 @@ func getRegistryTags(ctx context.Context, t *testing.T) []string {
 
 	resp, err := client.Do(req)
 	require.NoError(t, err, "Failed to fetch tags from registry")
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
@@ -137,11 +138,13 @@ func getManifest(ctx context.Context, t *testing.T, tag string) map[string]inter
 
 	resp, err := client.Do(req)
 	require.NoError(t, err, "Failed to fetch manifest from registry")
+
 	defer resp.Body.Close()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Unexpected status when fetching manifest")
 
 	var manifest map[string]interface{}
+
 	err = json.NewDecoder(resp.Body).Decode(&manifest)
 	require.NoError(t, err, "Failed to decode manifest response")
 
@@ -281,9 +284,9 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 		assert.Equal(t, originalAgent.GetName(), pulledAgent.GetName())
 		assert.Equal(t, originalAgent.GetVersion(), pulledAgent.GetVersion())
 		assert.Equal(t, originalAgent.GetDescription(), pulledAgent.GetDescription())
-		assert.Equal(t, len(originalAgent.GetSkills()), len(pulledAgent.GetSkills()))
-		assert.Equal(t, len(originalAgent.GetLocators()), len(pulledAgent.GetLocators()))
-		assert.Equal(t, len(originalAgent.GetExtensions()), len(pulledAgent.GetExtensions()))
+		assert.Len(t, pulledAgent.GetSkills(), len(originalAgent.GetSkills()))
+		assert.Len(t, pulledAgent.GetLocators(), len(originalAgent.GetLocators()))
+		assert.Len(t, pulledAgent.GetExtensions(), len(originalAgent.GetExtensions()))
 
 		t.Logf("Successfully pulled and verified record integrity")
 	})

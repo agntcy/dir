@@ -121,8 +121,8 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
 				assert.Equal(t, types.Label(""), label)
-				assert.Equal(t, "", cid)
-				assert.Equal(t, "", peerID)
+				assert.Empty(t, cid)
+				assert.Empty(t, peerID)
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tc.expectedLabel, label)
@@ -359,9 +359,9 @@ func TestParseEnhancedLabelKeyInternal(t *testing.T) {
 			if tc.expectError {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsg)
-				assert.Equal(t, "", label)
-				assert.Equal(t, "", cid)
-				assert.Equal(t, "", peerID)
+				assert.Empty(t, label)
+				assert.Empty(t, cid)
+				assert.Empty(t, peerID)
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tc.expectedLabel, label)

@@ -55,7 +55,7 @@ The SDK can be configured via environment variables or direct instantiation.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DIRECTORY_CLIENT_SERVER_ADDRESS` | Directory server address | `0.0.0.0:8888` |
-| `DIRECTORY_CLIENT_AUTH_MODE` | Authentication mode: `mtls`, `jwt`, or empty for insecure | `""` (insecure) |
+| `DIRECTORY_CLIENT_AUTH_MODE` | Authentication mode: `x509`, `jwt`, or empty for insecure | `""` (insecure) |
 | `DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH` | SPIFFE Workload API socket path | `""` |
 | `DIRECTORY_CLIENT_JWT_AUDIENCE` | JWT audience for JWT authentication | `""` |
 
@@ -84,14 +84,14 @@ config := &client.Config{
 client := client.New(client.WithConfig(config))
 ```
 
-#### 2. mTLS (Mutual TLS with X.509-SVID)
+#### 2. X509 (X.509-SVID)
 
 Recommended for production. Requires SPIRE agent.
 
 **Environment Variables:**
 ```bash
 export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
-export DIRECTORY_CLIENT_AUTH_MODE="mtls"
+export DIRECTORY_CLIENT_AUTH_MODE="x509"
 export DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH="unix:///run/spire/agent-sockets/api.sock"
 ```
 
@@ -101,7 +101,7 @@ import "github.com/agntcy/dir/client"
 
 config := &client.Config{
     ServerAddress:    "localhost:8888",
-    AuthMode:         "mtls",
+    AuthMode:         "x509",
     SpiffeSocketPath: "unix:///run/spire/agent-sockets/api.sock",
 }
 client := client.New(client.WithConfig(config))
@@ -109,7 +109,7 @@ client := client.New(client.WithConfig(config))
 
 #### 3. JWT (JWT-SVID)
 
-Alternative to mTLS for client authentication. Requires SPIRE agent.
+Alternative to X.509 for client authentication. Requires SPIRE agent.
 
 > **Note**: In JWT mode, the server presents its X.509-SVID via TLS for server 
 > authentication and encryption, while the client authenticates using a JWT-SVID. 

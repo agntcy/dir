@@ -5,6 +5,7 @@ package push
 
 import (
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
+	"github.com/agntcy/dir/cli/presenter"
 	"github.com/agntcy/dir/client"
 )
 
@@ -29,4 +30,7 @@ func init() {
 	)
 
 	signcmd.AddSigningFlags(flags)
+
+	// Add output format flags
+	presenter.AddOutputFlags(Command)
 }

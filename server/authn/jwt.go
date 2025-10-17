@@ -89,6 +89,7 @@ func extractToken(ctx context.Context) (string, error) {
 
 	// Expected format: "Bearer <token>"
 	const expectedParts = 2
+
 	parts := strings.SplitN(authHeader[0], " ", expectedParts)
 
 	if len(parts) != expectedParts || strings.ToLower(parts[0]) != "bearer" {

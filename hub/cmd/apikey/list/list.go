@@ -91,7 +91,11 @@ func runCommand(cmd *cobra.Command, _ []string, opts *options.APIKeyListOptions)
 	}
 
 	if !opts.JSONOutput {
-		fmt.Fprintf(cmd.OutOrStdout(), "API Keys for organization %v:\n", organization)
+		if opts.OrganizationID != "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "API Keys for organization %s:\n", opts.OrganizationID)
+		} else if opts.OrganizationName != "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "API Keys for organization %s:\n", opts.OrganizationName)
+		}
 	}
 
 	if err := renderList(cmd.OutOrStdout(), apikeys); err != nil {

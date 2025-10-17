@@ -81,6 +81,7 @@ func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) 
 	requestID := r.URL.Query().Get("request")
 
 	var challenge string
+
 	h.sessionStore.Verifier, challenge = utils.GenerateChallenge()
 
 	nonce, err := utils.GenerateNonce()
@@ -102,6 +103,7 @@ func (h *Handler) HandleRequestRedirect(w http.ResponseWriter, r *http.Request) 
 // HandleCodeRedirect handles the redirect from the IdP with the authorization code, exchanges it for tokens, and stores them.
 func (h *Handler) HandleCodeRedirect(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
+
 	resp, err := h.idpClient.RequestToken(&okta.RequestTokenRequest{
 		ClientID:    h.clientID,
 		RedirectURI: h.localWebserverURL,
@@ -129,6 +131,7 @@ func (h *Handler) HandleCodeRedirect(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte(failedLoginMessage)) //nolint:errcheck
+
 	h.Err <- err
 }
 
@@ -136,5 +139,6 @@ func (h *Handler) handleError(w http.ResponseWriter, err error) {
 func (h *Handler) handleSuccess(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(successfulLoginMessage)) //nolint:errcheck
+
 	h.Err <- nil
 }

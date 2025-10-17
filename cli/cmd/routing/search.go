@@ -1,13 +1,12 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package routing
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -153,67 +152,11 @@ func runSearchCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to search routing: %w", err)
 	}
 
-	// Process and display results
-	if searchOpts.JSON {
-		return outputJSONResults(cmd, resultCh)
-	}
-
-	return outputTextResults(cmd, resultCh, queries)
-}
-
-func outputJSONResults(cmd *cobra.Command, resultCh <-chan *routingv1.SearchResponse) error {
-	results := make([]*routingv1.SearchResponse, 0)
-
-	// Collect all results
+	// Collect results
+	results := make([]interface{}, 0, searchOpts.Limit)
 	for result := range resultCh {
 		results = append(results, result)
 	}
 
-	// Output JSON directly from the API response
-	output, err := json.MarshalIndent(results, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-
-	presenter.Print(cmd, string(output)+"\n")
-
-	return nil
-}
-
-func outputTextResults(cmd *cobra.Command, resultCh <-chan *routingv1.SearchResponse, queries []*routingv1.RecordQuery) error {
-	resultCount := 0
-	for result := range resultCh {
-		resultCount++
-
-		// Display result information
-		presenter.Printf(cmd, "Record: %s\n", result.GetRecordRef().GetCid())
-		presenter.Printf(cmd, "  Provider:\n")
-		presenter.Printf(cmd, "    id %s\n", result.GetPeer().GetId())
-		presenter.Printf(cmd, "    api address %s\n", result.GetPeer().GetAddrs()[0])
-		presenter.Printf(cmd, "  Match Score: %d/%d\n", result.GetMatchScore(), len(queries))
-
-		// Display matching queries
-		if len(result.GetMatchQueries()) > 0 {
-			presenter.Printf(cmd, "  Matching Queries:\n")
-
-			for _, query := range result.GetMatchQueries() {
-				queryType := strings.TrimPrefix(query.GetType().String(), "RECORD_QUERY_TYPE_")
-				presenter.Printf(cmd, "    - %s: %s\n", queryType, query.GetValue())
-			}
-		}
-
-		presenter.Printf(cmd, "\n")
-	}
-
-	if resultCount == 0 {
-		presenter.Printf(cmd, "No remote records found matching your criteria.\n")
-		presenter.Printf(cmd, "Try:\n")
-		presenter.Printf(cmd, "  - Broader search terms\n")
-		presenter.Printf(cmd, "  - Lower --min-score value\n")
-		presenter.Printf(cmd, "  - Check if other peers have published matching records\n")
-	} else {
-		presenter.Printf(cmd, "Found %d remote record(s)\n", resultCount)
-	}
-
-	return nil
+	return presenter.PrintMessage(cmd, "remote records", "Remote records found", results)
 }

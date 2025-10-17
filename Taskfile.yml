@@ -33,10 +33,10 @@ vars:
   PROTOC_BIN: '{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}'
   BUFBUILD_VERSION: '1.50.1'
   BUFBUILD_BIN: '{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}'
-  GO_VERSION: '1.24.5'
+  GO_VERSION: '1.25.2'
   MULTIMOD_VERSION: '0.17.0'
   MULTIMOD_BIN: '{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}'
-  GOLANGCI_LINT_VERSION: '1.64.7'
+  GOLANGCI_LINT_VERSION: '2.5.0'
   GOLANGCI_LINT_BIN: '{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}'
   LICENSEI_VERSION: '0.9.0'
   LICENSEI_BIN: '{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}'
@@ -46,8 +46,13 @@ vars:
   COSIGN_VERSION: '2.5.3'
   COSIGN_BIN: '{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}'
   HUB_API_VERSION: 'main'
-  HUB_REPO_URL: 'https://github.com/cisco-eti/phoenix-saas-be.git'
   ZOT_VERSION: '2.1.8'
+
+  ## Go module discovery
+  GO_MOD_DIR:
+    sh: find . -name go.mod -not -path "./tmp*" -exec dirname {} \;
+  GO_MOD_DIR_UNIT_TEST:
+    sh: find . -name go.mod -not -path "./e2e*" -not -path "./tmp*" -exec dirname {} \;
 
 tasks:
   ##
@@ -141,21 +146,6 @@ tasks:
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 
-  api:test:
-    desc: Unit test API code
-    vars:
-      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    cmds:
-      - EXTRA_ARGS="{{.EXTRA_ARGS}}" task api:test:go
-
-  api:test:go:
-    desc: Unit test Go API code
-    vars:
-      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    dir: ./api
-    cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
-
   ##
   ## CLI
   ##
@@ -187,30 +177,9 @@ tasks:
             GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dirctl-{{.ITEM.OS}}-{{.ITEM.ARCH}} task cli:compile
           fi
 
-  cli:test:
-    desc: Unit test CLI code
-    dir: ./cli
-    cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
-
   ##
   ## Client SDK
   ##
-  client:test:
-    desc: Unit test Client code
-    vars:
-      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    cmds:
-      - EXTRA_ARGS="{{.EXTRA_ARGS}}" task client:test:go
-
-  client:test:go:
-    desc: Unit test Go Client code
-    dir: ./client
-    vars:
-      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
-    cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
-
   sdk:deps:common:
     desc: Common dependencies for SDKs
     cmds:
@@ -459,12 +428,6 @@ tasks:
     internal: true
     cmds:
       - docker stop oci-registry
-
-  server:test:
-    desc: Unit test Directory server code
-    dir: ./server
-    cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
 
   server:bench:
     desc: Benchmark Directory server code
@@ -944,29 +907,27 @@ tasks:
   test:unit:
     desc: Run unit tests on codebase
     aliases: [test]
-    deps: # run in parallel
-      - cli:test
-      - api:test
-      - client:test
-      - server:test
+    vars:
+      EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
-      - echo "Success"
+      - for: { var: GO_MOD_DIR_UNIT_TEST }
+        cmd: |
+          echo "Running tests in {{.ITEM}}"
+          go -C {{.ITEM}} test ./... {{.EXTRA_ARGS}}
 
   test:unit:cover:
     desc: Run all unit tests with coverage and generate reports
-    deps:
-      - task: cli:test
-        vars:
-          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-cli.out -json > {{.ROOT_DIR}}/test-report-dir-cli.json'
-      - task: api:test
-        vars:
-          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-api.out -json > {{.ROOT_DIR}}/test-report-dir-api.json'
-      - task: client:test
-        vars:
-          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-client.out -json > {{.ROOT_DIR}}/test-report-dir-client.json'
-      - task: server:test
-        vars:
-          EXTRA_ARGS: '-coverprofile {{.ROOT_DIR}}/coverage-dir-server.out -json > {{.ROOT_DIR}}/test-report-dir-server.json'
+    cmds:
+      - for: { var: GO_MOD_DIR_UNIT_TEST }
+        cmd: |
+          MODULE_NAME=$(basename {{.ITEM}})
+          echo "Running tests with coverage in {{.ITEM}}"
+          go -C {{.ITEM}} test ./... -coverprofile {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp -json > {{.ROOT_DIR}}/test-report-dir-${MODULE_NAME}.json
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp ]; then
+            grep -v "\.pb\.go" {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp | grep -v "mock_.*\.go" > {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out || true
+            rm {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp
+          fi
 
   test:unit:coverage:html:
     desc: Extended per-module coverage run with summaries & HTML (non-regression)
@@ -977,19 +938,27 @@ tasks:
         rm -f coverage-*.out coverage-summary.txt test-report-*.json coverage-*.html || true
       - |
         set -euo pipefail
-        modules="api client server cli"
+        # Build list of modules from GO_MOD_DIR_UNIT_TEST
+        modules=""
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
+        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
+        {{end}}
         for m in $modules; do
           if [ -d "$m" ]; then
             echo "[coverage] Testing module: $m"
             (
               cd "$m"
-              if go test ./... -covermode=atomic -coverprofile "../coverage-$m.out" -json 2>&1 | tee "../test-report-$m.json" >/dev/null; then
+              if go test ./... -covermode=atomic -coverprofile "../coverage-$m.out.tmp" -json 2>&1 | tee "../test-report-$m.json" >/dev/null; then
                 echo "[coverage] Completed: $m"
               else
                 status=$?
                 echo "[coverage][warn] Tests failed in $m (exit $status); continuing"
               fi
-              if [ ! -s "../coverage-$m.out" ]; then
+              # Filter out generated files (matching codecov.yml ignores)
+              if [ -f "../coverage-$m.out.tmp" ]; then
+                grep -v "\.pb\.go" "../coverage-$m.out.tmp" | grep -v "mock_.*\.go" > "../coverage-$m.out" || echo "mode: atomic" > "../coverage-$m.out"
+                rm "../coverage-$m.out.tmp"
+              elif [ ! -s "../coverage-$m.out" ]; then
                 echo "mode: atomic" > "../coverage-$m.out"
               fi
             )
@@ -999,7 +968,11 @@ tasks:
         set -euo pipefail
         echo "[coverage] Generating per-module summaries"
         : > coverage-summary.txt
-        modules="api client server cli"
+        # Build list of modules from GO_MOD_DIR_UNIT_TEST
+        modules=""
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
+        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
+        {{end}}
         for m in $modules; do
           if [ -f "coverage-$m.out" ]; then
             if (cd "$m" && go tool cover -func=../coverage-$m.out > ../coverage-$m.func.txt 2>/dev/null); then
@@ -1013,7 +986,11 @@ tasks:
       - |
         set -euo pipefail
         echo "[coverage] Generating HTML reports"
-        modules="api client server cli"
+        # Build list of modules from GO_MOD_DIR_UNIT_TEST
+        modules=""
+        {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
+        {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
+        {{end}}
         for m in $modules; do
           if [ -f "coverage-$m.out" ] && [ -d "$m" ]; then
             (cd "$m" && go tool cover -html=../coverage-$m.out -o ../coverage-$m.html || true)
@@ -1105,6 +1082,16 @@ tasks:
       # Run network tests with proper isolation and cleanup
       - 'go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
 
+  test:e2e:spire:
+    desc: Run end-to-end tests for SPIRE deployment
+    cmds:
+      # Run SPIRE deployment
+      - task: test:spire
+      # Run SDK tests
+      - task: sdk:deps:javascript
+      - task: sdk:test-env:spiffe:load-test-image
+      - task: sdk:test:all:spiffe
+
   # TODO: move spire out from here
   # TODO: change to Ingress services instead of LoadBalancer
   test:spire:
@@ -1112,6 +1099,7 @@ tasks:
     deps:
       - task: helm:gen
     vars:
+      AUTH_MODE: '{{ .AUTH_MODE | default "jwt" }}' # or "jwt"
       DIR_TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN | default "dir.example" }}'
       DIRCTL_TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN | default "dirctl.example" }}'
     cmds:
@@ -1178,8 +1166,12 @@ tasks:
           config:
             authn:
               enabled: true
+              mode: "{{ .AUTH_MODE }}"
+              audiences:
+                - "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
             authz:
               enabled: true
+              trust_domain: {{ .DIR_TRUST_DOMAIN }}
           spire:
             enabled: true
             trustDomain: {{ .DIR_TRUST_DOMAIN }}
@@ -1220,6 +1212,10 @@ tasks:
         env:
           - name: DIRECTORY_CLIENT_SERVER_ADDRESS
             value: ${DIR_SERVER_ADDRESS}
+          - name: DIRECTORY_CLIENT_AUTH_MODE
+            value: "{{ .AUTH_MODE }}"
+          - name: DIRECTORY_CLIENT_JWT_AUDIENCE
+            value: "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
         spire:
           enabled: true
           trustDomain: {{ .DIR_TRUST_DOMAIN }}
@@ -1243,6 +1239,10 @@ tasks:
         env:
           - name: DIRECTORY_CLIENT_SERVER_ADDRESS
             value: ${DIR_SERVER_ADDRESS}
+          - name: DIRECTORY_CLIENT_AUTH_MODE
+            value: "{{ .AUTH_MODE }}"
+          - name: DIRECTORY_CLIENT_JWT_AUDIENCE
+            value: "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
         spire:
           enabled: true
           trustDomain: {{ .DIRCTL_TRUST_DOMAIN }}
@@ -1314,8 +1314,6 @@ tasks:
     vars:
       FIX: '{{ .FIX | default "false" }}'
       FIX_FLAG: '{{if eq .FIX "true"}}--fix{{end}}'
-      GO_MOD_DIR:
-        sh: find . -name go.mod -not -path "./tmp*" -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: |
@@ -1345,9 +1343,6 @@ tasks:
     desc: Check licenses
     deps:
       - task: deps:licensei
-    vars:
-      GO_MOD_DIR:
-        sh: find . -name go.mod -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} check --config {{.ROOT_DIR}}/.licensei.toml
@@ -1356,9 +1351,6 @@ tasks:
     desc: Check licenses
     deps:
       - task: deps:licensei
-    vars:
-      GO_MOD_DIR:
-        sh: find . -name go.mod -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: echo "Running licensei in {{.ITEM}}" && cd {{.ITEM}} && {{ .LICENSEI_BIN }} cache --config {{.ROOT_DIR}}/.licensei.toml
@@ -1517,9 +1509,6 @@ tasks:
 
   deps:tidy:
     desc: Ensure dependencies are up-to-date
-    vars:
-      GO_MOD_DIR:
-        sh: find . -name go.mod -exec dirname {} \;
     cmds:
       - for: { var: GO_MOD_DIR }
         cmd: go -C {{.ITEM}} mod tidy -go={{.GO_VERSION}}

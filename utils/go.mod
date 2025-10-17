@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/utils
 
-go 1.24.5
+go 1.25.2
 
 require (
 	github.com/google/go-containerregistry v0.20.6
@@ -153,9 +153,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-)
-
-replace (
-	github.com/agntcy/dir/api => ../api
-	github.com/agntcy/dir/server => ../server
 )
