@@ -68,9 +68,9 @@ env:
   - name: DIRECTORY_CLIENT_SERVER_ADDRESS
     value: dir-apiserver.dir-server.svc.cluster.local:8888
   - name: DIRECTORY_CLIENT_AUTH_MODE
-    value: "" # Options: "x509", "jwt", or "" for no auth
+    value: '' # Options: "x509", "jwt", or "" for no auth
   - name: DIRECTORY_CLIENT_JWT_AUDIENCE
-    value: "" # Required if using JWT auth
+    value: '' # Required if using JWT auth
 
 # Config maps config (shared across all cronjobs)
 configMaps:
@@ -80,28 +80,57 @@ configMaps:
         {
           "name": "directory.agntcy.org/cisco/marketing-strategy-v3",
           "version": "v3.0.0",
-          "schema_version": "v0.5.0",
+          "schema_version": "0.7.0",
           "description": "Research agent for Cisco's marketing strategy.",
-          "authors": ["Cisco Systems"],
+          "authors": [
+            "Cisco Systems"
+          ],
           "created_at": "2025-03-19T17:06:37Z",
           "annotations": {
             "key": "value"
           },
           "skills": [
             {
-              "name": "Natural Language Processing/Text Completion",
+              "name": "natural_language_processing/natural_language_generation/text_completion",
               "id": 10201
+            },
+            {
+              "name": "natural_language_processing/analytical_reasoning/problem_solving",
+              "id": 10702
             }
           ],
           "locators": [
             {
-              "type": "docker-image",
+              "type": "docker_image",
               "url": "https://ghcr.io/agntcy/marketing-strategy"
             }
           ],
           "domains": [
             {
-              "name": "research"
+              "name": "life_science/biotechnology"
+            }
+          ],
+          "modules": [
+            {
+              "name": "license",
+              "data": {
+                "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
+                "license": "Apache-2.0"
+              }
+            },
+            {
+              "name": "runtime/framework",
+              "data": {
+                "name": "crewai",
+                "version": "0.55.2"
+              }
+            },
+            {
+              "name": "runtime/language",
+              "data": {
+                "type": "python",
+                "version": "\u003e=3.11,\u003c3.13"
+              }
             }
           ]
         }

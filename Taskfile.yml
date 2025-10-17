@@ -1121,7 +1121,7 @@ tasks:
     deps:
       - task: helm:gen
     vars:
-      AUTH_MODE: '{{ .AUTH_MODE | default "x509" }}' # or "jwt"
+      AUTH_MODE: '{{ .AUTH_MODE | default "jwt" }}' # or "jwt"
       DIR_TRUST_DOMAIN: '{{ .DIR_TRUST_DOMAIN | default "dir.example" }}'
       DIRCTL_TRUST_DOMAIN: '{{ .DIRCTL_TRUST_DOMAIN | default "dirctl.example" }}'
     cmds:

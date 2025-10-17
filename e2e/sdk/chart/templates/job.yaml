@@ -16,6 +16,8 @@ spec:
               value: '{{ .Values.config.auth_mode }}'
             - name: DIRECTORY_CLIENT_SERVER_ADDRESS
               value: '{{ .Values.config.server_address }}'
+            - name: DIRECTORY_CLIENT_JWT_AUDIENCE
+              value: '{{ .Values.config.jwt_audience }}'
           volumeMounts:
             - name: spire-agent-socket
               mountPath: /run/spire/agent-sockets
