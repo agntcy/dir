@@ -13,6 +13,11 @@ import (
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
 
+const (
+	// DefaultSchemaVersion is the default version of the OASF schema.
+	DefaultOASFVersion = "0.7.0"
+)
+
 // Transformer implements the pipeline.Transformer interface for MCP records.
 type Transformer struct{}
 
@@ -85,7 +90,7 @@ func (t *Transformer) convertToOASF(response mcpapiv0.ServerResponse) (*corev1.R
 		Name:          server.Name,
 		Version:       server.Version,
 		Description:   server.Description,
-		SchemaVersion: "0.7.0",
+		SchemaVersion: DefaultOASFVersion,
 		CreatedAt:     createdAt,
 		Authors:       authors,
 		Locators:      locators,

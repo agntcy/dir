@@ -91,17 +91,6 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 
 	if !p.config.DryRun {
 		refCh, pushErrCh = p.pusher.Push(ctx, transformedCh)
-
-		// Track successful pushes
-		go func() {
-			for ref := range refCh {
-				if ref != nil {
-					result.mu.Lock()
-					result.ImportedCount++
-					result.mu.Unlock()
-				}
-			}
-		}()
 	} else {
 		// In dry-run mode, drain the transformed channel to prevent blocking
 		go func() {
@@ -116,7 +105,7 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 
 	numGoroutines := 2 // fetch and transform errors
 	if !p.config.DryRun {
-		numGoroutines++ // add push errors
+		numGoroutines += 2 // add push errors and ref counting
 	}
 
 	wg.Add(numGoroutines)
@@ -147,8 +136,22 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 		}
 	}()
 
-	// Collect push errors (only if not dry-run)
+	// Collect push errors and track successful pushes (only if not dry-run)
 	if !p.config.DryRun {
+		// Track successful pushes
+		go func() {
+			defer wg.Done()
+
+			for ref := range refCh {
+				if ref != nil {
+					result.mu.Lock()
+					result.ImportedCount++
+					result.mu.Unlock()
+				}
+			}
+		}()
+
+		// Track push errors
 		go func() {
 			defer wg.Done()
 
