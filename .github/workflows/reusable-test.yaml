@@ -66,6 +66,9 @@ jobs:
             coverage-client.out
             coverage-server.out
             coverage-cli.out
+            coverage-hub.out
+            coverage-importer.out
+            coverage-utils.out
           flags: per-module
           fail_ci_if_error: false
           verbose: true
