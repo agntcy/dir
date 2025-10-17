@@ -5,10 +5,10 @@ package mcp
 
 import (
 	"github.com/agntcy/dir/importer/config"
-	"github.com/agntcy/dir/importer/types"
+	"github.com/agntcy/dir/importer/types/factory"
 )
 
-// Register registers the MCP importer with the factory.
-func Register(factory *types.Factory) {
+// Register the MCP importer with the factory on package init.
+func init() {
 	factory.Register(config.RegistryTypeMCP, NewImporter)
 }

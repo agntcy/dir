@@ -10,15 +10,15 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/importer/config"
-	"github.com/agntcy/dir/importer/mcp"
+	_ "github.com/agntcy/dir/importer/mcp" // Import MCP importer to trigger its init() function for auto-registration.
 	"github.com/agntcy/dir/importer/types"
+	"github.com/agntcy/dir/importer/types/factory"
 	"github.com/spf13/cobra"
 )
 
 var (
 	cfg          config.Config
 	registryType string
-	factory      *types.Factory
 )
 
 var Command = &cobra.Command{
@@ -49,10 +49,6 @@ Examples:
 }
 
 func init() {
-	// Initialize factory and register importers once at startup
-	factory = types.NewFactory()
-	mcp.Register(factory)
-
 	// Add flags
 	Command.Flags().StringVar(&registryType, "type", "", "Registry type (mcp, a2a)")
 	Command.Flags().StringVar(&cfg.RegistryURL, "url", "", "Registry base URL")
