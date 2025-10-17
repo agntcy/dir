@@ -33,4 +33,8 @@ ignored = [
   "github.com/xeipuuv/gojsonschema", # Apache License 2.0 https://github.com/xeipuuv/gojsonschema/blob/master/LICENSE-APACHE-2.0.txt
   "buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go", # Apache License 2.0 https://github.com/agntcy/oasf-sdk/blob/main/LICENSE.md
   "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go", # Generated protobuf code, no license file
+  "github.com/agntcy/dirhub/backport/api", # Replace directive for github.com/agntcy/dir/api
+  "github.com/xeipuuv/gojsonpointer", # Apache License 2.0 https://github.com/xeipuuv/gojsonpointer/blob/master/LICENSE-APACHE-2.0.txt
+  "github.com/xeipuuv/gojsonreference", # https://github.com/xeipuuv/gojsonreference/blob/master/LICENSE-APACHE-2.0.txt
+  "github.com/xeipuuv/gojsonschema", # https://github.com/xeipuuv/gojsonschema/blob/master/LICENSE-APACHE-2.0.txt
 ]
