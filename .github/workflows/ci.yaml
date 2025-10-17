@@ -56,8 +56,6 @@ jobs:
   license:
     name: License
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -125,6 +123,8 @@ jobs:
     with:
       image_repo: ghcr.io/agntcy
       image_tag: ${{ github.sha }}
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   release:
     name: Release
@@ -135,6 +135,9 @@ jobs:
     with:
       image_repo: ghcr.io/agntcy
       release_tag: ${{ github.ref_name }}
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      NPMJS_TOKEN: ${{ secrets.NPMJS_TOKEN }}
 
   integration:
     name: Run integration tests

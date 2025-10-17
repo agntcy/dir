@@ -14,6 +14,10 @@ on:
         required: true
         type: string
         description: 'Image tag to use.'
+    secrets:
+      CODECOV_TOKEN:
+        description: "Codecov token for uploading coverage reports"
+        required: true
 
 permissions:
   id-token: write
@@ -83,6 +87,7 @@ jobs:
         with:
           recreate: true
           path: coverage-summary.txt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   sdk:
     name: SDK
@@ -94,13 +99,6 @@ jobs:
   e2e:
     name: E2E
     uses: ./.github/workflows/reusable-test-e2e.yaml
-    with:
-      image_repo: ${{ inputs.image_repo }}
-      image_tag: ${{ inputs.image_tag }}
-
-  spire:
-    name: SPIRE
-    uses: ./.github/workflows/reusable-test-spire.yaml
     with:
       image_repo: ${{ inputs.image_repo }}
       image_tag: ${{ inputs.image_tag }}
