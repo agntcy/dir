@@ -55,6 +55,9 @@ func TestRoutingPublishEmitsEvent(t *testing.T) {
 
 	r.eventBus.RecordPublished(record.GetCid(), labelStrings)
 
+	// Wait for async delivery to complete
+	eventBus.WaitForAsyncPublish()
+
 	// Verify event was emitted
 	select {
 	case event := <-eventCh:
@@ -97,6 +100,9 @@ func TestRoutingUnpublishEmitsEvent(t *testing.T) {
 
 	// Directly emit event (simulating what Unpublish does)
 	r.eventBus.RecordUnpublished(testCID)
+
+	// Wait for async delivery to complete
+	eventBus.WaitForAsyncPublish()
 
 	// Verify event was emitted
 	select {

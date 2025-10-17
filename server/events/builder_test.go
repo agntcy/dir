@@ -79,6 +79,9 @@ func TestEventBuilderPublish(t *testing.T) {
 		WithLabels([]string{"/skills/AI"}).
 		Publish()
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	// Receive event
 	select {
 	case receivedEvent := <-eventCh:
@@ -105,6 +108,9 @@ func TestRecordPushedConvenience(t *testing.T) {
 	// Use convenience method
 	bus.RecordPushed(TestCID123, []string{"/skills/AI"})
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	// Verify event received
 	select {
 	case event := <-eventCh:
@@ -130,6 +136,9 @@ func TestRecordPulledConvenience(t *testing.T) {
 
 	bus.RecordPulled("bafytest456", []string{"/domains/research"})
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	select {
 	case event := <-eventCh:
 		if event.Type != eventsv1.EventType_EVENT_TYPE_RECORD_PULLED {
@@ -149,6 +158,9 @@ func TestRecordDeletedConvenience(t *testing.T) {
 	defer bus.Unsubscribe(subID)
 
 	bus.RecordDeleted("bafytest789")
+
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
 
 	select {
 	case event := <-eventCh:
@@ -174,6 +186,9 @@ func TestRecordPublishedConvenience(t *testing.T) {
 
 	bus.RecordPublished(TestCID123, []string{"/skills/AI"})
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	select {
 	case event := <-eventCh:
 		if event.Type != eventsv1.EventType_EVENT_TYPE_RECORD_PUBLISHED {
@@ -194,6 +209,9 @@ func TestRecordUnpublishedConvenience(t *testing.T) {
 
 	bus.RecordUnpublished(TestCID123)
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	select {
 	case event := <-eventCh:
 		if event.Type != eventsv1.EventType_EVENT_TYPE_RECORD_UNPUBLISHED {
@@ -213,6 +231,9 @@ func TestSyncCreatedConvenience(t *testing.T) {
 	defer bus.Unsubscribe(subID)
 
 	bus.SyncCreated("sync-123", "https://example.com/registry")
+
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
 
 	select {
 	case event := <-eventCh:
@@ -242,6 +263,9 @@ func TestSyncCompletedConvenience(t *testing.T) {
 
 	bus.SyncCompleted("sync-456", "https://example.com/registry", 42)
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	select {
 	case event := <-eventCh:
 		if event.Type != eventsv1.EventType_EVENT_TYPE_SYNC_COMPLETED {
@@ -266,6 +290,9 @@ func TestSyncFailedConvenience(t *testing.T) {
 
 	bus.SyncFailed("sync-789", "https://example.com/registry", "connection timeout")
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	select {
 	case event := <-eventCh:
 		if event.Type != eventsv1.EventType_EVENT_TYPE_SYNC_FAILED {
@@ -289,6 +316,9 @@ func TestRecordSignedConvenience(t *testing.T) {
 	defer bus.Unsubscribe(subID)
 
 	bus.RecordSigned(TestCID123, "user@example.com")
+
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
 
 	select {
 	case event := <-eventCh:

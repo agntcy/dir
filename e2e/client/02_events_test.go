@@ -5,18 +5,58 @@ package client
 
 import (
 	"context"
-	"io"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/client"
+	"github.com/agntcy/dir/client/streaming"
 	"github.com/agntcy/dir/e2e/shared/config"
 	"github.com/agntcy/dir/e2e/shared/testdata"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
+
+// receiveEvent is a helper that receives a single event from a StreamResult.
+// It returns the event response or fails the test on error/timeout.
+func receiveEvent(ctx context.Context, result streaming.StreamResult[eventsv1.ListenResponse]) *eventsv1.ListenResponse {
+	select {
+	case resp := <-result.ResCh():
+		return resp
+	case err := <-result.ErrCh():
+		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "stream error")
+
+		return nil
+	case <-result.DoneCh():
+		ginkgo.Fail("stream ended unexpectedly")
+
+		return nil
+	case <-ctx.Done():
+		gomega.Expect(ctx.Err()).NotTo(gomega.HaveOccurred(), "context timeout")
+
+		return nil
+	}
+}
+
+// tryReceiveEvent attempts to receive an event but doesn't fail on timeout.
+// Returns (response, error) where error is non-nil on timeout/completion.
+func tryReceiveEvent(ctx context.Context, result streaming.StreamResult[eventsv1.ListenResponse]) (*eventsv1.ListenResponse, error) {
+	select {
+	case resp := <-result.ResCh():
+		return resp, nil
+	case err := <-result.ErrCh():
+		return nil, err
+	case <-result.DoneCh():
+		// Stream ended normally - not an error, just no more events
+		//nolint:nilnil
+		return nil, nil
+	case <-ctx.Done():
+		// Return unwrapped context error so callers can check for context.Canceled
+		//nolint:wrapcheck
+		return nil, ctx.Err()
+	}
+}
 
 var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Serial, func() {
 	ginkgo.BeforeEach(func() {
@@ -66,7 +106,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				EventTypes: []eventsv1.EventType{eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -86,8 +126,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Receive the event
-			resp, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent()).NotTo(gomega.BeNil())
 
 			event := resp.GetEvent()
@@ -110,7 +149,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				EventTypes: []eventsv1.EventType{eventsv1.EventType_EVENT_TYPE_RECORD_PUBLISHED},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -134,8 +173,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Receive the event
-			resp, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent()).NotTo(gomega.BeNil())
 
 			event := resp.GetEvent()
@@ -158,7 +196,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				EventTypes: []eventsv1.EventType{eventsv1.EventType_EVENT_TYPE_RECORD_DELETED},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -173,8 +211,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Receive the event
-			resp, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent()).NotTo(gomega.BeNil())
 
 			event := resp.GetEvent()
@@ -189,7 +226,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				LabelFilters: []string{"/skills/natural_language_processing"},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -207,8 +244,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Should receive the matching event
-			resp, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent()).NotTo(gomega.BeNil())
 			gomega.Expect(resp.GetEvent().GetLabels()).To(gomega.ContainElement(gomega.ContainSubstring("/skills/natural_language_processing")))
 		})
@@ -225,7 +261,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				CidFilters: []string{ref.GetCid()},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -247,8 +283,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Should receive only the event for the filtered CID
-			resp, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent()).NotTo(gomega.BeNil())
 			gomega.Expect(resp.GetEvent().GetResourceId()).To(gomega.Equal(ref.GetCid()))
 		})
@@ -258,7 +293,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				EventTypes: []eventsv1.EventType{eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -283,16 +318,15 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Should receive only the PUSHED event
-			resp, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent()).NotTo(gomega.BeNil())
 			gomega.Expect(resp.GetEvent().GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED))
 
 			// Try to receive another event (should timeout - pull event was filtered)
-			resp, err = stream.Recv()
-			if err == nil {
+			resp2, err := tryReceiveEvent(streamCtx, result)
+			if err == nil && resp2 != nil {
 				// If we got another event, it should still be PUSHED (not PULLED)
-				gomega.Expect(resp.GetEvent().GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED))
+				gomega.Expect(resp2.GetEvent().GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED))
 			}
 		})
 	})
@@ -303,12 +337,12 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream1, err1 := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result1, err1 := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				EventTypes: []eventsv1.EventType{eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED},
 			})
 			gomega.Expect(err1).NotTo(gomega.HaveOccurred())
 
-			stream2, err2 := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result2, err2 := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				EventTypes: []eventsv1.EventType{eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED},
 			})
 			gomega.Expect(err2).NotTo(gomega.HaveOccurred())
@@ -327,12 +361,10 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Both streams should receive the same event
-			resp1, err1 := stream1.Recv()
-			gomega.Expect(err1).NotTo(gomega.HaveOccurred())
+			resp1 := receiveEvent(streamCtx, result1)
 			gomega.Expect(resp1.GetEvent().GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED))
 
-			resp2, err2 := stream2.Recv()
-			gomega.Expect(err2).NotTo(gomega.HaveOccurred())
+			resp2 := receiveEvent(streamCtx, result2)
 			gomega.Expect(resp2.GetEvent().GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED))
 
 			// Both should have same resource ID (non-empty)
@@ -345,14 +377,14 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 		ginkgo.It("should handle context cancellation gracefully", func() {
 			cancelCtx, cancelFunc := context.WithCancel(ctx)
 
-			stream, err := c.ListenToEvents(cancelCtx, &eventsv1.ListenRequest{})
+			result, err := c.ListenStream(cancelCtx, &eventsv1.ListenRequest{})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Cancel context immediately
 			cancelFunc()
 
-			// Recv should return error (EOF or context.Canceled)
-			_, err = stream.Recv()
+			// Should receive error or completion
+			_, err = tryReceiveEvent(cancelCtx, result)
 			gomega.Expect(err).To(gomega.HaveOccurred())
 		})
 
@@ -360,7 +392,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				EventTypes: []eventsv1.EventType{
 					eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED,
 					eventsv1.EventType_EVENT_TYPE_RECORD_PULLED,
@@ -392,18 +424,15 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Receive first PUSHED event
-			resp1, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp1 := receiveEvent(streamCtx, result)
 			gomega.Expect(resp1.GetEvent().GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED))
 
 			// Receive second PUSHED event
-			resp2, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp2 := receiveEvent(streamCtx, result)
 			gomega.Expect(resp2.GetEvent().GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED))
 
 			// Receive PULLED event
-			resp3, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp3 := receiveEvent(streamCtx, result)
 			gomega.Expect(resp3.GetEvent().GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PULLED))
 		})
 	})
@@ -413,7 +442,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				EventTypes: []eventsv1.EventType{eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -431,8 +460,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Receive event and verify labels
-			resp, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent().GetLabels()).NotTo(gomega.BeEmpty())
 			// V031 has "Natural Language Processing" skills
 			gomega.Expect(resp.GetEvent().GetLabels()).To(gomega.ContainElement(gomega.ContainSubstring("/skills/")))
@@ -442,7 +470,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{})
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Push a record
@@ -458,8 +486,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			}()
 
 			// Receive event and verify timestamp
-			resp, err := stream.Recv()
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			resp := receiveEvent(streamCtx, result)
 			gomega.Expect(resp.GetEvent().GetTimestamp()).NotTo(gomega.BeNil())
 			gomega.Expect(resp.GetEvent().GetTimestamp().AsTime()).To(gomega.BeTemporally("~", time.Now(), 5*time.Second))
 		})
@@ -471,15 +498,14 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			streamCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 			defer cancel()
 
-			stream, err := c.ListenToEvents(streamCtx, &eventsv1.ListenRequest{
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
 				CidFilters: []string{"bafynonexistent123456789"},
 			})
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Try to receive - should eventually timeout
-			_, err = stream.Recv()
+			_, err = tryReceiveEvent(streamCtx, result)
 			gomega.Expect(err).To(gomega.Or(
-				gomega.Equal(io.EOF),
 				gomega.Equal(context.DeadlineExceeded),
 				gomega.MatchError(gomega.ContainSubstring("deadline")),
 				gomega.MatchError(gomega.ContainSubstring("cancel")),

@@ -28,6 +28,9 @@ func TestServiceLifecycle(t *testing.T) {
 	// Publish event
 	bus.RecordPushed(TestCID123, []string{"/test"})
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	// Receive event
 	select {
 	case event := <-eventCh:
@@ -81,6 +84,9 @@ func TestServiceBusReturnsEventBus(t *testing.T) {
 	defer bus.Unsubscribe(subID)
 
 	bus.RecordPushed(TestCID123, nil)
+
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
 
 	select {
 	case event := <-eventCh:

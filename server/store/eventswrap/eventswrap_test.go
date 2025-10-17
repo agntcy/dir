@@ -78,6 +78,9 @@ func TestEventsWrapPush(t *testing.T) {
 		t.Error("Source store Push was not called")
 	}
 
+	// Wait for async delivery to complete
+	realBus.WaitForAsyncPublish()
+
 	// Verify event was emitted
 	select {
 	case event := <-eventCh:
@@ -123,6 +126,9 @@ func TestEventsWrapPull(t *testing.T) {
 		t.Error("Source store Pull was not called")
 	}
 
+	// Wait for async delivery to complete
+	realBus.WaitForAsyncPublish()
+
 	// Verify event was emitted
 	select {
 	case event := <-eventCh:
@@ -159,6 +165,9 @@ func TestEventsWrapDelete(t *testing.T) {
 	if !mockSrc.deleteCalled {
 		t.Error("Source store Delete was not called")
 	}
+
+	// Wait for async delivery to complete
+	realBus.WaitForAsyncPublish()
 
 	// Verify event was emitted
 	select {

@@ -36,6 +36,9 @@ func TestSyncEventsEmission(t *testing.T) {
 	t.Run("SYNC_CREATED", func(t *testing.T) {
 		safeEventBus.SyncCreated(testSyncID+"-1", testRemoteURL)
 
+		// Wait for async delivery to complete
+		bus.WaitForAsyncPublish()
+
 		select {
 		case event := <-eventCh:
 			if event.Type != eventsv1.EventType_EVENT_TYPE_SYNC_CREATED {
@@ -58,6 +61,9 @@ func TestSyncEventsEmission(t *testing.T) {
 	t.Run("SYNC_COMPLETED", func(t *testing.T) {
 		safeEventBus.SyncCompleted(testSyncID+"-2", testRemoteURL, 5)
 
+		// Wait for async delivery to complete
+		bus.WaitForAsyncPublish()
+
 		select {
 		case event := <-eventCh:
 			if event.Type != eventsv1.EventType_EVENT_TYPE_SYNC_COMPLETED {
@@ -79,6 +85,9 @@ func TestSyncEventsEmission(t *testing.T) {
 	// Test SYNC_FAILED event
 	t.Run("SYNC_FAILED", func(t *testing.T) {
 		safeEventBus.SyncFailed(testSyncID+"-3", testRemoteURL, testErrorMsg)
+
+		// Wait for async delivery to complete
+		bus.WaitForAsyncPublish()
 
 		select {
 		case event := <-eventCh:

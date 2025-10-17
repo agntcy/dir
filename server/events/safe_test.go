@@ -90,6 +90,9 @@ func TestSafeEventBusDelegation(t *testing.T) {
 	// Publish via safe bus
 	safeBus.RecordPushed("bafytest123", []string{"/skills/AI"})
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	// Verify event was received
 	select {
 	case event := <-eventCh:
@@ -184,6 +187,9 @@ func TestSafeEventBusAllConvenienceMethods(t *testing.T) {
 			// Publish event
 			tt.publish()
 
+			// Wait for async delivery to complete
+			bus.WaitForAsyncPublish()
+
 			// Receive and verify
 			select {
 			case event := <-eventCh:
@@ -231,6 +237,9 @@ func TestSafeEventBusBuilderWithRealBus(t *testing.T) {
 		WithLabels([]string{"/skills/AI"}).
 		WithMetadata("key", testMetadataValue).
 		Publish()
+
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
 
 	// Verify event received
 	select {
@@ -293,6 +302,9 @@ func TestSafeEventBusPublishDirect(t *testing.T) {
 	event := NewEvent(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, "test-cid")
 	event.Labels = []string{"/test"}
 	safeBus.Publish(event)
+
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
 
 	// Verify event received
 	select {

@@ -172,6 +172,9 @@ func TestEventBusSlowConsumer(t *testing.T) {
 		bus.Publish(event)
 	}
 
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
+
 	// Check metrics - some events should be dropped
 	metrics := bus.GetMetrics()
 	if metrics.DroppedTotal == 0 {
@@ -353,6 +356,9 @@ func TestEventBusNoSubscribers(t *testing.T) {
 	// Publish without subscribers (should not panic)
 	event := NewEvent(eventsv1.EventType_EVENT_TYPE_RECORD_PUSHED, TestCID123)
 	bus.Publish(event)
+
+	// Wait for async delivery to complete
+	bus.WaitForAsyncPublish()
 
 	// Check metrics
 	metrics := bus.GetMetrics()

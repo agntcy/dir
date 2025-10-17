@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
@@ -90,7 +89,7 @@ func runListenCommand(cmd *cobra.Command) error {
 	}
 
 	// Start listening
-	stream, err := c.ListenToEvents(cmd.Context(), req)
+	result, err := c.ListenStream(cmd.Context(), req)
 	if err != nil {
 		return fmt.Errorf("failed to start event stream: %w", err)
 	}
@@ -111,25 +110,24 @@ func runListenCommand(cmd *cobra.Command) error {
 
 	presenter.Printf(cmd, "\n")
 
-	// Stream events
+	// Stream events using StreamResult pattern
 	for {
-		resp, err := stream.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				// Stream ended normally
-				return nil
+		select {
+		case resp := <-result.ResCh():
+			event := resp.GetEvent()
+			if event != nil {
+				displayEvent(cmd, event)
 			}
-
+		case err := <-result.ErrCh():
 			return fmt.Errorf("error receiving event: %w", err)
+		case <-result.DoneCh():
+			// Stream ended normally
+			return nil
+		case <-cmd.Context().Done():
+			// Return unwrapped context error so callers can check for context.Canceled
+			//nolint:wrapcheck
+			return cmd.Context().Err()
 		}
-
-		event := resp.GetEvent()
-		if event == nil {
-			continue
-		}
-
-		// Display event using presenter
-		displayEvent(cmd, event)
 	}
 }
 

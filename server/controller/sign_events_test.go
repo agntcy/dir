@@ -32,6 +32,9 @@ func TestSignEventsEmission(t *testing.T) {
 	t.Run("RECORD_SIGNED", func(t *testing.T) {
 		safeEventBus.RecordSigned(testCID, testSigner)
 
+		// Wait for async delivery to complete
+		bus.WaitForAsyncPublish()
+
 		select {
 		case event := <-eventCh:
 			if event.Type != eventsv1.EventType_EVENT_TYPE_RECORD_SIGNED {
