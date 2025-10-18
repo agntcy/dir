@@ -28,7 +28,7 @@ Examples:
    dirctl events listen --labels /skills/AI
 
 4. Output in JSON format:
-   dirctl events listen --output json
+   dirctl events listen --json
 
 Events are delivered from subscription time forward (no history).
 The stream remains active until interrupted (Ctrl+C).

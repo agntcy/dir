@@ -98,9 +98,7 @@ func (s *eventsStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 // This ensures the wrapper doesn't hide optional methods from the underlying store.
 func (s *eventsStore) VerifyWithZot(ctx context.Context, recordCID string) (bool, error) {
 	// Check if source supports Zot verification
-	zotStore, ok := s.source.(interface {
-		VerifyWithZot(ctx context.Context, recordCID string) (bool, error)
-	})
+	zotStore, ok := s.source.(types.VerifierStore)
 	if !ok {
 		// Source doesn't support it - this shouldn't happen with OCI store,
 		// but handle gracefully
@@ -116,9 +114,7 @@ func (s *eventsStore) VerifyWithZot(ctx context.Context, recordCID string) (bool
 // This is needed for signature and public key storage.
 func (s *eventsStore) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
 	// Check if source supports referrer operations
-	referrerStore, ok := s.source.(interface {
-		PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error
-	})
+	referrerStore, ok := s.source.(types.ReferrerStoreAPI)
 	if !ok {
 		return status.Errorf(codes.Unimplemented, "source store does not support referrer operations")
 	}
@@ -132,9 +128,7 @@ func (s *eventsStore) PushReferrer(ctx context.Context, recordCID string, referr
 // This is needed for retrieving signatures and public keys.
 func (s *eventsStore) WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error {
 	// Check if source supports referrer operations
-	referrerStore, ok := s.source.(interface {
-		WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
-	})
+	referrerStore, ok := s.source.(types.ReferrerStoreAPI)
 	if !ok {
 		return status.Errorf(codes.Unimplemented, "source store does not support referrer operations")
 	}

@@ -50,9 +50,7 @@ func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*sign
 // verify attempts zot verification if the store supports it.
 func (s *signCtrl) verify(ctx context.Context, recordCID string) (*signv1.VerifyResponse, error) {
 	// Check if the store supports zot verification
-	zotStore, ok := s.store.(interface {
-		VerifyWithZot(ctx context.Context, recordCID string) (bool, error)
-	})
+	zotStore, ok := s.store.(types.VerifierStore)
 	if !ok {
 		return nil, status.Error(codes.Unimplemented, "zot verification not available in this store configuration") //nolint:wrapcheck
 	}

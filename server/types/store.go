@@ -29,10 +29,33 @@ type StoreAPI interface {
 }
 
 // ReferrerStoreAPI handles management of generic record referrers.
+// This implements the OCI Referrers API for attaching artifacts to records.
+//
+// Implementations: oci.Store
+// Used by: store.Controller, sync.Monitor.
 type ReferrerStoreAPI interface {
-	// Push referrer to content store
+	// PushReferrer pushes a referrer to content store
 	PushReferrer(context.Context, string, *corev1.RecordReferrer) error
 
-	// Walk referrers individually for a given record CID and optional type filter
+	// WalkReferrers walks referrers individually for a given record CID and optional type filter
 	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
+}
+
+// VerifierStore provides signature verification using Zot registry.
+// This is implemented by OCI-backed stores that have access to a Zot registry
+// with cosign/notation signature support.
+//
+// Implementations: oci.Store (when using Zot registry)
+// Used by: sign.Controller.
+type VerifierStore interface {
+	// VerifyWithZot verifies a record signature using Zot registry GraphQL API
+	VerifyWithZot(ctx context.Context, recordCID string) (bool, error)
+}
+
+// FullStore is the complete store interface with all optional capabilities.
+// This is what the OCI store implementation provides.
+type FullStore interface {
+	StoreAPI
+	ReferrerStoreAPI
+	VerifierStore
 }
