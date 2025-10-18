@@ -27,13 +27,30 @@ Validates an OASF agent record against the OASF schema.
 
 ## Setup
 
-To enable this MCP server in your IDE, follow the configuration instructions for your specific tool:
+### 1. Build the Server
 
-- **Cursor**: [MCP Configuration Guide](https://docs.cursor.com/advanced/mcp)
-- **Claude Desktop**: [MCP Setup Instructions](https://modelcontextprotocol.io/quickstart/user)
-- **Other IDEs**: Check your IDE's documentation for MCP server configuration
+Build the MCP server binary from the `mcp/` directory:
 
-The MCP server binary is located at `mcp/mcp` (relative to the repository root). Use the absolute path to this binary in your IDE's MCP configuration.
+```bash
+cd mcp/
+go build -o mcp-server .
+```
+
+### 2. Configure Your IDE
+
+Add the MCP server to your IDE's MCP configuration using the **absolute path** to the binary.
+
+**Example Cursor configuration** (`~/.cursor/mcp.json`):
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dir/mcp/mcp-server",
+      "args": []
+    }
+  }
+}
+```
 
 ## Usage Guide
 

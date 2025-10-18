@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
@@ -52,8 +51,10 @@ type MCPClient struct {
 }
 
 // NewMCPClient starts an MCP server and returns a client to communicate with it.
-func NewMCPClient(binaryPath string) (*MCPClient, error) {
-	cmd := exec.CommandContext(context.Background(), binaryPath)
+// The path parameter should be the directory containing the MCP server code.
+func NewMCPClient(mcpDir string) (*MCPClient, error) {
+	cmd := exec.CommandContext(context.Background(), "go", "run", ".")
+	cmd.Dir = mcpDir
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -247,26 +248,16 @@ func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestI
 
 var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 	var client *MCPClient
-	var mcpBinaryPath string
+	var mcpDir string
 
 	ginkgo.BeforeEach(func() {
-		// Get the MCP binary path (relative to e2e/mcp)
+		// Get the MCP directory (relative to e2e/mcp)
 		repoRoot := filepath.Join("..", "..")
-		mcpBinaryPath = filepath.Join(repoRoot, "mcp", "mcp")
+		mcpDir = filepath.Join(repoRoot, "mcp")
 
-		// Check if binary exists, if not try to build it
-		if _, err := os.Stat(mcpBinaryPath); os.IsNotExist(err) {
-			ginkgo.GinkgoWriter.Printf("MCP binary not found at %s, building it...\n", mcpBinaryPath)
-			buildCmd := exec.Command("go", "build", "-o", "mcp")
-			buildCmd.Dir = filepath.Join(repoRoot, "mcp")
-			if output, err := buildCmd.CombinedOutput(); err != nil {
-				ginkgo.Fail(fmt.Sprintf("Failed to build MCP binary: %v\n%s", err, output))
-			}
-		}
-
-		// Start MCP server
+		// Start MCP server using go run
 		var err error
-		client, err = NewMCPClient(mcpBinaryPath)
+		client, err = NewMCPClient(mcpDir)
 		gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	})
 
