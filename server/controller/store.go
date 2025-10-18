@@ -233,9 +233,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 	storeLogger.Debug("Pushing referrer", "cid", request.GetRecordRef().GetCid(), "type", request.GetReferrer().GetType())
 
 	// Try to use referrer storage if the store supports it
-	refStore, ok := s.store.(interface {
-		PushReferrer(context.Context, string, *corev1.RecordReferrer) error
-	})
+	refStore, ok := s.store.(types.ReferrerStoreAPI)
 	if !ok {
 		errMsg := "referrer storage not supported by current store implementation"
 
@@ -296,9 +294,7 @@ func (s storeCtrl) PullReferrer(stream storev1.StoreService_PullReferrerServer) 
 		}
 
 		// Try to use referrer storage if the store supports it
-		refStore, ok := s.store.(interface {
-			WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
-		})
+		refStore, ok := s.store.(types.ReferrerStoreAPI)
 		if !ok {
 			storeLogger.Error("Referrer storage not supported by current store implementation")
 
