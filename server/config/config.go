@@ -12,6 +12,7 @@ import (
 	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	events "github.com/agntcy/dir/server/events/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
@@ -64,6 +65,9 @@ type Config struct {
 
 	// Publication configuration
 	Publication publication.Config `json:"publication,omitempty" mapstructure:"publication"`
+
+	// Events configuration
+	Events events.Config `json:"events,omitempty" mapstructure:"events"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -215,6 +219,19 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("publication.worker_timeout")
 	v.SetDefault("publication.worker_timeout", publication.DefaultPublicationWorkerTimeout)
+
+	//
+	// Events configuration
+	//
+
+	_ = v.BindEnv("events.subscriber_buffer_size")
+	v.SetDefault("events.subscriber_buffer_size", events.DefaultSubscriberBufferSize)
+
+	_ = v.BindEnv("events.log_slow_consumers")
+	v.SetDefault("events.log_slow_consumers", events.DefaultLogSlowConsumers)
+
+	_ = v.BindEnv("events.log_published_events")
+	v.SetDefault("events.log_published_events", events.DefaultLogPublishedEvents)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

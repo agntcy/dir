@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/cli/cmd/delete"
+	"github.com/agntcy/dir/cli/cmd/events"
 	hubCmd "github.com/agntcy/dir/cli/cmd/hub"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/network"
@@ -74,6 +75,8 @@ func init() {
 		search.Command, // General search (searchv1)
 		// sync commands
 		sync.Command,
+		// events commands
+		events.Command, // Contains: listen
 	)
 }
 

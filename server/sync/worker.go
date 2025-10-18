@@ -9,6 +9,7 @@ import (
 	"time"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	"github.com/agntcy/dir/server/events"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	syncconfig "github.com/agntcy/dir/server/sync/config"
 	"github.com/agntcy/dir/server/sync/monitor"
@@ -28,10 +29,11 @@ type Worker struct {
 	workQueue      <-chan synctypes.WorkItem
 	timeout        time.Duration
 	monitorService *monitor.MonitorService
+	eventBus       *events.SafeEventBus
 }
 
 // NewWorker creates a new worker instance.
-func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration, monitorService *monitor.MonitorService) *Worker {
+func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration, monitorService *monitor.MonitorService, eventBus *events.SafeEventBus) *Worker {
 	return &Worker{
 		id:             id,
 		db:             db,
@@ -39,6 +41,7 @@ func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-c
 		workQueue:      workQueue,
 		timeout:        timeout,
 		monitorService: monitorService,
+		eventBus:       eventBus,
 	}
 }
 
@@ -75,13 +78,24 @@ func (w *Worker) processWorkItem(ctx context.Context, item synctypes.WorkItem) {
 
 	switch item.Type {
 	case synctypes.WorkItemTypeSyncCreate:
+		// Emit SYNC_CREATED event when sync operation begins
+		w.eventBus.SyncCreated(item.SyncID, item.RemoteDirectoryURL)
+
 		finalStatus = storev1.SyncStatus_SYNC_STATUS_IN_PROGRESS
 
 		err := w.addSync(workCtx, item)
 		if err != nil {
 			logger.Error("Sync failed", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
 
+			// Emit SYNC_FAILED event
+			w.eventBus.SyncFailed(item.SyncID, item.RemoteDirectoryURL, err.Error())
+
 			finalStatus = storev1.SyncStatus_SYNC_STATUS_FAILED
+		} else {
+			// Emit SYNC_COMPLETED event when sync succeeds
+			// Note: The sync continues monitoring in background, but the initial sync operation is complete
+			recordCount := len(item.CIDs)
+			w.eventBus.SyncCompleted(item.SyncID, item.RemoteDirectoryURL, recordCount)
 		}
 
 	case synctypes.WorkItemTypeSyncDelete:
