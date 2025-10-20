@@ -36,6 +36,8 @@ spec:
           env:
             - name: DIRECTORY_LOGGER_LOG_LEVEL
               value: {{ .Values.log_level }}
+            - name: DIRECTORY_LOGGER_LOG_FORMAT
+              value: {{ .Values.log_format }}
             {{- if eq .Values.spire.enabled true }}
             - name: DIRECTORY_SERVER_AUTHZ_ENABLED
               value: "true"

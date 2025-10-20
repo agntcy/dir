@@ -8,7 +8,9 @@
 nameOverride: ""
 fullnameOverride: ""
 
+# Logging configuration
 log_level: INFO
+log_format: text  # Options: "text" (development) or "json" (production)
 
 image:
   repository: ghcr.io/agntcy/dir-apiserver
