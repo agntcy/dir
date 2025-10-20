@@ -11,6 +11,7 @@ import (
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
@@ -86,6 +87,20 @@ func (t *Transformer) convertToOASF(response mcpapiv0.ServerResponse) (*corev1.R
 		},
 	}
 
+	// Modules (not required, used for MCP server search)
+	modules := []*typesv1alpha1.Module{
+		{
+			Name: "runtime/mcp",
+			Data: &structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"servers": structpb.NewListValue(&structpb.ListValue{
+						Values: []*structpb.Value{},
+					}),
+				},
+			},
+		},
+	}
+
 	record := &typesv1alpha1.Record{
 		Name:          server.Name,
 		Version:       server.Version,
@@ -95,6 +110,7 @@ func (t *Transformer) convertToOASF(response mcpapiv0.ServerResponse) (*corev1.R
 		Authors:       authors,
 		Locators:      locators,
 		Skills:        skills,
+		Modules:       modules,
 	}
 
 	return corev1.New(record), nil
