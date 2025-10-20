@@ -308,7 +308,6 @@ tasks:
 
   sdk:test:all:
     desc: Test all client SDK packages
-    ignore_error: true
     cmds:
       - task: sdk:test:javascript
       - task: sdk:test:python
