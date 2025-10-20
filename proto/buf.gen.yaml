@@ -38,3 +38,9 @@ plugins:
       - module=github.com/agntcy/dir/api
       - require_unimplemented_servers=false
       - use_generic_streams_experimental=false
+
+  # Stubs for Python
+  - remote: buf.build/protocolbuffers/python:v32.1
+    out: ../sdk/dir-py/
+  - remote: buf.build/grpc/python:v1.75.1
+    out: ../sdk/dir-py/

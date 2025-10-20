@@ -131,20 +131,28 @@ tasks:
       - task: deps:bufbuild
     # NOTE(ramizpolic): This allows Taskfile YAML parsing to accept '{' as a starting command token.
     # In translation, this is interpreted as a regular multi-line shell script.
-    cmd: |
-      {{.BUFBUILD_BIN}} dep update
-      {{.BUFBUILD_BIN}} generate
+    cmds:
+      - '{{.BUFBUILD_BIN}} dep update'
+      - '{{.BUFBUILD_BIN}} generate'
 
   api:clean:
     desc: Clean generated API stubs
     deps:
       - api:clean:go
+      - api:clean:sdk:python
 
   api:clean:go:
     desc: Clean generated golang API stubs
     dir: ./api
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
+
+  api:clean:sdk:python:
+    desc: Clean generated Python API stubs
+    dir: ../sdk/dir-py/agntcy
+    cmd: rm -drf ./dir
+
+  
 
   ##
   ## CLI
@@ -214,7 +222,7 @@ tasks:
     desc: Build python client SDK package
     dir: ./sdk/dir-py
     deps:
-      - task: deps:uv
+      - task: sdk:deps:python
     cmds:
       - '{{.UV_BIN}} build'
 
@@ -240,6 +248,8 @@ tasks:
 
   sdk:test-env:spiffe:load-test-image:
     desc: Load the SDK tests into KinD
+    deps:
+      - task: api:gen
     vars:
       GOARCH: '{{ .GOARCH | default ARCH }}'
     cmds:
@@ -315,8 +325,10 @@ tasks:
     desc: Install deps for python SDK package
     dir: ./sdk/dir-py
     deps:
+      - task: deps:bufbuild
       - task: deps:uv
     cmds:
+      - task: api:gen
       - '{{.UV_BIN}} sync --all-packages'
 
   sdk:deps:javascript:
