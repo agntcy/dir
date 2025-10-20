@@ -18,13 +18,15 @@ import (
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
+	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
 	"google.golang.org/grpc/status"
 )
 
 type route struct {
-	local  *routeLocal
-	remote *routeRemote
+	local    *routeLocal
+	remote   *routeRemote
+	eventBus *events.SafeEventBus
 }
 
 // hasPeersInRoutingTable checks if we have any peers in the DHT routing table.
@@ -39,7 +41,9 @@ func (r *route) hasPeersInRoutingTable() bool {
 
 func New(ctx context.Context, store types.StoreAPI, opts types.APIOptions) (types.RoutingAPI, error) {
 	// Create main router
-	mainRounter := &route{}
+	mainRounter := &route{
+		eventBus: opts.EventBus(),
+	}
 
 	// Create routing datastore
 	var dsOpts []datastore.Option
@@ -86,6 +90,16 @@ func (r *route) Publish(ctx context.Context, record types.Record) error {
 		}
 	}
 
+	// Emit RECORD_PUBLISHED event after successful publication
+	labels := types.GetLabelsFromRecord(record)
+	labelStrings := make([]string, len(labels))
+
+	for i, label := range labels {
+		labelStrings[i] = label.String()
+	}
+
+	r.eventBus.RecordPublished(record.GetCid(), labelStrings)
+
 	return nil
 }
 
@@ -108,6 +122,9 @@ func (r *route) Unpublish(ctx context.Context, record types.Record) error {
 
 		return status.Errorf(st.Code(), "failed to unpublish locally: %s", st.Message())
 	}
+
+	// Emit RECORD_UNPUBLISHED event after successful unpublication
+	r.eventBus.RecordUnpublished(record.GetCid())
 
 	// no need to explicitly handle unpublishing from the network
 	// TODO clarify if network sync trigger is needed here
