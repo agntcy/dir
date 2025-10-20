@@ -400,16 +400,14 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 	logger.Debug("Uploading public key", "tag", tag)
 
 	// Try to use signature storage if the store supports it
-	ociStore, ok := s.store.(interface {
-		WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
-	})
+	referrerStore, ok := s.store.(types.ReferrerStoreAPI)
 	if !ok {
 		logger.Error("Store does not support public key upload, skipping", "tag", tag)
 
 		return nil
 	}
 
-	// Walk public key referrers from OCI store
+	// Walk public key referrers from referrer store
 	walkFn := func(referrer *corev1.RecordReferrer) error {
 		publicKeyValue, ok := referrer.GetData().AsMap()["publicKey"]
 		if !ok {
@@ -444,7 +442,7 @@ func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error 
 	}
 
 	// Walk public key referrers
-	err := ociStore.WalkReferrers(ctx, tag, corev1.PublicKeyReferrerType, walkFn)
+	err := referrerStore.WalkReferrers(ctx, tag, corev1.PublicKeyReferrerType, walkFn)
 	if err != nil {
 		return fmt.Errorf("failed to walk public key referrers: %w", err)
 	}

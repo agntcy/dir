@@ -29,6 +29,14 @@ type store struct {
 	config ociconfig.Config
 }
 
+// Compile-time interface checks to ensure store implements all capability interfaces.
+var (
+	_ types.StoreAPI         = (*store)(nil)
+	_ types.ReferrerStoreAPI = (*store)(nil)
+	_ types.VerifierStore    = (*store)(nil)
+	_ types.FullStore        = (*store)(nil)
+)
+
 func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 	logger.Debug("Creating OCI store with config", "config", cfg)
 
