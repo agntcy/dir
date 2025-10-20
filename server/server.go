@@ -24,6 +24,7 @@ import (
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
+	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
@@ -87,6 +88,11 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Load options
 	options := types.NewOptions(cfg)
 	serverOpts := []grpc.ServerOption{}
+
+	// Add gRPC logging interceptors first (must come before auth/authz)
+	grpcLogger := logging.Logger("grpc")
+	loggingOpts := grpclogging.ServerOptions(grpcLogger, cfg.Logging.Verbose)
+	serverOpts = append(serverOpts, loggingOpts...)
 
 	// Create event service first (so other services can emit events)
 	eventService := events.New()
