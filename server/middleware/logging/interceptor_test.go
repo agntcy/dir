@@ -17,6 +17,7 @@ import (
 // TestInterceptorLogger verifies the adapter creates a valid logger.
 func TestInterceptorLogger(t *testing.T) {
 	var buf bytes.Buffer
+
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	interceptorLogger := InterceptorLogger(logger)
@@ -28,6 +29,7 @@ func TestInterceptorLogger(t *testing.T) {
 // TestInterceptorLoggerLogsMessage verifies the adapter logs messages correctly.
 func TestInterceptorLoggerLogsMessage(t *testing.T) {
 	var buf bytes.Buffer
+
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	interceptorLogger := InterceptorLogger(logger)
@@ -48,9 +50,11 @@ func TestInterceptorLoggerLogsMessage(t *testing.T) {
 	if parsed["msg"] != "test message" {
 		t.Errorf("Expected msg='test message', got: %v", parsed["msg"])
 	}
+
 	if parsed["key"] != "value" {
 		t.Errorf("Expected key='value', got: %v", parsed["key"])
 	}
+
 	if parsed["level"] != "INFO" {
 		t.Errorf("Expected level='INFO', got: %v", parsed["level"])
 	}
@@ -72,6 +76,7 @@ func TestInterceptorLoggerLevels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
+
 			logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 			interceptorLogger := InterceptorLogger(logger)
@@ -93,15 +98,21 @@ func TestInterceptorLoggerLevels(t *testing.T) {
 	}
 }
 
+// testContextKey is a custom type for context keys to avoid collisions.
+type testContextKey string
+
+const requestIDContextKey testContextKey = "request_id"
+
 // TestInterceptorLoggerWithContext verifies context is passed through.
 func TestInterceptorLoggerWithContext(t *testing.T) {
 	var buf bytes.Buffer
+
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	interceptorLogger := InterceptorLogger(logger)
 
 	// Create context with a value (simulating request context)
-	ctx := context.WithValue(context.Background(), "request_id", "test-123")
+	ctx := context.WithValue(context.Background(), requestIDContextKey, "test-123")
 
 	interceptorLogger.Log(ctx, grpc_logging.LevelInfo, "context test", "test", "value")
 
@@ -115,6 +126,7 @@ func TestInterceptorLoggerWithContext(t *testing.T) {
 // TestInterceptorLoggerMultipleFields verifies multiple structured fields.
 func TestInterceptorLoggerMultipleFields(t *testing.T) {
 	var buf bytes.Buffer
+
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	interceptorLogger := InterceptorLogger(logger)
@@ -138,9 +150,11 @@ func TestInterceptorLoggerMultipleFields(t *testing.T) {
 	if parsed["string_field"] != "test" {
 		t.Errorf("Expected string_field='test', got: %v", parsed["string_field"])
 	}
+
 	if parsed["int_field"] != float64(42) { // JSON numbers are float64
 		t.Errorf("Expected int_field=42, got: %v", parsed["int_field"])
 	}
+
 	if parsed["bool_field"] != true {
 		t.Errorf("Expected bool_field=true, got: %v", parsed["bool_field"])
 	}
@@ -149,6 +163,7 @@ func TestInterceptorLoggerMultipleFields(t *testing.T) {
 // TestInterceptorLoggerEmptyFields verifies handling of empty/nil fields.
 func TestInterceptorLoggerEmptyFields(t *testing.T) {
 	var buf bytes.Buffer
+
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	interceptorLogger := InterceptorLogger(logger)
@@ -172,6 +187,7 @@ func TestInterceptorLoggerEmptyFields(t *testing.T) {
 // TestInterceptorLoggerTextFormat verifies adapter works with text format too.
 func TestInterceptorLoggerTextFormat(t *testing.T) {
 	var buf bytes.Buffer
+
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	interceptorLogger := InterceptorLogger(logger)
@@ -185,6 +201,7 @@ func TestInterceptorLoggerTextFormat(t *testing.T) {
 	if !strings.Contains(output, "text format test") {
 		t.Error("Expected 'text format test' in output")
 	}
+
 	if !strings.Contains(output, "key=value") {
 		t.Error("Expected 'key=value' in output")
 	}
