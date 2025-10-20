@@ -134,12 +134,31 @@ tasks:
     cmds:
       - '{{.BUFBUILD_BIN}} dep update'
       - '{{.BUFBUILD_BIN}} generate'
+      - task: api:gen:javascript
+
+  api:gen:javascript:
+    internal: true
+    desc: Fix top-level namespace issue for JS/TS stubs
+    dir: ./sdk/dir-js/api/
+    cmd: |
+      cat > package.json << EOF
+      {
+        "type": "module",
+        "name": "api",
+        "version": "0.0.0",
+        "description": "This package contains generated code for the protobuf modules",
+        "peerDependencies": {
+            "@bufbuild/protobuf": "^2.9.0"
+        }
+      }
+      EOF
 
   api:clean:
     desc: Clean generated API stubs
     deps:
       - api:clean:go
-      - api:clean:sdk:python
+      - api:clean:python
+      - api:clean:javascript
 
   api:clean:go:
     desc: Clean generated golang API stubs
@@ -147,12 +166,15 @@ tasks:
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 
-  api:clean:sdk:python:
+  api:clean:python:
     desc: Clean generated Python API stubs
-    dir: ../sdk/dir-py/agntcy
+    dir: ./sdk/dir-py/agntcy
     cmd: rm -drf ./dir
 
-  
+  api:clean:javascript:
+    desc: Clean generated JS/TS API stubs
+    dir: ./sdk/dir-js/
+    cmd: rm -drf ./api
 
   ##
   ## CLI
@@ -229,6 +251,8 @@ tasks:
   sdk:build:javascript:
     desc: Build javascript client SDK package
     dir: ./sdk/dir-js
+    deps:
+      - task: sdk:deps:javascript
     cmds:
       - npm run build
 
@@ -336,6 +360,7 @@ tasks:
     dir: ./sdk/dir-js
     cmds:
       - npm install
+      - task: api:gen
 
   sdk:release:all:
     desc: Release all client SDK package
