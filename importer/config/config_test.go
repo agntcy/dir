@@ -1,12 +1,11 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:nilnil
 package config
 
 import (
 	"testing"
-
-	"github.com/agntcy/dir/importer/types"
 )
 
 func TestConfig_Validate(t *testing.T) {
@@ -19,9 +18,9 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid config",
 			config: Config{
-				RegistryType: types.RegistryTypeMCP,
+				RegistryType: RegistryTypeMCP,
 				RegistryURL:  "https://registry.example.com",
-				BatchSize:    50,
+				Concurrency:  10,
 			},
 			wantErr: false,
 		},
@@ -29,7 +28,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "missing registry type",
 			config: Config{
 				RegistryURL: "https://registry.example.com",
-				BatchSize:   50,
+				Concurrency: 10,
 			},
 			wantErr: true,
 			errMsg:  "registry type is required",
@@ -37,27 +36,27 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "missing registry URL",
 			config: Config{
-				RegistryType: types.RegistryTypeMCP,
-				BatchSize:    50,
+				RegistryType: RegistryTypeMCP,
+				Concurrency:  10,
 			},
 			wantErr: true,
 			errMsg:  "registry URL is required",
 		},
 		{
-			name: "zero batch size sets default",
+			name: "zero concurrency sets default",
 			config: Config{
-				RegistryType: types.RegistryTypeMCP,
+				RegistryType: RegistryTypeMCP,
 				RegistryURL:  "https://registry.example.com",
-				BatchSize:    0,
+				Concurrency:  0,
 			},
 			wantErr: false,
 		},
 		{
-			name: "negative batch size sets default",
+			name: "negative concurrency sets default",
 			config: Config{
-				RegistryType: types.RegistryTypeMCP,
+				RegistryType: RegistryTypeMCP,
 				RegistryURL:  "https://registry.example.com",
-				BatchSize:    -1,
+				Concurrency:  -1,
 			},
 			wantErr: false,
 		},
@@ -76,10 +75,10 @@ func TestConfig_Validate(t *testing.T) {
 				t.Errorf("Config.Validate() error message = %v, want %v", err.Error(), tt.errMsg)
 			}
 
-			// Check that default batch size is set when invalid
-			if !tt.wantErr && tt.config.BatchSize <= 0 {
-				if tt.config.BatchSize != 10 {
-					t.Errorf("Config.Validate() did not set default batch size, got %d, want 10", tt.config.BatchSize)
+			// Check that default concurrency is set when invalid
+			if !tt.wantErr && tt.config.Concurrency <= 0 {
+				if tt.config.Concurrency != 5 {
+					t.Errorf("Config.Validate() did not set default concurrency, got %d, want 5", tt.config.Concurrency)
 				}
 			}
 		})

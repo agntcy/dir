@@ -10,6 +10,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/events"
 	hubCmd "github.com/agntcy/dir/cli/cmd/hub"
+	importcmd "github.com/agntcy/dir/cli/cmd/import"
 	"github.com/agntcy/dir/cli/cmd/info"
 	"github.com/agntcy/dir/cli/cmd/network"
 	"github.com/agntcy/dir/cli/cmd/pull"
@@ -67,6 +68,8 @@ func init() {
 		pull.Command,
 		push.Command,
 		delete.Command,
+		// import commands
+		importcmd.Command,
 		// routing commands (all under routing subcommand)
 		routing.Command, // Contains: publish, unpublish, list, search
 		network.Command,
