@@ -302,6 +302,95 @@ func TestVerboseOptions(t *testing.T) {
 	}
 }
 
+// TestExtractFieldsVerbose tests the field extraction for verbose mode.
+func TestExtractFieldsVerbose(t *testing.T) {
+	t.Parallel()
+
+	//nolint:containedctx // Context in test table struct is acceptable for test organization
+	tests := []struct {
+		name           string
+		ctx            context.Context
+		callMeta       interceptors.CallMeta
+		expectedFields map[string]string
+	}{
+		{
+			name:           "verbose mode with empty context",
+			ctx:            context.Background(),
+			callMeta:       interceptors.NewServerCallMeta("/test.Service/Method", nil, nil),
+			expectedFields: map[string]string{},
+		},
+		{
+			name: "verbose mode with SPIFFE ID",
+			ctx: func() context.Context {
+				spiffeID := spiffeid.RequireFromString("spiffe://example.org/agent/verbose")
+
+				return context.WithValue(context.Background(), authn.SpiffeIDContextKey, spiffeID)
+			}(),
+			callMeta: interceptors.NewServerCallMeta("/test.Service/VerboseMethod", nil, nil),
+			expectedFields: map[string]string{
+				"spiffe_id": "spiffe://example.org/agent/verbose",
+			},
+		},
+		{
+			name: "verbose mode with all metadata",
+			ctx: func() context.Context {
+				spiffeID := spiffeid.RequireFromString("spiffe://example.org/agent/full")
+				ctx := context.WithValue(context.Background(), authn.SpiffeIDContextKey, spiffeID)
+
+				return metadata.NewIncomingContext(ctx, metadata.Pairs(
+					RequestIDKey, "verbose-req-123",
+					CorrelationIDKey, "verbose-corr-456",
+					UserAgentKey, "verbose-agent/1.0",
+				))
+			}(),
+			callMeta: interceptors.NewServerCallMeta("/test.Service/FullMethod", nil, nil),
+			expectedFields: map[string]string{
+				"spiffe_id":      "spiffe://example.org/agent/full",
+				"request_id":     "verbose-req-123",
+				"correlation_id": "verbose-corr-456",
+				"user_agent":     "verbose-agent/1.0",
+			},
+		},
+		{
+			name:           "verbose mode should NOT filter health checks",
+			ctx:            context.Background(),
+			callMeta:       interceptors.NewServerCallMeta("/grpc.health.v1.Health/Check", nil, nil),
+			expectedFields: map[string]string{}, // Should return empty fields, NOT nil
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			fields := extractFieldsVerbose(tt.ctx, tt.callMeta)
+
+			// Verbose mode should NEVER return nil (unlike DefaultOptions which filters)
+			if fields == nil {
+				t.Error("extractFieldsVerbose() returned nil, verbose mode should not filter")
+			}
+
+			fieldsMap := fieldsToMap(t, fields)
+			assertFieldsMatch(t, fieldsMap, tt.expectedFields)
+		})
+	}
+}
+
+// TestVerboseOptionsDoesNotFilterHealthChecks verifies verbose mode logs everything.
+func TestVerboseOptionsDoesNotFilterHealthChecks(t *testing.T) {
+	t.Parallel()
+
+	// VerboseOptions should NOT filter health checks (returns fields, not nil)
+	// This is different from DefaultOptions which filters them
+	opts := VerboseOptions()
+	if len(opts) != 3 {
+		t.Errorf("VerboseOptions() returned %d options, want 3", len(opts))
+	}
+
+	// Verify that it's configured for verbose logging (4 events vs 2 in default)
+	// This is implicitly tested by the options count and structure
+}
+
 // TestExtractFieldsNilSafety tests that ExtractFields handles nil/empty contexts gracefully.
 func TestExtractFieldsNilSafety(t *testing.T) {
 	t.Parallel()

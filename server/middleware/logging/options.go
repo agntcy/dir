@@ -142,6 +142,40 @@ func DefaultOptions() []grpc_logging.Option {
 	}
 }
 
+// extractFieldsVerbose extracts fields for verbose logging mode (no filtering).
+// Unlike ExtractFields, this does NOT filter health checks - it logs everything.
+func extractFieldsVerbose(ctx context.Context, c interceptors.CallMeta) grpc_logging.Fields {
+	fields := make(grpc_logging.Fields, 0, typicalFieldCount)
+
+	// Extract SPIFFE ID from authenticated context
+	if spiffeID, ok := authn.SpiffeIDFromContext(ctx); ok {
+		fields = append(fields, "spiffe_id", spiffeID.String())
+	}
+
+	// Extract metadata fields
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return fields
+	}
+
+	// Extract Request ID
+	if requestID := md.Get(RequestIDKey); len(requestID) > 0 {
+		fields = append(fields, "request_id", requestID[0])
+	}
+
+	// Extract Correlation ID
+	if correlationID := md.Get(CorrelationIDKey); len(correlationID) > 0 {
+		fields = append(fields, "correlation_id", correlationID[0])
+	}
+
+	// Extract User Agent
+	if userAgent := md.Get(UserAgentKey); len(userAgent) > 0 {
+		fields = append(fields, "user_agent", userAgent[0])
+	}
+
+	return fields
+}
+
 // VerboseOptions returns logging options for development and debugging.
 // These options include request/response payloads and don't filter any endpoints.
 func VerboseOptions() []grpc_logging.Option {
@@ -155,37 +189,7 @@ func VerboseOptions() []grpc_logging.Option {
 		),
 
 		// Extract custom fields, but don't filter anything in verbose mode
-		grpc_logging.WithFieldsFromContextAndCallMeta(func(ctx context.Context, c interceptors.CallMeta) grpc_logging.Fields {
-			fields := make(grpc_logging.Fields, 0, typicalFieldCount)
-
-			// Extract SPIFFE ID from authenticated context
-			if spiffeID, ok := authn.SpiffeIDFromContext(ctx); ok {
-				fields = append(fields, "spiffe_id", spiffeID.String())
-			}
-
-			// Extract metadata fields
-			md, ok := metadata.FromIncomingContext(ctx)
-			if !ok {
-				return fields
-			}
-
-			// Extract Request ID
-			if requestID := md.Get(RequestIDKey); len(requestID) > 0 {
-				fields = append(fields, "request_id", requestID[0])
-			}
-
-			// Extract Correlation ID
-			if correlationID := md.Get(CorrelationIDKey); len(correlationID) > 0 {
-				fields = append(fields, "correlation_id", correlationID[0])
-			}
-
-			// Extract User Agent
-			if userAgent := md.Get(UserAgentKey); len(userAgent) > 0 {
-				fields = append(fields, "user_agent", userAgent[0])
-			}
-
-			return fields
-		}),
+		grpc_logging.WithFieldsFromContextAndCallMeta(extractFieldsVerbose),
 
 		// Map status codes to appropriate log levels
 		grpc_logging.WithLevels(ServerCodeToLevel),
