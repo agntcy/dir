@@ -276,6 +276,64 @@ Verify record signatures.
 dirctl verify record.json signature.sig --key public.key
 ```
 
+### 📥 **Import Operations**
+
+Import records from external registries into DIR. Supports automated batch imports from various registry types.
+
+#### `dirctl import [flags]`
+Fetch and import records from external registries.
+
+**Supported Registries:**
+- `mcp` - Model Context Protocol registry v0.1
+
+**Examples:**
+```bash
+# Import from MCP registry
+dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1
+
+# Import with time-based filter
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --filter=updated_since=2025-08-07T13:15:04.280Z
+
+# Combine multiple filters
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --filter=search=github \
+  --filter=version=latest \
+  --filter=updated_since=2025-08-07T13:15:04.280Z
+
+# Limit number of records
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --limit=50
+
+# Preview without importing (dry run)
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --dry-run
+```
+
+**Configuration Options:**
+
+| Flag | Environment Variable | Description | Required | Default |
+|------|---------------------|-------------|----------|---------|
+| `--type` | - | Registry type (mcp, a2a) | Yes | - |
+| `--url` | - | Registry base URL | Yes | - |
+| `--filter` | - | Registry-specific filters (key=value, repeatable) | No | - |
+| `--limit` | - | Maximum records to import (0 = no limit) | No | 0 |
+| `--dry-run` | - | Preview without importing | No | false |
+| `--server-addr` | `DIRECTORY_CLIENT_SERVER_ADDRESS` | DIR server address | No | localhost:8888 |
+
+**MCP Registry Filters:**
+
+For the Model Context Protocol registry, available filters include:
+- `search` - Filter by server name (substring match)
+- `version` - Filter by version ('latest' for latest version, or an exact version like '1.2.3')
+- `updated_since` - Filter by updated time (RFC3339 datetime format, e.g., '2025-08-07T13:15:04.280Z')
+
+See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters) for the complete list of supported filters.
+
 ### 🔄 **Synchronization**
 
 #### `dirctl sync create <url>`
@@ -361,6 +419,23 @@ dirctl routing search --skill "AI" --locator "docker-image" --min-score 2
 dirctl pull <discovered-cid>
 ```
 
+### 📥 **Import Workflow**
+```bash
+# 1. Preview import with dry run
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --limit=10 \
+  --dry-run
+
+# 2. Perform actual import
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --filter=updated_since=2025-08-07T13:15:04.280Z
+
+# 3. Search imported records
+dirctl search --module "runtime/mcp"
+```
+
 ### 🔄 **Synchronization Workflow**
 ```bash
 # 1. Create sync with remote peer
@@ -384,6 +459,7 @@ The CLI follows a clear service-based organization:
 - **Routing**: Network announcement and discovery (`routing publish`, `routing list`, `routing search`)
 - **Search**: General content search (`search`)
 - **Security**: Signing and verification (`sign`, `verify`)
+- **Import**: External registry imports (`import`)
 - **Sync**: Peer synchronization (`sync`)
 
 Each command group provides focused functionality with consistent flag patterns and clear separation of concerns.
