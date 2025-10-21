@@ -33,19 +33,9 @@ var noisyEndpoints = map[string]bool{
 	"/healthz":                     true,
 }
 
-// ExtractFields extracts custom fields from the gRPC context and call metadata for structured logging.
-// This function extracts:
-// - SPIFFE ID from authenticated context
-// - Request ID from metadata
-// - Correlation ID from metadata
-// - User Agent from metadata
-// - Filters out noisy endpoints (health checks, probes).
-func ExtractFields(ctx context.Context, c interceptors.CallMeta) grpc_logging.Fields {
-	// Filter out noisy endpoints by returning nil fields
-	if noisyEndpoints[c.FullMethod()] {
-		return nil
-	}
-
+// extractFieldsFromContext extracts fields from context and metadata for logging.
+// This is the core field extraction logic shared by both default and verbose modes.
+func extractFieldsFromContext(ctx context.Context) grpc_logging.Fields {
 	fields := make(grpc_logging.Fields, 0, typicalFieldCount) // Pre-allocate for typical field count
 
 	// Extract SPIFFE ID from authenticated context
@@ -75,6 +65,22 @@ func ExtractFields(ctx context.Context, c interceptors.CallMeta) grpc_logging.Fi
 	}
 
 	return fields
+}
+
+// ExtractFields extracts custom fields from the gRPC context and call metadata for structured logging.
+// This function extracts:
+// - SPIFFE ID from authenticated context
+// - Request ID from metadata
+// - Correlation ID from metadata
+// - User Agent from metadata
+// - Filters out noisy endpoints (health checks, probes).
+func ExtractFields(ctx context.Context, c interceptors.CallMeta) grpc_logging.Fields {
+	// Filter out noisy endpoints by returning nil fields
+	if noisyEndpoints[c.FullMethod()] {
+		return nil
+	}
+
+	return extractFieldsFromContext(ctx)
 }
 
 // ServerCodeToLevel maps gRPC status codes to appropriate log levels.
@@ -144,36 +150,8 @@ func DefaultOptions() []grpc_logging.Option {
 
 // extractFieldsVerbose extracts fields for verbose logging mode (no filtering).
 // Unlike ExtractFields, this does NOT filter health checks - it logs everything.
-func extractFieldsVerbose(ctx context.Context, c interceptors.CallMeta) grpc_logging.Fields {
-	fields := make(grpc_logging.Fields, 0, typicalFieldCount)
-
-	// Extract SPIFFE ID from authenticated context
-	if spiffeID, ok := authn.SpiffeIDFromContext(ctx); ok {
-		fields = append(fields, "spiffe_id", spiffeID.String())
-	}
-
-	// Extract metadata fields
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return fields
-	}
-
-	// Extract Request ID
-	if requestID := md.Get(RequestIDKey); len(requestID) > 0 {
-		fields = append(fields, "request_id", requestID[0])
-	}
-
-	// Extract Correlation ID
-	if correlationID := md.Get(CorrelationIDKey); len(correlationID) > 0 {
-		fields = append(fields, "correlation_id", correlationID[0])
-	}
-
-	// Extract User Agent
-	if userAgent := md.Get(UserAgentKey); len(userAgent) > 0 {
-		fields = append(fields, "user_agent", userAgent[0])
-	}
-
-	return fields
+func extractFieldsVerbose(ctx context.Context, _ interceptors.CallMeta) grpc_logging.Fields {
+	return extractFieldsFromContext(ctx)
 }
 
 // VerboseOptions returns logging options for development and debugging.
