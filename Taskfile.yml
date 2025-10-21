@@ -525,26 +525,28 @@ tasks:
       HTPASSWD_PASSWORD:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
-        sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
+        sh: echo -n "{{ .HTPASSWD_USERNAME }}:{{ .HTPASSWD_PASSWORD }}" | base64
       HTPASSWD_SYNC_USERNAME: 'sync-user'
       HTPASSWD_SYNC_PASSWORD:
         sh: openssl rand -hex 16
+      # Generate htpasswd entries
+      HTPASSWD_ADMIN:
+        sh: htpasswd -nbB {{ .HTPASSWD_USERNAME }} {{ .HTPASSWD_PASSWORD }} | sed 's/^{{ .HTPASSWD_USERNAME }}://'
+      HTPASSWD_SYNC:
+        sh: htpasswd -nbB {{ .HTPASSWD_SYNC_USERNAME }} {{ .HTPASSWD_SYNC_PASSWORD }} | sed 's/^{{ .HTPASSWD_SYNC_USERNAME }}://'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
-
-      # Create zot configuration using helper task
-      - task: deploy:zot:config
-        vars:
-          ZOT_CONFIG_DIR: /opt/zot-config
-          HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME }}'
-          HTPASSWD_PASSWORD: '{{ .HTPASSWD_PASSWORD }}'
-          HTPASSWD_AUTH_HEADER: '{{ .HTPASSWD_AUTH_HEADER }}'
-          HTPASSWD_SYNC_USERNAME: '{{ .HTPASSWD_SYNC_USERNAME }}'
-          HTPASSWD_SYNC_PASSWORD: '{{ .HTPASSWD_SYNC_PASSWORD }}'
 
       # Deploy chart
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        
+        # Generate htpasswd file
+        cat > /tmp/zot-htpasswd-{{ .HELM_NAMESPACE }} << 'HTPASSWD_EOF'
+        {{ .HTPASSWD_USERNAME }}:{{ .HTPASSWD_ADMIN }}
+        {{ .HTPASSWD_SYNC_USERNAME }}:{{ .HTPASSWD_SYNC }}
+        HTPASSWD_EOF
+        
         {{ .HELM_BIN }} upgrade dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -554,6 +556,7 @@ tasks:
           --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
           --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
           --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
+          --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-{{ .HELM_NAMESPACE }}" \
           --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
           --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
           --namespace {{ .HELM_NAMESPACE }} \
@@ -562,6 +565,9 @@ tasks:
           --wait \
           --wait-for-jobs \
           --timeout "15m"
+        
+        # Cleanup temp file
+        rm -f /tmp/zot-htpasswd-{{ .HELM_NAMESPACE }}
 
   deploy:kubernetes:context:
     desc: Switch context to given Kubernetes cluster
@@ -583,20 +589,25 @@ tasks:
       HTPASSWD_PASSWORD:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
-        sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
+        sh: echo -n "{{ .HTPASSWD_USERNAME }}:{{ .HTPASSWD_PASSWORD }}" | base64
       HTPASSWD_SYNC_USERNAME: 'sync-user'
       HTPASSWD_SYNC_PASSWORD:
         sh: openssl rand -hex 16
+      # Generate htpasswd entries
+      HTPASSWD_ADMIN:
+        sh: htpasswd -nbB {{ .HTPASSWD_USERNAME }} {{ .HTPASSWD_PASSWORD }} | sed 's/^{{ .HTPASSWD_USERNAME }}://'
+      HTPASSWD_SYNC:
+        sh: htpasswd -nbB {{ .HTPASSWD_SYNC_USERNAME }} {{ .HTPASSWD_SYNC_PASSWORD }} | sed 's/^{{ .HTPASSWD_SYNC_USERNAME }}://'
     cmds:
-      - task: deploy:zot:config
-        vars:
-          ZOT_CONFIG_DIR: /opt/zot-config
-          HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME }}'
-          HTPASSWD_PASSWORD: '{{ .HTPASSWD_PASSWORD }}'
-          HTPASSWD_AUTH_HEADER: '{{ .HTPASSWD_AUTH_HEADER }}'
-          HTPASSWD_SYNC_USERNAME: '{{ .HTPASSWD_SYNC_USERNAME }}'
-          HTPASSWD_SYNC_PASSWORD: '{{ .HTPASSWD_SYNC_PASSWORD }}'
       - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        
+        # Generate htpasswd file to avoid shell escaping issues with $ in bcrypt hashes
+        cat > /tmp/zot-htpasswd-{{ .HELM_NAMESPACE }} << 'HTPASSWD_EOF'
+        {{ .HTPASSWD_USERNAME }}:{{ .HTPASSWD_ADMIN }}
+        {{ .HTPASSWD_SYNC_USERNAME }}:{{ .HTPASSWD_SYNC }}
+        HTPASSWD_EOF
+        
         {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -605,6 +616,7 @@ tasks:
           --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
           --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
           --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
+          --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-{{ .HELM_NAMESPACE }}" \
           --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
           --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
           --set apiserver.log_level="DEBUG" \
@@ -615,6 +627,9 @@ tasks:
           --wait \
           --wait-for-jobs \
           --timeout "15m"
+        
+        # Cleanup temp file
+        rm -f /tmp/zot-htpasswd-{{ .HELM_NAMESPACE }}
 
   deploy:kubernetes:dirctl:
     desc: Deploy DIRCTL helm chart
@@ -718,10 +733,15 @@ tasks:
       HTPASSWD_PASSWORD:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
-        sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
+        sh: echo -n "{{ .HTPASSWD_USERNAME }}:{{ .HTPASSWD_PASSWORD }}" | base64
       HTPASSWD_SYNC_USERNAME: 'sync-user'
       HTPASSWD_SYNC_PASSWORD:
         sh: openssl rand -hex 16
+      # Generate htpasswd entries
+      HTPASSWD_ADMIN:
+        sh: htpasswd -nbB {{ .HTPASSWD_USERNAME }} {{ .HTPASSWD_PASSWORD }} | sed 's/^{{ .HTPASSWD_USERNAME }}://'
+      HTPASSWD_SYNC:
+        sh: htpasswd -nbB {{ .HTPASSWD_SYNC_USERNAME }} {{ .HTPASSWD_SYNC_PASSWORD }} | sed 's/^{{ .HTPASSWD_SYNC_USERNAME }}://'
     cmds:
       # Generate private key if it doesn't exist
       - |
@@ -733,19 +753,16 @@ tasks:
         echo "PEER ID: ${bootstrap_peerid}"
         echo BOOTSTRAP_PEER_ID="${bootstrap_peerid}" > .env
 
-      # Create zot configuration using helper task for bootstrap
-      - task: deploy:zot:config
-        vars:
-          ZOT_CONFIG_DIR: /opt/zot-config-bootstrap
-          HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME }}'
-          HTPASSWD_PASSWORD: '{{ .HTPASSWD_PASSWORD }}'
-          HTPASSWD_AUTH_HEADER: '{{ .HTPASSWD_AUTH_HEADER }}'
-          HTPASSWD_SYNC_USERNAME: '{{ .HTPASSWD_SYNC_USERNAME }}'
-          HTPASSWD_SYNC_PASSWORD: '{{ .HTPASSWD_SYNC_PASSWORD }}'
-
       # Deploy the bootstrap server using Helm
       - |
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+        
+        # Generate htpasswd file to avoid shell escaping issues with $ in bcrypt hashes
+        cat > /tmp/zot-htpasswd-bootstrap << 'HTPASSWD_EOF'
+        {{ .HTPASSWD_USERNAME }}:{{ .HTPASSWD_ADMIN }}
+        {{ .HTPASSWD_SYNC_USERNAME }}:{{ .HTPASSWD_SYNC }}
+        HTPASSWD_EOF
+        
         {{ .HELM_BIN }} upgrade agntcy-dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -757,11 +774,11 @@ tasks:
           --set apiserver.config.routing.listen_address="/ip4/0.0.0.0/tcp/8999" \
           --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.bootstrap.svc.cluster.local:8888" \
           --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
-          --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
-          --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-bootstrap","type":"DirectoryOrCreate"}}]' \
+          --set apiserver.zot.extraVolumes[0].persistentVolumeClaim.claimName="agntcy-dir-zot-config" \
           --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
           --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
           --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
+          --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-bootstrap" \
           --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
           --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
           --namespace "bootstrap" \
@@ -770,6 +787,9 @@ tasks:
           --wait \
           --wait-for-jobs \
           --timeout "15m"
+        
+        # Cleanup temp file
+        rm -f /tmp/zot-htpasswd-bootstrap
 
   deploy:kubernetes:network:
     aliases: [deploy:network]
@@ -782,27 +802,20 @@ tasks:
       HTPASSWD_PASSWORD:
         sh: openssl rand -hex 16
       HTPASSWD_AUTH_HEADER:
-        sh: echo -n "apiserver:{{ .HTPASSWD_PASSWORD }}" | base64
+        sh: echo -n "{{ .HTPASSWD_USERNAME }}:{{ .HTPASSWD_PASSWORD }}" | base64
       HTPASSWD_SYNC_USERNAME: 'sync-user'
       HTPASSWD_SYNC_PASSWORD:
         sh: openssl rand -hex 16
+      # Generate htpasswd entries
+      HTPASSWD_ADMIN:
+        sh: htpasswd -nbB {{ .HTPASSWD_USERNAME }} {{ .HTPASSWD_PASSWORD }} | sed 's/^{{ .HTPASSWD_USERNAME }}://'
+      HTPASSWD_SYNC:
+        sh: htpasswd -nbB {{ .HTPASSWD_SYNC_USERNAME }} {{ .HTPASSWD_SYNC_PASSWORD }} | sed 's/^{{ .HTPASSWD_SYNC_USERNAME }}://'
     cmds:
       # Deploy bootstrap with explicit var passing (not as dependency)
       - task: deploy:kubernetes:network:bootstrap
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
-      # Create zot configuration for each peer using helper task
-      - for:
-          matrix:
-            PEER: ['peer1', 'peer2', 'peer3']
-        task: deploy:zot:config
-        vars:
-          ZOT_CONFIG_DIR: /opt/zot-config-{{ .ITEM.PEER }}
-          HTPASSWD_USERNAME: '{{ .HTPASSWD_USERNAME }}'
-          HTPASSWD_PASSWORD: '{{ .HTPASSWD_PASSWORD }}'
-          HTPASSWD_AUTH_HEADER: '{{ .HTPASSWD_AUTH_HEADER }}'
-          HTPASSWD_SYNC_USERNAME: '{{ .HTPASSWD_SYNC_USERNAME }}'
-          HTPASSWD_SYNC_PASSWORD: '{{ .HTPASSWD_SYNC_PASSWORD }}'
 
       # Deploy the peer servers using Helm
       - for:
@@ -810,6 +823,14 @@ tasks:
             PEER: ['peer1', 'peer2', 'peer3']
         cmd: |
           export $(cat .env)
+          
+          # Generate htpasswd file to avoid shell escaping issues with $ in bcrypt hashes
+          cat > /tmp/zot-htpasswd-{{ .ITEM.PEER }} << 'HTPASSWD_EOF'
+          {{ .HTPASSWD_USERNAME }}:{{ .HTPASSWD_ADMIN }}
+          {{ .HTPASSWD_SYNC_USERNAME }}:{{ .HTPASSWD_SYNC }}
+          HTPASSWD_EOF
+          
+          {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
           {{ .HELM_BIN }} upgrade agntcy-dir \
             {{ .HELM_CHART_PATH }} \
             -f {{ .HELM_VALUES_PATH }} \
@@ -819,11 +840,11 @@ tasks:
             --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.{{ .ITEM.PEER }}.svc.cluster.local:5000" \
             --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
             --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.{{ .ITEM.PEER }}.svc.cluster.local:8888" \
-            --set-json 'apiserver.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
-            --set-json 'apiserver.zot.extraVolumes=[{"name":"zot-config-storage","hostPath":{"path":"/opt/zot-config-{{ .ITEM.PEER }}","type":"DirectoryOrCreate"}}]' \
+            --set apiserver.zot.extraVolumes[0].persistentVolumeClaim.claimName="agntcy-dir-zot-config" \
             --set apiserver.config.store.oci.auth_config.username="{{ .HTPASSWD_USERNAME }}" \
             --set apiserver.config.store.oci.auth_config.password="{{ .HTPASSWD_PASSWORD }}" \
             --set apiserver.zot.authHeader="{{ .HTPASSWD_AUTH_HEADER }}" \
+            --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-{{ .ITEM.PEER }}" \
             --set apiserver.config.sync.auth_config.username="{{ .HTPASSWD_SYNC_USERNAME }}" \
             --set apiserver.config.sync.auth_config.password="{{ .HTPASSWD_SYNC_PASSWORD }}" \
             --namespace "{{ .ITEM.PEER }}" \
@@ -832,6 +853,9 @@ tasks:
             --wait \
             --wait-for-jobs \
             --timeout "15m"
+          
+          # Cleanup temp file
+          rm -f /tmp/zot-htpasswd-{{ .ITEM.PEER }}
 
   deploy:kubernetes:network:port-forward:
     aliases: [deploy:network:port-forward]
@@ -867,84 +891,6 @@ tasks:
           {{ .HELM_BIN }} delete --namespace {{ .ITEM.PEER }} agntcy-dir
 
       - '{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}'
-
-  deploy:zot:config:
-    internal: true
-    desc: Create zot configuration directory and file
-    vars:
-      ZOT_CONFIG_DIR: '{{ .ZOT_CONFIG_DIR | default "/opt/zot-config" }}'
-    cmds:
-      # Create host directory for zot configuration hot reload
-      - |
-        if ! {{ .KUBECTL_BIN }} get nodes -o jsonpath='{.items[0].metadata.name}' | xargs -I {} \
-        docker exec {} mkdir -p {{ .ZOT_CONFIG_DIR }}; then
-          echo "Failed to create zot config directory: {{ .ZOT_CONFIG_DIR }}"
-          exit 1
-        fi
-
-      # Create zot configuration file with proper permissions
-      - |
-        NODE_NAME=$({{ .KUBECTL_BIN }} get nodes -o jsonpath='{.items[0].metadata.name}')
-        if ! docker exec $NODE_NAME sh -c 'cat > {{ .ZOT_CONFIG_DIR }}/config.json << "EOF"
-        {
-          "distSpecVersion": "1.1.1",
-          "storage": {
-            "rootDirectory": "/var/lib/registry"
-          },
-          "http": {
-            "address": "0.0.0.0",
-            "port": "5000",
-            "auth": {
-              "htpasswd": {
-                "path": "/etc/zot/htpasswd"
-              }
-            },
-            "accessControl": {
-              "adminPolicy": {
-                  "users": ["{{ .HTPASSWD_USERNAME }}"],
-                  "actions": ["read", "create", "update", "delete"]
-              },
-              "repositories": {
-                "**": {
-                  "anonymousPolicy": [],
-                  "defaultPolicy": ["read"]
-                }
-              }
-            }
-          },
-          "log": {
-            "level": "debug"
-          },
-          "extensions": {
-            "search": {
-              "enable": true
-            },
-            "trust": {
-              "enable": true,
-              "cosign": true,
-              "notation": false
-            }
-          }
-        }
-        EOF
-        chmod 666 {{ .ZOT_CONFIG_DIR }}/config.json
-        chmod 777 {{ .ZOT_CONFIG_DIR }}'; then
-          echo "Failed to create zot config file: {{ .ZOT_CONFIG_DIR }}/config.json"
-          exit 1
-        fi
-
-      # Create htpasswd file locally using task variables
-      - |
-        htpasswd -cBb /tmp/zot-htpasswd "{{ .HTPASSWD_USERNAME }}" "{{ .HTPASSWD_PASSWORD }}"
-        htpasswd -Bb /tmp/zot-htpasswd "{{ .HTPASSWD_SYNC_USERNAME }}" "{{ .HTPASSWD_SYNC_PASSWORD }}"
-        cat /tmp/zot-htpasswd
-
-      # Copy htpasswd file to node and set permissions
-      - |
-        NODE_NAME=$({{ .KUBECTL_BIN }} get nodes -o jsonpath='{.items[0].metadata.name}')
-        docker cp /tmp/zot-htpasswd $NODE_NAME:{{ .ZOT_CONFIG_DIR }}/htpasswd
-        docker exec $NODE_NAME chmod 666 {{ .ZOT_CONFIG_DIR }}/htpasswd
-        rm /tmp/zot-htpasswd
 
   ##
   ## Test
