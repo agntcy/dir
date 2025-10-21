@@ -131,20 +131,50 @@ tasks:
       - task: deps:bufbuild
     # NOTE(ramizpolic): This allows Taskfile YAML parsing to accept '{' as a starting command token.
     # In translation, this is interpreted as a regular multi-line shell script.
+    cmds:
+      - '{{.BUFBUILD_BIN}} dep update'
+      - '{{.BUFBUILD_BIN}} generate'
+      - task: api:gen:fix:javascript
+
+  api:gen:fix:javascript:
+    internal: true
+    desc: Fix top-level namespace issue for JS/TS stubs
+    dir: ./sdk/dir-js/api/
     cmd: |
-      {{.BUFBUILD_BIN}} dep update
-      {{.BUFBUILD_BIN}} generate
+      cat > package.json << EOF
+      {
+        "type": "module",
+        "name": "api",
+        "version": "0.0.0",
+        "description": "This package contains generated code for the protobuf modules",
+        "peerDependencies": {
+            "@bufbuild/protobuf": "^2.9.0"
+        }
+      }
+      EOF
 
   api:clean:
     desc: Clean generated API stubs
     deps:
       - api:clean:go
+      - api:clean:python
+      - api:clean:javascript
 
   api:clean:go:
     desc: Clean generated golang API stubs
     dir: ./api
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
+
+  api:clean:python:
+    desc: Clean generated Python API stubs
+    dir: ./sdk/dir-py/agntcy
+    cmd: rm -drf ./dir
+
+  api:clean:javascript:
+    desc: Clean generated JS/TS API stubs
+    dir: ./sdk/dir-js/
+    cmd: rm -drf ./api
 
   ##
   ## CLI
@@ -214,13 +244,15 @@ tasks:
     desc: Build python client SDK package
     dir: ./sdk/dir-py
     deps:
-      - task: deps:uv
+      - task: sdk:deps:python
     cmds:
       - '{{.UV_BIN}} build'
 
   sdk:build:javascript:
     desc: Build javascript client SDK package
     dir: ./sdk/dir-js
+    deps:
+      - task: sdk:deps:javascript
     cmds:
       - npm run build
 
@@ -240,6 +272,8 @@ tasks:
 
   sdk:test-env:spiffe:load-test-image:
     desc: Load the SDK tests into KinD
+    deps:
+      - task: api:gen
     vars:
       GOARCH: '{{ .GOARCH | default ARCH }}'
     cmds:
@@ -274,7 +308,6 @@ tasks:
 
   sdk:test:all:
     desc: Test all client SDK packages
-    ignore_error: true
     cmds:
       - task: sdk:test:javascript
       - task: sdk:test:python
@@ -315,8 +348,10 @@ tasks:
     desc: Install deps for python SDK package
     dir: ./sdk/dir-py
     deps:
+      - task: deps:bufbuild
       - task: deps:uv
     cmds:
+      - task: api:gen
       - '{{.UV_BIN}} sync --all-packages'
 
   sdk:deps:javascript:
@@ -324,6 +359,7 @@ tasks:
     dir: ./sdk/dir-js
     cmds:
       - npm install
+      - task: api:gen
 
   sdk:release:all:
     desc: Release all client SDK package
