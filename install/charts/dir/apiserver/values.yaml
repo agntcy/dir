@@ -8,7 +8,10 @@
 nameOverride: ""
 fullnameOverride: ""
 
+# Logging configuration
 log_level: INFO
+log_format: text  # Options: "text" (development) or "json" (production)
+grpc_logging_verbose: false  # Options: false (production - logs start/finish only) or true (verbose - includes payloads)
 
 image:
   repository: ghcr.io/agntcy/dir-apiserver

@@ -228,6 +228,7 @@ func (m *Manager) SetOnRecordPublishEvent(fn func(context.Context, string, *Reco
 //
 // Error handling:
 //   - Context cancellation: Normal shutdown, exit loop
+//   - Subscription cancelled: Normal shutdown, exit loop
 //   - Invalid messages: Log warning, continue processing
 //   - Unmarshal errors: Log warning, continue processing
 //
@@ -239,6 +240,14 @@ func (m *Manager) handleMessages() {
 			// Check if context was cancelled (normal shutdown)
 			if m.ctx.Err() != nil {
 				logger.Debug("Message handler stopping", "reason", "context_cancelled")
+
+				return
+			}
+
+			// Check if subscription was cancelled (happens during shutdown)
+			// This prevents error spam during graceful shutdown
+			if errors.Is(err, context.Canceled) || err.Error() == "subscription cancelled" {
+				logger.Debug("Message handler stopping", "reason", "subscription_cancelled")
 
 				return
 			}

@@ -45,6 +45,9 @@ type Config struct {
 	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
 	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
 
+	// Logging configuration
+	Logging LoggingConfig `json:"logging,omitempty" mapstructure:"logging"`
+
 	// Authn configuration (JWT or X.509 authentication)
 	Authn authn.Config `json:"authn,omitempty" mapstructure:"authn"`
 
@@ -68,6 +71,13 @@ type Config struct {
 
 	// Events configuration
 	Events events.Config `json:"events,omitempty" mapstructure:"events"`
+}
+
+// LoggingConfig defines gRPC request/response logging configuration.
+type LoggingConfig struct {
+	// Verbose enables verbose logging mode (includes request/response payloads).
+	// Default: false (production mode - logs only start/finish with metadata).
+	Verbose bool `json:"verbose,omitempty" mapstructure:"verbose"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -102,6 +112,12 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("healthcheck_address")
 	v.SetDefault("healthcheck_address", DefaultHealthCheckAddress)
+
+	//
+	// Logging configuration (gRPC request/response logging)
+	//
+	_ = v.BindEnv("logging.verbose")
+	v.SetDefault("logging.verbose", false)
 
 	//
 	// Authn configuration (authentication: JWT or X.509)

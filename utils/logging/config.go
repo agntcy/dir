@@ -14,11 +14,13 @@ import (
 const (
 	DefaultEnvPrefix = "DIRECTORY_LOGGER"
 	DefaultLogLevel  = "INFO"
+	DefaultLogFormat = "text"
 )
 
 type Config struct {
-	LogFile  string `json:"log_file,omitempty"  mapstructure:"log_file"`
-	LogLevel string `json:"log_level,omitempty" mapstructure:"log_level"`
+	LogFile   string `json:"log_file,omitempty"   mapstructure:"log_file"`
+	LogLevel  string `json:"log_level,omitempty"  mapstructure:"log_level"`
+	LogFormat string `json:"log_format,omitempty" mapstructure:"log_format"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -35,6 +37,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("log_level")
 	v.SetDefault("log_level", DefaultLogLevel)
+
+	_ = v.BindEnv("log_format")
+	v.SetDefault("log_format", DefaultLogFormat)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

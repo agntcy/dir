@@ -15,6 +15,7 @@ require (
 	github.com/agntcy/oasf-sdk/pkg v0.0.8
 	github.com/casbin/casbin/v2 v2.120.0
 	github.com/glebarez/sqlite v1.11.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/ipfs/go-datastore v0.8.2
 	github.com/libp2p/go-libp2p v0.44.0
 	github.com/libp2p/go-libp2p-gorpc v0.6.0
