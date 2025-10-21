@@ -8,6 +8,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/agntcy/dir/mcp/prompts"
 	"github.com/agntcy/dir/mcp/tools"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -50,7 +51,7 @@ Use this tool to get the complete schema for reference when creating or validati
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_oasf_validate_record",
 		Description: strings.TrimSpace(`
-Validates an AGNTCY OASF agent record against the OASF schema (0.3.1 or 0.7.0).
+Validates an AGNTCY OASF agent record against the OASF schema.
 This tool performs comprehensive validation including:
 - Required fields check
 - Field type validation
@@ -61,6 +62,72 @@ Returns detailed validation errors to help fix issues.
 Use this tool to ensure a record meets all OASF requirements before pushing.
 		`),
 	}, tools.ValidateRecord)
+
+	// Add tool for pushing records to Directory server
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_dir_push_record",
+		Description: strings.TrimSpace(`
+Pushes an OASF agent record to a Directory server.
+This tool validates and uploads the record to the configured Directory server, returning:
+- Content Identifier (CID) for the pushed record
+- Server address where the record was stored
+
+The record must be a valid OASF agent record.
+Server configuration is set via environment variables (DIRECTORY_CLIENT_SERVER_ADDRESS).
+
+Use this tool after validating your record to store it in the Directory.
+		`),
+	}, tools.PushRecord)
+
+	// Add prompt for creating agent records
+	server.AddPrompt(&mcp.Prompt{
+		Name: "create_record",
+		Description: strings.TrimSpace(`
+Analyzes the current directory codebase and automatically creates a complete OASF agent record.
+		`),
+		Arguments: []*mcp.PromptArgument{
+			{
+				Name:        "output_path",
+				Description: "Where to output the record: file path (e.g., agent.json) to save to file, or empty for default (stdout)",
+				Required:    false,
+			},
+			{
+				Name:        "schema_version",
+				Description: "OASF schema version to use (e.g., 0.7.0, 0.3.1). Defaults to 0.7.0",
+				Required:    false,
+			},
+		},
+	}, prompts.CreateRecord)
+
+	// Add prompt for validating records
+	server.AddPrompt(&mcp.Prompt{
+		Name: "validate_record",
+		Description: strings.TrimSpace(`
+Validates an existing OASF agent record against the schema.
+		`),
+		Arguments: []*mcp.PromptArgument{
+			{
+				Name:        "record_path",
+				Description: "Path to the OASF record JSON file to validate",
+				Required:    false,
+			},
+		},
+	}, prompts.ValidateRecord)
+
+	// Add prompt for pushing records
+	server.AddPrompt(&mcp.Prompt{
+		Name: "push_record",
+		Description: strings.TrimSpace(`
+Complete workflow for validating and pushing an OASF record to the Directory server.
+		`),
+		Arguments: []*mcp.PromptArgument{
+			{
+				Name:        "record_path",
+				Description: "Path to the OASF record JSON file to validate and push",
+				Required:    false,
+			},
+		},
+	}, prompts.PushRecord)
 
 	// Run the server over stdin/stdout
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
