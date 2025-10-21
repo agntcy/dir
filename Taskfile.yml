@@ -134,9 +134,9 @@ tasks:
     cmds:
       - '{{.BUFBUILD_BIN}} dep update'
       - '{{.BUFBUILD_BIN}} generate'
-      - task: api:gen:javascript
+      - task: api:gen:fix:javascript
 
-  api:gen:javascript:
+  api:gen:fix:javascript:
     internal: true
     desc: Fix top-level namespace issue for JS/TS stubs
     dir: ./sdk/dir-js/api/
