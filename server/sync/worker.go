@@ -18,7 +18,7 @@ import (
 	zotutils "github.com/agntcy/dir/utils/zot"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	zotsyncconfig "zotregistry.dev/zot/pkg/extensions/config/sync"
+	zotsyncconfig "zotregistry.dev/zot/v2/pkg/extensions/config/sync"
 )
 
 // Worker processes sync work items.

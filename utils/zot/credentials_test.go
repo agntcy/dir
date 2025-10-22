@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-//nolint
+// nolint
 package zot
 
 import (
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	zotsyncconfig "zotregistry.dev/zot/pkg/extensions/config/sync"
+	zotsyncconfig "zotregistry.dev/zot/v2/pkg/extensions/config/sync"
 )
 
 func TestUpdateCredentialsFile(t *testing.T) {

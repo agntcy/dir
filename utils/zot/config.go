@@ -11,9 +11,9 @@ import (
 	"os"
 	"strings"
 
-	zotconfig "zotregistry.dev/zot/pkg/api/config"
-	zotextensionsconfig "zotregistry.dev/zot/pkg/extensions/config"
-	zotsyncconfig "zotregistry.dev/zot/pkg/extensions/config/sync"
+	zotconfig "zotregistry.dev/zot/v2/pkg/api/config"
+	zotextensionsconfig "zotregistry.dev/zot/v2/pkg/extensions/config"
+	zotsyncconfig "zotregistry.dev/zot/v2/pkg/extensions/config/sync"
 )
 
 // readConfigFile reads and parses the zot configuration file.

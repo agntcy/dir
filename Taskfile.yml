@@ -46,7 +46,7 @@ vars:
   COSIGN_VERSION: '2.5.3'
   COSIGN_BIN: '{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}'
   HUB_API_VERSION: 'main'
-  ZOT_VERSION: '2.1.8'
+  ZOT_VERSION: '2.1.10'
 
   ## Go module discovery
   GO_MOD_DIR:
