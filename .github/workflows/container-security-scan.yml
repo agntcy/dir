@@ -30,7 +30,7 @@ jobs:
             version: v0.4.0
           - image: zot
             repo: ghcr.io/project-zot/zot
-            version: 2.1.8
+            version: v2.1.10
           - image: spire-server
             repo: ghcr.io/spiffe/spire-server
             version: 1.9.6
@@ -44,9 +44,9 @@ jobs:
       - name: Log in to GHCR
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-            registry: ghcr.io
-            username: ${{ github.repository_owner }}
-            password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Pull image (explicit version)
         run: |
           set -euo pipefail
