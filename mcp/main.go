@@ -109,7 +109,7 @@ Validates an existing OASF agent record against the schema.
 			{
 				Name:        "record_path",
 				Description: "Path to the OASF record JSON file to validate",
-				Required:    false,
+				Required:    true,
 			},
 		},
 	}, prompts.ValidateRecord)
@@ -124,7 +124,7 @@ Complete workflow for validating and pushing an OASF record to the Directory ser
 			{
 				Name:        "record_path",
 				Description: "Path to the OASF record JSON file to validate and push",
-				Required:    false,
+				Required:    true,
 			},
 		},
 	}, prompts.PushRecord)

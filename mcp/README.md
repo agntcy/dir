@@ -57,7 +57,7 @@ Analyzes the **current directory** codebase and automatically generates a comple
 
 Guides you through validating an existing OASF agent record. Reads a file, validates it against the schema, and reports any errors.
 
-**Input (optional):** `record_path` (string) - Path to the OASF record JSON file to validate
+**Input (required):** `record_path` (string) - Path to the OASF record JSON file to validate
 
 **Use when:** You have an existing record file and want to check if it's valid.
 
@@ -65,7 +65,7 @@ Guides you through validating an existing OASF agent record. Reads a file, valid
 
 Complete workflow for validating and pushing an OASF record to the Directory server. Validates the record first, then pushes it to the configured server and returns the CID.
 
-**Input (optional):** `record_path` (string) - Path to the OASF record JSON file to validate and push
+**Input (required):** `record_path` (string) - Path to the OASF record JSON file to validate and push
 
 **Use when:** You're ready to publish your record to a Directory server.
 
