@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
@@ -26,11 +27,17 @@ type Client struct {
 
 	config     *Config
 	authClient *workloadapi.Client
+	conn       *grpc.ClientConn
+
+	// SPIFFE sources for cleanup
+	bundleSrc io.Closer
+	x509Src   io.Closer
+	jwtSource io.Closer
 }
 
-func New(opts ...Option) (*Client, error) {
-	// Add auth options
-	opts = append(opts, withAuth(context.Background()))
+func New(ctx context.Context, opts ...Option) (*Client, error) {
+	// Add auth options with provided context
+	opts = append(opts, withAuth(ctx))
 
 	// Load options
 	options := &options{}
@@ -40,29 +47,66 @@ func New(opts ...Option) (*Client, error) {
 		}
 	}
 
-	// Create client
-	client, err := grpc.NewClient(options.config.ServerAddress, options.authOpts...)
+	// Create gRPC client connection
+	conn, err := grpc.NewClient(options.config.ServerAddress, options.authOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC client: %w", err)
 	}
 
 	return &Client{
-		StoreServiceClient:   storev1.NewStoreServiceClient(client),
-		RoutingServiceClient: routingv1.NewRoutingServiceClient(client),
-		SearchServiceClient:  searchv1.NewSearchServiceClient(client),
-		SyncServiceClient:    storev1.NewSyncServiceClient(client),
-		SignServiceClient:    signv1.NewSignServiceClient(client),
-		EventServiceClient:   eventsv1.NewEventServiceClient(client),
+		StoreServiceClient:   storev1.NewStoreServiceClient(conn),
+		RoutingServiceClient: routingv1.NewRoutingServiceClient(conn),
+		SearchServiceClient:  searchv1.NewSearchServiceClient(conn),
+		SyncServiceClient:    storev1.NewSyncServiceClient(conn),
+		SignServiceClient:    signv1.NewSignServiceClient(conn),
+		EventServiceClient:   eventsv1.NewEventServiceClient(conn),
 		config:               options.config,
 		authClient:           options.authClient,
+		conn:                 conn,
+		bundleSrc:            options.bundleSrc,
+		x509Src:              options.x509Src,
+		jwtSource:            options.jwtSource,
 	}, nil
 }
 
 func (c *Client) Close() error {
-	// Close auth client if it exists
+	var errs []error
+
+	// Close SPIFFE sources first (they may be using authClient)
+	if c.jwtSource != nil {
+		if err := c.jwtSource.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close JWT source: %w", err))
+		}
+	}
+
+	if c.x509Src != nil {
+		if err := c.x509Src.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close X.509 source: %w", err))
+		}
+	}
+
+	if c.bundleSrc != nil {
+		if err := c.bundleSrc.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close bundle source: %w", err))
+		}
+	}
+
+	// Close auth client
 	if c.authClient != nil {
-		//nolint:wrapcheck
-		return c.authClient.Close()
+		if err := c.authClient.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close auth client: %w", err))
+		}
+	}
+
+	// Close gRPC connection last
+	if c.conn != nil {
+		if err := c.conn.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close gRPC connection: %w", err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("client close errors: %v", errs)
 	}
 
 	return nil

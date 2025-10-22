@@ -36,7 +36,7 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		// Set client via context for all requests
 		// TODO: make client config configurable via CLI args
-		c, err := client.New(client.WithConfig(clientConfig))
+		c, err := client.New(cmd.Context(), client.WithConfig(clientConfig))
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
 		}

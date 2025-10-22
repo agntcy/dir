@@ -63,7 +63,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 	ctx := context.Background()
 
 	// Create a new client
-	c, err := client.New(client.WithEnvConfig())
+	c, err := client.New(ctx, client.WithEnvConfig())
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	defer c.Close()
 
