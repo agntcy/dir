@@ -172,7 +172,7 @@ apiserver:
             },
             "accessControl": {
               "adminPolicy": {
-                "users": ["apiserver"],
+                "users": ["{{ .Values.config.store.oci.auth_config.username }}"],
                 "actions": ["read", "create", "update", "delete"]
               },
               "repositories": {

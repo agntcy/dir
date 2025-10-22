@@ -43,7 +43,7 @@ spec:
               if [ ! -f /etc/zot/config.json ]; then
                 echo "Creating ZOT config from template..."
                 cat > /etc/zot/config.json << 'EOF'
-              {{- index .Values.zot.configFiles "config.json" | nindent 14 }}
+              {{- tpl (index .Values.zot.configFiles "config.json") . | nindent 14 }}
               EOF
                 chmod 666 /etc/zot/config.json
                 echo "Config initialized successfully"
