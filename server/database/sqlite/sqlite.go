@@ -4,6 +4,7 @@
 package sqlite
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -61,4 +62,33 @@ func New(path string) (*DB, error) {
 	return &DB{
 		gormDB: db,
 	}, nil
+}
+
+// IsReady checks if the database connection is ready to serve traffic.
+// Returns true if the database connection is established and can execute queries.
+func (d *DB) IsReady(ctx context.Context) bool {
+	if d.gormDB == nil {
+		logger.Debug("Database not ready: gormDB is nil")
+
+		return false
+	}
+
+	// Get the underlying SQL database
+	sqlDB, err := d.gormDB.DB()
+	if err != nil {
+		logger.Debug("Database not ready: failed to get SQL DB", "error", err)
+
+		return false
+	}
+
+	// Ping the database with context
+	if err := sqlDB.PingContext(ctx); err != nil {
+		logger.Debug("Database not ready: ping failed", "error", err)
+
+		return false
+	}
+
+	logger.Debug("Database ready")
+
+	return true
 }

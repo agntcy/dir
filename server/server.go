@@ -274,7 +274,13 @@ func (s Server) start(ctx context.Context) error {
 			logger.Error("Failed to start health check server", "error", err)
 		}
 
-		s.health.AddReadinessCheck("test", s.testReadinessCheck)
+		s.health.AddReadinessCheck("database", s.database.IsReady)
+		
+		// TODO: Add readiness checks for store, routing, sync, and publication services
+		// s.health.AddReadinessCheck("store", s.store.IsReady)
+		// s.health.AddReadinessCheck("routing", s.routing.IsReady)
+		// s.health.AddReadinessCheck("sync", s.syncService.IsReady)
+		// s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
 
 		defer func() {
 			if err := s.health.Stop(ctx); err != nil {
@@ -290,8 +296,4 @@ func (s Server) start(ctx context.Context) error {
 	}()
 
 	return nil
-}
-
-func (s Server) testReadinessCheck(ctx context.Context) bool {
-	return true
 }
