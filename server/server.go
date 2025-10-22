@@ -275,12 +275,13 @@ func (s Server) start(ctx context.Context) error {
 		}
 
 		s.health.AddReadinessCheck("database", s.database.IsReady)
-		
+
+		s.health.AddReadinessCheck("sync", s.syncService.IsReady)
+		s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
+
 		// TODO: Add readiness checks for store, routing, sync, and publication services
 		// s.health.AddReadinessCheck("store", s.store.IsReady)
 		// s.health.AddReadinessCheck("routing", s.routing.IsReady)
-		// s.health.AddReadinessCheck("sync", s.syncService.IsReady)
-		// s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
 
 		defer func() {
 			if err := s.health.Stop(ctx); err != nil {
