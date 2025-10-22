@@ -7,6 +7,7 @@ require (
 	github.com/agntcy/dir/client v0.4.0
 	github.com/agntcy/oasf-sdk/pkg v0.0.8
 	github.com/modelcontextprotocol/go-sdk v0.8.0
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
@@ -117,6 +118,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sagikazarmark/locafero v0.8.0 // indirect
 	github.com/sassoftware/relic v7.2.1+incompatible // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.9.0 // indirect
