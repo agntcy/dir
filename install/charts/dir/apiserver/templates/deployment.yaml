@@ -31,6 +31,34 @@ spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if eq .Values.zot.mountConfig false }}
+      initContainers:
+        - name: init-zot-config
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Initializing ZOT config..."
+              if [ ! -f /etc/zot/config.json ]; then
+                echo "Creating ZOT config from template..."
+                cat > /etc/zot/config.json << 'EOF'
+              {{- tpl (index .Values.zot.configFiles "config.json") . | nindent 14 }}
+              EOF
+                chmod 666 /etc/zot/config.json
+                echo "Config initialized successfully"
+              else
+                echo "Config exists, ensuring it's writable..."
+                chmod 666 /etc/zot/config.json
+                echo "Config permissions updated"
+              fi
+              echo "Setting directory permissions..."
+              chmod 777 /etc/zot
+              echo "Initialization complete"
+          volumeMounts:
+            - name: zot-config-storage
+              mountPath: /etc/zot
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           env:
@@ -102,6 +130,10 @@ spec:
             - name: routing-data
               mountPath: {{ .Values.config.routing.datastore_dir }}
             {{- end }}
+            {{- if eq .Values.zot.mountConfig false }}
+            - name: zot-config-storage
+              mountPath: /etc/zot
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -127,6 +159,11 @@ spec:
         - name: routing-data
           persistentVolumeClaim:
             claimName: {{ include "chart.fullname" . }}-pvc
+        {{- end }}
+        {{- if eq .Values.zot.mountConfig false }}
+        - name: zot-config-storage
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-zot-config
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
