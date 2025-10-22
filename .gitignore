@@ -38,3 +38,6 @@ tmp/
 # Go workspace files
 go.work
 go.work.sum
+
+# MCP server binary
+mcp/mcp-server
