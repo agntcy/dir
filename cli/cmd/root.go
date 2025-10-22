@@ -21,7 +21,6 @@ import (
 	"github.com/agntcy/dir/cli/cmd/sync"
 	"github.com/agntcy/dir/cli/cmd/verify"
 	"github.com/agntcy/dir/cli/cmd/version"
-	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/hub"
@@ -45,9 +44,9 @@ var RootCmd = &cobra.Command{
 		cmd.SetContext(ctx)
 
 		cobra.OnFinalize(func() {
-			if err := c.Close(); err != nil {
-				presenter.Printf(cmd, "failed to close client: %v\n", err)
-			}
+			// Silently close the client. Errors during cleanup are not actionable
+			// and typically occur due to context cancellation after command completion.
+			_ = c.Close()
 		})
 
 		return nil

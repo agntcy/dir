@@ -72,9 +72,11 @@ func withAuth(ctx context.Context) Option {
 
 		switch o.config.AuthMode {
 		case "jwt":
-			return o.setupJWTAuth(ctx, client)
+			//nolint:contextcheck // SPIFFE sources need context.Background() for long lifetime, not init ctx
+			return o.setupJWTAuth(client)
 		case "x509":
-			return o.setupX509Auth(ctx, client)
+			//nolint:contextcheck // SPIFFE sources need context.Background() for long lifetime, not init ctx
+			return o.setupX509Auth(client)
 		default:
 			_ = client.Close()
 
@@ -83,7 +85,7 @@ func withAuth(ctx context.Context) Option {
 	}
 }
 
-func (o *options) setupJWTAuth(ctx context.Context, client *workloadapi.Client) error {
+func (o *options) setupJWTAuth(client *workloadapi.Client) error {
 	// Validate JWT audience is set
 	if o.config.JWTAudience == "" {
 		_ = client.Close()
@@ -92,7 +94,8 @@ func (o *options) setupJWTAuth(ctx context.Context, client *workloadapi.Client) 
 	}
 
 	// Create bundle source for verifying server's TLS certificate (X.509-SVID)
-	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(client))
+	// Note: Use context.Background() for long-running sources that must live as long as the client
+	bundleSrc, err := workloadapi.NewBundleSource(context.Background(), workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 
@@ -102,7 +105,8 @@ func (o *options) setupJWTAuth(ctx context.Context, client *workloadapi.Client) 
 	o.bundleSrc = bundleSrc // Store for cleanup
 
 	// Create JWT source for fetching JWT-SVIDs
-	jwtSource, err := workloadapi.NewJWTSource(ctx, workloadapi.WithClient(client))
+	// Note: Use context.Background() for long-running sources that must live as long as the client
+	jwtSource, err := workloadapi.NewJWTSource(context.Background(), workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 		_ = bundleSrc.Close()
@@ -124,9 +128,10 @@ func (o *options) setupJWTAuth(ctx context.Context, client *workloadapi.Client) 
 	return nil
 }
 
-func (o *options) setupX509Auth(ctx context.Context, client *workloadapi.Client) error {
+func (o *options) setupX509Auth(client *workloadapi.Client) error {
 	// Create SPIFFE x509 services
-	x509Src, err := workloadapi.NewX509Source(ctx, workloadapi.WithClient(client))
+	// Note: Use context.Background() for long-running sources that must live as long as the client
+	x509Src, err := workloadapi.NewX509Source(context.Background(), workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 
@@ -136,7 +141,8 @@ func (o *options) setupX509Auth(ctx context.Context, client *workloadapi.Client)
 	o.x509Src = x509Src // Store for cleanup
 
 	// Create SPIFFE bundle services
-	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(client))
+	// Note: Use context.Background() for long-running sources that must live as long as the client
+	bundleSrc, err := workloadapi.NewBundleSource(context.Background(), workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 		_ = x509Src.Close() // Fix Issue #4: Close x509Src on error

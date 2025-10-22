@@ -53,19 +53,30 @@ func convertLabelsToClientRecordQueries(labels []string) []*routingv1.RecordQuer
 	return queries
 }
 
-var _ = ginkgo.Describe("Running client end-to-end tests using a local single node deployment", func() {
+var _ = ginkgo.Describe("Running client end-to-end tests using a local single node deployment", ginkgo.Ordered, ginkgo.Serial, func() {
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeLocal {
 			ginkgo.Skip("Skipping test, not in local mode")
 		}
 	})
 
-	ctx := context.Background()
+	var c *client.Client
+	var ctx context.Context
 
-	// Create a new client
-	c, err := client.New(ctx, client.WithEnvConfig())
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	defer c.Close()
+	ginkgo.BeforeAll(func() {
+		ctx = context.Background()
+
+		// Create a new client
+		var err error
+		c, err = client.New(ctx, client.WithEnvConfig())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	})
+
+	ginkgo.AfterAll(func() {
+		if c != nil {
+			c.Close()
+		}
+	})
 
 	// Test cases for each OASF version (matches testdata files)
 	testVersions := []struct {

@@ -65,12 +65,17 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 		}
 	})
 
-	ctx := context.Background()
+	var c *client.Client
+	var ctx context.Context
 
-	// Create a new client
-	c, err := client.New(ctx, client.WithEnvConfig())
-	gomega.Expect(err).NotTo(gomega.HaveOccurred())
-	defer c.Close()
+	ginkgo.BeforeAll(func() {
+		ctx = context.Background()
+
+		// Create a new client
+		var err error
+		c, err = client.New(ctx, client.WithEnvConfig())
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	})
 
 	// Clean up all testdata records after all event tests
 	// This prevents interfering with existing 01_client_test.go tests
@@ -97,6 +102,11 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				},
 			})
 			_ = c.Delete(context.Background(), v070Ref)
+		}
+
+		// Close the client
+		if c != nil {
+			c.Close()
 		}
 	})
 
