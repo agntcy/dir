@@ -146,35 +146,73 @@ apiserver:
       #   bundleEndpointProfile:
       #     type: https_web
 
-  # Extra volume mounts for the apiserver container
-  extraVolumeMounts: 
-  - name: zot-config-storage
-    mountPath: /etc/zot
-
-  # Extra volumes - shared between apiserver and zot for config hot reload
-  extraVolumes: 
-  - name: zot-config-storage
-    hostPath:
-      path: /opt/zot-config
-      type: DirectoryOrCreate
-
   # Zot registry configuration (subchart)
   zot:
-    # Disable default config mounting to use shared volume
+   # Disable default config mounting
     mountConfig: false
-    mountSecret: false
+
+    # Enable default secret mounting
+    mountSecret: true
+
+    # ZOT configuration file
+    configFiles:
+      config.json: |-
+        {
+          "distSpecVersion": "1.1.1",
+          "storage": {
+            "rootDirectory": "/var/lib/registry"
+          },
+          "http": {
+            "address": "0.0.0.0",
+            "port": "5000",
+            "auth": {
+              "htpasswd": {
+                "path": "/secret/htpasswd"
+              }
+            },
+            "accessControl": {
+              "adminPolicy": {
+                "users": ["{{ .Values.config.store.oci.auth_config.username }}"],
+                "actions": ["read", "create", "update", "delete"]
+              },
+              "repositories": {
+                "**": {
+                  "anonymousPolicy": [],
+                  "defaultPolicy": ["read"]
+                }
+              }
+            }
+          },
+          "log": {
+            "level": "debug"
+          },
+          "extensions": {
+            "search": {
+              "enable": true
+            },
+            "trust": {
+              "enable": true,
+              "cosign": true,
+              "notation": false
+            }
+          }
+        }
     
-    # Share the same volume with apiserver for hot reload
+    # htpasswd credentials for ZOT authentication
+    secretFiles:
+      htpasswd: ""
+    
+    # Extra volumes to mount the shared PVC for writable config
+    # This allows the apiserver sync worker to modify ZOT's config at runtime
+    extraVolumes:
+      - name: zot-config-storage
+        persistentVolumeClaim:
+          claimName: dir-zot-config
+    
+    # Mount the shared PVC into ZOT container
     extraVolumeMounts:
       - name: zot-config-storage
         mountPath: /etc/zot
-    
-    # Use the same hostPath for true volume sharing
-    extraVolumes:
-      - name: zot-config-storage
-        hostPath:
-          path: /opt/zot-config
-          type: DirectoryOrCreate
     
     # Configure zot to use the config file from the shared mounted volume
     extraArgs:

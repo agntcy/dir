@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	zotsyncconfig "zotregistry.dev/zot/pkg/extensions/config/sync"
+	zotsyncconfig "zotregistry.dev/zot/v2/pkg/extensions/config/sync"
 )
 
 const (
