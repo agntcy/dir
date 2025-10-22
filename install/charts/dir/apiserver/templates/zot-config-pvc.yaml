@@ -1,0 +1,22 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Shared PVC for ZOT config to enable dynamic sync configuration
+# This allows the apiserver sync worker to modify ZOT's config at runtime
+# Only created when mountConfig is false (writable config needed)
+{{- if eq .Values.zot.mountConfig false }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-zot-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+{{- end }}
+

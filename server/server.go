@@ -25,6 +25,7 @@ import (
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
+	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
@@ -89,7 +90,11 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	options := types.NewOptions(cfg)
 	serverOpts := []grpc.ServerOption{}
 
-	// Add gRPC logging interceptors first (must come before auth/authz)
+	// Add panic recovery interceptors FIRST (outermost - must catch all panics)
+	// This prevents server crashes from panics in handlers or other interceptors
+	serverOpts = append(serverOpts, grpcrecovery.ServerOptions()...)
+
+	// Add gRPC logging interceptors (after recovery, before auth/authz)
 	grpcLogger := logging.Logger("grpc")
 	loggingOpts := grpclogging.ServerOptions(grpcLogger, cfg.Logging.Verbose)
 	serverOpts = append(serverOpts, loggingOpts...)
