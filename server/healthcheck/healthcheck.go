@@ -123,7 +123,7 @@ func (c *Checker) handleReadiness(w http.ResponseWriter, r *http.Request) {
 
 	for name, check := range checks {
 		if check(ctx) {
-			results[name] = "pass"
+			results[name] = "pass" //nolint:goconst
 		} else {
 			results[name] = "fail"
 			allHealthy = false
