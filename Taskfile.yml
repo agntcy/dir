@@ -47,6 +47,7 @@ vars:
   COSIGN_BIN: '{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}'
   HUB_API_VERSION: 'main'
   ZOT_VERSION: '2.1.10'
+  SPIRE_VERSION: '1.13.3'
 
   ## Go module discovery
   GO_MOD_DIR:
@@ -689,6 +690,8 @@ tasks:
         {{ .HELM_BIN }} upgrade --install spire spire \
           --repo https://spiffe.github.io/helm-charts-hardened/ \
           --set global.spire.trustDomain="{{ .TRUST_DOMAIN }}" \
+          --set spire-server.image.tag="{{ .SPIRE_VERSION }}" \
+          --set spire-agent.image.tag="{{ .SPIRE_VERSION }}" \
           --set spire-server.service.type="{{ .SERVICE_TYPE }}" \
           --set spire-server.federation.enabled="true" \
           --set spire-server.controllerManager.watchClassless="true" \
