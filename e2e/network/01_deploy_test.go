@@ -152,12 +152,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 		output := cli.Routing().Search().
 			WithSkill("natural_language_processing").
 			WithLimit(10).
-			OnServer(utils.Peer2Addr).ShouldSucceed()
+			OnServer(utils.Peer2Addr).ShouldEventuallyContain(cid, 60*time.Second)
 
 		ginkgo.GinkgoWriter.Printf("=== DHT DISCOVERY TEST OUTPUT ===\n%s", output)
-
-		// Check if DHT propagation is working by looking for the actual CID
-		gomega.Expect(output).To(gomega.ContainSubstring(cid))
 
 		// CLEANUP: This is the last test in this Describe block
 		// Clean up deploy test records to ensure isolation from subsequent test files
