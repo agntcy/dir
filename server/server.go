@@ -278,7 +278,7 @@ func (s Server) start(ctx context.Context) error {
 		s.health.AddReadinessCheck("sync", s.syncService.IsReady)
 		s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
 		s.health.AddReadinessCheck("store", s.store.IsReady)
-		// s.health.AddReadinessCheck("routing", s.routing.IsReady)
+		s.health.AddReadinessCheck("routing", s.routing.IsReady)
 
 		defer func() {
 			if err := s.health.Stop(ctx); err != nil {
