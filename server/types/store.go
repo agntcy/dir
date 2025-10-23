@@ -26,6 +26,9 @@ type StoreAPI interface {
 	// List all available records
 	// Needed for bootstrapping
 	// List(context.Context, func(*corev1.RecordRef) error) error
+
+	// IsReady checks if the storage backend is ready to serve traffic.
+	IsReady(context.Context) bool
 }
 
 // ReferrerStoreAPI handles management of generic record referrers.
