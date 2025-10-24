@@ -19,6 +19,8 @@ vars:
   IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}'
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
   BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
+  COVERAGE_IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage'
+  COVERAGE_BAKE_ENV: '{{ .COVERAGE_IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
 
   ## Dependency config
   BIN_DIR: '{{ .ROOT_DIR }}/bin'
@@ -82,8 +84,17 @@ tasks:
       - task: gen
     vars:
       GOARCH: '{{ .GOARCH | default ARCH }}'
+      EXTRA_FLAGS: '{{ .EXTRA_FLAGS | default "" }}'
     cmds:
-      - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}}'
+      - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set *.platform=linux/{{.GOARCH}} {{.EXTRA_FLAGS}}'
+
+  build:coverage:
+    desc: Build images for all components with coverage instrumentation
+    cmds:
+      - task: build
+        vars:
+          BAKE_ENV: '{{ .COVERAGE_BAKE_ENV }}'
+          EXTRA_FLAGS: '--set *.args.BUILD_OPTS=-cover'
 
   build:all:
     desc: Build images for all components for multiple platforms
