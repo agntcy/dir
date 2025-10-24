@@ -912,27 +912,29 @@ tasks:
           echo "Running tests in {{.ITEM}}"
           go -C {{.ITEM}} test ./... {{.EXTRA_ARGS}}
 
-  test:unit:cover:
-    desc: Run all unit tests with coverage and generate reports
+  test:unit:coverage:
+    desc: Run all unit tests with coverage and generate summaries + HTML reports
+    vars:
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/unit") }}'
     cmds:
+      - echo "Removing existing coverage directory and reports"
+      - rm -rf {{.COVERAGE_DIR}}/*
+      - echo "Creating new coverage directory"
+      - mkdir -p {{.COVERAGE_DIR}}
       - for: { var: GO_MOD_DIR_UNIT_TEST }
         cmd: |
           MODULE_NAME=$(basename {{.ITEM}})
           echo "Running tests with coverage in {{.ITEM}}"
-          go -C {{.ITEM}} test ./... -coverprofile {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp -json > {{.ROOT_DIR}}/test-report-dir-${MODULE_NAME}.json
+          go -C {{.ITEM}} test ./... -coverprofile {{.COVERAGE_DIR}}/${MODULE_NAME}.out.tmp -json > {{.COVERAGE_DIR}}/${MODULE_NAME}.json
           # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp ]; then
-            grep -v "\.pb\.go" {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp | grep -v "mock_.*\.go" > {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out || true
-            rm {{.ROOT_DIR}}/coverage-dir-${MODULE_NAME}.out.tmp
+          if [ -f {{.COVERAGE_DIR}}/${MODULE_NAME}.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/${MODULE_NAME}.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/${MODULE_NAME}.out || true
+            rm {{.COVERAGE_DIR}}/${MODULE_NAME}.out.tmp
           fi
-
-  test:unit:coverage:html:
-    desc: Extended per-module coverage run with summaries & HTML (non-regression)
-    cmds:
       - |
         set -euo pipefail
         echo "[coverage] Cleaning previous coverage artifacts"
-        rm -f coverage-*.out coverage-summary.txt test-report-*.json coverage-*.html || true
+        rm -f {{.COVERAGE_DIR}}/coverage-*.out {{.COVERAGE_DIR}}/coverage-summary.txt {{.COVERAGE_DIR}}/test-report-*.json {{.COVERAGE_DIR}}/coverage-*.html || true
       - |
         set -euo pipefail
         # Build list of modules from GO_MOD_DIR_UNIT_TEST
@@ -945,18 +947,18 @@ tasks:
             echo "[coverage] Testing module: $m"
             (
               cd "$m"
-              if go test ./... -covermode=atomic -coverprofile "../coverage-$m.out.tmp" -json 2>&1 | tee "../test-report-$m.json" >/dev/null; then
+              if go test ./... -covermode=atomic -coverprofile "{{.COVERAGE_DIR}}/coverage-$m.out.tmp" -json 2>&1 | tee "{{.COVERAGE_DIR}}/test-report-$m.json" >/dev/null; then
                 echo "[coverage] Completed: $m"
               else
                 status=$?
                 echo "[coverage][warn] Tests failed in $m (exit $status); continuing"
               fi
               # Filter out generated files (matching codecov.yml ignores)
-              if [ -f "../coverage-$m.out.tmp" ]; then
-                grep -v "\.pb\.go" "../coverage-$m.out.tmp" | grep -v "mock_.*\.go" > "../coverage-$m.out" || echo "mode: atomic" > "../coverage-$m.out"
-                rm "../coverage-$m.out.tmp"
-              elif [ ! -s "../coverage-$m.out" ]; then
-                echo "mode: atomic" > "../coverage-$m.out"
+              if [ -f "{{.COVERAGE_DIR}}/coverage-$m.out.tmp" ]; then
+                grep -v "\.pb\.go" "{{.COVERAGE_DIR}}/coverage-$m.out.tmp" | grep -v "mock_.*\.go" > "{{.COVERAGE_DIR}}/coverage-$m.out" || echo "mode: atomic" > "{{.COVERAGE_DIR}}/coverage-$m.out"
+                rm "{{.COVERAGE_DIR}}/coverage-$m.out.tmp"
+              elif [ ! -s "{{.COVERAGE_DIR}}/coverage-$m.out" ]; then
+                echo "mode: atomic" > "{{.COVERAGE_DIR}}/coverage-$m.out"
               fi
             )
           fi
@@ -964,22 +966,22 @@ tasks:
       - |
         set -euo pipefail
         echo "[coverage] Generating per-module summaries"
-        : > coverage-summary.txt
+        : > {{.COVERAGE_DIR}}/summary.txt
         # Build list of modules from GO_MOD_DIR_UNIT_TEST
         modules=""
         {{range $dir := .GO_MOD_DIR_UNIT_TEST | splitList "\n"}}
         {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
         {{end}}
         for m in $modules; do
-          if [ -f "coverage-$m.out" ]; then
-            if (cd "$m" && go tool cover -func=../coverage-$m.out > ../coverage-$m.func.txt 2>/dev/null); then
-              tail -n1 coverage-$m.func.txt | sed "s/^total:/[$m] total:/" >> coverage-summary.txt || true
+          if [ -f "{{.COVERAGE_DIR}}/$m.out" ]; then
+            if (cd "$m" && go tool cover -func={{.COVERAGE_DIR}}/$m.out > {{.COVERAGE_DIR}}/$m.func.txt 2>/dev/null); then
+              tail -n1 {{.COVERAGE_DIR}}/$m.func.txt | sed "s/^total:/[$m] total:/" >> {{.COVERAGE_DIR}}/summary.txt || true
             else
-              echo "[$m] total: (error generating summary)" >> coverage-summary.txt
+              echo "[$m] total: (error generating summary)" >> {{.COVERAGE_DIR}}/summary.txt
             fi
           fi
         done
-        echo "[coverage] Summary:"; cat coverage-summary.txt
+        echo "[coverage] Summary:"; cat {{.COVERAGE_DIR}}/summary.txt
       - |
         set -euo pipefail
         echo "[coverage] Generating HTML reports"
@@ -989,11 +991,11 @@ tasks:
         {{if $dir}}modules="$modules $(basename {{$dir}})"{{end}}
         {{end}}
         for m in $modules; do
-          if [ -f "coverage-$m.out" ] && [ -d "$m" ]; then
-            (cd "$m" && go tool cover -html=../coverage-$m.out -o ../coverage-$m.html || true)
+          if [ -f "{{.COVERAGE_DIR}}/$m.out" ] && [ -d "$m" ]; then
+            (cd "$m" && go tool cover -html={{.COVERAGE_DIR}}/$m.out -o {{.COVERAGE_DIR}}/$m.html || true)
           fi
         done
-        echo "[coverage] Generated HTML files:"; ls -1 coverage-*.html 2>/dev/null | sed 's/^/  - /' || echo "  (none)"
+        echo "[coverage] Generated HTML files:"; ls -1 {{.COVERAGE_DIR}}/*.html 2>/dev/null | sed 's|{{.COVERAGE_DIR}}/|  - |' || echo "  (none)"
 
   bench:
     desc: Run bench tests on codebase

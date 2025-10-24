@@ -56,19 +56,19 @@ jobs:
             go-test-${{ runner.os }}-
 
       - name: Run unit tests
-        run: task test:unit:coverage:html
+        run: task test:unit:coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
           files: |
-            coverage-api.out
-            coverage-client.out
-            coverage-server.out
-            coverage-cli.out
-            coverage-hub.out
-            coverage-importer.out
-            coverage-utils.out
+            .coverage/unit/api.out
+            .coverage/unit/client.out
+            .coverage/unit/server.out
+            .coverage/unit/cli.out
+            .coverage/unit/hub.out
+            .coverage/unit/importer.out
+            .coverage/unit/utils.out
           flags: per-module
           fail_ci_if_error: false
           verbose: true
@@ -79,10 +79,10 @@ jobs:
         with:
           name: coverage-html
           path: |
-            coverage-*.html
-            coverage-summary.txt
-            coverage-*.func.txt
-            coverage-*.out
+            .coverage/unit/*.html
+            .coverage/unit/summary.txt
+            .coverage/unit/*.func.txt
+            .coverage/unit/*.out
 
       - name: PR Comment summary
         if: github.event_name == 'pull_request'
