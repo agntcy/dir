@@ -18,16 +18,16 @@ import (
 )
 
 // NewCommand creates the "push" command for the Agent Hub CLI.
-// It pushes a record to the hub by repository name or ID, reading the record from a file or stdin.
+// It pushes a record to the hub by organization name or ID, reading the record from a file or stdin.
 // Returns the configured *cobra.Command.
 func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "push <repository> {<record.json> | --stdin} ",
+		Use:   "push <organization> {<record.json> | --stdin} ",
 		Short: "Push record to Agent Hub",
 		Long: `Push a record to the Agent Hub.
 
 Parameters:
-  <repository>    Repository name or repository ID. Note that the repository name must be in the format '<org-name>/<name>' and match the name in the record being pushed.
+  <organization>  Organization name or organization ID
   <record.json>   Path to the record file (optional)
   --stdin         Read record from standard input (optional)
 
@@ -40,14 +40,14 @@ Authentication:
   API key file takes precedence over environment variables, which take precedence over session file.
 
 Examples:
-  # Push record to a repository by name
-  dirctl hub push repo-name record.json
+  # Push record to an organization by name
+  dirctl hub push your-org record.json
 
-  # Push record to a repository by ID
+  # Push record to an organization by ID
   dirctl hub push 123e4567-e89b-12d3-a456-426614174000 record.json
 
   # Push record from stdin
-  dirctl hub push repo-name --stdin < record.json
+  dirctl hub push your-org --stdin < record.json
 
   # Push using API key file (JSON format)
   # File content example:
@@ -55,16 +55,16 @@ Examples:
   #   "client_id": "your-client-id",
   #   "secret": "your-secret"
   # }
-  dirctl hub push repo-name record.json --apikey-file /path/to/apikey.json
+  dirctl hub push your-org record.json --apikey-file /path/to/apikey.json
 
   # Push using API key authentication via environment variables
   export DIRCTL_CLIENT_ID=your_client_id
   export DIRCTL_CLIENT_SECRET=your_secret
-  dirctl hub push repo-name record.json
+  dirctl hub push your-org record.json
 
   # Push using session file (after login)
   dirctl hub login
-  dirctl hub push repo-name record.json`,
+  dirctl hub push your-org record.json`,
 	}
 
 	opts := hubOptions.NewHubPushOptions(hubOpts, cmd)
@@ -89,9 +89,15 @@ Examples:
 			return fmt.Errorf("failed to create hub client: %w", err)
 		}
 
-		if len(args) > 2 { //nolint:mnd
-			return errors.New("the following arguments could be given: <repository>:<version> [record.json]")
+		if len(args) == 0 {
+			return errors.New("organization argument is required")
 		}
+
+		if len(args) > 2 { //nolint:mnd
+			return errors.New("the following arguments can be given: <organization> [record.json]")
+		}
+
+		organization := args[0]
 
 		fpath := ""
 		if len(args) == 2 { //nolint:mnd
@@ -103,20 +109,17 @@ Examples:
 			return fmt.Errorf("failed to get reader: %w", err)
 		}
 
-		agentBytes, err := io.ReadAll(reader)
+		recordBytes, err := io.ReadAll(reader)
 		if err != nil {
 			return fmt.Errorf("failed to read data: %w", err)
 		}
 
-		// TODO: Push based on repoName and version misleading
-		repository := service.ParseRepoTagID(args[0])
-
-		resp, err := service.PushAgent(cmd.Context(), hc, agentBytes, repository, currentSession)
+		resp, err := service.PushRecord(cmd.Context(), hc, organization, recordBytes, currentSession)
 		if err != nil {
-			return fmt.Errorf("failed to push agent: %w", err)
+			return fmt.Errorf("failed to push record: %w", err)
 		}
 
-		fmt.Fprintln(cmd.OutOrStdout(), resp.GetId().GetDigest())
+		fmt.Fprintln(cmd.OutOrStdout(), resp.GetCid())
 
 		return nil
 	}

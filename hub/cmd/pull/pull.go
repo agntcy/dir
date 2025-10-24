@@ -26,9 +26,7 @@ func NewCommand(hubOpts *hubOptions.HubOptions) *cobra.Command {
 		Long: `Pull a record from the Agent Hub.
 
 Parameters:
-  <agent_ref>    Agent reference in one of the following formats:
-                - sha256:<hash>    : Pull by digest
-                - <repo>:<version> : Pull by repository and version
+  <cid> 		 Content Identifier (CID) of the record to pull
 
 Authentication:
   API key authentication can be provided via:
@@ -39,11 +37,8 @@ Authentication:
   API key file takes precedence over environment variables, which take precedence over session file.
 
 Examples:
-  # Pull agent by digest
-  dirctl hub pull sha256:1234567890abcdef...
-
-  # Pull agent by repository name and version
-  dirctl hub pull repo-name:v1.0.0
+  # Pull agent by cid
+  dirctl hub pull baeareig77vqcdozl2wyk6z312e12cscaj5qi53a2w14fewkdiri3cdau4 
 
   # Pull using API key file (JSON format)
   # File content example:
@@ -51,16 +46,16 @@ Examples:
   #   "client_id": "your-client-id",
   #   "secret": "your-secret"
   # }
-  dirctl hub pull repo-name:v1.0.0 --apikey-file /path/to/apikey.json
+  dirctl hub pull baeareig77vqcdozl2wyk6z312e12cscaj5qi53a2w14fewkdiri3cdau4 --apikey-file /path/to/apikey.json
 
   # Pull using API key authentication via environment variables
   export DIRCTL_CLIENT_ID=your_client_id
   export DIRCTL_CLIENT_SECRET=your_secret
-  dirctl hub pull repo-name:v1.0.0
+  dirctl hub pull baeareig77vqcdozl2wyk6z312e12cscaj5qi53a2w14fewkdiri3cdau4
 
   # Pull using session file (after login)
   dirctl hub login
-  dirctl hub pull repo-name:v1.0.0`,
+  dirctl hub pull baeareig77vqcdozl2wyk6z312e12cscaj5qi53a2w14fewkdiri3cdau4`,
 	}
 
 	opts := hubOptions.NewHubPullOptions(hubOpts)
@@ -89,14 +84,11 @@ Examples:
 			return fmt.Errorf("failed to create hub client: %w", err)
 		}
 
-		agentID, err := service.ParseAgentID(args[0])
-		if err != nil {
-			return fmt.Errorf("invalid agent id: %w", err)
-		}
+		cid := args[0]
 
-		prettyModel, err := service.PullAgent(cmd.Context(), hc, agentID, currentSession)
+		prettyModel, err := service.PullRecord(cmd.Context(), hc, cid, currentSession)
 		if err != nil {
-			return fmt.Errorf("failed to pull agent: %w", err)
+			return fmt.Errorf("failed to pull record: %w", err)
 		}
 
 		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", string(prettyModel))

@@ -75,7 +75,7 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 			IdpFrontendAddress: authConfig.IdpFrontendAddress,
 			IdpBackendAddress:  authConfig.IdpBackendAddress,
 			IdpIssuerAddress:   authConfig.IdpIssuerAddress,
-			HubBackendAddress:  authConfig.HubBackendAddress,
+			HubBackendAddress:  "localhost:8080", //TODO: UNDO THIS
 			APIKeyClientID:     authConfig.APIKeyClientID,
 		}
 
