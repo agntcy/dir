@@ -75,13 +75,21 @@ export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
 
 **Code Example:**
 ```go
-import "github.com/agntcy/dir/client"
+import (
+    "context"
+    "github.com/agntcy/dir/client"
+)
 
+ctx := context.Background()
 config := &client.Config{
     ServerAddress: "localhost:8888",
     // AuthMode is empty - insecure connection
 }
-client := client.New(client.WithConfig(config))
+c, err := client.New(ctx, client.WithConfig(config))
+if err != nil {
+    // handle error
+}
+defer c.Close() // Always close to cleanup resources
 ```
 
 #### 2. X509 (X.509-SVID)
@@ -97,14 +105,22 @@ export DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH="unix:///run/spire/agent-sockets/api.
 
 **Code Example:**
 ```go
-import "github.com/agntcy/dir/client"
+import (
+    "context"
+    "github.com/agntcy/dir/client"
+)
 
+ctx := context.Background()
 config := &client.Config{
     ServerAddress:    "localhost:8888",
     AuthMode:         "x509",
     SpiffeSocketPath: "unix:///run/spire/agent-sockets/api.sock",
 }
-client := client.New(client.WithConfig(config))
+c, err := client.New(ctx, client.WithConfig(config))
+if err != nil {
+    // handle error
+}
+defer c.Close() // Always close to cleanup resources
 ```
 
 #### 3. JWT (JWT-SVID)
@@ -126,15 +142,23 @@ export DIRECTORY_CLIENT_JWT_AUDIENCE="spiffe://example.org/dir-server"
 
 **Code Example:**
 ```go
-import "github.com/agntcy/dir/client"
+import (
+    "context"
+    "github.com/agntcy/dir/client"
+)
 
+ctx := context.Background()
 config := &client.Config{
     ServerAddress:    "localhost:8888",
     AuthMode:         "jwt",
     SpiffeSocketPath: "unix:///run/spire/agent-sockets/api.sock",
     JWTAudience:      "spiffe://example.org/dir-server",
 }
-client := client.New(client.WithConfig(config))
+c, err := client.New(ctx, client.WithConfig(config))
+if err != nil {
+    // handle error
+}
+defer c.Close() // Always close to cleanup resources
 ```
 
 ## Getting Started

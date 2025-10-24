@@ -62,8 +62,7 @@ func PushRecord(ctx context.Context, _ *mcp.CallToolRequest, input PushRecordInp
 	}
 
 	// Create Directory client
-	//nolint:contextcheck
-	c, err := client.New(client.WithConfig(config))
+	c, err := client.New(ctx, client.WithConfig(config))
 	if err != nil {
 		return nil, PushRecordOutput{
 			ErrorMessage: fmt.Sprintf("Failed to create Directory client: %v", err),
