@@ -10,20 +10,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	v1alpha1 "github.com/agntcy/dir/hub/api/v1alpha1"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 // Client defines the interface for interacting with the Agent Hub backend for agent operations.
 type Client interface {
-	// PushAgent uploads an agent to the hub and returns the response or an error.
-	PushAgent(ctx context.Context, agent []byte, repository any) (*v1alpha1.PushRecordResponse, error)
-	// PullAgent downloads an agent from the hub and returns the agent data or an error.
-	PullAgent(ctx context.Context, request *v1alpha1.PullRecordRequest) ([]byte, error)
+	// PushRecord uploads a record to the hub and returns the CID or an error.
+	PushRecord(ctx context.Context, organization string, record []byte) (*v1alpha1.PushRecordResponse, error)
+	// PullRecord downloads a record from the hub and returns the record data or an error.
+	PullRecord(ctx context.Context, cid string) ([]byte, error)
 	// CreateAPIKey creates an API key for the specified role and returns the (clientId, secret) or an error.
 	CreateAPIKey(ctx context.Context, roleName string, organization any) (*v1alpha1.CreateApiKeyResponse, error)
 	// DeleteAPIKey deletes an API key from the hub and returns the response or an error.
@@ -34,7 +34,7 @@ type Client interface {
 
 // client implements the Client interface for the Agent Hub backend.
 type client struct {
-	v1alpha1.AgentDirServiceClient
+	v1alpha1.RecordHubServiceClient
 	v1alpha1.ApiKeyServiceClient
 	v1alpha1.OrganizationServiceClient
 	v1alpha1.UserServiceClient
@@ -53,15 +53,14 @@ func New(serverAddr string) (*client, error) { //nolint:revive
 	}
 
 	return &client{
-		AgentDirServiceClient:     v1alpha1.NewAgentDirServiceClient(conn),
+		RecordHubServiceClient:    v1alpha1.NewRecordHubServiceClient(conn),
 		ApiKeyServiceClient:       v1alpha1.NewApiKeyServiceClient(conn),
 		OrganizationServiceClient: v1alpha1.NewOrganizationServiceClient(conn),
 		UserServiceClient:         v1alpha1.NewUserServiceClient(conn),
 	}, nil
 }
 
-// PushAgent uploads an agent to the hub in chunks and returns the response or an error.
-func (c *client) PushAgent(ctx context.Context, record []byte, repository any) (*v1alpha1.PushRecordResponse, error) { //nolint:cyclop
+func (c *client) PushRecord(ctx context.Context, organization string, record []byte) (*v1alpha1.PushRecordResponse, error) { //nolint:cyclop
 	parsedRecord, err := corev1.UnmarshalRecord(record)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load OASF: %w", err)
@@ -72,61 +71,29 @@ func (c *client) PushAgent(ctx context.Context, record []byte, repository any) (
 		return nil, errors.New("record name is missing")
 	}
 
-	msg := &v1alpha1.PushRecordRequest{
-		Model: parsedRecord,
+	IdName := ParseOrganizationIdOrName(organization)
+
+	req := &v1alpha1.PushRecordRequest{
+		Model:    parsedRecord,
+		IdOrName: IdName,
 	}
 
-	switch parsedRepo := repository.(type) {
-	case *v1alpha1.PushRecordRequest_RepositoryName:
-		msg.Repository = parsedRepo
-		if parsedRepo.RepositoryName != recordName {
-			return nil, fmt.Errorf("repository name mismatch: expected %s, got %s", recordName, parsedRepo.RepositoryName)
-		}
-	case *v1alpha1.PushRecordRequest_RepositoryId:
-		msg.Repository = parsedRepo
-	default:
-		return nil, fmt.Errorf("unknown repository type: %T", repository)
-	}
-
-	msg.OrganizationName, err = getOrganizationNameFromRepository(recordName)
+	resp, err := c.RecordHubServiceClient.PushRecord(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse organization name from record: %w", err)
-	}
-
-	stream, err := c.PushRecord(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create push stream: %w", err)
-	}
-
-	if err = stream.Send(msg); err != nil && !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("could not send object: %w", err)
-	}
-
-	resp, err := stream.CloseAndRecv()
-	if err != nil {
-		return nil, fmt.Errorf("could not receive response: %w", err)
+		return nil, fmt.Errorf("failed to push record: %w", err)
 	}
 
 	return resp, nil
 }
 
-// PullAgent downloads an agent from the hub in chunks and returns the agent data or an error.
-func (c *client) PullAgent(ctx context.Context, request *v1alpha1.PullRecordRequest) ([]byte, error) {
-	stream, err := c.PullRecord(ctx, request)
+func (c *client) PullRecord(ctx context.Context, cid string) ([]byte, error) {
+
+	resp, err := c.RecordHubServiceClient.PullRecord(ctx, &v1alpha1.PullRecordRequest{Cid: cid})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pull stream: %w", err)
+		return nil, fmt.Errorf("failed to pull record: %w", err)
 	}
 
-	var recordResponse *v1alpha1.PullRecordResponse
-
-	recordResponse, err = stream.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive response: %w", err)
-	}
-
-	record := recordResponse.GetModel()
-
-	b, err := record.GetData().MarshalJSON()
+	b, err := resp.GetModel().GetData().MarshalJSON()
 	if err != nil {
 		return nil, fmt.Errorf("invalid record: %w", err)
 	}
@@ -209,13 +176,20 @@ func (c *client) ListAPIKeys(ctx context.Context, organization any) (*v1alpha1.L
 	return resp, nil
 }
 
-func getOrganizationNameFromRepository(repository string) (string, error) {
-	const orgPartsNumber = 2
-
-	parts := strings.Split(repository, "/")
-	if len(parts) != orgPartsNumber {
-		return "", fmt.Errorf("invalid repository format: %s. Expected format is '<org>/<repo>'", repository)
+func ParseOrganizationIdOrName(value string) *v1alpha1.IdOrName {
+	// Try to parse as UUID first
+	if _, err := uuid.Parse(value); err == nil {
+		return &v1alpha1.IdOrName{
+			IdOrName: &v1alpha1.IdOrName_Id{
+				Id: value,
+			},
+		}
 	}
 
-	return parts[0], nil
+	// Otherwise, treat it as a name
+	return &v1alpha1.IdOrName{
+		IdOrName: &v1alpha1.IdOrName_Name{
+			Name: value,
+		},
+	}
 }
