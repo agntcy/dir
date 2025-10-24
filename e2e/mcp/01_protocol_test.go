@@ -384,7 +384,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 
 			tools, ok := result["tools"].([]interface{})
 			gomega.Expect(ok).To(gomega.BeTrue())
-			gomega.Expect(tools).To(gomega.HaveLen(3))
+			gomega.Expect(tools).To(gomega.HaveLen(4))
 
 			// Verify tool names
 			toolNames := make(map[string]bool)
@@ -402,6 +402,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_oasf_list_versions"))
 			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_oasf_get_schema"))
 			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_oasf_validate_record"))
+			gomega.Expect(toolNames).To(gomega.HaveKey("agntcy_dir_push_record"))
 
 			ginkgo.GinkgoWriter.Println("All tools listed successfully")
 		})
@@ -444,6 +445,68 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			errors, ok := toolOutput["validation_errors"].([]interface{})
 			gomega.Expect(ok).To(gomega.BeTrue())
 			ginkgo.GinkgoWriter.Printf("Validation errors returned: %v\n", errors)
+		})
+
+		ginkgo.It("should push a valid record to Directory server", func() {
+			recordJSON := string(testdata.ExpectedRecordV070JSON)
+
+			req := MCPRequest{
+				JSONRPC: "2.0",
+				Method:  "tools/call",
+				Params: map[string]interface{}{
+					"name": "agntcy_dir_push_record",
+					"arguments": map[string]interface{}{
+						"record_json": recordJSON,
+					},
+				},
+				ID: 7,
+			}
+
+			resp, err := client.SendRequest(req)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(resp.Error).To(gomega.BeNil())
+
+			var result map[string]interface{}
+
+			err = json.Unmarshal(resp.Result, &result)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			content, ok := result["content"].([]interface{})
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(content).To(gomega.HaveLen(1))
+
+			output, ok := content[0].(map[string]interface{})
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(output["type"]).To(gomega.Equal("text"))
+
+			textOutput, ok := output["text"].(string)
+			gomega.Expect(ok).To(gomega.BeTrue())
+
+			var toolOutput map[string]interface{}
+
+			err = json.Unmarshal([]byte(textOutput), &toolOutput)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Check for errors first
+			if errorMsg, hasError := toolOutput["error_message"]; hasError && errorMsg != nil && errorMsg != "" {
+				ginkgo.GinkgoWriter.Printf("Tool returned error: %v\n", errorMsg)
+				gomega.Expect(errorMsg).To(gomega.BeEmpty(), "Push should succeed without errors")
+			}
+
+			// Verify the push response
+			gomega.Expect(toolOutput["cid"]).NotTo(gomega.BeEmpty())
+			gomega.Expect(toolOutput["server_address"]).NotTo(gomega.BeEmpty())
+
+			cid, ok := toolOutput["cid"].(string)
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(cid).To(gomega.HavePrefix("ba")) // CIDv1 starts with 'ba'
+			gomega.Expect(len(cid)).To(gomega.BeNumerically(">", 10))
+
+			serverAddress, ok := toolOutput["server_address"].(string)
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(serverAddress).To(gomega.Equal("0.0.0.0:8888"))
+
+			ginkgo.GinkgoWriter.Printf("Record pushed successfully with CID: %s to server: %s\n", cid, serverAddress)
 		})
 	})
 
