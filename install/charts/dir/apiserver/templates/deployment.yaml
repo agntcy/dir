@@ -100,6 +100,9 @@ spec:
             - name: DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN
               value: {{ .Values.spire.trustDomain }}
             {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -154,6 +157,10 @@ spec:
               subPath: node.privkey
               readOnly: true
             {{- end }}
+            {{- if .Values.coverageVolume }}
+            - name: coverage-volume
+              mountPath: /tmp/coverage
+            {{- end }}
             {{- if eq .Values.spire.enabled true }}
             - name: spire-agent-socket
               mountPath: /run/spire/agent-sockets
@@ -174,6 +181,10 @@ spec:
         - name: config-volume
           configMap:
             name: {{ include "chart.fullname" . }}
+        {{- if .Values.coverageVolume }}
+        - name: coverage-volume
+          emptyDir: {}
+        {{- end }}
         {{- if eq .Values.spire.enabled true }}
         - name: spire-agent-socket
           hostPath:

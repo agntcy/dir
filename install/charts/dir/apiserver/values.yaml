@@ -13,6 +13,16 @@ log_level: INFO
 log_format: text  # Options: "text" (development) or "json" (production)
 grpc_logging_verbose: false  # Options: false (production - logs start/finish only) or true (verbose - includes payloads)
 
+# Enable coverage volume (emptyDir persists across container restarts)
+coverageVolume: false
+
+# Extra environment variables to inject into the container
+# Example for E2E coverage collection:
+# extraEnv:
+#   - name: GOCOVERDIR
+#     value: /tmp/coverage
+extraEnv: []
+
 image:
   repository: ghcr.io/agntcy/dir-apiserver
   tag: latest

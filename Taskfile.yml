@@ -19,8 +19,10 @@ vars:
   IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}}'
   IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
   BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
-  COVERAGE_IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage'
+  COVERAGE_IMAGE_TAG: '{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage'
+  COVERAGE_IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.COVERAGE_IMAGE_TAG}}'
   COVERAGE_BAKE_ENV: '{{ .COVERAGE_IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
+  COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/utils/..." }}'
 
   ## Dependency config
   BIN_DIR: '{{ .ROOT_DIR }}/bin'
@@ -94,7 +96,9 @@ tasks:
       - task: build
         vars:
           BAKE_ENV: '{{ .COVERAGE_BAKE_ENV }}'
-          EXTRA_FLAGS: '--set *.args.BUILD_OPTS=-cover'
+          # TODO: -coverpkg should be set to include all packages (server, api, utils) in the coverage report
+          # but it's not working as expected, so we're using the default coverage package for now
+          EXTRA_FLAGS: 'coverage --set *.args.BUILD_OPTS="-cover -covermode=atomic"'
 
   build:all:
     desc: Build images for all components for multiple platforms
@@ -484,13 +488,44 @@ tasks:
       - go -C . test -run=^$ -bench=. ./...
 
   ##
-  ## Importer
+  ## Coverage
   ##
-  importer:test:
-    desc: Unit test Importer code
-    dir: ./importer
+  coverage:extract-pods:
+    desc: Extract coverage data from Kubernetes pods
+    internal: true
+    vars:
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
+      POD_SELECTOR: '{{ .POD_SELECTOR | default "app.kubernetes.io/name=apiserver" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e/pods") }}'
     cmds:
-      - go -C . test ./... {{.EXTRA_ARGS}}
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
+          
+          # Get pod matching the selector
+          POD_NAME=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
+          
+            if [ -n "$POD_NAME" ]; then
+              # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
+              echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
+              {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
+              
+              # Wait for container to restart (coverage files persist in emptyDir volume)
+              echo "[coverage] Waiting for container to restart and coverage to be flushed..."
+              sleep 5
+
+              # Extract coverage files (emptyDir persists across container restarts)
+              echo "[coverage] Extracting coverage data from pod: $POD_NAME"
+              mkdir -p {{.COVERAGE_DIR}}/pod-$POD_NAME
+              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} $POD_NAME:/tmp/coverage {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
+          else
+            echo "[coverage][warn] No pod found matching selector {{.POD_SELECTOR}}"
+          fi
+          echo "[coverage] Coverage data extracted to {{.COVERAGE_DIR}}"
+        else
+          echo "[coverage] E2E_COVERAGE_ENABLED is false, skipping pod coverage extraction"
+        fi
 
   ##
   ## Deploy
@@ -504,6 +539,9 @@ tasks:
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      DEPLOY_BAKE_ENV: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_BAKE_ENV }}{{ else }}{{ .BAKE_ENV }}{{ end }}'
+      DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
     cmds:
       # Create ephemeral cluster
       - '{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}'
@@ -514,7 +552,7 @@ tasks:
 
       # Import images
       - |
-        images=$({{.BAKE_ENV}} docker buildx bake default --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
+        images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
         echo "$images" | while read image; do
           {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
@@ -574,6 +612,9 @@ tasks:
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      # Coverage config
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -594,7 +635,7 @@ tasks:
         {{ .HELM_BIN }} upgrade dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
           --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
@@ -608,6 +649,7 @@ tasks:
           {{ if .DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST }}--set apiserver.config.ratelimit.global_burst="{{ .DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}--set apiserver.config.ratelimit.per_client_rps="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
+          {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -757,12 +799,17 @@ tasks:
     internal: true
     desc: Deploy a bootstrap Directory server in Kubernetes
     deps:
-      - deploy:kubernetes:setup-cluster
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
       - deps:dirctl-bin
     vars:
       # Helm args
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      # Coverage config
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Generate private key if it doesn't exist
       - |
@@ -797,7 +844,7 @@ tasks:
         {{ .HELM_BIN }} upgrade agntcy-dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
             {{ if .PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
           --set apiserver.secrets.privKey="$(cat /tmp/node.privkey)" \
@@ -812,6 +859,7 @@ tasks:
           --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-bootstrap" \
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
+          {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -825,11 +873,15 @@ tasks:
     vars:
       HELM_CHART_PATH: '{{ .ROOT_DIR }}/install/charts/dir'
       HELM_VALUES_PATH: '{{ .ROOT_DIR }}/install/charts/dir/values.yaml'
+      # Coverage config
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Deploy bootstrap with explicit var passing (not as dependency)
       - task: deploy:kubernetes:network:bootstrap
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
+          E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
 
       # Deploy the peer servers using Helm
       - for:
@@ -850,7 +902,7 @@ tasks:
           {{ .HELM_BIN }} upgrade agntcy-dir \
             {{ .HELM_CHART_PATH }} \
             -f {{ .HELM_VALUES_PATH }} \
-            --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+            --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
             {{ if .PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
             --set apiserver.config.routing.refresh_interval="1s" \
             --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.{{ .ITEM.PEER }}.svc.cluster.local:5000" \
@@ -863,6 +915,7 @@ tasks:
             --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-{{ .ITEM.PEER }}" \
             --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
             --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
+            {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \
@@ -1029,19 +1082,35 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "false" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: 'local'
     cmds:
       - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer:
+          task: coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
+            NAMESPACE: 'dir-server'
+            COVERAGE_DIR: '{{ .COVERAGE_DIR }}'
       - task: deploy:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
           DIRECTORY_SERVER_RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED }}'
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS }}'
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST }}'
+          E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
       - task: deploy:kubernetes:local:port-forward
-      - 'go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+      - |
+        # Run E2E tests with coverage if enabled
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/local -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        else
+          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        fi
 
   test:e2e:client:
     desc: Run only client library tests (with dedicated infrastructure)
@@ -1051,19 +1120,35 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: 'local'
     cmds:
       - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer:
+          task: coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
+            NAMESPACE: 'dir-server'
+            COVERAGE_DIR: '{{ .COVERAGE_DIR }}'
       - task: deploy:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
           DIRECTORY_SERVER_RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED }}'
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS }}'
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST }}'
+          E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
       - task: deploy:kubernetes:local:port-forward
-      - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+      - |
+        # Run E2E tests with coverage if enabled
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/client -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        else
+          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        fi
 
   test:e2e:local:
     desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting tests)
@@ -1073,11 +1158,18 @@ tasks:
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: 'local'
     cmds:
       - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer:
+          task: coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
+            NAMESPACE: 'dir-server'
       # Bootstrap infrastructure once for all test suites
       - task: deploy:kubernetes:local
         vars:
@@ -1085,34 +1177,83 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED }}'
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS }}'
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST }}'
+          E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
       - task: deploy:kubernetes:local:port-forward
-      # Run client library tests first (excluding rate limiting tests)
-      - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"'
+      # Run client library tests first (faster feedback)
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/client -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
+        else
+          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
+        fi
       # Run local CLI tests second (same infrastructure)
-      - 'go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/local -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        else
+          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        fi
       # Wait 3 seconds for rate limit reset
       - sleep 3
       # Run rate limiting tests LAST
-      - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"'
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/client -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
+        else
+          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
+        fi
 
   test:e2e:network:
     desc: Run end-to-end tests for network deployment (Multi-peer CLI tests)
     aliases: [e2e:network]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: 'network'
     cmds:
       - defer: { task: deploy:kubernetes:network:cleanup }
       - defer: { task: deploy:kubernetes:network:port-forward:cleanup }
+      # Extract coverage from all network namespaces
+      - defer:
+          task: coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
+            NAMESPACE: 'bootstrap'
+      - defer:
+          task: coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
+            NAMESPACE: 'peer1'
+      - defer:
+          task: coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
+            NAMESPACE: 'peer2'
+      - defer:
+          task: coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
+            NAMESPACE: 'peer3'
       # Bootstrap
       # NOTE: Run as a dedicated task instead of dependency, otherwise the port forwarding won't work
       - task: deploy:kubernetes:network
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
+          E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
       - task: deploy:kubernetes:network:port-forward
       # Run network tests with proper isolation and cleanup
-      - 'go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/network -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/network.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        else
+          go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        fi
 
   test:e2e:spire:
     desc: Run end-to-end tests for SPIRE deployment

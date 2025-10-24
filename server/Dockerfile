@@ -12,8 +12,8 @@ ARG TARGETPLATFORM
 RUN --mount=type=cache,id=${TARGETPLATFORM}-apt,target=/var/cache/apt,sharing=locked \
     apt-get update \
     && xx-apt-get install -y --no-install-recommends \
-      gcc \
-      libc6-dev
+    gcc \
+    libc6-dev
 
 WORKDIR /build/server
 
@@ -37,11 +37,31 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/apiserver
 
-FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc
+# Production image - minimal distroless
+FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc AS production
 
 WORKDIR /
 
 COPY --from=builder /bin/apiserver ./apiserver
+
+USER 65532:65532
+
+ENTRYPOINT ["./apiserver", "run"]
+
+# Coverage image - includes tar for kubectl cp to work
+FROM alpine:3.21@sha256:21dc6063fd678b478f57c0e13f47560d0ea4eeba26dfc947b2a4f81f686b9f45 AS coverage
+
+RUN apk add --no-cache tar
+
+WORKDIR /
+
+COPY --from=builder /bin/apiserver ./apiserver
+
+# Create a non-root user for coverage
+RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
+
+# Create coverage directory with proper permissions
+RUN mkdir -p /tmp/coverage && chown -R 65532:65532 /tmp/coverage
 
 USER 65532:65532
 
