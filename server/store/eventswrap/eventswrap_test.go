@@ -47,6 +47,10 @@ func (m *mockStore) Delete(_ context.Context, _ *corev1.RecordRef) error {
 	return nil
 }
 
+func (m *mockStore) IsReady(_ context.Context) bool {
+	return true
+}
+
 func TestEventsWrapPush(t *testing.T) {
 	// Use real event bus for testing
 	realBus := events.NewEventBus()

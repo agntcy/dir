@@ -73,7 +73,7 @@ func UploadPublicKey(ctx context.Context, opts *UploadPublicKeyOptions) error {
 	}
 
 	// Get registry URL for zot cosign endpoint
-	registryURL := buildRegistryURL(opts.Config)
+	registryURL := buildRegistryURL(opts.Config.RegistryAddress, opts.Config.Insecure)
 	uploadEndpoint := registryURL + "/v2/_zot/ext/cosign"
 
 	// Create HTTP request with public key as body
@@ -111,7 +111,7 @@ func UploadPublicKey(ctx context.Context, opts *UploadPublicKeyOptions) error {
 // Verify queries zot's verification API to check if a signature is valid.
 func Verify(ctx context.Context, opts *VerificationOptions) (*VerificationResult, error) {
 	// Build zot search endpoint URL
-	registryURL := buildRegistryURL(opts.Config)
+	registryURL := buildRegistryURL(opts.Config.RegistryAddress, opts.Config.Insecure)
 	searchEndpoint := registryURL + "/v2/_zot/ext/search"
 	logger.Debug("Querying zot for signature verification", "endpoint", searchEndpoint, "recordCID", opts.RecordCID)
 
@@ -210,17 +210,18 @@ func Verify(ctx context.Context, opts *VerificationOptions) (*VerificationResult
 }
 
 // buildRegistryURL constructs the registry URL with proper protocol.
-func buildRegistryURL(config *VerifyConfig) string {
-	registryURL := config.RegistryAddress
-	if !strings.HasPrefix(registryURL, "http://") && !strings.HasPrefix(registryURL, "https://") {
-		if config.Insecure {
-			registryURL = "http://" + registryURL
-		} else {
-			registryURL = "https://" + registryURL
-		}
+func buildRegistryURL(registryURL string, insecure bool) string {
+	// If URL already has a protocol, return as-is
+	if strings.HasPrefix(registryURL, "http://") || strings.HasPrefix(registryURL, "https://") {
+		return registryURL
 	}
 
-	return registryURL
+	// Add appropriate protocol based on insecure flag
+	if insecure {
+		return "http://" + registryURL
+	}
+
+	return "https://" + registryURL
 }
 
 // addAuthentication adds authentication headers to HTTP requests.
@@ -230,4 +231,44 @@ func addAuthentication(req *http.Request, config *VerifyConfig) {
 	} else if config.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+config.AccessToken)
 	}
+}
+
+// CheckReadiness checks if Zot is ready to serve traffic by querying its /readyz endpoint.
+// Returns true if Zot responds with 200 OK, false otherwise.
+func CheckReadiness(ctx context.Context, registryAddress string, insecure bool) bool {
+	// Build URL to Zot's readiness endpoint
+	registryURL := buildRegistryURL(registryAddress, insecure)
+	readyzURL := registryURL + "/readyz"
+
+	// Create HTTP request with context
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, readyzURL, nil)
+	if err != nil {
+		logger.Debug("Failed to create readiness check request", "error", err, "url", readyzURL)
+
+		return false
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 5 * time.Second, //nolint:mnd
+	}
+
+	// Execute request
+	resp, err := client.Do(req)
+	if err != nil {
+		logger.Debug("Zot readiness check failed", "error", err, "url", readyzURL)
+
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		logger.Debug("Zot readiness check passed", "address", registryAddress)
+
+		return true
+	}
+
+	logger.Debug("Zot not ready", "address", registryAddress, "status", resp.StatusCode)
+
+	return false
 }

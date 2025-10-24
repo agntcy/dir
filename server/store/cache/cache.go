@@ -119,6 +119,11 @@ func (s *cachedStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 	return s.source.Delete(ctx, ref)
 }
 
+// IsReady checks if the store is ready to serve traffic.
+func (s *cachedStore) IsReady(ctx context.Context) bool {
+	return s.source.IsReady(ctx)
+}
+
 // cacheRecord stores a record in the cache.
 func (s *cachedStore) cacheRecord(ctx context.Context, record *corev1.Record) error {
 	cid := record.GetCid()

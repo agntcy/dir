@@ -72,6 +72,10 @@ func (m *MockStoreAPI) Delete(ctx context.Context, ref *corev1.RecordRef) error 
 	return args.Error(0) //nolint:wrapcheck // Mock should return exact error without wrapping
 }
 
+func (m *MockStoreAPI) IsReady(ctx context.Context) bool {
+	return true
+}
+
 func TestCachedStore_Push(t *testing.T) {
 	ctx := t.Context()
 

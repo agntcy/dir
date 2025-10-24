@@ -307,6 +307,12 @@ func (m *Manager) GetTopicPeers() []string {
 	return peerIDs
 }
 
+// GetMeshPeerCount returns the number of peers in the GossipSub mesh.
+// This is used for readiness checks to ensure the mesh is formed.
+func (m *Manager) GetMeshPeerCount() int {
+	return len(m.topic.ListPeers())
+}
+
 // Close stops the GossipSub manager and releases resources.
 // This should be called during shutdown to clean up gracefully.
 //

@@ -4,14 +4,24 @@
 package types
 
 import (
+	"context"
+
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 )
 
 type DatabaseAPI interface {
+	// SearchDatabaseAPI handles management of the search database.
 	SearchDatabaseAPI
+
+	// SyncDatabaseAPI handles management of the sync database.
 	SyncDatabaseAPI
+
+	// PublicationDatabaseAPI handles management of the publication database.
 	PublicationDatabaseAPI
+
+	// IsReady checks if the database connection is ready to serve traffic.
+	IsReady(context.Context) bool
 }
 
 type SearchDatabaseAPI interface {

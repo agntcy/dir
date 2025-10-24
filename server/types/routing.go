@@ -31,6 +31,9 @@ type RoutingAPI interface {
 	// Stop stops the routing services and releases resources
 	// Should be called during server shutdown for graceful cleanup
 	Stop() error
+
+	// IsReady checks if the routing subsystem is ready to serve traffic.
+	IsReady(context.Context) bool
 }
 
 // PublicationAPI handles management of publication tasks.

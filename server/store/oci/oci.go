@@ -14,6 +14,7 @@ import (
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -303,4 +304,28 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 	default:
 		return status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
 	}
+}
+
+// IsReady checks if the storage backend is ready to serve traffic.
+// For local stores, always returns true.
+// For remote OCI registries, checks Zot's /readyz endpoint to verify it's ready.
+func (s *store) IsReady(ctx context.Context) bool {
+	// Local directory stores are always ready
+	if s.config.LocalDir != "" {
+		logger.Debug("Store ready: using local directory", "path", s.config.LocalDir)
+
+		return true
+	}
+
+	// For remote registries, check connectivity
+	_, ok := s.repo.(*remote.Repository)
+	if !ok {
+		// Not a remote repository (could be wrapped), assume ready
+		logger.Debug("Store ready: not a remote repository")
+
+		return true
+	}
+
+	// Use the zot utility package to check Zot's readiness
+	return zot.CheckReadiness(ctx, s.config.RegistryAddress, s.config.Insecure)
 }
