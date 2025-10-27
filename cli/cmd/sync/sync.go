@@ -208,7 +208,7 @@ func runCreateSyncFromStdin(cmd *cobra.Command) error {
 	}
 
 	if len(results) == 0 {
-		presenter.Printf(cmd, "No search results found in stdin\n")
+		presenter.PrintSmartf(cmd, "No search results found in stdin\n")
 
 		return nil
 	}
@@ -287,8 +287,8 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 
 	for apiAddress, syncInfo := range peerResults {
 		if syncInfo.APIAddress == "" {
-			presenter.Printf(cmd, "WARNING: No API address found for peer\n")
-			presenter.Printf(cmd, "Skipping sync for this peer\n")
+			presenter.PrintSmartf(cmd, "WARNING: No API address found for peer\n")
+			presenter.PrintSmartf(cmd, "Skipping sync for this peer\n")
 
 			continue
 		}
@@ -296,7 +296,7 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 		// Create sync operation
 		syncID, err := client.CreateSync(cmd.Context(), syncInfo.APIAddress, syncInfo.CIDs)
 		if err != nil {
-			presenter.Printf(cmd, "ERROR: Failed to create sync for peer %s: %v\n", apiAddress, err)
+			presenter.PrintSmartf(cmd, "ERROR: Failed to create sync for peer %s: %v\n", apiAddress, err)
 
 			continue
 		}

@@ -4,7 +4,6 @@
 package routing
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -68,20 +67,7 @@ func runInfoCommand(cmd *cobra.Command) error {
 	// Collect statistics
 	stats := collectRoutingStatistics(resultCh)
 
-	// Output in the appropriate format
-	if outputOpts.Format == presenter.FormatJSON {
-		return outputJSONStatistics(cmd, stats)
-	}
-
-	// Default human-readable format
-	presenter.Printf(cmd, "Local Routing Summary:\n\n")
-	displayRoutingStatistics(cmd, stats)
-
-	return nil
-}
-
-// outputJSONStatistics outputs routing statistics in JSON format.
-func outputJSONStatistics(cmd *cobra.Command, stats *routingStatistics) error {
+	// Build structured result for all output formats
 	result := map[string]interface{}{
 		"totalRecords": stats.totalRecords,
 		"skills":       stats.skillCounts,
@@ -89,12 +75,14 @@ func outputJSONStatistics(cmd *cobra.Command, stats *routingStatistics) error {
 		"otherLabels":  stats.otherLabels,
 	}
 
-	output, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+	// Use common PrintMessage for structured formats (json, jsonl, raw)
+	if outputOpts.Format != presenter.FormatHuman {
+		return presenter.PrintMessage(cmd, "routing statistics", "Routing statistics", result)
 	}
 
-	presenter.Print(cmd, string(output)+"\n")
+	// Human-readable format
+	presenter.Printf(cmd, "Local Routing Summary:\n\n")
+	displayRoutingStatistics(cmd, stats)
 
 	return nil
 }

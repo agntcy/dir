@@ -94,21 +94,25 @@ func runListenCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to start event stream: %w", err)
 	}
 
-	presenter.Printf(cmd, "Listening to events (press Ctrl+C to stop)...\n")
+	// Show metadata only in human format (route to stderr for structured formats)
+	opts := presenter.GetOutputOptions(cmd)
+	if opts.Format == presenter.FormatHuman {
+		presenter.Printf(cmd, "Listening to events (press Ctrl+C to stop)...\n")
 
-	if len(eventTypes) > 0 {
-		presenter.Printf(cmd, "Event types: %v\n", listenOpts.EventTypes)
+		if len(eventTypes) > 0 {
+			presenter.Printf(cmd, "Event types: %v\n", listenOpts.EventTypes)
+		}
+
+		if len(listenOpts.LabelFilters) > 0 {
+			presenter.Printf(cmd, "Label filters: %v\n", listenOpts.LabelFilters)
+		}
+
+		if len(listenOpts.CIDFilters) > 0 {
+			presenter.Printf(cmd, "CID filters: %v\n", listenOpts.CIDFilters)
+		}
+
+		presenter.Printf(cmd, "\n")
 	}
-
-	if len(listenOpts.LabelFilters) > 0 {
-		presenter.Printf(cmd, "Label filters: %v\n", listenOpts.LabelFilters)
-	}
-
-	if len(listenOpts.CIDFilters) > 0 {
-		presenter.Printf(cmd, "CID filters: %v\n", listenOpts.CIDFilters)
-	}
-
-	presenter.Printf(cmd, "\n")
 
 	// Stream events using StreamResult pattern
 	for {
@@ -136,37 +140,48 @@ func displayEvent(cmd *cobra.Command, event *eventsv1.Event) {
 	// Get output options
 	opts := presenter.GetOutputOptions(cmd)
 
-	// JSON format
-	if opts.Format == presenter.FormatJSON {
-		data, err := json.Marshal(event)
+	switch opts.Format {
+	case presenter.FormatJSON:
+		// Pretty-printed JSON
+		data, err := json.MarshalIndent(event, "", "  ")
 		if err != nil {
-			presenter.Printf(cmd, "Error marshaling event: %v\n", err)
-
+			presenter.Errorf(cmd, "Error marshaling event: %v\n", err)
 			return
 		}
-
 		presenter.Printf(cmd, "%s\n", string(data))
 
-		return
+	case presenter.FormatJSONL:
+		// Compact JSON for streaming (newline-delimited)
+		data, err := json.Marshal(event)
+		if err != nil {
+			presenter.Errorf(cmd, "Error marshaling event: %v\n", err)
+			return
+		}
+		presenter.Printf(cmd, "%s\n", string(data))
+
+	case presenter.FormatRaw:
+		// Just print resource ID
+		presenter.Printf(cmd, "%s\n", event.GetResourceId())
+
+	default: // FormatHuman
+		// Human-readable format
+		eventType := strings.TrimPrefix(event.GetType().String(), "EVENT_TYPE_")
+
+		presenter.Printf(cmd, "[%s] %s: %s",
+			event.GetTimestamp().AsTime().Format("15:04:05"),
+			eventType,
+			event.GetResourceId())
+
+		if len(event.GetLabels()) > 0 {
+			presenter.Printf(cmd, " (labels: %s)", strings.Join(event.GetLabels(), ", "))
+		}
+
+		if len(event.GetMetadata()) > 0 {
+			presenter.Printf(cmd, " %v", event.GetMetadata())
+		}
+
+		presenter.Printf(cmd, "\n")
 	}
-
-	// Human-readable format
-	eventType := strings.TrimPrefix(event.GetType().String(), "EVENT_TYPE_")
-
-	presenter.Printf(cmd, "[%s] %s: %s",
-		event.GetTimestamp().AsTime().Format("15:04:05"),
-		eventType,
-		event.GetResourceId())
-
-	if len(event.GetLabels()) > 0 {
-		presenter.Printf(cmd, " (labels: %s)", strings.Join(event.GetLabels(), ", "))
-	}
-
-	if len(event.GetMetadata()) > 0 {
-		presenter.Printf(cmd, " %v", event.GetMetadata())
-	}
-
-	presenter.Printf(cmd, "\n")
 }
 
 // parseEventTypes converts string event type names to enum values.
