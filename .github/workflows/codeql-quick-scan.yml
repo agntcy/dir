@@ -1,0 +1,123 @@
+name: "CodeQL Quick Scan"
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: 'Language to scan (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'go'
+          - 'javascript-typescript'
+          - 'python'
+          - 'actions'
+        default: 'all'
+      queries:
+        description: 'Query suite to use'
+        required: false
+        type: choice
+        options:
+          - 'security-extended'
+          - 'security-and-quality'
+          - 'code-scanning'
+        default: 'security-extended'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  packages: read
+
+jobs:
+  codeql-scan:
+    name: CodeQL Quick Scan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: actions
+          build-mode: none
+        - language: go
+          build-mode: manual
+        - language: javascript-typescript
+          build-mode: none
+        - language: python
+          build-mode: none
+    steps:
+    - name: Skip if language filter doesn't match
+      if: ${{ inputs.language != 'all' && matrix.language != inputs.language }}
+      run: |
+        echo "Skipping ${{ matrix.language }} - not matching filter '${{ inputs.language }}'"
+        exit 0
+
+    - name: Checkout repository
+      if: ${{ inputs.language == 'all' || matrix.language == inputs.language }}
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      if: ${{ inputs.language == 'all' || matrix.language == inputs.language }}
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        queries: +${{ inputs.queries }}
+
+    - name: Set up Go
+      if: ${{ (inputs.language == 'all' || matrix.language == inputs.language) && matrix.language == 'go' }}
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.25.2'
+        cache: false
+
+    - name: Install Task
+      if: ${{ (inputs.language == 'all' || matrix.language == inputs.language) && matrix.language == 'go' }}
+      uses: arduino/setup-task@v2
+      with:
+        version: 3.x
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build Go project
+      if: ${{ (inputs.language == 'all' || matrix.language == inputs.language) && matrix.build-mode == 'manual' && matrix.language == 'go' }}
+      shell: bash
+      run: |
+        echo "🔨 Building Go project for CodeQL analysis..."
+
+        # Use the same build process as tested locally
+        task deps
+        task gen
+        task deps:tidy
+        task cli:compile || echo "CLI compile failed, continuing..."
+
+        # Build all modules
+        for gomod in $(find . -name go.mod -not -path "./tmp*"); do
+          module_dir=$(dirname "$gomod")
+          echo "Building module: $module_dir"
+          cd "$module_dir"
+
+          if ls *.go 1> /dev/null 2>&1 || find . -name "*.go" -not -path "./vendor/*" | head -1 | grep -q .; then
+            go build ./... || echo "Build failed for $module_dir"
+          fi
+
+          cd - > /dev/null
+        done
+
+    - name: Perform CodeQL Analysis
+      if: ${{ inputs.language == 'all' || matrix.language == inputs.language }}
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{matrix.language}}"
+
+    - name: Generate scan summary
+      if: ${{ inputs.language == 'all' || matrix.language == inputs.language }}
+      run: |
+        echo "## 🔍 CodeQL Quick Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Language:** ${{ matrix.language }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Queries:** ${{ inputs.queries }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Mode:** ${{ matrix.build-mode }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Analysis completed successfully" >> $GITHUB_STEP_SUMMARY
+        echo "📊 Check the Security tab for detailed results" >> $GITHUB_STEP_SUMMARY
