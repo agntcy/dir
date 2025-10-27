@@ -22,7 +22,7 @@ vars:
   COVERAGE_IMAGE_TAG: '{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage'
   COVERAGE_IMAGE_BAKE_ENV: 'IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.COVERAGE_IMAGE_TAG}}'
   COVERAGE_BAKE_ENV: '{{ .COVERAGE_IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
-  COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/utils/..." }}'
+  COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/hub/...,github.com/agntcy/dir/importer/...,github.com/agntcy/dir/utils/..." }}'
 
   ## Dependency config
   BIN_DIR: '{{ .ROOT_DIR }}/bin'
@@ -488,46 +488,6 @@ tasks:
       - go -C . test -run=^$ -bench=. ./...
 
   ##
-  ## Coverage
-  ##
-  coverage:extract-pods:
-    desc: Extract coverage data from Kubernetes pods
-    internal: true
-    vars:
-      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
-      NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
-      POD_SELECTOR: '{{ .POD_SELECTOR | default "app.kubernetes.io/name=apiserver" }}'
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e/pods") }}'
-    cmds:
-      - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
-          
-          # Get pod matching the selector
-          POD_NAME=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
-          
-            if [ -n "$POD_NAME" ]; then
-              # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
-              echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
-              {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
-              
-              # Wait for container to restart (coverage files persist in emptyDir volume)
-              echo "[coverage] Waiting for container to restart and coverage to be flushed..."
-              sleep 5
-
-              # Extract coverage files (emptyDir persists across container restarts)
-              echo "[coverage] Extracting coverage data from pod: $POD_NAME"
-              mkdir -p {{.COVERAGE_DIR}}/pod-$POD_NAME
-              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} $POD_NAME:/tmp/coverage {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
-          else
-            echo "[coverage][warn] No pod found matching selector {{.POD_SELECTOR}}"
-          fi
-          echo "[coverage] Coverage data extracted to {{.COVERAGE_DIR}}"
-        else
-          echo "[coverage] E2E_COVERAGE_ENABLED is false, skipping pod coverage extraction"
-        fi
-
-  ##
   ## Deploy
   ##
   deploy:kubernetes:setup-cluster:
@@ -985,20 +945,6 @@ tasks:
       - rm -rf {{.COVERAGE_DIR}}/*
       - echo "Creating new coverage directory"
       - mkdir -p {{.COVERAGE_DIR}}
-      - for: { var: GO_MOD_DIR_UNIT_TEST }
-        cmd: |
-          MODULE_NAME=$(basename {{.ITEM}})
-          echo "Running tests with coverage in {{.ITEM}}"
-          go -C {{.ITEM}} test ./... -coverprofile {{.COVERAGE_DIR}}/${MODULE_NAME}.out.tmp -json > {{.COVERAGE_DIR}}/${MODULE_NAME}.json
-          # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.COVERAGE_DIR}}/${MODULE_NAME}.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/${MODULE_NAME}.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/${MODULE_NAME}.out || true
-            rm {{.COVERAGE_DIR}}/${MODULE_NAME}.out.tmp
-          fi
-      - |
-        set -euo pipefail
-        echo "[coverage] Cleaning previous coverage artifacts"
-        rm -f {{.COVERAGE_DIR}}/coverage-*.out {{.COVERAGE_DIR}}/coverage-summary.txt {{.COVERAGE_DIR}}/test-report-*.json {{.COVERAGE_DIR}}/coverage-*.html || true
       - |
         set -euo pipefail
         # Build list of modules from GO_MOD_DIR_UNIT_TEST
@@ -1011,20 +957,22 @@ tasks:
             echo "[coverage] Testing module: $m"
             (
               cd "$m"
-              if go test ./... -covermode=atomic -coverprofile "{{.COVERAGE_DIR}}/coverage-$m.out.tmp" -json 2>&1 | tee "{{.COVERAGE_DIR}}/test-report-$m.json" >/dev/null; then
+              # Run tests with coverprofile (text format)
+              if go test -covermode=atomic -coverprofile="{{.COVERAGE_DIR}}/$m.out.tmp" ./... -json 2>&1 | tee "{{.COVERAGE_DIR}}/test-report-$m.json" >/dev/null; then
                 echo "[coverage] Completed: $m"
               else
                 status=$?
                 echo "[coverage][warn] Tests failed in $m (exit $status); continuing"
               fi
-              # Filter out generated files (matching codecov.yml ignores)
-              if [ -f "{{.COVERAGE_DIR}}/coverage-$m.out.tmp" ]; then
-                grep -v "\.pb\.go" "{{.COVERAGE_DIR}}/coverage-$m.out.tmp" | grep -v "mock_.*\.go" > "{{.COVERAGE_DIR}}/coverage-$m.out" || echo "mode: atomic" > "{{.COVERAGE_DIR}}/coverage-$m.out"
-                rm "{{.COVERAGE_DIR}}/coverage-$m.out.tmp"
-              elif [ ! -s "{{.COVERAGE_DIR}}/coverage-$m.out" ]; then
-                echo "mode: atomic" > "{{.COVERAGE_DIR}}/coverage-$m.out"
-              fi
             )
+            # Filter out generated files (matching codecov.yml ignores)
+            if [ -f "{{.COVERAGE_DIR}}/$m.out.tmp" ]; then
+              grep -v "\.pb\.go" "{{.COVERAGE_DIR}}/$m.out.tmp" | grep -v "mock_.*\.go" > "{{.COVERAGE_DIR}}/$m.out" || echo "mode: atomic" > "{{.COVERAGE_DIR}}/$m.out"
+              rm "{{.COVERAGE_DIR}}/$m.out.tmp"
+            else
+              echo "[coverage] No coverage generated for $m"
+              echo "mode: atomic" > "{{.COVERAGE_DIR}}/$m.out"
+            fi
           fi
         done
       - |
@@ -1090,7 +1038,7 @@ tasks:
       - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
       - defer:
-          task: coverage:extract-pods
+          task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
             NAMESPACE: 'dir-server'
@@ -1107,7 +1055,12 @@ tasks:
         # Run E2E tests with coverage if enabled
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/local -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.COVERAGE_DIR}}/local-cli.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-cli.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-cli.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-cli.out
+            rm {{.COVERAGE_DIR}}/local-cli.out.tmp
+          fi
         else
           go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
         fi
@@ -1128,7 +1081,7 @@ tasks:
       - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
       - defer:
-          task: coverage:extract-pods
+          task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
             NAMESPACE: 'dir-server'
@@ -1145,7 +1098,12 @@ tasks:
         # Run E2E tests with coverage if enabled
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/client -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.COVERAGE_DIR}}/local-client.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-client.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-client.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-client.out
+            rm {{.COVERAGE_DIR}}/local-client.out.tmp
+          fi
         else
           go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
         fi
@@ -1166,7 +1124,7 @@ tasks:
       - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
       - defer:
-          task: coverage:extract-pods
+          task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
             NAMESPACE: 'dir-server'
@@ -1183,7 +1141,12 @@ tasks:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/client -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
+          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.COVERAGE_DIR}}/local-client.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-client.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-client.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-client.out
+            rm {{.COVERAGE_DIR}}/local-client.out.tmp
+          fi
         else
           go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
         fi
@@ -1191,7 +1154,12 @@ tasks:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/local -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.COVERAGE_DIR}}/local-cli.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-cli.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-cli.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-cli.out
+            rm {{.COVERAGE_DIR}}/local-cli.out.tmp
+          fi
         else
           go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
         fi
@@ -1220,22 +1188,22 @@ tasks:
       - defer: { task: deploy:kubernetes:network:port-forward:cleanup }
       # Extract coverage from all network namespaces
       - defer:
-          task: coverage:extract-pods
+          task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
             NAMESPACE: 'bootstrap'
       - defer:
-          task: coverage:extract-pods
+          task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
             NAMESPACE: 'peer1'
       - defer:
-          task: coverage:extract-pods
+          task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
             NAMESPACE: 'peer2'
       - defer:
-          task: coverage:extract-pods
+          task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED }}'
             NAMESPACE: 'peer3'
@@ -1250,7 +1218,12 @@ tasks:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/network -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/network.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          go test -C ./e2e/network -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/network.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.COVERAGE_DIR}}/network.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/network.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/network.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/network.out
+            rm {{.COVERAGE_DIR}}/network.out.tmp
+          fi
         else
           go test -C ./e2e/network . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
         fi
@@ -1476,6 +1449,88 @@ tasks:
         vars:
           KIND_CLUSTER_NAME: '{{ .DIRCTL_TRUST_DOMAIN }}'
       - echo "Cleanup complete!"
+
+  test:e2e:coverage:
+    desc: Run end-to-end tests with coverage
+    aliases: [e2e:coverage]
+    deps:
+      - build:coverage
+    vars:
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - echo "Removing existing coverage directory and reports"
+      - rm -rf {{.COVERAGE_DIR}}/*
+      - echo "Creating new coverage directory"
+      - mkdir -p {{.COVERAGE_DIR}}
+      - E2E_COVERAGE_ENABLED=true task test:e2e
+      - task: test:e2e:coverage:process
+        vars:
+          COVERAGE_DIR: '{{ .COVERAGE_DIR }}'
+
+  test:e2e:coverage:extract-pods:
+    desc: Extract coverage data from Kubernetes pods
+    internal: true
+    vars:
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
+      POD_SELECTOR: '{{ .POD_SELECTOR | default "app.kubernetes.io/name=apiserver" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e/pods") }}'
+    cmds:
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
+          
+          # Get pod matching the selector
+          POD_NAME=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
+          
+            if [ -n "$POD_NAME" ]; then
+              # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
+              echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
+              {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
+              
+              # Wait for container to restart (coverage files persist in emptyDir volume)
+              echo "[coverage] Waiting for container to restart and coverage to be flushed..."
+              sleep 5
+
+              # Extract coverage files (emptyDir persists across container restarts)
+              echo "[coverage] Extracting coverage data from pod: $POD_NAME"
+              mkdir -p {{.COVERAGE_DIR}}/pod-$POD_NAME
+              {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} $POD_NAME:/tmp/coverage {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
+          else
+            echo "[coverage][warn] No pod found matching selector {{.POD_SELECTOR}}"
+          fi
+          echo "[coverage] Coverage data extracted to {{.COVERAGE_DIR}}"
+        else
+          echo "[coverage] E2E_COVERAGE_ENABLED is false, skipping pod coverage extraction"
+        fi
+
+  test:e2e:coverage:process:
+    desc: Collect and merge E2E coverage data from pods
+    vars:
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - |
+        echo "[e2e-coverage] Collecting and merging E2E coverage data from pods"
+        if [ -d "{{.COVERAGE_DIR}}/pods" ]; then
+          # Build comma-separated list of pod directories
+          pod_dirs=$(find {{.COVERAGE_DIR}}/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+          
+          if [ -n "$pod_dirs" ]; then
+            echo "  Found pod coverage directories"
+            mkdir -p {{.COVERAGE_DIR}}/server-binary
+            go tool covdata merge -i="$pod_dirs" -o={{.COVERAGE_DIR}}/server-binary
+            go tool covdata textfmt -i={{.COVERAGE_DIR}}/server-binary -o={{.COVERAGE_DIR}}/server.out.tmp
+            # Filter out generated files (matching codecov.yml ignores)
+            if [ -f {{.COVERAGE_DIR}}/server.out.tmp ]; then
+              grep -v "\.pb\.go" {{.COVERAGE_DIR}}/server.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/server.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/server.out
+              rm {{.COVERAGE_DIR}}/server.out.tmp
+            fi
+          else
+            echo "No pod coverage found"
+          fi
+        else
+          echo "No pods directory found"
+        fi
 
   ##
   ## Linters
