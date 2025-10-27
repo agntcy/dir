@@ -179,65 +179,49 @@ jobs:
       shell: bash
       run: |
         if [ "${{ matrix.language }}" == "go" ]; then
-          echo "🔨 Building Go project for CodeQL analysis..."
+          echo "� Building Go project for CodeQL analysis (using proven local approach)..."
 
-          # First try using Task if available
-          if command -v task &> /dev/null; then
-            echo "📦 Installing dependencies with Task..."
-            if task deps; then
-              echo "✅ Task deps completed"
-            else
-              echo "⚠️ Task deps failed, trying alternative approach"
-            fi
+          # Step 1: Install project dependencies
+          echo "📦 Installing project dependencies..."
+          task deps || echo "⚠️ Task deps failed, continuing..."
 
-            echo "🔧 Generating code with Task..."
-            if task gen; then
-              echo "✅ Code generation completed"
-            else
-              echo "⚠️ Code generation failed, continuing..."
-            fi
+          # Step 2: Generate code (protobuf, etc.)
+          echo "🔧 Generating code..."
+          task gen || echo "⚠️ Task gen failed, continuing..."
 
-            echo "🧹 Tidying dependencies with Task..."
-            if task deps:tidy; then
-              echo "✅ Dependencies tidied"
-            else
-              echo "⚠️ Deps tidy failed, continuing..."
-            fi
+          # Step 3: Tidy dependencies
+          echo "🧹 Tidying dependencies..."
+          task deps:tidy || echo "⚠️ Task deps:tidy failed, continuing..."
 
-            echo "🔨 Compiling CLI with Task..."
-            if task cli:compile; then
-              echo "✅ CLI compilation completed"
-            else
-              echo "⚠️ CLI compile failed, trying manual build..."
-            fi
-          fi
+          # Step 4: Try to compile CLI first
+          echo "� Compiling CLI..."
+          task cli:compile || echo "⚠️ CLI compile failed, trying fallback build..."
 
-          # Fallback: Manual Go build for each module
-          echo "🔍 Building all Go modules manually to ensure CodeQL can analyze them..."
-          find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" -print0 | while IFS= read -r -d '' gomod; do
+          # Step 5: Critical - Build each module individually (this is what CodeQL needs)
+          echo "� Building all Go modules individually for CodeQL analysis..."
+          for gomod in $(find . -name go.mod -not -path "./tmp*" -not -path "./vendor/*"); do
             module_dir=$(dirname "$gomod")
-            echo "📦 Building module: $module_dir"
+            echo "Building module in $module_dir"
+            cd "$module_dir"
 
-            pushd "$module_dir" > /dev/null
-
-            # Download dependencies
-            if go mod download; then
-              echo "✅ Downloaded dependencies for $module_dir"
+            # Only build if there are Go files
+            if find . -name "*.go" -not -path "./vendor/*" | head -1 | grep -q .; then
+              echo "  📦 Found Go files, building module..."
+              # This is the critical step - actually build the Go code
+              if go build ./...; then
+                echo "  ✅ Successfully built $module_dir"
+              else
+                echo "  ⚠️ Build failed for $module_dir, but continuing..."
+              fi
             else
-              echo "⚠️ Failed to download dependencies for $module_dir"
+              echo "  📄 No Go files found in $module_dir, skipping"
             fi
 
-            # Build all packages in the module
-            if go build -v ./...; then
-              echo "✅ Built packages in $module_dir"
-            else
-              echo "⚠️ Failed to build some packages in $module_dir, but continuing..."
-            fi
-
-            popd > /dev/null
+            # Return to root directory
+            cd - > /dev/null
           done
 
-          echo "✅ Go build process completed"
+          echo "✅ Go build completed - CodeQL should now be able to analyze the compiled code!"
         else
           echo "❌ Manual build mode not supported for language: ${{ matrix.language }}"
           exit 1
