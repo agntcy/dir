@@ -92,46 +92,22 @@ jobs:
       if: ${{ (inputs.language == 'all' || matrix.language == inputs.language) && matrix.build-mode == 'manual' && matrix.language == 'go' }}
       shell: bash
       run: |
-        echo "🔨 Building Go project for CodeQL analysis..."
+        echo "🔨 Building Go project for CodeQL analysis using Task..."
 
-        # First, ensure all dependencies are available
-        echo "Installing dependencies..."
-        go mod download
+        # Use the proven Task workflow
+        echo "📦 Installing dependencies..."
+        task deps
 
-        # Generate protobuf files if Taskfile exists
-        if [ -f "Taskfile.yml" ]; then
-          echo "Using Taskfile to generate code..."
-          task deps || echo "Task deps failed, continuing..."
-          task gen || echo "Task gen failed, continuing..."
-        fi
+        echo "🔧 Generating code (protobuf, etc.)..."
+        task gen
 
-        # Build each Go module explicitly
-        echo "Building all Go modules..."
-        find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" | while read -r gomod; do
-          module_dir=$(dirname "$gomod")
-          echo "Processing module: $module_dir"
+        echo "🧹 Tidying dependencies..."
+        task deps:tidy
 
-          # Change to module directory
-          pushd "$module_dir" > /dev/null
+        echo "🔨 Compiling CLI to ensure all Go code is built..."
+        task cli:compile || echo "⚠️ CLI compile failed, but continuing with analysis..."
 
-          # Download dependencies for this module
-          go mod download || echo "Failed to download deps for $module_dir"
-
-          # Find all Go packages in this module
-          packages=$(go list ./... 2>/dev/null | grep -v '/vendor/' || echo "")
-
-          if [ -n "$packages" ]; then
-            echo "Building packages in $module_dir: $packages"
-            # Build all packages - this ensures CodeQL can analyze them
-            go build -v ./... || echo "Build failed for some packages in $module_dir"
-          else
-            echo "No buildable packages found in $module_dir"
-          fi
-
-          popd > /dev/null
-        done
-
-        echo "Go build completed successfully"
+        echo "✅ Go build completed successfully"
 
     - name: Perform CodeQL Analysis
       if: ${{ inputs.language == 'all' || matrix.language == inputs.language }}
