@@ -182,70 +182,57 @@ jobs:
           echo "� Building Go project for CodeQL analysis (using proven local approach)..."
 
           # Step 1: Install project dependencies
-          echo "Installing project dependencies..."
-          task deps || echo "Task deps failed, continuing..."
+          echo "Building Go project for CodeQL analysis..."
 
-          # Step 2: Generate code (protobuf, etc.)
-          echo "Generating code..."
-          task gen || echo "Task gen failed, continuing..."
+          # Show environment for debugging
+          echo "=== Environment Debug ==="
+          echo "Go version: $(go version)"
+          echo "GOPATH: $GOPATH"
+          echo "GOROOT: $GOROOT"
+          echo "Working directory: $(pwd)"
+          echo "Go modules found:"
+          find . -name "go.mod" -not -path "./vendor/*" | head -10
+          echo "========================="
 
-          # Step 3: Tidy dependencies
-          echo "Tidying dependencies..."
-          task deps:tidy || echo "Task deps:tidy failed, continuing..."
+          # The simplest possible approach - just build everything
+          echo "Attempting to build all Go packages..."
 
-          # Step 4: Build main packages directly
-          echo "Building main packages for CodeQL..."
+          # Method 1: Single command to build everything
+          if go build ./...; then
+            echo "SUCCESS: Global go build ./... worked!"
+          else
+            echo "Global build failed, trying individual packages..."
 
-          # Build server
-          if [ -d "server" ]; then
-            echo "Building server..."
-            (cd server && go build -v . || echo "Server build failed")
-          fi
+            # Method 2: Build specific known packages
+            echo "Building known main packages..."
 
-          # Build CLI
-          if [ -d "cli" ]; then
-            echo "Building CLI..."
-            (cd cli && go build -v . || echo "CLI build failed")
-          fi
-
-          # Build client
-          if [ -d "client" ]; then
-            echo "Building client..."
-            (cd client && go build -v . || echo "Client build failed")
-          fi
-
-          # Build hub
-          if [ -d "hub" ]; then
-            echo "Building hub..."
-            (cd hub && go build -v . || echo "Hub build failed")
-          fi
-
-          # Global build attempt
-          echo "Attempting global build..."
-          go build -v ./... || echo "Global build failed"
-
-          # Step 5: Build each module individually for CodeQL
-          echo "Building individual modules for CodeQL analysis..."
-          for gomod in $(find . -name "go.mod" -not -path "./tmp*" -not -path "./vendor/*" | head -15); do
-            module_dir=$(dirname "$gomod")
-            echo "Processing module: $module_dir"
-
-            (cd "$module_dir" && {
-              # Check for Go files and build
-              if find . -maxdepth 2 -name "*.go" -not -path "./vendor/*" | head -1 | grep -q .; then
-                echo "  Building Go packages in $module_dir..."
-                if go build -v ./...; then
-                  echo "  Successfully built $module_dir"
-                else
-                  echo "  Build failed for $module_dir but continuing"
-                fi
-              else
-                echo "  No Go files in $module_dir, skipping"
+            # Find and build main packages
+            for main_pkg in server cli client hub; do
+              if [ -d "$main_pkg" ] && [ -f "$main_pkg/go.mod" ]; then
+                echo "Building $main_pkg..."
+                (cd "$main_pkg" && go build -v .) || echo "$main_pkg build failed"
               fi
-            })
-          done
+            done
 
-          echo "Go build process completed for CodeQL analysis."
+
+            # Method 3: Build each module individually
+            echo "Building individual modules..."
+            for gomod in $(find . -name "go.mod" -not -path "./vendor/*" | head -10); do
+              module_dir=$(dirname "$gomod")
+              echo "Building module: $module_dir"
+
+              (cd "$module_dir" && {
+                # Try to build all packages in this module
+                if go build -v ./...; then
+                  echo "  SUCCESS: Built $module_dir"
+                else
+                  echo "  FAILED: Could not build $module_dir"
+                fi
+              }) || echo "Error building $module_dir"
+            done
+          fi
+
+          echo "Build attempt completed."
         else
           echo "❌ Manual build mode not supported for language: ${{ matrix.language }}"
           exit 1
