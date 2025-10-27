@@ -123,7 +123,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should push record_070_sync_v4.json to peer 1", func() {
-			cid = cli.Push(recordV4Path).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+			cid = cli.Push(recordV4Path).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
 			RegisterCIDForCleanup(cid, "sync")
@@ -141,7 +141,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should push record_070_sync_v5.json to peer 1", func() {
-			cidV5 = cli.Push(recordV5Path).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+			cidV5 = cli.Push(recordV5Path).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
 			RegisterCIDForCleanup(cidV5, "sync")
@@ -187,7 +187,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should succeed to pull record_070_sync_v4.json from peer 2 after sync", func() {
-			output := cli.Pull(cid).WithArgs("--json").OnServer(utils.Peer2Addr).ShouldSucceed()
+			output := cli.Pull(cid).WithArgs("--output", "json").OnServer(utils.Peer2Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
 			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070SyncV4JSON)
@@ -227,7 +227,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 			_ = cli.Pull(cidV5).OnServer(utils.Peer3Addr).ShouldFail() // v5 (Audio) should not exist
 
 			ginkgo.GinkgoWriter.Printf("Running routing search for 'audio' skill\n")
-			searchOutput := cli.Routing().Search().WithArgs("--skill", "audio").WithArgs("--json").OnServer(utils.Peer3Addr).ShouldSucceed()
+			searchOutput := cli.Routing().Search().WithArgs("--skill", "audio").WithArgs("--output", "json").OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			ginkgo.GinkgoWriter.Printf("Routing search output: %s\n", searchOutput)
 			gomega.Expect(searchOutput).To(gomega.ContainSubstring(cidV5))
@@ -256,7 +256,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		})
 
 		ginkgo.It("should succeed to pull record_070_sync_v5.json from peer 3 after sync", func() {
-			output := cli.Pull(cidV5).WithArgs("--json").OnServer(utils.Peer3Addr).ShouldSucceed()
+			output := cli.Pull(cidV5).WithArgs("--output", "json").OnServer(utils.Peer3Addr).ShouldSucceed()
 
 			// Compare the output with the expected JSON
 			equal, err := utils.CompareOASFRecords([]byte(output), testdata.ExpectedRecordV070SyncV5JSON)

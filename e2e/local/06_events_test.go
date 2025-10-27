@@ -90,11 +90,11 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			gomega.Expect(output).To(gomega.ContainSubstring("CID filters"))
 		})
 
-		ginkgo.It("should support --json output flag", func() {
-			// Verify the --json flag exists (from AddOutputFlags)
+		ginkgo.It("should support --output flag", func() {
+			// Verify the --output flag exists (from AddOutputFlags)
 			output, err := cli.Command("events").WithArgs("listen", "--help").Execute()
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-			gomega.Expect(output).To(gomega.ContainSubstring("--json"))
+			gomega.Expect(output).To(gomega.ContainSubstring("--output"))
 		})
 	})
 
@@ -108,7 +108,7 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			recordFile := filepath.Join(tempDir, "events_push_test.json")
 			_ = os.WriteFile(recordFile, testdata.ExpectedRecordV031JSON, 0o600)
 
-			pushCID = cli.Push(recordFile).WithArgs("--raw").ShouldSucceed()
+			pushCID = cli.Push(recordFile).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(pushCID).NotTo(gomega.BeEmpty())
 		})
 
@@ -120,7 +120,7 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			recordFile := filepath.Join(tempDir, "events_publish_test.json")
 			_ = os.WriteFile(recordFile, testdata.ExpectedRecordV070JSON, 0o600)
 
-			publishCID = cli.Push(recordFile).WithArgs("--raw").ShouldSucceed()
+			publishCID = cli.Push(recordFile).WithArgs("--output", "raw").ShouldSucceed()
 			output := cli.Routing().Publish(publishCID).ShouldSucceed()
 			gomega.Expect(output).To(gomega.ContainSubstring("Successfully submitted publication request"))
 		})

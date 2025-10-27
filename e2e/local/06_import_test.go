@@ -50,7 +50,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			output := cli.Search().
 				WithLocator("source_code:*").
 				WithLimit(20).
-				WithArgs("--json").
+				WithArgs("--output", "json").
 				ShouldSucceed()
 
 			ginkgo.GinkgoWriter.Printf("Search output: %s\n", output)
@@ -66,7 +66,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 
 		ginkgo.It("should be able to pull an imported record", func() {
 			// Try to pull the record
-			pullOutput := cli.Pull(recordRefs[0]).WithArgs("--json").ShouldSucceed()
+			pullOutput := cli.Pull(recordRefs[0]).WithArgs("--output", "json").ShouldSucceed()
 			gomega.Expect(pullOutput).NotTo(gomega.BeEmpty())
 
 			// Verify the pulled record has expected fields

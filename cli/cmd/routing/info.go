@@ -77,7 +77,11 @@ func runInfoCommand(cmd *cobra.Command) error {
 
 	// Use common PrintMessage for structured formats (json, jsonl, raw)
 	if outputOpts.Format != presenter.FormatHuman {
-		return presenter.PrintMessage(cmd, "routing statistics", "Routing statistics", result)
+		if err := presenter.PrintMessage(cmd, "routing statistics", "Routing statistics", result); err != nil {
+			return fmt.Errorf("failed to print routing statistics: %w", err)
+		}
+
+		return nil
 	}
 
 	// Human-readable format

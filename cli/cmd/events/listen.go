@@ -146,8 +146,10 @@ func displayEvent(cmd *cobra.Command, event *eventsv1.Event) {
 		data, err := json.MarshalIndent(event, "", "  ")
 		if err != nil {
 			presenter.Errorf(cmd, "Error marshaling event: %v\n", err)
+
 			return
 		}
+
 		presenter.Printf(cmd, "%s\n", string(data))
 
 	case presenter.FormatJSONL:
@@ -155,15 +157,17 @@ func displayEvent(cmd *cobra.Command, event *eventsv1.Event) {
 		data, err := json.Marshal(event)
 		if err != nil {
 			presenter.Errorf(cmd, "Error marshaling event: %v\n", err)
+
 			return
 		}
+
 		presenter.Printf(cmd, "%s\n", string(data))
 
 	case presenter.FormatRaw:
 		// Just print resource ID
 		presenter.Printf(cmd, "%s\n", event.GetResourceId())
 
-	default: // FormatHuman
+	case presenter.FormatHuman:
 		// Human-readable format
 		eventType := strings.TrimPrefix(event.GetType().String(), "EVENT_TYPE_")
 
