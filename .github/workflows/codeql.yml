@@ -46,7 +46,7 @@ jobs:
         - language: actions
           build-mode: none
         - language: go
-          build-mode: manual
+          build-mode: autobuild
         - language: javascript-typescript
           build-mode: none
         - language: python
@@ -173,6 +173,26 @@ jobs:
           cd ../../..
         fi
         echo "✅ Python dependencies installed"
+
+    - name: Prepare Go environment for autobuild
+      if: matrix.language == 'go'
+      shell: bash
+      run: |
+        echo "Preparing Go environment for CodeQL autobuild..."
+        echo "Go version: $(go version)"
+        echo "GOPATH: $GOPATH"
+        echo "GOROOT: $GOROOT"
+        echo "Working directory: $(pwd)"
+
+        # Make sure all go.mod files have their dependencies downloaded
+        echo "Pre-downloading Go module dependencies..."
+        for gomod in $(find . -name "go.mod" -not -path "./vendor/*" | head -10); do
+          module_dir=$(dirname "$gomod")
+          echo "Downloading deps for $module_dir"
+          (cd "$module_dir" && go mod download) || echo "Failed to download deps for $module_dir"
+        done
+
+        echo "Go environment prepared for autobuild"
 
     - name: Run manual build steps
       if: matrix.build-mode == 'manual'
