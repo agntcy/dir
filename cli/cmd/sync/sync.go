@@ -43,7 +43,7 @@ Usage examples:
   dir sync create http://localhost:8080 --cids cid1,cid2,cid3
 
 3. Create sync from routing search output:
-  dirctl routing search --skill "AI" --json | dirctl sync create --stdin`,
+  dirctl routing search --skill "AI" --output json | dirctl sync create --stdin`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if opts.Stdin {
 			return cobra.MaximumNArgs(0)(cmd, args)
@@ -221,7 +221,7 @@ func runCreateSyncFromStdin(cmd *cobra.Command) error {
 }
 
 func parseSearchOutput(input io.Reader) ([]*routingv1.SearchResponse, error) {
-	// Read JSON input from routing search --json
+	// Read JSON input from routing search --output json
 	inputBytes, err := io.ReadAll(input)
 	if err != nil {
 		return nil, fmt.Errorf("error reading input: %w", err)

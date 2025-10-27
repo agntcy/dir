@@ -27,8 +27,10 @@ Examples:
 3. Filter by labels:
    dirctl events listen --labels /skills/AI
 
-4. Output in JSON format:
-   dirctl events listen --json
+4. Output formats:
+   dirctl events listen --output jsonl    # Streaming JSON (one per line)
+   dirctl events listen --output json     # Pretty-printed JSON
+   dirctl events listen --output raw      # Resource IDs only
 
 Events are delivered from subscription time forward (no history).
 The stream remains active until interrupted (Ctrl+C).

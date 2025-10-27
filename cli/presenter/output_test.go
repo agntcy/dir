@@ -553,6 +553,77 @@ func TestPrintMessageMarshalError(t *testing.T) {
 	}
 }
 
+func TestPrintMessageJSONLMarshalError_SingleObject(t *testing.T) {
+	// Create a value that can't be marshaled to JSON (channel)
+	invalidValue := make(chan int)
+
+	var buf bytes.Buffer
+
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+	AddOutputFlags(cmd)
+
+	if err := cmd.Flags().Set(outputFlagName, string(FormatJSONL)); err != nil {
+		t.Fatalf("failed to set flag: %v", err)
+	}
+
+	err := PrintMessage(cmd, "test", "Test", invalidValue)
+	if err == nil {
+		t.Error("PrintMessage() expected error for invalid JSONL single object, got nil")
+	}
+
+	if err != nil && !containsSubstring(err.Error(), "failed to marshal JSON") {
+		t.Errorf("PrintMessage() error = %v, should contain 'failed to marshal JSON'", err)
+	}
+}
+
+func TestPrintMessageJSONLMarshalError_ArrayElement(t *testing.T) {
+	// Create an array with an element that can't be marshaled to JSON
+	invalidValue := []interface{}{
+		map[string]interface{}{"id": 1, "name": "valid"},
+		make(chan int), // This will cause marshal error
+	}
+
+	var buf bytes.Buffer
+
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+	AddOutputFlags(cmd)
+
+	if err := cmd.Flags().Set(outputFlagName, string(FormatJSONL)); err != nil {
+		t.Fatalf("failed to set flag: %v", err)
+	}
+
+	err := PrintMessage(cmd, "test", "Test", invalidValue)
+	if err == nil {
+		t.Error("PrintMessage() expected error for invalid JSONL array element, got nil")
+	}
+
+	if err != nil && !containsSubstring(err.Error(), "failed to marshal JSON") {
+		t.Errorf("PrintMessage() error = %v, should contain 'failed to marshal JSON'", err)
+	}
+}
+
+func TestPrintMessageInvalidFormat(t *testing.T) {
+	// Test with an invalid format (not one of the defined constants)
+	var buf bytes.Buffer
+
+	cmd := &cobra.Command{}
+	cmd.SetOut(&buf)
+	AddOutputFlags(cmd)
+
+	// Set an invalid format value directly
+	if err := cmd.Flags().Set(outputFlagName, "invalid-format"); err != nil {
+		t.Fatalf("failed to set flag: %v", err)
+	}
+
+	// Should handle gracefully (return nil without error)
+	err := PrintMessage(cmd, "test", "Test", "value")
+	if err != nil {
+		t.Errorf("PrintMessage() with invalid format should not error, got: %v", err)
+	}
+}
+
 // Helper function.
 func containsSubstring(s, substr string) bool {
 	return len(s) > 0 && len(substr) > 0 && len(s) >= len(substr) &&

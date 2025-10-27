@@ -39,7 +39,7 @@ Examples:
    dirctl events listen --cids bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi
 
 5. Combine filters:
-   dirctl events listen --types RECORD_PUSHED --labels /skills/AI --json
+   dirctl events listen --types RECORD_PUSHED --labels /skills/AI --output jsonl
 
 Available event types:
 - Store: RECORD_PUSHED, RECORD_PULLED, RECORD_DELETED
