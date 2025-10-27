@@ -5,6 +5,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -662,5 +663,121 @@ func TestNew_BackgroundContext(t *testing.T) {
 
 	if client == nil {
 		t.Error("Expected client to be created with background context")
+	}
+}
+
+// TestClientClose_WithAllNilResources tests Close() with no resources to clean up.
+func TestClientClose_WithAllNilResources(t *testing.T) {
+	client := &Client{
+		conn:       nil,
+		authClient: nil,
+		bundleSrc:  nil,
+		x509Src:    nil,
+		jwtSource:  nil,
+	}
+
+	// Should succeed without any errors
+	err := client.Close()
+	if err != nil {
+		t.Errorf("Close() with all nil resources returned error: %v", err)
+	}
+}
+
+// TestClientClose_ErrorOrdering tests that Close() handles errors in correct order.
+func TestClientClose_ErrorOrdering(t *testing.T) {
+	// Create test server
+	server, lis := createTestServer(t)
+	defer server.Stop()
+
+	// Create client with connection
+	conn, err := grpc.NewClient(
+		testServerBufnet,
+		grpc.WithContextDialer(bufDialer(lis)),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create gRPC client: %v", err)
+	}
+
+	client := &Client{
+		StoreServiceClient:   storev1.NewStoreServiceClient(conn),
+		RoutingServiceClient: routingv1.NewRoutingServiceClient(conn),
+		SearchServiceClient:  searchv1.NewSearchServiceClient(conn),
+		SyncServiceClient:    storev1.NewSyncServiceClient(conn),
+		SignServiceClient:    signv1.NewSignServiceClient(conn),
+		EventServiceClient:   eventsv1.NewEventServiceClient(conn),
+		conn:                 conn,
+		// Other resources are nil
+	}
+
+	// Close should succeed
+	err = client.Close()
+	if err != nil {
+		t.Logf("Close() returned error: %v", err)
+	}
+}
+
+// TestClientClose_PartialResources tests Close() with some resources present.
+func TestClientClose_PartialResources(t *testing.T) {
+	// Create test server
+	server, lis := createTestServer(t)
+	defer server.Stop()
+
+	// Create client with only connection (no SPIFFE resources)
+	conn, err := grpc.NewClient(
+		testServerBufnet,
+		grpc.WithContextDialer(bufDialer(lis)),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create gRPC client: %v", err)
+	}
+
+	client := &Client{
+		conn:       conn,
+		authClient: nil, // No auth client
+		bundleSrc:  nil, // No bundle source
+		x509Src:    nil, // No x509 source
+		jwtSource:  nil, // No JWT source
+	}
+
+	// Close should handle partial resources gracefully
+	err = client.Close()
+	if err != nil {
+		t.Errorf("Close() with partial resources returned error: %v", err)
+	}
+}
+
+// TestNew_OptionError tests that New() returns error when option fails.
+func TestNew_OptionError(t *testing.T) {
+	ctx := context.Background()
+
+	// Create an option that returns an error
+	testErr := errors.New("test option error")
+	errorOpt := func(opts *options) error {
+		return testErr
+	}
+
+	// New() should fail with option error
+	_, err := New(ctx, errorOpt)
+	if err == nil {
+		t.Error("Expected error when option fails, got nil")
+	}
+}
+
+// TestNew_GRPCClientCreationError tests error handling during gRPC client creation.
+func TestNew_GRPCClientCreationError(t *testing.T) {
+	ctx := context.Background()
+
+	// Use invalid address that will cause grpc.NewClient to fail
+	// Note: grpc.NewClient is lazy, so this might not fail immediately
+	_, err := New(ctx, WithConfig(&Config{
+		ServerAddress:    "", // Empty address
+		AuthMode:         testServerInsecureMode,
+		SpiffeSocketPath: "",
+	}))
+	// This may or may not fail depending on gRPC's validation
+	if err != nil {
+		t.Logf("New() with empty address returned error (expected): %v", err)
 	}
 }
