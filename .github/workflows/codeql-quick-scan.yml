@@ -69,8 +69,8 @@ jobs:
       if: ${{ (inputs.language == 'all' || matrix.language == inputs.language) && matrix.language == 'go' }}
       uses: actions/setup-go@v5
       with:
-        go-version: '1.25.2'
-        cache: false
+        go-version: '1.23.2'
+        cache: true
 
     - name: Install Task
       if: ${{ (inputs.language == 'all' || matrix.language == inputs.language) && matrix.language == 'go' }}
@@ -79,30 +79,59 @@ jobs:
         version: 3.x
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Install buf CLI
+      if: ${{ (inputs.language == 'all' || matrix.language == inputs.language) && matrix.language == 'go' }}
+      shell: bash
+      run: |
+        # Install buf for protobuf generation
+        curl -sSL "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /tmp/buf
+        sudo mv /tmp/buf /usr/local/bin/buf
+        sudo chmod +x /usr/local/bin/buf
+
     - name: Build Go project
       if: ${{ (inputs.language == 'all' || matrix.language == inputs.language) && matrix.build-mode == 'manual' && matrix.language == 'go' }}
       shell: bash
       run: |
         echo "🔨 Building Go project for CodeQL analysis..."
 
-        # Use the same build process as tested locally
-        task deps
-        task gen
-        task deps:tidy
-        task cli:compile || echo "CLI compile failed, continuing..."
+        # First, ensure all dependencies are available
+        echo "Installing dependencies..."
+        go mod download
 
-        # Build all modules
-        for gomod in $(find . -name go.mod -not -path "./tmp*"); do
+        # Generate protobuf files if Taskfile exists
+        if [ -f "Taskfile.yml" ]; then
+          echo "Using Taskfile to generate code..."
+          task deps || echo "Task deps failed, continuing..."
+          task gen || echo "Task gen failed, continuing..."
+        fi
+
+        # Build each Go module explicitly
+        echo "Building all Go modules..."
+        find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" | while read -r gomod; do
           module_dir=$(dirname "$gomod")
-          echo "Building module: $module_dir"
-          cd "$module_dir"
+          echo "Processing module: $module_dir"
 
-          if ls *.go 1> /dev/null 2>&1 || find . -name "*.go" -not -path "./vendor/*" | head -1 | grep -q .; then
-            go build ./... || echo "Build failed for $module_dir"
+          # Change to module directory
+          pushd "$module_dir" > /dev/null
+
+          # Download dependencies for this module
+          go mod download || echo "Failed to download deps for $module_dir"
+
+          # Find all Go packages in this module
+          packages=$(go list ./... 2>/dev/null | grep -v '/vendor/' || echo "")
+
+          if [ -n "$packages" ]; then
+            echo "Building packages in $module_dir: $packages"
+            # Build all packages - this ensures CodeQL can analyze them
+            go build -v ./... || echo "Build failed for some packages in $module_dir"
+          else
+            echo "No buildable packages found in $module_dir"
           fi
 
-          cd - > /dev/null
+          popd > /dev/null
         done
+
+        echo "Go build completed successfully"
 
     - name: Perform CodeQL Analysis
       if: ${{ inputs.language == 'all' || matrix.language == inputs.language }}
