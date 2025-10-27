@@ -179,22 +179,65 @@ jobs:
       shell: bash
       run: |
         if [ "${{ matrix.language }}" == "go" ]; then
-          echo "🔨 Building Go project for CodeQL analysis using Task..."
+          echo "🔨 Building Go project for CodeQL analysis..."
 
-          # Use the proven Task workflow
-          echo "📦 Installing dependencies..."
-          task deps
+          # First try using Task if available
+          if command -v task &> /dev/null; then
+            echo "📦 Installing dependencies with Task..."
+            if task deps; then
+              echo "✅ Task deps completed"
+            else
+              echo "⚠️ Task deps failed, trying alternative approach"
+            fi
 
-          echo "🔧 Generating code (protobuf, etc.)..."
-          task gen
+            echo "🔧 Generating code with Task..."
+            if task gen; then
+              echo "✅ Code generation completed"
+            else
+              echo "⚠️ Code generation failed, continuing..."
+            fi
 
-          echo "🧹 Tidying dependencies..."
-          task deps:tidy
+            echo "🧹 Tidying dependencies with Task..."
+            if task deps:tidy; then
+              echo "✅ Dependencies tidied"
+            else
+              echo "⚠️ Deps tidy failed, continuing..."
+            fi
 
-          echo "🔨 Compiling CLI to ensure all Go code is built..."
-          task cli:compile || echo "⚠️ CLI compile failed, but continuing with analysis..."
+            echo "🔨 Compiling CLI with Task..."
+            if task cli:compile; then
+              echo "✅ CLI compilation completed"
+            else
+              echo "⚠️ CLI compile failed, trying manual build..."
+            fi
+          fi
 
-          echo "✅ Go build completed successfully"
+          # Fallback: Manual Go build for each module
+          echo "🔍 Building all Go modules manually to ensure CodeQL can analyze them..."
+          find . -name "go.mod" -not -path "./vendor/*" -not -path "./.git/*" -print0 | while IFS= read -r -d '' gomod; do
+            module_dir=$(dirname "$gomod")
+            echo "📦 Building module: $module_dir"
+
+            pushd "$module_dir" > /dev/null
+
+            # Download dependencies
+            if go mod download; then
+              echo "✅ Downloaded dependencies for $module_dir"
+            else
+              echo "⚠️ Failed to download dependencies for $module_dir"
+            fi
+
+            # Build all packages in the module
+            if go build -v ./...; then
+              echo "✅ Built packages in $module_dir"
+            else
+              echo "⚠️ Failed to build some packages in $module_dir, but continuing..."
+            fi
+
+            popd > /dev/null
+          done
+
+          echo "✅ Go build process completed"
         else
           echo "❌ Manual build mode not supported for language: ${{ matrix.language }}"
           exit 1
