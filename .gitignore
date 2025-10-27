@@ -17,9 +17,6 @@ __pycache__/
 # JS
 node_modules
 
-# Local development workflows (keep locally, don't commit)
-.github/workflows/codeql-quick-scan.yml
-
 # Helm
 install/charts/dir/charts/
 install/charts/dirctl/charts/
