@@ -63,6 +63,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Log language being analyzed
+      run: |
+        echo "🔍 Starting CodeQL analysis for: ${{ matrix.language }}"
+        echo "Build mode: ${{ matrix.build-mode }}"
+
     # Add any setup steps before running the `github/codeql-action/init` action.
     # This includes steps like installing compilers or runtimes (`actions/setup-node`
     # or others). This is typically only required for manual builds.
@@ -75,9 +80,7 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        # Enable security and quality queries for Go
         queries: +security-extended,security-and-quality
-        # Use configuration file for Go-specific settings
         config: |
           name: "CodeQL Config"
           queries:
@@ -117,6 +120,59 @@ jobs:
         curl -sSL "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /tmp/buf
         sudo mv /tmp/buf /usr/local/bin/buf
         sudo chmod +x /usr/local/bin/buf
+
+    - name: Set up Node.js
+      if: matrix.language == 'javascript-typescript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: '**/package*.json'
+
+    - name: Set up Python
+      if: matrix.language == 'python'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install JavaScript/TypeScript dependencies
+      if: matrix.language == 'javascript-typescript'
+      shell: bash
+      run: |
+        echo "📦 Installing JavaScript/TypeScript dependencies..."
+        # Install dependencies for JavaScript SDK
+        if [ -f "sdk/dir-js/package.json" ]; then
+          cd sdk/dir-js
+          npm ci || npm install
+          cd ../..
+        fi
+        # Install dependencies for examples
+        if [ -f "sdk/examples/example-js/package.json" ]; then
+          cd sdk/examples/example-js
+          npm ci || npm install
+          cd ../../..
+        fi
+        echo "✅ JavaScript/TypeScript dependencies installed"
+
+    - name: Install Python dependencies
+      if: matrix.language == 'python'
+      shell: bash
+      run: |
+        echo "📦 Installing Python dependencies..."
+        # Install dependencies for Python SDK
+        if [ -f "sdk/dir-py/pyproject.toml" ]; then
+          cd sdk/dir-py
+          pip install -e . || echo "Failed to install Python SDK"
+          cd ../..
+        fi
+        # Install dependencies for examples
+        if [ -f "sdk/examples/example-py/requirements.txt" ]; then
+          cd sdk/examples/example-py
+          pip install -r requirements.txt || echo "Failed to install example requirements"
+          cd ../../..
+        fi
+        echo "✅ Python dependencies installed"
 
     - name: Run manual build steps
       if: matrix.build-mode == 'manual'
