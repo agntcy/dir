@@ -182,46 +182,70 @@ jobs:
           echo "� Building Go project for CodeQL analysis (using proven local approach)..."
 
           # Step 1: Install project dependencies
-          echo "📦 Installing project dependencies..."
-          task deps || echo "⚠️ Task deps failed, continuing..."
+          echo "Installing project dependencies..."
+          task deps || echo "Task deps failed, continuing..."
 
           # Step 2: Generate code (protobuf, etc.)
-          echo "🔧 Generating code..."
-          task gen || echo "⚠️ Task gen failed, continuing..."
+          echo "Generating code..."
+          task gen || echo "Task gen failed, continuing..."
 
           # Step 3: Tidy dependencies
-          echo "🧹 Tidying dependencies..."
-          task deps:tidy || echo "⚠️ Task deps:tidy failed, continuing..."
+          echo "Tidying dependencies..."
+          task deps:tidy || echo "Task deps:tidy failed, continuing..."
 
-          # Step 4: Try to compile CLI first
-          echo "� Compiling CLI..."
-          task cli:compile || echo "⚠️ CLI compile failed, trying fallback build..."
+          # Step 4: Build main packages directly
+          echo "Building main packages for CodeQL..."
 
-          # Step 5: Critical - Build each module individually (this is what CodeQL needs)
-          echo "� Building all Go modules individually for CodeQL analysis..."
-          for gomod in $(find . -name go.mod -not -path "./tmp*" -not -path "./vendor/*"); do
+          # Build server
+          if [ -d "server" ]; then
+            echo "Building server..."
+            (cd server && go build -v . || echo "Server build failed")
+          fi
+
+          # Build CLI
+          if [ -d "cli" ]; then
+            echo "Building CLI..."
+            (cd cli && go build -v . || echo "CLI build failed")
+          fi
+
+          # Build client
+          if [ -d "client" ]; then
+            echo "Building client..."
+            (cd client && go build -v . || echo "Client build failed")
+          fi
+
+          # Build hub
+          if [ -d "hub" ]; then
+            echo "Building hub..."
+            (cd hub && go build -v . || echo "Hub build failed")
+          fi
+
+          # Global build attempt
+          echo "Attempting global build..."
+          go build -v ./... || echo "Global build failed"
+
+          # Step 5: Build each module individually for CodeQL
+          echo "Building individual modules for CodeQL analysis..."
+          for gomod in $(find . -name "go.mod" -not -path "./tmp*" -not -path "./vendor/*" | head -15); do
             module_dir=$(dirname "$gomod")
-            echo "Building module in $module_dir"
-            cd "$module_dir"
+            echo "Processing module: $module_dir"
 
-            # Only build if there are Go files
-            if find . -name "*.go" -not -path "./vendor/*" | head -1 | grep -q .; then
-              echo "  📦 Found Go files, building module..."
-              # This is the critical step - actually build the Go code
-              if go build ./...; then
-                echo "  ✅ Successfully built $module_dir"
+            (cd "$module_dir" && {
+              # Check for Go files and build
+              if find . -maxdepth 2 -name "*.go" -not -path "./vendor/*" | head -1 | grep -q .; then
+                echo "  Building Go packages in $module_dir..."
+                if go build -v ./...; then
+                  echo "  Successfully built $module_dir"
+                else
+                  echo "  Build failed for $module_dir but continuing"
+                fi
               else
-                echo "  ⚠️ Build failed for $module_dir, but continuing..."
+                echo "  No Go files in $module_dir, skipping"
               fi
-            else
-              echo "  📄 No Go files found in $module_dir, skipping"
-            fi
-
-            # Return to root directory
-            cd - > /dev/null
+            })
           done
 
-          echo "✅ Go build completed - CodeQL should now be able to analyze the compiled code!"
+          echo "Go build process completed for CodeQL analysis."
         else
           echo "❌ Manual build mode not supported for language: ${{ matrix.language }}"
           exit 1
