@@ -99,3 +99,23 @@ func (s *Service) Stop() error {
 
 	return nil
 }
+
+// IsReady checks if the publication service is ready to process publication requests.
+// Returns true if the scheduler and workers have been started.
+func (s *Service) IsReady(_ context.Context) bool {
+	if s.scheduler == nil {
+		logger.Debug("Publication service not ready: scheduler not initialized")
+
+		return false
+	}
+
+	if len(s.workers) == 0 {
+		logger.Debug("Publication service not ready: no workers initialized")
+
+		return false
+	}
+
+	logger.Debug("Publication service ready", "workers", len(s.workers))
+
+	return true
+}

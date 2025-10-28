@@ -110,3 +110,23 @@ func (s *Service) Stop() error {
 
 	return nil
 }
+
+// IsReady checks if the sync service is ready to process sync operations.
+// Returns true if the scheduler and workers have been started.
+func (s *Service) IsReady(_ context.Context) bool {
+	if s.scheduler == nil {
+		logger.Debug("Sync service not ready: scheduler not initialized")
+
+		return false
+	}
+
+	if len(s.workers) == 0 {
+		logger.Debug("Sync service not ready: no workers initialized")
+
+		return false
+	}
+
+	logger.Debug("Sync service ready", "workers", len(s.workers))
+
+	return true
+}

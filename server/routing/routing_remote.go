@@ -96,13 +96,14 @@ func QueryAllNamespaces(ctx context.Context, dstore types.Datastore) ([]Namespac
 // routeRemote handles routing across the network with hybrid label discovery.
 // It uses both GossipSub (efficient, wide propagation) and DHT+Pull (fallback).
 type routeRemote struct {
-	storeAPI       types.StoreAPI
-	server         *p2p.Server
-	service        *rpc.Service
-	notifyCh       chan *handlerSync
-	dstore         types.Datastore
-	cleanupManager *CleanupManager
-	pubsubManager  *pubsub.Manager // GossipSub manager for label announcements (nil if disabled)
+	storeAPI        types.StoreAPI
+	server          *p2p.Server
+	service         *rpc.Service
+	notifyCh        chan *handlerSync
+	dstore          types.Datastore
+	cleanupManager  *CleanupManager
+	pubsubManager   *pubsub.Manager // GossipSub manager for label announcements (nil if disabled)
+	isBootstrapNode bool            // True if this node is a bootstrap node (no bootstrap peers configured)
 
 	// Lifecycle management
 	//nolint:containedctx // Context needed for managing lifecycle of multiple long-running goroutines (handleNotify, cleanup tasks)
@@ -119,13 +120,17 @@ func newRemote(parentCtx context.Context,
 	// Create routing subsystem context for lifecycle management of background tasks
 	routingCtx, cancel := context.WithCancel(parentCtx)
 
+	// Determine if this is a bootstrap node (no bootstrap peers configured)
+	isBootstrapNode := len(opts.Config().Routing.BootstrapPeers) == 0
+
 	// Create routing
 	routeAPI := &routeRemote{
-		storeAPI: storeAPI,
-		notifyCh: make(chan *handlerSync, NotificationChannelSize),
-		dstore:   dstore,
-		ctx:      routingCtx,
-		cancel:   cancel,
+		storeAPI:        storeAPI,
+		notifyCh:        make(chan *handlerSync, NotificationChannelSize),
+		dstore:          dstore,
+		ctx:             routingCtx,
+		cancel:          cancel,
+		isBootstrapNode: isBootstrapNode,
 	}
 
 	refreshInterval := RefreshInterval
@@ -959,4 +964,93 @@ func (r *routeRemote) Stop() error {
 	remoteLogger.Info("Routing subsystem stopped successfully")
 
 	return nil
+}
+
+// IsReady checks if the remote routing subsystem is ready to serve traffic.
+// For bootstrap nodes (first peer in network):
+//   - Ready when DHT, host and datastore are initialized (0 peers is expected)
+//
+// For regular nodes (connecting to existing network):
+//   - DHT must have peers in routing table
+//   - Must have connected peers
+//   - GossipSub mesh must be formed (if enabled)
+func (r *routeRemote) IsReady(ctx context.Context) bool {
+	if r.server == nil {
+		remoteLogger.Debug("Routing not ready: server is nil")
+
+		return false
+	}
+
+	// Check if host is initialized
+	host := r.server.Host()
+	if host == nil {
+		remoteLogger.Debug("Routing not ready: host is nil")
+
+		return false
+	}
+
+	// Check if DHT is initialized
+	dht := r.server.DHT()
+	if dht == nil {
+		remoteLogger.Debug("Routing not ready: DHT is nil")
+
+		return false
+	}
+
+	// Check if datastore is initialized
+	if r.dstore == nil {
+		remoteLogger.Debug("Routing not ready: datastore is nil")
+
+		return false
+	}
+
+	// Verify host is listening on addresses
+	// This ensures the libp2p transport layer is properly initialized
+	addrs := host.Addrs()
+	if len(addrs) == 0 {
+		remoteLogger.Debug("Routing not ready: host has no listen addresses")
+
+		return false
+	}
+
+	// Bootstrap nodes are ready when DHT is initialized, even with 0 peers
+	// They serve as entry points for the network and will accept incoming connections
+	if r.isBootstrapNode {
+		remoteLogger.Debug("Routing ready (bootstrap node)", "listenAddrs", len(addrs))
+
+		return true
+	}
+
+	// For regular nodes, require peers in routing table (successful bootstrap)
+	routingTableSize := dht.RoutingTable().Size()
+	if routingTableSize == 0 {
+		remoteLogger.Debug("Routing not ready: DHT routing table is empty")
+
+		return false
+	}
+
+	// Require at least one connected peer for regular nodes
+	connectedPeers := len(host.Network().Peers())
+	if connectedPeers == 0 {
+		remoteLogger.Debug("Routing not ready: no connected peers")
+
+		return false
+	}
+
+	// If GossipSub is enabled, check if mesh is formed
+	// Bootstrap nodes may have 0 mesh peers initially, which is acceptable
+	if r.pubsubManager != nil {
+		meshPeers := r.pubsubManager.GetMeshPeerCount()
+		if meshPeers == 0 {
+			remoteLogger.Debug("Routing not ready: GossipSub mesh has no peers")
+
+			return false
+		}
+
+		remoteLogger.Debug("Routing ready", "routingTableSize", routingTableSize, "connectedPeers", connectedPeers, "meshPeers", meshPeers)
+	} else {
+		remoteLogger.Debug("Routing ready", "routingTableSize", routingTableSize, "connectedPeers", connectedPeers)
+	}
+
+	return true
 }
