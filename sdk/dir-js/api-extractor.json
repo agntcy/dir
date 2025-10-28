@@ -64,7 +64,7 @@
    *   "bundledPackages": [ "@my-company/*" ],
    */
   "bundledPackages": [
-    "api"
+    "models"
   ],
   /**
    * Specifies what type of newlines API Extractor should use when writing output files.  By default, the output files
