@@ -48,7 +48,14 @@ func (c *Client) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *
 			}
 
 			// Stream ListResponse directly (no legacy wrapper)
-			resCh <- obj
+			// Use select to prevent goroutine leak if consumer stops reading
+			select {
+			case resCh <- obj:
+			case <-ctx.Done():
+				logger.Error("context cancelled while receiving list response", "error", ctx.Err())
+
+				return
+			}
 		}
 	}()
 
@@ -79,7 +86,14 @@ func (c *Client) SearchRouting(ctx context.Context, req *routingv1.SearchRequest
 			}
 
 			// Stream SearchResponse directly
-			resCh <- obj
+			// Use select to prevent goroutine leak if consumer stops reading
+			select {
+			case resCh <- obj:
+			case <-ctx.Done():
+				logger.Error("context cancelled while receiving search response", "error", ctx.Err())
+
+				return
+			}
 		}
 	}()
 
