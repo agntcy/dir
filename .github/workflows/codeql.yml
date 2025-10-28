@@ -1,0 +1,252 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '42 5 * * 6'
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    # Runner size impacts CodeQL analysis time. To learn more, please see:
+    #   - https://gh.io/recommended-hardware-resources-for-running-codeql
+    #   - https://gh.io/supported-runners-and-hardware-resources
+    #   - https://gh.io/using-larger-runners (GitHub.com only)
+    # Consider using larger runners or machines with greater resources for possible analysis time improvements.
+    runs-on: ubuntu-latest
+    permissions:
+      # required for all workflows
+      security-events: write
+
+      # required to fetch internal or private CodeQL packs
+      packages: read
+
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        # Note: Temporarily disabling 'actions' language due to recognition issue in CodeQL 2.23.3
+        # - language: actions
+        #   build-mode: none
+        - language: go
+          build-mode: autobuild
+        - language: javascript-typescript
+          build-mode: none
+        - language: python
+          build-mode: none
+        # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
+        # Use `c-cpp` to analyze code written in C, C++ or both
+        # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
+        # Use 'javascript-typescript' to analyze code written in JavaScript, TypeScript or both
+        # To learn more about changing the languages that are analyzed or customizing the build mode for your analysis,
+        # see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning.
+        # If you are analyzing a compiled language, you can modify the 'build-mode' for that language to customize how
+        # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4 # v4.2.2
+
+    - name: Log language being analyzed
+      run: |
+        echo "🔍 Starting CodeQL analysis for: ${{ matrix.language }}"
+        echo "Build mode: ${{ matrix.build-mode }}"
+
+    # Add any setup steps before running the `github/codeql-action/init` action.
+    # This includes steps like installing compilers or runtimes (`actions/setup-node`
+    # or others). This is typically only required for manual builds.
+    # - name: Setup runtime (example)
+    #   uses: actions/setup-example@v1
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4 # v4.0.0
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        queries: +security-extended,security-and-quality
+        config: |
+          name: "CodeQL Config"
+          queries:
+            - uses: security-extended
+            - uses: security-and-quality
+          paths-ignore:
+            - "**/*.pb.go"
+            - "**/mock_*.go"
+            - "**/testdata/**"
+            - "**/vendor/**"
+
+    - name: Set up Go
+      if: matrix.language == 'go'
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.2'
+        cache: true
+
+    - name: Install Task
+      if: matrix.language == 'go'
+      uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2.0.0
+      with:
+        version: 3.x
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install buf CLI
+      if: matrix.language == 'go'
+      shell: bash
+      run: |
+        # Install buf for protobuf generation
+        curl -sSL "https://github.com/bufbuild/buf/releases/latest/download/buf-$(uname -s)-$(uname -m)" -o /tmp/buf
+        sudo mv /tmp/buf /usr/local/bin/buf
+        sudo chmod +x /usr/local/bin/buf
+
+    - name: Setup Node.js
+      if: matrix.language == 'javascript-typescript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: '**/package*.json'
+
+    - name: Set up Python
+      if: matrix.language == 'python'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install JavaScript/TypeScript dependencies
+      if: matrix.language == 'javascript-typescript'
+      shell: bash
+      run: |
+        echo "📦 Installing JavaScript/TypeScript dependencies..."
+        # Install dependencies for JavaScript SDK
+        if [ -f "sdk/dir-js/package.json" ]; then
+          cd sdk/dir-js
+          npm ci || npm install
+          cd ../..
+        fi
+        # Install dependencies for examples
+        if [ -f "sdk/examples/example-js/package.json" ]; then
+          cd sdk/examples/example-js
+          npm ci || npm install
+          cd ../../..
+        fi
+        echo "✅ JavaScript/TypeScript dependencies installed"
+
+    - name: Install Python dependencies
+      if: matrix.language == 'python'
+      shell: bash
+      run: |
+        echo "📦 Installing Python dependencies..."
+        # Install dependencies for Python SDK
+        if [ -f "sdk/dir-py/pyproject.toml" ]; then
+          cd sdk/dir-py
+          pip install -e . || echo "Failed to install Python SDK"
+          cd ../..
+        fi
+        # Install dependencies for examples
+        if [ -f "sdk/examples/example-py/requirements.txt" ]; then
+          cd sdk/examples/example-py
+          pip install -r requirements.txt || echo "Failed to install example requirements"
+          cd ../../..
+        fi
+        echo "✅ Python dependencies installed"
+
+    - name: Prepare Go environment for autobuild
+      if: matrix.language == 'go'
+      shell: bash
+      run: |
+        echo "Preparing Go environment for CodeQL autobuild..."
+        echo "Go version: $(go version)"
+        echo "GOPATH: $GOPATH"
+        echo "GOROOT: $GOROOT"
+        echo "Working directory: $(pwd)"
+
+        # Make sure all go.mod files have their dependencies downloaded
+        echo "Pre-downloading Go module dependencies..."
+        for gomod in $(find . -name "go.mod" -not -path "./vendor/*" | head -10); do
+          module_dir=$(dirname "$gomod")
+          echo "Downloading deps for $module_dir"
+          (cd "$module_dir" && go mod download) || echo "Failed to download deps for $module_dir"
+        done
+
+        echo "Go environment prepared for autobuild"
+
+    - name: Run manual build steps
+      if: matrix.build-mode == 'manual'
+      shell: bash
+      run: |
+        if [ "${{ matrix.language }}" == "go" ]; then
+          echo "� Building Go project for CodeQL analysis (using proven local approach)..."
+
+          # Step 1: Install project dependencies
+          echo "Building Go project for CodeQL analysis..."
+
+          # Show environment for debugging
+          echo "=== Environment Debug ==="
+          echo "Go version: $(go version)"
+          echo "GOPATH: $GOPATH"
+          echo "GOROOT: $GOROOT"
+          echo "Working directory: $(pwd)"
+          echo "Go modules found:"
+          find . -name "go.mod" -not -path "./vendor/*" | head -10
+          echo "========================="
+
+          # The simplest possible approach - just build everything
+          echo "Attempting to build all Go packages..."
+
+          # Method 1: Single command to build everything
+          if go build ./...; then
+            echo "SUCCESS: Global go build ./... worked!"
+          else
+            echo "Global build failed, trying individual packages..."
+
+            # Method 2: Build specific known packages
+            echo "Building known main packages..."
+
+            # Find and build main packages
+            for main_pkg in server cli client hub; do
+              if [ -d "$main_pkg" ] && [ -f "$main_pkg/go.mod" ]; then
+                echo "Building $main_pkg..."
+                (cd "$main_pkg" && go build -v .) || echo "$main_pkg build failed"
+              fi
+            done
+
+
+            # Method 3: Build each module individually
+            echo "Building individual modules..."
+            for gomod in $(find . -name "go.mod" -not -path "./vendor/*" | head -10); do
+              module_dir=$(dirname "$gomod")
+              echo "Building module: $module_dir"
+
+              (cd "$module_dir" && {
+                # Try to build all packages in this module
+                if go build -v ./...; then
+                  echo "  SUCCESS: Built $module_dir"
+                else
+                  echo "  FAILED: Could not build $module_dir"
+                fi
+              }) || echo "Error building $module_dir"
+            done
+          fi
+
+          echo "Build attempt completed."
+        else
+          echo "❌ Manual build mode not supported for language: ${{ matrix.language }}"
+          exit 1
+        fi
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{matrix.language}}"
