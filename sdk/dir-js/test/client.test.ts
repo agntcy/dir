@@ -406,9 +406,7 @@ describe('Client', () => {
           }),
         );
 
-        if (config.spiffeEndpointSocket === Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET) { // FIXME: Failing when spiffe is used, will be fixed in another PR
-          expect(response.success).toBe(true);
-        }
+        expect(response.success).toBe(true);
       }
 
       // Test invalid CID
