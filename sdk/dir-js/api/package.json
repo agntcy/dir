@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "name": "api",
+  "version": "0.0.0",
+  "description": "This package contains generated code for the protobuf modules",
+  "peerDependencies": {
+      "@bufbuild/protobuf": "^2.9.0"
+  }
+}
