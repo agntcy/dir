@@ -87,7 +87,6 @@ func (c *client) PushRecord(ctx context.Context, organization string, record []b
 }
 
 func (c *client) PullRecord(ctx context.Context, cid string) ([]byte, error) {
-
 	resp, err := c.RecordHubServiceClient.PullRecord(ctx, &v1alpha1.PullRecordRequest{Cid: cid})
 	if err != nil {
 		return nil, fmt.Errorf("failed to pull record: %w", err)
