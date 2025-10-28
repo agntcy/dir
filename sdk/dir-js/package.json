@@ -45,7 +45,7 @@
     "@connectrpc/connect": "^2.1.0",
     "@connectrpc/connect-node": "^2.1.0",
     "@grpc/grpc-js": "^1.13.4",
-    "api": "file:api",
+    "models": "file:src/models",
     "spiffe": "^0.4.0"
   },
   "devDependencies": {
