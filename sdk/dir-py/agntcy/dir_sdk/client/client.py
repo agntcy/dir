@@ -946,6 +946,9 @@ class Client:
                     "--key",
                     tmp_key_file.name,
                 ]
+
+                if self.config.spiffe_socket_path != "":
+                    command.extend(["--spiffe-socket-path", self.config.spiffe_socket_path])
                 
                 subprocess.run(
                     command,
@@ -1012,6 +1015,9 @@ class Client:
 
             # Add client ID
             command.extend(["--oidc-client-id", oidc_client_id])
+
+            if self.config.spiffe_socket_path != "":
+                command.extend(["--spiffe-socket-path", self.config.spiffe_socket_path])
 
             # Execute the signing command
             subprocess.run(

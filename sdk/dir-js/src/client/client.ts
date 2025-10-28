@@ -857,9 +857,15 @@ export class Client {
     const shell_env = env;
     shell_env['COSIGN_PASSWORD'] = String(req.password);
 
+    let commandArgs = ["sign", cid, "--key", tmp_key_filename];
+
+    if (this.config.spiffeEndpointSocket !== '') {
+      commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
+    }
+
     // Execute command
     let output = spawnSync(
-      `${this.config.dirctlPath}`, ["sign", cid, "--key", tmp_key_filename],
+      `${this.config.dirctlPath}`, commandArgs,
       { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
     );
 
@@ -908,6 +914,10 @@ export class Client {
       req.options.timestampUrl !== ''
     ) {
       commandArgs.push(...["--timestamp-url", req.options.timestampUrl]);
+    }
+
+    if (this.config.spiffeEndpointSocket !== '') {
+      commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
     }
 
     // Execute command
