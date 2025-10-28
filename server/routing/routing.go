@@ -143,3 +143,22 @@ func (r *route) Stop() error {
 
 	return nil
 }
+
+// IsReady checks if the routing subsystem is ready to serve traffic.
+func (r *route) IsReady(ctx context.Context) bool {
+	// Check if local list request is successful
+	_, err := r.local.List(ctx, &routingv1.ListRequest{})
+	if err != nil {
+		localLogger.Debug("Routing not ready: local list request failed", "error", err)
+
+		return false
+	}
+
+	if r.remote == nil {
+		remoteLogger.Debug("Routing not ready: remote router is nil")
+
+		return false
+	}
+
+	return r.remote.IsReady(ctx)
+}

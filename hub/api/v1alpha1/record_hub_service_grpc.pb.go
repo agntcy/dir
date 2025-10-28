@@ -11,6 +11,7 @@ package saasv1alpha1
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -22,18 +23,26 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	RecordHubService_GetRecord_FullMethodName    = "/saas.v1alpha1.RecordHubService/GetRecord"
-	RecordHubService_DeleteRecord_FullMethodName = "/saas.v1alpha1.RecordHubService/DeleteRecord"
+	RecordHubService_ListRecords_FullMethodName    = "/saas.v1alpha1.RecordHubService/ListRecords"
+	RecordHubService_GetRecord_FullMethodName      = "/saas.v1alpha1.RecordHubService/GetRecord"
+	RecordHubService_GetRecordByCID_FullMethodName = "/saas.v1alpha1.RecordHubService/GetRecordByCID"
+	RecordHubService_DeleteRecord_FullMethodName   = "/saas.v1alpha1.RecordHubService/DeleteRecord"
+	RecordHubService_UpdateRecord_FullMethodName   = "/saas.v1alpha1.RecordHubService/UpdateRecord"
+	RecordHubService_PushRecord_FullMethodName     = "/saas.v1alpha1.RecordHubService/PushRecord"
+	RecordHubService_PullRecord_FullMethodName     = "/saas.v1alpha1.RecordHubService/PullRecord"
 )
 
 // RecordHubServiceClient is the client API for RecordHubService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// These APIs are primarily intended for UI interactions. Their implementations should not interact with the Agent Directory service.
 type RecordHubServiceClient interface {
+	ListRecords(ctx context.Context, in *ListRecordsRequest, opts ...grpc.CallOption) (*ListRecordsResponse, error)
 	GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*GetRecordResponse, error)
+	GetRecordByCID(ctx context.Context, in *GetRecordByCIDRequest, opts ...grpc.CallOption) (*GetRecordResponse, error)
 	DeleteRecord(ctx context.Context, in *DeleteRecordRequest, opts ...grpc.CallOption) (*DeleteRecordResponse, error)
+	UpdateRecord(ctx context.Context, in *UpdateRecordRequest, opts ...grpc.CallOption) (*UpdateRecordResponse, error)
+	PushRecord(ctx context.Context, in *PushRecordRequest, opts ...grpc.CallOption) (*PushRecordResponse, error)
+	PullRecord(ctx context.Context, in *PullRecordRequest, opts ...grpc.CallOption) (*PullRecordResponse, error)
 }
 
 type recordHubServiceClient struct {
@@ -44,10 +53,30 @@ func NewRecordHubServiceClient(cc grpc.ClientConnInterface) RecordHubServiceClie
 	return &recordHubServiceClient{cc}
 }
 
+func (c *recordHubServiceClient) ListRecords(ctx context.Context, in *ListRecordsRequest, opts ...grpc.CallOption) (*ListRecordsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRecordsResponse)
+	err := c.cc.Invoke(ctx, RecordHubService_ListRecords_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *recordHubServiceClient) GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*GetRecordResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetRecordResponse)
 	err := c.cc.Invoke(ctx, RecordHubService_GetRecord_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *recordHubServiceClient) GetRecordByCID(ctx context.Context, in *GetRecordByCIDRequest, opts ...grpc.CallOption) (*GetRecordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRecordResponse)
+	err := c.cc.Invoke(ctx, RecordHubService_GetRecordByCID_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,14 +93,47 @@ func (c *recordHubServiceClient) DeleteRecord(ctx context.Context, in *DeleteRec
 	return out, nil
 }
 
+func (c *recordHubServiceClient) UpdateRecord(ctx context.Context, in *UpdateRecordRequest, opts ...grpc.CallOption) (*UpdateRecordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateRecordResponse)
+	err := c.cc.Invoke(ctx, RecordHubService_UpdateRecord_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *recordHubServiceClient) PushRecord(ctx context.Context, in *PushRecordRequest, opts ...grpc.CallOption) (*PushRecordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PushRecordResponse)
+	err := c.cc.Invoke(ctx, RecordHubService_PushRecord_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *recordHubServiceClient) PullRecord(ctx context.Context, in *PullRecordRequest, opts ...grpc.CallOption) (*PullRecordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PullRecordResponse)
+	err := c.cc.Invoke(ctx, RecordHubService_PullRecord_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RecordHubServiceServer is the server API for RecordHubService service.
 // All implementations should embed UnimplementedRecordHubServiceServer
 // for forward compatibility.
-//
-// These APIs are primarily intended for UI interactions. Their implementations should not interact with the Agent Directory service.
 type RecordHubServiceServer interface {
+	ListRecords(context.Context, *ListRecordsRequest) (*ListRecordsResponse, error)
 	GetRecord(context.Context, *GetRecordRequest) (*GetRecordResponse, error)
+	GetRecordByCID(context.Context, *GetRecordByCIDRequest) (*GetRecordResponse, error)
 	DeleteRecord(context.Context, *DeleteRecordRequest) (*DeleteRecordResponse, error)
+	UpdateRecord(context.Context, *UpdateRecordRequest) (*UpdateRecordResponse, error)
+	PushRecord(context.Context, *PushRecordRequest) (*PushRecordResponse, error)
+	PullRecord(context.Context, *PullRecordRequest) (*PullRecordResponse, error)
 }
 
 // UnimplementedRecordHubServiceServer should be embedded to have
@@ -81,11 +143,26 @@ type RecordHubServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedRecordHubServiceServer struct{}
 
+func (UnimplementedRecordHubServiceServer) ListRecords(context.Context, *ListRecordsRequest) (*ListRecordsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRecords not implemented")
+}
 func (UnimplementedRecordHubServiceServer) GetRecord(context.Context, *GetRecordRequest) (*GetRecordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRecord not implemented")
 }
+func (UnimplementedRecordHubServiceServer) GetRecordByCID(context.Context, *GetRecordByCIDRequest) (*GetRecordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRecordByCID not implemented")
+}
 func (UnimplementedRecordHubServiceServer) DeleteRecord(context.Context, *DeleteRecordRequest) (*DeleteRecordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteRecord not implemented")
+}
+func (UnimplementedRecordHubServiceServer) UpdateRecord(context.Context, *UpdateRecordRequest) (*UpdateRecordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateRecord not implemented")
+}
+func (UnimplementedRecordHubServiceServer) PushRecord(context.Context, *PushRecordRequest) (*PushRecordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PushRecord not implemented")
+}
+func (UnimplementedRecordHubServiceServer) PullRecord(context.Context, *PullRecordRequest) (*PullRecordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PullRecord not implemented")
 }
 func (UnimplementedRecordHubServiceServer) testEmbeddedByValue() {}
 
@@ -107,6 +184,24 @@ func RegisterRecordHubServiceServer(s grpc.ServiceRegistrar, srv RecordHubServic
 	s.RegisterService(&RecordHubService_ServiceDesc, srv)
 }
 
+func _RecordHubService_ListRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRecordsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordHubServiceServer).ListRecords(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecordHubService_ListRecords_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordHubServiceServer).ListRecords(ctx, req.(*ListRecordsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RecordHubService_GetRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRecordRequest)
 	if err := dec(in); err != nil {
@@ -121,6 +216,24 @@ func _RecordHubService_GetRecord_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RecordHubServiceServer).GetRecord(ctx, req.(*GetRecordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RecordHubService_GetRecordByCID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRecordByCIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordHubServiceServer).GetRecordByCID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecordHubService_GetRecordByCID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordHubServiceServer).GetRecordByCID(ctx, req.(*GetRecordByCIDRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -143,6 +256,60 @@ func _RecordHubService_DeleteRecord_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RecordHubService_UpdateRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRecordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordHubServiceServer).UpdateRecord(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecordHubService_UpdateRecord_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordHubServiceServer).UpdateRecord(ctx, req.(*UpdateRecordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RecordHubService_PushRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PushRecordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordHubServiceServer).PushRecord(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecordHubService_PushRecord_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordHubServiceServer).PushRecord(ctx, req.(*PushRecordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RecordHubService_PullRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PullRecordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordHubServiceServer).PullRecord(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecordHubService_PullRecord_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordHubServiceServer).PullRecord(ctx, req.(*PullRecordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RecordHubService_ServiceDesc is the grpc.ServiceDesc for RecordHubService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -151,12 +318,32 @@ var RecordHubService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RecordHubServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "ListRecords",
+			Handler:    _RecordHubService_ListRecords_Handler,
+		},
+		{
 			MethodName: "GetRecord",
 			Handler:    _RecordHubService_GetRecord_Handler,
 		},
 		{
+			MethodName: "GetRecordByCID",
+			Handler:    _RecordHubService_GetRecordByCID_Handler,
+		},
+		{
 			MethodName: "DeleteRecord",
 			Handler:    _RecordHubService_DeleteRecord_Handler,
+		},
+		{
+			MethodName: "UpdateRecord",
+			Handler:    _RecordHubService_UpdateRecord_Handler,
+		},
+		{
+			MethodName: "PushRecord",
+			Handler:    _RecordHubService_PushRecord_Handler,
+		},
+		{
+			MethodName: "PullRecord",
+			Handler:    _RecordHubService_PullRecord_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

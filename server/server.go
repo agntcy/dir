@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/Portshift/go-utils/healthz"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -24,6 +23,7 @@ import (
 	"github.com/agntcy/dir/server/controller"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
+	"github.com/agntcy/dir/server/healthcheck"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
 	"github.com/agntcy/dir/server/publication"
@@ -51,7 +51,7 @@ type Server struct {
 	authnService       *authn.Service
 	authzService       *authz.Service
 	publicationService *publication.Service
-	healthzServer      *healthz.Server
+	health             *healthcheck.Checker
 	grpcServer         *grpc.Server
 }
 
@@ -182,7 +182,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		authnService:       authnService,
 		authzService:       authzService,
 		publicationService: publicationService,
-		healthzServer:      healthz.NewHealthServer(cfg.HealthCheckAddress),
+		health:             healthcheck.New(),
 		grpcServer:         grpcServer,
 	}, nil
 }
@@ -270,10 +270,21 @@ func (s Server) start(ctx context.Context) error {
 	// If the server cannot be started, exit with code 1.
 	go func() {
 		// Start health check server
-		s.healthzServer.Start()
+		if err := s.health.Start(s.Options().Config().HealthCheckAddress); err != nil {
+			logger.Error("Failed to start health check server", "error", err)
+		}
 
-		s.healthzServer.SetIsReady(true)
-		defer s.healthzServer.SetIsReady(false)
+		s.health.AddReadinessCheck("database", s.database.IsReady)
+		s.health.AddReadinessCheck("sync", s.syncService.IsReady)
+		s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
+		s.health.AddReadinessCheck("store", s.store.IsReady)
+		s.health.AddReadinessCheck("routing", s.routing.IsReady)
+
+		defer func() {
+			if err := s.health.Stop(ctx); err != nil {
+				logger.Error("Failed to stop health check server", "error", err)
+			}
+		}()
 
 		logger.Info("Server starting", "address", s.Options().Config().ListenAddress)
 

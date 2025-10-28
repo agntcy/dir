@@ -91,6 +91,10 @@ func (m *mockStore) Delete(_ context.Context, ref *corev1.RecordRef) error {
 	return nil
 }
 
+func (m *mockStore) IsReady(_ context.Context) bool {
+	return true
+}
+
 func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	var (
 		testRecord = corev1.New(&typesv1alpha0.Record{

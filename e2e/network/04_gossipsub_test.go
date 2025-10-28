@@ -198,27 +198,19 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 		})
 
 		ginkgo.It("should propagate all 5 records' labels via GossipSub", func() {
-			// Wait for GossipSub propagation of all announcements
-			ginkgo.GinkgoWriter.Printf("Waiting 10 seconds for bulk GossipSub propagation...")
-			time.Sleep(10 * time.Second)
-
 			// Verify all 5 records are discoverable from Peer2
+			// Wait at least 10 seconds for GossipSub propagation of all announcements
 			utils.ResetCLIState()
 			successCount := 0
 			for i, bulkCID := range bulkCIDs {
-				output := cli.Routing().Search().
+				cli.Routing().Search().
 					WithSkill("natural_language_processing").
 					WithLimit(10).
 					OnServer(utils.Peer2Addr).
-					ShouldSucceed()
+					ShouldEventuallyContain(bulkCID, 15*time.Second)
 
-				if strings.Contains(output, bulkCID) {
-					successCount++
-					ginkgo.GinkgoWriter.Printf("✅ Bulk record %d/%d discovered on Peer2", i+1, 5)
-				} else {
-					ginkgo.GinkgoWriter.Printf("❌ Bulk record %d/%d NOT found on Peer2", i+1, 5)
-				}
-
+				successCount++
+				ginkgo.GinkgoWriter.Printf("✅ Bulk record %d/%d discovered on Peer2", i+1, 5)
 				utils.ResetCLIState()
 			}
 
@@ -234,17 +226,14 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			utils.ResetCLIState()
 			successCount := 0
 			for i, bulkCID := range bulkCIDs {
-				output := cli.Routing().Search().
+				cli.Routing().Search().
 					WithSkill("natural_language_processing").
 					WithLimit(10).
 					OnServer(utils.Peer3Addr).
-					ShouldSucceed()
+					ShouldEventuallyContain(bulkCID, 15*time.Second)
 
-				if strings.Contains(output, bulkCID) {
-					successCount++
-					ginkgo.GinkgoWriter.Printf("✅ Bulk record %d/%d discovered on Peer3", i+1, 5)
-				}
-
+				successCount++
+				ginkgo.GinkgoWriter.Printf("✅ Bulk record %d/%d discovered on Peer3", i+1, 5)
 				utils.ResetCLIState()
 			}
 
