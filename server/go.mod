@@ -280,7 +280,7 @@ require (
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/term v0.36.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
-	golang.org/x/time v0.13.0 // indirect
+	golang.org/x/time v0.13.0
 	golang.org/x/tools v0.37.0 // indirect
 	gonum.org/v1/gonum v0.15.1 // indirect
 	google.golang.org/api v0.241.0 // indirect
