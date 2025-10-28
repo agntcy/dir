@@ -94,6 +94,11 @@ func (s *eventsStore) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 	return nil
 }
 
+// IsReady checks if the store is ready to serve traffic.
+func (s *eventsStore) IsReady(ctx context.Context) bool {
+	return s.source.IsReady(ctx)
+}
+
 // VerifyWithZot delegates to the source store if it supports Zot verification.
 // This ensures the wrapper doesn't hide optional methods from the underlying store.
 func (s *eventsStore) VerifyWithZot(ctx context.Context, recordCID string) (bool, error) {
