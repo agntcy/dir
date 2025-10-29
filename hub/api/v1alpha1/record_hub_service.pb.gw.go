@@ -70,61 +70,61 @@ func local_request_RecordHubService_ListRecords_0(ctx context.Context, marshaler
 	return msg, metadata, err
 }
 
-var filter_RecordHubService_GetRecord_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0, "digest": 1}, Base: []int{1, 1, 1, 0}, Check: []int{0, 1, 2, 3}}
+var filter_RecordHubService_ListOrgRecords_0 = &utilities.DoubleArray{Encoding: map[string]int{"organization_id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
-func request_RecordHubService_GetRecord_0(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_RecordHubService_ListOrgRecords_0(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq GetRecordRequest
+		protoReq ListOrgRecordsRequest
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	val, ok := pathParams["id.digest"]
+	val, ok := pathParams["organization_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id.digest")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "organization_id")
 	}
-	err = runtime.PopulateFieldFromPath(&protoReq, "id.digest", val)
+	protoReq.OrganizationId, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id.digest", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "organization_id", err)
 	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_GetRecord_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_ListOrgRecords_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	msg, err := client.GetRecord(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.ListOrgRecords(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
 
-func local_request_RecordHubService_GetRecord_0(ctx context.Context, marshaler runtime.Marshaler, server RecordHubServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_RecordHubService_ListOrgRecords_0(ctx context.Context, marshaler runtime.Marshaler, server RecordHubServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq GetRecordRequest
+		protoReq ListOrgRecordsRequest
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	val, ok := pathParams["id.digest"]
+	val, ok := pathParams["organization_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id.digest")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "organization_id")
 	}
-	err = runtime.PopulateFieldFromPath(&protoReq, "id.digest", val)
+	protoReq.OrganizationId, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id.digest", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "organization_id", err)
 	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_GetRecord_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_ListOrgRecords_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	msg, err := server.GetRecord(ctx, &protoReq)
+	msg, err := server.ListOrgRecords(ctx, &protoReq)
 	return msg, metadata, err
 }
 
-var filter_RecordHubService_GetRecordByCID_0 = &utilities.DoubleArray{Encoding: map[string]int{"cid": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+var filter_RecordHubService_GetPublicRecordByCID_0 = &utilities.DoubleArray{Encoding: map[string]int{"cid": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
 
-func request_RecordHubService_GetRecordByCID_0(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_RecordHubService_GetPublicRecordByCID_0(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq GetRecordByCIDRequest
+		protoReq GetPublicRecordByCIDRequest
 		metadata runtime.ServerMetadata
 		err      error
 	)
@@ -139,16 +139,16 @@ func request_RecordHubService_GetRecordByCID_0(ctx context.Context, marshaler ru
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_GetRecordByCID_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_GetPublicRecordByCID_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	msg, err := client.GetRecordByCID(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetPublicRecordByCID(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
 
-func local_request_RecordHubService_GetRecordByCID_0(ctx context.Context, marshaler runtime.Marshaler, server RecordHubServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_RecordHubService_GetPublicRecordByCID_0(ctx context.Context, marshaler runtime.Marshaler, server RecordHubServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq GetRecordByCIDRequest
+		protoReq GetPublicRecordByCIDRequest
 		metadata runtime.ServerMetadata
 		err      error
 	)
@@ -163,60 +163,76 @@ func local_request_RecordHubService_GetRecordByCID_0(ctx context.Context, marsha
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_GetRecordByCID_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_GetPublicRecordByCID_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	msg, err := server.GetRecordByCID(ctx, &protoReq)
+	msg, err := server.GetPublicRecordByCID(ctx, &protoReq)
 	return msg, metadata, err
 }
 
-var filter_RecordHubService_DeleteRecord_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0, "digest": 1}, Base: []int{1, 1, 1, 0}, Check: []int{0, 1, 2, 3}}
+var filter_RecordHubService_GetOrgRecordByCID_0 = &utilities.DoubleArray{Encoding: map[string]int{"organization_id": 0, "cid": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 
-func request_RecordHubService_DeleteRecord_0(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_RecordHubService_GetOrgRecordByCID_0(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq DeleteRecordRequest
+		protoReq GetOrgRecordByCIDRequest
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	val, ok := pathParams["id.digest"]
+	val, ok := pathParams["organization_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id.digest")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "organization_id")
 	}
-	err = runtime.PopulateFieldFromPath(&protoReq, "id.digest", val)
+	protoReq.OrganizationId, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id.digest", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "organization_id", err)
+	}
+	val, ok = pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
 	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_DeleteRecord_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_GetOrgRecordByCID_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	msg, err := client.DeleteRecord(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.GetOrgRecordByCID(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
 
-func local_request_RecordHubService_DeleteRecord_0(ctx context.Context, marshaler runtime.Marshaler, server RecordHubServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_RecordHubService_GetOrgRecordByCID_0(ctx context.Context, marshaler runtime.Marshaler, server RecordHubServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq DeleteRecordRequest
+		protoReq GetOrgRecordByCIDRequest
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	val, ok := pathParams["id.digest"]
+	val, ok := pathParams["organization_id"]
 	if !ok {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id.digest")
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "organization_id")
 	}
-	err = runtime.PopulateFieldFromPath(&protoReq, "id.digest", val)
+	protoReq.OrganizationId, err = runtime.String(val)
 	if err != nil {
-		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id.digest", err)
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "organization_id", err)
+	}
+	val, ok = pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
 	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_DeleteRecord_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_GetOrgRecordByCID_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	msg, err := server.DeleteRecord(ctx, &protoReq)
+	msg, err := server.GetOrgRecordByCID(ctx, &protoReq)
 	return msg, metadata, err
 }
 
@@ -318,7 +334,7 @@ func local_request_RecordHubService_PushRecord_0(ctx context.Context, marshaler 
 	return msg, metadata, err
 }
 
-var filter_RecordHubService_PushRecord_1 = &utilities.DoubleArray{Encoding: map[string]int{"id_or_name": 0, "name": 1}, Base: []int{1, 1, 1, 0}, Check: []int{0, 1, 2, 3}}
+var filter_RecordHubService_PushRecord_1 = &utilities.DoubleArray{Encoding: map[string]int{"model": 0, "id_or_name": 1, "name": 2}, Base: []int{1, 1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 3, 2, 4}}
 
 func request_RecordHubService_PushRecord_1(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
@@ -326,6 +342,9 @@ func request_RecordHubService_PushRecord_1(ctx context.Context, marshaler runtim
 		metadata runtime.ServerMetadata
 		err      error
 	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Model); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 	val, ok := pathParams["id_or_name.name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name.name")
@@ -350,6 +369,9 @@ func local_request_RecordHubService_PushRecord_1(ctx context.Context, marshaler 
 		metadata runtime.ServerMetadata
 		err      error
 	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Model); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
 	val, ok := pathParams["id_or_name.name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name.name")
@@ -430,65 +452,65 @@ func RegisterRecordHubServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 		}
 		forward_RecordHubService_ListRecords_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodGet, pattern_RecordHubService_GetRecord_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_RecordHubService_ListOrgRecords_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetRecord", runtime.WithHTTPPathPattern("/v1alpha1/records/ref/{id.digest}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/ListOrgRecords", runtime.WithHTTPPathPattern("/v1alpha1/organizations/{organization_id}/records"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RecordHubService_GetRecord_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RecordHubService_ListOrgRecords_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_RecordHubService_GetRecord_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RecordHubService_ListOrgRecords_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodGet, pattern_RecordHubService_GetRecordByCID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_RecordHubService_GetPublicRecordByCID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetRecordByCID", runtime.WithHTTPPathPattern("/v1alpha1/records/{cid}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetPublicRecordByCID", runtime.WithHTTPPathPattern("/v1alpha1/records/{cid}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RecordHubService_GetRecordByCID_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RecordHubService_GetPublicRecordByCID_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_RecordHubService_GetRecordByCID_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RecordHubService_GetPublicRecordByCID_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodDelete, pattern_RecordHubService_DeleteRecord_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_RecordHubService_GetOrgRecordByCID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/DeleteRecord", runtime.WithHTTPPathPattern("/v1alpha1/records/ref/{id.digest}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetOrgRecordByCID", runtime.WithHTTPPathPattern("/v1alpha1/organizations/{organization_id}/records/{cid}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_RecordHubService_DeleteRecord_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_RecordHubService_GetOrgRecordByCID_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_RecordHubService_DeleteRecord_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RecordHubService_GetOrgRecordByCID_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodPut, pattern_RecordHubService_UpdateRecord_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -627,56 +649,56 @@ func RegisterRecordHubServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 		}
 		forward_RecordHubService_ListRecords_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodGet, pattern_RecordHubService_GetRecord_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_RecordHubService_ListOrgRecords_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetRecord", runtime.WithHTTPPathPattern("/v1alpha1/records/ref/{id.digest}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/ListOrgRecords", runtime.WithHTTPPathPattern("/v1alpha1/organizations/{organization_id}/records"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RecordHubService_GetRecord_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RecordHubService_ListOrgRecords_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_RecordHubService_GetRecord_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RecordHubService_ListOrgRecords_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodGet, pattern_RecordHubService_GetRecordByCID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_RecordHubService_GetPublicRecordByCID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetRecordByCID", runtime.WithHTTPPathPattern("/v1alpha1/records/{cid}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetPublicRecordByCID", runtime.WithHTTPPathPattern("/v1alpha1/records/{cid}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RecordHubService_GetRecordByCID_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RecordHubService_GetPublicRecordByCID_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_RecordHubService_GetRecordByCID_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RecordHubService_GetPublicRecordByCID_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodDelete, pattern_RecordHubService_DeleteRecord_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_RecordHubService_GetOrgRecordByCID_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/DeleteRecord", runtime.WithHTTPPathPattern("/v1alpha1/records/ref/{id.digest}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetOrgRecordByCID", runtime.WithHTTPPathPattern("/v1alpha1/organizations/{organization_id}/records/{cid}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_RecordHubService_DeleteRecord_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_RecordHubService_GetOrgRecordByCID_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_RecordHubService_DeleteRecord_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_RecordHubService_GetOrgRecordByCID_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	mux.Handle(http.MethodPut, pattern_RecordHubService_UpdateRecord_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
@@ -750,23 +772,23 @@ func RegisterRecordHubServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 }
 
 var (
-	pattern_RecordHubService_ListRecords_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1alpha1", "records"}, ""))
-	pattern_RecordHubService_GetRecord_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1alpha1", "records", "ref", "id.digest"}, ""))
-	pattern_RecordHubService_GetRecordByCID_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1alpha1", "records", "cid"}, ""))
-	pattern_RecordHubService_DeleteRecord_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1alpha1", "records", "ref", "id.digest"}, ""))
-	pattern_RecordHubService_UpdateRecord_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1alpha1", "records", "record_id"}, ""))
-	pattern_RecordHubService_PushRecord_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1alpha1", "organizations", "id_or_name.id", "records", "push"}, ""))
-	pattern_RecordHubService_PushRecord_1     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1alpha1", "organizations", "id_or_name.name", "records", "push"}, ""))
-	pattern_RecordHubService_PullRecord_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1alpha1", "records", "pull", "cid"}, ""))
+	pattern_RecordHubService_ListRecords_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1alpha1", "records"}, ""))
+	pattern_RecordHubService_ListOrgRecords_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1alpha1", "organizations", "organization_id", "records"}, ""))
+	pattern_RecordHubService_GetPublicRecordByCID_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1alpha1", "records", "cid"}, ""))
+	pattern_RecordHubService_GetOrgRecordByCID_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v1alpha1", "organizations", "organization_id", "records", "cid"}, ""))
+	pattern_RecordHubService_UpdateRecord_0         = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v1alpha1", "records", "record_id"}, ""))
+	pattern_RecordHubService_PushRecord_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1alpha1", "organizations", "id_or_name.id", "records", "push"}, ""))
+	pattern_RecordHubService_PushRecord_1           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1alpha1", "organizations", "id_or_name.name", "records", "push"}, ""))
+	pattern_RecordHubService_PullRecord_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1alpha1", "records", "pull", "cid"}, ""))
 )
 
 var (
-	forward_RecordHubService_ListRecords_0    = runtime.ForwardResponseMessage
-	forward_RecordHubService_GetRecord_0      = runtime.ForwardResponseMessage
-	forward_RecordHubService_GetRecordByCID_0 = runtime.ForwardResponseMessage
-	forward_RecordHubService_DeleteRecord_0   = runtime.ForwardResponseMessage
-	forward_RecordHubService_UpdateRecord_0   = runtime.ForwardResponseMessage
-	forward_RecordHubService_PushRecord_0     = runtime.ForwardResponseMessage
-	forward_RecordHubService_PushRecord_1     = runtime.ForwardResponseMessage
-	forward_RecordHubService_PullRecord_0     = runtime.ForwardResponseMessage
+	forward_RecordHubService_ListRecords_0          = runtime.ForwardResponseMessage
+	forward_RecordHubService_ListOrgRecords_0       = runtime.ForwardResponseMessage
+	forward_RecordHubService_GetPublicRecordByCID_0 = runtime.ForwardResponseMessage
+	forward_RecordHubService_GetOrgRecordByCID_0    = runtime.ForwardResponseMessage
+	forward_RecordHubService_UpdateRecord_0         = runtime.ForwardResponseMessage
+	forward_RecordHubService_PushRecord_0           = runtime.ForwardResponseMessage
+	forward_RecordHubService_PushRecord_1           = runtime.ForwardResponseMessage
+	forward_RecordHubService_PullRecord_0           = runtime.ForwardResponseMessage
 )
