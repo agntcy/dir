@@ -32,7 +32,7 @@
     }
   },
   "scripts": {
-    "build": "rollup -c && api-extractor run --local --verbose",
+    "build": "rollup -c && cp -r ./src/models/agntcy ./dist/src/models/agntcy  && api-extractor run --local --verbose --diagnostics",
     "clean": "rm -rf dist/",
     "lint": "eslint '**/*.ts'",
     "fix": "eslint '**/*.ts' --fix",
@@ -45,7 +45,6 @@
     "@connectrpc/connect": "^2.1.0",
     "@connectrpc/connect-node": "^2.1.0",
     "@grpc/grpc-js": "^1.13.4",
-    "models": "file:src/models",
     "spiffe": "^0.4.0"
   },
   "devDependencies": {
