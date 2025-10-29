@@ -11,6 +11,7 @@ package saasv1alpha1
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -35,6 +36,7 @@ const (
 	OrganizationService_CreateOrganization_FullMethodName           = "/saas.v1alpha1.OrganizationService/CreateOrganization"
 	OrganizationService_UpdateOrganization_FullMethodName           = "/saas.v1alpha1.OrganizationService/UpdateOrganization"
 	OrganizationService_DeleteOrganization_FullMethodName           = "/saas.v1alpha1.OrganizationService/DeleteOrganization"
+	OrganizationService_DeleteOrganizationRecord_FullMethodName     = "/saas.v1alpha1.OrganizationService/DeleteOrganizationRecord"
 )
 
 // OrganizationServiceClient is the client API for OrganizationService service.
@@ -53,6 +55,7 @@ type OrganizationServiceClient interface {
 	CreateOrganization(ctx context.Context, in *CreateOrganizationRequest, opts ...grpc.CallOption) (*Organization, error)
 	UpdateOrganization(ctx context.Context, in *UpdateOrganizationRequest, opts ...grpc.CallOption) (*Organization, error)
 	DeleteOrganization(ctx context.Context, in *DeleteOrganizationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteOrganizationRecord(ctx context.Context, in *DeleteOrganizationRecordRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type organizationServiceClient struct {
@@ -183,6 +186,16 @@ func (c *organizationServiceClient) DeleteOrganization(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *organizationServiceClient) DeleteOrganizationRecord(ctx context.Context, in *DeleteOrganizationRecordRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, OrganizationService_DeleteOrganizationRecord_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OrganizationServiceServer is the server API for OrganizationService service.
 // All implementations should embed UnimplementedOrganizationServiceServer
 // for forward compatibility.
@@ -199,6 +212,7 @@ type OrganizationServiceServer interface {
 	CreateOrganization(context.Context, *CreateOrganizationRequest) (*Organization, error)
 	UpdateOrganization(context.Context, *UpdateOrganizationRequest) (*Organization, error)
 	DeleteOrganization(context.Context, *DeleteOrganizationRequest) (*emptypb.Empty, error)
+	DeleteOrganizationRecord(context.Context, *DeleteOrganizationRecordRequest) (*emptypb.Empty, error)
 }
 
 // UnimplementedOrganizationServiceServer should be embedded to have
@@ -243,6 +257,9 @@ func (UnimplementedOrganizationServiceServer) UpdateOrganization(context.Context
 }
 func (UnimplementedOrganizationServiceServer) DeleteOrganization(context.Context, *DeleteOrganizationRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteOrganization not implemented")
+}
+func (UnimplementedOrganizationServiceServer) DeleteOrganizationRecord(context.Context, *DeleteOrganizationRecordRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteOrganizationRecord not implemented")
 }
 func (UnimplementedOrganizationServiceServer) testEmbeddedByValue() {}
 
@@ -480,6 +497,24 @@ func _OrganizationService_DeleteOrganization_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OrganizationService_DeleteOrganizationRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteOrganizationRecordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrganizationServiceServer).DeleteOrganizationRecord(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrganizationService_DeleteOrganizationRecord_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrganizationServiceServer).DeleteOrganizationRecord(ctx, req.(*DeleteOrganizationRecordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OrganizationService_ServiceDesc is the grpc.ServiceDesc for OrganizationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -534,6 +569,10 @@ var OrganizationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteOrganization",
 			Handler:    _OrganizationService_DeleteOrganization_Handler,
+		},
+		{
+			MethodName: "DeleteOrganizationRecord",
+			Handler:    _OrganizationService_DeleteOrganizationRecord_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -23,13 +23,13 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	RecordHubService_ListRecords_FullMethodName    = "/saas.v1alpha1.RecordHubService/ListRecords"
-	RecordHubService_GetRecord_FullMethodName      = "/saas.v1alpha1.RecordHubService/GetRecord"
-	RecordHubService_GetRecordByCID_FullMethodName = "/saas.v1alpha1.RecordHubService/GetRecordByCID"
-	RecordHubService_DeleteRecord_FullMethodName   = "/saas.v1alpha1.RecordHubService/DeleteRecord"
-	RecordHubService_UpdateRecord_FullMethodName   = "/saas.v1alpha1.RecordHubService/UpdateRecord"
-	RecordHubService_PushRecord_FullMethodName     = "/saas.v1alpha1.RecordHubService/PushRecord"
-	RecordHubService_PullRecord_FullMethodName     = "/saas.v1alpha1.RecordHubService/PullRecord"
+	RecordHubService_ListRecords_FullMethodName          = "/saas.v1alpha1.RecordHubService/ListRecords"
+	RecordHubService_ListOrgRecords_FullMethodName       = "/saas.v1alpha1.RecordHubService/ListOrgRecords"
+	RecordHubService_GetPublicRecordByCID_FullMethodName = "/saas.v1alpha1.RecordHubService/GetPublicRecordByCID"
+	RecordHubService_GetOrgRecordByCID_FullMethodName    = "/saas.v1alpha1.RecordHubService/GetOrgRecordByCID"
+	RecordHubService_UpdateRecord_FullMethodName         = "/saas.v1alpha1.RecordHubService/UpdateRecord"
+	RecordHubService_PushRecord_FullMethodName           = "/saas.v1alpha1.RecordHubService/PushRecord"
+	RecordHubService_PullRecord_FullMethodName           = "/saas.v1alpha1.RecordHubService/PullRecord"
 )
 
 // RecordHubServiceClient is the client API for RecordHubService service.
@@ -37,9 +37,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RecordHubServiceClient interface {
 	ListRecords(ctx context.Context, in *ListRecordsRequest, opts ...grpc.CallOption) (*ListRecordsResponse, error)
-	GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*GetRecordResponse, error)
-	GetRecordByCID(ctx context.Context, in *GetRecordByCIDRequest, opts ...grpc.CallOption) (*GetRecordResponse, error)
-	DeleteRecord(ctx context.Context, in *DeleteRecordRequest, opts ...grpc.CallOption) (*DeleteRecordResponse, error)
+	ListOrgRecords(ctx context.Context, in *ListOrgRecordsRequest, opts ...grpc.CallOption) (*ListRecordsResponse, error)
+	GetPublicRecordByCID(ctx context.Context, in *GetPublicRecordByCIDRequest, opts ...grpc.CallOption) (*GetRecordResponse, error)
+	GetOrgRecordByCID(ctx context.Context, in *GetOrgRecordByCIDRequest, opts ...grpc.CallOption) (*GetRecordResponse, error)
 	UpdateRecord(ctx context.Context, in *UpdateRecordRequest, opts ...grpc.CallOption) (*UpdateRecordResponse, error)
 	PushRecord(ctx context.Context, in *PushRecordRequest, opts ...grpc.CallOption) (*PushRecordResponse, error)
 	PullRecord(ctx context.Context, in *PullRecordRequest, opts ...grpc.CallOption) (*PullRecordResponse, error)
@@ -63,30 +63,30 @@ func (c *recordHubServiceClient) ListRecords(ctx context.Context, in *ListRecord
 	return out, nil
 }
 
-func (c *recordHubServiceClient) GetRecord(ctx context.Context, in *GetRecordRequest, opts ...grpc.CallOption) (*GetRecordResponse, error) {
+func (c *recordHubServiceClient) ListOrgRecords(ctx context.Context, in *ListOrgRecordsRequest, opts ...grpc.CallOption) (*ListRecordsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetRecordResponse)
-	err := c.cc.Invoke(ctx, RecordHubService_GetRecord_FullMethodName, in, out, cOpts...)
+	out := new(ListRecordsResponse)
+	err := c.cc.Invoke(ctx, RecordHubService_ListOrgRecords_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *recordHubServiceClient) GetRecordByCID(ctx context.Context, in *GetRecordByCIDRequest, opts ...grpc.CallOption) (*GetRecordResponse, error) {
+func (c *recordHubServiceClient) GetPublicRecordByCID(ctx context.Context, in *GetPublicRecordByCIDRequest, opts ...grpc.CallOption) (*GetRecordResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetRecordResponse)
-	err := c.cc.Invoke(ctx, RecordHubService_GetRecordByCID_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RecordHubService_GetPublicRecordByCID_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *recordHubServiceClient) DeleteRecord(ctx context.Context, in *DeleteRecordRequest, opts ...grpc.CallOption) (*DeleteRecordResponse, error) {
+func (c *recordHubServiceClient) GetOrgRecordByCID(ctx context.Context, in *GetOrgRecordByCIDRequest, opts ...grpc.CallOption) (*GetRecordResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DeleteRecordResponse)
-	err := c.cc.Invoke(ctx, RecordHubService_DeleteRecord_FullMethodName, in, out, cOpts...)
+	out := new(GetRecordResponse)
+	err := c.cc.Invoke(ctx, RecordHubService_GetOrgRecordByCID_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +128,9 @@ func (c *recordHubServiceClient) PullRecord(ctx context.Context, in *PullRecordR
 // for forward compatibility.
 type RecordHubServiceServer interface {
 	ListRecords(context.Context, *ListRecordsRequest) (*ListRecordsResponse, error)
-	GetRecord(context.Context, *GetRecordRequest) (*GetRecordResponse, error)
-	GetRecordByCID(context.Context, *GetRecordByCIDRequest) (*GetRecordResponse, error)
-	DeleteRecord(context.Context, *DeleteRecordRequest) (*DeleteRecordResponse, error)
+	ListOrgRecords(context.Context, *ListOrgRecordsRequest) (*ListRecordsResponse, error)
+	GetPublicRecordByCID(context.Context, *GetPublicRecordByCIDRequest) (*GetRecordResponse, error)
+	GetOrgRecordByCID(context.Context, *GetOrgRecordByCIDRequest) (*GetRecordResponse, error)
 	UpdateRecord(context.Context, *UpdateRecordRequest) (*UpdateRecordResponse, error)
 	PushRecord(context.Context, *PushRecordRequest) (*PushRecordResponse, error)
 	PullRecord(context.Context, *PullRecordRequest) (*PullRecordResponse, error)
@@ -146,14 +146,14 @@ type UnimplementedRecordHubServiceServer struct{}
 func (UnimplementedRecordHubServiceServer) ListRecords(context.Context, *ListRecordsRequest) (*ListRecordsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRecords not implemented")
 }
-func (UnimplementedRecordHubServiceServer) GetRecord(context.Context, *GetRecordRequest) (*GetRecordResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRecord not implemented")
+func (UnimplementedRecordHubServiceServer) ListOrgRecords(context.Context, *ListOrgRecordsRequest) (*ListRecordsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListOrgRecords not implemented")
 }
-func (UnimplementedRecordHubServiceServer) GetRecordByCID(context.Context, *GetRecordByCIDRequest) (*GetRecordResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRecordByCID not implemented")
+func (UnimplementedRecordHubServiceServer) GetPublicRecordByCID(context.Context, *GetPublicRecordByCIDRequest) (*GetRecordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPublicRecordByCID not implemented")
 }
-func (UnimplementedRecordHubServiceServer) DeleteRecord(context.Context, *DeleteRecordRequest) (*DeleteRecordResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteRecord not implemented")
+func (UnimplementedRecordHubServiceServer) GetOrgRecordByCID(context.Context, *GetOrgRecordByCIDRequest) (*GetRecordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetOrgRecordByCID not implemented")
 }
 func (UnimplementedRecordHubServiceServer) UpdateRecord(context.Context, *UpdateRecordRequest) (*UpdateRecordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateRecord not implemented")
@@ -202,56 +202,56 @@ func _RecordHubService_ListRecords_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RecordHubService_GetRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRecordRequest)
+func _RecordHubService_ListOrgRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOrgRecordsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RecordHubServiceServer).GetRecord(ctx, in)
+		return srv.(RecordHubServiceServer).ListOrgRecords(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RecordHubService_GetRecord_FullMethodName,
+		FullMethod: RecordHubService_ListOrgRecords_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RecordHubServiceServer).GetRecord(ctx, req.(*GetRecordRequest))
+		return srv.(RecordHubServiceServer).ListOrgRecords(ctx, req.(*ListOrgRecordsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RecordHubService_GetRecordByCID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRecordByCIDRequest)
+func _RecordHubService_GetPublicRecordByCID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPublicRecordByCIDRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RecordHubServiceServer).GetRecordByCID(ctx, in)
+		return srv.(RecordHubServiceServer).GetPublicRecordByCID(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RecordHubService_GetRecordByCID_FullMethodName,
+		FullMethod: RecordHubService_GetPublicRecordByCID_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RecordHubServiceServer).GetRecordByCID(ctx, req.(*GetRecordByCIDRequest))
+		return srv.(RecordHubServiceServer).GetPublicRecordByCID(ctx, req.(*GetPublicRecordByCIDRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RecordHubService_DeleteRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteRecordRequest)
+func _RecordHubService_GetOrgRecordByCID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOrgRecordByCIDRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RecordHubServiceServer).DeleteRecord(ctx, in)
+		return srv.(RecordHubServiceServer).GetOrgRecordByCID(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RecordHubService_DeleteRecord_FullMethodName,
+		FullMethod: RecordHubService_GetOrgRecordByCID_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RecordHubServiceServer).DeleteRecord(ctx, req.(*DeleteRecordRequest))
+		return srv.(RecordHubServiceServer).GetOrgRecordByCID(ctx, req.(*GetOrgRecordByCIDRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -322,16 +322,16 @@ var RecordHubService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RecordHubService_ListRecords_Handler,
 		},
 		{
-			MethodName: "GetRecord",
-			Handler:    _RecordHubService_GetRecord_Handler,
+			MethodName: "ListOrgRecords",
+			Handler:    _RecordHubService_ListOrgRecords_Handler,
 		},
 		{
-			MethodName: "GetRecordByCID",
-			Handler:    _RecordHubService_GetRecordByCID_Handler,
+			MethodName: "GetPublicRecordByCID",
+			Handler:    _RecordHubService_GetPublicRecordByCID_Handler,
 		},
 		{
-			MethodName: "DeleteRecord",
-			Handler:    _RecordHubService_DeleteRecord_Handler,
+			MethodName: "GetOrgRecordByCID",
+			Handler:    _RecordHubService_GetOrgRecordByCID_Handler,
 		},
 		{
 			MethodName: "UpdateRecord",
