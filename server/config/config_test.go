@@ -12,6 +12,7 @@ import (
 	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
@@ -183,6 +184,150 @@ func TestConfig(t *testing.T) {
 			config, err := LoadConfig()
 			assert.NoError(t, err)
 			assert.Equal(t, *config, *test.ExpectedConfig)
+		})
+	}
+}
+
+// TestConfig_RateLimiting tests that rate limiting configuration is correctly parsed.
+func TestConfig_RateLimiting(t *testing.T) {
+	tests := []struct {
+		name           string
+		envVars        map[string]string
+		expectedConfig ratelimitconfig.Config
+	}{
+		{
+			name: "rate limiting enabled with custom values",
+			envVars: map[string]string{
+				"DIRECTORY_SERVER_RATELIMIT_ENABLED":          "true",
+				"DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS":       "50.0",
+				"DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST":     "100",
+				"DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS":   "500.0",
+				"DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST": "1000",
+			},
+			expectedConfig: ratelimitconfig.Config{
+				Enabled:        true,
+				GlobalRPS:      50.0,
+				GlobalBurst:    100,
+				PerClientRPS:   500.0,
+				PerClientBurst: 1000,
+				MethodLimits:   map[string]ratelimitconfig.MethodLimit{},
+			},
+		},
+		{
+			name: "rate limiting disabled (default)",
+			envVars: map[string]string{
+				"DIRECTORY_SERVER_RATELIMIT_ENABLED": "false",
+			},
+			expectedConfig: ratelimitconfig.Config{
+				Enabled:        false,
+				GlobalRPS:      0,
+				GlobalBurst:    0,
+				PerClientRPS:   0,
+				PerClientBurst: 0,
+				MethodLimits:   map[string]ratelimitconfig.MethodLimit{},
+			},
+		},
+		{
+			name: "rate limiting with partial configuration",
+			envVars: map[string]string{
+				"DIRECTORY_SERVER_RATELIMIT_ENABLED":      "true",
+				"DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS":   "200.0",
+				"DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST": "400",
+			},
+			expectedConfig: ratelimitconfig.Config{
+				Enabled:        true,
+				GlobalRPS:      200.0,
+				GlobalBurst:    400,
+				PerClientRPS:   0,
+				PerClientBurst: 0,
+				MethodLimits:   map[string]ratelimitconfig.MethodLimit{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set environment variables
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
+			}
+
+			// Load config
+			cfg, err := LoadConfig()
+			assert.NoError(t, err)
+
+			// Verify rate limiting configuration
+			assert.Equal(t, tt.expectedConfig.Enabled, cfg.RateLimit.Enabled)
+			assert.Equal(t, tt.expectedConfig.GlobalRPS, cfg.RateLimit.GlobalRPS)
+			assert.Equal(t, tt.expectedConfig.GlobalBurst, cfg.RateLimit.GlobalBurst)
+			assert.Equal(t, tt.expectedConfig.PerClientRPS, cfg.RateLimit.PerClientRPS)
+			assert.Equal(t, tt.expectedConfig.PerClientBurst, cfg.RateLimit.PerClientBurst)
+		})
+	}
+}
+
+// TestConfig_RateLimitingValidation tests that invalid rate limiting configuration
+// is properly validated during server initialization (will be tested in server tests).
+func TestConfig_RateLimitingValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      ratelimitconfig.Config
+		shouldError bool
+	}{
+		{
+			name: "valid rate limiting configuration",
+			config: ratelimitconfig.Config{
+				Enabled:        true,
+				GlobalRPS:      100.0,
+				GlobalBurst:    200,
+				PerClientRPS:   1000.0,
+				PerClientBurst: 2000,
+			},
+			shouldError: false,
+		},
+		{
+			name: "invalid rate limiting - negative RPS",
+			config: ratelimitconfig.Config{
+				Enabled:        true,
+				GlobalRPS:      -10.0,
+				GlobalBurst:    200,
+				PerClientRPS:   1000.0,
+				PerClientBurst: 2000,
+			},
+			shouldError: true,
+		},
+		{
+			name: "invalid rate limiting - negative burst",
+			config: ratelimitconfig.Config{
+				Enabled:        true,
+				GlobalRPS:      100.0,
+				GlobalBurst:    -200,
+				PerClientRPS:   1000.0,
+				PerClientBurst: 2000,
+			},
+			shouldError: true,
+		},
+		{
+			name: "disabled rate limiting - no validation",
+			config: ratelimitconfig.Config{
+				Enabled:        false,
+				GlobalRPS:      -100.0, // Invalid but should be ignored
+				GlobalBurst:    -200,
+				PerClientRPS:   -1000.0,
+				PerClientBurst: -2000,
+			},
+			shouldError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.Validate()
+			if tt.shouldError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

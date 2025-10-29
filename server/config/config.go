@@ -13,6 +13,7 @@ import (
 	database "github.com/agntcy/dir/server/database/config"
 	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
 	events "github.com/agntcy/dir/server/events/config"
+	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
@@ -47,6 +48,9 @@ type Config struct {
 
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty" mapstructure:"logging"`
+
+	// Rate limiting configuration
+	RateLimit ratelimitconfig.Config `json:"ratelimit,omitempty" mapstructure:"ratelimit"`
 
 	// Authn configuration (JWT or X.509 authentication)
 	Authn authn.Config `json:"authn,omitempty" mapstructure:"authn"`
@@ -118,6 +122,34 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("logging.verbose")
 	v.SetDefault("logging.verbose", false)
+
+	//
+	// Rate limiting configuration
+	//
+	_ = v.BindEnv("ratelimit.enabled")
+	v.SetDefault("ratelimit.enabled", false)
+
+	_ = v.BindEnv("ratelimit.global_rps")
+	v.SetDefault("ratelimit.global_rps", 0.0)
+
+	_ = v.BindEnv("ratelimit.global_burst")
+	v.SetDefault("ratelimit.global_burst", 0)
+
+	_ = v.BindEnv("ratelimit.per_client_rps")
+	v.SetDefault("ratelimit.per_client_rps", 0.0)
+
+	_ = v.BindEnv("ratelimit.per_client_burst")
+	v.SetDefault("ratelimit.per_client_burst", 0)
+
+	// Note: method_limits (per-method rate limit overrides) can only be configured
+	// via YAML/JSON config file due to its complex nested map structure.
+	// Environment variable configuration for method limits is not supported.
+	// Example config:
+	//   ratelimit:
+	//     method_limits:
+	//       "/agntcy.dir.store.v1.StoreService/CreateRecord":
+	//         rps: 50
+	//         burst: 100
 
 	//
 	// Authn configuration (authentication: JWT or X.509)
