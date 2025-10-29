@@ -142,6 +142,35 @@ config:
     # Timeout for individual publication operations
     worker_timeout: "30m"
 
+  # Rate limiting configuration
+  # Protects the server from abuse and resource exhaustion using token bucket algorithm
+  ratelimit:
+    # Enable rate limiting middleware
+    # Default: false (disabled for development/testing)
+    enabled: false
+    
+    # Global rate limit (applies to all requests regardless of client)
+    # Set both to 0 to disable global limiting
+    # global_rps: 0       # Requests per second (float, e.g., 1000.0)
+    # global_burst: 0     # Burst capacity (int, e.g., 2000)
+    
+    # Per-client rate limit (tracked by SPIFFE ID from mTLS)
+    # Default values shown below are reasonable for production
+    # Set both to 0 to disable per-client limiting
+    per_client_rps: 100    # Requests per second per client (float)
+    per_client_burst: 200  # Burst capacity per client (int)
+    
+    # Per-method rate limit overrides (optional)
+    # Allows fine-grained control over specific gRPC methods
+    # Note: These can only be configured via Helm values, not environment variables
+    # method_limits:
+    #   "/agntcy.dir.store.v1.StoreService/CreateRecord":
+    #     rps: 50      # Lower limit for expensive operations
+    #     burst: 100
+    #   "/agntcy.dir.store.v1.StoreService/PullRecord":
+    #     rps: 200     # Higher limit for read operations
+    #     burst: 400
+
 # SPIRE configuration
 spire:
   enabled: false
