@@ -135,24 +135,6 @@ tasks:
     cmds:
       - '{{.BUFBUILD_BIN}} dep update'
       - '{{.BUFBUILD_BIN}} generate'
-      - task: api:gen:fix:javascript
-
-  api:gen:fix:javascript:
-    internal: true
-    desc: Fix top-level namespace issue for JS/TS stubs
-    dir: ./sdk/dir-js/src/models/
-    cmd: |
-      cat > package.json << EOF
-      {
-        "type": "module",
-        "name": "models",
-        "version": "0.0.0",
-        "description": "This package contains generated code for the protobuf modules",
-        "peerDependencies": {
-            "@bufbuild/protobuf": "^2.9.0"
-        }
-      }
-      EOF
 
   api:clean:
     desc: Clean generated API stubs
