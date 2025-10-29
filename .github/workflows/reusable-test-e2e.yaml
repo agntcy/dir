@@ -14,6 +14,15 @@ on:
         required: true
         type: string
         description: 'Image tag to use.'
+      enable_coverage:
+        required: false
+        type: boolean
+        default: false
+        description: 'Whether to collect and upload E2E coverage to Codecov.'
+    secrets:
+      CODECOV_TOKEN:
+        description: "Codecov token for uploading coverage reports"
+        required: false
 
 jobs:
   e2e:
@@ -77,9 +86,25 @@ jobs:
           path: tmp/artifacts
           merge-multiple: true
 
+      - name: Download coverage image artifacts
+        if: ${{ inputs.enable_coverage }}
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          path: tmp/coverage-artifacts
+          pattern: '*-coverage'
+          merge-multiple: true
+
       - name: Load images to local Docker registry
         run: |
           for image_archive in tmp/artifacts/*.tar; do
+            docker load --input "$image_archive"
+          done
+          docker images
+
+      - name: Load coverage images to local Docker registry
+        if: ${{ inputs.enable_coverage }}
+        run: |
+          for image_archive in tmp/coverage-artifacts/*.tar; do
             docker load --input "$image_archive"
           done
           docker images
@@ -89,8 +114,24 @@ jobs:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
           E2E_COMPILE_OUTPUT_DIR: tmp
+          E2E_COVERAGE_ENABLED: ${{ matrix.task != 'test:e2e:spire' && inputs.enable_coverage && 'true' || 'false' }}
         run: |
           # Use a random cluster name to avoid conflicts in concurrent runs.
           # Kind cluster names must be lowercase and can contain only letters and numbers.
           export KIND_CLUSTER_NAME=test-$(openssl rand -base64 12 | tr -dc 'a-z0-9')
           task ${{ matrix.task }}
+
+      - name: Process E2E coverage
+        if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' }}
+        run: |
+          task test:e2e:coverage:process
+
+      - name: Upload E2E coverage to Codecov
+        if: ${{ inputs.enable_coverage && matrix.task != 'test:e2e:spire' }}
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
+        with:
+          files: ${{ matrix.label == 'Local' && '.coverage/e2e/local-cli.out,.coverage/e2e/local-client.out,.coverage/e2e/server.out' || matrix.label == 'Network' && '.coverage/e2e/network.out,.coverage/e2e/server.out' || '.coverage/e2e/server.out' }}
+          flags: e2e-${{ matrix.label }}
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
