@@ -12,12 +12,13 @@
 package saasv1alpha1
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	v1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	_ "google.golang.org/genproto/googleapis/api"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
