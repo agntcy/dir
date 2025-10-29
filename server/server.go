@@ -25,6 +25,7 @@ import (
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/healthcheck"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
+	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
@@ -94,7 +95,23 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// This prevents server crashes from panics in handlers or other interceptors
 	serverOpts = append(serverOpts, grpcrecovery.ServerOptions()...)
 
-	// Add gRPC logging interceptors (after recovery, before auth/authz)
+	// Add rate limiting interceptors (after recovery, before logging and auth)
+	// This protects authentication and other downstream processes from DDoS attacks
+	if cfg.RateLimit.Enabled {
+		rateLimitOpts, err := grpcratelimit.ServerOptions(&cfg.RateLimit)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create rate limit interceptors: %w", err)
+		}
+
+		serverOpts = append(serverOpts, rateLimitOpts...)
+
+		logger.Info("Rate limiting enabled",
+			"global_rps", cfg.RateLimit.GlobalRPS,
+			"per_client_rps", cfg.RateLimit.PerClientRPS,
+		)
+	}
+
+	// Add gRPC logging interceptors (after recovery and rate limiting, before auth/authz)
 	grpcLogger := logging.Logger("grpc")
 	loggingOpts := grpclogging.ServerOptions(grpcLogger, cfg.Logging.Verbose)
 	serverOpts = append(serverOpts, loggingOpts...)

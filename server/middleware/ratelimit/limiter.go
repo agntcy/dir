@@ -9,23 +9,27 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/agntcy/dir/server/authn"
 	"github.com/agntcy/dir/server/middleware/ratelimit/config"
 	"github.com/agntcy/dir/utils/logging"
 	"golang.org/x/time/rate"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var logger = logging.Logger("ratelimit")
 
 // Limiter defines the interface for rate limiting operations.
+// This interface matches the go-grpc-middleware/v2 Limiter interface,
+// allowing this implementation to be used with standard interceptors.
+//
 // Implementations should be thread-safe and support concurrent access.
 type Limiter interface {
-	// Allow reports whether an event may happen now for the given client and method.
-	// It returns true if the event is allowed, false if rate limited.
-	Allow(ctx context.Context, clientID string, method string) bool
-
-	// Wait blocks until an event can happen or the context is cancelled.
-	// It returns an error if the context is cancelled before the event can happen.
-	Wait(ctx context.Context, clientID string, method string) error
+	// Limit checks if a request should be rate limited.
+	// It extracts client identity and method from context, then applies rate limiting rules.
+	// Returns an error with codes.ResourceExhausted if rate limit is exceeded.
+	Limit(ctx context.Context) error
 }
 
 // ClientLimiter implements per-client rate limiting using token bucket algorithm.
@@ -92,21 +96,30 @@ func NewClientLimiter(cfg *config.Config) (*ClientLimiter, error) {
 	}, nil
 }
 
-// Allow reports whether an event may happen now for the given client and method.
-// It implements the token bucket algorithm:
-// - Returns true if a token is available (request allowed)
-// - Returns false if no tokens available (request rate limited)
+// Limit checks if a request should be rate limited.
+// It implements the go-grpc-middleware/v2 Limiter interface.
+//
+// The method extracts client identity and method from context, then applies
+// the token bucket algorithm:
+// - Returns nil if a token is available (request allowed)
+// - Returns codes.ResourceExhausted error if rate limited
 //
 // The method checks rate limits in the following order:
 // 1. If rate limiting is disabled, always allow
 // 2. Check for method-specific override
 // 3. Check per-client limit (if clientID provided)
 // 4. Fall back to global limit (for anonymous/unauthenticated clients).
-func (l *ClientLimiter) Allow(ctx context.Context, clientID string, method string) bool {
+func (l *ClientLimiter) Limit(ctx context.Context) error {
 	// If rate limiting is disabled, always allow
 	if !l.config.Enabled {
-		return true
+		return nil
 	}
+
+	// Extract client ID from context (SPIFFE ID if authenticated)
+	clientID := extractClientID(ctx)
+
+	// Extract method name from context
+	method, _ := grpc.Method(ctx)
 
 	// Get the appropriate rate limiter
 	limiter := l.getLimiterForRequest(clientID, method)
@@ -114,45 +127,33 @@ func (l *ClientLimiter) Allow(ctx context.Context, clientID string, method strin
 	// If no limiter is configured (both client and global limiters are nil or zero-rate),
 	// allow the request
 	if limiter == nil {
-		return true
+		return nil
 	}
 
 	// Check if request is allowed by the token bucket
-	allowed := limiter.Allow()
-
-	if !allowed {
+	if !limiter.Allow() {
 		logger.Warn("Rate limit exceeded",
 			"client_id", clientID,
 			"method", method,
 		)
-	}
 
-	return allowed
-}
-
-// Wait blocks until an event can happen or the context is cancelled.
-// It waits for a token to become available in the token bucket.
-// Returns an error if the context is cancelled before a token is available.
-func (l *ClientLimiter) Wait(ctx context.Context, clientID string, method string) error {
-	// If rate limiting is disabled, return immediately
-	if !l.config.Enabled {
-		return nil
-	}
-
-	// Get the appropriate rate limiter
-	limiter := l.getLimiterForRequest(clientID, method)
-
-	// If no limiter is configured, return immediately
-	if limiter == nil {
-		return nil
-	}
-
-	// Wait for a token to become available
-	if err := limiter.Wait(ctx); err != nil {
-		return fmt.Errorf("rate limit wait failed for client %s method %s: %w", clientID, method, err)
+		return status.Error(codes.ResourceExhausted, "rate limit exceeded") //nolint:wrapcheck // gRPC status error for client
 	}
 
 	return nil
+}
+
+// extractClientID extracts the client identifier from the gRPC context.
+// It returns the SPIFFE ID string if the client is authenticated via authn middleware,
+// or an empty string for unauthenticated clients (which will use global rate limit).
+func extractClientID(ctx context.Context) string {
+	// Try to extract SPIFFE ID from context (set by authentication middleware)
+	if spiffeID, ok := authn.SpiffeIDFromContext(ctx); ok {
+		return spiffeID.String()
+	}
+
+	// No authentication - return empty string to use global rate limiter
+	return ""
 }
 
 // getLimiterForRequest returns the appropriate rate limiter for a request.
