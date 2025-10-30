@@ -10,7 +10,53 @@ apiserver:
       - name: regcred
 
   service:
-    type: NodePort
+    type: NodePort  # Default for local/dev - change to ClusterIP for cloud with Ingress
+
+  # Routing service configuration for P2P networking
+  routingService:
+    # Service type for routing/P2P traffic
+    # Options: ClusterIP, NodePort, LoadBalancer
+    # Recommended for cloud: LoadBalancer (for stable external IP)
+    # Default for local/dev: NodePort (inherits from service.type if not set)
+    # Uncomment and set to LoadBalancer for production cloud deployments:
+    # type: LoadBalancer
+    
+    # Cloud provider for automatic annotation configuration
+    # Options: "aws", "gcp", "azure", or leave empty for no auto-configuration
+    # When set, provider-specific LoadBalancer annotations are automatically applied
+    # Examples:
+    #   cloudProvider: "aws"    # Auto-configures AWS NLB with internet-facing scheme
+    #   cloudProvider: "gcp"    # Auto-configures GCP External Load Balancer
+    #   cloudProvider: "azure"  # Auto-configures Azure public Load Balancer
+    # cloudProvider: ""
+    
+    # AWS-specific configuration (only used when cloudProvider: "aws")
+    # aws:
+    #   internal: false  # Set to true for internal NLB
+    #   nlbTargetType: "instance"  # Or "ip" for IP-based targets
+    
+    # GCP-specific configuration (only used when cloudProvider: "gcp")
+    # gcp:
+    #   internal: false  # Set to true for internal load balancer
+    #   backendConfig: ""  # Optional BackendConfig resource name
+    
+    # Azure-specific configuration (only used when cloudProvider: "azure")
+    # azure:
+    #   internal: false  # Set to true for internal load balancer
+    #   resourceGroup: ""  # Optional resource group name
+    
+    # Optional: Static IP (must be reserved in cloud provider first)
+    # loadBalancerIP: ""
+    
+    # Optional: Preserve client source IPs (recommended for P2P)
+    # externalTrafficPolicy: Local
+    
+    # Optional: Fixed NodePort (only used when type is NodePort)
+    # nodePort: 30555
+    
+    # Optional: Additional custom annotations (merged with provider annotations)
+    # Custom annotations override provider-generated ones
+    # annotations: {}
 
   # Server configuration
   config:
@@ -70,7 +116,7 @@ apiserver:
     # Routing settings for the peer-to-peer network.
     routing:
       # Address to use for routing
-      # listen_address: "/ipv4/0.0.0.0/tcp/5555"
+      listen_address: "/ip4/0.0.0.0/tcp/5555"
 
       # Path to private key file for peer ID.
       # key_path: /tmp/agntcy-dir/node.privkey
