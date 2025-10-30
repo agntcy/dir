@@ -68,6 +68,30 @@ spec:
               value: {{ .Values.log_format }}
             - name: DIRECTORY_SERVER_LOGGING_VERBOSE
               value: "{{ .Values.grpc_logging_verbose }}"
+            {{- if .Values.syncAuthSecret }}
+            - name: DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" . }}
+                  key: sync-username
+            - name: DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" . }}
+                  key: sync-password
+            {{- end }}
+            {{- if .Values.ociAuthSecret }}
+            - name: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" . }}
+                  key: oci-username
+            - name: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" . }}
+                  key: oci-password
+            {{- end }}
             {{- if eq .Values.spire.enabled true }}
             - name: DIRECTORY_SERVER_AUTHZ_ENABLED
               value: "true"

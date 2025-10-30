@@ -112,9 +112,7 @@ config:
       check_interval: "30s"
     
     # Authentication configuration for sync operations
-    auth_config:
-      username: ""
-      password: ""
+    auth_config: {}
 
   # Events configuration
   events:

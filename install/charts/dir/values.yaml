@@ -151,9 +151,7 @@ apiserver:
         check_interval: "30s"
       
       # Authentication configuration for sync operations
-      auth_config:
-        username: ""
-        password: ""
+      auth_config: {}
 
     # Publication configuration
     publication:
@@ -247,7 +245,7 @@ apiserver:
             },
             "accessControl": {
               "adminPolicy": {
-                "users": ["{{ .Values.config.store.oci.auth_config.username }}"],
+                "users": ["{{ .Values.ociAuthSecret.username }}"],
                 "actions": ["read", "create", "update", "delete"]
               },
               "repositories": {
