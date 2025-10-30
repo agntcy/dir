@@ -50,7 +50,7 @@ func isRateLimitError(err error) bool {
 	return ok && st.Code() == codes.ResourceExhausted
 }
 
-var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Ordered, ginkgo.Serial, func() {
+var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), ginkgo.Ordered, ginkgo.Serial, func() {
 	ginkgo.BeforeEach(func() {
 		if cfg.DeploymentMode != config.DeploymentModeLocal {
 			ginkgo.Skip("Skipping test, not in local mode")
