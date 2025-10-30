@@ -16,9 +16,7 @@ from collections.abc import Sequence
 
 import grpc
 from cryptography.hazmat.primitives import serialization
-from spiffe import WorkloadApiClient, X509Bundle, X509Source
-from spiffetls import create_ssl_context, dial, tlsconfig
-from spiffetls.tlsconfig.authorize import authorize_any
+from spiffe import WorkloadApiClient, X509Source
 
 from agntcy.dir_sdk.client.config import Config
 from agntcy.dir_sdk.models import (
