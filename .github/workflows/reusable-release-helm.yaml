@@ -1,7 +1,7 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-name: Release
+name: Release Helm
 
 on:
   workflow_dispatch:
@@ -33,6 +33,8 @@ jobs:
     strategy:
       matrix:
         chart: [dir, dirctl]
+    permissions:
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
