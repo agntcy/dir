@@ -91,6 +91,23 @@ spec:
               containerPort: 8999
               {{- end }}
               protocol: TCP
+          {{- if or (eq .Values.config.authn.enabled true) (eq .Values.spire.enabled true) }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 6
+          {{- else }}
           livenessProbe:
             grpc:
               port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
@@ -106,6 +123,7 @@ spec:
             timeoutSeconds: 3
             successThreshold: 1
             failureThreshold: 6
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:

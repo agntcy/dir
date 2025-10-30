@@ -106,9 +106,20 @@ func SpiffeIDFromContext(ctx context.Context) (spiffeid.ID, bool) {
 	return id, ok
 }
 
+// Health check endpoints that should bypass authentication.
+var healthCheckEndpoints = map[string]bool{
+	"/grpc.health.v1.Health/Check": true,
+	"/grpc.health.v1.Health/Watch": true,
+}
+
 // jwtUnaryInterceptorFor wraps the JWT interceptor function for unary RPCs.
 func jwtUnaryInterceptorFor(fn JWTInterceptorFn) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		// Skip authentication for health check endpoints
+		if healthCheckEndpoints[info.FullMethod] {
+			return handler(ctx, req)
+		}
+
 		newCtx, err := fn(ctx)
 		if err != nil {
 			return nil, err
@@ -120,7 +131,12 @@ func jwtUnaryInterceptorFor(fn JWTInterceptorFn) grpc.UnaryServerInterceptor {
 
 // jwtStreamInterceptorFor wraps the JWT interceptor function for stream RPCs.
 func jwtStreamInterceptorFor(fn JWTInterceptorFn) grpc.StreamServerInterceptor {
-	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		// Skip authentication for health check endpoints
+		if healthCheckEndpoints[info.FullMethod] {
+			return handler(srv, ss)
+		}
+
 		newCtx, err := fn(ss.Context())
 		if err != nil {
 			return err
