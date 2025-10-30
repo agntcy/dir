@@ -12,6 +12,3 @@ __pycache__/
 # Tests
 *.key
 *.pub
-
-# Generated proto stubs
-agntcy/dir

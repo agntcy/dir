@@ -135,24 +135,6 @@ tasks:
     cmds:
       - '{{.BUFBUILD_BIN}} dep update'
       - '{{.BUFBUILD_BIN}} generate'
-      - task: api:gen:fix:javascript
-
-  api:gen:fix:javascript:
-    internal: true
-    desc: Fix top-level namespace issue for JS/TS stubs
-    dir: ./sdk/dir-js/api/
-    cmd: |
-      cat > package.json << EOF
-      {
-        "type": "module",
-        "name": "api",
-        "version": "0.0.0",
-        "description": "This package contains generated code for the protobuf modules",
-        "peerDependencies": {
-            "@bufbuild/protobuf": "^2.9.0"
-        }
-      }
-      EOF
 
   api:clean:
     desc: Clean generated API stubs
@@ -520,12 +502,12 @@ tasks:
         # Generate fresh passwords
         HTPASSWD_PASSWORD="$(openssl rand -hex 16)"
         HTPASSWD_SYNC_PASSWORD="$(openssl rand -hex 16)"
-        
+
         # Generate derived values
         HTPASSWD_AUTH_HEADER="$(echo -n "{{ .HTPASSWD_USERNAME }}:${HTPASSWD_PASSWORD}" | base64)"
         HTPASSWD_ADMIN="$(htpasswd -nbB "{{ .HTPASSWD_USERNAME }}" "${HTPASSWD_PASSWORD}" | sed 's/^{{ .HTPASSWD_USERNAME }}://')"
         HTPASSWD_SYNC="$(htpasswd -nbB "{{ .HTPASSWD_SYNC_USERNAME }}" "${HTPASSWD_SYNC_PASSWORD}" | sed 's/^{{ .HTPASSWD_SYNC_USERNAME }}://')"
-        
+
         # Write credentials to env file (for helm --set commands)
         cat > {{ .CREDS_FILE }} << EOF
         export HTPASSWD_USERNAME="{{ .HTPASSWD_USERNAME }}"
@@ -534,7 +516,7 @@ tasks:
         export HTPASSWD_SYNC_USERNAME="{{ .HTPASSWD_SYNC_USERNAME }}"
         export HTPASSWD_SYNC_PASSWORD="${HTPASSWD_SYNC_PASSWORD}"
         EOF
-        
+
         # Write htpasswd file (for helm --set-file commands)
         cat > {{ .HTPASSWD_FILE }} << EOF
         {{ .HTPASSWD_USERNAME }}:${HTPASSWD_ADMIN}
@@ -568,18 +550,18 @@ tasks:
 
       # Generate credentials and htpasswd file (using defaults)
       - task: deploy:kubernetes:gen-htpasswd-creds
-      
+
       # Cleanup credentials on exit (using defaults)
       - defer:
           task: deploy:kubernetes:cleanup-htpasswd-creds
-      
+
       # Deploy chart
       - |
         # Load credentials
         source /tmp/dir-htpasswd-creds.env
-        
+
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        
+
         {{ .HELM_BIN }} upgrade dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -621,18 +603,18 @@ tasks:
     cmds:
       # Generate credentials and htpasswd file (using defaults)
       - task: deploy:kubernetes:gen-htpasswd-creds
-      
+
       # Cleanup credentials on exit (using defaults)
       - defer:
           task: deploy:kubernetes:cleanup-htpasswd-creds
-      
+
       # Deploy chart
       - |
         # Load credentials
         source /tmp/dir-htpasswd-creds.env
-        
+
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        
+
         {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -780,9 +762,9 @@ tasks:
       - |
         # Load credentials
         source /tmp/dir-htpasswd-creds-bootstrap.env
-        
+
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
-        
+
         {{ .HELM_BIN }} upgrade agntcy-dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -826,15 +808,15 @@ tasks:
             PEER: ['peer1', 'peer2', 'peer3']
         cmd: |
           export $(cat .env)
-          
+
           # Generate fresh credentials for this peer using helper task
           task deploy:kubernetes:gen-htpasswd-creds \
             CREDS_FILE=/tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env \
             HTPASSWD_FILE=/tmp/zot-htpasswd-{{ .ITEM.PEER }}
-          
+
           # Load credentials
           source /tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env
-          
+
           {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
           {{ .HELM_BIN }} upgrade agntcy-dir \
             {{ .HELM_CHART_PATH }} \
@@ -858,7 +840,7 @@ tasks:
             --wait \
             --wait-for-jobs \
             --timeout "15m"
-          
+
           # Cleanup temp files
           rm -f /tmp/zot-htpasswd-{{ .ITEM.PEER }}
           rm -f /tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env
