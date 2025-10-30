@@ -66,7 +66,7 @@ Generate cloud provider-specific annotations for routing service
 */}}
 {{- define "chart.routingService.annotations" -}}
 {{- $annotations := dict -}}
-{{- if .Values.routingService.cloudProvider -}}
+{{- if and .Values.routingService .Values.routingService.cloudProvider -}}
 {{- if eq .Values.routingService.cloudProvider "aws" -}}
 {{- $_ := set $annotations "service.beta.kubernetes.io/aws-load-balancer-type" "nlb" -}}
 {{- $_ := set $annotations "service.beta.kubernetes.io/aws-load-balancer-scheme" "internet-facing" -}}
@@ -97,7 +97,7 @@ Generate cloud provider-specific annotations for routing service
 {{- end -}}
 {{- end -}}
 {{- /* Merge provider annotations with custom annotations (custom takes precedence) */ -}}
-{{- if .Values.routingService.annotations -}}
+{{- if and .Values.routingService .Values.routingService.annotations -}}
 {{- range $key, $value := .Values.routingService.annotations -}}
 {{- $_ := set $annotations $key $value -}}
 {{- end -}}

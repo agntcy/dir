@@ -8,17 +8,16 @@ metadata:
   name: {{ include "chart.fullname" . }}-routing
   labels:
     {{- include "chart.labels" . | nindent 4 }}
-  {{- $annotations := include "chart.routingService.annotations" . | fromYaml }}
-  {{- if $annotations }}
-  annotations:
-    {{- toYaml $annotations | nindent 4 }}
-  {{- end }}
 spec:
-  type: {{ .Values.routingService.type | default .Values.service.type }}
-  {{- if .Values.routingService.loadBalancerIP }}
+  {{- if and .Values.routingService .Values.routingService.type }}
+  type: {{ .Values.routingService.type }}
+  {{- else }}
+  type: {{ .Values.service.type }}
+  {{- end }}
+  {{- if and .Values.routingService .Values.routingService.loadBalancerIP }}
   loadBalancerIP: {{ .Values.routingService.loadBalancerIP }}
   {{- end }}
-  {{- if .Values.routingService.externalTrafficPolicy }}
+  {{- if and .Values.routingService .Values.routingService.externalTrafficPolicy }}
   externalTrafficPolicy: {{ .Values.routingService.externalTrafficPolicy }}
   {{- end }}
   ports:
@@ -26,7 +25,7 @@ spec:
       targetPort: routing
       protocol: TCP
       name: routing
-      {{- if and (eq (.Values.routingService.type | default .Values.service.type) "NodePort") .Values.routingService.nodePort }}
+      {{- if and .Values.routingService .Values.routingService.nodePort }}
       nodePort: {{ .Values.routingService.nodePort }}
       {{- end }}
   selector:
