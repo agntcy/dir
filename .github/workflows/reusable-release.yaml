@@ -36,7 +36,7 @@ jobs:
     uses: ./.github/workflows/reusable-release-helm.yaml
     with:
       image_repo: ${{ inputs.image_repo }}
-      image_tag: ${{ inputs.release_tag }}
+      release_tag: ${{ inputs.release_tag }}
 
   cli:
     name: CLI
