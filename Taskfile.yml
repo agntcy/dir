@@ -1053,7 +1053,7 @@ tasks:
       - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
 
   test:e2e:local:
-    desc: Run end-to-end tests for local deployment (Client library + CLI tests)
+    desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting tests)
     aliases: [e2e:local]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
@@ -1065,7 +1065,7 @@ tasks:
     cmds:
       - defer: { task: deploy:kubernetes:local:cleanup }
       - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
-      # Bootstrap infrastructure once for both test suites
+      # Bootstrap infrastructure once for all test suites
       - task: deploy:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL }}'
@@ -1073,10 +1073,14 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS }}'
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST }}'
       - task: deploy:kubernetes:local:port-forward
-      # Run client library tests first (faster feedback)
-      - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+      # Run client library tests first (excluding rate limiting tests)
+      - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"'
       # Run local CLI tests second (same infrastructure)
       - 'go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v'
+      # Wait 3 seconds for rate limit reset
+      - sleep 3
+      # Run rate limiting tests LAST
+      - 'go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"'
 
   test:e2e:network:
     desc: Run end-to-end tests for network deployment (Multi-peer CLI tests)
