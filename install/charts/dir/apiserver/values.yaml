@@ -77,7 +77,7 @@ config:
   # Routing settings for the peer-to-peer network.
   routing:
     # Address to use for routing
-    # listen_address: "/ipv4/0.0.0.0/tcp/5555"
+    # listen_address: "/ip4/0.0.0.0/tcp/5555"
 
     # Path to private key file for peer ID.
     # key_path: /tmp/agntcy-dir/node.privkey
@@ -192,6 +192,53 @@ pvc:
 service:
   type: ClusterIP
   port: 8888
+
+# Routing service exposes P2P networking (separate from API service)
+routingService:
+  # Service type for routing/P2P traffic
+  # Options: ClusterIP, NodePort, LoadBalancer
+  # Default: NodePort (works everywhere - local Kind and cloud)
+  # For production cloud: override to LoadBalancer for stable external IP
+  type: NodePort
+  
+  # Cloud provider for automatic annotation configuration
+  # Options: "aws", "gcp", "azure", or leave empty for manual configuration
+  # When set, provider-specific annotations are automatically applied
+  cloudProvider: ""
+  
+  # AWS-specific configuration (only used when cloudProvider: "aws")
+  aws:
+    # Use internal load balancer (default: false = internet-facing)
+    internal: false
+    # NLB target type: "instance" or "ip" (default: instance)
+    # nlbTargetType: "instance"
+  
+  # GCP-specific configuration (only used when cloudProvider: "gcp")
+  gcp:
+    # Use internal load balancer (default: false = external)
+    internal: false
+    # Optional: BackendConfig name for advanced configuration
+    # backendConfig: ""
+  
+  # Azure-specific configuration (only used when cloudProvider: "azure")
+  azure:
+    # Use internal load balancer (default: false = public)
+    internal: false
+    # Optional: Resource group for load balancer
+    # resourceGroup: ""
+  
+  # Optional: Specify a static IP (must be reserved in cloud provider first)
+  # loadBalancerIP: ""
+  
+  # Optional: Preserve client source IPs (recommended for P2P)
+  externalTrafficPolicy: Local
+  
+  # Optional: Fixed NodePort (only used when type is NodePort)
+  # nodePort: 30555
+  
+  # Optional: Additional custom annotations (merged with provider annotations)
+  # Custom annotations take precedence over provider-generated ones
+  annotations: {}
 
 serviceAccount:
   # Specifies whether a service account should be created
