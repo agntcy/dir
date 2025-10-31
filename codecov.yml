@@ -1,7 +1,7 @@
 codecov:
   require_ci_to_pass: false
   notify:
-    after_n_builds: 1
+    after_n_builds: 4 # 1 for unit, 3 for e2e
 
 comment:
   layout: "files,diff,flags,tree"

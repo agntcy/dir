@@ -20,6 +20,12 @@ group "default" {
   ]
 }
 
+group "coverage" {
+  targets = [
+    "dir-apiserver-coverage",
+  ]
+}
+
 target "_common" {
   output = [
     "type=image",
@@ -41,11 +47,23 @@ target "docker-metadata-action" {
 target "dir-apiserver" {
   context = "."
   dockerfile = "./server/Dockerfile"
+  target = "production"
   inherits = [
     "_common",
     "docker-metadata-action",
   ]
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-apiserver.name}")
+}
+
+target "dir-apiserver-coverage" {
+  context = "."
+  dockerfile = "./server/Dockerfile"
+  target = "coverage"
+  inherits = [
+    "_common",
+    "docker-metadata-action",
+  ]
+  tags = get_tag(target.docker-metadata-action.tags, "dir-apiserver")
 }
 
 target "dir-ctl" {

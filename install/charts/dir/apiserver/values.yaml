@@ -13,6 +13,9 @@ log_level: INFO
 log_format: text  # Options: "text" (development) or "json" (production)
 grpc_logging_verbose: false  # Options: false (production - logs start/finish only) or true (verbose - includes payloads)
 
+# Enable coverage volume (emptyDir persists across container restarts)
+coverageVolume: false
+
 image:
   repository: ghcr.io/agntcy/dir-apiserver
   tag: latest
@@ -317,6 +320,8 @@ extraVolumeMounts: []
 extraEnv: []
 # - name: SSL_CERT_DIR
 #   value: "/etc/ca-certs"
+# - name: GOCOVERDIR
+#   value: /tmp/coverage
 
 revisionHistoryLimit: 2
 

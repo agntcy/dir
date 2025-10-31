@@ -157,6 +157,10 @@ spec:
               subPath: node.privkey
               readOnly: true
             {{- end }}
+            {{- if .Values.coverageVolume }}
+            - name: coverage-volume
+              mountPath: /tmp/coverage
+            {{- end }}
             {{- if eq .Values.spire.enabled true }}
             - name: spire-agent-socket
               mountPath: /run/spire/agent-sockets
@@ -177,6 +181,10 @@ spec:
         - name: config-volume
           configMap:
             name: {{ include "chart.fullname" . }}
+        {{- if .Values.coverageVolume }}
+        - name: coverage-volume
+          emptyDir: {}
+        {{- end }}
         {{- if eq .Values.spire.enabled true }}
         - name: spire-agent-socket
           hostPath:

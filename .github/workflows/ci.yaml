@@ -118,6 +118,7 @@ jobs:
     with:
       image_repo: ghcr.io/agntcy
       image_tag: ${{ github.sha }}
+      build_coverage_images: true
 
   test:
     name: Test
