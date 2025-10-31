@@ -313,6 +313,11 @@ extraVolumeMounts: []
   # - name: datastore
   #   mountPath: /etc/datastore
 
+# Extra environment variables for the apiserver container
+extraEnv: []
+# - name: SSL_CERT_DIR
+#   value: "/etc/ca-certs"
+
 revisionHistoryLimit: 2
 
 # Secrets configuration
