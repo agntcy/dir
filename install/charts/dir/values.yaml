@@ -245,7 +245,7 @@ apiserver:
             },
             "accessControl": {
               "adminPolicy": {
-                "users": ["{{ .Values.ociAuthSecret.username }}"],
+                "users": ["{{ if .Values.secrets }}{{ if .Values.secrets.ociAuth }}{{ .Values.secrets.ociAuth.username | default "admin" }}{{ else }}admin{{ end }}{{ else }}admin{{ end }}"],
                 "actions": ["read", "create", "update", "delete"]
               },
               "repositories": {
@@ -291,3 +291,24 @@ apiserver:
     extraArgs:
       - "serve"
       - "/etc/zot/config.json"
+
+  # Secrets configuration
+  # Sensitive credentials are stored in Kubernetes secrets and injected as environment variables
+  secrets:
+    # Private key for peer-to-peer routing identity
+    # If not provided, the secret will not include this key
+    privKey: ""
+    
+    # Sync authentication credentials
+    # Used for authenticating sync operations between nodes
+    # Username defaults to "sync" if empty, password is randomly generated if empty
+    syncAuth:
+      username: ""
+      password: ""
+    
+    # OCI registry authentication
+    # Used for authenticating to the OCI-backed storage backend
+    # Username defaults to "admin" if empty, password is randomly generated if empty
+    ociAuth:
+      username: ""
+      password: ""

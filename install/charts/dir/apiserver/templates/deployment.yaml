@@ -68,7 +68,7 @@ spec:
               value: {{ .Values.log_format }}
             - name: DIRECTORY_SERVER_LOGGING_VERBOSE
               value: "{{ .Values.grpc_logging_verbose }}"
-            {{- if .Values.syncAuthSecret }}
+            {{- if or .Values.secrets.syncAuth.username .Values.secrets.syncAuth.password }}
             - name: DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -80,7 +80,7 @@ spec:
                   name: {{ include "chart.fullname" . }}
                   key: sync-password
             {{- end }}
-            {{- if .Values.ociAuthSecret }}
+            {{- if or .Values.secrets.ociAuth.username .Values.secrets.ociAuth.password }}
             - name: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -148,7 +148,7 @@ spec:
             - name: config-volume
               mountPath: /etc/agntcy/dir/server.config.yml
               subPath: server.config.yml
-            {{- if .Values.privKey }}
+            {{- if .Values.secrets.privKey }}
             - name: secret-volume
               mountPath: {{ .Values.config.routing.key_path }}
               subPath: node.privkey
@@ -180,7 +180,7 @@ spec:
             path: /run/spire/agent-sockets
             type: Directory
         {{- end }}
-        {{- if .Values.privKey }}
+        {{- if .Values.secrets.privKey }}
         - name: secret-volume
           secret:
             secretName: {{ include "chart.fullname" . }}
