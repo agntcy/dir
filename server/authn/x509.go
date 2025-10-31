@@ -39,7 +39,13 @@ type X509InterceptorFn func(ctx context.Context) (context.Context, error)
 
 // x509UnaryInterceptorFor wraps the X.509 interceptor function for unary RPCs.
 func x509UnaryInterceptorFor(fn X509InterceptorFn) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		// Skip authentication for health check endpoints
+		// Health check endpoints are defined in jwt.go
+		if info.FullMethod == "/grpc.health.v1.Health/Check" || info.FullMethod == "/grpc.health.v1.Health/Watch" {
+			return handler(ctx, req)
+		}
+
 		newCtx, err := fn(ctx)
 		if err != nil {
 			return nil, err
@@ -51,7 +57,13 @@ func x509UnaryInterceptorFor(fn X509InterceptorFn) grpc.UnaryServerInterceptor {
 
 // x509StreamInterceptorFor wraps the X.509 interceptor function for stream RPCs.
 func x509StreamInterceptorFor(fn X509InterceptorFn) grpc.StreamServerInterceptor {
-	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		// Skip authentication for health check endpoints
+		// Health check endpoints are defined in jwt.go
+		if info.FullMethod == "/grpc.health.v1.Health/Check" || info.FullMethod == "/grpc.health.v1.Health/Watch" {
+			return handler(srv, ss)
+		}
+
 		newCtx, err := fn(ss.Context())
 		if err != nil {
 			return err

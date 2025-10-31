@@ -32,7 +32,6 @@ func TestConfig(t *testing.T) {
 			Name: "Custom config",
 			EnvVars: map[string]string{
 				"DIRECTORY_SERVER_LISTEN_ADDRESS":                       "example.com:8889",
-				"DIRECTORY_SERVER_HEALTHCHECK_ADDRESS":                  "example.com:18888",
 				"DIRECTORY_SERVER_STORE_PROVIDER":                       "provider",
 				"DIRECTORY_SERVER_STORE_OCI_LOCAL_DIR":                  "local-dir",
 				"DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS":           "example.com:5001",
@@ -61,8 +60,7 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":           "10s",
 			},
 			ExpectedConfig: &Config{
-				ListenAddress:      "example.com:8889",
-				HealthCheckAddress: "example.com:18888",
+				ListenAddress: "example.com:8889",
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
@@ -127,8 +125,7 @@ func TestConfig(t *testing.T) {
 			Name:    "Default config",
 			EnvVars: map[string]string{},
 			ExpectedConfig: &Config{
-				ListenAddress:      DefaultListenAddress,
-				HealthCheckAddress: DefaultHealthCheckAddress,
+				ListenAddress: DefaultListenAddress,
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109

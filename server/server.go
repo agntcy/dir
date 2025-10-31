@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
@@ -68,7 +69,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	if err := server.start(ctx); err != nil {
 		return fmt.Errorf("failed to start server: %w", err)
 	}
-	defer server.Close()
+	defer server.Close(ctx)
 
 	// Wait for deactivation
 	sigCh := make(chan os.Signal, 1)
@@ -177,6 +178,9 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Create a server
 	grpcServer := grpc.NewServer(serverOpts...)
 
+	// Create health checker
+	healthChecker := healthcheck.New()
+
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus()))
@@ -186,7 +190,10 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(storeAPI))
 
-	// Register server
+	// Register health service
+	healthChecker.Register(grpcServer)
+
+	// Register reflection service
 	reflection.Register(grpcServer)
 
 	return &Server{
@@ -199,7 +206,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		authnService:       authnService,
 		authzService:       authzService,
 		publicationService: publicationService,
-		health:             healthcheck.New(),
+		health:             healthChecker,
 		grpcServer:         grpcServer,
 	}, nil
 }
@@ -212,7 +219,17 @@ func (s Server) Routing() types.RoutingAPI { return s.routing }
 
 func (s Server) Database() types.DatabaseAPI { return s.database }
 
-func (s Server) Close() {
+func (s Server) Close(ctx context.Context) {
+	// Stop health check monitoring
+	if s.health != nil {
+		stopCtx, cancel := context.WithTimeout(ctx, 5*time.Second) //nolint:mnd
+		defer cancel()
+
+		if err := s.health.Stop(stopCtx); err != nil {
+			logger.Error("Failed to stop health check service", "error", err)
+		}
+	}
+
 	// Stop event service
 	if s.eventService != nil {
 		if err := s.eventService.Stop(); err != nil {
@@ -283,26 +300,20 @@ func (s Server) start(ctx context.Context) error {
 		return fmt.Errorf("failed to listen on %s: %w", s.Options().Config().ListenAddress, err)
 	}
 
-	// Serve gRPC server in the background.
-	// If the server cannot be started, exit with code 1.
+	// Add readiness checks
+	s.health.AddReadinessCheck("database", s.database.IsReady)
+	s.health.AddReadinessCheck("sync", s.syncService.IsReady)
+	s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
+	s.health.AddReadinessCheck("store", s.store.IsReady)
+	s.health.AddReadinessCheck("routing", s.routing.IsReady)
+
+	// Start health check monitoring
+	if err := s.health.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start health check monitoring: %w", err)
+	}
+
+	// Serve gRPC server in the background
 	go func() {
-		// Start health check server
-		if err := s.health.Start(s.Options().Config().HealthCheckAddress); err != nil {
-			logger.Error("Failed to start health check server", "error", err)
-		}
-
-		s.health.AddReadinessCheck("database", s.database.IsReady)
-		s.health.AddReadinessCheck("sync", s.syncService.IsReady)
-		s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
-		s.health.AddReadinessCheck("store", s.store.IsReady)
-		s.health.AddReadinessCheck("routing", s.routing.IsReady)
-
-		defer func() {
-			if err := s.health.Stop(ctx); err != nil {
-				logger.Error("Failed to stop health check server", "error", err)
-			}
-		}()
-
 		logger.Info("Server starting", "address", s.Options().Config().ListenAddress)
 
 		if err := s.grpcServer.Serve(listen); err != nil {

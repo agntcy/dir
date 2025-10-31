@@ -28,9 +28,6 @@ const typicalFieldCount = 8
 var noisyEndpoints = map[string]bool{
 	"/grpc.health.v1.Health/Check": true,
 	"/grpc.health.v1.Health/Watch": true,
-	"/readyz":                      true,
-	"/livez":                       true,
-	"/healthz":                     true,
 }
 
 // extractFieldsFromContext extracts fields from context and metadata for logging.

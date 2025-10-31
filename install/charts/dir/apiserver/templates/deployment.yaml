@@ -108,19 +108,9 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              {{- if .Values.config.listen_address }}
-              containerPort: {{ (split ":" .Values.config.listen_address)._1 }}
-              {{- else }}
-              containerPort: 8888
-              {{- end }}
+            - name: grpc
+              containerPort: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
               protocol: TCP
-            - name: health
-              {{- if .Values.config.healthcheck_address }}
-              containerPort: {{ (split ":" .Values.config.healthcheck_address)._1 }}
-              {{- else }}
-              containerPort: 8889
-              {{- end }}
             - name: routing
               {{- if .Values.config.routing.listen_address }}
               containerPort: {{ (split "/" .Values.config.routing.listen_address)._4 }}
@@ -128,23 +118,39 @@ spec:
               containerPort: 8999
               {{- end }}
               protocol: TCP
+          {{- if or (eq .Values.config.authn.enabled true) (eq .Values.spire.enabled true) }}
           livenessProbe:
-            httpGet:
-              path: /healthz/live
-              port: health
+            tcpSocket:
+              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /healthz/ready
-              port: health
-            initialDelaySeconds: 5
+            tcpSocket:
+              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+            initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 3
             successThreshold: 1
+            failureThreshold: 6
+          {{- else }}
+          livenessProbe:
+            grpc:
+              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
+          readinessProbe:
+            grpc:
+              port: {{ .Values.config.listen_address | default "0.0.0.0:8888" | splitList ":" | last | int }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 6
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:

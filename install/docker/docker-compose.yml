@@ -9,7 +9,6 @@ services:
       - ./apiserver.env
     ports:
       - 8888:8888
-      - 8889:8889
     depends_on:
       - zot
     deploy:
@@ -18,7 +17,7 @@ services:
       restart_policy:
         condition: on-failure
     healthcheck:
-      test: wget --no-verbose --tries=1 --spider http://127.0.0.1:8889/healthz/ready || exit 1
+      test: grpc-health-probe -addr=127.0.0.1:8888 || exit 1
       interval: 10s
       retries: 60
       start_period: 10s
