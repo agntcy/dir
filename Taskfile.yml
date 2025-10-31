@@ -586,12 +586,12 @@ tasks:
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
-          --set apiserver.config.store.oci.auth_config.username="${HTPASSWD_USERNAME}" \
-          --set apiserver.config.store.oci.auth_config.password="${HTPASSWD_PASSWORD}" \
+          --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
+          --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
           --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
           --set-file apiserver.zot.secretFiles.htpasswd="/tmp/dir-htpasswd" \
-          --set apiserver.config.sync.auth_config.username="${HTPASSWD_SYNC_USERNAME}" \
-          --set apiserver.config.sync.auth_config.password="${HTPASSWD_SYNC_PASSWORD}" \
+          --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
+          --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           {{ if .DIRECTORY_SERVER_RATELIMIT_ENABLED }}--set apiserver.config.ratelimit.enabled="{{ .DIRECTORY_SERVER_RATELIMIT_ENABLED }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS }}--set apiserver.config.ratelimit.global_rps="{{ .DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST }}--set apiserver.config.ratelimit.global_burst="{{ .DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST }}"{{ end }} \
@@ -638,12 +638,12 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
-          --set apiserver.config.store.oci.auth_config.username="${HTPASSWD_USERNAME}" \
-          --set apiserver.config.store.oci.auth_config.password="${HTPASSWD_PASSWORD}" \
+          --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
+          --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
           --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
           --set-file apiserver.zot.secretFiles.htpasswd="/tmp/dir-htpasswd" \
-          --set apiserver.config.sync.auth_config.username="${HTPASSWD_SYNC_USERNAME}" \
-          --set apiserver.config.sync.auth_config.password="${HTPASSWD_SYNC_PASSWORD}" \
+          --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
+          --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           --set apiserver.log_level="DEBUG" \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
@@ -789,18 +789,18 @@ tasks:
           --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
             {{ if .PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
-          --set apiserver.privKey="$(cat /tmp/node.privkey)" \
+          --set apiserver.secrets.privKey="$(cat /tmp/node.privkey)" \
           --set apiserver.config.routing.key_path="/etc/agntcy/dir/node.privkey" \
           --set apiserver.config.routing.listen_address="/ip4/0.0.0.0/tcp/8999" \
           --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.bootstrap.svc.cluster.local:8888" \
           --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
           --set apiserver.zot.extraVolumes[0].persistentVolumeClaim.claimName="agntcy-dir-zot-config" \
-          --set apiserver.config.store.oci.auth_config.username="${HTPASSWD_USERNAME}" \
-          --set apiserver.config.store.oci.auth_config.password="${HTPASSWD_PASSWORD}" \
+          --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
+          --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
           --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
           --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-bootstrap" \
-          --set apiserver.config.sync.auth_config.username="${HTPASSWD_SYNC_USERNAME}" \
-          --set apiserver.config.sync.auth_config.password="${HTPASSWD_SYNC_PASSWORD}" \
+          --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
+          --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -846,12 +846,12 @@ tasks:
             --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
             --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.{{ .ITEM.PEER }}.svc.cluster.local:8888" \
             --set apiserver.zot.extraVolumes[0].persistentVolumeClaim.claimName="agntcy-dir-zot-config" \
-            --set apiserver.config.store.oci.auth_config.username="${HTPASSWD_USERNAME}" \
-            --set apiserver.config.store.oci.auth_config.password="${HTPASSWD_PASSWORD}" \
+            --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
+            --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
             --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
             --set-file apiserver.zot.secretFiles.htpasswd="/tmp/zot-htpasswd-{{ .ITEM.PEER }}" \
-            --set apiserver.config.sync.auth_config.username="${HTPASSWD_SYNC_USERNAME}" \
-            --set apiserver.config.sync.auth_config.password="${HTPASSWD_SYNC_PASSWORD}" \
+            --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
+            --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \
