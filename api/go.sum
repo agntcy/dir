@@ -1,9 +1,9 @@
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1 h1:bV9FW6wfv5OtSGRRZITEmwEGsWsdCMQdKaim59RUup8=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1/go.mod h1:uTsOo9jnzYqVE9RVbE0CJBKn1S9aNcDS/0OFp1nwurw=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1 h1:/woChozR+ReghDHPp9vwdetbBpqfDxHYUH9Iso+Bsww=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1/go.mod h1:0oAU8mfSDwDA9l2HycLTYpJ2Ifn3YO5rI2xJP1XwPzs=
-github.com/agntcy/oasf-sdk/pkg v0.0.8 h1:4C478xKexwEnnXJ7S802vll/Y7TZzqmUbvuRz1POQbY=
-github.com/agntcy/oasf-sdk/pkg v0.0.8/go.mod h1:7hlTa7Wd65g9Msu3ZKthvD0Q7SKaMjgAb2ya289OHUU=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.10-20251029125108-823ea6fabc82.1 h1:THc6uLCGTpU393vVD5Eu5JHUdikvaP1+dqAclQe8pOE=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.10-20251029125108-823ea6fabc82.1/go.mod h1:xkbAJMbZuuebIblSFnLrfTpvmfjarhKsIid+Q9snDQ0=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1 h1:ZObM/Cdu5dZO4ibBXNRSy+rFwG4oV86mYfKbI0Z7AAI=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1/go.mod h1:yJHswa2p3J+WxGLpgzuWNWn3I1CIkxdOu80Y/vN5lbE=
+github.com/agntcy/oasf-sdk/pkg v0.0.9 h1:A3qDPeybKf6xbEQbbD2tgfy5FgLD6WmdnbLSY2BHXIs=
+github.com/agntcy/oasf-sdk/pkg v0.0.9/go.mod h1:FvcEB49gsvK+JO5i6l/pt5QgTK0LZeR7KYKsdcI6ZIM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -77,8 +77,8 @@ google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a h1:
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
 google.golang.org/grpc v1.74.2 h1:WoosgB65DlWVC9FqI82dGsZhWFNBSLjQ84bjROOpMu4=
 google.golang.org/grpc v1.74.2/go.mod h1:CtQ+BGjaAIXHs/5YS3i473GqwBBa1zGQNevxdeBEXrM=
-google.golang.org/protobuf v1.36.9 h1:w2gp2mA27hUeUzj9Ex9FBjsBm40zfaDtEWow293U7Iw=
-google.golang.org/protobuf v1.36.9/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
+google.golang.org/protobuf v1.36.10 h1:AYd7cD/uASjIL6Q9LiTjz8JLcrh/88q5UObnmY3aOOE=
+google.golang.org/protobuf v1.36.10/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=

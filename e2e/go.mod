@@ -26,8 +26,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251007080819-beb134c6a773.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.10-20251029125108-823ea6fabc82.1 // indirect
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1 // indirect
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go v0.121.1 // indirect
@@ -47,7 +47,7 @@ require (
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
 	github.com/agntcy/dir/hub v0.4.0 // indirect
 	github.com/agntcy/dir/importer v0.4.0 // indirect
-	github.com/agntcy/oasf-sdk/pkg v0.0.8 // indirect
+	github.com/agntcy/oasf-sdk/pkg v0.0.9 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/avast/retry-go/v4 v4.6.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect

@@ -3,14 +3,14 @@ module github.com/agntcy/dir/api
 go 1.25.2
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1
-	github.com/agntcy/oasf-sdk/pkg v0.0.8
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.10-20251029125108-823ea6fabc82.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1
+	github.com/agntcy/oasf-sdk/pkg v0.0.9
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.74.2
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.10
 )
 
 require (
