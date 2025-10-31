@@ -487,7 +487,7 @@ func (s *SearchBuilder) Execute() (string, error) {
 		s.args = append(s.args, "--offset", strconv.Itoa(s.offset))
 	}
 
-	// Append any additional args (like --json, --raw) at the end
+	// Append any additional args (like --output) at the end
 	s.args = append(s.args, s.outputFormatArgs...)
 
 	return s.CommandBuilder.Execute()

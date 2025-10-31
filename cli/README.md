@@ -48,6 +48,54 @@ dirctl routing search --skill "AI" --limit 10
 dirctl pull baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
 ```
 
+## Output Formats
+
+All `dirctl` commands support the `--output` (or `-o`) flag to control output formatting:
+
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| `human` | Human-readable, colored output (default) | Interactive terminal use |
+| `json` | Pretty-printed JSON | Single-shot commands with `jq` |
+| `jsonl` | Newline-delimited JSON | Streaming events with `jq --seq` |
+| `raw` | Raw values only (CIDs, IDs) | Shell scripting and piping |
+
+### Examples
+
+```bash
+# Human-readable (default)
+dirctl search --skill "AI"
+
+# JSON output (pretty-printed)
+dirctl search --skill "AI" --output json
+dirctl search --skill "AI" -o json  # short form
+
+# JSONL output (streaming-friendly)
+dirctl events listen --output jsonl | jq -c .
+
+# Raw output (CIDs only)
+dirctl push record.json --output raw
+```
+
+### Piping to jq
+
+For JSON and JSONL formats, metadata messages are automatically sent to stderr, allowing clean piping to tools like `jq`:
+
+```bash
+# Works perfectly - metadata goes to stderr, JSON to stdout
+dirctl events listen --output jsonl | jq '.resource_id'
+
+# Chain with other commands
+dirctl routing search --skill "AI" --output json | jq '.[].peer.addrs[]'
+
+# Process streaming events in real-time
+dirctl events listen --output jsonl | jq -c 'select(.type == "EVENT_TYPE_RECORD_PUSHED")'
+
+# Extract CIDs for processing
+dirctl search --skill "AI" --output json | jq -r '.[]' | while read cid; do
+  dirctl pull "$cid"
+done
+```
+
 ## Command Reference
 
 ### 📦 **Storage Operations**
@@ -394,8 +442,8 @@ dirctl --spiffe-socket-path /run/spire/sockets/agent.sock routing list
 
 ### 📤 **Publishing Workflow**
 ```bash
-# 1. Store your record
-CID=$(dirctl push my-agent.json)
+# 1. Store your record (get raw CID for scripting)
+CID=$(dirctl push my-agent.json --output raw)
 
 # 2. Publish for discovery
 dirctl routing publish $CID
@@ -405,6 +453,9 @@ dirctl routing list --cid $CID
 
 # 4. Check routing statistics
 dirctl routing info
+
+# 5. Export statistics as JSON
+dirctl routing info --output json > stats.json
 ```
 
 ### 🔍 **Discovery Workflow**
@@ -412,11 +463,17 @@ dirctl routing info
 # 1. Search for records by skill
 dirctl routing search --skill "AI" --limit 10
 
-# 2. Search with multiple criteria
-dirctl routing search --skill "AI" --locator "docker-image" --min-score 2
+# 2. Search with multiple criteria and get JSON
+dirctl routing search --skill "AI" --locator "docker-image" --min-score 2 --output json
 
 # 3. Pull interesting records
 dirctl pull <discovered-cid>
+
+# 4. Process search results programmatically
+dirctl routing search --skill "AI" --output json | jq -r '.[].record_ref.cid' | while read cid; do
+  echo "Processing $cid..."
+  dirctl pull "$cid" --output json > "records/${cid}.json"
+done
 ```
 
 ### 📥 **Import Workflow**
@@ -438,8 +495,8 @@ dirctl search --module "runtime/mcp"
 
 ### 🔄 **Synchronization Workflow**
 ```bash
-# 1. Create sync with remote peer
-SYNC_ID=$(dirctl sync create https://peer.example.com)
+# 1. Create sync with remote peer (get raw ID for scripting)
+SYNC_ID=$(dirctl sync create https://peer.example.com --output raw)
 
 # 2. Monitor sync progress
 dirctl sync status $SYNC_ID
@@ -447,8 +504,35 @@ dirctl sync status $SYNC_ID
 # 3. List all syncs
 dirctl sync list
 
-# 4. Clean up when done
+# 4. Export sync list as JSON
+dirctl sync list --output json > active-syncs.json
+
+# 5. Clean up when done
 dirctl sync delete $SYNC_ID
+```
+
+### 📡 **Event Streaming Workflow**
+```bash
+# 1. Listen to all events (human-readable)
+dirctl events listen
+
+# 2. Stream events as JSONL for processing
+dirctl events listen --output jsonl | jq -c .
+
+# 3. Filter and process specific event types
+dirctl events listen --types RECORD_PUSHED --output jsonl | \
+  jq -c 'select(.type == "EVENT_TYPE_RECORD_PUSHED")' | \
+  while read event; do
+    CID=$(echo "$event" | jq -r '.resource_id')
+    echo "New record pushed: $CID"
+  done
+
+# 4. Monitor events with label filters
+dirctl events listen --labels /skills/AI --output jsonl | \
+  jq -c '.resource_id' >> ai-records.log
+
+# 5. Extract just resource IDs from events
+dirctl events listen --output raw | tee event-cids.txt
 ```
 
 ## Command Organization

@@ -52,7 +52,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 
 	ginkgo.Context("GossipSub wide propagation to all peers", func() {
 		ginkgo.It("should push record_v070.json to peer 1", func() {
-			cid = cli.Push(tempPath).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+			cid = cli.Push(tempPath).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 			// Track CID for cleanup
 			RegisterCIDForCleanup(cid, "gossipsub")
@@ -136,7 +136,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 		})
 
 		ginkgo.It("should push performance test record to peer 1", func() {
-			perfCID = cli.Push(perfPath).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+			perfCID = cli.Push(perfPath).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 			RegisterCIDForCleanup(perfCID, "gossipsub")
 		})
 
@@ -183,7 +183,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 		ginkgo.It("should push 5 records to peer 1", func() {
 			bulkCIDs = make([]string, 5)
 			for i, path := range bulkPaths {
-				cid := cli.Push(path).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+				cid := cli.Push(path).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 				bulkCIDs[i] = cid
 				RegisterCIDForCleanup(cid, "gossipsub")
 				ginkgo.GinkgoWriter.Printf("Pushed bulk record %d/%d: %s", i+1, 5, cid)
@@ -251,7 +251,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			edgePath := filepath.Join(tempDir, "record_v070_gossipsub_edge_test.json")
 			_ = os.WriteFile(edgePath, testdata.ExpectedRecordV070JSON, 0o600)
 
-			edgeCID = cli.Push(edgePath).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+			edgeCID = cli.Push(edgePath).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 			RegisterCIDForCleanup(edgeCID, "gossipsub")
 		})
 
@@ -269,7 +269,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 				WithDomain("life_science").               // Should match (record has life_science/biotechnology)
 				WithMinScore(2).                          // Both should match
 				WithLimit(10).
-				WithArgs("--json").
+				WithArgs("--output", "json").
 				OnServer(utils.Peer2Addr).
 				ShouldSucceed()
 
@@ -320,7 +320,7 @@ var _ = ginkgo.Describe("Running GossipSub label announcement tests", ginkgo.Ord
 			baselinePath := filepath.Join(tempDir, "record_v070_gossipsub_baseline_test.json")
 			_ = os.WriteFile(baselinePath, testdata.ExpectedRecordV070JSON, 0o600)
 
-			baselineCID := cli.Push(baselinePath).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+			baselineCID := cli.Push(baselinePath).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 			RegisterCIDForCleanup(baselineCID, "gossipsub")
 
 			// Publish and start timing

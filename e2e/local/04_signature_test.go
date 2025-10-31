@@ -107,7 +107,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		})
 
 		ginkgo.It("should push a record to the store", func() {
-			cid = cli.Push(paths.record).WithArgs("--raw").ShouldSucceed()
+			cid = cli.Push(paths.record).WithArgs("--output", "raw").ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(cid, paths.record)
@@ -128,7 +128,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 		ginkgo.It("should pull a signature from the store", func() {
 			cli.Command("pull").
 				WithArgs(cid, "--signature").
-				WithArgs("--json").
+				WithArgs("--output", "json").
 				ShouldContain("\"signature\":")
 		})
 

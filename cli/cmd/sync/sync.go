@@ -43,7 +43,7 @@ Usage examples:
   dir sync create http://localhost:8080 --cids cid1,cid2,cid3
 
 3. Create sync from routing search output:
-  dirctl routing search --skill "AI" --json | dirctl sync create --stdin`,
+  dirctl routing search --skill "AI" --output json | dirctl sync create --stdin`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if opts.Stdin {
 			return cobra.MaximumNArgs(0)(cmd, args)
@@ -208,7 +208,7 @@ func runCreateSyncFromStdin(cmd *cobra.Command) error {
 	}
 
 	if len(results) == 0 {
-		presenter.Printf(cmd, "No search results found in stdin\n")
+		presenter.PrintSmartf(cmd, "No search results found in stdin\n")
 
 		return nil
 	}
@@ -221,7 +221,7 @@ func runCreateSyncFromStdin(cmd *cobra.Command) error {
 }
 
 func parseSearchOutput(input io.Reader) ([]*routingv1.SearchResponse, error) {
-	// Read JSON input from routing search --json
+	// Read JSON input from routing search --output json
 	inputBytes, err := io.ReadAll(input)
 	if err != nil {
 		return nil, fmt.Errorf("error reading input: %w", err)
@@ -287,8 +287,8 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 
 	for apiAddress, syncInfo := range peerResults {
 		if syncInfo.APIAddress == "" {
-			presenter.Printf(cmd, "WARNING: No API address found for peer\n")
-			presenter.Printf(cmd, "Skipping sync for this peer\n")
+			presenter.PrintSmartf(cmd, "WARNING: No API address found for peer\n")
+			presenter.PrintSmartf(cmd, "Skipping sync for this peer\n")
 
 			continue
 		}
@@ -296,7 +296,7 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 		// Create sync operation
 		syncID, err := client.CreateSync(cmd.Context(), syncInfo.APIAddress, syncInfo.CIDs)
 		if err != nil {
-			presenter.Printf(cmd, "ERROR: Failed to create sync for peer %s: %v\n", apiAddress, err)
+			presenter.PrintSmartf(cmd, "ERROR: Failed to create sync for peer %s: %v\n", apiAddress, err)
 
 			continue
 		}
