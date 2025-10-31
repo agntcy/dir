@@ -5,14 +5,21 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -55,58 +62,50 @@ func withAuth(ctx context.Context) Option {
 			return errors.New("config is required: use WithConfig() or WithEnvConfig()")
 		}
 
-		// Use insecure access in case SpiffeSocketPath is not set or no auth mode specified
-		if o.config.SpiffeSocketPath == "" || o.config.AuthMode == "" {
+		// Setup authentication based on AuthMode
+		switch o.config.AuthMode {
+		case "jwt":
+			return o.setupJWTAuth(ctx)
+		case "x509":
+			return o.setupX509Auth(ctx)
+		case "token":
+			return o.setupSpiffeAuth(ctx)
+		default:
+			// Use insecure access for all other cases
 			o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 			return nil
 		}
-
-		// Create SPIFFE client
-		client, err := workloadapi.New(ctx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
-		if err != nil {
-			return fmt.Errorf("failed to create SPIFFE client: %w", err)
-		}
-
-		o.authClient = client
-
-		switch o.config.AuthMode {
-		case "jwt":
-			//nolint:contextcheck // SPIFFE sources need context.Background() for long lifetime, not init ctx
-			return o.setupJWTAuth(client)
-		case "x509":
-			//nolint:contextcheck // SPIFFE sources need context.Background() for long lifetime, not init ctx
-			return o.setupX509Auth(client)
-		default:
-			_ = client.Close()
-
-			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509')", o.config.AuthMode)
-		}
 	}
 }
 
-func (o *options) setupJWTAuth(client *workloadapi.Client) error {
+func (o *options) setupJWTAuth(ctx context.Context) error {
+	// Validate SPIFFE socket path is set
+	if o.config.SpiffeSocketPath == "" {
+		return errors.New("spiffe socket path is required for JWT authentication")
+	}
+
 	// Validate JWT audience is set
 	if o.config.JWTAudience == "" {
-		_ = client.Close()
-
 		return errors.New("JWT audience is required for JWT authentication")
 	}
 
+	// Create SPIFFE client
+	client, err := workloadapi.New(ctx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
+	if err != nil {
+		return fmt.Errorf("failed to create SPIFFE client: %w", err)
+	}
+
 	// Create bundle source for verifying server's TLS certificate (X.509-SVID)
-	// Note: Use context.Background() for long-running sources that must live as long as the client
-	bundleSrc, err := workloadapi.NewBundleSource(context.Background(), workloadapi.WithClient(client))
+	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 
 		return fmt.Errorf("failed to create bundle source: %w", err)
 	}
 
-	o.bundleSrc = bundleSrc // Store for cleanup
-
 	// Create JWT source for fetching JWT-SVIDs
-	// Note: Use context.Background() for long-running sources that must live as long as the client
-	jwtSource, err := workloadapi.NewJWTSource(context.Background(), workloadapi.WithClient(client))
+	jwtSource, err := workloadapi.NewJWTSource(ctx, workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 		_ = bundleSrc.Close()
@@ -114,10 +113,11 @@ func (o *options) setupJWTAuth(client *workloadapi.Client) error {
 		return fmt.Errorf("failed to create JWT source: %w", err)
 	}
 
-	o.jwtSource = jwtSource // Store for cleanup
-
 	// Use TLS for transport security (server presents X.509-SVID)
 	// Client authenticates with JWT-SVID via PerRPCCredentials
+	o.authClient = client
+	o.bundleSrc = bundleSrc
+	o.jwtSource = jwtSource
 	o.authOpts = append(o.authOpts,
 		grpc.WithTransportCredentials(
 			grpccredentials.TLSClientCredentials(bundleSrc, tlsconfig.AuthorizeAny()),
@@ -128,21 +128,28 @@ func (o *options) setupJWTAuth(client *workloadapi.Client) error {
 	return nil
 }
 
-func (o *options) setupX509Auth(client *workloadapi.Client) error {
+func (o *options) setupX509Auth(ctx context.Context) error {
+	// Validate SPIFFE socket path is set
+	if o.config.SpiffeSocketPath == "" {
+		return errors.New("spiffe socket path is required for JWT authentication")
+	}
+
+	// Create SPIFFE client
+	client, err := workloadapi.New(ctx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
+	if err != nil {
+		return fmt.Errorf("failed to create SPIFFE client: %w", err)
+	}
+
 	// Create SPIFFE x509 services
-	// Note: Use context.Background() for long-running sources that must live as long as the client
-	x509Src, err := workloadapi.NewX509Source(context.Background(), workloadapi.WithClient(client))
+	x509Src, err := workloadapi.NewX509Source(ctx, workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 
 		return fmt.Errorf("failed to create x509 source: %w", err)
 	}
 
-	o.x509Src = x509Src // Store for cleanup
-
 	// Create SPIFFE bundle services
-	// Note: Use context.Background() for long-running sources that must live as long as the client
-	bundleSrc, err := workloadapi.NewBundleSource(context.Background(), workloadapi.WithClient(client))
+	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 		_ = x509Src.Close() // Fix Issue #4: Close x509Src on error
@@ -150,12 +157,110 @@ func (o *options) setupX509Auth(client *workloadapi.Client) error {
 		return fmt.Errorf("failed to create bundle source: %w", err)
 	}
 
-	o.bundleSrc = bundleSrc // Store for cleanup
-
-	// Add auth options to the client
+	// Update options
+	o.authClient = client
+	o.x509Src = x509Src
+	o.bundleSrc = bundleSrc
 	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(
 		grpccredentials.MTLSClientCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeAny()),
 	))
+
+	return nil
+}
+
+func (o *options) setupSpiffeAuth(ctx context.Context) error {
+	// Validate token file is set
+	if o.config.SpiffeToken == "" {
+		return errors.New("spiffe token file path is required for token authentication")
+	}
+
+	// Read token file
+	tokenData, err := os.ReadFile(o.config.SpiffeToken)
+	if err != nil {
+		return fmt.Errorf("failed to read SPIFFE token file: %w", err)
+	}
+
+	// SpiffeTokenData represents the structure of SPIFFE token JSON
+	type SpiffeTokenData struct {
+		X509SVID   []string `json:"x509_svid"`   // DER-encoded certificates in base64
+		PrivateKey string   `json:"private_key"` // DER-encoded private key in base64
+		RootCAs    []string `json:"root_cas"`    // DER-encoded root CA certificates in base64
+	}
+
+	// Parse SPIFFE token JSON
+	var spiffeData []SpiffeTokenData
+	if err := json.Unmarshal(tokenData, &spiffeData); err != nil {
+		return fmt.Errorf("failed to parse SPIFFE token: %w", err)
+	}
+
+	if len(spiffeData) == 0 {
+		return fmt.Errorf("no SPIFFE data found in token")
+	}
+
+	// Use the first SPIFFE data entry
+	data := spiffeData[0]
+
+	// Parse the certificate chain
+	if len(data.X509SVID) == 0 {
+		return fmt.Errorf("no X.509 SVID certificates found")
+	}
+
+	// From base64 DER to PEM
+	certDER, err := base64.StdEncoding.DecodeString(data.X509SVID[0])
+	if err != nil {
+		return fmt.Errorf("failed to decode certificate: %w", err)
+	}
+
+	certPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certDER,
+	})
+
+	// The private key is base64-encoded DER format
+	keyDER, err := base64.StdEncoding.DecodeString(data.PrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to decode private key: %w", err)
+	}
+
+	keyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: keyDER,
+	})
+
+	// Create certificate from PEM data
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return fmt.Errorf("failed to create certificate from SPIFFE data: %w", err)
+	}
+
+	// Create CA pool from root CAs
+	capool := x509.NewCertPool()
+	for _, rootCA := range data.RootCAs {
+		// Root CAs are also base64-encoded DER
+		caDER, err := base64.StdEncoding.DecodeString(rootCA)
+		if err != nil {
+			return fmt.Errorf("failed to decode root CA: %w", err)
+		}
+
+		caPEM := pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: caDER,
+		})
+
+		if !capool.AppendCertsFromPEM(caPEM) {
+			return fmt.Errorf("failed to append root CA certificate to CA pool")
+		}
+	}
+
+	// Create TLS config
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		RootCAs:            capool,
+		InsecureSkipVerify: o.config.TlsSkipVerify,
+	}
+
+	// Update options
+	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 
 	return nil
 }
