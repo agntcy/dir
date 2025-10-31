@@ -11,10 +11,10 @@ package saasv1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -30,6 +30,8 @@ const (
 	RecordHubService_UpdateRecord_FullMethodName         = "/saas.v1alpha1.RecordHubService/UpdateRecord"
 	RecordHubService_PushRecord_FullMethodName           = "/saas.v1alpha1.RecordHubService/PushRecord"
 	RecordHubService_PullRecord_FullMethodName           = "/saas.v1alpha1.RecordHubService/PullRecord"
+	RecordHubService_PushRecordSignature_FullMethodName  = "/saas.v1alpha1.RecordHubService/PushRecordSignature"
+	RecordHubService_GetRecordSignatures_FullMethodName  = "/saas.v1alpha1.RecordHubService/GetRecordSignatures"
 )
 
 // RecordHubServiceClient is the client API for RecordHubService service.
@@ -43,6 +45,8 @@ type RecordHubServiceClient interface {
 	UpdateRecord(ctx context.Context, in *UpdateRecordRequest, opts ...grpc.CallOption) (*UpdateRecordResponse, error)
 	PushRecord(ctx context.Context, in *PushRecordRequest, opts ...grpc.CallOption) (*PushRecordResponse, error)
 	PullRecord(ctx context.Context, in *PullRecordRequest, opts ...grpc.CallOption) (*PullRecordResponse, error)
+	PushRecordSignature(ctx context.Context, in *PushRecordSignatureRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetRecordSignatures(ctx context.Context, in *GetRecordSignaturesRequest, opts ...grpc.CallOption) (*GetRecordSignaturesResponse, error)
 }
 
 type recordHubServiceClient struct {
@@ -123,6 +127,26 @@ func (c *recordHubServiceClient) PullRecord(ctx context.Context, in *PullRecordR
 	return out, nil
 }
 
+func (c *recordHubServiceClient) PushRecordSignature(ctx context.Context, in *PushRecordSignatureRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, RecordHubService_PushRecordSignature_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *recordHubServiceClient) GetRecordSignatures(ctx context.Context, in *GetRecordSignaturesRequest, opts ...grpc.CallOption) (*GetRecordSignaturesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRecordSignaturesResponse)
+	err := c.cc.Invoke(ctx, RecordHubService_GetRecordSignatures_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RecordHubServiceServer is the server API for RecordHubService service.
 // All implementations should embed UnimplementedRecordHubServiceServer
 // for forward compatibility.
@@ -134,6 +158,8 @@ type RecordHubServiceServer interface {
 	UpdateRecord(context.Context, *UpdateRecordRequest) (*UpdateRecordResponse, error)
 	PushRecord(context.Context, *PushRecordRequest) (*PushRecordResponse, error)
 	PullRecord(context.Context, *PullRecordRequest) (*PullRecordResponse, error)
+	PushRecordSignature(context.Context, *PushRecordSignatureRequest) (*emptypb.Empty, error)
+	GetRecordSignatures(context.Context, *GetRecordSignaturesRequest) (*GetRecordSignaturesResponse, error)
 }
 
 // UnimplementedRecordHubServiceServer should be embedded to have
@@ -163,6 +189,12 @@ func (UnimplementedRecordHubServiceServer) PushRecord(context.Context, *PushReco
 }
 func (UnimplementedRecordHubServiceServer) PullRecord(context.Context, *PullRecordRequest) (*PullRecordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PullRecord not implemented")
+}
+func (UnimplementedRecordHubServiceServer) PushRecordSignature(context.Context, *PushRecordSignatureRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PushRecordSignature not implemented")
+}
+func (UnimplementedRecordHubServiceServer) GetRecordSignatures(context.Context, *GetRecordSignaturesRequest) (*GetRecordSignaturesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRecordSignatures not implemented")
 }
 func (UnimplementedRecordHubServiceServer) testEmbeddedByValue() {}
 
@@ -310,6 +342,42 @@ func _RecordHubService_PullRecord_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RecordHubService_PushRecordSignature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PushRecordSignatureRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordHubServiceServer).PushRecordSignature(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecordHubService_PushRecordSignature_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordHubServiceServer).PushRecordSignature(ctx, req.(*PushRecordSignatureRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RecordHubService_GetRecordSignatures_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRecordSignaturesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RecordHubServiceServer).GetRecordSignatures(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RecordHubService_GetRecordSignatures_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RecordHubServiceServer).GetRecordSignatures(ctx, req.(*GetRecordSignaturesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RecordHubService_ServiceDesc is the grpc.ServiceDesc for RecordHubService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -344,6 +412,14 @@ var RecordHubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PullRecord",
 			Handler:    _RecordHubService_PullRecord_Handler,
+		},
+		{
+			MethodName: "PushRecordSignature",
+			Handler:    _RecordHubService_PushRecordSignature_Handler,
+		},
+		{
+			MethodName: "GetRecordSignatures",
+			Handler:    _RecordHubService_GetRecordSignatures_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

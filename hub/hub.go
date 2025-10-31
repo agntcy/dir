@@ -16,10 +16,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// hub is the main struct for running the Agent Hub CLI application.
 type hub struct{}
 
-// NewHub creates a new hub instance for running the CLI application.
 func NewHub() *hub { //nolint:revive
 	return &hub{}
 }

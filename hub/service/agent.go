@@ -61,3 +61,25 @@ func PushRecord(
 
 	return resp, nil
 }
+
+func PushRecordSignature(ctx context.Context, hc hubClient.Client, organization, recordCID, signature, publicKey string, session *sessionstore.HubSession) error {
+	ctx = authUtils.AddAuthToContext(ctx, session)
+
+	err := hc.PushRecordSignature(ctx, organization, recordCID, signature, publicKey)
+	if err != nil {
+		return fmt.Errorf("unable to push signature: %w", err)
+	}
+
+	return nil
+}
+
+func GetRecordSignatures(ctx context.Context, hc hubClient.Client, recordCID string, session *sessionstore.HubSession) ([]*v1alpha1.RecordSignature, error) {
+	ctx = authUtils.AddAuthToContext(ctx, session)
+
+	sigs, err := hc.GetRecordSignatures(ctx, recordCID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get signatures: %w", err)
+	}
+
+	return sigs, nil
+}
