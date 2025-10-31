@@ -1,0 +1,73 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Release Helm
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_repo:
+        required: true
+        type: string
+        description: "Image repo to use."
+        default: "ghcr.io/agntcy"
+      release_tag:
+        required: true
+        type: string
+        description: "Release tag for all components."
+  workflow_call:
+    inputs:
+      image_repo:
+        required: true
+        type: string
+        description: "Image repo to use."
+      release_tag:
+        required: true
+        type: string
+        description: "Release tag for all components."
+
+jobs:
+  chart:
+    name: Helm chart
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: [dir, dirctl]
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: notused
+          password: ${{ secrets.GITHUB_TOKEN  }}
+
+      - name: Setup Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+
+      - name: Helm update
+        shell: bash
+        run: helm dependency update install/charts/${{ matrix.chart }}
+
+      - name: Helm lint
+        shell: bash
+        run: helm lint install/charts/${{ matrix.chart }} --with-subcharts
+
+      - name: Helm package
+        id: build
+        shell: bash
+        run: |
+          helm package install/charts/${{ matrix.chart }} --dependency-update --version ${{ inputs.release_tag }}
+          echo "package=${{ matrix.chart }}-${{ inputs.release_tag }}.tgz" >> "$GITHUB_OUTPUT"
+
+      - name: Helm push to GHCR OCI registry
+        shell: bash
+        run: |
+          echo "🚧 Pushing ${{ steps.build.outputs.package }} to GHCR OCI registry"
+          helm push ${{ steps.build.outputs.package }} oci://${{ inputs.image_repo }}/dir/helm-charts

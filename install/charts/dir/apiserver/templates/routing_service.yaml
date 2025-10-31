@@ -9,12 +9,25 @@ metadata:
   labels:
     {{- include "chart.labels" . | nindent 4 }}
 spec:
+  {{- if and .Values.routingService .Values.routingService.type }}
+  type: {{ .Values.routingService.type }}
+  {{- else }}
   type: {{ .Values.service.type }}
+  {{- end }}
+  {{- if and .Values.routingService .Values.routingService.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.routingService.loadBalancerIP }}
+  {{- end }}
+  {{- if and .Values.routingService .Values.routingService.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.routingService.externalTrafficPolicy }}
+  {{- end }}
   ports:
     - port: {{ (split "/" .Values.config.routing.listen_address)._4 }}
       targetPort: routing
       protocol: TCP
       name: routing
+      {{- if and .Values.routingService .Values.routingService.nodePort }}
+      nodePort: {{ .Values.routingService.nodePort }}
+      {{- end }}
   selector:
     {{- include "chart.selectorLabels" . | nindent 4 }}
 {{- end }}
