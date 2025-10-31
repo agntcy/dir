@@ -168,7 +168,7 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 	return nil
 }
 
-func (o *options) setupSpiffeAuth(ctx context.Context) error {
+func (o *options) setupSpiffeAuth(_ context.Context) error {
 	// Validate token file is set
 	if o.config.SpiffeToken == "" {
 		return errors.New("spiffe token file path is required for token authentication")
@@ -194,7 +194,7 @@ func (o *options) setupSpiffeAuth(ctx context.Context) error {
 	}
 
 	if len(spiffeData) == 0 {
-		return fmt.Errorf("no SPIFFE data found in token")
+		return errors.New("no SPIFFE data found in token")
 	}
 
 	// Use the first SPIFFE data entry
@@ -202,7 +202,7 @@ func (o *options) setupSpiffeAuth(ctx context.Context) error {
 
 	// Parse the certificate chain
 	if len(data.X509SVID) == 0 {
-		return fmt.Errorf("no X.509 SVID certificates found")
+		return errors.New("no X.509 SVID certificates found")
 	}
 
 	// From base64 DER to PEM
@@ -235,6 +235,7 @@ func (o *options) setupSpiffeAuth(ctx context.Context) error {
 
 	// Create CA pool from root CAs
 	capool := x509.NewCertPool()
+
 	for _, rootCA := range data.RootCAs {
 		// Root CAs are also base64-encoded DER
 		caDER, err := base64.StdEncoding.DecodeString(rootCA)
@@ -248,7 +249,7 @@ func (o *options) setupSpiffeAuth(ctx context.Context) error {
 		})
 
 		if !capool.AppendCertsFromPEM(caPEM) {
-			return fmt.Errorf("failed to append root CA certificate to CA pool")
+			return errors.New("failed to append root CA certificate to CA pool")
 		}
 	}
 
@@ -256,7 +257,7 @@ func (o *options) setupSpiffeAuth(ctx context.Context) error {
 	tlsConfig := &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		RootCAs:            capool,
-		InsecureSkipVerify: o.config.TlsSkipVerify,
+		InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec
 	}
 
 	// Update options
