@@ -16,9 +16,36 @@ git checkout -b release/v1.0.0
 +    version: v1.0.0
 ```
 
+* Update the SDK versions in `sdk/dir-js/package.json`:
+```diff
+  {
+    "name": "agntcy-dir",
+-   "version": "0.0.0",
++   "version": "1.0.0",
+    "description": "Directory SDK",
+```
+
+* Update the SDK version in `sdk/dir-py/pyproject.toml`:
+```diff
+  [project]
+  name = "agntcy-dir"
+- version = "0.0.0"
++ version = "1.0.0"
+  description = "Directory SDK"
+```
+
+> [!NOTE]
+> For release candidates, use versions like `1.0.0-rc.1` for JavaScript and `1.0.0rc1` for Python (no dash). For example: `v1.0.0-rc.1` becomes `1.0.0-rc.1` in package.json and `1.0.0rc1` in pyproject.toml.
+
+* After updating the SDK versions, regenerate the lock files:
+```sh
+cd sdk/dir-js && npm install && cd ../..
+cd sdk/dir-py && uv lock && cd ../..
+```
+
 * Commit the changes with a suitable message.
 ```sh
-git add versions.yaml
+git add versions.yaml sdk/dir-js/package.json sdk/dir-js/package-lock.json sdk/dir-py/pyproject.toml sdk/dir-py/uv.lock
 git commit -m "release: update module set to version v1.0.0"
 ```
 
