@@ -6,15 +6,21 @@
 This module provides a high-level Python client for interacting with the AGNTCY
 Directory services including routing, search, store, and signing operations.
 """
-
+import base64
 import builtins
+import json
 import logging
 import os
+import socket
+from OpenSSL import SSL
 import subprocess
 import tempfile
 from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import List
 
 import grpc
+from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from spiffe import WorkloadApiClient, X509Source
 
@@ -147,12 +153,14 @@ class Client:
 
     def __create_grpc_channel(self) -> grpc.Channel:
         # Handle different authentication modes
-        if self.config.auth_mode == "insecure":
+        if self.config.auth_mode == "":
             return grpc.insecure_channel(self.config.server_address)
         elif self.config.auth_mode == "jwt":
             return self.__create_jwt_channel()
         elif self.config.auth_mode == "x509":
             return self.__create_x509_channel()
+        elif self.config.auth_mode == "token":
+            return self.__create_spiffe_auth_channel()
         else:
             msg = f"Unsupported auth mode: {self.config.auth_mode}"
             raise ValueError(msg)
@@ -248,6 +256,109 @@ class Client:
         x509_source.close()
 
         return channel
+
+    def __create_spiffe_auth_channel(self) -> grpc.Channel:
+        """Create a gRPC channel with SPIFFE token for authentication."""
+
+        if self.config.spiffe_token == "":
+            msg = "SPIFFE token file path is required for token authentication"
+            raise ValueError(msg)
+
+        with open(self.config.spiffe_token, "r") as token_file:
+            token_data = token_file.read()
+
+        @dataclass
+        class SpiffeTokenData:
+            x509_svid: List[str]  # DER-encoded certificates in base64
+            private_key: str  # DER-encoded private key in base64
+            root_cas: List[str]  # DER-encoded root CA certificates in base64
+
+        try:
+            spiffe_data = [SpiffeTokenData(**item) for item in json.loads(token_data)]
+        except (json.JSONDecodeError, TypeError) as e:
+            raise ValueError(f"Failed to parse SPIFFE token: {e}")
+
+        if len(spiffe_data) == 0:
+            raise ValueError("no SPIFFE data found in token")
+
+        data = spiffe_data[0]
+
+        if len(spiffe_data) == 0:
+            raise ValueError("no X.509 SVID certificates found")
+
+        try:
+            # Decode the first X509 SVID certificate (base64 DER)
+            cert_der = base64.b64decode(data.x509_svid[0])
+            cert = x509.load_der_x509_certificate(cert_der)
+            cert_pem = cert.public_bytes(encoding=serialization.Encoding.PEM)
+        except Exception as e:
+            raise ValueError(f"Failed to decode certificate: {e}")
+
+        try:
+            # Decode the private key (DER format)
+            key_der = base64.b64decode(data.private_key)
+            private_key = serialization.load_der_private_key(key_der, password=None).private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+                )
+        except Exception as e:
+            raise ValueError(f"Failed to decode private key: {e}")
+
+        # Load root CA certificates
+        ca_certs_pem = b""
+        for root_ca in data.root_cas:
+            try:
+                ca_der = base64.b64decode(root_ca)
+                ca_cert = x509.load_der_x509_certificate(ca_der)
+                ca_certs_pem += ca_cert.public_bytes(encoding=serialization.Encoding.PEM)
+            except Exception as e:
+                raise ValueError(f"Failed to decode root CA: {e}")
+
+        credentials = grpc.ssl_channel_credentials(
+                root_certificates=ca_certs_pem,
+                private_key=private_key,
+                certificate_chain=cert_pem,
+            )
+        
+        options = ()
+        if self.config.tls_skip_verify:
+            expected_target_name = self.__get_expected_peer_name_from_cert()
+            options += (('grpc.ssl_target_name_override', expected_target_name),)
+
+        channel = grpc.secure_channel(
+            target=self.config.server_address,
+            credentials=credentials,
+            options=options
+        )
+
+        return channel
+
+    def __get_expected_peer_name_from_cert(self) -> str:
+        splitted_addr = self.config.server_address.split(':')
+        addr = splitted_addr[0]
+        port = int(splitted_addr[1])
+
+        context = SSL.Context(SSL.TLS_CLIENT_METHOD)
+        context.set_verify(SSL.VERIFY_NONE, lambda *args: True)  # Disable cert verification
+  
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((addr, port))
+        
+        connection = SSL.Connection(context, sock)
+        connection.set_connect_state()
+        connection.do_handshake()
+        
+        cert = connection.get_peer_certificate()
+        
+        connection.close()
+        sock.close()
+
+        for _, (key, value) in enumerate(cert.get_subject().get_components()):
+            if key == b'CN':
+                return value # Expected peer name from cert
+        
+        raise ValueError("No CN found in certificate subject")
 
     def publish(
         self,
