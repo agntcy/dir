@@ -3,16 +3,18 @@
 
 module-sets:
   directory:
-    version: v0.4.0
+    version: v0.5.0-rc.1
     modules:
       - github.com/agntcy/dir/api
       - github.com/agntcy/dir/client
-      - github.com/agntcy/dir/server
       - github.com/agntcy/dir/e2e
+      - github.com/agntcy/dir/importer
+      - github.com/agntcy/dir/mcp
+      - github.com/agntcy/dir/server
       - github.com/agntcy/dir/utils
 
   cli:
-    version: v0.4.0
+    version: v0.5.0-rc.1
     modules:
       - github.com/agntcy/dir/cli
       - github.com/agntcy/dir/hub
