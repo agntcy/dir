@@ -75,6 +75,7 @@ func withAuth(ctx context.Context) Option {
 		case "":
 			// Empty auth mode - use insecure connection (for development/testing only)
 			o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 			return nil
 		default:
 			// Invalid auth mode specified - return error to prevent silent security issues
