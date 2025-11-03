@@ -5,6 +5,7 @@ go 1.25.2
 replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
+	github.com/agntcy/dir/utils => ../utils
 )
 
 require (
