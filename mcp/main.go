@@ -79,6 +79,28 @@ Use this tool after validating your record to store it in the Directory.
 		`),
 	}, tools.PushRecord)
 
+	// Add tool for searching local records
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_dir_search_local",
+		Description: strings.TrimSpace(`
+Searches for agent records on the local directory node using structured query filters.
+This tool supports flexible wildcard patterns for matching records based on:
+- Agent names (e.g., "gpt*", "agent-?", "web-[0-9]")
+- Versions (e.g., "v1.*", "*-beta", "v?.0.?")
+- Skill IDs (exact match only, e.g., "10201")
+- Skill names (e.g., "*python*", "Image*", "[A-M]*")
+- Locators (e.g., "docker-image:*", "http*")
+- Modules (e.g., "*-plugin", "core*")
+
+Multiple filters are combined with OR logic (matches any filter).
+Results are streamed and paginated for efficient handling of large result sets.
+
+Server configuration is set via environment variables (DIRECTORY_CLIENT_SERVER_ADDRESS).
+
+Use this tool for direct, structured searches when you know the exact filters to apply.
+		`),
+	}, tools.SearchLocal)
+
 	// Add prompt for creating agent records
 	server.AddPrompt(&mcp.Prompt{
 		Name: "create_record",
@@ -128,6 +150,23 @@ Complete workflow for validating and pushing an OASF record to the Directory ser
 			},
 		},
 	}, prompts.PushRecord)
+
+	// Add prompt for searching records with free-text
+	server.AddPrompt(&mcp.Prompt{
+		Name: "search_records",
+		Description: strings.TrimSpace(`
+Guided workflow for searching agent records using free-text queries.
+Automatically translates natural language queries into structured search parameters
+using OASF schema knowledge. Examples: "find Python agents", "agents that can process images".
+		`),
+		Arguments: []*mcp.PromptArgument{
+			{
+				Name:        "query",
+				Description: "Free-text search query describing what agents you're looking for",
+				Required:    true,
+			},
+		},
+	}, prompts.SearchRecords)
 
 	// Run the server over stdin/stdout
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
