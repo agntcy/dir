@@ -14,14 +14,14 @@ import (
 
 // SearchLocalInput defines the input parameters for local search.
 type SearchLocalInput struct {
-	Limit      *uint32  `json:"limit,omitempty" jsonschema:"Maximum number of results to return (default: 100 max: 1000)"`
-	Offset     *uint32  `json:"offset,omitempty" jsonschema:"Pagination offset (default: 0)"`
-	Names      []string `json:"names,omitempty" jsonschema:"Agent name patterns (supports wildcards: * ? [])"`
-	Versions   []string `json:"versions,omitempty" jsonschema:"Version patterns (supports wildcards: * ? [])"`
-	SkillIDs   []string `json:"skill_ids,omitempty" jsonschema:"Skill ID patterns (exact match only)"`
+	Limit      *uint32  `json:"limit,omitempty"       jsonschema:"Maximum number of results to return (default: 100 max: 1000)"`
+	Offset     *uint32  `json:"offset,omitempty"      jsonschema:"Pagination offset (default: 0)"`
+	Names      []string `json:"names,omitempty"       jsonschema:"Agent name patterns (supports wildcards: * ? [])"`
+	Versions   []string `json:"versions,omitempty"    jsonschema:"Version patterns (supports wildcards: * ? [])"`
+	SkillIDs   []string `json:"skill_ids,omitempty"   jsonschema:"Skill ID patterns (exact match only)"`
 	SkillNames []string `json:"skill_names,omitempty" jsonschema:"Skill name patterns (supports wildcards: * ? [])"`
-	Locators   []string `json:"locators,omitempty" jsonschema:"Locator patterns (supports wildcards: * ? [])"`
-	Modules    []string `json:"modules,omitempty" jsonschema:"Module patterns (supports wildcards: * ? [])"`
+	Locators   []string `json:"locators,omitempty"    jsonschema:"Locator patterns (supports wildcards: * ? [])"`
+	Modules    []string `json:"modules,omitempty"     jsonschema:"Module patterns (supports wildcards: * ? [])"`
 }
 
 // SearchLocalOutput defines the output of local search.
@@ -95,8 +95,9 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 	}
 
 	// Execute search
-	limit32 := uint32(limit)
-	offset32 := uint32(offset)
+	// Safe conversions: limit is capped at 1000, offset is validated by client
+	limit32 := uint32(limit)   // #nosec G115
+	offset32 := uint32(offset) // #nosec G115
 
 	ch, err := c.Search(ctx, &searchv1.SearchRequest{
 		Limit:   &limit32,
@@ -111,6 +112,7 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 
 	// Collect results
 	recordCIDs := make([]string, 0, limit)
+
 	for cid := range ch {
 		if cid == "" {
 			continue

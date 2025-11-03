@@ -54,7 +54,7 @@ func TestBuildQueries(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			queries := buildQueries(tt.input)
-			assert.Equal(t, tt.expected, len(queries))
+			assert.Len(t, queries, tt.expected)
 		})
 	}
 }
@@ -70,7 +70,7 @@ func TestBuildQueriesTypes(t *testing.T) {
 	}
 
 	queries := buildQueries(input)
-	assert.Equal(t, 6, len(queries))
+	assert.Len(t, queries, 6)
 
 	// Verify query types are correctly mapped
 	expectedTypes := []searchv1.RecordQueryType{
@@ -83,7 +83,7 @@ func TestBuildQueriesTypes(t *testing.T) {
 	}
 
 	for i, query := range queries {
-		assert.Equal(t, expectedTypes[i], query.Type)
+		assert.Equal(t, expectedTypes[i], query.GetType())
 	}
 }
 
@@ -94,10 +94,10 @@ func TestBuildQueriesValues(t *testing.T) {
 	}
 
 	queries := buildQueries(input)
-	assert.Equal(t, 3, len(queries))
+	assert.Len(t, queries, 3)
 
 	// Verify values are preserved
-	assert.Equal(t, "agent-*", queries[0].Value)
-	assert.Equal(t, "test-agent", queries[1].Value)
-	assert.Equal(t, "v1.*", queries[2].Value)
+	assert.Equal(t, "agent-*", queries[0].GetValue())
+	assert.Equal(t, "test-agent", queries[1].GetValue())
+	assert.Equal(t, "v1.*", queries[2].GetValue())
 }

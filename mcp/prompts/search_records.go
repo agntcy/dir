@@ -68,5 +68,6 @@ EXAMPLES:
 // MarshalSearchRecordsInput marshals input to JSON for testing/debugging.
 func MarshalSearchRecordsInput(input SearchRecordsInput) (string, error) {
 	b, err := json.Marshal(input)
+
 	return string(b), err
 }
