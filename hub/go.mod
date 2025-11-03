@@ -7,7 +7,7 @@ replace github.com/agntcy/dir/api => ../api
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.7-20250717185734-6c6e0d3c608e.1
-	github.com/agntcy/dir/api v0.4.0
+	github.com/agntcy/dir/api v0.5.0-rc.1
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
