@@ -65,11 +65,13 @@ func withAuth(ctx context.Context) Option {
 		// Setup authentication based on AuthMode
 		switch o.config.AuthMode {
 		case "jwt":
-			return o.setupJWTAuth()
+			// NOTE: jwt source must live for the entire client lifetime, not just the initialization phase
+			return o.setupJWTAuth(context.Background()) //nolint:contextcheck
 		case "x509":
-			return o.setupX509Auth()
+			// NOTE: x509 source must live for the entire client lifetime, not just the initialization phase
+			return o.setupX509Auth(context.Background()) //nolint:contextcheck
 		case "token":
-			return o.setupSpiffeAuth()
+			return o.setupSpiffeAuth(ctx)
 		default:
 			// Use insecure access for all other cases
 			o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -79,10 +81,7 @@ func withAuth(ctx context.Context) Option {
 	}
 }
 
-func (o *options) setupJWTAuth() error {
-	// NOTE: jwt source must live for the entire client lifetime, not just the initialization phase
-	authCtx := context.Background()
-
+func (o *options) setupJWTAuth(ctx context.Context) error {
 	// Validate SPIFFE socket path is set
 	if o.config.SpiffeSocketPath == "" {
 		return errors.New("spiffe socket path is required for JWT authentication")
@@ -94,13 +93,13 @@ func (o *options) setupJWTAuth() error {
 	}
 
 	// Create SPIFFE client
-	client, err := workloadapi.New(authCtx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
+	client, err := workloadapi.New(ctx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
 	if err != nil {
 		return fmt.Errorf("failed to create SPIFFE client: %w", err)
 	}
 
 	// Create bundle source for verifying server's TLS certificate (X.509-SVID)
-	bundleSrc, err := workloadapi.NewBundleSource(authCtx, workloadapi.WithClient(client))
+	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 
@@ -108,7 +107,7 @@ func (o *options) setupJWTAuth() error {
 	}
 
 	// Create JWT source for fetching JWT-SVIDs
-	jwtSource, err := workloadapi.NewJWTSource(authCtx, workloadapi.WithClient(client))
+	jwtSource, err := workloadapi.NewJWTSource(ctx, workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 		_ = bundleSrc.Close()
@@ -131,23 +130,20 @@ func (o *options) setupJWTAuth() error {
 	return nil
 }
 
-func (o *options) setupX509Auth() error {
-	// NOTE: x509 source must live for the entire client lifetime, not just the initialization phase
-	authCtx := context.Background()
-
+func (o *options) setupX509Auth(ctx context.Context) error {
 	// Validate SPIFFE socket path is set
 	if o.config.SpiffeSocketPath == "" {
 		return errors.New("spiffe socket path is required for x509 authentication")
 	}
 
 	// Create SPIFFE client
-	client, err := workloadapi.New(authCtx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
+	client, err := workloadapi.New(ctx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
 	if err != nil {
 		return fmt.Errorf("failed to create SPIFFE client: %w", err)
 	}
 
 	// Create SPIFFE x509 services
-	x509Src, err := workloadapi.NewX509Source(authCtx, workloadapi.WithClient(client))
+	x509Src, err := workloadapi.NewX509Source(ctx, workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 
@@ -155,7 +151,7 @@ func (o *options) setupX509Auth() error {
 	}
 
 	// Create SPIFFE bundle services
-	bundleSrc, err := workloadapi.NewBundleSource(authCtx, workloadapi.WithClient(client))
+	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(client))
 	if err != nil {
 		_ = client.Close()
 		_ = x509Src.Close() // Fix Issue #4: Close x509Src on error
@@ -174,7 +170,7 @@ func (o *options) setupX509Auth() error {
 	return nil
 }
 
-func (o *options) setupSpiffeAuth() error {
+func (o *options) setupSpiffeAuth(_ context.Context) error {
 	// Validate token file is set
 	if o.config.SpiffeToken == "" {
 		return errors.New("spiffe token file path is required for token authentication")
