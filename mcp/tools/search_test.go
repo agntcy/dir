@@ -101,4 +101,3 @@ func TestBuildQueriesValues(t *testing.T) {
 	assert.Equal(t, "test-agent", queries[1].Value)
 	assert.Equal(t, "v1.*", queries[2].Value)
 }
-
