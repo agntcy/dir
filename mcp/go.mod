@@ -10,14 +10,14 @@ replace (
 require (
 	github.com/agntcy/dir/api v0.4.0
 	github.com/agntcy/dir/client v0.4.0
-	github.com/agntcy/oasf-sdk/pkg v0.0.8
+	github.com/agntcy/oasf-sdk/pkg v0.0.9
 	github.com/modelcontextprotocol/go-sdk v0.8.0
 	github.com/stretchr/testify v1.11.1
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.10-20251029125108-823ea6fabc82.1 // indirect
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go v0.121.1 // indirect
 	cloud.google.com/go/auth v0.16.2 // indirect
