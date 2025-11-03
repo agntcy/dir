@@ -15,6 +15,7 @@ const (
 	DefaultEnvPrefix = "DIRECTORY_CLIENT"
 
 	DefaultServerAddress = "0.0.0.0:8888"
+	DefaultTlsSkipVerify = false
 )
 
 var DefaultConfig = Config{
@@ -23,7 +24,9 @@ var DefaultConfig = Config{
 
 type Config struct {
 	ServerAddress    string `json:"server_address,omitempty"     mapstructure:"server_address"`
+	TlsSkipVerify    bool   `json:"tls_skip_verify,omitempty"    mapstructure:"tls_skip_verify"`
 	SpiffeSocketPath string `json:"spiffe_socket_path,omitempty" mapstructure:"spiffe_socket_path"`
+	SpiffeToken      string `json:"spiffe_token,omitempty"       mapstructure:"spiffe_token"`
 	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
 	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
 }
@@ -41,8 +44,14 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("server_address")
 	v.SetDefault("server_address", DefaultServerAddress)
 
+	_ = v.BindEnv("tls_skip_verify")
+	v.SetDefault("tls_skip_verify", DefaultTlsSkipVerify)
+
 	_ = v.BindEnv("spiffe_socket_path")
 	v.SetDefault("spiffe_socket_path", "")
+
+	_ = v.BindEnv("spiffe_token")
+	v.SetDefault("spiffe_token", "")
 
 	_ = v.BindEnv("auth_mode")
 	v.SetDefault("auth_mode", "")

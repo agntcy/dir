@@ -393,7 +393,7 @@ func TestWithAuth_AllAuthModes(t *testing.T) {
 			authMode:      "invalid",
 			jwtAudience:   "",
 			expectError:   true,
-			errorContains: "failed to create SPIFFE client",
+			errorContains: "unsupported auth mode",
 		},
 		{
 			name:          "empty mode with socket path",
