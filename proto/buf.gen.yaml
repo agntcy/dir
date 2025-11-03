@@ -42,6 +42,8 @@ plugins:
   # Stubs for Python
   - remote: buf.build/protocolbuffers/python:v32.1
     out: ../sdk/dir-py/
+  - remote: buf.build/protocolbuffers/pyi:v27.4
+    out: ../sdk/dir-py/
   - remote: buf.build/grpc/python:v1.75.1
     out: ../sdk/dir-py/
 
