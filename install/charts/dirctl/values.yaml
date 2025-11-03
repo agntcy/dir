@@ -81,9 +81,11 @@ env:
   - name: DIRECTORY_CLIENT_SERVER_ADDRESS
     value: dir-apiserver.dir-server.svc.cluster.local:8888
   - name: DIRECTORY_CLIENT_AUTH_MODE
-    value: '' # Options: "x509", "jwt", or "" for no auth
+    value: '' # Options: "token", "x509", "jwt", or "" for no auth
   - name: DIRECTORY_CLIENT_JWT_AUDIENCE
     value: '' # Required if using JWT auth
+  - name: DIRECTORY_CLIENT_SPIFFE_TOKEN
+    value: '' # Required if using token auth
 
 # Config maps config (shared across all cronjobs)
 configMaps:

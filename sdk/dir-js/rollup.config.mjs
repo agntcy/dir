@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import json from '@rollup/plugin-json';
-import {readFileSync} from 'fs';
+import { readFileSync } from 'fs';
 import typescript from 'rollup-plugin-typescript2';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 

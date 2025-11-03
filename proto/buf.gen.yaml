@@ -42,11 +42,13 @@ plugins:
   # Stubs for Python
   - remote: buf.build/protocolbuffers/python:v32.1
     out: ../sdk/dir-py/
+  - remote: buf.build/protocolbuffers/pyi:v27.4
+    out: ../sdk/dir-py/
   - remote: buf.build/grpc/python:v1.75.1
     out: ../sdk/dir-py/
 
   # Stubs for Javascript/Typescript
   - remote: buf.build/bufbuild/es:v2.9.0
-    out: ../sdk/dir-js/api
+    out: ../sdk/dir-js/src/models/
     opt:
       - import_extension=js
