@@ -8,6 +8,8 @@ Directory services including routing, search, store, and signing operations.
 """
 
 import builtins
+import base64
+import json
 import logging
 import os
 import subprocess
@@ -147,12 +149,14 @@ class Client:
 
     def __create_grpc_channel(self) -> grpc.Channel:
         # Handle different authentication modes
-        if self.config.auth_mode == "insecure":
+        if self.config.auth_mode == "":
             return grpc.insecure_channel(self.config.server_address)
         elif self.config.auth_mode == "jwt":
             return self.__create_jwt_channel()
         elif self.config.auth_mode == "x509":
             return self.__create_x509_channel()
+        elif self.config.auth_mode == "token":
+            return self.__create_token_channel()
         else:
             msg = f"Unsupported auth mode: {self.config.auth_mode}"
             raise ValueError(msg)
@@ -248,6 +252,83 @@ class Client:
         x509_source.close()
 
         return channel
+
+    def __create_token_channel(self) -> grpc.Channel:
+        """Create a secure gRPC channel using SPIFFE token authentication."""
+        if self.config.spiffe_token == "":
+            msg = "SPIFFE token file path is required for token authentication"
+            raise ValueError(msg)
+
+        try:
+            # Read and parse the SPIFFE token file
+            with open(self.config.spiffe_token, 'r') as f:
+                token_data = json.load(f)
+
+            if not isinstance(token_data, list) or len(token_data) == 0:
+                msg = "No SPIFFE data found in token"
+                raise ValueError(msg)
+
+            # Use the first SPIFFE data entry
+            spiffe_data = token_data[0]
+
+            # Parse X.509 SVID certificates
+            if "x509_svid" not in spiffe_data or len(spiffe_data["x509_svid"]) == 0:
+                msg = "No X.509 SVID certificates found in token"
+                raise ValueError(msg)
+
+            # Decode certificate from base64 DER to PEM
+            cert_der = base64.b64decode(spiffe_data["x509_svid"][0])
+            cert_pem = b"-----BEGIN CERTIFICATE-----\n" + \
+                      base64.b64encode(cert_der) + \
+                      b"\n-----END CERTIFICATE-----\n"
+
+            # Decode private key from base64 DER to PEM
+            if "private_key" not in spiffe_data:
+                msg = "No private key found in token"
+                raise ValueError(msg)
+
+            key_der = base64.b64decode(spiffe_data["private_key"])
+            key_pem = b"-----BEGIN PRIVATE KEY-----\n" + \
+                     base64.b64encode(key_der) + \
+                     b"\n-----END PRIVATE KEY-----\n"
+
+            # Parse root CAs
+            if "root_cas" not in spiffe_data or len(spiffe_data["root_cas"]) == 0:
+                msg = "No root CA certificates found in token"
+                raise ValueError(msg)
+
+            ca_certs_pem = b""
+            for root_ca in spiffe_data["root_cas"]:
+                ca_der = base64.b64decode(root_ca)
+                ca_pem = b"-----BEGIN CERTIFICATE-----\n" + \
+                        base64.b64encode(ca_der) + \
+                        b"\n-----END CERTIFICATE-----\n"
+                ca_certs_pem += ca_pem
+
+            # Create SSL credentials
+            credentials = grpc.ssl_channel_credentials(
+                root_certificates=ca_certs_pem,
+                private_key=key_pem,
+                certificate_chain=cert_pem,
+            )
+
+            # Create secure gRPC channel
+            channel = grpc.secure_channel(
+                target=self.config.server_address,
+                credentials=credentials,
+            )
+
+            return channel
+
+        except FileNotFoundError as e:
+            msg = f"Failed to read SPIFFE token file: {e}"
+            raise ValueError(msg) from e
+        except json.JSONDecodeError as e:
+            msg = f"Failed to parse SPIFFE token JSON: {e}"
+            raise ValueError(msg) from e
+        except Exception as e:
+            msg = f"Failed to create token-based channel: {e}"
+            raise RuntimeError(msg) from e
 
     def publish(
         self,

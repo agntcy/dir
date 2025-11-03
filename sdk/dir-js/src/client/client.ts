@@ -4,7 +4,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { env } from 'node:process';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
 
 import {
@@ -27,49 +27,47 @@ export class Config {
   static DEFAULT_SERVER_ADDRESS = '127.0.0.1:8888';
   static DEFAULT_DIRCTL_PATH = 'dirctl';
   static DEFAULT_SPIFFE_ENDPOINT_SOCKET = '';
-  static DEFAULT_AUTH_MODE = 'insecure';
+  static DEFAULT_AUTH_MODE = '';
   static DEFAULT_JWT_AUDIENCE = '';
+  static DEFAULT_SPIFFE_TOKEN = '';
+  static DEFAULT_TLS_SKIP_VERIFY = false;
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
-  authMode: 'insecure' | 'x509' | 'jwt';
+  authMode: '' | 'x509' | 'jwt' | 'token';
   jwtAudience: string;
+  spiffeToken: string;
+  tlsSkipVerify: boolean;
 
   /**
-   * Creates a new Config instance.
+   * Creates a new Config instance from provided parameters.
    *
    * @param serverAddress - The server address to connect to. Defaults to '127.0.0.1:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
-   * @param authMode - Authentication mode: 'insecure', 'x509', or 'jwt'. Defaults to 'insecure'
+   * @param authMode - Authentication mode: '', 'x509', 'jwt', or 'token'. Defaults to ''
    * @param jwtAudience - JWT audience for JWT authentication. Required when authMode is 'jwt'
+   * @param spiffeToken - Path to SPIFFE token file. Required when authMode is 'token'
+   * @param tlsSkipVerify - Skip TLS certificate verification. Defaults to false
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
-    authMode: 'insecure' | 'x509' | 'jwt' = Config.DEFAULT_AUTH_MODE as 'insecure' | 'x509' | 'jwt',
-    jwtAudience = Config.DEFAULT_JWT_AUDIENCE
+    authMode: '' | 'x509' | 'jwt' | 'token' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt' | 'token',
+    jwtAudience = Config.DEFAULT_JWT_AUDIENCE,
+    spiffeToken = Config.DEFAULT_SPIFFE_TOKEN,
+    tlsSkipVerify = Config.DEFAULT_TLS_SKIP_VERIFY
   ) {
     // add protocol prefix if not set
-    // use unsafe http unless spire/auth is used
-    if (
-      !serverAddress.startsWith('http://') &&
-      !serverAddress.startsWith('https://')
-    ) {
-      // use https protocol when X.509 or JWT auth is used
-      if (authMode === 'x509' || authMode === 'jwt') {
-        serverAddress = `https://${serverAddress}`;
-      } else {
-        serverAddress = `http://${serverAddress}`;
-      }
-    }
-
+    // use https protocol when X.509, JWT, or token auth is used
     this.serverAddress = serverAddress;
     this.dirctlPath = dirctlPath;
     this.spiffeEndpointSocket = spiffeEndpointSocket;
     this.authMode = authMode;
     this.jwtAudience = jwtAudience;
+    this.spiffeToken = spiffeToken;
+    this.tlsSkipVerify = tlsSkipVerify;
   }
 
   /**
@@ -95,10 +93,12 @@ export class Config {
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
     const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
-    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as 'insecure' | 'x509' | 'jwt';
+    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as '' | 'x509' | 'jwt' | 'token';
     const jwtAudience = env[`${prefix}JWT_AUDIENCE`] || Config.DEFAULT_JWT_AUDIENCE;
+    const spiffeToken = env[`${prefix}SPIFFE_TOKEN`] || Config.DEFAULT_SPIFFE_TOKEN;
+    const tlsSkipVerify = (env[`${prefix}TLS_SKIP_VERIFY`] || Config.DEFAULT_TLS_SKIP_VERIFY.toString()).toLowerCase() === 'true';
 
-    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience);
+    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience, spiffeToken, tlsSkipVerify);
   }
 }
 
@@ -204,7 +204,7 @@ export class Client {
   static async createGRPCTransport(config: Config): Promise<Transport> {
     // Handle different authentication modes
     switch (config.authMode) {
-      case 'insecure':
+      case '':
         return createGrpcTransport({
           baseUrl: config.serverAddress,
         });
@@ -214,6 +214,9 @@ export class Client {
 
       case 'x509':
         return await this.createX509Transport(config);
+
+      case 'token':
+        return await this.createTokenTransport(config);
 
       default:
         throw new Error(`Unsupported auth mode: ${config.authMode}`);
@@ -327,6 +330,67 @@ export class Client {
     });
 
     return transport;
+  }
+
+  private static async createTokenTransport(config: Config): Promise<Transport> {
+    if (config.spiffeToken === '') {
+      throw new Error('SPIFFE token file path is required for token authentication');
+    }
+
+    try {
+      // Read and parse the SPIFFE token file
+      const tokenData = JSON.parse(readFileSync(config.spiffeToken, 'utf8'));
+
+      if (!Array.isArray(tokenData) || tokenData.length === 0) {
+        throw new Error('No SPIFFE data found in token');
+      }
+
+      // Use the first SPIFFE data entry
+      const spiffeData = tokenData[0];
+
+      // Parse X.509 SVID certificates
+      if (!spiffeData.x509_svid || spiffeData.x509_svid.length === 0) {
+        throw new Error('No X.509 SVID certificates found in token');
+      }
+
+      // Decode certificate from base64 DER to PEM
+      const certDer = Uint8Array.from(atob(spiffeData.x509_svid[0]), c => c.charCodeAt(0));
+      const certPem = this.convertToPEM(certDer, 'CERTIFICATE');
+
+      // Decode private key from base64 DER to PEM
+      if (!spiffeData.private_key) {
+        throw new Error('No private key found in token');
+      }
+
+      const keyDer = Uint8Array.from(atob(spiffeData.private_key), c => c.charCodeAt(0));
+      const keyPem = this.convertToPEM(keyDer, 'PRIVATE KEY');
+
+      // Parse root CAs
+      if (!spiffeData.root_cas || spiffeData.root_cas.length === 0) {
+        throw new Error('No root CA certificates found in token');
+      }
+
+      let caPems = '';
+      for (const rootCa of spiffeData.root_cas) {
+        const caDer = Uint8Array.from(atob(rootCa), c => c.charCodeAt(0));
+        caPems += this.convertToPEM(caDer, 'CERTIFICATE');
+      }
+
+      // Create HTTPS transport with mutual TLS
+      const transport = createGrpcTransport({
+        baseUrl: config.serverAddress,
+        nodeOptions: {
+          cert: certPem,
+          key: keyPem,
+          ca: caPems,
+          rejectUnauthorized: !config.tlsSkipVerify,
+        },
+      });
+
+      return transport;
+    } catch (error) {
+      throw new Error(`Failed to create token-based transport: ${error}`);
+    }
   }
 
   /**

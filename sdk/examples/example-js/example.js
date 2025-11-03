@@ -48,7 +48,7 @@ function generateRecords(names) {
 
 (async () => {
     // Create client
-    const client = new Client(new Config());
+    const client = new Client(Config.loadFromEnv());
 
     // Create record objects
     const records = generateRecords(['example-record', 'example-record2']);

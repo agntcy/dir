@@ -50,7 +50,7 @@ def generate_record(name):
 
 def main() -> None:
     # Initialize the client
-    client = Client(Config())
+    client = Client(Config.load_from_env())
 
     records = [generate_record(x) for x in ["example-record", "example-record2"]]
 
