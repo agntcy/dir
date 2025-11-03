@@ -112,9 +112,7 @@ config:
       check_interval: "30s"
     
     # Authentication configuration for sync operations
-    auth_config:
-      username: ""
-      password: ""
+    auth_config: {}
 
   # Events configuration
   events:
@@ -315,4 +313,30 @@ extraVolumeMounts: []
   # - name: datastore
   #   mountPath: /etc/datastore
 
+# Extra environment variables for the apiserver container
+extraEnv: []
+# - name: SSL_CERT_DIR
+#   value: "/etc/ca-certs"
+
 revisionHistoryLimit: 2
+
+# Secrets configuration
+# Sensitive credentials are stored in Kubernetes secrets and injected as environment variables
+secrets:
+  # Private key for peer-to-peer routing identity
+  # If not provided, the secret will not include this key
+  privKey: ""
+  
+  # Sync authentication credentials
+  # Used for authenticating sync operations between nodes
+  # Username defaults to "sync" if empty, password is randomly generated if empty
+  syncAuth:
+    username: ""
+    password: ""
+  
+  # OCI (Open Container Initiative) registry authentication
+  # Used for authenticating to the OCI-backed storage backend
+  # Username defaults to "admin" if empty, password is randomly generated if empty
+  ociAuth:
+    username: ""
+    password: ""
