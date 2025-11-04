@@ -17,9 +17,21 @@ import (
 
 var logger = logging.Logger("healthcheck")
 
+const (
+	// MonitorInterval is the interval at which health checks are monitored.
+	MonitorInterval = 5 * time.Second
+	// CheckTimeout is the timeout for individual health checks.
+	CheckTimeout = 3 * time.Second
+)
+
 // CheckFunc is a function that performs a health check.
 // Return true if healthy, false otherwise.
 type CheckFunc func(ctx context.Context) bool
+
+// IsHealthCheckEndpoint returns true if the given method is a gRPC health check endpoint.
+func IsHealthCheckEndpoint(method string) bool {
+	return method == "/grpc.health.v1.Health/Check" || method == "/grpc.health.v1.Health/Watch"
+}
 
 // Checker manages health checks using gRPC health checking protocol.
 type Checker struct {
@@ -89,8 +101,7 @@ func (c *Checker) Stop(ctx context.Context) error {
 
 // monitorHealth continuously monitors health checks and updates the health status.
 func (c *Checker) monitorHealth(ctx context.Context) {
-	//nolint:mnd
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(MonitorInterval)
 	defer ticker.Stop()
 
 	for {
@@ -117,8 +128,7 @@ func (c *Checker) updateHealthStatus(ctx context.Context) {
 	c.mu.RUnlock()
 
 	// Run all checks with timeout
-	//nolint:mnd
-	checkCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	checkCtx, cancel := context.WithTimeout(ctx, CheckTimeout)
 	defer cancel()
 
 	allHealthy := true

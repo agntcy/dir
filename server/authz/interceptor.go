@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/agntcy/dir/server/authn"
+	"github.com/agntcy/dir/server/healthcheck"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -67,7 +68,7 @@ func NewInterceptor(authorizer *Authorizer) InterceptorFn {
 func UnaryInterceptorFor(fn InterceptorFn) func(context.Context, any, *grpc.UnaryServerInfo, grpc.UnaryHandler) (any, error) {
 	return func(ctx context.Context, req any, sInfo *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		// Skip authorization for health check endpoints
-		if sInfo.FullMethod == "/grpc.health.v1.Health/Check" || sInfo.FullMethod == "/grpc.health.v1.Health/Watch" {
+		if healthcheck.IsHealthCheckEndpoint(sInfo.FullMethod) {
 			return handler(ctx, req)
 		}
 
@@ -82,7 +83,7 @@ func UnaryInterceptorFor(fn InterceptorFn) func(context.Context, any, *grpc.Unar
 func StreamInterceptorFor(fn InterceptorFn) func(any, grpc.ServerStream, *grpc.StreamServerInfo, grpc.StreamHandler) error {
 	return func(srv any, ss grpc.ServerStream, sInfo *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Skip authorization for health check endpoints
-		if sInfo.FullMethod == "/grpc.health.v1.Health/Check" || sInfo.FullMethod == "/grpc.health.v1.Health/Watch" {
+		if healthcheck.IsHealthCheckEndpoint(sInfo.FullMethod) {
 			return handler(srv, ss)
 		}
 

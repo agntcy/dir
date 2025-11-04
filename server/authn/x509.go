@@ -6,6 +6,7 @@ package authn
 import (
 	"context"
 
+	"github.com/agntcy/dir/server/healthcheck"
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -41,8 +42,7 @@ type X509InterceptorFn func(ctx context.Context) (context.Context, error)
 func x509UnaryInterceptorFor(fn X509InterceptorFn) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		// Skip authentication for health check endpoints
-		// Health check endpoints are defined in jwt.go
-		if info.FullMethod == "/grpc.health.v1.Health/Check" || info.FullMethod == "/grpc.health.v1.Health/Watch" {
+		if healthcheck.IsHealthCheckEndpoint(info.FullMethod) {
 			return handler(ctx, req)
 		}
 
@@ -59,8 +59,7 @@ func x509UnaryInterceptorFor(fn X509InterceptorFn) grpc.UnaryServerInterceptor {
 func x509StreamInterceptorFor(fn X509InterceptorFn) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Skip authentication for health check endpoints
-		// Health check endpoints are defined in jwt.go
-		if info.FullMethod == "/grpc.health.v1.Health/Check" || info.FullMethod == "/grpc.health.v1.Health/Watch" {
+		if healthcheck.IsHealthCheckEndpoint(info.FullMethod) {
 			return handler(srv, ss)
 		}
 
