@@ -36,6 +36,54 @@ This tool validates and uploads the record to the configured Directory server. I
 
 **Note:** Requires Directory server configuration via environment variables.
 
+### `agntcy_dir_search_local`
+
+Searches for agent records on the local directory node using structured query filters.
+
+**Input (all optional):**
+- `limit` (uint32) - Maximum results to return (default: 100, max: 1000)
+- `offset` (uint32) - Pagination offset (default: 0)
+- `names` ([]string) - Agent name patterns (supports wildcards)
+- `versions` ([]string) - Version patterns (supports wildcards)
+- `skill_ids` ([]string) - Skill IDs (exact match only)
+- `skill_names` ([]string) - Skill name patterns (supports wildcards)
+- `locators` ([]string) - Locator patterns (supports wildcards)
+- `modules` ([]string) - Module patterns (supports wildcards)
+
+**Output:**
+- `record_cids` ([]string) - Array of matching record CIDs
+- `count` (int) - Number of results returned
+- `has_more` (bool) - Whether more results are available
+
+**Wildcard Patterns:**
+- `*` - Matches zero or more characters
+- `?` - Matches exactly one character
+- `[]` - Matches any character within brackets (e.g., `[0-9]`, `[a-z]`, `[abc]`)
+
+**Examples:**
+```json
+// Find all Python-related agents
+{
+  "skill_names": ["*python*", "*Python*"]
+}
+
+// Find specific version
+{
+  "names": ["my-agent"],
+  "versions": ["v1.*"]
+}
+
+// Complex search with pagination
+{
+  "skill_names": ["*machine*learning*"],
+  "locators": ["docker-image:*"],
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Note:** Multiple filters are combined with OR logic. Requires Directory server configuration via environment variables.
+
 ## Prompts
 
 MCP Prompts are guided workflows that help you accomplish tasks. The server exposes three prompts:
@@ -68,6 +116,33 @@ Complete workflow for validating and pushing an OASF record to the Directory ser
 **Input (required):** `record_path` (string) - Path to the OASF record JSON file to validate and push
 
 **Use when:** You're ready to publish your record to a Directory server.
+
+### `search_records`
+
+Guided workflow for searching agent records using **free-text queries**. This prompt automatically translates natural language queries into structured search parameters by leveraging OASF schema knowledge.
+
+**Input (required):** `query` (string) - Free-text description of what agents you're looking for
+
+**What it does:**
+1. Retrieves the OASF schema to understand available skills and domains
+2. Analyzes your free-text query
+3. Translates it to appropriate search filters (names, skills, locators, etc.)
+4. Executes the search using `agntcy_dir_search_local`
+5. **Extracts and displays ALL CIDs** from the search results (from the `record_cids` field)
+6. Provides summary and explanation of search strategy
+
+**Important:** The prompt explicitly instructs the AI to extract the `record_cids` array from the tool response and display every CID clearly. The response will always include actual CID values, never placeholders.
+
+**Example queries:**
+- `"find Python agents"`
+- `"agents that can process images"`
+- `"docker-based translation services"`
+- `"GPT models version 2"`
+- `"agents with text completion skills"`
+
+**Use when:** You want to search using natural language rather than structured filters. The AI will map your query to OASF taxonomy.
+
+**Note:** For direct, structured searches, use the `agntcy_dir_search_local` tool instead.
 
 ## Setup
 

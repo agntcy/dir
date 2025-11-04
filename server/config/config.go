@@ -35,16 +35,14 @@ const (
 
 	// API configuration.
 
-	DefaultListenAddress      = "0.0.0.0:8888"
-	DefaultHealthCheckAddress = "0.0.0.0:8889"
+	DefaultListenAddress = "0.0.0.0:8888"
 )
 
 var logger = logging.Logger("config")
 
 type Config struct {
 	// API configuration
-	ListenAddress      string `json:"listen_address,omitempty"      mapstructure:"listen_address"`
-	HealthCheckAddress string `json:"healthcheck_address,omitempty" mapstructure:"healthcheck_address"`
+	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
 
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty" mapstructure:"logging"`
@@ -113,9 +111,6 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("listen_address")
 	v.SetDefault("listen_address", DefaultListenAddress)
-
-	_ = v.BindEnv("healthcheck_address")
-	v.SetDefault("healthcheck_address", DefaultHealthCheckAddress)
 
 	//
 	// Logging configuration (gRPC request/response logging)
