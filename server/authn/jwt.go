@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/server/healthcheck"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/jwtsvid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
@@ -108,7 +109,12 @@ func SpiffeIDFromContext(ctx context.Context) (spiffeid.ID, bool) {
 
 // jwtUnaryInterceptorFor wraps the JWT interceptor function for unary RPCs.
 func jwtUnaryInterceptorFor(fn JWTInterceptorFn) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		// Skip authentication for health check endpoints
+		if healthcheck.IsHealthCheckEndpoint(info.FullMethod) {
+			return handler(ctx, req)
+		}
+
 		newCtx, err := fn(ctx)
 		if err != nil {
 			return nil, err
@@ -120,7 +126,12 @@ func jwtUnaryInterceptorFor(fn JWTInterceptorFn) grpc.UnaryServerInterceptor {
 
 // jwtStreamInterceptorFor wraps the JWT interceptor function for stream RPCs.
 func jwtStreamInterceptorFor(fn JWTInterceptorFn) grpc.StreamServerInterceptor {
-	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		// Skip authentication for health check endpoints
+		if healthcheck.IsHealthCheckEndpoint(info.FullMethod) {
+			return handler(srv, ss)
+		}
+
 		newCtx, err := fn(ss.Context())
 		if err != nil {
 			return err

@@ -227,21 +227,6 @@ func TestShouldLog(t *testing.T) {
 			shouldLog:      false,
 		},
 		{
-			name:           "readiness probe should not log",
-			fullMethodName: "/readyz",
-			shouldLog:      false,
-		},
-		{
-			name:           "liveness probe should not log",
-			fullMethodName: "/livez",
-			shouldLog:      false,
-		},
-		{
-			name:           "health endpoint should not log",
-			fullMethodName: "/healthz",
-			shouldLog:      false,
-		},
-		{
 			name:           "another regular method should log",
 			fullMethodName: "/dir.routing.v1.RoutingService/Query",
 			shouldLog:      true,
@@ -451,9 +436,6 @@ func TestNoisyEndpoints(t *testing.T) {
 	expectedNoisyEndpoints := []string{
 		"/grpc.health.v1.Health/Check",
 		"/grpc.health.v1.Health/Watch",
-		"/readyz",
-		"/livez",
-		"/healthz",
 	}
 
 	for _, endpoint := range expectedNoisyEndpoints {

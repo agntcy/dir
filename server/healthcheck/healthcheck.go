@@ -1,43 +1,53 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package healthcheck provides simple HTTP health check endpoints.
+// Package healthcheck provides gRPC health check service.
 package healthcheck
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
 	"sync"
 	"time"
 
 	"github.com/agntcy/dir/utils/logging"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 var logger = logging.Logger("healthcheck")
+
+const (
+	// MonitorInterval is the interval at which health checks are monitored.
+	MonitorInterval = 5 * time.Second
+	// CheckTimeout is the timeout for individual health checks.
+	CheckTimeout = 3 * time.Second
+)
 
 // CheckFunc is a function that performs a health check.
 // Return true if healthy, false otherwise.
 type CheckFunc func(ctx context.Context) bool
 
-// Checker manages health checks and HTTP endpoints.
+// IsHealthCheckEndpoint returns true if the given method is a gRPC health check endpoint.
+func IsHealthCheckEndpoint(method string) bool {
+	return method == "/grpc.health.v1.Health/Check" || method == "/grpc.health.v1.Health/Watch"
+}
+
+// Checker manages health checks using gRPC health checking protocol.
 type Checker struct {
 	mu              sync.RWMutex
 	readinessChecks map[string]CheckFunc
-	server          *http.Server
-}
-
-// Response is the JSON response format.
-type Response struct {
-	Status  string            `json:"status"`
-	Checks  map[string]string `json:"checks,omitempty"`
-	Message string            `json:"message,omitempty"`
+	healthServer    *health.Server
+	stopChan        chan struct{}
+	wg              sync.WaitGroup
 }
 
 // New creates a new health checker.
 func New() *Checker {
 	return &Checker{
 		readinessChecks: make(map[string]CheckFunc),
+		healthServer:    health.NewServer(),
+		stopChan:        make(chan struct{}),
 	}
 }
 
@@ -49,62 +59,65 @@ func (c *Checker) AddReadinessCheck(name string, check CheckFunc) {
 	c.readinessChecks[name] = check
 }
 
-// Start starts the health check HTTP server.
-func (c *Checker) Start(address string) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz/live", c.handleLiveness)
-	mux.HandleFunc("/healthz/ready", c.handleReadiness)
-	mux.HandleFunc("/livez", c.handleLiveness)
-	mux.HandleFunc("/readyz", c.handleReadiness)
+// Register registers the health service with the gRPC server.
+func (c *Checker) Register(grpcServer *grpc.Server) {
+	grpc_health_v1.RegisterHealthServer(grpcServer, c.healthServer)
+	logger.Info("Registered gRPC health service")
+}
 
-	//nolint:mnd
-	c.server = &http.Server{
-		Addr:              address,
-		Handler:           mux,
-		ReadHeaderTimeout: 3 * time.Second,
-		ReadTimeout:       5 * time.Second,
-		WriteTimeout:      5 * time.Second,
-	}
+// Start starts the health check monitoring.
+// It periodically checks all registered readiness checks and updates the health status.
+func (c *Checker) Start(ctx context.Context) error {
+	// Set initial status as NOT_SERVING
+	c.healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	// Start background goroutine to monitor health checks
+	c.wg.Add(1)
 
 	go func() {
-		logger.Info("Starting health check server", "address", address)
+		defer c.wg.Done()
 
-		if err := c.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("Health check server error", "error", err)
-		}
+		c.monitorHealth(ctx)
 	}()
+
+	logger.Info("Health check monitoring started")
 
 	return nil
 }
 
-// Stop gracefully stops the health check server.
+// Stop gracefully stops the health check monitoring.
 func (c *Checker) Stop(ctx context.Context) error {
-	if c.server == nil {
-		return nil
-	}
+	logger.Info("Stopping health check monitoring")
 
-	logger.Info("Stopping health check server")
+	// Signal stop and wait for goroutine to finish
+	close(c.stopChan)
+	c.wg.Wait()
 
-	return c.server.Shutdown(ctx) //nolint:wrapcheck
+	// Set status as not serving
+	c.healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+
+	return nil
 }
 
-// handleLiveness handles liveness probe requests.
-// Liveness checks if the application is running (always returns 200 OK).
-func (c *Checker) handleLiveness(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+// monitorHealth continuously monitors health checks and updates the health status.
+func (c *Checker) monitorHealth(ctx context.Context) {
+	ticker := time.NewTicker(MonitorInterval)
+	defer ticker.Stop()
 
-	if err := json.NewEncoder(w).Encode(Response{
-		Status:  "ok",
-		Message: "server is alive",
-	}); err != nil {
-		logger.Error("Failed to encode liveness response", "error", err)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-c.stopChan:
+			return
+		case <-ticker.C:
+			c.updateHealthStatus(ctx)
+		}
 	}
 }
 
-// handleReadiness handles readiness probe requests.
-// Readiness checks if the application is ready to serve traffic.
-func (c *Checker) handleReadiness(w http.ResponseWriter, r *http.Request) {
+// updateHealthStatus runs all readiness checks and updates the health status.
+func (c *Checker) updateHealthStatus(ctx context.Context) {
 	c.mu.RLock()
 
 	checks := make(map[string]CheckFunc, len(c.readinessChecks))
@@ -115,40 +128,24 @@ func (c *Checker) handleReadiness(w http.ResponseWriter, r *http.Request) {
 	c.mu.RUnlock()
 
 	// Run all checks with timeout
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second) //nolint:mnd
+	checkCtx, cancel := context.WithTimeout(ctx, CheckTimeout)
 	defer cancel()
 
-	results := make(map[string]string)
 	allHealthy := true
+	failedChecks := []string{}
 
 	for name, check := range checks {
-		if check(ctx) {
-			results[name] = "pass" //nolint:goconst
-		} else {
-			results[name] = "fail"
+		if !check(checkCtx) {
 			allHealthy = false
+
+			failedChecks = append(failedChecks, name)
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
 	if allHealthy {
-		w.WriteHeader(http.StatusOK)
-
-		if err := json.NewEncoder(w).Encode(Response{
-			Status: "ready",
-			Checks: results,
-		}); err != nil {
-			logger.Error("Failed to encode readiness response", "error", err)
-		}
+		c.healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
 	} else {
-		w.WriteHeader(http.StatusServiceUnavailable)
-
-		if err := json.NewEncoder(w).Encode(Response{
-			Status: "not ready",
-			Checks: results,
-		}); err != nil {
-			logger.Error("Failed to encode readiness response", "error", err)
-		}
+		logger.Warn("Health checks failed", "failed_checks", failedChecks)
+		c.healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 	}
 }

@@ -25,7 +25,6 @@ image:
 # Server configuration
 config:
   # listen_address: "0.0.0.0:8888"
-  # healthcheck_address: "0.0.0.0:8889"
 
   # Authentication settings (handles identity verification)
   # Supports both X.509 (X.509-SVID) and JWT (JWT-SVID) authentication
