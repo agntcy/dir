@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/datastore"
@@ -24,6 +26,15 @@ import (
 )
 
 var logger = logging.Logger("store/oci")
+
+const (
+	// maxTagRetries is the maximum number of retry attempts for Tag operations.
+	maxTagRetries = 3
+	// initialRetryDelay is the initial delay before the first retry.
+	initialRetryDelay = 50 * time.Millisecond
+	// maxRetryDelay is the maximum delay between retries.
+	maxRetryDelay = 500 * time.Millisecond
+)
 
 type store struct {
 	repo   oras.GraphTarget
@@ -81,6 +92,92 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 
 	// Return cached store
 	return cache.Wrap(store, cacheDS), nil
+}
+
+// isNotFoundError checks if an error is a "not found" error from the registry.
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := err.Error()
+
+	return strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "NOT_FOUND")
+}
+
+// tagWithRetry attempts to tag a manifest with exponential backoff retry logic.
+// This is necessary because under concurrent load, oras.PackManifest may push the manifest
+// to the registry, but it might not be immediately available when oras.Tag is called.
+func (s *store) tagWithRetry(ctx context.Context, manifestDigest, tag string) error {
+	var lastErr error
+
+	delay := initialRetryDelay
+
+	for attempt := 0; attempt <= maxTagRetries; attempt++ {
+		if attempt > 0 {
+			logger.Debug("Retrying Tag operation",
+				"attempt", attempt,
+				"max_retries", maxTagRetries,
+				"delay", delay,
+				"manifest_digest", manifestDigest,
+				"tag", tag)
+
+			// Wait before retrying
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("context cancelled during tag retry: %w", ctx.Err())
+			case <-time.After(delay):
+			}
+
+			// Exponential backoff with cap
+			delay *= 2
+			if delay > maxRetryDelay {
+				delay = maxRetryDelay
+			}
+		}
+
+		// Attempt to tag the manifest
+		_, err := oras.Tag(ctx, s.repo, manifestDigest, tag)
+		if err == nil {
+			if attempt > 0 {
+				logger.Info("Tag operation succeeded after retry",
+					"attempt", attempt,
+					"manifest_digest", manifestDigest,
+					"tag", tag)
+			}
+
+			return nil
+		}
+
+		lastErr = err
+
+		// Only retry on "not found" errors (transient race condition)
+		// For other errors, fail immediately
+		if !isNotFoundError(err) {
+			logger.Debug("Tag operation failed with non-retryable error",
+				"error", err,
+				"manifest_digest", manifestDigest,
+				"tag", tag)
+
+			return fmt.Errorf("failed to tag manifest: %w", err)
+		}
+
+		// Log the retryable error
+		logger.Debug("Tag operation failed with retryable error",
+			"attempt", attempt,
+			"error", err,
+			"manifest_digest", manifestDigest,
+			"tag", tag)
+	}
+
+	// All retries exhausted
+	logger.Warn("Tag operation failed after all retries",
+		"max_retries", maxTagRetries,
+		"last_error", lastErr,
+		"manifest_digest", manifestDigest,
+		"tag", tag)
+
+	return lastErr
 }
 
 // Push record to the OCI registry
@@ -160,10 +257,10 @@ func (s *store) Push(ctx context.Context, record *corev1.Record) (*corev1.Record
 	cidTag := recordCID
 	logger.Debug("Generated CID tag", "cid", recordCID, "tag", cidTag)
 
-	// Step 6: Tag the manifest with CID tag
+	// Step 6: Tag the manifest with CID tag (with retry logic for race conditions)
 	// => resolve manifest to record which can be looked up (lookup)
 	// => allows pulling record directly (pull)
-	if _, err := oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), cidTag); err != nil {
+	if err := s.tagWithRetry(ctx, manifestDesc.Digest.String(), cidTag); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create CID tag: %v", err)
 	}
 
