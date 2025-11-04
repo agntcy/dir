@@ -383,8 +383,14 @@ tasks:
     dir: ./sdk/dir-js
     env:
       NODE_AUTH_TOKEN: '{{ .NODE_AUTH_TOKEN }}'
-    cmds:
-      - npm publish --scope=@agntcy --access public --tag {{.COMMIT_SHA}}
+    cmd: |
+      version=$(npm pkg get version) 
+
+      if [[ $version == *"rc"* ]]; then
+        npm publish --scope=@agntcy --access public --tag rc-{{.COMMIT_SHA}}
+      else
+        npm publish --scope=@agntcy --access public
+      fi
 
   ##
   ## Server
