@@ -45,7 +45,7 @@ cd sdk/dir-py && uv lock && cd ../..
 
 * Commit the changes with a suitable message.
 ```sh
-git add versions.yaml sdk/dir-js/package.json sdk/dir-js/package-lock.json sdk/dir-py/pyproject.toml sdk/dir-py/uv.lock
+git add .
 git commit -m "release: update module set to version v1.0.0"
 ```
 
