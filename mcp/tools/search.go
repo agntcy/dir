@@ -14,8 +14,8 @@ import (
 
 // SearchLocalInput defines the input parameters for local search.
 type SearchLocalInput struct {
-	Limit      *uint32  `json:"limit,omitempty"       jsonschema:"Maximum number of results to return (default: 100 max: 1000)"`
-	Offset     *uint32  `json:"offset,omitempty"      jsonschema:"Pagination offset (default: 0)"`
+	Limit      int      `json:"limit,omitempty"       jsonschema:"Maximum number of results to return (default: 100 max: 1000)"`
+	Offset     int      `json:"offset,omitempty"      jsonschema:"Pagination offset (default: 0)"`
 	Names      []string `json:"names,omitempty"       jsonschema:"Agent name patterns (supports wildcards: * ? [])"`
 	Versions   []string `json:"versions,omitempty"    jsonschema:"Version patterns (supports wildcards: * ? [])"`
 	SkillIDs   []string `json:"skill_ids,omitempty"   jsonschema:"Skill ID patterns (exact match only)"`
@@ -45,29 +45,26 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 ) {
 	// Validate and set defaults
 	limit := defaultLimit
-	if input.Limit != nil {
-		limit = int(*input.Limit)
-		if limit <= 0 {
-			return nil, SearchLocalOutput{
-				ErrorMessage: "limit must be positive",
-			}, nil
-		}
-
+	if input.Limit > 0 {
+		limit = input.Limit
 		if limit > maxLimit {
 			return nil, SearchLocalOutput{
 				ErrorMessage: fmt.Sprintf("limit cannot exceed %d", maxLimit),
 			}, nil
 		}
+	} else if input.Limit < 0 {
+		return nil, SearchLocalOutput{
+			ErrorMessage: "limit must be positive",
+		}, nil
 	}
 
 	offset := 0
-	if input.Offset != nil {
-		offset = int(*input.Offset)
-		if offset < 0 {
-			return nil, SearchLocalOutput{
-				ErrorMessage: "offset cannot be negative",
-			}, nil
-		}
+	if input.Offset > 0 {
+		offset = input.Offset
+	} else if input.Offset < 0 {
+		return nil, SearchLocalOutput{
+			ErrorMessage: "offset cannot be negative",
+		}, nil
 	}
 
 	// Build queries from input
