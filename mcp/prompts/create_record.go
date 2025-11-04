@@ -11,6 +11,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+const (
+	stdoutOutput = "stdout"
+)
+
 // CreateRecordInput defines the input parameters for the create_agent_record prompt.
 type CreateRecordInput struct {
 	OutputPath    string `json:"output_path"    jsonschema:"Where to output the record: file path (e.g., agent.json), 'stdout' to display only. Defaults to stdout"`
@@ -28,12 +32,12 @@ func CreateRecord(_ context.Context, req *mcp.GetPromptRequest) (
 
 	outputPath := args["output_path"]
 	if outputPath == "" {
-		outputPath = "stdout"
+		outputPath = stdoutOutput
 	}
 
 	// Determine output action based on outputPath
 	outputAction := "Save the record to: " + outputPath
-	if strings.EqualFold(outputPath, "stdout") || outputPath == "-" {
+	if strings.EqualFold(outputPath, stdoutOutput) || outputPath == "-" {
 		outputAction = "Display the complete JSON record (do not save to file)"
 	}
 
