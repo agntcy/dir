@@ -10,8 +10,8 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1
-	github.com/agntcy/dir/api v0.5.0-rc.1
-	github.com/agntcy/dir/client v0.5.0-rc.1
+	github.com/agntcy/dir/api v0.5.0-rc.2
+	github.com/agntcy/dir/client v0.5.0-rc.2
 	github.com/modelcontextprotocol/registry v1.2.3
 	google.golang.org/protobuf v1.36.10
 )
@@ -34,7 +34,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/utils v0.5.0-rc.1 // indirect
+	github.com/agntcy/dir/utils v0.5.0-rc.2 // indirect
 	github.com/agntcy/oasf-sdk/pkg v0.0.9 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/avast/retry-go/v4 v4.6.1 // indirect
