@@ -470,6 +470,14 @@ tasks:
       - go -C . test -run=^$ -bench=. ./...
 
   ##
+  ## MCP Server
+  ##
+  mcp:build:
+    desc: Build MCP server image
+    cmds:
+      - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-mcp-server'
+
+  ##
   ## Deploy
   ##
   deploy:kubernetes:setup-cluster:

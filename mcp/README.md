@@ -146,7 +146,7 @@ Guided workflow for searching agent records using **free-text queries**. This pr
 
 ## Setup
 
-### 1. Build the Server
+### Option 1: Local Build
 
 Build the MCP server binary from the `mcp/` directory:
 
@@ -155,17 +155,40 @@ cd mcp/
 go build -o mcp-server .
 ```
 
-### 2. Configure Your IDE
+### Option 2: Docker
 
-Add the MCP server to your IDE's MCP configuration using the **absolute path** to the binary.
+Build the MCP server using Docker:
 
-**Example Cursor configuration** (`~/.cursor/mcp.json`):
+```bash
+task mcp:build
+```
+
+### Configure Your IDE
+
+Add the MCP server to your IDE's MCP configuration using the **absolute path** to the binary or Docker command.
+
+**Example Cursor configuration** (`~/.cursor/mcp.json`) with local binary:
 ```json
 {
   "mcpServers": {
     "dir-mcp-server": {
       "command": "/absolute/path/to/dir/mcp/mcp-server",
       "args": [],
+      "env": {
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Example Cursor configuration** with Docker:
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:<image tag>"],
       "env": {
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
