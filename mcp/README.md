@@ -166,7 +166,7 @@ task mcp:build
 
 Add the MCP server to your IDE's MCP configuration using the **absolute path** to the binary or Docker command.
 
-**Example Cursor configuration** (`~/.cursor/mcp.json`) with local binary:
+**Example 1** Cursor configuration (`~/.cursor/mcp.json`) with local binary:
 ```json
 {
   "mcpServers": {
@@ -181,7 +181,7 @@ Add the MCP server to your IDE's MCP configuration using the **absolute path** t
 }
 ```
 
-**Example Cursor configuration** with Docker:
+**Example 2** Cursor configuration with Docker:
 ```json
 {
   "mcpServers": {
@@ -190,6 +190,23 @@ Add the MCP server to your IDE's MCP configuration using the **absolute path** t
       "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:<image tag>"],
       "env": {
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Example 3** Cursor configuration with Docker and authentication:
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "--volume", "/token.json:/token.json", "ghcr.io/agntcy/dir-mcp-server:<image tag>"],
+      "env": {
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "dev.api.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_AUTH_MODE": "token",
+        "DIRECTORY_CLIENT_SPIFFE_TOKEN": "/token.json"
       }
     }
   }
