@@ -477,6 +477,33 @@ tasks:
     cmds:
       - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-mcp-server'
 
+  mcp:compile:
+    desc: Compile MCP server binary
+    dir: ./mcp
+    vars:
+      GOOS: '{{ .GOOS | default OS }}'
+      GOARCH: '{{ .GOARCH | default ARCH }}'
+      BINARY_NAME: '{{ .BINARY_NAME | default "dir-mcp-server" }}'
+      OUT_BINARY: '{{ if eq OS "windows" }}{{ .ROOT_DIR }}\\bin\\{{ .BINARY_NAME }}.exe{{ else }}{{ .ROOT_DIR }}/bin/{{ .BINARY_NAME }}{{ end }}'
+      LDFLAGS: '-s -w -extldflags -static {{ .VERSION_LDFLAGS }}'
+    cmds:
+      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o "{{.OUT_BINARY}}" main.go
+
+  mcp:compile:all:
+    desc: Compile MCP server binaries for multiple platforms
+    cmds:
+      - for:
+          matrix:
+            OS: ['linux', 'darwin', 'windows']
+            ARCH: ['amd64', 'arm64']
+        cmd: |
+          # Skip unsupported combinations (e.g., Windows ARM64)
+          if [ "{{.ITEM.OS}}" = "windows" ] && [ "{{.ITEM.ARCH}}" = "arm64" ]; then
+            echo "Skipping unsupported platform: {{.ITEM.OS}}/{{.ITEM.ARCH}}"
+          else
+            GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dir-mcp-server-{{.ITEM.OS}}-{{.ITEM.ARCH}} task mcp:compile
+          fi
+
   ##
   ## Deploy
   ##

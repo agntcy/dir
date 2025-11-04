@@ -148,11 +148,10 @@ Guided workflow for searching agent records using **free-text queries**. This pr
 
 ### Option 1: Local Build
 
-Build the MCP server binary from the `mcp/` directory:
+Build the MCP server binary:
 
 ```bash
-cd mcp/
-go build -o mcp-server .
+task mcp:compile
 ```
 
 ### Option 2: Docker
