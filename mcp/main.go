@@ -101,6 +101,19 @@ Use this tool for direct, structured searches when you know the exact filters to
 		`),
 	}, tools.SearchLocal)
 
+	// Add tool for pulling records from Directory
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_dir_pull_record",
+		Description: strings.TrimSpace(`
+Pulls an OASF agent record from the local Directory node by its CID (Content Identifier).
+The pulled record is content-addressable and can be validated against its hash.
+
+Server configuration is set via environment variables (DIRECTORY_CLIENT_SERVER_ADDRESS).
+
+Use this tool to retrieve agent records by their CID for inspection or validation.
+		`),
+	}, tools.PullRecord)
+
 	// Add prompt for creating agent records
 	server.AddPrompt(&mcp.Prompt{
 		Name: "create_record",
@@ -167,6 +180,27 @@ using OASF schema knowledge. Examples: "find Python agents", "agents that can pr
 			},
 		},
 	}, prompts.SearchRecords)
+
+	// Add prompt for pulling records
+	server.AddPrompt(&mcp.Prompt{
+		Name: "pull_record",
+		Description: strings.TrimSpace(`
+Guided workflow for pulling an OASF agent record from Directory by its CID.
+Optionally saves the result to a file.
+		`),
+		Arguments: []*mcp.PromptArgument{
+			{
+				Name:        "cid",
+				Description: "Content Identifier (CID) of the record to pull",
+				Required:    true,
+			},
+			{
+				Name:        "output_path",
+				Description: "Where to save the pulled record: file path (e.g., record.json) or empty for default (stdout)",
+				Required:    false,
+			},
+		},
+	}, prompts.PullRecord)
 
 	// Run the server over stdin/stdout
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
