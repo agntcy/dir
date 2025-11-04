@@ -19,6 +19,11 @@ on:
         type: boolean
         default: false
         description: "Whether to push the image to the registry."
+      build_coverage_images:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to also build coverage-instrumented images for E2E tests."
 
 jobs:
   prepare:
@@ -121,4 +126,71 @@ jobs:
         with:
           name: ${{ matrix.target }}
           path: /tmp/artifacts/${{ matrix.target }}.tar
+          retention-days: 1
+
+  coverage-image:
+    name: Coverage Image
+    runs-on: ubuntu-latest
+    if: ${{ inputs.build_coverage_images && !inputs.push }}
+    needs:
+      - prepare
+    strategy:
+      matrix:
+        target: ${{ fromJson(needs.prepare.outputs.targets) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: notused
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Docker metadata for coverage image
+        id: metadata-coverage
+        uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5.8.0
+        with:
+          images: |
+            ${{ inputs.image_repo }}/${{ matrix.target }},enable=true
+          tags: |
+            type=raw,value=${{ inputs.image_tag }}-coverage
+
+      - name: Create artifacts directory
+        run: |
+          mkdir /tmp/artifacts
+
+      - name: Build coverage image
+        uses: docker/bake-action@3acf805d94d93a86cce4ca44798a76464a75b88c # v6.9.0
+        with:
+          provenance: false
+          files: |
+            ./docker-bake.hcl
+            cwd://${{ steps.metadata-coverage.outputs.bake-file }}
+          targets: coverage
+          set: |
+            *.platform=linux/amd64
+            *.output=type=docker,dest=/tmp/artifacts/${{ matrix.target }}-coverage.tar
+            *.cache-to=type=gha,mode=max,scope=${{ matrix.target }}-coverage
+            *.cache-from=type=gha,scope=${{ matrix.target }}-coverage
+            *.args.BUILD_OPTS=-cover -covermode=atomic
+        env:
+          IMAGE_REPO: ${{ inputs.image_repo }}
+          IMAGE_TAG: ${{ inputs.image_tag }}-coverage
+          DOCKER_BUILD_RECORD_UPLOAD: false
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.target }}-coverage
+          path: /tmp/artifacts/${{ matrix.target }}-coverage.tar
           retention-days: 1
