@@ -199,3 +199,34 @@ Add the MCP server to your IDE's MCP configuration using the **absolute path** t
 
 **Environment Variables:**
 - `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
+
+## Verifying Configuration
+
+After adding the MCP server to `~/.cursor/mcp.json`:
+
+1. Restart Cursor completely
+2. Go to Settings → Tools & MCP
+3. Check that `dir-mcp-server` shows a green indicator
+4. If red, click "View Logs" to troubleshoot
+5. Test by typing `/` in chat - you should see "dir-mcp-server" in the menu
+
+## Usage in Cursor Chat
+
+**Using Tools** - Ask naturally, AI calls tools automatically:
+- "List available OASF schema versions"
+- "Validate this OASF record: [JSON]"
+- "Search for Python agents with image processing"
+- "Push this record: [JSON]"
+
+**Using Prompts** - Mention prompt name for guided workflows:
+- "Use create_record to generate an OASF record, save to agent.json"
+- "Use validate_record with agent.json"
+- "Use push_record with agent.json"
+- "Use search_records to find: docker-based translation services"
+
+**Reference explicitly with /:**
+```
+/dir-mcp-server what OASF versions are available?
+/dir-mcp-server create a record and save to my-agent.json
+/dir-mcp-server search for text completion agents
+```
