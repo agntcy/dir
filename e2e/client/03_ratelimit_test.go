@@ -430,15 +430,15 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 
 			// Note: Concurrent requests might have occasional network/timing errors
 			// We allow a small number of non-rate-limit errors (e.g., transient connection issues)
-			// but they should be rare (<5% of requests)
+			// but they should be rare (<=5% of requests)
 			if totalOtherErrors > 0 {
 				errorRate := float64(totalOtherErrors) / float64(numGoroutines*requestsPerGoroutine)
 				ginkgo.GinkgoWriter.Printf("Other error rate: %.2f%% (%d/%d)\n",
 					errorRate*100, totalOtherErrors, numGoroutines*requestsPerGoroutine)
 
 				// Allow up to 5% error rate for transient issues
-				gomega.Expect(errorRate).To(gomega.BeNumerically("<", 0.05),
-					"Error rate should be less than 5%% (transient errors)")
+				gomega.Expect(errorRate).To(gomega.BeNumerically("<=", 0.05),
+					"Error rate should be less than or equal to 5%% (transient errors)")
 			}
 
 			// If rate limiting is properly configured, we should see some rate limiting

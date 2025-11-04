@@ -63,7 +63,6 @@ jobs:
         with:
           files: .coverage/unit/api.out,.coverage/unit/client.out,.coverage/unit/server.out,.coverage/unit/cli.out,.coverage/unit/hub.out,.coverage/unit/importer.out,.coverage/unit/mcp.out,.coverage/unit/utils.out
           flags: unit
-          fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
