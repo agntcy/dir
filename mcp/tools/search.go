@@ -93,6 +93,7 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 			ErrorMessage: fmt.Sprintf("Failed to create Directory client: %v", err),
 		}, nil
 	}
+	defer c.Close()
 
 	// Execute search
 	// Safe conversions: limit is capped at 1000, offset is validated by client
