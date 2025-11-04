@@ -146,20 +146,27 @@ Guided workflow for searching agent records using **free-text queries**. This pr
 
 ## Setup
 
-### 1. Build the Server
+### Option 1: Local Build
 
-Build the MCP server binary from the `mcp/` directory:
+Build the MCP server binary:
 
 ```bash
-cd mcp/
-go build -o mcp-server .
+task mcp:compile
 ```
 
-### 2. Configure Your IDE
+### Option 2: Docker
 
-Add the MCP server to your IDE's MCP configuration using the **absolute path** to the binary.
+Build the MCP server using Docker:
 
-**Example Cursor configuration** (`~/.cursor/mcp.json`):
+```bash
+task mcp:build
+```
+
+### Configure Your IDE
+
+Add the MCP server to your IDE's MCP configuration using the **absolute path** to the binary or Docker command.
+
+**Example 1** Cursor configuration (`~/.cursor/mcp.json`) with local binary:
 ```json
 {
   "mcpServers": {
@@ -174,5 +181,68 @@ Add the MCP server to your IDE's MCP configuration using the **absolute path** t
 }
 ```
 
+**Example 2** Cursor configuration with Docker:
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:<image tag>"],
+      "env": {
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Example 3** Cursor configuration with Docker and authentication:
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "--volume", "/token.json:/token.json", "ghcr.io/agntcy/dir-mcp-server:<image tag>"],
+      "env": {
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "dev.api.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_AUTH_MODE": "token",
+        "DIRECTORY_CLIENT_SPIFFE_TOKEN": "/token.json"
+      }
+    }
+  }
+}
+```
+
 **Environment Variables:**
 - `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
+
+## Verifying Configuration
+
+After adding the MCP server to `~/.cursor/mcp.json`:
+
+1. Restart Cursor completely
+2. Go to Settings → Tools & MCP
+3. Check that `dir-mcp-server` shows a green indicator
+4. If red, click "View Logs" to troubleshoot
+5. Test by typing `/` in chat - you should see "dir-mcp-server" in the menu
+
+## Usage in Cursor Chat
+
+**Using Tools** - Ask naturally, AI calls tools automatically:
+- "List available OASF schema versions"
+- "Validate this OASF record: [JSON]"
+- "Search for Python agents with image processing"
+- "Push this record: [JSON]"
+
+**Using Prompts** - Mention prompt name for guided workflows:
+- "Use create_record to generate an OASF record, save to agent.json"
+- "Use validate_record with agent.json"
+- "Use push_record with agent.json"
+- "Use search_records to find: docker-based translation services"
+
+**Reference explicitly with /:**
+```
+/dir-mcp-server what OASF versions are available?
+/dir-mcp-server create a record and save to my-agent.json
+/dir-mcp-server search for text completion agents
+```

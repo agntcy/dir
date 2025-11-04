@@ -68,8 +68,17 @@ func (c *Checker) Register(grpcServer *grpc.Server) {
 // Start starts the health check monitoring.
 // It periodically checks all registered readiness checks and updates the health status.
 func (c *Checker) Start(ctx context.Context) error {
-	// Set initial status as NOT_SERVING
-	c.healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+	c.mu.RLock()
+	hasChecks := len(c.readinessChecks) > 0
+	c.mu.RUnlock()
+
+	// If no readiness checks are registered, immediately set status to SERVING
+	// Otherwise, start as NOT_SERVING and wait for first health check to run
+	if !hasChecks {
+		c.healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	} else {
+		c.healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+	}
 
 	// Start background goroutine to monitor health checks
 	c.wg.Add(1)
