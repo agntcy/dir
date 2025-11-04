@@ -17,6 +17,7 @@ group "default" {
   targets = [
     "dir-apiserver",
     "dir-ctl",
+    "dir-mcp-server",
   ]
 }
 
@@ -74,6 +75,16 @@ target "dir-ctl" {
     "docker-metadata-action",
   ]
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-ctl.name}")
+}
+
+target "dir-mcp-server" {
+  context = "."
+  dockerfile = "./mcp/Dockerfile"
+  inherits = [
+    "_common",
+    "docker-metadata-action",
+  ]
+  tags = get_tag(target.docker-metadata-action.tags, "${target.dir-mcp-server.name}")
 }
 
 target "sdks-test" {
