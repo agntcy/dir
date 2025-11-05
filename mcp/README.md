@@ -84,9 +84,29 @@ Searches for agent records on the local directory node using structured query fi
 
 **Note:** Multiple filters are combined with OR logic. Requires Directory server configuration via environment variables.
 
+### `agntcy_dir_pull_record`
+
+Pulls an OASF agent record from the local Directory node by its CID (Content Identifier).
+
+**Input:**
+- `cid` (string) - Content Identifier of the record to pull (required)
+
+**Output:**
+- `record_data` (string) - The record data (JSON string)
+- `error_message` (string) - Error message if pull failed
+
+**Example:**
+```json
+{
+  "cid": "bafkreiabcd1234567890"
+}
+```
+
+**Note:** The pulled record is content-addressable and can be validated against its hash. Requires Directory server configuration via environment variables.
+
 ## Prompts
 
-MCP Prompts are guided workflows that help you accomplish tasks. The server exposes three prompts:
+MCP Prompts are guided workflows that help you accomplish tasks. The server exposes the following prompts:
 
 ### `create_record`
 
@@ -143,6 +163,27 @@ Guided workflow for searching agent records using **free-text queries**. This pr
 **Use when:** You want to search using natural language rather than structured filters. The AI will map your query to OASF taxonomy.
 
 **Note:** For direct, structured searches, use the `agntcy_dir_search_local` tool instead.
+
+### `pull_record`
+
+Guided workflow for pulling an OASF agent record from the Directory by its CID.
+
+**Input:**
+- `cid` (string, **required**) - Content Identifier (CID) of the record to pull
+- `output_path` (string, optional) - Where to save the record:
+  - File path (e.g., `"record.json"`) to save to file
+  - `"stdout"` or empty to display only (no file saved)
+  - Empty or omitted defaults to `"stdout"`
+
+**What it does:**
+1. Validates the CID format
+2. Calls `agntcy_dir_pull_record` with the CID
+3. Displays the record data
+4. Parses and formats the record JSON for readability
+5. Saves to file if `output_path` is specified
+6. Optionally validates the record using `agntcy_oasf_validate_record`
+
+**Use when:** You have a CID and want to retrieve the full record. The pulled record is content-addressable and can be validated against its hash.
 
 ## Setup
 

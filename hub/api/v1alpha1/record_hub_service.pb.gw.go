@@ -426,6 +426,114 @@ func local_request_RecordHubService_PullRecord_0(ctx context.Context, marshaler 
 	return msg, metadata, err
 }
 
+var filter_RecordHubService_PushRecordSignature_0 = &utilities.DoubleArray{Encoding: map[string]int{"signature": 0, "id_or_name": 1, "name": 2, "cid": 3}, Base: []int{1, 1, 1, 2, 3, 0, 0, 0}, Check: []int{0, 1, 1, 3, 1, 2, 4, 5}}
+
+func request_RecordHubService_PushRecordSignature_0(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq PushRecordSignatureRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Signature); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	val, ok := pathParams["id_or_name.name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name.name")
+	}
+	err = runtime.PopulateFieldFromPath(&protoReq, "id_or_name.name", val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id_or_name.name", err)
+	}
+	val, ok = pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
+	}
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_PushRecordSignature_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := client.PushRecordSignature(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_RecordHubService_PushRecordSignature_0(ctx context.Context, marshaler runtime.Marshaler, server RecordHubServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq PushRecordSignatureRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Signature); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	val, ok := pathParams["id_or_name.name"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name.name")
+	}
+	err = runtime.PopulateFieldFromPath(&protoReq, "id_or_name.name", val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id_or_name.name", err)
+	}
+	val, ok = pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
+	}
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_RecordHubService_PushRecordSignature_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	msg, err := server.PushRecordSignature(ctx, &protoReq)
+	return msg, metadata, err
+}
+
+func request_RecordHubService_GetRecordSignatures_0(ctx context.Context, marshaler runtime.Marshaler, client RecordHubServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetRecordSignaturesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
+	}
+	msg, err := client.GetRecordSignatures(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	return msg, metadata, err
+}
+
+func local_request_RecordHubService_GetRecordSignatures_0(ctx context.Context, marshaler runtime.Marshaler, server RecordHubServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq GetRecordSignaturesRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	val, ok := pathParams["cid"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "cid")
+	}
+	protoReq.Cid, err = runtime.String(val)
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "cid", err)
+	}
+	msg, err := server.GetRecordSignatures(ctx, &protoReq)
+	return msg, metadata, err
+}
+
 // RegisterRecordHubServiceHandlerServer registers the http handlers for service RecordHubService to "mux".
 // UnaryRPC     :call RecordHubServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -591,6 +699,46 @@ func RegisterRecordHubServiceHandlerServer(ctx context.Context, mux *runtime.Ser
 			return
 		}
 		forward_RecordHubService_PullRecord_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodPost, pattern_RecordHubService_PushRecordSignature_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/PushRecordSignature", runtime.WithHTTPPathPattern("/v1alpha1/organizations/{id_or_name.name}/record/{cid}/signature"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_RecordHubService_PushRecordSignature_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_RecordHubService_PushRecordSignature_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_RecordHubService_GetRecordSignatures_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		var stream runtime.ServerTransportStream
+		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetRecordSignatures", runtime.WithHTTPPathPattern("/v1alpha1/records/{cid}/signature"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_RecordHubService_GetRecordSignatures_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_RecordHubService_GetRecordSignatures_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
@@ -768,6 +916,40 @@ func RegisterRecordHubServiceHandlerClient(ctx context.Context, mux *runtime.Ser
 		}
 		forward_RecordHubService_PullRecord_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodPost, pattern_RecordHubService_PushRecordSignature_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/PushRecordSignature", runtime.WithHTTPPathPattern("/v1alpha1/organizations/{id_or_name.name}/record/{cid}/signature"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_RecordHubService_PushRecordSignature_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_RecordHubService_PushRecordSignature_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+	mux.Handle(http.MethodGet, pattern_RecordHubService_GetRecordSignatures_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/saas.v1alpha1.RecordHubService/GetRecordSignatures", runtime.WithHTTPPathPattern("/v1alpha1/records/{cid}/signature"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_RecordHubService_GetRecordSignatures_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_RecordHubService_GetRecordSignatures_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
 	return nil
 }
 
@@ -780,6 +962,8 @@ var (
 	pattern_RecordHubService_PushRecord_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1alpha1", "organizations", "id_or_name.id", "records", "push"}, ""))
 	pattern_RecordHubService_PushRecord_1           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 2, 4}, []string{"v1alpha1", "organizations", "id_or_name.name", "records", "push"}, ""))
 	pattern_RecordHubService_PullRecord_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v1alpha1", "records", "pull", "cid"}, ""))
+	pattern_RecordHubService_PushRecordSignature_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3, 1, 0, 4, 1, 5, 4, 2, 5}, []string{"v1alpha1", "organizations", "id_or_name.name", "record", "cid", "signature"}, ""))
+	pattern_RecordHubService_GetRecordSignatures_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1alpha1", "records", "cid", "signature"}, ""))
 )
 
 var (
@@ -791,4 +975,6 @@ var (
 	forward_RecordHubService_PushRecord_0           = runtime.ForwardResponseMessage
 	forward_RecordHubService_PushRecord_1           = runtime.ForwardResponseMessage
 	forward_RecordHubService_PullRecord_0           = runtime.ForwardResponseMessage
+	forward_RecordHubService_PushRecordSignature_0  = runtime.ForwardResponseMessage
+	forward_RecordHubService_GetRecordSignatures_0  = runtime.ForwardResponseMessage
 )

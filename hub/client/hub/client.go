@@ -30,6 +30,8 @@ type Client interface {
 	DeleteAPIKey(ctx context.Context, clientID string) (*v1alpha1.DeleteApiKeyResponse, error)
 	// ListAPIKeys lists all API keys for a specific organization and returns the response or an error.
 	ListAPIKeys(ctx context.Context, organization any) (*v1alpha1.ListApiKeyResponse, error)
+	PushRecordSignature(ctx context.Context, organization string, recordCID string, signature string, publicKey string) error
+	GetRecordSignatures(ctx context.Context, recordCID string) ([]*v1alpha1.RecordSignature, error)
 }
 
 // client implements the Client interface for the Agent Hub backend.
@@ -84,6 +86,39 @@ func (c *client) PushRecord(ctx context.Context, organization string, record []b
 	}
 
 	return resp, nil
+}
+
+func (c *client) PushRecordSignature(ctx context.Context, organization string, recordCID string, signature string, publicKey string) error {
+	IdName := ParseOrganizationIdOrName(organization)
+
+	req := &v1alpha1.PushRecordSignatureRequest{
+		IdOrName: IdName,
+		Cid:      recordCID,
+		Signature: &v1alpha1.RecordSignature{
+			PublicKey: publicKey,
+			Signature: signature,
+		},
+	}
+
+	_, err := c.RecordHubServiceClient.PushRecordSignature(ctx, req)
+	if err != nil {
+		return fmt.Errorf("failed to push record signature: %w", err)
+	}
+
+	return nil
+}
+
+func (c *client) GetRecordSignatures(ctx context.Context, recordCID string) ([]*v1alpha1.RecordSignature, error) {
+	req := &v1alpha1.GetRecordSignaturesRequest{
+		Cid: recordCID,
+	}
+
+	sigsResponse, err := c.RecordHubServiceClient.GetRecordSignatures(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get record signatures: %w", err)
+	}
+
+	return sigsResponse.GetSignatures(), nil
 }
 
 func (c *client) PullRecord(ctx context.Context, cid string) ([]byte, error) {
