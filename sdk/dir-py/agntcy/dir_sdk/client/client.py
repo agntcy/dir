@@ -340,6 +340,7 @@ class Client:
         port = int(splitted_addr[1])
 
         context = SSL.Context(SSL.TLS_CLIENT_METHOD)
+        context.set_options(SSL.OP_NO_TLSv1 | SSL.OP_NO_TLSv1_1)  # Only allow TLSv1.2+ for strong security
         context.set_verify(SSL.VERIFY_NONE, lambda *args: True)  # Disable cert verification
   
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
