@@ -11,7 +11,7 @@ class Config:
     DEFAULT_AUTH_MODE = ""
     DEFAULT_JWT_AUDIENCE = ""
     DEFAULT_SPIFFE_TOKEN = ""
-    DEFAULT_TLS_SKIP_VERIFY = False
+    DEFAULT_TLS_SKIP_VERIFY = "false"
 
     def __init__(
         self,
