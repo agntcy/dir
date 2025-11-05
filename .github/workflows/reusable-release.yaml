@@ -9,17 +9,17 @@ on:
       image_repo:
         required: true
         type: string
-        description: "Image repo to use."
+        description: 'Image repo to use.'
       release_tag:
         required: true
         type: string
-        description: "Release tag for all components."
+        description: 'Release tag for all components.'
     secrets:
       PYPI_API_TOKEN:
-        description: "PyPI API token for publishing Python SDK"
+        description: 'PyPI API token for publishing Python SDK'
         required: true
       NPMJS_TOKEN:
-        description: "NPM.js token for publishing JavaScript SDK"
+        description: 'NPM.js token for publishing JavaScript SDK'
         required: true
 
 jobs:
@@ -56,7 +56,7 @@ jobs:
         with:
           go-version: '1.25.2'
           check-latest: true
-          cache-dependency-path: "**/*.sum"
+          cache-dependency-path: '**/*.sum'
 
       - name: Build
         run: |
@@ -87,7 +87,7 @@ jobs:
         with:
           go-version: '1.25.2'
           check-latest: true
-          cache-dependency-path: "**/*.sum"
+          cache-dependency-path: '**/*.sum'
 
       - name: Build
         run: |
@@ -126,7 +126,7 @@ jobs:
         id: create_release
         uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1.1.4
         env:
-          GITHUB_TOKEN : ${{ secrets.GITHUB_TOKEN  }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
         with:
           tag_name: ${{ inputs.release_tag }}
           release_name: Release ${{ inputs.release_tag }}
@@ -175,7 +175,7 @@ jobs:
         id: upload-release-asset
         uses: actions/upload-release-asset@e8f9f06c4b078e705bd2ea027f0926603fc9b4d5 # v1.0.2
         env:
-          GITHUB_TOKEN : ${{ secrets.GITHUB_TOKEN  }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
           asset_path: bin/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
@@ -185,7 +185,7 @@ jobs:
   brew:
     name: Update Brew
     needs:
-      - release
+      - upload
     uses: ./.github/workflows/reusable-brew-update.yaml
     with:
       create-pr: true
