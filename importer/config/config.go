@@ -39,6 +39,9 @@ type Config struct {
 	Limit        int               // Number of records to import (default: 0 for all)
 	Concurrency  int               // Number of concurrent workers (default: 5)
 	DryRun       bool              // If true, preview without actually importing
+
+	Enrich         bool   // If true, enrich the records with LLM
+	EnricherConfig string // Enricher configuration file path
 }
 
 // Validate checks if the configuration is valid.

@@ -10,6 +10,7 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/importer/config"
+	"github.com/agntcy/dir/importer/enricher"
 	_ "github.com/agntcy/dir/importer/mcp" // Import MCP importer to trigger its init() function for auto-registration.
 	"github.com/agntcy/dir/importer/types"
 	"github.com/agntcy/dir/importer/types/factory"
@@ -55,6 +56,9 @@ func init() {
 	Command.Flags().StringToStringVar(&cfg.Filters, "filter", nil, "Filters (key=value)")
 	Command.Flags().IntVar(&cfg.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
 	Command.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "Preview without importing")
+
+	Command.Flags().BoolVar(&cfg.Enrich, "enrich", false, "Enrich the records with LLM")
+	Command.Flags().StringVar(&cfg.EnricherConfig, "enrich-config", enricher.DefaultConfigFile, "Enricher configuration file path")
 
 	// Mark required flags
 	Command.MarkFlagRequired("type") //nolint:errcheck

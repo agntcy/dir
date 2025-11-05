@@ -10,6 +10,8 @@ import (
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/importer/config"
+	"github.com/agntcy/dir/importer/enricher"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -20,11 +22,28 @@ const (
 )
 
 // Transformer implements the pipeline.Transformer interface for MCP records.
-type Transformer struct{}
+type Transformer struct {
+	host *enricher.MCPHostClient
+}
 
 // NewTransformer creates a new MCP transformer.
-func NewTransformer() *Transformer {
-	return &Transformer{}
+// If cfg.Enrich is true, it initializes an enricher client using cfg.EnricherConfig.
+func NewTransformer(ctx context.Context, cfg config.Config) (*Transformer, error) {
+	var (
+		host *enricher.MCPHostClient
+		err  error
+	)
+
+	if cfg.Enrich {
+		host, err = enricher.NewMCPHost(ctx, enricher.Config{ConfigFile: cfg.EnricherConfig})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create MCPHost client: %w", err)
+		}
+	}
+
+	return &Transformer{
+		host: host,
+	}, nil
 }
 
 // Transform converts an MCP server response to OASF format.
@@ -36,7 +55,7 @@ func (t *Transformer) Transform(ctx context.Context, source interface{}) (*corev
 	}
 
 	// Convert to OASF format
-	record, err := t.convertToOASF(response)
+	record, err := t.convertToOASF(ctx, response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert server %s:%s to OASF: %w",
 			response.Server.Name, response.Server.Version, err)
@@ -50,7 +69,7 @@ func (t *Transformer) Transform(ctx context.Context, source interface{}) (*corev
 // for full schema validation and metadata extraction.
 //
 //nolint:unparam
-func (t *Transformer) convertToOASF(response mcpapiv0.ServerResponse) (*corev1.Record, error) {
+func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.ServerResponse) (*corev1.Record, error) {
 	server := response.Server
 
 	// Created at (required, use publish time)
@@ -79,14 +98,6 @@ func (t *Transformer) convertToOASF(response mcpapiv0.ServerResponse) (*corev1.R
 		},
 	}
 
-	// Skills (required, provide default placeholder)
-	// Use a random skill from the list of skills to satisfy the validation.
-	skills := []*typesv1alpha1.Skill{
-		{
-			Name: "natural_language_processing/analytical_reasoning/problem_solving",
-		},
-	}
-
 	// Modules (not required, used for MCP server search)
 	modules := []*typesv1alpha1.Module{
 		{
@@ -109,8 +120,17 @@ func (t *Transformer) convertToOASF(response mcpapiv0.ServerResponse) (*corev1.R
 		CreatedAt:     createdAt,
 		Authors:       authors,
 		Locators:      locators,
-		Skills:        skills,
 		Modules:       modules,
+	}
+
+	// Enrich the record with proper OASF skills and domains if enrichment is enabled
+	if t.host != nil {
+		enrichedRecord, err := t.host.Enrich(ctx, corev1.New(record))
+		if err != nil {
+			return nil, fmt.Errorf("failed to enrich base OASF record: %w", err)
+		}
+
+		return enrichedRecord, nil
 	}
 
 	return corev1.New(record), nil

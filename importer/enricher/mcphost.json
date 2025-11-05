@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:4e5c338a"]
+    }
+  }
+}
+

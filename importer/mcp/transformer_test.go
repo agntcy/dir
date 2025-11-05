@@ -4,17 +4,24 @@
 package mcp
 
 import (
-	"context"
 	"testing"
 
+	"github.com/agntcy/dir/importer/config"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 	"github.com/modelcontextprotocol/registry/pkg/model"
 )
 
 //nolint:nestif
 func TestTransformer_Transform(t *testing.T) {
-	ctx := context.Background()
-	transformer := NewTransformer()
+	// Create transformer with enrichment disabled for testing
+	cfg := config.Config{
+		Enrich: false,
+	}
+
+	transformer, err := NewTransformer(t.Context(), cfg)
+	if err != nil {
+		t.Fatalf("failed to create transformer: %v", err)
+	}
 
 	tests := []struct {
 		name      string
@@ -55,7 +62,7 @@ func TestTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			record, err := transformer.Transform(ctx, tt.source)
+			record, err := transformer.Transform(t.Context(), tt.source)
 
 			if tt.wantErr {
 				if err == nil {
@@ -80,7 +87,15 @@ func TestTransformer_Transform(t *testing.T) {
 
 //nolint:nestif
 func TestTransformer_ConvertToOASF(t *testing.T) {
-	transformer := NewTransformer()
+	// Create transformer with enrichment disabled for testing
+	cfg := config.Config{
+		Enrich: false,
+	}
+
+	transformer, err := NewTransformer(t.Context(), cfg)
+	if err != nil {
+		t.Fatalf("failed to create transformer: %v", err)
+	}
 
 	tests := []struct {
 		name     string
@@ -118,7 +133,7 @@ func TestTransformer_ConvertToOASF(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			record, err := transformer.convertToOASF(tt.response)
+			record, err := transformer.convertToOASF(t.Context(), tt.response)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("convertToOASF() error = %v, wantErr %v", err, tt.wantErr)
 
