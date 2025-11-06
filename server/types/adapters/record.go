@@ -41,6 +41,8 @@ func (r *RecordAdapter) GetRecordData() (types.RecordData, error) {
 		return NewV1Alpha0Adapter(decoded.GetV1Alpha0()), nil
 	case decoded.HasV1Alpha1():
 		return NewV1Alpha1Adapter(decoded.GetV1Alpha1()), nil
+	case decoded.HasV1Alpha2():
+		return NewV1Alpha2Adapter(decoded.GetV1Alpha2()), nil
 	default:
 		return nil, fmt.Errorf("unsupported record type: %T", decoded.GetRecord())
 	}

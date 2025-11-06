@@ -105,6 +105,16 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			expectedDomainLabel: "/domains/life_science/biotechnology",
 			expectedModuleLabel: "/modules/runtime/language", // From record_070.json modules
 		},
+		{
+			name:     "Record_080_Agent",
+			jsonData: testdata.ExpectedRecordV080JSON,
+			expectedSkillLabels: []string{
+				"/skills/natural_language_processing/natural_language_generation/text_completion",
+				"/skills/natural_language_processing/analytical_reasoning/problem_solving",
+			},
+			expectedDomainLabel: "/domains/life_science/biotechnology",
+			expectedModuleLabel: "/modules/runtime/language", // From record_080.json modules
+		},
 	}
 
 	// Test each OASF version dynamically
