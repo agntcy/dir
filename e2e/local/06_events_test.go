@@ -135,5 +135,27 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			// Verify delete worked
 			_ = cli.Pull(pushCID).ShouldFail()
 		})
+
+		ginkgo.It("should emit events during operations with 0.8.0 schema records", func() {
+			// Test event emission with 0.8.0 schema records
+			// Ensures all operations work correctly with the new schema version
+
+			recordFile := filepath.Join(tempDir, "events_080_test.json")
+			_ = os.WriteFile(recordFile, testdata.ExpectedRecordV080JSON, 0o600)
+
+			// Push should emit RECORD_PUSHED event
+			cid := cli.Push(recordFile).WithArgs("--raw").ShouldSucceed()
+			gomega.Expect(cid).NotTo(gomega.BeEmpty())
+
+			// Publish should emit RECORD_PUBLISHED event
+			output := cli.Routing().Publish(cid).ShouldSucceed()
+			gomega.Expect(output).To(gomega.ContainSubstring("Successfully submitted publication request"))
+
+			// Delete should emit RECORD_DELETED event
+			cli.Delete(cid).ShouldSucceed()
+
+			// Verify delete worked
+			_ = cli.Pull(cid).ShouldFail()
+		})
 	})
 })

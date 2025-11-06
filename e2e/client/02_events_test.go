@@ -80,9 +80,10 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 	// Clean up all testdata records after all event tests
 	// This prevents interfering with existing 01_client_test.go tests
 	ginkgo.AfterAll(func() {
-		// Get CIDs for V031 and V070 testdata
+		// Get CIDs for V031, V070, and V080 testdata
 		v031Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV031JSON)
 		v070Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+		v080Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 
 		// IMPORTANT: Unpublish first to remove routing labels, then delete from store
 		if v031Record != nil {
@@ -102,6 +103,15 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 				},
 			})
 			_ = c.Delete(context.Background(), v070Ref)
+		}
+		if v080Record != nil {
+			v080Ref := &corev1.RecordRef{Cid: v080Record.GetCid()}
+			_ = c.Unpublish(context.Background(), &routingv1.UnpublishRequest{
+				Request: &routingv1.UnpublishRequest_RecordRefs{
+					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.RecordRef{v080Ref}},
+				},
+			})
+			_ = c.Delete(context.Background(), v080Ref)
 		}
 
 		// Close the client
@@ -150,6 +160,51 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 		ginkgo.It("should receive RECORD_PUBLISHED event when publishing a record", func() {
 			// First push a record using valid testdata
 			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			ref, err := c.Push(ctx, record)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Subscribe to RECORD_PUBLISHED events
+			streamCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+
+			result, err := c.ListenStream(streamCtx, &eventsv1.ListenRequest{
+				EventTypes: []eventsv1.EventType{eventsv1.EventType_EVENT_TYPE_RECORD_PUBLISHED},
+			})
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Publish the record in background
+			go func() {
+				defer ginkgo.GinkgoRecover() // Required for assertions in goroutines
+				time.Sleep(200 * time.Millisecond)
+
+				publishErr := c.Publish(context.Background(), &routingv1.PublishRequest{
+					Request: &routingv1.PublishRequest_RecordRefs{
+						RecordRefs: &routingv1.RecordRefs{
+							Refs: []*corev1.RecordRef{ref},
+						},
+					},
+				})
+				gomega.Expect(publishErr).NotTo(gomega.HaveOccurred())
+
+				// Wait for async publish to complete
+				time.Sleep(2 * time.Second)
+			}()
+
+			// Receive the event
+			resp := receiveEvent(streamCtx, result)
+			gomega.Expect(resp.GetEvent()).NotTo(gomega.BeNil())
+
+			event := resp.GetEvent()
+			gomega.Expect(event.GetType()).To(gomega.Equal(eventsv1.EventType_EVENT_TYPE_RECORD_PUBLISHED))
+			gomega.Expect(event.GetResourceId()).To(gomega.Equal(ref.GetCid()))
+			gomega.Expect(event.GetLabels()).NotTo(gomega.BeEmpty())
+		})
+
+		ginkgo.It("should receive RECORD_PUBLISHED event when publishing a 0.8.0 record", func() {
+			// First push a record using valid 0.8.0 testdata
+			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			ref, err := c.Push(ctx, record)
