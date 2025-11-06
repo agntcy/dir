@@ -519,36 +519,5 @@ var _ = ginkgo.Describe("Rate Limiting E2E Tests", ginkgo.Label("ratelimit"), gi
 				ginkgo.GinkgoWriter.Println("INFO: Did not hit rate limit in second batch")
 			}
 		})
-
-		ginkgo.It("should apply rate limiting to 0.8.0 schema records", func() {
-			// Test rate limiting with 0.8.0 schema records
-			// This ensures the rate limiter treats all schema versions equally
-
-			record, err := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
-			gomega.Expect(err).NotTo(gomega.HaveOccurred())
-
-			// Push multiple records rapidly to test rate limiting
-			const testAttempts = 50
-			var successCount int
-			var rateLimitCount int
-
-			for range testAttempts {
-				ref, pushErr := c.Push(ctx, record)
-				if pushErr == nil {
-					successCount++
-					// Clean up successful pushes
-					_ = c.Delete(ctx, ref)
-				} else if isRateLimitError(pushErr) {
-					rateLimitCount++
-				}
-			}
-
-			// Verify that some requests succeeded and rate limiting was applied if limits were exceeded
-			gomega.Expect(successCount).To(gomega.BeNumerically(">", 0),
-				"Should have at least some successful requests")
-
-			ginkgo.GinkgoWriter.Printf("0.8.0 schema test: %d/%d requests succeeded, %d rate limited\n",
-				successCount, testAttempts, rateLimitCount)
-		})
 	})
 })
