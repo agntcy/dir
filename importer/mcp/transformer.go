@@ -125,7 +125,11 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 
 	// Enrich the record with proper OASF skills and domains if enrichment is enabled
 	if t.host != nil {
-		enrichedRecord, err := t.host.Enrich(ctx, corev1.New(record))
+		// Context with timeout
+		ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
+		defer cancel()
+
+		enrichedRecord, err := t.host.Enrich(ctxWithTimeout, corev1.New(record))
 		if err != nil {
 			return nil, fmt.Errorf("failed to enrich base OASF record: %w", err)
 		}
