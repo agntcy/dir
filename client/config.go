@@ -25,6 +25,9 @@ var DefaultConfig = Config{
 type Config struct {
 	ServerAddress    string `json:"server_address,omitempty"     mapstructure:"server_address"`
 	TlsSkipVerify    bool   `json:"tls_skip_verify,omitempty"    mapstructure:"tls_skip_verify"`
+	TlsCertFile      string `json:"tls_cert_file,omitempty"      mapstructure:"tls_cert_file"`
+	TlsKeyFile       string `json:"tls_key_file,omitempty"       mapstructure:"tls_key_file"`
+	TlsCAFile        string `json:"tls_ca_file,omitempty"        mapstructure:"tls_ca_file"`
 	SpiffeSocketPath string `json:"spiffe_socket_path,omitempty" mapstructure:"spiffe_socket_path"`
 	SpiffeToken      string `json:"spiffe_token,omitempty"       mapstructure:"spiffe_token"`
 	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
@@ -58,6 +61,15 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("jwt_audience")
 	v.SetDefault("jwt_audience", "")
+
+	_ = v.BindEnv("tls_cert_file")
+	v.SetDefault("tls_cert_file", "")
+
+	_ = v.BindEnv("tls_key_file")
+	v.SetDefault("tls_key_file", "")
+
+	_ = v.BindEnv("tls_ca_file")
+	v.SetDefault("tls_ca_file", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

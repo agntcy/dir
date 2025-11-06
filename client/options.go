@@ -72,6 +72,8 @@ func withAuth(ctx context.Context) Option {
 			return o.setupX509Auth(ctx) //nolint:contextcheck
 		case "token":
 			return o.setupSpiffeAuth(ctx)
+		case "tls":
+			return o.setupTlsAuth(ctx)
 		case "":
 			// Empty auth mode - use insecure connection (for development/testing only)
 			o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -264,6 +266,53 @@ func (o *options) setupSpiffeAuth(_ context.Context) error {
 		if !capool.AppendCertsFromPEM(caPEM) {
 			return errors.New("failed to append root CA certificate to CA pool")
 		}
+	}
+
+	// Create TLS config
+	tlsConfig := &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		RootCAs:            capool,
+		InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec
+	}
+
+	// Update options
+	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+
+	return nil
+}
+
+func (o *options) setupTlsAuth(_ context.Context) error {
+	// Validate TLS config is set
+	if o.config.TlsCAFile == "" || o.config.TlsCertFile == "" || o.config.TlsKeyFile == "" {
+		return errors.New("TLS CA, cert, and key file paths are required for TLS authentication")
+	}
+
+	// Load TLS data for tlsConfig
+	caData, err := os.ReadFile(o.config.TlsCAFile)
+	if err != nil {
+		return fmt.Errorf("failed to read TLS CA file: %w", err)
+	}
+
+	certData, err := os.ReadFile(o.config.TlsCertFile)
+	if err != nil {
+		return fmt.Errorf("failed to read TLS cert file: %w", err)
+	}
+
+	keyData, err := os.ReadFile(o.config.TlsKeyFile)
+	if err != nil {
+		return fmt.Errorf("failed to read TLS key file: %w", err)
+	}
+
+	// Create certificate from PEM data
+	cert, err := tls.X509KeyPair(certData, keyData)
+	if err != nil {
+		return fmt.Errorf("failed to create certificate from TLS data: %w", err)
+	}
+
+	// Create CA pool from root CAs
+	capool := x509.NewCertPool()
+	if !capool.AppendCertsFromPEM(caData) {
+		return errors.New("failed to append root CA certificate to CA pool")
 	}
 
 	// Create TLS config
