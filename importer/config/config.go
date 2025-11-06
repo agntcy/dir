@@ -37,7 +37,7 @@ type Config struct {
 	RegistryURL  string            // Base URL of the registry
 	Filters      map[string]string // Registry-specific filters
 	Limit        int               // Number of records to import (default: 0 for all)
-	Concurrency  int               // Number of concurrent workers (default: 5)
+	Concurrency  int               // Number of concurrent workers (default: 1)
 	DryRun       bool              // If true, preview without actually importing
 
 	Enrich         bool   // If true, enrich the records with LLM
@@ -55,7 +55,7 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Concurrency <= 0 {
-		c.Concurrency = 5 // Set default concurrency
+		c.Concurrency = 1 // Set default concurrency
 	}
 
 	return nil
