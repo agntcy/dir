@@ -427,6 +427,16 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			ginkgo.GinkgoWriter.Println("0.3.1 record validated successfully")
 		})
 
+		ginkgo.It("should validate a valid 0.8.0 record", func() {
+			recordJSON := string(testdata.ExpectedRecordV080JSON)
+			toolOutput := validateRecordAndParseOutput(client, recordJSON, 6)
+
+			gomega.Expect(toolOutput["valid"]).To(gomega.BeTrue())
+			gomega.Expect(toolOutput["schema_version"]).To(gomega.Equal("0.8.0"))
+
+			ginkgo.GinkgoWriter.Println("0.8.0 record validated successfully")
+		})
+
 		ginkgo.It("should return validation errors for invalid record", func() {
 			invalidJSON := `{
 			"name": "test-agent",
@@ -437,7 +447,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			"created_at": "2025-01-01T00:00:00Z"
 		}`
 
-			toolOutput := validateRecordAndParseOutput(client, invalidJSON, 6)
+			toolOutput := validateRecordAndParseOutput(client, invalidJSON, 7)
 
 			gomega.Expect(toolOutput["valid"]).To(gomega.BeFalse())
 			gomega.Expect(toolOutput["validation_errors"]).NotTo(gomega.BeEmpty())
@@ -459,7 +469,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 						"record_json": recordJSON,
 					},
 				},
-				ID: 7,
+				ID: 8,
 			}
 
 			resp, err := client.SendRequest(req)
