@@ -17,6 +17,7 @@ import (
 
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
+	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -270,7 +271,25 @@ func (o *options) setupSpiffeAuth(_ context.Context) error {
 	tlsConfig := &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		RootCAs:            capool,
-		InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec
+		InsecureSkipVerify: true, //nolint:gosec
+		VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+			if len(rawCerts) == 0 {
+				return errors.New("server certificate not presented")
+			}
+			peerCert, err := x509.ParseCertificate(rawCerts[0])
+			if err != nil {
+				return fmt.Errorf("unable to parse server certificate: %w", err)
+			}
+			verifyOpts := x509.VerifyOptions{Roots: capool}
+			if _, err := peerCert.Verify(verifyOpts); err != nil {
+				return fmt.Errorf("invalid server certificate chain: %w", err)
+			}
+			_, err = x509svid.IDFromCert(peerCert)
+			if err != nil {
+				return fmt.Errorf("unable to extract SPIFFE ID: %w", err)
+			}
+			return nil
+		},
 	}
 
 	// Update options
