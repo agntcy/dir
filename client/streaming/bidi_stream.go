@@ -90,6 +90,13 @@ func ProcessBidiStream[InT, OutT any](
 			//nolint:errcheck
 			defer stream.CloseSend()
 
+			// Drain inputCh on early exit to prevent upstream producers from blocking
+			defer func() {
+				for range inputCh {
+					// Drain remaining inputs
+				}
+			}()
+
 			// Send input to the stream
 			//
 			// Note: stream.Send() is blocking if the internal buffer is full.
