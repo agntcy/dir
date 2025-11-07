@@ -8,7 +8,10 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/importer/config"
+	"github.com/agntcy/dir/utils/logging"
 )
+
+var logger = logging.Logger("importer/pipeline")
 
 // ClientPusher is a Pusher implementation that uses the DIR client.
 type ClientPusher struct {
@@ -52,6 +55,8 @@ func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) 
 		for record := range inputCh {
 			ref, err := p.client.Push(ctx, record)
 			if err != nil {
+				logger.Debug("Failed to push record", "error", err, "record", record)
+
 				// Send error but continue processing remaining records
 				select {
 				case errCh <- err:

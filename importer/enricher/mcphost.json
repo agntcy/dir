@@ -2,8 +2,8 @@
   "mcpServers": {
     "dir-mcp-server": {
       "command": "docker",
-      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:4e5c338a"]
+      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:tag"]
     }
-  }
+  },
+  "model": "ollama:qwen3:8b"
 }
-
