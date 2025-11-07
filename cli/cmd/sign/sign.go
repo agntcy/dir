@@ -43,6 +43,14 @@ Usage examples:
 2. Sign a record using key:
 
 	dirctl sign <record-cid> --key <key-file>
+
+3. Output formats:
+
+	# Get signing result as JSON
+	dirctl sign <record-cid> --output json
+	
+	# Sign with key and JSON output
+	dirctl sign <record-cid> --key <key-file> --output json
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var recordCID string

@@ -33,6 +33,13 @@ Usage examples:
 1. Show local routing statistics:
    dirctl routing info
 
+2. Output formats:
+   # Get routing statistics as JSON
+   dirctl routing info --output json
+   
+   # Get raw statistics data
+   dirctl routing info --output raw
+
 Note: For network-wide statistics, use 'dirctl routing search' with broad queries.
 `,
 	//nolint:gocritic // Lambda required due to signature mismatch - runInfoCommand doesn't use args

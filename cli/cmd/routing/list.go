@@ -43,6 +43,16 @@ Usage examples:
 4. List specific record by CID:
    dirctl routing list --cid <cid>
 
+5. Output formats:
+   # Get results as JSON
+   dirctl routing list --skill "AI" --output json
+   
+   # Get results as JSONL for streaming
+   dirctl routing list --output jsonl
+   
+   # Get raw CIDs only
+   dirctl routing list --skill "AI" --output raw
+
 Note: For network-wide discovery, use 'dirctl routing search' instead.
 `,
 	//nolint:gocritic // Lambda required due to signature mismatch - runListCommand doesn't use args

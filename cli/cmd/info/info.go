@@ -24,9 +24,19 @@ var Command = &cobra.Command{
 	Short: "Check info about an object in Directory store",
 	Long: `Lookup and get basic metadata about an object pushed to the Directory store.
 
-Usage example:
+Usage examples:
+
+1. Get info about a record:
 
 	dirctl info <cid>
+
+2. Output formats:
+
+	# Get info as JSON
+	dirctl info <cid> --output json
+	
+	# Get raw info data
+	dirctl info <cid> --output raw
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {

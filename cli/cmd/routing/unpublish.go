@@ -34,6 +34,13 @@ Usage examples:
 1. Unpublish a record from the network:
    dirctl routing unpublish <cid>
 
+2. Output formats:
+   # Unpublish with JSON confirmation
+   dirctl routing unpublish <cid> --output json
+   
+   # Unpublish with raw output for scripting
+   dirctl routing unpublish <cid> --output raw
+
 Note: This only removes network announcements. Use 'dirctl delete' to remove the record entirely.
 `,
 	Args: cobra.ExactArgs(1),

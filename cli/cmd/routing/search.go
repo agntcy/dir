@@ -39,6 +39,16 @@ Usage examples:
 3. Search with result limiting:
    dirctl routing search --skill "web-development" --limit 5
 
+4. Output formats:
+   # Get results as JSON
+   dirctl routing search --skill "AI" --output json
+   
+   # Search and pipe to sync
+   dirctl routing search --skill "AI" --output json | dirctl sync create --stdin
+   
+   # Get raw results for scripting
+   dirctl routing search --skill "web" --output raw
+
 `,
 	//nolint:gocritic // Lambda required due to signature mismatch - runSearchCommand doesn't use args
 	RunE: func(cmd *cobra.Command, _ []string) error {
