@@ -12,6 +12,7 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1
 	github.com/agntcy/dir/api v0.5.0-rc.3
 	github.com/agntcy/dir/client v0.5.0-rc.3
+	github.com/agntcy/dir/utils v0.5.0-rc.3
 	github.com/mark3labs/mcphost v0.31.3
 	github.com/modelcontextprotocol/registry v1.2.3
 	google.golang.org/protobuf v1.36.10

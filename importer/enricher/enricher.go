@@ -6,16 +6,21 @@ package enricher
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/mark3labs/mcphost/sdk"
 )
 
+var logger = logging.Logger("importer/enricher")
+
 const (
-	DefaultConfigFile  = "importer/enricher/mcphost.json"
+	DebugEnabled          = true
+	DefaultConfigFile     = "importer/enricher/mcphost.json"
 	DefaultPromptTemplate = `You are a #FIELD_NAME# selector.
 	
 	You are given a record and you need to select the most appropriate #FIELD_NAME#s that match the record's purpose.
@@ -50,6 +55,10 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 		return nil, fmt.Errorf("failed to create MCPHost client: %w", err)
 	}
 
+	if DebugEnabled {
+		runGetSchemaToolsPrompt(ctx, host)
+	}
+
 	return &MCPHostClient{host: host}, nil
 }
 
@@ -60,22 +69,10 @@ func (c *MCPHostClient) Enrich(ctx context.Context, record *corev1.Record) (*cor
 		return nil, fmt.Errorf("failed to marshal record: %w", err)
 	}
 
-	// Build skill prompt with record data
-	skillPrompt := strings.Replace(DefaultPromptTemplate, "#FIELD_NAME#", "skill", -1) + string(recordJSON)
-
-	// Send a prompt and get response with callbacks to see tool usage
-	skillResponse, err := c.host.Prompt(ctx, skillPrompt)
+	// Run prompt for skills
+	skillResponse, err := c.runPrompt(ctx, "skill", recordJSON)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send prompt: %w", err)
-	}
-
-	// Build domain prompt with record data
-	domainPrompt := strings.Replace(DefaultPromptTemplate, "#FIELD_NAME#", "domain", -1) + string(recordJSON)
-
-	// Send a prompt and get response with callbacks to see tool usage
-	domainResponse, err := c.host.Prompt(ctx, domainPrompt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send prompt: %w", err)
+		return nil, fmt.Errorf("failed to run prompt: %w", err)
 	}
 
 	// Decode the record to get the typed version
@@ -86,23 +83,111 @@ func (c *MCPHostClient) Enrich(ctx context.Context, record *corev1.Record) (*cor
 
 	// Get the V1Alpha1 record (assuming 0.7.0 schema)
 	if !decoded.HasV1Alpha1() {
-		return nil, fmt.Errorf("record is not V1Alpha1 format")
+		return nil, errors.New("record is not V1Alpha1 format")
 	}
+
 	typedRecord := decoded.GetV1Alpha1()
 
-	// Append the new skills and domains
-	skills := strings.Split(skillResponse, ",")
+	skills, err := c.parseResponse(skillResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse skills: %w", err)
+	}
+
 	for _, skill := range skills {
 		typedRecord.Skills = append(typedRecord.Skills, &typesv1alpha1.Skill{
 			Name: skill,
 		})
 	}
-	domains := strings.Split(domainResponse, ",")
-	for _, domain := range domains {
-		typedRecord.Domains = append(typedRecord.Domains, &typesv1alpha1.Domain{
-			Name: domain,
-		})
+
+	// Re-encode the record to get the enriched record
+	enrichedRecord := corev1.New(typedRecord)
+
+	if DebugEnabled {
+		enrichedRecordJSON, err := enrichedRecord.Marshal()
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal enriched record: %w", err)
+		}
+
+		logger.Info("Enriched record", "record", string(enrichedRecordJSON))
 	}
 
-	return corev1.New(typedRecord), nil
+	return enrichedRecord, nil
+}
+
+func runGetSchemaToolsPrompt(ctx context.Context, host *sdk.MCPHost) {
+	// Get 3 OASF skills
+	resp, err := host.Prompt(ctx, "Call the tool 'dir-mcp-server__agntcy_oasf_get_schema_skills' and return 3 skill names)")
+	if err != nil {
+		logger.Error("failed to get 3 OASF skills", "error", err)
+	}
+
+	logger.Info("3 OASF skills", "skills", resp)
+
+	// Get 3 sub-skills for the skill natural_language_processing
+	resp, err = host.Prompt(ctx, "Call the tool 'dir-mcp-server__agntcy_oasf_get_schema_skills' and return 3 sub-skills for the skill natural_language_processing")
+	if err != nil {
+		logger.Error("failed to get 3 sub-skills for natural_language_processing", "error", err)
+	}
+
+	logger.Info("3 sub-skills for natural_language_processing", "sub-skills", resp)
+}
+
+func (c *MCPHostClient) runPrompt(ctx context.Context, field string, recordJSON []byte) (string, error) {
+	prompt := strings.ReplaceAll(DefaultPromptTemplate, "#FIELD_NAME#", field) + string(recordJSON)
+
+	var (
+		response string
+		err      error
+	)
+
+	if DebugEnabled {
+		logger.Info("Prompt", "prompt", prompt)
+
+		// Send a prompt and get response with callbacks to see tool usage
+		response, err = c.host.PromptWithCallbacks(
+			ctx,
+			prompt,
+			func(name, args string) {
+				logger.Info("Calling tool", "tool", name)
+			},
+			func(name, args, result string, isError bool) {
+				if isError {
+					logger.Error("Tool failed", "tool", name)
+				} else {
+					logger.Info("Tool completed", "tool", name)
+				}
+			},
+			func(chunk string) {
+			},
+		)
+		if err != nil {
+			return "", fmt.Errorf("failed to send prompt: %w", err)
+		}
+
+		return response, nil
+	}
+
+	// No debug, just send the prompt and get the response
+	response, err = c.host.Prompt(ctx, prompt)
+	if err != nil {
+		return "", fmt.Errorf("failed to send prompt: %w", err)
+	}
+
+	return response, nil
+}
+
+func (c *MCPHostClient) parseResponse(response string) ([]string, error) {
+	items := strings.Split(response, ",")
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+	}
+
+	if len(items) == 0 {
+		return nil, fmt.Errorf("no valid skills found in response: %s", response)
+	}
+
+	return items, nil
 }
