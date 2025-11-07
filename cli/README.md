@@ -323,6 +323,8 @@ dirctl import --type=mcp \
 | `--filter` | - | Registry-specific filters (key=value, repeatable) | No | - |
 | `--limit` | - | Maximum records to import (0 = no limit) | No | 0 |
 | `--dry-run` | - | Preview without importing | No | false |
+| `--enrich` | - | Enable LLM-based enrichment for OASF skills/domains | No | false |
+| `--enrich-config` | - | Path to mcphost configuration file | No | ~/.mcphost.json |
 | `--server-addr` | `DIRECTORY_CLIENT_SERVER_ADDRESS` | DIR server address | No | localhost:8888 |
 
 **MCP Registry Filters:**
@@ -333,6 +335,61 @@ For the Model Context Protocol registry, available filters include:
 - `updated_since` - Filter by updated time (RFC3339 datetime format, e.g., '2025-08-07T13:15:04.280Z')
 
 See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters) for the complete list of supported filters.
+
+#### LLM-based Enrichment
+
+The import command supports automatic enrichment of MCP server records using LLM models to map them to appropriate OASF skills. This is powered by [mcphost](https://github.com/mark3labs/mcphost), which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.
+
+**Requirements:**
+- The DIR MCP server distribution must be available (docker or binary)
+- An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
+
+**Setting up mcphost:**
+
+1. Edit a configuration file (default: `importer/enricher/mcphost.json`):
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:latest"]
+    }
+  },
+  "model": "azure:gpt-4o",
+  "max-tokens": 4096,
+  "max-steps": 20
+}
+```
+
+**Supported LLM providers:**
+- `azure:gpt-4o` - Azure OpenAI GPT-4o (recommended)
+- `ollama:qwen3:8b` - Local Qwen3 via Ollama
+
+**Environment variables for LLM providers:**
+- Azure OpenAI: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`
+
+**Examples:**
+
+```bash
+# Import with LLM enrichment using default config
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich
+
+# Import with custom mcphost configuration
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich \
+  --enrich-config=/path/to/mcphost.json
+
+# Import latest 10 servers with enrichment
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --filter=version=latest \
+  --limit=10 \
+  --enrich
+```
 
 ### 🔄 **Synchronization**
 

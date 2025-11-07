@@ -125,6 +125,7 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 
 	// Enrich the record with proper OASF skills and domains if enrichment is enabled
 	var err error
+
 	if t.host != nil {
 		// Context with timeout
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:mnd

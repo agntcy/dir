@@ -6,6 +6,7 @@ package enricher
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -155,14 +156,14 @@ type MCPHostClient struct {
 	host *sdk.MCPHost
 }
 
-// EnrichedField represents a single enriched field (skill or domain) with metadata
+// EnrichedField represents a single enriched field (skill or domain) with metadata.
 type EnrichedField struct {
 	Name       string  `json:"name"`
 	Confidence float64 `json:"confidence"`
 	Reasoning  string  `json:"reasoning"`
 }
 
-// EnrichmentResponse represents the structured JSON response from the LLM
+// EnrichmentResponse represents the structured JSON response from the LLM.
 type EnrichmentResponse struct {
 	Skills []EnrichedField `json:"skills"`
 }
@@ -294,6 +295,7 @@ func (c *MCPHostClient) parseResponse(response string) ([]EnrichedField, error) 
 
 	// Try to parse as structured JSON first
 	var enrichmentResp EnrichmentResponse
+
 	err := json.Unmarshal([]byte(response), &enrichmentResp)
 	if err == nil {
 		// Successfully parsed as JSON
@@ -305,12 +307,14 @@ func (c *MCPHostClient) parseResponse(response string) ([]EnrichedField, error) 
 			// Basic validation: must contain exactly one forward slash
 			if strings.Count(field.Name, "/") != 1 {
 				logger.Warn("Skipping invalid skill format (must be skill/sub_skill)", "skill", field.Name)
+
 				continue
 			}
 
 			// Validate confidence is in valid range
 			if field.Confidence < 0.0 || field.Confidence > 1.0 {
 				logger.Warn("Skipping skill with invalid confidence", "skill", field.Name, "confidence", field.Confidence)
+
 				continue
 			}
 
@@ -318,7 +322,7 @@ func (c *MCPHostClient) parseResponse(response string) ([]EnrichedField, error) 
 		}
 
 		if len(validFields) == 0 {
-			return nil, fmt.Errorf("no valid skills found in JSON response")
+			return nil, errors.New("no valid skills found in JSON response")
 		}
 
 		return validFields, nil
