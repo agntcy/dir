@@ -67,6 +67,13 @@ func ProcessClientStream[InT, OutT any](
 		//nolint:errcheck
 		defer stream.CloseSend()
 
+		// Drain inputCh on early exit to prevent upstream producers from blocking
+		defer func() {
+			for range inputCh {
+				// Drain remaining inputs
+			}
+		}()
+
 		// Process all incoming inputs
 		for input := range inputCh {
 			// Send the input to the network buffer and handle errors

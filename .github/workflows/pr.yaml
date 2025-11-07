@@ -44,5 +44,9 @@ jobs:
           files_to_ignore: |
             "*.md"
             "**/*.pb.go"
+            "**/*_pb2.py"
+            "**/*_pb2_grpc.py"
+            "**/*_pb.js"
+            "**/*_pb.d.ts"
             "**/go.sum"
             "**/go.mod"
