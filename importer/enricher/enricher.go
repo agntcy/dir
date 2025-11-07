@@ -6,12 +6,10 @@ package enricher
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mark3labs/mcphost/sdk"
 )
@@ -19,23 +17,67 @@ import (
 var logger = logging.Logger("importer/enricher")
 
 const (
-	DebugEnabled          = true
-	DefaultConfigFile     = "importer/enricher/mcphost.json"
-	DefaultPromptTemplate = `You are a #FIELD_NAME# selector.
-	
-	You are given a record and you need to select the most appropriate #FIELD_NAME#s that match the record's purpose.
+	DebugEnabled               = true
+	DefaultConfigFile          = "importer/enricher/mcphost.json"
+	DefaultConfidenceThreshold = 0.5
+	DefaultPromptTemplate      = `Select 1-3 skills for this agent record.
 
-	Call dir-mcp-server__agntcy_oasf_get_schema_#FIELD_NAME#s with version "0.7.0" to get the top level #FIELD_NAME#s.
-	Based on the record's name and description, select the most appropriate top level #FIELD_NAME# that matches the record's purpose.
+MANDATORY STEPS - FOLLOW EXACTLY:
 
-	Then call dir-mcp-server__agntcy_oasf_get_schema_#FIELD_NAME#s with version "0.7.0" to get the sub #FIELD_NAME#s of the selected top level #FIELD_NAME#.
-	Based on the record's name and description, select the most appropriate sub #FIELD_NAME#s (1-3) that matches the record's purpose.
+1. Call tool: dir-mcp-server__agntcy_oasf_get_schema_skills
+   Parameters: {"version": "0.7.0"}
+   This returns ALL valid top-level skills.
 
-	Output ONLY the selected #FIELD_NAME# names as a comma separated list.
-	EXAMPLE RESPONSE: top_level_#FIELD_NAME#1/sub_#FIELD_NAME#1,top_level_#FIELD_NAME#1/sub_#FIELD_NAME#2
+2. Pick ONE top-level skill from the tool response that best matches the record below.
 
-	Here is the record:
-	`
+3. Call tool AGAIN: dir-mcp-server__agntcy_oasf_get_schema_skills
+   Parameters: {"version": "0.7.0", "parent_skill": "your_chosen_skill"}
+   This returns ALL valid sub-skills for that skill.
+
+4. Pick 1-3 sub-skills from the second tool response.
+
+5. YOUR FINAL OUTPUT MUST BE VALID JSON ONLY - NO TEXT BEFORE OR AFTER:
+
+{
+  "skills": [
+    {
+      "name": "skill/sub_skill",
+      "confidence": 0.95,
+      "reasoning": "Brief explanation of why this skill matches"
+    }
+  ]
+}
+
+CRITICAL OUTPUT RULES:
+✓ Output ONLY valid JSON (no markdown code blocks, no explanations)
+✓ Use exact skill names from tools (case-sensitive)
+✓ Each name MUST be "skill/sub_skill" format with exactly one slash (/)
+✓ Confidence must be a number between 0.0 and 1.0
+✓ Reasoning should be 1-2 sentences explaining the match
+✓ Include 1-3 skills in the array
+
+❌ DO NOT wrap JSON in markdown code blocks (no triple backticks)
+❌ DO NOT add text before or after the JSON
+❌ DO NOT write: "Here is the JSON..." or "Based on..."
+
+Example of CORRECT output (copy this structure exactly):
+{
+  "skills": [
+    {
+      "name": "audio/speech_recognition",
+      "confidence": 0.95,
+      "reasoning": "Agent processes spoken audio input into text"
+    },
+    {
+      "name": "audio/audio_generation",
+      "confidence": 0.85,
+      "reasoning": "Agent can generate audio output from text"
+    }
+  ]
+}
+
+Agent record to analyze:
+`
 )
 
 type Config struct {
@@ -44,6 +86,18 @@ type Config struct {
 
 type MCPHostClient struct {
 	host *sdk.MCPHost
+}
+
+// EnrichedField represents a single enriched field (skill or domain) with metadata
+type EnrichedField struct {
+	Name       string  `json:"name"`
+	Confidence float64 `json:"confidence"`
+	Reasoning  string  `json:"reasoning"`
+}
+
+// EnrichmentResponse represents the structured JSON response from the LLM
+type EnrichmentResponse struct {
+	Skills []EnrichedField `json:"skills"`
 }
 
 func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
@@ -62,7 +116,7 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 	return &MCPHostClient{host: host}, nil
 }
 
-func (c *MCPHostClient) Enrich(ctx context.Context, record *corev1.Record) (*corev1.Record, error) {
+func (c *MCPHostClient) Enrich(ctx context.Context, record *typesv1alpha1.Record) (*typesv1alpha1.Record, error) {
 	// Marshal the record to JSON
 	recordJSON, err := json.Marshal(record)
 	if err != nil {
@@ -70,40 +124,34 @@ func (c *MCPHostClient) Enrich(ctx context.Context, record *corev1.Record) (*cor
 	}
 
 	// Run prompt for skills
-	skillResponse, err := c.runPrompt(ctx, "skill", recordJSON)
+	skillResponse, err := c.runPrompt(ctx, recordJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run prompt: %w", err)
 	}
 
-	// Decode the record to get the typed version
-	decoded, err := record.Decode()
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode record: %w", err)
-	}
-
-	// Get the V1Alpha1 record (assuming 0.7.0 schema)
-	if !decoded.HasV1Alpha1() {
-		return nil, errors.New("record is not V1Alpha1 format")
-	}
-
-	typedRecord := decoded.GetV1Alpha1()
-
-	skills, err := c.parseResponse(skillResponse)
+	enrichedFields, err := c.parseResponse(skillResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse skills: %w", err)
 	}
 
-	for _, skill := range skills {
-		typedRecord.Skills = append(typedRecord.Skills, &typesv1alpha1.Skill{
-			Name: skill,
-		})
+	// Filter by confidence threshold and add to record
+	for _, field := range enrichedFields {
+		if field.Confidence >= DefaultConfidenceThreshold {
+			record.Skills = append(record.Skills, &typesv1alpha1.Skill{
+				Name: field.Name,
+			})
+
+			if DebugEnabled {
+				logger.Info("Added skill", "name", field.Name, "confidence", field.Confidence, "reasoning", field.Reasoning)
+			}
+		} else {
+			logger.Warn("Skipped low-confidence skill", "name", field.Name, "confidence", field.Confidence, "threshold", DefaultConfidenceThreshold)
+		}
 	}
 
-	// Re-encode the record to get the enriched record
-	enrichedRecord := corev1.New(typedRecord)
 
 	if DebugEnabled {
-		enrichedRecordJSON, err := enrichedRecord.Marshal()
+		enrichedRecordJSON, err := json.Marshal(record)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal enriched record: %w", err)
 		}
@@ -111,7 +159,7 @@ func (c *MCPHostClient) Enrich(ctx context.Context, record *corev1.Record) (*cor
 		logger.Info("Enriched record", "record", string(enrichedRecordJSON))
 	}
 
-	return enrichedRecord, nil
+	return record, nil
 }
 
 func runGetSchemaToolsPrompt(ctx context.Context, host *sdk.MCPHost) {
@@ -132,8 +180,8 @@ func runGetSchemaToolsPrompt(ctx context.Context, host *sdk.MCPHost) {
 	logger.Info("3 sub-skills for natural_language_processing", "sub-skills", resp)
 }
 
-func (c *MCPHostClient) runPrompt(ctx context.Context, field string, recordJSON []byte) (string, error) {
-	prompt := strings.ReplaceAll(DefaultPromptTemplate, "#FIELD_NAME#", field) + string(recordJSON)
+func (c *MCPHostClient) runPrompt(ctx context.Context, recordJSON []byte) (string, error) {
+	prompt := DefaultPromptTemplate + string(recordJSON)
 
 	var (
 		response string
@@ -164,6 +212,8 @@ func (c *MCPHostClient) runPrompt(ctx context.Context, field string, recordJSON 
 			return "", fmt.Errorf("failed to send prompt: %w", err)
 		}
 
+		logger.Info("Response", "response", response)
+
 		return response, nil
 	}
 
@@ -176,18 +226,41 @@ func (c *MCPHostClient) runPrompt(ctx context.Context, field string, recordJSON 
 	return response, nil
 }
 
-func (c *MCPHostClient) parseResponse(response string) ([]string, error) {
-	items := strings.Split(response, ",")
-	for _, item := range items {
-		item = strings.TrimSpace(item)
-		if item == "" {
-			continue
+func (c *MCPHostClient) parseResponse(response string) ([]EnrichedField, error) {
+	// Trim the entire response first to remove leading/trailing whitespace
+	response = strings.TrimSpace(response)
+
+	// Try to parse as structured JSON first
+	var enrichmentResp EnrichmentResponse
+	err := json.Unmarshal([]byte(response), &enrichmentResp)
+	if err == nil {
+		// Successfully parsed as JSON
+		fields := enrichmentResp.Skills
+
+		// Validate and filter fields
+		validFields := make([]EnrichedField, 0, len(fields))
+		for _, field := range fields {
+			// Basic validation: must contain exactly one forward slash
+			if strings.Count(field.Name, "/") != 1 {
+				logger.Warn("Skipping invalid skill format (must be skill/sub_skill)", "skill", field.Name)
+				continue
+			}
+
+			// Validate confidence is in valid range
+			if field.Confidence < 0.0 || field.Confidence > 1.0 {
+				logger.Warn("Skipping skill with invalid confidence", "skill", field.Name, "confidence", field.Confidence)
+				continue
+			}
+
+			validFields = append(validFields, field)
 		}
+
+		if len(validFields) == 0 {
+			return nil, fmt.Errorf("no valid skills found in JSON response")
+		}
+
+		return validFields, nil
 	}
 
-	if len(items) == 0 {
-		return nil, fmt.Errorf("no valid skills found in response: %s", response)
-	}
-
-	return items, nil
+	return nil, fmt.Errorf("failed to parse response: %w", err)
 }
