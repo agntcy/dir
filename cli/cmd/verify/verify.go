@@ -29,9 +29,17 @@ identity-based OIDC or key-based signing process.
 
 Usage examples:
 
-1. Verify a record from file:
+1. Verify a record signature:
 
 	dirctl verify <record-cid>
+
+2. Output formats:
+
+	# Get verification result as JSON
+	dirctl verify <record-cid> --output json
+	
+	# Get raw verification status for scripting
+	dirctl verify <record-cid> --output raw
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var recordRef string

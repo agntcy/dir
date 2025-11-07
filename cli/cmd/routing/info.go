@@ -4,7 +4,6 @@
 package routing
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -33,6 +32,13 @@ Usage examples:
 
 1. Show local routing statistics:
    dirctl routing info
+
+2. Output formats:
+   # Get routing statistics as JSON
+   dirctl routing info --output json
+   
+   # Get raw statistics data
+   dirctl routing info --output raw
 
 Note: For network-wide statistics, use 'dirctl routing search' with broad queries.
 `,
@@ -68,20 +74,7 @@ func runInfoCommand(cmd *cobra.Command) error {
 	// Collect statistics
 	stats := collectRoutingStatistics(resultCh)
 
-	// Output in the appropriate format
-	if outputOpts.Format == presenter.FormatJSON {
-		return outputJSONStatistics(cmd, stats)
-	}
-
-	// Default human-readable format
-	presenter.Printf(cmd, "Local Routing Summary:\n\n")
-	displayRoutingStatistics(cmd, stats)
-
-	return nil
-}
-
-// outputJSONStatistics outputs routing statistics in JSON format.
-func outputJSONStatistics(cmd *cobra.Command, stats *routingStatistics) error {
+	// Build structured result for all output formats
 	result := map[string]interface{}{
 		"totalRecords": stats.totalRecords,
 		"skills":       stats.skillCounts,
@@ -89,12 +82,18 @@ func outputJSONStatistics(cmd *cobra.Command, stats *routingStatistics) error {
 		"otherLabels":  stats.otherLabels,
 	}
 
-	output, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+	// Use common PrintMessage for structured formats (json, jsonl, raw)
+	if outputOpts.Format != presenter.FormatHuman {
+		if err := presenter.PrintMessage(cmd, "routing statistics", "Routing statistics", result); err != nil {
+			return fmt.Errorf("failed to print routing statistics: %w", err)
+		}
+
+		return nil
 	}
 
-	presenter.Print(cmd, string(output)+"\n")
+	// Human-readable format
+	presenter.Printf(cmd, "Local Routing Summary:\n\n")
+	displayRoutingStatistics(cmd, stats)
 
 	return nil
 }

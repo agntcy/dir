@@ -37,6 +37,17 @@ Usage examples:
 
 	dirctl push model.json --sign
 
+4. Output formats:
+
+	# Get CID as JSON
+	dirctl push model.json --output json
+	
+	# Get raw CID for scripting
+	CID=$(dirctl push model.json --output raw)
+	
+	# Push and pipe to publish
+	dirctl push model.json --output raw | xargs dirctl routing publish
+
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var path string

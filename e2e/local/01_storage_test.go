@@ -102,7 +102,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 1: Push
 			ginkgo.It("should successfully push an record", func() {
-				cid = cli.Push(tempPath).WithArgs("--raw").ShouldSucceed()
+				cid = cli.Push(tempPath).WithArgs("--output", "raw").ShouldSucceed()
 
 				// Validate that the returned CID correctly represents the pushed data
 				utils.LoadAndValidateCID(cid, tempPath)
@@ -116,7 +116,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			// Step 3: Verify push/pull consistency (depends on pull)
 			ginkgo.It("should return identical record when pulled after push", func() {
 				// Pull the record and get the output JSON
-				pulledJSON := cli.Pull(cid).WithArgs("--json").ShouldSucceed()
+				pulledJSON := cli.Pull(cid).WithArgs("--output", "json").ShouldSucceed()
 
 				// Compare original embedded JSON with pulled JSON using version-aware comparison
 				equal, err := utils.CompareOASFRecords(version.jsonData, []byte(pulledJSON))
@@ -129,7 +129,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 4: Verify duplicate push returns same CID (depends on push)
 			ginkgo.It("should push the same record again and return the same cid", func() {
-				cli.Push(tempPath).WithArgs("--raw").ShouldReturn(cid)
+				cli.Push(tempPath).WithArgs("--output", "raw").ShouldReturn(cid)
 			})
 
 			// Step 5: Search by first skill (depends on push)
@@ -139,7 +139,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				search := cli.Search().
 					WithLimit(10).
 					WithOffset(0).
-					WithArgs("--raw").
+					WithArgs("--output", "raw").
 					WithName(version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
 					WithSkillID(version.expectedSkillIDs[0]).
 					WithSkillName(version.expectedSkillNames[0])
@@ -166,7 +166,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				search := cli.Search().
 					WithLimit(10).
 					WithOffset(0).
-					WithArgs("--raw").
+					WithArgs("--output", "raw").
 					WithName(version.expectedAgentName). // Use version-specific record name to prevent conflicts between V1/V2/V3 tests
 					WithSkillID(version.expectedSkillIDs[1]).
 					WithSkillName(version.expectedSkillNames[1])

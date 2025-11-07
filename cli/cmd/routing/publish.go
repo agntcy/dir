@@ -37,6 +37,13 @@ Usage examples:
 1. Publish a record to the network:
    dirctl routing publish <cid>
 
+2. Output formats:
+   # Publish with JSON confirmation
+   dirctl routing publish <cid> --output json
+   
+   # Publish with raw output for scripting
+   dirctl routing publish <cid> --output raw
+
 Note: The record must already be pushed to storage before publishing.
 `,
 	Args: cobra.ExactArgs(1),

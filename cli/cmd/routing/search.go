@@ -39,6 +39,16 @@ Usage examples:
 3. Search with result limiting:
    dirctl routing search --skill "web-development" --limit 5
 
+4. Output formats:
+   # Get results as JSON
+   dirctl routing search --skill "AI" --output json
+   
+   # Search and pipe to sync
+   dirctl routing search --skill "AI" --output json | dirctl sync create --stdin
+   
+   # Get raw results for scripting
+   dirctl routing search --skill "web" --output raw
+
 `,
 	//nolint:gocritic // Lambda required due to signature mismatch - runSearchCommand doesn't use args
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -54,7 +64,6 @@ var searchOpts struct {
 	Modules  []string
 	Limit    uint32
 	MinScore uint32
-	JSON     bool
 }
 
 const (
@@ -71,13 +80,15 @@ func init() {
 	searchCmd.Flags().StringArrayVar(&searchOpts.Modules, "module", nil, "Search for records with specific module (can be repeated)")
 	searchCmd.Flags().Uint32Var(&searchOpts.Limit, "limit", defaultSearchLimit, "Maximum number of results to return")
 	searchCmd.Flags().Uint32Var(&searchOpts.MinScore, "min-score", defaultMinScore, "Minimum match score (number of queries that must match)")
-	searchCmd.Flags().BoolVar(&searchOpts.JSON, "json", false, "Output results in JSON format")
 
 	// Add examples in flag help
 	searchCmd.Flags().Lookup("skill").Usage = "Search for records with specific skill (e.g., --skill 'AI' --skill 'ML')"
 	searchCmd.Flags().Lookup("locator").Usage = "Search for records with specific locator type (e.g., --locator 'docker-image')"
 	searchCmd.Flags().Lookup("domain").Usage = "Search for records with specific domain (e.g., --domain 'research' --domain 'analytics')"
 	searchCmd.Flags().Lookup("module").Usage = "Search for records with specific module (e.g., --module 'runtime/language' --module 'runtime/framework')"
+
+	// Add standard output format flags
+	presenter.AddOutputFlags(searchCmd)
 }
 
 func runSearchCommand(cmd *cobra.Command) error {
@@ -124,10 +135,10 @@ func runSearchCommand(cmd *cobra.Command) error {
 
 	// Validate that we have at least some criteria
 	if len(queries) == 0 {
-		presenter.Printf(cmd, "No search criteria specified. Use --skill, --locator, --domain, or --module flags.\n")
-		presenter.Printf(cmd, "Examples:\n")
-		presenter.Printf(cmd, "  dirctl routing search --skill 'AI' --locator 'docker-image'\n")
-		presenter.Printf(cmd, "  dirctl routing search --domain 'research' --module 'runtime/language'\n")
+		presenter.PrintSmartf(cmd, "No search criteria specified. Use --skill, --locator, --domain, or --module flags.\n")
+		presenter.PrintSmartf(cmd, "Examples:\n")
+		presenter.PrintSmartf(cmd, "  dirctl routing search --skill 'AI' --locator 'docker-image'\n")
+		presenter.PrintSmartf(cmd, "  dirctl routing search --domain 'research' --module 'runtime/language'\n")
 
 		return nil
 	}

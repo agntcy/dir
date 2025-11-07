@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a network multi p
 	})
 
 	ginkgo.It("should push record_070.json to peer 1", func() {
-		cid = cli.Push(tempPath).WithArgs("--raw").OnServer(utils.Peer1Addr).ShouldSucceed()
+		cid = cli.Push(tempPath).WithArgs("--output", "raw").OnServer(utils.Peer1Addr).ShouldSucceed()
 
 		// Track CID for cleanup
 		RegisterCIDForCleanup(cid, "deploy")

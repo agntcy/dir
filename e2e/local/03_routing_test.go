@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("Running dirctl routing commands in local single node de
 
 	ginkgo.Context("routing publish command", func() {
 		ginkgo.It("should push a record first (prerequisite for publish)", func() {
-			cid = cli.Push(tempPath).WithArgs("--raw").ShouldSucceed()
+			cid = cli.Push(tempPath).WithArgs("--output", "raw").ShouldSucceed()
 
 			// Validate that the returned CID correctly represents the pushed data
 			utils.LoadAndValidateCID(cid, tempPath)

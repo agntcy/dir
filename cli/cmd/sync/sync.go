@@ -43,7 +43,7 @@ Usage examples:
   dir sync create http://localhost:8080 --cids cid1,cid2,cid3
 
 3. Create sync from routing search output:
-  dirctl routing search --skill "AI" --json | dirctl sync create --stdin`,
+  dirctl routing search --skill "AI" --output json | dirctl sync create --stdin`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if opts.Stdin {
 			return cobra.MaximumNArgs(0)(cmd, args)
@@ -67,8 +67,23 @@ var listCmd = &cobra.Command{
 	Long: `List displays all sync operations known to the system, including active, 
 completed, and failed synchronizations.
 
-Pagination can be controlled using --limit and --offset flags:
-  dir sync list --limit 10 --offset 20`,
+Usage examples:
+
+1. List all syncs:
+  dirctl sync list
+
+2. Pagination:
+  dirctl sync list --limit 10 --offset 20
+
+3. Output formats:
+  # Get syncs as JSON
+  dirctl sync list --output json
+  
+  # Get syncs as JSONL for streaming
+  dirctl sync list --output jsonl
+  
+  # Get raw sync data
+  dirctl sync list --output raw`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runListSyncs(cmd)
 	},
@@ -79,7 +94,19 @@ var statusCmd = &cobra.Command{
 	Use:   "status <sync-id>",
 	Short: "Get detailed status of a synchronization operation",
 	Long: `Status retrieves comprehensive information about a specific sync operation,
-including progress, timing, and error details if applicable.`,
+including progress, timing, and error details if applicable.
+
+Usage examples:
+
+1. Get sync status:
+  dirctl sync status <sync-id>
+
+2. Output formats:
+  # Get sync status as JSON
+  dirctl sync status <sync-id> --output json
+  
+  # Get raw status data for scripting
+  dirctl sync status <sync-id> --output raw`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runGetSyncStatus(cmd, args[0])
@@ -91,7 +118,19 @@ var deleteCmd = &cobra.Command{
 	Use:   "delete <sync-id>",
 	Short: "Delete a synchronization operation",
 	Long: `Delete removes a sync operation from the system. For active syncs,
-this will attempt to cancel the operation gracefully.`,
+this will attempt to cancel the operation gracefully.
+
+Usage examples:
+
+1. Delete a sync:
+  dirctl sync delete <sync-id>
+
+2. Output formats:
+  # Delete sync with JSON confirmation
+  dirctl sync delete <sync-id> --output json
+  
+  # Delete sync with raw output for scripting
+  dirctl sync delete <sync-id> --output raw`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runDeleteSync(cmd, args[0])
@@ -208,7 +247,7 @@ func runCreateSyncFromStdin(cmd *cobra.Command) error {
 	}
 
 	if len(results) == 0 {
-		presenter.Printf(cmd, "No search results found in stdin\n")
+		presenter.PrintSmartf(cmd, "No search results found in stdin\n")
 
 		return nil
 	}
@@ -221,7 +260,7 @@ func runCreateSyncFromStdin(cmd *cobra.Command) error {
 }
 
 func parseSearchOutput(input io.Reader) ([]*routingv1.SearchResponse, error) {
-	// Read JSON input from routing search --json
+	// Read JSON input from routing search --output json
 	inputBytes, err := io.ReadAll(input)
 	if err != nil {
 		return nil, fmt.Errorf("error reading input: %w", err)
@@ -287,8 +326,8 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 
 	for apiAddress, syncInfo := range peerResults {
 		if syncInfo.APIAddress == "" {
-			presenter.Printf(cmd, "WARNING: No API address found for peer\n")
-			presenter.Printf(cmd, "Skipping sync for this peer\n")
+			presenter.PrintSmartf(cmd, "WARNING: No API address found for peer\n")
+			presenter.PrintSmartf(cmd, "Skipping sync for this peer\n")
 
 			continue
 		}
@@ -296,7 +335,7 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 		// Create sync operation
 		syncID, err := client.CreateSync(cmd.Context(), syncInfo.APIAddress, syncInfo.CIDs)
 		if err != nil {
-			presenter.Printf(cmd, "ERROR: Failed to create sync for peer %s: %v\n", apiAddress, err)
+			presenter.PrintSmartf(cmd, "ERROR: Failed to create sync for peer %s: %v\n", apiAddress, err)
 
 			continue
 		}

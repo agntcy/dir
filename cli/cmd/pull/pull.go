@@ -35,6 +35,17 @@ Usage examples:
 3. Pull by cid and output signature
 
 	dirctl pull <cid> --signature
+
+4. Output formats:
+
+	# Get record as JSON
+	dirctl pull <cid> --output json
+	
+	# Get record with public key as JSON
+	dirctl pull <cid> --public-key --output json
+	
+	# Get raw record data for piping
+	dirctl pull <cid> --output raw > record.json
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {

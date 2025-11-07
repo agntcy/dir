@@ -24,9 +24,19 @@ var Command = &cobra.Command{
 	Short: "Delete record from Directory store",
 	Long: `This command deletes a record from the Directory store.
 
-Usage example:
+Usage examples:
+
+1. Delete a record:
 
 	dirctl delete <cid>
+
+2. Output formats:
+
+	# Delete with JSON confirmation
+	dirctl delete <cid> --output json
+	
+	# Delete with raw output for scripting
+	dirctl delete <cid> --output raw
 
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {

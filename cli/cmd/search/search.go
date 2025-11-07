@@ -90,6 +90,17 @@ Usage examples:
 	# Combine different wildcard types
 	dirctl search --name "web-[0-9]?" --version "v?.*.?"
 
+6. Output formats:
+
+	# Get results as JSON for programmatic use
+	dirctl search --name "web*" --output json
+	
+	# Get results as JSONL (one per line) for streaming
+	dirctl search --skill "AI" --output jsonl
+	
+	# Get raw CIDs only for piping to other commands
+	dirctl search --name "web*" --output raw | xargs -I {} dirctl pull {}
+
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runCommand(cmd)
