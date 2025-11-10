@@ -115,7 +115,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 			ginkgo.It("should find record by exact domain ID match", func() {
 				output := cli.Search().
-					WithDomainID("703").
+					WithDomainID("301").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
