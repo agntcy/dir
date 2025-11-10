@@ -21,128 +21,51 @@ const (
 	DebugMode                  = false
 	DefaultConfigFile          = "importer/enricher/mcphost.json"
 	DefaultConfidenceThreshold = 0.5
-	DefaultPromptTemplate      = `Select 1-3 skills for this agent record.
+	DefaultPromptTemplate      = `CRITICAL: You MUST call tools FIRST before responding!
 
-YOU MUST CALL THE TOOLS BELOW - DO NOT SKIP TOOL CALLS!
-DO NOT INVENT SKILL NAMES - ONLY USE NAMES FROM TOOL RESPONSES!
+STEP 1 - CALL THIS TOOL NOW:
+Tool: dir-mcp-server__agntcy_oasf_get_schema_skills
+Args: {"version": "0.7.0"}
 
-MANDATORY STEPS - FOLLOW EXACTLY:
+Wait for response. The response will show top-level skills like:
+{"name": "analytical_skills", ...}, {"name": "retrieval_augmented_generation", ...}, {"name": "natural_language_processing", ...}
 
-STEP 1: Call the first tool
-   Tool: dir-mcp-server__agntcy_oasf_get_schema_skills
-   Parameters: {"version": "0.7.0"}
-   This returns ALL valid top-level skills with their "name" field.
+STEP 2 - Pick ONE skill "name" from Step 1 (e.g. "retrieval_augmented_generation")
 
-STEP 2: Choose ONE top-level skill
-   Pick ONE top-level skill from Step 1's tool response.
-   Look at the "name" field of each skill.
-   Choose the one that best matches the record below.
+STEP 3 - CALL THIS TOOL NOW:
+Tool: dir-mcp-server__agntcy_oasf_get_schema_skills  
+Args: {"version": "0.7.0", "parent_skill": "YOUR_CHOICE_FROM_STEP_2"}
 
-STEP 3: Call the second tool
-   Tool: dir-mcp-server__agntcy_oasf_get_schema_skills
-   Parameters: {"version": "0.7.0", "parent_skill": "the_name_from_step_2"}
-   This returns ALL valid sub-skills with their "name" field.
+Wait for response. The response will show sub-skills with "name" field like:
+{"name": "retrieval_of_information", "caption": "Indexing", "id": 601}
+{"name": "document_or_database_question_answering", "caption": "Q&A", "id": 602}
 
-STEP 4: Choose 1-3 sub-skills
-   Pick 1-3 sub-skills from Step 3's tool response.
-   Look ONLY at the "name" field of each sub-skill.
-   COPY the exact "name" value - DO NOT change it!
-   
-   IMPORTANT: Tool response format:
-   {"name": "actual_skill_name", "caption": "Human Label", "id": 123, ...}
-   
-   YOU MUST USE: The "name" field value EXACTLY as shown
-   NEVER USE: The caption, description, or any other field
-   NEVER INVENT: Names that don't appear in the tool response
-   
-   Real example from tool:
-   {"name": "retrieval_of_information", "caption": "Indexing", "id": 601}
-   ✓ CORRECT: "retrieval_augmented_generation/retrieval_of_information"
-   ❌ WRONG: "retrieval_augmented_generation/indexing"
+STEP 4 - Pick 1-3 sub-skills from Step 3's "name" field ONLY
 
-5. YOUR FINAL OUTPUT MUST BE VALID JSON ONLY - NO TEXT BEFORE OR AFTER:
+DO NOT INVENT NAMES! These DO NOT exist:
+❌ "information_retrieval_synthesis"
+❌ "api_server_operations"  
+❌ "statistical_analysis"
+❌ "data_visualization"
+❌ "code_generation"
+❌ "data_retrieval"
 
-{
-  "skills": [
-    {
-      "name": "top_level_skill/sub_skill",
-      "confidence": 0.95,
-      "reasoning": "Brief explanation of why this skill matches"
-    }
-  ]
-}
-
-CRITICAL NAMING RULES - READ CAREFULLY:
-
-1. You MUST call both tools (Step 1 and Step 3)
-2. You MUST use ONLY the "name" field from the tool responses
-3. Format MUST be: "top_level_skill/sub_skill" (exactly ONE slash)
-4. DO NOT use top-level skills alone (like "tabular_text")
-5. DO NOT invent skill names that sound plausible but weren't in the tools
-
-EXAMPLES OF WRONG SKILL NAMES (DO NOT USE THESE):
-❌ "tabular_text" - missing sub-skill, must be "tabular_text/something"
-❌ "data_access/business_data_retrieval" - invented name, not in schema
-❌ "api_management/api_server" - invented name, not in schema
-❌ "machine_learning/statistical_analysis" - invented name, not in schema
-❌ "data_analysis/data_processing" - invented name, not in schema
-❌ "data_analysis/data_visualization" - invented name, not in schema
-❌ "data_analysis/report_generation" - invented name, not in schema
-❌ "retrieval_augmented_generation/indexing" - using caption, not name
-❌ "retrieval_augmented_generation/document_retrieval" - doesn't exist
-
-EXAMPLES OF CORRECT SKILL NAMES (THESE ARE REAL):
+Real examples (from actual schema):
 ✓ "retrieval_augmented_generation/retrieval_of_information"
 ✓ "retrieval_augmented_generation/document_or_database_question_answering"
-✓ "retrieval_augmented_generation/generation_of_any"
 ✓ "natural_language_processing/ethical_interaction"
-✓ "natural_language_processing/information_retrieval_synthesis"
 ✓ "analytical_skills/mathematical_reasoning"
-✓ "tabular_text/tabular_classification"
-✓ "tabular_text/tabular_regression"
 
-IF A SKILL NAME YOU WANT TO USE IS NOT IN THE TOOL RESPONSE, DON'T USE IT!
-ONLY USE NAMES THAT APPEAR IN THE "name" FIELD OF THE TOOL RESPONSE!
-
-CRITICAL OUTPUT RULES:
-✓ Output ONLY valid JSON (no markdown code blocks, no explanations)
-✓ Use exact skill names from tools (case-sensitive)
-✓ Each name MUST be "top_level_skill/sub_skill" format with exactly one slash (/)
-✓ Confidence must be a number between 0.0 and 1.0
-✓ Reasoning should be 1-2 sentences explaining the match
-✓ Include 1-3 skills in the array
-
-❌ DO NOT wrap JSON in markdown code blocks (no triple backticks)
-❌ DO NOT add text before or after the JSON
-❌ DO NOT write: "Here is the JSON..." or "Based on..."
-❌ DO NOT use skill names that were not in the tool response
-
-Example of CORRECT output (copy this structure exactly):
+OUTPUT (JSON only, no markdown):
 {
   "skills": [
     {
-      "name": "audio/speech_recognition",
+      "name": "parent_skill/sub_skill",
       "confidence": 0.95,
-      "reasoning": "Agent processes spoken audio input into text"
-    },
-    {
-      "name": "audio/audio_generation",
-      "confidence": 0.85,
-      "reasoning": "Agent can generate audio output from text"
+      "reasoning": "Brief explanation"
     }
   ]
 }
-
-FINAL REMINDER BEFORE YOU START:
-1. Call tool #1 to get top-level skills
-2. Pick ONE top-level skill from tool #1 response
-3. Call tool #2 with that top-level skill to get sub-skills
-4. Pick 1-3 sub-skills from tool #2 response
-5. Use EXACT "name" field values from tool #2
-6. Format as "top_level/sub_skill"
-7. Output ONLY the JSON shown above
-
-DO NOT make up skill names! Only use names from the tool responses!
 
 Agent record to analyze:
 `
