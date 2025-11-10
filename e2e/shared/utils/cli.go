@@ -61,6 +61,8 @@ func (c *CLI) Search() *SearchBuilder {
 		skillNames:       []string{},
 		locators:         []string{},
 		modules:          []string{},
+		domainIDs:        []string{},
+		domains:          []string{},
 		outputFormatArgs: []string{},
 		limit:            0,
 		offset:           0,
@@ -391,6 +393,8 @@ type SearchBuilder struct {
 	skillNames       []string
 	locators         []string
 	modules          []string
+	domainIDs        []string
+	domains          []string
 	outputFormatArgs []string
 	limit            int
 	offset           int
@@ -428,6 +432,18 @@ func (s *SearchBuilder) WithLocator(locator string) *SearchBuilder {
 
 func (s *SearchBuilder) WithModule(module string) *SearchBuilder {
 	s.modules = append(s.modules, module)
+
+	return s
+}
+
+func (s *SearchBuilder) WithDomainID(domainID string) *SearchBuilder {
+	s.domainIDs = append(s.domainIDs, domainID)
+
+	return s
+}
+
+func (s *SearchBuilder) WithDomain(domain string) *SearchBuilder {
+	s.domains = append(s.domains, domain)
 
 	return s
 }
@@ -477,6 +493,14 @@ func (s *SearchBuilder) Execute() (string, error) {
 
 	for _, module := range s.modules {
 		s.args = append(s.args, "--module", module)
+	}
+
+	for _, domainID := range s.domainIDs {
+		s.args = append(s.args, "--domain-id", domainID)
+	}
+
+	for _, domain := range s.domains {
+		s.args = append(s.args, "--domain", domain)
 	}
 
 	if s.limit > 0 {

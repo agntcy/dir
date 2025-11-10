@@ -174,6 +174,8 @@ func ResetSearchCommandState() {
 		resetStringArrayFlag(cmd, "skill")
 		resetStringArrayFlag(cmd, "locator")
 		resetStringArrayFlag(cmd, "module")
+		resetStringArrayFlag(cmd, "domain-id")
+		resetStringArrayFlag(cmd, "domain")
 	}
 }
 

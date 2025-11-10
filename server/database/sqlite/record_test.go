@@ -233,6 +233,7 @@ func createTestData(t *testing.T, db *DB) {
 				},
 				domains: []types.Domain{
 					&TestDomain{id: 901, name: "healthcare/medical_technology"},
+					&TestDomain{id: 604, name: "education/educational_technology"},
 				},
 			},
 		},
@@ -321,7 +322,7 @@ func TestGetRecords_SingleOptions(t *testing.T) {
 	// Test domain names filter.
 	records, err = db.GetRecords(types.WithDomainNames("education/educational_technology"))
 	require.NoError(t, err)
-	assert.Len(t, records, 2) // agent1 and test-agent have education domain
+	assert.Len(t, records, 3) // agent1, agent2, and test-agent have education domain
 
 	// Test domain names filter for healthcare.
 	records, err = db.GetRecords(types.WithDomainNames("healthcare/medical_technology"))
@@ -380,7 +381,7 @@ func TestGetRecords_CombinedOptions(t *testing.T) {
 		types.WithVersion("1.0.0"),
 	)
 	require.NoError(t, err)
-	assert.Len(t, records, 2) // agent1 and test-agent have education domain and version 1.0.0
+	assert.Len(t, records, 2) // agent1 and test-agent have education domain and version 1.0.0 (agent2 has education but version 2.0.0)
 
 	// Test domain + skill filter.
 	records, err = db.GetRecords(
@@ -390,6 +391,33 @@ func TestGetRecords_CombinedOptions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, records, 1) // Only agent1 has both education domain and skill1
 	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
+
+	// Test domain ID filter for education domain (604).
+	records, err = db.GetRecords(types.WithDomainIDs(604))
+	require.NoError(t, err)
+	assert.Len(t, records, 3) // agent1, agent2, and test-agent have domain 604
+
+	// Test domain ID filter for healthcare domain (901).
+	records, err = db.GetRecords(types.WithDomainIDs(901))
+	require.NoError(t, err)
+	assert.Len(t, records, 1)
+	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
+
+	// Test domain name with wildcard pattern matching education domains.
+	records, err = db.GetRecords(types.WithDomainNames("*education*"))
+	require.NoError(t, err)
+	assert.Len(t, records, 3) // agent1, agent2, and test-agent have education domains
+
+	// Test domain name with wildcard pattern matching healthcare domains.
+	records, err = db.GetRecords(types.WithDomainNames("*healthcare*"))
+	require.NoError(t, err)
+	assert.Len(t, records, 1)
+	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
+
+	// Test domain name with wildcard pattern for technology suffix.
+	records, err = db.GetRecords(types.WithDomainNames("*technology"))
+	require.NoError(t, err)
+	assert.Len(t, records, 3) // all three records have domains ending with _technology
 }
 
 // TestGetRecords_SkillIdOption tests the skill ID option.
@@ -413,45 +441,6 @@ func TestGetRecords_LocatorUrlOption(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
-}
-
-// TestGetRecords_DomainIdOption tests the domain ID option.
-func TestGetRecords_DomainIdOption(t *testing.T) {
-	db := setupTestDB(t)
-	createTestData(t, db)
-
-	// Test with domain ID filter for education domain (604).
-	records, err := db.GetRecords(types.WithDomainIDs(604))
-	require.NoError(t, err)
-	assert.Len(t, records, 2) // agent1 and test-agent have domain 604
-
-	// Test with domain ID filter for healthcare domain (901).
-	records, err = db.GetRecords(types.WithDomainIDs(901))
-	require.NoError(t, err)
-	assert.Len(t, records, 1)
-	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
-}
-
-// TestGetRecords_DomainNameWildcards tests domain name filtering with wildcards.
-func TestGetRecords_DomainNameWildcards(t *testing.T) {
-	db := setupTestDB(t)
-	createTestData(t, db)
-
-	// Test with wildcard pattern matching education domains.
-	records, err := db.GetRecords(types.WithDomainNames("*education*"))
-	require.NoError(t, err)
-	assert.Len(t, records, 2) // agent1 and test-agent have education domains
-
-	// Test with wildcard pattern matching healthcare domains.
-	records, err = db.GetRecords(types.WithDomainNames("*healthcare*"))
-	require.NoError(t, err)
-	assert.Len(t, records, 1)
-	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
-
-	// Test with wildcard pattern for technology suffix.
-	records, err = db.GetRecords(types.WithDomainNames("*technology"))
-	require.NoError(t, err)
-	assert.Len(t, records, 3) // both education and healthcare domains end with _technology
 }
 
 // TestGetRecords_PreloadRelations ensures related data is properly loaded.
