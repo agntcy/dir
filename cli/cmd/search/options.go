@@ -12,12 +12,14 @@ type options struct {
 	Offset uint32
 
 	// Direct field flags (consistent with routing search)
-	Names      []string
-	Versions   []string
-	SkillIDs   []string
-	SkillNames []string
-	Locators   []string
-	Modules    []string
+	Names       []string
+	Versions    []string
+	SkillIDs    []string
+	SkillNames  []string
+	Locators    []string
+	Modules     []string
+	DomainIDs   []string
+	DomainNames []string
 }
 
 func init() {
@@ -33,6 +35,8 @@ func init() {
 	flags.StringArrayVar(&opts.SkillNames, "skill", nil, "Search for records with specific skill name (can be repeated)")
 	flags.StringArrayVar(&opts.Locators, "locator", nil, "Search for records with specific locator type (can be repeated)")
 	flags.StringArrayVar(&opts.Modules, "module", nil, "Search for records with specific module (can be repeated)")
+	flags.StringArrayVar(&opts.DomainIDs, "domain-id", nil, "Search for records with specific domain ID (can be repeated)")
+	flags.StringArrayVar(&opts.DomainNames, "domain", nil, "Search for records with specific domain name (can be repeated)")
 
 	// Add examples in flag help
 	flags.Lookup("name").Usage = "Search for records with specific name (e.g., --name 'my-agent' --name 'web-*')"
@@ -41,6 +45,8 @@ func init() {
 	flags.Lookup("skill").Usage = "Search for records with specific skill name (e.g., --skill 'natural_language_processing' --skill 'audio')"
 	flags.Lookup("locator").Usage = "Search for records with specific locator type (e.g., --locator 'docker-image')"
 	flags.Lookup("module").Usage = "Search for records with specific module (e.g., --module 'runtime/language')"
+	flags.Lookup("domain-id").Usage = "Search for records with specific domain ID (e.g., --domain-id '604')"
+	flags.Lookup("domain").Usage = "Search for records with specific domain name (e.g., --domain '*education*' --domain 'healthcare/*')"
 
 	// Add output format flags
 	presenter.AddOutputFlags(Command)

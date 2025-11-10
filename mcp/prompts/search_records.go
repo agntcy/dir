@@ -33,7 +33,7 @@ USER QUERY: "` + query + `"
 WORKFLOW:
 
 1. Get schema: Call 'agntcy_oasf_get_schema' to see available skills/domains
-2. Translate query to search parameters (names, versions, skill_ids, skill_names, locators, modules)
+2. Translate query to search parameters (names, versions, skill_ids, skill_names, locators, modules, domain_ids, domain_names)
 3. Execute: Call 'agntcy_dir_search_local' with parameters
 4. Display: Extract ALL CIDs from the 'record_cids' array in the response and list them clearly with the count
 
@@ -44,13 +44,16 @@ PARAMETERS:
 - skill_names: Skill patterns (e.g., "*python*")
 - locators: Locator patterns (e.g., "docker-image:*")
 - modules: Module patterns (e.g., "*-plugin")
+- domain_ids: Exact domain IDs (e.g., "604")
+- domain_names: Domain patterns (e.g., "*education*", "healthcare/*")
 
 WILDCARDS: * (zero+), ? (one), [abc] (char class)
 
 EXAMPLES:
 "find Python agents" → { "skill_names": ["*python*"] }
 "image processing v2" → { "skill_names": ["*image*"], "versions": ["v2.*"] }
-"docker translation" → { "skill_names": ["*translation*"], "locators": ["docker-image:*"] }`
+"docker translation" → { "skill_names": ["*translation*"], "locators": ["docker-image:*"] }
+"education agents with Python" → { "domain_names": ["*education*"], "skill_names": ["*python*"] }`
 
 	return &mcp.GetPromptResult{
 		Description: "Guided workflow for searching agent records using free-text queries",

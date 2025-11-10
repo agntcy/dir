@@ -42,6 +42,17 @@ func TestSearchRecords(t *testing.T) {
 			expectDefault: false,
 		},
 		{
+			name:  "with domain search query",
+			query: "education agents with Python",
+			expectInText: []string{
+				"education agents with Python",
+				"domain_ids",
+				"domain_names",
+				"skill_names",
+			},
+			expectDefault: false,
+		},
+		{
 			name:  "empty query defaults to placeholder",
 			query: "",
 			expectInText: []string{
@@ -135,4 +146,60 @@ func TestMarshalSearchRecordsInput(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, jsonStr, "find Python agents")
 	assert.Contains(t, jsonStr, "query")
+}
+
+func TestSearchRecordsPromptContainsDomainParameters(t *testing.T) {
+	req := &mcp.GetPromptRequest{
+		Params: &mcp.GetPromptParams{
+			Name: "search_records",
+			Arguments: map[string]string{
+				"query": "test",
+			},
+		},
+	}
+
+	result, err := SearchRecords(context.Background(), req)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	textContent, ok := result.Messages[0].Content.(*mcp.TextContent)
+	require.True(t, ok)
+
+	// Verify domain parameters are documented
+	assert.Contains(t, textContent.Text, "domain_ids")
+	assert.Contains(t, textContent.Text, "domain_names")
+
+	// Verify domain example exists
+	assert.Contains(t, textContent.Text, "education agents with Python")
+}
+
+func TestSearchRecordsPromptParameterDocumentation(t *testing.T) {
+	req := &mcp.GetPromptRequest{
+		Params: &mcp.GetPromptParams{
+			Name:      "search_records",
+			Arguments: map[string]string{},
+		},
+	}
+
+	result, err := SearchRecords(context.Background(), req)
+	require.NoError(t, err)
+
+	textContent, ok := result.Messages[0].Content.(*mcp.TextContent)
+	require.True(t, ok)
+
+	// Verify all parameters are documented
+	expectedParams := []string{
+		"names",
+		"versions",
+		"skill_ids",
+		"skill_names",
+		"locators",
+		"modules",
+		"domain_ids",
+		"domain_names",
+	}
+
+	for _, param := range expectedParams {
+		assert.Contains(t, textContent.Text, param, "Parameter %s should be documented", param)
+	}
 }

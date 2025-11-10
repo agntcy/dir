@@ -53,4 +53,12 @@ enum RecordQueryType {
   // Query for a module.
   // Supports wildcard patterns: "*-plugin", "*-module", "core*", "mod-?", "plugin-[0-9]"
   RECORD_QUERY_TYPE_MODULE = 6;
+
+  // Query for a domain ID.
+  // Numeric field - exact match only, no wildcard support.
+  RECORD_QUERY_TYPE_DOMAIN_ID = 7;
+
+  // Query for a domain name.
+  // Supports wildcard patterns: "*education*", "healthcare/*", "*technology"
+  RECORD_QUERY_TYPE_DOMAIN_NAME = 8;
 }

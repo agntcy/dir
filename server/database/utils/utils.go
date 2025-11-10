@@ -82,6 +82,17 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 				options = append(options, types.WithModuleNames(query.GetValue()))
 			}
 
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_ID:
+			u64, err := strconv.ParseUint(query.GetValue(), 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse domain ID %q: %w", query.GetValue(), err)
+			}
+
+			options = append(options, types.WithDomainIDs(u64))
+
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME:
+			options = append(options, types.WithDomainNames(query.GetValue()))
+
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())
 		}

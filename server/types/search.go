@@ -13,6 +13,8 @@ type RecordFilters struct {
 	LocatorTypes []string
 	LocatorURLs  []string
 	ModuleNames  []string
+	DomainIDs    []uint64
+	DomainNames  []string
 }
 
 type FilterOption func(*RecordFilters)
@@ -77,5 +79,19 @@ func WithLocatorURLs(urls ...string) FilterOption {
 func WithModuleNames(names ...string) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.ModuleNames = names
+	}
+}
+
+// WithDomainIDs filters records by domain IDs.
+func WithDomainIDs(ids ...uint64) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.DomainIDs = ids
+	}
+}
+
+// WithDomainNames filters records by domain names.
+func WithDomainNames(names ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.DomainNames = names
 	}
 }
