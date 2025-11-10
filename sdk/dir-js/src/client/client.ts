@@ -27,12 +27,12 @@ export class Config {
   static DEFAULT_SERVER_ADDRESS = '127.0.0.1:8888';
   static DEFAULT_DIRCTL_PATH = 'dirctl';
   static DEFAULT_SPIFFE_ENDPOINT_SOCKET = '';
-  static DEFAULT_AUTH_MODE = 'insecure';
+  static DEFAULT_AUTH_MODE = '';
   static DEFAULT_JWT_AUDIENCE = '';
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
-  authMode: 'insecure' | 'x509' | 'jwt';
+  authMode: '' | 'x509' | 'jwt';
   jwtAudience: string;
 
   /**
@@ -41,14 +41,14 @@ export class Config {
    * @param serverAddress - The server address to connect to. Defaults to '127.0.0.1:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
-   * @param authMode - Authentication mode: 'insecure', 'x509', or 'jwt'. Defaults to 'insecure'
+   * @param authMode - Authentication mode: '' for insecure, 'x509', or 'jwt'. Defaults to ''
    * @param jwtAudience - JWT audience for JWT authentication. Required when authMode is 'jwt'
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
-    authMode: 'insecure' | 'x509' | 'jwt' = Config.DEFAULT_AUTH_MODE as 'insecure' | 'x509' | 'jwt',
+    authMode: '' | 'x509' | 'jwt' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt',
     jwtAudience = Config.DEFAULT_JWT_AUDIENCE
   ) {
     // add protocol prefix if not set
@@ -95,7 +95,7 @@ export class Config {
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
     const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
-    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as 'insecure' | 'x509' | 'jwt';
+    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as '' | 'x509' | 'jwt';
     const jwtAudience = env[`${prefix}JWT_AUDIENCE`] || Config.DEFAULT_JWT_AUDIENCE;
 
     return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience);
@@ -204,7 +204,7 @@ export class Client {
   static async createGRPCTransport(config: Config): Promise<Transport> {
     // Handle different authentication modes
     switch (config.authMode) {
-      case 'insecure':
+      case '':
         return createGrpcTransport({
           baseUrl: config.serverAddress,
         });
