@@ -29,11 +29,18 @@ export class Config {
   static DEFAULT_SPIFFE_ENDPOINT_SOCKET = '';
   static DEFAULT_AUTH_MODE = '';
   static DEFAULT_JWT_AUDIENCE = '';
+  static DEFAULT_TLS_CA_FILE = '';
+  static DEFAULT_TLS_CERT_FILE = '';
+  static DEFAULT_TLS_KEY_FILE = '';
+
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
-  authMode: '' | 'x509' | 'jwt';
+  authMode: '' | 'x509' | 'jwt' | 'tls';
   jwtAudience: string;
+  tlsCaFile: string;
+  tlsCertFile: string
+  tlsKeyFile: string;
 
   /**
    * Creates a new Config instance.
@@ -41,15 +48,18 @@ export class Config {
    * @param serverAddress - The server address to connect to. Defaults to '127.0.0.1:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
-   * @param authMode - Authentication mode: '' for insecure, 'x509', or 'jwt'. Defaults to ''
+   * @param authMode - Authentication mode: '' for insecure, 'x509', 'jwt' or 'tls'. Defaults to ''
    * @param jwtAudience - JWT audience for JWT authentication. Required when authMode is 'jwt'
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
-    authMode: '' | 'x509' | 'jwt' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt',
-    jwtAudience = Config.DEFAULT_JWT_AUDIENCE
+    authMode: '' | 'x509' | 'jwt' | 'tls' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt' | 'tls',
+    jwtAudience = Config.DEFAULT_JWT_AUDIENCE,
+    tlsCaFile = Config.DEFAULT_TLS_CA_FILE,
+    tlsCertFile = Config.DEFAULT_TLS_CERT_FILE,
+    tlsKeyFile = Config.DEFAULT_TLS_KEY_FILE
   ) {
     // add protocol prefix if not set
     // use unsafe http unless spire/auth is used
@@ -57,8 +67,8 @@ export class Config {
       !serverAddress.startsWith('http://') &&
       !serverAddress.startsWith('https://')
     ) {
-      // use https protocol when X.509 or JWT auth is used
-      if (authMode === 'x509' || authMode === 'jwt') {
+      // use https protocol when X.509, JWT, or TLS auth is used
+      if (authMode === 'x509' || authMode === 'jwt' || authMode === 'tls') {
         serverAddress = `https://${serverAddress}`;
       } else {
         serverAddress = `http://${serverAddress}`;
@@ -70,6 +80,9 @@ export class Config {
     this.spiffeEndpointSocket = spiffeEndpointSocket;
     this.authMode = authMode;
     this.jwtAudience = jwtAudience;
+    this.tlsCaFile = tlsCaFile;
+    this.tlsCertFile = tlsCertFile;
+    this.tlsKeyFile = tlsKeyFile;
   }
 
   /**
@@ -95,10 +108,13 @@ export class Config {
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
     const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
-    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as '' | 'x509' | 'jwt';
+    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as '' | 'x509' | 'jwt' | 'tls';
     const jwtAudience = env[`${prefix}JWT_AUDIENCE`] || Config.DEFAULT_JWT_AUDIENCE;
+    const tlsCaFile = env[`${prefix}TLS_CA_FILE`] || Config.DEFAULT_TLS_CA_FILE;
+    const tlsCertFile = env[`${prefix}TLS_CERT_FILE`] || Config.DEFAULT_TLS_CERT_FILE;
+    const tlsKeyFile = env[`${prefix}TLS_KEY_FILE`] || Config.DEFAULT_TLS_KEY_FILE;
 
-    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience);
+    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience, tlsCaFile, tlsCertFile, tlsKeyFile);
   }
 }
 
