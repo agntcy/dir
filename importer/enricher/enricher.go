@@ -56,7 +56,14 @@ Real examples (from actual schema):
 ✓ "natural_language_processing/ethical_interaction"
 ✓ "analytical_skills/mathematical_reasoning"
 
-OUTPUT (JSON only, no markdown):
+STEP 5 - OUTPUT FORMAT (CRITICAL):
+Return ONLY the raw JSON object below. DO NOT wrap in markdown code blocks.
+DO NOT use markdown formatting. DO NOT add language tags like "json".
+DO NOT add ANY text or explanation before or after the JSON.
+
+Your response must start with "{" and end with "}".
+
+Return exactly this structure:
 {
   "skills": [
     {
