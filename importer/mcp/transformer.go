@@ -135,6 +135,13 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 		if err != nil {
 			return nil, fmt.Errorf("failed to enrich base OASF record: %w", err)
 		}
+	} else {
+		// Skills (required, provide default placeholder)
+		record.Skills = []*typesv1alpha1.Skill{
+			{
+				Name: "natural_language_processing/analytical_reasoning/problem_solving",
+			},
+		}
 	}
 
 	return corev1.New(record), nil
