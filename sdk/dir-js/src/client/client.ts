@@ -4,7 +4,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { env } from 'node:process';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
 
 import {
@@ -231,6 +231,9 @@ export class Client {
       case 'x509':
         return await this.createX509Transport(config);
 
+      case 'tls':
+        return await this.createTLSTransport(config);
+
       default:
         throw new Error(`Unsupported auth mode: ${config.authMode}`);
     }
@@ -345,6 +348,41 @@ export class Client {
     return transport;
   }
 
+  private static async createTLSTransport(config: Config): Promise<Transport> {
+    if (config.tlsCaFile === '') {
+      throw new Error('TLS CA file is required for TLS authentication');
+    }
+    if (config.tlsCertFile === '') {
+      throw new Error('TLS certificate file is required for TLS authentication');
+    }
+    if (config.tlsKeyFile === '') {
+      throw new Error('TLS key file is required for TLS authentication');
+    }
+
+    let root_ca: string;
+    let cert_chain: string;
+    let private_key: string;
+
+    try {
+      root_ca = readFileSync(config.tlsCaFile).toString();
+      cert_chain = readFileSync(config.tlsCertFile).toString();
+      private_key = readFileSync(config.tlsKeyFile).toString();
+    } catch (e) {
+      console.error('Error reading file:', (e as Error).message);
+      throw e;
+    }
+
+    const transport = createGrpcTransport({
+      baseUrl: config.serverAddress,
+      nodeOptions: {
+        ca: root_ca,
+        cert: cert_chain,
+        key: private_key,
+      },
+    });
+
+    return transport;
+  }
   /**
    * Request generator helper function for streaming requests.
    */
