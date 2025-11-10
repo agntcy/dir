@@ -153,6 +153,8 @@ class Client:
             return self.__create_jwt_channel()
         elif self.config.auth_mode == "x509":
             return self.__create_x509_channel()
+        elif self.config.auth_mode == "tls":
+            return self.__create_tls_channel()
         else:
             msg = f"Unsupported auth mode: {self.config.auth_mode}"
             raise ValueError(msg)
@@ -246,6 +248,41 @@ class Client:
 
         # Close the X509Source since we only needed it to get the bundle
         x509_source.close()
+
+        return channel
+    
+    def __create_tls_channel(self) -> grpc.Channel:
+        if not self.config.tls_ca_file:
+            msg = "TLS CA file is required for TLS authentication"
+            raise ValueError(msg)
+        if not self.config.tls_cert_file:
+            msg = "TLS certificate file is required for TLS authentication"
+            raise ValueError(msg)
+        if not self.config.tls_key_file:
+            msg = "TLS key file is required for TLS authentication"
+            raise ValueError(msg)
+
+        try:
+            with open(self.config.tls_ca_file, "rb") as f:
+                root_ca = f.read()
+            with open(self.config.tls_cert_file, "rb") as f:
+                cert_chain = f.read()
+            with open(self.config.tls_key_file, "rb") as f:
+                private_key = f.read()
+        except OSError as e:
+            msg = f"Failed to read TLS files: {e}"
+            raise RuntimeError(msg) from e
+
+        credentials = grpc.ssl_channel_credentials(
+            root_certificates=root_ca,
+            private_key=private_key,
+            certificate_chain=cert_chain,
+        )
+
+        channel = grpc.secure_channel(
+            target=self.config.server_address,
+            credentials=credentials,
+        )
 
         return channel
 
