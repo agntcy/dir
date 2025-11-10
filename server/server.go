@@ -35,7 +35,13 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
+)
+
+const (
+	// bytesToMB is the conversion factor from bytes to megabytes.
+	bytesToMB = 1024 * 1024
 )
 
 var (
@@ -55,6 +61,50 @@ type Server struct {
 	publicationService *publication.Service
 	health             *healthcheck.Checker
 	grpcServer         *grpc.Server
+}
+
+// buildConnectionOptions creates gRPC server options for connection management.
+// These options configure connection limits, keepalive parameters, and message size limits
+// to prevent resource exhaustion and detect dead connections.
+//
+// Connection management is applied BEFORE all interceptors to ensure limits are enforced
+// at the lowest level, protecting all other server components.
+func buildConnectionOptions(cfg config.ConnectionConfig) []grpc.ServerOption {
+	opts := []grpc.ServerOption{
+		// Connection limits - prevent resource monopolization
+		grpc.MaxConcurrentStreams(cfg.MaxConcurrentStreams),
+		grpc.MaxRecvMsgSize(cfg.MaxRecvMsgSize),
+		grpc.MaxSendMsgSize(cfg.MaxSendMsgSize),
+		grpc.ConnectionTimeout(cfg.ConnectionTimeout),
+
+		// Keepalive parameters - detect dead connections and rotate aged connections
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle:     cfg.Keepalive.MaxConnectionIdle,
+			MaxConnectionAge:      cfg.Keepalive.MaxConnectionAge,
+			MaxConnectionAgeGrace: cfg.Keepalive.MaxConnectionAgeGrace,
+			Time:                  cfg.Keepalive.Time,
+			Timeout:               cfg.Keepalive.Timeout,
+		}),
+
+		// Keepalive enforcement policy - prevent client abuse
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             cfg.Keepalive.MinTime,
+			PermitWithoutStream: cfg.Keepalive.PermitWithoutStream,
+		}),
+	}
+
+	logger.Info("Connection management configured",
+		"max_concurrent_streams", cfg.MaxConcurrentStreams,
+		"max_recv_msg_size_mb", cfg.MaxRecvMsgSize/bytesToMB,
+		"max_send_msg_size_mb", cfg.MaxSendMsgSize/bytesToMB,
+		"connection_timeout", cfg.ConnectionTimeout,
+		"max_connection_idle", cfg.Keepalive.MaxConnectionIdle,
+		"max_connection_age", cfg.Keepalive.MaxConnectionAge,
+		"keepalive_time", cfg.Keepalive.Time,
+		"keepalive_timeout", cfg.Keepalive.Timeout,
+	)
+
+	return opts
 }
 
 func Run(ctx context.Context, cfg *config.Config) error {
@@ -92,7 +142,13 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	options := types.NewOptions(cfg)
 	serverOpts := []grpc.ServerOption{}
 
-	// Add panic recovery interceptors FIRST (outermost - must catch all panics)
+	// Add connection management options FIRST (lowest level - applies to all connections)
+	// This must be before interceptors to ensure connection limits protect all server components
+	connConfig := cfg.Connection.WithDefaults()
+	connectionOpts := buildConnectionOptions(connConfig)
+	serverOpts = append(serverOpts, connectionOpts...)
+
+	// Add panic recovery interceptors (after connection management, before other interceptors)
 	// This prevents server crashes from panics in handlers or other interceptors
 	serverOpts = append(serverOpts, grpcrecovery.ServerOptions()...)
 

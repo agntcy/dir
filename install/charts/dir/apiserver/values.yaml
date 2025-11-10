@@ -142,6 +142,42 @@ config:
     # Timeout for individual publication operations
     worker_timeout: "30m"
 
+  # gRPC Connection Management configuration
+  # Protects server from resource exhaustion, zombie connections, and memory exhaustion
+  # Production-safe defaults are applied automatically - customization is optional
+  # Note: These settings can only be configured via Helm values (no environment variables)
+  connection:
+    # Connection limits
+    # max_concurrent_streams: 1000    # Maximum concurrent gRPC streams per connection (default: 1000)
+    # max_recv_msg_size: 4194304      # Maximum message size for receiving in bytes - 4MB (default: 4MB)
+    # max_send_msg_size: 4194304      # Maximum message size for sending in bytes - 4MB (default: 4MB)
+    # connection_timeout: 120s        # Timeout for establishing new connections (default: 120s)
+    
+    # Keepalive configuration - detects dead connections and prevents resource leaks
+    # keepalive:
+    #   max_connection_idle: 15m      # Close connections idle for this duration (default: 15m)
+    #   max_connection_age: 30m       # Close connections after this age to rotate (default: 30m)
+    #   max_connection_age_grace: 5m  # Grace period for in-flight RPCs before closing aged connections (default: 5m)
+    #   time: 5m                      # Send keepalive pings every N duration (default: 5m)
+    #   timeout: 1m                   # Close connection if ping not acknowledged within timeout (default: 1m)
+    #   min_time: 1m                  # Minimum time between client pings (prevents abuse) (default: 1m)
+    #   permit_without_stream: true   # Allow keepalive pings without active streams (default: true)
+    
+    # Example: High-traffic production configuration
+    # connection:
+    #   max_concurrent_streams: 2000
+    #   max_recv_msg_size: 8388608    # 8MB for larger records
+    #   max_send_msg_size: 8388608    # 8MB for larger records
+    #   connection_timeout: 60s
+    #   keepalive:
+    #     max_connection_idle: 10m
+    #     max_connection_age: 20m
+    #     max_connection_age_grace: 3m
+    #     time: 3m
+    #     timeout: 30s
+    #     min_time: 30s
+    #     permit_without_stream: false
+
   # Rate limiting configuration
   # Protects the server from abuse and resource exhaustion using token bucket algorithm
   ratelimit:
