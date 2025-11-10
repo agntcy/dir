@@ -1,0 +1,3 @@
+# Empty config file - should use defaults for connection management
+listen_address: "0.0.0.0:9999"
+

@@ -1,0 +1,14 @@
+connection:
+  max_concurrent_streams: 2000
+  max_recv_msg_size: 8388608  # 8 MB
+  max_send_msg_size: 8388608  # 8 MB
+  connection_timeout: 60s
+  keepalive:
+    max_connection_idle: 10m
+    max_connection_age: 20m
+    max_connection_age_grace: 3m
+    time: 3m
+    timeout: 30s
+    min_time: 30s
+    permit_without_stream: false
+
