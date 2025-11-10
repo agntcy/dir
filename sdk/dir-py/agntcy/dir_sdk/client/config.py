@@ -8,7 +8,7 @@ class Config:
     DEFAULT_SERVER_ADDRESS = "127.0.0.1:8888"
     DEFAULT_DIRCTL_PATH = "dirctl"
     DEFAULT_SPIFFE_SOCKET_PATH = ""
-    DEFAULT_AUTH_MODE = "insecure"
+    DEFAULT_AUTH_MODE = ""
     DEFAULT_JWT_AUDIENCE = ""
 
     def __init__(
@@ -22,7 +22,7 @@ class Config:
         self.server_address = server_address
         self.dirctl_path = dirctl_path
         self.spiffe_socket_path = spiffe_socket_path
-        self.auth_mode = auth_mode  # 'insecure', 'x509', or 'jwt'
+        self.auth_mode = auth_mode  # '' for insecure, 'x509', or 'jwt'
         self.jwt_audience = jwt_audience
 
     @staticmethod

@@ -147,7 +147,7 @@ class Client:
 
     def __create_grpc_channel(self) -> grpc.Channel:
         # Handle different authentication modes
-        if self.config.auth_mode == "insecure":
+        if self.config.auth_mode == "":
             return grpc.insecure_channel(self.config.server_address)
         elif self.config.auth_mode == "jwt":
             return self.__create_jwt_channel()
