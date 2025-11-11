@@ -29,13 +29,18 @@ type Transformer struct {
 // NewTransformer creates a new MCP transformer.
 // If cfg.Enrich is true, it initializes an enricher client using cfg.EnricherConfig.
 func NewTransformer(ctx context.Context, cfg config.Config) (*Transformer, error) {
-	var (
-		host *enricher.MCPHostClient
-		err  error
-	)
+	var host *enricher.MCPHostClient
 
 	if cfg.Enrich {
-		host, err = enricher.NewMCPHost(ctx, enricher.Config{ConfigFile: cfg.EnricherConfig})
+		// Create enricher configuration
+		enricherCfg := enricher.Config{
+			ConfigFile:     cfg.EnricherConfigFile,
+			PromptTemplate: cfg.EnricherPromptTemplate,
+		}
+
+		var err error
+
+		host, err = enricher.NewMCPHost(ctx, enricherCfg)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create MCPHost client: %w", err)
 		}

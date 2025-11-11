@@ -43,6 +43,14 @@ Examples:
 
   # Preview without importing
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --dry-run
+
+  # Enable LLM-based enrichment with default configuration
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --enrich
+
+  # Use custom MCPHost configuration and prompt template
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --enrich \
+    --enrich-config=/path/to/mcphost.json \
+    --enrich-prompt=/path/to/custom-prompt.md
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runImport(cmd)
@@ -58,7 +66,8 @@ func init() {
 	Command.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "Preview without importing")
 
 	Command.Flags().BoolVar(&cfg.Enrich, "enrich", false, "Enrich the records with LLM")
-	Command.Flags().StringVar(&cfg.EnricherConfig, "enrich-config", enricher.DefaultConfigFile, "Enricher configuration file path")
+	Command.Flags().StringVar(&cfg.EnricherConfigFile, "enrich-config", enricher.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
+	Command.Flags().StringVar(&cfg.EnricherPromptTemplate, "enrich-prompt", "", "Optional: path to custom prompt template file or inline prompt (empty = use default)")
 
 	// Mark required flags
 	Command.MarkFlagRequired("type") //nolint:errcheck

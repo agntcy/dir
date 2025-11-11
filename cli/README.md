@@ -324,7 +324,8 @@ dirctl import --type=mcp \
 | `--limit` | - | Maximum records to import (0 = no limit) | No | 0 |
 | `--dry-run` | - | Preview without importing | No | false |
 | `--enrich` | - | Enable LLM-based enrichment for OASF skills/domains | No | false |
-| `--enrich-config` | - | Path to mcphost configuration file | No | ~/.mcphost.json |
+| `--enrich-config` | - | Path to MCPHost configuration file (mcphost.json) | No | importer/enricher/mcphost.json |
+| `--enrich-prompt` | - | Optional: path to custom prompt template or inline prompt | No | "" (uses default) |
 | `--server-addr` | `DIRECTORY_CLIENT_SERVER_ADDRESS` | DIR server address | No | localhost:8888 |
 
 **MCP Registry Filters:**
@@ -362,12 +363,22 @@ The import command supports automatic enrichment of MCP server records using LLM
 }
 ```
 
-**Supported LLM providers:**
-- `azure:gpt-4o` - Azure OpenAI GPT-4o (recommended)
+**Recommended LLM providers:**
+- `azure:gpt-4o` - Azure OpenAI GPT-4o (recommended for speed and accuracy)
 - `ollama:qwen3:8b` - Local Qwen3 via Ollama
 
 **Environment variables for LLM providers:**
 - Azure OpenAI: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`
+
+**Customizing Enrichment Prompts:**
+
+The enricher uses a default prompt template that guides the LLM through OASF skill selection. You can customize this prompt for specific use cases:
+
+1. **Use default prompt** (recommended): Simply omit the `--enrich-prompt` flag
+2. **Custom prompt from file**: `--enrich-prompt=/path/to/custom-prompt.md`
+3. **Inline prompt**: `--enrich-prompt="Your custom prompt text..."`
+
+The default prompt template is available at `importer/enricher/enricher.prompt.md` and can be used as a starting point for customization.
 
 **Examples:**
 
@@ -381,7 +392,20 @@ dirctl import --type=mcp \
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --enrich \
-  --enrich-config=/path/to/mcphost.json
+  --enrich-config=/path/to/custom-mcphost.json
+
+# Import with custom prompt template (from file)
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich \
+  --enrich-prompt=/path/to/custom-prompt.md
+
+# Import with all custom enrichment settings
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich \
+  --enrich-config=/path/to/mcphost.json \
+  --enrich-prompt=/path/to/custom-prompt.md
 
 # Import latest 10 servers with enrichment
 dirctl import --type=mcp \

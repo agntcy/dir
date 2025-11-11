@@ -39,8 +39,9 @@ type Config struct {
 	Concurrency  int               // Number of concurrent workers (default: 1)
 	DryRun       bool              // If true, preview without actually importing
 
-	Enrich         bool   // If true, enrich the records with LLM
-	EnricherConfig string // Enricher configuration file path
+	Enrich                 bool   // If true, enrich the records with LLM
+	EnricherConfigFile     string // Path to MCPHost configuration file (e.g., mcphost.json)
+	EnricherPromptTemplate string // Optional: path to custom prompt template or inline prompt (empty = use default)
 }
 
 // Validate checks if the configuration is valid.

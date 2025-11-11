@@ -5,9 +5,11 @@ package enricher
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -17,73 +19,23 @@ import (
 
 var logger = logging.Logger("importer/enricher")
 
+//go:embed enricher.prompt.md
+var defaultPromptTemplate string
+
 const (
 	DebugMode                  = false
 	DefaultConfigFile          = "importer/enricher/mcphost.json"
 	DefaultConfidenceThreshold = 0.5
-	DefaultPromptTemplate      = `CRITICAL: You MUST call tools FIRST before responding!
-
-STEP 1 - CALL THIS TOOL NOW:
-Tool: dir-mcp-server__agntcy_oasf_get_schema_skills
-Args: {"version": "0.7.0"}
-
-Wait for response. The response will show top-level skills like:
-{"name": "analytical_skills", ...}, {"name": "retrieval_augmented_generation", ...}, {"name": "natural_language_processing", ...}
-
-STEP 2 - Pick ONE skill "name" from Step 1 (e.g. "retrieval_augmented_generation")
-
-STEP 3 - CALL THIS TOOL NOW:
-Tool: dir-mcp-server__agntcy_oasf_get_schema_skills  
-Args: {"version": "0.7.0", "parent_skill": "YOUR_CHOICE_FROM_STEP_2"}
-
-Wait for response. The response will show sub-skills with "name" field like:
-{"name": "retrieval_of_information", "caption": "Indexing", "id": 601}
-{"name": "document_or_database_question_answering", "caption": "Q&A", "id": 602}
-
-STEP 4 - Pick 1-3 sub-skills from Step 3's "name" field ONLY
-
-DO NOT INVENT NAMES! These DO NOT exist:
-❌ "information_retrieval_synthesis"
-❌ "api_server_operations"  
-❌ "statistical_analysis"
-❌ "data_visualization"
-❌ "code_generation"
-❌ "data_retrieval"
-
-Real examples (from actual schema):
-✓ "retrieval_augmented_generation/retrieval_of_information"
-✓ "retrieval_augmented_generation/document_or_database_question_answering"
-✓ "natural_language_processing/ethical_interaction"
-✓ "analytical_skills/mathematical_reasoning"
-
-STEP 5 - OUTPUT FORMAT (CRITICAL):
-Return ONLY the raw JSON object below. DO NOT wrap in markdown code blocks.
-DO NOT use markdown formatting. DO NOT add language tags like "json".
-DO NOT add ANY text or explanation before or after the JSON.
-
-Your response must start with "{" and end with "}".
-
-Return exactly this structure:
-{
-  "skills": [
-    {
-      "name": "parent_skill/sub_skill",
-      "confidence": 0.95,
-      "reasoning": "Brief explanation"
-    }
-  ]
-}
-
-Agent record to analyze:
-`
 )
 
 type Config struct {
-	ConfigFile string `json:"config_file"`
+	ConfigFile     string // Path to mcphost configuration file (e.g., mcphost.json)
+	PromptTemplate string // Optional: path to custom prompt template file or inline prompt (empty = use default)
 }
 
 type MCPHostClient struct {
-	host *sdk.MCPHost
+	host           *sdk.MCPHost
+	promptTemplate string
 }
 
 // EnrichedField represents a single enriched field (skill or domain) with metadata.
@@ -107,11 +59,50 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 		return nil, fmt.Errorf("failed to create MCPHost client: %w", err)
 	}
 
+	// Load prompt template
+	promptTemplate, err := loadPromptTemplate(config.PromptTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load prompt template: %w", err)
+	}
+
 	if DebugMode {
 		runGetSchemaToolsPrompt(ctx, host)
 	}
 
-	return &MCPHostClient{host: host}, nil
+	return &MCPHostClient{
+		host:           host,
+		promptTemplate: promptTemplate,
+	}, nil
+}
+
+// loadPromptTemplate loads the prompt template from config or uses the default embedded template.
+// If promptTemplateConfig is empty, uses the embedded default.
+// If promptTemplateConfig looks like a file path (contains "/" or ends with ".md"), loads from file.
+// Otherwise, treats it as an inline prompt template string.
+func loadPromptTemplate(promptTemplateConfig string) (string, error) {
+	// Use default embedded template if no custom template specified
+	if promptTemplateConfig == "" {
+		logger.Debug("Using default embedded prompt template")
+
+		return defaultPromptTemplate, nil
+	}
+
+	// Check if it looks like a file path
+	if strings.Contains(promptTemplateConfig, "/") || strings.HasSuffix(promptTemplateConfig, ".md") {
+		logger.Debug("Loading prompt template from file", "path", promptTemplateConfig)
+
+		data, err := os.ReadFile(promptTemplateConfig)
+		if err != nil {
+			return "", fmt.Errorf("failed to read prompt template file %s: %w", promptTemplateConfig, err)
+		}
+
+		return string(data), nil
+	}
+
+	// Treat as inline prompt template
+	logger.Debug("Using inline prompt template from config")
+
+	return promptTemplateConfig, nil
 }
 
 func (c *MCPHostClient) Enrich(ctx context.Context, record *typesv1alpha1.Record) (*typesv1alpha1.Record, error) {
@@ -174,7 +165,7 @@ func runGetSchemaToolsPrompt(ctx context.Context, host *sdk.MCPHost) {
 }
 
 func (c *MCPHostClient) runPrompt(ctx context.Context, recordJSON []byte) (string, error) {
-	prompt := DefaultPromptTemplate + string(recordJSON)
+	prompt := c.promptTemplate + string(recordJSON)
 
 	var (
 		response string
