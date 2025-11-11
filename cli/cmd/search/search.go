@@ -32,7 +32,9 @@ Usage examples:
 		--skill-id "10201" \
 		--skill "Text Completion" \
 		--locator "docker-image:https://example.com/docker-image" \
-		--module "my-custom-module-name" 
+		--module "my-custom-module-name" \
+		--domain-id "604" \
+		--domain "*education*" 
 
 2. Wildcard search examples:
 
@@ -50,6 +52,9 @@ Usage examples:
 	
 	# Find agents with plugin modules
 	dirctl search --module "*-plugin*"
+	
+	# Find agents in education or healthcare domains
+	dirctl search --domain "*education*" --domain "healthcare/*"
 
 3. Question mark wildcard (? matches exactly one character):
 
@@ -143,7 +148,8 @@ func runCommand(cmd *cobra.Command) error {
 func buildQueriesFromFlags() []*searchv1.RecordQuery {
 	queries := make([]*searchv1.RecordQuery, 0,
 		len(opts.Names)+len(opts.Versions)+len(opts.SkillIDs)+
-			len(opts.SkillNames)+len(opts.Locators)+len(opts.Modules))
+			len(opts.SkillNames)+len(opts.Locators)+len(opts.Modules)+
+			len(opts.DomainIDs)+len(opts.DomainNames))
 
 	// Add name queries
 	for _, name := range opts.Names {
@@ -190,6 +196,22 @@ func buildQueriesFromFlags() []*searchv1.RecordQuery {
 		queries = append(queries, &searchv1.RecordQuery{
 			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
 			Value: module,
+		})
+	}
+
+	// Add domain-id queries
+	for _, domainID := range opts.DomainIDs {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_ID,
+			Value: domainID,
+		})
+	}
+
+	// Add domain-name queries
+	for _, domainName := range opts.DomainNames {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+			Value: domainName,
 		})
 	}
 

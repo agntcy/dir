@@ -111,6 +111,22 @@ export enum RecordQueryType {
    * @generated from enum value: RECORD_QUERY_TYPE_MODULE = 6;
    */
   MODULE = 6,
+
+  /**
+   * Query for a domain ID.
+   * Numeric field - exact match only, no wildcard support.
+   *
+   * @generated from enum value: RECORD_QUERY_TYPE_DOMAIN_ID = 7;
+   */
+  DOMAIN_ID = 7,
+
+  /**
+   * Query for a domain name.
+   * Supports wildcard patterns: "*education*", "healthcare/*", "*technology"
+   *
+   * @generated from enum value: RECORD_QUERY_TYPE_DOMAIN_NAME = 8;
+   */
+  DOMAIN_NAME = 8,
 }
 
 /**

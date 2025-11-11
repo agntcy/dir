@@ -48,6 +48,7 @@ type TestRecordData struct {
 	skills   []types.Skill
 	locators []types.Locator
 	modules  []types.Module
+	domains  []types.Domain
 }
 
 func (r *TestRecordData) GetAnnotations() map[string]string {
@@ -91,7 +92,7 @@ func (r *TestRecordData) GetSignature() types.Signature {
 }
 
 func (r *TestRecordData) GetDomains() []types.Domain {
-	return nil
+	return r.domains
 }
 
 func (r *TestRecordData) GetPreviousRecordCid() string {
@@ -157,6 +158,23 @@ func (m *TestModule) GetData() map[string]any {
 	return make(map[string]any)
 }
 
+type TestDomain struct {
+	id   uint64
+	name string
+}
+
+func (d *TestDomain) GetAnnotations() map[string]string {
+	return make(map[string]string)
+}
+
+func (d *TestDomain) GetName() string {
+	return d.name
+}
+
+func (d *TestDomain) GetID() uint64 {
+	return d.id
+}
+
 func setupTestDB(t *testing.T) *DB {
 	t.Helper()
 
@@ -165,7 +183,7 @@ func setupTestDB(t *testing.T) *DB {
 	})
 	require.NoError(t, err)
 
-	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Module{}, &Sync{})
+	err = db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Module{}, &Domain{}, &Sync{})
 	require.NoError(t, err)
 
 	return &DB{
@@ -193,6 +211,9 @@ func createTestData(t *testing.T, db *DB) {
 				modules: []types.Module{
 					&TestModule{name: "module1"},
 				},
+				domains: []types.Domain{
+					&TestDomain{id: 604, name: "education/educational_technology"},
+				},
 			},
 		},
 		&TestRecord{
@@ -210,6 +231,10 @@ func createTestData(t *testing.T, db *DB) {
 					&TestModule{name: "module2"},
 					&TestModule{name: "module3"},
 				},
+				domains: []types.Domain{
+					&TestDomain{id: 901, name: "healthcare/medical_technology"},
+					&TestDomain{id: 604, name: "education/educational_technology"},
+				},
 			},
 		},
 		&TestRecord{
@@ -224,6 +249,9 @@ func createTestData(t *testing.T, db *DB) {
 					&TestLocator{locType: "grpc", url: "localhost:8082"},
 				},
 				modules: []types.Module{},
+				domains: []types.Domain{
+					&TestDomain{id: 604, name: "education/educational_technology"},
+				},
 			},
 		},
 	}
@@ -290,6 +318,17 @@ func TestGetRecords_SingleOptions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
+
+	// Test domain names filter.
+	records, err = db.GetRecords(types.WithDomainNames("education/educational_technology"))
+	require.NoError(t, err)
+	assert.Len(t, records, 3) // agent1, agent2, and test-agent have education domain
+
+	// Test domain names filter for healthcare.
+	records, err = db.GetRecords(types.WithDomainNames("healthcare/medical_technology"))
+	require.NoError(t, err)
+	assert.Len(t, records, 1)
+	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
 }
 
 // TestGetRecords_CombinedOptions tests combinations of options.
@@ -335,6 +374,50 @@ func TestGetRecords_CombinedOptions(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Empty(t, records) // module2 is on agent2 which has version 2.0.0, not 1.0.0
+
+	// Test domain + version filter.
+	records, err = db.GetRecords(
+		types.WithDomainNames("*education*"),
+		types.WithVersion("1.0.0"),
+	)
+	require.NoError(t, err)
+	assert.Len(t, records, 2) // agent1 and test-agent have education domain and version 1.0.0 (agent2 has education but version 2.0.0)
+
+	// Test domain + skill filter.
+	records, err = db.GetRecords(
+		types.WithDomainIDs(604),
+		types.WithSkillNames("skill1"),
+	)
+	require.NoError(t, err)
+	assert.Len(t, records, 1) // Only agent1 has both education domain and skill1
+	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
+
+	// Test domain ID filter for education domain (604).
+	records, err = db.GetRecords(types.WithDomainIDs(604))
+	require.NoError(t, err)
+	assert.Len(t, records, 3) // agent1, agent2, and test-agent have domain 604
+
+	// Test domain ID filter for healthcare domain (901).
+	records, err = db.GetRecords(types.WithDomainIDs(901))
+	require.NoError(t, err)
+	assert.Len(t, records, 1)
+	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
+
+	// Test domain name with wildcard pattern matching education domains.
+	records, err = db.GetRecords(types.WithDomainNames("*education*"))
+	require.NoError(t, err)
+	assert.Len(t, records, 3) // agent1, agent2, and test-agent have education domains
+
+	// Test domain name with wildcard pattern matching healthcare domains.
+	records, err = db.GetRecords(types.WithDomainNames("*healthcare*"))
+	require.NoError(t, err)
+	assert.Len(t, records, 1)
+	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
+
+	// Test domain name with wildcard pattern for technology suffix.
+	records, err = db.GetRecords(types.WithDomainNames("*technology"))
+	require.NoError(t, err)
+	assert.Len(t, records, 3) // all three records have domains ending with _technology
 }
 
 // TestGetRecords_SkillIdOption tests the skill ID option.
@@ -378,6 +461,11 @@ func TestGetRecords_PreloadRelations(t *testing.T) {
 
 	modules := recordData.GetModules()
 	assert.Len(t, modules, 1)
+
+	domains := recordData.GetDomains()
+	assert.Len(t, domains, 1)
+	assert.Equal(t, uint64(604), domains[0].GetID())
+	assert.Equal(t, "education/educational_technology", domains[0].GetName())
 }
 
 // TestGetRecords_ZeroOptions tests that providing no options works properly.
@@ -458,6 +546,9 @@ func TestAddRecord_VerifyRelatedDataInsertion(t *testing.T) {
 			modules: []types.Module{
 				&TestModule{name: "test-module"},
 			},
+			domains: []types.Domain{
+				&TestDomain{id: 604, name: "education/educational_technology"},
+			},
 		},
 	}
 
@@ -489,6 +580,17 @@ func TestAddRecord_VerifyRelatedDataInsertion(t *testing.T) {
 	require.Len(t, cids, 1, "Should find record by module name")
 	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by module")
 
+	// Verify domain-based search works
+	cids, err = db.GetRecordCIDs(types.WithDomainIDs(604))
+	require.NoError(t, err, "Domain ID search should succeed")
+	require.Len(t, cids, 1, "Should find record by domain ID")
+	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by domain ID")
+
+	cids, err = db.GetRecordCIDs(types.WithDomainNames("education/educational_technology"))
+	require.NoError(t, err, "Domain name search should succeed")
+	require.Len(t, cids, 1, "Should find record by domain name")
+	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by domain name")
+
 	t.Logf("✅ AddRecord properly inserted all related data")
 }
 
@@ -510,6 +612,9 @@ func TestRemoveRecord_VerifyRelatedDataDeletion(t *testing.T) {
 			},
 			modules: []types.Module{
 				&TestModule{name: "delete-module"},
+			},
+			domains: []types.Domain{
+				&TestDomain{id: 901, name: "healthcare/medical_technology"},
 			},
 		},
 	}
@@ -542,6 +647,14 @@ func TestRemoveRecord_VerifyRelatedDataDeletion(t *testing.T) {
 	cids, err = db.GetRecordCIDs(types.WithModuleNames("delete-module"))
 	require.NoError(t, err, "Module search should succeed even after deletion")
 	assert.Empty(t, cids, "Should not find record by module after deletion")
+
+	cids, err = db.GetRecordCIDs(types.WithDomainIDs(901))
+	require.NoError(t, err, "Domain ID search should succeed even after deletion")
+	assert.Empty(t, cids, "Should not find record by domain ID after deletion")
+
+	cids, err = db.GetRecordCIDs(types.WithDomainNames("healthcare/medical_technology"))
+	require.NoError(t, err, "Domain name search should succeed even after deletion")
+	assert.Empty(t, cids, "Should not find record by domain name after deletion")
 
 	t.Logf("✅ RemoveRecord properly deleted all related data")
 }

@@ -105,6 +105,20 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
+
+			ginkgo.It("should find record by exact domain name match", func() {
+				output := cli.Search().
+					WithDomain("life_science/biotechnology").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should find record by exact domain ID match", func() {
+				output := cli.Search().
+					WithDomainID("301").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
 		})
 
 		ginkgo.Context("wildcard searches with * pattern", func() {
@@ -250,6 +264,29 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 			})
+
+			ginkgo.Context("domain wildcards", func() {
+				ginkgo.It("should find record with domain prefix wildcard", func() {
+					output := cli.Search().
+						WithDomain("life_science/*").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with domain suffix wildcard", func() {
+					output := cli.Search().
+						WithDomain("*/biotechnology").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+
+				ginkgo.It("should find record with domain middle wildcard", func() {
+					output := cli.Search().
+						WithDomain("life_*/*technology").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
 		})
 
 		ginkgo.Context("wildcard searches with ? pattern", func() {
@@ -349,6 +386,15 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 				ginkgo.It("should find record with question mark in module name", func() {
 					output := cli.Search().
 						WithModule("licens?").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
+
+			ginkgo.Context("domain question mark wildcards", func() {
+				ginkgo.It("should find record with question mark in domain name", func() {
+					output := cli.Search().
+						WithDomain("life_science/biotechnolog?").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -494,6 +540,15 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 				})
 			})
 
+			ginkgo.Context("domain list wildcards", func() {
+				ginkgo.It("should find record with character list in domain name", func() {
+					output := cli.Search().
+						WithDomain("life_science/[b]iotechnology").
+						ShouldSucceed()
+					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+				})
+			})
+
 			ginkgo.Context("mixed list wildcards with other patterns", func() {
 				ginkgo.It("should find record with list and asterisk wildcards", func() {
 					output := cli.Search().
@@ -619,6 +674,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
+
+			ginkgo.It("should find record combining domain and skill filters", func() {
+				output := cli.Search().
+					WithDomain("*science*").
+					WithSkillName("*problem_solving").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
 		})
 
 		ginkgo.Context("negative wildcard tests", func() {
@@ -683,6 +746,13 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.It("should return no results for list wildcard with wrong character set", func() {
 				output := cli.Search().
 					WithName("directory.agntcy.org/[xyz]isco/marketing-strategy-v3"). // 'c' not in [xyz]
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should return no results for non-matching domain pattern", func() {
+				output := cli.Search().
+					WithDomain("*healthcare*"). // Record has life_science, not healthcare
 					ShouldSucceed()
 				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
 			})
@@ -769,6 +839,13 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.It("should handle list wildcards with all wildcard types", func() {
 				output := cli.Search().
 					WithLocator("*://[a-z]hcr.i?/*/marketing-strateg[y]").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("should handle domain wildcards with slashes", func() {
+				output := cli.Search().
+					WithDomain("*science/*technology").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})

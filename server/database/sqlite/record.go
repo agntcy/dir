@@ -23,6 +23,7 @@ type Record struct {
 	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Modules  []Module  `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
+	Domains  []Domain  `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 }
 
 // Implement central Record interface.
@@ -45,9 +46,12 @@ func (r *RecordDataAdapter) GetAnnotations() map[string]string {
 }
 
 func (r *RecordDataAdapter) GetDomains() []types.Domain {
-	// SQLite records don't store domains, return empty slice
-	// TODO: add support for domains
-	return []types.Domain{}
+	domains := make([]types.Domain, len(r.record.Domains))
+	for i, domain := range r.record.Domains {
+		domains[i] = &domain
+	}
+
+	return domains
 }
 
 func (r *RecordDataAdapter) GetSchemaVersion() string {
@@ -148,6 +152,7 @@ func (d *DB) AddRecord(record types.Record) error {
 		Skills:    convertSkills(recordData.GetSkills(), cid),
 		Locators:  convertLocators(recordData.GetLocators(), cid),
 		Modules:   convertModules(recordData.GetModules(), cid),
+		Domains:   convertDomains(recordData.GetDomains(), cid),
 	}
 
 	// Let GORM handle the entire creation with associations
@@ -156,7 +161,7 @@ func (d *DB) AddRecord(record types.Record) error {
 	}
 
 	logger.Debug("Added new record with associations to SQLite database", "record_cid", sqliteRecord.RecordCID, "cid", cid,
-		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "modules", len(sqliteRecord.Modules))
+		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "modules", len(sqliteRecord.Modules), "domains", len(sqliteRecord.Domains))
 
 	return nil
 }
@@ -192,7 +197,7 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 
 	// Execute the query to get records.
 	var dbRecords []Record
-	if err := query.Preload("Skills").Preload("Locators").Preload("Modules").Find(&dbRecords).Error; err != nil {
+	if err := query.Preload("Skills").Preload("Locators").Preload("Modules").Preload("Domains").Find(&dbRecords).Error; err != nil {
 		return nil, fmt.Errorf("failed to query records: %w", err)
 	}
 
@@ -322,6 +327,22 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 
 		if len(cfg.ModuleNames) > 0 {
 			condition, args := utils.BuildWildcardCondition("modules.name", cfg.ModuleNames)
+			if condition != "" {
+				query = query.Where(condition, args...)
+			}
+		}
+	}
+
+	// Handle domain filters with wildcard support.
+	if len(cfg.DomainIDs) > 0 || len(cfg.DomainNames) > 0 {
+		query = query.Joins("JOIN domains ON domains.record_cid = records.record_cid")
+
+		if len(cfg.DomainIDs) > 0 {
+			query = query.Where("domains.domain_id IN ?", cfg.DomainIDs)
+		}
+
+		if len(cfg.DomainNames) > 0 {
+			condition, args := utils.BuildWildcardCondition("domains.name", cfg.DomainNames)
 			if condition != "" {
 				query = query.Where(condition, args...)
 			}
