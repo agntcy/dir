@@ -10,6 +10,7 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/importer/config"
+	"github.com/agntcy/dir/importer/enricher"
 	_ "github.com/agntcy/dir/importer/mcp" // Import MCP importer to trigger its init() function for auto-registration.
 	"github.com/agntcy/dir/importer/types"
 	"github.com/agntcy/dir/importer/types/factory"
@@ -42,6 +43,14 @@ Examples:
 
   # Preview without importing
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --dry-run
+
+  # Enable LLM-based enrichment with default configuration
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --enrich
+
+  # Use custom MCPHost configuration and prompt template
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --enrich \
+    --enrich-config=/path/to/mcphost.json \
+    --enrich-prompt=/path/to/custom-prompt.md
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runImport(cmd)
@@ -55,6 +64,10 @@ func init() {
 	Command.Flags().StringToStringVar(&cfg.Filters, "filter", nil, "Filters (key=value)")
 	Command.Flags().IntVar(&cfg.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
 	Command.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "Preview without importing")
+
+	Command.Flags().BoolVar(&cfg.Enrich, "enrich", false, "Enrich the records with LLM")
+	Command.Flags().StringVar(&cfg.EnricherConfigFile, "enrich-config", enricher.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
+	Command.Flags().StringVar(&cfg.EnricherPromptTemplate, "enrich-prompt", "", "Optional: path to custom prompt template file or inline prompt (empty = use default)")
 
 	// Mark required flags
 	Command.MarkFlagRequired("type") //nolint:errcheck

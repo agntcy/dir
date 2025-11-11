@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/client/streaming"
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/types"
 )
@@ -29,9 +28,8 @@ func (m *mockImporter) Run(ctx context.Context, cfg config.Config) (*types.Impor
 // mockClient is a mock implementation for testing.
 type mockClient struct{}
 
-func (m *mockClient) PushStream(ctx context.Context, recordsCh <-chan *corev1.Record) (streaming.StreamResult[corev1.RecordRef], error) {
-	// Mock implementation that satisfies the interface
-	return nil, nil //nolint:nilnil
+func (m *mockClient) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
+	return &corev1.RecordRef{}, nil
 }
 
 // Mock constructor functions.

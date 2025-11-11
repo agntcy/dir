@@ -37,7 +37,10 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 		return nil, fmt.Errorf("failed to create fetcher: %w", err)
 	}
 
-	transformer := NewTransformer()
+	transformer, err := NewTransformer(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create transformer: %w", err)
+	}
 
 	// Configure pipeline with concurrency settings
 	pipelineConfig := pipeline.Config{

@@ -8,7 +8,6 @@ import (
 	"errors"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/client/streaming"
 )
 
 // RegistryType represents the type of external registry to import from.
@@ -28,7 +27,7 @@ const (
 // ClientInterface defines the interface for the DIR client used by importers.
 // This allows for easier testing and mocking.
 type ClientInterface interface {
-	PushStream(ctx context.Context, recordsCh <-chan *corev1.Record) (streaming.StreamResult[corev1.RecordRef], error)
+	Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
 }
 
 // Config contains configuration for an import operation.
@@ -37,8 +36,12 @@ type Config struct {
 	RegistryURL  string            // Base URL of the registry
 	Filters      map[string]string // Registry-specific filters
 	Limit        int               // Number of records to import (default: 0 for all)
-	Concurrency  int               // Number of concurrent workers (default: 5)
+	Concurrency  int               // Number of concurrent workers (default: 1)
 	DryRun       bool              // If true, preview without actually importing
+
+	Enrich                 bool   // If true, enrich the records with LLM
+	EnricherConfigFile     string // Path to MCPHost configuration file (e.g., mcphost.json)
+	EnricherPromptTemplate string // Optional: path to custom prompt template or inline prompt (empty = use default)
 }
 
 // Validate checks if the configuration is valid.
@@ -52,7 +55,7 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Concurrency <= 0 {
-		c.Concurrency = 5 // Set default concurrency
+		c.Concurrency = 1 // Set default concurrency
 	}
 
 	return nil
