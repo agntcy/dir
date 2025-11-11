@@ -28,7 +28,7 @@ func CheckForCreds(cmd *cobra.Command, currentSession *sessionstore.HubSession, 
 // It checks sources in the following order of priority:
 //  1. API key file (if provided)
 //  2. Environment variables
-func resolveAPIKeyCredentials(clientID, secret, apikeyFile string) (string, string, error) {
+func resolveAPIKeyCredentials(apikeyFile string) (string, string, error) {
 	// Check API key file if provided
 	if apikeyFile != "" {
 		fileContent, err := os.ReadFile(apikeyFile)
@@ -67,8 +67,8 @@ func resolveAPIKeyCredentials(clientID, secret, apikeyFile string) (string, stri
 // 2. API key from environment variables
 // 3. Existing session from context (session file created via 'dirctl hub login').
 // Secret must be provided as base64-encoded.
-func GetOrCreateSession(cmd *cobra.Command, serverAddress, clientID, secret, apikeyFile string, jsonOutput bool) (*sessionstore.HubSession, error) {
-	effectiveClientID, effectiveSecret, err := resolveAPIKeyCredentials(clientID, secret, apikeyFile)
+func GetOrCreateSession(cmd *cobra.Command, serverAddress, apikeyFile string, jsonOutput bool) (*sessionstore.HubSession, error) {
+	effectiveClientID, effectiveSecret, err := resolveAPIKeyCredentials(apikeyFile)
 	if err != nil {
 		return nil, err
 	}

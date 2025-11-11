@@ -87,7 +87,7 @@ Usage examples:
 		organization := args[0]
 		recordCID := args[1]
 
-		currentSession, err := authUtils.GetOrCreateSession(cmd, hubOpts.ServerAddress, "", "", hubOpts.APIKeyFile, false)
+		currentSession, err := authUtils.GetOrCreateSession(cmd, hubOpts.ServerAddress, hubOpts.APIKeyFile, false)
 		if err != nil {
 			return fmt.Errorf("failed to get or create session: %w", err)
 		}
