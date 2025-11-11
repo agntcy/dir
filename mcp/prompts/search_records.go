@@ -43,7 +43,7 @@ PARAMETERS:
 - skill_ids: Exact IDs (e.g., "10201")
 - skill_names: Skill patterns (e.g., "*python*")
 - locators: Locator patterns (e.g., "docker-image:*")
-- modules: Module patterns (e.g., "*-plugin")
+- modules: Module patterns (e.g., "integration/mcp")
 - domain_ids: Exact domain IDs (e.g., "604")
 - domain_names: Domain patterns (e.g., "*education*", "healthcare/*")
 
@@ -53,7 +53,7 @@ EXAMPLES:
 "find Python agents" → { "skill_names": ["*python*"] }
 "image processing v2" → { "skill_names": ["*image*"], "versions": ["v2.*"] }
 "docker translation" → { "skill_names": ["*translation*"], "locators": ["docker-image:*"] }
-"education agents with Python" → { "domain_names": ["*education*"], "skill_names": ["*python*"] }`
+"education agents with Python" → { "domain_names": ["*education*"] }`
 
 	return &mcp.GetPromptResult{
 		Description: "Guided workflow for searching agent records using free-text queries",
