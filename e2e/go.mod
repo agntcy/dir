@@ -8,6 +8,7 @@ replace (
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/hub => ../hub
 	github.com/agntcy/dir/importer => ../importer
+	github.com/agntcy/dir/mcp => ../mcp
 	github.com/agntcy/dir/utils => ../utils
 )
 
@@ -49,6 +50,7 @@ require (
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
 	github.com/agntcy/dir/hub v0.5.0-rc.3 // indirect
 	github.com/agntcy/dir/importer v0.5.0-rc.3 // indirect
+	github.com/agntcy/dir/mcp v0.5.0-rc.3 // indirect
 	github.com/agntcy/oasf-sdk/pkg v0.0.9 // indirect
 	github.com/alecthomas/chroma/v2 v2.20.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
@@ -150,6 +152,7 @@ require (
 	github.com/google/go-containerregistry v0.20.6 // indirect
 	github.com/google/go-github/v73 v73.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/jsonschema-go v0.3.0 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -191,6 +194,7 @@ require (
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/modelcontextprotocol/go-sdk v0.8.0 // indirect
 	github.com/modelcontextprotocol/registry v1.2.3 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect

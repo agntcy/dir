@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/agntcy/dir/mcp/prompts"
@@ -204,6 +205,9 @@ Optionally saves the result to a file.
 	}, prompts.PullRecord)
 
 	// Run the server over stdin/stdout
-	return server.Run(ctx, &mcp.StdioTransport{})
-}
+	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
+		return fmt.Errorf("failed to run MCP server: %w", err)
+	}
 
+	return nil
+}
