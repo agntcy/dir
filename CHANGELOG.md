@@ -5,6 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.0] - 2025-11-12
+
+### Key Highlights
+
+This release focuses on improving operational reliability and API capabilities, 
+strengthening security capabilities, and adding MCP (Model Context Protocol)
+integration, including:
+
+**MCP Integrations**
+- MCP registry importer for automated OASF record ingestion
+- MCP server implementation with OASF and Directory tools
+- Added support for MCP server announce and discovery via DHT
+
+**API & Client Improvements**
+- Event listener RPC for real-time updates across services
+- gRPC connection management and streaming enhancements
+- Rate limiting at application layer for improved stability
+- Health checks migrated from HTTP to gRPC
+
+**Security & Reliability**
+- TLS-based authentication support for SDKs
+- Panic recovery middleware and structured logging for gRPC
+- Critical resource leak fixes and improved context handling
+- Enhanced security scanning with CodeQL workflows
+
+**Developer Experience**
+- LLM-based enrichment for OASF records
+- Simplified SDK integration in secure environments
+- MCP tooling for easy record management and API access
+- Unified CLI output formats with --output flag and JSONL support
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.5.0  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.5.0  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.5.0  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.5.0  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.5.0  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.5.0  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.5.0  | dirctl >= v0.5.0            |
+
+### Added
+- **MCP**: Add tools for record management and API operations (#465, #574, #619, #611, #650, #660)
+- **MCP**: Registry importer for automated record ingestion (#544, #568)
+- **MCP**: LLM-based record enrichment for OASF records (#646)
+- **API**: Event listener RPC exposure (#537)
+- **API**: Structured gRPC request/response logging interceptor (#566)
+- **API**: Panic recovery middleware for gRPC handlers (#573)
+- **API**: Application-layer rate limiting for gRPC (#593)
+- **API**: Readiness checks for apiserver services (#582)
+- **API**: gRPC connection management (#647)
+- **Security**: Container security scanning workflow (#547)
+- **Security**: CodeQL security workflows (#584)
+- **Security**: TLS token-based authentication for Go client/CLI (#606)
+- **Helm**: Routing service deployment configuration (#599)
+- **Helm**: Extra environment variables support in dir chart (#605)
+- **Helm**: Zot configuration and authentication (#576)
+- **CLI**: Unified output formats with --output flag and JSONL support (#587)
+- **CLI**: MCP dirctl subcommand (#660)
+- **Testing**: Unit test coverage for all Go modules (#555)
+- **Testing**: E2E test coverage (#591)
+
+### Changed
+- **API**: Push/pull API refactoring and improvements (#585, #595)
+- **Storage**: Store Capability Interfaces refactoring (#562)
+- **SDK**: Migration to local generated proto stubs (#569, #588)
+- **CLI**: Hub sign/verify commands restoration (#612)
+- **Helm**: Ingress deployment fixes (#600, #601)
+- **Security**: Security fixes and dependency updates (#602)
+- **Health**: Health checks migrated from HTTP to gRPC (#597)
+- **Dependencies**: Bump OASF SDK to v0.0.8 and v0.0.9 (#603, #640)
+- **Dependencies**: Bump Zot to latest version (#578, #579)
+- **Dependencies**: Set SPIRE version in taskfile (#583)
+- **CI**: Update container tags for security scans (#558)
+- **CI**: Tag for SDK/JS package releases (#617, #621)
+
+### Fixed
+- **Client**: Critical resource leaks and context handling issues (#577)
+- **Client**: Push stream hanging with multiple errors (#644)
+- **Security**: JWT auth test and authentication fixes (#545)
+- **API**: Rate limit E2E tests (#598)
+- **API**: Hub API updates (#595)
+- **API**: MCP search limit handling (#623)
+- **Storage**: OCI E2E concurrent issues and healthcheck service (#620)
+- **SDK**: SPIFFE sign test (#592)
+- **SDK**: Add proto stubs to repository (#588)
+- **SDK**: JS package release prefix for RC tags (#621, #625)
+- **CLI**: Sign and verify options cleanup (#673)
+- **CLI**: API key methods improvements (#659)
+
+### Removed
+- **MCP**: Remove dedicated MCP artifacts (#663)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.4.0...v0.5.0)
+
+---
+
 ## [v0.4.0] - 2025-10-15
 
 ### Key Highlights
