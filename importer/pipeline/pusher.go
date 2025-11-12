@@ -6,6 +6,7 @@ package pipeline
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/utils/logging"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var logger = logging.Logger("importer/pipeline")
@@ -74,7 +76,9 @@ func (p *ClientPusher) buildExistingRecordsCache(ctx context.Context) error {
 	}
 
 	// Collect all CIDs
-	var cids []string
+	const initialCapacity = 100
+
+	cids := make([]string, 0, initialCapacity)
 	for cid := range cidCh {
 		cids = append(cids, cid)
 	}
@@ -84,7 +88,7 @@ func (p *ClientPusher) buildExistingRecordsCache(ctx context.Context) error {
 	}
 
 	// Convert CIDs to RecordRefs
-	var refs []*corev1.RecordRef
+	refs := make([]*corev1.RecordRef, 0, len(cids))
 	for _, cid := range cids {
 		refs = append(refs, &corev1.RecordRef{Cid: cid})
 	}
@@ -134,57 +138,7 @@ func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) 
 	errCh := make(chan error)
 
 	// Apply deduplication filtering if not in force mode
-	var recordsCh <-chan *corev1.Record
-	if !p.force {
-		filteredCh := make(chan *corev1.Record)
-		recordsCh = filteredCh
-
-		go func() {
-			defer close(filteredCh)
-
-			skippedCount := 0
-			pushedCount := 0
-
-			for record := range inputCh {
-				// Extract name@version from record
-				nameVersion, err := extractNameVersion(record)
-				if err != nil {
-					// Can't extract name@version, push it anyway
-					logger.Debug("Failed to extract name@version, pushing record", "error", err)
-					filteredCh <- record
-					pushedCount++
-					continue
-				}
-
-				// Check if record already exists
-				p.mu.RLock()
-				_, exists := p.existingRecords[nameVersion]
-				p.mu.RUnlock()
-
-				if exists {
-					// Skip duplicate
-					skippedCount++
-					if p.debug {
-						fmt.Fprintf(os.Stderr, "[DEDUP] %s is a duplicate (already exists)\n", nameVersion)
-						os.Stderr.Sync()
-					}
-					continue
-				}
-
-				// Not a duplicate, push it
-				filteredCh <- record
-				pushedCount++
-			}
-
-			if p.debug {
-				fmt.Fprintf(os.Stderr, "[DEDUP] Summary: %d records passed through, %d duplicates skipped\n", pushedCount, skippedCount)
-				os.Stderr.Sync()
-			}
-		}()
-	} else {
-		// Force mode: use input channel directly, no filtering
-		recordsCh = inputCh
-	}
+	recordsCh := p.applyDeduplication(inputCh)
 
 	go func() {
 		defer close(refCh)
@@ -193,21 +147,30 @@ func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) 
 		// Push records one-by-one to ensure all records are processed
 		// even if some fail validation
 		for record := range recordsCh {
+			// Extract and remove debug source before pushing
+			var mcpSourceJSON string
+
+			if record.GetData() != nil && record.Data.Fields != nil {
+				if debugField, ok := record.GetData().GetFields()["__mcp_debug_source"]; ok {
+					mcpSourceJSON = debugField.GetStringValue()
+					// Remove debug field before validation
+					delete(record.GetData().GetFields(), "__mcp_debug_source")
+				}
+			}
+
 			ref, err := p.client.Push(ctx, record)
 			if err != nil {
-				logger.Debug("Failed to push record", "error", err, "record", record)
-
-				// Send error but continue processing remaining records
-				select {
-				case errCh <- err:
-				case <-ctx.Done():
-					return
-				}
+				p.handlePushError(err, record, mcpSourceJSON, errCh, ctx)
 
 				continue
 			}
 
-			// Send successful reference
+			// Check if server returned an ERROR: CID (validation/storage failure)
+			if ref != nil && strings.HasPrefix(ref.GetCid(), "ERROR:") {
+				p.handleServerRejection(ref, record, mcpSourceJSON)
+			}
+
+			// Send reference (success or ERROR: CID)
 			select {
 			case refCh <- ref:
 			case <-ctx.Done():
@@ -219,65 +182,169 @@ func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) 
 	return refCh, errCh
 }
 
-// getName extracts the name from a "name@version" string
-func getName(nameVersion string) string {
-	parts := strings.Split(nameVersion, "@")
-	if len(parts) > 0 {
-		return parts[0]
+// applyDeduplication applies deduplication filtering if not in force mode.
+func (p *ClientPusher) applyDeduplication(inputCh <-chan *corev1.Record) <-chan *corev1.Record {
+	if p.force {
+		// Force mode: use input channel directly, no filtering
+		return inputCh
 	}
-	return nameVersion
+
+	filteredCh := make(chan *corev1.Record)
+
+	go func() {
+		defer close(filteredCh)
+
+		skippedCount := 0
+		pushedCount := 0
+
+		for record := range inputCh {
+			if p.shouldSkipDuplicate(record, &skippedCount) {
+				continue
+			}
+
+			filteredCh <- record
+
+			pushedCount++
+		}
+
+		if p.debug {
+			fmt.Fprintf(os.Stderr, "[DEDUP] Summary: %d records passed through, %d duplicates skipped\n", pushedCount, skippedCount)
+			os.Stderr.Sync()
+		}
+	}()
+
+	return filteredCh
 }
 
-// getVersion extracts the version from a "name@version" string
-func getVersion(nameVersion string) string {
-	parts := strings.Split(nameVersion, "@")
-	if len(parts) > 1 {
-		return parts[1]
+// shouldSkipDuplicate checks if a record should be skipped due to deduplication.
+func (p *ClientPusher) shouldSkipDuplicate(record *corev1.Record, skippedCount *int) bool {
+	// Extract name@version from record
+	nameVersion, err := extractNameVersion(record)
+	if err != nil {
+		// Can't extract name@version, push it anyway
+		logger.Debug("Failed to extract name@version, pushing record", "error", err)
+
+		return false
 	}
-	return ""
+
+	// Check if record already exists
+	p.mu.RLock()
+	_, exists := p.existingRecords[nameVersion]
+	p.mu.RUnlock()
+
+	if exists {
+		// Skip duplicate
+		*skippedCount++
+
+		if p.debug {
+			fmt.Fprintf(os.Stderr, "[DEDUP] %s is a duplicate (already exists)\n", nameVersion)
+			os.Stderr.Sync()
+		}
+
+		return true
+	}
+
+	return false
 }
 
-// formatJSON attempts to pretty-print JSON, fallback to raw string
+// handlePushError handles push errors and sends them to the error channel.
+func (p *ClientPusher) handlePushError(err error, record *corev1.Record, mcpSourceJSON string, errCh chan<- error, ctx context.Context) {
+	logger.Debug("Failed to push record", "error", err, "record", record)
+
+	// Print detailed debug output if debug flag is set
+	if p.debug && mcpSourceJSON != "" {
+		p.printPushFailure(record, mcpSourceJSON, err.Error())
+	}
+
+	// Send error but continue processing remaining records
+	select {
+	case errCh <- err:
+	case <-ctx.Done():
+	}
+}
+
+// handleServerRejection handles server rejections (ERROR: CID responses).
+func (p *ClientPusher) handleServerRejection(ref *corev1.RecordRef, record *corev1.Record, mcpSourceJSON string) {
+	logger.Debug("Server rejected record", "cid", ref.GetCid())
+
+	// Print detailed debug output if debug flag is set
+	if p.debug && mcpSourceJSON != "" {
+		// Extract error message from CID
+		errorMsg := strings.TrimPrefix(ref.GetCid(), "ERROR:")
+		errorMsg = strings.TrimSpace(errorMsg)
+		p.printPushFailure(record, mcpSourceJSON, errorMsg)
+	}
+}
+
+// printPushFailure prints detailed debug information about a push failure.
+func (p *ClientPusher) printPushFailure(record *corev1.Record, mcpSourceJSON, errorMsg string) {
+	// Extract name@version for header
+	nameVersion, _ := extractNameVersion(record)
+	if nameVersion == "" {
+		nameVersion = "unknown"
+	}
+
+	fmt.Fprintf(os.Stderr, "\n========================================\n")
+	fmt.Fprintf(os.Stderr, "PUSH FAILED for: %s\n", nameVersion)
+	fmt.Fprintf(os.Stderr, "Error: %s\n", errorMsg)
+	fmt.Fprintf(os.Stderr, "========================================\n")
+	fmt.Fprintf(os.Stderr, "Original MCP Source:\n%s\n", formatJSON(mcpSourceJSON))
+	fmt.Fprintf(os.Stderr, "----------------------------------------\n")
+
+	// Print the generated OASF record
+	if recordBytes, err := protojson.Marshal(record.GetData()); err == nil {
+		fmt.Fprintf(os.Stderr, "Generated OASF Record:\n%s\n", formatJSON(string(recordBytes)))
+	}
+
+	fmt.Fprintf(os.Stderr, "========================================\n\n")
+	os.Stderr.Sync()
+}
+
+// formatJSON attempts to pretty-print JSON, fallback to raw string.
 func formatJSON(jsonStr string) string {
 	var obj interface{}
 	if err := json.Unmarshal([]byte(jsonStr), &obj); err != nil {
 		return jsonStr
 	}
+
 	if pretty, err := json.MarshalIndent(obj, "", "  "); err == nil {
 		return string(pretty)
 	}
+
 	return jsonStr
 }
 
 // extractNameVersion extracts "name@version" from a record.
 func extractNameVersion(record *corev1.Record) (string, error) {
-	if record == nil || record.Data == nil {
-		return "", fmt.Errorf("record or record data is nil")
+	if record == nil || record.GetData() == nil {
+		return "", errors.New("record or record data is nil")
 	}
 
-	fields := record.Data.GetFields()
+	fields := record.GetData().GetFields()
 	if fields == nil {
-		return "", fmt.Errorf("record data fields are nil")
+		return "", errors.New("record data fields are nil")
 	}
 
 	// Extract name
 	nameVal, ok := fields["name"]
 	if !ok {
-		return "", fmt.Errorf("record missing 'name' field")
+		return "", errors.New("record missing 'name' field")
 	}
+
 	name := nameVal.GetStringValue()
 	if name == "" {
-		return "", fmt.Errorf("record 'name' field is empty")
+		return "", errors.New("record 'name' field is empty")
 	}
 
 	// Extract version
 	versionVal, ok := fields["version"]
 	if !ok {
-		return "", fmt.Errorf("record missing 'version' field")
+		return "", errors.New("record missing 'version' field")
 	}
+
 	version := versionVal.GetStringValue()
 	if version == "" {
-		return "", fmt.Errorf("record 'version' field is empty")
+		return "", errors.New("record 'version' field is empty")
 	}
 
 	return fmt.Sprintf("%s@%s", name, version), nil
