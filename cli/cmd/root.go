@@ -12,6 +12,7 @@ import (
 	hubCmd "github.com/agntcy/dir/cli/cmd/hub"
 	importcmd "github.com/agntcy/dir/cli/cmd/import"
 	"github.com/agntcy/dir/cli/cmd/info"
+	"github.com/agntcy/dir/cli/cmd/mcp"
 	"github.com/agntcy/dir/cli/cmd/network"
 	"github.com/agntcy/dir/cli/cmd/pull"
 	"github.com/agntcy/dir/cli/cmd/push"
@@ -79,6 +80,8 @@ func init() {
 		sync.Command,
 		// events commands
 		events.Command, // Contains: listen
+		// mcp commands
+		mcp.Command, // Contains: serve
 	)
 }
 
