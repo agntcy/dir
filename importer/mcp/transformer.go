@@ -6,7 +6,9 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
@@ -69,6 +71,15 @@ func (t *Transformer) Transform(ctx context.Context, source interface{}) (*corev
 			response.Server.Name, response.Server.Version, err)
 	}
 
+	// Attach MCP source for debugging push failures
+	// Store in a way that won't interfere with the record
+	if record.GetData() != nil && record.Data.Fields != nil {
+		if mcpBytes, err := json.Marshal(response.Server); err == nil {
+			// Store as a JSON string for later retrieval
+			record.Data.Fields["__mcp_debug_source"] = structpb.NewStringValue(string(mcpBytes))
+		}
+	}
+
 	return record, nil
 }
 
@@ -103,6 +114,16 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 	// Translate MCP struct to OASF record struct
 	recordStruct, err := translator.MCPToRecord(mcpData)
 	if err != nil {
+		// Print MCP source on translation failure
+		if mcpBytes, jsonErr := json.MarshalIndent(server, "", "  "); jsonErr == nil {
+			fmt.Fprintf(os.Stderr, "\n========================================\n")
+			fmt.Fprintf(os.Stderr, "TRANSLATION FAILED for: %s@%s\n", server.Name, server.Version)
+			fmt.Fprintf(os.Stderr, "========================================\n")
+			fmt.Fprintf(os.Stderr, "MCP Source:\n%s\n", string(mcpBytes))
+			fmt.Fprintf(os.Stderr, "========================================\n\n")
+			os.Stderr.Sync()
+		}
+
 		return nil, fmt.Errorf("failed to convert MCP data to OASF record: %w", err)
 	}
 
@@ -127,7 +148,7 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 		}
 
 		// Only update the skills field, preserve everything else from the original record
-		if err := updateSkillsInStruct(recordStruct, enrichedRecord.Skills); err != nil {
+		if err := updateSkillsInStruct(recordStruct, enrichedRecord.GetSkills()); err != nil {
 			return nil, fmt.Errorf("failed to update skills in record: %w", err)
 		}
 	}
@@ -158,7 +179,7 @@ func structToOASFRecord(s *structpb.Struct) (*typesv1alpha1.Record, error) {
 // This preserves all other fields including schema_version, name, version, etc.
 func updateSkillsInStruct(recordStruct *structpb.Struct, enrichedSkills []*typesv1alpha1.Skill) error {
 	if recordStruct.Fields == nil {
-		return fmt.Errorf("record struct has no fields")
+		return errors.New("record struct has no fields")
 	}
 
 	// Convert enriched skills to structpb.ListValue
@@ -172,13 +193,13 @@ func updateSkillsInStruct(recordStruct *structpb.Struct, enrichedSkills []*types
 		}
 
 		// Add name field (required)
-		if skill.Name != "" {
-			skillStruct.Fields["name"] = structpb.NewStringValue(skill.Name)
+		if skill.GetName() != "" {
+			skillStruct.Fields["name"] = structpb.NewStringValue(skill.GetName())
 		}
 
 		// Add id field if present
-		if skill.Id != 0 {
-			skillStruct.Fields["id"] = structpb.NewNumberValue(float64(skill.Id))
+		if skill.GetId() != 0 {
+			skillStruct.Fields["id"] = structpb.NewNumberValue(float64(skill.GetId()))
 		}
 
 		skillsList.Values = append(skillsList.Values, structpb.NewStructValue(skillStruct))
