@@ -74,7 +74,7 @@ Examples:
 		cmd.SetErr(os.Stderr)
 
 		// Authenticate using either API key file or session file
-		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, "", "", apikeyFile, false)
+		currentSession, err := authUtils.GetOrCreateSession(cmd, opts.ServerAddress, apikeyFile, false)
 		if err != nil {
 			return fmt.Errorf("failed to get or create session: %w", err)
 		}

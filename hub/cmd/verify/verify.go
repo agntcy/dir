@@ -46,7 +46,7 @@ Usage examples:
 		}
 		recordCID := args[0]
 
-		currentSession, err := authUtils.GetOrCreateSession(cmd, hubOpts.ServerAddress, "", "", hubOpts.APIKeyFile, false)
+		currentSession, err := authUtils.GetOrCreateSession(cmd, hubOpts.ServerAddress, hubOpts.APIKeyFile, false)
 		if err != nil {
 			return fmt.Errorf("failed to get or create session: %w", err)
 		}
