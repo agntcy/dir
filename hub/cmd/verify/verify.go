@@ -24,14 +24,13 @@ import (
 
 var hubOpts *hubOptions.HubOptions
 
-func init() {
-	hubOpts = hubOptions.NewHubOptions(hubOptions.NewBaseOption(), Command)
-}
+func NewCommand(hubOptions *hubOptions.HubOptions) *cobra.Command {
+	hubOpts = hubOptions
 
-var Command = &cobra.Command{
-	Use:   "verify",
-	Short: "Verify record signature against identity-based OIDC or key-based signing",
-	Long: `This command verifies the record signature against
+	cmd := &cobra.Command{
+		Use:   "verify",
+		Short: "Verify record signature against identity-based OIDC or key-based signing",
+		Long: `This command verifies the record signature against
 identity-based OIDC or key-based signing process.
 
 Usage examples:
@@ -40,34 +39,38 @@ Usage examples:
 
 	dirctl hub verify <record-cid>
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
-			return errors.New("you must specify the recordCID")
-		}
-		recordCID := args[0]
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("you must specify the recordCID")
+			}
 
-		currentSession, err := authUtils.GetOrCreateSession(cmd, hubOpts.ServerAddress, hubOpts.APIKeyFile, false)
-		if err != nil {
-			return fmt.Errorf("failed to get or create session: %w", err)
-		}
+			recordCID := args[0]
 
-		hc, err := hubClient.New(currentSession.HubBackendAddress)
-		if err != nil {
-			return fmt.Errorf("failed to create hub client: %w", err)
-		}
+			currentSession, err := authUtils.GetOrCreateSession(cmd, hubOpts.ServerAddress, hubOpts.APIKeyFile, false)
+			if err != nil {
+				return fmt.Errorf("failed to get or create session: %w", err)
+			}
 
-		trusted, err := verify(cmd.Context(), hc, currentSession, recordCID)
-		if err != nil {
-			return fmt.Errorf("failed to verify record: %w", err)
-		}
+			hc, err := hubClient.New(currentSession.HubBackendAddress)
+			if err != nil {
+				return fmt.Errorf("failed to create hub client: %w", err)
+			}
 
-		status := "untrusted"
-		if trusted {
-			status = "trusted"
-		}
+			trusted, err := verify(cmd.Context(), hc, currentSession, recordCID)
+			if err != nil {
+				return fmt.Errorf("failed to verify record: %w", err)
+			}
 
-		return presenter.PrintMessage(cmd, "signature", "Record signature is", status)
-	},
+			status := "untrusted"
+			if trusted {
+				status = "trusted"
+			}
+
+			return presenter.PrintMessage(cmd, "signature", "Record signature is", status)
+		},
+	}
+
+	return cmd
 }
 
 func verify(ctx context.Context, hc hubClient.Client, session *sessionstore.HubSession, recordCID string) (bool, error) {
