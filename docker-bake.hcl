@@ -17,7 +17,7 @@ group "default" {
   targets = [
     "dir-apiserver",
     "dir-ctl",
-    "dir-mcp-server",
+    // "dir-mcp-server",
   ]
 }
 
