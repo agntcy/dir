@@ -208,7 +208,6 @@ Add the MCP server to your IDE's MCP configuration using the **absolute path** t
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888",
         "DIRECTORY_CLIENT_AUTH_MODE": "token",
         "DIRECTORY_CLIENT_SPIFFE_TOKEN": "/absolute/path/to/token.json",
-        "DIRECTORY_CLIENT_TLS_SKIP_VERIFY": "true",
       }
     }
   }
