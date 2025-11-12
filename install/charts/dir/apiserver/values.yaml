@@ -5,8 +5,8 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-nameOverride: ''
-fullnameOverride: ''
+nameOverride: ""
+fullnameOverride: ""
 
 # Logging configuration
 log_level: INFO
@@ -34,12 +34,12 @@ config:
     # Authentication mode: "x509" or "jwt"
     # - x509: Uses X.509-SVID from mutual TLS peer certificates
     # - jwt: Uses JWT-SVID from Authorization header
-    mode: 'x509'
+    mode: "x509"
     # SPIFFE Workload API socket path (injected by SPIRE agent)
-    socket_path: 'unix:///run/spire/agent-sockets/api.sock'
+    socket_path: "unix:///run/spire/agent-sockets/api.sock"
     # Expected audiences for JWT validation (only used in JWT mode)
     audiences:
-      - 'spiffe://example.org/dir-server'
+      - "spiffe://example.org/dir-server"
 
   # Authorization settings (handles access control policies)
   # Requires authentication to be enabled first
@@ -48,12 +48,12 @@ config:
     enabled: false
     # Trust domain for this Directory server
     # Used to distinguish internal (same trust domain) vs external requests
-    trust_domain: 'example.org'
+    trust_domain: "example.org"
 
   # Store settings for the storage backend.
   store:
     # Storage provider to use.
-    provider: 'oci'
+    provider: "oci"
 
     # OCI-backed store
     oci:
@@ -65,14 +65,14 @@ config:
       # cache_dir: ""
 
       # Registry address to connect to
-      registry_address: 'dir-zot.dir-server.svc.cluster.local:5000'
+      registry_address: "dir-zot.dir-server.svc.cluster.local:5000"
       # All data will be stored under this repo.
       # Objects are pushed as tags, manifests, and blobs.
       # repository_name: ""
 
       # Auth credentials to use.
       auth_config:
-        insecure: 'true'
+        insecure: "true"
         access_token: access-token
         refresh_token: refresh-token
 
@@ -101,17 +101,17 @@ config:
   # Sync configuration
   sync:
     # How frequently the scheduler checks for pending syncs
-    scheduler_interval: '30s'
+    scheduler_interval: "30s"
 
     # Maximum number of sync workers running concurrently
     worker_count: 1
 
     # Timeout for individual sync operations
-    worker_timeout: '10m'
+    worker_timeout: "10m"
 
     # Registry monitor configuration
     registry_monitor:
-      check_interval: '30s'
+      check_interval: "30s"
 
     # Authentication configuration for sync operations
     auth_config: {}
@@ -134,13 +134,13 @@ config:
   # Publication configuration
   publication:
     # How frequently the scheduler checks for pending publications
-    scheduler_interval: '1h'
+    scheduler_interval: "1h"
 
     # Maximum number of publication workers running concurrently
     worker_count: 1
 
     # Timeout for individual publication operations
-    worker_timeout: '30m'
+    worker_timeout: "30m"
 
   # gRPC Connection Management configuration
   # Protects server from resource exhaustion, zombie connections, and memory exhaustion
@@ -240,7 +240,7 @@ routingService:
   # Cloud provider for automatic annotation configuration
   # Options: "aws", "gcp", "azure", or leave empty for manual configuration
   # When set, provider-specific annotations are automatically applied
-  cloudProvider: ''
+  cloudProvider: ""
 
   # AWS-specific configuration (only used when cloudProvider: "aws")
   aws:
@@ -283,7 +283,7 @@ serviceAccount:
   annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
-  name: ''
+  name: ""
 
 podAnnotations: {}
 
@@ -300,7 +300,7 @@ securityContext: {}
 
 ingress:
   enabled: false
-  className: ''
+  className: ""
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
@@ -365,18 +365,18 @@ revisionHistoryLimit: 2
 secrets:
   # Private key for peer-to-peer routing identity
   # If not provided, the secret will not include this key
-  privKey: ''
+  privKey: ""
 
   # Sync authentication credentials
   # Used for authenticating sync operations between nodes
   # Username defaults to "sync" if empty, password is randomly generated if empty
   syncAuth:
-    username: ''
-    password: ''
+    username: ""
+    password: ""
 
   # OCI (Open Container Initiative) registry authentication
   # Used for authenticating to the OCI-backed storage backend
   # Username defaults to "admin" if empty, password is randomly generated if empty
   ociAuth:
-    username: ''
-    password: ''
+    username: ""
+    password: ""
