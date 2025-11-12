@@ -19,6 +19,7 @@ type Importer interface {
 type ImportResult struct {
 	TotalRecords  int
 	ImportedCount int
+	SkippedCount  int
 	FailedCount   int
 	Errors        []error
 }

@@ -55,8 +55,16 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 		p := pipeline.NewDryRun(fetcher, transformer, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	} else {
-		// Use full pipeline (fetch, transform, and push)
-		pusher := pipeline.NewClientPusher(i.client)
+		// Create pusher with deduplication support
+		// If --force is set, pusher will skip cache building and push everything
+		// Otherwise, it will build a cache and skip duplicates
+		var pusher pipeline.Pusher
+
+		pusher, err = pipeline.NewClientPusher(ctx, i.client, cfg.Force, cfg.Debug)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create pusher: %w", err)
+		}
+
 		p := pipeline.New(fetcher, transformer, pusher, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	}
@@ -69,6 +77,7 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 	result := &types.ImportResult{
 		TotalRecords:  pipelineResult.TotalRecords,
 		ImportedCount: pipelineResult.ImportedCount,
+		SkippedCount:  pipelineResult.SkippedCount,
 		FailedCount:   pipelineResult.FailedCount,
 		Errors:        pipelineResult.Errors,
 	}

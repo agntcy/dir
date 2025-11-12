@@ -42,6 +42,7 @@ type Config struct {
 type Result struct {
 	TotalRecords  int
 	ImportedCount int
+	SkippedCount  int
 	FailedCount   int
 	Errors        []error
 	mu            sync.Mutex
@@ -143,6 +144,9 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 	}()
 
 	wg.Wait()
+
+	// Calculate skipped count (records filtered by deduplication)
+	result.SkippedCount = result.TotalRecords - result.ImportedCount - result.FailedCount
 
 	return result, nil
 }
