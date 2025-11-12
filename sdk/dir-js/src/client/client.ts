@@ -4,7 +4,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { env } from 'node:process';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
 
 import {
@@ -27,13 +27,20 @@ export class Config {
   static DEFAULT_SERVER_ADDRESS = '127.0.0.1:8888';
   static DEFAULT_DIRCTL_PATH = 'dirctl';
   static DEFAULT_SPIFFE_ENDPOINT_SOCKET = '';
-  static DEFAULT_AUTH_MODE = 'insecure';
+  static DEFAULT_AUTH_MODE = '';
   static DEFAULT_JWT_AUDIENCE = '';
+  static DEFAULT_TLS_CA_FILE = '';
+  static DEFAULT_TLS_CERT_FILE = '';
+  static DEFAULT_TLS_KEY_FILE = '';
+
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
-  authMode: 'insecure' | 'x509' | 'jwt';
+  authMode: '' | 'x509' | 'jwt' | 'tls';
   jwtAudience: string;
+  tlsCaFile: string;
+  tlsCertFile: string
+  tlsKeyFile: string;
 
   /**
    * Creates a new Config instance.
@@ -41,15 +48,18 @@ export class Config {
    * @param serverAddress - The server address to connect to. Defaults to '127.0.0.1:8888'
    * @param dirctlPath - Path to the dirctl executable. Defaults to 'dirctl'
    * @param spiffeEndpointSocket - Path to the spire server socket. Defaults to empty string.
-   * @param authMode - Authentication mode: 'insecure', 'x509', or 'jwt'. Defaults to 'insecure'
+   * @param authMode - Authentication mode: '' for insecure, 'x509', 'jwt' or 'tls'. Defaults to ''
    * @param jwtAudience - JWT audience for JWT authentication. Required when authMode is 'jwt'
    */
   constructor(
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
-    authMode: 'insecure' | 'x509' | 'jwt' = Config.DEFAULT_AUTH_MODE as 'insecure' | 'x509' | 'jwt',
-    jwtAudience = Config.DEFAULT_JWT_AUDIENCE
+    authMode: '' | 'x509' | 'jwt' | 'tls' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt' | 'tls',
+    jwtAudience = Config.DEFAULT_JWT_AUDIENCE,
+    tlsCaFile = Config.DEFAULT_TLS_CA_FILE,
+    tlsCertFile = Config.DEFAULT_TLS_CERT_FILE,
+    tlsKeyFile = Config.DEFAULT_TLS_KEY_FILE
   ) {
     // add protocol prefix if not set
     // use unsafe http unless spire/auth is used
@@ -57,8 +67,8 @@ export class Config {
       !serverAddress.startsWith('http://') &&
       !serverAddress.startsWith('https://')
     ) {
-      // use https protocol when X.509 or JWT auth is used
-      if (authMode === 'x509' || authMode === 'jwt') {
+      // use https protocol when X.509, JWT, or TLS auth is used
+      if (authMode === 'x509' || authMode === 'jwt' || authMode === 'tls') {
         serverAddress = `https://${serverAddress}`;
       } else {
         serverAddress = `http://${serverAddress}`;
@@ -70,6 +80,9 @@ export class Config {
     this.spiffeEndpointSocket = spiffeEndpointSocket;
     this.authMode = authMode;
     this.jwtAudience = jwtAudience;
+    this.tlsCaFile = tlsCaFile;
+    this.tlsCertFile = tlsCertFile;
+    this.tlsKeyFile = tlsKeyFile;
   }
 
   /**
@@ -95,10 +108,13 @@ export class Config {
     const serverAddress =
       env[`${prefix}SERVER_ADDRESS`] || Config.DEFAULT_SERVER_ADDRESS;
     const spiffeEndpointSocketPath = env[`${prefix}SPIFFE_SOCKET_PATH`] || Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET;
-    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as 'insecure' | 'x509' | 'jwt';
+    const authMode = (env[`${prefix}AUTH_MODE`] || Config.DEFAULT_AUTH_MODE) as '' | 'x509' | 'jwt' | 'tls';
     const jwtAudience = env[`${prefix}JWT_AUDIENCE`] || Config.DEFAULT_JWT_AUDIENCE;
+    const tlsCaFile = env[`${prefix}TLS_CA_FILE`] || Config.DEFAULT_TLS_CA_FILE;
+    const tlsCertFile = env[`${prefix}TLS_CERT_FILE`] || Config.DEFAULT_TLS_CERT_FILE;
+    const tlsKeyFile = env[`${prefix}TLS_KEY_FILE`] || Config.DEFAULT_TLS_KEY_FILE;
 
-    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience);
+    return new Config(serverAddress, dirctlPath, spiffeEndpointSocketPath, authMode, jwtAudience, tlsCaFile, tlsCertFile, tlsKeyFile);
   }
 }
 
@@ -204,7 +220,7 @@ export class Client {
   static async createGRPCTransport(config: Config): Promise<Transport> {
     // Handle different authentication modes
     switch (config.authMode) {
-      case 'insecure':
+      case '':
         return createGrpcTransport({
           baseUrl: config.serverAddress,
         });
@@ -214,6 +230,9 @@ export class Client {
 
       case 'x509':
         return await this.createX509Transport(config);
+
+      case 'tls':
+        return await this.createTLSTransport(config);
 
       default:
         throw new Error(`Unsupported auth mode: ${config.authMode}`);
@@ -329,6 +348,41 @@ export class Client {
     return transport;
   }
 
+  private static async createTLSTransport(config: Config): Promise<Transport> {
+    if (config.tlsCaFile === '') {
+      throw new Error('TLS CA file is required for TLS authentication');
+    }
+    if (config.tlsCertFile === '') {
+      throw new Error('TLS certificate file is required for TLS authentication');
+    }
+    if (config.tlsKeyFile === '') {
+      throw new Error('TLS key file is required for TLS authentication');
+    }
+
+    let root_ca: string;
+    let cert_chain: string;
+    let private_key: string;
+
+    try {
+      root_ca = readFileSync(config.tlsCaFile).toString();
+      cert_chain = readFileSync(config.tlsCertFile).toString();
+      private_key = readFileSync(config.tlsKeyFile).toString();
+    } catch (e) {
+      console.error('Error reading file:', (e as Error).message);
+      throw e;
+    }
+
+    const transport = createGrpcTransport({
+      baseUrl: config.serverAddress,
+      nodeOptions: {
+        ca: root_ca,
+        cert: cert_chain,
+        key: private_key,
+      },
+    });
+
+    return transport;
+  }
   /**
    * Request generator helper function for streaming requests.
    */

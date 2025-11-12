@@ -25,7 +25,7 @@ function generateRecords(names) {
         ],
         "locators": [
             {
-                "type": "docker-image",
+                "type": "docker_image",
                 "url": "https://ghcr.io/agntcy/marketing-strategy"
             }
         ],
@@ -37,8 +37,24 @@ function generateRecords(names) {
         ],
         "modules": [
             {
-                "name": "runtime/a2a",
-                "data": {}
+                "name": "integration/a2a",
+                "id": 203,
+                "prompts": "",
+                "data": {
+                    "protocol_version": "lightweight orchestra moral",
+                    "card_data": "centres",
+                    "capabilities": [
+                    "state_transition_history",
+                    "push_notifications"
+                    ],
+                    "transports": [
+                    "grpc",
+                    "http"
+                    ],
+                    "output_modes": [
+                    "text/html"
+                    ]
+                }
             }
         ]
     }
@@ -48,7 +64,9 @@ function generateRecords(names) {
 
 (async () => {
     // Create client
-    const client = new Client(new Config());
+    const config = Config.loadFromEnv();
+    let t = await Client.createGRPCTransport(config);
+    const client = new Client(config, t);
 
     // Create record objects
     const records = generateRecords(['example-record', 'example-record2']);

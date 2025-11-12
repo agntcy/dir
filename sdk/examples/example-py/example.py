@@ -28,7 +28,7 @@ def generate_record(name):
             ],
             "locators": [
                 {
-                    "type": "docker-image",
+                    "type": "docker_image",
                     "url": "https://ghcr.io/agntcy/marketing-strategy"
                 }
             ],
@@ -40,8 +40,24 @@ def generate_record(name):
             ],
             "modules": [
                 {
-                    "name": "runtime/a2a",
-                    "data": {}
+                    "name": "integration/a2a",
+                    "id": 203,
+                    "prompts": "",
+                    "data": {
+                        "protocol_version": "lightweight orchestra moral",
+                        "card_data": "centres",
+                        "capabilities": [
+                        "state_transition_history",
+                        "push_notifications"
+                        ],
+                        "transports": [
+                        "grpc",
+                        "http"
+                        ],
+                        "output_modes": [
+                        "text/html"
+                        ]
+                    }
                 }
             ]
         },
@@ -50,7 +66,7 @@ def generate_record(name):
 
 def main() -> None:
     # Initialize the client
-    client = Client(Config())
+    client = Client()
 
     records = [generate_record(x) for x in ["example-record", "example-record2"]]
 
