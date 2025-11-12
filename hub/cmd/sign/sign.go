@@ -36,30 +36,13 @@ var (
 	hubOpts  *hubOptions.HubOptions
 )
 
-func init() {
-	hubOpts = hubOptions.NewHubOptions(hubOptions.NewBaseOption(), Command)
-	flags := Command.Flags()
+func NewCommand(hubOptions *hubOptions.HubOptions) *cobra.Command {
+	hubOpts = hubOptions
 
-	flags.StringVar(&signOpts.FulcioURL, "fulcio-url", cosign.DefaultFulcioURL,
-		"Sigstore Fulcio URL")
-	flags.StringVar(&signOpts.RekorURL, "rekor-url", cosign.DefaultRekorURL,
-		"Sigstore Rekor URL")
-	flags.StringVar(&signOpts.TimestampURL, "timestamp-url", cosign.DefaultTimestampURL,
-		"Sigstore Timestamp URL")
-	flags.StringVar(&signOpts.OIDCProviderURL, "oidc-provider-url", cosign.DefaultOIDCProviderURL,
-		"OIDC Provider URL")
-	flags.StringVar(&signOpts.OIDCClientID, "oidc-client-id", cosign.DefaultOIDCClientID,
-		"OIDC Client ID")
-	flags.StringVar(&signOpts.OIDCToken, "oidc-token", "",
-		"OIDC Token for non-interactive signing. ")
-	flags.StringVar(&signOpts.Key, "key", "",
-		"Path to the private key file to use for signing (e.g., a Cosign key generated with a GitHub token). Use this option to sign with a self-managed keypair instead of OIDC identity-based signing.")
-}
-
-var Command = &cobra.Command{
-	Use:   "sign",
-	Short: "Sign record using identity-based OIDC or key-based signing",
-	Long: `This command signs the record using identity-based signing.
+	cmd := &cobra.Command{
+		Use:   "sign",
+		Short: "Sign record using identity-based OIDC or key-based signing",
+		Long: `This command signs the record using identity-based signing.
 It uses a short-lived signing certificate issued by Sigstore Fulcio
 along with a local ephemeral signing key and OIDC identity.
 
@@ -79,40 +62,60 @@ Usage examples:
 
 	dirctl hub sign <org ID | org name> <record-cid> --key <key-file>
 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 2 { //nolint:mnd
-			return errors.New("organization and record CID are required")
-		}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 2 { //nolint:mnd
+				return errors.New("organization and record CID are required")
+			}
 
-		organization := args[0]
-		recordCID := args[1]
+			organization := args[0]
+			recordCID := args[1]
 
-		currentSession, err := authUtils.GetOrCreateSession(cmd, hubOpts.ServerAddress, hubOpts.APIKeyFile, false)
-		if err != nil {
-			return fmt.Errorf("failed to get or create session: %w", err)
-		}
+			currentSession, err := authUtils.GetOrCreateSession(cmd, hubOpts.ServerAddress, hubOpts.APIKeyFile, false)
+			if err != nil {
+				return fmt.Errorf("failed to get or create session: %w", err)
+			}
 
-		hc, err := hubClient.New(currentSession.HubBackendAddress)
-		if err != nil {
-			return fmt.Errorf("failed to create hub client: %w", err)
-		}
+			hc, err := hubClient.New(currentSession.HubBackendAddress)
+			if err != nil {
+				return fmt.Errorf("failed to create hub client: %w", err)
+			}
 
-		signature, publicKey, err := sign(recordCID)
-		if err != nil {
-			return fmt.Errorf("failed to sign record: %w", err)
-		}
+			signature, publicKey, err := sign(recordCID)
+			if err != nil {
+				return fmt.Errorf("failed to sign record: %w", err)
+			}
 
-		err = service.PushRecordSignature(cmd.Context(), hc, organization, recordCID, signature, publicKey, currentSession)
-		if err != nil {
-			return fmt.Errorf("failed to push record signature: %w", err)
-		}
+			err = service.PushRecordSignature(cmd.Context(), hc, organization, recordCID, signature, publicKey, currentSession)
+			if err != nil {
+				return fmt.Errorf("failed to push record signature: %w", err)
+			}
 
-		_ = presenter.PrintMessage(cmd, "signature", "Record is", "signed")
-		_ = presenter.PrintMessage(cmd, "signature", "Signature", signature)
-		_ = presenter.PrintMessage(cmd, "signature", "Public Key", publicKey)
+			_ = presenter.PrintMessage(cmd, "signature", "Record is", "signed")
+			_ = presenter.PrintMessage(cmd, "signature", "Signature", signature)
+			_ = presenter.PrintMessage(cmd, "signature", "Public Key", publicKey)
 
-		return nil
-	},
+			return nil
+		},
+	}
+
+	flags := cmd.Flags()
+
+	flags.StringVar(&signOpts.FulcioURL, "fulcio-url", cosign.DefaultFulcioURL,
+		"Sigstore Fulcio URL")
+	flags.StringVar(&signOpts.RekorURL, "rekor-url", cosign.DefaultRekorURL,
+		"Sigstore Rekor URL")
+	flags.StringVar(&signOpts.TimestampURL, "timestamp-url", cosign.DefaultTimestampURL,
+		"Sigstore Timestamp URL")
+	flags.StringVar(&signOpts.OIDCProviderURL, "oidc-provider-url", cosign.DefaultOIDCProviderURL,
+		"OIDC Provider URL")
+	flags.StringVar(&signOpts.OIDCClientID, "oidc-client-id", cosign.DefaultOIDCClientID,
+		"OIDC Client ID")
+	flags.StringVar(&signOpts.OIDCToken, "oidc-token", "",
+		"OIDC Token for non-interactive signing. ")
+	flags.StringVar(&signOpts.Key, "key", "",
+		"Path to the private key file to use for signing (e.g., a Cosign key generated with a GitHub token). Use this option to sign with a self-managed keypair instead of OIDC identity-based signing.")
+
+	return cmd
 }
 
 func sign(recordCID string) (string, string, error) {

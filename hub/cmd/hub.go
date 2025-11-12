@@ -113,8 +113,8 @@ func NewHubCommand(ctx context.Context, baseOption *options.BaseOption) *cobra.C
 		orgs.NewCommand(opts),
 		apikey.NewCommand(opts),
 		info.NewCommand(opts),
-		sign.Command,
-		verify.Command,
+		sign.NewCommand(opts),
+		verify.NewCommand(opts),
 	)
 
 	return cmd
