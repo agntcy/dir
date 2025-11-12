@@ -187,103 +187,44 @@ Guided workflow for pulling an OASF agent record from the Directory by its CID.
 
 ## Setup
 
-### Option 1: Local Build
+The MCP server runs via the `dirctl` CLI tool.
 
-Build the MCP server binary:
+**Download pre-built binary:**
 
-```bash
-task mcp:compile
-```
-
-### Option 2: Docker
-
-Build the MCP server using Docker:
-
-```bash
-task mcp:build
-```
+Download the latest `dirctl` binary from the [releases page](https://github.com/agntcy/dir/releases).
 
 ### Configure Your IDE
 
-Add the MCP server to your IDE's MCP configuration using the **absolute path** to the binary or Docker command.
+Add the MCP server to your IDE's MCP configuration using the **absolute path** to the `dirctl` binary.
 
-**Example 1** Cursor configuration (`~/.cursor/mcp.json`) with local binary:
+**Example:** Cursor configuration (`~/.cursor/mcp.json`):
 ```json
 {
   "mcpServers": {
     "dir-mcp-server": {
-      "command": "/absolute/path/to/dir/mcp/mcp-server",
-      "args": [],
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
       "env": {
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
-      }
-    }
-  }
-}
-```
-
-**Example 2** Cursor configuration with Docker:
-```json
-{
-  "mcpServers": {
-    "dir-mcp-server": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:<image tag>"],
-      "env": {
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
-      }
-    }
-  }
-}
-```
-
-**Example 3** Cursor configuration with Docker and authentication:
-```json
-{
-  "mcpServers": {
-    "dir-mcp-server": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i", "--volume", "/token.json:/token.json", "ghcr.io/agntcy/dir-mcp-server:<image tag>"],
-      "env": {
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "dev.api.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888",
         "DIRECTORY_CLIENT_AUTH_MODE": "token",
-        "DIRECTORY_CLIENT_SPIFFE_TOKEN": "/token.json"
+        "DIRECTORY_CLIENT_SPIFFE_TOKEN": "/absolute/path/to/token.json",
+        "DIRECTORY_CLIENT_TLS_SKIP_VERIFY": "true",
       }
     }
   }
 }
 ```
-
-**Environment Variables:**
-- `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
-
-## Verifying Configuration
-
-After adding the MCP server to `~/.cursor/mcp.json`:
-
-1. Restart Cursor completely
-2. Go to Settings → Tools & MCP
-3. Check that `dir-mcp-server` shows a green indicator
-4. If red, click "View Logs" to troubleshoot
-5. Test by typing `/` in chat - you should see "dir-mcp-server" in the menu
 
 ## Usage in Cursor Chat
 
 **Using Tools** - Ask naturally, AI calls tools automatically:
 - "List available OASF schema versions"
-- "Validate this OASF record: [JSON]"
+- "Validate this OASF record at path: /path/to/record.json"
 - "Search for Python agents with image processing"
 - "Push this record: [JSON]"
 
-**Using Prompts** - Mention prompt name for guided workflows:
-- "Use create_record to generate an OASF record, save to agent.json"
-- "Use validate_record with agent.json"
-- "Use push_record with agent.json"
-- "Use search_records to find: docker-based translation services"
+**Using Prompts** - For guided workflows reference prompts with:
 
-**Reference explicitly with /:**
-```
-/dir-mcp-server what OASF versions are available?
-/dir-mcp-server create a record and save to my-agent.json
-/dir-mcp-server search for text completion agents
-```
+- `/dir-mcp-server/create_record`
+- `/dir-mcp-server/search_records`
+- ...
