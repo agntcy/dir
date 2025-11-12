@@ -6,22 +6,69 @@ and describes how DAGs are stored and retrieved.
 
 # Specification
 
-The DAG format is specified in the [OASF specification](https://oasis-open.github.io/cti-documentation/). It defines the structure and semantics of DAGs in the system.
+The specification defines the structure and semantics of the data in the system.
+It is based on the [Open Agentic Schema Framework](https://schema.oasf.outshift.com/) specification.
+
+## Structure
+
+Each object can be expressed in the following format as per [JSON-LD 1.1](https://www.w3.org/TR/json-ld11/) specification.
+
+OASF defines a base object structure that can be extended for different types of objects.
+Namely, the `Object` structure is defined as follows:
+
+```yaml
+# hashes to Qm-oasf-base-object
+---
+    @artifactType: agntcy.oasf.types.Object
+    @mediaType: application/ld+json; profile="https://schema.oasf.outshift.com/"
+    annotations:
+    data:
+
+# hashes to Qm-mediachain-song1
+---
+  @type: MusicRecording
+  name: Christmas Will Break Your Heart
+  byArtist: 
+    @type: MusicGroup
+    name: LCD Soundsystem
+  inAlbum: 
+    link: /ipfs/Qm-mediachain-album1
+  author: 
+    @type: Person
+    link: /ipfs/Qm-mediachain-artist1
+  image: 
+    @type: Photograph
+    contentUrl: 
+      link: /ipfs/Qm-literal-photo-bytes
+
+# hashes to Qm-mediachain-album1
+---
+  @type: Album
+  name: LCD Soundsystem's Triumphant Return
+
+# hashes to Qm-mediachain-artist1
+---
+  @type: Person
+  name: James Murphy
+  bitcoinAddress: 19d3ynnuNKbgFLxp6XsyoxxGSvoAzBYPMw
+```
 
 **Object**
 
-```proto
-message Object {
-    // Unique identifier for the DAG.
-    // This field is populated when the object is stored.
-    // It can be calculated from the content of the object.
-    optional string cid = 1;
-
-    string type = 2; // Type of the object
-    string name = 3; // Name of the object
-    uint64 size = 4; // Size of the object
-    optional google.protobuf.Struct data = 5; // Data of the object
-    repeated Object links = 6; // Links to other objects
+```json
+{
+    "cid": "bafybeigdyrzt5tqz5e3j6x5x5z5x5z5x5z5x5z5x",
+    "type": "object_type", // only A-Z, a-z, 0-9, and _./ are allowed
+    "name": "object_name", // only A-Z, a-z, 0-9, and _./ are allowed
+    "size": 1234,
+    "links": [
+        {
+            "cid": "bafybeihdwdcefgh4dqkjv67uz",
+            "type": "linked_object_type", // only A-Z, a-z, 0-9, and _./ are allowed
+            "name": "linked_object_name", // only A-Z, a-z, 0-9, and _./ are allowed
+            "size": 5678
+        }
+    ]
 }
 ```
 
