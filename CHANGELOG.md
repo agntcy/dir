@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Key Highlights
 
-This release focuses on improving operational reliability and API capabilities, 
-strengthening security capabilities, and adding MCP (Model Context Protocol)
-integration, including:
+This release focuses on extending API functionalities, improving
+operational reliability, strengthening security capabilities, and
+adding MCP (Model Context Protocol) integrations support, including:
 
 **MCP Integrations**
 - MCP registry importer for automated OASF record ingestion
@@ -25,15 +25,15 @@ integration, including:
 - Health checks migrated from HTTP to gRPC
 
 **Security & Reliability**
-- TLS-based authentication support for SDKs
+- Simplified TLS-based authentication support for SDKs
 - Panic recovery middleware and structured logging for gRPC
 - Critical resource leak fixes and improved context handling
 - Enhanced security scanning with CodeQL workflows
 
 **Developer Experience**
+- MCP tooling for easy record management and API access
 - LLM-based enrichment for OASF records
 - Simplified SDK integration in secure environments
-- MCP tooling for easy record management and API access
 - Unified CLI output formats with --output flag and JSONL support
 
 ### Compatibility Matrix
