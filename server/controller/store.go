@@ -61,12 +61,41 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 		}
 
 		if !isValid {
-			return status.Errorf(codes.InvalidArgument, "record validation failed: %v", validationErrors)
+			// Extract record name and version for better error reporting
+			recordName, recordVersion := extractRecordInfo(record)
+
+			// Log validation error with record details
+			storeLogger.Warn("Record validation failed, skipping record",
+				"name", recordName,
+				"version", recordVersion,
+				"errors", validationErrors)
+
+			// Send back a RecordRef with error message encoded in Cid field
+			// Format: "ERROR: <validation errors>"
+			// This allows the client to display the actual error without closing the stream
+			errorMsg := fmt.Sprintf("ERROR: %v", validationErrors)
+			if err := stream.Send(&corev1.RecordRef{Cid: errorMsg}); err != nil {
+				return status.Errorf(codes.Internal, "failed to send error response: %v", err)
+			}
+
+			// Continue processing the next record
+			continue
 		}
 
 		pushedRef, err := s.pushRecordToStore(stream.Context(), record)
 		if err != nil {
-			return err
+			// Log storage error but don't close the stream
+			storeLogger.Warn("Failed to push record to store, skipping record",
+				"error", err)
+
+			// Send back a RecordRef with error message encoded in Cid field
+			errorMsg := fmt.Sprintf("ERROR: storage failed: %v", err)
+			if sendErr := stream.Send(&corev1.RecordRef{Cid: errorMsg}); sendErr != nil {
+				return status.Errorf(codes.Internal, "failed to send error response: %v", sendErr)
+			}
+
+			// Continue processing the next record
+			continue
 		}
 
 		// Send the RecordRef back via stream
@@ -373,4 +402,29 @@ func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.Re
 	storeLogger.Debug("Record pulled successfully", "cid", recordRef.GetCid())
 
 	return record, nil
+}
+
+// extractRecordInfo extracts name and version from a record for logging.
+func extractRecordInfo(record *corev1.Record) (string, string) {
+	name := "unknown"
+	version := "unknown"
+
+	if record.GetData() == nil {
+		return name, version
+	}
+
+	fields := record.GetData().GetFields()
+	if fields == nil {
+		return name, version
+	}
+
+	if nameField := fields["name"]; nameField != nil {
+		name = nameField.GetStringValue()
+	}
+
+	if versionField := fields["version"]; versionField != nil {
+		version = versionField.GetStringValue()
+	}
+
+	return name, version
 }
