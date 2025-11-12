@@ -76,16 +76,6 @@ target "dir-ctl" {
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-ctl.name}")
 }
 
-target "dir-mcp-server" {
-  context = "."
-  dockerfile = "./mcp/Dockerfile"
-  inherits = [
-    "_common",
-    "docker-metadata-action",
-  ]
-  tags = get_tag(target.docker-metadata-action.tags, "${target.dir-mcp-server.name}")
-}
-
 target "sdks-test" {
   context = "."
   dockerfile = "./e2e/sdk/Dockerfile"

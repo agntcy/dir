@@ -69,37 +69,6 @@ jobs:
           path: bin
           if-no-files-found: error
 
-  # mcp:
-  #   name: MCP Server
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #       with:
-  #         fetch-depth: 0
-
-  #     - name: Setup Taskfile
-  #       shell: bash
-  #       run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-
-  #     - name: Setup Go
-  #       uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
-  #       with:
-  #         go-version: '1.25.2'
-  #         check-latest: true
-  #         cache-dependency-path: '**/*.sum'
-
-  #     - name: Build
-  #       run: |
-  #         task mcp:compile:all
-
-  #     - name: Upload artifact
-  #       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-  #       with:
-  #         name: mcp-artifacts
-  #         path: bin
-  #         if-no-files-found: error
-
   sdk:
     name: SDK
     uses: ./.github/workflows/reusable-release-sdk.yaml
@@ -116,7 +85,6 @@ jobs:
       - image
       - chart
       - cli
-      # - mcp
       - sdk
     runs-on: ubuntu-latest
     outputs:
@@ -142,8 +110,6 @@ jobs:
       matrix:
         os: [linux, darwin, windows]
         arch: [amd64, arm64]
-        # binary: [dirctl, dir-mcp-server]
-        binary: [dirctl]
     steps:
       - name: Checkout code
         if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
@@ -151,25 +117,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download CLI artifacts
-        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) && matrix.binary == 'dirctl' }}
+      - name: Download artifacts
+        if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
-          name: cli-artifacts
+          name: artifacts
           path: bin
-
-      # - name: Download MCP artifacts
-      #   if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) && matrix.binary == 'dir-mcp-server' }}
-      #   uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-      #   with:
-      #     name: mcp-artifacts
-      #     path: bin
 
       - name: Verify file
         if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
         run: |
           ls -l bin
-          file bin/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
+          file bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Upload Release Asset
         if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
@@ -179,8 +138,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: bin/${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
-          asset_name: ${{ matrix.binary }}-${{ matrix.os }}-${{ matrix.arch }}
+          asset_path: bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
+          asset_name: dirctl-${{ matrix.os }}-${{ matrix.arch }}
           asset_content_type: application/octet-stream
 
   brew:
