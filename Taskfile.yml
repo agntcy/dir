@@ -122,19 +122,43 @@ tasks:
     cmds:
       - '{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} --set=*.output=type=registry'
 
-  release:verify:
-    desc: Verify release readiness
-    deps:
-      - task: deps:multimod-bin
-    cmds:
-      - '{{ .MULTIMOD_BIN }} verify'
-
-  release:prepare:
+  release:create:
     desc: Prepare release
     deps:
       - task: deps:multimod-bin
+      - task: sdk:deps:python
+      - task: sdk:deps:javascript
+    vars:
+      RELEASE_VERSION: '{{ .RELEASE_VERSION }}'
     cmds:
-      - '{{ .MULTIMOD_BIN }} prerelease --all-module-sets --skip-go-mod-tidy=true --commit-to-different-branch=false'
+      # Switch to new branch
+      - 'if [ "$(git rev-parse --abbrev-ref HEAD)" != "release/{{.RELEASE_VERSION}}" ]; then git checkout -b release/{{.RELEASE_VERSION}}; fi'
+      # Update versions.yaml with the new version
+      - 'awk ''{gsub(/version: .*/,"version: {{.RELEASE_VERSION}}")}1'' versions.yaml > versions.yaml.tmp'
+      - 'mv versions.yaml.tmp versions.yaml'
+      # Update SDK packages with the new version
+      - 'cd sdk/dir-py && {{ .UV_BIN }} version {{.RELEASE_VERSION}} && cd -'
+      - 'cd sdk/dir-js && npm version {{.RELEASE_VERSION}} --allow-same-version --no-git-tag-version && cd -'
+      # Add release changes
+      - |
+        git add .
+        git commit -S -m "release(dir): prepare release {{.RELEASE_VERSION}}"
+      # Verify Go release
+      - |
+        {{ .MULTIMOD_BIN }} verify
+        {{ .MULTIMOD_BIN }} prerelease --all-module-sets --skip-go-mod-tidy=true --commit-to-different-branch=false
+      # Push prepared release
+      - task: release:push
+
+  release:push:
+    internal: true
+    vars:
+      RELEASE_VERSION: '{{ .RELEASE_VERSION }}'
+    prompt:
+      - 'Are you sure you want to push the release branch release/{{.RELEASE_VERSION}} to remote repository?'
+    cmds:
+      - |
+        git push --set-upstream origin release/{{.RELEASE_VERSION}} || true
 
   ##
   ## API
