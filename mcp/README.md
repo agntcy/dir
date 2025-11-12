@@ -187,32 +187,57 @@ Guided workflow for pulling an OASF agent record from the Directory by its CID.
 
 ## Setup
 
-The MCP server runs via the `dirctl` CLI tool.
+The MCP server runs via the `dirctl` CLI tool, which can be obtained as a pre-built binary or Docker image. About the possible installation methods, see the CLI [README.md](../cli/README.md) file.
 
-**Download pre-built binary:**
+### 1. Binary
 
-Download the latest `dirctl` binary from the [releases page](https://github.com/agntcy/dir/releases).
+Add the MCP server to your IDE's MCP configuration using the absolute path to the dirctl binary.
 
-### Configure Your IDE
+**Example Cursor configuration (`~/.cursor/mcp.json`):**
 
-Add the MCP server to your IDE's MCP configuration using the **absolute path** to the `dirctl` binary.
-
-**Example:** Cursor configuration (`~/.cursor/mcp.json`):
 ```json
 {
   "mcpServers": {
     "dir-mcp-server": {
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
-      "env": {
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888",
-        "DIRECTORY_CLIENT_AUTH_MODE": "token",
-        "DIRECTORY_CLIENT_SPIFFE_TOKEN": "/absolute/path/to/token.json",
-      }
     }
   }
 }
 ```
+
+### 2. Docker Image
+
+Add the MCP server to your IDE's MCP configuration using Docker.
+
+**Example Cursor configuration (`~/.cursor/mcp.json`):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "ghcr.io/agntcy/dir-ctl:latest",
+        "mcp",
+        "serve"
+      ]
+    }
+  }
+}
+```
+
+### Environment Variables
+
+The following environment variables can be used with both binary and Docker configurations:
+
+- `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
+- `DIRECTORY_CLIENT_AUTH_MODE` - Authentication mode: `none`, `x509`, `jwt`, `token`
+- `DIRECTORY_CLIENT_SPIFFE_TOKEN` - Path to SPIFFE token file (for token authentication)
+- `DIRECTORY_CLIENT_TLS_SKIP_VERIFY` - Skip TLS verification (set to `true` if needed)
 
 ## Usage in Cursor Chat
 
