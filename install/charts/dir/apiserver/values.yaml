@@ -211,6 +211,15 @@ config:
 spire:
   enabled: false
   trustDomain: example.org
+  
+  # Custom DNS names to add to the X.509-SVID certificate SANs
+  # Useful for external access with proper TLS verification without --tls-skip-verify
+  # Example:
+  # dnsNameTemplates:
+  #   - "dir-api.example.com"
+  #   - "api.example.com"
+  dnsNameTemplates: []
+  
   federation: []
     # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
     # - trustDomain: dir-cluster
