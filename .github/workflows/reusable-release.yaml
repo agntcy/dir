@@ -9,17 +9,17 @@ on:
       image_repo:
         required: true
         type: string
-        description: 'Image repo to use.'
+        description: "Image repo to use."
       release_tag:
         required: true
         type: string
-        description: 'Release tag for all components.'
+        description: "Release tag for all components."
     secrets:
       PYPI_API_TOKEN:
-        description: 'PyPI API token for publishing Python SDK'
+        description: "PyPI API token for publishing Python SDK"
         required: true
       NPMJS_TOKEN:
-        description: 'NPM.js token for publishing JavaScript SDK'
+        description: "NPM.js token for publishing JavaScript SDK"
         required: true
 
 jobs:
@@ -54,16 +54,16 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: '1.25.2'
+          go-version: "1.25.2"
           check-latest: true
-          cache-dependency-path: '**/*.sum'
+          cache-dependency-path: "**/*.sum"
 
       - name: Build
         run: |
           task cli:compile:all
 
       - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: cli-artifacts
           path: bin
@@ -117,11 +117,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download artifacts
+      - name: Download CLI artifacts
         if: ${{ !(contains(matrix.os, 'windows') && contains(matrix.arch, 'arm64')) }}
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
-          name: artifacts
+          name: cli-artifacts
           path: bin
 
       - name: Verify file
