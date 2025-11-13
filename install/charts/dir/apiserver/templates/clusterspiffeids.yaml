@@ -15,8 +15,10 @@ spec:
     - k8s:sa:{{ include "chart.serviceAccountName" . }}
   spiffeIDTemplate: {{ "spiffe://{{ .TrustDomain }}/ns/{{ .PodMeta.Namespace }}/sa/{{ .PodSpec.ServiceAccountName }}" }}
   autoPopulateDNSNames: true
+  {{- if .Values.spire.dnsNameTemplates }}
   dnsNameTemplates:
-    {{- .Values.spire.dnsNameTemplates | toYaml | nindent 4 }}
+    {{- toYaml .Values.spire.dnsNameTemplates | nindent 4 }}
+  {{- end }}
   {{- if .Values.spire.federation }}
   federatesWith:
   {{ range .Values.spire.federation }}
