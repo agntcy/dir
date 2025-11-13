@@ -68,6 +68,25 @@ Essential for LLM-based enrichment to ensure skills match the schema taxonomy.
 		`),
 	}, tools.GetSchemaSkills)
 
+	// Add tool for getting OASF schema domains
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_oasf_get_schema_domains",
+		Description: strings.TrimSpace(`
+Retrieves domains from the OASF schema for the specified version.
+This tool supports hierarchical domain navigation:
+- Without parent_domain: Returns all top-level domain categories (e.g., "artificial_intelligence", "software_development")
+- With parent_domain: Returns sub-domains under that parent (e.g., parent="artificial_intelligence" returns its children)
+
+Each domain includes:
+- name: The domain identifier used in OASF records
+- caption: Human-readable display name
+- id: Numeric domain identifier
+
+Use this tool to discover valid domains when creating or enriching agent records.
+Essential for LLM-based enrichment to ensure domains match the schema taxonomy.
+		`),
+	}, tools.GetSchemaDomains)
+
 	// Add tool for validating OASF agent records
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_oasf_validate_record",

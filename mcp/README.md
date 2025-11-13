@@ -20,84 +20,27 @@ Retrieves the complete OASF schema JSON content for the specified version.
 
 ### `agntcy_oasf_get_schema_skills`
 
-Retrieves skills from the OASF schema for the specified version. Supports hierarchical skill navigation for discovering valid skills when creating or enriching agent records.
+Retrieves skills from the OASF schema with hierarchical navigation support.
 
 **Input:**
-- `version` (string, **required**) - OASF schema version (e.g., "0.7.0", "0.8.0")
-- `parent_skill` (string, optional) - Parent skill name to filter sub-skills
+- `version` (string, **required**) - OASF schema version (e.g., "0.7.0")
+- `parent_skill` (string, optional) - Parent skill to filter sub-skills
 
-**Output:**
-- `version` (string) - The requested OASF schema version
-- `skills` ([]Skill) - Array of skill objects
-- `parent_skill` (string) - The parent skill filter if specified
-- `available_versions` ([]string) - List of available OASF schema versions
-- `error_message` (string) - Error message if retrieval failed
+**Output:** `skills` (array), `version`, `parent_skill`, `available_versions`, `error_message`
 
-**Skill Object:**
-- `name` (string) - The skill identifier used in OASF records
-- `caption` (string) - Human-readable display name
-- `id` (int) - Numeric skill identifier
+Without `parent_skill`, returns top-level skill categories. With `parent_skill`, returns direct sub-skills under that parent. Each skill includes `name`, `caption`, and `id` fields.
 
-**Usage Modes:**
+### `agntcy_oasf_get_schema_domains`
 
-**1. Top-Level Skills (without `parent_skill`):**
+Retrieves domains from the OASF schema with hierarchical navigation support.
 
-Returns all top-level skill categories:
+**Input:**
+- `version` (string, **required**) - OASF schema version (e.g., "0.7.0")
+- `parent_domain` (string, optional) - Parent domain to filter sub-domains
 
-```json
-{
-  "version": "0.7.0"
-}
-```
+**Output:** `domains` (array), `version`, `parent_domain`, `available_versions`, `error_message`
 
-**Response:**
-```json
-{
-  "skills": [
-    {"name": "natural_language_processing"},
-    {"name": "retrieval_augmented_generation"},
-    {"name": "analytical_skills"},
-    {"name": "multi_modal"},
-    ...
-  ]
-}
-```
-
-**2. Sub-Skills (with `parent_skill`):**
-
-Returns sub-skills under a specific parent category:
-
-```json
-{
-  "version": "0.7.0",
-  "parent_skill": "retrieval_augmented_generation"
-}
-```
-
-**Response:**
-```json
-{
-  "skills": [
-    {
-      "name": "retrieval_augmented_generation/document_or_database_question_answering",
-      "caption": "Document or Database Question Answering",
-      "id": 602
-    },
-    {
-      "name": "retrieval_augmented_generation/retrieval_of_information",
-      "caption": "Retrieval of Information",
-      "id": 601
-    },
-    {
-      "name": "retrieval_augmented_generation/generation_of_any",
-      "caption": "Generation of Any",
-      "id": 603
-    }
-  ]
-}
-```
-
-**Use when:** You need to discover valid skills from the OASF taxonomy, especially for LLM-based record enrichment workflows. The hierarchical navigation ensures selected skills match the schema.
+Without `parent_domain`, returns top-level domain categories. With `parent_domain`, returns direct sub-domains under that parent. Each domain includes `name`, `caption`, and `id` fields.
 
 ### `agntcy_oasf_validate_record`
 
