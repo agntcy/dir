@@ -1,8 +1,11 @@
 {
   "mcpServers": {
     "dir-mcp-server": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:tag"]
+      "command": "dirctl",
+      "args": [
+        "mcp",
+        "serve"
+      ]
     }
   },
   "model": "ollama:qwen3:8b"
