@@ -1,13 +1,12 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:dupl // Intentional duplication with domains file for separate domain/skill handling
 package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/agntcy/oasf-sdk/pkg/validator"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -43,41 +42,18 @@ func GetSchemaSkills(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaS
 	GetSchemaSkillsOutput,
 	error,
 ) {
-	// Get available schema versions from the OASF SDK
-	availableVersions, err := validator.GetAvailableSchemaVersions()
+	availableVersions, err := validateVersion(input.Version)
 	if err != nil {
+		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaSkillsOutput{
-			ErrorMessage: fmt.Sprintf("Failed to get available schema versions: %v", err),
-		}, nil
-	}
-
-	// Validate the version parameter
-	if input.Version == "" {
-		return nil, GetSchemaSkillsOutput{
-			ErrorMessage:      "Version parameter is required. Available versions: " + strings.Join(availableVersions, ", "),
+			ErrorMessage:      err.Error(),
 			AvailableVersions: availableVersions,
 		}, nil
 	}
 
-	// Check if the requested version is available
-	versionValid := false
-	for _, version := range availableVersions {
-		if input.Version == version {
-			versionValid = true
-			break
-		}
-	}
-
-	if !versionValid {
-		return nil, GetSchemaSkillsOutput{
-			ErrorMessage:      fmt.Sprintf("Invalid version '%s'. Available versions: %s", input.Version, strings.Join(availableVersions, ", ")),
-			AvailableVersions: availableVersions,
-		}, nil
-	}
-
-	// Get skills content using the OASF SDK
 	skillsJSON, err := validator.GetSchemaSkills(input.Version)
 	if err != nil {
+		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaSkillsOutput{
 			Version:           input.Version,
 			ErrorMessage:      fmt.Sprintf("Failed to get skills from OASF %s schema: %v", input.Version, err),
@@ -85,110 +61,51 @@ func GetSchemaSkills(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaS
 		}, nil
 	}
 
-	// Parse skills JSON
-	var skillsData map[string]interface{}
-	if err := json.Unmarshal(skillsJSON, &skillsData); err != nil {
+	allSkills, err := parseSchemaData(skillsJSON, parseItemFromSchema)
+	if err != nil {
+		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaSkillsOutput{
 			Version:           input.Version,
-			ErrorMessage:      fmt.Sprintf("Failed to parse skills data: %v", err),
+			ErrorMessage:      err.Error(),
 			AvailableVersions: availableVersions,
 		}, nil
 	}
 
-	// Parse all skills from the flat map structure
-	// Each key is a skill short name, value contains the full name with hierarchy
-	var allSkills []SkillItem
-	for _, skillDef := range skillsData {
-		defMap, ok := skillDef.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		skill := parseSkillFromSchema(defMap)
-		if skill.Name != "" {
-			allSkills = append(allSkills, skill)
-		}
+	resultSkills, err := filterSkills(allSkills, input.ParentSkill)
+	if err != nil {
+		//nolint:nilerr // MCP tools communicate errors through output, not error return
+		return nil, GetSchemaSkillsOutput{
+			Version:           input.Version,
+			ParentSkill:       input.ParentSkill,
+			ErrorMessage:      err.Error(),
+			AvailableVersions: availableVersions,
+		}, nil
 	}
 
-	// Filter based on parent_skill parameter
-	var resultSkills []SkillItem
-	if input.ParentSkill != "" {
-		// Return skills that are children of the parent_skill
-		// Children have names like "parent_skill/child_skill"
-		prefix := input.ParentSkill + "/"
-		for _, skill := range allSkills {
-			if strings.HasPrefix(skill.Name, prefix) {
-				// Check if this is a direct child (no further slashes after prefix)
-				remainder := strings.TrimPrefix(skill.Name, prefix)
-				if !strings.Contains(remainder, "/") {
-					resultSkills = append(resultSkills, skill)
-				}
-			}
-		}
-
-		if len(resultSkills) == 0 {
-			return nil, GetSchemaSkillsOutput{
-				Version:           input.Version,
-				ParentSkill:       input.ParentSkill,
-				ErrorMessage:      fmt.Sprintf("Parent skill '%s' not found or has no children", input.ParentSkill),
-				AvailableVersions: availableVersions,
-			}, nil
-		}
-	} else {
-		// Return only top-level parent categories
-		// Extract unique parent categories from skill names (part before first "/")
-		parentCategories := make(map[string]bool)
-		for _, skill := range allSkills {
-			if idx := strings.Index(skill.Name, "/"); idx > 0 {
-				parentCategory := skill.Name[:idx]
-				if !parentCategories[parentCategory] {
-					parentCategories[parentCategory] = true
-					// Create a skill item for the parent category
-					resultSkills = append(resultSkills, SkillItem{
-						Name: parentCategory,
-					})
-				}
-			}
-		}
-	}
-
-	// Return the skills
 	return nil, GetSchemaSkillsOutput{
 		Version:           input.Version,
-		Skills:            resultSkills,
+		Skills:            convertToSkillItems(resultSkills),
 		ParentSkill:       input.ParentSkill,
 		AvailableVersions: availableVersions,
 	}, nil
 }
 
-// parseSkillFromSchema extracts skill information from the schema definition.
-func parseSkillFromSchema(defMap map[string]interface{}) SkillItem {
-	skill := SkillItem{}
-
-	// Extract title for caption
-	if title, ok := defMap["title"].(string); ok {
-		skill.Caption = title
+// filterSkills filters skills based on parent parameter.
+func filterSkills(allSkills []schemaClass, parent string) ([]schemaClass, error) {
+	if parent != "" {
+		return filterChildItems(allSkills, parent)
 	}
 
-	// Extract properties
-	props, ok := defMap["properties"].(map[string]interface{})
-	if !ok {
-		return skill
+	return extractTopLevelCategories(allSkills), nil
+}
+
+// convertToSkillItems converts generic schema items to SkillItem type.
+func convertToSkillItems(items []schemaClass) []SkillItem {
+	skills := make([]SkillItem, len(items))
+
+	for i, item := range items {
+		skills[i] = SkillItem(item)
 	}
 
-	// Extract name
-	if nameField, ok := props["name"].(map[string]interface{}); ok {
-		if constVal, ok := nameField["const"].(string); ok {
-			skill.Name = constVal
-		}
-	}
-
-	// Extract ID
-	if idField, ok := props["id"].(map[string]interface{}); ok {
-		if constVal, ok := idField["const"].(float64); ok {
-			skill.ID = int(constVal)
-		}
-	}
-
-	return skill
+	return skills
 }

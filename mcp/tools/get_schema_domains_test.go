@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:dupl // Intentional duplication with skills test for separate domain/skill testing
 package tools
 
 import (
@@ -12,6 +13,8 @@ import (
 )
 
 func TestGetSchemaDomains(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	tests := []struct {
@@ -29,10 +32,11 @@ func TestGetSchemaDomains(t *testing.T) {
 			expectError:   false,
 			expectDomains: true,
 			checkCallback: func(t *testing.T, output GetSchemaDomainsOutput) {
+				t.Helper()
+
 				assert.Equal(t, "0.7.0", output.Version)
 				assert.Empty(t, output.ErrorMessage)
 				assert.NotEmpty(t, output.Domains)
-				assert.Greater(t, len(output.Domains), 0, "Should have at least one top-level domain")
 
 				// Check that top-level domains have expected fields
 				for _, domain := range output.Domains {
@@ -49,6 +53,8 @@ func TestGetSchemaDomains(t *testing.T) {
 			expectError:   false,
 			expectDomains: true,
 			checkCallback: func(t *testing.T, output GetSchemaDomainsOutput) {
+				t.Helper()
+
 				assert.Equal(t, "0.7.0", output.Version)
 				assert.Equal(t, "technology", output.ParentDomain)
 				assert.Empty(t, output.ErrorMessage)
@@ -68,6 +74,8 @@ func TestGetSchemaDomains(t *testing.T) {
 			expectError:   false,
 			expectDomains: false,
 			checkCallback: func(t *testing.T, output GetSchemaDomainsOutput) {
+				t.Helper()
+
 				assert.NotEmpty(t, output.ErrorMessage)
 				assert.Contains(t, output.ErrorMessage, "Invalid version")
 				assert.NotEmpty(t, output.AvailableVersions)
@@ -81,6 +89,8 @@ func TestGetSchemaDomains(t *testing.T) {
 			expectError:   false,
 			expectDomains: false,
 			checkCallback: func(t *testing.T, output GetSchemaDomainsOutput) {
+				t.Helper()
+
 				assert.NotEmpty(t, output.ErrorMessage)
 				assert.Contains(t, output.ErrorMessage, "Version parameter is required")
 				assert.NotEmpty(t, output.AvailableVersions)
@@ -95,6 +105,8 @@ func TestGetSchemaDomains(t *testing.T) {
 			expectError:   false,
 			expectDomains: false,
 			checkCallback: func(t *testing.T, output GetSchemaDomainsOutput) {
+				t.Helper()
+
 				assert.NotEmpty(t, output.ErrorMessage)
 				assert.Contains(t, output.ErrorMessage, "not found")
 			},
@@ -103,10 +115,13 @@ func TestGetSchemaDomains(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result, output, err := GetSchemaDomains(ctx, nil, tt.input)
 
 			if tt.expectError {
 				require.Error(t, err)
+
 				return
 			}
 
@@ -124,11 +139,13 @@ func TestGetSchemaDomains(t *testing.T) {
 	}
 }
 
-func TestParseDomainFromSchema(t *testing.T) {
+func TestParseItemFromSchemaForDomains(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		defMap   map[string]interface{}
-		expected DomainItem
+		expected schemaClass
 	}{
 		{
 			name: "Parse domain with name, caption (title), and ID",
@@ -143,7 +160,7 @@ func TestParseDomainFromSchema(t *testing.T) {
 					},
 				},
 			},
-			expected: DomainItem{
+			expected: schemaClass{
 				Name:    "test_domain",
 				Caption: "Test Domain Caption",
 				ID:      123,
@@ -158,7 +175,7 @@ func TestParseDomainFromSchema(t *testing.T) {
 					},
 				},
 			},
-			expected: DomainItem{
+			expected: schemaClass{
 				Name: "minimal_domain",
 			},
 		},
@@ -166,7 +183,9 @@ func TestParseDomainFromSchema(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseDomainFromSchema(tt.defMap)
+			t.Parallel()
+
+			result := parseItemFromSchema(tt.defMap)
 			assert.Equal(t, tt.expected.Name, result.Name)
 			assert.Equal(t, tt.expected.Caption, result.Caption)
 			assert.Equal(t, tt.expected.ID, result.ID)

@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:dupl // Intentional duplication with domains test for separate domain/skill testing
 package tools
 
 import (
@@ -12,6 +13,8 @@ import (
 )
 
 func TestGetSchemaSkills(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	tests := []struct {
@@ -29,10 +32,11 @@ func TestGetSchemaSkills(t *testing.T) {
 			expectError:  false,
 			expectSkills: true,
 			checkCallback: func(t *testing.T, output GetSchemaSkillsOutput) {
+				t.Helper()
+
 				assert.Equal(t, "0.7.0", output.Version)
 				assert.Empty(t, output.ErrorMessage)
 				assert.NotEmpty(t, output.Skills)
-				assert.Greater(t, len(output.Skills), 0, "Should have at least one top-level skill")
 
 				// Check that top-level skills have expected fields
 				for _, skill := range output.Skills {
@@ -49,6 +53,8 @@ func TestGetSchemaSkills(t *testing.T) {
 			expectError:  false,
 			expectSkills: true,
 			checkCallback: func(t *testing.T, output GetSchemaSkillsOutput) {
+				t.Helper()
+
 				assert.Equal(t, "0.7.0", output.Version)
 				assert.Equal(t, "retrieval_augmented_generation", output.ParentSkill)
 				assert.Empty(t, output.ErrorMessage)
@@ -68,6 +74,8 @@ func TestGetSchemaSkills(t *testing.T) {
 			expectError:  false,
 			expectSkills: false,
 			checkCallback: func(t *testing.T, output GetSchemaSkillsOutput) {
+				t.Helper()
+
 				assert.NotEmpty(t, output.ErrorMessage)
 				assert.Contains(t, output.ErrorMessage, "Invalid version")
 				assert.NotEmpty(t, output.AvailableVersions)
@@ -81,6 +89,8 @@ func TestGetSchemaSkills(t *testing.T) {
 			expectError:  false,
 			expectSkills: false,
 			checkCallback: func(t *testing.T, output GetSchemaSkillsOutput) {
+				t.Helper()
+
 				assert.NotEmpty(t, output.ErrorMessage)
 				assert.Contains(t, output.ErrorMessage, "Version parameter is required")
 				assert.NotEmpty(t, output.AvailableVersions)
@@ -95,6 +105,8 @@ func TestGetSchemaSkills(t *testing.T) {
 			expectError:  false,
 			expectSkills: false,
 			checkCallback: func(t *testing.T, output GetSchemaSkillsOutput) {
+				t.Helper()
+
 				assert.NotEmpty(t, output.ErrorMessage)
 				assert.Contains(t, output.ErrorMessage, "not found")
 			},
@@ -103,10 +115,13 @@ func TestGetSchemaSkills(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result, output, err := GetSchemaSkills(ctx, nil, tt.input)
 
 			if tt.expectError {
 				require.Error(t, err)
+
 				return
 			}
 
@@ -124,11 +139,13 @@ func TestGetSchemaSkills(t *testing.T) {
 	}
 }
 
-func TestParseSkillFromSchema(t *testing.T) {
+func TestParseItemFromSchemaForSkills(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		defMap   map[string]interface{}
-		expected SkillItem
+		expected schemaClass
 	}{
 		{
 			name: "Parse skill with name, caption (title), and ID",
@@ -143,7 +160,7 @@ func TestParseSkillFromSchema(t *testing.T) {
 					},
 				},
 			},
-			expected: SkillItem{
+			expected: schemaClass{
 				Name:    "test_skill",
 				Caption: "Test Skill Caption",
 				ID:      123,
@@ -158,7 +175,7 @@ func TestParseSkillFromSchema(t *testing.T) {
 					},
 				},
 			},
-			expected: SkillItem{
+			expected: schemaClass{
 				Name: "minimal_skill",
 			},
 		},
@@ -166,7 +183,9 @@ func TestParseSkillFromSchema(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseSkillFromSchema(tt.defMap)
+			t.Parallel()
+
+			result := parseItemFromSchema(tt.defMap)
 			assert.Equal(t, tt.expected.Name, result.Name)
 			assert.Equal(t, tt.expected.Caption, result.Caption)
 			assert.Equal(t, tt.expected.ID, result.ID)
