@@ -49,6 +49,25 @@ Use this tool to get the complete schema for reference when creating or validati
 		`),
 	}, tools.GetSchema)
 
+	// Add tool for getting OASF schema skills
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_oasf_get_schema_skills",
+		Description: strings.TrimSpace(`
+Retrieves skills from the OASF schema for the specified version.
+This tool supports hierarchical skill navigation:
+- Without parent_skill: Returns all top-level skill categories (e.g., "analytical_skills", "natural_language_processing")
+- With parent_skill: Returns sub-skills under that parent (e.g., parent="retrieval_augmented_generation" returns its children)
+
+Each skill includes:
+- name: The skill identifier used in OASF records
+- caption: Human-readable display name
+- id: Numeric skill identifier
+
+Use this tool to discover valid skills when creating or enriching agent records.
+Essential for LLM-based enrichment to ensure skills match the schema taxonomy.
+		`),
+	}, tools.GetSchemaSkills)
+
 	// Add tool for validating OASF agent records
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_oasf_validate_record",
