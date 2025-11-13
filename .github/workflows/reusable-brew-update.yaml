@@ -7,6 +7,9 @@ name: Brew formula update
 # recalculate all hash for the binaries and create a new PR with the changes.
 
 on:
+  release:
+    types: [released]
+
   workflow_call:
     inputs:
       create-pr:
