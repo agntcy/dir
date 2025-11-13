@@ -50,6 +50,8 @@ jobs:
             helm/dir
             helm/dirctl
             docker
+            importer
+            mcp
             .*
           requireScope: true
 

@@ -18,6 +18,30 @@ Retrieves the complete OASF schema JSON content for the specified version.
 **Input:** `version` (string) - OASF schema version (e.g., "0.3.1", "0.7.0")  
 **Output:** `version` (string), `schema` (string), `available_versions` ([]string), `error_message` (string)
 
+### `agntcy_oasf_get_schema_skills`
+
+Retrieves skills from the OASF schema with hierarchical navigation support.
+
+**Input:**
+- `version` (string, **required**) - OASF schema version (e.g., "0.7.0")
+- `parent_skill` (string, optional) - Parent skill to filter sub-skills
+
+**Output:** `skills` (array), `version`, `parent_skill`, `available_versions`, `error_message`
+
+Without `parent_skill`, returns top-level skill categories. With `parent_skill`, returns direct sub-skills under that parent. Each skill includes `name`, `caption`, and `id` fields.
+
+### `agntcy_oasf_get_schema_domains`
+
+Retrieves domains from the OASF schema with hierarchical navigation support.
+
+**Input:**
+- `version` (string, **required**) - OASF schema version (e.g., "0.7.0")
+- `parent_domain` (string, optional) - Parent domain to filter sub-domains
+
+**Output:** `domains` (array), `version`, `parent_domain`, `available_versions`, `error_message`
+
+Without `parent_domain`, returns top-level domain categories. With `parent_domain`, returns direct sub-domains under that parent. Each domain includes `name`, `caption`, and `id` fields.
+
 ### `agntcy_oasf_validate_record`
 
 Validates an OASF agent record against the OASF schema.
