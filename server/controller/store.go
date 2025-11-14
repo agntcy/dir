@@ -409,21 +409,16 @@ func extractRecordInfo(record *corev1.Record) (string, string) {
 	name := "unknown"
 	version := "unknown"
 
-	if record.GetData() == nil {
+	adapter := adapters.NewRecordAdapter(record)
+
+	recordData, err := adapter.GetRecordData()
+	if err != nil {
 		return name, version
 	}
 
-	fields := record.GetData().GetFields()
-	if fields == nil {
-		return name, version
-	}
-
-	if nameField := fields["name"]; nameField != nil {
-		name = nameField.GetStringValue()
-	}
-
-	if versionField := fields["version"]; versionField != nil {
-		version = versionField.GetStringValue()
+	if recordData != nil {
+		name = recordData.GetName()
+		version = recordData.GetVersion()
 	}
 
 	return name, version
