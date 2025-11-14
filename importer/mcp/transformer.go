@@ -5,20 +5,25 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/enricher"
+	"github.com/agntcy/oasf-sdk/pkg/translator"
 	mcpapiv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const (
 	// DefaultSchemaVersion is the default version of the OASF schema.
-	DefaultOASFVersion = "0.7.0"
+	DefaultOASFVersion = "0.8.0"
 )
 
 // Transformer implements the pipeline.Transformer interface for MCP records.
@@ -66,88 +71,142 @@ func (t *Transformer) Transform(ctx context.Context, source interface{}) (*corev
 			response.Server.Name, response.Server.Version, err)
 	}
 
+	// Attach MCP source for debugging push failures
+	// Store in a way that won't interfere with the record
+	if record.GetData() != nil && record.Data.Fields != nil {
+		if mcpBytes, err := json.Marshal(response.Server); err == nil {
+			// Store as a JSON string for later retrieval
+			record.Data.Fields["__mcp_debug_source"] = structpb.NewStringValue(string(mcpBytes))
+		}
+	}
+
 	return record, nil
 }
 
 // convertToOASF converts an MCP server response to OASF format.
-// Note: This is a simplified conversion. Future versions will use OASF-SDK
-// for full schema validation and metadata extraction.
 //
 //nolint:unparam
 func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.ServerResponse) (*corev1.Record, error) {
 	server := response.Server
 
-	// Created at (required, use publish time)
-	var createdAt string
-	if response.Meta.Official != nil && !response.Meta.Official.PublishedAt.IsZero() {
-		createdAt = response.Meta.Official.PublishedAt.Format("2006-01-02T15:04:05.999999999Z07:00")
-	} else {
-		createdAt = time.Now().Format("2006-01-02T15:04:05.999999999Z07:00")
+	// Convert the MCP ServerJSON to a structpb.Struct
+	serverBytes, err := json.Marshal(server)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal server to JSON: %w", err)
 	}
 
-	// Authors (required, provide default if not available)
-	authors := []string{"Unknown"}
-
-	// Locators (only include if URL is available)
-	var locators []*typesv1alpha1.Locator
-
-	url := "unknown"
-	if server.Repository.URL != "" {
-		url = server.Repository.URL
+	var serverMap map[string]interface{}
+	if err := json.Unmarshal(serverBytes, &serverMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal server JSON to map: %w", err)
 	}
 
-	locators = []*typesv1alpha1.Locator{
-		{
-			Type: "source_code",
-			Url:  url,
+	serverStruct, err := structpb.NewStruct(serverMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert server map to structpb.Struct: %w", err)
+	}
+
+	mcpData := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"server": structpb.NewStructValue(serverStruct),
 		},
 	}
 
-	// Modules (not required, used for MCP server search)
-	modules := []*typesv1alpha1.Module{
-		{
-			Name: "runtime/mcp",
-			Data: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					"servers": structpb.NewListValue(&structpb.ListValue{
-						Values: []*structpb.Value{},
-					}),
-				},
-			},
-		},
-	}
+	// Translate MCP struct to OASF record struct
+	recordStruct, err := translator.MCPToRecord(mcpData)
+	if err != nil {
+		// Print MCP source on translation failure
+		if mcpBytes, jsonErr := json.MarshalIndent(server, "", "  "); jsonErr == nil {
+			fmt.Fprintf(os.Stderr, "\n========================================\n")
+			fmt.Fprintf(os.Stderr, "TRANSLATION FAILED for: %s@%s\n", server.Name, server.Version)
+			fmt.Fprintf(os.Stderr, "========================================\n")
+			fmt.Fprintf(os.Stderr, "MCP Source:\n%s\n", string(mcpBytes))
+			fmt.Fprintf(os.Stderr, "========================================\n\n")
+			os.Stderr.Sync()
+		}
 
-	record := &typesv1alpha1.Record{
-		Name:          server.Name,
-		Version:       server.Version,
-		Description:   server.Description,
-		SchemaVersion: DefaultOASFVersion,
-		CreatedAt:     createdAt,
-		Authors:       authors,
-		Locators:      locators,
-		Modules:       modules,
+		return nil, fmt.Errorf("failed to convert MCP data to OASF record: %w", err)
 	}
 
 	// Enrich the record with proper OASF skills and domains if enrichment is enabled
-	var err error
-
 	if t.host != nil {
+		// Convert structpb.Struct to typesv1alpha1.Record for enrichment
+		oasfRecord, err := structToOASFRecord(recordStruct)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert struct to OASF record for enrichment: %w", err)
+		}
+
+		// Clear default skills before enrichment - let the LLM select appropriate skills
+		oasfRecord.Skills = nil
+
 		// Context with timeout
 		ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:mnd
 		defer cancel()
 
-		record, err = t.host.Enrich(ctxWithTimeout, record)
+		enrichedRecord, err := t.host.Enrich(ctxWithTimeout, oasfRecord)
 		if err != nil {
 			return nil, fmt.Errorf("failed to enrich base OASF record: %w", err)
 		}
-	} else {
-		// Skills (required, provide default placeholder)
-		record.Skills = []*typesv1alpha1.Skill{
-			{
-				Name: "natural_language_processing/analytical_reasoning/problem_solving",
-			},
+
+		// Only update the skills field, preserve everything else from the original record
+		if err := updateSkillsInStruct(recordStruct, enrichedRecord.GetSkills()); err != nil {
+			return nil, fmt.Errorf("failed to update skills in record: %w", err)
 		}
 	}
 
-	return corev1.New(record), nil
+	return &corev1.Record{
+		Data: recordStruct,
+	}, nil
+}
+
+// structToOASFRecord converts a structpb.Struct to typesv1alpha1.Record for enrichment.
+func structToOASFRecord(s *structpb.Struct) (*typesv1alpha1.Record, error) {
+	// Marshal struct to JSON
+	jsonBytes, err := protojson.Marshal(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal struct to JSON: %w", err)
+	}
+
+	// Unmarshal JSON into typesv1alpha1.Record
+	var record typesv1alpha1.Record
+	if err := protojson.Unmarshal(jsonBytes, &record); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON to OASF record: %w", err)
+	}
+
+	return &record, nil
+}
+
+// updateSkillsInStruct updates the skills field in a structpb.Struct with enriched skills.
+// This preserves all other fields including schema_version, name, version, etc.
+func updateSkillsInStruct(recordStruct *structpb.Struct, enrichedSkills []*typesv1alpha1.Skill) error {
+	if recordStruct.Fields == nil {
+		return errors.New("record struct has no fields")
+	}
+
+	// Convert enriched skills to structpb.ListValue
+	skillsList := &structpb.ListValue{
+		Values: make([]*structpb.Value, 0, len(enrichedSkills)),
+	}
+
+	for _, skill := range enrichedSkills {
+		skillStruct := &structpb.Struct{
+			Fields: make(map[string]*structpb.Value),
+		}
+
+		// Add name field (required)
+		if skill.GetName() != "" {
+			skillStruct.Fields["name"] = structpb.NewStringValue(skill.GetName())
+		}
+
+		// Add id field if present
+		if skill.GetId() != 0 {
+			skillStruct.Fields["id"] = structpb.NewNumberValue(float64(skill.GetId()))
+		}
+
+		skillsList.Values = append(skillsList.Values, structpb.NewStructValue(skillStruct))
+	}
+
+	// Update the skills field in the record
+	recordStruct.Fields["skills"] = structpb.NewListValue(skillsList)
+
+	return nil
 }

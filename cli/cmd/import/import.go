@@ -64,6 +64,8 @@ func init() {
 	Command.Flags().StringToStringVar(&cfg.Filters, "filter", nil, "Filters (key=value)")
 	Command.Flags().IntVar(&cfg.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
 	Command.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "Preview without importing")
+	Command.Flags().BoolVar(&cfg.Force, "force", false, "Force push even if record already exists")
+	Command.Flags().BoolVar(&cfg.Debug, "debug", false, "Enable debug output for deduplication and validation failures")
 
 	Command.Flags().BoolVar(&cfg.Enrich, "enrich", false, "Enrich the records with LLM")
 	Command.Flags().StringVar(&cfg.EnricherConfigFile, "enrich-config", enricher.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
@@ -121,6 +123,7 @@ func printSummary(cmd *cobra.Command, result *types.ImportResult) {
 	presenter.Printf(cmd, "\n=== Import Summary ===\n")
 	presenter.Printf(cmd, "Total records:   %d\n", result.TotalRecords)
 	presenter.Printf(cmd, "Imported:        %d\n", result.ImportedCount)
+	presenter.Printf(cmd, "Skipped:         %d\n", result.SkippedCount)
 	presenter.Printf(cmd, "Failed:          %d\n", result.FailedCount)
 
 	if len(result.Errors) > 0 {

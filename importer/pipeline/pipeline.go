@@ -5,7 +5,9 @@ package pipeline
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -42,6 +44,7 @@ type Config struct {
 type Result struct {
 	TotalRecords  int
 	ImportedCount int
+	SkippedCount  int
 	FailedCount   int
 	Errors        []error
 	mu            sync.Mutex
@@ -115,14 +118,34 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 		}
 	}()
 
-	// Track successful pushes
+	// Track successful pushes and handle error responses
 	go func() {
 		defer wg.Done()
 
 		for ref := range refCh {
 			if ref != nil {
+				// Check if this is an error response from the server
+				// Server sends ERROR: prefixed CIDs for validation/storage failures
+				cid := ref.GetCid()
+
 				result.mu.Lock()
-				result.ImportedCount++
+
+				switch {
+				case strings.HasPrefix(cid, "ERROR:"):
+					result.FailedCount++
+					// Extract error message from CID
+					errorMsg := strings.TrimPrefix(cid, "ERROR:")
+					errorMsg = strings.TrimSpace(errorMsg)
+					result.Errors = append(result.Errors, fmt.Errorf("server rejected record: %s", errorMsg))
+				case cid != "":
+					// Valid CID - record successfully imported
+					result.ImportedCount++
+				default:
+					// Empty CID - shouldn't happen but count as failure
+					result.FailedCount++
+					result.Errors = append(result.Errors, errors.New("received empty CID from server"))
+				}
+
 				result.mu.Unlock()
 			}
 		}
@@ -143,6 +166,9 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 	}()
 
 	wg.Wait()
+
+	// Calculate skipped count (records filtered by deduplication)
+	result.SkippedCount = result.TotalRecords - result.ImportedCount - result.FailedCount
 
 	return result, nil
 }

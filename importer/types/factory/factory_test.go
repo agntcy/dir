@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/types"
 )
@@ -30,6 +31,17 @@ type mockClient struct{}
 
 func (m *mockClient) Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error) {
 	return &corev1.RecordRef{}, nil
+}
+
+func (m *mockClient) PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error) {
+	return []*corev1.Record{}, nil
+}
+
+func (m *mockClient) Search(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error) {
+	ch := make(chan string)
+	close(ch)
+
+	return ch, nil
 }
 
 // Mock constructor functions.
