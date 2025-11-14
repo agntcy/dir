@@ -64,10 +64,9 @@ func (p *ClientPusher) buildExistingRecordsCache(ctx context.Context) error {
 		Queries: []*searchv1.RecordQuery{
 			{
 				Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-				Value: "*mcp*", // Match any module containing "mcp"
+				Value: "integration/mcp",
 			},
 		},
-		// No limit - we want all existing MCP records
 	}
 
 	cidCh, err := p.client.Search(ctx, searchReq)
