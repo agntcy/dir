@@ -292,6 +292,11 @@ apiserver:
       - "/etc/zot/config.json"
 
   # Secrets configuration
+  # Choose ONE of two methods:
+  # 1. Helm-managed secrets (secrets.*) - credentials in values.yaml
+  # 2. ExternalSecrets (externalSecrets.*) - credentials synced from Vault
+  #
+  # Method 1: Helm-managed secrets (default)
   # Sensitive credentials are stored in Kubernetes secrets and injected as environment variables
   secrets:
     # Private key for peer-to-peer routing identity
@@ -311,3 +316,46 @@ apiserver:
     ociAuth:
       username: ""
       password: ""
+
+  # Method 2: ExternalSecrets configuration
+  # Syncs credentials from HashiCorp Vault (or other secret providers) using External Secrets Operator
+  # When enabled, the Helm-managed secret (above) is NOT created
+  externalSecrets:
+    # Enable ExternalSecrets integration (default: false)
+    # When true, credentials are synced from Vault instead of using values.yaml
+    enabled: false
+    
+    # Vault path where credentials are stored (all credentials in one path)
+    # Example: "dir_staging/dev/credentials"
+    vaultPath: ""
+    
+    # ClusterSecretStore or SecretStore name to use
+    # This must be pre-configured in your cluster (managed by platform team)
+    secretStore: "vault-backend"
+    
+    # Secret store kind (default: ClusterSecretStore)
+    # Options: ClusterSecretStore (cluster-wide) or SecretStore (namespace-scoped)
+    secretStoreKind: "ClusterSecretStore"
+    
+    # Refresh interval - how often ESO syncs from Vault (default: 1h)
+    refreshInterval: "1h"
+    
+    # Node identity configuration
+    nodeIdentity:
+      enabled: true
+      # Property name in Vault secret (default: "node.privkey")
+      property: "node.privkey"
+    
+    # OCI registry authentication
+    ociAuth:
+      enabled: true
+      # Property names in Vault secret (defaults shown)
+      usernameProperty: "oci-username"
+      passwordProperty: "oci-password"
+    
+    # Sync authentication (shared with remote nodes)
+    syncAuth:
+      enabled: true
+      # Property names in Vault secret (defaults shown)
+      usernameProperty: "sync-username"
+      passwordProperty: "sync-password"
