@@ -57,58 +57,96 @@ func NewClientPusher(ctx context.Context, client config.ClientInterface, force b
 }
 
 // buildExistingRecordsCache queries the directory for all records with integration/mcp module
-// and builds an in-memory cache of name@version combinations.
+// and builds an in-memory cache of name@version combinations using pagination.
 func (p *ClientPusher) buildExistingRecordsCache(ctx context.Context) error {
-	// Search for all records with integration/mcp module
-	searchReq := &searchv1.SearchRequest{
-		Queries: []*searchv1.RecordQuery{
-			{
-				Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-				Value: "integration/mcp",
+	const (
+		batchSize  = 1000  // Process 1000 records at a time
+		maxRecords = 50000 // Safety limit to prevent unbounded memory growth
+	)
+
+	totalProcessed := 0
+	offset := uint32(0)
+
+	for {
+		// Search for records with integration/mcp module with pagination
+		limit := uint32(batchSize)
+		searchReq := &searchv1.SearchRequest{
+			Queries: []*searchv1.RecordQuery{
+				{
+					Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+					Value: "integration/mcp",
+				},
 			},
-		},
-	}
-
-	cidCh, err := p.client.Search(ctx, searchReq)
-	if err != nil {
-		return fmt.Errorf("search for existing MCP records failed: %w", err)
-	}
-
-	// Collect all CIDs
-	const initialCapacity = 100
-
-	cids := make([]string, 0, initialCapacity)
-	for cid := range cidCh {
-		cids = append(cids, cid)
-	}
-
-	if len(cids) == 0 {
-		return nil
-	}
-
-	// Convert CIDs to RecordRefs
-	refs := make([]*corev1.RecordRef, 0, len(cids))
-	for _, cid := range cids {
-		refs = append(refs, &corev1.RecordRef{Cid: cid})
-	}
-
-	// Batch pull all records to extract name and version
-	records, err := p.client.PullBatch(ctx, refs)
-	if err != nil {
-		return fmt.Errorf("failed to pull existing MCP records: %w", err)
-	}
-
-	// Build the cache: name@version -> cid
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	for _, record := range records {
-		nameVersion, err := extractNameVersion(record)
-		if err != nil {
-			continue
+			Limit:  &limit,
+			Offset: &offset,
 		}
 
-		p.existingRecords[nameVersion] = record.GetCid()
+		cidCh, err := p.client.Search(ctx, searchReq)
+		if err != nil {
+			return fmt.Errorf("search for existing MCP records failed: %w", err)
+		}
+
+		// Collect CIDs from this batch
+		cids := make([]string, 0, batchSize)
+		for cid := range cidCh {
+			cids = append(cids, cid)
+		}
+
+		// No more results
+		if len(cids) == 0 {
+			break
+		}
+
+		// Convert CIDs to RecordRefs
+		refs := make([]*corev1.RecordRef, 0, len(cids))
+		for _, cid := range cids {
+			refs = append(refs, &corev1.RecordRef{Cid: cid})
+		}
+
+		// Batch pull records from this batch
+		records, err := p.client.PullBatch(ctx, refs)
+		if err != nil {
+			return fmt.Errorf("failed to pull existing MCP records: %w", err)
+		}
+
+		// Build the cache: name@version -> cid
+		p.mu.Lock()
+
+		for _, record := range records {
+			nameVersion, err := extractNameVersion(record)
+			if err != nil {
+				continue
+			}
+
+			p.existingRecords[nameVersion] = record.GetCid()
+		}
+
+		p.mu.Unlock()
+
+		totalProcessed += len(cids)
+
+		// Debug logging for batch progress
+		if p.debug {
+			fmt.Fprintf(os.Stderr, "[DEDUP] Processed batch: %d records (total: %d)\n", len(cids), totalProcessed)
+			os.Stderr.Sync()
+		}
+
+		// Safety check: prevent unbounded memory growth
+		if totalProcessed >= maxRecords {
+			logger.Warn("Deduplication cache limit reached",
+				"max_records", maxRecords,
+				"message", "Some existing records may not be cached. Consider using --force to reimport.")
+
+			break
+		}
+
+		// If we got fewer results than requested, we've reached the end
+		if len(cids) < batchSize {
+			break
+		}
+
+		// Move to next batch
+		offset += uint32(batchSize)
 	}
 
 	return nil
