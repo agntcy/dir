@@ -40,6 +40,7 @@ This release focuses on operational improvements and deployment enhancements, in
 - **Helm**: External Secrets Operator integration for credential management (#691)
 - **Helm**: DNS name templates support for SPIRE ClusterSPIFFEID (#681)
 - **MCP**: OASF schema domain and skill exploration tools for enricher workflow (#680)
+- **Importer**: OASF SDK translator for MCP Registry conversion with deduplication and debug diagnostics (#624)
 
 ### Changed
 - **Dependencies**: Bump OASF SDK to v0.0.11 (#679)
