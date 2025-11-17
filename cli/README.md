@@ -339,6 +339,16 @@ Fetch and import records from external registries.
 # Import from MCP registry
 dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1
 
+# Import with debug output (shows detailed diagnostics for failures)
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --debug
+
+# Force reimport of existing records (skips deduplication)
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --force
+
 # Import with time-based filter
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
@@ -371,10 +381,19 @@ dirctl import --type=mcp \
 | `--filter` | - | Registry-specific filters (key=value, repeatable) | No | - |
 | `--limit` | - | Maximum records to import (0 = no limit) | No | 0 |
 | `--dry-run` | - | Preview without importing | No | false |
+| `--debug` | - | Enable debug output (shows MCP source and OASF record for failures) | No | false |
+| `--force` | - | Force reimport of existing records (skip deduplication) | No | false |
 | `--enrich` | - | Enable LLM-based enrichment for OASF skills/domains | No | false |
 | `--enrich-config` | - | Path to MCPHost configuration file (mcphost.json) | No | importer/enricher/mcphost.json |
 | `--enrich-prompt` | - | Optional: path to custom prompt template or inline prompt | No | "" (uses default) |
 | `--server-addr` | `DIRECTORY_CLIENT_SERVER_ADDRESS` | DIR server address | No | localhost:8888 |
+
+**Import Behavior:**
+
+By default, the importer performs **deduplication** - it builds a cache of existing records (by name and version) and skips importing records that already exist. This prevents duplicate imports when running the import command multiple times.
+
+- Use `--force` to bypass deduplication and reimport existing records
+- Use `--debug` to see detailed output including which records were skipped and why imports failed
 
 **MCP Registry Filters:**
 
@@ -390,8 +409,14 @@ See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/o
 The import command supports automatic enrichment of MCP server records using LLM models to map them to appropriate OASF skills. This is powered by [mcphost](https://github.com/mark3labs/mcphost), which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.
 
 **Requirements:**
-- The DIR MCP server distribution must be available (docker or binary)
+- `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` tool)
 - An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
+
+**How it works:**
+1. The enricher starts an MCP server using `dirctl mcp serve`
+2. The LLM uses the `agntcy_oasf_get_schema_skills` tool to browse available OASF skills
+3. Based on the MCP server description and capabilities, the LLM selects appropriate skills
+4. Selected skills replace the default skills in the imported records
 
 **Setting up mcphost:**
 
@@ -401,8 +426,8 @@ The import command supports automatic enrichment of MCP server records using LLM
 {
   "mcpServers": {
     "dir-mcp-server": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i", "ghcr.io/agntcy/dir-mcp-server:latest"]
+      "command": "dirctl",
+      "args": ["mcp", "serve"]
     }
   },
   "model": "azure:gpt-4o",
@@ -434,7 +459,8 @@ The default prompt template is available at `importer/enricher/enricher.prompt.m
 # Import with LLM enrichment using default config
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich
+  --enrich \
+  --debug
 
 # Import with custom mcphost configuration
 dirctl import --type=mcp \
@@ -448,19 +474,21 @@ dirctl import --type=mcp \
   --enrich \
   --enrich-prompt=/path/to/custom-prompt.md
 
-# Import with all custom enrichment settings
+# Import with all custom enrichment settings and debug output
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --enrich \
   --enrich-config=/path/to/mcphost.json \
-  --enrich-prompt=/path/to/custom-prompt.md
+  --enrich-prompt=/path/to/custom-prompt.md \
+  --debug
 
-# Import latest 10 servers with enrichment
+# Import latest 10 servers with enrichment and force reimport
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --filter=version=latest \
   --limit=10 \
-  --enrich
+  --enrich \
+  --force
 ```
 
 ### 🔄 **Synchronization**
@@ -565,12 +593,26 @@ dirctl import --type=mcp \
   --limit=10 \
   --dry-run
 
-# 2. Perform actual import
+# 2. Perform actual import with debug output
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --filter=updated_since=2025-08-07T13:15:04.280Z
+  --filter=updated_since=2025-08-07T13:15:04.280Z \
+  --debug
 
-# 3. Search imported records
+# 3. Force reimport to update existing records
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --limit=10 \
+  --force
+
+# 4. Import with LLM enrichment for better skill mapping
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --limit=5 \
+  --enrich \
+  --debug
+
+# 5. Search imported records
 dirctl search --module "runtime/mcp"
 ```
 

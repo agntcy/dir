@@ -61,6 +61,15 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 		}
 
 		if !isValid {
+			// Extract record name and version for better error reporting
+			recordName, recordVersion := extractRecordInfo(record)
+
+			// Log validation error with record details
+			storeLogger.Warn("Record validation failed",
+				"name", recordName,
+				"version", recordVersion,
+				"errors", validationErrors)
+
 			return status.Errorf(codes.InvalidArgument, "record validation failed: %v", validationErrors)
 		}
 
@@ -373,4 +382,24 @@ func (s storeCtrl) pullRecordFromStore(ctx context.Context, recordRef *corev1.Re
 	storeLogger.Debug("Record pulled successfully", "cid", recordRef.GetCid())
 
 	return record, nil
+}
+
+// extractRecordInfo extracts name and version from a record for logging.
+func extractRecordInfo(record *corev1.Record) (string, string) {
+	name := "unknown"
+	version := "unknown"
+
+	adapter := adapters.NewRecordAdapter(record)
+
+	recordData, err := adapter.GetRecordData()
+	if err != nil {
+		return name, version
+	}
+
+	if recordData != nil {
+		name = recordData.GetName()
+		version = recordData.GetVersion()
+	}
+
+	return name, version
 }
