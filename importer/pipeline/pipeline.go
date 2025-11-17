@@ -5,9 +5,7 @@ package pipeline
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -118,34 +116,15 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 		}
 	}()
 
-	// Track successful pushes and handle error responses
+	// Track successful pushes
 	go func() {
 		defer wg.Done()
 
 		for ref := range refCh {
-			if ref != nil {
-				// Check if this is an error response from the server
-				// Server sends ERROR: prefixed CIDs for validation/storage failures
-				cid := ref.GetCid()
-
+			if ref != nil && ref.GetCid() != "" {
+				// Valid CID - record successfully imported
 				result.mu.Lock()
-
-				switch {
-				case strings.HasPrefix(cid, "ERROR:"):
-					result.FailedCount++
-					// Extract error message from CID
-					errorMsg := strings.TrimPrefix(cid, "ERROR:")
-					errorMsg = strings.TrimSpace(errorMsg)
-					result.Errors = append(result.Errors, fmt.Errorf("server rejected record: %s", errorMsg))
-				case cid != "":
-					// Valid CID - record successfully imported
-					result.ImportedCount++
-				default:
-					// Empty CID - shouldn't happen but count as failure
-					result.FailedCount++
-					result.Errors = append(result.Errors, errors.New("received empty CID from server"))
-				}
-
+				result.ImportedCount++
 				result.mu.Unlock()
 			}
 		}

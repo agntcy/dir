@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -202,12 +201,7 @@ func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) 
 				continue
 			}
 
-			// Check if server returned an ERROR: CID (validation/storage failure)
-			if ref != nil && strings.HasPrefix(ref.GetCid(), "ERROR:") {
-				p.handleServerRejection(ref, record, mcpSourceJSON)
-			}
-
-			// Send reference (success or ERROR: CID)
+			// Send reference (success)
 			select {
 			case refCh <- ref:
 			case <-ctx.Done():
@@ -297,19 +291,6 @@ func (p *ClientPusher) handlePushError(err error, record *corev1.Record, mcpSour
 	select {
 	case errCh <- err:
 	case <-ctx.Done():
-	}
-}
-
-// handleServerRejection handles server rejections (ERROR: CID responses).
-func (p *ClientPusher) handleServerRejection(ref *corev1.RecordRef, record *corev1.Record, mcpSourceJSON string) {
-	logger.Debug("Server rejected record", "cid", ref.GetCid())
-
-	// Print detailed debug output if debug flag is set
-	if p.debug && mcpSourceJSON != "" {
-		// Extract error message from CID
-		errorMsg := strings.TrimPrefix(ref.GetCid(), "ERROR:")
-		errorMsg = strings.TrimSpace(errorMsg)
-		p.printPushFailure(record, mcpSourceJSON, errorMsg)
 	}
 }
 

@@ -65,37 +65,17 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 			recordName, recordVersion := extractRecordInfo(record)
 
 			// Log validation error with record details
-			storeLogger.Warn("Record validation failed, skipping record",
+			storeLogger.Warn("Record validation failed",
 				"name", recordName,
 				"version", recordVersion,
 				"errors", validationErrors)
 
-			// Send back a RecordRef with error message encoded in Cid field
-			// Format: "ERROR: <validation errors>"
-			// This allows the client to display the actual error without closing the stream
-			errorMsg := fmt.Sprintf("ERROR: %v", validationErrors)
-			if err := stream.Send(&corev1.RecordRef{Cid: errorMsg}); err != nil {
-				return status.Errorf(codes.Internal, "failed to send error response: %v", err)
-			}
-
-			// Continue processing the next record
-			continue
+			return status.Errorf(codes.InvalidArgument, "record validation failed: %v", validationErrors)
 		}
 
 		pushedRef, err := s.pushRecordToStore(stream.Context(), record)
 		if err != nil {
-			// Log storage error but don't close the stream
-			storeLogger.Warn("Failed to push record to store, skipping record",
-				"error", err)
-
-			// Send back a RecordRef with error message encoded in Cid field
-			errorMsg := fmt.Sprintf("ERROR: storage failed: %v", err)
-			if sendErr := stream.Send(&corev1.RecordRef{Cid: errorMsg}); sendErr != nil {
-				return status.Errorf(codes.Internal, "failed to send error response: %v", sendErr)
-			}
-
-			// Continue processing the next record
-			continue
+			return err
 		}
 
 		// Send the RecordRef back via stream
