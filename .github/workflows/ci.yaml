@@ -8,8 +8,34 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   pull_request:
+  workflow_dispatch:
+    inputs:
+      run-linters:
+        description: "Run linters"
+        default: "true"
+        required: false
+      run-license-check:
+        description: "Run license check"
+        default: "true"
+        required: false
+      run-api-verify:
+        description: "Run API verification"
+        default: "true"
+        required: false
+      run-tests:
+        description: "Run tests"
+        default: "true"
+        required: false
+      run-release:
+        description: "Run release"
+        default: "true"
+        required: false
+      run-integration:
+        description: "Run integration tests"
+        default: "true"
+        required: false
 
 permissions:
   contents: write
@@ -24,6 +50,7 @@ concurrency:
 jobs:
   lint:
     name: Lint
+    if: ${{ inputs.run-linters == 'true' || inputs.run-linters == true }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -55,6 +82,7 @@ jobs:
 
   license:
     name: License
+    if: ${{ inputs.run-license-check == 'true' || inputs.run-license-check == true }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -89,6 +117,7 @@ jobs:
 
   verify:
     name: Verify
+    if: ${{ inputs.run-api-verify == 'true' || inputs.run-api-verify == true }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -122,6 +151,7 @@ jobs:
 
   test:
     name: Test
+    if: ${{ inputs.run-tests == 'true' || inputs.run-tests == true }}
     needs:
       - build
     uses: ./.github/workflows/reusable-test.yaml
@@ -133,7 +163,7 @@ jobs:
 
   release:
     name: Release
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/') && (inputs.run-release == 'true' || inputs.run-release == true) }}
     needs:
       - test
     uses: ./.github/workflows/reusable-release.yaml
@@ -146,6 +176,7 @@ jobs:
 
   integration:
     name: Run integration tests
+    if: ${{ inputs.run-integration == 'true' || inputs.run-integration == true }}
     runs-on: ubuntu-latest
     needs:
       - release
