@@ -41,14 +41,49 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			gomega.Expect(output).To(gomega.ContainSubstring("Failed:          0"))
 		})
 
+		ginkgo.It("should accept enrichment flags without errors", func() {
+			// Run import help command to verify the enrichment flags exist
+			// We just want to verify the flags are recognized by the CLI
+			output := cli.Command("import").
+				WithArgs("--help").
+				ShouldSucceed()
+
+			ginkgo.GinkgoWriter.Printf("Import help output: %s\n", output)
+
+			// Verify the new enrichment flags are documented
+			gomega.Expect(output).To(gomega.ContainSubstring("--enrich-skills-prompt"))
+			gomega.Expect(output).To(gomega.ContainSubstring("--enrich-domains-prompt"))
+			gomega.Expect(output).To(gomega.ContainSubstring("--enrich-config"))
+		})
+
+		ginkgo.It("should accept force and debug flags", func() {
+			// Test that --force flag is accepted
+			output := cli.Command("import").
+				WithArgs("--type=mcp", "--url=https://registry.modelcontextprotocol.io/v0.1", "--limit", "2", "--force").
+				ShouldSucceed()
+
+			ginkgo.GinkgoWriter.Printf("Import with --force flag: %s\n", output)
+
+			gomega.Expect(output).To(gomega.ContainSubstring("Total records:   2"))
+			gomega.Expect(output).To(gomega.ContainSubstring("Imported:        2"))
+
+			// Test that --debug flag is accepted and runs without error
+			output2 := cli.Command("import").
+				WithArgs("--type=mcp", "--url=https://registry.modelcontextprotocol.io/v0.1", "--limit", "1", "--debug").
+				ShouldSucceed()
+
+			ginkgo.GinkgoWriter.Printf("Import with --debug flag: %s\n", output2)
+
+			// Just verify the command succeeds with debug flag
+			gomega.Expect(output2).To(gomega.ContainSubstring("Total records:"))
+		})
+
 		var recordRefs []string
 
-		ginkgo.It("should find at least 10 imported records with source_code locators", func() {
-			// Search for records with source_code locator type
-			// TODO: For now MCP Servers are set to source_code, so we can search for that. Once
-			// we have a proper MCP Server to OASF conversion, this will no longer be the case.
+		ginkgo.It("should find at least 10 imported MCP records", func() {
+			// Search for records with integration/mcp module
 			output := cli.Search().
-				WithLocator("source_code:*").
+				WithModule("integration/mcp").
 				WithLimit(20).
 				WithArgs("--output", "json").
 				ShouldSucceed()
@@ -59,9 +94,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			err := json.Unmarshal([]byte(output), &recordRefs)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			// Verify we have at least 10 records
+			// Verify we have at least 10 records (from all previous import tests)
 			gomega.Expect(len(recordRefs)).To(gomega.BeNumerically(">=", 10),
-				"Expected at least 10 imported records with source_code locators, got %d", len(recordRefs))
+				"Expected at least 10 imported MCP records, got %d", len(recordRefs))
 		})
 
 		ginkgo.It("should be able to pull an imported record", func() {
