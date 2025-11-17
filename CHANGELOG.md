@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.1] - 2025-11-17
+
+### Key Highlights
+
+This release focuses on operational improvements and deployment enhancements, including:
+
+**Helm & Deployment Improvements**
+- External Secrets Operator integration for secure credential management
+- SPIRE ClusterSPIFFEID DNS name templates support for external access
+- Improved TLS certificate SAN configuration for production deployments
+
+**MCP Enhancements**
+- OASF schema exploration tools for AI-assisted record enrichment
+- Hierarchical domain and skill navigation capabilities
+
+**Dependencies & Stability**
+- OASF SDK upgrade to v0.0.11 with latest schema improvements
+- SDK testing fixes for X.509 authentication mode
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.5.1  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.5.1  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.5.1  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.5.1  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.5.1  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.5.1  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.5.1  | dirctl >= v0.5.0            |
+
+### Added
+- **Helm**: External Secrets Operator integration for credential management (#691)
+- **Helm**: DNS name templates support for SPIRE ClusterSPIFFEID (#681)
+- **MCP**: OASF schema domain and skill exploration tools for enricher workflow (#680)
+- **Importer**: OASF SDK translator for MCP Registry conversion with deduplication and debug diagnostics (#624)
+
+### Changed
+- **Dependencies**: Bump OASF SDK to v0.0.11 (#679)
+- **CI**: Update upload-artifacts version (#682)
+- **CI**: Update brew formula version (#684)
+- **Docs**: Update readme versions (#685)
+
+### Fixed
+- **SDK**: Use X.509 auth mode for testing (#678)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.5.0...v0.5.1)
+
+---
+
 ## [v0.5.0] - 2025-11-12
 
 ### Key Highlights
