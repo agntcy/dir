@@ -42,11 +42,12 @@ type Config struct {
 	Concurrency  int               // Number of concurrent workers (default: 1)
 	DryRun       bool              // If true, preview without actually importing
 
-	Enrich                 bool   // If true, enrich the records with LLM
-	EnricherConfigFile     string // Path to MCPHost configuration file (e.g., mcphost.json)
-	EnricherPromptTemplate string // Optional: path to custom prompt template or inline prompt (empty = use default)
-	Force                  bool   // If true, push even if record already exists
-	Debug                  bool   // If true, enable verbose debug output
+	Enrich                        bool   // If true, enrich the records with LLM
+	EnricherConfigFile            string // Path to MCPHost configuration file (e.g., mcphost.json)
+	EnricherSkillsPromptTemplate  string // Optional: path to custom skills prompt template or inline prompt (empty = use default)
+	EnricherDomainsPromptTemplate string // Optional: path to custom domains prompt template or inline prompt (empty = use default)
+	Force                         bool   // If true, push even if record already exists
+	Debug                         bool   // If true, enable verbose debug output
 }
 
 // Validate checks if the configuration is valid.

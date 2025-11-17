@@ -385,7 +385,8 @@ dirctl import --type=mcp \
 | `--force` | - | Force reimport of existing records (skip deduplication) | No | false |
 | `--enrich` | - | Enable LLM-based enrichment for OASF skills/domains | No | false |
 | `--enrich-config` | - | Path to MCPHost configuration file (mcphost.json) | No | importer/enricher/mcphost.json |
-| `--enrich-prompt` | - | Optional: path to custom prompt template or inline prompt | No | "" (uses default) |
+| `--enrich-skills-prompt` | - | Optional: path to custom skills prompt template or inline prompt | No | "" (uses default) |
+| `--enrich-domains-prompt` | - | Optional: path to custom domains prompt template or inline prompt | No | "" (uses default) |
 | `--server-addr` | `DIRECTORY_CLIENT_SERVER_ADDRESS` | DIR server address | No | localhost:8888 |
 
 **Import Behavior:**
@@ -406,17 +407,18 @@ See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/o
 
 #### LLM-based Enrichment
 
-The import command supports automatic enrichment of MCP server records using LLM models to map them to appropriate OASF skills. This is powered by [mcphost](https://github.com/mark3labs/mcphost), which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.
+The import command supports automatic enrichment of MCP server records using LLM models to map them to appropriate OASF skills and domains. This is powered by [mcphost](https://github.com/mark3labs/mcphost), which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.
 
 **Requirements:**
-- `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` tool)
+- `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
 - An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
 
 **How it works:**
 1. The enricher starts an MCP server using `dirctl mcp serve`
 2. The LLM uses the `agntcy_oasf_get_schema_skills` tool to browse available OASF skills
-3. Based on the MCP server description and capabilities, the LLM selects appropriate skills
-4. Selected skills replace the default skills in the imported records
+3. The LLM uses the `agntcy_oasf_get_schema_domains` tool to browse available OASF domains
+4. Based on the MCP server description and capabilities, the LLM selects appropriate skills and domains
+5. Selected skills and domains replace the defaults in the imported records
 
 **Setting up mcphost:**
 
@@ -445,13 +447,23 @@ The import command supports automatic enrichment of MCP server records using LLM
 
 **Customizing Enrichment Prompts:**
 
-The enricher uses a default prompt template that guides the LLM through OASF skill selection. You can customize this prompt for specific use cases:
+The enricher uses separate default prompt templates for skills and domains. You can customize these prompts for specific use cases:
 
-1. **Use default prompt** (recommended): Simply omit the `--enrich-prompt` flag
-2. **Custom prompt from file**: `--enrich-prompt=/path/to/custom-prompt.md`
-3. **Inline prompt**: `--enrich-prompt="Your custom prompt text..."`
+**Skills Prompt:**
+1. **Use default prompt** (recommended): Simply omit the `--enrich-skills-prompt` flag
+2. **Custom prompt from file**: `--enrich-skills-prompt=/path/to/custom-skills-prompt.md`
+3. **Inline prompt**: `--enrich-skills-prompt="Your custom prompt text..."`
 
-The default prompt template is available at `importer/enricher/enricher.prompt.md` and can be used as a starting point for customization.
+**Domains Prompt:**
+1. **Use default prompt** (recommended): Simply omit the `--enrich-domains-prompt` flag
+2. **Custom prompt from file**: `--enrich-domains-prompt=/path/to/custom-domains-prompt.md`
+3. **Inline prompt**: `--enrich-domains-prompt="Your custom prompt text..."`
+
+The default prompt templates are available at:
+- Skills: `importer/enricher/enricher.skills.prompt.md`
+- Domains: `importer/enricher/enricher.domains.prompt.md`
+
+These can be used as starting points for customization.
 
 **Examples:**
 
@@ -468,18 +480,20 @@ dirctl import --type=mcp \
   --enrich \
   --enrich-config=/path/to/custom-mcphost.json
 
-# Import with custom prompt template (from file)
+# Import with custom prompt templates (from files)
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --enrich \
-  --enrich-prompt=/path/to/custom-prompt.md
+  --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
+  --enrich-domains-prompt=/path/to/custom-domains-prompt.md
 
 # Import with all custom enrichment settings and debug output
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --enrich \
   --enrich-config=/path/to/mcphost.json \
-  --enrich-prompt=/path/to/custom-prompt.md \
+  --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
+  --enrich-domains-prompt=/path/to/custom-domains-prompt.md \
   --debug
 
 # Import latest 10 servers with enrichment and force reimport

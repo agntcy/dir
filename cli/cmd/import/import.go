@@ -69,7 +69,8 @@ func init() {
 
 	Command.Flags().BoolVar(&cfg.Enrich, "enrich", false, "Enrich the records with LLM")
 	Command.Flags().StringVar(&cfg.EnricherConfigFile, "enrich-config", enricher.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
-	Command.Flags().StringVar(&cfg.EnricherPromptTemplate, "enrich-prompt", "", "Optional: path to custom prompt template file or inline prompt (empty = use default)")
+	Command.Flags().StringVar(&cfg.EnricherSkillsPromptTemplate, "enrich-skills-prompt", "", "Optional: path to custom skills prompt template file or inline prompt (empty = use default)")
+	Command.Flags().StringVar(&cfg.EnricherDomainsPromptTemplate, "enrich-domains-prompt", "", "Optional: path to custom domains prompt template file or inline prompt (empty = use default)")
 
 	// Mark required flags
 	Command.MarkFlagRequired("type") //nolint:errcheck

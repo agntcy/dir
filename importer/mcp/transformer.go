@@ -39,8 +39,9 @@ func NewTransformer(ctx context.Context, cfg config.Config) (*Transformer, error
 	if cfg.Enrich {
 		// Create enricher configuration
 		enricherCfg := enricher.Config{
-			ConfigFile:     cfg.EnricherConfigFile,
-			PromptTemplate: cfg.EnricherPromptTemplate,
+			ConfigFile:            cfg.EnricherConfigFile,
+			SkillsPromptTemplate:  cfg.EnricherSkillsPromptTemplate,
+			DomainsPromptTemplate: cfg.EnricherDomainsPromptTemplate,
 		}
 
 		var err error
@@ -129,33 +130,54 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 
 	// Enrich the record with proper OASF skills and domains if enrichment is enabled
 	if t.host != nil {
-		// Convert structpb.Struct to typesv1alpha1.Record for enrichment
-		oasfRecord, err := structToOASFRecord(recordStruct)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert struct to OASF record for enrichment: %w", err)
-		}
-
-		// Clear default skills before enrichment - let the LLM select appropriate skills
-		oasfRecord.Skills = nil
-
-		// Context with timeout
-		ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:mnd
-		defer cancel()
-
-		enrichedRecord, err := t.host.Enrich(ctxWithTimeout, oasfRecord)
-		if err != nil {
-			return nil, fmt.Errorf("failed to enrich base OASF record: %w", err)
-		}
-
-		// Only update the skills field, preserve everything else from the original record
-		if err := updateSkillsInStruct(recordStruct, enrichedRecord.GetSkills()); err != nil {
-			return nil, fmt.Errorf("failed to update skills in record: %w", err)
+		if err := t.enrichRecord(ctx, recordStruct); err != nil {
+			return nil, err
 		}
 	}
 
 	return &corev1.Record{
 		Data: recordStruct,
 	}, nil
+}
+
+// enrichRecord handles the enrichment of a record with skills and domains.
+func (t *Transformer) enrichRecord(ctx context.Context, recordStruct *structpb.Struct) error {
+	// Convert structpb.Struct to typesv1alpha1.Record for enrichment
+	oasfRecord, err := structToOASFRecord(recordStruct)
+	if err != nil {
+		return fmt.Errorf("failed to convert struct to OASF record for enrichment: %w", err)
+	}
+
+	// Clear default skills and domains before enrichment - let the LLM select appropriate ones
+	oasfRecord.Skills = nil
+	oasfRecord.Domains = nil
+
+	// Context with timeout for enrichment operations
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:mnd
+	defer cancel()
+
+	// Enrich with skills
+	enrichedRecord, err := t.host.EnrichWithSkills(ctxWithTimeout, oasfRecord)
+	if err != nil {
+		return fmt.Errorf("failed to enrich record with skills: %w", err)
+	}
+
+	// Enrich with domains (using the already skill-enriched record)
+	enrichedRecord, err = t.host.EnrichWithDomains(ctxWithTimeout, enrichedRecord)
+	if err != nil {
+		return fmt.Errorf("failed to enrich record with domains: %w", err)
+	}
+
+	// Update both skills and domains fields, preserve everything else from the original record
+	if err := updateSkillsInStruct(recordStruct, enrichedRecord.GetSkills()); err != nil {
+		return fmt.Errorf("failed to update skills in record: %w", err)
+	}
+
+	if err := updateDomainsInStruct(recordStruct, enrichedRecord.GetDomains()); err != nil {
+		return fmt.Errorf("failed to update domains in record: %w", err)
+	}
+
+	return nil
 }
 
 // structToOASFRecord converts a structpb.Struct to typesv1alpha1.Record for enrichment.
@@ -175,38 +197,56 @@ func structToOASFRecord(s *structpb.Struct) (*typesv1alpha1.Record, error) {
 	return &record, nil
 }
 
-// updateSkillsInStruct updates the skills field in a structpb.Struct with enriched skills.
+// enrichedItem represents any enriched field (skill or domain) with name and id.
+type enrichedItem interface {
+	GetName() string
+	GetId() uint32
+}
+
+// updateFieldsInStruct is a generic helper that updates a field in a structpb.Struct with enriched items.
 // This preserves all other fields including schema_version, name, version, etc.
-func updateSkillsInStruct(recordStruct *structpb.Struct, enrichedSkills []*typesv1alpha1.Skill) error {
+func updateFieldsInStruct[T enrichedItem](recordStruct *structpb.Struct, fieldName string, enrichedItems []T) error {
 	if recordStruct.Fields == nil {
 		return errors.New("record struct has no fields")
 	}
 
-	// Convert enriched skills to structpb.ListValue
-	skillsList := &structpb.ListValue{
-		Values: make([]*structpb.Value, 0, len(enrichedSkills)),
+	// Convert enriched items to structpb.ListValue
+	itemsList := &structpb.ListValue{
+		Values: make([]*structpb.Value, 0, len(enrichedItems)),
 	}
 
-	for _, skill := range enrichedSkills {
-		skillStruct := &structpb.Struct{
+	for _, item := range enrichedItems {
+		itemStruct := &structpb.Struct{
 			Fields: make(map[string]*structpb.Value),
 		}
 
 		// Add name field (required)
-		if skill.GetName() != "" {
-			skillStruct.Fields["name"] = structpb.NewStringValue(skill.GetName())
+		if item.GetName() != "" {
+			itemStruct.Fields["name"] = structpb.NewStringValue(item.GetName())
 		}
 
 		// Add id field if present
-		if skill.GetId() != 0 {
-			skillStruct.Fields["id"] = structpb.NewNumberValue(float64(skill.GetId()))
+		if item.GetId() != 0 {
+			itemStruct.Fields["id"] = structpb.NewNumberValue(float64(item.GetId()))
 		}
 
-		skillsList.Values = append(skillsList.Values, structpb.NewStructValue(skillStruct))
+		itemsList.Values = append(itemsList.Values, structpb.NewStructValue(itemStruct))
 	}
 
-	// Update the skills field in the record
-	recordStruct.Fields["skills"] = structpb.NewListValue(skillsList)
+	// Update the field in the record
+	recordStruct.Fields[fieldName] = structpb.NewListValue(itemsList)
 
 	return nil
+}
+
+// updateSkillsInStruct updates the skills field in a structpb.Struct with enriched skills.
+// This preserves all other fields including schema_version, name, version, etc.
+func updateSkillsInStruct(recordStruct *structpb.Struct, enrichedSkills []*typesv1alpha1.Skill) error {
+	return updateFieldsInStruct(recordStruct, "skills", enrichedSkills)
+}
+
+// updateDomainsInStruct updates the domains field in a structpb.Struct with enriched domains.
+// This preserves all other fields including schema_version, name, version, etc.
+func updateDomainsInStruct(recordStruct *structpb.Struct, enrichedDomains []*typesv1alpha1.Domain) error {
+	return updateFieldsInStruct(recordStruct, "domains", enrichedDomains)
 }

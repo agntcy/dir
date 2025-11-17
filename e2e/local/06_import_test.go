@@ -41,6 +41,27 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			gomega.Expect(output).To(gomega.ContainSubstring("Failed:          0"))
 		})
 
+		ginkgo.It("should accept enrichment flags without errors", func() {
+			// Run import command with enrichment flags to verify they're accepted
+			// Note: We use dry-run to avoid actually running enrichment (which requires LLM setup)
+			output := cli.Command("import").
+				WithArgs(
+					"--type=mcp",
+					"--url=https://registry.modelcontextprotocol.io/v0.1",
+					"--limit", "1",
+					"--dry-run",
+					"--enrich",
+					"--enrich-skills-prompt", "test prompt for skills",
+					"--enrich-domains-prompt", "test prompt for domains",
+				).
+				ShouldSucceed()
+
+			ginkgo.GinkgoWriter.Printf("Import with enrichment flags output: %s\n", output)
+
+			// Verify the command accepted the flags and ran successfully
+			gomega.Expect(output).NotTo(gomega.BeEmpty())
+		})
+
 		var recordRefs []string
 
 		ginkgo.It("should find at least 10 imported records with source_code locators", func() {
