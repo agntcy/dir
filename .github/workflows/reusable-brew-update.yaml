@@ -120,4 +120,6 @@ jobs:
       - name: Create PR
         if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' && (inputs.create-pr == true || inputs.create-pr == 'true')}}
         run: |
-          gh pr create --title "chore(dirctl): update brew formula to ${{ steps.release-infos.outputs.LATEST_VERSION }}" --body "This PR is created by brew-formula-update workflow."
+          gh pr create --title "chore(dirctl): update brew formula to ${{ steps.release-infos.outputs.LATEST_VERSION }}" --body "⚠️ 🚧 Please close and reopen the PR for trigger the CI checks 🚧 ⚠️.
+
+          This PR is created by brew-formula-update workflow."
