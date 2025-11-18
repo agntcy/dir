@@ -128,6 +128,34 @@ Pulls an OASF agent record from the local Directory node by its CID (Content Ide
 
 **Note:** The pulled record is content-addressable and can be validated against its hash. Requires Directory server configuration via environment variables.
 
+### `agntcy_oasf_import_record`
+
+Imports data from other formats (MCP, A2A) to OASF agent record format.
+
+**Input:**
+- `source_data` (string, **required**) - JSON string of the source data to import
+- `source_format` (string, **required**) - Source format: "mcp" or "a2a"
+
+**Output:**
+- `record_json` (string) - The imported OASF record (JSON string)
+- `error_message` (string) - Error message if import failed
+
+**Note:** The resulting record requires domain and skill enrichment. For the complete workflow with automatic enrichment and validation, use the `import_record` prompt instead.
+
+### `agntcy_oasf_export_record`
+
+Exports an OASF agent record to other formats (A2A, GitHub Copilot).
+
+**Input:**
+- `record_json` (string, **required**) - JSON string of the OASF agent record to export
+- `target_format` (string, **required**) - Target format: "a2a" or "ghcopilot"
+
+**Output:**
+- `exported_data` (string) - The exported data in the target format (JSON string)
+- `error_message` (string) - Error message if export failed
+
+**Note:** For the complete workflow with validation, use the `export_record` prompt instead.
+
 ## Prompts
 
 MCP Prompts are guided workflows that help you accomplish tasks. The server exposes the following prompts:
@@ -209,6 +237,35 @@ Guided workflow for pulling an OASF agent record from the Directory by its CID.
 
 **Use when:** You have a CID and want to retrieve the full record. The pulled record is content-addressable and can be validated against its hash.
 
+### `import_record`
+
+Complete guided workflow for importing data from other formats to OASF.
+
+**Input:**
+- `source_data_path` (string, **required**) - Path to the source data file to import
+- `source_format` (string, **required**) - Source format: "mcp" or "a2a"
+- `output_path` (string, optional) - Where to save the imported OASF record (file path or empty for stdout)
+- `schema_version` (string, optional) - OASF schema version to use for validation (defaults to "0.8.0")
+
+**What it does:**
+Reads the source file, converts it to OASF format, enriches domains and skills using the OASF schema, validates the result, and optionally saves to file.
+
+**Use when:** You want to import MCP servers or A2A cards into the OASF format. This handles all the complexity automatically.
+
+### `export_record`
+
+Complete guided workflow for exporting an OASF record to other formats.
+
+**Input:**
+- `record_path` (string, **required**) - Path to the OASF record JSON file to export
+- `target_format` (string, **required**) - Target format: "a2a" or "ghcopilot"
+- `output_path` (string, optional) - Where to save the exported data (file path or empty for stdout)
+
+**What it does:**
+Reads the OASF record, validates it, converts it to the target format, and optionally saves to file.
+
+**Use when:** You want to export OASF records to A2A cards or GitHub Copilot MCP configurations.
+
 ## Setup
 
 The MCP server runs via the `dirctl` CLI tool, which can be obtained as a pre-built binary or Docker image. About the possible installation methods, see the CLI [README.md](../cli/README.md) file.
@@ -270,9 +327,15 @@ The following environment variables can be used with both binary and Docker conf
 - "Validate this OASF record at path: /path/to/record.json"
 - "Search for Python agents with image processing"
 - "Push this record: [JSON]"
+- "Import this A2A card to OASF format: [JSON]"
+- "Export this OASF record to A2A format: [JSON]"
 
 **Using Prompts** - For guided workflows reference prompts with:
 
-- `/dir-mcp-server/create_record`
-- `/dir-mcp-server/search_records`
-- ...
+- `/dir-mcp-server/create_record` - Generate OASF record from current directory
+- `/dir-mcp-server/validate_record` - Validate an existing OASF record file
+- `/dir-mcp-server/push_record` - Validate and push record to Directory
+- `/dir-mcp-server/search_records` - Search with natural language queries
+- `/dir-mcp-server/pull_record` - Pull record by CID
+- `/dir-mcp-server/import_record` - Import from MCP/A2A with enrichment
+- `/dir-mcp-server/export_record` - Export OASF to other formats
