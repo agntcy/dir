@@ -1,12 +1,14 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-
 import os
 import pathlib
 import subprocess
 import time
+import threading
 import unittest
 import uuid
+
+import grpc
 
 from agntcy.dir_sdk.client import Client
 from agntcy.dir_sdk.models import *
@@ -363,6 +365,43 @@ class TestClient(unittest.TestCase):
         except Exception as e:
             assert e is None
 
+    def test_listen(self) -> None:
+        listen_request = events_v1.ListenRequest()
+        listen_stream = self.client.listen(listen_request)
+        events = []
+
+        def cancel_stream():
+            time.sleep(15)
+            listen_stream.cancel()
+
+        def read_stream():
+            try:
+                for response in listen_stream:
+                    events.append(response)
+            except grpc.RpcError as e:
+                if e.code() != grpc.StatusCode.CANCELLED:
+                    raise
+            except Exception as e:
+                msg = f"Failed to listen: {e}"
+                raise RuntimeError(msg) from e
+
+        cancel_thread = threading.Thread(target=cancel_stream)
+        read_thread = threading.Thread(target=read_stream)
+
+        cancel_thread.start()
+        read_thread.start()
+
+        event_records = self.gen_records(10, "listen")
+        _ = self.client.push(records=event_records)
+
+        cancel_thread.join()
+
+        assert events is not None
+        assert len(events) > 0
+
+        for o in events:
+            assert isinstance(o, events_v1.ListenResponse)
+
     def gen_records(self, count: int, test_function_name: str) -> list[core_v1.Record]:
         """
         Generate test records with unique names.
@@ -406,6 +445,13 @@ class TestClient(unittest.TestCase):
         ]
 
         return records
+
+    @staticmethod
+    def cancel_stream_after_delay(responses, delay_sec=5):
+        # Wait before cancelling to simulate some condition or timeout
+        time.sleep(delay_sec)
+        print("Cancelling the stream...")
+        responses.cancel()
 
 
 if __name__ == "__main__":
