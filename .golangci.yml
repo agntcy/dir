@@ -26,13 +26,6 @@ linters:
   settings:
     cyclop:
       max-complexity: 15
-    goheader:
-      values:
-        regexp:
-          YEAR: 202[4-5]
-      template: |-
-        Copyright AGNTCY Contributors (https://github.com/agntcy)
-        SPDX-License-Identifier: Apache-2.0
     gomoddirectives:
       replace-allow-list: []
       replace-local: true

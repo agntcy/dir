@@ -36,3 +36,7 @@ ignored = [
   "github.com/grpc-ecosystem/go-grpc-middleware/v2", # Apache License 2.0 https://github.com/grpc-ecosystem/go-grpc-middleware/blob/main/LICENSE
   "gonum.org/v1/gonum", # BSD-3-Clause https://github.com/gonum/gonum/blob/master/LICENSE
 ]
+
+[header]
+template = """// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0"""
