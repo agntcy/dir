@@ -75,12 +75,6 @@ jobs:
           restore-keys: |
             license-cache-${{ runner.os }}-
 
-      - name: License cache
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          task license:cache
-
       - name: License
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
