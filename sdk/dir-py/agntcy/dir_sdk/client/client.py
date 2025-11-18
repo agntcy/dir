@@ -22,6 +22,7 @@ from spiffe import WorkloadApiClient, X509Source
 from agntcy.dir_sdk.client.config import Config
 from agntcy.dir_sdk.models import (
     core_v1,
+    events_v1,
     routing_v1,
     search_v1,
     sign_v1,
@@ -142,9 +143,11 @@ class Client:
         # Initialize service clients
         self.store_client = store_v1.StoreServiceStub(channel)
         self.routing_client = routing_v1.RoutingServiceStub(channel)
+        self.publication_client = routing_v1.PublicationServiceStub(channel)
         self.search_client = search_v1.SearchServiceStub(channel)
         self.sign_client = sign_v1.SignServiceStub(channel)
         self.sync_client = store_v1.SyncServiceStub(channel)
+        self.event_client = events_v1.EventServiceStub(channel)
 
     def __create_grpc_channel(self) -> grpc.Channel:
         # Handle different authentication modes
@@ -860,6 +863,42 @@ class Client:
             logger.exception("Unexpected error during delete_sync: %s", e)
             msg = f"Failed to delete sync: {e}"
             raise RuntimeError(msg) from e
+
+    def listen(
+        self,
+        req: events_v1.ListenRequest,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> grpc.UnaryStreamMultiCallable:
+        """
+        Listen establishes a streaming connection to receive events.
+        Events are only delivered while the stream is active.
+        On disconnect, missed events are not recoverable.
+
+        Args:
+            req: ListenRequest specifies filters for event subscription.
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+            listen_duration: The stream call length in seconds.
+
+        Returns:
+            A grpc stream which can read and closed.
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the verification operation fails
+        """
+
+        try:
+            stream = self.event_client.Listen(req, metadata=metadata)
+        except grpc.RpcError as e:
+            if e.code() != grpc.StatusCode.CANCELLED:
+                logger.exception("gRPC error during listen: %s", e)
+                raise
+        except Exception as e:
+            logger.exception("Unexpected error during listen: %s", e)
+            msg = f"Failed to listen: {e}"
+            raise RuntimeError(msg) from e
+
+        return stream
 
     def verify(
         self,
