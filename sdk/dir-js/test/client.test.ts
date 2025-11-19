@@ -4,6 +4,7 @@
 import { describe, test, beforeAll, afterAll, expect } from 'vitest';
 
 import { execSync } from 'node:child_process';
+import { Worker } from 'worker_threads';
 import { readFileSync, rmSync } from 'node:fs';
 import { env } from 'node:process';
 import { create } from '@bufbuild/protobuf';
@@ -338,7 +339,6 @@ describe('Client', () => {
     const records = genRecords(2, 'sign_verify');
     const recordRefs = await client.push(records);
 
-
     const keyPassword = 'testing-key';
 
     // Clean up any existing keys
@@ -484,4 +484,29 @@ describe('Client', () => {
       }),
     );
   });
+
+  test('listen', async () => {
+    const records = genRecords(1, 'listen');
+    const recordRefs = await client.push(records);
+
+    const worker = new Worker('./test/listen_worker.ts', {
+      workerData: {
+        recordRef: recordRefs[0],
+        dirctlPath: config.dirctlPath,
+        spiffeEndpointSocket: config.spiffeEndpointSocket,
+      },
+    });
+
+    let events = client.listen(
+      create(models.events_v1.ListenRequestSchema, {})
+    );
+
+    for await (const response of events) {
+      expect(response).toBeTypeOf(typeof models.events_v1.ListenResponseSchema);
+      break; // Exit after first event for test purposes
+    }
+
+    worker.terminate();
+
+  }, 15000);
 });
