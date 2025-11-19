@@ -141,12 +141,3 @@ jobs:
           asset_path: bin/dirctl-${{ matrix.os }}-${{ matrix.arch }}
           asset_name: dirctl-${{ matrix.os }}-${{ matrix.arch }}
           asset_content_type: application/octet-stream
-
-  brew:
-    name: Update Brew
-    needs:
-      - upload
-    uses: ./.github/workflows/reusable-brew-update.yaml
-    with:
-      create-pr: true
-      run-without-diff: false
