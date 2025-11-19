@@ -11,33 +11,7 @@ on:
     types: [released]
 
   workflow_call:
-    inputs:
-      create-pr:
-        type: boolean
-        default: true
-        description: Enable to create PR
-      run-without-diff:
-        type: boolean
-        default: false
-        description: Run even if there are no changes.
-      run-with-fake-diff:
-        type: boolean
-        default: false
-        description: Run and fake the diff for test the workflow.
   workflow_dispatch:
-    inputs:
-      create-pr:
-        type: boolean
-        default: true
-        description: Enable to create PR
-      run-without-diff:
-        type: boolean
-        default: false
-        description: Run even if there are no changes.
-      run-with-fake-diff:
-        type: boolean
-        default: false
-        description: Fake the bin hash diff.
 
 permissions:
   contents: write
@@ -64,17 +38,10 @@ jobs:
 
           gh release download $LATEST_VERSION
 
-          if [ ${{ inputs.run-with-fake-diff }} = "false" ]; then
-            echo "DIRCTL_HASH_DARWIN_ARM=$(sha256sum ./dirctl-darwin-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-            echo "DIRCTL_HASH_DARWIN_AMD=$(sha256sum ./dirctl-darwin-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-            echo "DIRCTL_HASH_LINUX_ARM=$(sha256sum ./dirctl-linux-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-            echo "DIRCTL_HASH_LINUX_AMD=$(sha256sum ./dirctl-linux-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          else
-            echo "DIRCTL_HASH_DARWIN_ARM=FAKE_DIFF_FOR_TESTING" >> $GITHUB_OUTPUT
-            echo "DIRCTL_HASH_DARWIN_AMD=FAKE_DIFF_FOR_TESTING" >> $GITHUB_OUTPUT
-            echo "DIRCTL_HASH_LINUX_ARM=FAKE_DIFF_FOR_TESTING" >> $GITHUB_OUTPUT
-            echo "DIRCTL_HASH_LINUX_AMD=FAKE_DIFF_FOR_TESTING" >> $GITHUB_OUTPUT
-          fi
+          echo "DIRCTL_HASH_DARWIN_ARM=$(sha256sum ./dirctl-darwin-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "DIRCTL_HASH_DARWIN_AMD=$(sha256sum ./dirctl-darwin-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "DIRCTL_HASH_LINUX_ARM=$(sha256sum ./dirctl-linux-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "DIRCTL_HASH_LINUX_AMD=$(sha256sum ./dirctl-linux-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
 
       - name: Update Brew formula
         id: brew-formula
@@ -114,7 +81,7 @@ jobs:
 
       - name: Test new formula
         id: test-brew-formula
-        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 || inputs.run-without-diff == true || inputs.run-without-diff == 'true' }}
+        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 }}
         run: |
           apt update && apt install curl git -y
 
@@ -133,6 +100,6 @@ jobs:
           dirctl --help
 
       - name: Create PR
-        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' && (inputs.create-pr == true || inputs.create-pr == 'true')}}
+        if: ${{ steps.brew-formula.outputs.DIFF_FOUND == 1 && steps.test-brew-formula.outcome == 'success' }}
         run: |
           gh pr create --title "chore(dirctl): update brew formula to ${{ steps.release-infos.outputs.LATEST_VERSION }}" --body "This PR is created by brew-formula-update workflow."
