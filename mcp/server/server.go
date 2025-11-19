@@ -6,8 +6,10 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/mcp/prompts"
 	"github.com/agntcy/dir/mcp/tools"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -18,6 +20,14 @@ import (
 //
 //nolint:maintidx // Function registers all MCP tools and prompts, complexity is acceptable
 func Serve(ctx context.Context) error {
+	// Configure schema URL from environment variable if set
+	schemaURL := os.Getenv("SCHEMA_URL")
+	if schemaURL != "" {
+		corev1.SetSchemaURL(schemaURL)
+		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validator configured with schema_url=%s\n", schemaURL)
+	} else {
+		fmt.Fprintf(os.Stderr, "[MCP Server] No SCHEMA_URL configured, using embedded schemas\n")
+	}
 	// Create MCP server for Directory operations
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "dir-mcp-server",

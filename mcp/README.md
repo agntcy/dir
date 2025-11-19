@@ -315,10 +315,37 @@ Add the MCP server to your IDE's MCP configuration using Docker.
 
 The following environment variables can be used with both binary and Docker configurations:
 
+#### Directory Client Configuration
+
 - `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
 - `DIRECTORY_CLIENT_AUTH_MODE` - Authentication mode: `none`, `x509`, `jwt`, `token`
 - `DIRECTORY_CLIENT_SPIFFE_TOKEN` - Path to SPIFFE token file (for token authentication)
 - `DIRECTORY_CLIENT_TLS_SKIP_VERIFY` - Skip TLS verification (set to `true` if needed)
+
+#### OASF Validation Configuration
+
+- `SCHEMA_URL` - OASF schema URL for API-based validation (optional)
+  - When set, the MCP server will use the advanced OASF API validator instead of embedded schemas
+  - This enables more comprehensive validation with the latest schema rules
+  - Example: `https://schema.oasf.outshift.com`
+  - If not set, validation will use embedded schemas (default behavior)
+
+**Example with SCHEMA_URL (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "SCHEMA_URL": "https://schema.oasf.outshift.com",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
 
 ## Usage in Cursor Chat
 
