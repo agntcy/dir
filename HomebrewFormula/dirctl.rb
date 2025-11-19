@@ -12,7 +12,7 @@ class Dirctl < Formula
     on_macos do
         if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
             url "#{url}/dirctl-darwin-arm64"
-            sha256 "e9f4dcce5be455aa608ea30cb1362d695569ca0abc37b7df94aef866c43d5bec"
+            sha256 "FAKE_DIFF_FOR_TESTING"
 
             def install
                 bin.install "dirctl-darwin-arm64" => "dirctl"
@@ -24,7 +24,7 @@ class Dirctl < Formula
 
         if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
             url "#{url}/dirctl-darwin-amd64"
-            sha256 "eb8a71a904c0af7f106fc09fbb0151f352b206899c9b888bbe3e6e343135037f"
+            sha256 "FAKE_DIFF_FOR_TESTING"
 
             def install
                 bin.install "dirctl-darwin-amd64" => "dirctl"
@@ -38,7 +38,7 @@ class Dirctl < Formula
     on_linux do
         if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
             url "#{url}/dirctl-linux-arm64"
-            sha256 "c076a03cd522710d2c49731a32cb0f224b60cc58dd44a027eb7621600988d826"
+            sha256 "FAKE_DIFF_FOR_TESTING"
 
             def install
                 bin.install "dirctl-linux-arm64" => "dirctl"
@@ -50,7 +50,7 @@ class Dirctl < Formula
 
         if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
             url "#{url}/dirctl-linux-amd64"
-            sha256 "310a0a56eb61dd8b369d5ef0832fbd241a53c3d0146cf814f82cd51d92a96aef"
+            sha256 "FAKE_DIFF_FOR_TESTING"
 
             def install
                 bin.install "dirctl-linux-amd64" => "dirctl"
