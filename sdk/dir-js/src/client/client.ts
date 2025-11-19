@@ -145,6 +145,7 @@ export class Client {
   searchClient: GrpcClient<typeof models.search_v1.SearchService>;
   signClient: GrpcClient<typeof models.sign_v1.SignService>;
   syncClient: GrpcClient<typeof models.store_v1.SyncService>;
+  eventClient: GrpcClient<typeof models.events_v1.EventService>;
 
   /**
    * Initialize the client with the given configuration.
@@ -193,6 +194,7 @@ export class Client {
     this.searchClient = createClient(models.search_v1.SearchService, grpcTransport);
     this.signClient = createClient(models.sign_v1.SignService, grpcTransport);
     this.syncClient = createClient(models.store_v1.SyncService, grpcTransport);
+    this.eventClient = createClient(models.events_v1.EventService, grpcTransport);
   }
 
   private static convertToPEM(bytes: Uint8Array, label: string): string {
@@ -886,6 +888,23 @@ export class Client {
     request: models.store_v1.DeleteSyncRequest,
   ): Promise<models.store_v1.DeleteSyncResponse> {
     return await this.syncClient.deleteSync(request);
+  }
+
+  /**
+   * Get events from the Event API matching the specified criteria.
+   * 
+   * Retrieves a list of events that match the filtering and query criteria
+   * specified in the request.
+   * 
+   * @param request - ListenRequest specifying filtering criteria, pagination, etc.
+   * @returns Promise that resolves to an array of ListenResponse objects matching the criteria
+   * 
+   * @throws {Error} If the gRPC call fails or the get events operation fails
+   */
+  listen(
+    request: models.events_v1.ListenRequest
+  ): AsyncIterable<models.events_v1.ListenResponse> {
+    return this.eventClient.listen(request);
   }
 
   /**
