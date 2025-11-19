@@ -20,6 +20,10 @@ on:
         type: boolean
         default: false
         description: Run even if there are no changes.
+      run-with-fake-diff:
+        type: boolean
+        default: false
+        description: Run and fake the diff for test the workflow.
   workflow_dispatch:
     inputs:
       create-pr:
@@ -30,6 +34,10 @@ on:
         type: boolean
         default: false
         description: Run even if there are no changes.
+      run-with-fake-diff:
+        type: boolean
+        default: false
+        description: Fake the bin hash diff.
 
 permissions:
   contents: write
@@ -56,10 +64,17 @@ jobs:
 
           gh release download $LATEST_VERSION
 
-          echo "DIRCTL_HASH_DARWIN_ARM=$(sha256sum ./dirctl-darwin-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          echo "DIRCTL_HASH_DARWIN_AMD=$(sha256sum ./dirctl-darwin-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          echo "DIRCTL_HASH_LINUX_ARM=$(sha256sum ./dirctl-linux-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-          echo "DIRCTL_HASH_LINUX_AMD=$(sha256sum ./dirctl-linux-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          if [ ${{ inputs.run-with-fake-diff }} = "false" ]; then
+            echo "DIRCTL_HASH_DARWIN_ARM=$(sha256sum ./dirctl-darwin-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+            echo "DIRCTL_HASH_DARWIN_AMD=$(sha256sum ./dirctl-darwin-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+            echo "DIRCTL_HASH_LINUX_ARM=$(sha256sum ./dirctl-linux-arm64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+            echo "DIRCTL_HASH_LINUX_AMD=$(sha256sum ./dirctl-linux-amd64 | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          else
+            echo "DIRCTL_HASH_DARWIN_ARM=FAKE_DIFF_FOR_TESTING" >> $GITHUB_OUTPUT
+            echo "DIRCTL_HASH_DARWIN_AMD=FAKE_DIFF_FOR_TESTING" >> $GITHUB_OUTPUT
+            echo "DIRCTL_HASH_LINUX_ARM=FAKE_DIFF_FOR_TESTING" >> $GITHUB_OUTPUT
+            echo "DIRCTL_HASH_LINUX_AMD=FAKE_DIFF_FOR_TESTING" >> $GITHUB_OUTPUT
+          fi
 
       - name: Update Brew formula
         id: brew-formula
