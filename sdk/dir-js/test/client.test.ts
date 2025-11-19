@@ -68,7 +68,7 @@ function genRecords(
 }
 
 describe('Client', () => {
-  let config: Config; // FIXME: Used for ignoring one test case of signing, remove if not needed
+  let config: Config;
   let client: Client;
 
   beforeAll(async () => {
