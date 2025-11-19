@@ -166,6 +166,40 @@ cd install/docker
 docker compose up -d
 ```
 
+## Server Configuration
+
+The Directory server supports configuration via environment variables, YAML configuration files, or both. Environment variables follow the `DIRECTORY_SERVER_` prefix convention.
+
+### OASF Validation Configuration
+
+The server includes built-in OASF record validation with support for API-based validation:
+
+- **`schema_url`** / **`DIRECTORY_SERVER_SCHEMA_URL`** - OASF schema URL for API-based validation
+  - **Default**: `https://schema.oasf.outshift.com` (API validator enabled by default)
+  - When set, records will be validated using the OASF API validator with the latest schema rules
+  - Set to empty string (`""`) to use embedded schemas instead
+  - This affects all record validation operations including push, sync, and import
+
+**Example with environment variable:**
+```bash
+# Use API validator (default)
+DIRECTORY_SERVER_SCHEMA_URL=https://schema.oasf.outshift.com ./dirctl-apiserver
+
+# Use embedded schemas (disable API validator)
+DIRECTORY_SERVER_SCHEMA_URL="" ./dirctl-apiserver
+```
+
+**Example with YAML configuration:**
+```yaml
+# server.config.yml
+schema_url: "https://schema.oasf.outshift.com"
+listen_address: "0.0.0.0:8888"
+```
+
+### Other Configuration Options
+
+For complete server configuration including authentication, authorization, storage, routing, and database options, see the [server configuration reference](./server/config/config.go).
+
 ## Copyright Notice
 
 [Copyright Notice and License](./LICENSE.md)

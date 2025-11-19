@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -137,6 +138,12 @@ func Run(ctx context.Context, cfg *config.Config) error {
 
 func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
+
+	// Configure OASF schema URL for API-based validation if set
+	if cfg.SchemaURL != "" {
+		corev1.SetSchemaURL(cfg.SchemaURL)
+		logger.Info("OASF API validator configured", "schema_url", cfg.SchemaURL)
+	}
 
 	// Load options
 	options := types.NewOptions(cfg)
