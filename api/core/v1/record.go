@@ -17,7 +17,10 @@ const (
 	maxRecordSize = 1024 * 1024 * 4 // 4MB
 )
 
-var defaultValidator *validator.Validator
+var (
+	defaultValidator *validator.Validator
+	schemaURL        string
+)
 
 func init() {
 	var err error
@@ -26,6 +29,13 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("failed to initialize OASF-SDK validator: %v", err))
 	}
+}
+
+// SetSchemaURL configures the schema URL to use for API-based validation.
+// If set, the OASF API validator will be used instead of embedded schemas.
+// Pass an empty string to disable API-based validation.
+func SetSchemaURL(url string) {
+	schemaURL = url
 }
 
 // GetCid calculates and returns the CID for this record.
@@ -132,6 +142,12 @@ func (r *Record) Validate() (bool, []string, error) {
 	}
 
 	// Validate the record using OASF SDK
+	// If schemaURL is configured, use API-based validation
+	if schemaURL != "" {
+		//nolint:wrapcheck
+		return defaultValidator.ValidateRecord(r.GetData(), validator.WithSchemaURL(schemaURL))
+	}
+
 	//nolint:wrapcheck
 	return defaultValidator.ValidateRecord(r.GetData())
 }

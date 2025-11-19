@@ -213,6 +213,82 @@ func TestRecord_Validate(t *testing.T) {
 	}
 }
 
+func TestRecord_SetSchemaURL(t *testing.T) {
+	// Test that SetSchemaURL changes the package-level variable
+	// Note: This test modifies global state, so we should be careful about test isolation
+
+	// Save original state
+	originalURL := ""
+	defer corev1.SetSchemaURL(originalURL) // Restore after test
+
+	tests := []struct {
+		name      string
+		schemaURL string
+		wantSet   bool
+	}{
+		{
+			name:      "set valid schema URL",
+			schemaURL: "https://schema.oasf.outshift.com",
+			wantSet:   true,
+		},
+		{
+			name:      "set empty schema URL (disable API validator)",
+			schemaURL: "",
+			wantSet:   true,
+		},
+		{
+			name:      "set custom schema URL",
+			schemaURL: "https://custom.schema.url",
+			wantSet:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This should not panic or error
+			corev1.SetSchemaURL(tt.schemaURL)
+
+			// We can't directly verify the internal state, but we can verify
+			// that calling SetSchemaURL doesn't panic and that validation
+			// still works afterwards
+			record := corev1.New(&oasfv1alpha1.Record{
+				Name:          "test-agent",
+				SchemaVersion: "0.7.0",
+				Description:   "A test agent",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+				Authors: []string{
+					"Jane Doe <jane.doe@example.com>",
+				},
+				Locators: []*oasfv1alpha1.Locator{
+					{
+						Type: "helm_chart",
+						Url:  "https://example.com/helm-chart.tgz",
+					},
+				},
+				Skills: []*oasfv1alpha1.Skill{
+					{
+						Name: "natural_language_processing/natural_language_understanding",
+					},
+				},
+				Modules: []*oasfv1alpha1.Module{
+					{
+						Name: "test-extension",
+					},
+				},
+			})
+
+			// Validation should still work (whether using embedded or API validator)
+			valid, _, err := record.Validate()
+			if err != nil {
+				t.Fatalf("Validate() error = %v", err)
+			}
+
+			assert.True(t, valid)
+		})
+	}
+}
+
 func TestRecord_Decode(t *testing.T) {
 	tests := []struct {
 		name     string
