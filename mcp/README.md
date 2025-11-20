@@ -347,6 +347,27 @@ The following environment variables can be used with both binary and Docker conf
 }
 ```
 
+**Testing with Local OASF Server:**
+
+If you have a local OASF server running (e.g., for schema development), configure `SCHEMA_URL` to point to it:
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "SCHEMA_URL": "http://localhost:8080",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Note:** After changing the configuration, fully restart your IDE (e.g., quit and reopen Cursor) for the MCP server to reload with the new settings.
+
 ## Usage in Cursor Chat
 
 **Using Tools** - Ask naturally, AI calls tools automatically:
