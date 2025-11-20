@@ -402,6 +402,41 @@ class TestClient(unittest.TestCase):
         for o in events:
             assert isinstance(o, events_v1.ListenResponse)
 
+    def test_publication(self) -> None:
+        records = self.gen_records(1, "publication")
+        record_refs = self.client.push(records=records)
+
+        try:
+            create_request = routing_v1.PublishRequest(
+               record_refs=routing_v1.RecordRefs(refs=record_refs),
+            )
+
+            create_response = self.client.create_publication(create_request)
+
+            try:
+                assert isinstance(create_response, routing_v1.CreatePublicationResponse)
+            except ValueError:
+                msg = f"Not a CreatePublicationResponse object."
+                raise ValueError(msg)
+
+            list_request = routing_v1.ListPublicationsRequest(limit=3)
+            list_response = self.client.list_publication(list_request)
+
+            for publication_item in list_response:
+                try:
+                    assert isinstance(publication_item, routing_v1.ListPublicationsItem)
+                except ValueError:
+                    msg = f"Not a ListPublicationsItem object."
+                    raise ValueError(msg)
+
+            get_request = routing_v1.GetPublicationRequest(publication_id=create_response.publication_id)
+            get_response = self.client.get_publication(get_request)
+
+            assert isinstance(get_response, routing_v1.GetPublicationResponse)
+            assert get_response.publication_id == create_response.publication_id
+        except Exception as e:
+            assert e is None
+
     def gen_records(self, count: int, test_function_name: str) -> list[core_v1.Record]:
         """
         Generate test records with unique names.
