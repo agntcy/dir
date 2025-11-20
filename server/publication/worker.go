@@ -139,6 +139,7 @@ func (w *Worker) getCIDsFromRequest(_ context.Context, request *routingv1.Publis
 	case *routingv1.PublishRequest_Queries:
 		// Convert proto queries to expression tree (proto -> domain logic conversion)
 		expr := utils.ConvertQueriesToExpression(req.Queries.GetQueries())
+
 		return w.db.GetRecordCIDs(expr, 0, 0) //nolint:wrapcheck
 
 	default:

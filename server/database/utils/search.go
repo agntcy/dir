@@ -29,7 +29,7 @@ func ConvertQueriesToExpression(queries []*searchv1.RecordQuery) *types.QueryExp
 	}
 
 	// Multiple queries - AND them all together
-	var expressions []*types.QueryExpression
+	expressions := make([]*types.QueryExpression, 0, len(queries))
 	for _, q := range queries {
 		expressions = append(expressions, &types.QueryExpression{
 			Query: q,

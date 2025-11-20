@@ -6,6 +6,7 @@ package sqlite
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"testing"
 
 	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
@@ -1012,7 +1013,7 @@ func TestSkillSearchCompatibility_AcrossVersions(t *testing.T) {
 
 // Test helper functions to build query expressions
 
-// Helper to build a name expression
+// Helper to build a name expression.
 func nameExpr(value string) *types.QueryExpression {
 	return &types.QueryExpression{
 		Query: &searchv1.RecordQuery{
@@ -1022,7 +1023,7 @@ func nameExpr(value string) *types.QueryExpression {
 	}
 }
 
-// Helper to build a version expression
+// Helper to build a version expression.
 func versionExpr(value string) *types.QueryExpression {
 	return &types.QueryExpression{
 		Query: &searchv1.RecordQuery{
@@ -1032,17 +1033,17 @@ func versionExpr(value string) *types.QueryExpression {
 	}
 }
 
-// Helper to build a skill ID expression
+// Helper to build a skill ID expression.
 func skillIDExpr(id uint64) *types.QueryExpression {
 	return &types.QueryExpression{
 		Query: &searchv1.RecordQuery{
 			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID,
-			Value: fmt.Sprintf("%d", id),
+			Value: strconv.FormatUint(id, 10),
 		},
 	}
 }
 
-// Helper to build a skill name expression
+// Helper to build a skill name expression.
 func skillNameExpr(name string) *types.QueryExpression {
 	return &types.QueryExpression{
 		Query: &searchv1.RecordQuery{
@@ -1052,7 +1053,7 @@ func skillNameExpr(name string) *types.QueryExpression {
 	}
 }
 
-// Helper to build a locator expression
+// Helper to build a locator expression.
 func locatorExpr(value string) *types.QueryExpression {
 	return &types.QueryExpression{
 		Query: &searchv1.RecordQuery{
@@ -1062,7 +1063,7 @@ func locatorExpr(value string) *types.QueryExpression {
 	}
 }
 
-// Helper to build a module expression
+// Helper to build a module expression.
 func moduleExpr(name string) *types.QueryExpression {
 	return &types.QueryExpression{
 		Query: &searchv1.RecordQuery{
@@ -1072,17 +1073,17 @@ func moduleExpr(name string) *types.QueryExpression {
 	}
 }
 
-// Helper to build a domain ID expression
+// Helper to build a domain ID expression.
 func domainIDExpr(id uint64) *types.QueryExpression {
 	return &types.QueryExpression{
 		Query: &searchv1.RecordQuery{
 			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_ID,
-			Value: fmt.Sprintf("%d", id),
+			Value: strconv.FormatUint(id, 10),
 		},
 	}
 }
 
-// Helper to build a domain name expression
+// Helper to build a domain name expression.
 func domainNameExpr(name string) *types.QueryExpression {
 	return &types.QueryExpression{
 		Query: &searchv1.RecordQuery{
@@ -1092,7 +1093,7 @@ func domainNameExpr(name string) *types.QueryExpression {
 	}
 }
 
-// Helper to AND multiple expressions together
+// Helper to AND multiple expressions together.
 func andExpr(exprs ...*types.QueryExpression) *types.QueryExpression {
 	return &types.QueryExpression{
 		And: &types.AndExpression{
