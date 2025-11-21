@@ -92,6 +92,10 @@ spec:
                   name: {{ include "chart.fullname" . }}
                   key: oci-password
             {{- end }}
+            {{- if .Values.database.sqlite.dbPath }}
+            - name: DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH
+              value: {{ .Values.database.sqlite.dbPath }}
+            {{- end }}
             {{- if eq .Values.spire.enabled true }}
             - name: DIRECTORY_SERVER_AUTHZ_ENABLED
               value: "true"
@@ -176,6 +180,10 @@ spec:
             - name: routing-data
               mountPath: {{ .Values.config.routing.datastore_dir }}
             {{- end }}
+            {{- if .Values.database.pvc.enabled }}
+            - name: database-data
+              mountPath: /var/lib/dir/database
+            {{- end }}
             {{- if eq .Values.zot.mountConfig false }}
             - name: zot-config-storage
               mountPath: /etc/zot
@@ -209,6 +217,11 @@ spec:
         - name: routing-data
           persistentVolumeClaim:
             claimName: {{ include "chart.fullname" . }}-pvc
+        {{- end }}
+        {{- if .Values.database.pvc.enabled }}
+        - name: database-data
+          persistentVolumeClaim:
+            claimName: {{ include "chart.fullname" . }}-database-pvc
         {{- end }}
         {{- if eq .Values.zot.mountConfig false }}
         - name: zot-config-storage

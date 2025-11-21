@@ -77,7 +77,7 @@ func TestGetSchemaDomains(t *testing.T) {
 				t.Helper()
 
 				assert.NotEmpty(t, output.ErrorMessage)
-				assert.Contains(t, output.ErrorMessage, "Invalid version")
+				assert.Contains(t, output.ErrorMessage, "invalid version")
 				assert.NotEmpty(t, output.AvailableVersions)
 			},
 		},
@@ -92,7 +92,7 @@ func TestGetSchemaDomains(t *testing.T) {
 				t.Helper()
 
 				assert.NotEmpty(t, output.ErrorMessage)
-				assert.Contains(t, output.ErrorMessage, "Version parameter is required")
+				assert.Contains(t, output.ErrorMessage, "version parameter is required")
 				assert.NotEmpty(t, output.AvailableVersions)
 			},
 		},

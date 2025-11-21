@@ -82,9 +82,9 @@ func (m *mockPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) (<
 					return
 				}
 			} else {
-				// Send success response
+				// Send success response with a valid CID
 				select {
-				case refCh <- &corev1.RecordRef{}:
+				case refCh <- &corev1.RecordRef{Cid: "bafytest123"}:
 				case <-ctx.Done():
 					return
 				}

@@ -233,6 +233,28 @@ pvc:
   storageClassName: standard
   size: 1G
 
+# Database configuration
+database:
+  # Database type (currently only sqlite supported)
+  type: "sqlite"
+  
+  # SQLite configuration
+  sqlite:
+    # Path to SQLite database file
+    # Default: /tmp/dir.db (ephemeral - lost on pod restart)
+    # When using PVC: /var/lib/dir/database/dir.db (persistent)
+    dbPath: "/tmp/dir.db"
+  
+  # PVC for database persistence (optional)
+  # When enabled, database persists across pod restarts
+  # Also allows enabling readOnlyRootFilesystem security hardening
+  pvc:
+    enabled: false        # Disabled by default (opt-in for backward compatibility)
+    create: true          # Create PVC automatically
+    storageClassName: ""  # Use cluster default storage class
+    size: 1Gi             # Database size (adjust based on expected record count)
+    accessMode: ReadWriteOnce
+
 # Service exposes gRPC server api
 service:
   type: ClusterIP
