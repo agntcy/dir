@@ -142,9 +142,11 @@ export class Client {
   config: Config;
   storeClient: GrpcClient<typeof models.store_v1.StoreService>;
   routingClient: GrpcClient<typeof models.routing_v1.RoutingService>;
+  publicationClient: GrpcClient<typeof models.routing_v1.PublicationService>;
   searchClient: GrpcClient<typeof models.search_v1.SearchService>;
   signClient: GrpcClient<typeof models.sign_v1.SignService>;
   syncClient: GrpcClient<typeof models.store_v1.SyncService>;
+  eventClient: GrpcClient<typeof models.events_v1.EventService>;
 
   /**
    * Initialize the client with the given configuration.
@@ -190,9 +192,11 @@ export class Client {
       models.routing_v1.RoutingService,
       grpcTransport,
     );
+    this.publicationClient = createClient(models.routing_v1.PublicationService, grpcTransport);
     this.searchClient = createClient(models.search_v1.SearchService, grpcTransport);
     this.signClient = createClient(models.sign_v1.SignService, grpcTransport);
     this.syncClient = createClient(models.store_v1.SyncService, grpcTransport);
+    this.eventClient = createClient(models.events_v1.EventService, grpcTransport);
   }
 
   private static convertToPEM(bytes: Uint8Array, label: string): string {
@@ -887,6 +891,83 @@ export class Client {
   ): Promise<models.store_v1.DeleteSyncResponse> {
     return await this.syncClient.deleteSync(request);
   }
+
+  /**
+   * Get events from the Event API matching the specified criteria.
+   * 
+   * Retrieves a list of events that match the filtering and query criteria
+   * specified in the request.
+   * 
+   * @param request - ListenRequest specifying filtering criteria, pagination, etc.
+   * @returns Promise that resolves to an array of ListenResponse objects matching the criteria
+   * 
+   * @throws {Error} If the gRPC call fails or the get events operation fails
+   */
+  listen(
+    request: models.events_v1.ListenRequest
+  ): AsyncIterable<models.events_v1.ListenResponse> {
+    return this.eventClient.listen(request);
+  }
+
+  /**
+   * CreatePublication creates a new publication request that will be processed by the PublicationWorker.
+   * The publication request can specify either a query, a list of specific CIDs,
+   * or all records to be announced to the DHT.
+   * 
+   * @param request - PublishRequest containing record references and queries options.
+   * 
+   * @returns CreatePublicationResponse returns the result of creating a publication request.
+   * This includes the publication ID and any relevant metadata.
+   *
+   * @throws {Error} If the gRPC call fails or the list operation fails
+   */
+  async create_publication(
+    request: models.routing_v1.PublishRequest,
+  ): Promise<models.routing_v1.CreatePublicationResponse> {
+    return await this.publicationClient.createPublication(request);
+  }
+
+  /**
+   * ListPublications returns a stream of all publication requests in the system.
+   * This allows monitoring of pending, processing, and completed publication requests.
+   * 
+   * @param request - ListPublicationsRequest contains optional filters for listing publication requests.
+   * 
+   * @returns Promise that resolves to an array of ListPublicationsItem represents
+   * a single publication request in the list response.
+   * Contains publication details including ID, status, and creation timestamp.
+   *
+   * @throws {Error} If the gRPC call fails or the list operation fails
+   */
+  async list_publication(
+    request: models.routing_v1.ListPublicationsRequest,
+  ): Promise<models.routing_v1.ListPublicationsItem[]> {
+    const results: models.routing_v1.ListPublicationsItem[] = [];
+
+    for await (const response of this.publicationClient.listPublications(request)) {
+      results.push(response);
+    }
+
+    return results;
+  }
+
+  /**
+   * GetPublication retrieves details of a specific publication request by its identifier.
+   * This includes the current status and any associated metadata.
+   *
+   * @param request - GetPublicationRequest specifies which publication to retrieve by its identifier.
+   * 
+   * @returns GetPublicationResponse contains the full details of a specific publication request.
+   * Includes status, progress information, and any error details if applicable.
+   *
+   * @throws {Error} If the gRPC call fails or the get operation fails
+   */
+  async get_publication(
+    request: models.routing_v1.GetPublicationRequest,
+  ): Promise<models.routing_v1.GetPublicationResponse> {
+    return await this.publicationClient.getPublication(request);
+  }
+
 
   /**
    * Sign a record using a private key.
