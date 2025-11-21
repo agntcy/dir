@@ -11,7 +11,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	databaseutils "github.com/agntcy/dir/server/database/utils"
+	"github.com/agntcy/dir/server/database/utils"
 	publypes "github.com/agntcy/dir/server/publication/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
@@ -137,14 +137,10 @@ func (w *Worker) getCIDsFromRequest(_ context.Context, request *routingv1.Publis
 		return cids, nil
 
 	case *routingv1.PublishRequest_Queries:
-		// Convert search query to database filter options
-		filterOpts, err := databaseutils.QueryToFilters(req.Queries.GetQueries())
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert query to filter options: %w", err)
-		}
+		// Convert proto queries to expression tree (proto -> domain logic conversion)
+		expr := utils.ConvertQueriesToExpression(req.Queries.GetQueries())
 
-		// Get CIDs using the filter options
-		return w.db.GetRecordCIDs(filterOpts...) //nolint:wrapcheck
+		return w.db.GetRecordCIDs(expr, 0, 0) //nolint:wrapcheck
 
 	default:
 		return nil, errors.New("unknown request type")
