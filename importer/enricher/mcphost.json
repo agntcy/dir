@@ -5,7 +5,10 @@
       "args": [
         "mcp",
         "serve"
-      ]
+      ],
+      "env": {
+        "SCHEMA_URL": "https://schema.oasf.outshift.com/"
+      }
     }
   },
   "model": "ollama:qwen3:8b"

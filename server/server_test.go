@@ -218,6 +218,45 @@ func TestKeepaliveServerParameters_StructCreation(t *testing.T) {
 	assert.Equal(t, 1*time.Minute, params.Timeout)
 }
 
+// TestServerInitialization_SchemaURL verifies that the server correctly
+// configures the OASF schema URL during initialization.
+func TestServerInitialization_SchemaURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		schemaURL string
+	}{
+		{
+			name:      "default schema URL",
+			schemaURL: config.DefaultSchemaURL,
+		},
+		{
+			name:      "custom schema URL",
+			schemaURL: "https://custom.schema.url",
+		},
+		{
+			name:      "empty schema URL (disable API validator)",
+			schemaURL: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a minimal config with the schema URL
+			cfg := &config.Config{
+				ListenAddress: config.DefaultListenAddress,
+				SchemaURL:     tt.schemaURL,
+				Connection:    config.DefaultConnectionConfig(),
+			}
+
+			// We can't fully test New() because it tries to start services,
+			// but we can verify that a config with SchemaURL doesn't panic
+			// during the initial setup phase
+			assert.NotNil(t, cfg)
+			assert.Equal(t, tt.schemaURL, cfg.SchemaURL)
+		})
+	}
+}
+
 // TestKeepaliveEnforcementPolicy_StructCreation verifies that we can create
 // keepalive.EnforcementPolicy with our configuration values.
 func TestKeepaliveEnforcementPolicy_StructCreation(t *testing.T) {

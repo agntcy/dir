@@ -38,6 +38,12 @@ const (
 
 	DefaultListenAddress = "0.0.0.0:8888"
 
+	// OASF Validation configuration.
+
+	// DefaultSchemaURL is the default OASF schema URL for API-based validation.
+	// When set, records will be validated using the OASF API validator instead of embedded schemas.
+	DefaultSchemaURL = "https://schema.oasf.outshift.com"
+
 	// Connection management configuration.
 	// These defaults are based on production gRPC best practices and provide
 	// a balance between resource efficiency and connection stability.
@@ -102,6 +108,9 @@ var logger = logging.Logger("config")
 type Config struct {
 	// API configuration
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
+
+	// OASF Validation configuration
+	SchemaURL string `json:"schema_url,omitempty" mapstructure:"schema_url"`
 
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty" mapstructure:"logging"`
@@ -275,6 +284,12 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("listen_address")
 	v.SetDefault("listen_address", DefaultListenAddress)
+
+	//
+	// OASF Validation configuration
+	//
+	_ = v.BindEnv("schema_url")
+	v.SetDefault("schema_url", DefaultSchemaURL)
 
 	//
 	// Logging configuration (gRPC request/response logging)
