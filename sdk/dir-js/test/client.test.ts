@@ -489,7 +489,7 @@ describe('Client', () => {
     const records = genRecords(1, 'listen');
     const recordRefs = await client.push(records);
 
-    const worker = new Worker('./test/listen_worker.ts', {
+    const worker = new Worker('./test/listen_worker.cjs', {
       workerData: {
         recordRef: recordRefs[0],
         dirctlPath: config.dirctlPath,
@@ -509,4 +509,46 @@ describe('Client', () => {
     worker.terminate();
 
   }, 15000);
+
+  test('publication', async () => {
+    const records = genRecords(1, 'publication');
+    const recordRefs = await client.push(records);
+
+    const createResponse = await client.create_publication(
+      create(models.routing_v1.PublishRequestSchema, {
+        request: {
+          case: 'recordRefs',
+          value: {
+            refs: recordRefs,
+          },
+        },
+      }),
+    );
+
+    expect(createResponse).toBeTypeOf(
+      typeof models.routing_v1.CreatePublicationResponseSchema,
+    );
+
+    const publicationsList = await client.list_publication(
+      create(models.routing_v1.ListPublicationsRequestSchema, {}),
+    );
+
+    expect(publicationsList).toBeInstanceOf(Array);
+
+    for (const publication of publicationsList) {
+      expect(publication).toBeTypeOf(typeof models.routing_v1.ListPublicationsItemSchema);
+    }
+
+    const getResponse = await client.get_publication(
+      create(models.routing_v1.GetPublicationRequestSchema, {
+        publicationId: createResponse.publicationId,
+      }),
+    );
+
+    expect(getResponse).toBeTypeOf(
+      typeof models.routing_v1.GetPublicationResponseSchema,
+    );
+
+    expect(getResponse.publicationId).toEqual(createResponse.publicationId);
+  });
 });
