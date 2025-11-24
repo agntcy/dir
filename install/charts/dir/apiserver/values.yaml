@@ -325,7 +325,7 @@ securityContext: {}
   # capabilities:
   #   drop:
   #   - ALL
-  # readOnlyRootFilesystem: true
+  # readOnlyRootFilesystem: true  # When enabled, /tmp emptyDir is automatically mounted for SQLite temp files
   # runAsNonRoot: true
   # runAsUser: 1000
 
