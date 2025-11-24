@@ -883,7 +883,7 @@ class Client:
 
         Raises:
             grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
-            RuntimeError: If the verification operation fails
+            RuntimeError: If the listen operation fails
         """
 
         try:
@@ -961,7 +961,7 @@ class Client:
             raise
         except Exception as e:
             logger.exception("Unexpected error during get_publication: %s", e)
-            msg = f"Failed to create publication: {e}"
+            msg = f"Failed to get publication: {e}"
             raise RuntimeError(msg) from e
 
         return response
@@ -985,7 +985,7 @@ class Client:
 
         Raises:
             grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
-            RuntimeError: If the publication get operation fails
+            RuntimeError: If the publication list operation fails
         """
 
         results: list[routing_v1.ListPublicationsItem] = []
