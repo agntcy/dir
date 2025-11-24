@@ -6,20 +6,21 @@ import (
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 var (
-	manifestArtifactType    = "org.agntcy.dir.Object"
-	annotationPrefix        = "org.agntcy.dir"
-	annotationMetaCreatedAt = path.Join(annotationPrefix, "meta.created_at")
-	annotationSchemaType    = path.Join(annotationPrefix, "schema.type")
-	annotationSchemaVer     = path.Join(annotationPrefix, "schema.version")
-	annotationSchemaFmt     = path.Join(annotationPrefix, "schema.format")
+	manifestArtifactType = "org.agntcy.dir.Object"
+	annotationPrefix     = "org.agntcy.dir"
+	annotationCreatedAt  = path.Join(annotationPrefix, "created_at")
+	annotationSchemaType = path.Join(annotationPrefix, "schema.type")
+	annotationSchemaVer  = path.Join(annotationPrefix, "schema.version")
+	annotationSchemaFmt  = path.Join(annotationPrefix, "schema.format")
 )
 
-// ObjectToManifest converts an DIR Object to an OCI Manifest
-func ObjectToManifest(obj *corev1.Object) (ocispec.Manifest, error) {
+// ObjectToManifest converts DIR Object to an OCI Manifest
+func ObjectToManifest(obj *storev1.Object) (ocispec.Manifest, error) {
 	// Validate input
 	if obj == nil {
 		return ocispec.Manifest{}, fmt.Errorf("object cannot be nil")
@@ -50,10 +51,13 @@ func ObjectToManifest(obj *corev1.Object) (ocispec.Manifest, error) {
 	}, nil
 }
 
-// ManifestToObject converts an OCI Manifest to an DIR Object
-func ManifestToObject(manifest *ocispec.Manifest) (*corev1.Object, error) {
+// ManifestToObject converts an OCI Manifest to DIR Object
+func ManifestToObject(manifest *ocispec.Manifest) (*storev1.Object, error) {
 	if manifest == nil {
 		return nil, fmt.Errorf("manifest cannot be nil")
+	}
+	if manifest.ArtifactType != manifestArtifactType {
+		return nil, fmt.Errorf("unsupported manifest artifact type: %s", manifest.ArtifactType)
 	}
 
 	// Build object from config descriptor
@@ -75,7 +79,7 @@ func ManifestToObject(manifest *ocispec.Manifest) (*corev1.Object, error) {
 }
 
 // dataToDescriptor builds OCI descriptor from DIR data object
-func dataToDescriptor(obj *corev1.Object) (ocispec.Descriptor, error) {
+func dataToDescriptor(obj *storev1.Object) (ocispec.Descriptor, error) {
 	// Get data digest
 	if obj.Data == nil || obj.Data.Cid == "" {
 		return ocispec.Descriptor{}, fmt.Errorf("object data CID cannot be empty")
@@ -111,18 +115,19 @@ func dataToDescriptor(obj *corev1.Object) (ocispec.Descriptor, error) {
 
 	// Add created at
 	if createdAt := obj.CreatedAt; createdAt != "" {
-		annotations[annotationMetaCreatedAt] = createdAt
+		annotations[annotationCreatedAt] = createdAt
 	}
 
 	return ocispec.Descriptor{
-		Digest:      digest,
-		Size:        int64(obj.Size),
-		Annotations: annotations,
+		ArtifactType: annotations[annotationSchemaType],
+		Digest:       digest,
+		Size:         int64(obj.Size),
+		Annotations:  annotations,
 	}, nil
 }
 
 // descriptorToData builds DIR data object from OCI descriptor
-func descriptorToData(desc *ocispec.Descriptor) (*corev1.Object, error) {
+func descriptorToData(desc *ocispec.Descriptor) (*storev1.Object, error) {
 	// Get CID from digest
 	cid, err := corev1.ConvertDigestToCID(desc.Digest)
 	if err != nil {
@@ -131,13 +136,13 @@ func descriptorToData(desc *ocispec.Descriptor) (*corev1.Object, error) {
 
 	// Extract data from descriptor annotations
 	annotations := make(map[string]string)
-	schema := &corev1.ObjectSchema{}
+	schema := &storev1.ObjectSchema{}
 	createdAt := ""
 
 	// Extract created at
 	if desc.Annotations != nil {
 		// Extract created at
-		if ca, ok := desc.Annotations[annotationMetaCreatedAt]; ok {
+		if ca, ok := desc.Annotations[annotationCreatedAt]; ok {
 			createdAt = ca
 		}
 
@@ -160,8 +165,8 @@ func descriptorToData(desc *ocispec.Descriptor) (*corev1.Object, error) {
 		}
 	}
 
-	return &corev1.Object{
-		Data:        &corev1.ObjectRef{Cid: cid},
+	return &storev1.Object{
+		Data:        &storev1.ObjectRef{Cid: cid},
 		Size:        uint64(desc.Size),
 		Annotations: annotations,
 		Schema:      schema,

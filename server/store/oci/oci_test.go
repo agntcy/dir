@@ -1,12 +1,13 @@
 package oci
 
 import (
+	"encoding/json"
 	"io"
 	"reflect"
 	"strings"
 	"testing"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,8 +35,8 @@ func TestOCI(t *testing.T) {
 	assert.Equal(t, baseIn, string(dataBytes))
 
 	// Create test object
-	obj := &corev1.Object{
-		Schema: &corev1.ObjectSchema{
+	obj := &storev1.Object{
+		Schema: &storev1.ObjectSchema{
 			Type:    "text",
 			Version: "1.0",
 			Format:  "plain",
@@ -43,15 +44,15 @@ func TestOCI(t *testing.T) {
 		Annotations: map[string]string{
 			"key": "value",
 		},
-		Data: &corev1.ObjectRef{
+		Data: &storev1.ObjectRef{
 			Cid: baseRef.GetCid(),
 		},
-		Links: []*corev1.Object{
+		Links: []*storev1.Object{
 			{
-				Data: &corev1.ObjectRef{
+				Data: &storev1.ObjectRef{
 					Cid: baseRef.GetCid(),
 				},
-				Schema: &corev1.ObjectSchema{
+				Schema: &storev1.ObjectSchema{
 					Type:    "link",
 					Version: "1.0.0.0.0",
 					Format:  "plain2",
@@ -70,6 +71,7 @@ func TestOCI(t *testing.T) {
 	// Lookup object back
 	lookObj, err := store.Lookup(t.Context(), objRef)
 	assert.Nil(t, err)
+	lookObj.Cid = "" // Clear CID for comparison
 	assert.True(t, reflect.DeepEqual(obj, lookObj))
 
 	// Pull object back
@@ -77,5 +79,8 @@ func TestOCI(t *testing.T) {
 	assert.Nil(t, err)
 	dataBytes, err = io.ReadAll(pulledObj)
 	assert.Nil(t, err)
-	assert.Equal(t, baseIn, string(dataBytes))
+	var storedObj storev1.Object
+	assert.Nil(t, json.Unmarshal(dataBytes, &storedObj))
+	storedObj.Cid = ""
+	assert.True(t, reflect.DeepEqual(obj, &storedObj))
 }

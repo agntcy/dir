@@ -56,7 +56,7 @@ type StoreServiceClient interface {
 	// Push performs write operation for given object.
 	Push(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushClient, error)
 	// Pull performs read operation for given object.
-	Pull(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullClient, error)
+	Pull(ctx context.Context, in *PullRequest, opts ...grpc.CallOption) (StoreService_PullClient, error)
 	// Lookup resolves basic metadata for the object.
 	Lookup(ctx context.Context, opts ...grpc.CallOption) (StoreService_LookupClient, error)
 	// Remove performs delete operation for the object.
@@ -142,28 +142,29 @@ func (x *storeServicePushClient) Recv() (*PushResponse, error) {
 	return m, nil
 }
 
-func (c *storeServiceClient) Pull(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullClient, error) {
+func (c *storeServiceClient) Pull(ctx context.Context, in *PullRequest, opts ...grpc.CallOption) (StoreService_PullClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[2], StoreService_Pull_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &storeServicePullClient{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
 	return x, nil
 }
 
 type StoreService_PullClient interface {
-	Send(*PullRequest) error
 	Recv() (*PullResponse, error)
 	grpc.ClientStream
 }
 
 type storeServicePullClient struct {
 	grpc.ClientStream
-}
-
-func (x *storeServicePullClient) Send(m *PullRequest) error {
-	return x.ClientStream.SendMsg(m)
 }
 
 func (x *storeServicePullClient) Recv() (*PullResponse, error) {
@@ -327,7 +328,7 @@ type StoreServiceServer interface {
 	// Push performs write operation for given object.
 	Push(StoreService_PushServer) error
 	// Pull performs read operation for given object.
-	Pull(StoreService_PullServer) error
+	Pull(*PullRequest, StoreService_PullServer) error
 	// Lookup resolves basic metadata for the object.
 	Lookup(StoreService_LookupServer) error
 	// Remove performs delete operation for the object.
@@ -351,7 +352,7 @@ func (UnimplementedStoreServiceServer) PushData(StoreService_PushDataServer) err
 func (UnimplementedStoreServiceServer) Push(StoreService_PushServer) error {
 	return status.Errorf(codes.Unimplemented, "method Push not implemented")
 }
-func (UnimplementedStoreServiceServer) Pull(StoreService_PullServer) error {
+func (UnimplementedStoreServiceServer) Pull(*PullRequest, StoreService_PullServer) error {
 	return status.Errorf(codes.Unimplemented, "method Pull not implemented")
 }
 func (UnimplementedStoreServiceServer) Lookup(StoreService_LookupServer) error {
@@ -439,12 +440,15 @@ func (x *storeServicePushServer) Recv() (*PushRequest, error) {
 }
 
 func _StoreService_Pull_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(StoreServiceServer).Pull(&storeServicePullServer{ServerStream: stream})
+	m := new(PullRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(StoreServiceServer).Pull(m, &storeServicePullServer{ServerStream: stream})
 }
 
 type StoreService_PullServer interface {
 	Send(*PullResponse) error
-	Recv() (*PullRequest, error)
 	grpc.ServerStream
 }
 
@@ -454,14 +458,6 @@ type storeServicePullServer struct {
 
 func (x *storeServicePullServer) Send(m *PullResponse) error {
 	return x.ServerStream.SendMsg(m)
-}
-
-func (x *storeServicePullServer) Recv() (*PullRequest, error) {
-	m := new(PullRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
 }
 
 func _StoreService_Lookup_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -591,7 +587,6 @@ var StoreService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "Pull",
 			Handler:       _StoreService_Pull_Handler,
 			ServerStreams: true,
-			ClientStreams: true,
 		},
 		{
 			StreamName:    "Lookup",

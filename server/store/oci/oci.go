@@ -11,15 +11,14 @@ import (
 	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-	ocidigest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
 )
 
@@ -61,44 +60,29 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 }
 
 // Push raw data to the OCI registry as a blob
-func (s *store) PushData(ctx context.Context, reader io.ReadCloser) (*corev1.ObjectRef, error) {
-	// Close reader when done
-	defer reader.Close()
-
-	// Read all data from the reader
-	objectBytes, err := io.ReadAll(reader)
+func (s *store) PushData(ctx context.Context, reader io.ReadCloser) (*storev1.ObjectRef, error) {
+	// Safely push data
+	digest, err := s.pushOrSkip(ctx, reader, "application/octet-stream")
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read data: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to push data: %v", err)
 	}
 
-	// Check if blob already exists
-	digest := ocidigest.FromBytes(objectBytes)
-	exists, err := s.repo.Exists(ctx, ocispec.Descriptor{Digest: digest})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to check blob existence: %v", err)
-	}
-
-	// Push data as a blob to the OCI registry
-	if !exists {
-		_, err := oras.PushBytes(ctx, s.repo, "", objectBytes)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to push object bytes: %v", err)
-		}
-	}
-
-	// Convert Digest to CID
+	// Convert digest to CID
 	cid, err := corev1.ConvertDigestToCID(digest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to convert digest to CID: %v", err)
 	}
 
-	return &corev1.ObjectRef{Cid: cid}, nil
+	// Tag the data with object CID
+	if _, err := oras.Tag(ctx, s.repo, digest.String(), cid); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create CID tag: %v", err)
+	}
+
+	return &storev1.ObjectRef{Cid: cid}, nil
 }
 
 // Push object as a manifest to the OCI registry
-func (s *store) Push(ctx context.Context, object *corev1.Object) (*corev1.ObjectRef, error) {
-	logger.Debug("Pushing object to OCI store", "object", object)
-
+func (s *store) Push(ctx context.Context, object *storev1.Object) (*storev1.ObjectRef, error) {
 	// Convert object to manifest
 	manifest, err := ObjectToManifest(object)
 	if err != nil {
@@ -108,72 +92,44 @@ func (s *store) Push(ctx context.Context, object *corev1.Object) (*corev1.Object
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal manifest: %w", err)
 	}
-	manifestDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, manifestJSON)
 
-	// Check if manifest already exists
-	exists, err := s.repo.Exists(ctx, manifestDesc)
+	// Push manifest
+	digest, err := s.pushOrSkip(ctx, io.NopCloser(bytes.NewReader(manifestJSON)), ocispec.MediaTypeImageManifest)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to check manifest existence: %v", err)
-	}
-	if !exists {
-		// Push manifest
-		err = s.repo.Push(ctx, manifestDesc, bytes.NewReader(manifestJSON))
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to push manifest: %v", err)
-		}
+		return nil, status.Errorf(codes.Internal, "failed to push manifest: %v", err)
 	}
 
-	// CID to digest
-	_, objectRef, err := corev1.MarshalCannonical(object)
+	// Compute CID for the object
+	object.Cid = "" // Clear CID to ensure correct computation
+	_, objectCID, err := corev1.MarshalCannonical(object)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to convert manifest digest to CID: %v", err)
+		return nil, fmt.Errorf("failed to compute object CID: %w", err)
 	}
 
-	// Create tag for the manifest using the object CID
-	if _, err := oras.Tag(ctx, s.repo, manifestDesc.Digest.String(), objectRef.GetCid()); err != nil {
+	// Tag the manifest data with object CID
+	if _, err := oras.Tag(ctx, s.repo, digest.String(), objectCID); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create CID tag: %v", err)
 	}
 
-	// Return record reference
-	return objectRef, nil
+	return &storev1.ObjectRef{Cid: objectCID}, nil
 }
 
-// Lookup checks if the ref exists as a tagged record.
-func (s *store) Lookup(ctx context.Context, ref *corev1.ObjectRef) (*corev1.Object, error) {
-	// If the ref points to an object, lookup the data blob
-	digest, err := corev1.ConvertCIDToDigest(ref.GetCid())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to convert CID to digest: %v", err)
-	}
-	exists, err := s.repo.Exists(ctx, ocispec.Descriptor{Digest: digest})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to check blob existence: %v", err)
-	}
-	if exists {
-		desc, err := s.repo.Resolve(ctx, digest.String())
-		if err != nil {
-			return nil, status.Errorf(codes.NotFound, "record not found: %s", ref.GetCid())
-		}
-
-		return &corev1.Object{
-			Cid:         ref.GetCid(),
-			Size:        uint64(desc.Size),
-			Annotations: desc.Annotations,
-		}, nil
-	}
-
-	// Otherwise, treat as object ref
+func (s *store) Lookup(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Object, error) {
+	// Get tag for the requested CID
 	desc, err := s.repo.Resolve(ctx, ref.GetCid())
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "record not found: %s", ref.GetCid())
 	}
 
-	// If the descriptor is a manifest, we need to fetch the config blob
+	// If the media type is not image manifest, return as raw object info
 	if desc.MediaType != ocispec.MediaTypeImageManifest {
-		return nil, status.Errorf(codes.InvalidArgument, "descriptor is not a manifest: %s", ref.GetCid())
+		return &storev1.Object{
+			Cid:  ref.GetCid(),
+			Size: uint64(desc.Size),
+		}, nil
 	}
 
-	// Pull and convert to manifest
+	// Pull manifest
 	manifestRd, err := s.repo.Fetch(ctx, desc)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to fetch manifest for CID %s: %v", ref.GetCid(), err)
@@ -196,42 +152,58 @@ func (s *store) Lookup(ctx context.Context, ref *corev1.ObjectRef) (*corev1.Obje
 		return nil, status.Errorf(codes.Internal, "failed to convert manifest to object for CID %s: %v", ref.GetCid(), err)
 	}
 
-	// Validate object CID
-	_, objectRef, err := corev1.MarshalCannonical(object)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to convert object to CID for manifest %s: %v", ref.GetCid(), err)
+	// Compute CID for the object
+	{
+		object.Cid = "" // Clear CID to ensure correct computation
+		_, objectCID, err := corev1.MarshalCannonical(object)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to compute object CID for CID %s: %v", ref.GetCid(), err)
+		}
+		object.Cid = objectCID // Set computed CID
 	}
-	if objectRef.GetCid() != ref.GetCid() {
-		return nil, status.Errorf(codes.Internal, "CID mismatch: expected %s, got %s", ref.GetCid(), objectRef.GetCid())
+
+	// Verify computed CID matches the requested CID
+	if object.GetCid() != ref.GetCid() {
+		return nil, status.Errorf(codes.Internal, "object CID mismatch: expected %s, got %s", ref.GetCid(), object.GetCid())
 	}
 
 	return object, nil
 }
 
-func (s *store) Pull(ctx context.Context, ref *corev1.ObjectRef) (io.ReadCloser, error) {
+func (s *store) Pull(ctx context.Context, ref *storev1.ObjectRef) (io.ReadCloser, error) {
 	// Lookup the object first
+	// This also verifies the CID
 	obj, err := s.Lookup(ctx, ref)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "failed to lookup object for CID %s: %v", ref.GetCid(), err)
 	}
 
-	// Get data CID
-	dataCID := obj.GetCid()
-	if obj.Data != nil && obj.Data.GetCid() != "" {
-		dataCID = obj.Data.GetCid()
+	// If its an actual object, return it as JSON
+	if obj.Data != nil {
+		objJSON, err := json.Marshal(obj)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to marshal object for CID %s: %v", ref.GetCid(), err)
+		}
+
+		return io.NopCloser(bytes.NewReader(objJSON)), nil
 	}
 
 	// Convert CID to digest
-	digest, err := corev1.ConvertCIDToDigest(dataCID)
+	digest, err := corev1.ConvertCIDToDigest(obj.GetCid())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to convert CID to digest: %v", err)
 	}
 
 	// Pull the data
-	return s.repo.Fetch(ctx, ocispec.Descriptor{Digest: digest})
+	dataRd, err := s.repo.Fetch(ctx, ocispec.Descriptor{Digest: digest})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch data for CID %s: %v", obj.GetCid(), err)
+	}
+
+	return dataRd, nil
 }
 
-func (s *store) Delete(ctx context.Context, ref *corev1.ObjectRef) error {
+func (s *store) Delete(ctx context.Context, ref *storev1.ObjectRef) error {
 	logger.Debug("Deleting record from OCI store", "ref", ref)
 
 	// // Input validation using shared helper

@@ -70,16 +70,14 @@ It represents a string-string map of key-value pairs.
 
 Data field contains the actual content of the object.
 It can be of any type, and its structure is defined by the schema field.
-The data field is actually stored as a separate object in the system, and the data field here contains only a reference to that object.
+The data field is stored as an independent object in the system, and is linked
+via its CID.
 
 ```json
 {
     "data": {
         "cid": "bafybei67890",
-        "size": 1234,
-        "schema": {
-          "type": "octet/raw"
-        },
+        "size": 1234
     }
 }
 ```
@@ -157,10 +155,12 @@ The mapping between OASF object and OCI storage is as follows:
 {
     "schemaVersion": 2,
     "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "artifactType": "org.agntcy.dir.Object",
     "config": {
         "mediaType": "application/octet-stream",
         "size": 1234,
         "digest": "sha256:abcdef1234567890", // object data cid
+        "artifactType": "agntcy.oasf.types.v1.Record",
         "annotations": {
             "org.agntcy.oasf.schema.type": "agntcy.oasf.types.v1.Record",
             "org.agntcy.oasf.schema.version": "1.0.0",
@@ -174,6 +174,7 @@ The mapping between OASF object and OCI storage is as follows:
             "mediaType": "application/octet-stream",
             "size": 1234,
             "digest": "sha256:abcdef1234567890", // link object data cid
+            "artifactType": "agntcy.oasf.types.v1.Monitoring",
             "annotations": {
                 "org.agntcy.oasf.schema.type": "agntcy.oasf.types.v1.Monitoring",
                 "org.agntcy.oasf.schema.version": "1.0.0",

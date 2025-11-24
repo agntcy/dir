@@ -5,8 +5,7 @@ syntax = "proto3";
 
 package agntcy.dir.store.v1;
 
-import "agntcy/dir/core/v1/record.proto";
-import "agntcy/dir/core/v1/object.proto";
+import "agntcy/dir/store/v1/object.proto";
 import "google/protobuf/empty.proto";
 
 // Defines an interface for content-addressable storage
@@ -25,14 +24,14 @@ import "google/protobuf/empty.proto";
 // for the N-th request, N-th response will be returned.
 // If an error occurs, the stream will be cancelled.
 service StoreService {
-  // PushData performs write operation for raw object data.
+  // PushData performs write operation for raw data.
   rpc PushData(stream PushDataRequest) returns (PushDataResponse);
 
   // Push performs write operation for given object.
   rpc Push(stream PushRequest) returns (stream PushResponse);
 
   // Pull performs read operation for given object.
-  rpc Pull(stream PullRequest) returns (stream PullResponse);
+  rpc Pull(PullRequest) returns (stream PullResponse);
 
   // Lookup resolves basic metadata for the object.
   rpc Lookup(stream LookupRequest) returns (stream LookupResponse);
@@ -49,46 +48,47 @@ service StoreService {
 
 message PushDataRequest {
   bytes data = 1;
+  bool is_object = 2; // If true, data represents an object in JSON format
 }
 
 message PushDataResponse {
   bool success = 1;
   optional string error_message = 2;
-  core.v1.ObjectRef object_ref = 3;
+  ObjectRef object_ref = 3;
 }
 
 message PushRequest {
-  core.v1.Object object = 1;
+  Object object = 1;
 }
 
 message PushResponse {
   bool success = 1;
   optional string error_message = 2;
-  core.v1.ObjectRef object_ref = 3;
+  ObjectRef object_ref = 3;
 }
 
 message PullRequest {
-  core.v1.ObjectRef object_ref = 1;
+  ObjectRef object_ref = 1;
 }
 
 message PullResponse {
   bool success = 1;
   optional string error_message = 2;
-  core.v1.Object object = 3;
+  bytes data = 3;
 }
 
 message LookupRequest {
-  core.v1.ObjectRef object_ref = 1;
+  ObjectRef object_ref = 1;
 }
 
 message LookupResponse {
   bool success = 1;
   optional string error_message = 2;
-  core.v1.Object object = 3;
+  Object object = 3;
 }
 
 message DeleteRequest {
-  core.v1.ObjectRef object_ref = 1;
+  ObjectRef object_ref = 1;
 }
 
 message DeleteResponse {
@@ -99,10 +99,10 @@ message DeleteResponse {
 // PushReferrerRequest represents a record with optional OCI artifacts for push operations.
 message PushReferrerRequest {
   // Object reference
-  core.v1.ObjectRef object_ref = 1;
+  ObjectRef object_ref = 1;
 
   // Object referrer reference
-  core.v1.ObjectRef referrer_ref = 2;
+  ObjectRef referrer_ref = 2;
 }
 
 // PushReferrerResponse
@@ -117,7 +117,7 @@ message PushReferrerResponse {
 // PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
 message PullReferrerRequest {
   // Object reference
-  core.v1.ObjectRef object_ref = 1;
+  ObjectRef object_ref = 1;
 
   // Object referrer type to be pulled
   // If not provided, all referrers will be pulled
@@ -127,5 +127,5 @@ message PullReferrerRequest {
 // PullReferrerResponse is returned after successfully fetching a record referrer.
 message PullReferrerResponse {
   // ObjectReferrer object associated with the object
-  core.v1.ObjectRef referrer_ref = 1;
+  ObjectRef referrer_ref = 1;
 }

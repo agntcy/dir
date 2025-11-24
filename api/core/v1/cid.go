@@ -96,9 +96,9 @@ func IsValidCID(cidString string) bool {
 }
 
 // MarshalCannonical marshals any object via canonical JSON serialization.
-func MarshalCannonical(obj any) ([]byte, *ObjectRef, error) {
+func MarshalCannonical(obj any) ([]byte, string, error) {
 	if obj == nil {
-		return nil, nil, errors.New("cannot marshal nil object")
+		return nil, "", errors.New("cannot marshal nil object")
 	}
 
 	// Extract the data marshal it canonically
@@ -106,29 +106,29 @@ func MarshalCannonical(obj any) ([]byte, *ObjectRef, error) {
 	// Step 1: Convert to JSON using regular json.Marshal
 	jsonBytes, err := json.Marshal(obj)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal object: %w", err)
+		return nil, "", fmt.Errorf("failed to marshal object: %w", err)
 	}
 
 	// Step 2: Parse and re-marshal to ensure deterministic map key ordering.
 	// This is critical - maps must have consistent key order for deterministic results.
 	var normalized interface{}
 	if err := json.Unmarshal(jsonBytes, &normalized); err != nil {
-		return nil, nil, fmt.Errorf("failed to normalize JSON for canonical ordering: %w", err)
+		return nil, "", fmt.Errorf("failed to normalize JSON for canonical ordering: %w", err)
 	}
 
 	// Step 3: Marshal with sorted keys for deterministic output.
 	// encoding/json.Marshal sorts map keys alphabetically.
 	canonicalBytes, err := json.Marshal(normalized)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal normalized JSON with sorted keys: %w", err)
+		return nil, "", fmt.Errorf("failed to marshal normalized JSON with sorted keys: %w", err)
 	}
 
 	// Step 4: Calculate CID from the canonical bytes
 	dgst, _ := CalculateDigest(canonicalBytes)
 	cid, err := ConvertDigestToCID(dgst)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to calculate CID: %w", err)
+		return nil, "", fmt.Errorf("failed to calculate CID: %w", err)
 	}
 
-	return canonicalBytes, &ObjectRef{Cid: cid}, nil
+	return canonicalBytes, cid, nil
 }
