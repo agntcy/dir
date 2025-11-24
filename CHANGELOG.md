@@ -13,6 +13,7 @@ This release focuses on storage improvements, SDK enhancements, MCP tooling, and
 
 **Storage & Deployment Improvements**
 - SQLite PVC configuration support for persistent storage in Kubernetes deployments
+- Recreate deployment strategy to prevent database lock conflicts during rolling updates
 - Automatic `/tmp` emptyDir mount when `readOnlyRootFilesystem` is enabled for security hardening
 - Fixes compatibility issue between SQLite temp files and read-only root filesystem
 - Enhanced unit test coverage and stability
@@ -44,6 +45,7 @@ This release focuses on storage improvements, SDK enhancements, MCP tooling, and
 
 ### Added
 - **Storage**: PVC configuration support for SQLite (#713)
+- **Helm**: Deployment strategy configuration to prevent PVC lock conflicts (#720)
 - **SDK**: Events (listen) gRPC client for Python and JavaScript SDKs (#709)
 - **SDK**: Publication gRPC client for Python and JavaScript SDKs (#709)
 - **MCP**: Import/export tools and prompts for record workflows (#705)
