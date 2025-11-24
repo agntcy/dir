@@ -15,11 +15,13 @@ import (
 
 const (
 	maxRecordSize = 1024 * 1024 * 4 // 4MB
+	DefaultSchemaURL = "https://schema.oasf.outshift.com"
 )
 
 var (
-	defaultValidator *validator.Validator
-	schemaURL        string
+	defaultValidator     *validator.Validator
+	schemaURL            = DefaultSchemaURL
+	disableAPIValidation = false
 )
 
 func init() {
@@ -32,10 +34,16 @@ func init() {
 }
 
 // SetSchemaURL configures the schema URL to use for API-based validation.
-// If set, the OASF API validator will be used instead of embedded schemas.
-// Pass an empty string to disable API-based validation.
+// This should be called before any validation operations.
 func SetSchemaURL(url string) {
 	schemaURL = url
+}
+
+// SetDisableAPIValidation configures whether to disable API-based validation.
+// When true, embedded schemas will be used instead of the API validator.
+// This should be called before any validation operations.
+func SetDisableAPIValidation(disable bool) {
+	disableAPIValidation = disable
 }
 
 // GetCid calculates and returns the CID for this record.
@@ -142,12 +150,13 @@ func (r *Record) Validate() (bool, []string, error) {
 	}
 
 	// Validate the record using OASF SDK
-	// If schemaURL is configured, use API-based validation
-	if schemaURL != "" {
+	// If API validation is not disabled, use API-based validation with configured schema URL
+	if !disableAPIValidation {
 		//nolint:wrapcheck
 		return defaultValidator.ValidateRecord(r.GetData(), validator.WithSchemaURL(schemaURL))
 	}
 
+	// Use embedded schemas
 	//nolint:wrapcheck
 	return defaultValidator.ValidateRecord(r.GetData())
 }

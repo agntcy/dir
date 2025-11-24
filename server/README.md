@@ -9,24 +9,32 @@ The Directory server supports configuration via environment variables, YAML conf
 The server includes built-in OASF record validation with support for API-based validation:
 
 - **`schema_url`** / **`DIRECTORY_SERVER_SCHEMA_URL`** - OASF schema URL for API-based validation
-  - **Default**: `https://schema.oasf.outshift.com` (API validator enabled by default)
-  - When set, records will be validated using the OASF API validator with the latest schema rules
-  - Set to empty string (`""`) to use embedded schemas instead
+  - **Default**: `https://schema.oasf.outshift.com`
+  - URL of the OASF server to use for validation
   - This affects all record validation operations including push, sync, and import
+
+- **`disable_api_validation`** / **`DIRECTORY_SERVER_DISABLE_API_VALIDATION`** - Disable API-based validation
+  - **Default**: `false` (API validation enabled)
+  - When `true`, uses embedded schemas instead of the API validator
+  - When `false`, uses API validation with the configured `schema_url`
 
 **Example with environment variable:**
 ```bash
-# Use API validator (default)
-DIRECTORY_SERVER_SCHEMA_URL=https://schema.oasf.outshift.com ./dirctl-apiserver
+# Use default OASF API validator (default behavior)
+./dirctl-apiserver
+
+# Use custom OASF server
+DIRECTORY_SERVER_SCHEMA_URL=http://localhost:8080 ./dirctl-apiserver
 
 # Use embedded schemas (disable API validator)
-DIRECTORY_SERVER_SCHEMA_URL="" ./dirctl-apiserver
+DIRECTORY_SERVER_DISABLE_API_VALIDATION=true ./dirctl-apiserver
 ```
 
 **Example with YAML configuration:**
 ```yaml
 # server.config.yml
 schema_url: "https://schema.oasf.outshift.com"
+disable_api_validation: false
 listen_address: "0.0.0.0:8888"
 ```
 

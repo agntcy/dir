@@ -110,7 +110,8 @@ type Config struct {
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
 
 	// OASF Validation configuration
-	SchemaURL string `json:"schema_url,omitempty" mapstructure:"schema_url"`
+	SchemaURL            string `json:"schema_url,omitempty"             mapstructure:"schema_url"`
+	DisableAPIValidation bool   `json:"disable_api_validation,omitempty" mapstructure:"disable_api_validation"`
 
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty" mapstructure:"logging"`
@@ -290,6 +291,9 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("schema_url")
 	v.SetDefault("schema_url", DefaultSchemaURL)
+
+	_ = v.BindEnv("disable_api_validation")
+	v.SetDefault("disable_api_validation", false)
 
 	//
 	// Logging configuration (gRPC request/response logging)

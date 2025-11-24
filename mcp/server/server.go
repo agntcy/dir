@@ -20,14 +20,23 @@ import (
 //
 //nolint:maintidx // Function registers all MCP tools and prompts, complexity is acceptable
 func Serve(ctx context.Context) error {
-	// Configure schema URL from environment variable if set
-	schemaURL := os.Getenv("SCHEMA_URL")
-	if schemaURL != "" {
-		corev1.SetSchemaURL(schemaURL)
-		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validator configured with schema_url=%s\n", schemaURL)
+	// Configure OASF validation
+	disableAPIValidation := os.Getenv("DISABLE_API_VALIDATION") == "true"
+	if disableAPIValidation {
+		corev1.SetDisableAPIValidation(true)
+		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validation disabled, using embedded schemas\n")
 	} else {
-		fmt.Fprintf(os.Stderr, "[MCP Server] No SCHEMA_URL configured, using embedded schemas\n")
+		// Read schema URL from environment variable (default to public OASF server)
+		schemaURL := os.Getenv("OASF_SCHEMA_URL")
+		if schemaURL == "" {
+			schemaURL = corev1.DefaultSchemaURL
+		}
+
+		corev1.SetSchemaURL(schemaURL)
+		corev1.SetDisableAPIValidation(false)
+		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validator configured with schema_url=%s\n", schemaURL)
 	}
+
 	// Create MCP server for Directory operations
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "dir-mcp-server",

@@ -324,13 +324,17 @@ The following environment variables can be used with both binary and Docker conf
 
 #### OASF Validation Configuration
 
-- `SCHEMA_URL` - OASF schema URL for API-based validation (optional)
-  - When set, the MCP server will use the advanced OASF API validator instead of embedded schemas
-  - This enables more comprehensive validation with the latest schema rules
-  - Example: `https://schema.oasf.outshift.com`
-  - If not set, validation will use embedded schemas (default behavior)
+- `OASF_SCHEMA_URL` - OASF schema URL for API-based validation
+  - **Default**: `https://schema.oasf.outshift.com`
+  - URL of the OASF server to use for validation
+  - The MCP server uses API-based validation by default for more comprehensive validation with the latest schema rules
 
-**Example with SCHEMA_URL (Cursor):**
+- `DISABLE_API_VALIDATION` - Disable API-based validation
+  - **Default**: `false` (API validation enabled)
+  - When `true`, uses embedded schemas instead of the API validator
+  - When `false`, uses API validation with the configured `OASF_SCHEMA_URL`
+
+**Example - Use default OASF server (Cursor):**
 
 ```json
 {
@@ -339,7 +343,6 @@ The following environment variables can be used with both binary and Docker conf
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "SCHEMA_URL": "https://schema.oasf.outshift.com",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }
@@ -347,9 +350,7 @@ The following environment variables can be used with both binary and Docker conf
 }
 ```
 
-**Testing with Local OASF Server:**
-
-If you have a local OASF server running (e.g., for schema development), configure `SCHEMA_URL` to point to it:
+**Example - Use custom OASF server (Cursor):**
 
 ```json
 {
@@ -358,7 +359,24 @@ If you have a local OASF server running (e.g., for schema development), configur
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "SCHEMA_URL": "http://localhost:8080",
+        "OASF_SCHEMA_URL": "http://localhost:8080",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Example - Use embedded schemas (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "DISABLE_API_VALIDATION": "true",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }
