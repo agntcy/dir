@@ -9,11 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Key Highlights
 
-This release focuses on storage improvements, MCP tooling enhancements, and CI/CD refinements, including:
+This release focuses on storage improvements, SDK enhancements, MCP tooling, and operational stability, including:
 
-**Storage Improvements**
+**Storage & Deployment Improvements**
 - SQLite PVC configuration support for persistent storage in Kubernetes deployments
+- Automatic `/tmp` emptyDir mount when `readOnlyRootFilesystem` is enabled for security hardening
+- Fixes compatibility issue between SQLite temp files and read-only root filesystem
 - Enhanced unit test coverage and stability
+
+**SDK Enhancements**
+- Added Events (listen) gRPC client to Python and JavaScript SDKs
+- Added Publication gRPC client to Python and JavaScript SDKs
+- Comprehensive test coverage for new SDK methods
 
 **MCP Enhancements**
 - Import/export tools for record management workflows
@@ -37,6 +44,8 @@ This release focuses on storage improvements, MCP tooling enhancements, and CI/C
 
 ### Added
 - **Storage**: PVC configuration support for SQLite (#713)
+- **SDK**: Events (listen) gRPC client for Python and JavaScript SDKs (#709)
+- **SDK**: Publication gRPC client for Python and JavaScript SDKs (#709)
 - **MCP**: Import/export tools and prompts for record workflows (#705)
 - **Importer**: Domain enrichment capabilities (#696)
 
@@ -44,6 +53,7 @@ This release focuses on storage improvements, MCP tooling enhancements, and CI/C
 - **CI**: Update brew formula version (#702)
 
 ### Fixed
+- **Helm**: Add `/tmp` emptyDir mount when `readOnlyRootFilesystem` is enabled (#718)
 - **CI**: Brew formula updater to work after release is public (#686)
 - **Testing**: Fix unit tests for storage components (#713)
 
