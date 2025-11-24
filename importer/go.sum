@@ -692,8 +692,8 @@ github.com/ThalesIgnite/crypto11 v1.2.5 h1:1IiIIEqYmBvUYFeMnHqRft4bwf/O36jryEUpY
 github.com/ThalesIgnite/crypto11 v1.2.5/go.mod h1:ILDKtnCKiQ7zRoNxcp36Y1ZR8LBPmR2E23+wTQe/MlE=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
-github.com/agntcy/oasf-sdk/pkg v0.0.12 h1:mQb8zW07lHyQMdfllmaS/AxnjFOcO9QM6KQK1EWmDzQ=
-github.com/agntcy/oasf-sdk/pkg v0.0.12/go.mod h1:FvcEB49gsvK+JO5i6l/pt5QgTK0LZeR7KYKsdcI6ZIM=
+github.com/agntcy/oasf-sdk/pkg v0.0.13 h1:K9cysQ6SL9UGc6b7g8umg5EAEJtxfKmprZqUX7/GtzU=
+github.com/agntcy/oasf-sdk/pkg v0.0.13/go.mod h1:FvcEB49gsvK+JO5i6l/pt5QgTK0LZeR7KYKsdcI6ZIM=
 github.com/airbrake/gobrake v3.6.1+incompatible/go.mod h1:wM4gu3Cn0W0K7GUuVWnlXZU11AGBXMILnrdOU8Kn00o=
 github.com/ajstarks/deck v0.0.0-20200831202436-30c9fc6549a9/go.mod h1:JynElWSGnm/4RlzPXRlREEwqTHAN3T56Bv2ITsFT3gY=
 github.com/ajstarks/deck/generate v0.0.0-20210309230005-c3f852c02e19/go.mod h1:T13YZdzov6OU0A1+RfKZiZN9ca6VeKdBdyDV+BY97Tk=

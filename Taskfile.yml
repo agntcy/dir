@@ -1073,7 +1073,6 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
-          DIRECTORY_SERVER_DISABLE_API_VALIDATION: "true" #TODO: Explicitly disable for e2e tests, remove when fix in oasf-sdk is released
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
       - task: deploy:kubernetes:local:port-forward
       - |
@@ -1117,7 +1116,6 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
-          DIRECTORY_SERVER_DISABLE_API_VALIDATION: "true" #TODO: Explicitly disable for e2e tests, remove when fix in oasf-sdk is released
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
       - task: deploy:kubernetes:local:port-forward
       - |
@@ -1161,7 +1159,6 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
-          DIRECTORY_SERVER_DISABLE_API_VALIDATION: "true" #TODO: Explicitly disable for e2e tests, remove when fix in oasf-sdk is released
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
       - task: deploy:kubernetes:local:port-forward
       # Run client library tests first (faster feedback)
