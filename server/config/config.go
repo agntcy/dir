@@ -112,6 +112,7 @@ type Config struct {
 	// OASF Validation configuration
 	SchemaURL            string `json:"schema_url,omitempty"             mapstructure:"schema_url"`
 	DisableAPIValidation bool   `json:"disable_api_validation,omitempty" mapstructure:"disable_api_validation"`
+	StrictValidation     bool   `json:"strict_validation,omitempty"      mapstructure:"strict_validation"`
 
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty" mapstructure:"logging"`
@@ -294,6 +295,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("disable_api_validation")
 	v.SetDefault("disable_api_validation", false)
+
+	_ = v.BindEnv("strict_validation")
+	v.SetDefault("strict_validation", true)
 
 	//
 	// Logging configuration (gRPC request/response logging)

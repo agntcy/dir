@@ -4,6 +4,7 @@
 package v1_test
 
 import (
+	"context"
 	"testing"
 
 	oasfv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
@@ -193,7 +194,7 @@ func TestRecord_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			valid, errors, err := tt.record.Validate()
+			valid, errors, err := tt.record.Validate(context.Background())
 			if err != nil {
 				if tt.wantValid {
 					t.Errorf("Validate() unexpected error: %v", err)
@@ -279,7 +280,7 @@ func TestRecord_SetSchemaURL(t *testing.T) {
 			})
 
 			// Validation should still work (whether using embedded or API validator)
-			valid, _, err := record.Validate()
+			valid, _, err := record.Validate(context.Background())
 			if err != nil {
 				t.Fatalf("Validate() error = %v", err)
 			}

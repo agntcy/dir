@@ -629,6 +629,7 @@ tasks:
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           {{ if .DIRECTORY_SERVER_SCHEMA_URL }}--set apiserver.config.schema_url="{{ .DIRECTORY_SERVER_SCHEMA_URL }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_DISABLE_API_VALIDATION }}--set apiserver.config.disable_api_validation="{{ .DIRECTORY_SERVER_DISABLE_API_VALIDATION }}"{{ end }} \
+          {{ if ne .DIRECTORY_SERVER_STRICT_VALIDATION nil }}--set apiserver.config.strict_validation="{{ .DIRECTORY_SERVER_STRICT_VALIDATION }}"{{ end }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \

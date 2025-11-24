@@ -334,6 +334,12 @@ The following environment variables can be used with both binary and Docker conf
   - When `true`, uses embedded schemas instead of the API validator
   - When `false`, uses API validation with the configured `OASF_SCHEMA_URL`
 
+- `STRICT_API_VALIDATION` - API validation strictness mode
+  - **Default**: `true` (strict mode)
+  - **Strict mode** (`true`): Fails on unknown attributes, deprecated fields, and schema violations
+  - **Lax mode** (`false`): More permissive, only fails on critical errors
+  - Only applies when API validation is enabled
+
 **Example - Use default OASF server (Cursor):**
 
 ```json
@@ -360,6 +366,23 @@ The following environment variables can be used with both binary and Docker conf
       "args": ["mcp", "serve"],
       "env": {
         "OASF_SCHEMA_URL": "http://localhost:8080",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Example - Use lax validation mode (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "STRICT_API_VALIDATION": "false",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }

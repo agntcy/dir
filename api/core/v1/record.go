@@ -4,6 +4,7 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 
 const (
 	maxRecordSize = 1024 * 1024 * 4 // 4MB
+
+	// DefaultSchemaURL is the default OASF schema URL for API-based validation.
 	DefaultSchemaURL = "https://schema.oasf.outshift.com"
 )
 
@@ -22,6 +25,7 @@ var (
 	defaultValidator     *validator.Validator
 	schemaURL            = DefaultSchemaURL
 	disableAPIValidation = false
+	strictValidation     = true
 )
 
 func init() {
@@ -44,6 +48,14 @@ func SetSchemaURL(url string) {
 // This should be called before any validation operations.
 func SetDisableAPIValidation(disable bool) {
 	disableAPIValidation = disable
+}
+
+// SetStrictValidation configures whether to use strict validation mode.
+// When true, uses strict validation (fails on unknown attributes, deprecated fields, etc.).
+// When false, uses lax validation (more permissive, only fails on critical errors).
+// This should be called before any validation operations.
+func SetStrictValidation(strict bool) {
+	strictValidation = strict
 }
 
 // GetCid calculates and returns the CID for this record.
@@ -139,7 +151,7 @@ func (r *Record) Decode() (DecodedRecord, error) {
 }
 
 // Validate validates the Record's data against its embedded schema using the OASF SDK.
-func (r *Record) Validate() (bool, []string, error) {
+func (r *Record) Validate(ctx context.Context) (bool, []string, error) {
 	if r == nil || r.GetData() == nil {
 		return false, []string{"record is nil"}, nil
 	}
@@ -153,12 +165,17 @@ func (r *Record) Validate() (bool, []string, error) {
 	// If API validation is not disabled, use API-based validation with configured schema URL
 	if !disableAPIValidation {
 		//nolint:wrapcheck
-		return defaultValidator.ValidateRecord(r.GetData(), validator.WithSchemaURL(schemaURL))
+		return defaultValidator.ValidateRecord(
+			ctx,
+			r.GetData(),
+			validator.WithSchemaURL(schemaURL),
+			validator.WithStrict(strictValidation),
+		)
 	}
 
 	// Use embedded schemas
 	//nolint:wrapcheck
-	return defaultValidator.ValidateRecord(r.GetData())
+	return defaultValidator.ValidateRecord(ctx, r.GetData())
 }
 
 // UnmarshalRecord unmarshals canonical Record JSON bytes to a Record.

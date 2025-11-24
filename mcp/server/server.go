@@ -21,6 +21,8 @@ import (
 //nolint:maintidx // Function registers all MCP tools and prompts, complexity is acceptable
 func Serve(ctx context.Context) error {
 	// Configure OASF validation
+	// Note: Logging to stderr is intentional - MCP servers communicate over stdin/stdout,
+	// so stderr is used for logging/debugging messages that don't interfere with the protocol.
 	disableAPIValidation := os.Getenv("DISABLE_API_VALIDATION") == "true"
 	if disableAPIValidation {
 		corev1.SetDisableAPIValidation(true)
@@ -32,9 +34,15 @@ func Serve(ctx context.Context) error {
 			schemaURL = corev1.DefaultSchemaURL
 		}
 
+		// Read strict validation setting (default to strict for safety)
+		strictValidation := os.Getenv("STRICT_API_VALIDATION") != "false"
+
 		corev1.SetSchemaURL(schemaURL)
 		corev1.SetDisableAPIValidation(false)
-		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validator configured with schema_url=%s\n", schemaURL)
+		corev1.SetStrictValidation(strictValidation)
+
+		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validator configured with schema_url=%s, strict mode=%t\n",
+			schemaURL, strictValidation)
 	}
 
 	// Create MCP server for Directory operations

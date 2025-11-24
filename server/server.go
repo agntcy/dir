@@ -139,15 +139,15 @@ func Run(ctx context.Context, cfg *config.Config) error {
 func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
 
-	// Configure OASF validation
-	if cfg.DisableAPIValidation {
-		corev1.SetDisableAPIValidation(true)
-		logger.Info("OASF API validation disabled, using embedded schemas")
-	} else {
-		corev1.SetSchemaURL(cfg.SchemaURL)
-		corev1.SetDisableAPIValidation(false)
-		logger.Info("OASF API validator configured", "schema_url", cfg.SchemaURL)
-	}
+	// Configure OASF validation based on server configuration
+	corev1.SetSchemaURL(cfg.SchemaURL)
+	corev1.SetDisableAPIValidation(cfg.DisableAPIValidation)
+	corev1.SetStrictValidation(cfg.StrictValidation)
+
+	logger.Info("OASF validator configured",
+		"schema_url", cfg.SchemaURL,
+		"disable_api_validation", cfg.DisableAPIValidation,
+		"strict_validation", cfg.StrictValidation)
 
 	// Load options
 	options := types.NewOptions(cfg)
