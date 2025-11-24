@@ -309,7 +309,7 @@ tasks:
     cmds:
       - "{{.KUBECTL_BIN}} config use-context kind-dir.example"
       - "{{.HELM_BIN}} uninstall sdk-tests --wait --keep-history --ignore-not-found > /dev/null || true"
-      - "{{.HELM_BIN}} install --replace --timeout 1m --wait --wait-for-jobs sdk-tests ./chart -f chart/values.yaml --set image.tag={{.IMAGE_TAG}} > /dev/null || true"
+      - "{{.HELM_BIN}} install --replace --timeout 3m --wait --wait-for-jobs sdk-tests ./chart -f chart/values.yaml --set image.tag={{.IMAGE_TAG}} > /dev/null || true"
       - |
         status=$({{.KUBECTL_BIN}} get job sdks-test -o jsonpath='{.status.conditions[0].type}')
         status_value=$({{.KUBECTL_BIN}} get job sdks-test -o jsonpath='{.status.conditions[0].status}')

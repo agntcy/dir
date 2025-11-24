@@ -22,6 +22,7 @@ from spiffe import WorkloadApiClient, X509Source
 from agntcy.dir_sdk.client.config import Config
 from agntcy.dir_sdk.models import (
     core_v1,
+    events_v1,
     routing_v1,
     search_v1,
     sign_v1,
@@ -142,9 +143,11 @@ class Client:
         # Initialize service clients
         self.store_client = store_v1.StoreServiceStub(channel)
         self.routing_client = routing_v1.RoutingServiceStub(channel)
+        self.publication_client = routing_v1.PublicationServiceStub(channel)
         self.search_client = search_v1.SearchServiceStub(channel)
         self.sign_client = sign_v1.SignServiceStub(channel)
         self.sync_client = store_v1.SyncServiceStub(channel)
+        self.event_client = events_v1.EventServiceStub(channel)
 
     def __create_grpc_channel(self) -> grpc.Channel:
         # Handle different authentication modes
@@ -860,6 +863,149 @@ class Client:
             logger.exception("Unexpected error during delete_sync: %s", e)
             msg = f"Failed to delete sync: {e}"
             raise RuntimeError(msg) from e
+
+    def listen(
+        self,
+        req: events_v1.ListenRequest,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> grpc.UnaryStreamMultiCallable:
+        """
+        Listen establishes a streaming connection to receive events.
+        Events are only delivered while the stream is active.
+        On disconnect, missed events are not recoverable.
+
+        Args:
+            req: ListenRequest specifies filters for event subscription.
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            A grpc stream which can read and closed.
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the listen operation fails
+        """
+
+        try:
+            stream = self.event_client.Listen(req, metadata=metadata)
+        except grpc.RpcError as e:
+            if e.code() == grpc.StatusCode.CANCELLED:
+                logger.exception("gRPC listen stream was canceled: %s", e)
+                raise
+            else:
+                logger.exception("gRPC error during listen: %s", e)
+                raise
+        except Exception as e:
+            logger.exception("Unexpected error during listen: %s", e)
+            msg = f"Failed to listen: {e}"
+            raise RuntimeError(msg) from e
+
+        return stream
+    
+    def create_publication(
+        self,
+        req: routing_v1.PublishRequest,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> routing_v1.CreatePublicationResponse:
+        """
+        Create publication creates a new publication request that will be processed by the PublicationWorker.
+        The publication request can specify either a query, a list of specific CIDs,
+        or all records to be announced to the DHT.
+
+        Args:
+            req: PublishRequest specifies the record references and queries for publication.
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            CreatePublicationResponse returns the result of creating a publication request.
+            This includes the publication ID and any relevant metadata.
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the publication operation create fails
+        """
+        try:
+            response = self.publication_client.CreatePublication(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during create_publication: %s", e)
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error during create_publication: %s", e)
+            msg = f"Failed to create publication: {e}"
+            raise RuntimeError(msg) from e
+
+        return response
+
+    def get_publication(
+        self,
+        req: routing_v1.GetPublicationRequest,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> routing_v1.GetPublicationResponse:
+        """
+        GetPublication retrieves details of a specific publication request by its identifier.
+        This includes the current status and any associated metadata.
+
+        Args:
+            req: GetPublicationRequest specifies which publication to retrieve by its identifier.
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            GetPublicationResponse contains the full details of a specific publication request.
+            Includes status, progress information, and any error details if applicable.
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the publication get operation fails
+        """
+        try:
+            response = self.publication_client.GetPublication(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during get_publication: %s", e)
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error during get_publication: %s", e)
+            msg = f"Failed to get publication: {e}"
+            raise RuntimeError(msg) from e
+
+        return response
+
+    def list_publication(
+        self,
+        req: routing_v1.ListPublicationsRequest,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> builtins.list[routing_v1.ListPublicationsItem]:
+        """
+        ListPublications returns a stream of all publication requests in the system.
+        This allows monitoring of pending, processing, and completed publication requests.
+
+        Args:
+            req: ListPublicationsRequest contains optional filters for listing publication requests.
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            List of ListPublicationsItem represents a single publication request in the list response.
+            Contains publication details including ID, status, and creation timestamp.
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the publication list operation fails
+        """
+
+        results: list[routing_v1.ListPublicationsItem] = []
+
+        try:
+            stream = self.publication_client.ListPublications(req, metadata=metadata)
+            results.extend(stream)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during list_publication: %s", e)
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error during list_publication: %s", e)
+            msg = f"Failed to list publication: {e}"
+            raise RuntimeError(msg) from e
+
+        return results
+
 
     def verify(
         self,

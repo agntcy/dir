@@ -4,6 +4,7 @@
 import { describe, test, beforeAll, afterAll, expect } from 'vitest';
 
 import { execSync } from 'node:child_process';
+import { pool as workerpool } from 'workerpool';
 import { readFileSync, rmSync } from 'node:fs';
 import { env } from 'node:process';
 import { create } from '@bufbuild/protobuf';
@@ -67,7 +68,7 @@ function genRecords(
 }
 
 describe('Client', () => {
-  let config: Config; // FIXME: Used for ignoring one test case of signing, remove if not needed
+  let config: Config;
   let client: Client;
 
   beforeAll(async () => {
@@ -338,7 +339,6 @@ describe('Client', () => {
     const records = genRecords(2, 'sign_verify');
     const recordRefs = await client.push(records);
 
-
     const keyPassword = 'testing-key';
 
     // Clean up any existing keys
@@ -483,5 +483,71 @@ describe('Client', () => {
         syncId: syncId,
       }),
     );
+  });
+
+  test('listen', async () => {
+    const records = genRecords(1, 'listen');
+    const recordRefs = await client.push(records);
+
+    const pool = workerpool(__dirname + '/listen_worker.ts');
+    try {
+      pool.exec('pullRecordsBackground', [recordRefs[0].cid, config.dirctlPath, config.spiffeEndpointSocket]);
+    } catch (error) {
+      expect.fail(`pullRecordsBackground execution failed: ${error}`)
+    }
+
+    let events = client.listen(
+      create(models.events_v1.ListenRequestSchema, {})
+    );
+
+    for await (const response of events) {
+      expect(response).toBeTypeOf(typeof models.events_v1.ListenResponseSchema);
+      break; // Exit after first event for test purposes
+    }
+
+    pool.terminate(true);
+
+  }, 120000);
+
+  test('publication', async () => {
+    const records = genRecords(1, 'publication');
+    const recordRefs = await client.push(records);
+
+    const createResponse = await client.create_publication(
+      create(models.routing_v1.PublishRequestSchema, {
+        request: {
+          case: 'recordRefs',
+          value: {
+            refs: recordRefs,
+          },
+        },
+      }),
+    );
+
+    expect(createResponse).toBeTypeOf(
+      typeof models.routing_v1.CreatePublicationResponseSchema,
+    );
+
+    const publicationsList = await client.list_publication(
+      create(models.routing_v1.ListPublicationsRequestSchema, {}),
+    );
+
+    expect(publicationsList).toBeInstanceOf(Array);
+
+    for (const publication of publicationsList) {
+      expect(publication).toBeTypeOf(typeof models.routing_v1.ListPublicationsItemSchema);
+    }
+
+    const getResponse = await client.get_publication(
+      create(models.routing_v1.GetPublicationRequestSchema, {
+        publicationId: createResponse.publicationId,
+      }),
+    );
+
+    expect(getResponse).toBeTypeOf(
+      typeof models.routing_v1.GetPublicationResponseSchema,
+    );
+
+    expect(getResponse.publicationId).toEqual(createResponse.publicationId);
   });
 });
