@@ -5,34 +5,34 @@ package types
 
 import (
 	"context"
+	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 )
 
 // StoreAPI handles management of content-addressable object storage.
 type StoreAPI interface {
-	// Push record to content store
-	Push(context.Context, *corev1.Record) (*corev1.RecordRef, error)
+	// PushData pushes raw data to the content store and returns its CID.
+	PushData(ctx context.Context, reader io.ReadCloser) (*corev1.ObjectRef, error)
 
-	// Pull record from content store
-	Pull(context.Context, *corev1.RecordRef) (*corev1.Record, error)
+	// Pull object data from content store
+	Pull(context.Context, *corev1.ObjectRef) (io.ReadCloser, error)
 
-	// Lookup metadata about the record from reference
-	Lookup(context.Context, *corev1.RecordRef) (*corev1.RecordMeta, error)
+	// Push object to content store
+	Push(context.Context, *corev1.Object) (*corev1.ObjectRef, error)
 
-	// Delete the record
-	Delete(context.Context, *corev1.RecordRef) error
+	// Lookup metadata about the object from reference
+	Lookup(context.Context, *corev1.ObjectRef) (*corev1.Object, error)
 
-	// List all available records
-	// Needed for bootstrapping
-	// List(context.Context, func(*corev1.RecordRef) error) error
+	// Delete the object
+	Delete(context.Context, *corev1.ObjectRef) error
 }
 
-// ReferrerStoreAPI handles management of generic record referrers.
+// ReferrerStoreAPI handles management of generic object referrers.
 type ReferrerStoreAPI interface {
 	// Push referrer to content store
-	PushReferrer(context.Context, string, *corev1.RecordReferrer) error
+	PushReferrer(ctx context.Context, obj *corev1.ObjectRef, ref *corev1.ObjectRef) error
 
-	// Walk referrers individually for a given record CID and optional type filter
-	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
+	// Walk referrers individually for a given object and optional type filter
+	WalkReferrers(ctx context.Context, obj *corev1.ObjectRef, referrerType string, walkFn func(*corev1.Object) error) error
 }

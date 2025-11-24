@@ -11,11 +11,9 @@ package v1
 
 import (
 	context "context"
-	v1 "github.com/agntcy/dir/api/core/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -24,6 +22,7 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
+	StoreService_PushData_FullMethodName     = "/agntcy.dir.store.v1.StoreService/PushData"
 	StoreService_Push_FullMethodName         = "/agntcy.dir.store.v1.StoreService/Push"
 	StoreService_Pull_FullMethodName         = "/agntcy.dir.store.v1.StoreService/Pull"
 	StoreService_Lookup_FullMethodName       = "/agntcy.dir.store.v1.StoreService/Lookup"
@@ -52,17 +51,19 @@ const (
 // for the N-th request, N-th response will be returned.
 // If an error occurs, the stream will be cancelled.
 type StoreServiceClient interface {
-	// Push performs write operation for given records.
+	// PushData performs write operation for raw object data.
+	PushData(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushDataClient, error)
+	// Push performs write operation for given object.
 	Push(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushClient, error)
-	// Pull performs read operation for given records.
+	// Pull performs read operation for given object.
 	Pull(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullClient, error)
-	// Lookup resolves basic metadata for the records.
+	// Lookup resolves basic metadata for the object.
 	Lookup(ctx context.Context, opts ...grpc.CallOption) (StoreService_LookupClient, error)
-	// Remove performs delete operation for the records.
+	// Remove performs delete operation for the object.
 	Delete(ctx context.Context, opts ...grpc.CallOption) (StoreService_DeleteClient, error)
-	// PushReferrer performs write operation for record referrers.
+	// PushReferrer performs write operation for object referrers.
 	PushReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushReferrerClient, error)
-	// PullReferrer performs read operation for record referrers.
+	// PullReferrer performs read operation for object referrers.
 	PullReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullReferrerClient, error)
 }
 
@@ -74,9 +75,41 @@ func NewStoreServiceClient(cc grpc.ClientConnInterface) StoreServiceClient {
 	return &storeServiceClient{cc}
 }
 
+func (c *storeServiceClient) PushData(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushDataClient, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[0], StoreService_PushData_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &storeServicePushDataClient{ClientStream: stream}
+	return x, nil
+}
+
+type StoreService_PushDataClient interface {
+	Send(*PushDataRequest) error
+	Recv() (*PushDataResponse, error)
+	grpc.ClientStream
+}
+
+type storeServicePushDataClient struct {
+	grpc.ClientStream
+}
+
+func (x *storeServicePushDataClient) Send(m *PushDataRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *storeServicePushDataClient) Recv() (*PushDataResponse, error) {
+	m := new(PushDataResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *storeServiceClient) Push(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[0], StoreService_Push_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[1], StoreService_Push_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +118,8 @@ func (c *storeServiceClient) Push(ctx context.Context, opts ...grpc.CallOption) 
 }
 
 type StoreService_PushClient interface {
-	Send(*v1.Record) error
-	Recv() (*v1.RecordRef, error)
+	Send(*PushRequest) error
+	Recv() (*PushResponse, error)
 	grpc.ClientStream
 }
 
@@ -94,12 +127,12 @@ type storeServicePushClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServicePushClient) Send(m *v1.Record) error {
+func (x *storeServicePushClient) Send(m *PushRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServicePushClient) Recv() (*v1.RecordRef, error) {
-	m := new(v1.RecordRef)
+func (x *storeServicePushClient) Recv() (*PushResponse, error) {
+	m := new(PushResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -108,7 +141,7 @@ func (x *storeServicePushClient) Recv() (*v1.RecordRef, error) {
 
 func (c *storeServiceClient) Pull(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[1], StoreService_Pull_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[2], StoreService_Pull_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +150,8 @@ func (c *storeServiceClient) Pull(ctx context.Context, opts ...grpc.CallOption) 
 }
 
 type StoreService_PullClient interface {
-	Send(*v1.RecordRef) error
-	Recv() (*v1.Record, error)
+	Send(*PullRequest) error
+	Recv() (*PullResponse, error)
 	grpc.ClientStream
 }
 
@@ -126,12 +159,12 @@ type storeServicePullClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServicePullClient) Send(m *v1.RecordRef) error {
+func (x *storeServicePullClient) Send(m *PullRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServicePullClient) Recv() (*v1.Record, error) {
-	m := new(v1.Record)
+func (x *storeServicePullClient) Recv() (*PullResponse, error) {
+	m := new(PullResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -140,7 +173,7 @@ func (x *storeServicePullClient) Recv() (*v1.Record, error) {
 
 func (c *storeServiceClient) Lookup(ctx context.Context, opts ...grpc.CallOption) (StoreService_LookupClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[2], StoreService_Lookup_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[3], StoreService_Lookup_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -149,8 +182,8 @@ func (c *storeServiceClient) Lookup(ctx context.Context, opts ...grpc.CallOption
 }
 
 type StoreService_LookupClient interface {
-	Send(*v1.RecordRef) error
-	Recv() (*v1.RecordMeta, error)
+	Send(*LookupRequest) error
+	Recv() (*LookupResponse, error)
 	grpc.ClientStream
 }
 
@@ -158,12 +191,12 @@ type storeServiceLookupClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServiceLookupClient) Send(m *v1.RecordRef) error {
+func (x *storeServiceLookupClient) Send(m *LookupRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServiceLookupClient) Recv() (*v1.RecordMeta, error) {
-	m := new(v1.RecordMeta)
+func (x *storeServiceLookupClient) Recv() (*LookupResponse, error) {
+	m := new(LookupResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -172,7 +205,7 @@ func (x *storeServiceLookupClient) Recv() (*v1.RecordMeta, error) {
 
 func (c *storeServiceClient) Delete(ctx context.Context, opts ...grpc.CallOption) (StoreService_DeleteClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[3], StoreService_Delete_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[4], StoreService_Delete_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +214,8 @@ func (c *storeServiceClient) Delete(ctx context.Context, opts ...grpc.CallOption
 }
 
 type StoreService_DeleteClient interface {
-	Send(*v1.RecordRef) error
-	CloseAndRecv() (*emptypb.Empty, error)
+	Send(*DeleteRequest) error
+	Recv() (*DeleteResponse, error)
 	grpc.ClientStream
 }
 
@@ -190,15 +223,12 @@ type storeServiceDeleteClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServiceDeleteClient) Send(m *v1.RecordRef) error {
+func (x *storeServiceDeleteClient) Send(m *DeleteRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServiceDeleteClient) CloseAndRecv() (*emptypb.Empty, error) {
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	m := new(emptypb.Empty)
+func (x *storeServiceDeleteClient) Recv() (*DeleteResponse, error) {
+	m := new(DeleteResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -207,7 +237,7 @@ func (x *storeServiceDeleteClient) CloseAndRecv() (*emptypb.Empty, error) {
 
 func (c *storeServiceClient) PushReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushReferrerClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[4], StoreService_PushReferrer_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[5], StoreService_PushReferrer_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +269,7 @@ func (x *storeServicePushReferrerClient) Recv() (*PushReferrerResponse, error) {
 
 func (c *storeServiceClient) PullReferrer(ctx context.Context, opts ...grpc.CallOption) (StoreService_PullReferrerClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[5], StoreService_PullReferrer_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[6], StoreService_PullReferrer_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -289,17 +319,19 @@ func (x *storeServicePullReferrerClient) Recv() (*PullReferrerResponse, error) {
 // for the N-th request, N-th response will be returned.
 // If an error occurs, the stream will be cancelled.
 type StoreServiceServer interface {
-	// Push performs write operation for given records.
+	// PushData performs write operation for raw object data.
+	PushData(StoreService_PushDataServer) error
+	// Push performs write operation for given object.
 	Push(StoreService_PushServer) error
-	// Pull performs read operation for given records.
+	// Pull performs read operation for given object.
 	Pull(StoreService_PullServer) error
-	// Lookup resolves basic metadata for the records.
+	// Lookup resolves basic metadata for the object.
 	Lookup(StoreService_LookupServer) error
-	// Remove performs delete operation for the records.
+	// Remove performs delete operation for the object.
 	Delete(StoreService_DeleteServer) error
-	// PushReferrer performs write operation for record referrers.
+	// PushReferrer performs write operation for object referrers.
 	PushReferrer(StoreService_PushReferrerServer) error
-	// PullReferrer performs read operation for record referrers.
+	// PullReferrer performs read operation for object referrers.
 	PullReferrer(StoreService_PullReferrerServer) error
 }
 
@@ -310,6 +342,9 @@ type StoreServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedStoreServiceServer struct{}
 
+func (UnimplementedStoreServiceServer) PushData(StoreService_PushDataServer) error {
+	return status.Errorf(codes.Unimplemented, "method PushData not implemented")
+}
 func (UnimplementedStoreServiceServer) Push(StoreService_PushServer) error {
 	return status.Errorf(codes.Unimplemented, "method Push not implemented")
 }
@@ -348,13 +383,39 @@ func RegisterStoreServiceServer(s grpc.ServiceRegistrar, srv StoreServiceServer)
 	s.RegisterService(&StoreService_ServiceDesc, srv)
 }
 
+func _StoreService_PushData_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StoreServiceServer).PushData(&storeServicePushDataServer{ServerStream: stream})
+}
+
+type StoreService_PushDataServer interface {
+	Send(*PushDataResponse) error
+	Recv() (*PushDataRequest, error)
+	grpc.ServerStream
+}
+
+type storeServicePushDataServer struct {
+	grpc.ServerStream
+}
+
+func (x *storeServicePushDataServer) Send(m *PushDataResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *storeServicePushDataServer) Recv() (*PushDataRequest, error) {
+	m := new(PushDataRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _StoreService_Push_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(StoreServiceServer).Push(&storeServicePushServer{ServerStream: stream})
 }
 
 type StoreService_PushServer interface {
-	Send(*v1.RecordRef) error
-	Recv() (*v1.Record, error)
+	Send(*PushResponse) error
+	Recv() (*PushRequest, error)
 	grpc.ServerStream
 }
 
@@ -362,12 +423,12 @@ type storeServicePushServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServicePushServer) Send(m *v1.RecordRef) error {
+func (x *storeServicePushServer) Send(m *PushResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServicePushServer) Recv() (*v1.Record, error) {
-	m := new(v1.Record)
+func (x *storeServicePushServer) Recv() (*PushRequest, error) {
+	m := new(PushRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -379,8 +440,8 @@ func _StoreService_Pull_Handler(srv interface{}, stream grpc.ServerStream) error
 }
 
 type StoreService_PullServer interface {
-	Send(*v1.Record) error
-	Recv() (*v1.RecordRef, error)
+	Send(*PullResponse) error
+	Recv() (*PullRequest, error)
 	grpc.ServerStream
 }
 
@@ -388,12 +449,12 @@ type storeServicePullServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServicePullServer) Send(m *v1.Record) error {
+func (x *storeServicePullServer) Send(m *PullResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServicePullServer) Recv() (*v1.RecordRef, error) {
-	m := new(v1.RecordRef)
+func (x *storeServicePullServer) Recv() (*PullRequest, error) {
+	m := new(PullRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -405,8 +466,8 @@ func _StoreService_Lookup_Handler(srv interface{}, stream grpc.ServerStream) err
 }
 
 type StoreService_LookupServer interface {
-	Send(*v1.RecordMeta) error
-	Recv() (*v1.RecordRef, error)
+	Send(*LookupResponse) error
+	Recv() (*LookupRequest, error)
 	grpc.ServerStream
 }
 
@@ -414,12 +475,12 @@ type storeServiceLookupServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServiceLookupServer) Send(m *v1.RecordMeta) error {
+func (x *storeServiceLookupServer) Send(m *LookupResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServiceLookupServer) Recv() (*v1.RecordRef, error) {
-	m := new(v1.RecordRef)
+func (x *storeServiceLookupServer) Recv() (*LookupRequest, error) {
+	m := new(LookupRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -431,8 +492,8 @@ func _StoreService_Delete_Handler(srv interface{}, stream grpc.ServerStream) err
 }
 
 type StoreService_DeleteServer interface {
-	SendAndClose(*emptypb.Empty) error
-	Recv() (*v1.RecordRef, error)
+	Send(*DeleteResponse) error
+	Recv() (*DeleteRequest, error)
 	grpc.ServerStream
 }
 
@@ -440,12 +501,12 @@ type storeServiceDeleteServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServiceDeleteServer) SendAndClose(m *emptypb.Empty) error {
+func (x *storeServiceDeleteServer) Send(m *DeleteResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeServiceDeleteServer) Recv() (*v1.RecordRef, error) {
-	m := new(v1.RecordRef)
+func (x *storeServiceDeleteServer) Recv() (*DeleteRequest, error) {
+	m := new(DeleteRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -513,6 +574,12 @@ var StoreService_ServiceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
+			StreamName:    "PushData",
+			Handler:       _StoreService_PushData_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
 			StreamName:    "Push",
 			Handler:       _StoreService_Push_Handler,
 			ServerStreams: true,
@@ -533,6 +600,7 @@ var StoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Delete",
 			Handler:       _StoreService_Delete_Handler,
+			ServerStreams: true,
 			ClientStreams: true,
 		},
 		{

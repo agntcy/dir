@@ -1,0 +1,30 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.core.v1;
+
+message ObjectRef {
+  string cid = 1;
+}
+
+message ObjectSchema {
+  string type = 1;
+  string version = 2;
+  string format = 3;
+}
+
+message Object {
+  string cid = 1;
+  ObjectSchema schema = 2;
+  map<string, string> annotations = 3;
+  string created_at = 4;
+  uint64 size = 5;
+  Object data = 6;
+  repeated Object links = 7;
+}
+
+message ObjectData {
+  bytes data = 1;
+}

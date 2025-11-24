@@ -20,25 +20,19 @@ import (
 
 var internalLogger = logging.Logger("store/oci/internal")
 
-// validateRecordRef performs common input validation for record reference operations.
-// This eliminates duplication across Lookup, Pull, and Delete methods.
-func validateRecordRef(ref *corev1.RecordRef) error {
-	if ref == nil {
-		return status.Error(codes.InvalidArgument, "record reference cannot be nil") //nolint:wrapcheck
-	}
-
-	if ref.GetCid() == "" {
-		return status.Error(codes.InvalidArgument, "record CID cannot be empty") //nolint:wrapcheck
-	}
-
-	return nil
-}
-
 // fetchAndParseManifest is a shared helper function that fetches and parses manifests
 // for both Lookup and Pull operations, eliminating code duplication.
 func (s *store) fetchAndParseManifest(ctx context.Context, cid string) (*ocispec.Manifest, *ocispec.Descriptor, error) {
+	// CID to digest
+	digest, err := corev1.ConvertCIDToDigest(cid)
+	if err != nil {
+		internalLogger.Debug("Failed to convert CID to digest", "cid", cid, "error", err)
+
+		return nil, nil, status.Errorf(codes.InvalidArgument, "invalid CID format: %s", cid)
+	}
+
 	// Resolve manifest from remote tag (this also checks existence and validates CID format)
-	manifestDesc, err := s.repo.Resolve(ctx, cid)
+	manifestDesc, err := s.repo.Resolve(ctx, digest.String())
 	if err != nil {
 		internalLogger.Debug("Failed to resolve manifest", "cid", cid, "error", err)
 

@@ -1,8 +1,9 @@
 # Overview
 
-This document defines how Merkle DAGs are represented in the system.
-It links to OASF for the formal specification of the DAG format,
-and describes how DAGs are stored and retrieved.
+This document defines how OASF objects are represented in the system.
+It describes the structure of the objects, their fields, and how they relate to each other.
+In addition, it also describes the way objects are linked together to form a graph of related objects,
+aka DAG (Directed Acyclic Graph).
 
 # Specification
 
@@ -11,114 +12,172 @@ It is based on the [Open Agentic Schema Framework](https://schema.oasf.outshift.
 
 ## Structure
 
-Each object can be expressed in the following format as per [JSON-LD 1.1](https://www.w3.org/TR/json-ld11/) specification.
-
-OASF defines a base object structure that can be extended for different types of objects.
-Namely, the `Object` structure is defined as follows:
-
-```yaml
-# hashes to Qm-oasf-base-object
----
-    @artifactType: agntcy.oasf.types.Object
-    @mediaType: application/ld+json; profile="https://schema.oasf.outshift.com/"
-    annotations:
-    data:
-
-# hashes to Qm-mediachain-song1
----
-  @type: MusicRecording
-  name: Christmas Will Break Your Heart
-  byArtist: 
-    @type: MusicGroup
-    name: LCD Soundsystem
-  inAlbum: 
-    link: /ipfs/Qm-mediachain-album1
-  author: 
-    @type: Person
-    link: /ipfs/Qm-mediachain-artist1
-  image: 
-    @type: Photograph
-    contentUrl: 
-      link: /ipfs/Qm-literal-photo-bytes
-
-# hashes to Qm-mediachain-album1
----
-  @type: Album
-  name: LCD Soundsystem's Triumphant Return
-
-# hashes to Qm-mediachain-artist1
----
-  @type: Person
-  name: James Murphy
-  bitcoinAddress: 19d3ynnuNKbgFLxp6XsyoxxGSvoAzBYPMw
-```
-
 **Object**
+
+Each object in the system is represented as a JSON object with the following fields:
 
 ```json
 {
-    "cid": "bafybeigdyrzt5tqz5e3j6x5x5z5x5z5x5z5x5z5x",
-    "type": "object_type", // only A-Z, a-z, 0-9, and _./ are allowed
-    "name": "object_name", // only A-Z, a-z, 0-9, and _./ are allowed
-    "size": 1234,
+    "cid": "bafybei12345", // Content Identifier (CID) of the object
+    "schema": {
+      // optional, object schema
+    },
+    "annotations": {
+      // optional, object annotations
+    },
+    "created_at": "2024-01-01T00:00:00Z", // creation timestamp in RFC3339 
+    "size": 1234, // size of the object in bytesformat
+    "data": {
+      // optional, reference to the actual data of the object
+    },
+    "links": [
+      // optional, links to other objects
+    ]
+}
+```
+
+**Schema field**
+
+Schema field defines the schema of an arbitrary object in the system.
+
+```json
+{
+    "schema": {
+        "type": "agntcy.oasf.types.v1.Record", // optional, type of the object
+        "version": "0.8.0", // optional, version of the object schema
+        "format": "json", // optional, format of the data
+    },
+}
+```
+
+**Annotations field**
+
+Annotations field contains metadata about the object.
+It represents a string-string map of key-value pairs.
+
+```json
+{
+    "annotations": {
+        "key1": "value1",
+        "key2": "value2"
+    }
+}
+```
+
+**Data field**
+
+Data field contains the actual content of the object.
+It can be of any type, and its structure is defined by the schema field.
+The data field is actually stored as a separate object in the system, and the data field here contains only a reference to that object.
+
+```json
+{
+    "data": {
+        "cid": "bafybei67890",
+        "size": 1234,
+        "schema": {
+          "type": "octet/raw"
+        },
+    }
+}
+```
+
+**Links field**
+
+Links field contains references to other objects in the system.
+It is represented as an array of link objects, each containing the following fields:
+
+```json
+{
     "links": [
         {
-            "cid": "bafybeihdwdcefgh4dqkjv67uz",
-            "type": "linked_object_type", // only A-Z, a-z, 0-9, and _./ are allowed
-            "name": "linked_object_name", // only A-Z, a-z, 0-9, and _./ are allowed
-            "size": 5678
+            "cid": "bafybei67890",
+            "schema": {
+                "type": "agntcy.oasf.types.v1.Record", // optional, type of the linked object
+                "version": "0.8.0" // optional, version of the linked object schema
+            },
+            "annotations": {
+                // optional, link annotations
+            },
+            "size": 5678 // size of the linked object in bytes
         }
     ]
 }
 ```
 
-**File Object**
+## Mapping between OASF and underlying storage
 
+The OASF objects are stored in an underlying storage system that supports content addressing and linking between objects.
+
+The mapping between OASF object and OCI storage is as follows:
+
+**Object**
 ```json
 {
-    "cid": "bafybeigdyrzt5tqz5e3j6x5x5z5x5z5x5z5x5z5x",
-    "type": "file", // only A-Z, a-z, 0-9, and _./ are allowed
-    "name": "example.txt", // only A-Z, a-z, 0-9, and _./ are allowed
+    "cid": "bafybei12345",
+    "schema": {
+        "type": "agntcy.oasf.types.v1.Record",
+        "version": "0.8.0",
+        "format": "json"
+    },
+    "annotations": {
+        "key1": "value1",
+        "key2": "value2"
+    },
+    "created_at": "2024-01-01T00:00:00Z",
     "size": 1234,
     "data": {
-        "content": "Hello, World!"
+        "cid": "bafybei67890"
     },
     "links": [
         {
-            "cid": "bafybeihdwdcefgh4dqkjv67uz",
-            "name": "example.txt",
-            "size": 1234
+            "cid": "bafybei67890",
+            "schema": {
+                "type": "agntcy.oasf.types.v1.Monitoring",
+                "version": "1.0.0"
+            },
+            "annotations": {
+                "link_key": "link_value"
+            },
+            "created_at": "2024-01-01T00:00:00Z",
+            "size": 1234,
+            "data": {
+                "cid": "bafybei13579"
+            },
         }
     ]
 }
 ```
 
-**Record Object**
+**OCI Manifest**
 
 ```json
 {
-    "cid": "bafybeigdyrzt5tqz5e3j6x5x5z5x5z5x5z5x5z5x",
-    "type": "agntcy.oasf.types.v1.Record",
-    "name": "record/v1.0.0/my-example-record",
-    "size": 1234,
-    "links": [
+    "schemaVersion": 2,
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "config": {
+        "mediaType": "application/octet-stream",
+        "size": 1234,
+        "digest": "sha256:abcdef1234567890", // object data cid
+        "annotations": {
+            "org.agntcy.oasf.schema.type": "agntcy.oasf.types.v1.Record",
+            "org.agntcy.oasf.schema.version": "1.0.0",
+            "org.agntcy.oasf.schema.created_at": "2024-01-01T00:00:00Z",
+            "key1": "value1",
+            "key2": "value2"
+        }
+    },
+    "layers": [
         {
-            "cid": "bafybeihdwdcefgh4dqkjv67uz",
-            "type": "agntcy.dir.types.v1.Signature",
-            "name": "apps/runtime/signature",
-            "size": 5678
-        },
-        {
-            "cid": "bafybeihdwdcefgh4dqkjv67uz",
-            "type": "agntcy.oasf.modules.runtime.integrations",
-            "name": "modules/runtime/integrations",
-            "size": 5678
-        },
-        {
-            "cid": "bafybeihdwdcefgh4dqkjv67uz",
-            "type": "agntcy.oasf.types.v1.Skill",
-            "name": "skills/natural_language_processing",
-            "size": 5678
+            "mediaType": "application/octet-stream",
+            "size": 1234,
+            "digest": "sha256:abcdef1234567890", // link object data cid
+            "annotations": {
+                "org.agntcy.oasf.schema.type": "agntcy.oasf.types.v1.Monitoring",
+                "org.agntcy.oasf.schema.version": "1.0.0",
+                "org.agntcy.oasf.schema.created_at": "2024-01-01T00:00:00Z",
+                "link_key": "link_value"
+            }
         }
     ]
 }

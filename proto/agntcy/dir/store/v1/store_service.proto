@@ -6,6 +6,7 @@ syntax = "proto3";
 package agntcy.dir.store.v1;
 
 import "agntcy/dir/core/v1/record.proto";
+import "agntcy/dir/core/v1/object.proto";
 import "google/protobuf/empty.proto";
 
 // Defines an interface for content-addressable storage
@@ -24,32 +25,85 @@ import "google/protobuf/empty.proto";
 // for the N-th request, N-th response will be returned.
 // If an error occurs, the stream will be cancelled.
 service StoreService {
-  // Push performs write operation for given records.
-  rpc Push(stream core.v1.Record) returns (stream core.v1.RecordRef);
+  // PushData performs write operation for raw object data.
+  rpc PushData(stream PushDataRequest) returns (stream PushDataResponse);
 
-  // Pull performs read operation for given records.
-  rpc Pull(stream core.v1.RecordRef) returns (stream core.v1.Record);
+  // Push performs write operation for given object.
+  rpc Push(stream PushRequest) returns (stream PushResponse);
 
-  // Lookup resolves basic metadata for the records.
-  rpc Lookup(stream core.v1.RecordRef) returns (stream core.v1.RecordMeta);
+  // Pull performs read operation for given object.
+  rpc Pull(stream PullRequest) returns (stream PullResponse);
 
-  // Remove performs delete operation for the records.
-  rpc Delete(stream core.v1.RecordRef) returns (google.protobuf.Empty);
+  // Lookup resolves basic metadata for the object.
+  rpc Lookup(stream LookupRequest) returns (stream LookupResponse);
 
-  // PushReferrer performs write operation for record referrers.
+  // Remove performs delete operation for the object.
+  rpc Delete(stream DeleteRequest) returns (stream DeleteResponse);
+
+  // PushReferrer performs write operation for object referrers.
   rpc PushReferrer(stream PushReferrerRequest) returns (stream PushReferrerResponse);
 
-  // PullReferrer performs read operation for record referrers.
+  // PullReferrer performs read operation for object referrers.
   rpc PullReferrer(stream PullReferrerRequest) returns (stream PullReferrerResponse);
+}
+
+message PushDataRequest {
+  bytes data = 1;
+  bool done = 2;
+}
+
+message PushDataResponse {
+  bool success = 1;
+  optional string error_message = 2;
+  core.v1.ObjectRef object_ref = 3;
+}
+
+message PushRequest {
+  core.v1.Object object = 1;
+}
+
+message PushResponse {
+  bool success = 1;
+  optional string error_message = 2;
+  core.v1.ObjectRef object_ref = 3;
+}
+
+message PullRequest {
+  core.v1.ObjectRef object_ref = 1;
+}
+
+message PullResponse {
+  bool success = 1;
+  optional string error_message = 2;
+  core.v1.Object object = 3;
+}
+
+message LookupRequest {
+  core.v1.ObjectRef object_ref = 1;
+}
+
+message LookupResponse {
+  bool success = 1;
+  optional string error_message = 2;
+  core.v1.Object object = 3;
+}
+
+message DeleteRequest {
+  core.v1.ObjectRef object_ref = 1;
+}
+
+message DeleteResponse {
+  bool success = 1;
+  optional string error_message = 2;
 }
 
 // PushReferrerRequest represents a record with optional OCI artifacts for push operations.
 message PushReferrerRequest {
-  // Record reference
-  core.v1.RecordRef record_ref = 1;
+  // Object reference
+  core.v1.ObjectRef object_ref = 1;
 
-  // RecordReferrer object to be stored for the record
-  core.v1.RecordReferrer referrer = 2;
+  // Object referrer reference
+  core.v1.ObjectRef referrer_ref = 2;
 }
 
 // PushReferrerResponse
@@ -63,16 +117,16 @@ message PushReferrerResponse {
 
 // PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
 message PullReferrerRequest {
-  // Record reference
-  core.v1.RecordRef record_ref = 1;
+  // Object reference
+  core.v1.ObjectRef object_ref = 1;
 
-  // Record referrer type to be pulled
+  // Object referrer type to be pulled
   // If not provided, all referrers will be pulled
   optional string referrer_type = 2;
 }
 
 // PullReferrerResponse is returned after successfully fetching a record referrer.
 message PullReferrerResponse {
-  // RecordReferrer object associated with the record
-  core.v1.RecordReferrer referrer = 1;
+  // ObjectReferrer object associated with the object
+  core.v1.ObjectRef referrer_ref = 1;
 }
