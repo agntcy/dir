@@ -489,7 +489,7 @@ describe('Client', () => {
     const records = genRecords(1, 'listen');
     const recordRefs = await client.push(records);
 
-    const pool = workerpool(__dirname + './test/listen_worker.ts');
+    const pool = workerpool(__dirname + '/listen_worker.ts');
     try {
       pool.exec('pullRecordsBackground', [recordRefs[0].cid, config.dirctlPath, config.spiffeEndpointSocket]);
     } catch (error) {
