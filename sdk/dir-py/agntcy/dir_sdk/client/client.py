@@ -889,7 +889,10 @@ class Client:
         try:
             stream = self.event_client.Listen(req, metadata=metadata)
         except grpc.RpcError as e:
-            if e.code() != grpc.StatusCode.CANCELLED:
+            if e.code() == grpc.StatusCode.CANCELLED:
+                logger.exception("gRPC listen stream was canceled: %s", e)
+                raise
+            else:
                 logger.exception("gRPC error during listen: %s", e)
                 raise
         except Exception as e:
