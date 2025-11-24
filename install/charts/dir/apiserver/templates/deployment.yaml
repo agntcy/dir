@@ -184,6 +184,10 @@ spec:
             - name: database-data
               mountPath: /var/lib/dir/database
             {{- end }}
+            {{- if .Values.securityContext.readOnlyRootFilesystem }}
+            - name: tmp-data
+              mountPath: /tmp
+            {{- end }}
             {{- if eq .Values.zot.mountConfig false }}
             - name: zot-config-storage
               mountPath: /etc/zot
@@ -197,6 +201,10 @@ spec:
             name: {{ include "chart.fullname" . }}
         {{- if .Values.coverageVolume }}
         - name: coverage-volume
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.securityContext.readOnlyRootFilesystem }}
+        - name: tmp-data
           emptyDir: {}
         {{- end }}
         {{- if eq .Values.spire.enabled true }}
