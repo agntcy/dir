@@ -14,7 +14,7 @@ replace (
 require (
 	github.com/agntcy/dir/api v0.5.2
 	github.com/agntcy/dir/client v0.5.2
-	github.com/agntcy/dir/hub v0.5.1
+	github.com/agntcy/dir/hub v0.5.2
 	github.com/agntcy/dir/importer v0.5.2
 	github.com/agntcy/dir/mcp v0.5.2
 	github.com/agntcy/dir/utils v0.5.2
