@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/agntcy/oasf-sdk/pkg/decoder"
 	"github.com/agntcy/oasf-sdk/pkg/validator"
@@ -23,6 +24,7 @@ const (
 
 var (
 	defaultValidator     *validator.Validator
+	configMu             sync.RWMutex
 	schemaURL            = DefaultSchemaURL
 	disableAPIValidation = false
 	strictValidation     = true
@@ -38,23 +40,32 @@ func init() {
 }
 
 // SetSchemaURL configures the schema URL to use for API-based validation.
-// This should be called before any validation operations.
+// This function is thread-safe and can be called concurrently with validation operations.
 func SetSchemaURL(url string) {
+	configMu.Lock()
+	defer configMu.Unlock()
+
 	schemaURL = url
 }
 
 // SetDisableAPIValidation configures whether to disable API-based validation.
 // When true, embedded schemas will be used instead of the API validator.
-// This should be called before any validation operations.
+// This function is thread-safe and can be called concurrently with validation operations.
 func SetDisableAPIValidation(disable bool) {
+	configMu.Lock()
+	defer configMu.Unlock()
+
 	disableAPIValidation = disable
 }
 
 // SetStrictValidation configures whether to use strict validation mode.
 // When true, uses strict validation (fails on unknown attributes, deprecated fields, etc.).
 // When false, uses lax validation (more permissive, only fails on critical errors).
-// This should be called before any validation operations.
+// This function is thread-safe and can be called concurrently with validation operations.
 func SetStrictValidation(strict bool) {
+	configMu.Lock()
+	defer configMu.Unlock()
+
 	strictValidation = strict
 }
 
@@ -162,14 +173,23 @@ func (r *Record) Validate(ctx context.Context) (bool, []string, error) {
 	}
 
 	// Validate the record using OASF SDK
+	// Read configuration atomically to avoid race conditions
+	configMu.RLock()
+
+	currentSchemaURL := schemaURL
+	currentDisableAPIValidation := disableAPIValidation
+	currentStrictValidation := strictValidation
+
+	configMu.RUnlock()
+
 	// If API validation is not disabled, use API-based validation with configured schema URL
-	if !disableAPIValidation {
+	if !currentDisableAPIValidation {
 		//nolint:wrapcheck
 		return defaultValidator.ValidateRecord(
 			ctx,
 			r.GetData(),
-			validator.WithSchemaURL(schemaURL),
-			validator.WithStrict(strictValidation),
+			validator.WithSchemaURL(currentSchemaURL),
+			validator.WithStrict(currentStrictValidation),
 		)
 	}
 
