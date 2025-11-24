@@ -228,6 +228,8 @@ spire:
     #     type: https_web
 
 # Create PVC for routing/cache data
+# IMPORTANT: When PVC is enabled, set strategy.type to "Recreate" to avoid
+# BadgerDB lock conflicts during updates (see strategy configuration above)
 pvc:
   create: false
   storageClassName: standard
@@ -248,6 +250,8 @@ database:
   # PVC for database persistence (optional)
   # When enabled, database persists across pod restarts
   # Also allows enabling readOnlyRootFilesystem security hardening
+  # IMPORTANT: When PVC is enabled, set strategy.type to "Recreate" to avoid
+  # SQLite lock conflicts during updates (see strategy configuration above)
   pvc:
     enabled: false        # Disabled by default (opt-in for backward compatibility)
     create: true          # Create PVC automatically
@@ -364,6 +368,28 @@ autoscaling:
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
+
+# Deployment strategy for pod updates
+# IMPORTANT: When using PVCs (routing or database), use "Recreate" strategy
+# to avoid file lock conflicts with BadgerDB and SQLite.
+# 
+# Recreate: Terminates old pod before starting new one (default, required with PVCs)
+# - Ensures clean database shutdown and no lock conflicts
+# - Brief downtime during updates (10-15 seconds)
+# - Prevents CrashLoopBackOff due to file locks
+#
+# RollingUpdate: Zero-downtime updates (only for stateless deployments without PVCs)
+# - NOT recommended when PVCs are enabled
+# - Can cause BadgerDB/SQLite lock conflicts
+#
+# To use RollingUpdate (only if NO PVCs are used):
+# strategy:
+#   type: RollingUpdate
+#   rollingUpdate:
+#     maxSurge: 1
+#     maxUnavailable: 0
+strategy:
+  type: Recreate
 
 nodeSelector: {}
 

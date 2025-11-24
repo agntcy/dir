@@ -381,3 +381,17 @@ apiserver:
       storageClassName: ""  # Use cluster default storage class
       size: 1Gi             # Database size (1Gi for dev, 5Gi recommended for production)
       accessMode: ReadWriteOnce
+
+  # Deployment strategy for pod updates
+  # IMPORTANT: Use "Recreate" when PVCs are enabled (routing or database)
+  # to avoid file lock conflicts with BadgerDB and SQLite
+  # 
+  # Default: Recreate (prevents database lock conflicts during updates)
+  # - Brief downtime during updates (10-15 seconds)
+  # - Required when using PVCs to avoid CrashLoopBackOff
+  #
+  # Alternative: RollingUpdate (only for fully stateless deployments)
+  # - Zero-downtime updates
+  # - NOT compatible with PVCs (will cause lock conflicts)
+  strategy:
+    type: Recreate
