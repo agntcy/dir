@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.2] - 2025-11-23
+
+### Key Highlights
+
+This release focuses on storage improvements, MCP tooling enhancements, and CI/CD refinements, including:
+
+**Storage Improvements**
+- SQLite PVC configuration support for persistent storage in Kubernetes deployments
+- Enhanced unit test coverage and stability
+
+**MCP Enhancements**
+- Import/export tools for record management workflows
+- Domain enrichment capabilities for importer
+
+**CI/CD Improvements**
+- Brew formula updater process improvements
+- Better release automation and publication workflow
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.5.2  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.5.2  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.5.2  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.5.2  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.5.2  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.5.2  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.5.2  | dirctl >= v0.5.0            |
+
+### Added
+- **Storage**: PVC configuration support for SQLite (#713)
+- **MCP**: Import/export tools and prompts for record workflows (#705)
+- **Importer**: Domain enrichment capabilities (#696)
+
+### Changed
+- **CI**: Update brew formula version (#702)
+
+### Fixed
+- **CI**: Brew formula updater to work after release is public (#686)
+- **Testing**: Fix unit tests for storage components (#713)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.5.1...v0.5.2)
+
+---
+
 ## [v0.5.1] - 2025-11-17
 
 ### Key Highlights
