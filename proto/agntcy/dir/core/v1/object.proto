@@ -21,10 +21,6 @@ message Object {
   map<string, string> annotations = 3;
   string created_at = 4;
   uint64 size = 5;
-  Object data = 6;
+  ObjectRef data = 6;
   repeated Object links = 7;
-}
-
-message ObjectData {
-  bytes data = 1;
 }

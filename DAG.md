@@ -18,20 +18,22 @@ Each object in the system is represented as a JSON object with the following fie
 
 ```json
 {
-    "cid": "bafybei12345", // Content Identifier (CID) of the object
+    "cid": "cid-object", // cid of the object
     "schema": {
       // optional, object schema
     },
     "annotations": {
       // optional, object annotations
     },
-    "created_at": "2024-01-01T00:00:00Z", // creation timestamp in RFC3339 
-    "size": 1234, // size of the object in bytesformat
+    "created_at": "2024-01-01T00:00:00Z", // optional, creation timestamp in RFC3339 
+    "size": 1234, // optional, size of the data in bytes
     "data": {
-      // optional, reference to the actual data of the object
+      "cid": "cid-data", // cid of the data object
     },
     "links": [
       // optional, links to other objects
+      { /* object link */ },
+      { /* object link */ }
     ]
 }
 ```
@@ -45,7 +47,7 @@ Schema field defines the schema of an arbitrary object in the system.
     "schema": {
         "type": "agntcy.oasf.types.v1.Record", // optional, type of the object
         "version": "0.8.0", // optional, version of the object schema
-        "format": "json", // optional, format of the data
+        "format": "json", // optional, format of the data, usually json
     },
 }
 ```

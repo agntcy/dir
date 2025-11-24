@@ -43,12 +43,12 @@ func TestOCI(t *testing.T) {
 		Annotations: map[string]string{
 			"key": "value",
 		},
-		Data: &corev1.Object{
+		Data: &corev1.ObjectRef{
 			Cid: baseRef.GetCid(),
 		},
 		Links: []*corev1.Object{
 			{
-				Data: &corev1.Object{
+				Data: &corev1.ObjectRef{
 					Cid: baseRef.GetCid(),
 				},
 				Schema: &corev1.ObjectSchema{

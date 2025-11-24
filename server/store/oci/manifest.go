@@ -2,206 +2,169 @@ package oci
 
 import (
 	"fmt"
+	"path"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-const (
-	annotationPrefix     = "org.agntcy.oasf."
-	annotationSchemaType = annotationPrefix + "schema.type"
-	annotationSchemaVer  = annotationPrefix + "schema.version"
-	annotationCreatedAt  = annotationPrefix + "schema.created_at"
-	annotationSchemaFmt  = annotationPrefix + "schema.format"
+var (
+	manifestArtifactType    = "org.agntcy.dir.Object"
+	annotationPrefix        = "org.agntcy.dir"
+	annotationMetaCreatedAt = path.Join(annotationPrefix, "meta.created_at")
+	annotationSchemaType    = path.Join(annotationPrefix, "schema.type")
+	annotationSchemaVer     = path.Join(annotationPrefix, "schema.version")
+	annotationSchemaFmt     = path.Join(annotationPrefix, "schema.format")
 )
 
-// ObjectToManifest converts an OASF Object to an OCI Manifest
+// ObjectToManifest converts an DIR Object to an OCI Manifest
 func ObjectToManifest(obj *corev1.Object) (ocispec.Manifest, error) {
+	// Validate input
 	if obj == nil {
 		return ocispec.Manifest{}, fmt.Errorf("object cannot be nil")
 	}
 
-	manifest := ocispec.Manifest{
-		MediaType: ocispec.MediaTypeImageManifest,
+	// Build data descriptor
+	dataDescriptor, err := dataToDescriptor(obj)
+	if err != nil {
+		return ocispec.Manifest{}, fmt.Errorf("failed to build data config descriptor: %w", err)
 	}
 
-	// Build config descriptor from object data and schema
-	if obj.Data != nil {
-		if obj.Data.Cid == "" {
-			return ocispec.Manifest{}, fmt.Errorf("object data CID cannot be empty")
-		}
-		configAnnotations := buildAnnotations(obj)
-		// Convert CID to OCI digest
-		digest, err := corev1.ConvertCIDToDigest(obj.Data.Cid)
+	// Build link descriptors
+	var linkDescriptors []ocispec.Descriptor
+	for _, link := range obj.Links {
+		linkDesc, err := dataToDescriptor(link)
 		if err != nil {
-			return ocispec.Manifest{}, fmt.Errorf("failed to convert data CID to digest: %w", err)
+			return ocispec.Manifest{}, fmt.Errorf("failed to build link descriptor: %w", err)
 		}
-		manifest.Config = ocispec.Descriptor{
-			MediaType:   "application/octet-stream",
-			Digest:      digest,
-			Size:        int64(obj.Data.Size),
-			Annotations: configAnnotations,
-		}
+
+		linkDescriptors = append(linkDescriptors, linkDesc)
 	}
 
-	// Build layers from links
-	if len(obj.Links) > 0 {
-		manifest.Layers = make([]ocispec.Descriptor, 0, len(obj.Links))
-		for i, link := range obj.Links {
-			if link.Data != nil {
-				if link.Data.Cid == "" {
-					return ocispec.Manifest{}, fmt.Errorf("link[%d] data CID cannot be empty", i)
-				}
-				layerAnnotations := buildAnnotations(link)
-				// Convert CID to OCI digest
-				digest, err := corev1.ConvertCIDToDigest(link.Data.Cid)
-				if err != nil {
-					return ocispec.Manifest{}, fmt.Errorf("failed to convert link[%d] CID to digest: %w", i, err)
-				}
-				layer := ocispec.Descriptor{
-					MediaType:   "application/octet-stream",
-					Digest:      digest,
-					Size:        int64(link.Data.Size),
-					Annotations: layerAnnotations,
-				}
-				manifest.Layers = append(manifest.Layers, layer)
-			}
-		}
-	}
-
-	return manifest, nil
+	return ocispec.Manifest{
+		MediaType:    ocispec.MediaTypeImageManifest,
+		ArtifactType: manifestArtifactType,
+		Config:       dataDescriptor,
+		Layers:       linkDescriptors,
+	}, nil
 }
 
-// ManifestToObject converts an OCI Manifest to an OASF Object
+// ManifestToObject converts an OCI Manifest to an DIR Object
 func ManifestToObject(manifest *ocispec.Manifest) (*corev1.Object, error) {
 	if manifest == nil {
 		return nil, fmt.Errorf("manifest cannot be nil")
 	}
 
-	obj := &corev1.Object{}
-
-	// Extract object data and schema from config descriptor
-	if manifest.Config.Digest != "" {
-		// Convert OCI digest to CID
-		cid, err := corev1.ConvertDigestToCID(manifest.Config.Digest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert config digest to CID: %w", err)
-		}
-		obj.Data = &corev1.Object{
-			Cid:  cid,
-			Size: uint64(manifest.Config.Size),
-		}
-
-		// Extract schema and annotations from config
-		obj.Schema = extractSchema(manifest.Config.Annotations)
-		obj.Annotations = extractUserAnnotations(manifest.Config.Annotations)
-		obj.CreatedAt = manifest.Config.Annotations[annotationCreatedAt]
+	// Build object from config descriptor
+	obj, err := descriptorToData(&manifest.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build object from manifest config: %w", err)
 	}
 
-	// Extract links from layers
-	if len(manifest.Layers) > 0 {
-		obj.Links = make([]*corev1.Object, 0, len(manifest.Layers))
-		for i, layer := range manifest.Layers {
-			// Convert OCI digest to CID
-			cid, err := corev1.ConvertDigestToCID(layer.Digest)
-			if err != nil {
-				return nil, fmt.Errorf("failed to convert layer[%d] digest to CID: %w", i, err)
-			}
-			link := &corev1.Object{
-				Data: &corev1.Object{
-					Cid:  cid,
-					Size: uint64(layer.Size),
-				},
-				Schema:      extractSchema(layer.Annotations),
-				Annotations: extractUserAnnotations(layer.Annotations),
-				CreatedAt:   layer.Annotations[annotationCreatedAt],
-			}
-			obj.Links = append(obj.Links, link)
+	// Add links from layer descriptors
+	for _, layer := range manifest.Layers {
+		linkObj, err := descriptorToData(&layer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build link object from manifest layer: %w", err)
 		}
+		obj.Links = append(obj.Links, linkObj)
 	}
 
 	return obj, nil
 }
 
-// buildAnnotations builds OCI annotations from an OASF Object
-func buildAnnotations(obj *corev1.Object) map[string]string {
+// dataToDescriptor builds OCI descriptor from DIR data object
+func dataToDescriptor(obj *corev1.Object) (ocispec.Descriptor, error) {
+	// Get data digest
+	if obj.Data == nil || obj.Data.Cid == "" {
+		return ocispec.Descriptor{}, fmt.Errorf("object data CID cannot be empty")
+	}
+
+	digest, err := corev1.ConvertCIDToDigest(obj.Data.Cid)
+	if err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("failed to convert data CID to digest: %w", err)
+	}
+
+	// Build annotations
 	annotations := make(map[string]string)
 
-	// Add schema annotations
-	if obj.Schema != nil {
-		if obj.Schema.Type != "" {
-			annotations[annotationSchemaType] = obj.Schema.Type
-		}
-		if obj.Schema.Version != "" {
-			annotations[annotationSchemaVer] = obj.Schema.Version
-		}
-		if obj.Schema.Format != "" {
-			annotations[annotationSchemaFmt] = obj.Schema.Format
-		}
-	}
-
-	// Add created_at annotation
-	if obj.CreatedAt != "" {
-		annotations[annotationCreatedAt] = obj.CreatedAt
-	}
-
-	// Add user annotations
+	// Add object annotations
 	for key, value := range obj.Annotations {
-		annotations[key] = value
-	}
-
-	return annotations
-}
-
-// extractSchema extracts ObjectSchema from OCI annotations
-func extractSchema(annotations map[string]string) *corev1.ObjectSchema {
-	if annotations == nil {
-		return nil
-	}
-
-	schema := &corev1.ObjectSchema{}
-	hasSchema := false
-
-	if schemaType, ok := annotations[annotationSchemaType]; ok {
-		schema.Type = schemaType
-		hasSchema = true
-	}
-	if version, ok := annotations[annotationSchemaVer]; ok {
-		schema.Version = version
-		hasSchema = true
-	}
-	if format, ok := annotations[annotationSchemaFmt]; ok {
-		schema.Format = format
-		hasSchema = true
-	}
-
-	if !hasSchema {
-		return nil
-	}
-
-	return schema
-}
-
-// extractUserAnnotations extracts user annotations (non-OASF-prefixed) from OCI annotations
-func extractUserAnnotations(annotations map[string]string) map[string]string {
-	if annotations == nil {
-		return nil
-	}
-
-	userAnnotations := make(map[string]string)
-	for key, value := range annotations {
-		// Skip OASF system annotations
-		if key != annotationSchemaType &&
-			key != annotationSchemaVer &&
-			key != annotationCreatedAt &&
-			key != annotationSchemaFmt {
-			userAnnotations[key] = value
+		if !strings.HasPrefix(key, annotationPrefix) {
+			annotations[key] = value
 		}
 	}
 
-	if len(userAnnotations) == 0 {
-		return nil
+	// Add schema
+	if obj.Schema != nil {
+		if schemaType := obj.Schema.Type; schemaType != "" {
+			annotations[annotationSchemaType] = schemaType
+		}
+		if version := obj.Schema.Version; version != "" {
+			annotations[annotationSchemaVer] = version
+		}
+		if format := obj.Schema.Format; format != "" {
+			annotations[annotationSchemaFmt] = format
+		}
 	}
 
-	return userAnnotations
+	// Add created at
+	if createdAt := obj.CreatedAt; createdAt != "" {
+		annotations[annotationMetaCreatedAt] = createdAt
+	}
+
+	return ocispec.Descriptor{
+		Digest:      digest,
+		Size:        int64(obj.Size),
+		Annotations: annotations,
+	}, nil
+}
+
+// descriptorToData builds DIR data object from OCI descriptor
+func descriptorToData(desc *ocispec.Descriptor) (*corev1.Object, error) {
+	// Get CID from digest
+	cid, err := corev1.ConvertDigestToCID(desc.Digest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert descriptor digest to CID: %w", err)
+	}
+
+	// Extract data from descriptor annotations
+	annotations := make(map[string]string)
+	schema := &corev1.ObjectSchema{}
+	createdAt := ""
+
+	// Extract created at
+	if desc.Annotations != nil {
+		// Extract created at
+		if ca, ok := desc.Annotations[annotationMetaCreatedAt]; ok {
+			createdAt = ca
+		}
+
+		// Extract schema
+		if t, ok := desc.Annotations[annotationSchemaType]; ok {
+			schema.Type = t
+		}
+		if v, ok := desc.Annotations[annotationSchemaVer]; ok {
+			schema.Version = v
+		}
+		if f, ok := desc.Annotations[annotationSchemaFmt]; ok {
+			schema.Format = f
+		}
+
+		// Extract user annotations
+		for key, value := range desc.Annotations {
+			if !strings.HasPrefix(key, annotationPrefix) {
+				annotations[key] = value
+			}
+		}
+	}
+
+	return &corev1.Object{
+		Data:        &corev1.ObjectRef{Cid: cid},
+		Size:        uint64(desc.Size),
+		Annotations: annotations,
+		Schema:      schema,
+		CreatedAt:   createdAt,
+	}, nil
 }

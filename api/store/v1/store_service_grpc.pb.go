@@ -87,7 +87,7 @@ func (c *storeServiceClient) PushData(ctx context.Context, opts ...grpc.CallOpti
 
 type StoreService_PushDataClient interface {
 	Send(*PushDataRequest) error
-	Recv() (*PushDataResponse, error)
+	CloseAndRecv() (*PushDataResponse, error)
 	grpc.ClientStream
 }
 
@@ -99,7 +99,10 @@ func (x *storeServicePushDataClient) Send(m *PushDataRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeServicePushDataClient) Recv() (*PushDataResponse, error) {
+func (x *storeServicePushDataClient) CloseAndRecv() (*PushDataResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
 	m := new(PushDataResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -388,7 +391,7 @@ func _StoreService_PushData_Handler(srv interface{}, stream grpc.ServerStream) e
 }
 
 type StoreService_PushDataServer interface {
-	Send(*PushDataResponse) error
+	SendAndClose(*PushDataResponse) error
 	Recv() (*PushDataRequest, error)
 	grpc.ServerStream
 }
@@ -397,7 +400,7 @@ type storeServicePushDataServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServicePushDataServer) Send(m *PushDataResponse) error {
+func (x *storeServicePushDataServer) SendAndClose(m *PushDataResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -576,7 +579,6 @@ var StoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "PushData",
 			Handler:       _StoreService_PushData_Handler,
-			ServerStreams: true,
 			ClientStreams: true,
 		},
 		{

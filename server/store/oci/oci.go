@@ -191,7 +191,21 @@ func (s *store) Lookup(ctx context.Context, ref *corev1.ObjectRef) (*corev1.Obje
 	}
 
 	// Convert manifest to object
-	return ManifestToObject(&manifest)
+	object, err := ManifestToObject(&manifest)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to convert manifest to object for CID %s: %v", ref.GetCid(), err)
+	}
+
+	// Validate object CID
+	_, objectRef, err := corev1.MarshalCannonical(object)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to convert object to CID for manifest %s: %v", ref.GetCid(), err)
+	}
+	if objectRef.GetCid() != ref.GetCid() {
+		return nil, status.Errorf(codes.Internal, "CID mismatch: expected %s, got %s", ref.GetCid(), objectRef.GetCid())
+	}
+
+	return object, nil
 }
 
 func (s *store) Pull(ctx context.Context, ref *corev1.ObjectRef) (io.ReadCloser, error) {

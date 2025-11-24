@@ -26,7 +26,7 @@ import "google/protobuf/empty.proto";
 // If an error occurs, the stream will be cancelled.
 service StoreService {
   // PushData performs write operation for raw object data.
-  rpc PushData(stream PushDataRequest) returns (stream PushDataResponse);
+  rpc PushData(stream PushDataRequest) returns (PushDataResponse);
 
   // Push performs write operation for given object.
   rpc Push(stream PushRequest) returns (stream PushResponse);
@@ -49,7 +49,6 @@ service StoreService {
 
 message PushDataRequest {
   bytes data = 1;
-  bool done = 2;
 }
 
 message PushDataResponse {
