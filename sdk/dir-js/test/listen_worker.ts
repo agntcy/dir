@@ -1,25 +1,27 @@
-import { workerData } from 'worker_threads';
 import { spawnSync } from 'node:child_process';
 import { env } from 'node:process';
+import { worker } from 'workerpool';
 
-async function pullRecords() {
+worker({
+    pullRecordsBackground,
+});
+
+export async function pullRecordsBackground(cid: string, dirctlPath: string, spiffeEndpointSocket: string) {
     const shell_env = env;
 
-    let commandArgs = ["pull", workerData.recordRef.cid];
+    let commandArgs = ["pull", cid];
 
-    if (workerData.spiffeEndpointSocket !== '') {
-        commandArgs.push(...["--spiffe-socket-path", workerData.spiffeEndpointSocket]);
+    if (spiffeEndpointSocket !== '') {
+        commandArgs.push(...["--spiffe-socket-path", spiffeEndpointSocket]);
     }
 
-    for (let count = 0; count < 10; count++) {
+    for (let count = 0; count < 90; count++) {
         // Execute command
         spawnSync(
-            `${workerData.dirctlPath}`, commandArgs,
+            `${dirctlPath}`, commandArgs,
             { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
         );
 
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 }
-
-pullRecords()

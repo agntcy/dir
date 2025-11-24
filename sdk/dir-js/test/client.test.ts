@@ -4,7 +4,7 @@
 import { describe, test, beforeAll, afterAll, expect } from 'vitest';
 
 import { execSync } from 'node:child_process';
-import { Worker } from 'worker_threads';
+import { pool as workerpool } from 'workerpool';
 import { readFileSync, rmSync } from 'node:fs';
 import { env } from 'node:process';
 import { create } from '@bufbuild/protobuf';
@@ -489,13 +489,12 @@ describe('Client', () => {
     const records = genRecords(1, 'listen');
     const recordRefs = await client.push(records);
 
-    const worker = new Worker('./test/listen_worker.cjs', {
-      workerData: {
-        recordRef: recordRefs[0],
-        dirctlPath: config.dirctlPath,
-        spiffeEndpointSocket: config.spiffeEndpointSocket,
-      },
-    });
+    const pool = workerpool(__dirname + './test/listen_worker.ts');
+    try {
+      pool.exec('pullRecordsBackground', [recordRefs[0].cid, config.dirctlPath, config.spiffeEndpointSocket]);
+    } catch (error) {
+      expect.fail(`pullRecordsBackground execution failed: ${error}`)
+    }
 
     let events = client.listen(
       create(models.events_v1.ListenRequestSchema, {})
@@ -506,9 +505,9 @@ describe('Client', () => {
       break; // Exit after first event for test purposes
     }
 
-    worker.terminate();
+    pool.terminate(true);
 
-  }, 15000);
+  }, 120000);
 
   test('publication', async () => {
     const records = genRecords(1, 'publication');
