@@ -3,6 +3,9 @@
 
 version: "3"
 
+env:
+  GOWORK: off
+
 vars:
   ## Version
   RELEASE_VERSION:
