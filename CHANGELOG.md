@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.3] - 2025-11-25
+
+### Key Highlights
+
+This patch release improves SPIFFE identity injection reliability and chart security:
+- SPIFFE CSI driver support eliminates authentication race conditions
+- Automatic writable home directory for security-hardened deployments
+- Read-only SPIRE socket mounts for enhanced security
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.5.3  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.5.3  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.5.3  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.5.3  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.5.3  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.5.3  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.5.3  | dirctl >= v0.5.0            |
+
+### Added
+- **Helm**: SPIFFE CSI driver support with `spire.useCSIDriver` flag for both charts (#724)
+- **Helm**: Automatic `home-dir` emptyDir when `readOnlyRootFilesystem` is enabled (#724)
+
+### Changed
+- **Helm**: Default to SPIFFE CSI driver for production reliability (#724)
+
+### Fixed
+- **Helm**: "certificate contains no URI SAN" authentication failures in CronJobs (#724)
+- **Helm**: SPIRE socket mounts now use `readOnly: true` for security (#724)
+- **Helm**: "read-only file system" warnings when creating config files (#724)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.5.2...v0.5.3)
+
+---
+
 ## [v0.5.2] - 2025-11-23
 
 ### Key Highlights
