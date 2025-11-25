@@ -65,10 +65,32 @@ cronjobs:
       # - name: DIRECTORY_CLIENT_SERVER_ADDRESS
       #   value: dir-apiserver.dir-server.svc.cluster.local:8888
 
-# SPIRE configuration
+# SPIRE configuration for workload identity
 spire:
   enabled: false
   trustDomain: example.org
+  
+  # Use SPIFFE CSI driver for workload attestation (recommended)
+  # 
+  # When true (recommended):
+  #   - Uses SPIFFE CSI driver for proper workload registration
+  #   - Workload registration happens synchronously before pod starts
+  #   - SPIRE agent issues X.509-SVID with URI SAN before pod begins
+  #   - Eliminates "certificate contains no URI SAN" authentication errors
+  #   - No race conditions during authentication
+  #   - Production-ready, reliable identity injection
+  # 
+  # When false (legacy/debugging only):
+  #   - Uses hostPath to mount SPIRE agent socket
+  #   - Workload registration happens asynchronously via ClusterSPIFFEID
+  #   - Pod may try to authenticate before registration completes
+  #   - May cause intermittent authentication failures
+  #   - Only use for debugging or when CSI driver is unavailable
+  # 
+  # Requires: SPIFFE CSI driver deployed in cluster
+  # See: https://github.com/spiffe/spiffe-csi
+  useCSIDriver: true
+  
   federation: []
     # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
     # - trustDomain: dir-cluster
