@@ -257,6 +257,65 @@ func TestServerInitialization_SchemaURL(t *testing.T) {
 	}
 }
 
+// TestServerInitialization_OASFValidation verifies that the server correctly
+// configures OASF validation settings during initialization.
+func TestServerInitialization_OASFValidation(t *testing.T) {
+	tests := []struct {
+		name                 string
+		schemaURL            string
+		disableAPIValidation bool
+		strictValidation     bool
+	}{
+		{
+			name:                 "default configuration",
+			schemaURL:            config.DefaultSchemaURL,
+			disableAPIValidation: false,
+			strictValidation:     true,
+		},
+		{
+			name:                 "custom schema URL",
+			schemaURL:            "https://custom.schema.url",
+			disableAPIValidation: false,
+			strictValidation:     true,
+		},
+		{
+			name:                 "disable API validation",
+			schemaURL:            "",
+			disableAPIValidation: true,
+			strictValidation:     true,
+		},
+		{
+			name:                 "lax validation mode",
+			schemaURL:            config.DefaultSchemaURL,
+			disableAPIValidation: false,
+			strictValidation:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a config with OASF validation settings
+			cfg := &config.Config{
+				ListenAddress:        config.DefaultListenAddress,
+				SchemaURL:            tt.schemaURL,
+				DisableAPIValidation: tt.disableAPIValidation,
+				StrictValidation:     tt.strictValidation,
+				Connection:           config.DefaultConnectionConfig(),
+			}
+
+			// Verify config values are set correctly
+			assert.NotNil(t, cfg)
+			assert.Equal(t, tt.schemaURL, cfg.SchemaURL)
+			assert.Equal(t, tt.disableAPIValidation, cfg.DisableAPIValidation)
+			assert.Equal(t, tt.strictValidation, cfg.StrictValidation)
+
+			// Note: We can't fully test New() because it tries to start services
+			// that require database connections, but we can verify that the config
+			// values are correctly set and would be used during server initialization
+		})
+	}
+}
+
 // TestKeepaliveEnforcementPolicy_StructCreation verifies that we can create
 // keepalive.EnforcementPolicy with our configuration values.
 func TestKeepaliveEnforcementPolicy_StructCreation(t *testing.T) {

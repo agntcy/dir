@@ -61,9 +61,11 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":           "10s",
 			},
 			ExpectedConfig: &Config{
-				ListenAddress: "example.com:8889",
-				SchemaURL:     "https://custom.schema.url",
-				Connection:    DefaultConnectionConfig(), // Connection defaults applied
+				ListenAddress:        "example.com:8889",
+				SchemaURL:            "https://custom.schema.url",
+				DisableAPIValidation: false,
+				StrictValidation:     true,                      // Default is true (set in config.go:300)
+				Connection:           DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
@@ -128,9 +130,11 @@ func TestConfig(t *testing.T) {
 			Name:    "Default config",
 			EnvVars: map[string]string{},
 			ExpectedConfig: &Config{
-				ListenAddress: DefaultListenAddress,
-				SchemaURL:     DefaultSchemaURL,          // Default OASF schema URL
-				Connection:    DefaultConnectionConfig(), // Connection defaults applied
+				ListenAddress:        DefaultListenAddress,
+				SchemaURL:            DefaultSchemaURL,          // Default OASF schema URL
+				DisableAPIValidation: false,                     // Default is false (set in config.go:297)
+				StrictValidation:     true,                      // Default is true (set in config.go:300)
+				Connection:           DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
