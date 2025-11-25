@@ -71,7 +71,11 @@ spec:
               {{- if eq $.Values.spire.enabled true }}
               - name: spire-agent-socket
                 mountPath: /run/spire/agent-sockets
-                readOnly: false 
+                readOnly: true
+              {{- end }}
+              {{- if $.Values.securityContext.readOnlyRootFilesystem }}
+              - name: home-dir
+                mountPath: /home/nonroot
               {{- end }}
               {{- $allVolumeMounts := list }}
               {{- if $.Values.volumeMounts }}
@@ -86,9 +90,25 @@ spec:
           volumes:
             {{- if eq $.Values.spire.enabled true }}
             - name: spire-agent-socket
+              {{- if $.Values.spire.useCSIDriver }}
+              # SPIFFE CSI driver for proper workload attestation
+              # Ensures synchronous workload registration before pod starts
+              csi:
+                driver: "csi.spiffe.io"
+                readOnly: true
+              {{- else }}
+              # Legacy hostPath mount (for debugging/non-production use only)
+              # May cause "certificate contains no URI SAN" authentication errors
               hostPath:
                 path: /run/spire/agent-sockets
                 type: Directory
+              {{- end }}
+            {{- end }}
+            {{- if $.Values.securityContext.readOnlyRootFilesystem }}
+            # Writable home directory for config files when root filesystem is read-only
+            # Required for applications that create config files (e.g., MCP host)
+            - name: home-dir
+              emptyDir: {}
             {{- end }}
             {{- $allVolumes := list }}
             {{- if $.Values.volumes }}
