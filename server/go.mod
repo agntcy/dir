@@ -9,8 +9,8 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1
-	github.com/agntcy/dir/api v0.5.2
-	github.com/agntcy/dir/utils v0.5.2
+	github.com/agntcy/dir/api v0.5.3
+	github.com/agntcy/dir/utils v0.5.3
 	github.com/agntcy/oasf-sdk/pkg v0.0.11
 	github.com/casbin/casbin/v2 v2.120.0
 	github.com/glebarez/sqlite v1.11.0
