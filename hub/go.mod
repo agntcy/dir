@@ -12,7 +12,7 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.10-20250912141014-52f32327d4b0.1
 	github.com/agntcy/dir/api v0.5.3
-	github.com/agntcy/dir/cli v0.5.3
+	github.com/agntcy/dir/cli v0.5.4
 	github.com/agntcy/dir/utils v0.5.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
