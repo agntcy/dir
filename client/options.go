@@ -172,7 +172,9 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 	)
 
 	var svidErr error
+
 	backoff := initialBackoff
+
 	for attempt := range maxRetries {
 		_, svidErr = x509Src.GetX509SVID()
 		if svidErr == nil {
@@ -183,6 +185,7 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 		if attempt < maxRetries-1 {
 			// Exponential backoff: 500ms, 1s, 2s, 4s, 8s, 10s (capped), ...
 			time.Sleep(backoff)
+
 			backoff *= 2
 			if backoff > maxBackoff {
 				backoff = maxBackoff
