@@ -1,12 +1,13 @@
 package oci
 
 import (
-	"encoding/json"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
 	"testing"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
@@ -19,12 +20,12 @@ func TestOCI(t *testing.T) {
 
 	// Push some example data
 	baseIn := "Hello, world!"
-	base := io.NopCloser(strings.NewReader(baseIn))
-	baseRef, err := store.PushData(t.Context(), base)
+	baseRef, err := store.PushData(t.Context(), io.NopCloser(strings.NewReader(baseIn)))
 	assert.Nil(t, err)
 
 	// Lookup the data back
-	_, err = store.Lookup(t.Context(), baseRef)
+	lookBase, err := store.Lookup(t.Context(), baseRef)
+	fmt.Println(lookBase)
 	assert.Nil(t, err)
 
 	// Pull the data back
@@ -33,6 +34,10 @@ func TestOCI(t *testing.T) {
 	dataBytes, err := io.ReadAll(pulledData)
 	assert.Nil(t, err)
 	assert.Equal(t, baseIn, string(dataBytes))
+
+	// generate non-commited cid
+	_, cid, err := corev1.MarshalCannonical("abc")
+	assert.Nil(t, err)
 
 	// Create test object
 	obj := &storev1.Object{
@@ -50,7 +55,7 @@ func TestOCI(t *testing.T) {
 		Links: []*storev1.Object{
 			{
 				Data: &storev1.ObjectRef{
-					Cid: baseRef.GetCid(),
+					Cid: cid,
 				},
 				Schema: &storev1.ObjectSchema{
 					Type:    "link",
@@ -65,13 +70,12 @@ func TestOCI(t *testing.T) {
 	}
 
 	// Push object as OCI manifest
-	objRef, err := store.Push(t.Context(), obj)
+	objRef, err := store.PushObject(t.Context(), obj)
 	assert.Nil(t, err)
 
 	// Lookup object back
 	lookObj, err := store.Lookup(t.Context(), objRef)
 	assert.Nil(t, err)
-	lookObj.Cid = "" // Clear CID for comparison
 	assert.True(t, reflect.DeepEqual(obj, lookObj))
 
 	// Pull object back
@@ -79,8 +83,5 @@ func TestOCI(t *testing.T) {
 	assert.Nil(t, err)
 	dataBytes, err = io.ReadAll(pulledObj)
 	assert.Nil(t, err)
-	var storedObj storev1.Object
-	assert.Nil(t, json.Unmarshal(dataBytes, &storedObj))
-	storedObj.Cid = ""
-	assert.True(t, reflect.DeepEqual(obj, &storedObj))
+	assert.Equal(t, baseIn, string(dataBytes))
 }

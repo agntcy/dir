@@ -82,7 +82,7 @@ func (s *store) PushData(ctx context.Context, reader io.ReadCloser) (*storev1.Ob
 }
 
 // Push object as a manifest to the OCI registry
-func (s *store) Push(ctx context.Context, object *storev1.Object) (*storev1.ObjectRef, error) {
+func (s *store) PushObject(ctx context.Context, object *storev1.Object) (*storev1.ObjectRef, error) {
 	// Convert object to manifest
 	manifest, err := ObjectToManifest(object)
 	if err != nil {
@@ -99,8 +99,7 @@ func (s *store) Push(ctx context.Context, object *storev1.Object) (*storev1.Obje
 		return nil, status.Errorf(codes.Internal, "failed to push manifest: %v", err)
 	}
 
-	// Compute CID for the object
-	object.Cid = "" // Clear CID to ensure correct computation
+	// Compute CID for the objects
 	_, objectCID, err := corev1.MarshalCannonical(object)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute object CID: %w", err)
@@ -121,12 +120,29 @@ func (s *store) Lookup(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Ob
 		return nil, status.Errorf(codes.NotFound, "record not found: %s", ref.GetCid())
 	}
 
-	// If the media type is not image manifest, return as raw object info
-	if desc.MediaType != ocispec.MediaTypeImageManifest {
+	// If the media type is "application/octet-stream", it is raw data
+	if desc.MediaType == "application/octet-stream" {
+		// Validate digest-CID mapping
+		digest, err := corev1.ConvertCIDToDigest(ref.GetCid())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to convert CID to digest: %v", err)
+		}
+		if digest != desc.Digest {
+			return nil, status.Errorf(codes.Internal, "digest mismatch for CID %s: expected %s, got %s", ref.GetCid(), digest, desc.Digest)
+		}
+
+		// Return object metadata
 		return &storev1.Object{
-			Cid:  ref.GetCid(),
+			Schema: &storev1.ObjectSchema{
+				Type: "application/octet-stream",
+			},
 			Size: uint64(desc.Size),
 		}, nil
+	}
+
+	// If the media is not manifest, return error
+	if desc.MediaType != ocispec.MediaTypeImageManifest {
+		return nil, status.Errorf(codes.Internal, "unsupported media type for CID %s: %s", ref.GetCid(), desc.MediaType)
 	}
 
 	// Pull manifest
@@ -153,18 +169,14 @@ func (s *store) Lookup(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Ob
 	}
 
 	// Compute CID for the object
-	{
-		object.Cid = "" // Clear CID to ensure correct computation
-		_, objectCID, err := corev1.MarshalCannonical(object)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to compute object CID for CID %s: %v", ref.GetCid(), err)
-		}
-		object.Cid = objectCID // Set computed CID
+	_, objectCID, err := corev1.MarshalCannonical(object)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to compute object CID for CID %s: %v", ref.GetCid(), err)
 	}
 
 	// Verify computed CID matches the requested CID
-	if object.GetCid() != ref.GetCid() {
-		return nil, status.Errorf(codes.Internal, "object CID mismatch: expected %s, got %s", ref.GetCid(), object.GetCid())
+	if objectCID != ref.GetCid() {
+		return nil, status.Errorf(codes.Internal, "object CID mismatch: expected %s, got %s", ref.GetCid(), objectCID)
 	}
 
 	return object, nil
@@ -178,18 +190,13 @@ func (s *store) Pull(ctx context.Context, ref *storev1.ObjectRef) (io.ReadCloser
 		return nil, status.Errorf(codes.Internal, "failed to lookup object for CID %s: %v", ref.GetCid(), err)
 	}
 
-	// If its an actual object, return it as JSON
+	// If its an object, pull the data from the object
 	if obj.Data != nil {
-		objJSON, err := json.Marshal(obj)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to marshal object for CID %s: %v", ref.GetCid(), err)
-		}
-
-		return io.NopCloser(bytes.NewReader(objJSON)), nil
+		return s.Pull(ctx, obj.GetData())
 	}
 
 	// Convert CID to digest
-	digest, err := corev1.ConvertCIDToDigest(obj.GetCid())
+	digest, err := corev1.ConvertCIDToDigest(ref.GetCid())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to convert CID to digest: %v", err)
 	}
@@ -197,7 +204,7 @@ func (s *store) Pull(ctx context.Context, ref *storev1.ObjectRef) (io.ReadCloser
 	// Pull the data
 	dataRd, err := s.repo.Fetch(ctx, ocispec.Descriptor{Digest: digest})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch data for CID %s: %v", obj.GetCid(), err)
+		return nil, status.Errorf(codes.Internal, "failed to fetch data for CID %s: %v", ref.GetCid(), err)
 	}
 
 	return dataRd, nil

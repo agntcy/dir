@@ -24,41 +24,30 @@ import "google/protobuf/empty.proto";
 // for the N-th request, N-th response will be returned.
 // If an error occurs, the stream will be cancelled.
 service StoreService {
-  // PushData performs write operation for raw data.
-  rpc PushData(stream PushDataRequest) returns (PushDataResponse);
-
   // Push performs write operation for given object.
-  rpc Push(stream PushRequest) returns (stream PushResponse);
+  rpc Push(stream PushRequest) returns (PushResponse);
 
   // Pull performs read operation for given object.
   rpc Pull(PullRequest) returns (stream PullResponse);
 
   // Lookup resolves basic metadata for the object.
-  rpc Lookup(stream LookupRequest) returns (stream LookupResponse);
+  rpc Lookup(LookupRequest) returns (LookupResponse);
 
   // Remove performs delete operation for the object.
-  rpc Delete(stream DeleteRequest) returns (stream DeleteResponse);
-
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  
   // PushReferrer performs write operation for object referrers.
-  rpc PushReferrer(stream PushReferrerRequest) returns (stream PushReferrerResponse);
+  rpc PushReferrer(PushReferrerRequest) returns (PushReferrerResponse);
 
   // PullReferrer performs read operation for object referrers.
-  rpc PullReferrer(stream PullReferrerRequest) returns (stream PullReferrerResponse);
-}
-
-message PushDataRequest {
-  bytes data = 1;
-  bool is_object = 2; // If true, data represents an object in JSON format
-}
-
-message PushDataResponse {
-  bool success = 1;
-  optional string error_message = 2;
-  ObjectRef object_ref = 3;
+  rpc PullReferrer(PullReferrerRequest) returns (PullReferrerResponse);
 }
 
 message PushRequest {
-  Object object = 1;
+  oneof data {
+    bytes chunk = 1;
+    Object object = 2;
+  }
 }
 
 message PushResponse {

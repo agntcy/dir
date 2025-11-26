@@ -12,14 +12,14 @@ import (
 
 // StoreAPI handles management of content-addressable object storage.
 type StoreAPI interface {
-	// PushData pushes raw data to the content store and returns its CID.
+	// Push raw data to the content store and returns its CID.
 	PushData(ctx context.Context, reader io.ReadCloser) (*storev1.ObjectRef, error)
 
-	// Pull object data from content store
-	Pull(context.Context, *storev1.ObjectRef) (io.ReadCloser, error)
+	// Push object to the content store and returns its CID.
+	PushObject(context.Context, *storev1.Object) (*storev1.ObjectRef, error)
 
-	// Push object to content store
-	Push(context.Context, *storev1.Object) (*storev1.ObjectRef, error)
+	// Pull data from the content store
+	Pull(context.Context, *storev1.ObjectRef) (io.ReadCloser, error)
 
 	// Lookup metadata about the object from reference
 	Lookup(context.Context, *storev1.ObjectRef) (*storev1.Object, error)
