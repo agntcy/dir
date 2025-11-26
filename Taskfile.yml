@@ -994,6 +994,7 @@ tasks:
             fi
           fi
         done
+
       - |
         set -euo pipefail
         echo "[coverage] Generating per-module summaries"
@@ -1013,6 +1014,7 @@ tasks:
           fi
         done
         echo "[coverage] Summary:"; cat {{.COVERAGE_DIR}}/summary.txt
+
       - |
         set -euo pipefail
         echo "[coverage] Generating HTML reports"
