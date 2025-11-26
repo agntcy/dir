@@ -3,6 +3,9 @@
 
 version: "3"
 
+env:
+  GOWORK: off
+
 vars:
   ## Version
   RELEASE_VERSION:
@@ -942,6 +945,8 @@ tasks:
   test:unit:
     desc: Run unit tests on codebase
     aliases: [test]
+    env:
+      GOWORK: off
     vars:
       EXTRA_ARGS: '{{ .EXTRA_ARGS | default "" }}'
     cmds:
