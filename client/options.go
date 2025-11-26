@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
@@ -159,6 +160,44 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 		_ = client.Close()
 
 		return fmt.Errorf("failed to create x509 source: %w", err)
+	}
+
+	// Wait for X509-SVID to be available with retry logic
+	// This handles timing issues where the SPIRE entry hasn't been synced to the agent yet
+	// (common with CronJobs and other short-lived workloads)
+	const (
+		maxRetries     = 10
+		initialBackoff = 500 * time.Millisecond
+		maxBackoff     = 10 * time.Second
+	)
+
+	var svidErr error
+
+	backoff := initialBackoff
+
+	for attempt := range maxRetries {
+		_, svidErr = x509Src.GetX509SVID()
+		if svidErr == nil {
+			// SVID is available, proceed
+			break
+		}
+
+		if attempt < maxRetries-1 {
+			// Exponential backoff: 500ms, 1s, 2s, 4s, 8s, 10s (capped), ...
+			time.Sleep(backoff)
+
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+
+	if svidErr != nil {
+		_ = client.Close()
+		_ = x509Src.Close()
+
+		return fmt.Errorf("failed to get X509-SVID after %d retries (SPIRE entry may not be synced yet): %w", maxRetries, svidErr)
 	}
 
 	// Create SPIFFE bundle services
