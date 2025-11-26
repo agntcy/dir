@@ -1246,6 +1246,7 @@ tasks:
     desc: Run end-to-end tests for SPIRE deployment
     cmds:
       # Run SPIRE deployment
+      - defer: { task: test:spire:cleanup }
       - task: test:spire
       # Run SDK tests
       - task: sdk:deps:javascript
@@ -1272,7 +1273,14 @@ tasks:
       # Start cloud provider for LoadBalancer support
       - |
         echo "Starting Kind cloud provider for LoadBalancer support..."
-        go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
+        if [[ {{OS}} == "darwin" ]]; then
+          sudo go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
+        elif [[ {{OS}} == "linux" ]]; then
+          go run sigs.k8s.io/cloud-provider-kind@latest > /dev/null 2>&1 &
+        else
+          echo "Unknown OS"
+          exit 1
+        fi
         echo "Cloud provider started in background"
 
       # Deploy SPIRE on DIR cluster
