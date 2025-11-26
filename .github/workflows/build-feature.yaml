@@ -15,6 +15,11 @@ name: Build Feature Branch
 on:
   workflow_dispatch:
     inputs:
+      component:
+        required: false
+        type: string
+        description: "Component suffix for images/charts (e.g., 'dev' creates dir-apiserver-dev, dir-dev/helm-charts). Default: 'dev'"
+        default: "dev"
       image_tag:
         required: false
         type: string
@@ -42,6 +47,9 @@ jobs:
     outputs:
       image_tag: ${{ steps.tags.outputs.image_tag }}
       chart_version: ${{ steps.tags.outputs.chart_version }}
+      image_repo: ${{ steps.tags.outputs.image_repo }}
+      image_name_suffix: ${{ steps.tags.outputs.image_name_suffix }}
+      chart_path: ${{ steps.tags.outputs.chart_path }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -54,6 +62,7 @@ jobs:
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
           BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          COMPONENT="${{ inputs.component }}"
           
           if [ -z "${{ inputs.image_tag }}" ]; then
             IMAGE_TAG="feat-${BRANCH_NAME}-${SHORT_SHA}"
@@ -67,10 +76,25 @@ jobs:
             CHART_VERSION="${{ inputs.chart_version }}"
           fi
           
+          # Generate image repo and suffix for component separation
+          IMAGE_REPO="ghcr.io/agntcy"
+          if [ -n "${COMPONENT}" ]; then
+            IMAGE_NAME_SUFFIX="-${COMPONENT}"
+            CHART_PATH="dir-${COMPONENT}"
+          else
+            IMAGE_NAME_SUFFIX=""
+            CHART_PATH="dir"
+          fi
+          
           echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "chart_version=${CHART_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "image_repo=${IMAGE_REPO}" >> "$GITHUB_OUTPUT"
+          echo "image_name_suffix=${IMAGE_NAME_SUFFIX}" >> "$GITHUB_OUTPUT"
+          echo "chart_path=${CHART_PATH}" >> "$GITHUB_OUTPUT"
           echo "Generated image tag: ${IMAGE_TAG}"
           echo "Generated chart version: ${CHART_VERSION}"
+          echo "Image name suffix: ${IMAGE_NAME_SUFFIX}"
+          echo "Chart path: ${CHART_PATH}"
 
   build-images:
     name: Build Images
@@ -79,8 +103,9 @@ jobs:
       - prepare
     uses: ./.github/workflows/reusable-build.yaml
     with:
-      image_repo: ghcr.io/agntcy
+      image_repo: ${{ needs.prepare.outputs.image_repo }}
       image_tag: ${{ needs.prepare.outputs.image_tag }}
+      image_name_suffix: ${{ needs.prepare.outputs.image_name_suffix }}
       push: true
 
   build-charts:
@@ -89,8 +114,9 @@ jobs:
       - prepare
     uses: ./.github/workflows/reusable-release-helm.yaml
     with:
-      image_repo: ghcr.io/agntcy
+      image_repo: ${{ needs.prepare.outputs.image_repo }}
       release_tag: ${{ needs.prepare.outputs.chart_version }}
+      chart_path: ${{ needs.prepare.outputs.chart_path }}
 
   summary:
     name: Summary
@@ -108,6 +134,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image Tag:** \`${{ needs.prepare.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Chart Version:** \`${{ needs.prepare.outputs.chart_version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Component:** \`${{ inputs.component }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage in agntcy-deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -115,7 +142,7 @@ jobs:
           echo '```json' >> $GITHUB_STEP_SUMMARY
           echo '{' >> $GITHUB_STEP_SUMMARY
           echo '  "chart_repo": "ghcr.io",' >> $GITHUB_STEP_SUMMARY
-          echo '  "chart_name": "agntcy/dir/helm-charts/dir",' >> $GITHUB_STEP_SUMMARY
+          echo '  "chart_name": "agntcy/${{ needs.prepare.outputs.chart_path }}/helm-charts/dir",' >> $GITHUB_STEP_SUMMARY
           echo '  "chart_version": "${{ needs.prepare.outputs.chart_version }}"' >> $GITHUB_STEP_SUMMARY
           echo '}' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -123,7 +150,7 @@ jobs:
           echo "**values.yaml:**" >> $GITHUB_STEP_SUMMARY
           echo '```yaml' >> $GITHUB_STEP_SUMMARY
           echo 'image:' >> $GITHUB_STEP_SUMMARY
-          echo '  repository: ghcr.io/agntcy/dir-apiserver' >> $GITHUB_STEP_SUMMARY
+          echo '  repository: ghcr.io/agntcy/dir-apiserver${{ needs.prepare.outputs.image_name_suffix }}' >> $GITHUB_STEP_SUMMARY
           echo '  tag: ${{ needs.prepare.outputs.image_tag }}' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
