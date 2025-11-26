@@ -13,10 +13,10 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.5.3
-	github.com/agntcy/dir/cli v0.5.3
-	github.com/agntcy/dir/client v0.5.3
-	github.com/agntcy/dir/utils v0.5.3
+	github.com/agntcy/dir/api v0.5.4
+	github.com/agntcy/dir/cli v0.5.4
+	github.com/agntcy/dir/client v0.5.4
+	github.com/agntcy/dir/utils v0.5.4
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/onsi/ginkgo/v2 v2.23.0
 	github.com/onsi/gomega v1.36.2
@@ -48,9 +48,9 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/hub v0.5.3 // indirect
-	github.com/agntcy/dir/importer v0.5.3 // indirect
-	github.com/agntcy/dir/mcp v0.5.3 // indirect
+	github.com/agntcy/dir/hub v0.5.4 // indirect
+	github.com/agntcy/dir/importer v0.5.4 // indirect
+	github.com/agntcy/dir/mcp v0.5.4 // indirect
 	github.com/agntcy/oasf-sdk/pkg v0.0.11 // indirect
 	github.com/alecthomas/chroma/v2 v2.20.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect

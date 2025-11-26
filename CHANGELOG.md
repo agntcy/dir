@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.4] - 2025-11-26
+
+### Key Highlights
+
+This patch release improves SPIFFE authentication reliability for short-lived workloads:
+- Client-side retry logic with exponential backoff for X509-SVID fetching
+- Handles SPIRE agent sync delays in CronJobs and ephemeral pods
+- Prevents "certificate contains no URI SAN" authentication failures
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.5.4  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.5.4  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.5.4  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.5.4  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.5.4  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.5.4  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.5.4  | dirctl >= v0.5.0            |
+
+### Fixed
+- **Client**: X509-SVID retry logic with exponential backoff to handle SPIRE agent sync delays (#725)
+- **Client**: "certificate contains no URI SAN" errors in CronJobs and short-lived workloads (#725)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.5.3...v0.5.4)
+
+---
+
 ## [v0.5.3] - 2025-11-25
 
 ### Key Highlights
