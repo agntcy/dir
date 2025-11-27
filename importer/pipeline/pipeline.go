@@ -32,6 +32,15 @@ type Pusher interface {
 	Push(ctx context.Context, inputCh <-chan *corev1.Record) (<-chan *corev1.RecordRef, <-chan error)
 }
 
+// DuplicateChecker is an interface for checking and filtering duplicate records.
+// This allows filtering duplicates before transformation/enrichment.
+type DuplicateChecker interface {
+	// FilterDuplicates filters out duplicate records from the input channel.
+	// It tracks total and skipped counts in the provided result.
+	// Returns a channel with only non-duplicate records.
+	FilterDuplicates(ctx context.Context, inputCh <-chan interface{}, result *Result) <-chan interface{}
+}
+
 // Config contains configuration for the pipeline.
 type Config struct {
 	// TransformerWorkers is the number of concurrent workers for the transformer stage.
@@ -50,38 +59,50 @@ type Result struct {
 
 // Pipeline represents a three-stage data processing pipeline.
 type Pipeline struct {
-	fetcher     Fetcher
-	transformer Transformer
-	pusher      Pusher
-	config      Config
+	fetcher          Fetcher
+	duplicateChecker DuplicateChecker
+	transformer      Transformer
+	pusher           Pusher
+	config           Config
 }
 
 // New creates a new pipeline instance.
-func New(fetcher Fetcher, transformer Transformer, pusher Pusher, config Config) *Pipeline {
+// If duplicateChecker is nil, no duplicate filtering will be performed before transformation.
+func New(fetcher Fetcher, duplicateChecker DuplicateChecker, transformer Transformer, pusher Pusher, config Config) *Pipeline {
 	// Set defaults
 	if config.TransformerWorkers <= 0 {
 		config.TransformerWorkers = 5
 	}
 
 	return &Pipeline{
-		fetcher:     fetcher,
-		transformer: transformer,
-		pusher:      pusher,
-		config:      config,
+		fetcher:          fetcher,
+		duplicateChecker: duplicateChecker,
+		transformer:      transformer,
+		pusher:           pusher,
+		config:           config,
 	}
 }
 
-// Run executes the full pipeline with all three stages.
+// Run executes the full pipeline with four stages.
 func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 	result := &Result{}
 
 	// Stage 1: Fetch records
 	fetchedCh, fetchErrCh := p.fetcher.Fetch(ctx)
 
-	// Stage 2: Transform records
-	transformedCh, transformErrCh := runTransformStage(ctx, p.transformer, p.config.TransformerWorkers, fetchedCh, result)
+	// Stage 2: Filter duplicates (optional - only if duplicate checker is available)
+	var filteredCh <-chan interface{}
 
-	// Stage 3: Push records
+	if p.duplicateChecker != nil {
+		filteredCh = p.duplicateChecker.FilterDuplicates(ctx, fetchedCh, result)
+	} else {
+		filteredCh = fetchedCh
+	}
+
+	// Stage 3: Transform records (non-duplicates)
+	transformedCh, transformErrCh := runTransformStage(ctx, p.transformer, p.config.TransformerWorkers, filteredCh, result)
+
+	// Stage 4: Push records
 	refCh, pushErrCh := p.pusher.Push(ctx, transformedCh)
 
 	// Collect errors from all stages
@@ -146,9 +167,6 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 
 	wg.Wait()
 
-	// Calculate skipped count (records filtered by deduplication)
-	result.SkippedCount = result.TotalRecords - result.ImportedCount - result.FailedCount
-
 	return result, nil
 }
 
@@ -181,6 +199,7 @@ func (p *DryRunPipeline) Run(ctx context.Context) (*Result, error) {
 	fetchedCh, fetchErrCh := p.fetcher.Fetch(ctx)
 
 	// Stage 2: Transform records
+	// Note: dry-run mode doesn't have duplicate checking, so all fetched records are transformed
 	transformedCh, transformErrCh := runTransformStage(ctx, p.transformer, p.config.TransformerWorkers, fetchedCh, result)
 
 	// Drain the transformed channel to prevent blocking
@@ -229,6 +248,9 @@ func (p *DryRunPipeline) Run(ctx context.Context) (*Result, error) {
 
 // runTransformStage runs the transformation stage with concurrent workers.
 // This is a shared function used by both Pipeline and DryRunPipeline.
+// It always tracks the total records it processes (non-duplicates after filtering).
+//
+//nolint:gocognit // Complexity is acceptable for concurrent pipeline stage
 func runTransformStage(ctx context.Context, transformer Transformer, numWorkers int, inputCh <-chan interface{}, result *Result) (<-chan *corev1.Record, <-chan error) {
 	outputCh := make(chan *corev1.Record)
 	errCh := make(chan error)
@@ -251,7 +273,7 @@ func runTransformStage(ctx context.Context, transformer Transformer, numWorkers 
 						return
 					}
 
-					// Track total records
+					// Track total records processed by this stage
 					result.mu.Lock()
 					result.TotalRecords++
 					result.mu.Unlock()

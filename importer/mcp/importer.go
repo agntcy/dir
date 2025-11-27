@@ -55,17 +55,20 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 		p := pipeline.NewDryRun(fetcher, transformer, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	} else {
-		// Create pusher with deduplication support
-		// If --force is set, pusher will skip cache building and push everything
-		// Otherwise, it will build a cache and skip duplicates
-		var pusher pipeline.Pusher
+		pusher := pipeline.NewClientPusher(i.client, cfg.Debug)
 
-		pusher, err = pipeline.NewClientPusher(ctx, i.client, cfg.Force, cfg.Debug)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create pusher: %w", err)
+		// If --force is set, duplicateChecker will be nil (no deduplication)
+		// Otherwise, build cache of existing records for deduplication
+		var duplicateChecker pipeline.DuplicateChecker
+		if !cfg.Force {
+			duplicateChecker, err = pipeline.NewMCPDuplicateChecker(ctx, i.client, cfg.Debug)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create duplicate checker: %w", err)
+			}
 		}
 
-		p := pipeline.New(fetcher, transformer, pusher, pipelineConfig)
+		// Create full pipeline with optional duplicate checker
+		p := pipeline.New(fetcher, duplicateChecker, transformer, pusher, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	}
 
