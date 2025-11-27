@@ -214,6 +214,11 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 		maxBackoff:     maxBackoff,
 	}
 
+	authLogger.Debug("Created x509SourceWithRetry wrapper",
+		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
+		"src_type", fmt.Sprintf("%T", x509Src),
+		"implements_source", true)
+
 	// Create SPIFFE bundle services
 	// Note: Use context.Background() because this source must live for the entire client lifetime,
 	// not just the initialization phase. It will be properly closed in client.Close().
@@ -229,9 +234,15 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 	o.authClient = client
 	o.x509Src = wrappedX509Src // Store wrapped source for cleanup
 	o.bundleSrc = bundleSrc
-	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(
-		grpccredentials.MTLSClientCredentials(wrappedX509Src, bundleSrc, tlsconfig.AuthorizeAny()),
-	))
+
+	authLogger.Debug("Creating MTLSClientCredentials with wrapped source",
+		"wrapped_source_type", fmt.Sprintf("%T", wrappedX509Src),
+		"wrapped_implements_source", true)
+
+	creds := grpccredentials.MTLSClientCredentials(wrappedX509Src, bundleSrc, tlsconfig.AuthorizeAny())
+	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(creds))
+
+	authLogger.Debug("MTLSClientCredentials created successfully, wrapper will be used for TLS handshake")
 
 	return nil
 }
@@ -402,16 +413,23 @@ type x509SourceWithRetry struct {
 // GetX509SVID implements x509svid.Source interface with retry logic.
 // This method is called by grpccredentials.MTLSClientCredentials during TLS handshake.
 func (w *x509SourceWithRetry) GetX509SVID() (*x509svid.SVID, error) {
-	authLogger.Debug("x509SourceWithRetry.GetX509SVID() called (likely during TLS handshake)")
+	authLogger.Info("x509SourceWithRetry.GetX509SVID() called (likely during TLS handshake)",
+		"max_retries", w.maxRetries,
+		"initial_backoff", w.initialBackoff,
+		"max_backoff", w.maxBackoff)
 
 	svid, err := getX509SVIDWithRetry(w.src, w.maxRetries, w.initialBackoff, w.maxBackoff)
 
 	if err != nil {
-		authLogger.Debug("x509SourceWithRetry.GetX509SVID() failed", "error", err)
+		authLogger.Error("x509SourceWithRetry.GetX509SVID() failed after retries", "error", err, "max_retries", w.maxRetries)
 	} else if svid != nil {
-		authLogger.Debug("x509SourceWithRetry.GetX509SVID() succeeded", "spiffe_id", svid.ID.String(), "has_certificate", svid != nil)
+		if svid.ID.IsZero() {
+			authLogger.Warn("x509SourceWithRetry.GetX509SVID() returned SVID with zero ID (no URI SAN)", "has_certificate", svid != nil)
+		} else {
+			authLogger.Info("x509SourceWithRetry.GetX509SVID() succeeded", "spiffe_id", svid.ID.String(), "has_certificate", svid != nil)
+		}
 	} else {
-		authLogger.Debug("x509SourceWithRetry.GetX509SVID() returned nil SVID")
+		authLogger.Warn("x509SourceWithRetry.GetX509SVID() returned nil SVID")
 	}
 
 	return svid, err
