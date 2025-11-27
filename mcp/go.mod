@@ -11,7 +11,7 @@ replace (
 require (
 	github.com/agntcy/dir/api v0.5.4
 	github.com/agntcy/dir/client v0.5.4
-	github.com/agntcy/oasf-sdk/pkg v0.0.11
+	github.com/agntcy/oasf-sdk/pkg v0.0.14
 	github.com/modelcontextprotocol/go-sdk v0.8.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/protobuf v1.36.10
