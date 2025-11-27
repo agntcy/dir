@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/agntcy/dir/server/authn/config"
@@ -22,12 +23,13 @@ var logger = logging.Logger("authn")
 
 // Service manages authentication using SPIFFE (X.509 or JWT).
 type Service struct {
-	mode      config.AuthMode
-	audiences []string
-	client    *workloadapi.Client
-	jwtSource *workloadapi.JWTSource
-	x509Src   *workloadapi.X509Source
-	bundleSrc *workloadapi.BundleSource
+	mode       config.AuthMode
+	audiences  []string
+	client     *workloadapi.Client
+	jwtSource  *workloadapi.JWTSource
+	x509Src    x509svid.Source // Use interface to allow wrapping with retry logic
+	bundleSrc  *workloadapi.BundleSource
+	x509Closer io.Closer // Store original X509Source for cleanup
 }
 
 // New creates a new authentication service (JWT or X.509 based on config).
@@ -107,6 +109,22 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 
 	logger.Info("Successfully obtained valid X509-SVID for server", "spiffe_id", svid.ID.String())
 
+	// Wrap x509Src with retry logic so GetX509SVID() calls during TLS handshake also retry
+	// This is critical because grpccredentials.TLSServerCredentials calls GetX509SVID()
+	// during the actual TLS handshake, not just during setup. Without this wrapper,
+	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
+	wrappedX509Src := &x509SourceWithRetry{
+		src:            x509Src,
+		closer:         x509Src,
+		maxRetries:     maxRetries,
+		initialBackoff: initialBackoff,
+		maxBackoff:     maxBackoff,
+	}
+
+	logger.Debug("Created x509SourceWithRetry wrapper for server (JWT mode)",
+		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
+		"src_type", fmt.Sprintf("%T", x509Src))
+
 	// Create bundle source for trust verification
 	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(s.client))
 	if err != nil {
@@ -124,7 +142,8 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 		return fmt.Errorf("failed to create JWT source: %w", err)
 	}
 
-	s.x509Src = x509Src
+	s.x509Src = wrappedX509Src // Store wrapped source for use in GetServerOptions
+	s.x509Closer = x509Src     // Store original source for cleanup
 	s.bundleSrc = bundleSrc
 	s.jwtSource = jwtSource
 	s.audiences = cfg.Audiences
@@ -161,6 +180,22 @@ func (s *Service) initX509(ctx context.Context) error {
 
 	logger.Info("Successfully obtained valid X509-SVID for server", "spiffe_id", svid.ID.String())
 
+	// Wrap x509Src with retry logic so GetX509SVID() calls during TLS handshake also retry
+	// This is critical because grpccredentials.MTLSServerCredentials calls GetX509SVID()
+	// during the actual TLS handshake, not just during setup. Without this wrapper,
+	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
+	wrappedX509Src := &x509SourceWithRetry{
+		src:            x509Src,
+		closer:         x509Src,
+		maxRetries:     maxRetries,
+		initialBackoff: initialBackoff,
+		maxBackoff:     maxBackoff,
+	}
+
+	logger.Debug("Created x509SourceWithRetry wrapper for server",
+		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
+		"src_type", fmt.Sprintf("%T", x509Src))
+
 	// Create a new Bundle source which periodically refetches SPIFFE bundles.
 	// Required when running Federation.
 	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(s.client))
@@ -170,7 +205,8 @@ func (s *Service) initX509(ctx context.Context) error {
 		return fmt.Errorf("failed to create bundle source: %w", err)
 	}
 
-	s.x509Src = x509Src
+	s.x509Src = wrappedX509Src // Store wrapped source for use in GetServerOptions
+	s.x509Closer = x509Src     // Store original source for cleanup
 	s.bundleSrc = bundleSrc
 
 	return nil
@@ -215,8 +251,8 @@ func (s *Service) Stop() error {
 		}
 	}
 
-	if s.x509Src != nil {
-		if err := s.x509Src.Close(); err != nil {
+	if s.x509Closer != nil {
+		if err := s.x509Closer.Close(); err != nil {
 			logger.Error("Failed to close X509 source", "error", err)
 		}
 	}
@@ -296,4 +332,47 @@ func getX509SVIDWithRetry(src x509SourceGetter, maxRetries int, initialBackoff, 
 
 	logger.Error("Failed to get valid X509-SVID after retries", "max_retries", maxRetries, "error", svidErr, "final_svid", svid)
 	return nil, fmt.Errorf("failed to get valid X509-SVID after %d retries: %w", maxRetries, svidErr)
+}
+
+// x509SourceWithRetry wraps an x509svid.Source and adds retry logic to GetX509SVID().
+// This ensures that retry logic is applied not just during setup, but also during
+// TLS handshakes when grpccredentials.MTLSServerCredentials or TLSServerCredentials
+// calls GetX509SVID().
+// The wrapper implements both x509svid.Source and io.Closer interfaces.
+type x509SourceWithRetry struct {
+	src            x509svid.Source // The Source interface (workloadapi.X509Source implements this)
+	closer         io.Closer       // The Closer interface for Close()
+	maxRetries     int
+	initialBackoff time.Duration
+	maxBackoff     time.Duration
+}
+
+// GetX509SVID implements x509svid.Source interface with retry logic.
+// This method is called by grpccredentials.MTLSServerCredentials/TLSServerCredentials during TLS handshake.
+func (w *x509SourceWithRetry) GetX509SVID() (*x509svid.SVID, error) {
+	logger.Info("x509SourceWithRetry.GetX509SVID() called (likely during TLS handshake)",
+		"max_retries", w.maxRetries,
+		"initial_backoff", w.initialBackoff,
+		"max_backoff", w.maxBackoff)
+
+	svid, err := getX509SVIDWithRetry(w.src, w.maxRetries, w.initialBackoff, w.maxBackoff)
+
+	if err != nil {
+		logger.Error("x509SourceWithRetry.GetX509SVID() failed after retries", "error", err, "max_retries", w.maxRetries)
+	} else if svid != nil {
+		if svid.ID.IsZero() {
+			logger.Warn("x509SourceWithRetry.GetX509SVID() returned SVID with zero ID (no URI SAN)", "has_certificate", svid != nil)
+		} else {
+			logger.Info("x509SourceWithRetry.GetX509SVID() succeeded", "spiffe_id", svid.ID.String(), "has_certificate", svid != nil)
+		}
+	} else {
+		logger.Warn("x509SourceWithRetry.GetX509SVID() returned nil SVID")
+	}
+
+	return svid, err
+}
+
+// Close implements io.Closer interface by delegating to the wrapped source.
+func (w *x509SourceWithRetry) Close() error {
+	return w.closer.Close()
 }
