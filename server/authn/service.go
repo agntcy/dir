@@ -5,12 +5,15 @@ package authn
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/agntcy/dir/server/authn/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
+	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 )
@@ -84,6 +87,26 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 		return fmt.Errorf("failed to create X509 source: %w", err)
 	}
 
+	logger.Debug("Created X509 source for JWT mode, waiting for valid SVID")
+
+	// Wait for X509-SVID to be available with retry logic
+	// This ensures the server presents a certificate with URI SAN during TLS handshake
+	// Critical: If the server starts without a valid SPIFFE ID, clients will reject the connection
+	const (
+		maxRetries     = 10
+		initialBackoff = 500 * time.Millisecond
+		maxBackoff     = 10 * time.Second
+	)
+
+	svid, svidErr := getX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff)
+	if svidErr != nil {
+		_ = x509Src.Close()
+		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", maxRetries)
+		return fmt.Errorf("failed to get valid X509-SVID for server (SPIRE entry may not be synced yet): %w", svidErr)
+	}
+
+	logger.Info("Successfully obtained valid X509-SVID for server", "spiffe_id", svid.ID.String())
+
 	// Create bundle source for trust verification
 	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(s.client))
 	if err != nil {
@@ -116,6 +139,27 @@ func (s *Service) initX509(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create X509 source: %w", err)
 	}
+
+	logger.Debug("Created X509 source for X509 mode, waiting for valid SVID")
+
+	// Wait for X509-SVID to be available with retry logic
+	// This ensures the server presents a certificate with URI SAN during TLS handshake
+	// Critical: If the server starts without a valid SPIFFE ID, clients will reject the connection
+	// with "certificate contains no URI SAN" error
+	const (
+		maxRetries     = 10
+		initialBackoff = 500 * time.Millisecond
+		maxBackoff     = 10 * time.Second
+	)
+
+	svid, svidErr := getX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff)
+	if svidErr != nil {
+		_ = x509Src.Close()
+		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", maxRetries)
+		return fmt.Errorf("failed to get valid X509-SVID for server (SPIRE entry may not be synced yet): %w", svidErr)
+	}
+
+	logger.Info("Successfully obtained valid X509-SVID for server", "spiffe_id", svid.ID.String())
 
 	// Create a new Bundle source which periodically refetches SPIFFE bundles.
 	// Required when running Federation.
@@ -184,4 +228,72 @@ func (s *Service) Stop() error {
 	}
 
 	return s.client.Close()
+}
+
+// x509SourceGetter defines the interface for getting X509-SVIDs.
+type x509SourceGetter interface {
+	GetX509SVID() (*x509svid.SVID, error)
+}
+
+// getX509SVIDWithRetry attempts to get a valid X509-SVID with retry logic.
+// This handles timing issues where the SPIRE entry hasn't synced to the agent yet
+// (common with short-lived workloads or pod restarts).
+// The agent may return a certificate without a URI SAN (SPIFFE ID) if the entry hasn't synced,
+// so we must validate that the certificate actually contains a valid SPIFFE ID.
+//
+// Parameters:
+//   - src: The X509 source to get SVIDs from
+//   - maxRetries: Maximum number of retry attempts
+//   - initialBackoff: Initial backoff duration between retries
+//   - maxBackoff: Maximum backoff duration (exponential backoff is capped at this value)
+func getX509SVIDWithRetry(src x509SourceGetter, maxRetries int, initialBackoff, maxBackoff time.Duration) (*x509svid.SVID, error) {
+	var (
+		svidErr error
+		svid    *x509svid.SVID
+	)
+
+	logger.Debug("Starting X509-SVID retry logic", "max_retries", maxRetries, "initial_backoff", initialBackoff, "max_backoff", maxBackoff)
+
+	backoff := initialBackoff
+
+	for attempt := range maxRetries {
+		logger.Debug("Attempting to get X509-SVID", "attempt", attempt+1)
+		svid, svidErr = src.GetX509SVID()
+		if svidErr == nil && svid != nil {
+			logger.Debug("SVID obtained", "spiffe_id", svid.ID.String(), "is_zero", svid.ID.IsZero())
+			// Validate that the SVID has a valid SPIFFE ID (URI SAN)
+			// The agent may return a certificate without a URI SAN if the entry hasn't synced yet
+			if !svid.ID.IsZero() {
+				// Valid SVID with SPIFFE ID, proceed
+				logger.Info("Successfully obtained valid X509-SVID with SPIFFE ID", "spiffe_id", svid.ID.String(), "attempt", attempt+1)
+				return svid, nil
+			}
+			// Certificate exists but lacks SPIFFE ID - treat as error and retry
+			svidErr = errors.New("certificate contains no URI SAN (SPIFFE ID)")
+			logger.Warn("SVID obtained but lacks URI SAN, retrying", "attempt", attempt+1, "error", svidErr)
+		} else if svidErr != nil {
+			logger.Warn("Failed to get X509-SVID", "attempt", attempt+1, "error", svidErr)
+		} else {
+			logger.Warn("GetX509SVID returned nil SVID with no error, retrying", "attempt", attempt+1)
+			svidErr = errors.New("nil SVID returned") // Force retry
+		}
+
+		if attempt < maxRetries-1 {
+			logger.Debug("Backing off before next retry", "duration", backoff, "attempt", attempt+1)
+			// Exponential backoff: initialBackoff, initialBackoff*2, initialBackoff*4, ... (capped at maxBackoff)
+			time.Sleep(backoff)
+
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+
+	if svidErr == nil {
+		svidErr = errors.New("certificate contains no URI SAN (SPIFFE ID)")
+	}
+
+	logger.Error("Failed to get valid X509-SVID after retries", "max_retries", maxRetries, "error", svidErr, "final_svid", svid)
+	return nil, fmt.Errorf("failed to get valid X509-SVID after %d retries: %w", maxRetries, svidErr)
 }
