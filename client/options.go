@@ -195,6 +195,25 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 
 	authLogger.Info("Successfully obtained valid X509-SVID", "spiffe_id", svid.ID.String())
 
+	// Wrap x509Src with retry logic so GetX509SVID() calls during TLS handshake also retry
+	// This is critical because grpccredentials.MTLSClientCredentials calls GetX509SVID()
+	// during the actual TLS handshake, not just during setup. Without this wrapper,
+	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
+	//
+	// Connection flow: dirctl → Ingress (TLS passthrough) → apiserver pod
+	// The TLS handshake happens between dirctl and apiserver, and during this handshake,
+	// grpccredentials.MTLSClientCredentials calls GetX509SVID() again.
+	//
+	// Note: x509Src is *workloadapi.X509Source (concrete type that implements x509svid.Source).
+	// We use it directly as the Source interface and also as io.Closer.
+	wrappedX509Src := &x509SourceWithRetry{
+		src:            x509Src, // Use pointer directly (implements x509svid.Source)
+		closer:         x509Src, // Same pointer (implements io.Closer)
+		maxRetries:     maxRetries,
+		initialBackoff: initialBackoff,
+		maxBackoff:     maxBackoff,
+	}
+
 	// Create SPIFFE bundle services
 	// Note: Use context.Background() because this source must live for the entire client lifetime,
 	// not just the initialization phase. It will be properly closed in client.Close().
@@ -208,10 +227,10 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 
 	// Update options
 	o.authClient = client
-	o.x509Src = x509Src
+	o.x509Src = wrappedX509Src // Store wrapped source for cleanup
 	o.bundleSrc = bundleSrc
 	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(
-		grpccredentials.MTLSClientCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeAny()),
+		grpccredentials.MTLSClientCredentials(wrappedX509Src, bundleSrc, tlsconfig.AuthorizeAny()),
 	))
 
 	return nil
@@ -366,6 +385,41 @@ func (o *options) setupTlsAuth(_ context.Context) error {
 // This interface allows us to mock the SPIFFE X509Source for testing.
 type x509SourceGetter interface {
 	GetX509SVID() (*x509svid.SVID, error)
+}
+
+// x509SourceWithRetry wraps an x509svid.Source and adds retry logic to GetX509SVID().
+// This ensures that retry logic is applied not just during setup, but also during
+// TLS handshakes when grpccredentials.MTLSClientCredentials calls GetX509SVID().
+// The wrapper implements both x509svid.Source and io.Closer interfaces.
+type x509SourceWithRetry struct {
+	src            x509svid.Source // The Source interface (workloadapi.X509Source implements this)
+	closer         io.Closer       // The Closer interface for Close()
+	maxRetries     int
+	initialBackoff time.Duration
+	maxBackoff     time.Duration
+}
+
+// GetX509SVID implements x509svid.Source interface with retry logic.
+// This method is called by grpccredentials.MTLSClientCredentials during TLS handshake.
+func (w *x509SourceWithRetry) GetX509SVID() (*x509svid.SVID, error) {
+	authLogger.Debug("x509SourceWithRetry.GetX509SVID() called (likely during TLS handshake)")
+
+	svid, err := getX509SVIDWithRetry(w.src, w.maxRetries, w.initialBackoff, w.maxBackoff)
+
+	if err != nil {
+		authLogger.Debug("x509SourceWithRetry.GetX509SVID() failed", "error", err)
+	} else if svid != nil {
+		authLogger.Debug("x509SourceWithRetry.GetX509SVID() succeeded", "spiffe_id", svid.ID.String(), "has_certificate", svid != nil)
+	} else {
+		authLogger.Debug("x509SourceWithRetry.GetX509SVID() returned nil SVID")
+	}
+
+	return svid, err
+}
+
+// Close implements io.Closer interface by delegating to the wrapped source.
+func (w *x509SourceWithRetry) Close() error {
+	return w.closer.Close()
 }
 
 // getX509SVIDWithRetry attempts to get a valid X509-SVID with retry logic.
