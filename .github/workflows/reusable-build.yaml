@@ -14,6 +14,11 @@ on:
         required: true
         type: string
         description: "Image tag to use."
+      image_name_suffix:
+        required: false
+        type: string
+        description: "Suffix to append to image names (e.g., '-dev'). Defaults to empty."
+        default: ""
       push:
         required: false
         type: boolean
@@ -118,6 +123,7 @@ jobs:
         env:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}
+          IMAGE_NAME_SUFFIX: ${{ inputs.image_name_suffix }}
           DOCKER_BUILD_RECORD_UPLOAD: false
 
       - name: Upload artifacts
@@ -186,6 +192,7 @@ jobs:
         env:
           IMAGE_REPO: ${{ inputs.image_repo }}
           IMAGE_TAG: ${{ inputs.image_tag }}-coverage
+          IMAGE_NAME_SUFFIX: ${{ inputs.image_name_suffix }}
           DOCKER_BUILD_RECORD_UPLOAD: false
 
       - name: Upload coverage artifacts

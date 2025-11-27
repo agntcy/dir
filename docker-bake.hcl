@@ -7,10 +7,11 @@
 variable "IMAGE_REPO" { default = "ghcr.io/agntcy" }
 variable "IMAGE_TAG" { default = "v0.1.0-rc" }
 variable "EXTRA_LDFLAGS" { default = "" }
+variable "IMAGE_NAME_SUFFIX" { default = "" }
 
 function "get_tag" {
   params = [tags, name]
-  result = coalescelist(tags, ["${IMAGE_REPO}/${name}:${IMAGE_TAG}"])
+  result = coalescelist(tags, ["${IMAGE_REPO}/${name}${IMAGE_NAME_SUFFIX}:${IMAGE_TAG}"])
 }
 
 group "default" {

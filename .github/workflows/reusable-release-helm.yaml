@@ -25,6 +25,11 @@ on:
         required: true
         type: string
         description: "Release tag for all components."
+      chart_path:
+        required: false
+        type: string
+        description: "Chart path component (e.g., 'dir' or 'dir-dev'). Defaults to 'dir'."
+        default: "dir"
 
 jobs:
   chart:
@@ -69,5 +74,7 @@ jobs:
       - name: Helm push to GHCR OCI registry
         shell: bash
         run: |
+          CHART_PATH="${{ inputs.chart_path || 'dir' }}/helm-charts"
           echo "🚧 Pushing ${{ steps.build.outputs.package }} to GHCR OCI registry"
-          helm push ${{ steps.build.outputs.package }} oci://${{ inputs.image_repo }}/dir/helm-charts
+          echo "Chart path: ${CHART_PATH}"
+          helm push ${{ steps.build.outputs.package }} oci://${{ inputs.image_repo }}/${CHART_PATH}
