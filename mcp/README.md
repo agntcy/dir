@@ -324,17 +324,17 @@ The following environment variables can be used with both binary and Docker conf
 
 #### OASF Validation Configuration
 
-- `OASF_SCHEMA_URL` - OASF schema URL for API-based validation
+- `OASF_API_VALIDATION_SCHEMA_URL` - OASF schema URL for API-based validation
   - **Default**: `https://schema.oasf.outshift.com`
   - URL of the OASF server to use for validation
   - The MCP server uses API-based validation by default for more comprehensive validation with the latest schema rules
 
-- `DISABLE_API_VALIDATION` - Disable API-based validation
+- `OASF_API_VALIDATION_DISABLE` - Disable API-based validation
   - **Default**: `false` (API validation enabled)
   - When `true`, uses embedded schemas instead of the API validator
-  - When `false`, uses API validation with the configured `OASF_SCHEMA_URL`
+  - When `false`, uses API validation with the configured `OASF_API_VALIDATION_SCHEMA_URL`
 
-- `STRICT_API_VALIDATION` - API validation strictness mode
+- `OASF_API_VALIDATION_STRICT_MODE` - API validation strictness mode
   - **Default**: `true` (strict mode)
   - **Strict mode** (`true`): Fails on unknown attributes, deprecated fields, and schema violations
   - **Lax mode** (`false`): More permissive, only fails on critical errors
@@ -365,7 +365,7 @@ The following environment variables can be used with both binary and Docker conf
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "OASF_SCHEMA_URL": "http://localhost:8080",
+        "OASF_API_VALIDATION_SCHEMA_URL": "http://localhost:8080",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }
@@ -382,7 +382,7 @@ The following environment variables can be used with both binary and Docker conf
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "STRICT_API_VALIDATION": "false",
+        "OASF_API_VALIDATION_STRICT_MODE": "false",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }
@@ -399,7 +399,7 @@ The following environment variables can be used with both binary and Docker conf
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "DISABLE_API_VALIDATION": "true",
+        "OASF_API_VALIDATION_DISABLE": "true",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }

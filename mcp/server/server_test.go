@@ -70,15 +70,15 @@ func TestServe_ValidationConfiguration(t *testing.T) {
 
 			// Set test env vars
 			if tt.disableAPIValidationEnv != "" {
-				t.Setenv("DISABLE_API_VALIDATION", tt.disableAPIValidationEnv)
+				t.Setenv("OASF_API_VALIDATION_DISABLE", tt.disableAPIValidationEnv)
 			}
 
 			if tt.oasfSchemaURLEnv != "" {
-				t.Setenv("OASF_SCHEMA_URL", tt.oasfSchemaURLEnv)
+				t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", tt.oasfSchemaURLEnv)
 			}
 
 			if tt.strictValidationEnv != "" {
-				t.Setenv("STRICT_API_VALIDATION", tt.strictValidationEnv)
+				t.Setenv("OASF_API_VALIDATION_STRICT_MODE", tt.strictValidationEnv)
 			}
 
 			// Create a context that will be cancelled immediately to stop Serve early

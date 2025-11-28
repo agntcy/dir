@@ -23,19 +23,19 @@ func Serve(ctx context.Context) error {
 	// Configure OASF validation
 	// Note: Logging to stderr is intentional - MCP servers communicate over stdin/stdout,
 	// so stderr is used for logging/debugging messages that don't interfere with the protocol.
-	disableAPIValidation := os.Getenv("DISABLE_API_VALIDATION") == "true"
+	disableAPIValidation := os.Getenv("OASF_API_VALIDATION_DISABLE") == "true"
 	if disableAPIValidation {
 		corev1.SetDisableAPIValidation(true)
 		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validation disabled, using embedded schemas\n")
 	} else {
 		// Read schema URL from environment variable (default to public OASF server)
-		schemaURL := os.Getenv("OASF_SCHEMA_URL")
+		schemaURL := os.Getenv("OASF_API_VALIDATION_SCHEMA_URL")
 		if schemaURL == "" {
 			schemaURL = corev1.DefaultSchemaURL
 		}
 
 		// Read strict validation setting (default to strict for safety)
-		strictValidation := os.Getenv("STRICT_API_VALIDATION") != "false"
+		strictValidation := os.Getenv("OASF_API_VALIDATION_STRICT_MODE") != "false"
 
 		corev1.SetSchemaURL(schemaURL)
 		corev1.SetDisableAPIValidation(false)

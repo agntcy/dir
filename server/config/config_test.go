@@ -32,7 +32,7 @@ func TestConfig(t *testing.T) {
 			Name: "Custom config",
 			EnvVars: map[string]string{
 				"DIRECTORY_SERVER_LISTEN_ADDRESS":                       "example.com:8889",
-				"DIRECTORY_SERVER_SCHEMA_URL":                           "https://custom.schema.url",
+				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL":       "https://custom.schema.url",
 				"DIRECTORY_SERVER_STORE_PROVIDER":                       "provider",
 				"DIRECTORY_SERVER_STORE_OCI_LOCAL_DIR":                  "local-dir",
 				"DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS":           "example.com:5001",
@@ -209,14 +209,14 @@ func TestConfig_SchemaURL(t *testing.T) {
 		{
 			name: "custom schema URL",
 			envVars: map[string]string{
-				"DIRECTORY_SERVER_SCHEMA_URL": "https://custom.schema.url",
+				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL": "https://custom.schema.url",
 			},
 			expectedSchemaURL: "https://custom.schema.url",
 		},
 		{
 			name: "empty schema URL (disable API validator)",
 			envVars: map[string]string{
-				"DIRECTORY_SERVER_SCHEMA_URL": "",
+				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL": "",
 			},
 			expectedSchemaURL: "",
 		},
