@@ -189,11 +189,11 @@ func TestDryRunPipeline_Run(t *testing.T) {
 	}
 	transformer := &mockTransformer{}
 
-	// Create dry-run pipeline (no pusher)
+	// Create dry-run pipeline (no pusher, no duplicate checker)
 	config := Config{
 		TransformerWorkers: 2,
 	}
-	p := NewDryRun(fetcher, transformer, config)
+	p := NewDryRun(fetcher, nil, transformer, config)
 
 	// Run pipeline
 	result, err := p.Run(ctx)
@@ -208,6 +208,65 @@ func TestDryRunPipeline_Run(t *testing.T) {
 
 	if result.ImportedCount != 0 {
 		t.Errorf("expected 0 imported records (dry-run), got %d", result.ImportedCount)
+	}
+}
+
+func TestDryRunPipeline_Run_WithDuplicateChecker(t *testing.T) {
+	ctx := context.Background()
+
+	// Create mock stages
+	fetcher := &mockFetcher{
+		items: []interface{}{"item1", "item2", "item3", "item4"},
+	}
+	transformer := &mockTransformer{}
+
+	// Create duplicate checker that marks item2 and item4 as duplicates
+	duplicateChecker := &mockDuplicateChecker{
+		duplicates: map[string]bool{
+			"item2": true,
+			"item4": true,
+		},
+	}
+
+	// Create dry-run pipeline with duplicate checker for accurate preview
+	config := Config{
+		TransformerWorkers: 2,
+	}
+	p := NewDryRun(fetcher, duplicateChecker, transformer, config)
+
+	// Run pipeline
+	result, err := p.Run(ctx)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// Verify results - should show accurate preview with duplicates filtered
+	// Total: 4 items
+	// Skipped: 2 duplicates (item2, item4)
+	// Processed: 2 items (item1, item3)
+	// Imported: 0 (dry-run doesn't actually import)
+	if result.TotalRecords != 4 {
+		t.Errorf("expected 4 total records, got %d", result.TotalRecords)
+	}
+
+	if result.SkippedCount != 2 {
+		t.Errorf("expected 2 skipped records (duplicates), got %d", result.SkippedCount)
+	}
+
+	if result.ImportedCount != 0 {
+		t.Errorf("expected 0 imported records (dry-run), got %d", result.ImportedCount)
+	}
+
+	if result.FailedCount != 0 {
+		t.Errorf("expected 0 failed records, got %d", result.FailedCount)
+	}
+
+	// Verify the math: TotalRecords = SkippedCount + (records that would be processed)
+	// In dry-run: processed records aren't imported, they're just validated
+	expectedTotal := result.SkippedCount + result.ImportedCount + result.FailedCount + 2 // 2 would be processed (item1, item3)
+	if result.TotalRecords != expectedTotal {
+		t.Logf("In dry-run: total=%d, skipped=%d, would process=%d",
+			result.TotalRecords, result.SkippedCount, result.TotalRecords-result.SkippedCount)
 	}
 }
 

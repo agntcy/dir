@@ -172,22 +172,25 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 
 // DryRunPipeline represents a two-stage pipeline for dry-run mode (fetch and transform only).
 type DryRunPipeline struct {
-	fetcher     Fetcher
-	transformer Transformer
-	config      Config
+	fetcher          Fetcher
+	duplicateChecker DuplicateChecker // Optional: provides accurate preview of what would be skipped
+	transformer      Transformer
+	config           Config
 }
 
 // NewDryRun creates a new dry-run pipeline instance that only fetches and transforms.
-func NewDryRun(fetcher Fetcher, transformer Transformer, config Config) *DryRunPipeline {
+// If duplicateChecker is provided, it will filter duplicates for an accurate preview.
+func NewDryRun(fetcher Fetcher, duplicateChecker DuplicateChecker, transformer Transformer, config Config) *DryRunPipeline {
 	// Set defaults
 	if config.TransformerWorkers <= 0 {
 		config.TransformerWorkers = 5
 	}
 
 	return &DryRunPipeline{
-		fetcher:     fetcher,
-		transformer: transformer,
-		config:      config,
+		fetcher:          fetcher,
+		duplicateChecker: duplicateChecker,
+		transformer:      transformer,
+		config:           config,
 	}
 }
 
@@ -198,9 +201,20 @@ func (p *DryRunPipeline) Run(ctx context.Context) (*Result, error) {
 	// Stage 1: Fetch records
 	fetchedCh, fetchErrCh := p.fetcher.Fetch(ctx)
 
-	// Stage 2: Transform records
-	// Note: dry-run mode doesn't have duplicate checking, so all fetched records are transformed
-	transformedCh, transformErrCh := runTransformStage(ctx, p.transformer, p.config.TransformerWorkers, fetchedCh, result)
+	// Stage 2: Filter duplicates (optional - provides accurate preview)
+	var filteredCh <-chan interface{}
+
+	if p.duplicateChecker != nil {
+		// Duplicate checker will filter and track skipped records for accurate preview
+		filteredCh = p.duplicateChecker.FilterDuplicates(ctx, fetchedCh, result)
+	} else {
+		// No duplicate checker - pass through directly
+		filteredCh = fetchedCh
+	}
+
+	// Stage 3: Transform records
+	// Transform stage always tracks all records it processes
+	transformedCh, transformErrCh := runTransformStage(ctx, p.transformer, p.config.TransformerWorkers, filteredCh, result)
 
 	// Drain the transformed channel to prevent blocking
 	go func() {
