@@ -5,13 +5,12 @@ package authn
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/agntcy/dir/server/authn/config"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/dir/utils/spiffe"
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
@@ -95,15 +94,17 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 	// This ensures the server presents a certificate with URI SAN during TLS handshake
 	// Critical: If the server starts without a valid SPIFFE ID, clients will reject the connection
 	const (
-		maxRetries     = 10
-		initialBackoff = 500 * time.Millisecond
-		maxBackoff     = 10 * time.Second
+		maxRetries     = spiffe.DefaultMaxRetries
+		initialBackoff = spiffe.DefaultInitialBackoff
+		maxBackoff     = spiffe.DefaultMaxBackoff
 	)
 
-	svid, svidErr := getX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff)
+	svid, svidErr := spiffe.GetX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff, logger)
 	if svidErr != nil {
 		_ = x509Src.Close()
+
 		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", maxRetries)
+
 		return fmt.Errorf("failed to get valid X509-SVID for server (SPIRE entry may not be synced yet): %w", svidErr)
 	}
 
@@ -113,15 +114,16 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 	// This is critical because grpccredentials.TLSServerCredentials calls GetX509SVID()
 	// during the actual TLS handshake, not just during setup. Without this wrapper,
 	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
-	wrappedX509Src := &x509SourceWithRetry{
-		src:            x509Src,
-		closer:         x509Src,
-		maxRetries:     maxRetries,
-		initialBackoff: initialBackoff,
-		maxBackoff:     maxBackoff,
-	}
+	wrappedX509Src := spiffe.NewX509SourceWithRetry(
+		x509Src,
+		x509Src,
+		logger,
+		maxRetries,
+		initialBackoff,
+		maxBackoff,
+	)
 
-	logger.Debug("Created x509SourceWithRetry wrapper for server (JWT mode)",
+	logger.Debug("Created X509SourceWithRetry wrapper for server (JWT mode)",
 		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
 		"src_type", fmt.Sprintf("%T", x509Src))
 
@@ -166,15 +168,17 @@ func (s *Service) initX509(ctx context.Context) error {
 	// Critical: If the server starts without a valid SPIFFE ID, clients will reject the connection
 	// with "certificate contains no URI SAN" error
 	const (
-		maxRetries     = 10
-		initialBackoff = 500 * time.Millisecond
-		maxBackoff     = 10 * time.Second
+		maxRetries     = spiffe.DefaultMaxRetries
+		initialBackoff = spiffe.DefaultInitialBackoff
+		maxBackoff     = spiffe.DefaultMaxBackoff
 	)
 
-	svid, svidErr := getX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff)
+	svid, svidErr := spiffe.GetX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff, logger)
 	if svidErr != nil {
 		_ = x509Src.Close()
+
 		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", maxRetries)
+
 		return fmt.Errorf("failed to get valid X509-SVID for server (SPIRE entry may not be synced yet): %w", svidErr)
 	}
 
@@ -184,15 +188,16 @@ func (s *Service) initX509(ctx context.Context) error {
 	// This is critical because grpccredentials.MTLSServerCredentials calls GetX509SVID()
 	// during the actual TLS handshake, not just during setup. Without this wrapper,
 	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
-	wrappedX509Src := &x509SourceWithRetry{
-		src:            x509Src,
-		closer:         x509Src,
-		maxRetries:     maxRetries,
-		initialBackoff: initialBackoff,
-		maxBackoff:     maxBackoff,
-	}
+	wrappedX509Src := spiffe.NewX509SourceWithRetry(
+		x509Src,
+		x509Src,
+		logger,
+		maxRetries,
+		initialBackoff,
+		maxBackoff,
+	)
 
-	logger.Debug("Created x509SourceWithRetry wrapper for server",
+	logger.Debug("Created X509SourceWithRetry wrapper for server",
 		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
 		"src_type", fmt.Sprintf("%T", x509Src))
 
@@ -264,115 +269,4 @@ func (s *Service) Stop() error {
 	}
 
 	return s.client.Close()
-}
-
-// x509SourceGetter defines the interface for getting X509-SVIDs.
-type x509SourceGetter interface {
-	GetX509SVID() (*x509svid.SVID, error)
-}
-
-// getX509SVIDWithRetry attempts to get a valid X509-SVID with retry logic.
-// This handles timing issues where the SPIRE entry hasn't synced to the agent yet
-// (common with short-lived workloads or pod restarts).
-// The agent may return a certificate without a URI SAN (SPIFFE ID) if the entry hasn't synced,
-// so we must validate that the certificate actually contains a valid SPIFFE ID.
-//
-// Parameters:
-//   - src: The X509 source to get SVIDs from
-//   - maxRetries: Maximum number of retry attempts
-//   - initialBackoff: Initial backoff duration between retries
-//   - maxBackoff: Maximum backoff duration (exponential backoff is capped at this value)
-func getX509SVIDWithRetry(src x509SourceGetter, maxRetries int, initialBackoff, maxBackoff time.Duration) (*x509svid.SVID, error) {
-	var (
-		svidErr error
-		svid    *x509svid.SVID
-	)
-
-	logger.Debug("Starting X509-SVID retry logic", "max_retries", maxRetries, "initial_backoff", initialBackoff, "max_backoff", maxBackoff)
-
-	backoff := initialBackoff
-
-	for attempt := range maxRetries {
-		logger.Debug("Attempting to get X509-SVID", "attempt", attempt+1)
-		svid, svidErr = src.GetX509SVID()
-		if svidErr == nil && svid != nil {
-			logger.Debug("SVID obtained", "spiffe_id", svid.ID.String(), "is_zero", svid.ID.IsZero())
-			// Validate that the SVID has a valid SPIFFE ID (URI SAN)
-			// The agent may return a certificate without a URI SAN if the entry hasn't synced yet
-			if !svid.ID.IsZero() {
-				// Valid SVID with SPIFFE ID, proceed
-				logger.Info("Successfully obtained valid X509-SVID with SPIFFE ID", "spiffe_id", svid.ID.String(), "attempt", attempt+1)
-				return svid, nil
-			}
-			// Certificate exists but lacks SPIFFE ID - treat as error and retry
-			svidErr = errors.New("certificate contains no URI SAN (SPIFFE ID)")
-			logger.Warn("SVID obtained but lacks URI SAN, retrying", "attempt", attempt+1, "error", svidErr)
-		} else if svidErr != nil {
-			logger.Warn("Failed to get X509-SVID", "attempt", attempt+1, "error", svidErr)
-		} else {
-			logger.Warn("GetX509SVID returned nil SVID with no error, retrying", "attempt", attempt+1)
-			svidErr = errors.New("nil SVID returned") // Force retry
-		}
-
-		if attempt < maxRetries-1 {
-			logger.Debug("Backing off before next retry", "duration", backoff, "attempt", attempt+1)
-			// Exponential backoff: initialBackoff, initialBackoff*2, initialBackoff*4, ... (capped at maxBackoff)
-			time.Sleep(backoff)
-
-			backoff *= 2
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
-		}
-	}
-
-	if svidErr == nil {
-		svidErr = errors.New("certificate contains no URI SAN (SPIFFE ID)")
-	}
-
-	logger.Error("Failed to get valid X509-SVID after retries", "max_retries", maxRetries, "error", svidErr, "final_svid", svid)
-	return nil, fmt.Errorf("failed to get valid X509-SVID after %d retries: %w", maxRetries, svidErr)
-}
-
-// x509SourceWithRetry wraps an x509svid.Source and adds retry logic to GetX509SVID().
-// This ensures that retry logic is applied not just during setup, but also during
-// TLS handshakes when grpccredentials.MTLSServerCredentials or TLSServerCredentials
-// calls GetX509SVID().
-// The wrapper implements both x509svid.Source and io.Closer interfaces.
-type x509SourceWithRetry struct {
-	src            x509svid.Source // The Source interface (workloadapi.X509Source implements this)
-	closer         io.Closer       // The Closer interface for Close()
-	maxRetries     int
-	initialBackoff time.Duration
-	maxBackoff     time.Duration
-}
-
-// GetX509SVID implements x509svid.Source interface with retry logic.
-// This method is called by grpccredentials.MTLSServerCredentials/TLSServerCredentials during TLS handshake.
-func (w *x509SourceWithRetry) GetX509SVID() (*x509svid.SVID, error) {
-	logger.Info("x509SourceWithRetry.GetX509SVID() called (likely during TLS handshake)",
-		"max_retries", w.maxRetries,
-		"initial_backoff", w.initialBackoff,
-		"max_backoff", w.maxBackoff)
-
-	svid, err := getX509SVIDWithRetry(w.src, w.maxRetries, w.initialBackoff, w.maxBackoff)
-
-	if err != nil {
-		logger.Error("x509SourceWithRetry.GetX509SVID() failed after retries", "error", err, "max_retries", w.maxRetries)
-	} else if svid != nil {
-		if svid.ID.IsZero() {
-			logger.Warn("x509SourceWithRetry.GetX509SVID() returned SVID with zero ID (no URI SAN)", "has_certificate", svid != nil)
-		} else {
-			logger.Info("x509SourceWithRetry.GetX509SVID() succeeded", "spiffe_id", svid.ID.String(), "has_certificate", svid != nil)
-		}
-	} else {
-		logger.Warn("x509SourceWithRetry.GetX509SVID() returned nil SVID")
-	}
-
-	return svid, err
-}
-
-// Close implements io.Closer interface by delegating to the wrapped source.
-func (w *x509SourceWithRetry) Close() error {
-	return w.closer.Close()
 }
