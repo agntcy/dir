@@ -6,10 +6,12 @@ package sqlite
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"testing"
 
 	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/glebarez/sqlite"
@@ -267,7 +269,7 @@ func TestGetRecords_NoOptions(t *testing.T) {
 	db := setupTestDB(t)
 	createTestData(t, db)
 
-	records, err := db.GetRecords()
+	records, err := db.GetRecords(nil, 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 3)
 }
@@ -278,23 +280,23 @@ func TestGetRecords_SingleOptions(t *testing.T) {
 	createTestData(t, db)
 
 	// Test limit.
-	records, err := db.GetRecords(types.WithLimit(2))
+	records, err := db.GetRecords(nil, 2, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 2)
 
 	// Test offset.
-	records, err = db.GetRecords(types.WithOffset(1))
+	records, err = db.GetRecords(nil, 0, 1)
 	require.NoError(t, err)
 	assert.Len(t, records, 2)
 
 	// Test name filter.
-	records, err = db.GetRecords(types.WithName("agent1"))
+	records, err = db.GetRecords(nameExpr("agent1"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
 
 	// Test version filter.
-	records, err = db.GetRecords(types.WithVersion("1.0.0"))
+	records, err = db.GetRecords(versionExpr("1.0.0"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 2)
 
@@ -303,29 +305,29 @@ func TestGetRecords_SingleOptions(t *testing.T) {
 	}
 
 	// Test skill names filter.
-	records, err = db.GetRecords(types.WithSkillNames("skill3"))
+	records, err = db.GetRecords(skillNameExpr("skill3"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
 
 	// Test locator types filter.
-	records, err = db.GetRecords(types.WithLocatorTypes("grpc"))
+	records, err = db.GetRecords(locatorExpr("grpc"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 2)
 
 	// Test module names filter.
-	records, err = db.GetRecords(types.WithModuleNames("module1"))
+	records, err = db.GetRecords(moduleExpr("module1"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
 
 	// Test domain names filter.
-	records, err = db.GetRecords(types.WithDomainNames("education/educational_technology"))
+	records, err = db.GetRecords(domainNameExpr("education/educational_technology"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 3) // agent1, agent2, and test-agent have education domain
 
 	// Test domain names filter for healthcare.
-	records, err = db.GetRecords(types.WithDomainNames("healthcare/medical_technology"))
+	records, err = db.GetRecords(domainNameExpr("healthcare/medical_technology"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
@@ -337,85 +339,85 @@ func TestGetRecords_CombinedOptions(t *testing.T) {
 	createTestData(t, db)
 
 	// Test pagination combination.
-	records, err := db.GetRecords(types.WithLimit(1), types.WithOffset(1))
+	records, err := db.GetRecords(nil, 1, 1)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 
 	// Test name + version filter.
-	records, err = db.GetRecords(
-		types.WithName("*agent*"),
-		types.WithVersion("1.0.0"),
-	)
+	records, err = db.GetRecords(andExpr(
+		nameExpr("*agent*"),
+		versionExpr("1.0.0"),
+	), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 2)
 
 	// Test version + locator type.
-	records, err = db.GetRecords(
-		types.WithVersion("1.0.0"),
-		types.WithLocatorTypes("grpc"),
-	)
+	records, err = db.GetRecords(andExpr(
+		versionExpr("1.0.0"),
+		locatorExpr("grpc"),
+	), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 2)
 
 	// Test complex combination.
-	records, err = db.GetRecords(
-		types.WithName("*agent*"),
-		types.WithVersion("1.0.0"),
-		types.WithSkillNames("skill1"),
-	)
+	records, err = db.GetRecords(andExpr(
+		nameExpr("*agent*"),
+		versionExpr("1.0.0"),
+		skillNameExpr("skill1"),
+	), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
 
 	// Test combination with no matches.
-	records, err = db.GetRecords(
-		types.WithVersion("1.0.0"),
-		types.WithModuleNames("module2"),
-	)
+	records, err = db.GetRecords(andExpr(
+		versionExpr("1.0.0"),
+		moduleExpr("module2"),
+	), 0, 0)
 	require.NoError(t, err)
 	assert.Empty(t, records) // module2 is on agent2 which has version 2.0.0, not 1.0.0
 
 	// Test domain + version filter.
-	records, err = db.GetRecords(
-		types.WithDomainNames("*education*"),
-		types.WithVersion("1.0.0"),
-	)
+	records, err = db.GetRecords(andExpr(
+		domainNameExpr("*education*"),
+		versionExpr("1.0.0"),
+	), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 2) // agent1 and test-agent have education domain and version 1.0.0 (agent2 has education but version 2.0.0)
 
 	// Test domain + skill filter.
-	records, err = db.GetRecords(
-		types.WithDomainIDs(604),
-		types.WithSkillNames("skill1"),
-	)
+	records, err = db.GetRecords(andExpr(
+		domainIDExpr(604),
+		skillNameExpr("skill1"),
+	), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1) // Only agent1 has both education domain and skill1
 	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
 
 	// Test domain ID filter for education domain (604).
-	records, err = db.GetRecords(types.WithDomainIDs(604))
+	records, err = db.GetRecords(domainIDExpr(604), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 3) // agent1, agent2, and test-agent have domain 604
 
 	// Test domain ID filter for healthcare domain (901).
-	records, err = db.GetRecords(types.WithDomainIDs(901))
+	records, err = db.GetRecords(domainIDExpr(901), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
 
 	// Test domain name with wildcard pattern matching education domains.
-	records, err = db.GetRecords(types.WithDomainNames("*education*"))
+	records, err = db.GetRecords(domainNameExpr("*education*"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 3) // agent1, agent2, and test-agent have education domains
 
 	// Test domain name with wildcard pattern matching healthcare domains.
-	records, err = db.GetRecords(types.WithDomainNames("*healthcare*"))
+	records, err = db.GetRecords(domainNameExpr("*healthcare*"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
 
 	// Test domain name with wildcard pattern for technology suffix.
-	records, err = db.GetRecords(types.WithDomainNames("*technology"))
+	records, err = db.GetRecords(domainNameExpr("*technology"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 3) // all three records have domains ending with _technology
 }
@@ -426,7 +428,7 @@ func TestGetRecords_SkillIdOption(t *testing.T) {
 	createTestData(t, db)
 
 	// Test with skill IDs filter.
-	records, err := db.GetRecords(types.WithSkillIDs(101))
+	records, err := db.GetRecords(skillIDExpr(101), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent1", mustGetRecordData(t, records[0]).GetName())
@@ -437,7 +439,7 @@ func TestGetRecords_LocatorUrlOption(t *testing.T) {
 	db := setupTestDB(t)
 	createTestData(t, db)
 
-	records, err := db.GetRecords(types.WithLocatorURLs("http://localhost:8081"))
+	records, err := db.GetRecords(locatorExpr("http://localhost:8081"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 	assert.Equal(t, "agent2", mustGetRecordData(t, records[0]).GetName())
@@ -448,7 +450,7 @@ func TestGetRecords_PreloadRelations(t *testing.T) {
 	db := setupTestDB(t)
 	createTestData(t, db)
 
-	records, err := db.GetRecords(types.WithName("agent1"))
+	records, err := db.GetRecords(nameExpr("agent1"), 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 1)
 
@@ -473,35 +475,34 @@ func TestGetRecords_ZeroOptions(t *testing.T) {
 	db := setupTestDB(t)
 	createTestData(t, db)
 
-	records, err := db.GetRecords()
+	records, err := db.GetRecords(nil, 0, 0)
 	require.NoError(t, err)
 	assert.Len(t, records, 3)
 }
 
-// TestGetRecords_NilOption ensures the function handles nil options gracefully.
+// TestGetRecords_NilOption ensures the function handles nil queries gracefully.
 func TestGetRecords_NilOption(t *testing.T) {
 	db := setupTestDB(t)
 	createTestData(t, db)
 
-	var nilOption types.FilterOption
-
-	records, err := db.GetRecords(nilOption)
-	require.Error(t, err)
-	assert.Nil(t, records)
+	// Nil queries should return all records
+	records, err := db.GetRecords(nil, 0, 0)
+	require.NoError(t, err)
+	assert.Len(t, records, 3)
 }
 
-// TestGetRecordRefs_CompareWithGetRecords tests that GetRecordRefs returns the same CIDs as GetRecords.
+// TestGetRecordRefs_CompareWithGetRecords tests that GetRecordCIDs returns the same CIDs as GetRecords.
 func TestGetRecordRefs_CompareWithGetRecords(t *testing.T) {
 	db := setupTestDB(t)
 	createTestData(t, db)
 
 	// Get records using the original method
-	records, err := db.GetRecords()
+	records, err := db.GetRecords(nil, 0, 0)
 	require.NoError(t, err)
 	require.Len(t, records, 3)
 
 	// Get record refs using the new method
-	recordRefs, err := db.GetRecordCIDs()
+	recordRefs, err := db.GetRecordCIDs(nil, 0, 0)
 	require.NoError(t, err)
 	require.Len(t, recordRefs, 3)
 
@@ -519,12 +520,12 @@ func TestGetRecordRefs_CompareWithGetRecords(t *testing.T) {
 
 	for _, ref := range recordRefs {
 		cid := ref
-		require.NotEmpty(t, cid, "GetRecordRefs should return non-empty CIDs")
+		require.NotEmpty(t, cid, "GetRecordCIDs should return non-empty CIDs")
 
 		actualCIDs[cid] = true
 	}
 
-	assert.Equal(t, expectedCIDs, actualCIDs, "GetRecordRefs should return the same CIDs as GetRecords")
+	assert.Equal(t, expectedCIDs, actualCIDs, "GetRecordCIDs should return the same CIDs as GetRecords")
 }
 
 // TestAddRecord_VerifyRelatedDataInsertion tests that AddRecord properly inserts all related data.
@@ -557,36 +558,36 @@ func TestAddRecord_VerifyRelatedDataInsertion(t *testing.T) {
 	require.NoError(t, err, "AddRecord should succeed")
 
 	// Verify the record can be found by search
-	cids, err := db.GetRecordCIDs(types.WithName("test-agent"))
+	cids, err := db.GetRecordCIDs(nameExpr("test-agent"), 0, 0)
 	require.NoError(t, err, "Search should succeed")
 	require.Len(t, cids, 1, "Should find exactly 1 record")
 	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID")
 
 	// Verify skill-based search works
-	cids, err = db.GetRecordCIDs(types.WithSkillNames("Natural Language Processing/Text Completion"))
+	cids, err = db.GetRecordCIDs(skillNameExpr("Natural Language Processing/Text Completion"), 0, 0)
 	require.NoError(t, err, "Skill search should succeed")
 	require.Len(t, cids, 1, "Should find record by skill name")
 	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by skill")
 
 	// Verify locator-based search works
-	cids, err = db.GetRecordCIDs(types.WithLocatorTypes("docker-image"))
+	cids, err = db.GetRecordCIDs(locatorExpr("docker-image"), 0, 0)
 	require.NoError(t, err, "Locator search should succeed")
 	require.Len(t, cids, 1, "Should find record by locator type")
 	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by locator")
 
 	// Verify module-based search works
-	cids, err = db.GetRecordCIDs(types.WithModuleNames("test-module"))
+	cids, err = db.GetRecordCIDs(moduleExpr("test-module"), 0, 0)
 	require.NoError(t, err, "Module search should succeed")
 	require.Len(t, cids, 1, "Should find record by module name")
 	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by module")
 
 	// Verify domain-based search works
-	cids, err = db.GetRecordCIDs(types.WithDomainIDs(604))
+	cids, err = db.GetRecordCIDs(domainIDExpr(604), 0, 0)
 	require.NoError(t, err, "Domain ID search should succeed")
 	require.Len(t, cids, 1, "Should find record by domain ID")
 	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by domain ID")
 
-	cids, err = db.GetRecordCIDs(types.WithDomainNames("education/educational_technology"))
+	cids, err = db.GetRecordCIDs(domainNameExpr("education/educational_technology"), 0, 0)
 	require.NoError(t, err, "Domain name search should succeed")
 	require.Len(t, cids, 1, "Should find record by domain name")
 	assert.Equal(t, "test-cid-123", cids[0], "Should find the correct CID by domain name")
@@ -623,7 +624,7 @@ func TestRemoveRecord_VerifyRelatedDataDeletion(t *testing.T) {
 	require.NoError(t, err, "AddRecord should succeed")
 
 	// Verify the record exists
-	cids, err := db.GetRecordCIDs(types.WithName("delete-test-agent"))
+	cids, err := db.GetRecordCIDs(nameExpr("delete-test-agent"), 0, 0)
 	require.NoError(t, err, "Search should succeed")
 	require.Len(t, cids, 1, "Should find the record before deletion")
 
@@ -632,27 +633,27 @@ func TestRemoveRecord_VerifyRelatedDataDeletion(t *testing.T) {
 	require.NoError(t, err, "RemoveRecord should succeed")
 
 	// Verify the record is gone from all searches
-	cids, err = db.GetRecordCIDs(types.WithName("delete-test-agent"))
+	cids, err = db.GetRecordCIDs(nameExpr("delete-test-agent"), 0, 0)
 	require.NoError(t, err, "Search should succeed even after deletion")
 	assert.Empty(t, cids, "Should not find record by name after deletion")
 
-	cids, err = db.GetRecordCIDs(types.WithSkillNames("Test Skill"))
+	cids, err = db.GetRecordCIDs(skillNameExpr("Test Skill"), 0, 0)
 	require.NoError(t, err, "Skill search should succeed even after deletion")
 	assert.Empty(t, cids, "Should not find record by skill after deletion")
 
-	cids, err = db.GetRecordCIDs(types.WithLocatorTypes("grpc"))
+	cids, err = db.GetRecordCIDs(locatorExpr("grpc"), 0, 0)
 	require.NoError(t, err, "Locator search should succeed even after deletion")
 	assert.Empty(t, cids, "Should not find record by locator after deletion")
 
-	cids, err = db.GetRecordCIDs(types.WithModuleNames("delete-module"))
+	cids, err = db.GetRecordCIDs(moduleExpr("delete-module"), 0, 0)
 	require.NoError(t, err, "Module search should succeed even after deletion")
 	assert.Empty(t, cids, "Should not find record by module after deletion")
 
-	cids, err = db.GetRecordCIDs(types.WithDomainIDs(901))
+	cids, err = db.GetRecordCIDs(domainIDExpr(901), 0, 0)
 	require.NoError(t, err, "Domain ID search should succeed even after deletion")
 	assert.Empty(t, cids, "Should not find record by domain ID after deletion")
 
-	cids, err = db.GetRecordCIDs(types.WithDomainNames("healthcare/medical_technology"))
+	cids, err = db.GetRecordCIDs(domainNameExpr("healthcare/medical_technology"), 0, 0)
 	require.NoError(t, err, "Domain name search should succeed even after deletion")
 	assert.Empty(t, cids, "Should not find record by domain name after deletion")
 
@@ -687,16 +688,16 @@ func TestE2EScenario_AddSearchDeleteSearch(t *testing.T) {
 	t.Logf("✅ Step 1: Agent pushed successfully")
 
 	// Step 2: Search for agent with exact E2E criteria (should find it)
-	searchFilters := []types.FilterOption{
-		types.WithName("directory.agntcy.org/cisco/marketing-strategy"),
-		types.WithVersion("v1.0.0"),
-		types.WithSkillIDs(10201),
-		types.WithSkillNames("Natural Language Processing/Text Completion"),
-		types.WithLocatorTypes("docker-image"),
-		types.WithModuleNames("schema.oasf.agntcy.org/features/runtime/framework"),
-	}
+	searchExpr := andExpr(
+		nameExpr("directory.agntcy.org/cisco/marketing-strategy"),
+		versionExpr("v1.0.0"),
+		skillIDExpr(10201),
+		skillNameExpr("Natural Language Processing/Text Completion"),
+		locatorExpr("docker-image"),
+		moduleExpr("schema.oasf.agntcy.org/features/runtime/framework"),
+	)
 
-	cids, err := db.GetRecordCIDs(searchFilters...)
+	cids, err := db.GetRecordCIDs(searchExpr, 0, 0)
 	require.NoError(t, err, "Search should succeed")
 	require.Len(t, cids, 1, "Should find exactly 1 record")
 	assert.Equal(t, "test-e2e-cid", cids[0], "Should find the correct CID")
@@ -708,26 +709,26 @@ func TestE2EScenario_AddSearchDeleteSearch(t *testing.T) {
 	t.Logf("✅ Step 3: Agent deleted successfully")
 
 	// Step 4: Search again (should NOT find it)
-	cids, err = db.GetRecordCIDs(searchFilters...)
+	cids, err = db.GetRecordCIDs(searchExpr, 0, 0)
 	require.NoError(t, err, "Search should succeed even after deletion")
 	assert.Empty(t, cids, "Should NOT find any records after deletion")
 	t.Logf("✅ Step 4: Search correctly returns empty after deletion")
 
 	// Step 5: Verify individual search criteria also return empty
 	individualTests := []struct {
-		name   string
-		filter types.FilterOption
+		name string
+		expr *types.QueryExpression
 	}{
-		{"name", types.WithName("directory.agntcy.org/cisco/marketing-strategy")},
-		{"version", types.WithVersion("v1.0.0")},
-		{"skill-id", types.WithSkillIDs(10201)},
-		{"skill-name", types.WithSkillNames("Natural Language Processing/Text Completion")},
-		{"locator", types.WithLocatorTypes("docker-image")},
-		{"module", types.WithModuleNames("schema.oasf.agntcy.org/features/runtime/framework")},
+		{"name", nameExpr("directory.agntcy.org/cisco/marketing-strategy")},
+		{"version", versionExpr("v1.0.0")},
+		{"skill-id", skillIDExpr(10201)},
+		{"skill-name", skillNameExpr("Natural Language Processing/Text Completion")},
+		{"locator", locatorExpr("docker-image")},
+		{"module", moduleExpr("schema.oasf.agntcy.org/features/runtime/framework")},
 	}
 
 	for _, test := range individualTests {
-		cids, err := db.GetRecordCIDs(test.filter)
+		cids, err := db.GetRecordCIDs(test.expr, 0, 0)
 		require.NoError(t, err, "Individual search should succeed")
 		assert.Empty(t, cids, "Should not find record by %s after deletion", test.name)
 	}
@@ -762,7 +763,7 @@ func TestDuplicateAddRecord_VerifyIdempotency(t *testing.T) {
 	require.NoError(t, err, "First AddRecord should succeed")
 
 	// Verify it can be found
-	cids, err := db.GetRecordCIDs(types.WithName("duplicate-agent"))
+	cids, err := db.GetRecordCIDs(nameExpr("duplicate-agent"), 0, 0)
 	require.NoError(t, err, "Search should succeed")
 	require.Len(t, cids, 1, "Should find exactly 1 record after first add")
 
@@ -771,13 +772,13 @@ func TestDuplicateAddRecord_VerifyIdempotency(t *testing.T) {
 	require.NoError(t, err, "Second AddRecord should also succeed (idempotent)")
 
 	// Verify it can still be found and there's only one
-	cids, err = db.GetRecordCIDs(types.WithName("duplicate-agent"))
+	cids, err = db.GetRecordCIDs(nameExpr("duplicate-agent"), 0, 0)
 	require.NoError(t, err, "Search should succeed after duplicate add")
 	require.Len(t, cids, 1, "Should still find exactly 1 record after duplicate add")
 	assert.Equal(t, "duplicate-cid-789", cids[0], "Should find the correct CID")
 
 	// Verify search by skills still works
-	cids, err = db.GetRecordCIDs(types.WithSkillNames("Duplicate Skill"))
+	cids, err = db.GetRecordCIDs(skillNameExpr("Duplicate Skill"), 0, 0)
 	require.NoError(t, err, "Skill search should succeed after duplicate add")
 	require.Len(t, cids, 1, "Should find exactly 1 record by skill after duplicate add")
 
@@ -859,12 +860,12 @@ func TestAllOASFVersions_SkillHandling(t *testing.T) {
 			require.NoError(t, err, "AddRecord should succeed for %s", tc.schemaVersion)
 
 			// Search by skill name
-			cids, err := db.GetRecordCIDs(types.WithSkillNames(tc.expectedSkill))
+			cids, err := db.GetRecordCIDs(skillNameExpr(tc.expectedSkill), 0, 0)
 			require.NoError(t, err, "Skill search should succeed for %s", tc.schemaVersion)
 			require.Len(t, cids, 1, "Should find record by skill name for %s", tc.schemaVersion)
 
 			// Search by skill ID
-			cids, err = db.GetRecordCIDs(types.WithSkillIDs(tc.expectedSkillID))
+			cids, err = db.GetRecordCIDs(skillIDExpr(tc.expectedSkillID), 0, 0)
 			require.NoError(t, err, "Skill ID search should succeed for %s", tc.schemaVersion)
 			require.Len(t, cids, 1, "Should find record by skill ID for %s", tc.schemaVersion)
 
@@ -996,16 +997,107 @@ func TestSkillSearchCompatibility_AcrossVersions(t *testing.T) {
 	}
 
 	// Search by skill name - should find V1 and V2 agents (both use category/class format)
-	cids, err := db.GetRecordCIDs(types.WithSkillNames("Text Processing/Summarization"))
+	cids, err := db.GetRecordCIDs(skillNameExpr("Text Processing/Summarization"), 0, 0)
 	require.NoError(t, err, "Should search by combined skill name")
 	assert.Len(t, cids, 2, "Should find all 3 agents with the same logical skill")
 
 	// Search by skill ID - should find all agents (same ID across versions)
-	cids, err = db.GetRecordCIDs(types.WithSkillIDs(12345))
+	cids, err = db.GetRecordCIDs(skillIDExpr(12345), 0, 0)
 	require.NoError(t, err, "Should search by skill ID")
 	assert.Len(t, cids, 2, "Should find all 3 agents with the same skill ID")
 
 	t.Logf("✅ Cross-version skill search compatibility verified")
 	t.Logf("   Added CIDs: %v", addedCIDs)
 	t.Logf("   Found by name: %d agents", len(cids))
+}
+
+// Test helper functions to build query expressions
+
+// Helper to build a name expression.
+func nameExpr(value string) *types.QueryExpression {
+	return &types.QueryExpression{
+		Query: &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME,
+			Value: value,
+		},
+	}
+}
+
+// Helper to build a version expression.
+func versionExpr(value string) *types.QueryExpression {
+	return &types.QueryExpression{
+		Query: &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+			Value: value,
+		},
+	}
+}
+
+// Helper to build a skill ID expression.
+func skillIDExpr(id uint64) *types.QueryExpression {
+	return &types.QueryExpression{
+		Query: &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID,
+			Value: strconv.FormatUint(id, 10),
+		},
+	}
+}
+
+// Helper to build a skill name expression.
+func skillNameExpr(name string) *types.QueryExpression {
+	return &types.QueryExpression{
+		Query: &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+			Value: name,
+		},
+	}
+}
+
+// Helper to build a locator expression.
+func locatorExpr(value string) *types.QueryExpression {
+	return &types.QueryExpression{
+		Query: &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
+			Value: value,
+		},
+	}
+}
+
+// Helper to build a module expression.
+func moduleExpr(name string) *types.QueryExpression {
+	return &types.QueryExpression{
+		Query: &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+			Value: name,
+		},
+	}
+}
+
+// Helper to build a domain ID expression.
+func domainIDExpr(id uint64) *types.QueryExpression {
+	return &types.QueryExpression{
+		Query: &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_ID,
+			Value: strconv.FormatUint(id, 10),
+		},
+	}
+}
+
+// Helper to build a domain name expression.
+func domainNameExpr(name string) *types.QueryExpression {
+	return &types.QueryExpression{
+		Query: &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+			Value: name,
+		},
+	}
+}
+
+// Helper to AND multiple expressions together.
+func andExpr(exprs ...*types.QueryExpression) *types.QueryExpression {
+	return &types.QueryExpression{
+		And: &types.AndExpression{
+			Expressions: exprs,
+		},
+	}
 }

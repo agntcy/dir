@@ -6,8 +6,10 @@ package sqlite
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	searchv1 "github.com/agntcy/dir/api/search/v1"
 	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"gorm.io/gorm"
@@ -166,34 +168,23 @@ func (d *DB) AddRecord(record types.Record) error {
 	return nil
 }
 
-// GetRecords retrieves records based on the provided options.
-func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
-	// Create default configuration.
-	cfg := &types.RecordFilters{}
-
-	// Apply all options.
-	for _, opt := range opts {
-		if opt == nil {
-			return nil, errors.New("nil option provided")
-		}
-
-		opt(cfg)
-	}
-
+// GetRecords retrieves records with full details based on query expression.
+func (d *DB) GetRecords(expr *types.QueryExpression, limit, offset int) ([]types.Record, error) {
 	// Start with the base query for records.
 	query := d.gormDB.Model(&Record{}).Distinct()
 
 	// Apply pagination.
-	if cfg.Limit > 0 {
-		query = query.Limit(cfg.Limit)
+	if limit > 0 {
+		query = query.Limit(limit)
 	}
 
-	if cfg.Offset > 0 {
-		query = query.Offset(cfg.Offset)
+	if offset > 0 {
+		query = query.Offset(offset)
 	}
 
-	// Apply all filters.
-	query = d.handleFilterOptions(query, cfg)
+	// Apply expression-based filters
+	joined := &joinedTables{}
+	query = d.buildExpressionQuery(query, expr, joined)
 
 	// Execute the query to get records.
 	var dbRecords []Record
@@ -210,35 +201,23 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 	return result, nil
 }
 
-// GetRecordCIDs retrieves only record CIDs based on the provided options.
-// This is optimized for cases where only CIDs are needed, avoiding expensive joins and preloads.
-func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
-	// Create default configuration.
-	cfg := &types.RecordFilters{}
-
-	// Apply all options.
-	for _, opt := range opts {
-		if opt == nil {
-			return nil, errors.New("nil option provided")
-		}
-
-		opt(cfg)
-	}
-
+// GetRecordCIDs retrieves record CIDs based on query expression.
+func (d *DB) GetRecordCIDs(expr *types.QueryExpression, limit, offset int) ([]string, error) {
 	// Start with the base query for records - only select CID for efficiency.
 	query := d.gormDB.Model(&Record{}).Select("records.record_cid").Distinct()
 
 	// Apply pagination.
-	if cfg.Limit > 0 {
-		query = query.Limit(cfg.Limit)
+	if limit > 0 {
+		query = query.Limit(limit)
 	}
 
-	if cfg.Offset > 0 {
-		query = query.Offset(cfg.Offset)
+	if offset > 0 {
+		query = query.Offset(offset)
 	}
 
-	// Apply all filters.
-	query = d.handleFilterOptions(query, cfg)
+	// Apply expression-based filters
+	joined := &joinedTables{}
+	query = d.buildExpressionQuery(query, expr, joined)
 
 	// Execute the query to get only CIDs (no preloading needed).
 	var cids []string
@@ -271,82 +250,335 @@ func (d *DB) RemoveRecord(cid string) error {
 	return nil
 }
 
-// handleFilterOptions applies the provided filters to the query.
+// joinedTables tracks which tables have been joined to avoid duplicate joins.
+type joinedTables struct {
+	skills   bool
+	locators bool
+	modules  bool
+	domains  bool
+}
+
+// buildExpressionQuery recursively builds SQL WHERE clauses from an expression tree.
 //
-//nolint:gocognit,cyclop,nestif
-func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
-	// Apply record-level filters with wildcard support.
-	if cfg.Name != "" {
-		condition, arg := utils.BuildSingleWildcardCondition("records.name", cfg.Name)
-		query = query.Where(condition, arg)
+//nolint:gocognit,cyclop
+func (d *DB) buildExpressionQuery(query *gorm.DB, expr *types.QueryExpression, joined *joinedTables) *gorm.DB {
+	if expr == nil {
+		return query
 	}
 
-	if cfg.Version != "" {
-		condition, arg := utils.BuildSingleWildcardCondition("records.version", cfg.Version)
-		query = query.Where(condition, arg)
+	// Check which field is set (only one should be non-nil)
+	if expr.Query != nil {
+		// Leaf node - process single query
+		return d.buildSingleQuery(query, expr.Query, joined)
 	}
 
-	// Handle skill filters with wildcard support.
-	if len(cfg.SkillIDs) > 0 || len(cfg.SkillNames) > 0 {
+	if expr.And != nil {
+		// AND expression - all sub-expressions must match
+		return d.buildAndExpression(query, expr.And, joined)
+	}
+
+	if expr.Or != nil {
+		// OR expression - at least one sub-expression must match
+		return d.buildOrExpression(query, expr.Or, joined)
+	}
+
+	if expr.Not != nil {
+		// NOT expression - negate the sub-expression
+		return d.buildNotExpression(query, expr.Not, joined)
+	}
+
+	logger.Warn("Empty expression - no fields set")
+
+	return query
+}
+
+// buildSingleQuery processes a single RecordQuery and applies it to the GORM query.
+//
+//nolint:gocognit,cyclop
+func (d *DB) buildSingleQuery(query *gorm.DB, q *searchv1.RecordQuery, joined *joinedTables) *gorm.DB {
+	switch q.GetType() {
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED:
+		logger.Warn("Unspecified query type", "query", q)
+
+		return query
+
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME:
+		condition, arg := utils.BuildSingleWildcardCondition("records.name", q.GetValue())
+
+		return query.Where(condition, arg)
+
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION:
+		condition, arg := utils.BuildSingleWildcardCondition("records.version", q.GetValue())
+
+		return query.Where(condition, arg)
+
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID:
+		if !joined.skills {
+			query = query.Joins("JOIN skills ON skills.record_cid = records.record_cid")
+			joined.skills = true
+		}
+
+		// Parse skill ID
+		var skillID uint64
+		if _, err := fmt.Sscanf(q.GetValue(), "%d", &skillID); err != nil {
+			logger.Warn("Failed to parse skill ID", "value", q.GetValue(), "error", err)
+
+			return query
+		}
+
+		return query.Where("skills.skill_id = ?", skillID)
+
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME:
+		if !joined.skills {
+			query = query.Joins("JOIN skills ON skills.record_cid = records.record_cid")
+			joined.skills = true
+		}
+
+		condition, arg := utils.BuildSingleWildcardCondition("skills.name", q.GetValue())
+
+		return query.Where(condition, arg)
+
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR:
+		if !joined.locators {
+			query = query.Joins("JOIN locators ON locators.record_cid = records.record_cid")
+			joined.locators = true
+		}
+		// Parse locator (type:url format)
+		return d.buildLocatorQuery(query, q.GetValue())
+
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE:
+		if !joined.modules {
+			query = query.Joins("JOIN modules ON modules.record_cid = records.record_cid")
+			joined.modules = true
+		}
+
+		condition, arg := utils.BuildSingleWildcardCondition("modules.name", q.GetValue())
+
+		return query.Where(condition, arg)
+
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_ID:
+		if !joined.domains {
+			query = query.Joins("JOIN domains ON domains.record_cid = records.record_cid")
+			joined.domains = true
+		}
+
+		// Parse domain ID
+		var domainID uint64
+		if _, err := fmt.Sscanf(q.GetValue(), "%d", &domainID); err != nil {
+			logger.Warn("Failed to parse domain ID", "value", q.GetValue(), "error", err)
+
+			return query
+		}
+
+		return query.Where("domains.domain_id = ?", domainID)
+
+	case searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME:
+		if !joined.domains {
+			query = query.Joins("JOIN domains ON domains.record_cid = records.record_cid")
+			joined.domains = true
+		}
+
+		condition, arg := utils.BuildSingleWildcardCondition("domains.name", q.GetValue())
+
+		return query.Where(condition, arg)
+
+	default:
+		logger.Warn("Unknown query type", "type", q.GetType())
+
+		return query
+	}
+}
+
+// buildLocatorQuery handles locator queries with type:url format.
+func (d *DB) buildLocatorQuery(query *gorm.DB, value string) *gorm.DB {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return query
+	}
+
+	// Split on first colon to separate type from URL
+	l := strings.SplitN(value, ":", 2) //nolint:mnd
+
+	// Case 1: Single part (no colon at all)
+	if len(l) == 1 {
+		// If starts with *, treat as URL pattern
+		// Example: "*marketing-strategy"
+		if strings.HasPrefix(l[0], "*") {
+			condition, arg := utils.BuildSingleWildcardCondition("locators.url", l[0])
+
+			return query.Where(condition, arg)
+		}
+
+		// Otherwise treat as type
+		// Example: "docker_image"
+		if strings.TrimSpace(l[0]) != "" {
+			condition, arg := utils.BuildSingleWildcardCondition("locators.type", l[0])
+
+			return query.Where(condition, arg)
+		}
+
+		return query
+	}
+
+	// Case 2: Two parts after split (contains at least one colon)
+	if len(l) == 2 { //nolint:mnd
+		// If the second part starts with // and first part is *, it's a wildcard URL pattern
+		// Example: "*://ghcr.io/agntcy/marketing-strategy" -> pure URL pattern
+		if strings.HasPrefix(l[1], "//") && strings.HasPrefix(l[0], "*") {
+			condition, arg := utils.BuildSingleWildcardCondition("locators.url", value)
+
+			return query.Where(condition, arg)
+		}
+
+		// If the second part starts with // and first part is NOT *, it's a standalone URL
+		// Example: "http://localhost:8081" -> splits to ["http", "//localhost:8081"]
+		// Search for the FULL URL, not type+url separately
+		if strings.HasPrefix(l[1], "//") {
+			condition, arg := utils.BuildSingleWildcardCondition("locators.url", value)
+
+			return query.Where(condition, arg)
+		}
+
+		// Otherwise it's standard type:url format
+		// Example: "docker_image:https://..." -> type AND url filters
+		if strings.TrimSpace(l[0]) != "" {
+			condition, arg := utils.BuildSingleWildcardCondition("locators.type", l[0])
+			query = query.Where(condition, arg)
+		}
+
+		if strings.TrimSpace(l[1]) != "" {
+			condition, arg := utils.BuildSingleWildcardCondition("locators.url", l[1])
+			query = query.Where(condition, arg)
+		}
+	}
+
+	return query
+}
+
+// buildAndExpression processes an AND expression.
+func (d *DB) buildAndExpression(query *gorm.DB, and *types.AndExpression, joined *joinedTables) *gorm.DB {
+	for _, subExpr := range and.Expressions {
+		query = d.buildExpressionQuery(query, subExpr, joined)
+	}
+
+	return query
+}
+
+// buildOrExpression processes an OR expression by building a subquery.
+//
+//nolint:gocognit
+func (d *DB) buildOrExpression(query *gorm.DB, or *types.OrExpression, joined *joinedTables) *gorm.DB {
+	if len(or.Expressions) == 0 {
+		return query
+	}
+
+	// Build OR conditions as a single WHERE clause with OR operators
+	// We need to collect all the conditions and arguments
+	var conditions []string
+
+	var args []interface{}
+
+	for _, subExpr := range or.Expressions {
+		// Create a temporary query to extract the WHERE condition
+		tempQuery := d.gormDB.Model(&Record{}).Where("1=1")
+		tempJoined := &joinedTables{}
+		tempQuery = d.buildExpressionQuery(tempQuery, subExpr, tempJoined)
+
+		// Apply any necessary joins to the main query
+		if tempJoined.skills && !joined.skills {
+			query = query.Joins("JOIN skills ON skills.record_cid = records.record_cid")
+			joined.skills = true
+		}
+
+		if tempJoined.locators && !joined.locators {
+			query = query.Joins("JOIN locators ON locators.record_cid = records.record_cid")
+			joined.locators = true
+		}
+
+		if tempJoined.modules && !joined.modules {
+			query = query.Joins("JOIN modules ON modules.record_cid = records.record_cid")
+			joined.modules = true
+		}
+
+		if tempJoined.domains && !joined.domains {
+			query = query.Joins("JOIN domains ON domains.record_cid = records.record_cid")
+			joined.domains = true
+		}
+
+		// Extract the SQL from the temp query
+		sql := tempQuery.ToSQL(func(tx *gorm.DB) *gorm.DB {
+			return tx.Find(&[]Record{})
+		})
+
+		// Parse out the WHERE clause (this is a simplified approach)
+		// In production, we'd want more robust SQL parsing
+		if idx := strings.Index(sql, "WHERE"); idx != -1 {
+			whereClause := sql[idx+6:]
+			// Remove the trailing parts (ORDER BY, LIMIT, etc.)
+			if endIdx := strings.Index(whereClause, "ORDER"); endIdx != -1 {
+				whereClause = whereClause[:endIdx]
+			}
+
+			conditions = append(conditions, strings.TrimSpace(whereClause))
+		}
+	}
+
+	// Combine conditions with OR
+	if len(conditions) > 0 {
+		orCondition := "(" + strings.Join(conditions, " OR ") + ")"
+		query = query.Where(orCondition, args...)
+	}
+
+	return query
+}
+
+// buildNotExpression processes a NOT expression.
+func (d *DB) buildNotExpression(query *gorm.DB, not *types.NotExpression, joined *joinedTables) *gorm.DB {
+	if not.Expression == nil {
+		return query
+	}
+
+	// Build a subquery for the NOT condition
+	tempQuery := d.gormDB.Model(&Record{}).Where("1=1")
+	tempJoined := &joinedTables{}
+	tempQuery = d.buildExpressionQuery(tempQuery, not.Expression, tempJoined)
+
+	// Apply any necessary joins to the main query
+	if tempJoined.skills && !joined.skills {
 		query = query.Joins("JOIN skills ON skills.record_cid = records.record_cid")
-
-		if len(cfg.SkillIDs) > 0 {
-			query = query.Where("skills.skill_id IN ?", cfg.SkillIDs)
-		}
-
-		if len(cfg.SkillNames) > 0 {
-			condition, args := utils.BuildWildcardCondition("skills.name", cfg.SkillNames)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
+		joined.skills = true
 	}
 
-	// Handle locator filters with wildcard support.
-	if len(cfg.LocatorTypes) > 0 || len(cfg.LocatorURLs) > 0 {
+	if tempJoined.locators && !joined.locators {
 		query = query.Joins("JOIN locators ON locators.record_cid = records.record_cid")
-
-		if len(cfg.LocatorTypes) > 0 {
-			condition, args := utils.BuildWildcardCondition("locators.type", cfg.LocatorTypes)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
-
-		if len(cfg.LocatorURLs) > 0 {
-			condition, args := utils.BuildWildcardCondition("locators.url", cfg.LocatorURLs)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
+		joined.locators = true
 	}
 
-	// Handle module filters with wildcard support.
-	if len(cfg.ModuleNames) > 0 {
+	if tempJoined.modules && !joined.modules {
 		query = query.Joins("JOIN modules ON modules.record_cid = records.record_cid")
-
-		if len(cfg.ModuleNames) > 0 {
-			condition, args := utils.BuildWildcardCondition("modules.name", cfg.ModuleNames)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
+		joined.modules = true
 	}
 
-	// Handle domain filters with wildcard support.
-	if len(cfg.DomainIDs) > 0 || len(cfg.DomainNames) > 0 {
+	if tempJoined.domains && !joined.domains {
 		query = query.Joins("JOIN domains ON domains.record_cid = records.record_cid")
+		joined.domains = true
+	}
 
-		if len(cfg.DomainIDs) > 0 {
-			query = query.Where("domains.domain_id IN ?", cfg.DomainIDs)
+	// Extract the SQL from the temp query
+	sql := tempQuery.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		return tx.Find(&[]Record{})
+	})
+
+	// Parse out the WHERE clause
+	if idx := strings.Index(sql, "WHERE"); idx != -1 {
+		whereClause := sql[idx+6:]
+		// Remove the trailing parts
+		if endIdx := strings.Index(whereClause, "ORDER"); endIdx != -1 {
+			whereClause = whereClause[:endIdx]
 		}
 
-		if len(cfg.DomainNames) > 0 {
-			condition, args := utils.BuildWildcardCondition("domains.name", cfg.DomainNames)
-			if condition != "" {
-				query = query.Where(condition, args...)
-			}
-		}
+		notCondition := "NOT (" + strings.TrimSpace(whereClause) + ")"
+		query = query.Where(notCondition)
 	}
 
 	return query

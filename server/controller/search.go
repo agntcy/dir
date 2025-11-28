@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
-	databaseutils "github.com/agntcy/dir/server/database/utils"
+	"github.com/agntcy/dir/server/database/utils"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 )
@@ -29,17 +29,14 @@ func NewSearchController(db types.DatabaseAPI) searchv1.SearchServiceServer {
 func (c *searchCtlr) Search(req *searchv1.SearchRequest, srv searchv1.SearchService_SearchServer) error {
 	searchLogger.Debug("Called search controller's Search method", "req", req)
 
-	filterOptions, err := databaseutils.QueryToFilters(req.GetQueries())
-	if err != nil {
-		return fmt.Errorf("failed to create filter options: %w", err)
-	}
+	// Convert proto queries to expression tree (proto -> domain logic conversion)
+	expr := utils.ConvertQueriesToExpression(req.GetQueries())
 
-	filterOptions = append(filterOptions,
-		types.WithLimit(int(req.GetLimit())),
-		types.WithOffset(int(req.GetOffset())),
+	recordCIDs, err := c.db.GetRecordCIDs(
+		expr,
+		int(req.GetLimit()),
+		int(req.GetOffset()),
 	)
-
-	recordCIDs, err := c.db.GetRecordCIDs(filterOptions...)
 	if err != nil {
 		return fmt.Errorf("failed to get record CIDs: %w", err)
 	}
