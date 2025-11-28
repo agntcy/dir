@@ -29,11 +29,6 @@ func TestValidateRecord(t *testing.T) {
 			{
 				"name": "natural_language_processing/natural_language_understanding"
 			}
-		],
-		"modules": [
-			{
-				"name": "test-extension"
-			}
 		]
 	}`
 

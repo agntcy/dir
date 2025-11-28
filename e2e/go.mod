@@ -51,7 +51,7 @@ require (
 	github.com/agntcy/dir/hub v0.5.4 // indirect
 	github.com/agntcy/dir/importer v0.5.4 // indirect
 	github.com/agntcy/dir/mcp v0.5.4 // indirect
-	github.com/agntcy/oasf-sdk/pkg v0.0.11 // indirect
+	github.com/agntcy/oasf-sdk/pkg v0.0.14 // indirect
 	github.com/alecthomas/chroma/v2 v2.20.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.10.0 // indirect

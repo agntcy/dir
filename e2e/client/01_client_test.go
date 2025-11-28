@@ -93,7 +93,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				"/skills/Natural Language Processing/Text Completion",
 				"/skills/Natural Language Processing/Problem Solving",
 			},
-			expectedModuleLabel: "/modules/runtime/language", // From record_v031.json extensions (schema prefix stripped)
+			expectedModuleLabel: "", // record_031.json has no modules or extensions
 		},
 		{
 			name:     "Record_070_Agent",
@@ -103,7 +103,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				"/skills/natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedDomainLabel: "/domains/life_science/biotechnology",
-			expectedModuleLabel: "/modules/runtime/language", // From record_070.json modules
+			expectedModuleLabel: "/modules/runtime/model", // From record_070.json modules
 		},
 		{
 			name:     "Record_080_Agent",
@@ -113,7 +113,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				"/skills/natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedDomainLabel: "/domains/life_science/biotechnology",
-			expectedModuleLabel: "/modules/runtime/language", // From record_080.json modules
+			expectedModuleLabel: "/modules/core/llm/model", // From record_080.json modules
 		},
 	}
 

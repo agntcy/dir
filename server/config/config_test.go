@@ -32,6 +32,7 @@ func TestConfig(t *testing.T) {
 			Name: "Custom config",
 			EnvVars: map[string]string{
 				"DIRECTORY_SERVER_LISTEN_ADDRESS":                       "example.com:8889",
+				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL":       "https://custom.schema.url",
 				"DIRECTORY_SERVER_STORE_PROVIDER":                       "provider",
 				"DIRECTORY_SERVER_STORE_OCI_LOCAL_DIR":                  "local-dir",
 				"DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS":           "example.com:5001",
@@ -60,8 +61,11 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":           "10s",
 			},
 			ExpectedConfig: &Config{
-				ListenAddress: "example.com:8889",
-				Connection:    DefaultConnectionConfig(), // Connection defaults applied
+				ListenAddress:        "example.com:8889",
+				SchemaURL:            "https://custom.schema.url",
+				DisableAPIValidation: false,
+				StrictValidation:     true,                      // Default is true (set in config.go:300)
+				Connection:           DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
@@ -126,8 +130,11 @@ func TestConfig(t *testing.T) {
 			Name:    "Default config",
 			EnvVars: map[string]string{},
 			ExpectedConfig: &Config{
-				ListenAddress: DefaultListenAddress,
-				Connection:    DefaultConnectionConfig(), // Connection defaults applied
+				ListenAddress:        DefaultListenAddress,
+				SchemaURL:            DefaultSchemaURL,          // Default OASF schema URL
+				DisableAPIValidation: false,                     // Default is false (set in config.go:297)
+				StrictValidation:     true,                      // Default is true (set in config.go:300)
+				Connection:           DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
@@ -183,6 +190,51 @@ func TestConfig(t *testing.T) {
 			config, err := LoadConfig()
 			assert.NoError(t, err)
 			assert.Equal(t, *config, *test.ExpectedConfig)
+		})
+	}
+}
+
+// TestConfig_SchemaURL tests that OASF schema URL configuration is correctly parsed.
+func TestConfig_SchemaURL(t *testing.T) {
+	tests := []struct {
+		name              string
+		envVars           map[string]string
+		expectedSchemaURL string
+	}{
+		{
+			name:              "default schema URL",
+			envVars:           map[string]string{},
+			expectedSchemaURL: DefaultSchemaURL,
+		},
+		{
+			name: "custom schema URL",
+			envVars: map[string]string{
+				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL": "https://custom.schema.url",
+			},
+			expectedSchemaURL: "https://custom.schema.url",
+		},
+		{
+			name: "empty schema URL (disable API validator)",
+			envVars: map[string]string{
+				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL": "",
+			},
+			expectedSchemaURL: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set environment variables
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
+			}
+
+			// Load config
+			cfg, err := LoadConfig()
+			assert.NoError(t, err)
+
+			// Verify schema URL configuration
+			assert.Equal(t, tt.expectedSchemaURL, cfg.SchemaURL)
 		})
 	}
 }

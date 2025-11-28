@@ -101,7 +101,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 			ginkgo.It("should find record by exact module name match", func() {
 				output := cli.Search().
-					WithModule("license").
+					WithModule("runtime/model").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -238,14 +238,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("module wildcards", func() {
 				ginkgo.It("should find record with module name prefix wildcard", func() {
 					output := cli.Search().
-						WithModule("license*").
+						WithModule("runtime/*").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with module name suffix wildcard", func() {
 					output := cli.Search().
-						WithModule("*framework*").
+						WithModule("*/model").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -385,7 +385,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("module question mark wildcards", func() {
 				ginkgo.It("should find record with question mark in module name", func() {
 					output := cli.Search().
-						WithModule("licens?").
+						WithModule("runtime/mode?").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -527,14 +527,14 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 			ginkgo.Context("module list wildcards", func() {
 				ginkgo.It("should find record with character list in module name", func() {
 					output := cli.Search().
-						WithModule("[l]icense").
+						WithModule("runtime/[m]odel").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
 
 				ginkgo.It("should find record with alphabetic range in module name", func() {
 					output := cli.Search().
-						WithModule("[a-z]icense").
+						WithModule("runtime/[a-z]odel").
 						ShouldSucceed()
 					gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 				})
@@ -817,7 +817,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check search functio
 
 			ginkgo.It("should handle list wildcards with slashes", func() {
 				output := cli.Search().
-					WithModule("runtime/framework").
+					WithModule("runtime/model").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
