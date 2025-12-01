@@ -54,10 +54,12 @@ func BuildComparisonConditions(column string, values []string) (string, []interf
 	}
 
 	var comparisonConditions []string
+
 	var comparisonArgs []interface{}
+
 	var wildcardValues []string
 
-	// Separate comparison operators from regular values
+	// Separate comparison operators from regular values.
 	for _, value := range values {
 		op, actualValue := ParseComparisonOperator(value)
 		if op != "" {
@@ -69,9 +71,10 @@ func BuildComparisonConditions(column string, values []string) (string, []interf
 	}
 
 	var allConditions []string
+
 	var allArgs []interface{}
 
-	// Comparison conditions are AND'd together (e.g., >= 1.0 AND < 2.0)
+	// Comparison conditions are AND'd together (e.g., >= 1.0 AND < 2.0).
 	if len(comparisonConditions) > 0 {
 		allConditions = append(allConditions, "("+strings.Join(comparisonConditions, " AND ")+")")
 		allArgs = append(allArgs, comparisonArgs...)

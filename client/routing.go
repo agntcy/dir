@@ -63,7 +63,7 @@ func (c *Client) List(ctx context.Context, req *routingv1.ListRequest) (<-chan *
 }
 
 func (c *Client) SearchRouting(ctx context.Context, req *routingv1.SearchRequest) (<-chan *routingv1.SearchResponse, error) {
-	stream, err := c.RoutingServiceClient.Search(ctx, req)
+	stream, err := c.Search(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search stream: %w", err)
 	}

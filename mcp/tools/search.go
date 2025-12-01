@@ -44,6 +44,8 @@ const (
 )
 
 // SearchLocal searches for agent records on the local directory node.
+//
+//nolint:cyclop
 func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalInput) (
 	*mcp.CallToolResult,
 	SearchLocalOutput,

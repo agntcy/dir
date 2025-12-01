@@ -10,7 +10,7 @@ import (
 )
 
 type Module struct {
-	ID        uint   `gorm:"primarykey"`
+	ID        uint `gorm:"primarykey"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	RecordCID string `gorm:"column:record_cid;not null;index"`

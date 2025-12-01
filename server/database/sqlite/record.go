@@ -243,7 +243,7 @@ func (d *DB) RemoveRecord(cid string) error {
 
 // handleFilterOptions applies the provided filters to the query.
 //
-//nolint:gocognit,cyclop,nestif
+//nolint:gocognit,cyclop,nestif,gocyclo
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
 	// Apply record-level filters with wildcard support.
 	if len(cfg.Names) > 0 {
@@ -335,6 +335,7 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 	if len(cfg.Authors) > 0 {
 		// Build OR conditions for each author pattern against the JSON string
 		var authorConditions []string
+
 		var authorArgs []interface{}
 
 		for _, author := range cfg.Authors {

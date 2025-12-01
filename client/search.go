@@ -18,7 +18,12 @@ func (c *Client) SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (s
 		return nil, fmt.Errorf("failed to create search CIDs stream: %w", err)
 	}
 
-	return streaming.ProcessServerStream(ctx, stream)
+	result, err := streaming.ProcessServerStream(ctx, stream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process search CIDs stream: %w", err)
+	}
+
+	return result, nil
 }
 
 // SearchRecords searches for full records matching the given request.
@@ -28,5 +33,10 @@ func (c *Client) SearchRecords(ctx context.Context, req *searchv1.SearchRequest)
 		return nil, fmt.Errorf("failed to create search records stream: %w", err)
 	}
 
-	return streaming.ProcessServerStream(ctx, stream)
+	result, err := streaming.ProcessServerStream(ctx, stream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process search records stream: %w", err)
+	}
+
+	return result, nil
 }

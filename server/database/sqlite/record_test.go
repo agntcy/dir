@@ -83,16 +83,18 @@ func (d *testDomain) GetAnnotations() map[string]string { return nil }
 
 func setupTestDB(t *testing.T) *DB {
 	t.Helper()
+
 	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{Logger: newCustomLogger()})
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Module{}, &Domain{}, &Sync{}))
+
 	return &DB{gormDB: db}
 }
 
 // Test fixtures based on OASF 0.8.0 schema.
 // Domains, skills, and modules use real IDs from the schema.
 var (
-	// Marketing strategy agent - uses NLG, creative content, marketing domain
+	// Marketing strategy agent - uses NLG, creative content, marketing domain.
 	marketingAgent = &testRecord{
 		cid: "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
 		data: &testRecordData{
@@ -118,7 +120,7 @@ var (
 		},
 	}
 
-	// Healthcare assistant - uses RAG, medical domain
+	// Healthcare assistant - uses RAG, medical domain.
 	healthcareAgent = &testRecord{
 		cid: "bafybeihkoviema7g3gxyt6la7b7kbblo2hm7zgi3f6d67dqd7wy3yqhqxu",
 		data: &testRecordData{
@@ -145,7 +147,7 @@ var (
 		},
 	}
 
-	// Code assistant - uses coding skills, software engineering domain
+	// Code assistant - uses coding skills, software engineering domain.
 	codeAssistant = &testRecord{
 		cid: "bafybeihdwdcefgh4dqkjv67uzcmw7ojzge6uyuvma5kw7bzydb56wxfao",
 		data: &testRecordData{
@@ -172,6 +174,7 @@ var (
 
 func seedDB(t *testing.T, db *DB) {
 	t.Helper()
+
 	for _, r := range []types.Record{marketingAgent, healthcareAgent, codeAssistant} {
 		require.NoError(t, db.AddRecord(r))
 	}
@@ -358,7 +361,9 @@ func TestGetRecordCIDs_CombinedFilters(t *testing.T) {
 
 func TestGetRecordCIDs_NilOption(t *testing.T) {
 	db := setupTestDB(t)
+
 	var nilOpt types.FilterOption
+
 	_, err := db.GetRecordCIDs(nilOpt)
 	assert.Error(t, err)
 }
