@@ -12,7 +12,7 @@ import (
 )
 
 // SearchCIDs searches for record CIDs matching the given request.
-func (c *Client) SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error) {
+func (c *Client) SearchCIDs(ctx context.Context, req *searchv1.SearchCIDsRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error) {
 	stream, err := c.SearchServiceClient.SearchCIDs(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search CIDs stream: %w", err)
@@ -27,7 +27,7 @@ func (c *Client) SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (s
 }
 
 // SearchRecords searches for full records matching the given request.
-func (c *Client) SearchRecords(ctx context.Context, req *searchv1.SearchRequest) (streaming.StreamResult[searchv1.SearchRecordsResponse], error) {
+func (c *Client) SearchRecords(ctx context.Context, req *searchv1.SearchRecordsRequest) (streaming.StreamResult[searchv1.SearchRecordsResponse], error) {
 	stream, err := c.SearchServiceClient.SearchRecords(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search records stream: %w", err)

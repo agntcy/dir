@@ -58,7 +58,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"Natural Language Processing/Problem Solving",
 			},
 			expectedLocator: "docker-image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedModule:  "schema.oasf.agntcy.org/features/runtime/framework",
+			expectedModule:  "", // 0.3.1 schema doesn't have modules
 			shouldFailPush:  false,
 		},
 		{
@@ -72,7 +72,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedLocator: "docker_image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedModule:  "runtime/framework",
+			expectedModule:  "runtime/model",
 			shouldFailPush:  false,
 		},
 		{
@@ -86,7 +86,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedLocator: "docker_image:https://ghcr.io/agntcy/research-assistant",
-			expectedModule:  "runtime/framework",
+			expectedModule:  "core/llm/model",
 			shouldFailPush:  false,
 		},
 		{

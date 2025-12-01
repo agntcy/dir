@@ -55,7 +55,7 @@ func runCidsCommand(cmd *cobra.Command) error {
 	// Build queries from direct field flags
 	queries := buildQueriesFromFlags()
 
-	result, err := c.SearchCIDs(cmd.Context(), &searchv1.SearchRequest{
+	result, err := c.SearchCIDs(cmd.Context(), &searchv1.SearchCIDsRequest{
 		Limit:   &opts.Limit,
 		Offset:  &opts.Offset,
 		Queries: queries,

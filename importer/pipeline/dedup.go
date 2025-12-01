@@ -70,7 +70,7 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 		for {
 			// Search for records with this module with pagination
 			limit := uint32(batchSize)
-			searchReq := &searchv1.SearchRequest{
+			searchReq := &searchv1.SearchCIDsRequest{
 				Queries: []*searchv1.RecordQuery{
 					{
 						Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,

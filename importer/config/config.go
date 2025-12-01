@@ -30,7 +30,7 @@ const (
 // This allows for easier testing and mocking.
 type ClientInterface interface {
 	Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
-	SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error)
+	SearchCIDs(ctx context.Context, req *searchv1.SearchCIDsRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error)
 	PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error)
 }
 

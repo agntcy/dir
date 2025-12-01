@@ -56,7 +56,7 @@ func runRecordsCommand(cmd *cobra.Command) error {
 	queries := buildQueriesFromFlags()
 
 	// Search for full records directly
-	result, err := c.SearchRecords(cmd.Context(), &searchv1.SearchRequest{
+	result, err := c.SearchRecords(cmd.Context(), &searchv1.SearchRecordsRequest{
 		Limit:   &opts.Limit,
 		Offset:  &opts.Offset,
 		Queries: queries,

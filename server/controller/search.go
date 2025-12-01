@@ -29,7 +29,7 @@ func NewSearchController(db types.DatabaseAPI, store types.StoreAPI) searchv1.Se
 	}
 }
 
-func (c *searchCtlr) SearchCIDs(req *searchv1.SearchRequest, srv searchv1.SearchService_SearchCIDsServer) error {
+func (c *searchCtlr) SearchCIDs(req *searchv1.SearchCIDsRequest, srv searchv1.SearchService_SearchCIDsServer) error {
 	searchLogger.Debug("Called search controller's SearchCIDs method", "req", req)
 
 	filterOptions, err := databaseutils.QueryToFilters(req.GetQueries())
@@ -56,7 +56,7 @@ func (c *searchCtlr) SearchCIDs(req *searchv1.SearchRequest, srv searchv1.Search
 	return nil
 }
 
-func (c *searchCtlr) SearchRecords(req *searchv1.SearchRequest, srv searchv1.SearchService_SearchRecordsServer) error {
+func (c *searchCtlr) SearchRecords(req *searchv1.SearchRecordsRequest, srv searchv1.SearchService_SearchRecordsServer) error {
 	searchLogger.Debug("Called search controller's SearchRecords method", "req", req)
 
 	filterOptions, err := databaseutils.QueryToFilters(req.GetQueries())

@@ -13,28 +13,35 @@ import { file_agntcy_dir_search_v1_record_query } from "./record_query_pb.js";
  * Describes the file agntcy/dir/search/v1/search_service.proto.
  */
 export const file_agntcy_dir_search_v1_search_service = /*@__PURE__*/
-  fileDesc("CilhZ250Y3kvZGlyL3NlYXJjaC92MS9zZWFyY2hfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5zZWFyY2gudjEigQEKDVNlYXJjaFJlcXVlc3QSMgoHcXVlcmllcxgBIAMoCzIhLmFnbnRjeS5kaXIuc2VhcmNoLnYxLlJlY29yZFF1ZXJ5EhIKBWxpbWl0GAIgASgNSACIAQESEwoGb2Zmc2V0GAMgASgNSAGIAQFCCAoGX2xpbWl0QgkKB19vZmZzZXQiKAoSU2VhcmNoQ0lEc1Jlc3BvbnNlEhIKCnJlY29yZF9jaWQYASABKAkiQwoVU2VhcmNoUmVjb3Jkc1Jlc3BvbnNlEioKBnJlY29yZBgBIAEoCzIaLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmQy0wEKDVNlYXJjaFNlcnZpY2USXQoKU2VhcmNoQ0lEcxIjLmFnbnRjeS5kaXIuc2VhcmNoLnYxLlNlYXJjaFJlcXVlc3QaKC5hZ250Y3kuZGlyLnNlYXJjaC52MS5TZWFyY2hDSURzUmVzcG9uc2UwARJjCg1TZWFyY2hSZWNvcmRzEiMuYWdudGN5LmRpci5zZWFyY2gudjEuU2VhcmNoUmVxdWVzdBorLmFnbnRjeS5kaXIuc2VhcmNoLnYxLlNlYXJjaFJlY29yZHNSZXNwb25zZTABQsYBChhjb20uYWdudGN5LmRpci5zZWFyY2gudjFCElNlYXJjaFNlcnZpY2VQcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL3NlYXJjaC92MaICA0FEU6oCFEFnbnRjeS5EaXIuU2VhcmNoLlYxygIUQWdudGN5XERpclxTZWFyY2hcVjHiAiBBZ250Y3lcRGlyXFNlYXJjaFxWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpTZWFyY2g6OlYxYgZwcm90bzM", [file_agntcy_dir_core_v1_record, file_agntcy_dir_search_v1_record_query]);
+  fileDesc("CilhZ250Y3kvZGlyL3NlYXJjaC92MS9zZWFyY2hfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5zZWFyY2gudjEihQEKEVNlYXJjaENJRHNSZXF1ZXN0EjIKB3F1ZXJpZXMYASADKAsyIS5hZ250Y3kuZGlyLnNlYXJjaC52MS5SZWNvcmRRdWVyeRISCgVsaW1pdBgCIAEoDUgAiAEBEhMKBm9mZnNldBgDIAEoDUgBiAEBQggKBl9saW1pdEIJCgdfb2Zmc2V0IogBChRTZWFyY2hSZWNvcmRzUmVxdWVzdBIyCgdxdWVyaWVzGAEgAygLMiEuYWdudGN5LmRpci5zZWFyY2gudjEuUmVjb3JkUXVlcnkSEgoFbGltaXQYAiABKA1IAIgBARITCgZvZmZzZXQYAyABKA1IAYgBAUIICgZfbGltaXRCCQoHX29mZnNldCIoChJTZWFyY2hDSURzUmVzcG9uc2USEgoKcmVjb3JkX2NpZBgBIAEoCSJDChVTZWFyY2hSZWNvcmRzUmVzcG9uc2USKgoGcmVjb3JkGAEgASgLMhouYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZDLeAQoNU2VhcmNoU2VydmljZRJhCgpTZWFyY2hDSURzEicuYWdudGN5LmRpci5zZWFyY2gudjEuU2VhcmNoQ0lEc1JlcXVlc3QaKC5hZ250Y3kuZGlyLnNlYXJjaC52MS5TZWFyY2hDSURzUmVzcG9uc2UwARJqCg1TZWFyY2hSZWNvcmRzEiouYWdudGN5LmRpci5zZWFyY2gudjEuU2VhcmNoUmVjb3Jkc1JlcXVlc3QaKy5hZ250Y3kuZGlyLnNlYXJjaC52MS5TZWFyY2hSZWNvcmRzUmVzcG9uc2UwAULGAQoYY29tLmFnbnRjeS5kaXIuc2VhcmNoLnYxQhJTZWFyY2hTZXJ2aWNlUHJvdG9QAVojZ2l0aHViLmNvbS9hZ250Y3kvZGlyL2FwaS9zZWFyY2gvdjGiAgNBRFOqAhRBZ250Y3kuRGlyLlNlYXJjaC5WMcoCFEFnbnRjeVxEaXJcU2VhcmNoXFYx4gIgQWdudGN5XERpclxTZWFyY2hcVjFcR1BCTWV0YWRhdGHqAhdBZ250Y3k6OkRpcjo6U2VhcmNoOjpWMWIGcHJvdG8z", [file_agntcy_dir_core_v1_record, file_agntcy_dir_search_v1_record_query]);
 
 /**
- * Describes the message agntcy.dir.search.v1.SearchRequest.
- * Use `create(SearchRequestSchema)` to create a new message.
+ * Describes the message agntcy.dir.search.v1.SearchCIDsRequest.
+ * Use `create(SearchCIDsRequestSchema)` to create a new message.
  */
-export const SearchRequestSchema = /*@__PURE__*/
+export const SearchCIDsRequestSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_search_v1_search_service, 0);
+
+/**
+ * Describes the message agntcy.dir.search.v1.SearchRecordsRequest.
+ * Use `create(SearchRecordsRequestSchema)` to create a new message.
+ */
+export const SearchRecordsRequestSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_search_v1_search_service, 1);
 
 /**
  * Describes the message agntcy.dir.search.v1.SearchCIDsResponse.
  * Use `create(SearchCIDsResponseSchema)` to create a new message.
  */
 export const SearchCIDsResponseSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_search_v1_search_service, 1);
+  messageDesc(file_agntcy_dir_search_v1_search_service, 2);
 
 /**
  * Describes the message agntcy.dir.search.v1.SearchRecordsResponse.
  * Use `create(SearchRecordsResponseSchema)` to create a new message.
  */
 export const SearchRecordsResponseSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_search_v1_search_service, 2);
+  messageDesc(file_agntcy_dir_search_v1_search_service, 3);
 
 /**
  * @generated from service agntcy.dir.search.v1.SearchService

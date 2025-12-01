@@ -16,9 +16,9 @@ import type { Record } from "../../core/v1/record_pb.js";
 export declare const file_agntcy_dir_search_v1_search_service: GenFile;
 
 /**
- * @generated from message agntcy.dir.search.v1.SearchRequest
+ * @generated from message agntcy.dir.search.v1.SearchCIDsRequest
  */
-export declare type SearchRequest = Message<"agntcy.dir.search.v1.SearchRequest"> & {
+export declare type SearchCIDsRequest = Message<"agntcy.dir.search.v1.SearchCIDsRequest"> & {
   /**
    * List of queries to match against the records.
    *
@@ -42,10 +42,42 @@ export declare type SearchRequest = Message<"agntcy.dir.search.v1.SearchRequest"
 };
 
 /**
- * Describes the message agntcy.dir.search.v1.SearchRequest.
- * Use `create(SearchRequestSchema)` to create a new message.
+ * Describes the message agntcy.dir.search.v1.SearchCIDsRequest.
+ * Use `create(SearchCIDsRequestSchema)` to create a new message.
  */
-export declare const SearchRequestSchema: GenMessage<SearchRequest>;
+export declare const SearchCIDsRequestSchema: GenMessage<SearchCIDsRequest>;
+
+/**
+ * @generated from message agntcy.dir.search.v1.SearchRecordsRequest
+ */
+export declare type SearchRecordsRequest = Message<"agntcy.dir.search.v1.SearchRecordsRequest"> & {
+  /**
+   * List of queries to match against the records.
+   *
+   * @generated from field: repeated agntcy.dir.search.v1.RecordQuery queries = 1;
+   */
+  queries: RecordQuery[];
+
+  /**
+   * Optional limit on the number of results to return.
+   *
+   * @generated from field: optional uint32 limit = 2;
+   */
+  limit?: number;
+
+  /**
+   * Optional offset for pagination of results.
+   *
+   * @generated from field: optional uint32 offset = 3;
+   */
+  offset?: number;
+};
+
+/**
+ * Describes the message agntcy.dir.search.v1.SearchRecordsRequest.
+ * Use `create(SearchRecordsRequestSchema)` to create a new message.
+ */
+export declare const SearchRecordsRequestSchema: GenMessage<SearchRecordsRequest>;
 
 /**
  * @generated from message agntcy.dir.search.v1.SearchCIDsResponse
@@ -96,7 +128,7 @@ export declare const SearchService: GenService<{
    */
   searchCIDs: {
     methodKind: "server_streaming";
-    input: typeof SearchRequestSchema;
+    input: typeof SearchCIDsRequestSchema;
     output: typeof SearchCIDsResponseSchema;
   },
   /**
@@ -108,7 +140,7 @@ export declare const SearchService: GenService<{
    */
   searchRecords: {
     methodKind: "server_streaming";
-    input: typeof SearchRequestSchema;
+    input: typeof SearchRecordsRequestSchema;
     output: typeof SearchRecordsResponseSchema;
   },
 }>;

@@ -38,7 +38,7 @@ func (m *mockClient) PullBatch(ctx context.Context, recordRefs []*corev1.RecordR
 	return []*corev1.Record{}, nil
 }
 
-func (m *mockClient) SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error) {
+func (m *mockClient) SearchCIDs(ctx context.Context, req *searchv1.SearchCIDsRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error) {
 	return &mockStreamResult{}, nil
 }
 

@@ -24,7 +24,7 @@ import (
 //   - skills: [10201: "natural_language_processing/.../text_completion", 10702: ".../problem_solving"]
 //   - locators: [docker_image: "https://ghcr.io/agntcy/research-assistant"]
 //   - domains: [301: "life_science/biotechnology"]
-//   - modules: ["license", "runtime/framework", "runtime/language"]
+//   - modules: [10201: "core/llm/model"]
 
 var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 	var cli *utils.CLI
@@ -264,12 +264,12 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 
 		ginkgo.It("returns record with module data", func() {
 			output := cli.SearchRecords().
-				WithModule("runtime/*").
+				WithModule("core/*").
 				WithArgs("--output", "json").
 				ShouldSucceed()
 
-			gomega.Expect(output).To(gomega.ContainSubstring("runtime/framework"))
-			gomega.Expect(output).To(gomega.ContainSubstring("crewai"))
+			gomega.Expect(output).To(gomega.ContainSubstring("core/llm/model"))
+			gomega.Expect(output).To(gomega.ContainSubstring("gpt-4"))
 		})
 
 		ginkgo.It("supports wildcards like cids command", func() {

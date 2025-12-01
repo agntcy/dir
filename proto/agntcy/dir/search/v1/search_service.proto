@@ -12,15 +12,26 @@ service SearchService {
   // Search for record CIDs that match the given parameters.
   // Returns only CIDs for efficient lookups and piping to other commands.
   // This operation does not interact with the network.
-  rpc SearchCIDs(SearchRequest) returns (stream SearchCIDsResponse);
+  rpc SearchCIDs(SearchCIDsRequest) returns (stream SearchCIDsResponse);
 
   // Search for full records that match the given parameters.
   // Returns complete record data including all metadata, skills, domains, etc.
   // This operation does not interact with the network.
-  rpc SearchRecords(SearchRequest) returns (stream SearchRecordsResponse);
+  rpc SearchRecords(SearchRecordsRequest) returns (stream SearchRecordsResponse);
 }
 
-message SearchRequest {
+message SearchCIDsRequest {
+  // List of queries to match against the records.
+  repeated RecordQuery queries = 1;
+
+  // Optional limit on the number of results to return.
+  optional uint32 limit = 2;
+
+  // Optional offset for pagination of results.
+  optional uint32 offset = 3;
+}
+
+message SearchRecordsRequest {
   // List of queries to match against the records.
   repeated RecordQuery queries = 1;
 

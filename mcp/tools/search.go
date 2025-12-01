@@ -105,7 +105,7 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 	limit32 := uint32(limit)   // #nosec G115
 	offset32 := uint32(offset) // #nosec G115
 
-	result, err := c.SearchCIDs(ctx, &searchv1.SearchRequest{
+	result, err := c.SearchCIDs(ctx, &searchv1.SearchCIDsRequest{
 		Limit:   &limit32,
 		Offset:  &offset32,
 		Queries: queries,

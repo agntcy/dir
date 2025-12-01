@@ -16,12 +16,12 @@ class SearchServiceStub(object):
         """
         self.SearchCIDs = channel.unary_stream(
                 '/agntcy.dir.search.v1.SearchService/SearchCIDs',
-                request_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.SerializeToString,
+                request_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsRequest.SerializeToString,
                 response_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsResponse.FromString,
                 _registered_method=True)
         self.SearchRecords = channel.unary_stream(
                 '/agntcy.dir.search.v1.SearchService/SearchRecords',
-                request_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.SerializeToString,
+                request_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsRequest.SerializeToString,
                 response_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsResponse.FromString,
                 _registered_method=True)
 
@@ -52,12 +52,12 @@ def add_SearchServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'SearchCIDs': grpc.unary_stream_rpc_method_handler(
                     servicer.SearchCIDs,
-                    request_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.FromString,
+                    request_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsRequest.FromString,
                     response_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsResponse.SerializeToString,
             ),
             'SearchRecords': grpc.unary_stream_rpc_method_handler(
                     servicer.SearchRecords,
-                    request_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.FromString,
+                    request_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsRequest.FromString,
                     response_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsResponse.SerializeToString,
             ),
     }
@@ -86,7 +86,7 @@ class SearchService(object):
             request,
             target,
             '/agntcy.dir.search.v1.SearchService/SearchCIDs',
-            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.SerializeToString,
+            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsRequest.SerializeToString,
             agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsResponse.FromString,
             options,
             channel_credentials,
@@ -113,7 +113,7 @@ class SearchService(object):
             request,
             target,
             '/agntcy.dir.search.v1.SearchService/SearchRecords',
-            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.SerializeToString,
+            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsRequest.SerializeToString,
             agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsResponse.FromString,
             options,
             channel_credentials,

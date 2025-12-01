@@ -33,11 +33,11 @@ type SearchServiceClient interface {
 	// Search for record CIDs that match the given parameters.
 	// Returns only CIDs for efficient lookups and piping to other commands.
 	// This operation does not interact with the network.
-	SearchCIDs(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (SearchService_SearchCIDsClient, error)
+	SearchCIDs(ctx context.Context, in *SearchCIDsRequest, opts ...grpc.CallOption) (SearchService_SearchCIDsClient, error)
 	// Search for full records that match the given parameters.
 	// Returns complete record data including all metadata, skills, domains, etc.
 	// This operation does not interact with the network.
-	SearchRecords(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (SearchService_SearchRecordsClient, error)
+	SearchRecords(ctx context.Context, in *SearchRecordsRequest, opts ...grpc.CallOption) (SearchService_SearchRecordsClient, error)
 }
 
 type searchServiceClient struct {
@@ -48,7 +48,7 @@ func NewSearchServiceClient(cc grpc.ClientConnInterface) SearchServiceClient {
 	return &searchServiceClient{cc}
 }
 
-func (c *searchServiceClient) SearchCIDs(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (SearchService_SearchCIDsClient, error) {
+func (c *searchServiceClient) SearchCIDs(ctx context.Context, in *SearchCIDsRequest, opts ...grpc.CallOption) (SearchService_SearchCIDsClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &SearchService_ServiceDesc.Streams[0], SearchService_SearchCIDs_FullMethodName, cOpts...)
 	if err != nil {
@@ -81,7 +81,7 @@ func (x *searchServiceSearchCIDsClient) Recv() (*SearchCIDsResponse, error) {
 	return m, nil
 }
 
-func (c *searchServiceClient) SearchRecords(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (SearchService_SearchRecordsClient, error) {
+func (c *searchServiceClient) SearchRecords(ctx context.Context, in *SearchRecordsRequest, opts ...grpc.CallOption) (SearchService_SearchRecordsClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &SearchService_ServiceDesc.Streams[1], SearchService_SearchRecords_FullMethodName, cOpts...)
 	if err != nil {
@@ -121,11 +121,11 @@ type SearchServiceServer interface {
 	// Search for record CIDs that match the given parameters.
 	// Returns only CIDs for efficient lookups and piping to other commands.
 	// This operation does not interact with the network.
-	SearchCIDs(*SearchRequest, SearchService_SearchCIDsServer) error
+	SearchCIDs(*SearchCIDsRequest, SearchService_SearchCIDsServer) error
 	// Search for full records that match the given parameters.
 	// Returns complete record data including all metadata, skills, domains, etc.
 	// This operation does not interact with the network.
-	SearchRecords(*SearchRequest, SearchService_SearchRecordsServer) error
+	SearchRecords(*SearchRecordsRequest, SearchService_SearchRecordsServer) error
 }
 
 // UnimplementedSearchServiceServer should be embedded to have
@@ -135,10 +135,10 @@ type SearchServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSearchServiceServer struct{}
 
-func (UnimplementedSearchServiceServer) SearchCIDs(*SearchRequest, SearchService_SearchCIDsServer) error {
+func (UnimplementedSearchServiceServer) SearchCIDs(*SearchCIDsRequest, SearchService_SearchCIDsServer) error {
 	return status.Errorf(codes.Unimplemented, "method SearchCIDs not implemented")
 }
-func (UnimplementedSearchServiceServer) SearchRecords(*SearchRequest, SearchService_SearchRecordsServer) error {
+func (UnimplementedSearchServiceServer) SearchRecords(*SearchRecordsRequest, SearchService_SearchRecordsServer) error {
 	return status.Errorf(codes.Unimplemented, "method SearchRecords not implemented")
 }
 func (UnimplementedSearchServiceServer) testEmbeddedByValue() {}
@@ -162,7 +162,7 @@ func RegisterSearchServiceServer(s grpc.ServiceRegistrar, srv SearchServiceServe
 }
 
 func _SearchService_SearchCIDs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(SearchRequest)
+	m := new(SearchCIDsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (x *searchServiceSearchCIDsServer) Send(m *SearchCIDsResponse) error {
 }
 
 func _SearchService_SearchRecords_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(SearchRequest)
+	m := new(SearchRecordsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}

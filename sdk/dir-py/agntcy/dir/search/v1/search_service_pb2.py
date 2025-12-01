@@ -26,7 +26,7 @@ from agntcy.dir.core.v1 import record_pb2 as agntcy_dot_dir_dot_core_dot_v1_dot_
 from agntcy.dir.search.v1 import record_query_pb2 as agntcy_dot_dir_dot_search_dot_v1_dot_record__query__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)agntcy/dir/search/v1/search_service.proto\x12\x14\x61gntcy.dir.search.v1\x1a\x1f\x61gntcy/dir/core/v1/record.proto\x1a\'agntcy/dir/search/v1/record_query.proto\"\x99\x01\n\rSearchRequest\x12;\n\x07queries\x18\x01 \x03(\x0b\x32!.agntcy.dir.search.v1.RecordQueryR\x07queries\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06offset\x18\x03 \x01(\rH\x01R\x06offset\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_offset\"3\n\x12SearchCIDsResponse\x12\x1d\n\nrecord_cid\x18\x01 \x01(\tR\trecordCid\"K\n\x15SearchRecordsResponse\x12\x32\n\x06record\x18\x01 \x01(\x0b\x32\x1a.agntcy.dir.core.v1.RecordR\x06record2\xd3\x01\n\rSearchService\x12]\n\nSearchCIDs\x12#.agntcy.dir.search.v1.SearchRequest\x1a(.agntcy.dir.search.v1.SearchCIDsResponse0\x01\x12\x63\n\rSearchRecords\x12#.agntcy.dir.search.v1.SearchRequest\x1a+.agntcy.dir.search.v1.SearchRecordsResponse0\x01\x42\xc6\x01\n\x18\x63om.agntcy.dir.search.v1B\x12SearchServiceProtoP\x01Z#github.com/agntcy/dir/api/search/v1\xa2\x02\x03\x41\x44S\xaa\x02\x14\x41gntcy.Dir.Search.V1\xca\x02\x14\x41gntcy\\Dir\\Search\\V1\xe2\x02 Agntcy\\Dir\\Search\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Search::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)agntcy/dir/search/v1/search_service.proto\x12\x14\x61gntcy.dir.search.v1\x1a\x1f\x61gntcy/dir/core/v1/record.proto\x1a\'agntcy/dir/search/v1/record_query.proto\"\x9d\x01\n\x11SearchCIDsRequest\x12;\n\x07queries\x18\x01 \x03(\x0b\x32!.agntcy.dir.search.v1.RecordQueryR\x07queries\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06offset\x18\x03 \x01(\rH\x01R\x06offset\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_offset\"\xa0\x01\n\x14SearchRecordsRequest\x12;\n\x07queries\x18\x01 \x03(\x0b\x32!.agntcy.dir.search.v1.RecordQueryR\x07queries\x12\x19\n\x05limit\x18\x02 \x01(\rH\x00R\x05limit\x88\x01\x01\x12\x1b\n\x06offset\x18\x03 \x01(\rH\x01R\x06offset\x88\x01\x01\x42\x08\n\x06_limitB\t\n\x07_offset\"3\n\x12SearchCIDsResponse\x12\x1d\n\nrecord_cid\x18\x01 \x01(\tR\trecordCid\"K\n\x15SearchRecordsResponse\x12\x32\n\x06record\x18\x01 \x01(\x0b\x32\x1a.agntcy.dir.core.v1.RecordR\x06record2\xde\x01\n\rSearchService\x12\x61\n\nSearchCIDs\x12\'.agntcy.dir.search.v1.SearchCIDsRequest\x1a(.agntcy.dir.search.v1.SearchCIDsResponse0\x01\x12j\n\rSearchRecords\x12*.agntcy.dir.search.v1.SearchRecordsRequest\x1a+.agntcy.dir.search.v1.SearchRecordsResponse0\x01\x42\xc6\x01\n\x18\x63om.agntcy.dir.search.v1B\x12SearchServiceProtoP\x01Z#github.com/agntcy/dir/api/search/v1\xa2\x02\x03\x41\x44S\xaa\x02\x14\x41gntcy.Dir.Search.V1\xca\x02\x14\x41gntcy\\Dir\\Search\\V1\xe2\x02 Agntcy\\Dir\\Search\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Search::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,12 +34,14 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'agntcy.dir.search.v1.search
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\030com.agntcy.dir.search.v1B\022SearchServiceProtoP\001Z#github.com/agntcy/dir/api/search/v1\242\002\003ADS\252\002\024Agntcy.Dir.Search.V1\312\002\024Agntcy\\Dir\\Search\\V1\342\002 Agntcy\\Dir\\Search\\V1\\GPBMetadata\352\002\027Agntcy::Dir::Search::V1'
-  _globals['_SEARCHREQUEST']._serialized_start=142
-  _globals['_SEARCHREQUEST']._serialized_end=295
-  _globals['_SEARCHCIDSRESPONSE']._serialized_start=297
-  _globals['_SEARCHCIDSRESPONSE']._serialized_end=348
-  _globals['_SEARCHRECORDSRESPONSE']._serialized_start=350
-  _globals['_SEARCHRECORDSRESPONSE']._serialized_end=425
-  _globals['_SEARCHSERVICE']._serialized_start=428
-  _globals['_SEARCHSERVICE']._serialized_end=639
+  _globals['_SEARCHCIDSREQUEST']._serialized_start=142
+  _globals['_SEARCHCIDSREQUEST']._serialized_end=299
+  _globals['_SEARCHRECORDSREQUEST']._serialized_start=302
+  _globals['_SEARCHRECORDSREQUEST']._serialized_end=462
+  _globals['_SEARCHCIDSRESPONSE']._serialized_start=464
+  _globals['_SEARCHCIDSRESPONSE']._serialized_end=515
+  _globals['_SEARCHRECORDSRESPONSE']._serialized_start=517
+  _globals['_SEARCHRECORDSRESPONSE']._serialized_end=592
+  _globals['_SEARCHSERVICE']._serialized_start=595
+  _globals['_SEARCHSERVICE']._serialized_end=817
 # @@protoc_insertion_point(module_scope)
