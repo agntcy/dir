@@ -138,7 +138,7 @@ describe('Client', () => {
     expect(objects.length).toBeGreaterThan(0);
 
     for (const obj of objects) {
-      expect(obj).toBeTypeOf(typeof models.search_v1.SearchResponseSchema);
+      expect(obj).toHaveProperty('recordCid');
     }
   });
 
