@@ -534,29 +534,61 @@ export class Client {
    * Search objects from the Store API matching the specified queries.
    *
    * Performs a search across the storage using the provided search queries
-   * and returns a list of matching results. Supports various
-   * search types including text, semantic, and structured queries.
+   * and returns a list of matching CIDs. This is efficient for lookups
+   * where only the CIDs are needed.
    *
-   * @param request - SearchRequest containing queries, filters, and search options
-   * @returns Promise that resolves to an array of SearchResponse objects matching the queries
+   * @param request - SearchCIDsRequest containing queries, filters, and search options
+   * @returns Promise that resolves to an array of SearchCIDsResponse objects matching the queries
    *
    * @throws {Error} If the gRPC call fails or the search operation fails
    *
    * @example
    * ```typescript
-   * const request = new models.search_v1.SearchRequest({query: "python AI agent"});
-   * const responses = await client.search(request);
+   * const request = create(models.search_v1.SearchCIDsRequestSchema, {queries: [query], limit: 10});
+   * const responses = await client.searchCIDs(request);
    * for (const response of responses) {
-   *   console.log(`Found: ${response.record.name}`);
+   *   console.log(`Found CID: ${response.recordCid}`);
    * }
    * ```
    */
-  async search(
-    request: models.search_v1.SearchRequest,
-  ): Promise<models.search_v1.SearchResponse[]> {
-    const responses: models.search_v1.SearchResponse[] = [];
+  async searchCIDs(
+    request: models.search_v1.SearchCIDsRequest,
+  ): Promise<models.search_v1.SearchCIDsResponse[]> {
+    const responses: models.search_v1.SearchCIDsResponse[] = [];
 
-    for await (const response of this.searchClient.search(request)) {
+    for await (const response of this.searchClient.searchCIDs(request)) {
+      responses.push(response);
+    }
+
+    return responses;
+  }
+
+  /**
+   * Search for full records from the Store API matching the specified queries.
+   *
+   * Performs a search across the storage using the provided search queries
+   * and returns a list of full records with all metadata.
+   *
+   * @param request - SearchRecordsRequest containing queries, filters, and search options
+   * @returns Promise that resolves to an array of SearchRecordsResponse objects matching the queries
+   *
+   * @throws {Error} If the gRPC call fails or the search operation fails
+   *
+   * @example
+   * ```typescript
+   * const request = create(models.search_v1.SearchRecordsRequestSchema, {queries: [query], limit: 10});
+   * const responses = await client.searchRecords(request);
+   * for (const response of responses) {
+   *   console.log(`Found: ${response.record?.name}`);
+   * }
+   * ```
+   */
+  async searchRecords(
+    request: models.search_v1.SearchRecordsRequest,
+  ): Promise<models.search_v1.SearchRecordsResponse[]> {
+    const responses: models.search_v1.SearchRecordsResponse[] = [];
+
+    for await (const response of this.searchClient.searchRecords(request)) {
       responses.push(response);
     }
 

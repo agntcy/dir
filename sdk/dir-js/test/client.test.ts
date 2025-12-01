@@ -117,11 +117,11 @@ describe('Client', () => {
     }
   });
 
-  test('search', async () => {
+  test('searchCIDs', async () => {
     const records = genRecords(1, 'search');
     await client.push(records);
 
-    const searchRequest = create(models.search_v1.SearchRequestSchema, {
+    const searchRequest = create(models.search_v1.SearchCIDsRequestSchema, {
       queries: [
         {
           type: models.search_v1.RecordQueryType.SKILL_ID,
@@ -131,7 +131,7 @@ describe('Client', () => {
       limit: 2,
     });
 
-    const objects = await client.search(searchRequest);
+    const objects = await client.searchCIDs(searchRequest);
 
     expect(objects).not.toBeNull();
     expect(objects).toBeInstanceOf(Array);
