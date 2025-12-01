@@ -52,7 +52,7 @@ func NewMCPDuplicateChecker(ctx context.Context, client config.ClientInterface, 
 // and builds an in-memory cache of name@version combinations using pagination.
 // This ensures we don't reimport records that exist under the old runtime/mcp module name.
 //
-//nolint:gocognit // Complexity is acceptable for building cache from multiple modules
+//nolint:gocognit,cyclop // Complexity is acceptable for building cache from multiple modules
 func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 	const (
 		batchSize  = 1000  // Process 1000 records at a time
@@ -73,7 +73,7 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 			searchReq := &searchv1.SearchRequest{
 				Queries: []*searchv1.RecordQuery{
 					{
-						Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+						Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 						Value: module,
 					},
 				},
@@ -81,15 +81,29 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 				Offset: &offset,
 			}
 
-			cidCh, err := c.client.Search(ctx, searchReq)
+			result, err := c.client.SearchCIDs(ctx, searchReq)
 			if err != nil {
 				return fmt.Errorf("search for existing %s records failed: %w", module, err)
 			}
 
 			// Collect CIDs from this batch
 			cids := make([]string, 0, batchSize)
-			for cid := range cidCh {
-				cids = append(cids, cid)
+
+		L:
+			for {
+				select {
+				case resp := <-result.ResCh():
+					cid := resp.GetRecordCid()
+					if cid != "" {
+						cids = append(cids, cid)
+					}
+				case err := <-result.ErrCh():
+					return fmt.Errorf("search stream error for %s: %w", module, err)
+				case <-result.DoneCh():
+					break L
+				case <-ctx.Done():
+					return fmt.Errorf("context cancelled: %w", ctx.Err())
+				}
 			}
 
 			// No more results for this module
