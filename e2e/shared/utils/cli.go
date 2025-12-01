@@ -74,6 +74,28 @@ func (c *CLI) Search() *SearchBuilder {
 	}
 }
 
+func (c *CLI) SearchRecords() *SearchBuilder {
+	return &SearchBuilder{
+		CommandBuilder:   c.Command("search"),
+		subcommand:       "records", // Use records subcommand
+		names:            []string{},
+		versions:         []string{},
+		skillIDs:         []string{},
+		skillNames:       []string{},
+		locators:         []string{},
+		modules:          []string{},
+		domainIDs:        []string{},
+		domains:          []string{},
+		createdAts:       []string{},
+		authors:          []string{},
+		schemaVersions:   []string{},
+		moduleIDs:        []string{},
+		outputFormatArgs: []string{},
+		limit:            0,
+		offset:           0,
+	}
+}
+
 func (c *CLI) Sign(recordCID, keyPath string) *CommandBuilder {
 	return c.Command("sign").WithArgs(recordCID, "--key", keyPath)
 }

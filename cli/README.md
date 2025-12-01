@@ -63,11 +63,11 @@ All `dirctl` commands support the `--output` (or `-o`) flag to control output fo
 
 ```bash
 # Human-readable (default)
-dirctl search --skill "AI"
+dirctl search cids --skill "AI"
 
 # JSON output (pretty-printed)
-dirctl search --skill "AI" --output json
-dirctl search --skill "AI" -o json  # short form
+dirctl search cids --skill "AI" --output json
+dirctl search cids --skill "AI" -o json  # short form
 
 # JSONL output (streaming-friendly)
 dirctl events listen --output jsonl | jq -c .
@@ -91,7 +91,7 @@ dirctl routing search --skill "AI" --output json | jq '.[].peer.addrs[]'
 dirctl events listen --output jsonl | jq -c 'select(.type == "EVENT_TYPE_RECORD_PUSHED")'
 
 # Extract CIDs for processing
-dirctl search --skill "AI" --output json | jq -r '.[]' | while read cid; do
+dirctl search cids --skill "AI" --output json | jq -r '.[]' | while read cid; do
   dirctl pull "$cid"
 done
 ```
@@ -263,42 +263,63 @@ dirctl routing info
 
 ### 🔍 **Search & Discovery**
 
-#### `dirctl search [flags]`
-General content search across all records using the search service.
+#### `dirctl search cids [flags]`
+Search for record CIDs matching the given criteria. Efficient for piping to other commands.
 
 **Examples:**
 ```bash
 # Search by record name
-dirctl search --name "my-agent"
+dirctl search cids --name "my-agent"
 
 # Search by version
-dirctl search --version "v1.0.0"
+dirctl search cids --version "v1.0.0"
 
 # Search by skill name
-dirctl search --skill "natural_language_processing"
+dirctl search cids --skill "natural_language_processing"
 
 # Search by skill ID
-dirctl search --skill-id "10201"
+dirctl search cids --skill-id "10201"
 
 # Complex search with multiple criteria
-dirctl search --limit 10 --offset 0 \
+dirctl search cids --limit 10 --offset 0 \
   --name "my-agent" \
   --skill "natural_language_processing/natural_language_generation/text_completion" \
   --locator "docker-image:https://example.com/image"
 
 # Wildcard search examples
-dirctl search --name "web*" --version "v1.*"
-dirctl search --skill "python*" --skill "*script"
+dirctl search cids --name "web*" --version "v1.*"
+dirctl search cids --skill "python*" --skill "*script"
+
+# Pipe CIDs to other commands
+dirctl search cids --name "web*" --output raw | xargs -I {} dirctl pull {}
 ```
 
-**Flags:**
-- `--name <name>` - Search by record name (repeatable)
-- `--version <version>` - Search by version (repeatable)
-- `--skill <skill>` - Search by skill name (repeatable)
+#### `dirctl search records [flags]`
+Search for full records matching the given criteria. Returns complete record data.
+
+**Examples:**
+```bash
+# Get full records as JSON
+dirctl search records --name "my-agent" --output json
+
+# Search with comparison operators
+dirctl search records --version ">=1.0.0" --version "<2.0.0"
+dirctl search records --created-at ">=2024-01-01"
+```
+
+**Flags (for both cids and records):**
+- `--name <name>` - Search by record name (repeatable, supports wildcards)
+- `--version <version>` - Search by version (repeatable, supports wildcards and comparison operators)
+- `--skill <skill>` - Search by skill name (repeatable, supports wildcards)
 - `--skill-id <id>` - Search by skill ID (repeatable)
-- `--locator <type>` - Search by locator type (repeatable)
-- `--module <module>` - Search by module (repeatable)
-- `--limit <number>` - Maximum results
+- `--locator <type>` - Search by locator type (repeatable, supports wildcards)
+- `--module <module>` - Search by module name (repeatable, supports wildcards)
+- `--domain <domain>` - Search by domain name (repeatable, supports wildcards)
+- `--domain-id <id>` - Search by domain ID (repeatable)
+- `--author <author>` - Search by author (repeatable, supports wildcards)
+- `--schema-version <version>` - Search by schema version (repeatable, supports wildcards)
+- `--created-at <timestamp>` - Search by created_at (repeatable, supports comparison operators)
+- `--limit <number>` - Maximum results (default: 100)
 - `--offset <number>` - Result offset for pagination
 
 ### 🔐 **Security & Verification**
@@ -627,7 +648,7 @@ dirctl import --type=mcp \
   --debug
 
 # 5. Search imported records
-dirctl search --module "runtime/mcp"
+dirctl search cids --module "runtime/mcp"
 ```
 
 ### 🔄 **Synchronization Workflow**
