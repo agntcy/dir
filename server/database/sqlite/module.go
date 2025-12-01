@@ -10,15 +10,20 @@ import (
 )
 
 type Module struct {
-	ID        uint `gorm:"primarykey"`
+	ID        uint   `gorm:"primarykey"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	RecordCID string `gorm:"column:record_cid;not null;index"`
 	Name      string `gorm:"not null"`
+	ModuleID  uint64 `gorm:"column:module_id"`
 }
 
 func (module *Module) GetName() string {
 	return module.Name
+}
+
+func (module *Module) GetID() uint64 {
+	return module.ModuleID
 }
 
 func (module *Module) GetData() map[string]any {
@@ -33,6 +38,7 @@ func convertModules(modules []types.Module, recordCID string) []Module {
 		result[i] = Module{
 			RecordCID: recordCID,
 			Name:      module.GetName(),
+			ModuleID:  module.GetID(),
 		}
 	}
 

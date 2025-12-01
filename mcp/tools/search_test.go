@@ -40,7 +40,7 @@ func TestBuildQueries(t *testing.T) {
 				SkillIDs:    []string{"10201"},
 				SkillNames:  []string{"Python"},
 				Locators:    []string{"docker-image:*"},
-				Modules:     []string{"core-module"},
+				ModuleNames: []string{"core-module"},
 				DomainIDs:   []string{"604"},
 				DomainNames: []string{"*education*"},
 			},
@@ -68,7 +68,7 @@ func TestBuildQueriesTypes(t *testing.T) {
 		SkillIDs:    []string{"10201"},
 		SkillNames:  []string{"Python"},
 		Locators:    []string{"docker-image:test"},
-		Modules:     []string{"core"},
+		ModuleNames: []string{"core"},
 		DomainIDs:   []string{"604"},
 		DomainNames: []string{"*education*"},
 	}
@@ -83,7 +83,7 @@ func TestBuildQueriesTypes(t *testing.T) {
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
-		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
+		searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_ID,
 		searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
 	}

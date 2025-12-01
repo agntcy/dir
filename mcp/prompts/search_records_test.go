@@ -194,7 +194,7 @@ func TestSearchRecordsPromptParameterDocumentation(t *testing.T) {
 		"skill_ids",
 		"skill_names",
 		"locators",
-		"modules",
+		"module_names",
 		"domain_ids",
 		"domain_names",
 	}

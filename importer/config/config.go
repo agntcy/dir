@@ -29,7 +29,7 @@ const (
 // This allows for easier testing and mocking.
 type ClientInterface interface {
 	Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
-	Search(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error)
+	SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error)
 	PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error)
 }
 

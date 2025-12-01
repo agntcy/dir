@@ -6,13 +6,14 @@
 /* eslint-disable */
 
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import { file_agntcy_dir_core_v1_record } from "../../core/v1/record_pb.js";
 import { file_agntcy_dir_search_v1_record_query } from "./record_query_pb.js";
 
 /**
  * Describes the file agntcy/dir/search/v1/search_service.proto.
  */
 export const file_agntcy_dir_search_v1_search_service = /*@__PURE__*/
-  fileDesc("CilhZ250Y3kvZGlyL3NlYXJjaC92MS9zZWFyY2hfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5zZWFyY2gudjEigQEKDVNlYXJjaFJlcXVlc3QSMgoHcXVlcmllcxgBIAMoCzIhLmFnbnRjeS5kaXIuc2VhcmNoLnYxLlJlY29yZFF1ZXJ5EhIKBWxpbWl0GAIgASgNSACIAQESEwoGb2Zmc2V0GAMgASgNSAGIAQFCCAoGX2xpbWl0QgkKB19vZmZzZXQiJAoOU2VhcmNoUmVzcG9uc2USEgoKcmVjb3JkX2NpZBgBIAEoCTJmCg1TZWFyY2hTZXJ2aWNlElUKBlNlYXJjaBIjLmFnbnRjeS5kaXIuc2VhcmNoLnYxLlNlYXJjaFJlcXVlc3QaJC5hZ250Y3kuZGlyLnNlYXJjaC52MS5TZWFyY2hSZXNwb25zZTABQsYBChhjb20uYWdudGN5LmRpci5zZWFyY2gudjFCElNlYXJjaFNlcnZpY2VQcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL3NlYXJjaC92MaICA0FEU6oCFEFnbnRjeS5EaXIuU2VhcmNoLlYxygIUQWdudGN5XERpclxTZWFyY2hcVjHiAiBBZ250Y3lcRGlyXFNlYXJjaFxWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpTZWFyY2g6OlYxYgZwcm90bzM", [file_agntcy_dir_search_v1_record_query]);
+  fileDesc("CilhZ250Y3kvZGlyL3NlYXJjaC92MS9zZWFyY2hfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5zZWFyY2gudjEigQEKDVNlYXJjaFJlcXVlc3QSMgoHcXVlcmllcxgBIAMoCzIhLmFnbnRjeS5kaXIuc2VhcmNoLnYxLlJlY29yZFF1ZXJ5EhIKBWxpbWl0GAIgASgNSACIAQESEwoGb2Zmc2V0GAMgASgNSAGIAQFCCAoGX2xpbWl0QgkKB19vZmZzZXQiKAoSU2VhcmNoQ0lEc1Jlc3BvbnNlEhIKCnJlY29yZF9jaWQYASABKAkiQwoVU2VhcmNoUmVjb3Jkc1Jlc3BvbnNlEioKBnJlY29yZBgBIAEoCzIaLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmQy0wEKDVNlYXJjaFNlcnZpY2USXQoKU2VhcmNoQ0lEcxIjLmFnbnRjeS5kaXIuc2VhcmNoLnYxLlNlYXJjaFJlcXVlc3QaKC5hZ250Y3kuZGlyLnNlYXJjaC52MS5TZWFyY2hDSURzUmVzcG9uc2UwARJjCg1TZWFyY2hSZWNvcmRzEiMuYWdudGN5LmRpci5zZWFyY2gudjEuU2VhcmNoUmVxdWVzdBorLmFnbnRjeS5kaXIuc2VhcmNoLnYxLlNlYXJjaFJlY29yZHNSZXNwb25zZTABQsYBChhjb20uYWdudGN5LmRpci5zZWFyY2gudjFCElNlYXJjaFNlcnZpY2VQcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL3NlYXJjaC92MaICA0FEU6oCFEFnbnRjeS5EaXIuU2VhcmNoLlYxygIUQWdudGN5XERpclxTZWFyY2hcVjHiAiBBZ250Y3lcRGlyXFNlYXJjaFxWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpTZWFyY2g6OlYxYgZwcm90bzM", [file_agntcy_dir_core_v1_record, file_agntcy_dir_search_v1_record_query]);
 
 /**
  * Describes the message agntcy.dir.search.v1.SearchRequest.
@@ -22,11 +23,18 @@ export const SearchRequestSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_search_v1_search_service, 0);
 
 /**
- * Describes the message agntcy.dir.search.v1.SearchResponse.
- * Use `create(SearchResponseSchema)` to create a new message.
+ * Describes the message agntcy.dir.search.v1.SearchCIDsResponse.
+ * Use `create(SearchCIDsResponseSchema)` to create a new message.
  */
-export const SearchResponseSchema = /*@__PURE__*/
+export const SearchCIDsResponseSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_search_v1_search_service, 1);
+
+/**
+ * Describes the message agntcy.dir.search.v1.SearchRecordsResponse.
+ * Use `create(SearchRecordsResponseSchema)` to create a new message.
+ */
+export const SearchRecordsResponseSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_search_v1_search_service, 2);
 
 /**
  * @generated from service agntcy.dir.search.v1.SearchService

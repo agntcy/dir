@@ -8,6 +8,7 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 import type { RecordQuery } from "./record_query_pb.js";
+import type { Record } from "../../core/v1/record_pb.js";
 
 /**
  * Describes the file agntcy/dir/search/v1/search_service.proto.
@@ -47,9 +48,9 @@ export declare type SearchRequest = Message<"agntcy.dir.search.v1.SearchRequest"
 export declare const SearchRequestSchema: GenMessage<SearchRequest>;
 
 /**
- * @generated from message agntcy.dir.search.v1.SearchResponse
+ * @generated from message agntcy.dir.search.v1.SearchCIDsResponse
  */
-export declare type SearchResponse = Message<"agntcy.dir.search.v1.SearchResponse"> & {
+export declare type SearchCIDsResponse = Message<"agntcy.dir.search.v1.SearchCIDsResponse"> & {
   /**
    * The CID of the record that matches the search criteria.
    *
@@ -59,25 +60,56 @@ export declare type SearchResponse = Message<"agntcy.dir.search.v1.SearchRespons
 };
 
 /**
- * Describes the message agntcy.dir.search.v1.SearchResponse.
- * Use `create(SearchResponseSchema)` to create a new message.
+ * Describes the message agntcy.dir.search.v1.SearchCIDsResponse.
+ * Use `create(SearchCIDsResponseSchema)` to create a new message.
  */
-export declare const SearchResponseSchema: GenMessage<SearchResponse>;
+export declare const SearchCIDsResponseSchema: GenMessage<SearchCIDsResponse>;
+
+/**
+ * @generated from message agntcy.dir.search.v1.SearchRecordsResponse
+ */
+export declare type SearchRecordsResponse = Message<"agntcy.dir.search.v1.SearchRecordsResponse"> & {
+  /**
+   * The full record that matches the search criteria.
+   *
+   * @generated from field: agntcy.dir.core.v1.Record record = 1;
+   */
+  record?: Record;
+};
+
+/**
+ * Describes the message agntcy.dir.search.v1.SearchRecordsResponse.
+ * Use `create(SearchRecordsResponseSchema)` to create a new message.
+ */
+export declare const SearchRecordsResponseSchema: GenMessage<SearchRecordsResponse>;
 
 /**
  * @generated from service agntcy.dir.search.v1.SearchService
  */
 export declare const SearchService: GenService<{
   /**
-   * List records that this peer is currently providing that match the given parameters.
+   * Search for record CIDs that match the given parameters.
+   * Returns only CIDs for efficient lookups and piping to other commands.
    * This operation does not interact with the network.
    *
-   * @generated from rpc agntcy.dir.search.v1.SearchService.Search
+   * @generated from rpc agntcy.dir.search.v1.SearchService.SearchCIDs
    */
-  search: {
+  searchCIDs: {
     methodKind: "server_streaming";
     input: typeof SearchRequestSchema;
-    output: typeof SearchResponseSchema;
+    output: typeof SearchCIDsResponseSchema;
+  },
+  /**
+   * Search for full records that match the given parameters.
+   * Returns complete record data including all metadata, skills, domains, etc.
+   * This operation does not interact with the network.
+   *
+   * @generated from rpc agntcy.dir.search.v1.SearchService.SearchRecords
+   */
+  searchRecords: {
+    methodKind: "server_streaming";
+    input: typeof SearchRequestSchema;
+    output: typeof SearchRecordsResponseSchema;
   },
 }>;
 

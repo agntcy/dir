@@ -37,7 +37,7 @@ func (m *mockClient) PullBatch(ctx context.Context, recordRefs []*corev1.RecordR
 	return []*corev1.Record{}, nil
 }
 
-func (m *mockClient) Search(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error) {
+func (m *mockClient) SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error) {
 	ch := make(chan string)
 	close(ch)
 

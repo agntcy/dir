@@ -3,7 +3,7 @@
 
 package search
 
-import "github.com/agntcy/dir/cli/presenter"
+import "github.com/spf13/cobra"
 
 var opts = &options{}
 
@@ -12,18 +12,23 @@ type options struct {
 	Offset uint32
 
 	// Direct field flags (consistent with routing search)
-	Names       []string
-	Versions    []string
-	SkillIDs    []string
-	SkillNames  []string
-	Locators    []string
-	Modules     []string
-	DomainIDs   []string
-	DomainNames []string
+	Names          []string
+	Versions       []string
+	SkillIDs       []string
+	SkillNames     []string
+	Locators       []string
+	Modules        []string
+	DomainIDs      []string
+	DomainNames    []string
+	CreatedAts     []string
+	Authors        []string
+	SchemaVersions []string
+	ModuleIDs      []string
 }
 
-func init() {
-	flags := Command.Flags()
+// registerFlags adds search flags to a subcommand.
+func registerFlags(cmd *cobra.Command) {
+	flags := cmd.Flags()
 
 	flags.Uint32Var(&opts.Limit, "limit", 100, "Maximum number of results to return (default: 100)") //nolint:mnd
 	flags.Uint32Var(&opts.Offset, "offset", 0, "Pagination offset (default: 0)")
@@ -37,6 +42,10 @@ func init() {
 	flags.StringArrayVar(&opts.Modules, "module", nil, "Search for records with specific module (can be repeated)")
 	flags.StringArrayVar(&opts.DomainIDs, "domain-id", nil, "Search for records with specific domain ID (can be repeated)")
 	flags.StringArrayVar(&opts.DomainNames, "domain", nil, "Search for records with specific domain name (can be repeated)")
+	flags.StringArrayVar(&opts.CreatedAts, "created-at", nil, "Search for records with specific created_at timestamp (can be repeated)")
+	flags.StringArrayVar(&opts.Authors, "author", nil, "Search for records with specific author (can be repeated)")
+	flags.StringArrayVar(&opts.SchemaVersions, "schema-version", nil, "Search for records with specific schema version (can be repeated)")
+	flags.StringArrayVar(&opts.ModuleIDs, "module-id", nil, "Search for records with specific module ID (can be repeated)")
 
 	// Add examples in flag help
 	flags.Lookup("name").Usage = "Search for records with specific name (e.g., --name 'my-agent' --name 'web-*')"
@@ -47,7 +56,8 @@ func init() {
 	flags.Lookup("module").Usage = "Search for records with specific module (e.g., --module 'runtime/language')"
 	flags.Lookup("domain-id").Usage = "Search for records with specific domain ID (e.g., --domain-id '604')"
 	flags.Lookup("domain").Usage = "Search for records with specific domain name (e.g., --domain '*education*' --domain 'healthcare/*')"
-
-	// Add output format flags
-	presenter.AddOutputFlags(Command)
+	flags.Lookup("created-at").Usage = "Search for records with specific created_at timestamp (e.g., --created-at '2024-*')"
+	flags.Lookup("author").Usage = "Search for records with specific author (e.g., --author 'john*')"
+	flags.Lookup("schema-version").Usage = "Search for records with specific schema version (e.g., --schema-version '0.8.*')"
+	flags.Lookup("module-id").Usage = "Search for records with specific module ID (e.g., --module-id '201')"
 }
