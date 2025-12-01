@@ -100,6 +100,7 @@ func (s *store) PushObject(ctx context.Context, object *storev1.Object) (*storev
 	}
 
 	// Compute CID for the objects
+	object.Cid = ""
 	_, objectCID, err := corev1.MarshalCannonical(object)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute object CID: %w", err)
@@ -133,6 +134,7 @@ func (s *store) Lookup(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Ob
 
 		// Return object metadata
 		return &storev1.Object{
+			Cid: ref.GetCid(),
 			Schema: &storev1.ObjectSchema{
 				Type: "application/octet-stream",
 			},
@@ -169,10 +171,12 @@ func (s *store) Lookup(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Ob
 	}
 
 	// Compute CID for the object
+	object.Cid = ""
 	_, objectCID, err := corev1.MarshalCannonical(object)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to compute object CID for CID %s: %v", ref.GetCid(), err)
 	}
+	object.Cid = objectCID
 
 	// Verify computed CID matches the requested CID
 	if objectCID != ref.GetCid() {
@@ -191,12 +195,13 @@ func (s *store) Pull(ctx context.Context, ref *storev1.ObjectRef) (io.ReadCloser
 	}
 
 	// If its an object, pull the data from the object
+	pullCid := obj.GetCid()
 	if obj.Data != nil {
-		return s.Pull(ctx, obj.GetData())
+		pullCid = obj.Data.GetCid()
 	}
 
 	// Convert CID to digest
-	digest, err := corev1.ConvertCIDToDigest(ref.GetCid())
+	digest, err := corev1.ConvertCIDToDigest(pullCid)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to convert CID to digest: %v", err)
 	}
@@ -204,7 +209,7 @@ func (s *store) Pull(ctx context.Context, ref *storev1.ObjectRef) (io.ReadCloser
 	// Pull the data
 	dataRd, err := s.repo.Fetch(ctx, ocispec.Descriptor{Digest: digest})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to fetch data for CID %s: %v", ref.GetCid(), err)
+		return nil, status.Errorf(codes.Internal, "failed to fetch data for CID %s: %v", pullCid, err)
 	}
 
 	return dataRd, nil

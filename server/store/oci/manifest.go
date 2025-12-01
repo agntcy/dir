@@ -7,11 +7,13 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	imagespecs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 )
 
 var (
-	manifestArtifactType = "org.agntcy.dir.Object"
+	manifestArtifactType = "application/vnd.org.agntcy.dir.Object"
 	annotationPrefix     = "org.agntcy.dir"
 	annotationCreatedAt  = path.Join(annotationPrefix, "created_at")
 	annotationSchemaType = path.Join(annotationPrefix, "schema.type")
@@ -44,6 +46,9 @@ func ObjectToManifest(obj *storev1.Object) (ocispec.Manifest, error) {
 	}
 
 	return ocispec.Manifest{
+		Versioned: imagespecs.Versioned{
+			SchemaVersion: int(oras.PackManifestVersion1_1),
+		},
 		MediaType:    ocispec.MediaTypeImageManifest,
 		ArtifactType: manifestArtifactType,
 		Config:       dataDescriptor,
@@ -119,10 +124,9 @@ func dataToDescriptor(obj *storev1.Object) (ocispec.Descriptor, error) {
 	}
 
 	return ocispec.Descriptor{
-		ArtifactType: annotations[annotationSchemaType],
-		Digest:       digest,
-		Size:         int64(obj.Size),
-		Annotations:  annotations,
+		Digest:      digest,
+		Size:        int64(obj.Size),
+		Annotations: annotations,
 	}, nil
 }
 

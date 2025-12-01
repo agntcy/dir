@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/server/store/oci/config"
 	"github.com/stretchr/testify/assert"
@@ -35,10 +34,6 @@ func TestOCI(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, baseIn, string(dataBytes))
 
-	// generate non-commited cid
-	_, cid, err := corev1.MarshalCannonical("abc")
-	assert.Nil(t, err)
-
 	// Create test object
 	obj := &storev1.Object{
 		Schema: &storev1.ObjectSchema{
@@ -49,14 +44,12 @@ func TestOCI(t *testing.T) {
 		Annotations: map[string]string{
 			"key": "value",
 		},
-		Data: &storev1.ObjectRef{
-			Cid: baseRef.GetCid(),
-		},
+		Data: baseRef,
+		Size: lookBase.GetSize(),
 		Links: []*storev1.Object{
 			{
-				Data: &storev1.ObjectRef{
-					Cid: cid,
-				},
+				Data: baseRef,
+				Size: lookBase.GetSize(),
 				Schema: &storev1.ObjectSchema{
 					Type:    "link",
 					Version: "1.0.0.0.0",
@@ -76,6 +69,7 @@ func TestOCI(t *testing.T) {
 	// Lookup object back
 	lookObj, err := store.Lookup(t.Context(), objRef)
 	assert.Nil(t, err)
+	lookObj.Cid = ""
 	assert.True(t, reflect.DeepEqual(obj, lookObj))
 
 	// Pull object back

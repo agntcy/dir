@@ -16,10 +16,11 @@ message ObjectSchema {
 }
 
 message Object {
-  ObjectSchema schema = 1;
-  map<string, string> annotations = 2;
-  string created_at = 3;
-  uint64 size = 4;
-  ObjectRef data = 5;
-  repeated Object links = 6;
+  string cid = 1;
+  ObjectSchema schema = 2;
+  map<string, string> annotations = 3;
+  string created_at = 4;
+  uint64 size = 5;
+  ObjectRef data = 6;
+  repeated Object links = 7;
 }
