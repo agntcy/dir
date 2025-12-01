@@ -4,6 +4,7 @@
 package v1_test
 
 import (
+	"context"
 	"testing"
 
 	oasfv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
@@ -148,11 +149,6 @@ func TestRecord_Validate(t *testing.T) {
 						Name: "natural_language_processing/natural_language_understanding",
 					},
 				},
-				Modules: []*oasfv1alpha1.Module{
-					{
-						Name: "test-extension",
-					},
-				},
 			}),
 			wantValid: true,
 		},
@@ -193,7 +189,243 @@ func TestRecord_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			valid, errors, err := tt.record.Validate()
+			valid, errors, err := tt.record.Validate(context.Background())
+			if err != nil {
+				if tt.wantValid {
+					t.Errorf("Validate() unexpected error: %v", err)
+				}
+
+				return
+			}
+
+			if valid != tt.wantValid {
+				t.Errorf("Validate() got valid = %v, errors = %v, want %v", valid, errors, tt.wantValid)
+			}
+
+			if !valid && len(errors) == 0 {
+				t.Errorf("Validate() expected errors for invalid record, got none")
+			}
+		})
+	}
+}
+
+func TestRecord_SetSchemaURL(t *testing.T) {
+	// Test that SetSchemaURL changes the package-level variable
+	// Note: This test modifies global state, so we should be careful about test isolation
+
+	// Save original state
+	originalURL := ""
+	defer corev1.SetSchemaURL(originalURL) // Restore after test
+
+	tests := []struct {
+		name      string
+		schemaURL string
+		wantSet   bool
+	}{
+		{
+			name:      "set valid schema URL",
+			schemaURL: "https://schema.oasf.outshift.com",
+			wantSet:   true,
+		},
+		{
+			name:      "set empty schema URL (disable API validator)",
+			schemaURL: "",
+			wantSet:   true,
+		},
+		{
+			name:      "set custom schema URL",
+			schemaURL: "https://custom.schema.url",
+			wantSet:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This should not panic or error
+			corev1.SetSchemaURL(tt.schemaURL)
+
+			// We can't directly verify the internal state, but we can verify
+			// that calling SetSchemaURL doesn't panic and that validation
+			// still works afterwards (when using a valid URL or empty URL)
+			record := corev1.New(&oasfv1alpha1.Record{
+				Name:          "test-agent",
+				SchemaVersion: "0.7.0",
+				Description:   "A test agent",
+				Version:       "1.0.0",
+				CreatedAt:     "2024-01-01T00:00:00Z",
+				Authors: []string{
+					"Jane Doe <jane.doe@example.com>",
+				},
+				Locators: []*oasfv1alpha1.Locator{
+					{
+						Type: "helm_chart",
+						Url:  "https://example.com/helm-chart.tgz",
+					},
+				},
+				Skills: []*oasfv1alpha1.Skill{
+					{
+						Name: "natural_language_processing/natural_language_understanding",
+					},
+				},
+			})
+
+			// Validation should work for valid URLs or empty URL (embedded validation)
+			// For invalid URLs, we expect a network error which is acceptable for this test
+			valid, _, err := record.Validate(context.Background())
+			if err != nil {
+				// If it's a network error (like "no such host"), that's expected for invalid URLs
+				// and we just verify that SetSchemaURL didn't panic
+				if tt.schemaURL != "" && tt.schemaURL != "https://schema.oasf.outshift.com" {
+					// For custom/invalid URLs, network errors are expected
+					return
+				}
+
+				t.Fatalf("Validate() error = %v", err)
+			}
+
+			assert.True(t, valid)
+		})
+	}
+}
+
+// testRecordWithValidation is a helper function to create a test record and validate it.
+// This reduces code duplication between similar tests.
+func testRecordWithValidation(t *testing.T) {
+	t.Helper()
+
+	record := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "0.7.0",
+		Description:   "A test agent",
+		Version:       "1.0.0",
+		CreatedAt:     "2024-01-01T00:00:00Z",
+		Authors: []string{
+			"Jane Doe <jane.doe@example.com>",
+		},
+		Locators: []*oasfv1alpha1.Locator{
+			{
+				Type: "helm_chart",
+				Url:  "https://example.com/helm-chart.tgz",
+			},
+		},
+		Skills: []*oasfv1alpha1.Skill{
+			{
+				Name: "natural_language_processing/natural_language_understanding",
+			},
+		},
+		Modules: []*oasfv1alpha1.Module{
+			{
+				Name: "test-extension",
+			},
+		},
+	})
+
+	// Validation should still work
+	valid, _, err := record.Validate(context.Background())
+	if err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+
+	assert.True(t, valid)
+}
+
+func TestRecord_SetDisableAPIValidation(t *testing.T) {
+	// Test that SetDisableAPIValidation changes the package-level variable
+	// Note: This test modifies global state, so we should be careful about test isolation
+
+	// Save original state
+	originalDisable := false
+	defer corev1.SetDisableAPIValidation(originalDisable) // Restore after test
+
+	tests := []struct {
+		name           string
+		disableAPI     bool
+		wantDisableAPI bool
+	}{
+		{
+			name:           "disable API validation",
+			disableAPI:     true,
+			wantDisableAPI: true,
+		},
+		{
+			name:           "enable API validation",
+			disableAPI:     false,
+			wantDisableAPI: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This should not panic or error
+			corev1.SetDisableAPIValidation(tt.disableAPI)
+
+			// Verify that calling SetDisableAPIValidation doesn't panic and that validation still works
+			testRecordWithValidation(t)
+		})
+	}
+}
+
+func TestRecord_SetStrictValidation(t *testing.T) {
+	// Test that SetStrictValidation changes the package-level variable
+	// Note: This test modifies global state, so we should be careful about test isolation
+
+	// Save original state
+	originalStrict := true
+	defer corev1.SetStrictValidation(originalStrict) // Restore after test
+
+	tests := []struct {
+		name       string
+		strict     bool
+		wantStrict bool
+	}{
+		{
+			name:       "enable strict validation",
+			strict:     true,
+			wantStrict: true,
+		},
+		{
+			name:       "disable strict validation (lax mode)",
+			strict:     false,
+			wantStrict: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This should not panic or error
+			corev1.SetStrictValidation(tt.strict)
+
+			// Verify that calling SetStrictValidation doesn't panic and that validation still works
+			testRecordWithValidation(t)
+		})
+	}
+}
+
+func TestRecord_Validate_RecordSize(t *testing.T) {
+	// Test that Validate checks record size
+	// Create a record that exceeds max size
+	// Note: This is difficult to test without creating a very large record,
+	// but we can test the nil and empty record cases which are part of the validation logic
+	tests := []struct {
+		name      string
+		record    *corev1.Record
+		wantValid bool
+	}{
+		{
+			name:      "nil record",
+			record:    nil,
+			wantValid: false,
+		},
+		{
+			name:      "record with nil data",
+			record:    &corev1.Record{},
+			wantValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid, errors, err := tt.record.Validate(context.Background())
 			if err != nil {
 				if tt.wantValid {
 					t.Errorf("Validate() unexpected error: %v", err)

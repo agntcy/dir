@@ -30,32 +30,6 @@
       "url": "https://ghcr.io/agntcy/marketing-strategy"
     }
   ],
-  "extensions": [
-    {
-      "name": "license",
-      "version": "v1.0.0",
-      "data": {
-        "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
-        "license": "Apache-2.0"
-      }
-    },
-    {
-      "name": "schema.oasf.agntcy.org/features/runtime/framework",
-      "version": "v0.0.0",
-      "data": {
-        "name": "crewai",
-        "version": "0.55.2"
-      }
-    },
-    {
-      "name": "schema.oasf.agntcy.org/features/runtime/language",
-      "version": "v0.0.0",
-      "data": {
-        "type": "python",
-        "version": "\u003e=3.11,\u003c3.13"
-      }
-    }
-  ],
   "signature": {
     "algorithm": "ES256",
     "certificate": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t",

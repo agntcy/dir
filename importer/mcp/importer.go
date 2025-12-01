@@ -50,22 +50,35 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 	// Create and run the appropriate pipeline based on dry-run mode
 	var pipelineResult *pipeline.Result
 
+	//nolint:nestif // Complexity is acceptable for pipeline setup with different modes
 	if cfg.DryRun {
-		// Use dry-run pipeline (fetch and transform only)
-		p := pipeline.NewDryRun(fetcher, transformer, pipelineConfig)
-		pipelineResult, err = p.Run(ctx)
-	} else {
-		// Create pusher with deduplication support
-		// If --force is set, pusher will skip cache building and push everything
-		// Otherwise, it will build a cache and skip duplicates
-		var pusher pipeline.Pusher
-
-		pusher, err = pipeline.NewClientPusher(ctx, i.client, cfg.Force, cfg.Debug)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create pusher: %w", err)
+		// Create duplicate checker for accurate dry-run preview (unless --force is set)
+		var duplicateChecker pipeline.DuplicateChecker
+		if !cfg.Force {
+			duplicateChecker, err = pipeline.NewMCPDuplicateChecker(ctx, i.client, cfg.Debug)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create duplicate checker: %w", err)
+			}
 		}
 
-		p := pipeline.New(fetcher, transformer, pusher, pipelineConfig)
+		// Use dry-run pipeline (fetch, filter duplicates, and transform only - no push)
+		p := pipeline.NewDryRun(fetcher, duplicateChecker, transformer, pipelineConfig)
+		pipelineResult, err = p.Run(ctx)
+	} else {
+		pusher := pipeline.NewClientPusher(i.client, cfg.Debug)
+
+		// If --force is set, duplicateChecker will be nil (no deduplication)
+		// Otherwise, build cache of existing records for deduplication
+		var duplicateChecker pipeline.DuplicateChecker
+		if !cfg.Force {
+			duplicateChecker, err = pipeline.NewMCPDuplicateChecker(ctx, i.client, cfg.Debug)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create duplicate checker: %w", err)
+			}
+		}
+
+		// Create full pipeline with optional duplicate checker
+		p := pipeline.New(fetcher, duplicateChecker, transformer, pusher, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	}
 

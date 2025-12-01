@@ -45,6 +45,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		expectedSkillNames []string
 		expectedLocator    string
 		expectedModule     string
+		shouldFailPush     bool // If true, push should fail (validation failure test)
 	}{
 		{
 			name:              "OASF_0.3.1_Record",
@@ -58,6 +59,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			},
 			expectedLocator: "docker-image:https://ghcr.io/agntcy/marketing-strategy",
 			expectedModule:  "schema.oasf.agntcy.org/features/runtime/framework",
+			shouldFailPush:  false,
 		},
 		{
 			name:              "OASF_0.7.0_Record",
@@ -71,6 +73,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			},
 			expectedLocator: "docker_image:https://ghcr.io/agntcy/marketing-strategy",
 			expectedModule:  "runtime/framework",
+			shouldFailPush:  false,
 		},
 		{
 			name:              "OASF_0.8.0_Record",
@@ -84,6 +87,18 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			},
 			expectedLocator: "docker_image:https://ghcr.io/agntcy/marketing-strategy",
 			expectedModule:  "runtime/framework",
+			shouldFailPush:  false,
+		},
+		{
+			name:               "OASF_0.8.0_Record_With_Warnings",
+			fileName:           "oasf_0.8.0_record_warnings_test.json",
+			jsonData:           testdata.ExpectedRecordWarningsV080JSON,
+			expectedAgentName:  "",
+			expectedSkillIDs:   []string{},
+			expectedSkillNames: []string{},
+			expectedLocator:    "",
+			expectedModule:     "",
+			shouldFailPush:     true, // Should fail strict API validation
 		},
 	}
 
@@ -102,6 +117,13 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 1: Push
 			ginkgo.It("should successfully push an record", func() {
+				if version.shouldFailPush {
+					// For validation failure tests, expect push to fail
+					_ = cli.Push(tempPath).WithArgs("--output", "raw").ShouldFail()
+
+					return
+				}
+
 				cid = cli.Push(tempPath).WithArgs("--output", "raw").ShouldSucceed()
 
 				// Validate that the returned CID correctly represents the pushed data
@@ -110,11 +132,17 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 2: Pull (depends on push)
 			ginkgo.It("should successfully pull an existing record", func() {
+				if version.shouldFailPush {
+					ginkgo.Skip("Skipping pull test - push failed validation")
+				}
 				cli.Pull(cid).ShouldSucceed()
 			})
 
 			// Step 3: Verify push/pull consistency (depends on pull)
 			ginkgo.It("should return identical record when pulled after push", func() {
+				if version.shouldFailPush {
+					ginkgo.Skip("Skipping consistency test - push failed validation")
+				}
 				// Pull the record and get the output JSON
 				pulledJSON := cli.Pull(cid).WithArgs("--output", "json").ShouldSucceed()
 
@@ -129,11 +157,17 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 4: Verify duplicate push returns same CID (depends on push)
 			ginkgo.It("should push the same record again and return the same cid", func() {
+				if version.shouldFailPush {
+					ginkgo.Skip("Skipping duplicate push test - push failed validation")
+				}
 				cli.Push(tempPath).WithArgs("--output", "raw").ShouldReturn(cid)
 			})
 
 			// Step 5: Search by first skill (depends on push)
 			ginkgo.It("should search for records with first skill and return their CID", func() {
+				if version.shouldFailPush || len(version.expectedSkillIDs) == 0 {
+					ginkgo.Skip("Skipping search test - push failed validation or no skills")
+				}
 				// This test will FAIL if skills are lost during JSON marshal/unmarshal
 				// or during the push/pull process, helping identify the root cause
 				search := cli.Search().
@@ -157,6 +191,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 6: Search by second skill (depends on push)
 			ginkgo.It("should search for records with second skill and return their CID", func() {
+				if version.shouldFailPush {
+					ginkgo.Skip("Skipping search test - push failed validation")
+				}
 				// This test specifically checks the second skill to ensure ALL skills are preserved
 				// Skip if there's only one skill (like in minimal test)
 				if len(version.expectedSkillIDs) < 2 {
@@ -189,11 +226,17 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 
 			// Step 8: Delete (depends on previous steps)
 			ginkgo.It("should successfully delete an record", func() {
+				if version.shouldFailPush {
+					ginkgo.Skip("Skipping delete test - push failed validation")
+				}
 				cli.Delete(cid).ShouldSucceed()
 			})
 
 			// Step 9: Verify deletion (depends on delete)
 			ginkgo.It("should fail to pull a deleted record", func() {
+				if version.shouldFailPush {
+					ginkgo.Skip("Skipping deletion verification - push failed validation")
+				}
 				// Add a small delay to ensure delete operation is fully processed
 				time.Sleep(100 * time.Millisecond)
 

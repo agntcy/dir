@@ -42,6 +42,8 @@ func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, eventBus *ev
 func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 	storeLogger.Debug("Called store controller's Push method")
 
+	ctx := stream.Context()
+
 	for {
 		// Receive complete Record from stream
 		record, err := stream.Recv()
@@ -55,7 +57,7 @@ func (s storeCtrl) Push(stream storev1.StoreService_PushServer) error {
 			return status.Errorf(codes.Internal, "failed to receive record: %v", err)
 		}
 
-		isValid, validationErrors, err := record.Validate()
+		isValid, validationErrors, err := record.Validate(ctx)
 		if err != nil {
 			return status.Errorf(codes.Internal, "failed to validate record: %v", err)
 		}

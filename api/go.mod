@@ -5,7 +5,7 @@ go 1.25.2
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.10-20251029125108-823ea6fabc82.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1
-	github.com/agntcy/oasf-sdk/pkg v0.0.11
+	github.com/agntcy/oasf-sdk/pkg v0.0.14
 	github.com/multiformats/go-multihash v0.2.3
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/stretchr/testify v1.10.0
@@ -28,10 +28,10 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.0 // indirect

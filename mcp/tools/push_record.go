@@ -48,7 +48,7 @@ func PushRecord(ctx context.Context, _ *mcp.CallToolRequest, input PushRecordInp
 	}
 
 	// Validate the record before pushing
-	valid, validationErrors, err := record.Validate()
+	valid, validationErrors, err := record.Validate(ctx)
 	if err != nil {
 		return nil, PushRecordOutput{
 			ErrorMessage: fmt.Sprintf("Failed to validate record: %v", err),

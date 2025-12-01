@@ -26,7 +26,7 @@ type ValidateRecordOutput struct {
 
 // ValidateRecord validates an agent record against the OASF schema.
 // This performs full OASF schema validation and returns detailed errors.
-func ValidateRecord(_ context.Context, _ *mcp.CallToolRequest, input ValidateRecordInput) (
+func ValidateRecord(ctx context.Context, _ *mcp.CallToolRequest, input ValidateRecordInput) (
 	*mcp.CallToolResult,
 	ValidateRecordOutput,
 	error,
@@ -44,7 +44,7 @@ func ValidateRecord(_ context.Context, _ *mcp.CallToolRequest, input ValidateRec
 	schemaVersion := record.GetSchemaVersion()
 
 	// Validate the record using OASF SDK
-	valid, validationErrors, err := record.Validate()
+	valid, validationErrors, err := record.Validate(ctx)
 	if err != nil {
 		return nil, ValidateRecordOutput{
 			Valid:         false,

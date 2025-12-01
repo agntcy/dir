@@ -34,24 +34,29 @@
   ],
   "modules": [
     {
-      "name": "license",
+      "name": "runtime/model",
+      "id": 303,
       "data": {
-        "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
-        "license": "Apache-2.0"
-      }
-    },
-    {
-      "name": "runtime/framework",
-      "data": {
-        "name": "crewai",
-        "version": "0.55.2"
-      }
-    },
-    {
-      "name": "runtime/language",
-      "data": {
-        "type": "python",
-        "version": "\u003e=3.11,\u003c3.13"
+        "models": [
+          {
+            "provider": "openai",
+            "model": "gpt-4",
+            "api_base": "https://api.openai.com/v1",
+            "env_vars": [
+              {
+                "name": "OPENAI_API_KEY",
+                "description": "OpenAI API key for authentication",
+                "required": true
+              },
+              {
+                "name": "OPENAI_ORG_ID",
+                "description": "OpenAI organization ID",
+                "required": false,
+                "default_value": ""
+              }
+            ]
+          }
+        ]
       }
     }
   ]

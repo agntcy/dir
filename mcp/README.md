@@ -315,10 +315,99 @@ Add the MCP server to your IDE's MCP configuration using Docker.
 
 The following environment variables can be used with both binary and Docker configurations:
 
+#### Directory Client Configuration
+
 - `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
 - `DIRECTORY_CLIENT_AUTH_MODE` - Authentication mode: `none`, `x509`, `jwt`, `token`
 - `DIRECTORY_CLIENT_SPIFFE_TOKEN` - Path to SPIFFE token file (for token authentication)
 - `DIRECTORY_CLIENT_TLS_SKIP_VERIFY` - Skip TLS verification (set to `true` if needed)
+
+#### OASF Validation Configuration
+
+- `OASF_API_VALIDATION_SCHEMA_URL` - OASF schema URL for API-based validation
+  - **Default**: `https://schema.oasf.outshift.com`
+  - URL of the OASF server to use for validation
+  - The MCP server uses API-based validation by default for more comprehensive validation with the latest schema rules
+
+- `OASF_API_VALIDATION_DISABLE` - Disable API-based validation
+  - **Default**: `false` (API validation enabled)
+  - When `true`, uses embedded schemas instead of the API validator
+  - When `false`, uses API validation with the configured `OASF_API_VALIDATION_SCHEMA_URL`
+
+- `OASF_API_VALIDATION_STRICT_MODE` - API validation strictness mode
+  - **Default**: `true` (strict mode)
+  - **Strict mode** (`true`): Fails on unknown attributes, deprecated fields, and schema violations
+  - **Lax mode** (`false`): More permissive, only fails on critical errors
+  - Only applies when API validation is enabled
+
+**Example - Use default OASF server (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Example - Use custom OASF server (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "OASF_API_VALIDATION_SCHEMA_URL": "http://localhost:8080",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Example - Use lax validation mode (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "OASF_API_VALIDATION_STRICT_MODE": "false",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Example - Use embedded schemas (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "OASF_API_VALIDATION_DISABLE": "true",
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+      }
+    }
+  }
+}
+```
+
+**Note:** After changing the configuration, fully restart your IDE (e.g., quit and reopen Cursor) for the MCP server to reload with the new settings.
 
 ## Usage in Cursor Chat
 
