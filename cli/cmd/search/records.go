@@ -56,7 +56,7 @@ func runRecordsCommand(cmd *cobra.Command) error {
 	queries := buildQueriesFromFlags()
 
 	// Search for full records directly
-	ch, err := c.SearchRecords(cmd.Context(), &searchv1.SearchRequest{
+	result, err := c.SearchRecords(cmd.Context(), &searchv1.SearchRequest{
 		Limit:   &opts.Limit,
 		Offset:  &opts.Offset,
 		Queries: queries,
@@ -68,13 +68,19 @@ func runRecordsCommand(cmd *cobra.Command) error {
 	// Collect records
 	results := make([]interface{}, 0, opts.Limit)
 
-	for record := range ch {
-		if record == nil {
-			continue
+	for {
+		select {
+		case resp := <-result.ResCh():
+			record := resp.GetRecord()
+			if record != nil {
+				results = append(results, record)
+			}
+		case err := <-result.ErrCh():
+			return fmt.Errorf("error receiving record: %w", err)
+		case <-result.DoneCh():
+			return presenter.PrintMessage(cmd, "records", "Records found", results)
+		case <-cmd.Context().Done():
+			return cmd.Context().Err()
 		}
-
-		results = append(results, record)
 	}
-
-	return presenter.PrintMessage(cmd, "records", "Records found", results)
 }

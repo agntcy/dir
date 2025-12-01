@@ -55,27 +55,33 @@ func runCidsCommand(cmd *cobra.Command) error {
 	// Build queries from direct field flags
 	queries := buildQueriesFromFlags()
 
-	ch, err := c.SearchCIDs(cmd.Context(), &searchv1.SearchRequest{
+	result, err := c.SearchCIDs(cmd.Context(), &searchv1.SearchRequest{
 		Limit:   &opts.Limit,
 		Offset:  &opts.Offset,
 		Queries: queries,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to search: %w", err)
+		return fmt.Errorf("failed to search CIDs: %w", err)
 	}
 
 	// Collect results and convert to interface{} slice
 	results := make([]interface{}, 0, opts.Limit)
 
-	for recordCid := range ch {
-		if recordCid == "" {
-			continue
+	for {
+		select {
+		case resp := <-result.ResCh():
+			cid := resp.GetRecordCid()
+			if cid != "" {
+				results = append(results, cid)
+			}
+		case err := <-result.ErrCh():
+			return fmt.Errorf("error receiving CID: %w", err)
+		case <-result.DoneCh():
+			return presenter.PrintMessage(cmd, "record CIDs", "Record CIDs found", results)
+		case <-cmd.Context().Done():
+			return cmd.Context().Err()
 		}
-
-		results = append(results, recordCid)
 	}
-
-	return presenter.PrintMessage(cmd, "record CIDs", "Record CIDs found", results)
 }
 
 // buildQueriesFromFlags builds API queries.
@@ -185,4 +191,3 @@ func buildQueriesFromFlags() []*searchv1.RecordQuery {
 
 	return queries
 }
-

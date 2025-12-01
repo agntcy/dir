@@ -9,6 +9,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	"github.com/agntcy/dir/client/streaming"
 )
 
 // RegistryType represents the type of external registry to import from.
@@ -29,7 +30,7 @@ const (
 // This allows for easier testing and mocking.
 type ClientInterface interface {
 	Push(ctx context.Context, record *corev1.Record) (*corev1.RecordRef, error)
-	SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error)
+	SearchCIDs(ctx context.Context, req *searchv1.SearchRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error)
 	PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error)
 }
 

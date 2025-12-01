@@ -103,7 +103,7 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 	limit32 := uint32(limit)   // #nosec G115
 	offset32 := uint32(offset) // #nosec G115
 
-	ch, err := c.SearchCIDs(ctx, &searchv1.SearchRequest{
+	result, err := c.SearchCIDs(ctx, &searchv1.SearchRequest{
 		Limit:   &limit32,
 		Offset:  &offset32,
 		Queries: queries,
@@ -117,16 +117,24 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 	// Collect results
 	recordCIDs := make([]string, 0, limit)
 
-	for cid := range ch {
-		if cid == "" {
-			continue
-		}
-
-		recordCIDs = append(recordCIDs, cid)
-
-		// Check if we've reached the limit
-		if len(recordCIDs) >= limit {
-			break
+L:
+	for {
+		select {
+		case resp := <-result.ResCh():
+			cid := resp.GetRecordCid()
+			if cid != "" {
+				recordCIDs = append(recordCIDs, cid)
+			}
+		case err := <-result.ErrCh():
+			return nil, SearchLocalOutput{
+				ErrorMessage: fmt.Sprintf("Search stream error: %v", err),
+			}, nil
+		case <-result.DoneCh():
+			break L
+		case <-ctx.Done():
+			return nil, SearchLocalOutput{
+				ErrorMessage: fmt.Sprintf("Search cancelled: %v", ctx.Err()),
+			}, nil
 		}
 	}
 

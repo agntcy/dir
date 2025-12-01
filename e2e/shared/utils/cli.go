@@ -55,6 +55,7 @@ func (c *CLI) Delete(cid string) *CommandBuilder {
 func (c *CLI) Search() *SearchBuilder {
 	return &SearchBuilder{
 		CommandBuilder:   c.Command("search"),
+		subcommand:       "cids", // Default to cids subcommand
 		names:            []string{},
 		versions:         []string{},
 		skillIDs:         []string{},
@@ -63,6 +64,10 @@ func (c *CLI) Search() *SearchBuilder {
 		modules:          []string{},
 		domainIDs:        []string{},
 		domains:          []string{},
+		createdAts:       []string{},
+		authors:          []string{},
+		schemaVersions:   []string{},
+		moduleIDs:        []string{},
 		outputFormatArgs: []string{},
 		limit:            0,
 		offset:           0,
@@ -387,6 +392,7 @@ func (c *CommandBuilder) ShouldEventuallySucceed(timeout time.Duration) string {
 // SearchBuilder extends CommandBuilder with search-specific methods.
 type SearchBuilder struct {
 	*CommandBuilder
+	subcommand       string // "cids" or "records"
 	names            []string
 	versions         []string
 	skillIDs         []string
@@ -395,6 +401,10 @@ type SearchBuilder struct {
 	modules          []string
 	domainIDs        []string
 	domains          []string
+	createdAts       []string
+	authors          []string
+	schemaVersions   []string
+	moduleIDs        []string
 	outputFormatArgs []string
 	limit            int
 	offset           int
@@ -448,6 +458,30 @@ func (s *SearchBuilder) WithDomain(domain string) *SearchBuilder {
 	return s
 }
 
+func (s *SearchBuilder) WithCreatedAt(createdAt string) *SearchBuilder {
+	s.createdAts = append(s.createdAts, createdAt)
+
+	return s
+}
+
+func (s *SearchBuilder) WithAuthor(author string) *SearchBuilder {
+	s.authors = append(s.authors, author)
+
+	return s
+}
+
+func (s *SearchBuilder) WithSchemaVersion(schemaVersion string) *SearchBuilder {
+	s.schemaVersions = append(s.schemaVersions, schemaVersion)
+
+	return s
+}
+
+func (s *SearchBuilder) WithModuleID(moduleID string) *SearchBuilder {
+	s.moduleIDs = append(s.moduleIDs, moduleID)
+
+	return s
+}
+
 func (s *SearchBuilder) WithLimit(limit int) *SearchBuilder {
 	s.limit = limit
 
@@ -467,10 +501,10 @@ func (s *SearchBuilder) WithArgs(args ...string) *SearchBuilder {
 }
 
 func (s *SearchBuilder) Execute() (string, error) {
-	// Clear existing arguments to prevent accumulation between test cases
-	s.args = nil
+	// Reset args and start with subcommand (cids or records)
+	s.args = []string{s.subcommand}
 
-	// Build search arguments using new direct field flags
+	// Build search arguments using direct field flags
 	for _, name := range s.names {
 		s.args = append(s.args, "--name", name)
 	}
@@ -503,6 +537,22 @@ func (s *SearchBuilder) Execute() (string, error) {
 		s.args = append(s.args, "--domain", domain)
 	}
 
+	for _, createdAt := range s.createdAts {
+		s.args = append(s.args, "--created-at", createdAt)
+	}
+
+	for _, author := range s.authors {
+		s.args = append(s.args, "--author", author)
+	}
+
+	for _, schemaVersion := range s.schemaVersions {
+		s.args = append(s.args, "--schema-version", schemaVersion)
+	}
+
+	for _, moduleID := range s.moduleIDs {
+		s.args = append(s.args, "--module-id", moduleID)
+	}
+
 	if s.limit > 0 {
 		s.args = append(s.args, "--limit", strconv.Itoa(s.limit))
 	}
@@ -527,6 +577,36 @@ func (s *SearchBuilder) ShouldSucceed() string {
 func (s *SearchBuilder) ShouldReturn(expectedCID string) {
 	output := s.ShouldSucceed()
 	gomega.Expect(output).To(gomega.Equal(expectedCID))
+}
+
+func (s *SearchBuilder) ShouldContain(substring string) string {
+	output := s.ShouldSucceed()
+	gomega.Expect(output).To(gomega.ContainSubstring(substring))
+
+	return output
+}
+
+func (s *SearchBuilder) ShouldEventuallyContain(substring string, timeout time.Duration) string {
+	var finalOutput string
+
+	gomega.Eventually(func() string {
+		output, err := s.Execute()
+		if err != nil {
+			return ""
+		}
+
+		finalOutput = output
+
+		return output
+	}, timeout, PollingInterval).Should(gomega.ContainSubstring(substring))
+
+	return finalOutput
+}
+
+func (s *SearchBuilder) OnServer(addr string) *SearchBuilder {
+	s.serverAddr = addr
+
+	return s
 }
 
 // RoutingListBuilder extends CommandBuilder with routing list-specific methods.
