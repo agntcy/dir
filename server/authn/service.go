@@ -93,17 +93,17 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 	// Wait for X509-SVID to be available with retry logic
 	// This ensures the server presents a certificate with URI SAN during TLS handshake
 	// Critical: If the server starts without a valid SPIFFE ID, clients will reject the connection
-	const (
-		maxRetries     = spiffe.DefaultMaxRetries
-		initialBackoff = spiffe.DefaultInitialBackoff
-		maxBackoff     = spiffe.DefaultMaxBackoff
+	svid, svidErr := spiffe.GetX509SVIDWithRetry(
+		x509Src,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+		logger,
 	)
-
-	svid, svidErr := spiffe.GetX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff, logger)
 	if svidErr != nil {
 		_ = x509Src.Close()
 
-		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", maxRetries)
+		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", spiffe.DefaultMaxRetries)
 
 		return fmt.Errorf("failed to get valid X509-SVID for server (SPIRE entry may not be synced yet): %w", svidErr)
 	}
@@ -118,9 +118,9 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 		x509Src,
 		x509Src,
 		logger,
-		maxRetries,
-		initialBackoff,
-		maxBackoff,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
 	)
 
 	logger.Debug("Created X509SourceWithRetry wrapper for server (JWT mode)",
@@ -167,17 +167,17 @@ func (s *Service) initX509(ctx context.Context) error {
 	// This ensures the server presents a certificate with URI SAN during TLS handshake
 	// Critical: If the server starts without a valid SPIFFE ID, clients will reject the connection
 	// with "certificate contains no URI SAN" error
-	const (
-		maxRetries     = spiffe.DefaultMaxRetries
-		initialBackoff = spiffe.DefaultInitialBackoff
-		maxBackoff     = spiffe.DefaultMaxBackoff
+	svid, svidErr := spiffe.GetX509SVIDWithRetry(
+		x509Src,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+		logger,
 	)
-
-	svid, svidErr := spiffe.GetX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff, logger)
 	if svidErr != nil {
 		_ = x509Src.Close()
 
-		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", maxRetries)
+		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", spiffe.DefaultMaxRetries)
 
 		return fmt.Errorf("failed to get valid X509-SVID for server (SPIRE entry may not be synced yet): %w", svidErr)
 	}
@@ -192,9 +192,9 @@ func (s *Service) initX509(ctx context.Context) error {
 		x509Src,
 		x509Src,
 		logger,
-		maxRetries,
-		initialBackoff,
-		maxBackoff,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
 	)
 
 	logger.Debug("Created X509SourceWithRetry wrapper for server",

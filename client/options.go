@@ -176,18 +176,18 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 	// (common with CronJobs and other short-lived workloads)
 	// The agent may return a certificate without a URI SAN (SPIFFE ID) if the entry hasn't synced,
 	// so we must validate that the certificate actually contains a valid SPIFFE ID.
-	const (
-		maxRetries     = spiffe.DefaultMaxRetries
-		initialBackoff = spiffe.DefaultInitialBackoff
-		maxBackoff     = spiffe.DefaultMaxBackoff
+	svid, svidErr := spiffe.GetX509SVIDWithRetry(
+		x509Src,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+		authLogger,
 	)
-
-	svid, svidErr := spiffe.GetX509SVIDWithRetry(x509Src, maxRetries, initialBackoff, maxBackoff, authLogger)
 	if svidErr != nil {
 		_ = client.Close()
 		_ = x509Src.Close()
 
-		authLogger.Error("Failed to get valid X509-SVID after retries", "error", svidErr, "max_retries", maxRetries)
+		authLogger.Error("Failed to get valid X509-SVID after retries", "error", svidErr, "max_retries", spiffe.DefaultMaxRetries)
 
 		return fmt.Errorf("failed to get valid X509-SVID after retries (SPIRE entry may not be synced yet): %w", svidErr)
 	}
@@ -209,9 +209,9 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 		x509Src, // Use pointer directly (implements x509svid.Source)
 		x509Src, // Same pointer (implements io.Closer)
 		authLogger,
-		maxRetries,
-		initialBackoff,
-		maxBackoff,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
 	)
 
 	authLogger.Debug("Created X509SourceWithRetry wrapper",
