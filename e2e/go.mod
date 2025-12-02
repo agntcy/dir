@@ -14,7 +14,7 @@ replace (
 
 require (
 	github.com/agntcy/dir/api v0.5.4
-	github.com/agntcy/dir/cli v0.5.4
+	github.com/agntcy/dir/cli v0.5.5
 	github.com/agntcy/dir/client v0.5.4
 	github.com/agntcy/dir/utils v0.5.4
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
@@ -48,7 +48,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/hub v0.5.4 // indirect
+	github.com/agntcy/dir/hub v0.5.5 // indirect
 	github.com/agntcy/dir/importer v0.5.4 // indirect
 	github.com/agntcy/dir/mcp v0.5.4 // indirect
 	github.com/agntcy/oasf-sdk/pkg v0.0.14 // indirect
