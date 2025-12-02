@@ -213,8 +213,19 @@ tasks:
       BINARY_NAME: '{{ .BINARY_NAME | default "dirctl" }}'
       OUT_BINARY: '{{ if eq OS "windows" }}{{ .ROOT_DIR }}\\bin\\{{ .BINARY_NAME }}.exe{{ else }}{{ .ROOT_DIR }}/bin/{{ .BINARY_NAME }}{{ end }}'
       LDFLAGS: "-s -w -extldflags -static {{ .VERSION_LDFLAGS }}"
+      TRY_SKIP_COMPILE: '{{ .TRY_SKIP_COMPILE | default "false" }}'
     cmds:
-      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o "{{.OUT_BINARY}}" cli.go
+      - |
+        if [ "{{.TRY_SKIP_COMPILE}}" = "true" ]; then
+          if [ -f "{{.OUT_BINARY}}" ]; then
+            echo "Binary {{.OUT_BINARY}} already exists, skipping compilation."
+            exit 0
+          else
+            echo "Binary {{.OUT_BINARY}} does not exist, proceeding with compilation."
+          fi
+        fi
+
+        CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o "{{.OUT_BINARY}}" cli.go
 
   cli:compile:all:
     desc: Compile CLI client binaries for multiple platforms
@@ -237,9 +248,13 @@ tasks:
   ##
   sdk:deps:common:
     desc: Common dependencies for SDKs
+    vars:
+      TRY_SKIP_COMPILE: "{{ .TRY_SKIP_COMPILE }}"
     cmds:
       - task: deps:cosign
       - task: cli:compile
+        vars:
+          TRY_SKIP_COMPILE: "{{.TRY_SKIP_COMPILE}}"
       - task: sdk:deps:javascript
       - task: sdk:deps:python
 

@@ -67,10 +67,6 @@ jobs:
           cache-dependency-path: "**/*.sum"
           cache: true # NOTE: Default value, just to be explicit
 
-      - name: Compile CLI
-        run: |
-          task cli:compile
-
       - name: Download artifacts
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
@@ -99,6 +95,12 @@ jobs:
             docker load --input "$image_archive"
           done
           docker images
+
+      - name: Load compiled dirctl binary
+        run: |
+          mkdir ./bin
+          cp tmp/artifacts/dirctl ./bin/dirctl
+          chmod +x ./bin/dirctl
 
       - name: Run end-to-end tests
         env:
