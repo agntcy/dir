@@ -44,7 +44,7 @@ service StoreService {
 }
 
 message PushRequest {
-  oneof data {
+  oneof payload {
     bytes chunk = 1;
     Object object = 2;
   }
@@ -63,7 +63,10 @@ message PullRequest {
 message PullResponse {
   bool success = 1;
   optional string error_message = 2;
-  bytes data = 3;
+  oneof payload {
+    bytes chunk = 3;
+    Object object = 4;
+  }
 }
 
 message LookupRequest {

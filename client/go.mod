@@ -18,6 +18,11 @@ require (
 )
 
 require (
+	github.com/ipld/go-ipld-prime v0.21.0 // indirect
+	github.com/polydawn/refmt v0.89.0 // indirect
+)
+
+require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.9-20250917120021-8b2bf93bf8dc.1 // indirect
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.9-20250917090956-ba2d05f62118.1 // indirect
 	cel.dev/expr v0.24.0 // indirect

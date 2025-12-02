@@ -47,20 +47,20 @@ message Record {
 // RecordReferrer types in the `agntcy.dir.` namespace are reserved for
 // Directory-specific schemas and will be validated across Dir services.
 message RecordReferrer {
-    // The type of the referrer.
-    // For example, "agntcy.dir.sign.v1.Signature" for signatures.
-    string type = 1;
+  // The type of the referrer.
+  // For example, "agntcy.dir.sign.v1.Signature" for signatures.
+  string type = 1;
 
-    // Record reference to which this referrer is associated.
-    core.v1.RecordRef record_ref = 2;
+  // Record reference to which this referrer is associated.
+  RecordRef record_ref = 2;
 
-    // Annotations attached to the referrer object.
-    map<string, string> annotations = 3;
+  // Annotations attached to the referrer object.
+  map<string, string> annotations = 3;
 
-    // Creation timestamp of the record in the RFC3339 format.
-    // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
-    string created_at = 4;
+  // Creation timestamp of the record in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  string created_at = 4;
 
-    // The actual data of the referrer.
-    google.protobuf.Struct data = 5;
+  // The actual data of the referrer.
+  google.protobuf.Struct data = 5;
 }

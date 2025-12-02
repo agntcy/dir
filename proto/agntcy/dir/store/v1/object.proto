@@ -5,22 +5,36 @@ syntax = "proto3";
 
 package agntcy.dir.store.v1;
 
+// ObjectRef represents a reference to an object in the content-addressable store.
 message ObjectRef {
+  // Content Identifier (CID) of the object
   string cid = 1;
 }
 
-message ObjectSchema {
-  string type = 1;
-  string version = 2;
-  string format = 3;
+// Descriptor represents a reference to an object in the system.
+message Descriptor {
+  // CID of the object
+  string cid = 1;
+
+  // Type of the object
+  string type = 2;
+
+  // Size of the object in bytes
+  uint64 size = 3;
+
+  // Metadata for the link
+  map<string, string> annotations = 4;
 }
 
+// Object represents an object that contains a data reference and links to other objects.
+// Objects form the structure of the DAG by linking to other objects or data objects.
 message Object {
-  string cid = 1;
-  ObjectSchema schema = 2;
-  map<string, string> annotations = 3;
-  string created_at = 4;
-  uint64 size = 5;
-  ObjectRef data = 6;
-  repeated Object links = 7;
+  // Metadata of the object
+  map<string, string> annotations = 1;
+
+  // Optional link to parent object
+  optional Descriptor parent = 2;
+
+  // Links to other objects that this object references
+  repeated Descriptor links = 3;
 }

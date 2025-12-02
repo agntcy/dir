@@ -14,7 +14,13 @@ import (
 
 func TestOCI(t *testing.T) {
 	// Create local OCI store for testing
-	store, err := New(config.Config{LocalDir: "./testdata/oci"})
+	store, err := New(config.Config{
+		RegistryAddress: "localhost:5000",
+		RepositoryName:  "dir",
+		AuthConfig: config.AuthConfig{
+			Insecure: true,
+		},
+	})
 	assert.Nil(t, err)
 
 	// Push some example data
@@ -36,25 +42,15 @@ func TestOCI(t *testing.T) {
 
 	// Create test object
 	obj := &storev1.Object{
-		Schema: &storev1.ObjectSchema{
-			Type:    "text",
-			Version: "1.0",
-			Format:  "plain",
-		},
 		Annotations: map[string]string{
 			"key": "value",
 		},
-		Data: baseRef,
+		Cid:  baseRef.GetCid(),
 		Size: lookBase.GetSize(),
-		Links: []*storev1.Object{
+		Links: []*storev1.ObjectLink{
 			{
-				Data: baseRef,
+				Cid:  baseRef.GetCid(),
 				Size: lookBase.GetSize(),
-				Schema: &storev1.ObjectSchema{
-					Type:    "link",
-					Version: "1.0.0.0.0",
-					Format:  "plain2",
-				},
 				Annotations: map[string]string{
 					"link-key": "link-value",
 				},
@@ -69,13 +65,46 @@ func TestOCI(t *testing.T) {
 	// Lookup object back
 	lookObj, err := store.Lookup(t.Context(), objRef)
 	assert.Nil(t, err)
-	lookObj.Cid = ""
 	assert.True(t, reflect.DeepEqual(obj, lookObj))
 
 	// Pull object back
 	pulledObj, err := store.Pull(t.Context(), objRef)
 	assert.Nil(t, err)
 	dataBytes, err = io.ReadAll(pulledObj)
+	assert.Nil(t, err)
+	assert.Equal(t, baseIn, string(dataBytes))
+
+	// Create nested object
+	nestedObj := &storev1.Object{
+		Annotations: map[string]string{
+			"nested-key": "nested-value",
+		},
+		Cid:  objRef.GetCid(),
+		Size: lookObj.GetSize(),
+		Links: []*storev1.ObjectLink{
+			{
+				Cid:  objRef.GetCid(),
+				Size: lookObj.GetSize(),
+				Annotations: map[string]string{
+					"obj-link-key": "obj-link-value",
+				},
+			},
+		},
+	}
+
+	// Push nested object
+	nestedRef, err := store.PushObject(t.Context(), nestedObj)
+	assert.Nil(t, err)
+
+	// Lookup nested object back
+	lookNested, err := store.Lookup(t.Context(), nestedRef)
+	assert.Nil(t, err)
+	assert.True(t, reflect.DeepEqual(nestedObj, lookNested))
+
+	// Pull nested object back
+	pulledNested, err := store.Pull(t.Context(), nestedRef)
+	assert.Nil(t, err)
+	dataBytes, err = io.ReadAll(pulledNested)
 	assert.Nil(t, err)
 	assert.Equal(t, baseIn, string(dataBytes))
 }
