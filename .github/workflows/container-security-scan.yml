@@ -15,19 +15,33 @@ permissions:
   issues: write # create issues for critical CVEs
 
 jobs:
+  get-version:
+    name: Get Latest Release Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-release.outputs.version }}
+    steps:
+      - name: Get latest release
+        id: get-release
+        run: |
+          LATEST_TAG=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
+          echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          echo "Latest release version: ${LATEST_TAG}"
+
   trivy-scan:
     name: Trivy Image Scan (Pull from GHCR)
     runs-on: ubuntu-latest
+    needs: get-version
     strategy:
       fail-fast: false
       matrix:
         include:
           - image: dir-apiserver
             repo: ghcr.io/${{ github.repository_owner }}/dir-apiserver
-            version: v0.4.0
+            version: ${{ needs.get-version.outputs.version }}
           - image: dir-ctl
             repo: ghcr.io/${{ github.repository_owner }}/dir-ctl
-            version: v0.4.0
+            version: ${{ needs.get-version.outputs.version }}
           - image: zot
             repo: ghcr.io/project-zot/zot
             version: v2.1.10
