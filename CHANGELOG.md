@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.5] - 2025-12-01
+
+### Key Highlights
+
+This patch release refactors SPIFFE X.509-SVID retry logic into a shared package for better code organization and maintainability.
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.5.5  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.5.5  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.5.5  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.5.5  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.5.5  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.5.5  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.5.5  | dirctl >= v0.5.0            |
+
+### Changed
+- **Refactor**: Centralize X.509-SVID retry logic in `utils/spiffe` package (#741)
+
+### Fixed
+- **Code Quality**: Remove duplicate retry constants and improve code organization (#741)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.5.4...v0.5.5)
+
+---
+
 ## [v0.5.4] - 2025-11-26
 
 ### Key Highlights
