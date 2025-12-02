@@ -14,8 +14,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 
+	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/dir/utils/spiffe"
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
@@ -23,6 +24,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+var authLogger = logging.Logger("client.auth")
 
 type Option func(*options) error
 
@@ -146,11 +149,15 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 		return errors.New("spiffe socket path is required for x509 authentication")
 	}
 
+	authLogger.Debug("Setting up X509 authentication", "spiffe_socket_path", o.config.SpiffeSocketPath)
+
 	// Create SPIFFE client
 	client, err := workloadapi.New(ctx, workloadapi.WithAddr(o.config.SpiffeSocketPath))
 	if err != nil {
 		return fmt.Errorf("failed to create SPIFFE client: %w", err)
 	}
+
+	authLogger.Debug("Created SPIFFE workload API client")
 
 	// Create SPIFFE x509 services
 	// Note: Use context.Background() because this source must live for the entire client lifetime,
@@ -162,43 +169,55 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 		return fmt.Errorf("failed to create x509 source: %w", err)
 	}
 
+	authLogger.Debug("Created X509 source, starting retry logic to get valid SVID")
+
 	// Wait for X509-SVID to be available with retry logic
 	// This handles timing issues where the SPIRE entry hasn't been synced to the agent yet
 	// (common with CronJobs and other short-lived workloads)
-	const (
-		maxRetries     = 10
-		initialBackoff = 500 * time.Millisecond
-		maxBackoff     = 10 * time.Second
+	// The agent may return a certificate without a URI SAN (SPIFFE ID) if the entry hasn't synced,
+	// so we must validate that the certificate actually contains a valid SPIFFE ID.
+	svid, svidErr := spiffe.GetX509SVIDWithRetry(
+		x509Src,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+		authLogger,
 	)
-
-	var svidErr error
-
-	backoff := initialBackoff
-
-	for attempt := range maxRetries {
-		_, svidErr = x509Src.GetX509SVID()
-		if svidErr == nil {
-			// SVID is available, proceed
-			break
-		}
-
-		if attempt < maxRetries-1 {
-			// Exponential backoff: 500ms, 1s, 2s, 4s, 8s, 10s (capped), ...
-			time.Sleep(backoff)
-
-			backoff *= 2
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
-		}
-	}
-
 	if svidErr != nil {
 		_ = client.Close()
 		_ = x509Src.Close()
 
-		return fmt.Errorf("failed to get X509-SVID after %d retries (SPIRE entry may not be synced yet): %w", maxRetries, svidErr)
+		authLogger.Error("Failed to get valid X509-SVID after retries", "error", svidErr, "max_retries", spiffe.DefaultMaxRetries)
+
+		return fmt.Errorf("failed to get valid X509-SVID after retries (SPIRE entry may not be synced yet): %w", svidErr)
 	}
+
+	authLogger.Info("Successfully obtained valid X509-SVID", "spiffe_id", svid.ID.String())
+
+	// Wrap x509Src with retry logic so GetX509SVID() calls during TLS handshake also retry
+	// This is critical because grpccredentials.MTLSClientCredentials calls GetX509SVID()
+	// during the actual TLS handshake, not just during setup. Without this wrapper,
+	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
+	//
+	// Connection flow: dirctl → Ingress (TLS passthrough) → apiserver pod
+	// The TLS handshake happens between dirctl and apiserver, and during this handshake,
+	// grpccredentials.MTLSClientCredentials calls GetX509SVID() again.
+	//
+	// Note: x509Src is *workloadapi.X509Source (concrete type that implements x509svid.Source).
+	// We use it directly as the Source interface and also as io.Closer.
+	wrappedX509Src := spiffe.NewX509SourceWithRetry(
+		x509Src, // Use pointer directly (implements x509svid.Source)
+		x509Src, // Same pointer (implements io.Closer)
+		authLogger,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+	)
+
+	authLogger.Debug("Created X509SourceWithRetry wrapper",
+		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
+		"src_type", fmt.Sprintf("%T", x509Src),
+		"implements_source", true)
 
 	// Create SPIFFE bundle services
 	// Note: Use context.Background() because this source must live for the entire client lifetime,
@@ -213,11 +232,17 @@ func (o *options) setupX509Auth(ctx context.Context) error {
 
 	// Update options
 	o.authClient = client
-	o.x509Src = x509Src
+	o.x509Src = wrappedX509Src // Store wrapped source for cleanup
 	o.bundleSrc = bundleSrc
-	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(
-		grpccredentials.MTLSClientCredentials(x509Src, bundleSrc, tlsconfig.AuthorizeAny()),
-	))
+
+	authLogger.Debug("Creating MTLSClientCredentials with wrapped source",
+		"wrapped_source_type", fmt.Sprintf("%T", wrappedX509Src),
+		"wrapped_implements_source", true)
+
+	creds := grpccredentials.MTLSClientCredentials(wrappedX509Src, bundleSrc, tlsconfig.AuthorizeAny())
+	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(creds))
+
+	authLogger.Debug("MTLSClientCredentials created successfully, wrapper will be used for TLS handshake")
 
 	return nil
 }

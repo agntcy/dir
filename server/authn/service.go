@@ -6,11 +6,14 @@ package authn
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/agntcy/dir/server/authn/config"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/dir/utils/spiffe"
 	"github.com/spiffe/go-spiffe/v2/spiffegrpc/grpccredentials"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
+	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 )
@@ -19,12 +22,13 @@ var logger = logging.Logger("authn")
 
 // Service manages authentication using SPIFFE (X.509 or JWT).
 type Service struct {
-	mode      config.AuthMode
-	audiences []string
-	client    *workloadapi.Client
-	jwtSource *workloadapi.JWTSource
-	x509Src   *workloadapi.X509Source
-	bundleSrc *workloadapi.BundleSource
+	mode       config.AuthMode
+	audiences  []string
+	client     *workloadapi.Client
+	jwtSource  *workloadapi.JWTSource
+	x509Src    x509svid.Source // Use interface to allow wrapping with retry logic
+	bundleSrc  *workloadapi.BundleSource
+	x509Closer io.Closer // Store original X509Source for cleanup
 }
 
 // New creates a new authentication service (JWT or X.509 based on config).
@@ -84,6 +88,45 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 		return fmt.Errorf("failed to create X509 source: %w", err)
 	}
 
+	logger.Debug("Created X509 source for JWT mode, waiting for valid SVID")
+
+	// Wait for X509-SVID to be available with retry logic
+	// This ensures the server presents a certificate with URI SAN during TLS handshake
+	// Critical: If the server starts without a valid SPIFFE ID, clients will reject the connection
+	svid, svidErr := spiffe.GetX509SVIDWithRetry(
+		x509Src,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+		logger,
+	)
+	if svidErr != nil {
+		_ = x509Src.Close()
+
+		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", spiffe.DefaultMaxRetries)
+
+		return fmt.Errorf("failed to get valid X509-SVID for server (SPIRE entry may not be synced yet): %w", svidErr)
+	}
+
+	logger.Info("Successfully obtained valid X509-SVID for server", "spiffe_id", svid.ID.String())
+
+	// Wrap x509Src with retry logic so GetX509SVID() calls during TLS handshake also retry
+	// This is critical because grpccredentials.TLSServerCredentials calls GetX509SVID()
+	// during the actual TLS handshake, not just during setup. Without this wrapper,
+	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
+	wrappedX509Src := spiffe.NewX509SourceWithRetry(
+		x509Src,
+		x509Src,
+		logger,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+	)
+
+	logger.Debug("Created X509SourceWithRetry wrapper for server (JWT mode)",
+		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
+		"src_type", fmt.Sprintf("%T", x509Src))
+
 	// Create bundle source for trust verification
 	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(s.client))
 	if err != nil {
@@ -101,7 +144,8 @@ func (s *Service) initJWT(ctx context.Context, cfg config.Config) error {
 		return fmt.Errorf("failed to create JWT source: %w", err)
 	}
 
-	s.x509Src = x509Src
+	s.x509Src = wrappedX509Src // Store wrapped source for use in GetServerOptions
+	s.x509Closer = x509Src     // Store original source for cleanup
 	s.bundleSrc = bundleSrc
 	s.jwtSource = jwtSource
 	s.audiences = cfg.Audiences
@@ -117,6 +161,46 @@ func (s *Service) initX509(ctx context.Context) error {
 		return fmt.Errorf("failed to create X509 source: %w", err)
 	}
 
+	logger.Debug("Created X509 source for X509 mode, waiting for valid SVID")
+
+	// Wait for X509-SVID to be available with retry logic
+	// This ensures the server presents a certificate with URI SAN during TLS handshake
+	// Critical: If the server starts without a valid SPIFFE ID, clients will reject the connection
+	// with "certificate contains no URI SAN" error
+	svid, svidErr := spiffe.GetX509SVIDWithRetry(
+		x509Src,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+		logger,
+	)
+	if svidErr != nil {
+		_ = x509Src.Close()
+
+		logger.Error("Failed to get valid X509-SVID for server after retries", "error", svidErr, "max_retries", spiffe.DefaultMaxRetries)
+
+		return fmt.Errorf("failed to get valid X509-SVID for server (SPIRE entry may not be synced yet): %w", svidErr)
+	}
+
+	logger.Info("Successfully obtained valid X509-SVID for server", "spiffe_id", svid.ID.String())
+
+	// Wrap x509Src with retry logic so GetX509SVID() calls during TLS handshake also retry
+	// This is critical because grpccredentials.MTLSServerCredentials calls GetX509SVID()
+	// during the actual TLS handshake, not just during setup. Without this wrapper,
+	// the TLS handshake may fail if the certificate doesn't have a URI SAN at that moment.
+	wrappedX509Src := spiffe.NewX509SourceWithRetry(
+		x509Src,
+		x509Src,
+		logger,
+		spiffe.DefaultMaxRetries,
+		spiffe.DefaultInitialBackoff,
+		spiffe.DefaultMaxBackoff,
+	)
+
+	logger.Debug("Created X509SourceWithRetry wrapper for server",
+		"wrapped_type", fmt.Sprintf("%T", wrappedX509Src),
+		"src_type", fmt.Sprintf("%T", x509Src))
+
 	// Create a new Bundle source which periodically refetches SPIFFE bundles.
 	// Required when running Federation.
 	bundleSrc, err := workloadapi.NewBundleSource(ctx, workloadapi.WithClient(s.client))
@@ -126,7 +210,8 @@ func (s *Service) initX509(ctx context.Context) error {
 		return fmt.Errorf("failed to create bundle source: %w", err)
 	}
 
-	s.x509Src = x509Src
+	s.x509Src = wrappedX509Src // Store wrapped source for use in GetServerOptions
+	s.x509Closer = x509Src     // Store original source for cleanup
 	s.bundleSrc = bundleSrc
 
 	return nil
@@ -171,8 +256,8 @@ func (s *Service) Stop() error {
 		}
 	}
 
-	if s.x509Src != nil {
-		if err := s.x509Src.Close(); err != nil {
+	if s.x509Closer != nil {
+		if err := s.x509Closer.Close(); err != nil {
 			logger.Error("Failed to close X509 source", "error", err)
 		}
 	}
