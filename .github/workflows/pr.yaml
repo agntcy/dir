@@ -24,19 +24,20 @@ jobs:
     name: Label
     runs-on: ubuntu-latest
     steps:
-      - uses: codelytv/pr-size-labeler@4ec67706cd878fbc1c8db0a5dcd28b6bb412e85a # v1.10.3
+      # Return release version when merged: https://github.com/CodelyTV/pr-size-labeler/pull/97
+      - uses: codelytv/pr-size-labeler@7410ab25f68d95323ceb6fc4b53e8556323b52a7 # 7410ab2
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          xs_label: 'size/XS'
-          xs_max_size: '50'
-          s_label: 'size/S'
-          s_max_size: '200'
-          m_label: 'size/M'
-          m_max_size: '1000'
-          l_label: 'size/L'
-          l_max_size: '2000'
-          xl_label: 'size/XL'
-          fail_if_xl: 'false'
+          xs_label: "size/XS"
+          xs_max_size: "50"
+          s_label: "size/S"
+          s_max_size: "200"
+          m_label: "size/M"
+          m_max_size: "1000"
+          l_label: "size/L"
+          l_max_size: "2000"
+          xl_label: "size/XL"
+          fail_if_xl: "false"
           message_if_xl: >
             This PR exceeds the recommended size of 2000 lines.
             Please make sure you are NOT addressing multiple issues with one PR.
