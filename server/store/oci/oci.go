@@ -12,6 +12,7 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	storev1 "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -76,127 +77,30 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 	}, nil
 }
 
-// isNotFoundError checks if an error is a "not found" error from the registry.
-func isNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	errMsg := err.Error()
-
-	return strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "NOT_FOUND")
-}
-
-// Walk implements types.StoreAPI.
-func (s *store) Walk(ctx context.Context, head *corev1.RecordRef, walkFn func(*corev1.RecordMeta) error, walkOpts ...func()) error {
-	panic("unimplemented")
-}
-
-// tagWithRetry attempts to tag a manifest with exponential backoff retry logic.
-// This is necessary because under concurrent load, oras.PackManifest may push the manifest
-// to the registry, but it might not be immediately available when oras.Tag is called.
-func (s *store) tagWithRetry(ctx context.Context, manifestDigest, tag string) error {
-	var lastErr error
-
-	delay := initialRetryDelay
-
-	for attempt := 0; attempt <= maxTagRetries; attempt++ {
-		if attempt > 0 {
-			logger.Debug("Retrying Tag operation",
-				"attempt", attempt,
-				"max_retries", maxTagRetries,
-				"delay", delay,
-				"manifest_digest", manifestDigest,
-				"tag", tag)
-
-			// Wait before retrying
-			select {
-			case <-ctx.Done():
-				return fmt.Errorf("context cancelled during tag retry: %w", ctx.Err())
-			case <-time.After(delay):
-			}
-
-			// Exponential backoff with cap
-			delay *= 2
-			if delay > maxRetryDelay {
-				delay = maxRetryDelay
-			}
-		}
-
-		// Attempt to tag the manifest
-		_, err := oras.Tag(ctx, s.repo, manifestDigest, tag)
-		if err == nil {
-			if attempt > 0 {
-				logger.Info("Tag operation succeeded after retry",
-					"attempt", attempt,
-					"manifest_digest", manifestDigest,
-					"tag", tag)
-			}
-
-			return nil
-		}
-
-		lastErr = err
-
-		// Only retry on "not found" errors (transient race condition)
-		// For other errors, fail immediately
-		if !isNotFoundError(err) {
-			logger.Debug("Tag operation failed with non-retryable error",
-				"error", err,
-				"manifest_digest", manifestDigest,
-				"tag", tag)
-
-			return fmt.Errorf("failed to tag manifest: %w", err)
-		}
-
-		// Log the retryable error
-		logger.Debug("Tag operation failed with retryable error",
-			"attempt", attempt,
-			"error", err,
-			"manifest_digest", manifestDigest,
-			"tag", tag)
-	}
-
-	// All retries exhausted
-	logger.Warn("Tag operation failed after all retries",
-		"max_retries", maxTagRetries,
-		"last_error", lastErr,
-		"manifest_digest", manifestDigest,
-		"tag", tag)
-
-	return lastErr
-}
-
-// Push record to the OCI registry
+// Push object to the OCI registry
 //
 // This creates a blob, a manifest that points to that blob, and a tagged release for that manifest.
 // The tag for the manifest is: <CID of digest>.
-// The tag for the blob is needed to link the actual record with its associated metadata.
+// The tag for the blob is needed to link the actual object with its associated metadata.
 // Note that metadata can be stored in a different store and only wrap this store.
 //
 // Ref: https://github.com/oras-project/oras-go/blob/main/docs/Modeling-Artifacts.md
-func (s *store) Push(ctx context.Context, record *corev1.RecordMeta, rd io.ReadCloser) (*corev1.RecordRef, error) {
-	logger.Debug("Pushing record to OCI store", "record", record)
+func (s *store) Push(ctx context.Context, object *storev1.Object, rd io.ReadCloser) (*storev1.ObjectRef, error) {
+	logger.Debug("Pushing object to OCI store", "object", object)
 
 	// Close reader when done
 	defer rd.Close()
 
-	// Read all data
-	recordBytes, err := io.ReadAll(rd)
+	// Step 1: Use oras.PushBytes to push the object data and get Layer Descriptor
+	dataDesc, err := s.pushOrSkip(ctx, rd, "application/json")
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read record data: %v", err)
-	}
-
-	// Step 1: Use oras.PushBytes to push the record data and get Layer Descriptor
-	dataDesc, err := oras.PushBytes(ctx, s.repo, "application/json", recordBytes)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to push record bytes: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to push object bytes: %v", err)
 	}
 
 	// Step 2: Create manifest
-	manifest, err := s.packageRecord(ctx, record, dataDesc)
+	manifest, err := s.packageObject(ctx, object, dataDesc)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to package record into manifest: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to package object into manifest: %v", err)
 	}
 
 	// Step 4: Convert manifest to bytes
@@ -206,7 +110,7 @@ func (s *store) Push(ctx context.Context, record *corev1.RecordMeta, rd io.ReadC
 	}
 
 	// Step 3: Push manifest
-	manifestDesc, err := oras.PushBytes(ctx, s.repo, ocispec.MediaTypeImageManifest, manifestBytes)
+	manifestDesc, err := s.pushOrSkip(ctx, io.NopCloser(strings.NewReader(string(manifestBytes))), ocispec.MediaTypeImageManifest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to push manifest: %v", err)
 	}
@@ -217,91 +121,76 @@ func (s *store) Push(ctx context.Context, record *corev1.RecordMeta, rd io.ReadC
 		return nil, status.Errorf(codes.Internal, "failed to convert manifest digest to CID: %v", err)
 	}
 
-	// Step 6: Tag the manifest with CID tag (with retry logic for race conditions)
-	// => resolve manifest to record which can be looked up (lookup)
-	// => allows pulling record directly (pull)
-	if err := s.tagWithRetry(ctx, manifestDesc.Digest.String(), cidTag); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create CID tag: %v", err)
+	// Tag the manifest with the CID tag
+	err = s.tagWithRetry(ctx, manifestDesc.Digest.String(), cidTag)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to tag manifest with CID %s: %v", cidTag, err)
 	}
 
-	// Return record reference
-	return &corev1.RecordRef{Cid: cidTag}, nil
+	// Return object reference
+	return &storev1.ObjectRef{Cid: cidTag}, nil
 }
 
-// Lookup checks if the ref exists as a tagged record.
-func (s *store) Lookup(ctx context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, error) {
+// Lookup checks if the ref exists as a tagged object.
+func (s *store) Lookup(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Object, error) {
+	// Convert ref to digest
+	digets, err := corev1.ConvertCIDToDigest(ref.GetCid())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid CID %s: %v", ref.GetCid(), err)
+	}
+
 	// Pull manifest
-	manifest, manifestDesc, err := s.fetchAndParseManifest(ctx, ref.GetCid())
+	manifest, _, err := s.fetchAndParseManifest(ctx, digets.String())
 	if err != nil {
 		return nil, err // Error already has proper context from helper
 	}
 
 	// Convert manifest back to RecordMeta
-	meta, _, err := s.unpackageRecord(ctx, manifest)
+	meta, err := s.unpackageObject(ctx, manifest)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unpackage record from manifest for CID %s: %v", ref.GetCid(), err)
-	}
-
-	// Set digest
-	meta.Cid, err = corev1.ConvertDigestToCID(manifestDesc.Digest)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to convert config digest to CID for CID %s: %v", ref.GetCid(), err)
-	}
-	// Validate CID matches
-	if meta.Cid != ref.GetCid() {
-		return nil, status.Errorf(codes.Internal, "mismatched CID after lookup: expected %s, got %s", ref.GetCid(), meta.Cid)
+		return nil, status.Errorf(codes.Internal, "failed to unpackage object from manifest for CID %s: %v", ref.GetCid(), err)
 	}
 
 	return meta, nil
 }
 
-func (s *store) Pull(ctx context.Context, ref *corev1.RecordRef) (*corev1.RecordMeta, io.ReadCloser, error) {
+func (s *store) Pull(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Object, io.ReadCloser, error) {
+	// Convert ref to digest
+	digets, err := corev1.ConvertCIDToDigest(ref.GetCid())
+	if err != nil {
+		return nil, nil, status.Errorf(codes.InvalidArgument, "invalid CID %s: %v", ref.GetCid(), err)
+	}
+
 	// Pull manifest
-	manifest, manifestDesc, err := s.fetchAndParseManifest(ctx, ref.GetCid())
+	manifest, _, err := s.fetchAndParseManifest(ctx, digets.String())
 	if err != nil {
 		return nil, nil, err // Error already has proper context from helper
 	}
 
 	// Convert manifest back to RecordMeta
-	meta, dataDesc, err := s.unpackageRecord(ctx, manifest)
+	meta, err := s.unpackageObject(ctx, manifest)
 	if err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to unpackage record from manifest for CID %s: %v", ref.GetCid(), err)
+		return nil, nil, status.Errorf(codes.Internal, "failed to unpackage object from manifest for CID %s: %v", ref.GetCid(), err)
 	}
 
-	// Validate CID matches
-	meta.Cid, err = corev1.ConvertDigestToCID(manifestDesc.Digest)
+	// Pull object data blob
+	dataReader, err := s.repo.Fetch(ctx, manifest.Config)
 	if err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to convert data digest to CID for CID %s: %v", ref.GetCid(), err)
-	}
-	if meta.Cid != ref.GetCid() {
-		return nil, nil, status.Errorf(codes.Internal, "mismatched CID after pull: expected %s, got %s", ref.GetCid(), meta.Cid)
-	}
-
-	// Pull record data blob
-	dataReader, err := s.repo.Fetch(ctx, dataDesc)
-	if err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to pull record data for CID %s: %v", ref.GetCid(), err)
+		return nil, nil, status.Errorf(codes.Internal, "failed to pull object data for CID %s: %v", ref.GetCid(), err)
 	}
 
 	return meta, dataReader, nil
 }
 
-func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
-	logger.Debug("Deleting record from OCI store", "ref", ref)
+func (s *store) Delete(ctx context.Context, ref *storev1.ObjectRef) error {
+	logger.Debug("Deleting object from OCI store", "ref", ref)
 
-	// Input validation using shared helper
-	if err := validateRecordRef(ref); err != nil {
-		return err
-	}
+	panic("unimplemented")
+}
 
-	switch s.repo.(type) {
-	case *oci.Store:
-		return s.deleteFromOCIStore(ctx, ref)
-	case *remote.Repository:
-		return s.deleteFromRemoteRepository(ctx, ref)
-	default:
-		return status.Errorf(codes.FailedPrecondition, "unsupported repo type: %T", s.repo)
-	}
+// Walk implements types.StoreAPI.
+func (s *store) Walk(ctx context.Context, head *storev1.ObjectRef, walkFn func(*storev1.Object) error, walkOpts ...func()) error {
+	panic("unimplemented")
 }
 
 // IsReady checks if the storage backend is ready to serve traffic.
