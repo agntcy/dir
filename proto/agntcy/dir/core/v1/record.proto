@@ -14,53 +14,39 @@ message RecordRef {
   string cid = 1;
 }
 
-// Defines metadata about a record.
+// Defines a Record stored in the system.
 message RecordMeta {
-  // CID of the record.
+  // CID of this object.
   string cid = 1;
 
   // Annotations attached to the record.
   map<string, string> annotations = 2;
 
-  // Schema version of the record.
-  string schema_version = 3;
-
   // Creation timestamp of the record in the RFC3339 format.
   // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
-  string created_at = 4;
+  string created_at = 3;
+
+  // The type of the object.
+  // For example, "agntcy.dir.sign.v1.Signature" for signatures.
+  string type = 4;
+
+  // Links to other records.
+  repeated RecordRef links = 5;
+
+  // Parent record reference, if any.
+  optional RecordRef parent = 6;
+
+  // Size of the record data in bytes.
+  uint64 size = 7;
 }
 
-// Record is a generic object that encapsulates data of different Record types.
-//
-// Supported schemas:
-//
-// v0.3.1: https://schema.oasf.outshift.com/0.3.1/objects/agent
-// v0.7.0: https://schema.oasf.outshift.com/0.7.0/objects/record
 message Record {
-  google.protobuf.Struct data = 1;
-}
+  optional RecordMeta meta = 1;
 
-// RecordReferrer represents a referrer object or an association
-// to a record. The actual structure of the referrer object can vary
-// depending on the type of referrer (e.g., signature, public key, etc.).
-//
-// RecordReferrer types in the `agntcy.dir.` namespace are reserved for
-// Directory-specific schemas and will be validated across Dir services.
-message RecordReferrer {
-    // The type of the referrer.
-    // For example, "agntcy.dir.sign.v1.Signature" for signatures.
-    string type = 1;
-
-    // Record reference to which this referrer is associated.
-    core.v1.RecordRef record_ref = 2;
-
-    // Annotations attached to the referrer object.
-    map<string, string> annotations = 3;
-
-    // Creation timestamp of the record in the RFC3339 format.
-    // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
-    string created_at = 4;
-
-    // The actual data of the referrer.
-    google.protobuf.Struct data = 5;
+  // The actual data of the record.
+  // Supported schemas:
+  //
+  // 0.3.1: https://schema.oasf.outshift.com/0.3.1/objects/agent
+  // 0.7.0: https://schema.oasf.outshift.com/0.7.0/objects/record
+  google.protobuf.Struct data = 2;
 }

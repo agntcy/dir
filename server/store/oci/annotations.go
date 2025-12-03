@@ -3,240 +3,240 @@
 
 package oci
 
-import (
-	"strconv"
-	"strings"
+// import (
+// 	"strconv"
+// 	"strings"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/dir/server/types/adapters"
-)
+// 	corev1 "github.com/agntcy/dir/api/core/v1"
+// 	"github.com/agntcy/dir/server/types/adapters"
+// )
 
-// extractManifestAnnotations extracts manifest annotations from record using adapter pattern.
-//
-//nolint:cyclop // Function handles multiple annotation types with justified complexity
-func extractManifestAnnotations(record *corev1.Record) map[string]string {
-	annotations := make(map[string]string)
+// // extractManifestAnnotations extracts manifest annotations from record using adapter pattern.
+// //
+// //nolint:cyclop // Function handles multiple annotation types with justified complexity
+// func extractManifestAnnotations(record *corev1.Record) map[string]string {
+// 	annotations := make(map[string]string)
 
-	// Always set the type
-	annotations[manifestDirObjectTypeKey] = "record"
+// 	// Always set the type
+// 	annotations[manifestDirObjectTypeKey] = "record"
 
-	// Use adapter pattern to get version-agnostic access to record data
-	adapter := adapters.NewRecordAdapter(record)
+// 	// Use adapter pattern to get version-agnostic access to record data
+// 	adapter := adapters.NewRecordAdapter(record)
 
-	recordData, err := adapter.GetRecordData()
-	if err != nil {
-		// Return minimal annotations if no valid data
-		return annotations
-	}
+// 	recordData, err := adapter.GetRecordData()
+// 	if err != nil {
+// 		// Return minimal annotations if no valid data
+// 		return annotations
+// 	}
 
-	// Add version details
-	annotations[ManifestKeyOASFVersion] = record.GetSchemaVersion()
+// 	// Add version details
+// 	annotations[ManifestKeyOASFVersion] = record.GetSchemaVersion()
 
-	// Core identity fields (version-agnostic via adapter)
-	if name := recordData.GetName(); name != "" {
-		annotations[ManifestKeyName] = name
-	}
+// 	// Core identity fields (version-agnostic via adapter)
+// 	if name := recordData.GetName(); name != "" {
+// 		annotations[ManifestKeyName] = name
+// 	}
 
-	if version := recordData.GetVersion(); version != "" {
-		annotations[ManifestKeyVersion] = version
-	}
+// 	if version := recordData.GetVersion(); version != "" {
+// 		annotations[ManifestKeyVersion] = version
+// 	}
 
-	if description := recordData.GetDescription(); description != "" {
-		annotations[ManifestKeyDescription] = description
-	}
+// 	if description := recordData.GetDescription(); description != "" {
+// 		annotations[ManifestKeyDescription] = description
+// 	}
 
-	// Lifecycle metadata
-	if schemaVersion := recordData.GetSchemaVersion(); schemaVersion != "" {
-		annotations[ManifestKeySchemaVersion] = schemaVersion
-	}
+// 	// Lifecycle metadata
+// 	if schemaVersion := recordData.GetSchemaVersion(); schemaVersion != "" {
+// 		annotations[ManifestKeySchemaVersion] = schemaVersion
+// 	}
 
-	if createdAt := recordData.GetCreatedAt(); createdAt != "" {
-		annotations[ManifestKeyCreatedAt] = createdAt
-	}
+// 	if createdAt := recordData.GetCreatedAt(); createdAt != "" {
+// 		annotations[ManifestKeyCreatedAt] = createdAt
+// 	}
 
-	if authors := recordData.GetAuthors(); len(authors) > 0 {
-		annotations[ManifestKeyAuthors] = strings.Join(authors, ",")
-	}
+// 	if authors := recordData.GetAuthors(); len(authors) > 0 {
+// 		annotations[ManifestKeyAuthors] = strings.Join(authors, ",")
+// 	}
 
-	// Capability discovery - extract skill names
-	if skills := recordData.GetSkills(); len(skills) > 0 {
-		skillNames := make([]string, len(skills))
-		for i, skill := range skills {
-			skillNames[i] = skill.GetName()
-		}
+// 	// Capability discovery - extract skill names
+// 	if skills := recordData.GetSkills(); len(skills) > 0 {
+// 		skillNames := make([]string, len(skills))
+// 		for i, skill := range skills {
+// 			skillNames[i] = skill.GetName()
+// 		}
 
-		annotations[ManifestKeySkills] = strings.Join(skillNames, ",")
-	}
+// 		annotations[ManifestKeySkills] = strings.Join(skillNames, ",")
+// 	}
 
-	// Extract locator types
-	if locators := recordData.GetLocators(); len(locators) > 0 {
-		locatorTypes := make([]string, len(locators))
-		for i, locator := range locators {
-			locatorTypes[i] = locator.GetType()
-		}
+// 	// Extract locator types
+// 	if locators := recordData.GetLocators(); len(locators) > 0 {
+// 		locatorTypes := make([]string, len(locators))
+// 		for i, locator := range locators {
+// 			locatorTypes[i] = locator.GetType()
+// 		}
 
-		annotations[ManifestKeyLocatorTypes] = strings.Join(locatorTypes, ",")
-	}
+// 		annotations[ManifestKeyLocatorTypes] = strings.Join(locatorTypes, ",")
+// 	}
 
-	// Extract module names
-	if modules := recordData.GetModules(); len(modules) > 0 {
-		moduleNames := make([]string, len(modules))
-		for i, module := range modules {
-			moduleNames[i] = module.GetName()
-		}
+// 	// Extract module names
+// 	if modules := recordData.GetModules(); len(modules) > 0 {
+// 		moduleNames := make([]string, len(modules))
+// 		for i, module := range modules {
+// 			moduleNames[i] = module.GetName()
+// 		}
 
-		annotations[ManifestKeyModuleNames] = strings.Join(moduleNames, ",")
-	}
+// 		annotations[ManifestKeyModuleNames] = strings.Join(moduleNames, ",")
+// 	}
 
-	// Security metadata
-	if signature := recordData.GetSignature(); signature != nil {
-		annotations[ManifestKeySigned] = "true"
-		if algorithm := signature.GetAlgorithm(); algorithm != "" {
-			annotations[ManifestKeySignatureAlgo] = algorithm
-		}
+// 	// Security metadata
+// 	if signature := recordData.GetSignature(); signature != nil {
+// 		annotations[ManifestKeySigned] = "true"
+// 		if algorithm := signature.GetAlgorithm(); algorithm != "" {
+// 			annotations[ManifestKeySignatureAlgo] = algorithm
+// 		}
 
-		if signedAt := signature.GetSignedAt(); signedAt != "" {
-			annotations[ManifestKeySignedAt] = signedAt
-		}
-	} else {
-		annotations[ManifestKeySigned] = "false"
-	}
+// 		if signedAt := signature.GetSignedAt(); signedAt != "" {
+// 			annotations[ManifestKeySignedAt] = signedAt
+// 		}
+// 	} else {
+// 		annotations[ManifestKeySigned] = "false"
+// 	}
 
-	// Versioning (v1 specific)
-	if previousCid := recordData.GetPreviousRecordCid(); previousCid != "" {
-		annotations[ManifestKeyPreviousCid] = previousCid
-	}
+// 	// Versioning (v1 specific)
+// 	if previousCid := recordData.GetPreviousRecordCid(); previousCid != "" {
+// 		annotations[ManifestKeyPreviousCid] = previousCid
+// 	}
 
-	// Custom annotations from record data -> manifest custom annotations
-	if customAnnotations := recordData.GetAnnotations(); len(customAnnotations) > 0 {
-		for key, value := range customAnnotations {
-			annotations[ManifestKeyCustomPrefix+key] = value
-		}
-	}
+// 	// Custom annotations from record data -> manifest custom annotations
+// 	if customAnnotations := recordData.GetAnnotations(); len(customAnnotations) > 0 {
+// 		for key, value := range customAnnotations {
+// 			annotations[ManifestKeyCustomPrefix+key] = value
+// 		}
+// 	}
 
-	return annotations
-}
+// 	return annotations
+// }
 
-// parseManifestAnnotations extracts structured metadata from manifest annotations.
-//
-//nolint:cyclop // Function handles multiple metadata extraction paths with justified complexity
-func parseManifestAnnotations(annotations map[string]string) *corev1.RecordMeta {
-	recordMeta := &corev1.RecordMeta{
-		Annotations: make(map[string]string),
-	}
+// // parseManifestAnnotations extracts structured metadata from manifest annotations.
+// //
+// //nolint:cyclop // Function handles multiple metadata extraction paths with justified complexity
+// func parseManifestAnnotations(annotations map[string]string) *corev1.RecordMeta {
+// 	recordMeta := &corev1.RecordMeta{
+// 		Annotations: make(map[string]string),
+// 	}
 
-	// Set fallback schema version first for error recovery scenarios
-	recordMeta.SchemaVersion = FallbackSchemaVersion
+// 	// Set fallback schema version first for error recovery scenarios
+// 	recordMeta.SchemaVersion = FallbackSchemaVersion
 
-	if annotations == nil {
-		return recordMeta
-	}
+// 	if annotations == nil {
+// 		return recordMeta
+// 	}
 
-	// Extract schema version from stored data (override fallback if present)
-	if schemaVersion := annotations[ManifestKeySchemaVersion]; schemaVersion != "" {
-		recordMeta.SchemaVersion = schemaVersion
-	}
+// 	// Extract schema version from stored data (override fallback if present)
+// 	if schemaVersion := annotations[ManifestKeySchemaVersion]; schemaVersion != "" {
+// 		recordMeta.SchemaVersion = schemaVersion
+// 	}
 
-	// Extract created time from stored data (no more empty strings!)
-	if createdAt := annotations[ManifestKeyCreatedAt]; createdAt != "" {
-		recordMeta.CreatedAt = createdAt
-	}
+// 	// Extract created time from stored data (no more empty strings!)
+// 	if createdAt := annotations[ManifestKeyCreatedAt]; createdAt != "" {
+// 		recordMeta.CreatedAt = createdAt
+// 	}
 
-	// Copy structured metadata into annotations for easy access
-	// Core identity - these will be easily accessible to consumers
-	if name := annotations[ManifestKeyName]; name != "" {
-		recordMeta.Annotations[MetadataKeyName] = name
-	}
+// 	// Copy structured metadata into annotations for easy access
+// 	// Core identity - these will be easily accessible to consumers
+// 	if name := annotations[ManifestKeyName]; name != "" {
+// 		recordMeta.Annotations[MetadataKeyName] = name
+// 	}
 
-	if version := annotations[ManifestKeyVersion]; version != "" {
-		recordMeta.Annotations[MetadataKeyVersion] = version
-	}
+// 	if version := annotations[ManifestKeyVersion]; version != "" {
+// 		recordMeta.Annotations[MetadataKeyVersion] = version
+// 	}
 
-	if description := annotations[ManifestKeyDescription]; description != "" {
-		recordMeta.Annotations[MetadataKeyDescription] = description
-	}
+// 	if description := annotations[ManifestKeyDescription]; description != "" {
+// 		recordMeta.Annotations[MetadataKeyDescription] = description
+// 	}
 
-	if oasfVersion := annotations[ManifestKeyOASFVersion]; oasfVersion != "" {
-		recordMeta.Annotations[MetadataKeyOASFVersion] = oasfVersion
-	}
+// 	if oasfVersion := annotations[ManifestKeyOASFVersion]; oasfVersion != "" {
+// 		recordMeta.Annotations[MetadataKeyOASFVersion] = oasfVersion
+// 	}
 
-	// Structured lists (easily parseable by consumers)
-	if authors := annotations[ManifestKeyAuthors]; authors != "" {
-		recordMeta.Annotations[MetadataKeyAuthors] = authors // comma-separated
-		// Also provide parsed count for quick stats
-		authorList := parseCommaSeparated(authors)
-		recordMeta.Annotations[MetadataKeyAuthorsCount] = strconv.Itoa(len(authorList))
-	}
+// 	// Structured lists (easily parseable by consumers)
+// 	if authors := annotations[ManifestKeyAuthors]; authors != "" {
+// 		recordMeta.Annotations[MetadataKeyAuthors] = authors // comma-separated
+// 		// Also provide parsed count for quick stats
+// 		authorList := parseCommaSeparated(authors)
+// 		recordMeta.Annotations[MetadataKeyAuthorsCount] = strconv.Itoa(len(authorList))
+// 	}
 
-	if skills := annotations[ManifestKeySkills]; skills != "" {
-		recordMeta.Annotations[MetadataKeySkills] = skills // comma-separated
-		skillList := parseCommaSeparated(skills)
-		recordMeta.Annotations[MetadataKeySkillsCount] = strconv.Itoa(len(skillList))
-	}
+// 	if skills := annotations[ManifestKeySkills]; skills != "" {
+// 		recordMeta.Annotations[MetadataKeySkills] = skills // comma-separated
+// 		skillList := parseCommaSeparated(skills)
+// 		recordMeta.Annotations[MetadataKeySkillsCount] = strconv.Itoa(len(skillList))
+// 	}
 
-	if locatorTypes := annotations[ManifestKeyLocatorTypes]; locatorTypes != "" {
-		recordMeta.Annotations[MetadataKeyLocatorTypes] = locatorTypes // comma-separated
-		locatorList := parseCommaSeparated(locatorTypes)
-		recordMeta.Annotations[MetadataKeyLocatorTypesCount] = strconv.Itoa(len(locatorList))
-	}
+// 	if locatorTypes := annotations[ManifestKeyLocatorTypes]; locatorTypes != "" {
+// 		recordMeta.Annotations[MetadataKeyLocatorTypes] = locatorTypes // comma-separated
+// 		locatorList := parseCommaSeparated(locatorTypes)
+// 		recordMeta.Annotations[MetadataKeyLocatorTypesCount] = strconv.Itoa(len(locatorList))
+// 	}
 
-	if moduleNames := annotations[ManifestKeyModuleNames]; moduleNames != "" {
-		recordMeta.Annotations[MetadataKeyModuleNames] = moduleNames // comma-separated
-		moduleList := parseCommaSeparated(moduleNames)
-		recordMeta.Annotations[MetadataKeyModuleCount] = strconv.Itoa(len(moduleList))
-	}
+// 	if moduleNames := annotations[ManifestKeyModuleNames]; moduleNames != "" {
+// 		recordMeta.Annotations[MetadataKeyModuleNames] = moduleNames // comma-separated
+// 		moduleList := parseCommaSeparated(moduleNames)
+// 		recordMeta.Annotations[MetadataKeyModuleCount] = strconv.Itoa(len(moduleList))
+// 	}
 
-	// Security information (structured and easily accessible)
-	//nolint:nestif // Nested structure needed for conditional signature metadata extraction
-	if signedStr := annotations[ManifestKeySigned]; signedStr != "" {
-		recordMeta.Annotations[MetadataKeySigned] = signedStr
+// 	// Security information (structured and easily accessible)
+// 	//nolint:nestif // Nested structure needed for conditional signature metadata extraction
+// 	if signedStr := annotations[ManifestKeySigned]; signedStr != "" {
+// 		recordMeta.Annotations[MetadataKeySigned] = signedStr
 
-		if signedStr == "true" {
-			if algorithm := annotations[ManifestKeySignatureAlgo]; algorithm != "" {
-				recordMeta.Annotations[MetadataKeySignatureAlgo] = algorithm
-			}
+// 		if signedStr == "true" {
+// 			if algorithm := annotations[ManifestKeySignatureAlgo]; algorithm != "" {
+// 				recordMeta.Annotations[MetadataKeySignatureAlgo] = algorithm
+// 			}
 
-			if signedAt := annotations[ManifestKeySignedAt]; signedAt != "" {
-				recordMeta.Annotations[MetadataKeySignedAt] = signedAt
-			}
-		}
-	}
+// 			if signedAt := annotations[ManifestKeySignedAt]; signedAt != "" {
+// 				recordMeta.Annotations[MetadataKeySignedAt] = signedAt
+// 			}
+// 		}
+// 	}
 
-	// Versioning information
-	if previousCid := annotations[ManifestKeyPreviousCid]; previousCid != "" {
-		recordMeta.Annotations[MetadataKeyPreviousCid] = previousCid
-	}
+// 	// Versioning information
+// 	if previousCid := annotations[ManifestKeyPreviousCid]; previousCid != "" {
+// 		recordMeta.Annotations[MetadataKeyPreviousCid] = previousCid
+// 	}
 
-	// Custom annotations (those with our custom prefix) - clean namespace
-	for key, value := range annotations {
-		if strings.HasPrefix(key, ManifestKeyCustomPrefix) {
-			customKey := strings.TrimPrefix(key, ManifestKeyCustomPrefix)
-			recordMeta.Annotations[customKey] = value
-		}
-	}
+// 	// Custom annotations (those with our custom prefix) - clean namespace
+// 	for key, value := range annotations {
+// 		if strings.HasPrefix(key, ManifestKeyCustomPrefix) {
+// 			customKey := strings.TrimPrefix(key, ManifestKeyCustomPrefix)
+// 			recordMeta.Annotations[customKey] = value
+// 		}
+// 	}
 
-	return recordMeta
-}
+// 	return recordMeta
+// }
 
-// parseCommaSeparated splits comma-separated values and trims whitespace.
-func parseCommaSeparated(value string) []string {
-	if value == "" {
-		return nil
-	}
+// // parseCommaSeparated splits comma-separated values and trims whitespace.
+// func parseCommaSeparated(value string) []string {
+// 	if value == "" {
+// 		return nil
+// 	}
 
-	parts := strings.Split(value, ",")
-	result := make([]string, 0, len(parts))
+// 	parts := strings.Split(value, ",")
+// 	result := make([]string, 0, len(parts))
 
-	for _, part := range parts {
-		if trimmed := strings.TrimSpace(part); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
+// 	for _, part := range parts {
+// 		if trimmed := strings.TrimSpace(part); trimmed != "" {
+// 			result = append(result, trimmed)
+// 		}
+// 	}
 
-	// Return nil if result is empty after filtering
-	if len(result) == 0 {
-		return nil
-	}
+// 	// Return nil if result is empty after filtering
+// 	if len(result) == 0 {
+// 		return nil
+// 	}
 
-	return result
-}
+// 	return result
+// }

@@ -5,117 +5,14 @@
 // @generated from file agntcy/dir/store/v1/store_service.proto (package agntcy.dir.store.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import type { Message } from "@bufbuild/protobuf";
-import type { RecordMetaSchema, RecordRef, RecordReferrer, RecordRefSchema, RecordSchema } from "../../core/v1/record_pb.js";
+import type { GenFile, GenService } from "@bufbuild/protobuf/codegenv2";
+import type { RecordMetaSchema, RecordRefSchema, RecordSchema } from "../../core/v1/record_pb.js";
 import type { EmptySchema } from "@bufbuild/protobuf/wkt";
 
 /**
  * Describes the file agntcy/dir/store/v1/store_service.proto.
  */
 export declare const file_agntcy_dir_store_v1_store_service: GenFile;
-
-/**
- * PushReferrerRequest represents a record with optional OCI artifacts for push operations.
- *
- * @generated from message agntcy.dir.store.v1.PushReferrerRequest
- */
-export declare type PushReferrerRequest = Message<"agntcy.dir.store.v1.PushReferrerRequest"> & {
-  /**
-   * Record reference
-   *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
-   */
-  recordRef?: RecordRef;
-
-  /**
-   * RecordReferrer object to be stored for the record
-   *
-   * @generated from field: agntcy.dir.core.v1.RecordReferrer referrer = 2;
-   */
-  referrer?: RecordReferrer;
-};
-
-/**
- * Describes the message agntcy.dir.store.v1.PushReferrerRequest.
- * Use `create(PushReferrerRequestSchema)` to create a new message.
- */
-export declare const PushReferrerRequestSchema: GenMessage<PushReferrerRequest>;
-
-/**
- * PushReferrerResponse
- *
- * @generated from message agntcy.dir.store.v1.PushReferrerResponse
- */
-export declare type PushReferrerResponse = Message<"agntcy.dir.store.v1.PushReferrerResponse"> & {
-  /**
-   * The push process result
-   *
-   * @generated from field: bool success = 1;
-   */
-  success: boolean;
-
-  /**
-   * Optional error message if push failed
-   *
-   * @generated from field: optional string error_message = 2;
-   */
-  errorMessage?: string;
-};
-
-/**
- * Describes the message agntcy.dir.store.v1.PushReferrerResponse.
- * Use `create(PushReferrerResponseSchema)` to create a new message.
- */
-export declare const PushReferrerResponseSchema: GenMessage<PushReferrerResponse>;
-
-/**
- * PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
- *
- * @generated from message agntcy.dir.store.v1.PullReferrerRequest
- */
-export declare type PullReferrerRequest = Message<"agntcy.dir.store.v1.PullReferrerRequest"> & {
-  /**
-   * Record reference
-   *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
-   */
-  recordRef?: RecordRef;
-
-  /**
-   * Record referrer type to be pulled
-   * If not provided, all referrers will be pulled
-   *
-   * @generated from field: optional string referrer_type = 2;
-   */
-  referrerType?: string;
-};
-
-/**
- * Describes the message agntcy.dir.store.v1.PullReferrerRequest.
- * Use `create(PullReferrerRequestSchema)` to create a new message.
- */
-export declare const PullReferrerRequestSchema: GenMessage<PullReferrerRequest>;
-
-/**
- * PullReferrerResponse is returned after successfully fetching a record referrer.
- *
- * @generated from message agntcy.dir.store.v1.PullReferrerResponse
- */
-export declare type PullReferrerResponse = Message<"agntcy.dir.store.v1.PullReferrerResponse"> & {
-  /**
-   * RecordReferrer object associated with the record
-   *
-   * @generated from field: agntcy.dir.core.v1.RecordReferrer referrer = 1;
-   */
-  referrer?: RecordReferrer;
-};
-
-/**
- * Describes the message agntcy.dir.store.v1.PullReferrerResponse.
- * Use `create(PullReferrerResponseSchema)` to create a new message.
- */
-export declare const PullReferrerResponseSchema: GenMessage<PullReferrerResponse>;
 
 /**
  * Defines an interface for content-addressable storage
@@ -139,21 +36,23 @@ export declare const PullReferrerResponseSchema: GenMessage<PullReferrerResponse
 export declare const StoreService: GenService<{
   /**
    * Push performs write operation for given records.
+   * Data is streamed in chunks.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Push
    */
   push: {
-    methodKind: "bidi_streaming";
+    methodKind: "client_streaming";
     input: typeof RecordSchema;
     output: typeof RecordRefSchema;
   },
   /**
    * Pull performs read operation for given records.
+   * Data is streamed in chunks.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Pull
    */
   pull: {
-    methodKind: "bidi_streaming";
+    methodKind: "server_streaming";
     input: typeof RecordRefSchema;
     output: typeof RecordSchema;
   },
@@ -163,7 +62,7 @@ export declare const StoreService: GenService<{
    * @generated from rpc agntcy.dir.store.v1.StoreService.Lookup
    */
   lookup: {
-    methodKind: "bidi_streaming";
+    methodKind: "unary";
     input: typeof RecordRefSchema;
     output: typeof RecordMetaSchema;
   },
@@ -173,29 +72,20 @@ export declare const StoreService: GenService<{
    * @generated from rpc agntcy.dir.store.v1.StoreService.Delete
    */
   delete: {
-    methodKind: "client_streaming";
+    methodKind: "unary";
     input: typeof RecordRefSchema;
     output: typeof EmptySchema;
   },
   /**
-   * PushReferrer performs write operation for record referrers.
+   * Walk lists all linked records starting from the given root records.
+   * Use Pull to retrieve actual data.
    *
-   * @generated from rpc agntcy.dir.store.v1.StoreService.PushReferrer
+   * @generated from rpc agntcy.dir.store.v1.StoreService.Walk
    */
-  pushReferrer: {
-    methodKind: "bidi_streaming";
-    input: typeof PushReferrerRequestSchema;
-    output: typeof PushReferrerResponseSchema;
-  },
-  /**
-   * PullReferrer performs read operation for record referrers.
-   *
-   * @generated from rpc agntcy.dir.store.v1.StoreService.PullReferrer
-   */
-  pullReferrer: {
-    methodKind: "bidi_streaming";
-    input: typeof PullReferrerRequestSchema;
-    output: typeof PullReferrerResponseSchema;
+  walk: {
+    methodKind: "server_streaming";
+    input: typeof RecordRefSchema;
+    output: typeof RecordMetaSchema;
   },
 }>;
 
