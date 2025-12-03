@@ -65,7 +65,7 @@ jobs:
         with:
           name: dirctl-bin
           path: /tmp/artifacts/dirctl
-          retention-days: 1
+          retention-days: 7
 
   prepare:
     name: Prepare
@@ -169,7 +169,7 @@ jobs:
         with:
           name: ${{ matrix.target }}
           path: /tmp/artifacts/${{ matrix.target }}.tar
-          retention-days: 1
+          retention-days: 7
 
   coverage-image:
     name: Coverage Image
@@ -237,4 +237,4 @@ jobs:
         with:
           name: ${{ matrix.target }}-coverage
           path: /tmp/artifacts/${{ matrix.target }}-coverage.tar
-          retention-days: 1
+          retention-days: 7
