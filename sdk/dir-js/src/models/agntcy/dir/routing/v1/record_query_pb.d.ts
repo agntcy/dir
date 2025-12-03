@@ -19,7 +19,7 @@ export declare const file_agntcy_dir_routing_v1_record_query: GenFile;
  *  { type: RECORD_QUERY_TYPE_SKILL, value: "Natural Language Processing" }
  *  { type: RECORD_QUERY_TYPE_LOCATOR, value: "helm-chart" }
  *  { type: RECORD_QUERY_TYPE_DOMAIN, value: "research" }
- *  { type: RECORD_QUERY_TYPE_MODULE, value: "runtime/language" }
+ *  { type: RECORD_QUERY_TYPE_MODULE, value: "core/llm/model" }
  *
  * @generated from message agntcy.dir.routing.v1.RecordQuery
  */
