@@ -69,14 +69,16 @@ func (c *searchCtlr) SearchRecords(req *searchv1.SearchRecordsRequest, srv searc
 		types.WithOffset(int(req.GetOffset())),
 	)
 
-	// Get CIDs from search index
 	recordCIDs, err := c.db.GetRecordCIDs(filterOptions...)
 	if err != nil {
 		return fmt.Errorf("failed to get record CIDs: %w", err)
 	}
 
-	// Pull full records from store and stream them
 	for _, cid := range recordCIDs {
+		if err := srv.Context().Err(); err != nil {
+			return fmt.Errorf("client disconnected: %w", err)
+		}
+
 		record, err := c.store.Pull(srv.Context(), &corev1.RecordRef{Cid: cid})
 		if err != nil {
 			searchLogger.Warn("Failed to pull record from store", "cid", cid, "error", err)

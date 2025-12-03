@@ -3,7 +3,10 @@
 
 package search
 
-import "github.com/spf13/cobra"
+import (
+	searchv1 "github.com/agntcy/dir/api/search/v1"
+	"github.com/spf13/cobra"
+)
 
 var opts = &options{}
 
@@ -60,4 +63,112 @@ func registerFlags(cmd *cobra.Command) {
 	flags.Lookup("author").Usage = "Search for records with specific author (e.g., --author 'john*')"
 	flags.Lookup("schema-version").Usage = "Search for records with specific schema version (e.g., --schema-version '0.8.*')"
 	flags.Lookup("module-id").Usage = "Search for records with specific module ID (e.g., --module-id '201')"
+}
+
+// buildQueriesFromFlags builds API queries.
+func buildQueriesFromFlags() []*searchv1.RecordQuery {
+	queries := make([]*searchv1.RecordQuery, 0,
+		len(opts.Names)+len(opts.Versions)+len(opts.SkillIDs)+
+			len(opts.SkillNames)+len(opts.Locators)+len(opts.Modules)+
+			len(opts.DomainIDs)+len(opts.DomainNames)+
+			len(opts.CreatedAts)+len(opts.Authors)+
+			len(opts.SchemaVersions)+len(opts.ModuleIDs))
+
+	// Add name queries
+	for _, name := range opts.Names {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_NAME,
+			Value: name,
+		})
+	}
+
+	// Add version queries
+	for _, version := range opts.Versions {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERSION,
+			Value: version,
+		})
+	}
+
+	// Add skill-id queries
+	for _, skillID := range opts.SkillIDs {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID,
+			Value: skillID,
+		})
+	}
+
+	// Add skill-name queries
+	for _, skillName := range opts.SkillNames {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME,
+			Value: skillName,
+		})
+	}
+
+	// Add locator queries
+	for _, locator := range opts.Locators {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
+			Value: locator,
+		})
+	}
+
+	// Add module queries
+	for _, module := range opts.Modules {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+			Value: module,
+		})
+	}
+
+	// Add domain-id queries
+	for _, domainID := range opts.DomainIDs {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_ID,
+			Value: domainID,
+		})
+	}
+
+	// Add domain-name queries
+	for _, domainName := range opts.DomainNames {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
+			Value: domainName,
+		})
+	}
+
+	// Add created-at queries
+	for _, createdAt := range opts.CreatedAts {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_CREATED_AT,
+			Value: createdAt,
+		})
+	}
+
+	// Add author queries
+	for _, author := range opts.Authors {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+			Value: author,
+		})
+	}
+
+	// Add schema-version queries
+	for _, schemaVersion := range opts.SchemaVersions {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+			Value: schemaVersion,
+		})
+	}
+
+	// Add module-id queries
+	for _, moduleID := range opts.ModuleIDs {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_ID,
+			Value: moduleID,
+		})
+	}
+
+	return queries
 }
