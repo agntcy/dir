@@ -196,6 +196,79 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 		})
+
+		ginkgo.Context("comparison operators", func() {
+			ginkgo.It("finds record with version >= v3.0.0", func() {
+				output := cli.Search().
+					WithVersion(">=v3.0.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("finds record with version <= v5.0.0", func() {
+				output := cli.Search().
+					WithVersion("<=v5.0.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("finds record with version > v3.0.0", func() {
+				output := cli.Search().
+					WithVersion(">v3.0.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("does not find record with version < v4.0.0", func() {
+				output := cli.Search().
+					WithVersion("<v4.0.0").
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("finds record with version =v4.0.0", func() {
+				output := cli.Search().
+					WithVersion("=v4.0.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("finds record with schema-version >= 0.7.0", func() {
+				output := cli.Search().
+					WithSchemaVersion(">=0.7.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("does not find record with schema-version > 0.8.0", func() {
+				output := cli.Search().
+					WithSchemaVersion(">0.8.0").
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("finds record with created-at >= 2025-01-01", func() {
+				output := cli.Search().
+					WithCreatedAt(">=2025-01-01").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("does not find record with created-at < 2025-01-01", func() {
+				output := cli.Search().
+					WithCreatedAt("<2025-01-01").
+					ShouldSucceed()
+				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
+			})
+
+			ginkgo.It("finds record within version range", func() {
+				output := cli.Search().
+					WithVersion(">=v3.0.0").
+					WithVersion("<=v5.0.0").
+					ShouldSucceed()
+				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+			})
+		})
 	})
 
 	ginkgo.Context("search records command", ginkgo.Ordered, func() {
