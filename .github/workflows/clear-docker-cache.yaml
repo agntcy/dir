@@ -1,0 +1,15 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Clear Docker Cache
+
+on:
+  workflow_dispatch:
+jobs:
+  clear-docker-cache:
+    name: Clear Docker Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear Github Action runner cache
+        run: |
+          gh cache delete --all --succeed-on-no-caches --repo "${{ github.repository }}"
