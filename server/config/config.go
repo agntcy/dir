@@ -118,9 +118,7 @@ type Config struct {
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
 
 	// OASF Validation configuration
-	SchemaURL            string `json:"schema_url,omitempty"             mapstructure:"oasf_api_validation_schema_url"`
-	DisableAPIValidation bool   `json:"disable_api_validation,omitempty" mapstructure:"oasf_api_validation_disable"`
-	StrictValidation     bool   `json:"strict_validation,omitempty"      mapstructure:"oasf_api_validation_strict_mode"`
+	OASFAPIValidation OASFAPIValidationConfig `json:"oasf_api_validation,omitempty" mapstructure:"oasf_api_validation"`
 
 	// Logging configuration
 	Logging LoggingConfig `json:"logging,omitempty" mapstructure:"logging"`
@@ -157,6 +155,24 @@ type Config struct {
 
 	// Metrics configuration
 	Metrics MetricsConfig `json:"metrics,omitempty" mapstructure:"metrics"`
+}
+
+// OASFAPIValidationConfig defines OASF API validation configuration.
+type OASFAPIValidationConfig struct {
+	// SchemaURL is the OASF schema URL for API-based validation.
+	// When set, records will be validated using the OASF API validator instead of embedded schemas.
+	// Default: https://schema.oasf.outshift.com
+	SchemaURL string `json:"schema_url,omitempty" mapstructure:"schema_url"`
+
+	// Disable disables API validation and uses embedded schema validation instead.
+	// Default: false (uses API validation)
+	Disable bool `json:"disable,omitempty" mapstructure:"disable"`
+
+	// StrictMode enables strict validation mode (fails on warnings).
+	// When false, uses lax validation mode (allows warnings, only fails on errors).
+	// Default: true (strict mode)
+	// Only applies when Disable is false
+	StrictMode bool `json:"strict_mode,omitempty" mapstructure:"strict_mode"`
 }
 
 // LoggingConfig defines gRPC request/response logging configuration.
@@ -313,14 +329,14 @@ func LoadConfig() (*Config, error) {
 	//
 	// OASF Validation configuration
 	//
-	_ = v.BindEnv("oasf_api_validation_schema_url")
-	v.SetDefault("oasf_api_validation_schema_url", DefaultSchemaURL)
+	_ = v.BindEnv("oasf_api_validation.schema_url")
+	v.SetDefault("oasf_api_validation.schema_url", DefaultSchemaURL)
 
-	_ = v.BindEnv("oasf_api_validation_disable")
-	v.SetDefault("oasf_api_validation_disable", false)
+	_ = v.BindEnv("oasf_api_validation.disable")
+	v.SetDefault("oasf_api_validation.disable", false)
 
-	_ = v.BindEnv("oasf_api_validation_strict_mode")
-	v.SetDefault("oasf_api_validation_strict_mode", true)
+	_ = v.BindEnv("oasf_api_validation.strict_mode")
+	v.SetDefault("oasf_api_validation.strict_mode", true)
 
 	//
 	// Logging configuration (gRPC request/response logging)

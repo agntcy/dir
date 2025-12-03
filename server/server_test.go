@@ -244,15 +244,17 @@ func TestServerInitialization_SchemaURL(t *testing.T) {
 			// Create a minimal config with the schema URL
 			cfg := &config.Config{
 				ListenAddress: config.DefaultListenAddress,
-				SchemaURL:     tt.schemaURL,
-				Connection:    config.DefaultConnectionConfig(),
+				OASFAPIValidation: config.OASFAPIValidationConfig{
+					SchemaURL: tt.schemaURL,
+				},
+				Connection: config.DefaultConnectionConfig(),
 			}
 
 			// We can't fully test New() because it tries to start services,
 			// but we can verify that a config with SchemaURL doesn't panic
 			// during the initial setup phase
 			assert.NotNil(t, cfg)
-			assert.Equal(t, tt.schemaURL, cfg.SchemaURL)
+			assert.Equal(t, tt.schemaURL, cfg.OASFAPIValidation.SchemaURL)
 		})
 	}
 }
@@ -296,18 +298,20 @@ func TestServerInitialization_OASFValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a config with OASF validation settings
 			cfg := &config.Config{
-				ListenAddress:        config.DefaultListenAddress,
-				SchemaURL:            tt.schemaURL,
-				DisableAPIValidation: tt.disableAPIValidation,
-				StrictValidation:     tt.strictValidation,
-				Connection:           config.DefaultConnectionConfig(),
+				ListenAddress: config.DefaultListenAddress,
+				OASFAPIValidation: config.OASFAPIValidationConfig{
+					SchemaURL:  tt.schemaURL,
+					Disable:    tt.disableAPIValidation,
+					StrictMode: tt.strictValidation,
+				},
+				Connection: config.DefaultConnectionConfig(),
 			}
 
 			// Verify config values are set correctly
 			assert.NotNil(t, cfg)
-			assert.Equal(t, tt.schemaURL, cfg.SchemaURL)
-			assert.Equal(t, tt.disableAPIValidation, cfg.DisableAPIValidation)
-			assert.Equal(t, tt.strictValidation, cfg.StrictValidation)
+			assert.Equal(t, tt.schemaURL, cfg.OASFAPIValidation.SchemaURL)
+			assert.Equal(t, tt.disableAPIValidation, cfg.OASFAPIValidation.Disable)
+			assert.Equal(t, tt.strictValidation, cfg.OASFAPIValidation.StrictMode)
 
 			// Note: We can't fully test New() because it tries to start services
 			// that require database connections, but we can verify that the config
