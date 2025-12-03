@@ -1,0 +1,39 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.store.v1;
+
+// Defines a reference or a globally unique content identifier of an object.
+message ObjectRef {
+  // Globally-unique content identifier (CID) of the object.
+  // Specs: https://github.com/multiformats/cid
+  string cid = 1;
+}
+
+// Defines an Object stored in the system.
+message Object {
+  // Parent object reference, if any.
+  optional ObjectRef parent = 1;
+
+  // Links to other objects.
+  repeated ObjectRef links = 2;
+
+  // Annotations attached to the object.
+  map<string, string> annotations = 3;
+
+  // Creation timestamp of the object in the RFC3339 format.
+  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
+  optional string created_at = 4;
+
+  // The type of the object.
+  // This is an application-defined string.
+  optional string type = 5;
+
+  // Size of the object in bytes.
+  uint64 size = 6;
+
+  // The actual data of the object.
+  optional bytes data = 7;
+}

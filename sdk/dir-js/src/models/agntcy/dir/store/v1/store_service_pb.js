@@ -6,31 +6,23 @@
 /* eslint-disable */
 
 import { fileDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import { file_agntcy_dir_core_v1_record } from "../../core/v1/record_pb.js";
+import { file_agntcy_dir_store_v1_object } from "./object_pb.js";
 import { file_google_protobuf_empty } from "@bufbuild/protobuf/wkt";
 
 /**
  * Describes the file agntcy/dir/store/v1/store_service.proto.
  */
 export const file_agntcy_dir_store_v1_store_service = /*@__PURE__*/
-  fileDesc("CidhZ250Y3kvZGlyL3N0b3JlL3YxL3N0b3JlX3NlcnZpY2UucHJvdG8SE2FnbnRjeS5kaXIuc3RvcmUudjEy6wIKDFN0b3JlU2VydmljZRJDCgRQdXNoEhouYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZBodLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWYoARJDCgRQdWxsEh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhoaLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmQwARJHCgZMb29rdXASHS5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkUmVmGh4uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZE1ldGESPwoGRGVsZXRlEh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJHCgRXYWxrEh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhoeLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRNZXRhMAFCvwEKF2NvbS5hZ250Y3kuZGlyLnN0b3JlLnYxQhFTdG9yZVNlcnZpY2VQcm90b1ABWiJnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL3N0b3JlL3YxogIDQURTqgITQWdudGN5LkRpci5TdG9yZS5WMcoCE0FnbnRjeVxEaXJcU3RvcmVcVjHiAh9BZ250Y3lcRGlyXFN0b3JlXFYxXEdQQk1ldGFkYXRh6gIWQWdudGN5OjpEaXI6OlN0b3JlOjpWMWIGcHJvdG8z", [file_agntcy_dir_core_v1_record, file_google_protobuf_empty]);
+  fileDesc("CidhZ250Y3kvZGlyL3N0b3JlL3YxL3N0b3JlX3NlcnZpY2UucHJvdG8SE2FnbnRjeS5kaXIuc3RvcmUudjEy7AIKDFN0b3JlU2VydmljZRJFCgRQdXNoEhsuYWdudGN5LmRpci5zdG9yZS52MS5PYmplY3QaHi5hZ250Y3kuZGlyLnN0b3JlLnYxLk9iamVjdFJlZigBEkUKBFB1bGwSHi5hZ250Y3kuZGlyLnN0b3JlLnYxLk9iamVjdFJlZhobLmFnbnRjeS5kaXIuc3RvcmUudjEuT2JqZWN0MAESRQoGTG9va3VwEh4uYWdudGN5LmRpci5zdG9yZS52MS5PYmplY3RSZWYaGy5hZ250Y3kuZGlyLnN0b3JlLnYxLk9iamVjdBJACgZEZWxldGUSHi5hZ250Y3kuZGlyLnN0b3JlLnYxLk9iamVjdFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJFCgRXYWxrEh4uYWdudGN5LmRpci5zdG9yZS52MS5PYmplY3RSZWYaGy5hZ250Y3kuZGlyLnN0b3JlLnYxLk9iamVjdDABQr8BChdjb20uYWdudGN5LmRpci5zdG9yZS52MUIRU3RvcmVTZXJ2aWNlUHJvdG9QAVoiZ2l0aHViLmNvbS9hZ250Y3kvZGlyL2FwaS9zdG9yZS92MaICA0FEU6oCE0FnbnRjeS5EaXIuU3RvcmUuVjHKAhNBZ250Y3lcRGlyXFN0b3JlXFYx4gIfQWdudGN5XERpclxTdG9yZVxWMVxHUEJNZXRhZGF0YeoCFkFnbnRjeTo6RGlyOjpTdG9yZTo6VjFiBnByb3RvMw", [file_agntcy_dir_store_v1_object, file_google_protobuf_empty]);
 
 /**
  * Defines an interface for content-addressable storage
- * service for objects.
+ * service for arbitrary objects.
+ * Supports DAG structure creation via object linking.
  *
- * Max object size: 4MB (to fully fit in a single request)
- * Max metadata size: 100KB
- *
- * Store service can be implemented by various storage backends,
- * such as local file system, OCI registry, etc.
- *
- * Middleware should be used to control who can perform these RPCs.
- * Policies for the middleware can be handled via separate service.
- *
- * Each operation is performed sequentially, meaning that
- * for the N-th request, N-th response will be returned.
- * If an error occurs, the stream will be cancelled.
+ * Objects are mapped to OCI artifacts, and stored in OCI-compliant
+ * format.
+ * The object references map OCI digest to CIDs.
  *
  * @generated from service agntcy.dir.store.v1.StoreService
  */

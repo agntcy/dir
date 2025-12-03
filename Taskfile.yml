@@ -464,7 +464,7 @@ tasks:
 
   server:store:start:
     desc: Start local OCI registry server for storage
-    internal: true
+    internal: false
     vars:
       IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:v{{.ZOT_VERSION}}
     deps:
@@ -489,6 +489,9 @@ tasks:
           },
           "extensions": {
             "search": {
+              "enable": true
+            },
+            "ui": {
               "enable": true
             },
             "trust": {

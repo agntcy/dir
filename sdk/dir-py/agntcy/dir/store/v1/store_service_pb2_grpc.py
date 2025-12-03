@@ -2,26 +2,18 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from agntcy.dir.core.v1 import record_pb2 as agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2
+from agntcy.dir.store.v1 import object_pb2 as agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
 class StoreServiceStub(object):
     """Defines an interface for content-addressable storage
-    service for objects.
+    service for arbitrary objects.
+    Supports DAG structure creation via object linking.
 
-    Max object size: 4MB (to fully fit in a single request)
-    Max metadata size: 100KB
-
-    Store service can be implemented by various storage backends,
-    such as local file system, OCI registry, etc.
-
-    Middleware should be used to control who can perform these RPCs.
-    Policies for the middleware can be handled via separate service.
-
-    Each operation is performed sequentially, meaning that
-    for the N-th request, N-th response will be returned.
-    If an error occurs, the stream will be cancelled.
+    Objects are mapped to OCI artifacts, and stored in OCI-compliant
+    format.
+    The object references map OCI digest to CIDs.
     """
 
     def __init__(self, channel):
@@ -32,51 +24,43 @@ class StoreServiceStub(object):
         """
         self.Push = channel.stream_unary(
                 '/agntcy.dir.store.v1.StoreService/Push',
-                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
+                request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
                 _registered_method=True)
         self.Pull = channel.unary_stream(
                 '/agntcy.dir.store.v1.StoreService/Pull',
-                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.FromString,
+                request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
                 _registered_method=True)
         self.Lookup = channel.unary_unary(
                 '/agntcy.dir.store.v1.StoreService/Lookup',
-                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.FromString,
+                request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
                 _registered_method=True)
         self.Delete = channel.unary_unary(
                 '/agntcy.dir.store.v1.StoreService/Delete',
-                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+                request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 _registered_method=True)
         self.Walk = channel.unary_stream(
                 '/agntcy.dir.store.v1.StoreService/Walk',
-                request_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.FromString,
+                request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
                 _registered_method=True)
 
 
 class StoreServiceServicer(object):
     """Defines an interface for content-addressable storage
-    service for objects.
+    service for arbitrary objects.
+    Supports DAG structure creation via object linking.
 
-    Max object size: 4MB (to fully fit in a single request)
-    Max metadata size: 100KB
-
-    Store service can be implemented by various storage backends,
-    such as local file system, OCI registry, etc.
-
-    Middleware should be used to control who can perform these RPCs.
-    Policies for the middleware can be handled via separate service.
-
-    Each operation is performed sequentially, meaning that
-    for the N-th request, N-th response will be returned.
-    If an error occurs, the stream will be cancelled.
+    Objects are mapped to OCI artifacts, and stored in OCI-compliant
+    format.
+    The object references map OCI digest to CIDs.
     """
 
     def Push(self, request_iterator, context):
-        """Push performs write operation for given records.
+        """Push performs write operation for given objects.
         Data is streamed in chunks.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -84,7 +68,7 @@ class StoreServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Pull(self, request, context):
-        """Pull performs read operation for given records.
+        """Pull performs read operation for given objects.
         Data is streamed in chunks.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -92,21 +76,22 @@ class StoreServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Lookup(self, request, context):
-        """Lookup resolves basic metadata for the records.
+        """Lookup resolves basic metadata for the objects.
+        Does not stream data.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Delete(self, request, context):
-        """Remove performs delete operation for the records.
+        """Remove performs delete operation for the objects.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Walk(self, request, context):
-        """Walk lists all linked records starting from the given root records.
+        """Walk lists all linked objects starting from the given root objects.
         Use Pull to retrieve actual data.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -118,28 +103,28 @@ def add_StoreServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Push': grpc.stream_unary_rpc_method_handler(
                     servicer.Push,
-                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.FromString,
-                    response_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+                    request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
+                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
             ),
             'Pull': grpc.unary_stream_rpc_method_handler(
                     servicer.Pull,
-                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
-                    response_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.SerializeToString,
+                    request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
+                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.SerializeToString,
             ),
             'Lookup': grpc.unary_unary_rpc_method_handler(
                     servicer.Lookup,
-                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
-                    response_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.SerializeToString,
+                    request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
+                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.SerializeToString,
             ),
             'Delete': grpc.unary_unary_rpc_method_handler(
                     servicer.Delete,
-                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
+                    request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'Walk': grpc.unary_stream_rpc_method_handler(
                     servicer.Walk,
-                    request_deserializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
-                    response_serializer=agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.SerializeToString,
+                    request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
+                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -151,20 +136,12 @@ def add_StoreServiceServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class StoreService(object):
     """Defines an interface for content-addressable storage
-    service for objects.
+    service for arbitrary objects.
+    Supports DAG structure creation via object linking.
 
-    Max object size: 4MB (to fully fit in a single request)
-    Max metadata size: 100KB
-
-    Store service can be implemented by various storage backends,
-    such as local file system, OCI registry, etc.
-
-    Middleware should be used to control who can perform these RPCs.
-    Policies for the middleware can be handled via separate service.
-
-    Each operation is performed sequentially, meaning that
-    for the N-th request, N-th response will be returned.
-    If an error occurs, the stream will be cancelled.
+    Objects are mapped to OCI artifacts, and stored in OCI-compliant
+    format.
+    The object references map OCI digest to CIDs.
     """
 
     @staticmethod
@@ -182,8 +159,8 @@ class StoreService(object):
             request_iterator,
             target,
             '/agntcy.dir.store.v1.StoreService/Push',
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.SerializeToString,
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.FromString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.SerializeToString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
             options,
             channel_credentials,
             insecure,
@@ -209,8 +186,8 @@ class StoreService(object):
             request,
             target,
             '/agntcy.dir.store.v1.StoreService/Pull',
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.Record.FromString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
             options,
             channel_credentials,
             insecure,
@@ -236,8 +213,8 @@ class StoreService(object):
             request,
             target,
             '/agntcy.dir.store.v1.StoreService/Lookup',
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.FromString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
             options,
             channel_credentials,
             insecure,
@@ -263,7 +240,7 @@ class StoreService(object):
             request,
             target,
             '/agntcy.dir.store.v1.StoreService/Delete',
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options,
             channel_credentials,
@@ -290,8 +267,8 @@ class StoreService(object):
             request,
             target,
             '/agntcy.dir.store.v1.StoreService/Walk',
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordRef.SerializeToString,
-            agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2.RecordMeta.FromString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
             options,
             channel_credentials,
             insecure,

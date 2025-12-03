@@ -6,7 +6,7 @@
 /* eslint-disable */
 
 import type { GenFile, GenService } from "@bufbuild/protobuf/codegenv2";
-import type { RecordMetaSchema, RecordRefSchema, RecordSchema } from "../../core/v1/record_pb.js";
+import type { ObjectRefSchema, ObjectSchema } from "./object_pb.js";
 import type { EmptySchema } from "@bufbuild/protobuf/wkt";
 
 /**
@@ -16,76 +16,69 @@ export declare const file_agntcy_dir_store_v1_store_service: GenFile;
 
 /**
  * Defines an interface for content-addressable storage
- * service for objects.
+ * service for arbitrary objects.
+ * Supports DAG structure creation via object linking.
  *
- * Max object size: 4MB (to fully fit in a single request)
- * Max metadata size: 100KB
- *
- * Store service can be implemented by various storage backends,
- * such as local file system, OCI registry, etc.
- *
- * Middleware should be used to control who can perform these RPCs.
- * Policies for the middleware can be handled via separate service.
- *
- * Each operation is performed sequentially, meaning that
- * for the N-th request, N-th response will be returned.
- * If an error occurs, the stream will be cancelled.
+ * Objects are mapped to OCI artifacts, and stored in OCI-compliant
+ * format.
+ * The object references map OCI digest to CIDs.
  *
  * @generated from service agntcy.dir.store.v1.StoreService
  */
 export declare const StoreService: GenService<{
   /**
-   * Push performs write operation for given records.
+   * Push performs write operation for given objects.
    * Data is streamed in chunks.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Push
    */
   push: {
     methodKind: "client_streaming";
-    input: typeof RecordSchema;
-    output: typeof RecordRefSchema;
+    input: typeof ObjectSchema;
+    output: typeof ObjectRefSchema;
   },
   /**
-   * Pull performs read operation for given records.
+   * Pull performs read operation for given objects.
    * Data is streamed in chunks.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Pull
    */
   pull: {
     methodKind: "server_streaming";
-    input: typeof RecordRefSchema;
-    output: typeof RecordSchema;
+    input: typeof ObjectRefSchema;
+    output: typeof ObjectSchema;
   },
   /**
-   * Lookup resolves basic metadata for the records.
+   * Lookup resolves basic metadata for the objects.
+   * Does not stream data.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Lookup
    */
   lookup: {
     methodKind: "unary";
-    input: typeof RecordRefSchema;
-    output: typeof RecordMetaSchema;
+    input: typeof ObjectRefSchema;
+    output: typeof ObjectSchema;
   },
   /**
-   * Remove performs delete operation for the records.
+   * Remove performs delete operation for the objects.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Delete
    */
   delete: {
     methodKind: "unary";
-    input: typeof RecordRefSchema;
+    input: typeof ObjectRefSchema;
     output: typeof EmptySchema;
   },
   /**
-   * Walk lists all linked records starting from the given root records.
+   * Walk lists all linked objects starting from the given root objects.
    * Use Pull to retrieve actual data.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Walk
    */
   walk: {
     methodKind: "server_streaming";
-    input: typeof RecordRefSchema;
-    output: typeof RecordMetaSchema;
+    input: typeof ObjectRefSchema;
+    output: typeof ObjectSchema;
   },
 }>;
 
