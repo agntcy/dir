@@ -35,13 +35,13 @@ export declare type RecordRef = Message<"agntcy.dir.core.v1.RecordRef"> & {
 export declare const RecordRefSchema: GenMessage<RecordRef>;
 
 /**
- * Defines metadata about a record.
+ * Defines a Record stored in the system.
  *
  * @generated from message agntcy.dir.core.v1.RecordMeta
  */
 export declare type RecordMeta = Message<"agntcy.dir.core.v1.RecordMeta"> & {
   /**
-   * CID of the record.
+   * CID of this object.
    *
    * @generated from field: string cid = 1;
    */
@@ -55,19 +55,41 @@ export declare type RecordMeta = Message<"agntcy.dir.core.v1.RecordMeta"> & {
   annotations: { [key: string]: string };
 
   /**
-   * Schema version of the record.
-   *
-   * @generated from field: string schema_version = 3;
-   */
-  schemaVersion: string;
-
-  /**
    * Creation timestamp of the record in the RFC3339 format.
    * Specs: https://www.rfc-editor.org/rfc/rfc3339.html
    *
-   * @generated from field: string created_at = 4;
+   * @generated from field: string created_at = 3;
    */
   createdAt: string;
+
+  /**
+   * The type of the object.
+   * For example, "agntcy.dir.sign.v1.Signature" for signatures.
+   *
+   * @generated from field: string type = 4;
+   */
+  type: string;
+
+  /**
+   * Links to other records.
+   *
+   * @generated from field: repeated agntcy.dir.core.v1.RecordRef links = 5;
+   */
+  links: RecordRef[];
+
+  /**
+   * Parent record reference, if any.
+   *
+   * @generated from field: optional agntcy.dir.core.v1.RecordRef parent = 6;
+   */
+  parent?: RecordRef;
+
+  /**
+   * Size of the record data in bytes.
+   *
+   * @generated from field: uint64 size = 7;
+   */
+  size: bigint;
 };
 
 /**
@@ -77,18 +99,22 @@ export declare type RecordMeta = Message<"agntcy.dir.core.v1.RecordMeta"> & {
 export declare const RecordMetaSchema: GenMessage<RecordMeta>;
 
 /**
- * Record is a generic object that encapsulates data of different Record types.
- *
- * Supported schemas:
- *
- * v0.3.1: https://schema.oasf.outshift.com/0.3.1/objects/agent
- * v0.7.0: https://schema.oasf.outshift.com/0.7.0/objects/record
- *
  * @generated from message agntcy.dir.core.v1.Record
  */
 export declare type Record = Message<"agntcy.dir.core.v1.Record"> & {
   /**
-   * @generated from field: google.protobuf.Struct data = 1;
+   * @generated from field: optional agntcy.dir.core.v1.RecordMeta meta = 1;
+   */
+  meta?: RecordMeta;
+
+  /**
+   * The actual data of the record.
+   * Supported schemas:
+   *
+   * 0.3.1: https://schema.oasf.outshift.com/0.3.1/objects/agent
+   * 0.7.0: https://schema.oasf.outshift.com/0.7.0/objects/record
+   *
+   * @generated from field: google.protobuf.Struct data = 2;
    */
   data?: JsonObject;
 };
@@ -98,59 +124,4 @@ export declare type Record = Message<"agntcy.dir.core.v1.Record"> & {
  * Use `create(RecordSchema)` to create a new message.
  */
 export declare const RecordSchema: GenMessage<Record>;
-
-/**
- * RecordReferrer represents a referrer object or an association
- * to a record. The actual structure of the referrer object can vary
- * depending on the type of referrer (e.g., signature, public key, etc.).
- *
- * RecordReferrer types in the `agntcy.dir.` namespace are reserved for
- * Directory-specific schemas and will be validated across Dir services.
- *
- * @generated from message agntcy.dir.core.v1.RecordReferrer
- */
-export declare type RecordReferrer = Message<"agntcy.dir.core.v1.RecordReferrer"> & {
-  /**
-   * The type of the referrer.
-   * For example, "agntcy.dir.sign.v1.Signature" for signatures.
-   *
-   * @generated from field: string type = 1;
-   */
-  type: string;
-
-  /**
-   * Record reference to which this referrer is associated.
-   *
-   * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 2;
-   */
-  recordRef?: RecordRef;
-
-  /**
-   * Annotations attached to the referrer object.
-   *
-   * @generated from field: map<string, string> annotations = 3;
-   */
-  annotations: { [key: string]: string };
-
-  /**
-   * Creation timestamp of the record in the RFC3339 format.
-   * Specs: https://www.rfc-editor.org/rfc/rfc3339.html
-   *
-   * @generated from field: string created_at = 4;
-   */
-  createdAt: string;
-
-  /**
-   * The actual data of the referrer.
-   *
-   * @generated from field: google.protobuf.Struct data = 5;
-   */
-  data?: JsonObject;
-};
-
-/**
- * Describes the message agntcy.dir.core.v1.RecordReferrer.
- * Use `create(RecordReferrerSchema)` to create a new message.
- */
-export declare const RecordReferrerSchema: GenMessage<RecordReferrer>;
 

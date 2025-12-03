@@ -74,11 +74,11 @@ func SetStrictValidation(strict bool) {
 	strictValidation = strict
 }
 
-// GetCid calculates and returns the CID for this record.
+// CalculateCid calculates and returns the CID for this record.
 // The CID is calculated from the record's content using CIDv1, codec 1, SHA2-256.
 // Uses canonical JSON marshaling to ensure consistent, cross-language compatible results.
 // Returns empty string if calculation fails.
-func (r *Record) GetCid() string {
+func (r *Record) CalculateCid() string {
 	if r == nil || r.GetData() == nil {
 		return ""
 	}

@@ -6,16 +6,15 @@ package oci
 
 import (
 	"context"
+	"io"
 	"os"
+	"strings"
 	"testing"
 
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
-	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TODO: this should be configurable to unified Storage API test flow.
@@ -35,334 +34,318 @@ var (
 	testCtx = context.Background()
 )
 
-func TestStorePushLookupPullDelete(t *testing.T) {
+func TestStore(t *testing.T) {
+	t.Run("PushPullSimpleRecord", TestPushPullSimpleRecord)
+	t.Run("PushRecordWithLinks", TestPushRecordWithLinks)
+	t.Run("PushRecordWithParent", TestPushRecordWithParent)
+	t.Run("PushComplexDAG", TestPushComplexDAG)
+	t.Run("LookupRecord", TestLookupRecord)
+	t.Run("DeleteRecord", TestDeleteRecord)
+	t.Run("DeleteNonExistentRecord", TestDeleteNonExistentRecord)
+}
+
+// TestPushPullSimpleRecord tests pushing and pulling a basic record without links or parent.
+func TestPushPullSimpleRecord(t *testing.T) {
 	store := loadLocalStore(t)
 
-	agent := &typesv1alpha0.Record{
-		Name:          "test-agent",
-		SchemaVersion: "v0.3.1",
-		Description:   "A test agent",
+	// Create a simple record
+	meta := &corev1.RecordMeta{
+		Cid:       "bafytest123",
+		Type:      "test.record.v1",
+		CreatedAt: "2025-12-03T10:00:00Z",
+		Size:      100,
+		Annotations: map[string]string{
+			"key1": "value1",
+			"key2": "value2",
+		},
 	}
 
-	record := corev1.New(agent)
+	data := `{"name": "test-agent", "version": "1.0.0"}`
+	dataReader := io.NopCloser(strings.NewReader(data))
 
-	// Calculate CID for the record
-	recordCID := record.GetCid()
-	assert.NotEmpty(t, recordCID, "failed to calculate CID")
+	// Push record
+	ref, err := store.Push(testCtx, meta, dataReader)
+	assert.NoError(t, err, "Push should succeed")
+	assert.NotNil(t, ref, "RecordRef should not be nil")
+	assert.NotEmpty(t, ref.Cid, "CID should not be empty")
 
-	// Push operation
-	recordRef, err := store.Push(testCtx, record)
-	assert.NoErrorf(t, err, "push failed")
-	assert.Equal(t, recordCID, recordRef.GetCid())
+	// Pull record back
+	pulledMeta, pulledDataReader, err := store.Pull(testCtx, ref)
+	assert.NoError(t, err, "Pull should succeed")
+	assert.NotNil(t, pulledMeta, "Pulled metadata should not be nil")
+	assert.NotNil(t, pulledDataReader, "Pulled data reader should not be nil")
+	defer pulledDataReader.Close()
 
-	// Lookup operation
-	recordMeta, err := store.Lookup(testCtx, recordRef)
-	assert.NoErrorf(t, err, "lookup failed")
-	assert.Equal(t, recordCID, recordMeta.GetCid())
+	// Verify metadata
+	assert.Equal(t, meta.Type, pulledMeta.Type, "Type should match")
+	assert.Equal(t, meta.CreatedAt, pulledMeta.CreatedAt, "CreatedAt should match")
+	assert.Equal(t, meta.Annotations, pulledMeta.Annotations, "Annotations should match")
 
-	// Pull operation
-	pulledRecord, err := store.Pull(testCtx, recordRef)
-	assert.NoErrorf(t, err, "pull failed")
-
-	pulledCID := pulledRecord.GetCid()
-	assert.NotEmpty(t, pulledCID, "failed to get pulled record CID")
-	assert.Equal(t, recordCID, pulledCID)
-
-	// Verify the pulled agent data
-	decoded, _ := record.Decode()
-	pulledAgent := decoded.GetV1Alpha0()
-	assert.NotNil(t, pulledAgent, "pulled agent should not be nil")
-	assert.Equal(t, agent.GetName(), pulledAgent.GetName())
-	assert.Equal(t, agent.GetSchemaVersion(), pulledAgent.GetSchemaVersion())
-	assert.Equal(t, agent.GetDescription(), pulledAgent.GetDescription())
-
-	// Delete operation
-	err = store.Delete(testCtx, recordRef)
-	assert.NoErrorf(t, err, "delete failed")
-
-	// Lookup should fail after delete
-	_, err = store.Lookup(testCtx, recordRef)
-	assert.Error(t, err, "lookup should fail after delete")
-	assert.ErrorContains(t, err, "not found")
-
-	// Pull should also fail after delete
-	_, err = store.Pull(testCtx, recordRef)
-	assert.Error(t, err, "pull should fail after delete")
-	assert.ErrorContains(t, err, "not found")
+	// Verify data content
+	pulledData, err := io.ReadAll(pulledDataReader)
+	assert.NoError(t, err, "Reading pulled data should succeed")
+	assert.Equal(t, data, string(pulledData), "Data content should match")
 }
 
-func BenchmarkLocalStore(b *testing.B) {
-	if !runLocal {
-		b.Skip()
-	}
+// TestPushRecordWithLinks tests creating a DAG with forward references (links).
+func TestPushRecordWithLinks(t *testing.T) {
+	store := loadLocalStore(t)
 
-	store := loadLocalStore(&testing.T{})
-	for range b.N {
-		benchmarkStep(store)
+	// Create leaf records first (bottom-up DAG creation)
+	leaf1Meta := &corev1.RecordMeta{
+		Cid:       "bafyleaf1",
+		Type:      "test.leaf.v1",
+		CreatedAt: "2025-12-03T10:00:00Z",
+		Size:      50,
 	}
+	leaf1Data := `{"data": "leaf1"}`
+	leaf1Ref, err := store.Push(testCtx, leaf1Meta, io.NopCloser(strings.NewReader(leaf1Data)))
+	assert.NoError(t, err, "Leaf1 push should succeed")
+
+	leaf2Meta := &corev1.RecordMeta{
+		Cid:       "bafyleaf2",
+		Type:      "test.leaf.v1",
+		CreatedAt: "2025-12-03T10:01:00Z",
+		Size:      50,
+	}
+	leaf2Data := `{"data": "leaf2"}`
+	leaf2Ref, err := store.Push(testCtx, leaf2Meta, io.NopCloser(strings.NewReader(leaf2Data)))
+	assert.NoError(t, err, "Leaf2 push should succeed")
+
+	// Create parent record with links to leaves
+	parentMeta := &corev1.RecordMeta{
+		Cid:       "bafyparent",
+		Type:      "test.parent.v1",
+		CreatedAt: "2025-12-03T10:02:00Z",
+		Size:      100,
+		Links: []*corev1.RecordRef{
+			{Cid: leaf1Ref.Cid},
+			{Cid: leaf2Ref.Cid},
+		},
+	}
+	parentData := `{"name": "parent-record"}`
+	parentRef, err := store.Push(testCtx, parentMeta, io.NopCloser(strings.NewReader(parentData)))
+	assert.NoError(t, err, "Parent push should succeed")
+
+	// Pull parent and verify links
+	pulledParentMeta, pulledDataReader, err := store.Pull(testCtx, parentRef)
+	assert.NoError(t, err, "Parent pull should succeed")
+	defer pulledDataReader.Close()
+
+	assert.Len(t, pulledParentMeta.Links, 2, "Parent should have 2 links")
+	assert.Equal(t, leaf1Ref.Cid, pulledParentMeta.Links[0].Cid, "First link should match leaf1")
+	assert.Equal(t, leaf2Ref.Cid, pulledParentMeta.Links[1].Cid, "Second link should match leaf2")
+
+	// Verify we can still pull the leaves
+	_, leaf1Reader, err := store.Pull(testCtx, leaf1Ref)
+	assert.NoError(t, err, "Leaf1 should still be pullable")
+	leaf1Reader.Close()
+
+	_, leaf2Reader, err := store.Pull(testCtx, leaf2Ref)
+	assert.NoError(t, err, "Leaf2 should still be pullable")
+	leaf2Reader.Close()
 }
 
-func BenchmarkRemoteStore(b *testing.B) {
-	if !runRemote {
-		b.Skip()
-	}
+// testPushRecordWithParent tests creating records with reverse references (OCI Referrers).
+func TestPushRecordWithParent(t *testing.T) {
+	store := loadLocalStore(t)
 
-	store := loadRemoteStore(&testing.T{})
-	for range b.N {
-		benchmarkStep(store)
+	// Create parent record first
+	parentMeta := &corev1.RecordMeta{
+		Cid:       "bafyparent123",
+		Type:      "test.parent.v1",
+		CreatedAt: "2025-12-03T10:00:00Z",
+		Size:      100,
 	}
+	parentData := `{"name": "parent"}`
+	parentRef, err := store.Push(testCtx, parentMeta, io.NopCloser(strings.NewReader(parentData)))
+	assert.NoError(t, err, "Parent push should succeed")
+
+	// Create child record with parent reference (reverse ref)
+	childMeta := &corev1.RecordMeta{
+		Cid:       "bafychild123",
+		Type:      "test.child.v1",
+		CreatedAt: "2025-12-03T10:01:00Z",
+		Size:      50,
+		Parent:    &corev1.RecordRef{Cid: parentRef.Cid},
+	}
+	childData := `{"name": "child"}`
+	childRef, err := store.Push(testCtx, childMeta, io.NopCloser(strings.NewReader(childData)))
+	assert.NoError(t, err, "Child push should succeed")
+
+	// Pull child and verify parent reference
+	pulledChildMeta, childReader, err := store.Pull(testCtx, childRef)
+	assert.NoError(t, err, "Child pull should succeed")
+	defer childReader.Close()
+
+	assert.NotNil(t, pulledChildMeta.Parent, "Child should have parent reference")
+	assert.Equal(t, parentRef.Cid, pulledChildMeta.Parent.Cid, "Parent CID should match")
 }
 
-func benchmarkStep(store types.StoreAPI) {
-	// Create test record
-	agent := &typesv1alpha0.Record{
-		Name:          "bench-agent",
-		SchemaVersion: "v0.3.1",
-		Description:   "A benchmark agent",
+// testPushComplexDAG tests creating a multi-level DAG with both links and parents.
+func TestPushComplexDAG(t *testing.T) {
+	store := loadLocalStore(t)
+
+	// Level 3: Leaf nodes (data)
+	leaf1Meta := &corev1.RecordMeta{
+		Cid:       "bafyleaf1",
+		Type:      "test.data.v1",
+		CreatedAt: "2025-12-03T10:00:00Z",
+		Size:      20,
 	}
+	leaf1Ref, err := store.Push(testCtx, leaf1Meta, io.NopCloser(strings.NewReader(`{"value": 1}`)))
+	assert.NoError(t, err)
 
-	record := corev1.New(agent)
-
-	// Record is ready for push operation
-
-	// Push operation
-	pushedRef, err := store.Push(testCtx, record)
-	if err != nil {
-		panic(err)
+	leaf2Meta := &corev1.RecordMeta{
+		Cid:       "bafyleaf2",
+		Type:      "test.data.v1",
+		CreatedAt: "2025-12-03T10:00:01Z",
+		Size:      20,
 	}
+	leaf2Ref, err := store.Push(testCtx, leaf2Meta, io.NopCloser(strings.NewReader(`{"value": 2}`)))
+	assert.NoError(t, err)
 
-	// Lookup operation
-	fetchedMeta, err := store.Lookup(testCtx, pushedRef)
-	if err != nil {
-		panic(err)
+	// Level 2: Middle nodes (link to leaves)
+	mid1Meta := &corev1.RecordMeta{
+		Cid:       "bafymid1",
+		Type:      "test.intermediate.v1",
+		CreatedAt: "2025-12-03T10:01:00Z",
+		Size:      50,
+		Links: []*corev1.RecordRef{
+			{Cid: leaf1Ref.Cid},
+		},
 	}
+	mid1Ref, err := store.Push(testCtx, mid1Meta, io.NopCloser(strings.NewReader(`{"layer": "middle1"}`)))
+	assert.NoError(t, err)
 
-	// Assert equal
-	if pushedRef.GetCid() != fetchedMeta.GetCid() {
-		panic("not equal lookup")
+	mid2Meta := &corev1.RecordMeta{
+		Cid:       "bafymid2",
+		Type:      "test.intermediate.v1",
+		CreatedAt: "2025-12-03T10:01:01Z",
+		Size:      50,
+		Links: []*corev1.RecordRef{
+			{Cid: leaf2Ref.Cid},
+		},
 	}
+	mid2Ref, err := store.Push(testCtx, mid2Meta, io.NopCloser(strings.NewReader(`{"layer": "middle2"}`)))
+	assert.NoError(t, err)
+
+	// Level 1: Root node (links to middle nodes)
+	rootMeta := &corev1.RecordMeta{
+		Cid:       "bafyroot",
+		Type:      "test.root.v1",
+		CreatedAt: "2025-12-03T10:02:00Z",
+		Size:      100,
+		Links: []*corev1.RecordRef{
+			{Cid: mid1Ref.Cid},
+			{Cid: mid2Ref.Cid},
+		},
+		Annotations: map[string]string{
+			"dag.level": "root",
+			"dag.depth": "3",
+		},
+	}
+	rootRef, err := store.Push(testCtx, rootMeta, io.NopCloser(strings.NewReader(`{"layer": "root"}`)))
+	assert.NoError(t, err)
+
+	// Verify DAG structure by traversing from root
+	rootPulled, _, err := store.Pull(testCtx, rootRef)
+	assert.NoError(t, err)
+	assert.Len(t, rootPulled.Links, 2, "Root should have 2 children")
+	assert.Equal(t, "3", rootPulled.Annotations["dag.depth"])
+
+	// Verify middle layer
+	mid1Pulled, _, err := store.Pull(testCtx, &corev1.RecordRef{Cid: mid1Ref.Cid})
+	assert.NoError(t, err)
+	assert.Len(t, mid1Pulled.Links, 1, "Mid1 should have 1 child")
+	assert.Equal(t, leaf1Ref.Cid, mid1Pulled.Links[0].Cid)
+
+	mid2Pulled, _, err := store.Pull(testCtx, &corev1.RecordRef{Cid: mid2Ref.Cid})
+	assert.NoError(t, err)
+	assert.Len(t, mid2Pulled.Links, 1, "Mid2 should have 1 child")
+	assert.Equal(t, leaf2Ref.Cid, mid2Pulled.Links[0].Cid)
+
+	// Verify leaf nodes
+	leaf1Pulled, _, err := store.Pull(testCtx, leaf1Ref)
+	assert.NoError(t, err)
+	assert.Len(t, leaf1Pulled.Links, 0, "Leaf1 should have no children")
+
+	leaf2Pulled, _, err := store.Pull(testCtx, leaf2Ref)
+	assert.NoError(t, err)
+	assert.Len(t, leaf2Pulled.Links, 0, "Leaf2 should have no children")
+}
+
+// testLookupRecord tests the Lookup operation for retrieving metadata only.
+func TestLookupRecord(t *testing.T) {
+	store := loadLocalStore(t)
+
+	// Push a record
+	meta := &corev1.RecordMeta{
+		Cid:       "bafylookup",
+		Type:      "test.lookup.v1",
+		CreatedAt: "2025-12-03T10:00:00Z",
+		Size:      100,
+		Annotations: map[string]string{
+			"test": "lookup",
+		},
+	}
+	data := `{"test": "data"}`
+	ref, err := store.Push(testCtx, meta, io.NopCloser(strings.NewReader(data)))
+	assert.NoError(t, err)
+
+	// Lookup metadata
+	lookedUpMeta, err := store.Lookup(testCtx, ref)
+	assert.NoError(t, err, "Lookup should succeed")
+	assert.NotNil(t, lookedUpMeta, "Looked up metadata should not be nil")
+	assert.Equal(t, meta.Type, lookedUpMeta.Type)
+	assert.Equal(t, meta.CreatedAt, lookedUpMeta.CreatedAt)
+	assert.Equal(t, meta.Annotations, lookedUpMeta.Annotations)
+}
+
+// testDeleteRecord tests deleting a record from the store.
+func TestDeleteRecord(t *testing.T) {
+	store := loadLocalStore(t)
+
+	// Push a record
+	meta := &corev1.RecordMeta{
+		Cid:       "bafydelete",
+		Type:      "test.delete.v1",
+		CreatedAt: "2025-12-03T10:00:00Z",
+		Size:      50,
+	}
+	data := `{"test": "delete"}`
+	ref, err := store.Push(testCtx, meta, io.NopCloser(strings.NewReader(data)))
+	assert.NoError(t, err)
+
+	// Verify record exists
+	_, err = store.Lookup(testCtx, ref)
+	assert.NoError(t, err, "Record should exist before deletion")
+
+	// Delete record
+	err = store.Delete(testCtx, ref)
+	assert.NoError(t, err, "Delete should succeed")
+
+	// Verify record no longer exists
+	_, err = store.Lookup(testCtx, ref)
+	assert.Error(t, err, "Lookup should fail after deletion")
+}
+
+// testDeleteNonExistentRecord tests deleting a record that doesn't exist.
+func TestDeleteNonExistentRecord(t *testing.T) {
+	store := loadLocalStore(t)
+
+	// Try to delete non-existent record
+	ref := &corev1.RecordRef{Cid: "bafynonexistent"}
+	err := store.Delete(testCtx, ref)
+	assert.Error(t, err, "Delete should fail for non-existent record")
 }
 
 func loadLocalStore(t *testing.T) types.StoreAPI {
 	t.Helper()
 
-	// create tmp storage for test artifacts
-	tmpDir, err := os.MkdirTemp(testConfig.LocalDir, "test-oci-store-*") //nolint:usetesting
-	assert.NoErrorf(t, err, "failed to create test dir")
-	t.Cleanup(func() {
-		err := os.RemoveAll(tmpDir)
-		if err != nil {
-			t.Fatalf("failed to cleanup: %v", err)
-		}
-	})
-
 	// create local
-	store, err := New(ociconfig.Config{LocalDir: tmpDir})
+	store, err := New(ociconfig.Config{LocalDir: "./testdata/oci_local_store"})
 	assert.NoErrorf(t, err, "failed to create local store")
 
 	return store
-}
-
-func loadRemoteStore(t *testing.T) types.StoreAPI {
-	t.Helper()
-
-	// create remote
-	store, err := New(
-		ociconfig.Config{
-			RegistryAddress: testConfig.RegistryAddress,
-			RepositoryName:  testConfig.RepositoryName,
-			AuthConfig:      testConfig.AuthConfig,
-		})
-	assert.NoErrorf(t, err, "failed to create remote store")
-
-	return store
-}
-
-// TestAllVersionsSkillsAndLocatorsPreservation comprehensively tests skills and locators
-// preservation across all OASF versions (v1, v2, v3) through OCI push/pull cycles.
-// This addresses the reported issue where v3 record skills become empty after push/pull.
-func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
-	store := loadLocalStore(t)
-
-	testCases := []struct {
-		name                 string
-		record               *corev1.Record
-		expectedSkillCount   int
-		expectedLocatorCount int
-		skillVerifier        func(t *testing.T, record *corev1.Record)
-		locatorVerifier      func(t *testing.T, record *corev1.Record)
-	}{
-		{
-			name: "V1_Agent_CategoryClass_Skills",
-			record: corev1.New(&typesv1alpha0.Record{
-				Name:          "test-v1-agent",
-				Version:       "1.0.0",
-				SchemaVersion: "v0.3.1",
-				Description:   "Test v1 agent with hierarchical skills",
-				Skills: []*typesv1alpha0.Skill{
-					{
-						CategoryName: stringPtr("Natural Language Processing"),
-						CategoryUid:  1,
-						ClassName:    stringPtr("Text Completion"),
-						ClassUid:     10201,
-					},
-					{
-						CategoryName: stringPtr("Machine Learning"),
-						CategoryUid:  2,
-						ClassName:    stringPtr("Classification"),
-						ClassUid:     20301,
-					},
-				},
-				Locators: []*typesv1alpha0.Locator{
-					{
-						Type: "docker-image",
-						Url:  "ghcr.io/agntcy/test-v1-agent",
-					},
-					{
-						Type: "helm-chart",
-						Url:  "oci://registry.example.com/charts/test-agent",
-					},
-				},
-			}),
-			expectedSkillCount:   2,
-			expectedLocatorCount: 2,
-			skillVerifier: func(t *testing.T, record *corev1.Record) {
-				t.Helper()
-
-				decoded, _ := record.Decode()
-				v1Agent := decoded.GetV1Alpha0()
-				require.NotNil(t, v1Agent, "should be v1 agent")
-				skills := v1Agent.GetSkills()
-				require.Len(t, skills, 2, "v1 should have 2 skills")
-
-				// V1 uses category/class format
-				assert.Equal(t, "Natural Language Processing", skills[0].GetCategoryName())
-				assert.Equal(t, "Text Completion", skills[0].GetClassName())
-				assert.Equal(t, uint64(10201), skills[0].GetClassUid())
-
-				assert.Equal(t, "Machine Learning", skills[1].GetCategoryName())
-				assert.Equal(t, "Classification", skills[1].GetClassName())
-				assert.Equal(t, uint64(20301), skills[1].GetClassUid())
-			},
-			locatorVerifier: func(t *testing.T, record *corev1.Record) {
-				t.Helper()
-
-				decoded, _ := record.Decode()
-				v1Agent := decoded.GetV1Alpha0()
-				locators := v1Agent.GetLocators()
-				require.Len(t, locators, 2, "v1 should have 2 locators")
-
-				assert.Equal(t, "docker-image", locators[0].GetType())
-				assert.Equal(t, "ghcr.io/agntcy/test-v1-agent", locators[0].GetUrl())
-
-				assert.Equal(t, "helm-chart", locators[1].GetType())
-				assert.Equal(t, "oci://registry.example.com/charts/test-agent", locators[1].GetUrl())
-			},
-		},
-		{
-			name: "V3_Record_Simple_Skills",
-			record: corev1.New(&typesv1alpha1.Record{
-				Name:          "test-v3-record",
-				Version:       "3.0.0",
-				SchemaVersion: "0.7.0",
-				Description:   "Test v3 record with simple skills",
-				Skills: []*typesv1alpha1.Skill{
-					{
-						Name: "Natural Language Processing",
-						Id:   10201,
-					},
-					{
-						Name: "Data Analysis",
-						Id:   20301,
-					},
-				},
-				Locators: []*typesv1alpha1.Locator{
-					{
-						Type: "docker-image",
-						Url:  "ghcr.io/agntcy/test-v3-record",
-					},
-					{
-						Type: "oci-artifact",
-						Url:  "oci://registry.example.com/artifacts/test-record",
-					},
-				},
-			}),
-			expectedSkillCount:   2,
-			expectedLocatorCount: 2,
-			skillVerifier: func(t *testing.T, record *corev1.Record) {
-				t.Helper()
-
-				decoded, _ := record.Decode()
-				v3Record := decoded.GetV1Alpha1()
-				require.NotNil(t, v3Record, "should be v3 record")
-				skills := v3Record.GetSkills()
-				require.Len(t, skills, 2, "SKILLS ISSUE: v3 should have 2 skills but has %d", len(skills))
-
-				// V3 uses simple name/id format (same as v2)
-				assert.Equal(t, "Natural Language Processing", skills[0].GetName())
-				assert.Equal(t, uint32(10201), skills[0].GetId())
-
-				assert.Equal(t, "Data Analysis", skills[1].GetName())
-				assert.Equal(t, uint32(20301), skills[1].GetId())
-			},
-			locatorVerifier: func(t *testing.T, record *corev1.Record) {
-				t.Helper()
-
-				decoded, _ := record.Decode()
-				v3Record := decoded.GetV1Alpha1()
-				locators := v3Record.GetLocators()
-				require.Len(t, locators, 2, "v3 should have 2 locators")
-
-				assert.Equal(t, "docker-image", locators[0].GetType())
-				assert.Equal(t, "ghcr.io/agntcy/test-v3-record", locators[0].GetUrl())
-
-				assert.Equal(t, "oci-artifact", locators[1].GetType())
-				assert.Equal(t, "oci://registry.example.com/artifacts/test-record", locators[1].GetUrl())
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Calculate CID for the original record
-			originalCID := tc.record.GetCid()
-			require.NotEmpty(t, originalCID, "failed to calculate CID for %s", tc.name)
-
-			// Log original state
-			t.Logf("🔄 Testing %s:", tc.name)
-			t.Logf("   Original CID: %s", originalCID)
-			t.Logf("   Expected skills: %d, locators: %d", tc.expectedSkillCount, tc.expectedLocatorCount)
-
-			// Verify original skills and locators using verifiers
-			tc.skillVerifier(t, tc.record)
-			tc.locatorVerifier(t, tc.record)
-
-			// PUSH operation
-			recordRef, err := store.Push(testCtx, tc.record)
-			require.NoError(t, err, "push should succeed for %s", tc.name)
-			assert.Equal(t, originalCID, recordRef.GetCid(), "pushed CID should match original")
-
-			// PULL operation
-			pulledRecord, err := store.Pull(testCtx, recordRef)
-			require.NoError(t, err, "pull should succeed for %s", tc.name)
-
-			// Verify pulled record CID matches
-			pulledCID := pulledRecord.GetCid()
-			require.NotEmpty(t, pulledCID, "pulled record should have CID")
-			assert.Equal(t, originalCID, pulledCID, "pulled CID should match original")
-
-			// CRITICAL TEST: Verify skills and locators are preserved after push/pull cycle
-			t.Logf("   Verifying skills preservation...")
-			tc.skillVerifier(t, pulledRecord)
-
-			t.Logf("   Verifying locators preservation...")
-			tc.locatorVerifier(t, pulledRecord)
-
-			t.Logf("✅ %s: Skills and locators preserved successfully", tc.name)
-
-			// Cleanup - delete the record
-			err = store.Delete(testCtx, recordRef)
-			require.NoError(t, err, "cleanup delete should succeed for %s", tc.name)
-		})
-	}
 }

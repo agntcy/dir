@@ -25,54 +25,20 @@ import "google/protobuf/empty.proto";
 // If an error occurs, the stream will be cancelled.
 service StoreService {
   // Push performs write operation for given records.
-  rpc Push(stream core.v1.Record) returns (stream core.v1.RecordRef);
+  // Data is streamed in chunks.
+  rpc Push(stream core.v1.Record) returns (core.v1.RecordRef);
 
   // Pull performs read operation for given records.
-  rpc Pull(stream core.v1.RecordRef) returns (stream core.v1.Record);
+  // Data is streamed in chunks.
+  rpc Pull(core.v1.RecordRef) returns (stream core.v1.Record);
 
   // Lookup resolves basic metadata for the records.
-  rpc Lookup(stream core.v1.RecordRef) returns (stream core.v1.RecordMeta);
+  rpc Lookup(core.v1.RecordRef) returns (core.v1.RecordMeta);
 
   // Remove performs delete operation for the records.
-  rpc Delete(stream core.v1.RecordRef) returns (google.protobuf.Empty);
+  rpc Delete(core.v1.RecordRef) returns (google.protobuf.Empty);
 
-  // PushReferrer performs write operation for record referrers.
-  rpc PushReferrer(stream PushReferrerRequest) returns (stream PushReferrerResponse);
-
-  // PullReferrer performs read operation for record referrers.
-  rpc PullReferrer(stream PullReferrerRequest) returns (stream PullReferrerResponse);
-}
-
-// PushReferrerRequest represents a record with optional OCI artifacts for push operations.
-message PushReferrerRequest {
-  // Record reference
-  core.v1.RecordRef record_ref = 1;
-
-  // RecordReferrer object to be stored for the record
-  core.v1.RecordReferrer referrer = 2;
-}
-
-// PushReferrerResponse
-message PushReferrerResponse {
-  // The push process result
-  bool success = 1;
-  
-  // Optional error message if push failed
-  optional string error_message = 2;
-}
-
-// PullReferrerRequest represents a record with optional OCI artifacts for pull operations.
-message PullReferrerRequest {
-  // Record reference
-  core.v1.RecordRef record_ref = 1;
-
-  // Record referrer type to be pulled
-  // If not provided, all referrers will be pulled
-  optional string referrer_type = 2;
-}
-
-// PullReferrerResponse is returned after successfully fetching a record referrer.
-message PullReferrerResponse {
-  // RecordReferrer object associated with the record
-  core.v1.RecordReferrer referrer = 1;
+  // Walk lists all linked records starting from the given root records.
+  // Use Pull to retrieve actual data.
+  rpc Walk(core.v1.RecordRef) returns (stream core.v1.RecordMeta);
 }

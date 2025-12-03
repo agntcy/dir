@@ -15,7 +15,7 @@ export declare const file_agntcy_dir_sign_v1_signature: GenFile;
 
 /**
  * Signature is the signing data associated with a Record.
- * Multiple signatures can be associated with a single Record, 
+ * Multiple signatures can be associated with a single Record,
  * ie 1 record : N record signatures.
  *
  * Storage and management of signatures is provided via

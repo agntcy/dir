@@ -5,7 +5,7 @@
 // @generated from file agntcy/dir/store/v1/store_service.proto (package agntcy.dir.store.v1, syntax proto3)
 /* eslint-disable */
 
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import { fileDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import { file_agntcy_dir_core_v1_record } from "../../core/v1/record_pb.js";
 import { file_google_protobuf_empty } from "@bufbuild/protobuf/wkt";
 
@@ -13,35 +13,7 @@ import { file_google_protobuf_empty } from "@bufbuild/protobuf/wkt";
  * Describes the file agntcy/dir/store/v1/store_service.proto.
  */
 export const file_agntcy_dir_store_v1_store_service = /*@__PURE__*/
-  fileDesc("CidhZ250Y3kvZGlyL3N0b3JlL3YxL3N0b3JlX3NlcnZpY2UucHJvdG8SE2FnbnRjeS5kaXIuc3RvcmUudjEifgoTUHVzaFJlZmVycmVyUmVxdWVzdBIxCgpyZWNvcmRfcmVmGAEgASgLMh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhI0CghyZWZlcnJlchgCIAEoCzIiLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWZlcnJlciJVChRQdXNoUmVmZXJyZXJSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhoKDWVycm9yX21lc3NhZ2UYAiABKAlIAIgBAUIQCg5fZXJyb3JfbWVzc2FnZSJ2ChNQdWxsUmVmZXJyZXJSZXF1ZXN0EjEKCnJlY29yZF9yZWYYASABKAsyHS5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkUmVmEhoKDXJlZmVycmVyX3R5cGUYAiABKAlIAIgBAUIQCg5fcmVmZXJyZXJfdHlwZSJMChRQdWxsUmVmZXJyZXJSZXNwb25zZRI0CghyZWZlcnJlchgBIAEoCzIiLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWZlcnJlcjL+AwoMU3RvcmVTZXJ2aWNlEkUKBFB1c2gSGi5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkGh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZigBMAESRQoEUHVsbBIdLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWYaGi5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkKAEwARJLCgZMb29rdXASHS5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkUmVmGh4uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZE1ldGEoATABEkEKBkRlbGV0ZRIdLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWYaFi5nb29nbGUucHJvdG9idWYuRW1wdHkoARJnCgxQdXNoUmVmZXJyZXISKC5hZ250Y3kuZGlyLnN0b3JlLnYxLlB1c2hSZWZlcnJlclJlcXVlc3QaKS5hZ250Y3kuZGlyLnN0b3JlLnYxLlB1c2hSZWZlcnJlclJlc3BvbnNlKAEwARJnCgxQdWxsUmVmZXJyZXISKC5hZ250Y3kuZGlyLnN0b3JlLnYxLlB1bGxSZWZlcnJlclJlcXVlc3QaKS5hZ250Y3kuZGlyLnN0b3JlLnYxLlB1bGxSZWZlcnJlclJlc3BvbnNlKAEwAUK/AQoXY29tLmFnbnRjeS5kaXIuc3RvcmUudjFCEVN0b3JlU2VydmljZVByb3RvUAFaImdpdGh1Yi5jb20vYWdudGN5L2Rpci9hcGkvc3RvcmUvdjGiAgNBRFOqAhNBZ250Y3kuRGlyLlN0b3JlLlYxygITQWdudGN5XERpclxTdG9yZVxWMeICH0FnbnRjeVxEaXJcU3RvcmVcVjFcR1BCTWV0YWRhdGHqAhZBZ250Y3k6OkRpcjo6U3RvcmU6OlYxYgZwcm90bzM", [file_agntcy_dir_core_v1_record, file_google_protobuf_empty]);
-
-/**
- * Describes the message agntcy.dir.store.v1.PushReferrerRequest.
- * Use `create(PushReferrerRequestSchema)` to create a new message.
- */
-export const PushReferrerRequestSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_store_v1_store_service, 0);
-
-/**
- * Describes the message agntcy.dir.store.v1.PushReferrerResponse.
- * Use `create(PushReferrerResponseSchema)` to create a new message.
- */
-export const PushReferrerResponseSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_store_v1_store_service, 1);
-
-/**
- * Describes the message agntcy.dir.store.v1.PullReferrerRequest.
- * Use `create(PullReferrerRequestSchema)` to create a new message.
- */
-export const PullReferrerRequestSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_store_v1_store_service, 2);
-
-/**
- * Describes the message agntcy.dir.store.v1.PullReferrerResponse.
- * Use `create(PullReferrerResponseSchema)` to create a new message.
- */
-export const PullReferrerResponseSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_store_v1_store_service, 3);
+  fileDesc("CidhZ250Y3kvZGlyL3N0b3JlL3YxL3N0b3JlX3NlcnZpY2UucHJvdG8SE2FnbnRjeS5kaXIuc3RvcmUudjEy6wIKDFN0b3JlU2VydmljZRJDCgRQdXNoEhouYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZBodLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWYoARJDCgRQdWxsEh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhoaLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmQwARJHCgZMb29rdXASHS5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkUmVmGh4uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZE1ldGESPwoGRGVsZXRlEh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhoWLmdvb2dsZS5wcm90b2J1Zi5FbXB0eRJHCgRXYWxrEh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhoeLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRNZXRhMAFCvwEKF2NvbS5hZ250Y3kuZGlyLnN0b3JlLnYxQhFTdG9yZVNlcnZpY2VQcm90b1ABWiJnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL3N0b3JlL3YxogIDQURTqgITQWdudGN5LkRpci5TdG9yZS5WMcoCE0FnbnRjeVxEaXJcU3RvcmVcVjHiAh9BZ250Y3lcRGlyXFN0b3JlXFYxXEdQQk1ldGFkYXRh6gIWQWdudGN5OjpEaXI6OlN0b3JlOjpWMWIGcHJvdG8z", [file_agntcy_dir_core_v1_record, file_google_protobuf_empty]);
 
 /**
  * Defines an interface for content-addressable storage
