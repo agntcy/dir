@@ -58,7 +58,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"Natural Language Processing/Problem Solving",
 			},
 			expectedLocator: "docker-image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedModule:  "schema.oasf.agntcy.org/features/runtime/framework",
+			expectedModule:  "", // 0.3.1 schema doesn't have modules
 			shouldFailPush:  false,
 		},
 		{
@@ -72,21 +72,21 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 				"natural_language_processing/analytical_reasoning/problem_solving",
 			},
 			expectedLocator: "docker_image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedModule:  "runtime/framework",
+			expectedModule:  "runtime/model",
 			shouldFailPush:  false,
 		},
 		{
 			name:              "OASF_0.8.0_Record",
 			fileName:          "oasf_0.8.0_record_test.json",
 			jsonData:          testdata.ExpectedRecordV080JSON,
-			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v4",
+			expectedAgentName: "directory.agntcy.org/example/research-assistant-v4",
 			expectedSkillIDs:  []string{"10201", "10702"},
 			expectedSkillNames: []string{
 				"natural_language_processing/natural_language_generation/text_completion",
 				"natural_language_processing/analytical_reasoning/problem_solving",
 			},
-			expectedLocator: "docker_image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedModule:  "runtime/framework",
+			expectedLocator: "docker_image:https://ghcr.io/agntcy/research-assistant",
+			expectedModule:  "core/llm/model",
 			shouldFailPush:  false,
 		},
 		{

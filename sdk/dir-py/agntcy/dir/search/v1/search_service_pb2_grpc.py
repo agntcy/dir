@@ -14,18 +14,33 @@ class SearchServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Search = channel.unary_stream(
-                '/agntcy.dir.search.v1.SearchService/Search',
-                request_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchResponse.FromString,
+        self.SearchCIDs = channel.unary_stream(
+                '/agntcy.dir.search.v1.SearchService/SearchCIDs',
+                request_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsRequest.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsResponse.FromString,
+                _registered_method=True)
+        self.SearchRecords = channel.unary_stream(
+                '/agntcy.dir.search.v1.SearchService/SearchRecords',
+                request_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsRequest.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsResponse.FromString,
                 _registered_method=True)
 
 
 class SearchServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def Search(self, request, context):
-        """List records that this peer is currently providing that match the given parameters.
+    def SearchCIDs(self, request, context):
+        """Search for record CIDs that match the given parameters.
+        Returns only CIDs for efficient lookups and piping to other commands.
+        This operation does not interact with the network.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SearchRecords(self, request, context):
+        """Search for full records that match the given parameters.
+        Returns complete record data including all metadata, skills, domains, etc.
         This operation does not interact with the network.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -35,10 +50,15 @@ class SearchServiceServicer(object):
 
 def add_SearchServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Search': grpc.unary_stream_rpc_method_handler(
-                    servicer.Search,
-                    request_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.FromString,
-                    response_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchResponse.SerializeToString,
+            'SearchCIDs': grpc.unary_stream_rpc_method_handler(
+                    servicer.SearchCIDs,
+                    request_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsRequest.FromString,
+                    response_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsResponse.SerializeToString,
+            ),
+            'SearchRecords': grpc.unary_stream_rpc_method_handler(
+                    servicer.SearchRecords,
+                    request_deserializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsRequest.FromString,
+                    response_serializer=agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -52,7 +72,7 @@ class SearchService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def Search(request,
+    def SearchCIDs(request,
             target,
             options=(),
             channel_credentials=None,
@@ -65,9 +85,36 @@ class SearchService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/agntcy.dir.search.v1.SearchService/Search',
-            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRequest.SerializeToString,
-            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchResponse.FromString,
+            '/agntcy.dir.search.v1.SearchService/SearchCIDs',
+            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsRequest.SerializeToString,
+            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchCIDsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SearchRecords(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/agntcy.dir.search.v1.SearchService/SearchRecords',
+            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsRequest.SerializeToString,
+            agntcy_dot_dir_dot_search_dot_v1_dot_search__service__pb2.SearchRecordsResponse.FromString,
             options,
             channel_credentials,
             insecure,

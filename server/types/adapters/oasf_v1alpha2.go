@@ -242,6 +242,15 @@ func (m *V1Alpha2ModuleAdapter) GetName() string {
 	return m.module.GetName()
 }
 
+// GetID implements types.Module interface.
+func (m *V1Alpha2ModuleAdapter) GetID() uint64 {
+	if m.module == nil {
+		return 0
+	}
+
+	return uint64(m.module.GetId())
+}
+
 // GetName implements types.RecordData interface.
 func (a *V1Alpha2Adapter) GetName() string {
 	if a.record == nil {

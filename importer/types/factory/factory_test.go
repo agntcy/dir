@@ -11,6 +11,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	"github.com/agntcy/dir/client/streaming"
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/types"
 )
@@ -37,11 +38,32 @@ func (m *mockClient) PullBatch(ctx context.Context, recordRefs []*corev1.RecordR
 	return []*corev1.Record{}, nil
 }
 
-func (m *mockClient) Search(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error) {
-	ch := make(chan string)
+func (m *mockClient) SearchCIDs(ctx context.Context, req *searchv1.SearchCIDsRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error) {
+	return &mockStreamResult{}, nil
+}
+
+// mockStreamResult implements streaming.StreamResult for testing.
+type mockStreamResult struct{}
+
+func (m *mockStreamResult) ResCh() <-chan *searchv1.SearchCIDsResponse {
+	ch := make(chan *searchv1.SearchCIDsResponse)
 	close(ch)
 
-	return ch, nil
+	return ch
+}
+
+func (m *mockStreamResult) ErrCh() <-chan error {
+	ch := make(chan error)
+	close(ch)
+
+	return ch
+}
+
+func (m *mockStreamResult) DoneCh() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+
+	return ch
 }
 
 // Mock constructor functions.

@@ -105,12 +105,12 @@ export enum RecordQueryType {
   LOCATOR = 5,
 
   /**
-   * Query for a module.
+   * Query for a module name.
    * Supports wildcard patterns: "*-plugin", "*-module", "core*", "mod-?", "plugin-[0-9]"
    *
-   * @generated from enum value: RECORD_QUERY_TYPE_MODULE = 6;
+   * @generated from enum value: RECORD_QUERY_TYPE_MODULE_NAME = 6;
    */
-  MODULE = 6,
+  MODULE_NAME = 6,
 
   /**
    * Query for a domain ID.
@@ -127,6 +127,38 @@ export enum RecordQueryType {
    * @generated from enum value: RECORD_QUERY_TYPE_DOMAIN_NAME = 8;
    */
   DOMAIN_NAME = 8,
+
+  /**
+   * Query for a record's created_at timestamp.
+   * Supports wildcard patterns for date strings: "2025-*", ">=2025-01-01"
+   *
+   * @generated from enum value: RECORD_QUERY_TYPE_CREATED_AT = 9;
+   */
+  CREATED_AT = 9,
+
+  /**
+   * Query for a record author.
+   * Supports wildcard patterns: "AGNTCY*", "*@example.com", "*Team*"
+   *
+   * @generated from enum value: RECORD_QUERY_TYPE_AUTHOR = 10;
+   */
+  AUTHOR = 10,
+
+  /**
+   * Query for a schema version.
+   * Supports wildcard patterns: "0.7.*", "0.*", "1.0.?"
+   *
+   * @generated from enum value: RECORD_QUERY_TYPE_SCHEMA_VERSION = 11;
+   */
+  SCHEMA_VERSION = 11,
+
+  /**
+   * Query for a module ID.
+   * Numeric field - exact match only, no wildcard support.
+   *
+   * @generated from enum value: RECORD_QUERY_TYPE_MODULE_ID = 12;
+   */
+  MODULE_ID = 12,
 }
 
 /**

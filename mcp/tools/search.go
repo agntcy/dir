@@ -14,16 +14,20 @@ import (
 
 // SearchLocalInput defines the input parameters for local search.
 type SearchLocalInput struct {
-	Limit       int      `json:"limit,omitempty"        jsonschema:"Maximum number of results to return (default: 100 max: 1000)"`
-	Offset      int      `json:"offset,omitempty"       jsonschema:"Pagination offset (default: 0)"`
-	Names       []string `json:"names,omitempty"        jsonschema:"Agent name patterns (supports wildcards: * ? [])"`
-	Versions    []string `json:"versions,omitempty"     jsonschema:"Version patterns (supports wildcards: * ? [])"`
-	SkillIDs    []string `json:"skill_ids,omitempty"    jsonschema:"Skill ID patterns (exact match only)"`
-	SkillNames  []string `json:"skill_names,omitempty"  jsonschema:"Skill name patterns (supports wildcards: * ? [])"`
-	Locators    []string `json:"locators,omitempty"     jsonschema:"Locator patterns (supports wildcards: * ? [])"`
-	Modules     []string `json:"modules,omitempty"      jsonschema:"Module patterns (supports wildcards: * ? [])"`
-	DomainIDs   []string `json:"domain_ids,omitempty"   jsonschema:"Domain ID patterns (exact match only)"`
-	DomainNames []string `json:"domain_names,omitempty" jsonschema:"Domain name patterns (supports wildcards: * ? [])"`
+	Limit          int      `json:"limit,omitempty"           jsonschema:"Maximum number of results to return (default: 100 max: 1000)"`
+	Offset         int      `json:"offset,omitempty"          jsonschema:"Pagination offset (default: 0)"`
+	Names          []string `json:"names,omitempty"           jsonschema:"Agent name patterns (supports wildcards: * ? [])"`
+	Versions       []string `json:"versions,omitempty"        jsonschema:"Version patterns (supports wildcards: * ? [])"`
+	SkillIDs       []string `json:"skill_ids,omitempty"       jsonschema:"Skill ID patterns (exact match only)"`
+	SkillNames     []string `json:"skill_names,omitempty"     jsonschema:"Skill name patterns (supports wildcards: * ? [])"`
+	Locators       []string `json:"locators,omitempty"        jsonschema:"Locator patterns (supports wildcards: * ? [])"`
+	ModuleNames    []string `json:"module_names,omitempty"    jsonschema:"Module name patterns (supports wildcards: * ? [])"`
+	DomainIDs      []string `json:"domain_ids,omitempty"      jsonschema:"Domain ID patterns (exact match only)"`
+	DomainNames    []string `json:"domain_names,omitempty"    jsonschema:"Domain name patterns (supports wildcards: * ? [])"`
+	CreatedAts     []string `json:"created_ats,omitempty"     jsonschema:"Created_at timestamp patterns (supports wildcards: * ? [])"`
+	Authors        []string `json:"authors,omitempty"         jsonschema:"Author name patterns (supports wildcards: * ? [])"`
+	SchemaVersions []string `json:"schema_versions,omitempty" jsonschema:"Schema version patterns (supports wildcards: * ? [])"`
+	ModuleIDs      []string `json:"module_ids,omitempty"      jsonschema:"Module ID patterns (exact match only)"`
 }
 
 // SearchLocalOutput defines the output of local search.
@@ -40,6 +44,8 @@ const (
 )
 
 // SearchLocal searches for agent records on the local directory node.
+//
+//nolint:cyclop
 func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalInput) (
 	*mcp.CallToolResult,
 	SearchLocalOutput,
@@ -99,7 +105,7 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 	limit32 := uint32(limit)   // #nosec G115
 	offset32 := uint32(offset) // #nosec G115
 
-	ch, err := c.Search(ctx, &searchv1.SearchRequest{
+	result, err := c.SearchCIDs(ctx, &searchv1.SearchCIDsRequest{
 		Limit:   &limit32,
 		Offset:  &offset32,
 		Queries: queries,
@@ -113,16 +119,24 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 	// Collect results
 	recordCIDs := make([]string, 0, limit)
 
-	for cid := range ch {
-		if cid == "" {
-			continue
-		}
-
-		recordCIDs = append(recordCIDs, cid)
-
-		// Check if we've reached the limit
-		if len(recordCIDs) >= limit {
-			break
+L:
+	for {
+		select {
+		case resp := <-result.ResCh():
+			cid := resp.GetRecordCid()
+			if cid != "" {
+				recordCIDs = append(recordCIDs, cid)
+			}
+		case err := <-result.ErrCh():
+			return nil, SearchLocalOutput{
+				ErrorMessage: fmt.Sprintf("Search stream error: %v", err),
+			}, nil
+		case <-result.DoneCh():
+			break L
+		case <-ctx.Done():
+			return nil, SearchLocalOutput{
+				ErrorMessage: fmt.Sprintf("Search cancelled: %v", ctx.Err()),
+			}, nil
 		}
 	}
 
@@ -140,8 +154,10 @@ func SearchLocal(ctx context.Context, _ *mcp.CallToolRequest, input SearchLocalI
 func buildQueries(input SearchLocalInput) []*searchv1.RecordQuery {
 	queries := make([]*searchv1.RecordQuery, 0,
 		len(input.Names)+len(input.Versions)+len(input.SkillIDs)+
-			len(input.SkillNames)+len(input.Locators)+len(input.Modules)+
-			len(input.DomainIDs)+len(input.DomainNames))
+			len(input.SkillNames)+len(input.Locators)+len(input.ModuleNames)+
+			len(input.DomainIDs)+len(input.DomainNames)+
+			len(input.CreatedAts)+len(input.Authors)+
+			len(input.SchemaVersions)+len(input.ModuleIDs))
 
 	// Add name queries
 	for _, name := range input.Names {
@@ -183,11 +199,11 @@ func buildQueries(input SearchLocalInput) []*searchv1.RecordQuery {
 		})
 	}
 
-	// Add module queries
-	for _, module := range input.Modules {
+	// Add module name queries
+	for _, moduleName := range input.ModuleNames {
 		queries = append(queries, &searchv1.RecordQuery{
-			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-			Value: module,
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME,
+			Value: moduleName,
 		})
 	}
 
@@ -204,6 +220,38 @@ func buildQueries(input SearchLocalInput) []*searchv1.RecordQuery {
 		queries = append(queries, &searchv1.RecordQuery{
 			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_DOMAIN_NAME,
 			Value: domainName,
+		})
+	}
+
+	// Add created-at queries
+	for _, createdAt := range input.CreatedAts {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_CREATED_AT,
+			Value: createdAt,
+		})
+	}
+
+	// Add author queries
+	for _, author := range input.Authors {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_AUTHOR,
+			Value: author,
+		})
+	}
+
+	// Add schema-version queries
+	for _, schemaVersion := range input.SchemaVersions {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_SCHEMA_VERSION,
+			Value: schemaVersion,
+		})
+	}
+
+	// Add module-id queries
+	for _, moduleID := range input.ModuleIDs {
+		queries = append(queries, &searchv1.RecordQuery{
+			Type:  searchv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE_ID,
+			Value: moduleID,
 		})
 	}
 

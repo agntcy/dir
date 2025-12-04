@@ -107,15 +107,15 @@ class TestClient(unittest.TestCase):
             value="10201",
         )
 
-        search_request = search_v1.SearchRequest(queries=[search_query], limit=2)
+        search_request = search_v1.SearchCIDsRequest(queries=[search_query], limit=2)
 
-        objects = list(self.client.search(search_request))
+        objects = list(self.client.search_cids(search_request))
 
         assert objects is not None
         assert len(objects) > 0
 
         for o in objects:
-            assert isinstance(o, search_v1.SearchResponse)
+            assert isinstance(o, search_v1.SearchCIDsResponse)
 
     def test_unpublish(self) -> None:
         records = self.gen_records(1, "unpublish")

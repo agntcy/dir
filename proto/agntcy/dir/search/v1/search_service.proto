@@ -5,15 +5,22 @@ syntax = "proto3";
 
 package agntcy.dir.search.v1;
 
+import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/search/v1/record_query.proto";
 
 service SearchService {
-  // List records that this peer is currently providing that match the given parameters.
+  // Search for record CIDs that match the given parameters.
+  // Returns only CIDs for efficient lookups and piping to other commands.
   // This operation does not interact with the network.
-  rpc Search(SearchRequest) returns (stream SearchResponse);
+  rpc SearchCIDs(SearchCIDsRequest) returns (stream SearchCIDsResponse);
+
+  // Search for full records that match the given parameters.
+  // Returns complete record data including all metadata, skills, domains, etc.
+  // This operation does not interact with the network.
+  rpc SearchRecords(SearchRecordsRequest) returns (stream SearchRecordsResponse);
 }
 
-message SearchRequest {
+message SearchCIDsRequest {
   // List of queries to match against the records.
   repeated RecordQuery queries = 1;
 
@@ -24,7 +31,23 @@ message SearchRequest {
   optional uint32 offset = 3;
 }
 
-message SearchResponse {
+message SearchRecordsRequest {
+  // List of queries to match against the records.
+  repeated RecordQuery queries = 1;
+
+  // Optional limit on the number of results to return.
+  optional uint32 limit = 2;
+
+  // Optional offset for pagination of results.
+  optional uint32 offset = 3;
+}
+
+message SearchCIDsResponse {
   // The CID of the record that matches the search criteria.
   string record_cid = 1;
+}
+
+message SearchRecordsResponse {
+  // The full record that matches the search criteria.
+  agntcy.dir.core.v1.Record record = 1;
 }

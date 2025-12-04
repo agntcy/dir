@@ -28,11 +28,7 @@ type SearchDatabaseAPI interface {
 	// AddRecord adds a new record to the search database.
 	AddRecord(record Record) error
 
-	// GetRecords retrieves records based on the provided RecordFilters.
-	GetRecords(opts ...FilterOption) ([]Record, error)
-
-	// GetRecordCIDs retrieves only record CIDs based on the provided filters.
-	// This is more efficient than GetRecords when only CIDs are needed.
+	// GetRecordCIDs retrieves record CIDs based on the provided filters.
 	GetRecordCIDs(opts ...FilterOption) ([]string, error)
 
 	// RemoveRecord removes a record from the search database by CID.

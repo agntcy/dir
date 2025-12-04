@@ -50,6 +50,7 @@ type Signature interface {
 
 type Module interface {
 	GetName() string
+	GetID() uint64
 	GetData() map[string]any
 }
 

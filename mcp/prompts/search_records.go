@@ -33,7 +33,7 @@ USER QUERY: "` + query + `"
 WORKFLOW:
 
 1. Get schema: Call 'agntcy_oasf_get_schema' to see available skills/domains
-2. Translate query to search parameters (names, versions, skill_ids, skill_names, locators, modules, domain_ids, domain_names)
+2. Translate query to search parameters (names, versions, skill_ids, skill_names, locators, module_names, domain_ids, domain_names, created_ats, authors, schema_versions, module_ids)
 3. Execute: Call 'agntcy_dir_search_local' with parameters
 4. Display: Extract ALL CIDs from the 'record_cids' array in the response and list them clearly with the count
 
@@ -43,9 +43,13 @@ PARAMETERS:
 - skill_ids: Exact IDs (e.g., "10201")
 - skill_names: Skill patterns (e.g., "*python*")
 - locators: Locator patterns (e.g., "docker-image:*")
-- modules: Module patterns (e.g., "integration/mcp")
+- module_names: Module name patterns (e.g., "integration/mcp")
 - domain_ids: Exact domain IDs (e.g., "604")
 - domain_names: Domain patterns (e.g., "*education*", "healthcare/*")
+- created_ats: Created_at timestamp patterns (e.g., "2024-*", ">=2025-01-01")
+- authors: Author name patterns (e.g., "john*")
+- schema_versions: Schema version patterns (e.g., "0.8.*")
+- module_ids: Exact module IDs (e.g., "201")
 
 WILDCARDS: * (zero+), ? (one), [abc] (char class)
 
@@ -53,7 +57,9 @@ EXAMPLES:
 "find Python agents" → { "skill_names": ["*python*"] }
 "image processing v2" → { "skill_names": ["*image*"], "versions": ["v2.*"] }
 "docker translation" → { "skill_names": ["*translation*"], "locators": ["docker-image:*"] }
-"education agents with Python" → { "domain_names": ["*education*"] }`
+"education agents with Python" → { "domain_names": ["*education*"] }
+"agents by author john" → { "authors": ["john*"] }
+"MCP servers" → { "module_ids": ["202"] }`
 
 	return &mcp.GetPromptResult{
 		Description: "Guided workflow for searching agent records using free-text queries",

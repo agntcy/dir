@@ -5,45 +5,38 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
+	"github.com/agntcy/dir/client/streaming"
 )
 
-func (c *Client) Search(ctx context.Context, req *searchv1.SearchRequest) (<-chan string, error) {
-	stream, err := c.SearchServiceClient.Search(ctx, req)
+// SearchCIDs searches for record CIDs matching the given request.
+func (c *Client) SearchCIDs(ctx context.Context, req *searchv1.SearchCIDsRequest) (streaming.StreamResult[searchv1.SearchCIDsResponse], error) {
+	stream, err := c.SearchServiceClient.SearchCIDs(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create search stream: %w", err)
+		return nil, fmt.Errorf("failed to create search CIDs stream: %w", err)
 	}
 
-	resultCh := make(chan string)
+	result, err := streaming.ProcessServerStream(ctx, stream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process search CIDs stream: %w", err)
+	}
 
-	go func() {
-		defer close(resultCh)
+	return result, nil
+}
 
-		for {
-			obj, err := stream.Recv()
-			if errors.Is(err, io.EOF) {
-				break
-			}
+// SearchRecords searches for full records matching the given request.
+func (c *Client) SearchRecords(ctx context.Context, req *searchv1.SearchRecordsRequest) (streaming.StreamResult[searchv1.SearchRecordsResponse], error) {
+	stream, err := c.SearchServiceClient.SearchRecords(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search records stream: %w", err)
+	}
 
-			if err != nil {
-				logger.Error("failed to receive search response", "error", err)
+	result, err := streaming.ProcessServerStream(ctx, stream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process search records stream: %w", err)
+	}
 
-				return
-			}
-
-			select {
-			case resultCh <- obj.GetRecordCid():
-			case <-ctx.Done():
-				logger.Error("context cancelled while receiving search response", "error", ctx.Err())
-
-				return
-			}
-		}
-	}()
-
-	return resultCh, nil
+	return result, nil
 }

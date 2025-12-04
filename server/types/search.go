@@ -4,17 +4,21 @@
 package types
 
 type RecordFilters struct {
-	Limit        int
-	Offset       int
-	Name         string
-	Version      string
-	SkillIDs     []uint64
-	SkillNames   []string
-	LocatorTypes []string
-	LocatorURLs  []string
-	ModuleNames  []string
-	DomainIDs    []uint64
-	DomainNames  []string
+	Limit          int
+	Offset         int
+	Names          []string
+	Versions       []string
+	SkillIDs       []uint64
+	SkillNames     []string
+	LocatorTypes   []string
+	LocatorURLs    []string
+	ModuleNames    []string
+	ModuleIDs      []uint64
+	DomainIDs      []uint64
+	DomainNames    []string
+	CreatedAts     []string
+	Authors        []string
+	SchemaVersions []string
 }
 
 type FilterOption func(*RecordFilters)
@@ -33,65 +37,93 @@ func WithOffset(offset int) FilterOption {
 	}
 }
 
-// WithName RecordFilters records by name (partial match).
-func WithName(name string) FilterOption {
+// WithNames filters records by name patterns.
+func WithNames(names ...string) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.Name = name
+		sc.Names = append(sc.Names, names...)
 	}
 }
 
-// WithVersion RecordFilters records by exact version.
-func WithVersion(version string) FilterOption {
+// WithVersions filters records by version patterns.
+func WithVersions(versions ...string) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.Version = version
+		sc.Versions = append(sc.Versions, versions...)
 	}
 }
 
 // WithSkillIDs RecordFilters records by skill IDs.
 func WithSkillIDs(ids ...uint64) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.SkillIDs = ids
+		sc.SkillIDs = append(sc.SkillIDs, ids...)
 	}
 }
 
 // WithSkillNames RecordFilters records by skill names.
 func WithSkillNames(names ...string) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.SkillNames = names
+		sc.SkillNames = append(sc.SkillNames, names...)
 	}
 }
 
 // WithLocatorTypes RecordFilters records by locator types.
 func WithLocatorTypes(types ...string) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.LocatorTypes = types
+		sc.LocatorTypes = append(sc.LocatorTypes, types...)
 	}
 }
 
 // WithLocatorURLs RecordFilters records by locator URLs.
 func WithLocatorURLs(urls ...string) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.LocatorURLs = urls
+		sc.LocatorURLs = append(sc.LocatorURLs, urls...)
 	}
 }
 
 // WithModuleNames RecordFilters records by module names.
 func WithModuleNames(names ...string) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.ModuleNames = names
+		sc.ModuleNames = append(sc.ModuleNames, names...)
 	}
 }
 
 // WithDomainIDs filters records by domain IDs.
 func WithDomainIDs(ids ...uint64) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.DomainIDs = ids
+		sc.DomainIDs = append(sc.DomainIDs, ids...)
 	}
 }
 
 // WithDomainNames filters records by domain names.
 func WithDomainNames(names ...string) FilterOption {
 	return func(sc *RecordFilters) {
-		sc.DomainNames = names
+		sc.DomainNames = append(sc.DomainNames, names...)
+	}
+}
+
+// WithCreatedAts filters records by created_at timestamp patterns.
+func WithCreatedAts(createdAts ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.CreatedAts = append(sc.CreatedAts, createdAts...)
+	}
+}
+
+// WithAuthors filters records by author names.
+func WithAuthors(names ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Authors = append(sc.Authors, names...)
+	}
+}
+
+// WithSchemaVersions filters records by schema version patterns.
+func WithSchemaVersions(versions ...string) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.SchemaVersions = append(sc.SchemaVersions, versions...)
+	}
+}
+
+// WithModuleIDs filters records by module IDs.
+func WithModuleIDs(ids ...uint64) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.ModuleIDs = append(sc.ModuleIDs, ids...)
 	}
 }

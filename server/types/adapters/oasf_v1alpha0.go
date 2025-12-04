@@ -362,6 +362,12 @@ func (m *V1Alpha0ModuleAdapter) GetData() map[string]any {
 	return *resp
 }
 
+// GetID implements types.Module interface.
+// V1Alpha0 uses extensions which don't have IDs, so return 0.
+func (m *V1Alpha0ModuleAdapter) GetID() uint64 {
+	return 0
+}
+
 // GetSkillLabels implements types.LabelProvider interface.
 func (a *V1Alpha0Adapter) GetSkillLabels() []types.Label {
 	if a.record == nil {

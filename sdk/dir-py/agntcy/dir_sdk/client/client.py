@@ -368,46 +368,89 @@ class Client:
 
         return results
 
-    def search(
+    def search_cids(
         self,
-        req: search_v1.SearchRequest,
+        req: search_v1.SearchCIDsRequest,
         metadata: Sequence[tuple[str, str]] | None = None,
-    ) -> builtins.list[routing_v1.SearchResponse]:
-        """Search objects from the Store API matching the specified queries.
+    ) -> builtins.list[search_v1.SearchCIDsResponse]:
+        """Search for record CIDs matching the specified queries.
 
         Performs a search across the storage using the provided search queries
-        and returns a list of matching results. Supports various
-        search types including text, semantic, and structured queries.
+        and returns a list of matching CIDs. This is efficient for lookups
+        where only the CIDs are needed.
 
         Args:
             req: Search request containing queries, filters, and search options
             metadata: Optional gRPC metadata headers as sequence of key-value pairs
 
         Returns:
-            List[routing_v1.SearchResponse]: List of search results matching the queries
+            List[search_v1.SearchCIDsResponse]: List of CIDs matching the queries
 
         Raises:
             grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the search operation fails
 
         Example:
-            >>> req = search_v1.SearchRequest(query="python AI agent")
-            >>> responses = client.search(req)
+            >>> req = search_v1.SearchCIDsRequest(queries=[query], limit=10)
+            >>> responses = client.search_cids(req)
             >>> for response in responses:
-            ...     print(f"Found: {response.record.name}")
+            ...     print(f"Found CID: {response.record_cid}")
 
         """
-        results: list[routing_v1.SearchResponse] = []
+        results: list[search_v1.SearchCIDsResponse] = []
 
         try:
-            stream = self.search_client.Search(req, metadata=metadata)
+            stream = self.search_client.SearchCIDs(req, metadata=metadata)
             results.extend(stream)
         except grpc.RpcError as e:
             logger.exception("gRPC error during search: %s", e)
             raise
         except Exception as e:
             logger.exception("Error receiving search results: %s", e)
-            msg = f"Failed to search objects: {e}"
+            msg = f"Failed to search CIDs: {e}"
+            raise RuntimeError(msg) from e
+
+        return results
+
+    def search_records(
+        self,
+        req: search_v1.SearchRecordsRequest,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> builtins.list[search_v1.SearchRecordsResponse]:
+        """Search for full records matching the specified queries.
+
+        Performs a search across the storage using the provided search queries
+        and returns a list of full records with all metadata.
+
+        Args:
+            req: Search request containing queries, filters, and search options
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            List[search_v1.SearchRecordsResponse]: List of records matching the queries
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the search operation fails
+
+        Example:
+            >>> req = search_v1.SearchRecordsRequest(queries=[query], limit=10)
+            >>> responses = client.search_records(req)
+            >>> for response in responses:
+            ...     print(f"Found: {response.record.name}")
+
+        """
+        results: list[search_v1.SearchRecordsResponse] = []
+
+        try:
+            stream = self.search_client.SearchRecords(req, metadata=metadata)
+            results.extend(stream)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during search: %s", e)
+            raise
+        except Exception as e:
+            logger.exception("Error receiving search results: %s", e)
+            msg = f"Failed to search records: {e}"
             raise RuntimeError(msg) from e
 
         return results

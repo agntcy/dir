@@ -6,6 +6,7 @@ package sqlite
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/server/database/utils"
@@ -14,11 +15,14 @@ import (
 )
 
 type Record struct {
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	RecordCID string `gorm:"column:record_cid;primarykey;not null"`
-	Name      string `gorm:"not null"`
-	Version   string `gorm:"not null"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	RecordCID     string   `gorm:"column:record_cid;primarykey;not null"`
+	Name          string   `gorm:"not null"`
+	Version       string   `gorm:"not null"`
+	SchemaVersion string   `gorm:"column:schema_version"`
+	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
+	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
 
 	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
@@ -55,6 +59,9 @@ func (r *RecordDataAdapter) GetDomains() []types.Domain {
 }
 
 func (r *RecordDataAdapter) GetSchemaVersion() string {
+	if r.record.SchemaVersion != "" {
+		return r.record.SchemaVersion
+	}
 	// Default schema version for search records
 	return "v1"
 }
@@ -73,11 +80,14 @@ func (r *RecordDataAdapter) GetDescription() string {
 }
 
 func (r *RecordDataAdapter) GetAuthors() []string {
-	// SQLite records don't store authors
-	return []string{}
+	return r.record.Authors
 }
 
 func (r *RecordDataAdapter) GetCreatedAt() string {
+	if r.record.OASFCreatedAt != "" {
+		return r.record.OASFCreatedAt
+	}
+
 	return r.record.CreatedAt.Format("2006-01-02T15:04:05Z")
 }
 
@@ -146,13 +156,16 @@ func (d *DB) AddRecord(record types.Record) error {
 
 	// Build complete Record with all associations
 	sqliteRecord := &Record{
-		RecordCID: cid,
-		Name:      recordData.GetName(),
-		Version:   recordData.GetVersion(),
-		Skills:    convertSkills(recordData.GetSkills(), cid),
-		Locators:  convertLocators(recordData.GetLocators(), cid),
-		Modules:   convertModules(recordData.GetModules(), cid),
-		Domains:   convertDomains(recordData.GetDomains(), cid),
+		RecordCID:     cid,
+		Name:          recordData.GetName(),
+		Version:       recordData.GetVersion(),
+		SchemaVersion: recordData.GetSchemaVersion(),
+		OASFCreatedAt: recordData.GetCreatedAt(),
+		Authors:       recordData.GetAuthors(),
+		Skills:        convertSkills(recordData.GetSkills(), cid),
+		Locators:      convertLocators(recordData.GetLocators(), cid),
+		Modules:       convertModules(recordData.GetModules(), cid),
+		Domains:       convertDomains(recordData.GetDomains(), cid),
 	}
 
 	// Let GORM handle the entire creation with associations
@@ -161,53 +174,10 @@ func (d *DB) AddRecord(record types.Record) error {
 	}
 
 	logger.Debug("Added new record with associations to SQLite database", "record_cid", sqliteRecord.RecordCID, "cid", cid,
-		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "modules", len(sqliteRecord.Modules), "domains", len(sqliteRecord.Domains))
+		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "modules", len(sqliteRecord.Modules),
+		"domains", len(sqliteRecord.Domains))
 
 	return nil
-}
-
-// GetRecords retrieves records based on the provided options.
-func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
-	// Create default configuration.
-	cfg := &types.RecordFilters{}
-
-	// Apply all options.
-	for _, opt := range opts {
-		if opt == nil {
-			return nil, errors.New("nil option provided")
-		}
-
-		opt(cfg)
-	}
-
-	// Start with the base query for records.
-	query := d.gormDB.Model(&Record{}).Distinct()
-
-	// Apply pagination.
-	if cfg.Limit > 0 {
-		query = query.Limit(cfg.Limit)
-	}
-
-	if cfg.Offset > 0 {
-		query = query.Offset(cfg.Offset)
-	}
-
-	// Apply all filters.
-	query = d.handleFilterOptions(query, cfg)
-
-	// Execute the query to get records.
-	var dbRecords []Record
-	if err := query.Preload("Skills").Preload("Locators").Preload("Modules").Preload("Domains").Find(&dbRecords).Error; err != nil {
-		return nil, fmt.Errorf("failed to query records: %w", err)
-	}
-
-	// Convert to Record interfaces.
-	result := make([]types.Record, len(dbRecords))
-	for i := range dbRecords {
-		result[i] = &dbRecords[i]
-	}
-
-	return result, nil
 }
 
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
@@ -273,17 +243,21 @@ func (d *DB) RemoveRecord(cid string) error {
 
 // handleFilterOptions applies the provided filters to the query.
 //
-//nolint:gocognit,cyclop,nestif
+//nolint:gocognit,cyclop,nestif,gocyclo
 func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm.DB {
 	// Apply record-level filters with wildcard support.
-	if cfg.Name != "" {
-		condition, arg := utils.BuildSingleWildcardCondition("records.name", cfg.Name)
-		query = query.Where(condition, arg)
+	if len(cfg.Names) > 0 {
+		condition, args := utils.BuildWildcardCondition("records.name", cfg.Names)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
 	}
 
-	if cfg.Version != "" {
-		condition, arg := utils.BuildSingleWildcardCondition("records.version", cfg.Version)
-		query = query.Where(condition, arg)
+	if len(cfg.Versions) > 0 {
+		condition, args := utils.BuildComparisonConditions("records.version", cfg.Versions)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
 	}
 
 	// Handle skill filters with wildcard support.
@@ -347,6 +321,50 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 				query = query.Where(condition, args...)
 			}
 		}
+	}
+
+	// Handle created_at filter with comparison operator support.
+	if len(cfg.CreatedAts) > 0 {
+		condition, args := utils.BuildComparisonConditions("records.oasf_created_at", cfg.CreatedAts)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
+	// Handle author filters with wildcard support (searching in JSON array).
+	if len(cfg.Authors) > 0 {
+		// Build OR conditions for each author pattern against the JSON string
+		var authorConditions []string
+
+		var authorArgs []interface{}
+
+		for _, author := range cfg.Authors {
+			condition, arg := utils.BuildSingleWildcardCondition("records.authors", "*"+author+"*")
+			authorConditions = append(authorConditions, condition)
+			authorArgs = append(authorArgs, arg)
+		}
+
+		if len(authorConditions) > 0 {
+			query = query.Where(strings.Join(authorConditions, " OR "), authorArgs...)
+		}
+	}
+
+	// Handle schema version filter with comparison operator support.
+	if len(cfg.SchemaVersions) > 0 {
+		condition, args := utils.BuildComparisonConditions("records.schema_version", cfg.SchemaVersions)
+		if condition != "" {
+			query = query.Where(condition, args...)
+		}
+	}
+
+	// Handle module ID filters.
+	if len(cfg.ModuleIDs) > 0 {
+		// Check if modules join already exists
+		if len(cfg.ModuleNames) == 0 {
+			query = query.Joins("JOIN modules ON modules.record_cid = records.record_cid")
+		}
+
+		query = query.Where("modules.module_id IN ?", cfg.ModuleIDs)
 	}
 
 	return query

@@ -22,16 +22,22 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	SearchService_Search_FullMethodName = "/agntcy.dir.search.v1.SearchService/Search"
+	SearchService_SearchCIDs_FullMethodName    = "/agntcy.dir.search.v1.SearchService/SearchCIDs"
+	SearchService_SearchRecords_FullMethodName = "/agntcy.dir.search.v1.SearchService/SearchRecords"
 )
 
 // SearchServiceClient is the client API for SearchService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SearchServiceClient interface {
-	// List records that this peer is currently providing that match the given parameters.
+	// Search for record CIDs that match the given parameters.
+	// Returns only CIDs for efficient lookups and piping to other commands.
 	// This operation does not interact with the network.
-	Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (SearchService_SearchClient, error)
+	SearchCIDs(ctx context.Context, in *SearchCIDsRequest, opts ...grpc.CallOption) (SearchService_SearchCIDsClient, error)
+	// Search for full records that match the given parameters.
+	// Returns complete record data including all metadata, skills, domains, etc.
+	// This operation does not interact with the network.
+	SearchRecords(ctx context.Context, in *SearchRecordsRequest, opts ...grpc.CallOption) (SearchService_SearchRecordsClient, error)
 }
 
 type searchServiceClient struct {
@@ -42,13 +48,13 @@ func NewSearchServiceClient(cc grpc.ClientConnInterface) SearchServiceClient {
 	return &searchServiceClient{cc}
 }
 
-func (c *searchServiceClient) Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (SearchService_SearchClient, error) {
+func (c *searchServiceClient) SearchCIDs(ctx context.Context, in *SearchCIDsRequest, opts ...grpc.CallOption) (SearchService_SearchCIDsClient, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &SearchService_ServiceDesc.Streams[0], SearchService_Search_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &SearchService_ServiceDesc.Streams[0], SearchService_SearchCIDs_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &searchServiceSearchClient{ClientStream: stream}
+	x := &searchServiceSearchCIDsClient{ClientStream: stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -58,17 +64,50 @@ func (c *searchServiceClient) Search(ctx context.Context, in *SearchRequest, opt
 	return x, nil
 }
 
-type SearchService_SearchClient interface {
-	Recv() (*SearchResponse, error)
+type SearchService_SearchCIDsClient interface {
+	Recv() (*SearchCIDsResponse, error)
 	grpc.ClientStream
 }
 
-type searchServiceSearchClient struct {
+type searchServiceSearchCIDsClient struct {
 	grpc.ClientStream
 }
 
-func (x *searchServiceSearchClient) Recv() (*SearchResponse, error) {
-	m := new(SearchResponse)
+func (x *searchServiceSearchCIDsClient) Recv() (*SearchCIDsResponse, error) {
+	m := new(SearchCIDsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *searchServiceClient) SearchRecords(ctx context.Context, in *SearchRecordsRequest, opts ...grpc.CallOption) (SearchService_SearchRecordsClient, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &SearchService_ServiceDesc.Streams[1], SearchService_SearchRecords_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &searchServiceSearchRecordsClient{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type SearchService_SearchRecordsClient interface {
+	Recv() (*SearchRecordsResponse, error)
+	grpc.ClientStream
+}
+
+type searchServiceSearchRecordsClient struct {
+	grpc.ClientStream
+}
+
+func (x *searchServiceSearchRecordsClient) Recv() (*SearchRecordsResponse, error) {
+	m := new(SearchRecordsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -79,9 +118,14 @@ func (x *searchServiceSearchClient) Recv() (*SearchResponse, error) {
 // All implementations should embed UnimplementedSearchServiceServer
 // for forward compatibility.
 type SearchServiceServer interface {
-	// List records that this peer is currently providing that match the given parameters.
+	// Search for record CIDs that match the given parameters.
+	// Returns only CIDs for efficient lookups and piping to other commands.
 	// This operation does not interact with the network.
-	Search(*SearchRequest, SearchService_SearchServer) error
+	SearchCIDs(*SearchCIDsRequest, SearchService_SearchCIDsServer) error
+	// Search for full records that match the given parameters.
+	// Returns complete record data including all metadata, skills, domains, etc.
+	// This operation does not interact with the network.
+	SearchRecords(*SearchRecordsRequest, SearchService_SearchRecordsServer) error
 }
 
 // UnimplementedSearchServiceServer should be embedded to have
@@ -91,8 +135,11 @@ type SearchServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSearchServiceServer struct{}
 
-func (UnimplementedSearchServiceServer) Search(*SearchRequest, SearchService_SearchServer) error {
-	return status.Errorf(codes.Unimplemented, "method Search not implemented")
+func (UnimplementedSearchServiceServer) SearchCIDs(*SearchCIDsRequest, SearchService_SearchCIDsServer) error {
+	return status.Errorf(codes.Unimplemented, "method SearchCIDs not implemented")
+}
+func (UnimplementedSearchServiceServer) SearchRecords(*SearchRecordsRequest, SearchService_SearchRecordsServer) error {
+	return status.Errorf(codes.Unimplemented, "method SearchRecords not implemented")
 }
 func (UnimplementedSearchServiceServer) testEmbeddedByValue() {}
 
@@ -114,24 +161,45 @@ func RegisterSearchServiceServer(s grpc.ServiceRegistrar, srv SearchServiceServe
 	s.RegisterService(&SearchService_ServiceDesc, srv)
 }
 
-func _SearchService_Search_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(SearchRequest)
+func _SearchService_SearchCIDs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SearchCIDsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(SearchServiceServer).Search(m, &searchServiceSearchServer{ServerStream: stream})
+	return srv.(SearchServiceServer).SearchCIDs(m, &searchServiceSearchCIDsServer{ServerStream: stream})
 }
 
-type SearchService_SearchServer interface {
-	Send(*SearchResponse) error
+type SearchService_SearchCIDsServer interface {
+	Send(*SearchCIDsResponse) error
 	grpc.ServerStream
 }
 
-type searchServiceSearchServer struct {
+type searchServiceSearchCIDsServer struct {
 	grpc.ServerStream
 }
 
-func (x *searchServiceSearchServer) Send(m *SearchResponse) error {
+func (x *searchServiceSearchCIDsServer) Send(m *SearchCIDsResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _SearchService_SearchRecords_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SearchRecordsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SearchServiceServer).SearchRecords(m, &searchServiceSearchRecordsServer{ServerStream: stream})
+}
+
+type SearchService_SearchRecordsServer interface {
+	Send(*SearchRecordsResponse) error
+	grpc.ServerStream
+}
+
+type searchServiceSearchRecordsServer struct {
+	grpc.ServerStream
+}
+
+func (x *searchServiceSearchRecordsServer) Send(m *SearchRecordsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -144,8 +212,13 @@ var SearchService_ServiceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Search",
-			Handler:       _SearchService_Search_Handler,
+			StreamName:    "SearchCIDs",
+			Handler:       _SearchService_SearchCIDs_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SearchRecords",
+			Handler:       _SearchService_SearchRecords_Handler,
 			ServerStreams: true,
 		},
 	},
