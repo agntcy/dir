@@ -84,7 +84,7 @@ func init() {
 	listCmd.Flags().Lookup("skill").Usage = "Filter by skill (e.g., --skill 'AI' --skill 'web-development')"
 	listCmd.Flags().Lookup("locator").Usage = "Filter by locator type (e.g., --locator 'docker-image')"
 	listCmd.Flags().Lookup("domain").Usage = "Filter by domain (e.g., --domain 'research' --domain 'analytics')"
-	listCmd.Flags().Lookup("module").Usage = "Filter by module (e.g., --module 'runtime/language' --module 'runtime/framework')"
+	listCmd.Flags().Lookup("module").Usage = "Filter by module (e.g., --module 'core/llm/model')"
 	listCmd.Flags().Lookup("cid").Usage = "List specific record by CID"
 
 	// Add output format flags

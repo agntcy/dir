@@ -91,7 +91,7 @@ func (RecordQueryType) EnumDescriptor() ([]byte, []int) {
 //	{ type: RECORD_QUERY_TYPE_SKILL, value: "Natural Language Processing" }
 //	{ type: RECORD_QUERY_TYPE_LOCATOR, value: "helm-chart" }
 //	{ type: RECORD_QUERY_TYPE_DOMAIN, value: "research" }
-//	{ type: RECORD_QUERY_TYPE_MODULE, value: "runtime/language" }
+//	{ type: RECORD_QUERY_TYPE_MODULE, value: "core/llm/model" }
 type RecordQuery struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The type of the query to match against.

@@ -8,19 +8,19 @@ The Directory server supports configuration via environment variables, YAML conf
 
 The server validates all records server-side. By default, records are validated using API validation in strict mode. This ensures consistent, strict validation for all records regardless of their source.
 
-- **`schema_url`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL`** - OASF schema URL for API-based validation
+- **`oasf_api_validation.schema_url`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL`** - OASF schema URL for API-based validation
   - **Default**: `https://schema.oasf.outshift.com`
   - URL of the OASF server to use for validation
   - This affects all record validation operations including push, sync, and import
 
-- **`disable_api_validation`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE`** - Use embedded schema validation instead of API validator
+- **`oasf_api_validation.disable`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE`** - Use embedded schema validation instead of API validator
   - **Default**: `false` (uses API validation)
   - When `true`, uses embedded schemas for validation (no HTTP calls to OASF server)
 
-- **`strict_validation`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE`** - Use strict validation mode
+- **`oasf_api_validation.strict_mode`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE`** - Use strict validation mode
   - **Default**: `true` (strict mode - fails on warnings)
   - When `false`, uses lax validation mode (allows warnings, only fails on errors)
-  - Only applies when `disable_api_validation` is `false`
+  - Only applies when `oasf_api_validation.disable` is `false`
 
 **Example with environment variables:**
 ```bash
@@ -40,9 +40,10 @@ DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE=false ./dirctl-apiserver
 **Example with YAML configuration:**
 ```yaml
 # server.config.yml
-schema_url: "https://schema.oasf.outshift.com"
-disable_api_validation: false
-strict_validation: true
+oasf_api_validation:
+  schema_url: "https://schema.oasf.outshift.com"
+  disable: false
+  strict_mode: true
 listen_address: "0.0.0.0:8888"
 ```
 

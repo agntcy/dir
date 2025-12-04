@@ -120,9 +120,9 @@ func TestQueryMatchesLabels(t *testing.T) {
 			name: "module_exact_match",
 			query: &routingv1.RecordQuery{
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-				Value: "runtime/language",
+				Value: "runtime/model",
 			},
-			labels:   []types.Label{types.Label("/modules/runtime/language"), types.Label("/skills/AI")},
+			labels:   []types.Label{types.Label("/modules/runtime/model"), types.Label("/skills/AI")},
 			expected: true,
 		},
 		{
@@ -131,7 +131,7 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
 				Value: "runtime",
 			},
-			labels:   []types.Label{types.Label("/modules/runtime/language"), types.Label("/skills/AI")},
+			labels:   []types.Label{types.Label("/modules/runtime/model"), types.Label("/skills/AI")},
 			expected: true,
 		},
 		{
@@ -140,16 +140,16 @@ func TestQueryMatchesLabels(t *testing.T) {
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
 				Value: "security",
 			},
-			labels:   []types.Label{types.Label("/modules/runtime/language"), types.Label("/skills/AI")},
+			labels:   []types.Label{types.Label("/modules/runtime/model"), types.Label("/skills/AI")},
 			expected: false,
 		},
 		{
 			name: "module_partial_no_match",
 			query: &routingv1.RecordQuery{
 				Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-				Value: "runtime/language/python/3.9",
+				Value: "runtime/model/python/3.9",
 			},
-			labels:   []types.Label{types.Label("/modules/runtime/language"), types.Label("/skills/AI")},
+			labels:   []types.Label{types.Label("/modules/runtime/model"), types.Label("/skills/AI")},
 			expected: false,
 		},
 
@@ -213,7 +213,7 @@ func TestMatchesAllQueries(t *testing.T) {
 				types.Label("/skills/AI"),
 				types.Label("/skills/AI/ML"),
 				types.Label("/domains/technology"),
-				types.Label("/modules/runtime/language"),
+				types.Label("/modules/runtime/model"),
 				types.Label("/locators/docker-image"),
 			}
 		}
@@ -302,7 +302,7 @@ func TestMatchesAllQueries(t *testing.T) {
 			queries: []*routingv1.RecordQuery{
 				{
 					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-					Value: "runtime/language",
+					Value: "runtime/model",
 				},
 			},
 			expected: true,
@@ -321,7 +321,7 @@ func TestMatchesAllQueries(t *testing.T) {
 				},
 				{
 					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-					Value: "runtime/language",
+					Value: "runtime/model",
 				},
 				{
 					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
@@ -367,7 +367,7 @@ func TestGetMatchingQueries(t *testing.T) {
 		},
 		{
 			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
-			Value: "runtime/language",
+			Value: "runtime/model",
 		},
 		{
 			Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_LOCATOR,
@@ -407,7 +407,7 @@ func TestGetMatchingQueries(t *testing.T) {
 		},
 		{
 			name:              "module_matches",
-			labelKey:          "/modules/runtime/language/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/peer1",
+			labelKey:          "/modules/runtime/model/bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/peer1",
 			expectedMatches:   1,
 			expectedQueryType: routingv1.RecordQueryType_RECORD_QUERY_TYPE_MODULE,
 		},
@@ -494,7 +494,7 @@ func TestQueryMatchingIntegration(t *testing.T) {
 				types.Label("/skills/AI"),
 				types.Label("/skills/web-development"),
 				types.Label("/domains/healthcare"),
-				types.Label("/modules/runtime/language"),
+				types.Label("/modules/runtime/model"),
 				types.Label("/locators/docker-image"),
 			}
 		default:

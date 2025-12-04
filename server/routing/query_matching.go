@@ -138,11 +138,11 @@ func QueryMatchesLabels(query *routingv1.RecordQuery, labelList []types.Label) b
 			}
 
 			labelStr := label.String()
-			// Exact match: /modules/runtime/language matches "runtime/language"
+			// Exact match: /modules/runtime/model matches "runtime/model"
 			if labelStr == targetModule {
 				return true
 			}
-			// Prefix match: /modules/runtime/language/python matches "runtime/language"
+			// Prefix match: /modules/runtime/model/security matches "runtime/model"
 			if strings.HasPrefix(labelStr, targetModule+"/") {
 				return true
 			}

@@ -40,7 +40,7 @@ func TestGetLabelsFromRecord(t *testing.T) {
 			],
 			"extensions": [
 				{
-					"name": "schema.oasf.agntcy.org/features/runtime/framework",
+					"name": "schema.oasf.agntcy.org/features/runtime/model",
 					"version": "v0.0.0",
 					"data": {}
 				}
@@ -66,7 +66,7 @@ func TestGetLabelsFromRecord(t *testing.T) {
 		// Check expected labels are present
 		assert.Contains(t, labelStrings, "/skills/Natural Language Processing/Text Completion")
 		assert.Contains(t, labelStrings, "/locators/docker-image")
-		assert.Contains(t, labelStrings, "/modules/runtime/framework") // Schema prefix stripped
+		assert.Contains(t, labelStrings, "/modules/runtime/model") // Schema prefix stripped
 	})
 
 	t.Run("valid_v1alpha1_record", func(t *testing.T) {

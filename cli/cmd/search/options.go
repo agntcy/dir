@@ -56,7 +56,7 @@ func registerFlags(cmd *cobra.Command) {
 	flags.Lookup("skill-id").Usage = "Search for records with specific skill ID (e.g., --skill-id '10201')"
 	flags.Lookup("skill").Usage = "Search for records with specific skill name (e.g., --skill 'natural_language_processing' --skill 'audio')"
 	flags.Lookup("locator").Usage = "Search for records with specific locator type (e.g., --locator 'docker-image')"
-	flags.Lookup("module").Usage = "Search for records with specific module (e.g., --module 'runtime/language')"
+	flags.Lookup("module").Usage = "Search for records with specific module (e.g., --module 'core/llm/model')"
 	flags.Lookup("domain-id").Usage = "Search for records with specific domain ID (e.g., --domain-id '604')"
 	flags.Lookup("domain").Usage = "Search for records with specific domain name (e.g., --domain '*education*' --domain 'healthcare/*')"
 	flags.Lookup("created-at").Usage = "Search for records with specific created_at timestamp (e.g., --created-at '2024-*')"

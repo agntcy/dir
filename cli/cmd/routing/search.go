@@ -85,7 +85,7 @@ func init() {
 	searchCmd.Flags().Lookup("skill").Usage = "Search for records with specific skill (e.g., --skill 'AI' --skill 'ML')"
 	searchCmd.Flags().Lookup("locator").Usage = "Search for records with specific locator type (e.g., --locator 'docker-image')"
 	searchCmd.Flags().Lookup("domain").Usage = "Search for records with specific domain (e.g., --domain 'research' --domain 'analytics')"
-	searchCmd.Flags().Lookup("module").Usage = "Search for records with specific module (e.g., --module 'runtime/language' --module 'runtime/framework')"
+	searchCmd.Flags().Lookup("module").Usage = "Search for records with specific module (e.g., --module 'core/llm/model')"
 
 	// Add standard output format flags
 	presenter.AddOutputFlags(searchCmd)
@@ -138,7 +138,7 @@ func runSearchCommand(cmd *cobra.Command) error {
 		presenter.PrintSmartf(cmd, "No search criteria specified. Use --skill, --locator, --domain, or --module flags.\n")
 		presenter.PrintSmartf(cmd, "Examples:\n")
 		presenter.PrintSmartf(cmd, "  dirctl routing search --skill 'AI' --locator 'docker-image'\n")
-		presenter.PrintSmartf(cmd, "  dirctl routing search --domain 'research' --module 'runtime/language'\n")
+		presenter.PrintSmartf(cmd, "  dirctl routing search --domain 'research' --module 'core/llm/model'\n")
 
 		return nil
 	}

@@ -61,11 +61,13 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":           "10s",
 			},
 			ExpectedConfig: &Config{
-				ListenAddress:        "example.com:8889",
-				SchemaURL:            "https://custom.schema.url",
-				DisableAPIValidation: false,
-				StrictValidation:     true,                      // Default is true (set in config.go:300)
-				Connection:           DefaultConnectionConfig(), // Connection defaults applied
+				ListenAddress: "example.com:8889",
+				OASFAPIValidation: OASFAPIValidationConfig{
+					SchemaURL:  "https://custom.schema.url",
+					Disable:    false,
+					StrictMode: true, // Default is true (set in config.go)
+				},
+				Connection: DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
@@ -134,11 +136,13 @@ func TestConfig(t *testing.T) {
 			Name:    "Default config",
 			EnvVars: map[string]string{},
 			ExpectedConfig: &Config{
-				ListenAddress:        DefaultListenAddress,
-				SchemaURL:            DefaultSchemaURL,          // Default OASF schema URL
-				DisableAPIValidation: false,                     // Default is false (set in config.go:297)
-				StrictValidation:     true,                      // Default is true (set in config.go:300)
-				Connection:           DefaultConnectionConfig(), // Connection defaults applied
+				ListenAddress: DefaultListenAddress,
+				OASFAPIValidation: OASFAPIValidationConfig{
+					SchemaURL:  DefaultSchemaURL, // Default OASF schema URL
+					Disable:    false,            // Default is false (set in config.go)
+					StrictMode: true,             // Default is true (set in config.go)
+				},
+				Connection: DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
 					Enabled:   false,
 					Mode:      authn.AuthModeX509, // Default from config.go:109
@@ -242,7 +246,7 @@ func TestConfig_SchemaURL(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify schema URL configuration
-			assert.Equal(t, tt.expectedSchemaURL, cfg.SchemaURL)
+			assert.Equal(t, tt.expectedSchemaURL, cfg.OASFAPIValidation.SchemaURL)
 		})
 	}
 }

@@ -35,10 +35,10 @@ func TestBuildEnhancedLabelKey(t *testing.T) {
 		},
 		{
 			name:     "module_label",
-			label:    types.Label("/modules/runtime/framework"),
+			label:    types.Label("/modules/runtime/model"),
 			cid:      "CID789",
 			peerID:   "Peer3",
-			expected: "/modules/runtime/framework/CID789/Peer3",
+			expected: "/modules/runtime/model/CID789/Peer3",
 		},
 		{
 			name:     "locator_label",
@@ -85,8 +85,8 @@ func TestParseEnhancedLabelKey(t *testing.T) {
 		},
 		{
 			name:          "valid_module_key",
-			key:           "/modules/runtime/framework/CID789/Peer3",
-			expectedLabel: types.Label("/modules/runtime/framework"),
+			key:           "/modules/runtime/model/CID789/Peer3",
+			expectedLabel: types.Label("/modules/runtime/model"),
 			expectedCID:   "CID789",
 			expectedPeer:  "Peer3",
 			expectError:   false,
@@ -312,8 +312,8 @@ func TestParseEnhancedLabelKeyInternal(t *testing.T) {
 		},
 		{
 			name:          "valid_complex_key",
-			key:           "/modules/runtime/framework/security/CID456/Peer2",
-			expectedLabel: "/modules/runtime/framework/security",
+			key:           "/modules/runtime/model/security/CID456/Peer2",
+			expectedLabel: "/modules/runtime/model/security",
 			expectedCID:   "CID456",
 			expectedPeer:  "Peer2",
 			expectError:   false,
@@ -381,7 +381,7 @@ func TestParseEnhancedLabelKey_RoundTrip(t *testing.T) {
 	}{
 		{types.Label("/skills/AI/ML"), "CID123", "Peer1"},
 		{types.Label("/domains/research"), "CID456", "Peer2"},
-		{types.Label("/modules/runtime/framework/security"), "CID789", "Peer3"},
+		{types.Label("/modules/runtime/model/security"), "CID789", "Peer3"},
 		{types.Label("/locators/docker-image"), "CID999", "Peer4"},
 	}
 

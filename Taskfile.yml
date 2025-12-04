@@ -642,9 +642,9 @@ tasks:
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}--set apiserver.config.ratelimit.per_client_rps="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
-          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
-          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}--set apiserver.config.disable_api_validation="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"{{ end }} \
-          {{ if ne .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE nil }}--set apiserver.config.strict_validation="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}--set apiserver.config.oasf_api_validation.disable="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"{{ end }} \
+          {{ if ne .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE nil }}--set apiserver.config.oasf_api_validation.strict_mode="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"{{ end }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
