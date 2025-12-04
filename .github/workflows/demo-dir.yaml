@@ -30,14 +30,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           ref: ${{ inputs.git-ref }}
 
       - name: Setup Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: '1.25.2'
+          go-version: "1.25.2"
 
       - name: Setup Taskfile
         shell: bash
@@ -89,7 +89,7 @@ jobs:
 
       - name: Run publish command
         run: |
-          
+
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir publish command on Peer 1"
             bin/dirctl publish $(cat digest.txt) --server-addr 127.0.0.1:8890
@@ -152,19 +152,19 @@ jobs:
           fi
 
   sign-and-verify-with-oidc:
-      # This job demonstrates how to sign and verify a record using OIDC tokens.
-      # It requires the `id-token` permission to generate OIDC tokens.
+    # This job demonstrates how to sign and verify a record using OIDC tokens.
+    # It requires the `id-token` permission to generate OIDC tokens.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           ref: ${{ inputs.git-ref }}
 
       - name: Setup Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: '1.25.2'
+          go-version: "1.25.2"
 
       - name: Setup Taskfile
         shell: bash
@@ -175,7 +175,7 @@ jobs:
           task cli:compile
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
 
       - name: Get Github OIDC token
         id: oidc-token
@@ -216,18 +216,18 @@ jobs:
           bin/dirctl verify $(cat digest.txt)
 
   sign-and-verify-with-key:
-      # This job demonstrates how to sign and verify a record using Cosign keys.
+    # This job demonstrates how to sign and verify a record using Cosign keys.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           ref: ${{ inputs.git-ref }}
 
       - name: Setup Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
-          go-version: '1.25.2'
+          go-version: "1.25.2"
 
       - name: Setup Taskfile
         shell: bash
@@ -238,7 +238,7 @@ jobs:
           task cli:compile
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
 
       - name: Generate Cosign keys
         run: |

@@ -52,7 +52,7 @@ jobs:
       chart_path: ${{ steps.tags.outputs.chart_path }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
@@ -63,19 +63,19 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
           COMPONENT="${{ inputs.component }}"
-          
+
           if [ -z "${{ inputs.image_tag }}" ]; then
             IMAGE_TAG="feat-${BRANCH_NAME}-${SHORT_SHA}"
           else
             IMAGE_TAG="${{ inputs.image_tag }}"
           fi
-          
+
           if [ -z "${{ inputs.chart_version }}" ]; then
             CHART_VERSION="0.0.0-test-${SHORT_SHA}"
           else
             CHART_VERSION="${{ inputs.chart_version }}"
           fi
-          
+
           # Generate image repo and suffix for component separation
           IMAGE_REPO="ghcr.io/agntcy"
           if [ -n "${COMPONENT}" ]; then
@@ -85,7 +85,7 @@ jobs:
             IMAGE_NAME_SUFFIX=""
             CHART_PATH="dir"
           fi
-          
+
           echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "chart_version=${CHART_VERSION}" >> "$GITHUB_OUTPUT"
           echo "image_repo=${IMAGE_REPO}" >> "$GITHUB_OUTPUT"
@@ -153,4 +153,3 @@ jobs:
           echo '  repository: ghcr.io/agntcy/dir-apiserver${{ needs.prepare.outputs.image_name_suffix }}' >> $GITHUB_STEP_SUMMARY
           echo '  tag: ${{ needs.prepare.outputs.image_tag }}' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-

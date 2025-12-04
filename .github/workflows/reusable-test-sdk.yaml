@@ -9,11 +9,11 @@ on:
       image_repo:
         required: true
         type: string
-        description: 'Image repo to use.'
+        description: "Image repo to use."
       image_tag:
         required: true
         type: string
-        description: 'Image tag to use.'
+        description: "Image tag to use."
 
 permissions:
   id-token: write
@@ -25,12 +25,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
       - name: Login to ghcr.io
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: notused
@@ -53,11 +53,17 @@ jobs:
           done
           docker images
 
+      - name: Load compiled dirctl binary
+        run: |
+          mkdir ./bin
+          cp tmp/artifacts/dirctl ./bin/dirctl
+          chmod +x ./bin/dirctl
+
       - name: Add dependencies for SDKs testing
         env:
           CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test-sdk.yaml@${{ github.ref }}"
         run: |
-          task sdk:deps:common
+          TRY_SKIP_COMPILE=true task sdk:deps:common
           task sdk:deps:cicd:iodc-token-generation >> $GITHUB_ENV
 
       - name: Test Python SDK
@@ -72,12 +78,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
       - name: Login to ghcr.io
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: notused
@@ -88,9 +94,9 @@ jobs:
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
       - name: Setup Node env
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
-          node-version: '24.x'
+          node-version: "24.x"
           registry-url: https://registry.npmjs.org/
           scope: "@agntcy"
 
@@ -107,10 +113,16 @@ jobs:
           done
           docker images
 
+      - name: Load compiled dirctl binary
+        run: |
+          mkdir ./bin
+          cp tmp/artifacts/dirctl ./bin/dirctl
+          chmod +x ./bin/dirctl
+
       - name: Cache npm dependencies
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
-          path: '~/.npm'
+          path: "~/.npm"
           key: node-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             node-${{ runner.os }}-
@@ -119,7 +131,7 @@ jobs:
         env:
           CLIENT_ID: "https://github.com/${{ github.repository }}/.github/workflows/reusable-test-sdk.yaml@${{ github.ref }}"
         run: |
-          task sdk:deps:common
+          TRY_SKIP_COMPILE=true task sdk:deps:common
           task sdk:deps:cicd:iodc-token-generation >> $GITHUB_ENV
 
       - name: Test JavaScript SDK
