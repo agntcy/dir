@@ -768,6 +768,7 @@ tasks:
       # Port-forward dependency services
       - |
         {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }} &
 
       # Delay to ensure services are online
       - sleep 10
