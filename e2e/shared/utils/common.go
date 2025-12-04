@@ -163,28 +163,24 @@ func ResetCLIState() {
 //nolint:errcheck
 func ResetSearchCommandState() {
 	if cmd := searchcmd.Command; cmd != nil {
-		// Reset flags on subcommands (cids, records)
-		for _, subCmd := range cmd.Commands() {
-			if subCmd.Name() == "cids" || subCmd.Name() == "records" {
-				// Reset flags to default values
-				subCmd.Flags().Set("limit", "100")
-				subCmd.Flags().Set("offset", "0")
+		// Reset flags to default values
+		cmd.Flags().Set("format", "cid")
+		cmd.Flags().Set("limit", "100")
+		cmd.Flags().Set("offset", "0")
 
-				// Reset all string array flags
-				resetStringArrayFlag(subCmd, "name")
-				resetStringArrayFlag(subCmd, "version")
-				resetStringArrayFlag(subCmd, "skill-id")
-				resetStringArrayFlag(subCmd, "skill")
-				resetStringArrayFlag(subCmd, "locator")
-				resetStringArrayFlag(subCmd, "module")
-				resetStringArrayFlag(subCmd, "domain-id")
-				resetStringArrayFlag(subCmd, "domain")
-				resetStringArrayFlag(subCmd, "created-at")
-				resetStringArrayFlag(subCmd, "author")
-				resetStringArrayFlag(subCmd, "schema-version")
-				resetStringArrayFlag(subCmd, "module-id")
-			}
-		}
+		// Reset all string array flags
+		resetStringArrayFlag(cmd, "name")
+		resetStringArrayFlag(cmd, "version")
+		resetStringArrayFlag(cmd, "skill-id")
+		resetStringArrayFlag(cmd, "skill")
+		resetStringArrayFlag(cmd, "locator")
+		resetStringArrayFlag(cmd, "module")
+		resetStringArrayFlag(cmd, "domain-id")
+		resetStringArrayFlag(cmd, "domain")
+		resetStringArrayFlag(cmd, "created-at")
+		resetStringArrayFlag(cmd, "author")
+		resetStringArrayFlag(cmd, "schema-version")
+		resetStringArrayFlag(cmd, "module-id")
 	}
 }
 

@@ -44,7 +44,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		recordCID  string
 	)
 
-	ginkgo.Context("search cids command", ginkgo.Ordered, func() {
+	ginkgo.Context("search with format=cid (default)", ginkgo.Ordered, func() {
 		ginkgo.BeforeAll(func() {
 			var err error
 			tempDir, err = os.MkdirTemp("", "search-test")
@@ -271,7 +271,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		})
 	})
 
-	ginkgo.Context("search records command", ginkgo.Ordered, func() {
+	ginkgo.Context("search with format=model", ginkgo.Ordered, func() {
 		ginkgo.BeforeAll(func() {
 			var err error
 			tempDir, err = os.MkdirTemp("", "search-records-test")
