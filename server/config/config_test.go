@@ -124,6 +124,10 @@ func TestConfig(t *testing.T) {
 					WorkerCount:       1,
 					WorkerTimeout:     10 * time.Second,
 				},
+				Metrics: MetricsConfig{
+					Enabled: true,
+					Address: ":9090",
+				},
 			},
 		},
 		{
@@ -176,6 +180,10 @@ func TestConfig(t *testing.T) {
 					SchedulerInterval: publication.DefaultPublicationSchedulerInterval,
 					WorkerCount:       publication.DefaultPublicationWorkerCount,
 					WorkerTimeout:     publication.DefaultPublicationWorkerTimeout,
+				},
+				Metrics: MetricsConfig{
+					Enabled: DefaultMetricsEnabled,
+					Address: DefaultMetricsAddress,
 				},
 			},
 		},

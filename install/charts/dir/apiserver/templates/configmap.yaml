@@ -9,4 +9,9 @@ metadata:
     {{- include "chart.labels" . | nindent 4 }}
 data:
   server.config.yml: |
-    {{- .Values.config | toYaml | nindent 4 }}
+    {{- $config := deepCopy .Values.config }}
+    {{- if .Values.metrics }}
+    {{- $metricsConfig := dict "enabled" .Values.metrics.enabled "address" (printf ":%d" (.Values.metrics.port | int)) }}
+    {{- $_ := set $config "metrics" $metricsConfig }}
+    {{- end }}
+    {{- $config | toYaml | nindent 4 }}

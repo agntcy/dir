@@ -101,6 +101,14 @@ const (
 	// Enables clients to detect dead connections even when idle.
 	// Value: true provides better connection health detection.
 	DefaultPermitWithoutStream = true
+
+	// Metrics configuration.
+
+	// DefaultMetricsEnabled enables Prometheus metrics collection.
+	DefaultMetricsEnabled = true
+
+	// DefaultMetricsAddress is the default listen address for the metrics HTTP server.
+	DefaultMetricsAddress = ":9090"
 )
 
 var logger = logging.Logger("config")
@@ -146,6 +154,9 @@ type Config struct {
 
 	// Events configuration
 	Events events.Config `json:"events,omitempty" mapstructure:"events"`
+
+	// Metrics configuration
+	Metrics MetricsConfig `json:"metrics,omitempty" mapstructure:"metrics"`
 }
 
 // LoggingConfig defines gRPC request/response logging configuration.
@@ -221,6 +232,18 @@ type KeepaliveConfig struct {
 	// Enables clients to detect dead connections proactively.
 	// Default: true
 	PermitWithoutStream bool `json:"permit_without_stream,omitempty" mapstructure:"permit_without_stream"`
+}
+
+// MetricsConfig holds Prometheus metrics configuration.
+type MetricsConfig struct {
+	// Enabled enables Prometheus metrics collection.
+	// Default: true
+	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
+
+	// Address is the HTTP listen address for the metrics endpoint.
+	// The metrics server runs on a separate port from the gRPC server.
+	// Default: ":9090"
+	Address string `json:"address,omitempty" mapstructure:"address"`
 }
 
 // DefaultConnectionConfig returns connection configuration with production-safe defaults.
@@ -462,6 +485,15 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("events.log_published_events")
 	v.SetDefault("events.log_published_events", events.DefaultLogPublishedEvents)
+
+	//
+	// Metrics configuration
+	//
+	_ = v.BindEnv("metrics.enabled")
+	v.SetDefault("metrics.enabled", DefaultMetricsEnabled)
+
+	_ = v.BindEnv("metrics.address")
+	v.SetDefault("metrics.address", DefaultMetricsAddress)
 
 	//
 	// Connection management configuration

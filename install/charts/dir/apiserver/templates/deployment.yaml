@@ -126,6 +126,11 @@ spec:
               containerPort: 8999
               {{- end }}
               protocol: TCP
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+              protocol: TCP
+            {{- end }}
           {{- if or (eq .Values.config.authn.enabled true) (eq .Values.spire.enabled true) }}
           livenessProbe:
             tcpSocket:

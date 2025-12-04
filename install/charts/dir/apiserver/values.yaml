@@ -283,6 +283,27 @@ service:
   type: ClusterIP
   port: 8888
 
+# Prometheus metrics configuration
+# This section configures BOTH the application metrics server AND Kubernetes service
+# The values are automatically injected into the server configuration
+metrics:
+  # Enable Prometheus metrics collection
+  # Default: true (recommended for production)
+  enabled: true
+  
+  # Port for Prometheus metrics endpoint
+  # Used for both the application listen address and Kubernetes service port
+  # Default: 9090
+  port: 9090
+  
+  # ServiceMonitor for Prometheus Operator (optional)
+  # Creates a ServiceMonitor resource for automatic Prometheus discovery
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
 # Routing service exposes P2P networking (separate from API service)
 routingService:
   # Service type for routing/P2P traffic

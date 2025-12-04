@@ -26,6 +26,7 @@ import (
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/healthcheck"
+	"github.com/agntcy/dir/server/metrics"
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
@@ -35,6 +36,7 @@ import (
 	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
@@ -62,6 +64,7 @@ type Server struct {
 	publicationService *publication.Service
 	health             *healthcheck.Checker
 	grpcServer         *grpc.Server
+	metricsServer      *metrics.Server
 }
 
 // buildConnectionOptions creates gRPC server options for connection management.
@@ -179,7 +182,23 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		)
 	}
 
-	// Add gRPC logging interceptors (after recovery and rate limiting, before auth/authz)
+	// Initialize metrics server (if enabled)
+	var metricsServer *metrics.Server
+
+	if cfg.Metrics.Enabled {
+		metricsServer = metrics.New(cfg.Metrics.Address)
+
+		// Add gRPC metrics interceptors (after recovery/rate limit, before logging)
+		// Metrics should capture all requests, independent of logging configuration
+		serverOpts = append(serverOpts,
+			grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+			grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		)
+
+		logger.Info("Metrics enabled", "address", cfg.Metrics.Address)
+	}
+
+	// Add gRPC logging interceptors (after metrics, before auth/authz)
 	grpcLogger := logging.Logger("grpc")
 	loggingOpts := grpclogging.ServerOptions(grpcLogger, cfg.Logging.Verbose)
 	serverOpts = append(serverOpts, loggingOpts...)
@@ -263,6 +282,17 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Register reflection service
 	reflection.Register(grpcServer)
 
+	// Initialize metrics after service registration
+	if metricsServer != nil {
+		// Initialize gRPC metrics with all registered services
+		grpc_prometheus.Register(grpcServer)
+
+		// Register grpc_prometheus metrics with our custom registry
+		metricsServer.Registry().MustRegister(grpc_prometheus.DefaultServerMetrics)
+
+		logger.Info("gRPC metrics registered")
+	}
+
 	return &Server{
 		options:            options,
 		store:              storeAPI,
@@ -275,6 +305,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		publicationService: publicationService,
 		health:             healthChecker,
 		grpcServer:         grpcServer,
+		metricsServer:      metricsServer,
 	}, nil
 }
 
@@ -286,6 +317,10 @@ func (s Server) Routing() types.RoutingAPI { return s.routing }
 
 func (s Server) Database() types.DatabaseAPI { return s.database }
 
+// Close gracefully shuts down all server components.
+// Complexity is acceptable for cleanup functions with independent service shutdowns.
+//
+//nolint:cyclop // Cleanup function requires checking each service independently
 func (s Server) Close(ctx context.Context) {
 	// Stop health check monitoring
 	if s.health != nil {
@@ -301,6 +336,16 @@ func (s Server) Close(ctx context.Context) {
 	if s.eventService != nil {
 		if err := s.eventService.Stop(); err != nil {
 			logger.Error("Failed to stop event service", "error", err)
+		}
+	}
+
+	// Stop metrics server
+	if s.metricsServer != nil {
+		stopCtx, cancel := context.WithTimeout(ctx, 10*time.Second) //nolint:mnd
+		defer cancel()
+
+		if err := s.metricsServer.Stop(stopCtx); err != nil {
+			logger.Error("Failed to stop metrics server", "error", err)
 		}
 	}
 
@@ -343,6 +388,15 @@ func (s Server) Close(ctx context.Context) {
 }
 
 func (s Server) start(ctx context.Context) error {
+	// Start metrics server
+	if s.metricsServer != nil {
+		if err := s.metricsServer.Start(); err != nil {
+			return fmt.Errorf("failed to start metrics server: %w", err)
+		}
+
+		logger.Info("Metrics server started")
+	}
+
 	// Start sync service
 	if s.syncService != nil {
 		if err := s.syncService.Start(ctx); err != nil {
