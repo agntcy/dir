@@ -36,7 +36,6 @@ import (
 	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
@@ -190,10 +189,8 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 
 		// Add gRPC metrics interceptors (after recovery/rate limit, before logging)
 		// Metrics should capture all requests, independent of logging configuration
-		serverOpts = append(serverOpts,
-			grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-			grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		)
+		metricsOpts := metrics.ServerOptions()
+		serverOpts = append(serverOpts, metricsOpts...)
 
 		logger.Info("Metrics enabled", "address", cfg.Metrics.Address)
 	}
@@ -284,11 +281,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 
 	// Initialize metrics after service registration
 	if metricsServer != nil {
-		// Initialize gRPC metrics with all registered services
-		grpc_prometheus.Register(grpcServer)
-
-		// Register grpc_prometheus metrics with our custom registry
-		metricsServer.Registry().MustRegister(grpc_prometheus.DefaultServerMetrics)
+		metrics.InitializeMetrics(grpcServer, metricsServer)
 
 		logger.Info("gRPC metrics registered")
 	}
