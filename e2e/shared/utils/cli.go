@@ -55,7 +55,7 @@ func (c *CLI) Delete(cid string) *CommandBuilder {
 func (c *CLI) Search() *SearchBuilder {
 	return &SearchBuilder{
 		CommandBuilder:   c.Command("search"),
-		subcommand:       "cids", // Default to cids subcommand
+		format:           "cid", // Default to cid format
 		names:            []string{},
 		versions:         []string{},
 		skillIDs:         []string{},
@@ -77,7 +77,7 @@ func (c *CLI) Search() *SearchBuilder {
 func (c *CLI) SearchRecords() *SearchBuilder {
 	return &SearchBuilder{
 		CommandBuilder:   c.Command("search"),
-		subcommand:       "records", // Use records subcommand
+		format:           "record", // Use record format for full records
 		names:            []string{},
 		versions:         []string{},
 		skillIDs:         []string{},
@@ -414,7 +414,7 @@ func (c *CommandBuilder) ShouldEventuallySucceed(timeout time.Duration) string {
 // SearchBuilder extends CommandBuilder with search-specific methods.
 type SearchBuilder struct {
 	*CommandBuilder
-	subcommand       string // "cids" or "records"
+	format           string // "cid" or "record"
 	names            []string
 	versions         []string
 	skillIDs         []string
@@ -523,8 +523,8 @@ func (s *SearchBuilder) WithArgs(args ...string) *SearchBuilder {
 }
 
 func (s *SearchBuilder) Execute() (string, error) {
-	// Reset args and start with subcommand (cids or records)
-	s.args = []string{s.subcommand}
+	// Reset args and add format flag
+	s.args = []string{"--format", s.format}
 
 	// Build search arguments using direct field flags
 	for _, name := range s.names {

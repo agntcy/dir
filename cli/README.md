@@ -63,11 +63,11 @@ All `dirctl` commands support the `--output` (or `-o`) flag to control output fo
 
 ```bash
 # Human-readable (default)
-dirctl search cids --skill "AI"
+dirctl search --skill "AI"
 
 # JSON output (pretty-printed)
-dirctl search cids --skill "AI" --output json
-dirctl search cids --skill "AI" -o json  # short form
+dirctl search --skill "AI" --output json
+dirctl search --skill "AI" -o json  # short form
 
 # JSONL output (streaming-friendly)
 dirctl events listen --output jsonl | jq -c .
@@ -91,7 +91,7 @@ dirctl routing search --skill "AI" --output json | jq '.[].peer.addrs[]'
 dirctl events listen --output jsonl | jq -c 'select(.type == "EVENT_TYPE_RECORD_PUSHED")'
 
 # Extract CIDs for processing
-dirctl search cids --skill "AI" --output json | jq -r '.[]' | while read cid; do
+dirctl search --skill "AI" --output json | jq -r '.[]' | while read cid; do
   dirctl pull "$cid"
 done
 ```
@@ -263,51 +263,49 @@ dirctl routing info
 
 ### 🔍 **Search & Discovery**
 
-#### `dirctl search cids [flags]`
-Search for record CIDs matching the given criteria. Efficient for piping to other commands.
+#### `dirctl search [flags]`
+Search for records in the directory. Use `--format` to control output type.
+
+**Format options:**
+- `--format cid` (default) - Return only record CIDs (efficient for piping)
+- `--format record` - Return full record data
 
 **Examples:**
 ```bash
-# Search by record name
-dirctl search cids --name "my-agent"
+# Search by record name (returns CIDs by default)
+dirctl search --name "my-agent"
 
 # Search by version
-dirctl search cids --version "v1.0.0"
+dirctl search --version "v1.0.0"
 
 # Search by skill name
-dirctl search cids --skill "natural_language_processing"
+dirctl search --skill "natural_language_processing"
 
 # Search by skill ID
-dirctl search cids --skill-id "10201"
+dirctl search --skill-id "10201"
 
 # Complex search with multiple criteria
-dirctl search cids --limit 10 --offset 0 \
+dirctl search --limit 10 --offset 0 \
   --name "my-agent" \
   --skill "natural_language_processing/natural_language_generation/text_completion" \
   --locator "docker-image:https://example.com/image"
 
 # Wildcard search examples
-dirctl search cids --name "web*" --version "v1.*"
-dirctl search cids --skill "python*" --skill "*script"
+dirctl search --name "web*" --version "v1.*"
+dirctl search --skill "python*" --skill "*script"
 
 # Pipe CIDs to other commands
-dirctl search cids --name "web*" --output raw | xargs -I {} dirctl pull {}
-```
+dirctl search --name "web*" --output raw | xargs -I {} dirctl pull {}
 
-#### `dirctl search records [flags]`
-Search for full records matching the given criteria. Returns complete record data.
-
-**Examples:**
-```bash
 # Get full records as JSON
-dirctl search records --name "my-agent" --output json
+dirctl search --name "my-agent" --format record --output json
 
 # Search with comparison operators
-dirctl search records --version ">=1.0.0" --version "<2.0.0"
-dirctl search records --created-at ">=2024-01-01"
+dirctl search --version ">=1.0.0" --version "<2.0.0" --format record
+dirctl search --created-at ">=2024-01-01"
 ```
 
-**Flags (for both cids and records):**
+**Flags:**
 - `--name <name>` - Search by record name (repeatable, supports wildcards)
 - `--version <version>` - Search by version (repeatable, supports wildcards and comparison operators)
 - `--skill <skill>` - Search by skill name (repeatable, supports wildcards)
@@ -648,7 +646,7 @@ dirctl import --type=mcp \
   --debug
 
 # 5. Search imported records
-dirctl search cids --module "runtime/mcp"
+dirctl search --module "runtime/mcp"
 ```
 
 ### 🔄 **Synchronization Workflow**
