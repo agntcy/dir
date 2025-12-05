@@ -34,7 +34,7 @@ type options struct {
 func registerFlags(cmd *cobra.Command) {
 	flags := cmd.Flags()
 
-	flags.StringVar(&opts.Format, "format", "cid", "Output format: cid (default) or model")
+	flags.StringVar(&opts.Format, "format", "cid", "Output format: cid (default) or record")
 	flags.Uint32Var(&opts.Limit, "limit", 100, "Maximum number of results to return (default: 100)") //nolint:mnd
 	flags.Uint32Var(&opts.Offset, "offset", 0, "Pagination offset (default: 0)")
 

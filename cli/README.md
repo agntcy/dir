@@ -268,7 +268,7 @@ Search for records in the directory. Use `--format` to control output type.
 
 **Format options:**
 - `--format cid` (default) - Return only record CIDs (efficient for piping)
-- `--format model` - Return full record data
+- `--format record` - Return full record data
 
 **Examples:**
 ```bash
@@ -298,10 +298,10 @@ dirctl search --skill "python*" --skill "*script"
 dirctl search --name "web*" --output raw | xargs -I {} dirctl pull {}
 
 # Get full records as JSON
-dirctl search --name "my-agent" --format model --output json
+dirctl search --name "my-agent" --format record --output json
 
 # Search with comparison operators
-dirctl search --version ">=1.0.0" --version "<2.0.0" --format model
+dirctl search --version ">=1.0.0" --version "<2.0.0" --format record
 dirctl search --created-at ">=2024-01-01"
 ```
 

@@ -22,7 +22,7 @@ var Command = &cobra.Command{
 
 The --format flag controls what is returned:
 - cid: Return only record CIDs (default, efficient for piping)
-- model: Return full record data
+- record: Return full record data
 
 Examples:
 
@@ -30,7 +30,7 @@ Examples:
    dirctl search --name "web*" | xargs -I {} dirctl pull {}
 
 2. Search and get full records:
-   dirctl search --name "web*" --format model --output json
+   dirctl search --name "web*" --format record --output json
 
 3. Wildcard search examples:
    dirctl search --name "web*"
@@ -69,10 +69,10 @@ func runSearchCommand(cmd *cobra.Command) error {
 	switch opts.Format {
 	case "cid":
 		return searchCIDs(cmd, c, queries)
-	case "model":
+	case "record":
 		return searchRecords(cmd, c, queries)
 	default:
-		return fmt.Errorf("invalid format: %s (valid values: cid, model)", opts.Format)
+		return fmt.Errorf("invalid format: %s (valid values: cid, record)", opts.Format)
 	}
 }
 

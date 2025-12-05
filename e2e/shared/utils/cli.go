@@ -77,7 +77,7 @@ func (c *CLI) Search() *SearchBuilder {
 func (c *CLI) SearchRecords() *SearchBuilder {
 	return &SearchBuilder{
 		CommandBuilder:   c.Command("search"),
-		format:           "model", // Use model format for full records
+		format:           "record", // Use record format for full records
 		names:            []string{},
 		versions:         []string{},
 		skillIDs:         []string{},
@@ -414,7 +414,7 @@ func (c *CommandBuilder) ShouldEventuallySucceed(timeout time.Duration) string {
 // SearchBuilder extends CommandBuilder with search-specific methods.
 type SearchBuilder struct {
 	*CommandBuilder
-	format           string // "cid" or "model"
+	format           string // "cid" or "record"
 	names            []string
 	versions         []string
 	skillIDs         []string
