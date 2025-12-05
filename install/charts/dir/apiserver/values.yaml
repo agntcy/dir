@@ -178,25 +178,6 @@ config:
     #     min_time: 30s
     #     permit_without_stream: false
 
-  # OASF API validation configuration
-  # Configures schema validation using OASF schema server
-  oasf_api_validation:
-    # Schema URL for API-based validation
-    # Default: https://schema.oasf.outshift.com (public OASF server)
-    # When OASF subchart is enabled in parent chart, set to:
-    #   http://dir-oasf.dir-server.svc.cluster.local:8080
-    # Leave empty to use default public server
-    schema_url: ""
-    
-    # Disable API validation (use embedded schema validation instead)
-    # When true, uses embedded schemas for validation (no HTTP calls to OASF server)
-    # Default: false
-    disable: false
-    
-    # Use strict validation mode
-    # Default: true
-    strict_mode: true
-
   # Rate limiting configuration
   # Protects the server from abuse and resource exhaustion using token bucket algorithm
   ratelimit:

@@ -30,3 +30,10 @@ dependencies:
   - name: zot
     version: "0.1.91"
     repository: "http://zotregistry.dev/helm-charts"
+  # OASF server subchart (OPTIONAL - opt-in only)
+  # Only installed when explicitly enabled via: oasf.enabled: true
+  # Default: disabled (oasf.enabled: false in values.yaml)
+  - name: oasf
+    version: v0.5.1
+    repository: oci://ghcr.io/agntcy/oasf/helm-charts
+    condition: oasf.enabled

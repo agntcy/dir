@@ -2,5 +2,8 @@ dependencies:
 - name: zot
   repository: http://zotregistry.dev/helm-charts
   version: 0.1.91
-digest: sha256:24d2844deea724f23b0b51b488f8039068561deeed417c7d68eb176ef987d04a
-generated: "2025-12-05T14:08:49.124902Z"
+- name: oasf
+  repository: oci://ghcr.io/agntcy/oasf/helm-charts
+  version: v0.5.1
+digest: sha256:1a5b416ad5d7c7ad0341f01892aa5faba3c307a089d27f078ce7b8f8e0fa94d7
+generated: "2025-12-09T12:56:09.43071+01:00"

@@ -229,17 +229,12 @@ apiserver:
       #     burst: 400
 
     # OASF API validation configuration
-    # Configures the directory server to use an OASF schema server for validation
     oasf_api_validation:
       # Schema URL for API-based validation
       # Default: https://schema.oasf.outshift.com (public OASF server)
-      
-      # When OASF subchart is enabled (oasf.enabled: true), configure this to use the local instance:
-      #   schema_url: "http://dir-oasf.dir-server.svc.cluster.local:8080"
-      
-      # The OASF service will be named: {{ .Release.Name }}-oasf.{{ .Release.Namespace }}.svc.cluster.local
-      # For default release name "dir" in namespace "dir-server", this becomes:
-      #   schema_url: "http://dir-oasf.dir-server.svc.cluster.local:8080"
+      # To use the OASF instance deployed with this chart (when apiserver.oasf.enabled: true):
+      #   schema_url: "http://<release-name>-ingress-controller.<namespace>.svc.cluster.local"
+      # Example: schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
       schema_url: ""
       
       # Disable API validation (use embedded schema validation instead)
@@ -334,6 +329,51 @@ apiserver:
     extraArgs:
       - "serve"
       - "/etc/zot/config.json"
+
+  # OASF server configuration (subchart) - OPTIONAL
+  # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
+  # When enabled, deploys an OASF schema server instance alongside the directory server.
+  # OASF server subchart configuration
+  oasf:
+    enabled: false
+    localDeploy: true  # Creates IngressClass resource for ingress controller
+    
+    image:
+      repository: ghcr.io/agntcy/oasf-server
+      versions:
+        - server: v0.7.2
+          schema: 0.7.0
+        - server: v0.8.1
+          schema: 0.8.0
+          default: true
+        # - server: latest
+        #   schema: 0.9.0-dev
+      pullPolicy: IfNotPresent
+    
+    service:
+      type: ClusterIP
+      port: 8080
+    
+    config:
+      server_port: 8080
+    
+    env: {}
+    volumes: []
+    volumeMounts: []
+    
+    ingress:
+      enabled: true
+      className: "nginx"
+      annotations:
+        nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      hosts:
+        - host: localhost
+        - host: dir-ingress-controller.dir-server.svc.cluster.local
+      tls: []
+      service:
+        type: ClusterIP
+    
+    resources: {}
 
   # Secrets configuration
   # Choose ONE of two methods:
