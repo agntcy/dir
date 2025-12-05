@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.6] - 2025-12-05
+
+### Key Highlights
+
+This patch release adds observability improvements, refactors search functionality, and updates configuration validation.
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.5.6  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.5.6  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.5.6  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.5.6  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.5.6  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.5.6  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.5.6  | dirctl >= v0.5.0            |
+
+### Added
+- **Observability**: Prometheus metrics support with ServiceMonitor and gRPC interceptors (#757)
+- **CLI**: Add `--format` flag to search command for output control (#747, #759)
+
+### Changed
+- **Refactor**: Improve local search implementation and testing (#747)
+- **Configuration**: Update OASF API validation environment variables (#754)
+
+### Fixed
+- **CI**: Avoid PR label duplication (#755)
+- **CI**: Prevent disk space issues in CI runners (#749)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.5.5...v0.5.6)
+
+---
+
 ## [v0.5.5] - 2025-12-01
 
 ### Key Highlights
