@@ -44,7 +44,7 @@ jobs:
             version: ${{ needs.get-version.outputs.version }}
           - image: zot
             repo: ghcr.io/project-zot/zot
-            version: v2.1.10
+            version: v2.1.11
           - image: spire-server
             repo: ghcr.io/spiffe/spire-server
             version: 1.13.3
