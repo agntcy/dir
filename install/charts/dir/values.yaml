@@ -228,6 +228,29 @@ apiserver:
       #     rps: 200     # Higher limit for read operations
       #     burst: 400
 
+    # OASF API validation configuration
+    # Configures the directory server to use an OASF schema server for validation
+    oasf_api_validation:
+      # Schema URL for API-based validation
+      # Default: https://schema.oasf.outshift.com (public OASF server)
+      
+      # When OASF subchart is enabled (oasf.enabled: true), configure this to use the local instance:
+      #   schema_url: "http://dir-oasf.dir-server.svc.cluster.local:8080"
+      
+      # The OASF service will be named: {{ .Release.Name }}-oasf.{{ .Release.Namespace }}.svc.cluster.local
+      # For default release name "dir" in namespace "dir-server", this becomes:
+      #   schema_url: "http://dir-oasf.dir-server.svc.cluster.local:8080"
+      schema_url: ""
+      
+      # Disable API validation (use embedded schema validation instead)
+      # When true, uses embedded schemas for validation (no HTTP calls to OASF server)
+      # Default: false
+      disable: false
+      
+      # Use strict validation mode
+      # Default: true
+      strict_mode: true
+
   # SPIRE configuration
   spire:
     enabled: false
