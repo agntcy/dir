@@ -124,7 +124,7 @@ func SignBlobWithOIDC(_ context.Context, opts *SignBlobOIDCOptions) (*SignBlobOI
 		}
 
 		fulcioOpts := &sign.FulcioOptions{
-			BaseURL: fulcioURL,
+			BaseURL: fulcioURL.URL,
 			Timeout: DefaultFulcioTimeout,
 			Retries: 1,
 		}
@@ -142,7 +142,7 @@ func SignBlobWithOIDC(_ context.Context, opts *SignBlobOIDCOptions) (*SignBlobOI
 
 		for _, tsaURL := range tsaURLs {
 			tsaOpts := &sign.TimestampAuthorityOptions{
-				URL:     tsaURL,
+				URL:     tsaURL.URL,
 				Timeout: DefaultTimestampAuthorityTimeout,
 				Retries: 1,
 			}
@@ -158,7 +158,7 @@ func SignBlobWithOIDC(_ context.Context, opts *SignBlobOIDCOptions) (*SignBlobOI
 
 		for _, rekorURL := range rekorURLs {
 			rekorOpts := &sign.RekorOptions{
-				BaseURL: rekorURL,
+				BaseURL: rekorURL.URL,
 				Timeout: DefaultRekorTimeout,
 				Retries: 1,
 			}
