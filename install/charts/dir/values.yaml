@@ -228,6 +228,29 @@ apiserver:
       #     rps: 200     # Higher limit for read operations
       #     burst: 400
 
+    # OASF API validation configuration
+    # Configures the directory server to use an OASF schema server for validation
+    oasf_api_validation:
+      # Schema URL for API-based validation
+      # Default: https://schema.oasf.outshift.com (public OASF server)
+      
+      # When OASF subchart is enabled (oasf.enabled: true), configure this to use the local instance:
+      #   schema_url: "http://dir-oasf.dir-server.svc.cluster.local:8080"
+      
+      # The OASF service will be named: {{ .Release.Name }}-oasf.{{ .Release.Namespace }}.svc.cluster.local
+      # For default release name "dir" in namespace "dir-server", this becomes:
+      #   schema_url: "http://dir-oasf.dir-server.svc.cluster.local:8080"
+      schema_url: ""
+      
+      # Disable API validation (use embedded schema validation instead)
+      # When true, uses embedded schemas for validation (no HTTP calls to OASF server)
+      # Default: false
+      disable: false
+      
+      # Use strict validation mode
+      # Default: true
+      strict_mode: true
+
   # SPIRE configuration
   spire:
     enabled: false
@@ -238,6 +261,77 @@ apiserver:
       #   bundleEndpointURL: https://0.0.0.0:8081
       #   bundleEndpointProfile:
       #     type: https_web
+
+  # OASF server configuration (subchart) - OPTIONAL
+  # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
+  # When enabled, deploys an OASF schema server instance alongside the directory server.
+  # The OASF subchart will only be installed if this is explicitly set to true.
+  oasf:
+    # Enable OASF server deployment
+    # Default: false (OASF is opt-in only - will not be installed unless explicitly enabled)
+    enabled: false
+    
+    # OASF server image configuration
+    # For multi-version support, use the versions array instead of tag
+    image:
+      repository: ghcr.io/agntcy/oasf-server
+      # Multi-version configuration: deploy multiple schema versions simultaneously
+      # Each entry creates a separate deployment for that schema version
+      versions: []
+        # Example multi-version configuration:
+        # - server: v0.3.3
+        #   schema: 0.3.1
+        #   schema: 0.7.0
+        # - server: v0.8.0
+        #   schema: 0.8.0
+        # - server: latest
+        #   schema: 0.9.0-dev
+        #   default: true  # Mark one version as default
+      pullPolicy: IfNotPresent
+    
+    # OASF service configuration
+    service:
+      type: ClusterIP
+      port: 8080
+    
+    # OASF server port configuration
+    config:
+      server_port: 8080
+    
+    # Environment variables for OASF server
+    env: {}
+      # SCHEMA_DIR: /app/schema
+    
+    # Volumes for schema data (optional)
+    volumes: []
+    #  - name: schema
+    #    hostPath:
+    #      path: /path/on/host
+    #      type: Directory
+    
+    # Volume mounts for schema data (optional)
+    volumeMounts: []
+    #  - name: schema
+    #    mountPath: /app/schema
+    
+    # Ingress configuration (optional)
+    ingress:
+      enabled: false
+      className: ""
+      hosts:
+        - host: oasf.local
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
+    
+    # Resource limits (optional)
+    resources: {}
+      # limits:
+      #   cpu: 500m
+      #   memory: 512Mi
+      # requests:
+      #   cpu: 100m
+      #   memory: 128Mi
 
   # Zot registry configuration (subchart)
   zot:

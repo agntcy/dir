@@ -30,3 +30,11 @@ dependencies:
   - name: apiserver
     version: 0.1.0
     repository: file://apiserver
+  # OASF server subchart (OPTIONAL - opt-in only)
+  # Published as OCI artifact in GitHub Container Registry
+  # Only installed when explicitly enabled via: oasf.enabled: true
+  # Default: disabled (oasf.enabled: false in values.yaml)
+  - name: oasf
+    version: 0.5.1
+    repository: oci://ghcr.io/agntcy/oasf/helm-charts/oasf
+    condition: oasf.enabled
