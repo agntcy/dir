@@ -49,24 +49,31 @@ listen_address: "0.0.0.0:8888"
 
 #### Testing with Local OASF Server
 
-To test with a local OASF instance (e.g., for schema development or debugging):
+To test with a local OASF instance deployed alongside the directory server:
 
-```bash
-# 1. Deploy OASF (in separate terminal/repo)
-cd /path/to/agntcy/oasf
-HELM_VALUES_PATH=./install/charts/oasf/values-test-versions.yaml task up
+1. **Enable OASF in Helm values** - Edit `install/charts/dir/values.yaml`:
+   ```yaml
+   apiserver:
+     oasf:
+       enabled: true
+   ```
 
-# 2. Remove host restriction from OASF ingress (allows cross-cluster access)
-kubectl --context kind-test-oasf-cluster patch ingress oasf-api -p '{"spec":{"rules":[{"http":{"paths":[{"path":"/api/0.8.0(/|$)(.*)","pathType":"ImplementationSpecific","backend":{"service":{"name":"oasf-0-8-0","port":{"number":8080}}}},{"path":"/api(/|$)(.*)","pathType":"ImplementationSpecific","backend":{"service":{"name":"oasf-0-8-0","port":{"number":8080}}}}]}}]}}'
+2. **Set schema URL to use the deployed OASF instance** - In the same file, set:
+   ```yaml
+   apiserver:
+     config:
+       oasf_api_validation:
+         schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
+   ```
+   Replace `dir` with your Helm release name and `dir-server` with your namespace if different.
 
-# 3. Get OASF node IP and deploy Directory
-cd /path/to/agntcy/dir
-OASF_IP=$(docker inspect test-oasf-cluster-control-plane -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
-task build
-task deploy:local DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL=http://${OASF_IP}:30080
-```
+3. **Deploy**:
+   ```bash
+   task build
+   task deploy:local
+   ```
 
-**Note:** Update `oasf/install/charts/oasf/values-test-versions.yaml` with desired OASF versions before deploying. The ingress patch removes the host restriction to allow cross-cluster access.
+The OASF instance will be deployed as a subchart in the same namespace and automatically configured for multi-version routing via ingress.
 
 ### Other Configuration Options
 
