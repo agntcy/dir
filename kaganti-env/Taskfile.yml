@@ -1,0 +1,148 @@
+# Install Task: https://taskfile.dev/docs/installation
+
+version: "3"
+
+vars:
+  MODEL_NAME: llama3.2:3b-instruct-fp16
+  REPOSITORY_URL: https://github.com/kagenti/kagenti.git
+
+tasks:
+  default:
+    desc: List all available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  deploy:
+    desc: Run all tasks
+    requires:
+      vars:
+        - GITHUB_USER
+        - GITHUB_TOKEN
+        - GITHUB_EMAIL
+    cmds:
+      - task ollama:check
+      - task ollama-model:download
+      - task clone-repository
+      - task kagenti:add-environment-variables
+      - task kagenti:patch-installer
+      - task kagenti:deploy-environment
+      - task kagenti:create-ghcr-secret
+      - task kagenti:weather-service:deploy
+      - task kagenti:weather-mcp-tool:deploy
+
+  cleanup:
+    desc: Cleanup
+    cmds:
+      - kind delete cluster --name agent-platform
+      - rm -rf ./kagenti
+
+  ollama:check:
+    desc: Check if Ollama is installed
+    cmd: |
+      ollama --version > /dev/null || (echo "Ollama is not installed. Please install it from https://ollama.com/download" && exit 1)
+
+  ollama-model:download:
+    desc: Download Ollama model
+    cmd: |
+      ollama pull {{.MODEL_NAME}}
+
+  clone-repository:
+    desc: Clone repository
+    cmd: |
+      if [[ ! -d ./kagenti ]]; then git clone {{.REPOSITORY_URL}}; fi
+
+  kagenti:add-environment-variables:
+    desc: Add kagenti environment variables
+    dir: ./kagenti/kagenti/installer
+    requires:
+      vars:
+        - GITHUB_USER
+        - GITHUB_TOKEN
+        - GITHUB_EMAIL
+    cmd: |
+      cat <<EOF > ./app/.env
+      GITHUB_USER={{ .GITHUB_USER }}
+      GITHUB_TOKEN={{ .GITHUB_TOKEN }}
+      AGENT_NAMESPACES=default
+      DOMAIN_NAME=localtest.me
+
+      EOF
+
+  kagenti:patch-installer:
+    desc: Patch kagenti installer
+    dir: ./kagenti/kagenti/installer
+    cmd: |
+      sed -i '' '/docker.*min.*max/ s/29\.0\.0/29.1.2/' ./app/config.py
+
+  kagenti:deploy-environment:
+    desc: Deploy kagenti environment
+    dir: ./kagenti/kagenti/installer
+    cmd: |
+      uv run kagenti-installer \
+      --skip-install keycloak \
+      --skip-install mcp_gateway \
+      --skip-install registry \
+      --skip-install tekton \
+      --skip-install addons \
+      --skip-install ui \
+      --skip-install metrics_server \
+      --skip-install inspector \
+      --skip-install toolhive \
+      --silent
+
+  kagenti:create-ghcr-secret:
+    desc: Create GHCR secret for image pulling
+    requires:
+      vars:
+        - GITHUB_USER
+        - GITHUB_TOKEN
+        - GITHUB_EMAIL
+    cmd: |
+      kubectl create secret docker-registry ghcr-login-secret \
+      --docker-server=https://ghcr.io \
+      --docker-username="{{ .GITHUB_USER }}" \
+      --docker-password="{{ .GITHUB_TOKEN }}" \
+      --docker-email="{{ .GITHUB_EMAIL }}"
+
+  kagenti:weather-service:deploy:
+    desc: Deploy weather service
+    cmds:
+      - kubectl apply -f weather-service.yaml
+      - kubectl wait --for=condition=Ready components/weather-service --timeout=60s
+
+  kagenti:weather-mcp-tool:deploy:
+    desc: Deploy weather mcp tool
+    cmds:
+      - kubectl apply -f weather-mcp-tool.yaml
+      - kubectl wait --for=condition=Ready components/weather-tool --timeout=60s
+
+  kagenti:weather-service:port-forward:
+    desc: Port forward weather service
+    cmds:
+      - kubectl port-forward services/weather-service 8000
+
+  kagenti:weather-service:call:
+    desc: Call weather service with curl
+    vars:
+      MESSAGE: '{{ .MESSAGE | default "What is the weather in Budapest?" }}'
+    cmd: |
+      curl -X POST http://localhost:8000 \
+       -H "Content-Type: application/json" \
+       -d '{
+         "jsonrpc": "2.0",
+         "id": "1",
+         "method": "message/send",
+         "params": {
+           "message": {
+             "role": "user",
+             "messageId": "msg-123456",
+             "parts": [
+               {
+                 "kind": "text",
+                 "text": "{{ .MESSAGE }}"
+               }
+             ]
+           }
+         }
+       }'

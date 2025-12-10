@@ -1,0 +1,21 @@
+apiVersion: kagenti.operator.dev/v1alpha1
+kind: Component
+metadata:
+  name: weather-tool
+spec:
+  deployer:
+    kubernetes:
+      imageSpec:
+        image: weather-tool
+        imageRegistry: ghcr.io/arpad-csepi/kagenti
+        imageTag: v0.0.1
+        imagePullSecrets:
+          - name: ghcr-login-secret
+      servicePorts:
+        - name: http
+          port: 8000
+          protocol: TCP
+          targetPort: 8000
+  suspend: false
+  tool:
+    toolType: MCP

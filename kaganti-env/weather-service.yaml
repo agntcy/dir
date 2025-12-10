@@ -1,0 +1,28 @@
+apiVersion: kagenti.operator.dev/v1alpha1
+kind: Component
+metadata:
+  name: weather-service
+spec:
+  agent: {}
+  deployer:
+    # NOTE: Defaults are the same in the image
+    # env:
+    #   - name: MCP_URL
+    #     value: http://weather-tool:8000/mcp
+    #   - name: LLM_API_BASE
+    #     value: http://host.docker.internal:11434/v1
+    #   - name: LLM_MODEL
+    #     value: llama3.2:3b-instruct-fp16
+    kubernetes:
+      imageSpec:
+        image: weather-service
+        imageRegistry: ghcr.io/arpad-csepi/kagenti
+        imageTag: v0.0.1
+        imagePullSecrets:
+          - name: ghcr-login-secret
+      servicePorts:
+        - name: http
+          port: 8000
+          protocol: TCP
+          targetPort: 8000
+  suspend: false
