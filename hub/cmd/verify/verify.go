@@ -18,7 +18,7 @@ import (
 	"github.com/agntcy/dir/hub/sessionstore"
 	authUtils "github.com/agntcy/dir/hub/utils/auth"
 	cosignutils "github.com/agntcy/dir/utils/cosign"
-	sigs "github.com/sigstore/cosign/v2/pkg/signature"
+	sigs "github.com/sigstore/cosign/v3/pkg/signature"
 	"github.com/spf13/cobra"
 )
 

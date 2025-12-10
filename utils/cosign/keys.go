@@ -18,8 +18,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/sigstore/cosign/v2/pkg/cosign"
-	"github.com/sigstore/cosign/v2/pkg/cosign/env"
+	"github.com/sigstore/cosign/v3/pkg/cosign"
+	"github.com/sigstore/cosign/v3/pkg/cosign/env"
 	protocommon "github.com/sigstore/protobuf-specs/gen/pb-go/common/v1"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 )
@@ -48,7 +48,7 @@ func LoadKeypair(privateKeyBytes []byte, pw []byte) (*Keypair, error) {
 	}
 
 	// Get public key from the private key
-	v, err := cosign.LoadPrivateKey(privateKeyBytes, pw)
+	v, err := cosign.LoadPrivateKey(privateKeyBytes, pw, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load private key: %w", err)
 	}
