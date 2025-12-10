@@ -15,7 +15,7 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	cosignutils "github.com/agntcy/dir/utils/cosign"
-	sigs "github.com/sigstore/cosign/v2/pkg/signature"
+	sigs "github.com/sigstore/cosign/v3/pkg/signature"
 )
 
 // Verify verifies the signature of the record.

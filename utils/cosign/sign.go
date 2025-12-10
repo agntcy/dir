@@ -15,10 +15,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/sigstore/cosign/v2/pkg/cosign"
-	"github.com/sigstore/cosign/v2/pkg/oci/mutate"
-	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
-	"github.com/sigstore/cosign/v2/pkg/oci/static"
+	"github.com/sigstore/cosign/v3/pkg/cosign"
+	"github.com/sigstore/cosign/v3/pkg/oci/mutate"
+	ociremote "github.com/sigstore/cosign/v3/pkg/oci/remote"
+	"github.com/sigstore/cosign/v3/pkg/oci/static"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/sign"
@@ -206,7 +206,7 @@ type SignBlobKeyResult struct {
 func SignBlobWithKey(_ context.Context, opts *SignBlobKeyOptions) (*SignBlobKeyResult, error) {
 	payload := bytes.NewReader(opts.Payload)
 
-	sv, err := cosign.LoadPrivateKey(opts.PrivateKey, opts.Password)
+	sv, err := cosign.LoadPrivateKey(opts.PrivateKey, opts.Password, nil)
 	if err != nil {
 		return nil, fmt.Errorf("loading private key: %w", err)
 	}
