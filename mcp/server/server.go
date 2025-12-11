@@ -206,6 +206,88 @@ Use this tool when you need to convert OASF records to other format specificatio
 		`),
 	}, tools.ExportRecord)
 
+	// Add tool for deploying agents to Kubernetes via Kagenti operator
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_kagenti_deploy",
+		Description: strings.TrimSpace(`
+Deploys a Kagenti Agent CR to Kubernetes.
+This tool takes a pre-built Kagenti Agent Custom Resource as a JSON string
+and applies it to the Kubernetes cluster.
+
+**Prerequisites**:
+- Kagenti operator must be installed in the cluster
+- Valid kubeconfig or in-cluster configuration
+
+**Input**:
+- agent_json: Marshalled Kagenti Agent CR as JSON string (required)
+- namespace: Kubernetes namespace to deploy to (default: "default")
+- replicas: Number of pod replicas (default: 1)
+
+**Output**:
+- agent_name: Name of the created/updated Agent CR
+- namespace: Namespace where deployed
+- created: True if created, false if updated
+
+The Agent CR JSON must have apiVersion "agent.kagenti.dev/v1alpha1" and kind "Agent".
+Use other tools to pull OASF records and transform them into Agent CRs before deploying.
+		`),
+	}, tools.DeployKagenti)
+
+	// Add tool for updating agents deployed via Kagenti operator
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_kagenti_update",
+		Description: strings.TrimSpace(`
+Updates an existing Kagenti Agent CR in Kubernetes.
+This tool allows patching specific fields of a deployed agent without
+requiring the full Agent CR JSON.
+
+**Prerequisites**:
+- Kagenti operator must be installed in the cluster
+- Valid kubeconfig or in-cluster configuration
+- The Agent CR must already exist
+
+**Input**:
+- agent_name: Name of the Agent CR to update (required)
+- namespace: Kubernetes namespace (default: "default")
+- replicas: New number of pod replicas (optional)
+- image: New container image URL (optional)
+
+At least one of replicas or image must be provided.
+
+**Output**:
+- agent_name: Name of the updated Agent CR
+- namespace: Namespace where the agent is deployed
+- updated_fields: List of fields that were updated
+
+Use this tool to scale agents or update their container images.
+		`),
+	}, tools.UpdateKagenti)
+
+	// Add tool for deleting agents deployed via Kagenti operator
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_kagenti_delete",
+		Description: strings.TrimSpace(`
+Deletes a Kagenti Agent CR from Kubernetes.
+This tool removes a deployed agent by its name.
+
+**Prerequisites**:
+- Kagenti operator must be installed in the cluster
+- Valid kubeconfig or in-cluster configuration
+- The Agent CR must exist
+
+**Input**:
+- agent_name: Name of the Agent CR to delete (required)
+- namespace: Kubernetes namespace (default: "default")
+
+**Output**:
+- agent_name: Name of the deleted Agent CR
+- namespace: Namespace where the agent was deployed
+- deleted: True if successfully deleted
+
+Use this tool to remove agents that are no longer needed.
+		`),
+	}, tools.DeleteKagenti)
+
 	// Add tool for importing records from other formats to OASF
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_oasf_import_record",
