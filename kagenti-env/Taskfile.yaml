@@ -1,0 +1,208 @@
+# https://taskfile.dev
+version: '3'
+
+vars:
+  CLUSTER_NAME: '{{.CLUSTER_NAME | default "kagenti"}}'
+  NAMESPACE: '{{.NAMESPACE | default "kagenti-system"}}'
+  HELM_RELEASE: '{{.HELM_RELEASE | default "kagenti-operator"}}'
+  CHART_VERSION: '{{.CHART_VERSION | default "0.2.0-alpha.18"}}'
+  CHART_REPO: '{{.CHART_REPO | default "oci://ghcr.io/kagenti/kagenti-operator"}}'
+  CERT_MANAGER_VERSION: '{{.CERT_MANAGER_VERSION | default "v1.14.0"}}'
+  TEKTON_VERSION: '{{.TEKTON_VERSION | default "latest"}}'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # ============================================================================
+  # Full Installation
+  # ============================================================================
+  
+  install:
+    desc: Install the complete kagenti-operator system (cert-manager + tekton + operator)
+    cmds:
+      - task: install:deps
+      - task: install:operator
+    
+  install:all:
+    desc: Create kind cluster and install everything
+    cmds:
+      - task: kind:create
+      - task: install
+
+  # ============================================================================
+  # Dependencies
+  # ============================================================================
+
+  install:deps:
+    desc: Install all dependencies (cert-manager + tekton)
+    cmds:
+      - task: install:cert-manager
+      - task: install:tekton
+
+  install:cert-manager:
+    desc: Install cert-manager
+    cmds:
+      - echo "Installing cert-manager {{.CERT_MANAGER_VERSION}}..."
+      - kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/{{.CERT_MANAGER_VERSION}}/cert-manager.yaml --context kind-{{.CLUSTER_NAME}}
+      - task: wait:cert-manager
+
+  wait:cert-manager:
+    desc: Wait for cert-manager to be ready
+    cmds:
+      - echo "Waiting for cert-manager webhook to be ready..."
+      - kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=120s --context kind-{{.CLUSTER_NAME}}
+      - kubectl wait --for=condition=Available deployment/cert-manager-cainjector -n cert-manager --timeout=120s --context kind-{{.CLUSTER_NAME}}
+      - kubectl wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=120s --context kind-{{.CLUSTER_NAME}}
+      - echo "cert-manager is ready!"
+
+  install:tekton:
+    desc: Install Tekton Pipelines
+    cmds:
+      - echo "Installing Tekton Pipelines..."
+      - kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/{{.TEKTON_VERSION}}/release.yaml --context kind-{{.CLUSTER_NAME}}
+      - task: wait:tekton
+
+  wait:tekton:
+    desc: Wait for Tekton to be ready
+    cmds:
+      - echo "Waiting for Tekton to be ready..."
+      - kubectl wait --for=condition=Available deployment/tekton-pipelines-controller -n tekton-pipelines --timeout=120s --context kind-{{.CLUSTER_NAME}}
+      - kubectl wait --for=condition=Available deployment/tekton-pipelines-webhook -n tekton-pipelines --timeout=120s --context kind-{{.CLUSTER_NAME}}
+      - echo "Tekton is ready!"
+
+  # ============================================================================
+  # Operator Installation
+  # ============================================================================
+
+  install:operator:
+    desc: Install kagenti-operator via Helm (OCI chart from ghcr.io)
+    cmds:
+      - echo "Installing kagenti-operator {{.CHART_VERSION}}..."
+      - |
+        kubectl create namespace {{.NAMESPACE}} --context kind-{{.CLUSTER_NAME}} --dry-run=client -o yaml | \
+        kubectl apply --context kind-{{.CLUSTER_NAME}} -f - && \
+        kubectl label namespace {{.NAMESPACE}} --context kind-{{.CLUSTER_NAME}} \
+          app.kubernetes.io/managed-by=Helm --overwrite && \
+        kubectl annotate namespace {{.NAMESPACE}} --context kind-{{.CLUSTER_NAME}} \
+          meta.helm.sh/release-name={{.HELM_RELEASE}} \
+          meta.helm.sh/release-namespace={{.NAMESPACE}} --overwrite
+      - |
+        helm upgrade --install {{.HELM_RELEASE}} {{.CHART_REPO}}/kagenti-operator-chart \
+          --version {{.CHART_VERSION}} \
+          --kube-context kind-{{.CLUSTER_NAME}} \
+          --namespace {{.NAMESPACE}} \
+          --wait
+      - echo "kagenti-operator installed!"
+      - task: status
+  
+  install:operator:local:
+    desc: Install kagenti-operator from local chart (for development)
+    cmds:
+      - echo "Installing kagenti-operator from local chart..."
+      - |
+        kubectl create namespace {{.NAMESPACE}} --context kind-{{.CLUSTER_NAME}} --dry-run=client -o yaml | \
+        kubectl apply --context kind-{{.CLUSTER_NAME}} -f - && \
+        kubectl label namespace {{.NAMESPACE}} --context kind-{{.CLUSTER_NAME}} \
+          app.kubernetes.io/managed-by=Helm --overwrite && \
+        kubectl annotate namespace {{.NAMESPACE}} --context kind-{{.CLUSTER_NAME}} \
+          meta.helm.sh/release-name={{.HELM_RELEASE}} \
+          meta.helm.sh/release-namespace={{.NAMESPACE}} --overwrite
+      - |
+        helm upgrade --install {{.HELM_RELEASE}} ./charts/kagenti-operator \
+          --kube-context kind-{{.CLUSTER_NAME}} \
+          --namespace {{.NAMESPACE}} \
+          --wait
+      - echo "kagenti-operator installed!"
+      - task: status
+
+  # ============================================================================
+  # Kind Cluster Management
+  # ============================================================================
+
+  kind:create:
+    desc: Create a kind cluster
+    cmds:
+      - echo "Creating kind cluster '{{.CLUSTER_NAME}}'..."
+      - kind create cluster --name {{.CLUSTER_NAME}} --wait 60s
+      - echo "Kind cluster '{{.CLUSTER_NAME}}' created!"
+    status:
+      - kind get clusters | grep -q "^{{.CLUSTER_NAME}}$"
+
+  kind:delete:
+    desc: Delete the kind cluster
+    cmds:
+      - echo "Deleting kind cluster '{{.CLUSTER_NAME}}'..."
+      - kind delete cluster --name {{.CLUSTER_NAME}}
+
+  kind:load-image:
+    desc: Load a local Docker image into kind (use IMAGE=name:tag)
+    cmds:
+      - kind load docker-image {{.IMAGE}} --name {{.CLUSTER_NAME}}
+    requires:
+      vars: [IMAGE]
+
+  # ============================================================================
+  # Uninstall
+  # ============================================================================
+
+  uninstall:
+    desc: Uninstall kagenti-operator
+    cmds:
+      - echo "Uninstalling kagenti-operator..."
+      - helm uninstall {{.HELM_RELEASE}} --kube-context kind-{{.CLUSTER_NAME}} --namespace {{.NAMESPACE}} || true
+      - kubectl delete namespace {{.NAMESPACE}} --context kind-{{.CLUSTER_NAME}} || true
+
+  uninstall:all:
+    desc: Uninstall everything (operator + tekton + cert-manager)
+    cmds:
+      - task: uninstall
+      - echo "Uninstalling Tekton..."
+      - kubectl delete -f https://storage.googleapis.com/tekton-releases/pipeline/{{.TEKTON_VERSION}}/release.yaml --context kind-{{.CLUSTER_NAME}} || true
+      - echo "Uninstalling cert-manager..."
+      - kubectl delete -f https://github.com/cert-manager/cert-manager/releases/download/{{.CERT_MANAGER_VERSION}}/cert-manager.yaml --context kind-{{.CLUSTER_NAME}} || true
+
+  # ============================================================================
+  # Status & Debugging
+  # ============================================================================
+
+  status:
+    desc: Show status of all kagenti-operator components
+    cmds:
+      - echo "=== Kagenti Operator Status ==="
+      - kubectl get pods -n {{.NAMESPACE}} --context kind-{{.CLUSTER_NAME}}
+      - echo ""
+      - echo "=== CRDs ==="
+      - kubectl get crds --context kind-{{.CLUSTER_NAME}} | grep -E "kagenti|tekton" || true
+      - echo ""
+      - echo "=== Helm Release ==="
+      - helm list -n {{.NAMESPACE}} --kube-context kind-{{.CLUSTER_NAME}}
+
+  logs:
+    desc: Show logs from the kagenti-operator controller
+    cmds:
+      - kubectl logs -n {{.NAMESPACE}} -l app.kubernetes.io/name=kagenti-operator-chart --tail=100 -f --context kind-{{.CLUSTER_NAME}}
+
+  logs:all:
+    desc: Show all logs from kagenti-operator (no tail limit)
+    cmds:
+      - kubectl logs -n {{.NAMESPACE}} -l app.kubernetes.io/name=kagenti-operator-chart --context kind-{{.CLUSTER_NAME}}
+
+  # ============================================================================
+  # Development
+  # ============================================================================
+
+  dev:reinstall:
+    desc: Quickly reinstall the operator from OCI chart
+    cmds:
+      - task: uninstall
+      - task: install:operator
+
+  dev:reinstall:local:
+    desc: Quickly reinstall the operator from local chart
+    cmds:
+      - task: uninstall
+      - task: install:operator:local
+
