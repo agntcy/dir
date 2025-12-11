@@ -75,6 +75,52 @@ To test with a local OASF instance deployed alongside the directory server:
 
 The OASF instance will be deployed as a subchart in the same namespace and automatically configured for multi-version routing via ingress.
 
+#### Using a Locally Built OASF Image
+
+If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-dev` schema files), you need to load the image into Kind **before** deploying. The `task deploy:local` command automatically creates a cluster and loads images, but it doesn't load custom OASF images. Follow these steps:
+
+1. **Create the Kind cluster first**:
+   ```bash
+   task deploy:kubernetes:setup-cluster
+   ```
+   This creates the cluster and loads the Directory server images.
+
+2. **Build and tag your local OASF image**:
+   ```bash
+   cd /path/to/oasf/server
+   docker build -t ghcr.io/agntcy/oasf-server:latest .
+   ```
+
+3. **Load the OASF image into Kind**:
+   ```bash
+   kind load docker-image ghcr.io/agntcy/oasf-server:latest --name agntcy-cluster
+   ```
+
+4. **Configure values.yaml** to use the local image:
+   ```yaml
+   oasf:
+     enabled: true
+     image:
+       repository: ghcr.io/agntcy/oasf-server
+       versions:
+         - server: latest
+           schema: 0.9.0-dev
+           default: true
+   ```
+
+5. **Deploy with Helm** (don't use `task deploy:local` as it will recreate the cluster):
+   ```bash
+   helm upgrade --install dir ./install/charts/dir \
+     -f ./install/charts/dir/values.yaml \
+     -n dir-server --create-namespace
+   ```
+
+**Note**: If you update the local OASF image, reload it into Kind and restart the deployment:
+```bash
+kind load docker-image ghcr.io/agntcy/oasf-server:latest --name agntcy-cluster
+kubectl rollout restart deployment/dir-oasf-0-9-0-dev -n dir-server
+```
+
 ### Other Configuration Options
 
 For complete server configuration including authentication, authorization, storage, routing, and database options, see the [server configuration reference](./config/config.go).
