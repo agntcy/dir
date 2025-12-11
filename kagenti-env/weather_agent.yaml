@@ -1,0 +1,40 @@
+apiVersion: agent.kagenti.dev/v1alpha1
+kind: Agent
+metadata:
+  name: weather-stack
+  namespace: default
+spec:
+  description: "Weather agent with tool sidecar"
+  replicas: 1
+  imageSource:
+    image: "ghcr.io/arpad-csepi/kagenti/weather-service:v0.0.5"
+  servicePorts:
+    - name: agent
+      port: 8000
+      protocol: TCP
+    - name: tool
+      port: 8001
+      protocol: TCP
+  podTemplateSpec:
+    spec:
+      containers:
+      - name: agent
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      - name: tool
+        image: ghcr.io/arpad-csepi/kagenti/weather-tool:v0.0.5
+        ports:
+        - name: http
+          containerPort: 8001
+          protocol: TCP
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}

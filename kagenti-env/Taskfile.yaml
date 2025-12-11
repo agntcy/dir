@@ -205,4 +205,33 @@ tasks:
     cmds:
       - task: uninstall
       - task: install:operator:local
+  
+  kagenti:weather-stack:port-forward:
+    desc: Port forward weather service
+    cmds:
+      - kubectl port-forward services/weather-stack 8000
 
+  kagenti:weather-stack:call:
+    desc: Call weather stack with curl
+    vars:
+      MESSAGE: '{{ .MESSAGE | default "What is the weather in Budapest?" }}'
+    cmd: |
+      curl -X POST http://localhost:8000 \
+       -H "Content-Type: application/json" \
+       -d '{
+         "jsonrpc": "2.0",
+         "id": "1",
+         "method": "message/send",
+         "params": {
+           "message": {
+             "role": "user",
+             "messageId": "msg-123456",
+             "parts": [
+               {
+                 "kind": "text",
+                 "text": "{{ .MESSAGE }}"
+               }
+             ]
+           }
+         }
+       }'
