@@ -31,6 +31,7 @@ type ExportRecordOutput struct {
 // Currently supported formats:
 // - "a2a": Agent-to-Agent (A2A) format.
 // - "ghcopilot": GitHub Copilot MCP configuration format.
+// - "kagenti": Kagenti Agent Spec format.
 func ExportRecord(ctx context.Context, _ *mcp.CallToolRequest, input ExportRecordInput) (
 	*mcp.CallToolResult,
 	ExportRecordOutput,
@@ -94,9 +95,24 @@ func ExportRecord(ctx context.Context, _ *mcp.CallToolRequest, input ExportRecor
 			}, nil
 		}
 
+	case "kagenti":
+		kagentiAgentSpec, err := translator.RecordToKagentiAgentSpec(&recordStruct)
+		if err != nil {
+			return nil, ExportRecordOutput{
+				ErrorMessage: fmt.Sprintf("Failed to export to Kagenti Agent Spec format: %v", err),
+			}, nil
+		}
+		// Use regular JSON marshaling since KagentiAgentSpec is not a protobuf message
+		exportedJSON, err = json.MarshalIndent(kagentiAgentSpec, "", "  ")
+		if err != nil {
+			return nil, ExportRecordOutput{
+				ErrorMessage: fmt.Sprintf("Failed to marshal Kagenti Agent Spec data to JSON: %v", err),
+			}, nil
+		}
+
 	default:
 		return nil, ExportRecordOutput{
-			ErrorMessage: fmt.Sprintf("Unsupported target format: %s. Supported formats: a2a, ghcopilot", input.TargetFormat),
+			ErrorMessage: fmt.Sprintf("Unsupported target format: %s. Supported formats: a2a, ghcopilot, kagenti", input.TargetFormat),
 		}, nil
 	}
 

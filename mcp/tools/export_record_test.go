@@ -135,4 +135,34 @@ func TestExportRecord(t *testing.T) {
 			assert.Contains(t, output.ErrorMessage, "Failed to export to A2A format")
 		}
 	})
+
+	t.Run("exports record to Kagenti format", func(t *testing.T) {
+		t.Parallel()
+
+		// Note: This test verifies that the Kagenti export path is invoked.
+		// Actual translation success depends on the record having the required data,
+		// which is beyond the scope of this unit test.
+
+		// Sample OASF record JSON
+		recordJSON := `{
+			"schema_version": "0.8.0",
+			"name": "test-agent",
+			"version": "1.0.0",
+			"description": "A test agent"
+		}`
+
+		input := ExportRecordInput{
+			RecordJSON:   recordJSON,
+			TargetFormat: "kagenti",
+		}
+
+		_, output, err := ExportRecord(ctx, nil, input)
+
+		require.NoError(t, err)
+		// The export may fail if the record doesn't have the required data,
+		// which is expected. The important part is that it attempts the export.
+		if output.ErrorMessage != "" {
+			assert.Contains(t, output.ErrorMessage, "Failed to export to Kagenti Agent Spec format")
+		}
+	})
 }

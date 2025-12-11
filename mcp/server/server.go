@@ -193,6 +193,7 @@ This tool takes an OASF record in JSON format and converts it to the specified t
 Currently supported target formats:
 - "a2a": Agent-to-Agent (A2A) format
 - "ghcopilot": GitHub Copilot MCP configuration format
+- "kagenti": Kagenti Agent Spec format
 
 **Input Format**:
 Provide the OASF record as a standard JSON object (no wrapper needed).
@@ -201,6 +202,7 @@ Provide the OASF record as a standard JSON object (no wrapper needed).
 The output structure depends on the target format:
 - For "a2a": Returns the A2A card directly as a JSON object
 - For "ghcopilot": Returns the GitHub Copilot MCP configuration as a JSON object
+- For "kagenti": Returns the Kagenti Agent Spec as a JSON object
 
 Use this tool when you need to convert OASF records to other format specifications.
 		`),
