@@ -10,6 +10,7 @@ replace (
 	github.com/agntcy/dir/importer => ../importer
 	github.com/agntcy/dir/mcp => ../mcp
 	github.com/agntcy/dir/utils => ../utils
+	github.com/agntcy/oasf-sdk/pkg => ../../oasf-sdk/pkg
 )
 
 require (

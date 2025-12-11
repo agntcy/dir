@@ -15,7 +15,7 @@ ENV DIRECTORY_CLIENT_AUTH_MODE="x509"
 ENV DIRECTORY_CLIENT_JWT_AUDIENCE="spiffe://dir.example/spire/server"
 
 WORKDIR /tmp/
-COPY ./sdk /tmp/
+COPY ./dir/sdk /tmp/
 
 WORKDIR /tmp/dir-py
 

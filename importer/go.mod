@@ -6,6 +6,7 @@ replace (
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
+	github.com/agntcy/oasf-sdk/pkg => ../../oasf-sdk/pkg
 )
 
 require (

@@ -46,8 +46,8 @@ target "docker-metadata-action" {
 
 
 target "dir-apiserver" {
-  context = "."
-  dockerfile = "./server/Dockerfile"
+  context = ".."
+  dockerfile = "./dir/server/Dockerfile"
   target = "production"
   inherits = [
     "_common",
@@ -57,8 +57,8 @@ target "dir-apiserver" {
 }
 
 target "dir-apiserver-coverage" {
-  context = "."
-  dockerfile = "./server/Dockerfile"
+  context = ".."
+  dockerfile = "./dir/server/Dockerfile"
   target = "coverage"
   inherits = [
     "_common",
@@ -68,8 +68,8 @@ target "dir-apiserver-coverage" {
 }
 
 target "dir-ctl" {
-  context = "."
-  dockerfile = "./cli/Dockerfile"
+  context = ".."
+  dockerfile = "./dir/cli/Dockerfile"
   inherits = [
     "_common",
     "docker-metadata-action",
@@ -78,8 +78,8 @@ target "dir-ctl" {
 }
 
 target "sdks-test" {
-  context = "."
-  dockerfile = "./e2e/sdk/Dockerfile"
+  context = ".."
+  dockerfile = "./dir/e2e/sdk/Dockerfile"
   depends_on = ["dir-ctl"] # Ensures dir-ctl is built first
   inherits = [
     "_common",

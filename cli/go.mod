@@ -9,6 +9,8 @@ replace (
 	github.com/agntcy/dir/importer => ../importer
 	github.com/agntcy/dir/mcp => ../mcp
 	github.com/agntcy/dir/utils => ../utils
+	github.com/agntcy/oasf-sdk/pkg => ../../oasf-sdk/pkg
+	github.com/kagenti/operator => github.com/kagenti/kagenti-operator/kagenti-operator v0.0.0-20251209235923-207524f24e65
 )
 
 require (
@@ -180,6 +182,7 @@ require (
 	github.com/jedisct1/go-minisign v0.0.0-20230811132847-661be99b8267 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kagenti/operator v0.0.0-00010101000000-000000000000 // indirect
 	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/letsencrypt/boulder v0.0.0-20240726163629-a21c417bc04e // indirect
@@ -317,6 +320,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
+	sigs.k8s.io/controller-runtime v0.20.0 // indirect
 	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.6.0 // indirect

@@ -2,6 +2,8 @@ module github.com/agntcy/dir/api
 
 go 1.25.2
 
+replace github.com/agntcy/oasf-sdk/pkg => ../../oasf-sdk/pkg
+
 require (
 	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.10-20251029125108-823ea6fabc82.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.10-20251022143645-07a420b66e81.1
