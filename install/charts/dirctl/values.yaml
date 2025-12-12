@@ -79,10 +79,18 @@ spire:
   # causing authentication failures and preventing workloads from starting.
   # 
   # The className must match the SPIRE installation's className.
-  # If not specified, defaults to "<namespace>-spire" (e.g., "my-namespace-spire").
+  # 
+  # Default: "dir-spire" (matches standard SPIRE installation convention).
+  # If your SPIRE installation uses a different className, override this value.
+  # If not specified, falls back to "<namespace>-spire" (e.g., "my-namespace-spire").
+  # 
+  # IMPORTANT: Ensure this matches your SPIRE Controller Manager's className.
+  # For standard installations, SPIRE is deployed in the "spire" namespace with
+  # className "dir-spire". Verify with:
+  #   kubectl get deployment -n spire spire-server -o yaml | grep className
   # 
   # See: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterspiffeid-crd.md
-  className: ""
+  className: "dir-spire"
   
   # Use SPIFFE CSI driver for workload attestation (recommended)
   # 

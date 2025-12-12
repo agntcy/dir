@@ -748,6 +748,7 @@ tasks:
           --set spire-server.service.type="{{ .SERVICE_TYPE }}" \
           --set spire-server.federation.enabled="true" \
           --set spire-server.controllerManager.watchClassless="true" \
+          --set spire-server.controllerManager.className="dir-spire" \
           --namespace spire \
           --create-namespace \
           --install \
@@ -1373,6 +1374,7 @@ tasks:
           spire:
             enabled: true
             trustDomain: {{ .DIR_TRUST_DOMAIN }}
+            className: dir-spire
             dnsNameTemplates:
               - "{{ .DIR_DNS_NAME_TEMPLATE }}"
             federation:
@@ -1419,6 +1421,7 @@ tasks:
         spire:
           enabled: true
           trustDomain: {{ .DIR_TRUST_DOMAIN }}
+          className: dir-spire
         EOF
 
       # Deploy DIRCTL client in dir.example trust domain (same cluster as dir)
@@ -1446,6 +1449,7 @@ tasks:
         spire:
           enabled: true
           trustDomain: {{ .DIRCTL_TRUST_DOMAIN }}
+          className: dir-spire
           federation:
             - trustDomain: {{ .DIR_TRUST_DOMAIN }}
               bundleEndpointURL: https://${DIR_BUNDLE_ADDRESS}
