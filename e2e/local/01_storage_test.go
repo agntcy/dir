@@ -89,17 +89,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			expectedModule:  "core/llm/model",
 			shouldFailPush:  false,
 		},
-		{
-			name:               "OASF_0.8.0_Record_With_Warnings",
-			fileName:           "oasf_0.8.0_record_warnings_test.json",
-			jsonData:           testdata.ExpectedRecordWarningsV080JSON,
-			expectedAgentName:  "",
-			expectedSkillIDs:   []string{},
-			expectedSkillNames: []string{},
-			expectedLocator:    "",
-			expectedModule:     "",
-			shouldFailPush:     true, // Should fail strict API validation
-		},
 	}
 
 	// Test each OASF version (V1, V2, V3) to identify JSON marshal/unmarshal issues

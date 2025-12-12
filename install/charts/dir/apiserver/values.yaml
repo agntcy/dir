@@ -547,3 +547,8 @@ externalSecrets:
     # Property names in Vault secret (defaults shown)
     usernameProperty: "sync-username"
     passwordProperty: "sync-password"
+
+# OASF server subchart configuration (OPTIONAL)
+# OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
+oasf:
+  enabled: false
