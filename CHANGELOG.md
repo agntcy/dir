@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.5.7] - 2025-12-12
+
+### Key Highlights
+
+This patch release fixes a critical SPIRE integration bug and adds OASF configuration support:
+- **Critical Fix**: Added mandatory `className` field to ClusterSPIFFEID resources to ensure proper SPIRE workload registration
+- **New Feature**: OASF configuration support in Helm chart for API validation
+- **Dependencies**: Updated cosign and zot dependencies
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.5.7  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.5.7  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.5.7  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.5.7  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.5.7  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.5.7  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.5.7  | dirctl >= v0.5.0            |
+
+### Added
+- **Helm**: OASF configuration support for API validation settings (#769)
+- **Helm**: OASF server deployment option with directory (#769)
+
+### Changed
+- **Dependencies**: Bump github.com/sigstore/cosign dependency (#773)
+- **Dependencies**: Update zot dependency (#761)
+
+### Fixed
+- **Helm**: Add mandatory `className` field to ClusterSPIFFEID resources in both `apiserver` and `dirctl` charts (#774)
+- **CI**: Pin CodeQL analyze action version to match init version (#774)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.5.6...v0.5.7)
+
+---
+
 ## [v0.5.6] - 2025-12-05
 
 ### Key Highlights
