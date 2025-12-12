@@ -70,6 +70,28 @@ spire:
   enabled: false
   trustDomain: example.org
   
+  # SPIRE controller className for ClusterSPIFFEID matching
+  # 
+  # REQUIRED: The className field is mandatory for ClusterSPIFFEID resources.
+  # The SPIRE controller manager uses className to match ClusterSPIFFEID resources
+  # with the appropriate SPIRE installation. Without this field, the controller
+  # will ignore the ClusterSPIFFEID and no workload registration will occur,
+  # causing authentication failures and preventing workloads from starting.
+  # 
+  # The className must match the SPIRE installation's className.
+  # 
+  # Default: "dir-spire" (matches standard SPIRE installation convention).
+  # If your SPIRE installation uses a different className, override this value.
+  # If not specified, falls back to "<namespace>-spire" (e.g., "my-namespace-spire").
+  # 
+  # IMPORTANT: Ensure this matches your SPIRE Controller Manager's className.
+  # For standard installations, SPIRE is deployed in the "spire" namespace with
+  # className "dir-spire". Verify with:
+  #   kubectl get deployment -n spire spire-server -o yaml | grep className
+  # 
+  # See: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterspiffeid-crd.md
+  className: "dir-spire"
+  
   # Use SPIFFE CSI driver for workload attestation (recommended)
   # 
   # When true (recommended):

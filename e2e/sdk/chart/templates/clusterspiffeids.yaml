@@ -3,6 +3,7 @@ kind: ClusterSPIFFEID
 metadata:
   name: sdks-test
 spec:
+  className: dir-spire
   podSelector:
     matchExpressions:
       - key: batch.kubernetes.io/job-name

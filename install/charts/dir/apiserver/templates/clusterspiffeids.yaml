@@ -4,6 +4,7 @@ kind: ClusterSPIFFEID
 metadata:
   name: {{ include "chart.fullname" . }}
 spec:
+  className: {{ .Values.spire.className | default (printf "%s-spire" .Release.Namespace) }}
   podSelector:
     matchExpressions:
     - key: app.kubernetes.io/name
