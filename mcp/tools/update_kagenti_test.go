@@ -19,11 +19,10 @@ func TestUpdateKagenti(t *testing.T) {
 	t.Run("fails when agent_name is empty", func(t *testing.T) {
 		t.Parallel()
 
-		replicas := int64(3)
 		input := UpdateKagentiInput{
 			AgentName: "",
 			Namespace: "default",
-			Replicas:  &replicas,
+			Replicas:  3,
 		}
 
 		_, output, err := UpdateKagenti(ctx, nil, input)
@@ -39,8 +38,8 @@ func TestUpdateKagenti(t *testing.T) {
 		input := UpdateKagentiInput{
 			AgentName: "test-agent",
 			Namespace: "default",
-			Replicas:  nil,
-			Image:     nil,
+			Replicas:  0,  // 0 means no update
+			Image:     "", // empty means no update
 		}
 
 		_, output, err := UpdateKagenti(ctx, nil, input)
@@ -53,11 +52,10 @@ func TestUpdateKagenti(t *testing.T) {
 	t.Run("defaults namespace to 'default' when not provided", func(t *testing.T) {
 		t.Parallel()
 
-		replicas := int64(2)
 		input := UpdateKagentiInput{
 			AgentName: "test-agent",
 			Namespace: "", // Should default to "default"
-			Replicas:  &replicas,
+			Replicas:  2,
 		}
 
 		_, output, err := UpdateKagenti(ctx, nil, input)
@@ -72,12 +70,11 @@ func TestUpdateKagenti(t *testing.T) {
 	t.Run("accepts replicas only", func(t *testing.T) {
 		t.Parallel()
 
-		replicas := int64(5)
 		input := UpdateKagentiInput{
 			AgentName: "test-agent",
 			Namespace: "test-ns",
-			Replicas:  &replicas,
-			Image:     nil, // No image update
+			Replicas:  5,
+			Image:     "", // No image update
 		}
 
 		_, output, err := UpdateKagenti(ctx, nil, input)
@@ -92,12 +89,11 @@ func TestUpdateKagenti(t *testing.T) {
 	t.Run("accepts image only", func(t *testing.T) {
 		t.Parallel()
 
-		image := "ghcr.io/test/new-image:v2"
 		input := UpdateKagentiInput{
 			AgentName: "test-agent",
 			Namespace: "test-ns",
-			Replicas:  nil, // No replicas update
-			Image:     &image,
+			Replicas:  0, // No replicas update
+			Image:     "ghcr.io/test/new-image:v2",
 		}
 
 		_, output, err := UpdateKagenti(ctx, nil, input)
@@ -112,13 +108,11 @@ func TestUpdateKagenti(t *testing.T) {
 	t.Run("accepts both replicas and image", func(t *testing.T) {
 		t.Parallel()
 
-		replicas := int64(3)
-		image := "ghcr.io/test/new-image:v2"
 		input := UpdateKagentiInput{
 			AgentName: "test-agent",
 			Namespace: "test-ns",
-			Replicas:  &replicas,
-			Image:     &image,
+			Replicas:  3,
+			Image:     "ghcr.io/test/new-image:v2",
 		}
 
 		_, output, err := UpdateKagenti(ctx, nil, input)
@@ -130,4 +124,3 @@ func TestUpdateKagenti(t *testing.T) {
 		}
 	})
 }
-

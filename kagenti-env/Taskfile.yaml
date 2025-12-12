@@ -180,38 +180,30 @@ tasks:
       - echo "=== Helm Release ==="
       - helm list -n {{.NAMESPACE}} --kube-context kind-{{.CLUSTER_NAME}}
 
-  logs:
-    desc: Show logs from the kagenti-operator controller
-    cmds:
-      - kubectl logs -n {{.NAMESPACE}} -l app.kubernetes.io/name=kagenti-operator-chart --tail=100 -f --context kind-{{.CLUSTER_NAME}}
-
-  logs:all:
-    desc: Show all logs from kagenti-operator (no tail limit)
-    cmds:
-      - kubectl logs -n {{.NAMESPACE}} -l app.kubernetes.io/name=kagenti-operator-chart --context kind-{{.CLUSTER_NAME}}
-
   # ============================================================================
   # Development
   # ============================================================================
 
-  dev:reinstall:
-    desc: Quickly reinstall the operator from OCI chart
+  kagenti:weather-stack:deploy:
+    aliases: [deploy]
+    desc: Deploy weather stack
     cmds:
-      - task: uninstall
-      - task: install:operator
+      - kubectl apply -f weather_agent.yaml
 
-  dev:reinstall:local:
-    desc: Quickly reinstall the operator from local chart
+  kagenti:weather-stack:delete:
+    aliases: [delete]
+    desc: Delete weather stack
     cmds:
-      - task: uninstall
-      - task: install:operator:local
-  
+      - kubectl delete -f weather_agent.yaml
+
   kagenti:weather-stack:port-forward:
+    aliases: [port-forward]
     desc: Port forward weather service
     cmds:
       - kubectl port-forward services/weather-stack 8000
 
   kagenti:weather-stack:call:
+    aliases: [call]
     desc: Call weather stack with curl
     vars:
       MESSAGE: '{{ .MESSAGE | default "What is the weather in Budapest?" }}'

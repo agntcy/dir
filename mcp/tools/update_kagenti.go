@@ -19,18 +19,19 @@ type UpdateKagentiInput struct {
 	AgentName string `json:"agent_name" jsonschema:"Name of the Agent CR to update (required)"`
 	// Namespace is the Kubernetes namespace where the agent is deployed
 	Namespace string `json:"namespace,omitempty" jsonschema:"Kubernetes namespace (default: default)"`
-	// Replicas is the new number of pod replicas (only updated if provided)
-	Replicas *int64 `json:"replicas,omitempty" jsonschema:"New number of pod replicas (optional)"`
+	// Replicas is the new number of pod replicas (only updated if > 0)
+	// Using non-pointer to avoid MCP SDK nullable type validation issues
+	Replicas int64 `json:"replicas,omitempty" jsonschema:"New number of pod replicas (optional, 0 or negative means no change)"`
 	// Image is the new container image (only updated if provided)
-	Image *string `json:"image,omitempty" jsonschema:"New container image URL (optional)"`
+	Image string `json:"image,omitempty" jsonschema:"New container image URL (optional)"`
 }
 
 // UpdateKagentiOutput defines the output of updating an agent.
 type UpdateKagentiOutput struct {
-	AgentName      string `json:"agent_name,omitempty"      jsonschema:"Name of the updated Agent CR"`
-	Namespace      string `json:"namespace,omitempty"       jsonschema:"Namespace where the agent is deployed"`
-	UpdatedFields  string `json:"updated_fields,omitempty"  jsonschema:"Comma-separated list of fields that were updated"`
-	ErrorMessage   string `json:"error_message,omitempty"   jsonschema:"Error message if update failed"`
+	AgentName     string `json:"agent_name,omitempty"      jsonschema:"Name of the updated Agent CR"`
+	Namespace     string `json:"namespace,omitempty"       jsonschema:"Namespace where the agent is deployed"`
+	UpdatedFields string `json:"updated_fields,omitempty"  jsonschema:"Comma-separated list of fields that were updated"`
+	ErrorMessage  string `json:"error_message,omitempty"   jsonschema:"Error message if update failed"`
 }
 
 // UpdateKagenti updates an existing Kagenti Agent CR in Kubernetes.
@@ -48,9 +49,9 @@ func UpdateKagenti(ctx context.Context, _ *mcp.CallToolRequest, input UpdateKage
 	}
 
 	// Check that at least one field to update is provided
-	if input.Replicas == nil && input.Image == nil {
+	if input.Replicas <= 0 && input.Image == "" {
 		return nil, UpdateKagentiOutput{
-			ErrorMessage: "at least one field to update must be provided (replicas or image)",
+			ErrorMessage: "at least one field to update must be provided (replicas > 0 or image)",
 		}, nil
 	}
 
@@ -86,9 +87,9 @@ func UpdateKagenti(ctx context.Context, _ *mcp.CallToolRequest, input UpdateKage
 	// Track which fields were updated
 	var updatedFields []string
 
-	// Update replicas if provided
-	if input.Replicas != nil {
-		if err := unstructured.SetNestedField(existing.Object, *input.Replicas, "spec", "replicas"); err != nil {
+	// Update replicas if provided (> 0)
+	if input.Replicas > 0 {
+		if err := unstructured.SetNestedField(existing.Object, input.Replicas, "spec", "replicas"); err != nil {
 			return nil, UpdateKagentiOutput{
 				ErrorMessage: fmt.Sprintf("Failed to set replicas: %v", err),
 			}, nil
@@ -96,10 +97,10 @@ func UpdateKagenti(ctx context.Context, _ *mcp.CallToolRequest, input UpdateKage
 		updatedFields = append(updatedFields, "replicas")
 	}
 
-	// Update image if provided
-	if input.Image != nil {
+	// Update image if provided (non-empty)
+	if input.Image != "" {
 		// Update imageSource.image
-		if err := unstructured.SetNestedField(existing.Object, *input.Image, "spec", "imageSource", "image"); err != nil {
+		if err := unstructured.SetNestedField(existing.Object, input.Image, "spec", "imageSource", "image"); err != nil {
 			return nil, UpdateKagentiOutput{
 				ErrorMessage: fmt.Sprintf("Failed to set imageSource.image: %v", err),
 			}, nil
@@ -110,7 +111,7 @@ func UpdateKagenti(ctx context.Context, _ *mcp.CallToolRequest, input UpdateKage
 		if err == nil && found && len(containers) > 0 {
 			// Update the first container's image
 			if container, ok := containers[0].(map[string]interface{}); ok {
-				container["image"] = *input.Image
+				container["image"] = input.Image
 				containers[0] = container
 				if err := unstructured.SetNestedSlice(existing.Object, containers, "spec", "podTemplateSpec", "spec", "containers"); err != nil {
 					return nil, UpdateKagentiOutput{
@@ -145,4 +146,3 @@ func UpdateKagenti(ctx context.Context, _ *mcp.CallToolRequest, input UpdateKage
 		UpdatedFields: updatedFieldsStr,
 	}, nil
 }
-
