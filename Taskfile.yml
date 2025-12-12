@@ -769,6 +769,7 @@ tasks:
       - |
         {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
         {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }} &
+        {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller 8080:80 -n {{ .HELM_NAMESPACE }} &
 
       # Delay to ensure services are online
       - sleep 10
@@ -777,8 +778,8 @@ tasks:
     aliases: [deploy:local:port-forward:cleanup]
     desc: Cleanup port-forwarding processes
     cmds:
-      # Kill any existing port-forward processes for the dir-apiserver service
-      - kill -9 $(ps aux | grep port-forward | grep dir-apiserver | awk '{print $2}') || true
+      # Kill any existing port-forward processes for the dir-apiserver and dir-ingress-controller services
+      - kill -9 $(ps aux | grep port-forward | grep -E "(dir-apiserver|dir-ingress-controller)" | awk '{print $2}') || true
 
   deploy:kubernetes:local:cleanup:
     aliases: [deploy:local:cleanup, deploy:kubernetes:cleanup]

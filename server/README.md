@@ -49,24 +49,77 @@ listen_address: "0.0.0.0:8888"
 
 #### Testing with Local OASF Server
 
-To test with a local OASF instance (e.g., for schema development or debugging):
+To test with a local OASF instance deployed alongside the directory server:
 
+1. **Enable OASF in Helm values** - Edit `install/charts/dir/values.yaml`:
+   ```yaml
+   apiserver:
+     oasf:
+       enabled: true
+   ```
+
+2. **Set schema URL to use the deployed OASF instance** - In the same file, set:
+   ```yaml
+   apiserver:
+     config:
+       oasf_api_validation:
+         schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
+   ```
+   Replace `dir` with your Helm release name and `dir-server` with your namespace if different.
+
+3. **Deploy**:
+   ```bash
+   task build
+   task deploy:local
+   ```
+
+The OASF instance will be deployed as a subchart in the same namespace and automatically configured for multi-version routing via ingress.
+
+#### Using a Locally Built OASF Image
+
+If you want to deploy with a locally built OASF image (e.g., containing `0.9.0-dev` schema files), you need to load the image into Kind **before** deploying. The `task deploy:local` command automatically creates a cluster and loads images, but it doesn't load custom OASF images. Follow these steps:
+
+1. **Create the Kind cluster first**:
+   ```bash
+   task deploy:kubernetes:setup-cluster
+   ```
+   This creates the cluster and loads the Directory server images.
+
+2. **Build and tag your local OASF image**:
+   ```bash
+   cd /path/to/oasf/server
+   docker build -t ghcr.io/agntcy/oasf-server:latest .
+   ```
+
+3. **Load the OASF image into Kind**:
+   ```bash
+   kind load docker-image ghcr.io/agntcy/oasf-server:latest --name agntcy-cluster
+   ```
+
+4. **Configure values.yaml** to use the local image:
+   ```yaml
+   oasf:
+     enabled: true
+     image:
+       repository: ghcr.io/agntcy/oasf-server
+       versions:
+         - server: latest
+           schema: 0.9.0-dev
+           default: true
+   ```
+
+5. **Deploy with Helm** (don't use `task deploy:local` as it will recreate the cluster):
+   ```bash
+   helm upgrade --install dir ./install/charts/dir \
+     -f ./install/charts/dir/values.yaml \
+     -n dir-server --create-namespace
+   ```
+
+**Note**: If you update the local OASF image, reload it into Kind and restart the deployment:
 ```bash
-# 1. Deploy OASF (in separate terminal/repo)
-cd /path/to/agntcy/oasf
-HELM_VALUES_PATH=./install/charts/oasf/values-test-versions.yaml task up
-
-# 2. Remove host restriction from OASF ingress (allows cross-cluster access)
-kubectl --context kind-test-oasf-cluster patch ingress oasf-api -p '{"spec":{"rules":[{"http":{"paths":[{"path":"/api/0.8.0(/|$)(.*)","pathType":"ImplementationSpecific","backend":{"service":{"name":"oasf-0-8-0","port":{"number":8080}}}},{"path":"/api(/|$)(.*)","pathType":"ImplementationSpecific","backend":{"service":{"name":"oasf-0-8-0","port":{"number":8080}}}}]}}]}}'
-
-# 3. Get OASF node IP and deploy Directory
-cd /path/to/agntcy/dir
-OASF_IP=$(docker inspect test-oasf-cluster-control-plane -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
-task build
-task deploy:local DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL=http://${OASF_IP}:30080
+kind load docker-image ghcr.io/agntcy/oasf-server:latest --name agntcy-cluster
+kubectl rollout restart deployment/dir-oasf-0-9-0-dev -n dir-server
 ```
-
-**Note:** Update `oasf/install/charts/oasf/values-test-versions.yaml` with desired OASF versions before deploying. The ingress patch removes the host restriction to allow cross-cluster access.
 
 ### Other Configuration Options
 

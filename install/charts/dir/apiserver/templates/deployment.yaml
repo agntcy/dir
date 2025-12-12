@@ -108,6 +108,18 @@ spec:
             - name: DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN
               value: {{ .Values.spire.trustDomain }}
             {{- end }}
+            {{- if .Values.config.oasf_api_validation.schema_url }}
+            - name: DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL
+              value: {{ .Values.config.oasf_api_validation.schema_url | quote }}
+            {{- end }}
+            {{- if .Values.config.oasf_api_validation.disable }}
+            - name: DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE
+              value: {{ .Values.config.oasf_api_validation.disable | quote }}
+            {{- end }}
+            {{- if ne .Values.config.oasf_api_validation.strict_mode nil }}
+            - name: DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE
+              value: {{ .Values.config.oasf_api_validation.strict_mode | quote }}
+            {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
