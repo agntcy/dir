@@ -232,6 +232,21 @@ apiserver:
   spire:
     enabled: false
     trustDomain: example.org
+    
+    # SPIRE controller className for ClusterSPIFFEID matching
+    # 
+    # REQUIRED: The className field is mandatory for ClusterSPIFFEID resources.
+    # The SPIRE controller manager uses className to match ClusterSPIFFEID resources
+    # with the appropriate SPIRE installation. Without this field, the controller
+    # will ignore the ClusterSPIFFEID and no workload registration will occur,
+    # causing authentication failures and preventing the gRPC server from starting.
+    # 
+    # The className must match the SPIRE installation's className.
+    # If not specified, defaults to "<namespace>-spire" (e.g., "my-namespace-spire").
+    # 
+    # See: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterspiffeid-crd.md
+    className: ""
+    
     federation: []
       # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
       # - trustDomain: dir-cluster
