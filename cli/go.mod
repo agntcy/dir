@@ -12,12 +12,12 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.5.6
-	github.com/agntcy/dir/client v0.5.6
+	github.com/agntcy/dir/api v0.5.7
+	github.com/agntcy/dir/client v0.5.7
 	github.com/agntcy/dir/hub v0.5.7
-	github.com/agntcy/dir/importer v0.5.6
-	github.com/agntcy/dir/mcp v0.5.6
-	github.com/agntcy/dir/utils v0.5.6
+	github.com/agntcy/dir/importer v0.5.7
+	github.com/agntcy/dir/mcp v0.5.7
+	github.com/agntcy/dir/utils v0.5.7
 	github.com/libp2p/go-libp2p v0.44.0
 	github.com/sigstore/sigstore v1.10.0
 	github.com/spf13/cobra v1.10.2
