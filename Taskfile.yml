@@ -1617,11 +1617,26 @@ tasks:
     cmds:
       - "{{.BUFBUILD_BIN}} lint"
 
+  lint:helm:
+    desc: Run Helm linters
+    deps:
+      - task: deps:helm
+    vars:
+      HELM_CHARTS:
+        sh: find ./install/charts -maxdepth 1 -mindepth 1 -type d -exec basename {} \;
+    cmds:
+      - for: { var: HELM_CHARTS }
+        cmd: |
+          echo "Running helm lint on {{.ITEM}}"
+          {{.HELM_BIN}} dependency update ./install/charts/{{.ITEM}}
+          {{.HELM_BIN}} lint ./install/charts/{{.ITEM}} --with-subcharts
+
   lint:
     desc: Run all linters
     deps:
       - lint:go
       - lint:buf
+      - lint:helm
 
   ##
   ## License

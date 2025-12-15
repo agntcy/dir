@@ -50,13 +50,9 @@ jobs:
           restore-keys: |
             lint-cache-${{ runner.os }}-
 
-      - name: Lint Go
+      - name: Run linters
         run: |
-          task lint:go
-
-      - name: Lint Buf
-        run: |
-          task lint:buf
+          task lint
 
   license:
     name: License
