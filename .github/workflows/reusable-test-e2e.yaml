@@ -34,6 +34,12 @@ jobs:
           - task: test:e2e:local
             label: "Local"
             coverage-files: ".coverage/e2e/local-cli.out,.coverage/e2e/local-client.out,.coverage/e2e/server.out"
+          - task: test:e2e:validation:non-strict
+            label: "Validation Non-Strict"
+            coverage-files: ".coverage/e2e/validation-non-strict.out,.coverage/e2e/server.out"
+          - task: test:e2e:validation:api-disabled
+            label: "Validation API Disabled"
+            coverage-files: ".coverage/e2e/validation-api-disabled.out,.coverage/e2e/server.out"
           - task: test:e2e:network
             label: "Network"
             coverage-files: ".coverage/e2e/network.out,.coverage/e2e/server.out"
@@ -112,6 +118,12 @@ jobs:
           # Use a random cluster name to avoid conflicts in concurrent runs.
           # Kind cluster names must be lowercase and can contain only letters and numbers.
           export KIND_CLUSTER_NAME=test-$(openssl rand -base64 12 | tr -dc 'a-z0-9')
+          # For validation tests, use a more descriptive cluster name
+          if [[ "${{ matrix.task }}" == "test:e2e:validation:non-strict" ]]; then
+            export KIND_CLUSTER_NAME=test-nonstrict-$(openssl rand -base64 12 | tr -dc 'a-z0-9')
+          elif [[ "${{ matrix.task }}" == "test:e2e:validation:api-disabled" ]]; then
+            export KIND_CLUSTER_NAME=test-apidisabled-$(openssl rand -base64 12 | tr -dc 'a-z0-9')
+          fi
           task ${{ matrix.task }}
 
       - name: Process E2E coverage
