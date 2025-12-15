@@ -235,36 +235,6 @@ Use other tools to pull OASF records and transform them into Agent CRs before de
 		`),
 	}, tools.DeployKagenti)
 
-	// Add tool for updating agents deployed via Kagenti operator
-	mcp.AddTool(server, &mcp.Tool{
-		Name: "agntcy_kagenti_update",
-		Description: strings.TrimSpace(`
-Updates an existing Kagenti Agent CR in Kubernetes.
-This tool allows patching specific fields of a deployed agent without
-requiring the full Agent CR JSON.
-
-**Prerequisites**:
-- Kagenti operator must be installed in the cluster
-- Valid kubeconfig or in-cluster configuration
-- The Agent CR must already exist
-
-**Input**:
-- agent_name: Name of the Agent CR to update (required)
-- namespace: Kubernetes namespace (default: "default")
-- replicas: New number of pod replicas (optional)
-- image: New container image URL (optional)
-
-At least one of replicas or image must be provided.
-
-**Output**:
-- agent_name: Name of the updated Agent CR
-- namespace: Namespace where the agent is deployed
-- updated_fields: List of fields that were updated
-
-Use this tool to scale agents or update their container images.
-		`),
-	}, tools.UpdateKagenti)
-
 	// Add tool for deleting agents deployed via Kagenti operator
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_kagenti_delete",
@@ -494,6 +464,36 @@ This guided workflow includes:
 			},
 		},
 	}, prompts.ExportRecord)
+
+	// Add prompt for deploying agents from Directory to Kubernetes
+	server.AddPrompt(&mcp.Prompt{
+		Name: "deploy_agent",
+		Description: strings.TrimSpace(`
+Complete workflow for finding and deploying an agent from the Directory to Kubernetes.
+Describe what kind of agent you need in natural language, and this workflow will:
+- Analyze your request and search for matching agents
+- Pull and inspect the OASF record
+- Convert to Kagenti Agent spec
+- Deploy to a Kubernetes cluster with Kagenti operator
+		`),
+		Arguments: []*mcp.PromptArgument{
+			{
+				Name:        "description",
+				Description: "Natural language description of what agent you need (e.g., 'I need an agent that can check the weather')",
+				Required:    true,
+			},
+			{
+				Name:        "namespace",
+				Description: "Kubernetes namespace to deploy to (default: 'default')",
+				Required:    false,
+			},
+			{
+				Name:        "replicas",
+				Description: "Number of pod replicas to deploy (default: '1')",
+				Required:    false,
+			},
+		},
+	}, prompts.DeployAgent)
 
 	// Run the server over stdin/stdout
 	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
