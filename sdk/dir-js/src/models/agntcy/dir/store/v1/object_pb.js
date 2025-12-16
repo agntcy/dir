@@ -11,7 +11,7 @@ import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
  * Describes the file agntcy/dir/store/v1/object.proto.
  */
 export const file_agntcy_dir_store_v1_object = /*@__PURE__*/
-  fileDesc("CiBhZ250Y3kvZGlyL3N0b3JlL3YxL29iamVjdC5wcm90bxITYWdudGN5LmRpci5zdG9yZS52MSIYCglPYmplY3RSZWYSCwoDY2lkGAEgASgJItwCCgZPYmplY3QSMwoGcGFyZW50GAEgASgLMh4uYWdudGN5LmRpci5zdG9yZS52MS5PYmplY3RSZWZIAIgBARItCgVsaW5rcxgCIAMoCzIeLmFnbnRjeS5kaXIuc3RvcmUudjEuT2JqZWN0UmVmEkEKC2Fubm90YXRpb25zGAMgAygLMiwuYWdudGN5LmRpci5zdG9yZS52MS5PYmplY3QuQW5ub3RhdGlvbnNFbnRyeRIXCgpjcmVhdGVkX2F0GAQgASgJSAGIAQESEQoEdHlwZRgFIAEoCUgCiAEBEgwKBHNpemUYBiABKAQSEQoEZGF0YRgHIAEoDEgDiAEBGjIKEEFubm90YXRpb25zRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AUIJCgdfcGFyZW50Qg0KC19jcmVhdGVkX2F0QgcKBV90eXBlQgcKBV9kYXRhQrkBChdjb20uYWdudGN5LmRpci5zdG9yZS52MUILT2JqZWN0UHJvdG9QAVoiZ2l0aHViLmNvbS9hZ250Y3kvZGlyL2FwaS9zdG9yZS92MaICA0FEU6oCE0FnbnRjeS5EaXIuU3RvcmUuVjHKAhNBZ250Y3lcRGlyXFN0b3JlXFYx4gIfQWdudGN5XERpclxTdG9yZVxWMVxHUEJNZXRhZGF0YeoCFkFnbnRjeTo6RGlyOjpTdG9yZTo6VjFiBnByb3RvMw");
+  fileDesc("CiBhZ250Y3kvZGlyL3N0b3JlL3YxL29iamVjdC5wcm90bxITYWdudGN5LmRpci5zdG9yZS52MSIYCglPYmplY3RSZWYSCwoDY2lkGAEgASgJIs0BCgpPYmplY3RNZXRhEgsKA2NpZBgBIAEoCRIMCgRzaXplGAIgASgEEhIKCm1lZGlhX3R5cGUYAyABKAkSFQoNYXJ0aWZhY3RfdHlwZRgEIAEoCRJFCgthbm5vdGF0aW9ucxgFIAMoCzIwLmFnbnRjeS5kaXIuc3RvcmUudjEuT2JqZWN0TWV0YS5Bbm5vdGF0aW9uc0VudHJ5GjIKEEFubm90YXRpb25zRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASI+CgZPYmplY3QSFwoKbWVkaWFfdHlwZRgBIAEoCUgAiAEBEgwKBGRhdGEYAiABKAxCDQoLX21lZGlhX3R5cGVCuQEKF2NvbS5hZ250Y3kuZGlyLnN0b3JlLnYxQgtPYmplY3RQcm90b1ABWiJnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL3N0b3JlL3YxogIDQURTqgITQWdudGN5LkRpci5TdG9yZS5WMcoCE0FnbnRjeVxEaXJcU3RvcmVcVjHiAh9BZ250Y3lcRGlyXFN0b3JlXFYxXEdQQk1ldGFkYXRh6gIWQWdudGN5OjpEaXI6OlN0b3JlOjpWMWIGcHJvdG8z");
 
 /**
  * Describes the message agntcy.dir.store.v1.ObjectRef.
@@ -21,9 +21,16 @@ export const ObjectRefSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_store_v1_object, 0);
 
 /**
+ * Describes the message agntcy.dir.store.v1.ObjectMeta.
+ * Use `create(ObjectMetaSchema)` to create a new message.
+ */
+export const ObjectMetaSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_store_v1_object, 1);
+
+/**
  * Describes the message agntcy.dir.store.v1.Object.
  * Use `create(ObjectSchema)` to create a new message.
  */
 export const ObjectSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_store_v1_object, 1);
+  messageDesc(file_agntcy_dir_store_v1_object, 2);
 

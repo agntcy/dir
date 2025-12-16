@@ -1,0 +1,21 @@
+{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.oci.image.manifest.v1+json",
+		"artifactType": "application/vnd.agntcy.dir.record.v1+json",
+		"config": {
+			"mediaType": "application/vnd.oci.empty.v1+json",
+			"digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+			"size": 2
+		},
+		"layers": [
+			{
+				"mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+				"digest": "baeareidpiyswfrk5fa5rei6gtxspgnxdxmcdj4xaqluxjcvmdebioowyre",
+				"size": 21
+			}
+		],
+		"annotations": {
+			"org.opencontainers.image.created": "2025-12-08T10:00:00Z",
+			"custom.annotation": "test-value"
+		}
+	}

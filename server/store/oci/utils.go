@@ -97,10 +97,7 @@ func (s *store) descLookupMany(ctx context.Context, cids []*storev1.ObjectRef) (
 }
 
 // pushOrSkip pushes data to the OCI registry if it does not already exist
-func (s *store) pushOrSkip(ctx context.Context, reader io.ReadCloser, mediaType string) (ocispec.Descriptor, error) {
-	// Close reader when done
-	defer reader.Close()
-
+func (s *store) pushOrSkip(ctx context.Context, reader io.Reader, mediaType string) (ocispec.Descriptor, error) {
 	// Read all data from the reader
 	data, err := io.ReadAll(reader)
 	if err != nil {

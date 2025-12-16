@@ -5,35 +5,51 @@ syntax = "proto3";
 
 package agntcy.dir.store.v1;
 
-// Defines a reference or a globally unique content identifier of an object.
 message ObjectRef {
-  // Globally-unique content identifier (CID) of the object.
-  // Specs: https://github.com/multiformats/cid
+  // Digest of the object being referenced.
   string cid = 1;
 }
 
-// Defines an Object stored in the system.
-message Object {
-  // Parent object reference, if any.
-  optional ObjectRef parent = 1;
+// Describes an object stored in the system.
+// Follows the OCI Descriptor specification.
+// https://github.com/opencontainers/image-spec/blob/main/descriptor.md
+message ObjectMeta {
+  // Digest of the object.
+  string cid = 1;
 
-  // Links to other objects.
-  repeated ObjectRef links = 2;
+  // Media type of the object.
+  string media_type = 2;
 
-  // Annotations attached to the object.
-  map<string, string> annotations = 3;
-
-  // Creation timestamp of the object in the RFC3339 format.
-  // Specs: https://www.rfc-editor.org/rfc/rfc3339.html
-  optional string created_at = 4;
-
-  // The type of the object.
-  // This is an application-defined string.
-  optional string type = 5;
+  // Artifact type of the object.
+  string artifact_type = 3;
 
   // Size of the object in bytes.
-  uint64 size = 6;
+  int64 size = 4;
 
-  // The actual data of the object.
-  optional bytes data = 7;
+  // Arbitrary metadata for the descriptor.
+  map<string, string> annotations = 5;
+
+  // Raw data of the object.
+  bytes data = 6;
+
+  // Type of the object.
+  ObjectType object_type = 7;
+
+  // Link type, if the object is a link.
+  LinkType link_type = 8;
+}
+
+enum ObjectType {
+  OBJECT_TYPE_UNSPECIFIED = 0;
+  OBJECT_TYPE_BLOB = 1;
+  OBJECT_TYPE_MANIFEST = 2;
+  OBJECT_TYPE_INDEX = 3;
+  OBJECT_TYPE_LINK = 4;
+}
+
+enum LinkType {
+  LINK_TYPE_UNSPECIFIED = 0;
+  LINK_TYPE_CONFIG = 1;
+  LINK_TYPE_SUBJECT = 2;
+  LINK_TYPE_LAYER = 4;
 }

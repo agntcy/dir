@@ -16,22 +16,15 @@ import "google/protobuf/empty.proto";
 // format.
 // The object references map OCI digest to CIDs.
 service StoreService {
-  // Push performs write operation for given objects.
-  // Data is streamed in chunks.
-  rpc Push(stream Object) returns (ObjectRef);
+  // Lookup retrieves metadata about an object info.
+  // For manifest and index, it retrieves the full data.
+  rpc Lookup(ObjectRef) returns (ObjectMeta);
 
-  // Pull performs read operation for given objects.
-  // Data is streamed in chunks.
-  rpc Pull(ObjectRef) returns (stream Object);
+  // Walk retrieves all descriptors linked from the given object.
+  // For manifests and indexes, it retrieves full data.
+  rpc Walk(ObjectRef) returns (stream ObjectMeta);
 
-  // Lookup resolves basic metadata for the objects.
-  // Does not stream data.
-  rpc Lookup(ObjectRef) returns (Object);
-
-  // Remove performs delete operation for the objects.
-  rpc Delete(ObjectRef) returns (google.protobuf.Empty);
-
-  // Walk lists all linked objects starting from the given root objects.
-  // Use Pull to retrieve actual data.
-  rpc Walk(ObjectRef) returns (stream Object);
+  // ListReferrers lists all objects that reference the given object.
+  // For manifests and indexes, it retrieves full data.
+  rpc ListReferrers(ObjectRef) returns (stream ObjectMeta);
 }

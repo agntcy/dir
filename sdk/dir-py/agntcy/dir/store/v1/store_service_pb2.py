@@ -26,7 +26,7 @@ from agntcy.dir.store.v1 import object_pb2 as agntcy_dot_dir_dot_store_dot_v1_do
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\'agntcy/dir/store/v1/store_service.proto\x12\x13\x61gntcy.dir.store.v1\x1a agntcy/dir/store/v1/object.proto\x1a\x1bgoogle/protobuf/empty.proto2\xec\x02\n\x0cStoreService\x12\x45\n\x04Push\x12\x1b.agntcy.dir.store.v1.Object\x1a\x1e.agntcy.dir.store.v1.ObjectRef(\x01\x12\x45\n\x04Pull\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x1b.agntcy.dir.store.v1.Object0\x01\x12\x45\n\x06Lookup\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x1b.agntcy.dir.store.v1.Object\x12@\n\x06\x44\x65lete\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x16.google.protobuf.Empty\x12\x45\n\x04Walk\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x1b.agntcy.dir.store.v1.Object0\x01\x42\xbf\x01\n\x17\x63om.agntcy.dir.store.v1B\x11StoreServiceProtoP\x01Z\"github.com/agntcy/dir/api/store/v1\xa2\x02\x03\x41\x44S\xaa\x02\x13\x41gntcy.Dir.Store.V1\xca\x02\x13\x41gntcy\\Dir\\Store\\V1\xe2\x02\x1f\x41gntcy\\Dir\\Store\\V1\\GPBMetadata\xea\x02\x16\x41gntcy::Dir::Store::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\'agntcy/dir/store/v1/store_service.proto\x12\x13\x61gntcy.dir.store.v1\x1a agntcy/dir/store/v1/object.proto\x1a\x1bgoogle/protobuf/empty.proto2\xc8\x03\n\x0cStoreService\x12\x45\n\x04Push\x12\x1b.agntcy.dir.store.v1.Object\x1a\x1e.agntcy.dir.store.v1.ObjectRef(\x01\x12\x45\n\x04Pull\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x1b.agntcy.dir.store.v1.Object0\x01\x12I\n\x06Lookup\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x1f.agntcy.dir.store.v1.ObjectMeta\x12@\n\x06\x44\x65lete\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x16.google.protobuf.Empty\x12I\n\x04Walk\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x1f.agntcy.dir.store.v1.ObjectMeta0\x01\x12R\n\rListReferrers\x12\x1e.agntcy.dir.store.v1.ObjectRef\x1a\x1f.agntcy.dir.store.v1.ObjectMeta0\x01\x42\xbf\x01\n\x17\x63om.agntcy.dir.store.v1B\x11StoreServiceProtoP\x01Z\"github.com/agntcy/dir/api/store/v1\xa2\x02\x03\x41\x44S\xaa\x02\x13\x41gntcy.Dir.Store.V1\xca\x02\x13\x41gntcy\\Dir\\Store\\V1\xe2\x02\x1f\x41gntcy\\Dir\\Store\\V1\\GPBMetadata\xea\x02\x16\x41gntcy::Dir::Store::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,5 +35,5 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\027com.agntcy.dir.store.v1B\021StoreServiceProtoP\001Z\"github.com/agntcy/dir/api/store/v1\242\002\003ADS\252\002\023Agntcy.Dir.Store.V1\312\002\023Agntcy\\Dir\\Store\\V1\342\002\037Agntcy\\Dir\\Store\\V1\\GPBMetadata\352\002\026Agntcy::Dir::Store::V1'
   _globals['_STORESERVICE']._serialized_start=128
-  _globals['_STORESERVICE']._serialized_end=492
+  _globals['_STORESERVICE']._serialized_end=584
 # @@protoc_insertion_point(module_scope)

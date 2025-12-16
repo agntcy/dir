@@ -23,11 +23,12 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	StoreService_Push_FullMethodName   = "/agntcy.dir.store.v1.StoreService/Push"
-	StoreService_Pull_FullMethodName   = "/agntcy.dir.store.v1.StoreService/Pull"
-	StoreService_Lookup_FullMethodName = "/agntcy.dir.store.v1.StoreService/Lookup"
-	StoreService_Delete_FullMethodName = "/agntcy.dir.store.v1.StoreService/Delete"
-	StoreService_Walk_FullMethodName   = "/agntcy.dir.store.v1.StoreService/Walk"
+	StoreService_Push_FullMethodName          = "/agntcy.dir.store.v1.StoreService/Push"
+	StoreService_Pull_FullMethodName          = "/agntcy.dir.store.v1.StoreService/Pull"
+	StoreService_Lookup_FullMethodName        = "/agntcy.dir.store.v1.StoreService/Lookup"
+	StoreService_Delete_FullMethodName        = "/agntcy.dir.store.v1.StoreService/Delete"
+	StoreService_Walk_FullMethodName          = "/agntcy.dir.store.v1.StoreService/Walk"
+	StoreService_ListReferrers_FullMethodName = "/agntcy.dir.store.v1.StoreService/ListReferrers"
 )
 
 // StoreServiceClient is the client API for StoreService service.
@@ -42,20 +43,21 @@ const (
 // format.
 // The object references map OCI digest to CIDs.
 type StoreServiceClient interface {
-	// Push performs write operation for given objects.
+	// Push performs write operation for a given object.
 	// Data is streamed in chunks.
 	Push(ctx context.Context, opts ...grpc.CallOption) (StoreService_PushClient, error)
-	// Pull performs read operation for given objects.
+	// Pull performs read operation for a given object.
 	// Data is streamed in chunks.
 	Pull(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (StoreService_PullClient, error)
-	// Lookup resolves basic metadata for the objects.
-	// Does not stream data.
-	Lookup(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*Object, error)
-	// Remove performs delete operation for the objects.
+	// Lookup resolves basic metadata for a given object.
+	Lookup(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*ObjectMeta, error)
+	// Remove performs delete operation for a given object.
 	Delete(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Walk lists all linked objects starting from the given root objects.
 	// Use Pull to retrieve actual data.
 	Walk(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (StoreService_WalkClient, error)
+	// ListReferrers lists all objects that reference the given object.
+	ListReferrers(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (StoreService_ListReferrersClient, error)
 }
 
 type storeServiceClient struct {
@@ -134,9 +136,9 @@ func (x *storeServicePullClient) Recv() (*Object, error) {
 	return m, nil
 }
 
-func (c *storeServiceClient) Lookup(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*Object, error) {
+func (c *storeServiceClient) Lookup(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (*ObjectMeta, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Object)
+	out := new(ObjectMeta)
 	err := c.cc.Invoke(ctx, StoreService_Lookup_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -171,7 +173,7 @@ func (c *storeServiceClient) Walk(ctx context.Context, in *ObjectRef, opts ...gr
 }
 
 type StoreService_WalkClient interface {
-	Recv() (*Object, error)
+	Recv() (*ObjectMeta, error)
 	grpc.ClientStream
 }
 
@@ -179,8 +181,41 @@ type storeServiceWalkClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeServiceWalkClient) Recv() (*Object, error) {
-	m := new(Object)
+func (x *storeServiceWalkClient) Recv() (*ObjectMeta, error) {
+	m := new(ObjectMeta)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *storeServiceClient) ListReferrers(ctx context.Context, in *ObjectRef, opts ...grpc.CallOption) (StoreService_ListReferrersClient, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StoreService_ServiceDesc.Streams[3], StoreService_ListReferrers_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &storeServiceListReferrersClient{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type StoreService_ListReferrersClient interface {
+	Recv() (*ObjectMeta, error)
+	grpc.ClientStream
+}
+
+type storeServiceListReferrersClient struct {
+	grpc.ClientStream
+}
+
+func (x *storeServiceListReferrersClient) Recv() (*ObjectMeta, error) {
+	m := new(ObjectMeta)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -199,20 +234,21 @@ func (x *storeServiceWalkClient) Recv() (*Object, error) {
 // format.
 // The object references map OCI digest to CIDs.
 type StoreServiceServer interface {
-	// Push performs write operation for given objects.
+	// Push performs write operation for a given object.
 	// Data is streamed in chunks.
 	Push(StoreService_PushServer) error
-	// Pull performs read operation for given objects.
+	// Pull performs read operation for a given object.
 	// Data is streamed in chunks.
 	Pull(*ObjectRef, StoreService_PullServer) error
-	// Lookup resolves basic metadata for the objects.
-	// Does not stream data.
-	Lookup(context.Context, *ObjectRef) (*Object, error)
-	// Remove performs delete operation for the objects.
+	// Lookup resolves basic metadata for a given object.
+	Lookup(context.Context, *ObjectRef) (*ObjectMeta, error)
+	// Remove performs delete operation for a given object.
 	Delete(context.Context, *ObjectRef) (*emptypb.Empty, error)
 	// Walk lists all linked objects starting from the given root objects.
 	// Use Pull to retrieve actual data.
 	Walk(*ObjectRef, StoreService_WalkServer) error
+	// ListReferrers lists all objects that reference the given object.
+	ListReferrers(*ObjectRef, StoreService_ListReferrersServer) error
 }
 
 // UnimplementedStoreServiceServer should be embedded to have
@@ -228,7 +264,7 @@ func (UnimplementedStoreServiceServer) Push(StoreService_PushServer) error {
 func (UnimplementedStoreServiceServer) Pull(*ObjectRef, StoreService_PullServer) error {
 	return status.Errorf(codes.Unimplemented, "method Pull not implemented")
 }
-func (UnimplementedStoreServiceServer) Lookup(context.Context, *ObjectRef) (*Object, error) {
+func (UnimplementedStoreServiceServer) Lookup(context.Context, *ObjectRef) (*ObjectMeta, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Lookup not implemented")
 }
 func (UnimplementedStoreServiceServer) Delete(context.Context, *ObjectRef) (*emptypb.Empty, error) {
@@ -236,6 +272,9 @@ func (UnimplementedStoreServiceServer) Delete(context.Context, *ObjectRef) (*emp
 }
 func (UnimplementedStoreServiceServer) Walk(*ObjectRef, StoreService_WalkServer) error {
 	return status.Errorf(codes.Unimplemented, "method Walk not implemented")
+}
+func (UnimplementedStoreServiceServer) ListReferrers(*ObjectRef, StoreService_ListReferrersServer) error {
+	return status.Errorf(codes.Unimplemented, "method ListReferrers not implemented")
 }
 func (UnimplementedStoreServiceServer) testEmbeddedByValue() {}
 
@@ -349,7 +388,7 @@ func _StoreService_Walk_Handler(srv interface{}, stream grpc.ServerStream) error
 }
 
 type StoreService_WalkServer interface {
-	Send(*Object) error
+	Send(*ObjectMeta) error
 	grpc.ServerStream
 }
 
@@ -357,7 +396,28 @@ type storeServiceWalkServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeServiceWalkServer) Send(m *Object) error {
+func (x *storeServiceWalkServer) Send(m *ObjectMeta) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _StoreService_ListReferrers_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ObjectRef)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(StoreServiceServer).ListReferrers(m, &storeServiceListReferrersServer{ServerStream: stream})
+}
+
+type StoreService_ListReferrersServer interface {
+	Send(*ObjectMeta) error
+	grpc.ServerStream
+}
+
+type storeServiceListReferrersServer struct {
+	grpc.ServerStream
+}
+
+func (x *storeServiceListReferrersServer) Send(m *ObjectMeta) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -391,6 +451,11 @@ var StoreService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Walk",
 			Handler:       _StoreService_Walk_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "ListReferrers",
+			Handler:       _StoreService_ListReferrers_Handler,
 			ServerStreams: true,
 		},
 	},

@@ -35,61 +35,82 @@ export declare type ObjectRef = Message<"agntcy.dir.store.v1.ObjectRef"> & {
 export declare const ObjectRefSchema: GenMessage<ObjectRef>;
 
 /**
+ * Metadata about an Object stored in the system.
+ * This metadata is immutable and can be used to identify and verify the object.
+ *
+ * This data is only available for OCI Artifacts (manifest or index) stored in the system.
+ *
+ * @generated from message agntcy.dir.store.v1.ObjectMeta
+ */
+export declare type ObjectMeta = Message<"agntcy.dir.store.v1.ObjectMeta"> & {
+  /**
+   * CID of the object.
+   *
+   * @generated from field: string cid = 1;
+   */
+  cid: string;
+
+  /**
+   * Size of the object in bytes.
+   *
+   * @generated from field: uint64 size = 2;
+   */
+  size: bigint;
+
+  /**
+   * Media type of the object.
+   *
+   * @generated from field: string media_type = 3;
+   */
+  mediaType: string;
+
+  /**
+   * Artifact type of the object.
+   *
+   * @generated from field: string artifact_type = 4;
+   */
+  artifactType: string;
+
+  /**
+   * Annotations attached to the object.
+   *
+   * @generated from field: map<string, string> annotations = 5;
+   */
+  annotations: { [key: string]: string };
+};
+
+/**
+ * Describes the message agntcy.dir.store.v1.ObjectMeta.
+ * Use `create(ObjectMetaSchema)` to create a new message.
+ */
+export declare const ObjectMetaSchema: GenMessage<ObjectMeta>;
+
+/**
  * Defines an Object stored in the system.
+ * The object contains raw binary data.
+ * For OCI Artifacts, the data is stored in the OCI format.
+ * For other types of objects, the data is stored as-is.
  *
  * @generated from message agntcy.dir.store.v1.Object
  */
 export declare type Object$ = Message<"agntcy.dir.store.v1.Object"> & {
   /**
-   * Parent object reference, if any.
+   * Media type of the object.
+   * Supported values:
+   * - application/vnd.oci.image.manifest.v1+json
+   * - application/vnd.oci.image.index.v1+json
+   * - application/vnd.oci.image.layer.v1.tar+gzip
    *
-   * @generated from field: optional agntcy.dir.store.v1.ObjectRef parent = 1;
+   * @generated from field: optional string media_type = 1;
    */
-  parent?: ObjectRef;
+  mediaType?: string;
 
   /**
-   * Links to other objects.
+   * Raw binary data of the object.
    *
-   * @generated from field: repeated agntcy.dir.store.v1.ObjectRef links = 2;
+   * @generated from field: bytes data = 2;
    */
-  links: ObjectRef[];
-
-  /**
-   * Annotations attached to the object.
-   *
-   * @generated from field: map<string, string> annotations = 3;
-   */
-  annotations: { [key: string]: string };
-
-  /**
-   * Creation timestamp of the object in the RFC3339 format.
-   * Specs: https://www.rfc-editor.org/rfc/rfc3339.html
-   *
-   * @generated from field: optional string created_at = 4;
-   */
-  createdAt?: string;
-
-  /**
-   * The type of the object.
-   * This is an application-defined string.
-   *
-   * @generated from field: optional string type = 5;
-   */
-  type?: string;
-
-  /**
-   * Size of the object in bytes.
-   *
-   * @generated from field: uint64 size = 6;
-   */
-  size: bigint;
-
-  /**
-   * The actual data of the object.
-   *
-   * @generated from field: optional bytes data = 7;
-   */
-  data?: Uint8Array;
+  data: Uint8Array;
 };
 
 /**

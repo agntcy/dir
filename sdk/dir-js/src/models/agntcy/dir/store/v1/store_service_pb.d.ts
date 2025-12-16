@@ -6,7 +6,7 @@
 /* eslint-disable */
 
 import type { GenFile, GenService } from "@bufbuild/protobuf/codegenv2";
-import type { ObjectRefSchema, ObjectSchema } from "./object_pb.js";
+import type { ObjectMetaSchema, ObjectRefSchema, ObjectSchema } from "./object_pb.js";
 import type { EmptySchema } from "@bufbuild/protobuf/wkt";
 
 /**
@@ -27,7 +27,7 @@ export declare const file_agntcy_dir_store_v1_store_service: GenFile;
  */
 export declare const StoreService: GenService<{
   /**
-   * Push performs write operation for given objects.
+   * Push performs write operation for a given object.
    * Data is streamed in chunks.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Push
@@ -38,7 +38,7 @@ export declare const StoreService: GenService<{
     output: typeof ObjectRefSchema;
   },
   /**
-   * Pull performs read operation for given objects.
+   * Pull performs read operation for a given object.
    * Data is streamed in chunks.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Pull
@@ -49,18 +49,17 @@ export declare const StoreService: GenService<{
     output: typeof ObjectSchema;
   },
   /**
-   * Lookup resolves basic metadata for the objects.
-   * Does not stream data.
+   * Lookup resolves basic metadata for a given object.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Lookup
    */
   lookup: {
     methodKind: "unary";
     input: typeof ObjectRefSchema;
-    output: typeof ObjectSchema;
+    output: typeof ObjectMetaSchema;
   },
   /**
-   * Remove performs delete operation for the objects.
+   * Remove performs delete operation for a given object.
    *
    * @generated from rpc agntcy.dir.store.v1.StoreService.Delete
    */
@@ -78,7 +77,17 @@ export declare const StoreService: GenService<{
   walk: {
     methodKind: "server_streaming";
     input: typeof ObjectRefSchema;
-    output: typeof ObjectSchema;
+    output: typeof ObjectMetaSchema;
+  },
+  /**
+   * ListReferrers lists all objects that reference the given object.
+   *
+   * @generated from rpc agntcy.dir.store.v1.StoreService.ListReferrers
+   */
+  listReferrers: {
+    methodKind: "server_streaming";
+    input: typeof ObjectRefSchema;
+    output: typeof ObjectMetaSchema;
   },
 }>;
 

@@ -5,10 +5,8 @@ package oci
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -85,101 +83,94 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 // Note that metadata can be stored in a different store and only wrap this store.
 //
 // Ref: https://github.com/oras-project/oras-go/blob/main/docs/Modeling-Artifacts.md
-func (s *store) Push(ctx context.Context, object *storev1.Object, rd io.ReadCloser) (*storev1.ObjectRef, error) {
-	logger.Debug("Pushing object to OCI store", "object", object)
+func (s *store) Push(ctx context.Context, mediaType string, rd io.ReadCloser) (*storev1.ObjectRef, error) {
+	logger.Debug("Pushing object to OCI store", "mediaType", mediaType)
 
 	// Close reader when done
 	defer rd.Close()
 
 	// Step 1: Use oras.PushBytes to push the object data and get Layer Descriptor
-	dataDesc, err := s.pushOrSkip(ctx, rd, "application/json")
+	desc, err := s.pushOrSkip(ctx, rd, mediaType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to push object bytes: %v", err)
 	}
 
-	// Step 2: Create manifest
-	manifest, err := s.packageObject(ctx, object, dataDesc)
+	// Convert digest to CID
+	cid, err := corev1.ConvertDigestToCID(desc.Digest)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to package object into manifest: %v", err)
-	}
-
-	// Step 4: Convert manifest to bytes
-	manifestBytes, err := json.Marshal(manifest)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to marshal manifest to JSON: %v", err)
-	}
-
-	// Step 3: Push manifest
-	manifestDesc, err := s.pushOrSkip(ctx, io.NopCloser(strings.NewReader(string(manifestBytes))), ocispec.MediaTypeImageManifest)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to push manifest: %v", err)
-	}
-
-	// Step 4: Create RecordRef to return
-	cidTag, err := corev1.ConvertDigestToCID(manifestDesc.Digest)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to convert manifest digest to CID: %v", err)
-	}
-
-	// Tag the manifest with the CID tag
-	err = s.tagWithRetry(ctx, manifestDesc.Digest.String(), cidTag)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to tag manifest with CID %s: %v", cidTag, err)
+		return nil, status.Errorf(codes.Internal, "failed to convert digest %s to CID: %v", desc.Digest.String(), err)
 	}
 
 	// Return object reference
-	return &storev1.ObjectRef{Cid: cidTag}, nil
+	return &storev1.ObjectRef{Cid: cid}, nil
 }
 
 // Lookup checks if the ref exists as a tagged object.
-func (s *store) Lookup(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Object, error) {
+func (s *store) Lookup(ctx context.Context, ref *storev1.ObjectRef) (*storev1.ObjectMeta, error) {
 	// Convert ref to digest
 	digets, err := corev1.ConvertCIDToDigest(ref.GetCid())
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid CID %s: %v", ref.GetCid(), err)
 	}
 
-	// Pull manifest
-	manifest, _, err := s.fetchAndParseManifest(ctx, digets.String())
+	// Resolve object
+	desc, err := s.repo.Resolve(ctx, digets.String())
 	if err != nil {
-		return nil, err // Error already has proper context from helper
+		return nil, status.Errorf(codes.Internal, "failed to resolve object with CID %s: %v", ref.GetCid(), err)
 	}
 
-	// Convert manifest back to RecordMeta
-	meta, err := s.unpackageObject(ctx, manifest)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unpackage object from manifest for CID %s: %v", ref.GetCid(), err)
+	// Extract meta based on media type
+	switch desc.MediaType {
+	case ocispec.MediaTypeImageManifest:
+		// extract meta from manifest
+		manifest, manifestDesc, err := s.fetchAndParseManifest(ctx, digets.String())
+		if err != nil {
+			return nil, err // Error already has proper context from helper
+		}
+
+		return &storev1.ObjectMeta{
+			Cid:          ref.GetCid(),
+			Size:         uint64(manifestDesc.Size),
+			MediaType:    manifest.MediaType,
+			ArtifactType: manifest.ArtifactType,
+			Annotations:  manifest.Annotations,
+		}, nil
+	case ocispec.MediaTypeImageIndex:
+		// extract meta from index
 	}
 
-	return meta, nil
+	// any other media type, return only basic info
+	return &storev1.ObjectMeta{
+		Cid:          ref.GetCid(),
+		Size:         uint64(desc.Size),
+		MediaType:    desc.MediaType,
+		ArtifactType: desc.ArtifactType,
+		Annotations:  desc.Annotations,
+	}, nil
 }
 
-func (s *store) Pull(ctx context.Context, ref *storev1.ObjectRef) (*storev1.Object, io.ReadCloser, error) {
+func (s *store) Pull(ctx context.Context, ref *storev1.ObjectRef) (*storev1.ObjectMeta, io.ReadCloser, error) {
+	// Fetch object meta
+	meta, err := s.Lookup(ctx, ref)
+	if err != nil {
+		return nil, nil, status.Errorf(codes.Internal, "failed to lookup object with CID %s: %v", ref.GetCid(), err)
+	}
+
 	// Convert ref to digest
 	digets, err := corev1.ConvertCIDToDigest(ref.GetCid())
 	if err != nil {
 		return nil, nil, status.Errorf(codes.InvalidArgument, "invalid CID %s: %v", ref.GetCid(), err)
 	}
 
-	// Pull manifest
-	manifest, _, err := s.fetchAndParseManifest(ctx, digets.String())
-	if err != nil {
-		return nil, nil, err // Error already has proper context from helper
-	}
-
-	// Convert manifest back to RecordMeta
-	meta, err := s.unpackageObject(ctx, manifest)
-	if err != nil {
-		return nil, nil, status.Errorf(codes.Internal, "failed to unpackage object from manifest for CID %s: %v", ref.GetCid(), err)
-	}
-
-	// Pull object data blob
-	dataReader, err := s.repo.Fetch(ctx, manifest.Config)
+	// Pull object data
+	rd, err := s.repo.Fetch(ctx, ocispec.Descriptor{
+		Digest: digets,
+	})
 	if err != nil {
 		return nil, nil, status.Errorf(codes.Internal, "failed to pull object data for CID %s: %v", ref.GetCid(), err)
 	}
 
-	return meta, dataReader, nil
+	return meta, rd, nil
 }
 
 func (s *store) Delete(ctx context.Context, ref *storev1.ObjectRef) error {
@@ -189,8 +180,8 @@ func (s *store) Delete(ctx context.Context, ref *storev1.ObjectRef) error {
 }
 
 // Walk implements types.StoreAPI.
-func (s *store) Walk(ctx context.Context, head *storev1.ObjectRef, walkFn func(*storev1.Object) error, walkOpts ...func()) error {
-	panic("unimplemented")
+func (s *store) Walk(ctx context.Context, head *storev1.ObjectRef, walkFn func(*storev1.ObjectMeta) error, walkOpts ...func()) error {
+	return fmt.Errorf("unimplemented")
 }
 
 // IsReady checks if the storage backend is ready to serve traffic.

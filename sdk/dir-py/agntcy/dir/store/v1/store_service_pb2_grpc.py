@@ -35,7 +35,7 @@ class StoreServiceStub(object):
         self.Lookup = channel.unary_unary(
                 '/agntcy.dir.store.v1.StoreService/Lookup',
                 request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
+                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.FromString,
                 _registered_method=True)
         self.Delete = channel.unary_unary(
                 '/agntcy.dir.store.v1.StoreService/Delete',
@@ -45,7 +45,12 @@ class StoreServiceStub(object):
         self.Walk = channel.unary_stream(
                 '/agntcy.dir.store.v1.StoreService/Walk',
                 request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
+                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.FromString,
+                _registered_method=True)
+        self.ListReferrers = channel.unary_stream(
+                '/agntcy.dir.store.v1.StoreService/ListReferrers',
+                request_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.FromString,
                 _registered_method=True)
 
 
@@ -60,7 +65,7 @@ class StoreServiceServicer(object):
     """
 
     def Push(self, request_iterator, context):
-        """Push performs write operation for given objects.
+        """Push performs write operation for a given object.
         Data is streamed in chunks.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -68,7 +73,7 @@ class StoreServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Pull(self, request, context):
-        """Pull performs read operation for given objects.
+        """Pull performs read operation for a given object.
         Data is streamed in chunks.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -76,15 +81,14 @@ class StoreServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Lookup(self, request, context):
-        """Lookup resolves basic metadata for the objects.
-        Does not stream data.
+        """Lookup resolves basic metadata for a given object.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Delete(self, request, context):
-        """Remove performs delete operation for the objects.
+        """Remove performs delete operation for a given object.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -93,6 +97,13 @@ class StoreServiceServicer(object):
     def Walk(self, request, context):
         """Walk lists all linked objects starting from the given root objects.
         Use Pull to retrieve actual data.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListReferrers(self, request, context):
+        """ListReferrers lists all objects that reference the given object.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -114,7 +125,7 @@ def add_StoreServiceServicer_to_server(servicer, server):
             'Lookup': grpc.unary_unary_rpc_method_handler(
                     servicer.Lookup,
                     request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
-                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.SerializeToString,
+                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.SerializeToString,
             ),
             'Delete': grpc.unary_unary_rpc_method_handler(
                     servicer.Delete,
@@ -124,7 +135,12 @@ def add_StoreServiceServicer_to_server(servicer, server):
             'Walk': grpc.unary_stream_rpc_method_handler(
                     servicer.Walk,
                     request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
-                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.SerializeToString,
+                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.SerializeToString,
+            ),
+            'ListReferrers': grpc.unary_stream_rpc_method_handler(
+                    servicer.ListReferrers,
+                    request_deserializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.FromString,
+                    response_serializer=agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -214,7 +230,7 @@ class StoreService(object):
             target,
             '/agntcy.dir.store.v1.StoreService/Lookup',
             agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
-            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.FromString,
             options,
             channel_credentials,
             insecure,
@@ -268,7 +284,34 @@ class StoreService(object):
             target,
             '/agntcy.dir.store.v1.StoreService/Walk',
             agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
-            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.Object.FromString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListReferrers(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/agntcy.dir.store.v1.StoreService/ListReferrers',
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectRef.SerializeToString,
+            agntcy_dot_dir_dot_store_dot_v1_dot_object__pb2.ObjectMeta.FromString,
             options,
             channel_credentials,
             insecure,

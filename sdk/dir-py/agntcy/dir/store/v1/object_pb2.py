@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n agntcy/dir/store/v1/object.proto\x12\x13\x61gntcy.dir.store.v1\"\x1d\n\tObjectRef\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xa1\x03\n\x06Object\x12;\n\x06parent\x18\x01 \x01(\x0b\x32\x1e.agntcy.dir.store.v1.ObjectRefH\x00R\x06parent\x88\x01\x01\x12\x34\n\x05links\x18\x02 \x03(\x0b\x32\x1e.agntcy.dir.store.v1.ObjectRefR\x05links\x12N\n\x0b\x61nnotations\x18\x03 \x03(\x0b\x32,.agntcy.dir.store.v1.Object.AnnotationsEntryR\x0b\x61nnotations\x12\"\n\ncreated_at\x18\x04 \x01(\tH\x01R\tcreatedAt\x88\x01\x01\x12\x17\n\x04type\x18\x05 \x01(\tH\x02R\x04type\x88\x01\x01\x12\x12\n\x04size\x18\x06 \x01(\x04R\x04size\x12\x17\n\x04\x64\x61ta\x18\x07 \x01(\x0cH\x03R\x04\x64\x61ta\x88\x01\x01\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\t\n\x07_parentB\r\n\x0b_created_atB\x07\n\x05_typeB\x07\n\x05_dataB\xb9\x01\n\x17\x63om.agntcy.dir.store.v1B\x0bObjectProtoP\x01Z\"github.com/agntcy/dir/api/store/v1\xa2\x02\x03\x41\x44S\xaa\x02\x13\x41gntcy.Dir.Store.V1\xca\x02\x13\x41gntcy\\Dir\\Store\\V1\xe2\x02\x1f\x41gntcy\\Dir\\Store\\V1\\GPBMetadata\xea\x02\x16\x41gntcy::Dir::Store::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n agntcy/dir/store/v1/object.proto\x12\x13\x61gntcy.dir.store.v1\"\x1d\n\tObjectRef\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\x8a\x02\n\nObjectMeta\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\x12\x12\n\x04size\x18\x02 \x01(\x04R\x04size\x12\x1d\n\nmedia_type\x18\x03 \x01(\tR\tmediaType\x12#\n\rartifact_type\x18\x04 \x01(\tR\x0c\x61rtifactType\x12R\n\x0b\x61nnotations\x18\x05 \x03(\x0b\x32\x30.agntcy.dir.store.v1.ObjectMeta.AnnotationsEntryR\x0b\x61nnotations\x1a>\n\x10\x41nnotationsEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"O\n\x06Object\x12\"\n\nmedia_type\x18\x01 \x01(\tH\x00R\tmediaType\x88\x01\x01\x12\x12\n\x04\x64\x61ta\x18\x02 \x01(\x0cR\x04\x64\x61taB\r\n\x0b_media_typeB\xb9\x01\n\x17\x63om.agntcy.dir.store.v1B\x0bObjectProtoP\x01Z\"github.com/agntcy/dir/api/store/v1\xa2\x02\x03\x41\x44S\xaa\x02\x13\x41gntcy.Dir.Store.V1\xca\x02\x13\x41gntcy\\Dir\\Store\\V1\xe2\x02\x1f\x41gntcy\\Dir\\Store\\V1\\GPBMetadata\xea\x02\x16\x41gntcy::Dir::Store::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,12 +32,14 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'agntcy.dir.store.v1.object_
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\027com.agntcy.dir.store.v1B\013ObjectProtoP\001Z\"github.com/agntcy/dir/api/store/v1\242\002\003ADS\252\002\023Agntcy.Dir.Store.V1\312\002\023Agntcy\\Dir\\Store\\V1\342\002\037Agntcy\\Dir\\Store\\V1\\GPBMetadata\352\002\026Agntcy::Dir::Store::V1'
-  _globals['_OBJECT_ANNOTATIONSENTRY']._loaded_options = None
-  _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_options = b'8\001'
+  _globals['_OBJECTMETA_ANNOTATIONSENTRY']._loaded_options = None
+  _globals['_OBJECTMETA_ANNOTATIONSENTRY']._serialized_options = b'8\001'
   _globals['_OBJECTREF']._serialized_start=57
   _globals['_OBJECTREF']._serialized_end=86
-  _globals['_OBJECT']._serialized_start=89
-  _globals['_OBJECT']._serialized_end=506
-  _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_start=400
-  _globals['_OBJECT_ANNOTATIONSENTRY']._serialized_end=462
+  _globals['_OBJECTMETA']._serialized_start=89
+  _globals['_OBJECTMETA']._serialized_end=355
+  _globals['_OBJECTMETA_ANNOTATIONSENTRY']._serialized_start=293
+  _globals['_OBJECTMETA_ANNOTATIONSENTRY']._serialized_end=355
+  _globals['_OBJECT']._serialized_start=357
+  _globals['_OBJECT']._serialized_end=436
 # @@protoc_insertion_point(module_scope)
