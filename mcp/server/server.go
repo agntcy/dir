@@ -260,6 +260,29 @@ Use this tool to remove agents that are no longer needed.
 		`),
 	}, tools.DeleteKagenti)
 
+	// Add tool for calling A2A agents
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_a2a_call",
+		Description: strings.TrimSpace(`
+Sends a message to an A2A (Agent-to-Agent) agent and returns the response.
+This tool allows you to interact with deployed A2A agents directly.
+
+**Prerequisites**:
+- The A2A agent must be running and accessible
+- Port-forward must be active if the agent is in Kubernetes
+
+**Input**:
+- message: The text message/question to send to the agent (required)
+- endpoint: The A2A agent endpoint URL (default: "http://localhost:8000")
+
+**Output**:
+- response: The agent's response text
+- raw_response: The full JSON-RPC response
+
+Use this tool to test deployed agents or interact with them for demos.
+		`),
+	}, tools.CallA2AAgent)
+
 	// Add tool for importing records from other formats to OASF
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_oasf_import_record",
@@ -494,6 +517,27 @@ Describe what kind of agent you need in natural language, and this workflow will
 			},
 		},
 	}, prompts.DeployAgent)
+
+	// Add prompt for calling A2A agents
+	server.AddPrompt(&mcp.Prompt{
+		Name: "call_agent",
+		Description: strings.TrimSpace(`
+Send a message to a deployed A2A agent and get the response.
+Use this to interact with agents that have been deployed to Kubernetes.
+		`),
+		Arguments: []*mcp.PromptArgument{
+			{
+				Name:        "message",
+				Description: "The question or message to send to the agent",
+				Required:    true,
+			},
+			{
+				Name:        "endpoint",
+				Description: "The A2A agent endpoint URL (default: http://localhost:8000)",
+				Required:    false,
+			},
+		},
+	}, prompts.CallAgent)
 
 	// Run the server over stdin/stdout
 	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {

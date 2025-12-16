@@ -13,7 +13,7 @@ import (
 
 // DeployAgentInput defines the input parameters for the deploy_agent prompt.
 type DeployAgentInput struct {
-	Description string `json:"description" jsonschema:"Natural language description of what kind of agent you need (e.g., 'I need an agent that can tell me the weather', 'find me a code review assistant') (required)"`
+	Description string `json:"description" jsonschema:"Natural language description of what kind of agent you need (e.g., 'find me a code review assistant') (required)"`
 	Namespace   string `json:"namespace"   jsonschema:"Kubernetes namespace to deploy to (default: 'default')"`
 	Replicas    string `json:"replicas"    jsonschema:"Number of pod replicas to deploy (default: '1')"`
 }
