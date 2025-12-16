@@ -539,6 +539,26 @@ Use this to interact with agents that have been deployed to Kubernetes.
 		},
 	}, prompts.CallAgent)
 
+	// Add prompt for deleting agents from Kubernetes
+	server.AddPrompt(&mcp.Prompt{
+		Name: "delete_agent",
+		Description: strings.TrimSpace(`
+Delete a deployed agent from Kubernetes.
+		`),
+		Arguments: []*mcp.PromptArgument{
+			{
+				Name:        "agent_name",
+				Description: "Name of the agent to delete",
+				Required:    true,
+			},
+			{
+				Name:        "namespace",
+				Description: "Kubernetes namespace (default: default)",
+				Required:    false,
+			},
+		},
+	}, prompts.DeleteAgent)
+
 	// Run the server over stdin/stdout
 	if err := server.Run(ctx, &mcp.StdioTransport{}); err != nil {
 		return fmt.Errorf("failed to run MCP server: %w", err)
