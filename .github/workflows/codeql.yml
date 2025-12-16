@@ -221,7 +221,7 @@ jobs:
             echo "Building known main packages..."
 
             # Find and build main packages
-            for main_pkg in server cli client hub; do
+            for main_pkg in server cli client; do
               if [ -d "$main_pkg" ] && [ -f "$main_pkg/go.mod" ]; then
                 echo "Building $main_pkg..."
                 (cd "$main_pkg" && go build -v .) || echo "$main_pkg build failed"

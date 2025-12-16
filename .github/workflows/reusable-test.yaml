@@ -52,7 +52,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
-          files: .coverage/unit/api.out,.coverage/unit/client.out,.coverage/unit/server.out,.coverage/unit/cli.out,.coverage/unit/hub.out,.coverage/unit/importer.out,.coverage/unit/mcp.out,.coverage/unit/utils.out
+          files: .coverage/unit/api.out,.coverage/unit/client.out,.coverage/unit/server.out,.coverage/unit/cli.out,.coverage/unit/importer.out,.coverage/unit/mcp.out,.coverage/unit/utils.out
           flags: unit
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}

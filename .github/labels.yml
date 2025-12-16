@@ -89,8 +89,6 @@
   color: '0052cc'
 - name: 'area/cli/dir'
   color: '0052cc'
-- name: 'area/cli/hub'
-  color: '0052cc'
 
 # Helm:
 - name: 'area/helm'
