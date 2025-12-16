@@ -502,7 +502,7 @@ Describe what kind of agent you need in natural language, and this workflow will
 		Arguments: []*mcp.PromptArgument{
 			{
 				Name:        "description",
-				Description: "Natural language description of what agent you need (e.g., 'I need an agent that can check the weather')",
+				Description: "Natural language description of what agent you need (e.g., 'find me a code review assistant')",
 				Required:    true,
 			},
 			{
