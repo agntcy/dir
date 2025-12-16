@@ -1357,7 +1357,7 @@ tasks:
         
         echo "Cluster ${CLUSTER_NAME} is ready, starting parallel test tasks..."
         
-        # Run default validation scenario (no OASF, default behavior)
+        # Run default validation scenario (uses server defaults: OASF API validation with strict mode)
         # Uses ports 8888, 9090, 8080
         (
           set +e  # Don't exit on error in background process
@@ -1466,11 +1466,12 @@ tasks:
             NAMESPACE: "{{ .HELM_NAMESPACE }}"
             KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
             KUBECONFIG: "{{ .KUBECONFIG }}"
-      # Deploy Directory to specific namespace
+      # Deploy Directory to specific namespace (uses server defaults: OASF API validation with strict mode)
       - task: deploy:kubernetes:local
         vars:
           KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
           KUBECONFIG: "{{ .KUBECONFIG }}"
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
@@ -1480,6 +1481,8 @@ tasks:
         vars:
           KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
           KUBECONFIG: "{{ .KUBECONFIG }}"
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          SERVER_PORT: "{{ .SERVER_PORT }}"
       # Run client library tests first (faster feedback)
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
