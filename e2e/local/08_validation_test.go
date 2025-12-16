@@ -35,6 +35,47 @@ var _ = ginkgo.Describe("Running dirctl validation tests with different OASF val
 	}
 
 	// Test cases for validation scenarios
+	ginkgo.Context("Validation with default (strict) settings", ginkgo.Ordered, ginkgo.Serial, ginkgo.Label("validation-default"), func() {
+		// These tests verify that strict validation (default) rejects records with warnings
+
+		var record080Path, recordWarnings080Path string
+
+		ginkgo.BeforeAll(func() {
+			// Create temporary files for test records
+			record080Path = filepath.Join(tempDir, "record_080_default_test.json")
+			recordWarnings080Path = filepath.Join(tempDir, "record_warnings_080_default_test.json")
+
+			_ = os.MkdirAll(filepath.Dir(record080Path), 0o755)
+			_ = os.WriteFile(record080Path, testdata.ExpectedRecordV080JSON, 0o600)
+			_ = os.WriteFile(recordWarnings080Path, testdata.ExpectedRecordWarningsV080JSON, 0o600)
+		})
+
+		ginkgo.It("should successfully push record_080.json with default (strict) validation", func() {
+			cid := cli.Push(record080Path).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(cid).NotTo(gomega.BeEmpty(), "Push should return a valid CID")
+
+			// Validate that the returned CID correctly represents the pushed data
+			utils.LoadAndValidateCID(cid, record080Path)
+		})
+
+		ginkgo.It("should fail to push record_warnings_080.json with default (strict) validation", func() {
+			// This record contains warnings that should fail in strict mode (default)
+			// Expected validation errors from oasf-sdk:
+			// - "Validation Warning at name: Module \"license\" is not an OASF module; skipping validation."
+			// - "Validation Warning at name: Module \"runtime/framework\" is not an OASF module; skipping validation."
+			// - "Validation Warning at name: Module \"runtime/language\" is not an OASF module; skipping validation."
+			// In strict mode, these warnings should cause isValid=false, which should make the push fail
+
+			err := cli.Push(recordWarnings080Path).WithArgs("--output", "raw").ShouldFail()
+			gomega.Expect(err).To(gomega.HaveOccurred(), "Push should fail with validation error")
+
+			// Verify the error message contains validation failure indication
+			errMsg := err.Error()
+			gomega.Expect(errMsg).To(gomega.ContainSubstring("validation"),
+				"Error should mention validation failure. Actual error: %s", errMsg)
+		})
+	})
+
 	ginkgo.Context("Validation with strict mode disabled", ginkgo.Ordered, ginkgo.Serial, ginkgo.Label("validation-non-strict"), func() {
 		// These tests should succeed when strict validation is disabled
 		// because record_warnings_080.json contains warnings that would fail in strict mode
