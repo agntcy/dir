@@ -428,7 +428,7 @@ tasks:
     env:
       NODE_AUTH_TOKEN: "{{ .NODE_AUTH_TOKEN }}"
     cmd: |
-      version=$(npm pkg get version) 
+      version=$(npm pkg get version)
 
       if [[ $version == *"rc"* ]]; then
         npm publish --scope=@agntcy --access public --tag rc-{{.COMMIT_SHA}}
@@ -531,41 +531,36 @@ tasks:
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
-      KUBECONFIG: '{{ .KUBECONFIG | default "" }}'
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_BAKE_ENV: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_BAKE_ENV }}{{ else }}{{ .BAKE_ENV }}{{ end }}'
       DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
     cmds:
       # Create ephemeral cluster
-      - |
-        {{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}
-      # Export kubeconfig to custom path if provided, otherwise use default
-      - |
-        {{ if .KUBECONFIG }}
-          {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }} --kubeconfig {{ .KUBECONFIG }}
-        {{ else }}
-          {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}
-        {{ end }}
+      - "{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}"
+      - "{{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}"
 
       # Check cluster status
-      - |
-        {{ if .KUBECONFIG }}
-          KUBECONFIG={{ .KUBECONFIG }} {{ .KUBECTL_BIN }} cluster-info
-        {{ else }}
-          {{ .KUBECTL_BIN }} cluster-info
-        {{ end }}
+      - "{{ .KUBECTL_BIN }} cluster-info"
 
       # Import images
       - |
         images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
         echo "$images" | while read image; do
-          # Check if image exists locally before trying to load
-          if docker image inspect "$image" >/dev/null 2>&1; then
-            {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }} || true
-          else
-            echo "Warning: Image $image not found locally, skipping load. Please build images first with 'task build:docker'"
-          fi
+          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
+
+      # Wait for cluster to be fully ready
+      - |
+        echo "Waiting for cluster {{ .KIND_CLUSTER_NAME }} to be ready..."
+        until docker exec "{{ .KIND_CLUSTER_NAME }}-control-plane" true 2>/dev/null; do
+          sleep 2
+        done
+
+        # Ensure kubeconfig is exported
+        {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}
+
+        # Wait for nodes to be ready
+        {{ .KUBECTL_BIN }} wait --for=condition=Ready nodes --all --timeout=120s --context "kind-{{ .KIND_CLUSTER_NAME }}" || true
 
   deploy:kubernetes:gen-htpasswd-creds:
     desc: Generate htpasswd credentials and files for DIR deployment
@@ -612,11 +607,12 @@ tasks:
   deploy:kubernetes:local:
     aliases: [deploy:local]
     desc: Deploy a local Directory server in Kubernetes
+    deps:
+      - deploy:kubernetes:setup-cluster
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       KIND_CREATE_OPTS: '{{ .KIND_CREATE_OPTS | default "" }}'
-      KUBECONFIG: '{{ .KUBECONFIG | default "" }}'
       # Helm args
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
@@ -626,64 +622,6 @@ tasks:
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
-
-      # Setup cluster first (as a task call to pass vars)
-      # Only create cluster if it doesn't exist (for parallel execution scenarios)
-      - |
-        {{ if .KUBECONFIG }}
-          export KUBECONFIG={{ .KUBECONFIG }}
-        {{ end }}
-        if ! {{ .KIND_BIN }} get clusters 2>/dev/null | grep -q "^{{ .KIND_CLUSTER_NAME }}$"; then
-          task deploy:kubernetes:setup-cluster \
-            KIND_CLUSTER_NAME="{{ .KIND_CLUSTER_NAME }}" \
-            KIND_CREATE_OPTS="{{ .KIND_CREATE_OPTS }}" \
-            KUBECONFIG="{{ .KUBECONFIG }}" \
-            E2E_COVERAGE_ENABLED="{{ .E2E_COVERAGE_ENABLED }}"
-        else
-          echo "Cluster {{ .KIND_CLUSTER_NAME }} already exists, skipping creation"
-          # Still need to export kubeconfig and load images
-          # Retry kubeconfig export to handle concurrent access
-          {{ if .KUBECONFIG }}
-            for i in {1..10}; do
-              if {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }} --kubeconfig {{ .KUBECONFIG }} 2>/dev/null; then
-                break
-              fi
-              if [ $i -eq 10 ]; then
-                echo "Warning: Failed to export kubeconfig after 10 attempts, continuing..."
-              fi
-              sleep 1
-            done
-          {{ else }}
-            for i in {1..10}; do
-              if {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }} 2>/dev/null; then
-                break
-              fi
-              if [ $i -eq 10 ]; then
-                echo "Warning: Failed to export kubeconfig after 10 attempts, continuing..."
-              fi
-              sleep 1
-            done
-          {{ end }}
-          # Load images (idempotent operation - kind load is safe to run multiple times)
-          images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-          echo "$images" | while read image; do
-            # Check if image exists locally before trying to load
-            if docker image inspect "$image" >/dev/null 2>&1; then
-              # Load image (kind handles duplicates gracefully, but add retry for concurrent access)
-              for i in {1..5}; do
-                if {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }} 2>/dev/null; then
-                  break
-                fi
-                if [ $i -eq 5 ]; then
-                  echo "Warning: Failed to load image $image after 5 attempts"
-                fi
-                sleep 1
-              done
-            else
-              echo "Warning: Image $image not found locally, skipping load. Please build images first with 'task build:docker'"
-            fi
-          done
-        fi
 
       # Generate credentials and htpasswd file (using unique files per namespace)
       - task: deploy:kubernetes:gen-htpasswd-creds
@@ -703,14 +641,8 @@ tasks:
         # Load credentials
         source /tmp/dir-htpasswd-creds-{{ .HELM_NAMESPACE }}.env
 
-        {{ if .KUBECONFIG }}
-          export KUBECONFIG={{ .KUBECONFIG }}
-        {{ end }}
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
-        {{ if .KUBECONFIG }}
-          export KUBECONFIG={{ .KUBECONFIG }}
-        {{ end }}
         {{ .HELM_BIN }} upgrade dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
@@ -752,10 +684,14 @@ tasks:
   deploy:kubernetes:dir:
     desc: Deploy DIR helm chart
     vars:
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
+      # E2E-specific options
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
       # Generate credentials and htpasswd file (using unique files per namespace)
       - task: deploy:kubernetes:gen-htpasswd-creds
@@ -780,19 +716,31 @@ tasks:
         {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL }}--set apiserver.config.routing.refresh_interval="{{ .DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_REGISTRY_ADDRESS }}--set apiserver.config.store.oci.registry_address="{{ .DIRECTORY_SERVER_REGISTRY_ADDRESS }}"{{ end }} \
           --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
           --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
           --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
           --set-file apiserver.zot.secretFiles.htpasswd="/tmp/dir-htpasswd-{{ .HELM_NAMESPACE }}" \
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
-          --set apiserver.log_level="DEBUG" \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_ENABLED }}--set apiserver.config.ratelimit.enabled="{{ .DIRECTORY_SERVER_RATELIMIT_ENABLED }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS }}--set apiserver.config.ratelimit.global_rps="{{ .DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST }}--set apiserver.config.ratelimit.global_burst="{{ .DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}--set apiserver.config.ratelimit.per_client_rps="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
+          {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_ENABLED }}--set apiserver.oasf.enabled="{{ .DIRECTORY_SERVER_OASF_ENABLED }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_VERSIONS }}--set-json 'apiserver.oasf.image.versions={{ .DIRECTORY_SERVER_OASF_VERSIONS }}'{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}--set apiserver.config.oasf_api_validation.disable="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"{{ end }} \
+          {{ if ne .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE nil }}--set apiserver.config.oasf_api_validation.strict_mode="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_LOG_LEVEL }}--set apiserver.log_level="{{ .DIRECTORY_SERVER_LOG_LEVEL }}"{{ else }}--set apiserver.log_level="DEBUG"{{ end }} \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
-          --install \
           --wait \
           --wait-for-jobs \
           --timeout "15m"
@@ -859,49 +807,18 @@ tasks:
     aliases: [deploy:local:port-forward]
     desc: Set up port-forwarding for the local deployment
     vars:
-      # Kind args
-      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
-      KUBECONFIG: '{{ .KUBECONFIG | default "" }}'
       SERVER_PORT: '{{ .SERVER_PORT | default "8888" }}'
+      METRICS_PORT: '{{ .METRICS_PORT | default "9090" }}'
+      INGRESS_PORT: '{{ .INGRESS_PORT | default "8080" }}'
       # Helm args
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
     cmds:
-      # Set kubectl context to the correct cluster
-      - |
-        {{ if .KUBECONFIG }}
-          export KUBECONFIG={{ .KUBECONFIG }}
-        {{ else }}
-          {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}
-        {{ end }}
       # Port-forward dependency services
-      # Use unique ports per cluster to avoid conflicts when running in parallel
-      # Default cluster: 8888, 9090, 8080
-      # Non-strict cluster: 8889, 9091, 8081  
-      # API-disabled cluster: 8890, 9092, 8082
+      # Use unique ports per namespace to avoid conflicts when running in parallel
       - |
-        {{ if .KUBECONFIG }}
-          # Determine ports based on SERVER_PORT or cluster name
-          API_PORT={{ .SERVER_PORT }}
-          if [ "${API_PORT}" = "8889" ]; then
-            METRICS_PORT=9091
-            INGRESS_PORT=8081
-          elif [ "${API_PORT}" = "8890" ]; then
-            METRICS_PORT=9092
-            INGRESS_PORT=8082
-          else
-            METRICS_PORT=9090
-            INGRESS_PORT=8080
-          fi
-          KUBECONFIG={{ .KUBECONFIG }} {{ .KUBECTL_BIN }} port-forward service/dir-apiserver ${API_PORT}:8888 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
-          KUBECONFIG={{ .KUBECONFIG }} {{ .KUBECTL_BIN }} port-forward service/dir-apiserver ${METRICS_PORT}:9090 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
-          KUBECONFIG={{ .KUBECONFIG }} {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller ${INGRESS_PORT}:80 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
-          echo "Port-forwarding started for cluster {{ .KIND_CLUSTER_NAME }} (API: ${API_PORT}, Metrics: ${METRICS_PORT}, Ingress: ${INGRESS_PORT})"
-        {{ else }}
-          {{ .KUBECTL_BIN }} port-forward service/dir-apiserver {{ .SERVER_PORT }}:8888 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
-          {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
-          {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller 8080:80 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
-          echo "Port-forwarding started for cluster {{ .KIND_CLUSTER_NAME }}"
-        {{ end }}
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver {{ .SERVER_PORT }}:8888 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver {{ .METRICS_PORT }}:9090 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
+        {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller {{ .INGRESS_PORT }}:80 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
 
       # Delay to ensure services are online
       - sleep 10
@@ -911,14 +828,17 @@ tasks:
     desc: Cleanup port-forwarding processes
     vars:
       SERVER_PORT: '{{ .SERVER_PORT | default "8888" }}'
+      METRICS_PORT: '{{ .METRICS_PORT | default "9090" }}'
+      INGRESS_PORT: '{{ .INGRESS_PORT | default "8080" }}'
     cmds:
-      # Kill port-forward processes for specific ports to avoid killing other clusters' port-forwards
+      # Kill port-forward processes for specific ports to avoid killing other tests' port-forwards
       - |
         # Kill processes forwarding to the specific API port
         lsof -ti:{{ .SERVER_PORT }} | xargs kill -9 2>/dev/null || true
-        # Also kill by pattern but be more specific
-        pkill -f "port-forward.*dir-apiserver.*{{ .SERVER_PORT }}" || true
-        pkill -f "port-forward.*dir-ingress-controller" || true
+        # Kill processes forwarding to the specific metrics port
+        lsof -ti:{{ .METRICS_PORT }} | xargs kill -9 2>/dev/null || true
+        # Kill processes forwarding to the specific ingress port
+        lsof -ti:{{ .INGRESS_PORT }} | xargs kill -9 2>/dev/null || true
 
   deploy:kubernetes:local:cleanup:
     aliases: [deploy:local:cleanup, deploy:kubernetes:cleanup]
@@ -928,15 +848,8 @@ tasks:
     vars:
       # Kind args
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
-      KUBECONFIG: '{{ .KUBECONFIG | default "" }}'
     cmds:
-      - |
-        # Delete cluster - kind doesn't need kubeconfig for deletion, but we clean up the kubeconfig file if it was custom
-        {{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }} || true
-        {{ if .KUBECONFIG }}
-          # Clean up custom kubeconfig file if it exists
-          rm -f {{ .KUBECONFIG }} || true
-        {{ end }}
+      - "{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}"
 
   deploy:kubernetes:network:bootstrap:
     internal: true
@@ -1301,148 +1214,13 @@ tasks:
           go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
         fi
 
-  test:e2e:local:
-    desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting tests) with 3 parallel validation scenarios
-    aliases: [e2e:local]
-    vars:
-      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
-      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
-      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
-      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
-      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
-      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
-    env:
-      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
-    cmds:
-      # Use single cluster with multiple namespaces for parallel validation scenarios
-      - |
-        # Generate unique cluster name and kubeconfig path
-        export CLUSTER_NAME="agntcy-cluster-e2e-$$"
-        export KUBECONFIG_PATH="${TMPDIR:-/tmp}/kubeconfig-${CLUSTER_NAME}"
-        
-        # Define namespaces for each validation scenario
-        export NAMESPACE_DEFAULT="dir-server-default"
-        export NAMESPACE_NON_STRICT="dir-server-nonstrict"
-        export NAMESPACE_API_DISABLED="dir-server-apidisabled"
-        
-        # Function to cleanup on exit
-        cleanup() {
-          echo "Cleaning up cluster..."
-          task deploy:kubernetes:local:cleanup KIND_CLUSTER_NAME="${CLUSTER_NAME}" KUBECONFIG="${KUBECONFIG_PATH}" || true
-          # Clean up temporary kubeconfig file
-          rm -f "${KUBECONFIG_PATH}" || true
-        }
-        # Set trap for cleanup on script exit
-        trap cleanup EXIT
-        
-        # Create single cluster first
-        task deploy:kubernetes:setup-cluster \
-          KIND_CLUSTER_NAME="${CLUSTER_NAME}" \
-          KUBECONFIG="${KUBECONFIG_PATH}" \
-          E2E_COVERAGE_ENABLED="{{ .E2E_COVERAGE_ENABLED }}"
-        
-        # Wait for cluster to be fully ready before starting parallel tasks
-        export KUBECONFIG="${KUBECONFIG_PATH}"
-        KIND_BIN="{{ .ROOT_DIR }}/bin/kind-0.25.0"
-        KUBECTL_BIN="{{ .ROOT_DIR }}/bin/kubectl-1.31.3"
-        
-        # Wait for cluster container to be ready
-        echo "Waiting for cluster ${CLUSTER_NAME} to be ready..."
-        until docker exec "${CLUSTER_NAME}-control-plane" true 2>/dev/null; do
-          sleep 2
-        done
-        
-        # Wait for Kubernetes API to be ready
-        ${KUBECTL_BIN} wait --for=condition=Ready nodes --all --timeout=120s --context "kind-${CLUSTER_NAME}"
-        
-        echo "Cluster ${CLUSTER_NAME} is ready, starting parallel test tasks..."
-        
-        # Run default validation scenario (uses server defaults: OASF API validation with strict mode)
-        # Uses ports 8888, 9090, 8080
-        (
-          set +e  # Don't exit on error in background process
-          export KIND_CLUSTER_NAME="${CLUSTER_NAME}"
-          export KUBECONFIG="${KUBECONFIG_PATH}"
-          export HELM_NAMESPACE="${NAMESPACE_DEFAULT}"
-          export DIRECTORY_E2E_DEPLOYMENT_MODE="local"
-          export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8888"
-          task test:e2e:local:single \
-            KIND_CLUSTER_NAME="${CLUSTER_NAME}" \
-            KUBECONFIG="${KUBECONFIG_PATH}" \
-            HELM_NAMESPACE="${NAMESPACE_DEFAULT}" \
-            SERVER_PORT="8888" \
-            PUBLICATION_SCHEDULER_INTERVAL="{{ .PUBLICATION_SCHEDULER_INTERVAL }}" \
-            RATELIMIT_ENABLED="{{ .RATELIMIT_ENABLED }}" \
-            RATELIMIT_GLOBAL_RPS="{{ .RATELIMIT_GLOBAL_RPS }}" \
-            RATELIMIT_GLOBAL_BURST="{{ .RATELIMIT_GLOBAL_BURST }}" \
-            E2E_COVERAGE_ENABLED="{{ .E2E_COVERAGE_ENABLED }}" \
-            COVERAGE_DIR="{{ .COVERAGE_DIR }}" \
-            COVERAGE_SUFFIX="default"
-        ) &
-        PID1=$!
-        
-        # Run non-strict validation scenario
-        # Uses ports 8889, 9091, 8081
-        (
-          set +e  # Don't exit on error in background process
-          export KIND_CLUSTER_NAME="${CLUSTER_NAME}"
-          export KUBECONFIG="${KUBECONFIG_PATH}"
-          export HELM_NAMESPACE="${NAMESPACE_NON_STRICT}"
-          export DIRECTORY_E2E_DEPLOYMENT_MODE="local"
-          export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8889"
-          task test:e2e:validation:non-strict \
-            KIND_CLUSTER_NAME="${CLUSTER_NAME}" \
-            KUBECONFIG="${KUBECONFIG_PATH}" \
-            HELM_NAMESPACE="${NAMESPACE_NON_STRICT}" \
-            SERVER_PORT="8889" \
-            PUBLICATION_SCHEDULER_INTERVAL="{{ .PUBLICATION_SCHEDULER_INTERVAL }}" \
-            E2E_COVERAGE_ENABLED="{{ .E2E_COVERAGE_ENABLED }}" \
-            COVERAGE_DIR="{{ .COVERAGE_DIR }}"
-        ) &
-        PID2=$!
-        
-        # Run API validation disabled scenario
-        # Uses ports 8890, 9092, 8082
-        (
-          set +e  # Don't exit on error in background process
-          export KIND_CLUSTER_NAME="${CLUSTER_NAME}"
-          export KUBECONFIG="${KUBECONFIG_PATH}"
-          export HELM_NAMESPACE="${NAMESPACE_API_DISABLED}"
-          export DIRECTORY_E2E_DEPLOYMENT_MODE="local"
-          export DIRECTORY_CLIENT_SERVER_ADDRESS="localhost:8890"
-          task test:e2e:validation:api-disabled \
-            KIND_CLUSTER_NAME="${CLUSTER_NAME}" \
-            KUBECONFIG="${KUBECONFIG_PATH}" \
-            HELM_NAMESPACE="${NAMESPACE_API_DISABLED}" \
-            SERVER_PORT="8890" \
-            PUBLICATION_SCHEDULER_INTERVAL="{{ .PUBLICATION_SCHEDULER_INTERVAL }}" \
-            E2E_COVERAGE_ENABLED="{{ .E2E_COVERAGE_ENABLED }}" \
-            COVERAGE_DIR="{{ .COVERAGE_DIR }}"
-        ) &
-        PID3=$!
-        
-        # Wait for all background processes and capture exit codes
-        FAILED=0
-        wait $PID1 || FAILED=$((FAILED + 1))
-        wait $PID2 || FAILED=$((FAILED + 1))
-        wait $PID3 || FAILED=$((FAILED + 1))
-        
-        # Disable trap before explicit cleanup to avoid double cleanup
-        trap - EXIT
-        
-        # Cleanup after all tasks complete
-        cleanup
-        
-        # Exit with error if any task failed
-        if [ $FAILED -ne 0 ]; then
-          exit 1
-        fi
-
-  test:e2e:local:single:
-    desc: Run single local e2e test scenario (for parallel execution with specific cluster name)
+  # Atomic tasks for e2e local tests
+  test:e2e:local:test:default:
+    desc: Run default validation tests (deploy with default settings and run tests)
+    internal: true
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
-      KUBECONFIG: '{{ .KUBECONFIG | default "" }}'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-default" }}'
       SERVER_PORT: '{{ .SERVER_PORT | default "8888" }}'
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
@@ -1455,6 +1233,21 @@ tasks:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
       DIRECTORY_CLIENT_SERVER_ADDRESS: "localhost:{{ .SERVER_PORT }}"
     cmds:
+      - task: deploy:kubernetes:dir
+        vars:
+          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL: "1s"
+          DIRECTORY_SERVER_REGISTRY_ADDRESS: "dir-zot.{{ .HELM_NAMESPACE }}.svc.cluster.local:5000"
+          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
+          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
+          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: deploy:kubernetes:local:port-forward
+        vars:
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          SERVER_PORT: "{{ .SERVER_PORT }}"
       - defer:
           task: deploy:kubernetes:local:port-forward:cleanup
           vars:
@@ -1465,31 +1258,12 @@ tasks:
             E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
             NAMESPACE: "{{ .HELM_NAMESPACE }}"
             KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-            KUBECONFIG: "{{ .KUBECONFIG }}"
-      # Deploy Directory to specific namespace (uses server defaults: OASF API validation with strict mode)
-      - task: deploy:kubernetes:local
-        vars:
-          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-          KUBECONFIG: "{{ .KUBECONFIG }}"
-          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
-          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: deploy:kubernetes:local:port-forward
-        vars:
-          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-          KUBECONFIG: "{{ .KUBECONFIG }}"
-          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
-          SERVER_PORT: "{{ .SERVER_PORT }}"
       # Run client library tests first (faster feedback)
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           mkdir -p {{.COVERAGE_DIR}}
           COVERAGE_FILE="{{.COVERAGE_DIR}}/local-client{{ if .COVERAGE_SUFFIX }}-{{.COVERAGE_SUFFIX}}{{ end }}.out"
           go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile="${COVERAGE_FILE}.tmp" . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
-          # Filter out generated files (matching codecov.yml ignores)
           if [ -f "${COVERAGE_FILE}.tmp" ]; then
             grep -v "\.pb\.go" "${COVERAGE_FILE}.tmp" | grep -v "mock_.*\.go" > "${COVERAGE_FILE}" || echo "mode: atomic" > "${COVERAGE_FILE}"
             rm "${COVERAGE_FILE}.tmp"
@@ -1504,7 +1278,6 @@ tasks:
           mkdir -p {{.COVERAGE_DIR}}
           COVERAGE_FILE="{{.COVERAGE_DIR}}/local-cli{{ if .COVERAGE_SUFFIX }}-{{.COVERAGE_SUFFIX}}{{ end }}.out"
           go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile="${COVERAGE_FILE}.tmp" . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!validation-non-strict && !validation-api-disabled"
-          # Filter out generated files (matching codecov.yml ignores)
           if [ -f "${COVERAGE_FILE}.tmp" ]; then
             grep -v "\.pb\.go" "${COVERAGE_FILE}.tmp" | grep -v "mock_.*\.go" > "${COVERAGE_FILE}" || echo "mode: atomic" > "${COVERAGE_FILE}"
             rm "${COVERAGE_FILE}.tmp"
@@ -1524,51 +1297,50 @@ tasks:
           go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
         fi
 
-  test:e2e:validation:non-strict:
-    desc: Run validation tests with OASF enabled and strict validation mode disabled
-    aliases: [e2e:validation:non-strict]
+  test:e2e:local:test:non-strict:
+    desc: Run non-strict validation tests (deploy with non-strict validation and run tests)
+    internal: true
     vars:
-      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster-nonstrict" }}'
-      KUBECONFIG: '{{ .KUBECONFIG | default "" }}'
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-nonstrict" }}'
       SERVER_PORT: '{{ .SERVER_PORT | default "8889" }}'
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
-      # OASF configuration - use external schema URL instead of deploying local OASF
       DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
       DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE: "false"
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
       DIRECTORY_CLIENT_SERVER_ADDRESS: "localhost:{{ .SERVER_PORT }}"
     cmds:
+      - task: deploy:kubernetes:dir
+        vars:
+          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL: "1s"
+          DIRECTORY_SERVER_REGISTRY_ADDRESS: "dir-zot.{{ .HELM_NAMESPACE }}.svc.cluster.local:5000"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: deploy:kubernetes:local:port-forward
+        vars:
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          SERVER_PORT: "{{ .SERVER_PORT }}"
+          METRICS_PORT: "9091"
+          INGRESS_PORT: "8081"
       - defer:
           task: deploy:kubernetes:local:port-forward:cleanup
           vars:
             SERVER_PORT: "{{ .SERVER_PORT }}"
+            METRICS_PORT: "9091"
+            INGRESS_PORT: "8081"
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
             NAMESPACE: "{{ .HELM_NAMESPACE }}"
             KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-            KUBECONFIG: "{{ .KUBECONFIG }}"
-      # Deploy Directory with non-strict validation to specific namespace (using external OASF schema URL)
-      - task: deploy:kubernetes:local
-        vars:
-          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-          KUBECONFIG: "{{ .KUBECONFIG }}"
-          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"
-          DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"
-          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: deploy:kubernetes:local:port-forward
-        vars:
-          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-          KUBECONFIG: "{{ .KUBECONFIG }}"
-          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
-          SERVER_PORT: "{{ .SERVER_PORT }}"
       # Run validation tests with strict mode disabled
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -1582,49 +1354,48 @@ tasks:
           go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="validation-non-strict"
         fi
 
-  test:e2e:validation:api-disabled:
-    desc: Run validation tests with OASF enabled and API validation disabled
-    aliases: [e2e:validation:api-disabled]
+  test:e2e:local:test:api-disabled:
+    desc: Run API validation disabled tests (deploy with API validation disabled and run tests)
+    internal: true
     vars:
       KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
-      KUBECONFIG: '{{ .KUBECONFIG | default "" }}'
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-apidisabled" }}'
       SERVER_PORT: '{{ .SERVER_PORT | default "8890" }}'
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
-      # OASF configuration - API validation disabled (uses embedded schema validation)
       DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
       DIRECTORY_CLIENT_SERVER_ADDRESS: "localhost:{{ .SERVER_PORT }}"
     cmds:
+      - task: deploy:kubernetes:dir
+        vars:
+          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL: "1s"
+          DIRECTORY_SERVER_REGISTRY_ADDRESS: "dir-zot.{{ .HELM_NAMESPACE }}.svc.cluster.local:5000"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: deploy:kubernetes:local:port-forward
+        vars:
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          SERVER_PORT: "{{ .SERVER_PORT }}"
+          METRICS_PORT: "9092"
+          INGRESS_PORT: "8082"
       - defer:
           task: deploy:kubernetes:local:port-forward:cleanup
           vars:
             SERVER_PORT: "{{ .SERVER_PORT }}"
+            METRICS_PORT: "9092"
+            INGRESS_PORT: "8082"
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
             E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
             NAMESPACE: "{{ .HELM_NAMESPACE }}"
             KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-            KUBECONFIG: "{{ .KUBECONFIG }}"
-      # Deploy Directory with API validation disabled to specific namespace (uses embedded schema validation)
-      - task: deploy:kubernetes:local
-        vars:
-          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-          KUBECONFIG: "{{ .KUBECONFIG }}"
-          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"
-          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: deploy:kubernetes:local:port-forward
-        vars:
-          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
-          KUBECONFIG: "{{ .KUBECONFIG }}"
-          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
-          SERVER_PORT: "{{ .SERVER_PORT }}"
       # Run validation tests with API validation disabled
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
@@ -1637,6 +1408,128 @@ tasks:
         else
           go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="validation-api-disabled"
         fi
+
+  # Wrapper tasks
+  test:e2e:local:run-parallel:
+    desc: Run three validation test scenarios in parallel
+    internal: true
+    deps:
+      - test:e2e:local:test:default
+      - test:e2e:local:test:non-strict
+      - test:e2e:local:test:api-disabled
+
+  test:e2e:local:
+    desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting tests) with 3 parallel validation scenarios
+    aliases: [e2e:local]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
+      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
+      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - defer:
+          task: deploy:kubernetes:local:cleanup
+          vars:
+            KIND_CLUSTER_NAME: "agntcy-cluster"
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - |
+        # Build Helm dependencies once before running parallel tasks to avoid conflicts
+        # This prevents concurrent dependency builds from creating conflicting temp directories
+        {{ .HELM_BIN }} dependency build {{ .ROOT_DIR }}/install/charts/dir
+      - task: test:e2e:local:run-parallel
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
+          RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
+          RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
+
+  test:e2e:local:default:
+    desc: Run single local e2e test scenario (creates cluster, runs default tests, cleans up)
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
+      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
+      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - defer:
+          task: deploy:kubernetes:local:cleanup
+          vars:
+            KIND_CLUSTER_NAME: "agntcy-cluster"
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: test:e2e:local:test:default
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          HELM_NAMESPACE: "dir-server"
+          SERVER_PORT: "8888"
+          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
+          RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
+          RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
+
+  test:e2e:local:non-strict:
+    desc: Run validation tests with OASF enabled and strict validation mode disabled (creates cluster, runs tests, cleans up)
+    aliases: [e2e:validation:non-strict]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - defer:
+          task: deploy:kubernetes:local:cleanup
+          vars:
+            KIND_CLUSTER_NAME: "agntcy-cluster"
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: test:e2e:local:test:non-strict
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          HELM_NAMESPACE: "dir-server-nonstrict"
+          SERVER_PORT: "8889"
+          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
+
+  test:e2e:local:api-disabled:
+    desc: Run validation tests with OASF enabled and API validation disabled (creates cluster, runs tests, cleans up)
+    aliases: [e2e:validation:api-disabled]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - defer:
+          task: deploy:kubernetes:local:cleanup
+          vars:
+            KIND_CLUSTER_NAME: "agntcy-cluster"
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: test:e2e:local:test:api-disabled
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          HELM_NAMESPACE: "dir-server-apidisabled"
+          SERVER_PORT: "8890"
+          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
 
   test:e2e:network:
     desc: Run end-to-end tests for network deployment (Multi-peer CLI tests)
@@ -1956,28 +1849,19 @@ tasks:
       NAMESPACE: '{{ .NAMESPACE | default "dir-server" }}'
       POD_SELECTOR: '{{ .POD_SELECTOR | default "app.kubernetes.io/name=apiserver" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e/pods") }}'
-      KUBECONFIG: '{{ .KUBECONFIG | default "" }}'
     cmds:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
-          
+
           # Get pod matching the selector
-          {{ if .KUBECONFIG }}
-          POD_NAME=$(KUBECONFIG={{ .KUBECONFIG }} {{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
-          {{ else }}
           POD_NAME=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
-          {{ end }}
-          
+
             if [ -n "$POD_NAME" ]; then
               # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
               echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
-              {{ if .KUBECONFIG }}
-              KUBECONFIG={{ .KUBECONFIG }} {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
-              {{ else }}
               {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
-              {{ end }}
-              
+
               # Wait for container to restart (coverage files persist in emptyDir volume)
               echo "[coverage] Waiting for container to restart and coverage to be flushed..."
               sleep 5
@@ -1985,11 +1869,7 @@ tasks:
               # Extract coverage files (emptyDir persists across container restarts)
               echo "[coverage] Extracting coverage data from pod: $POD_NAME"
               mkdir -p {{.COVERAGE_DIR}}/pod-$POD_NAME
-              {{ if .KUBECONFIG }}
-              KUBECONFIG={{ .KUBECONFIG }} {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} $POD_NAME:/tmp/coverage {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
-              {{ else }}
               {{.KUBECTL_BIN}} cp -n {{.NAMESPACE}} $POD_NAME:/tmp/coverage {{.COVERAGE_DIR}}/pod-$POD_NAME 2>&1 || echo "[coverage][warn] Failed to extract from $POD_NAME"
-              {{ end }}
           else
             echo "[coverage][warn] No pod found matching selector {{.POD_SELECTOR}}"
           fi
@@ -2008,7 +1888,7 @@ tasks:
         if [ -d "{{.COVERAGE_DIR}}/pods" ]; then
           # Build comma-separated list of pod directories
           pod_dirs=$(find {{.COVERAGE_DIR}}/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-          
+
           if [ -n "$pod_dirs" ]; then
             echo "  Found pod coverage directories"
             mkdir -p {{.COVERAGE_DIR}}/server-binary
