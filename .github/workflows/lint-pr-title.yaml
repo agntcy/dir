@@ -45,7 +45,6 @@ jobs:
             sdk/py
             cli
             cli/dir
-            cli/hub
             helm
             helm/dir
             helm/dirctl

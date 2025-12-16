@@ -17,4 +17,3 @@ module-sets:
     version: v0.5.7
     modules:
       - github.com/agntcy/dir/cli
-      - github.com/agntcy/dir/hub
