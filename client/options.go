@@ -78,6 +78,8 @@ func withAuth(ctx context.Context) Option {
 			return o.setupSpiffeAuth(ctx)
 		case "tls":
 			return o.setupTlsAuth(ctx)
+		case "github":
+			return o.setupGitHubAuth(ctx)
 		case "":
 			// Empty auth mode - use insecure connection (for development/testing only)
 			o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -85,7 +87,7 @@ func withAuth(ctx context.Context) Option {
 			return nil
 		default:
 			// Invalid auth mode specified - return error to prevent silent security issues
-			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509', 'token', or empty for insecure)", o.config.AuthMode)
+			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509', 'token', 'tls', 'github', or empty for insecure)", o.config.AuthMode)
 		}
 	}
 }
@@ -341,6 +343,30 @@ func (o *options) setupSpiffeAuth(_ context.Context) error {
 
 	// Update options
 	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+
+	return nil
+}
+
+func (o *options) setupGitHubAuth(_ context.Context) error {
+	// Validate GitHub PAT is set
+	if o.config.GitHubPAT == "" {
+		return errors.New("GitHub Personal Access Token is required for github authentication (set DIRECTORY_CLIENT_GITHUB_PAT or --github-pat)")
+	}
+
+	authLogger.Debug("Setting up GitHub authentication")
+
+	// Use insecure transport for now (Envoy gateway handles TLS termination)
+	// TODO: Add option for TLS to Envoy gateway
+	if o.config.TlsSkipVerify {
+		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	// Add GitHub token as Bearer token in Authorization header
+	o.authOpts = append(o.authOpts, grpc.WithPerRPCCredentials(newGitHubCredentials(o.config.GitHubPAT)))
+
+	authLogger.Debug("GitHub authentication configured")
 
 	return nil
 }

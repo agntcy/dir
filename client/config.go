@@ -32,6 +32,7 @@ type Config struct {
 	SpiffeToken      string `json:"spiffe_token,omitempty"       mapstructure:"spiffe_token"`
 	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
 	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
+	GitHubPAT        string `json:"github_pat,omitempty"         mapstructure:"github_pat"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -70,6 +71,9 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("tls_ca_file")
 	v.SetDefault("tls_ca_file", "")
+
+	_ = v.BindEnv("github_pat")
+	v.SetDefault("github_pat", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
