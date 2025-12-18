@@ -34,17 +34,20 @@ docker run --rm ghcr.io/agntcy/dir-ctl:latest --help
 ## Quick Start
 
 ```bash
-# 1. Store a record
+# 1. Authenticate with GitHub (required for federation nodes)
+dirctl auth login
+
+# 2. Store a record
 dirctl push my-agent.json
 # Returns: baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
 
-# 2. Publish for network discovery
+# 3. Publish for network discovery
 dirctl routing publish baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
 
-# 3. Search for records
+# 4. Search for records
 dirctl routing search --skill "AI" --limit 10
 
-# 4. Retrieve a record
+# 5. Retrieve a record
 dirctl pull baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
 ```
 
@@ -97,6 +100,16 @@ done
 ```
 
 ## Command Reference
+
+### 🔐 **Authentication**
+
+See the [Authentication](#authentication) section above for detailed usage.
+
+| Command | Description |
+|---------|-------------|
+| `dirctl auth login` | Authenticate with GitHub (interactive browser flow) |
+| `dirctl auth logout` | Clear cached authentication credentials |
+| `dirctl auth status` | Show current authentication status |
 
 ### 📦 **Storage Operations**
 
@@ -599,6 +612,120 @@ Remove synchronization.
 dirctl sync delete abc123-def456-ghi789
 ```
 
+## Authentication
+
+Authentication is required when accessing Directory federation nodes. The CLI supports multiple authentication modes, with GitHub OAuth being the recommended approach for interactive use.
+
+### 🔐 **GitHub OAuth Authentication**
+
+GitHub OAuth enables secure, interactive authentication for accessing federation nodes. This is the recommended authentication method for CLI users. See [GitHub OIDC Authentication](https://github.com/agntcy/dir-staging/issues/14) for more details on the federation authentication architecture.
+
+#### Prerequisites
+
+Before using GitHub authentication, you need to set up a GitHub OAuth App:
+
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click "New OAuth App"
+3. Set the callback URL to: `http://localhost:8484/callback`
+4. Note your Client ID (and optionally Client Secret)
+
+#### Configuration
+
+Set your GitHub OAuth App credentials:
+
+```bash
+# Required: Set your OAuth App client ID
+export DIRECTORY_CLIENT_GITHUB_CLIENT_ID="your-client-id"
+
+# Optional: Set client secret (if your OAuth App requires it)
+export DIRECTORY_CLIENT_GITHUB_CLIENT_SECRET="your-client-secret"
+```
+
+#### `dirctl auth login`
+
+Authenticate with GitHub using an interactive browser-based OAuth flow.
+
+```bash
+# Login with GitHub (opens browser)
+dirctl auth login
+
+# Login with explicit client ID
+dirctl auth login --client-id=Ov23li...
+
+# Force re-login even if already authenticated
+dirctl auth login --force
+
+# Login without automatically opening browser
+dirctl auth login --no-browser
+```
+
+**What happens:**
+1. Opens your default browser to GitHub's authorization page
+2. You authorize the dirctl application
+3. Token is cached locally at `~/.config/dirctl/github-token.json`
+4. Token is automatically used for subsequent commands with `--auth-mode=github`
+
+#### `dirctl auth status`
+
+Check your current authentication status.
+
+```bash
+# Show authentication status
+dirctl auth status
+
+# Validate token with GitHub API
+dirctl auth status --validate
+```
+
+**Example output:**
+```
+Status: Authenticated
+  User: your-username
+  Organizations: agntcy, your-org
+  Cached at: 2025-12-22T10:30:00Z
+  Token: Valid ✓
+  Estimated expiry: 2025-12-22T18:30:00Z
+  Cache file: /Users/you/.config/dirctl/github-token.json
+```
+
+#### `dirctl auth logout`
+
+Clear cached authentication credentials.
+
+```bash
+# Logout (clear cached token)
+dirctl auth logout
+```
+
+#### Using Authenticated Commands
+
+Once authenticated via `dirctl auth login`, your cached credentials are used automatically:
+
+```bash
+# Push to federation (uses cached GitHub credentials automatically)
+dirctl push my-agent.json
+
+# Search federation nodes
+dirctl --server-addr=federation.agntcy.org:443 search --skill "AI"
+
+# Pull from federation
+dirctl pull baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
+```
+
+**Note:** When you have valid cached GitHub credentials from `dirctl auth login`, the CLI automatically uses GitHub authentication. You can explicitly specify `--auth-mode=github` if needed, or use other auth modes like `--auth-mode=x509` for SPIFFE environments.
+
+### Other Authentication Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `github` | GitHub OAuth (explicit) | CLI users accessing federation nodes |
+| `x509` | SPIFFE X.509 certificates | Kubernetes workloads with SPIRE |
+| `jwt` | SPIFFE JWT tokens | Service-to-service authentication |
+| `token` | SPIFFE token file | Pre-provisioned credentials |
+| `tls` | mTLS with certificates | Custom PKI environments |
+| `insecure` / `none` | Insecure (no auth, skip auto-detect) | Testing, local development |
+| (empty) | Auto-detect (uses cached GitHub creds if available, otherwise insecure) | Default behavior |
+
 ## Configuration
 
 ### Server Connection
@@ -732,6 +859,7 @@ dirctl events listen --output raw | tee event-cids.txt
 
 The CLI follows a clear service-based organization:
 
+- **Auth**: GitHub OAuth authentication (`auth login`, `auth logout`, `auth status`)
 - **Storage**: Direct record management (`push`, `pull`, `delete`, `info`)
 - **Routing**: Network announcement and discovery (`routing publish`, `routing list`, `routing search`)
 - **Search**: General content search (`search`)

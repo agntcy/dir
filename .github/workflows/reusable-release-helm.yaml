@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        chart: [dir, dirctl]
+        chart: [dir, dirctl, envoy-authz]
     permissions:
       packages: write
     steps:

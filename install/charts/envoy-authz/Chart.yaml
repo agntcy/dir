@@ -1,0 +1,20 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v2
+name: envoy-authz
+description: Envoy gateway with external authorization for GitHub/Google/Azure authentication
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords:
+  - envoy
+  - authentication
+  - authorization
+  - github
+  - oauth
+
+maintainers:
+  - name: AGNTCY Contributors
+    url: https://github.com/agntcy

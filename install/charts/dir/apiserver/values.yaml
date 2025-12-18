@@ -552,3 +552,66 @@ externalSecrets:
 # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
 oasf:
   enabled: false
+
+# Envoy auth gateway subchart configuration (OPTIONAL)
+# Provides GitHub/Google/Azure authentication via Envoy gateway with ext_authz
+# NOT installed by default. Set enabled: true to deploy.
+envoyAuthz:
+  enabled: false
+  
+  # When enabled, configure authorization rules and providers below
+  
+  # Envoy gateway configuration
+  envoy:
+    replicaCount: 2
+    
+    # Backend Directory API address (required when enabled)
+    # Set to the full service name of Directory API
+    backend:
+      address: ""  # e.g., dir-dir-dev-argoapp-apiserver.dir-dev-dir.svc.cluster.local
+      port: 8888
+    
+    # SPIFFE integration for mTLS with Directory
+    spiffe:
+      enabled: true
+  
+  # Authorization server configuration
+  authServer:
+    replicaCount: 2
+    
+    # Authorization rules
+    authorization:
+      # Allowed org constructs (GitHub orgs, Azure tenants, Google domains)
+      # Empty list = allow all authenticated users
+      allowedOrgConstructs: []
+      # Example: ["agntcy", "spiffe", "contoso.onmicrosoft.com", "agntcy.com"]
+      
+      # Explicitly allowed users (format: "provider:username")
+      userAllowList: []
+      # Example: ["github:tkircsi", "google:alice@agntcy.com"]
+      
+      # Explicitly denied users (format: "provider:username")
+      userDenyList: []
+      # Example: ["github:malicious-user"]
+    
+    # Provider configurations
+    providers:
+      github:
+        enabled: true
+        cacheTTL: 5m
+        apiTimeout: 10s
+      
+      google:
+        enabled: false
+      
+      azure:
+        enabled: false
+  
+  # Ingress configuration (optional - for external access)
+  ingress:
+    enabled: false
+    className: nginx
+    host: ""  # e.g., gateway.dev.ads.outshift.io
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      external-dns.alpha.kubernetes.io/hostname: ""

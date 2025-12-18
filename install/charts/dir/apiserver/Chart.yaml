@@ -37,3 +37,10 @@ dependencies:
     version: v0.5.1
     repository: oci://ghcr.io/agntcy/oasf/helm-charts
     condition: oasf.enabled
+  # Envoy gateway with GitHub/Google/Azure authentication (OPTIONAL)
+  # Only installed when explicitly enabled via: envoyAuthz.enabled: true
+  # Default: disabled (envoyAuthz.enabled: false in values.yaml)
+  - name: envoy-authz
+    version: "0.1.0"
+    repository: "file://../../envoy-authz"
+    condition: envoyAuthz.enabled

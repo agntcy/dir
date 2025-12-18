@@ -32,6 +32,15 @@ type Config struct {
 	SpiffeToken      string `json:"spiffe_token,omitempty"       mapstructure:"spiffe_token"`
 	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
 	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
+
+	// OAuth configuration (for browser-based login)
+	GitHubClientID     string `json:"github_client_id,omitempty"     mapstructure:"github_client_id"`
+	GitHubClientSecret string `json:"github_client_secret,omitempty" mapstructure:"github_client_secret"`
+
+	// GitHub token (PAT or OAuth) - can be set via flag/env for CI/CD use
+	// Developers: use 'dirctl auth login' instead
+	// CI/CD: set via DIRECTORY_CLIENT_TOKEN env var or --auth-token flag
+	Token string `json:"token,omitempty" mapstructure:"token"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -70,6 +79,15 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("tls_ca_file")
 	v.SetDefault("tls_ca_file", "")
+
+	_ = v.BindEnv("github_client_id")
+	v.SetDefault("github_client_id", "")
+
+	_ = v.BindEnv("github_client_secret")
+	v.SetDefault("github_client_secret", "")
+
+	_ = v.BindEnv("token")
+	v.SetDefault("token", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
