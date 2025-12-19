@@ -33,7 +33,7 @@ jobs:
         include:
           - task: test:e2e:local
             label: "Local"
-            coverage-files: ".coverage/e2e/local-cli.out,.coverage/e2e/local-client.out,.coverage/e2e/server.out"
+            coverage-files: ".coverage/e2e/local-cli-default.out,.coverage/e2e/local-client-default.out,.coverage/e2e/validation-non-strict.out,.coverage/e2e/validation-api-disabled.out,.coverage/e2e/server.out"
           - task: test:e2e:network
             label: "Network"
             coverage-files: ".coverage/e2e/network.out,.coverage/e2e/server.out"

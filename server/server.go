@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -138,10 +139,14 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 }
 
-func New(ctx context.Context, cfg *config.Config) (*Server, error) {
-	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
-
+func configureOASFValidation(cfg *config.Config) error {
 	// Configure OASF validation based on server configuration
+	// Schema URL comes from configuration (Helm chart values.yaml sets default)
+	// If schema URL is empty and API validation is enabled, treat as misconfiguration
+	if cfg.OASFAPIValidation.SchemaURL == "" && !cfg.OASFAPIValidation.Disable {
+		return errors.New("oasf_api_validation.schema_url must be set when API validation is enabled (disable=false). Set it in Helm chart values.yaml or via DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL environment variable")
+	}
+
 	corev1.SetSchemaURL(cfg.OASFAPIValidation.SchemaURL)
 	corev1.SetDisableAPIValidation(cfg.OASFAPIValidation.Disable)
 	corev1.SetStrictValidation(cfg.OASFAPIValidation.StrictMode)
@@ -150,6 +155,16 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		"schema_url", cfg.OASFAPIValidation.SchemaURL,
 		"disable_api_validation", cfg.OASFAPIValidation.Disable,
 		"strict_validation", cfg.OASFAPIValidation.StrictMode)
+
+	return nil
+}
+
+func New(ctx context.Context, cfg *config.Config) (*Server, error) {
+	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
+
+	if err := configureOASFValidation(cfg); err != nil {
+		return nil, err
+	}
 
 	// Load options
 	options := types.NewOptions(cfg)

@@ -428,7 +428,7 @@ tasks:
     env:
       NODE_AUTH_TOKEN: "{{ .NODE_AUTH_TOKEN }}"
     cmd: |
-      version=$(npm pkg get version) 
+      version=$(npm pkg get version)
 
       if [[ $version == *"rc"* ]]; then
         npm publish --scope=@agntcy --access public --tag rc-{{.COMMIT_SHA}}
@@ -549,6 +549,19 @@ tasks:
           {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
         done
 
+      # Wait for cluster to be fully ready
+      - |
+        echo "Waiting for cluster {{ .KIND_CLUSTER_NAME }} to be ready..."
+        until docker exec "{{ .KIND_CLUSTER_NAME }}-control-plane" true 2>/dev/null; do
+          sleep 2
+        done
+
+        # Ensure kubeconfig is exported
+        {{ .KIND_BIN }} export kubeconfig --name {{ .KIND_CLUSTER_NAME }}
+
+        # Wait for nodes to be ready
+        {{ .KUBECTL_BIN }} wait --for=condition=Ready nodes --all --timeout=120s --context "kind-{{ .KIND_CLUSTER_NAME }}" || true
+
   deploy:kubernetes:gen-htpasswd-creds:
     desc: Generate htpasswd credentials and files for DIR deployment
     vars:
@@ -610,17 +623,23 @@ tasks:
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
-      # Generate credentials and htpasswd file (using defaults)
+      # Generate credentials and htpasswd file (using unique files per namespace)
       - task: deploy:kubernetes:gen-htpasswd-creds
+        vars:
+          CREDS_FILE: "/tmp/dir-htpasswd-creds-{{ .HELM_NAMESPACE }}.env"
+          HTPASSWD_FILE: "/tmp/dir-htpasswd-{{ .HELM_NAMESPACE }}"
 
-      # Cleanup credentials on exit (using defaults)
+      # Cleanup credentials on exit
       - defer:
           task: deploy:kubernetes:cleanup-htpasswd-creds
+          vars:
+            CREDS_FILE: "/tmp/dir-htpasswd-creds-{{ .HELM_NAMESPACE }}.env"
+            HTPASSWD_FILE: "/tmp/dir-htpasswd-{{ .HELM_NAMESPACE }}"
 
       # Deploy chart
       - |
         # Load credentials
-        source /tmp/dir-htpasswd-creds.env
+        source /tmp/dir-htpasswd-creds-{{ .HELM_NAMESPACE }}.env
 
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
@@ -630,10 +649,11 @@ tasks:
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
+          --set apiserver.config.store.oci.registry_address="dir-zot.{{ .HELM_NAMESPACE }}.svc.cluster.local:5000" \
           --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
           --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
           --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
-          --set-file apiserver.zot.secretFiles.htpasswd="/tmp/dir-htpasswd" \
+          --set-file apiserver.zot.secretFiles.htpasswd="/tmp/dir-htpasswd-{{ .HELM_NAMESPACE }}" \
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           {{ if .DIRECTORY_SERVER_RATELIMIT_ENABLED }}--set apiserver.config.ratelimit.enabled="{{ .DIRECTORY_SERVER_RATELIMIT_ENABLED }}"{{ end }} \
@@ -642,6 +662,8 @@ tasks:
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}--set apiserver.config.ratelimit.per_client_rps="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_ENABLED }}--set apiserver.oasf.enabled="{{ .DIRECTORY_SERVER_OASF_ENABLED }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_VERSIONS }}--set-json 'apiserver.oasf.image.versions={{ .DIRECTORY_SERVER_OASF_VERSIONS }}'{{ end }} \
           {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
           {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}--set apiserver.config.oasf_api_validation.disable="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"{{ end }} \
           {{ if ne .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE nil }}--set apiserver.config.oasf_api_validation.strict_mode="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"{{ end }} \
@@ -662,41 +684,63 @@ tasks:
   deploy:kubernetes:dir:
     desc: Deploy DIR helm chart
     vars:
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
+      # E2E-specific options
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
     cmds:
-      # Generate credentials and htpasswd file (using defaults)
+      # Generate credentials and htpasswd file (using unique files per namespace)
       - task: deploy:kubernetes:gen-htpasswd-creds
+        vars:
+          CREDS_FILE: "/tmp/dir-htpasswd-creds-{{ .HELM_NAMESPACE }}.env"
+          HTPASSWD_FILE: "/tmp/dir-htpasswd-{{ .HELM_NAMESPACE }}"
 
-      # Cleanup credentials on exit (using defaults)
+      # Cleanup credentials on exit
       - defer:
           task: deploy:kubernetes:cleanup-htpasswd-creds
+          vars:
+            CREDS_FILE: "/tmp/dir-htpasswd-creds-{{ .HELM_NAMESPACE }}.env"
+            HTPASSWD_FILE: "/tmp/dir-htpasswd-{{ .HELM_NAMESPACE }}"
 
       # Deploy chart
       - |
         # Load credentials
-        source /tmp/dir-htpasswd-creds.env
+        source /tmp/dir-htpasswd-creds-{{ .HELM_NAMESPACE }}.env
 
         {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
 
         {{ .HELM_BIN }} upgrade --install dir \
           {{ .HELM_CHART_PATH }} \
           -f {{ .HELM_VALUES_PATH }} \
-          --set apiserver.image.tag="{{ .IMAGE_TAG }}" \
+          --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL }}--set apiserver.config.routing.refresh_interval="{{ .DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_REGISTRY_ADDRESS }}--set apiserver.config.store.oci.registry_address="{{ .DIRECTORY_SERVER_REGISTRY_ADDRESS }}"{{ end }} \
           --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
           --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
           --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
-          --set-file apiserver.zot.secretFiles.htpasswd="/tmp/dir-htpasswd" \
+          --set-file apiserver.zot.secretFiles.htpasswd="/tmp/dir-htpasswd-{{ .HELM_NAMESPACE }}" \
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
-          --set apiserver.log_level="DEBUG" \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_ENABLED }}--set apiserver.config.ratelimit.enabled="{{ .DIRECTORY_SERVER_RATELIMIT_ENABLED }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS }}--set apiserver.config.ratelimit.global_rps="{{ .DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST }}--set apiserver.config.ratelimit.global_burst="{{ .DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}--set apiserver.config.ratelimit.per_client_rps="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_RPS }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
+          {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_ENABLED }}--set apiserver.oasf.enabled="{{ .DIRECTORY_SERVER_OASF_ENABLED }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_VERSIONS }}--set-json 'apiserver.oasf.image.versions={{ .DIRECTORY_SERVER_OASF_VERSIONS }}'{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}--set apiserver.config.oasf_api_validation.disable="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"{{ end }} \
+          {{ if ne .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE nil }}--set apiserver.config.oasf_api_validation.strict_mode="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_LOG_LEVEL }}--set apiserver.log_level="{{ .DIRECTORY_SERVER_LOG_LEVEL }}"{{ else }}--set apiserver.log_level="DEBUG"{{ end }} \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
-          --install \
           --wait \
           --wait-for-jobs \
           --timeout "15m"
@@ -763,14 +807,18 @@ tasks:
     aliases: [deploy:local:port-forward]
     desc: Set up port-forwarding for the local deployment
     vars:
+      SERVER_PORT: '{{ .SERVER_PORT | default "8888" }}'
+      METRICS_PORT: '{{ .METRICS_PORT | default "9090" }}'
+      INGRESS_PORT: '{{ .INGRESS_PORT | default "8080" }}'
       # Helm args
       HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server" }}'
     cmds:
       # Port-forward dependency services
+      # Use unique ports per namespace to avoid conflicts when running in parallel
       - |
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
-        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }} &
-        {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller 8080:80 -n {{ .HELM_NAMESPACE }} &
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver {{ .SERVER_PORT }}:8888 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver {{ .METRICS_PORT }}:9090 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
+        {{ .KUBECTL_BIN }} port-forward service/dir-ingress-controller {{ .INGRESS_PORT }}:80 -n {{ .HELM_NAMESPACE }} > /dev/null 2>&1 &
 
       # Delay to ensure services are online
       - sleep 10
@@ -778,9 +826,19 @@ tasks:
   deploy:kubernetes:local:port-forward:cleanup:
     aliases: [deploy:local:port-forward:cleanup]
     desc: Cleanup port-forwarding processes
+    vars:
+      SERVER_PORT: '{{ .SERVER_PORT | default "8888" }}'
+      METRICS_PORT: '{{ .METRICS_PORT | default "9090" }}'
+      INGRESS_PORT: '{{ .INGRESS_PORT | default "8080" }}'
     cmds:
-      # Kill any existing port-forward processes for the dir-apiserver and dir-ingress-controller services
-      - kill -9 $(ps aux | grep port-forward | grep -E "(dir-apiserver|dir-ingress-controller)" | awk '{print $2}') || true
+      # Kill port-forward processes for specific ports to avoid killing other tests' port-forwards
+      - |
+        # Kill processes forwarding to the specific API port
+        lsof -ti:{{ .SERVER_PORT }} | xargs kill -9 2>/dev/null || true
+        # Kill processes forwarding to the specific metrics port
+        lsof -ti:{{ .METRICS_PORT }} | xargs kill -9 2>/dev/null || true
+        # Kill processes forwarding to the specific ingress port
+        lsof -ti:{{ .INGRESS_PORT }} | xargs kill -9 2>/dev/null || true
 
   deploy:kubernetes:local:cleanup:
     aliases: [deploy:local:cleanup, deploy:kubernetes:cleanup]
@@ -1078,7 +1136,10 @@ tasks:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
       - defer: { task: deploy:kubernetes:local:cleanup }
-      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer:
+          task: deploy:kubernetes:local:port-forward:cleanup
+          vars:
+            SERVER_PORT: "{{ .SERVER_PORT }}"
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
@@ -1121,7 +1182,10 @@ tasks:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
       - defer: { task: deploy:kubernetes:local:cleanup }
-      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer:
+          task: deploy:kubernetes:local:port-forward:cleanup
+          vars:
+            SERVER_PORT: "{{ .SERVER_PORT }}"
       - defer:
           task: test:e2e:coverage:extract-pods
           vars:
@@ -1150,8 +1214,212 @@ tasks:
           go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
         fi
 
+  # Atomic tasks for e2e local tests
+  test:e2e:local:test:default:
+    desc: Run default validation tests (deploy with default settings and run tests)
+    internal: true
+    vars:
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-default" }}'
+      SERVER_PORT: '{{ .SERVER_PORT | default "8888" }}'
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
+      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
+      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+      COVERAGE_SUFFIX: '{{ .COVERAGE_SUFFIX | default "" }}'
+    env:
+      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
+      DIRECTORY_CLIENT_SERVER_ADDRESS: "localhost:{{ .SERVER_PORT }}"
+    cmds:
+      - task: deploy:kubernetes:dir
+        vars:
+          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL: "1s"
+          DIRECTORY_SERVER_REGISTRY_ADDRESS: "dir-zot.{{ .HELM_NAMESPACE }}.svc.cluster.local:5000"
+          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
+          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
+          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: deploy:kubernetes:local:port-forward
+        vars:
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          SERVER_PORT: "{{ .SERVER_PORT }}"
+      - defer:
+          task: deploy:kubernetes:local:port-forward:cleanup
+          vars:
+            SERVER_PORT: "{{ .SERVER_PORT }}"
+      - defer:
+          task: test:e2e:coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+            NAMESPACE: "{{ .HELM_NAMESPACE }}"
+            KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+      # Run client library tests first (faster feedback)
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          COVERAGE_FILE="{{.COVERAGE_DIR}}/local-client{{ if .COVERAGE_SUFFIX }}-{{.COVERAGE_SUFFIX}}{{ end }}.out"
+          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile="${COVERAGE_FILE}.tmp" . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
+          if [ -f "${COVERAGE_FILE}.tmp" ]; then
+            grep -v "\.pb\.go" "${COVERAGE_FILE}.tmp" | grep -v "mock_.*\.go" > "${COVERAGE_FILE}" || echo "mode: atomic" > "${COVERAGE_FILE}"
+            rm "${COVERAGE_FILE}.tmp"
+          fi
+        else
+          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
+        fi
+      # Run local CLI tests second (same infrastructure)
+      # Exclude validation tests from default run (they run in separate clusters)
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          COVERAGE_FILE="{{.COVERAGE_DIR}}/local-cli{{ if .COVERAGE_SUFFIX }}-{{.COVERAGE_SUFFIX}}{{ end }}.out"
+          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile="${COVERAGE_FILE}.tmp" . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!validation-non-strict && !validation-api-disabled"
+          if [ -f "${COVERAGE_FILE}.tmp" ]; then
+            grep -v "\.pb\.go" "${COVERAGE_FILE}.tmp" | grep -v "mock_.*\.go" > "${COVERAGE_FILE}" || echo "mode: atomic" > "${COVERAGE_FILE}"
+            rm "${COVERAGE_FILE}.tmp"
+          fi
+        else
+          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!validation-non-strict && !validation-api-disabled"
+        fi
+      # Wait 3 seconds for rate limit reset
+      - sleep 3
+      # Run rate limiting tests LAST
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          COVERAGE_FILE="{{.COVERAGE_DIR}}/local-client{{ if .COVERAGE_SUFFIX }}-{{.COVERAGE_SUFFIX}}{{ end }}.out"
+          go test -C ./e2e/client -coverpkg={{ .COVERAGE_PKGS }} -coverprofile="${COVERAGE_FILE}" . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
+        else
+          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
+        fi
+
+  test:e2e:local:test:non-strict:
+    desc: Run non-strict validation tests (deploy with non-strict validation and run tests)
+    internal: true
+    vars:
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-nonstrict" }}'
+      SERVER_PORT: '{{ .SERVER_PORT | default "8889" }}'
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+      DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
+      DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE: "false"
+    env:
+      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
+      DIRECTORY_CLIENT_SERVER_ADDRESS: "localhost:{{ .SERVER_PORT }}"
+    cmds:
+      - task: deploy:kubernetes:dir
+        vars:
+          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL: "1s"
+          DIRECTORY_SERVER_REGISTRY_ADDRESS: "dir-zot.{{ .HELM_NAMESPACE }}.svc.cluster.local:5000"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: deploy:kubernetes:local:port-forward
+        vars:
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          SERVER_PORT: "{{ .SERVER_PORT }}"
+          METRICS_PORT: "9091"
+          INGRESS_PORT: "8081"
+      - defer:
+          task: deploy:kubernetes:local:port-forward:cleanup
+          vars:
+            SERVER_PORT: "{{ .SERVER_PORT }}"
+            METRICS_PORT: "9091"
+            INGRESS_PORT: "8081"
+      - defer:
+          task: test:e2e:coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+            NAMESPACE: "{{ .HELM_NAMESPACE }}"
+            KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+      # Run validation tests with strict mode disabled
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/validation-non-strict.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="validation-non-strict"
+          if [ -f {{.COVERAGE_DIR}}/validation-non-strict.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/validation-non-strict.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/validation-non-strict.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/validation-non-strict.out
+            rm {{.COVERAGE_DIR}}/validation-non-strict.out.tmp
+          fi
+        else
+          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="validation-non-strict"
+        fi
+
+  test:e2e:local:test:api-disabled:
+    desc: Run API validation disabled tests (deploy with API validation disabled and run tests)
+    internal: true
+    vars:
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-apidisabled" }}'
+      SERVER_PORT: '{{ .SERVER_PORT | default "8890" }}'
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+      DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
+    env:
+      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
+      DIRECTORY_CLIENT_SERVER_ADDRESS: "localhost:{{ .SERVER_PORT }}"
+    cmds:
+      - task: deploy:kubernetes:dir
+        vars:
+          KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_ROUTING_REFRESH_INTERVAL: "1s"
+          DIRECTORY_SERVER_REGISTRY_ADDRESS: "dir-zot.{{ .HELM_NAMESPACE }}.svc.cluster.local:5000"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: deploy:kubernetes:local:port-forward
+        vars:
+          HELM_NAMESPACE: "{{ .HELM_NAMESPACE }}"
+          SERVER_PORT: "{{ .SERVER_PORT }}"
+          METRICS_PORT: "9092"
+          INGRESS_PORT: "8082"
+      - defer:
+          task: deploy:kubernetes:local:port-forward:cleanup
+          vars:
+            SERVER_PORT: "{{ .SERVER_PORT }}"
+            METRICS_PORT: "9092"
+            INGRESS_PORT: "8082"
+      - defer:
+          task: test:e2e:coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+            NAMESPACE: "{{ .HELM_NAMESPACE }}"
+            KIND_CLUSTER_NAME: "{{ .KIND_CLUSTER_NAME }}"
+      # Run validation tests with API validation disabled
+      - |
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/validation-api-disabled.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="validation-api-disabled"
+          if [ -f {{.COVERAGE_DIR}}/validation-api-disabled.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/validation-api-disabled.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/validation-api-disabled.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/validation-api-disabled.out
+            rm {{.COVERAGE_DIR}}/validation-api-disabled.out.tmp
+          fi
+        else
+          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="validation-api-disabled"
+        fi
+
+  # Wrapper tasks
+  test:e2e:local:run-parallel:
+    desc: Run three validation test scenarios in parallel
+    internal: true
+    deps:
+      - test:e2e:local:test:default
+      - test:e2e:local:test:non-strict
+      - test:e2e:local:test:api-disabled
+
   test:e2e:local:
-    desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting tests)
+    desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting tests) with 3 parallel validation scenarios
     aliases: [e2e:local]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
@@ -1160,61 +1428,108 @@ tasks:
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
-    env:
-      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
     cmds:
-      - defer: { task: deploy:kubernetes:local:cleanup }
-      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
       - defer:
-          task: test:e2e:coverage:extract-pods
+          task: deploy:kubernetes:local:cleanup
           vars:
-            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-            NAMESPACE: "dir-server"
-      # Bootstrap infrastructure once for all test suites
-      - task: deploy:kubernetes:local
+            KIND_CLUSTER_NAME: "agntcy-cluster"
+      - task: deploy:kubernetes:setup-cluster
         vars:
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
-          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
-          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          KIND_CLUSTER_NAME: "agntcy-cluster"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
-      - task: deploy:kubernetes:local:port-forward
-      # Run client library tests first (faster feedback)
       - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
-          # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.COVERAGE_DIR}}/local-client.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-client.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-client.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-client.out
-            rm {{.COVERAGE_DIR}}/local-client.out.tmp
-          fi
-        else
-          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="!ratelimit"
-        fi
-      # Run local CLI tests second (same infrastructure)
-      - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-          # Filter out generated files (matching codecov.yml ignores)
-          if [ -f {{.COVERAGE_DIR}}/local-cli.out.tmp ]; then
-            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-cli.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-cli.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-cli.out
-            rm {{.COVERAGE_DIR}}/local-cli.out.tmp
-          fi
-        else
-          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
-        fi
-      # Wait 3 seconds for rate limit reset
-      - sleep 3
-      # Run rate limiting tests LAST
-      - |
-        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
-          mkdir -p {{.COVERAGE_DIR}}
-          go test -C ./e2e/client -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
-        else
-          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v -ginkgo.label-filter="ratelimit"
-        fi
+        # Build Helm dependencies once before running parallel tasks to avoid conflicts
+        # This prevents concurrent dependency builds from creating conflicting temp directories
+        {{ .HELM_BIN }} dependency build {{ .ROOT_DIR }}/install/charts/dir
+      - task: test:e2e:local:run-parallel
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
+          RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
+          RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
+
+  test:e2e:local:default:
+    desc: Run single local e2e test scenario (creates cluster, runs default tests, cleans up)
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
+      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
+      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - defer:
+          task: deploy:kubernetes:local:cleanup
+          vars:
+            KIND_CLUSTER_NAME: "agntcy-cluster"
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: test:e2e:local:test:default
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          HELM_NAMESPACE: "dir-server"
+          SERVER_PORT: "8888"
+          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
+          RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
+          RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
+
+  test:e2e:local:non-strict:
+    desc: Run validation tests with OASF enabled and strict validation mode disabled (creates cluster, runs tests, cleans up)
+    aliases: [e2e:validation:non-strict]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - defer:
+          task: deploy:kubernetes:local:cleanup
+          vars:
+            KIND_CLUSTER_NAME: "agntcy-cluster"
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: test:e2e:local:test:non-strict
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          HELM_NAMESPACE: "dir-server-nonstrict"
+          SERVER_PORT: "8889"
+          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
+
+  test:e2e:local:api-disabled:
+    desc: Run validation tests with OASF enabled and API validation disabled (creates cluster, runs tests, cleans up)
+    aliases: [e2e:validation:api-disabled]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    cmds:
+      - defer:
+          task: deploy:kubernetes:local:cleanup
+          vars:
+            KIND_CLUSTER_NAME: "agntcy-cluster"
+      - task: deploy:kubernetes:setup-cluster
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: test:e2e:local:test:api-disabled
+        vars:
+          KIND_CLUSTER_NAME: "agntcy-cluster"
+          HELM_NAMESPACE: "dir-server-apidisabled"
+          SERVER_PORT: "8890"
+          PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
 
   test:e2e:network:
     desc: Run end-to-end tests for network deployment (Multi-peer CLI tests)
@@ -1538,15 +1853,15 @@ tasks:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
-          
+
           # Get pod matching the selector
           POD_NAME=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
-          
+
             if [ -n "$POD_NAME" ]; then
               # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
               echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
               {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
-              
+
               # Wait for container to restart (coverage files persist in emptyDir volume)
               echo "[coverage] Waiting for container to restart and coverage to be flushed..."
               sleep 5
@@ -1573,7 +1888,7 @@ tasks:
         if [ -d "{{.COVERAGE_DIR}}/pods" ]; then
           # Build comma-separated list of pod directories
           pod_dirs=$(find {{.COVERAGE_DIR}}/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-          
+
           if [ -n "$pod_dirs" ]; then
             echo "  Found pod coverage directories"
             mkdir -p {{.COVERAGE_DIR}}/server-binary

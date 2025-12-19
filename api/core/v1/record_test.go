@@ -122,6 +122,10 @@ func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
 }
 
 func TestRecord_Validate(t *testing.T) {
+	// Configure validation for unit tests: use embedded schemas (no API validation)
+	// This ensures tests don't depend on external services or require schema URL configuration
+	corev1.SetDisableAPIValidation(true)
+
 	tests := []struct {
 		name      string
 		record    *corev1.Record
@@ -215,7 +219,12 @@ func TestRecord_SetSchemaURL(t *testing.T) {
 
 	// Save original state
 	originalURL := ""
-	defer corev1.SetSchemaURL(originalURL) // Restore after test
+	originalDisable := false
+
+	defer func() {
+		corev1.SetSchemaURL(originalURL)
+		corev1.SetDisableAPIValidation(originalDisable)
+	}()
 
 	tests := []struct {
 		name      string
@@ -243,6 +252,8 @@ func TestRecord_SetSchemaURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// This should not panic or error
 			corev1.SetSchemaURL(tt.schemaURL)
+			// When schema URL is empty, disable API validation to use embedded schemas
+			corev1.SetDisableAPIValidation(tt.schemaURL == "")
 
 			// We can't directly verify the internal state, but we can verify
 			// that calling SetSchemaURL doesn't panic and that validation
@@ -290,8 +301,12 @@ func TestRecord_SetSchemaURL(t *testing.T) {
 
 // testRecordWithValidation is a helper function to create a test record and validate it.
 // This reduces code duplication between similar tests.
+// Note: This function assumes API validation is disabled (uses embedded schemas).
 func testRecordWithValidation(t *testing.T) {
 	t.Helper()
+
+	// Ensure API validation is disabled for unit tests
+	corev1.SetDisableAPIValidation(true)
 
 	record := corev1.New(&oasfv1alpha1.Record{
 		Name:          "test-agent",
@@ -384,7 +399,7 @@ func TestRecord_SetStrictValidation(t *testing.T) {
 			wantStrict: true,
 		},
 		{
-			name:       "disable strict validation (lax mode)",
+			name:       "disable strict validation",
 			strict:     false,
 			wantStrict: false,
 		},
