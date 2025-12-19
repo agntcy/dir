@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.6.0] - 2025-12-19
+
+### Key Highlights
+
+This release consolidates improvements from v0.5.1 through v0.5.7, focusing on operational
+reliability, integration enhancements, and cross-registry support, including:
+
+**Tooling & Integration**
+- Enhanced local search implementation with wildcard support
+- Configurable server-side OASF validation with auto-deployment support
+- Extended MCP tools for record enrichment and import/export workflows
+- Domain-based enrichment capabilities for importer service
+- Support across different OCI Registry storage backends
+
+**Observability & Operations**
+- Enhanced SPIRE support for reliability and multi-SPIRE deployments
+- Prometheus metrics with ServiceMonitor and gRPC interceptors
+
+### Compatibility Matrix
+
+| Component              | Version | Compatible With             |
+| ---------------------- | ------- | --------------------------- |
+| **dir-apiserver**      | v0.6.0  | oasf v0.3.x, v0.7.x, v0.8.x |
+| **dirctl**             | v0.6.0  | dir-apiserver >= v0.5.0     |
+| **dir-go**             | v0.6.0  | dir-apiserver >= v0.5.0     |
+| **dir-py**             | v0.6.0  | dir-apiserver >= v0.5.0     |
+| **dir-js**             | v0.6.0  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dir**    | v0.6.0  | dir-apiserver >= v0.5.0     |
+| **helm-charts/dirctl** | v0.6.0  | dirctl >= v0.5.0            |
+
+### Added
+- **SPIRE**: SPIFFE CSI driver support for reliable identity injection (#724)
+- **SPIRE**: Automatic writable home directory when `readOnlyRootFilesystem` is enabled (#724)
+- **SPIRE**: ClusterSPIFFEID className field for proper workload registration (#774)
+- **Helm**: External Secrets Operator integration for credential management (#691)
+- **Helm**: DNS name templates for SPIRE ClusterSPIFFEID (#681)
+- **Helm**: SQLite PVC configuration support (#713)
+- **Helm**: OASF configuration for API validation (#769)
+- **Helm**: Recreate deployment strategy to prevent PVC lock conflicts (#720)
+- **Observability**: Prometheus metrics with ServiceMonitor and gRPC interceptors (#757)
+- **Security**: Container security scan workflow with automated version detection (#746)
+- **SDK**: Additional gRPC service methods in Python and JavaScript SDKs (#709)
+- **MCP**: Import/export tools and prompts for workflow automation (#705)
+- **MCP**: OASF schema exploration tools for enricher workflow (#680)
+- **Importer**: Domain-based record enrichment (#696)
+- **Importer**: Deduplication checker prioritization (#743)
+- **Validation**: Server-side OASF API validation (#711)
+- **CI/CD**: Feature branch build workflows for images and charts (#739)
+
+### Changed
+- **Search**: Refactored local search implementation (#747)
+- **Search**: Removed search subcommands for simplified CLI (#759)
+- **Importer**: Migration to oasf-sdk/translator (#624)
+- **Configuration**: Updated OASF validation environment variables (#754)
+- **Toolchain**: Disabled Go workspace mode (#732)
+- **Dependencies**: Bump golang.org/x/crypto to v0.45.0 (#744)
+- **Dependencies**: Bump js-yaml to v4.1.1 (#745)
+- **Dependencies**: Update zot and fix CodeQL warnings (#761)
+- **Dependencies**: Bump github.com/sigstore/cosign (#773)
+
+### Fixed
+- **SPIRE**: X.509-SVID retry logic for timing issues in short-lived workloads (#735, #741)
+- **SPIRE**: "certificate contains no URI SAN" errors in CronJobs (#724)
+- **Helm**: Add `/tmp` volume when rootfs is read-only (#718)
+- **CI**: Prevent disk space issues in runners (#749)
+- **CI**: Avoid PR label duplication (#755)
+- **CI**: Fix unit test execution (#733)
+- **CI**: Fix reusable build workflow component tag handling (#742)
+- **CI**: Add SPIRE task cleanup with sudo (#734)
+- **CI**: Helm linting integration (#780)
+- **Brew**: Formula updater process after public release (#686)
+
+### Removed
+- **Cleanup**: Outdated components and unused code (#783)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.5.0...v0.6.0)
+
 ## [v0.5.7] - 2025-12-12
 
 ### Key Highlights

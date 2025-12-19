@@ -9,8 +9,8 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.5.7
-	github.com/agntcy/dir/client v0.5.7
+	github.com/agntcy/dir/api v0.6.0
+	github.com/agntcy/dir/client v0.6.0
 	github.com/agntcy/oasf-sdk/pkg v0.0.14
 	github.com/modelcontextprotocol/go-sdk v0.8.0
 	github.com/stretchr/testify v1.11.1
@@ -23,7 +23,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/utils v0.5.7 // indirect
+	github.com/agntcy/dir/utils v0.6.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
