@@ -13,7 +13,7 @@ replace (
 
 require (
 	github.com/agntcy/dir/api v0.5.7
-	github.com/agntcy/dir/cli v0.5.7
+	github.com/agntcy/dir/cli v0.6.0
 	github.com/agntcy/dir/client v0.5.7
 	github.com/agntcy/dir/utils v0.5.7
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
