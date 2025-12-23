@@ -79,17 +79,55 @@ func withAuth(ctx context.Context) Option {
 		case "tls":
 			return o.setupTlsAuth(ctx)
 		case "github":
+			// Explicit GitHub auth mode - use cached credentials or fail
 			return o.setupGitHubAuth(ctx)
-		case "":
-			// Empty auth mode - use insecure connection (for development/testing only)
-			o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-			return nil
+		case "insecure", "none", "":
+			// Insecure/none/empty auth mode - try auto-detection first, fallback to insecure
+			return o.setupAutoDetectAuth(ctx)
 		default:
 			// Invalid auth mode specified - return error to prevent silent security issues
-			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509', 'token', 'tls', 'github', or empty for insecure)", o.config.AuthMode)
+			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509', 'token', 'tls', 'github', 'insecure', 'none', or empty for auto-detect)", o.config.AuthMode)
 		}
 	}
+}
+
+// setupAutoDetectAuth attempts to auto-detect available credentials and falls back to insecure if none found.
+// This is used when auth mode is empty, "insecure", or "none".
+func (o *options) setupAutoDetectAuth(_ context.Context) error {
+	// For explicit "insecure" or "none" mode, skip auto-detection
+	if o.config.AuthMode == "insecure" || o.config.AuthMode == "none" {
+		authLogger.Debug("Using insecure connection (explicit mode)", "auth_mode", o.config.AuthMode)
+		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		return nil
+	}
+
+	// Empty auth mode - auto-detect based on available credentials
+	// Check for cached GitHub OAuth token
+	cache := NewTokenCache()
+	cachedToken, err := cache.GetValidToken()
+	if err != nil {
+		authLogger.Debug("Error loading cached GitHub token, falling back to insecure", "error", err)
+	}
+
+	if cachedToken != nil {
+		authLogger.Debug("Auto-detected cached GitHub OAuth token", "user", cachedToken.User)
+
+		// Use insecure transport (Envoy gateway handles TLS termination)
+		// TODO: Add option for TLS to Envoy gateway
+		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+		// Add GitHub token as Bearer token in Authorization header
+		o.authOpts = append(o.authOpts, grpc.WithPerRPCCredentials(newGitHubCredentials(cachedToken.AccessToken)))
+
+		authLogger.Debug("GitHub authentication configured via auto-detect", "user", cachedToken.User)
+		return nil
+	}
+
+	// No cached credentials - use insecure connection (for local development only)
+	authLogger.Debug("No cached credentials found, using insecure connection")
+	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	return nil
 }
 
 func (o *options) setupJWTAuth(ctx context.Context) error {
@@ -348,12 +386,20 @@ func (o *options) setupSpiffeAuth(_ context.Context) error {
 }
 
 func (o *options) setupGitHubAuth(_ context.Context) error {
-	// Validate GitHub PAT is set
-	if o.config.GitHubPAT == "" {
-		return errors.New("GitHub Personal Access Token is required for github authentication (set DIRECTORY_CLIENT_GITHUB_PAT or --github-pat)")
+	authLogger.Debug("Setting up GitHub authentication")
+
+	// Try to load cached OAuth token
+	cache := NewTokenCache()
+	cachedToken, err := cache.GetValidToken()
+	if err != nil {
+		authLogger.Debug("Error loading cached token", "error", err)
 	}
 
-	authLogger.Debug("Setting up GitHub authentication")
+	if cachedToken == nil {
+		return errors.New("not authenticated with GitHub. Run 'dirctl auth login' to authenticate")
+	}
+
+	authLogger.Debug("Using cached GitHub OAuth token", "user", cachedToken.User)
 
 	// Use insecure transport for now (Envoy gateway handles TLS termination)
 	// TODO: Add option for TLS to Envoy gateway
@@ -364,9 +410,9 @@ func (o *options) setupGitHubAuth(_ context.Context) error {
 	}
 
 	// Add GitHub token as Bearer token in Authorization header
-	o.authOpts = append(o.authOpts, grpc.WithPerRPCCredentials(newGitHubCredentials(o.config.GitHubPAT)))
+	o.authOpts = append(o.authOpts, grpc.WithPerRPCCredentials(newGitHubCredentials(cachedToken.AccessToken)))
 
-	authLogger.Debug("GitHub authentication configured")
+	authLogger.Debug("GitHub authentication configured", "user", cachedToken.User)
 
 	return nil
 }

@@ -23,16 +23,17 @@ var DefaultConfig = Config{
 }
 
 type Config struct {
-	ServerAddress    string `json:"server_address,omitempty"     mapstructure:"server_address"`
-	TlsSkipVerify    bool   `json:"tls_skip_verify,omitempty"    mapstructure:"tls_skip_verify"`
-	TlsCertFile      string `json:"tls_cert_file,omitempty"      mapstructure:"tls_cert_file"`
-	TlsKeyFile       string `json:"tls_key_file,omitempty"       mapstructure:"tls_key_file"`
-	TlsCAFile        string `json:"tls_ca_file,omitempty"        mapstructure:"tls_ca_file"`
-	SpiffeSocketPath string `json:"spiffe_socket_path,omitempty" mapstructure:"spiffe_socket_path"`
-	SpiffeToken      string `json:"spiffe_token,omitempty"       mapstructure:"spiffe_token"`
-	AuthMode         string `json:"auth_mode,omitempty"          mapstructure:"auth_mode"`
-	JWTAudience      string `json:"jwt_audience,omitempty"       mapstructure:"jwt_audience"`
-	GitHubPAT        string `json:"github_pat,omitempty"         mapstructure:"github_pat"`
+	ServerAddress      string `json:"server_address,omitempty"       mapstructure:"server_address"`
+	TlsSkipVerify      bool   `json:"tls_skip_verify,omitempty"      mapstructure:"tls_skip_verify"`
+	TlsCertFile        string `json:"tls_cert_file,omitempty"        mapstructure:"tls_cert_file"`
+	TlsKeyFile         string `json:"tls_key_file,omitempty"         mapstructure:"tls_key_file"`
+	TlsCAFile          string `json:"tls_ca_file,omitempty"          mapstructure:"tls_ca_file"`
+	SpiffeSocketPath   string `json:"spiffe_socket_path,omitempty"   mapstructure:"spiffe_socket_path"`
+	SpiffeToken        string `json:"spiffe_token,omitempty"         mapstructure:"spiffe_token"`
+	AuthMode           string `json:"auth_mode,omitempty"            mapstructure:"auth_mode"`
+	JWTAudience        string `json:"jwt_audience,omitempty"         mapstructure:"jwt_audience"`
+	GitHubClientID     string `json:"github_client_id,omitempty"     mapstructure:"github_client_id"`
+	GitHubClientSecret string `json:"github_client_secret,omitempty" mapstructure:"github_client_secret"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -72,8 +73,11 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("tls_ca_file")
 	v.SetDefault("tls_ca_file", "")
 
-	_ = v.BindEnv("github_pat")
-	v.SetDefault("github_pat", "")
+	_ = v.BindEnv("github_client_id")
+	v.SetDefault("github_client_id", "")
+
+	_ = v.BindEnv("github_client_secret")
+	v.SetDefault("github_client_secret", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
