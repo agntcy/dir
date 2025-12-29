@@ -1,0 +1,131 @@
+{
+  "agents": [
+    {
+      "id": "agent_alpha_clean",
+      "name": "Alpha Services",
+      "url": "https://alpha.example",
+      "capabilities": ["book", "quote", "support"],
+      "contact": "ops@alpha.example",
+      "updated_at": "2025-12-20",
+      "domain_verified": true,
+      "key_present": true,
+      "handshake_fail_ratio": 0.01,
+      "rate_limit_violations": 0,
+      "complaint_flags": 0
+    },
+    {
+      "id": "agent_beta_clean",
+      "name": "Beta Concierge",
+      "url": "https://beta.example",
+      "capabilities": ["schedule", "cancel", "status"],
+      "contact": "support@beta.example",
+      "updated_at": "2025-12-10",
+      "domain_verified": true,
+      "key_present": true,
+      "handshake_fail_ratio": 0.03,
+      "rate_limit_violations": 1,
+      "complaint_flags": 0
+    },
+    {
+      "id": "agent_gamma_ok",
+      "name": "Gamma Helper",
+      "url": "https://gamma.example",
+      "capabilities": ["info"],
+      "contact": "hello@gamma.example",
+      "updated_at": "2025-10-01",
+      "domain_verified": false,
+      "key_present": true,
+      "handshake_fail_ratio": 0.08,
+      "rate_limit_violations": 2,
+      "complaint_flags": 1
+    },
+    {
+      "id": "agent_delta_sparse",
+      "name": "Delta Agent",
+      "url": "https://delta.example",
+      "capabilities": [],
+      "updated_at": "2025-07-15",
+      "domain_verified": false,
+      "key_present": false,
+      "handshake_fail_ratio": 0.12,
+      "rate_limit_violations": 3,
+      "complaint_flags": 0
+    },
+    {
+      "id": "agent_epsilon_missing_contact",
+      "name": "Epsilon Tools",
+      "url": "https://epsilon.example",
+      "capabilities": ["quote"],
+      "updated_at": "2025-11-05",
+      "domain_verified": true,
+      "key_present": false,
+      "handshake_fail_ratio": 0.06,
+      "rate_limit_violations": 0,
+      "complaint_flags": 0
+    },
+    {
+      "id": "agent_zeta_suspicious",
+      "name": "Zeta Fast-Track",
+      "url": "https://zeta.example",
+      "capabilities": ["book", "pay", "refund"],
+      "contact": "contact@zeta.example",
+      "updated_at": "2024-12-01",
+      "domain_verified": false,
+      "key_present": false,
+      "handshake_fail_ratio": 0.45,
+      "rate_limit_violations": 25,
+      "complaint_flags": 7
+    },
+    {
+      "id": "agent_eta_suspicious",
+      "name": "ETA Deals",
+      "url": "https://eta.example",
+      "capabilities": ["book"],
+      "contact": "admin@eta.example",
+      "updated_at": "2025-01-10",
+      "domain_verified": false,
+      "key_present": false,
+      "handshake_fail_ratio": 0.33,
+      "rate_limit_violations": 12,
+      "complaint_flags": 4
+    },
+    {
+      "id": "agent_theta_clean",
+      "name": "Theta Support",
+      "url": "https://theta.example",
+      "capabilities": ["support", "status"],
+      "contact": "help@theta.example",
+      "updated_at": "2025-12-28",
+      "domain_verified": true,
+      "key_present": true,
+      "handshake_fail_ratio": 0.00,
+      "rate_limit_violations": 0,
+      "complaint_flags": 0
+    },
+    {
+      "id": "agent_iota_ok",
+      "name": "Iota Scheduling",
+      "url": "https://iota.example",
+      "capabilities": ["schedule"],
+      "contact": "team@iota.example",
+      "updated_at": "2025-09-09",
+      "domain_verified": false,
+      "key_present": true,
+      "handshake_fail_ratio": 0.10,
+      "rate_limit_violations": 1,
+      "complaint_flags": 0
+    },
+    {
+      "id": "agent_kappa_broken",
+      "name": "Kappa Broken Link",
+      "url": "",
+      "capabilities": ["book"],
+      "updated_at": "2023-06-01",
+      "domain_verified": false,
+      "key_present": false,
+      "handshake_fail_ratio": 0.60,
+      "rate_limit_violations": 40,
+      "complaint_flags": 10
+    }
+  ]
+}
