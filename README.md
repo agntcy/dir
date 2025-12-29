@@ -26,6 +26,8 @@ The goal is to demonstrate:
 - how rankings can be explainable (human-readable reasons)
 - how this logic can remain optional and pluggable
 
+**Details:** `extensions/trust_ranking/REFERENCE.md`
+
 ### What this is
 
 - A minimal, additive extension
