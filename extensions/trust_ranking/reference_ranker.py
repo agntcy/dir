@@ -243,6 +243,12 @@ def rank_agents(
 
         scored.append((score_0_100, a))
 
-    # Highest score first
-    scored.sort(key=lambda t: t[0], reverse=True)
+    # Stable ordering: score desc, then name/id asc
+    scored.sort(
+        key=lambda t: (
+            -t[0],
+            (t[1].get("name") or "").lower(),
+            (t[1].get("id") or "").lower(),
+        )
+    )
     return [a for _, a in scored]
