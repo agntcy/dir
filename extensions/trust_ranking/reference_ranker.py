@@ -211,7 +211,9 @@ def rank_agents(
         # Weights (toy). Sum to 1.0.
         score_0_1 = 0.35 * comp + 0.20 * fresh + 0.25 * ver + 0.20 * beh
         score_0_100 = round(_clamp(score_0_1, 0.0, 1.0) * 100.0, 1)
-
+        # Avoid "perfect trust" optics in a PoC
+        score_0_100 = min(score_0_100, 99.0)
+        
         # Build an explanation that covers different categories.
         # We want: completeness, freshness, and either verification OR behavior,
         # but behavior should show up when it has something to say.
