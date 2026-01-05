@@ -16,52 +16,6 @@ The Directory (dir) allows publication, exchange, and discovery of information a
 It leverages [OASF](https://github.com/agntcy/oasf) to describe AI agents and provides a set of APIs and tools to store, publish, and discover records across the network by their attributes and constraints.
 Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous system integration and testing across different versions, environments, and features.
 
-## Trust Ranking (Reference PoC)
-
-This repository includes a **reference-only trust ranking extension** for directory results, implemented as an optional add-on under `extensions/trust_ranking/`.
-
-The goal is to demonstrate:
-
-- how trust signals *could* influence discovery and ranking
-- how rankings can be explainable (human-readable reasons)
-- how this logic can remain optional and pluggable
-
-**Details:** `extensions/trust_ranking/REFERENCE.md`
-
-### What this is
-
-- A minimal, additive extension
-- A toy scoring model with clear limitations
-- A runnable demo for discussion and experimentation
-
-### What this is not
-
-- Not a security system
-- Not a standard
-- Not a production recommendation
-
-The reference implementation intentionally avoids real-world enforcement,
-identity guarantees, or adversarial robustness.
-
-### Try it
-
-```bash
-python scripts/run_trust_ranking.py --top 10
-```
-
-The demo ranks sample directory entries and annotates them with:
-
-- `trust.score` (0–100)
-- `trust.band` (`green | yellow | red`)
-- `trust.reasons` (top 3 human-readable explanations)
-
-### Why include this
-
-As agent directories grow, returning an unordered list of candidates becomes insufficient.
-This PoC exists to explore *where* trust-based ranking might live and *how* it could be exposed without centralizing control or mandating policy.
-
---- 
-
 ## Features
 
 ADS enables several key capabilities for the agentic AI ecosystem:
@@ -89,6 +43,13 @@ ADS enables several key capabilities for the agentic AI ecosystem:
 ## Documentation
 
 Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walkthrough of all the Directory features.
+
+## Trust Ranking (Reference PoC)
+
+This repository includes a **reference-only trust ranking extension** for directory results,
+implemented as an optional add-on under `extensions/trust_ranking/`.
+
+Details: `extensions/trust_ranking/REFERENCE.md`
 
 ## Source tree
 
