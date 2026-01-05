@@ -19,6 +19,7 @@ import (
 	"github.com/agntcy/dir/cli/cmd/search"
 	"github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/cmd/sync"
+	"github.com/agntcy/dir/cli/cmd/validate"
 	"github.com/agntcy/dir/cli/cmd/verify"
 	"github.com/agntcy/dir/cli/cmd/version"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
@@ -61,6 +62,7 @@ func init() {
 		// initialize.Command, // REMOVED: Initialize functionality
 		sign.Command,
 		verify.Command,
+		validate.Command,
 		// storage commands
 		info.Command,
 		pull.Command,

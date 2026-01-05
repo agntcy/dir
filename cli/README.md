@@ -343,6 +343,40 @@ Verify record signatures.
 dirctl verify record.json signature.sig --key public.key
 ```
 
+#### `dirctl validate <file> [flags]`
+Validate an OASF record JSON file locally against the OASF schema.
+
+This command performs **local validation** without requiring a connection to a Directory server.
+You must specify either `--url` for API-based validation or `--disable-api` for embedded schema validation.
+This command is intended for local validation purposes.
+
+**Examples:**
+```bash
+# Validate using embedded schemas (no API calls)
+dirctl validate record.json --disable-api
+
+# Validate with API-based validation using a custom schema URL
+dirctl validate record.json --url https://schema.oasf.outshift.com
+
+# Validate with non-strict mode (more permissive, only works with --url)
+dirctl validate record.json --url https://schema.oasf.outshift.com --disable-strict
+```
+
+**Flags:**
+- `--url <url>` - OASF schema URL for API-based validation (required if --disable-api is not specified)
+- `--disable-api` - Disable API-based validation (use embedded schemas instead, required if --url is not specified)
+- `--disable-strict` - Disable strict validation mode (more permissive validation, only works with --url)
+
+**Note:** You must specify either `--url` (for API validation) or `--disable-api` (for embedded schema validation).
+This command is intended for local validation purposes.
+
+**What it does:**
+- Reads and parses the JSON file locally (no server connection required)
+- Validates the record structure against OASF schema using embedded schemas by default
+- Reports validation errors with detailed messages
+- Shows detected schema version on successful validation
+- Supports both API-based validation (with `--url` flag) and embedded schema validation (default)
+
 ### 📥 **Import Operations**
 
 Import records from external registries into DIR. Supports automated batch imports from various registry types.
@@ -698,7 +732,7 @@ The CLI follows a clear service-based organization:
 - **Storage**: Direct record management (`push`, `pull`, `delete`, `info`)
 - **Routing**: Network announcement and discovery (`routing publish`, `routing list`, `routing search`)
 - **Search**: General content search (`search`)
-- **Security**: Signing and verification (`sign`, `verify`)
+- **Security**: Signing, verification, and validation (`sign`, `verify`, `validate`)
 - **Import**: External registry imports (`import`)
 - **Sync**: Peer synchronization (`sync`)
 
