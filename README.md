@@ -16,29 +16,75 @@ The Directory (dir) allows publication, exchange, and discovery of information a
 It leverages [OASF](https://github.com/agntcy/oasf) to describe AI agents and provides a set of APIs and tools to store, publish, and discover records across the network by their attributes and constraints.
 Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous system integration and testing across different versions, environments, and features.
 
+## Trust Ranking (Reference PoC)
+
+This repository includes a **reference-only trust ranking extension** for directory results, implemented as an optional add-on under `extensions/trust_ranking/`.
+
+The goal is to demonstrate:
+
+- how trust signals *could* influence discovery and ranking
+- how rankings can be explainable (human-readable reasons)
+- how this logic can remain optional and pluggable
+
+**Details:** `extensions/trust_ranking/REFERENCE.md`
+
+### What this is
+
+- A minimal, additive extension
+- A toy scoring model with clear limitations
+- A runnable demo for discussion and experimentation
+
+### What this is not
+
+- Not a security system
+- Not a standard
+- Not a production recommendation
+
+The reference implementation intentionally avoids real-world enforcement,
+identity guarantees, or adversarial robustness.
+
+### Try it
+
+```bash
+python scripts/run_trust_ranking.py --top 10
+```
+
+The demo ranks sample directory entries and annotates them with:
+
+- `trust.score` (0–100)
+- `trust.band` (`green | yellow | red`)
+- `trust.reasons` (top 3 human-readable explanations)
+
+### Why include this
+
+As agent directories grow, returning an unordered list of candidates becomes insufficient.
+This PoC exists to explore *where* trust-based ranking might live and *how* it could be exposed without centralizing control or mandating policy.
+
+--- 
+
 ## Features
 
 ADS enables several key capabilities for the agentic AI ecosystem:
 
 - **Capability-Based Discovery**: Agents publish structured metadata describing their
-functional characteristics as described by the [OASF](https://github.com/agntcy/oasf).
-The system organizes this information using hierarchical taxonomies,
-enabling efficient matching of capabilities to requirements.
+  functional characteristics as described by the [OASF](https://github.com/agntcy/oasf).
+  The system organizes this information using hierarchical taxonomies,
+  enabling efficient matching of capabilities to requirements.
 - **Verifiable Claims**: While agent capabilities are often subjectively evaluated,
-ADS provides cryptographic mechanisms for data integrity and provenance tracking.
-This allows users to make informed decisions about agent selection.
+  ADS provides cryptographic mechanisms for data integrity and provenance tracking.
+  This allows users to make informed decisions about agent selection.
 - **Semantic Linkage**: Components can be securely linked to create various relationships
-like version histories for evolutionary development, collaborative partnerships where
-complementary skills solve complex problems, and dependency chains for composite agent workflows.
+  like version histories for evolutionary development, collaborative partnerships where
+  complementary skills solve complex problems, and dependency chains for composite agent workflows.
 - **Distributed Architecture**: Built on proven distributed systems principles,
-ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
-for scalable content discovery and synchronization across decentralized networks.
+  ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
+  for scalable content discovery and synchronization across decentralized networks.
 - **Tooling and Integration**: Provides a suite of command-line tools, SDKs, and APIs
-to facilitate interaction with the system, enabling developers to manage Directory
-records and node operations programmatically.
+  to facilitate interaction with the system, enabling developers to manage Directory
+  records and node operations programmatically.
 - **Security and Trust**: Incorporates robust security measures including
-cryptographic signing, verification of claims, secure communication protocols, and access controls
-to ensure the integrity and authenticity of Directory records and nodes.
+  cryptographic signing, verification of claims, secure communication protocols, and access controls
+  to ensure the integrity and authenticity of Directory records and nodes.
 
 ## Documentation
 
