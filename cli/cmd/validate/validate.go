@@ -172,18 +172,14 @@ func runValidateAllCommand(cmd *cobra.Command) error {
 	// Note: configureValidationSettings() may set defaults, but we've already checked flags above
 	configureValidationSettings()
 
-	// Search for all records (empty query returns all)
-	cids, err := collectAllCIDs(cmd, c)
-	if err != nil {
-		return err
-	}
-
-	// Validate each record and collect results
-	return validateAllRecords(cmd, c, cids)
+	// Process records in batches as they stream in
+	return validateAllRecordsStreaming(cmd, c)
 }
 
-// collectAllCIDs collects all CIDs from the directory instance.
-func collectAllCIDs(cmd *cobra.Command, c *client.Client) ([]string, error) {
+// validateAllRecordsStreaming validates all records in batches as they stream in.
+func validateAllRecordsStreaming(cmd *cobra.Command, c *client.Client) error {
+	const batchSize = 100 // Process records in batches of 100
+
 	limit := uint32(0) // 0 = no limit
 
 	result, err := c.SearchCIDs(cmd.Context(), &searchv1.SearchCIDsRequest{
@@ -191,58 +187,179 @@ func collectAllCIDs(cmd *cobra.Command, c *client.Client) ([]string, error) {
 		Queries: []*searchv1.RecordQuery{}, // Empty = all records
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to search records: %w", err)
+		return fmt.Errorf("failed to search records: %w", err)
 	}
 
-	// Collect all CIDs
-	var cids []string
+	var totalValid, totalInvalid int
 
+	var invalidCIDs []string
+
+	var currentBatch []string
+
+	var totalProcessed int
+
+	presenter.Printf(cmd, "Validating records in batches of %d...\n", batchSize)
+
+	// Process CIDs as they stream in, batching them for efficient pulling
 	for {
 		select {
 		case resp := <-result.ResCh():
 			cid := resp.GetRecordCid()
 			if cid != "" {
-				cids = append(cids, cid)
+				currentBatch = append(currentBatch, cid)
+
+				// When batch is full, process it
+				if len(currentBatch) >= batchSize {
+					valid, invalid, cids, err := validateBatch(cmd, c, currentBatch, totalProcessed+1)
+					if err != nil {
+						return err
+					}
+
+					totalValid += valid
+					totalInvalid += invalid
+
+					invalidCIDs = append(invalidCIDs, cids...)
+					totalProcessed += len(currentBatch)
+					currentBatch = currentBatch[:0] // Reset batch
+				}
 			}
 		case err := <-result.ErrCh():
-			return nil, fmt.Errorf("error receiving CID: %w", err)
+			return fmt.Errorf("error receiving CID: %w", err)
 		case <-result.DoneCh():
-			return cids, nil
+			// Process remaining records in the last batch
+			if len(currentBatch) > 0 {
+				valid, invalid, cids, err := validateBatch(cmd, c, currentBatch, totalProcessed+1)
+				if err != nil {
+					return err
+				}
+
+				totalValid += valid
+				totalInvalid += invalid
+
+				invalidCIDs = append(invalidCIDs, cids...)
+				totalProcessed += len(currentBatch)
+			}
+
+			// Print summary report
+			return printValidationSummary(cmd, totalProcessed, totalValid, totalInvalid, invalidCIDs)
 		case <-cmd.Context().Done():
-			return nil, cmd.Context().Err()
+			return cmd.Context().Err()
 		}
 	}
 }
 
-// validateAllRecords validates all records and prints a summary report.
-func validateAllRecords(cmd *cobra.Command, c *client.Client, cids []string) error {
-	var totalValid, totalInvalid int
+// validateBatch validates a batch of records using PullBatch for efficiency.
+func validateBatch(cmd *cobra.Command, c *client.Client, cids []string, startIndex int) (int, int, []string, error) {
+	// Convert CIDs to RecordRefs for batch pulling
+	refs := make([]*corev1.RecordRef, len(cids))
+	for i, cid := range cids {
+		refs[i] = &corev1.RecordRef{Cid: cid}
+	}
+
+	// Pull all records in the batch at once
+	records, pullErr := c.PullBatch(cmd.Context(), refs)
+	if pullErr != nil {
+		// If batch pull fails completely, fall back to individual pulls
+		return validateBatchIndividually(cmd, c, cids, startIndex)
+	}
+
+	// Handle partial failures: if we got fewer records than requested, some failed to pull
+	// Track which CIDs we successfully pulled
+	pulledMap := make(map[int]*corev1.Record, len(records))
+	for i, record := range records {
+		if i < len(cids) {
+			pulledMap[i] = record
+		}
+	}
+
+	var valid, invalid int
 
 	var invalidCIDs []string
 
-	presenter.Printf(cmd, "Validating %d records...\n", len(cids))
-
+	// Validate each record that was successfully pulled
 	for i, cid := range cids {
-		valid, err := validateSingleRecord(cmd, c, cid, i+1, len(cids))
-		if err != nil {
-			totalInvalid++
+		currentIndex := startIndex + i
+		record, wasPulled := pulledMap[i]
+
+		if !wasPulled {
+			// This record failed to pull in the batch, try individual pull
+			validResult, pullErr := validateSingleRecord(cmd, c, cid, currentIndex, 0)
+			if pullErr != nil {
+				invalid++
+
+				invalidCIDs = append(invalidCIDs, cid)
+
+				continue
+			}
+
+			if validResult {
+				valid++
+			} else {
+				invalid++
+
+				invalidCIDs = append(invalidCIDs, cid)
+			}
+
+			continue
+		}
+
+		// Validate the successfully pulled record
+		ctx := cmd.Context()
+
+		validResult, validationErrors, validateErr := record.Validate(ctx)
+		if validateErr != nil {
+			presenter.Printf(cmd, "  [%d] Validation error for %s: %v\n", currentIndex, cid, validateErr)
+
+			invalid++
 
 			invalidCIDs = append(invalidCIDs, cid)
 
 			continue
 		}
 
-		if valid {
-			totalValid++
+		if validResult {
+			valid++
 		} else {
-			totalInvalid++
+			invalid++
+
+			invalidCIDs = append(invalidCIDs, cid)
+			if len(validationErrors) > 0 {
+				presenter.Printf(cmd, "  [%d] Invalid: %s (%d error(s))\n", currentIndex, cid, len(validationErrors))
+			}
+		}
+	}
+
+	return valid, invalid, invalidCIDs, nil
+}
+
+// validateBatchIndividually validates records one by one if batch pull fails.
+func validateBatchIndividually(cmd *cobra.Command, c *client.Client, cids []string, startIndex int) (int, int, []string, error) {
+	var valid, invalid int
+
+	var invalidCIDs []string
+
+	for i, cid := range cids {
+		currentIndex := startIndex + i
+
+		validResult, validateErr := validateSingleRecord(cmd, c, cid, currentIndex, 0) // 0 = unknown total
+		if validateErr != nil {
+			invalid++
+
+			invalidCIDs = append(invalidCIDs, cid)
+
+			continue
+		}
+
+		if validResult {
+			valid++
+		} else {
+			invalid++
 
 			invalidCIDs = append(invalidCIDs, cid)
 		}
 	}
 
-	// Print summary report
-	return printValidationSummary(cmd, len(cids), totalValid, totalInvalid, invalidCIDs)
+	return valid, invalid, invalidCIDs, nil
 }
 
 // validateSingleRecord validates a single record by CID.
@@ -250,7 +367,11 @@ func validateSingleRecord(cmd *cobra.Command, c *client.Client, cid string, curr
 	// Pull the record
 	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{Cid: cid})
 	if err != nil {
-		presenter.Printf(cmd, "  [%d/%d] Failed to pull record %s: %v\n", current, total, cid, err)
+		if total > 0 {
+			presenter.Printf(cmd, "  [%d/%d] Failed to pull record %s: %v\n", current, total, cid, err)
+		} else {
+			presenter.Printf(cmd, "  [%d] Failed to pull record %s: %v\n", current, cid, err)
+		}
 
 		return false, err
 	}
@@ -260,13 +381,21 @@ func validateSingleRecord(cmd *cobra.Command, c *client.Client, cid string, curr
 
 	valid, validationErrors, err := record.Validate(ctx)
 	if err != nil {
-		presenter.Printf(cmd, "  [%d/%d] Validation error for %s: %v\n", current, total, cid, err)
+		if total > 0 {
+			presenter.Printf(cmd, "  [%d/%d] Validation error for %s: %v\n", current, total, cid, err)
+		} else {
+			presenter.Printf(cmd, "  [%d] Validation error for %s: %v\n", current, cid, err)
+		}
 
 		return false, err
 	}
 
 	if !valid && len(validationErrors) > 0 {
-		presenter.Printf(cmd, "  [%d/%d] Invalid: %s (%d error(s))\n", current, total, cid, len(validationErrors))
+		if total > 0 {
+			presenter.Printf(cmd, "  [%d/%d] Invalid: %s (%d error(s))\n", current, total, cid, len(validationErrors))
+		} else {
+			presenter.Printf(cmd, "  [%d] Invalid: %s (%d error(s))\n", current, cid, len(validationErrors))
+		}
 	}
 
 	return valid, nil
