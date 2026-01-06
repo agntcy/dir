@@ -285,6 +285,46 @@ func TestValidateCommand_CommandInitialization(t *testing.T) {
 	assert.NotNil(t, flags.Lookup("output"))
 }
 
+// TestValidateCommand_AllRequiresFlag tests that --all also requires a flag.
+func TestValidateCommand_AllRequiresFlag(t *testing.T) {
+	// Reset opts to ensure clean state
+	opts.ValidateAll = true
+	opts.SchemaURL = ""
+	opts.DisableAPI = false
+
+	cmd := Command
+	cmd.SetArgs([]string{"--all"})
+
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+
+	// Should fail because neither --url nor --disable-api was provided
+	// The flag check happens first in runValidateAllCommand
+	err := cmd.Execute()
+	require.Error(t, err)
+	// The error should be about missing flags (checked before client connection)
+	assert.Contains(t, err.Error(), "either --url or --disable-api flag must be specified when using --all")
+}
+
+// TestValidateCommand_AllWithFile tests that --all cannot be used with a file path.
+func TestValidateCommand_AllWithFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	validJSONFile := filepath.Join(tmpDir, "valid.json")
+	err := os.WriteFile(validJSONFile, []byte(testValidRecord), 0o600)
+	require.NoError(t, err)
+
+	cmd := Command
+	cmd.SetArgs([]string{"--all", "--disable-api", validJSONFile})
+
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+
+	// Should fail because file path cannot be specified with --all
+	err = cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "file path cannot be specified when using --all flag")
+}
+
 // TestRunCommand_InvalidRecordStructure tests handling of records with invalid structure.
 func TestRunCommand_InvalidRecordStructure(t *testing.T) {
 	// Create a file with valid JSON but invalid OASF structure (missing schema_version)
@@ -298,8 +338,10 @@ func TestRunCommand_InvalidRecordStructure(t *testing.T) {
 	err := os.WriteFile(invalidJSONFile, []byte(invalidRecord), 0o600)
 	require.NoError(t, err)
 
-	// Reset global state
+	// Reset global state and opts
 	corev1.SetDisableAPIValidation(true)
+
+	opts.ValidateAll = false // Ensure --all is not set
 
 	cmd := Command
 	cmd.SetArgs([]string{"--disable-api", invalidJSONFile})
