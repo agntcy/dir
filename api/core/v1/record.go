@@ -19,9 +19,6 @@ import (
 const (
 	maxRecordSize = 1024 * 1024 * 4 // 4MB
 
-	// DefaultSchemaURL is the default OASF schema URL for API-based validation.
-	DefaultSchemaURL = "https://schema.oasf.outshift.com"
-
 	// DefaultValidationTimeout is the default timeout for API-based validation HTTP calls.
 	// This ensures validation doesn't block indefinitely if the OASF server is slow or unreachable.
 	DefaultValidationTimeout = 30 * time.Second
@@ -30,7 +27,7 @@ const (
 var (
 	defaultValidator     *validator.Validator
 	configMu             sync.RWMutex
-	schemaURL            = DefaultSchemaURL
+	schemaURL            = "" // Set via SetSchemaURL() from configuration
 	disableAPIValidation = false
 	strictValidation     = true
 )
@@ -65,7 +62,7 @@ func SetDisableAPIValidation(disable bool) {
 
 // SetStrictValidation configures whether to use strict validation mode.
 // When true, uses strict validation (fails on unknown attributes, deprecated fields, etc.).
-// When false, uses lax validation (more permissive, only fails on critical errors).
+// When false, uses non-strict validation (more permissive, only fails on critical errors).
 // This function is thread-safe and can be called concurrently with validation operations.
 func SetStrictValidation(strict bool) {
 	configMu.Lock()
@@ -189,6 +186,11 @@ func (r *Record) Validate(ctx context.Context) (bool, []string, error) {
 
 	// If API validation is not disabled, use API-based validation with configured schema URL
 	if !currentDisableAPIValidation {
+		// Safety check: schema URL must be set for API validation
+		if currentSchemaURL == "" {
+			return false, []string{"API validation is enabled but schema_url is not configured"}, nil
+		}
+
 		// Create a context with timeout for API validation HTTP calls.
 		// We use the caller's context as parent so validation respects cancellation,
 		// but add our own timeout to prevent hanging if the OASF server is slow/unreachable.

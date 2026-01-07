@@ -19,7 +19,7 @@ The server validates all records server-side. By default, records are validated 
 
 - **`oasf_api_validation.strict_mode`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE`** - Use strict validation mode
   - **Default**: `true` (strict mode - fails on warnings)
-  - When `false`, uses lax validation mode (allows warnings, only fails on errors)
+  - When `false`, uses non-strict validation mode (allows warnings, only fails on errors)
   - Only applies when `oasf_api_validation.disable` is `false`
 
 **Example with environment variables:**
@@ -33,7 +33,7 @@ DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL=http://localhost:8080 ./dirctl-a
 # Use embedded schema validation (no API calls)
 DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE=true ./dirctl-apiserver
 
-# Use lax API validation (allows warnings)
+# Use non-strict API validation (allows warnings)
 DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE=false ./dirctl-apiserver
 ```
 

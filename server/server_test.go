@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/config"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -221,13 +222,17 @@ func TestKeepaliveServerParameters_StructCreation(t *testing.T) {
 // TestServerInitialization_SchemaURL verifies that the server correctly
 // configures the OASF schema URL during initialization.
 func TestServerInitialization_SchemaURL(t *testing.T) {
+	// Configure validation for unit tests: use embedded schemas (no API validation)
+	// This ensures tests don't depend on external services or require schema URL configuration
+	corev1.SetDisableAPIValidation(true)
+
 	tests := []struct {
 		name      string
 		schemaURL string
 	}{
 		{
 			name:      "default schema URL",
-			schemaURL: config.DefaultSchemaURL,
+			schemaURL: "https://schema.oasf.outshift.com", // Default from Helm chart
 		},
 		{
 			name:      "custom schema URL",
@@ -262,6 +267,10 @@ func TestServerInitialization_SchemaURL(t *testing.T) {
 // TestServerInitialization_OASFValidation verifies that the server correctly
 // configures OASF validation settings during initialization.
 func TestServerInitialization_OASFValidation(t *testing.T) {
+	// Configure validation for unit tests: use embedded schemas (no API validation)
+	// This ensures tests don't depend on external services or require schema URL configuration
+	corev1.SetDisableAPIValidation(true)
+
 	tests := []struct {
 		name                 string
 		schemaURL            string
@@ -270,7 +279,7 @@ func TestServerInitialization_OASFValidation(t *testing.T) {
 	}{
 		{
 			name:                 "default configuration",
-			schemaURL:            config.DefaultSchemaURL,
+			schemaURL:            "https://schema.oasf.outshift.com", // Default from Helm chart
 			disableAPIValidation: false,
 			strictValidation:     true,
 		},
@@ -287,8 +296,8 @@ func TestServerInitialization_OASFValidation(t *testing.T) {
 			strictValidation:     true,
 		},
 		{
-			name:                 "lax validation mode",
-			schemaURL:            config.DefaultSchemaURL,
+			name:                 "non-strict validation mode",
+			schemaURL:            "https://schema.oasf.outshift.com", // Default from Helm chart
 			disableAPIValidation: false,
 			strictValidation:     false,
 		},

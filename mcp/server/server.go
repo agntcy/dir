@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -28,10 +29,14 @@ func Serve(ctx context.Context) error {
 		corev1.SetDisableAPIValidation(true)
 		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validation disabled, using embedded schemas\n")
 	} else {
-		// Read schema URL from environment variable (default to public OASF server)
+		// Read schema URL from environment variable
+		// Should be set in mcphost.json or via OASF_API_VALIDATION_SCHEMA_URL environment variable
+		// If API validation is enabled but schema URL is not provided, this is a configuration error
 		schemaURL := os.Getenv("OASF_API_VALIDATION_SCHEMA_URL")
+
+		// If schema URL is empty, API validation cannot be enabled
 		if schemaURL == "" {
-			schemaURL = corev1.DefaultSchemaURL
+			return errors.New("OASF API validation is enabled but schema_url is not configured. Set OASF_API_VALIDATION_SCHEMA_URL environment variable (e.g., in mcphost.json), or set OASF_API_VALIDATION_DISABLE=true to use embedded schema validation")
 		}
 
 		// Read strict validation setting (default to strict for safety)

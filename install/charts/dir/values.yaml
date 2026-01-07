@@ -235,7 +235,7 @@ apiserver:
       # To use the OASF instance deployed with this chart (when apiserver.oasf.enabled: true):
       #   schema_url: "http://<release-name>-ingress-controller.<namespace>.svc.cluster.local"
       # Example: schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
-      schema_url: ""
+      schema_url: "https://schema.oasf.outshift.com"
       
       # Disable API validation (use embedded schema validation instead)
       # When true, uses embedded schemas for validation (no HTTP calls to OASF server)

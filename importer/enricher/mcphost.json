@@ -7,7 +7,7 @@
         "serve"
       ],
       "env": {
-        "SCHEMA_URL": "https://schema.oasf.outshift.com"
+        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
       }
     }
   },

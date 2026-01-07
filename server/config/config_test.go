@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
@@ -138,9 +139,9 @@ func TestConfig(t *testing.T) {
 			ExpectedConfig: &Config{
 				ListenAddress: DefaultListenAddress,
 				OASFAPIValidation: OASFAPIValidationConfig{
-					SchemaURL:  DefaultSchemaURL, // Default OASF schema URL
-					Disable:    false,            // Default is false (set in config.go)
-					StrictMode: true,             // Default is true (set in config.go)
+					SchemaURL:  "",    // Empty when not configured - default should come from Helm chart
+					Disable:    false, // Default is false (set in config.go)
+					StrictMode: true,  // Default is true (set in config.go)
 				},
 				Connection: DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
@@ -208,15 +209,19 @@ func TestConfig(t *testing.T) {
 
 // TestConfig_SchemaURL tests that OASF schema URL configuration is correctly parsed.
 func TestConfig_SchemaURL(t *testing.T) {
+	// Configure validation for unit tests: use embedded schemas (no API validation)
+	// This ensures tests don't depend on external services or require schema URL configuration
+	corev1.SetDisableAPIValidation(true)
+
 	tests := []struct {
 		name              string
 		envVars           map[string]string
 		expectedSchemaURL string
 	}{
 		{
-			name:              "default schema URL",
+			name:              "empty schema URL when not configured",
 			envVars:           map[string]string{},
-			expectedSchemaURL: DefaultSchemaURL,
+			expectedSchemaURL: "", // Empty when not configured - default should come from Helm chart
 		},
 		{
 			name: "custom schema URL",
