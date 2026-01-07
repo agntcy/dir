@@ -12,7 +12,7 @@ def generate_record(name):
         data={
             "name": name,
             "version": "v1.0.0",
-            "schema_version": "0.7.0",
+            "schema_version": "0.8.0",
             "description": "My example agent",
             "authors": ["AGNTCY"],
             "created_at": "2025-03-19T17:06:37Z",
@@ -42,7 +42,6 @@ def generate_record(name):
                 {
                     "name": "integration/a2a",
                     "id": 203,
-                    "prompts": "",
                     "data": {
                         "protocol_version": "lightweight orchestra moral",
                         "card_data": "centres",

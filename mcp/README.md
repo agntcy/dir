@@ -325,22 +325,23 @@ The following environment variables can be used with both binary and Docker conf
 #### OASF Validation Configuration
 
 - `OASF_API_VALIDATION_SCHEMA_URL` - OASF schema URL for API-based validation
-  - **Default**: `https://schema.oasf.outshift.com`
+  - **Required** when `OASF_API_VALIDATION_DISABLE` is `false` or not set
   - URL of the OASF server to use for validation
-  - The MCP server uses API-based validation by default for more comprehensive validation with the latest schema rules
+  - If API validation is enabled but this is not set, the server will return an error
+  - Example: `https://schema.oasf.outshift.com`
 
 - `OASF_API_VALIDATION_DISABLE` - Disable API-based validation
   - **Default**: `false` (API validation enabled)
   - When `true`, uses embedded schemas instead of the API validator
-  - When `false`, uses API validation with the configured `OASF_API_VALIDATION_SCHEMA_URL`
+  - When `false` or not set, uses API validation and requires `OASF_API_VALIDATION_SCHEMA_URL` to be set
 
 - `OASF_API_VALIDATION_STRICT_MODE` - API validation strictness mode
   - **Default**: `true` (strict mode)
   - **Strict mode** (`true`): Fails on unknown attributes, deprecated fields, and schema violations
-  - **Lax mode** (`false`): More permissive, only fails on critical errors
+  - **Non-strict mode** (`false`): More permissive, only fails on critical errors
   - Only applies when API validation is enabled
 
-**Example - Use default OASF server (Cursor):**
+**Example - Use OASF API validation (Cursor):**
 
 ```json
 {
@@ -349,6 +350,7 @@ The following environment variables can be used with both binary and Docker conf
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
+        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }
@@ -373,7 +375,7 @@ The following environment variables can be used with both binary and Docker conf
 }
 ```
 
-**Example - Use lax validation mode (Cursor):**
+**Example - Use non-strict validation mode (Cursor):**
 
 ```json
 {

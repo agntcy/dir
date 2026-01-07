@@ -40,10 +40,6 @@ const (
 
 	// OASF Validation configuration.
 
-	// DefaultSchemaURL is the default OASF schema URL for API-based validation.
-	// When set, records will be validated using the OASF API validator instead of embedded schemas.
-	DefaultSchemaURL = "https://schema.oasf.outshift.com"
-
 	// Connection management configuration.
 	// These defaults are based on production gRPC best practices and provide
 	// a balance between resource efficiency and connection stability.
@@ -161,7 +157,8 @@ type Config struct {
 type OASFAPIValidationConfig struct {
 	// SchemaURL is the OASF schema URL for API-based validation.
 	// When set, records will be validated using the OASF API validator instead of embedded schemas.
-	// Default: https://schema.oasf.outshift.com
+	// The default value is set in the Helm chart values.yaml (apiserver.config.oasf_api_validation.schema_url).
+	// This field should not be left empty when API validation is enabled (disable=false).
 	SchemaURL string `json:"schema_url,omitempty" mapstructure:"schema_url"`
 
 	// Disable disables API validation and uses embedded schema validation instead.
@@ -169,7 +166,7 @@ type OASFAPIValidationConfig struct {
 	Disable bool `json:"disable,omitempty" mapstructure:"disable"`
 
 	// StrictMode enables strict validation mode (fails on warnings).
-	// When false, uses lax validation mode (allows warnings, only fails on errors).
+	// When false, uses non-strict validation mode (allows warnings, only fails on errors).
 	// Default: true (strict mode)
 	// Only applies when Disable is false
 	StrictMode bool `json:"strict_mode,omitempty" mapstructure:"strict_mode"`
@@ -330,7 +327,8 @@ func LoadConfig() (*Config, error) {
 	// OASF Validation configuration
 	//
 	_ = v.BindEnv("oasf_api_validation.schema_url")
-	v.SetDefault("oasf_api_validation.schema_url", DefaultSchemaURL)
+	// Note: No default set here - default should come from Helm chart values.yaml
+	// If schema_url is empty and API validation is enabled, server will fail to start with validation error
 
 	_ = v.BindEnv("oasf_api_validation.disable")
 	v.SetDefault("oasf_api_validation.disable", false)

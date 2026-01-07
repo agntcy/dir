@@ -7,11 +7,16 @@ import (
 	"context"
 	"testing"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestValidateRecord(t *testing.T) {
+	// Configure validation for unit tests: use embedded schemas (no API validation)
+	// This ensures tests don't depend on external services or require schema URL configuration
+	corev1.SetDisableAPIValidation(true)
+
 	validRecord := `{
 		"schema_version": "0.7.0",
 		"name": "test-agent",

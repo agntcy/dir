@@ -1,15 +1,16 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-import { Client, Config, models } from 'agntcy-dir';
+import { Client, Config, models } from "agntcy-dir";
 
 function generateRecords(names) {
-    return names.map(name => JSON.parse(`
+  return names.map((name) =>
+    JSON.parse(`
 {
     "data": {
         "name": "${name}",
         "version": "v1.0.0",
-        "schema_version": "0.7.0",
+        "schema_version": "0.8.0",
         "description": "My example agent",
         "authors": ["AGNTCY"],
         "created_at": "2025-03-19T17:06:37Z",
@@ -39,7 +40,6 @@ function generateRecords(names) {
             {
                 "name": "integration/a2a",
                 "id": 203,
-                "prompts": "",
                 "data": {
                     "protocol_version": "lightweight orchestra moral",
                     "card_data": "centres",
@@ -59,82 +59,86 @@ function generateRecords(names) {
         ]
     }
 }
-        `));
+        `),
+  );
 }
 
 (async () => {
-    // Create client
-    const config = Config.loadFromEnv();
-    let t = await Client.createGRPCTransport(config);
-    const client = new Client(config, t);
+  // Create client
+  const config = Config.loadFromEnv();
+  let t = await Client.createGRPCTransport(config);
+  const client = new Client(config, t);
 
-    // Create record objects
-    const records = generateRecords(['example-record', 'example-record2']);
+  // Create record objects
+  const records = generateRecords(["example-record", "example-record2"]);
 
-    // Push objects
-    const pushed_refs = await client.push(records);
-    pushed_refs.forEach(ref => {
-        console.log('Pushed object ref:', ref);
-    });
+  // Push objects
+  const pushed_refs = await client.push(records);
+  pushed_refs.forEach((ref) => {
+    console.log("Pushed object ref:", ref);
+  });
 
-    // Pull objects
-    const pulled_records = await client.pull(pushed_refs);
-    pulled_records.forEach(pulled_record => {
-        console.log('Pulled object:', pulled_record);
-    });
+  // Pull objects
+  const pulled_records = await client.pull(pushed_refs);
+  pulled_records.forEach((pulled_record) => {
+    console.log("Pulled object:", pulled_record);
+  });
 
-    // Lookup objects
-    const metadatas = await client.lookup(pushed_refs);
-    metadatas.forEach(metadata => {
-        console.log('Lookup result:', metadata);
-    });
+  // Lookup objects
+  const metadatas = await client.lookup(pushed_refs);
+  metadatas.forEach((metadata) => {
+    console.log("Lookup result:", metadata);
+  });
 
-    // Search objects
-    const search_response = await client.searchCIDs({
-        queries: [{
-            type: models.search_v1.RecordQueryType.SKILL_ID,
-            value: "10201"
-        }],
-        limit: 3
-    });
-    console.log('Search result:', search_response);
+  // Search objects
+  const search_response = await client.searchCIDs({
+    queries: [
+      {
+        type: models.search_v1.RecordQueryType.SKILL_ID,
+        value: "10201",
+      },
+    ],
+    limit: 3,
+  });
+  console.log("Search result:", search_response);
 
-    // Publish objects
-    await client.publish({
-        request: {
-            case: "recordRefs",
-            value: {
-                refs: pushed_refs,
-            }
-        }
-    });
-    console.log('Objects published.');
+  // Publish objects
+  await client.publish({
+    request: {
+      case: "recordRefs",
+      value: {
+        refs: pushed_refs,
+      },
+    },
+  });
+  console.log("Objects published.");
 
-    // List objects in the routing table
-    const list_response = await client.list({
-        queries: [
-            {
-                type: models.routing_v1.RecordQueryType.SKILL,
-                value: 'natural_language_processing/analytical_reasoning/problem_solving'
-            }
-        ],
-    });
-    list_response.forEach(r => {
-        console.log('Listed objects:', r);
-    });
+  // List objects in the routing table
+  const list_response = await client.list({
+    queries: [
+      {
+        type: models.routing_v1.RecordQueryType.SKILL,
+        value:
+          "natural_language_processing/analytical_reasoning/problem_solving",
+      },
+    ],
+  });
+  list_response.forEach((r) => {
+    console.log("Listed objects:", r);
+  });
 
-    // Unpublish objects
-    await client.unpublish({
-        request: {
-            case: "recordRefs",
-            value: {
-                refs: pushed_refs,
-            }
-        }
-    });
-    console.log('Objects unpublished.');
+  // Unpublish objects
+  await client.unpublish({
+    request: {
+      case: "recordRefs",
+      value: {
+        refs: pushed_refs,
+      },
+    },
+  });
+  console.log("Objects unpublished.");
 
-    // Delete objects
-    await client.delete(pushed_refs);
-    console.log('Objects deleted.');
+  // Delete objects
+  await client.delete(pushed_refs);
+  console.log("Objects deleted.");
 })();
