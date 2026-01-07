@@ -111,8 +111,8 @@ def main() -> None:
         type=search_v1.RECORD_QUERY_TYPE_SKILL_ID, value="1",
     )
 
-    search_request = search_v1.SearchRequest(queries=[search_query], limit=3)
-    objects = list(client.search(search_request))
+    search_request = search_v1.SearchCIDsRequest(queries=[search_query], limit=3)
+    objects = list(client.search_cids(search_request))
 
     print("Searched objects:",objects)
 

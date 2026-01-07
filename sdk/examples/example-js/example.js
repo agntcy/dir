@@ -90,7 +90,7 @@ function generateRecords(names) {
     });
 
     // Search objects
-    const search_response = await client.search({
+    const search_response = await client.searchCIDs({
         queries: [{
             type: models.search_v1.RecordQueryType.SKILL_ID,
             value: "10201"

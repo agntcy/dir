@@ -366,7 +366,13 @@ tasks:
         export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
         export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
 
+        # Run SDK tests
         '{{.UV_BIN}}' run pytest
+
+        # Run SDK example to verify it works
+        cd {{ .ROOT_DIR }}/sdk/examples/example-py
+        '{{.UV_BIN}}' sync
+        '{{.UV_BIN}}' run python example.py
 
   sdk:test:javascript:
     desc: Test javascript client SDK package
@@ -382,7 +388,13 @@ tasks:
         export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
         export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
 
+        # Run SDK tests
         npm run test
+
+        # Run SDK example to verify it works
+        cd {{ .ROOT_DIR }}/sdk/examples/example-js
+        npm install
+        npm run example
 
   sdk:deps:python:
     desc: Install deps for python SDK package
