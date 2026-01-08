@@ -5,11 +5,13 @@ package oci
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -155,8 +157,24 @@ func (s *store) convertCosignSignatureToReferrer(blobDesc ocispec.Descriptor, da
 	return referrer, nil
 }
 
-// VerifyWithZot queries zot's verification API to check if a signature is valid.
-func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, error) {
+// VerifySignature verifies a record signature using the appropriate method
+// based on the configured registry type.
+func (s *store) VerifySignature(ctx context.Context, recordCID string) (bool, error) {
+	switch s.config.GetType() {
+	case ociconfig.RegistryTypeZot:
+		return s.verifyWithZot(ctx, recordCID)
+
+	case ociconfig.RegistryTypeGeneric:
+		// TODO: Implement in https://github.com/agntcy/dir/issues/798
+		return false, errors.New("generic OCI registries are not supported for signature verification")
+
+	default:
+		return false, fmt.Errorf("unsupported registry type: %s", s.config.GetType())
+	}
+}
+
+// verifyWithZot queries zot's verification API to check if a signature is valid.
+func (s *store) verifyWithZot(ctx context.Context, recordCID string) (bool, error) {
 	verifyOpts := &zot.VerificationOptions{
 		Config:    s.buildZotConfig(),
 		RecordCID: recordCID,
