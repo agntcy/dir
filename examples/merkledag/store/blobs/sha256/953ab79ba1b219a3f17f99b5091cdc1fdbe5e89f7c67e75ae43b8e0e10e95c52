@@ -1,0 +1,1 @@
+{"name":"core/llm/model","id":10201,"annotations":{"my-key":"value"},"data":{"models":[{"api_base":"https://api.openai.com/v1","env_vars":[{"description":"OpenAI API key for authentication","name":"OPENAI_API_KEY","required":true},{"default_value":"","description":"OpenAI organization ID","name":"OPENAI_ORG_ID","required":false}],"model":"gpt-4","provider":"openai"}]}}
