@@ -43,8 +43,9 @@ func (s *store) pushSignature(ctx context.Context, recordCID string, referrer *c
 	return nil
 }
 
-// uploadPublicKey uploads a public key to zot for signature verification.
-func (s *store) uploadPublicKey(ctx context.Context, referrer *corev1.RecordReferrer) error {
+// uploadPublicKeyToZot uploads a public key to Zot's cosign extension for signature verification.
+// This is only needed for Zot registries - other registries use OCI referrers only.
+func (s *store) uploadPublicKeyToZot(ctx context.Context, referrer *corev1.RecordReferrer) error {
 	referrersLogger.Debug("Uploading public key to zot for signature verification")
 
 	// Decode the public key from the referrer
