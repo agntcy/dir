@@ -21,28 +21,35 @@ Directory also leverages [CSIT](https://github.com/agntcy/csit) for continuous s
 ADS enables several key capabilities for the agentic AI ecosystem:
 
 - **Capability-Based Discovery**: Agents publish structured metadata describing their
-functional characteristics as described by the [OASF](https://github.com/agntcy/oasf).
-The system organizes this information using hierarchical taxonomies,
-enabling efficient matching of capabilities to requirements.
+  functional characteristics as described by the [OASF](https://github.com/agntcy/oasf).
+  The system organizes this information using hierarchical taxonomies,
+  enabling efficient matching of capabilities to requirements.
 - **Verifiable Claims**: While agent capabilities are often subjectively evaluated,
-ADS provides cryptographic mechanisms for data integrity and provenance tracking.
-This allows users to make informed decisions about agent selection.
+  ADS provides cryptographic mechanisms for data integrity and provenance tracking.
+  This allows users to make informed decisions about agent selection.
 - **Semantic Linkage**: Components can be securely linked to create various relationships
-like version histories for evolutionary development, collaborative partnerships where
-complementary skills solve complex problems, and dependency chains for composite agent workflows.
+  like version histories for evolutionary development, collaborative partnerships where
+  complementary skills solve complex problems, and dependency chains for composite agent workflows.
 - **Distributed Architecture**: Built on proven distributed systems principles,
-ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
-for scalable content discovery and synchronization across decentralized networks.
+  ADS uses content-addressing for global uniqueness and implements distributed hash tables (DHT)
+  for scalable content discovery and synchronization across decentralized networks.
 - **Tooling and Integration**: Provides a suite of command-line tools, SDKs, and APIs
-to facilitate interaction with the system, enabling developers to manage Directory
-records and node operations programmatically.
+  to facilitate interaction with the system, enabling developers to manage Directory
+  records and node operations programmatically.
 - **Security and Trust**: Incorporates robust security measures including
-cryptographic signing, verification of claims, secure communication protocols, and access controls
-to ensure the integrity and authenticity of Directory records and nodes.
+  cryptographic signing, verification of claims, secure communication protocols, and access controls
+  to ensure the integrity and authenticity of Directory records and nodes.
 
 ## Documentation
 
 Check the [Documentation](https://docs.agntcy.org/dir/overview/) for a full walkthrough of all the Directory features.
+
+## Trust Ranking (Reference PoC)
+
+This repository includes a **reference-only trust ranking extension** for directory results,
+implemented as an optional add-on under `extensions/trust_ranking/`.
+
+Details: `extensions/trust_ranking/REFERENCE.md`
 
 ## Source tree
 
