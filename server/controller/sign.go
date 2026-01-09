@@ -47,22 +47,22 @@ func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*sign
 	return s.verify(ctx, req.GetRecordRef().GetCid())
 }
 
-// verify attempts zot verification if the store supports it.
+// verify attempts signature verification if the store supports it.
 func (s *signCtrl) verify(ctx context.Context, recordCID string) (*signv1.VerifyResponse, error) {
-	// Check if the store supports zot verification
-	zotStore, ok := s.store.(types.VerifierStore)
+	// Check if the store supports signature verification
+	verifierStore, ok := s.store.(types.VerifierStore)
 	if !ok {
-		return nil, status.Error(codes.Unimplemented, "zot verification not available in this store configuration") //nolint:wrapcheck
+		return nil, status.Error(codes.Unimplemented, "signature verification not available in this store configuration") //nolint:wrapcheck
 	}
 
-	signLogger.Debug("Attempting zot verification", "recordCID", recordCID)
+	signLogger.Debug("Attempting signature verification", "recordCID", recordCID)
 
-	verified, err := zotStore.VerifyWithZot(ctx, recordCID)
+	verified, err := verifierStore.VerifySignature(ctx, recordCID)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "zot verification failed: %v", err)
+		return nil, status.Errorf(codes.Internal, "signature verification failed: %v", err)
 	}
 
-	signLogger.Debug("Zot verification completed", "recordCID", recordCID, "verified", verified)
+	signLogger.Debug("Signature verification completed", "recordCID", recordCID, "verified", verified)
 
 	var errMsg string
 	if !verified {

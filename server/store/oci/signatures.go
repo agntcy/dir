@@ -10,6 +10,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -41,8 +42,9 @@ func (s *store) pushSignature(ctx context.Context, recordCID string, referrer *c
 	return nil
 }
 
-// uploadPublicKey uploads a public key to zot for signature verification.
-func (s *store) uploadPublicKey(ctx context.Context, referrer *corev1.RecordReferrer) error {
+// uploadPublicKeyToZot uploads a public key to Zot's cosign extension for signature verification.
+// This is only needed for Zot registries - other registries use OCI referrers only.
+func (s *store) uploadPublicKeyToZot(ctx context.Context, referrer *corev1.RecordReferrer) error {
 	referrersLogger.Debug("Uploading public key to zot for signature verification")
 
 	// Decode the public key from the referrer
@@ -155,8 +157,24 @@ func (s *store) convertCosignSignatureToReferrer(blobDesc ocispec.Descriptor, da
 	return referrer, nil
 }
 
-// VerifyWithZot queries zot's verification API to check if a signature is valid.
-func (s *store) VerifyWithZot(ctx context.Context, recordCID string) (bool, error) {
+// VerifySignature verifies a record signature using the appropriate method
+// based on the configured registry type.
+func (s *store) VerifySignature(ctx context.Context, recordCID string) (bool, error) {
+	switch s.config.GetType() {
+	case ociconfig.RegistryTypeZot:
+		return s.verifyWithZot(ctx, recordCID)
+
+	case ociconfig.RegistryTypeGHCR, ociconfig.RegistryTypeDockerHub:
+		// TODO: Implement in https://github.com/agntcy/dir/issues/798
+		return false, fmt.Errorf("signature verification not yet supported for %s registry", s.config.GetType())
+
+	default:
+		return false, fmt.Errorf("unsupported registry type: %s", s.config.GetType())
+	}
+}
+
+// verifyWithZot queries zot's verification API to check if a signature is valid.
+func (s *store) verifyWithZot(ctx context.Context, recordCID string) (bool, error) {
 	verifyOpts := &zot.VerificationOptions{
 		Config:    s.buildZotConfig(),
 		RecordCID: recordCID,

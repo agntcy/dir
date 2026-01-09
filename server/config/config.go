@@ -400,6 +400,9 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("store.provider")
 	v.SetDefault("store.provider", store.DefaultProvider)
 
+	_ = v.BindEnv("store.oci.type")
+	v.SetDefault("store.oci.type", string(oci.DefaultRegistryType))
+
 	_ = v.BindEnv("store.oci.local_dir")
 	v.SetDefault("store.oci.local_dir", "")
 
