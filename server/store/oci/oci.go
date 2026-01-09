@@ -431,9 +431,9 @@ func (s *store) IsReady(ctx context.Context) bool {
 		// Use the zot utility package to check Zot's readiness
 		return zot.CheckReadiness(ctx, s.config.RegistryAddress, s.config.Insecure)
 
-	case ociconfig.RegistryTypeGeneric:
-		// For generic OCI registries, try to list tags to verify connectivity
-		// This is a lightweight operation that most registries support
+	case ociconfig.RegistryTypeGHCR, ociconfig.RegistryTypeDockerHub:
+		// For GHCR/Docker Hub, try to list tags to verify connectivity
+		// This is a lightweight operation that these registries support
 		err := remoteRepo.Tags(ctx, "", func(_ []string) error {
 			return nil // Just checking connectivity, don't need results
 		})
@@ -451,7 +451,7 @@ func (s *store) IsReady(ctx context.Context) bool {
 			return false
 		}
 
-		logger.Debug("Store ready: generic OCI registry")
+		logger.Debug("Store ready", "registry_type", s.config.GetType())
 
 		return true
 

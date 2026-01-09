@@ -5,7 +5,6 @@ package oci
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -165,9 +164,9 @@ func (s *store) VerifySignature(ctx context.Context, recordCID string) (bool, er
 	case ociconfig.RegistryTypeZot:
 		return s.verifyWithZot(ctx, recordCID)
 
-	case ociconfig.RegistryTypeGeneric:
+	case ociconfig.RegistryTypeGHCR, ociconfig.RegistryTypeDockerHub:
 		// TODO: Implement in https://github.com/agntcy/dir/issues/798
-		return false, errors.New("generic OCI registries are not supported for signature verification")
+		return false, fmt.Errorf("signature verification not yet supported for %s registry", s.config.GetType())
 
 	default:
 		return false, fmt.Errorf("unsupported registry type: %s", s.config.GetType())

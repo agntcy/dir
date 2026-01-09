@@ -4,18 +4,32 @@
 package config
 
 // RegistryType defines the type of OCI registry backend.
+// Only explicitly tested registries are supported.
 type RegistryType string
 
 const (
 	// RegistryTypeZot uses Zot registry.
 	RegistryTypeZot RegistryType = "zot"
 
-	// RegistryTypeGeneric uses standard OCI registry.
-	RegistryTypeGeneric RegistryType = "generic"
+	// RegistryTypeGHCR uses GitHub Container Registry.
+	RegistryTypeGHCR RegistryType = "ghcr"
+
+	// RegistryTypeDockerHub uses Docker Hub registry.
+	RegistryTypeDockerHub RegistryType = "dockerhub"
 
 	// DefaultRegistryType is the default registry type for backward compatibility.
 	DefaultRegistryType = RegistryTypeZot
 )
+
+// IsSupported returns true if the registry type is explicitly supported and tested.
+func (r RegistryType) IsSupported() bool {
+	switch r {
+	case RegistryTypeZot, RegistryTypeGHCR, RegistryTypeDockerHub:
+		return true
+	default:
+		return false
+	}
+}
 
 const (
 	DefaultAuthConfigInsecure = true
@@ -24,7 +38,7 @@ const (
 )
 
 type Config struct {
-	// Type specifies the registry type (zot, generic).
+	// Type specifies the registry type (zot, ghcr, dockerhub).
 	// Defaults to "zot" for backward compatibility.
 	Type RegistryType `json:"type,omitempty" mapstructure:"type"`
 
