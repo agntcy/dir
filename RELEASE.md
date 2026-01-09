@@ -31,7 +31,23 @@ git push origin v1.0.0
 
 Please note that the release tag is not necessarily associated with the "release: prepare version v1.0.0" commit. For example, if any bug fixes were required after this commit, they can be merged and included in the release.
 
-## 3. Publish release
+## 3. Publish SDK packages (Manual)
+
+SDK packages (JavaScript and Python) are **not** automatically published during the release workflow. Before publishing the GitHub release, you must manually trigger the SDK release workflow.
+
+1. Navigate to [Actions > Release SDK](https://github.com/agntcy/dir/actions/workflows/reusable-release-sdk.yaml)
+
+2. Click **Run workflow**
+
+3. In the **Use workflow from** dropdown, select the release tag (e.g., `v1.0.0`)
+
+4. Select the options:
+   - **Make a javascript SDK release**: Check to publish to npm
+   - **Make a python SDK release**: Check to publish to PyPI
+
+5. Click **Run workflow** to start the release
+
+## 4. Publish release
 
 * Wait until the release workflow is completed successfully.
 
