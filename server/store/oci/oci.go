@@ -67,6 +67,12 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 		}, nil
 	}
 
+	// Validate registry type (logs warning for experimental types like ghcr, dockerhub)
+	registryType := cfg.GetType()
+	if !registryType.IsSupported() {
+		return nil, fmt.Errorf("unsupported registry type: %s", registryType)
+	}
+
 	repo, err := NewORASRepository(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create remote repo: %w", err)

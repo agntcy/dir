@@ -3,6 +3,10 @@
 
 package config
 
+import "github.com/agntcy/dir/utils/logging"
+
+var logger = logging.Logger("store/oci/config")
+
 // RegistryType defines the type of OCI registry backend.
 // Only explicitly tested registries are supported.
 type RegistryType string
@@ -22,9 +26,17 @@ const (
 )
 
 // IsSupported returns true if the registry type is explicitly supported and tested.
+// Logs a warning if an experimental registry type (ghcr, dockerhub) is used.
 func (r RegistryType) IsSupported() bool {
 	switch r {
-	case RegistryTypeZot, RegistryTypeGHCR, RegistryTypeDockerHub:
+	case RegistryTypeZot:
+		return true
+	case RegistryTypeGHCR, RegistryTypeDockerHub:
+		logger.Warn("Registry type support is experimental and not fully tested. "+
+			"The default deployment configuration (Zot registry) is not appropriate for this registry type. "+
+			"Do not use in production.",
+			"registry_type", string(r))
+
 		return true
 	default:
 		return false
