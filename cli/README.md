@@ -343,63 +343,42 @@ Verify record signatures.
 dirctl verify record.json signature.sig --key public.key
 ```
 
-#### `dirctl validate [<file>|--all] [flags]`
-Validate OASF record JSON files locally or all records in a directory instance.
+#### `dirctl validate [<file>] [flags]`
+Validate OASF record JSON from a file or stdin.
 
-This command can validate a single JSON file locally (without requiring a connection
-to a Directory server) or validate all records in a directory instance (requires
-connection to Directory server).
+This command validates OASF record JSON against the OASF schema. The JSON can be
+provided as a file path or piped from stdin (e.g., from `dirctl pull`).
 
-For single file validation, you must specify either `--url` for API-based validation
-or `--disable-api` for embedded schema validation.
-
-For validating all records in a directory instance, use the `--all` flag. This will
-fetch all records from the directory and validate each one, then display a summary
-report showing how many records were validated, how many were invalid, and the
-exact CIDs of invalid records.
+You must specify either `--url` for API-based validation or `--disable-api` for
+embedded schema validation.
 
 **Examples:**
 ```bash
-# Validate a single file using embedded schemas (no API calls)
+# Validate a file using embedded schemas (no API calls)
 dirctl validate record.json --disable-api
 
-# Validate a single file with API-based validation
+# Validate a file with API-based validation
 dirctl validate record.json --url https://schema.oasf.outshift.com
 
-# Validate a single file with non-strict mode (more permissive, only works with --url)
+# Validate a file with non-strict mode (more permissive, only works with --url)
 dirctl validate record.json --url https://schema.oasf.outshift.com --disable-strict
 
-# Validate all records in a directory instance using embedded schemas
-dirctl validate --all --disable-api
+# Validate JSON piped from stdin
+cat record.json | dirctl validate --disable-api
 
-# Validate all records in a directory instance with API-based validation
-dirctl validate --all --url https://schema.oasf.outshift.com
+# Validate a record pulled from directory
+dirctl pull <cid> --output json | dirctl validate --disable-api
+
+# Validate all records in a directory (using shell scripting)
+for cid in $(dirctl search --output jsonl | jq -r '.record_cid'); do
+  dirctl pull "$cid" | dirctl validate --disable-api
+done
 ```
 
 **Flags:**
-- `--all` - Validate all records in the directory instance (requires connection to Directory server)
 - `--url <url>` - OASF schema URL for API-based validation (required if --disable-api is not specified)
 - `--disable-api` - Disable API-based validation (use embedded schemas instead, required if --url is not specified)
 - `--disable-strict` - Disable strict validation mode (more permissive validation, only works with --url)
-
-**Note:** You must specify either `--url` (for API validation) or `--disable-api` (for embedded schema validation).
-For single file validation, this command is intended for local validation purposes. Use `--all` to validate
-all records in a directory instance.
-
-**What it does:**
-
-For single file validation:
-- Reads and parses the JSON file locally (no server connection required)
-- Validates the record structure against OASF schema
-- Reports validation errors with detailed messages
-- Shows detected schema version on successful validation
-- Supports both API-based validation (with `--url` flag) and embedded schema validation (with `--disable-api`)
-
-For `--all` mode:
-- Fetches all records from the directory instance
-- Validates each record using the specified validation configuration
-- Displays progress as records are validated
-- Shows a summary report with total validated, valid/invalid counts, and exact CIDs of invalid records
 
 ### 📥 **Import Operations**
 

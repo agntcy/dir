@@ -28,8 +28,8 @@
   ],
   "domains": [
     {
-      "id": 301,
-      "name": "life_science/biotechnology"
+      "id": 0,
+      "name": "base_domain"
     }
   ],
   "modules": [

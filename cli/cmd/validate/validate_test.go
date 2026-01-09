@@ -8,6 +8,7 @@ import (
 	_ "embed"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -29,18 +30,26 @@ var testRecordValidForSchema []byte
 //go:embed testdata/record_valid_for_non_strict.json
 var testRecordValidForNonStrict []byte
 
-// TestValidateCommand_NoArgs tests that the command requires a file path.
+// TestValidateCommand_NoArgs tests that the command reads from stdin when no file is provided.
 func TestValidateCommand_NoArgs(t *testing.T) {
+	// Reset opts to ensure clean state
+	opts.SchemaURL = ""
+	opts.DisableAPI = false
+	opts.DisableStrict = false
+
 	cmd := Command
 	cmd.SetArgs([]string{})
+
+	// Provide JSON via stdin
+	cmd.SetIn(bytes.NewReader(testRecordValid))
 
 	var stderr bytes.Buffer
 	cmd.SetErr(&stderr)
 
+	// Should fail because neither --url nor --disable-api was specified
 	err := cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "file path is required")
-	assert.Contains(t, err.Error(), "Usage: dirctl validate <file>")
+	assert.Contains(t, err.Error(), "either --url or --disable-api flag must be specified")
 }
 
 // TestValidateCommand_TooManyArgs tests that the command only accepts one file path.
@@ -88,76 +97,14 @@ func TestValidateCommand_InvalidJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to parse record JSON")
 }
 
-// getTestRecordFile creates a temporary file with a real test record for testing.
-func getTestRecordFile(t *testing.T) string {
-	t.Helper()
-
-	// Use embedded record_valid.json as a valid test record
-	tmpDir := t.TempDir()
-	validJSONFile := filepath.Join(tmpDir, "record.json")
-	err := os.WriteFile(validJSONFile, testRecordValid, 0o600)
-	require.NoError(t, err)
-
-	return validJSONFile
-}
-
-// TestValidateCommand_OutputFormats tests different output formats.
-func TestValidateCommand_OutputFormats(t *testing.T) {
-	validJSONFile := getTestRecordFile(t)
-	if validJSONFile == "" {
-		return
-	}
-
-	// Reset opts to ensure clean state
-	opts.ValidateAll = false
-	opts.SchemaURL = ""
-	opts.DisableAPI = false
-	opts.DisableStrict = false
-
-	tests := []struct {
-		name   string
-		args   []string
-		output string
-	}{
-		{
-			name:   "human format (default)",
-			args:   []string{"--disable-api", validJSONFile},
-			output: "human",
-		},
-		{
-			name:   "json format",
-			args:   []string{"--disable-api", "--output", "json", validJSONFile},
-			output: "json",
-		},
-		{
-			name:   "raw format",
-			args:   []string{"--disable-api", "--output", "raw", validJSONFile},
-			output: "raw",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cmd := Command
-			cmd.SetArgs(tt.args)
-
-			var stdout bytes.Buffer
-			cmd.SetOut(&stdout)
-
-			// Should not crash regardless of output format
-			_ = cmd.Execute()
-		})
-	}
-}
-
 // TestValidateCommand_CommandInitialization tests that the command is properly initialized.
 func TestValidateCommand_CommandInitialization(t *testing.T) {
 	assert.NotNil(t, Command)
 	assert.Contains(t, Command.Use, "validate")
 	assert.NotEmpty(t, Command.Short)
-	assert.Contains(t, Command.Short, "local")
+	assert.Contains(t, Command.Short, "file or stdin")
 	assert.NotEmpty(t, Command.Long)
-	assert.Contains(t, Command.Long, "local validation")
+	assert.Contains(t, Command.Long, "piped from stdin")
 	assert.NotNil(t, Command.RunE)
 
 	// Check that flags are registered
@@ -165,53 +112,35 @@ func TestValidateCommand_CommandInitialization(t *testing.T) {
 	assert.NotNil(t, flags.Lookup("disable-api"))
 	assert.NotNil(t, flags.Lookup("disable-strict"))
 	assert.NotNil(t, flags.Lookup("url"))
-	assert.NotNil(t, flags.Lookup("output"))
 }
 
-// TestValidateCommand_AllRequiresFlag tests that --all also requires a flag.
-func TestValidateCommand_AllRequiresFlag(t *testing.T) {
+// TestValidateCommand_Stdin tests that the command can read from stdin.
+func TestValidateCommand_Stdin(t *testing.T) {
 	// Reset opts to ensure clean state
-	opts.ValidateAll = true
 	opts.SchemaURL = ""
-	opts.DisableAPI = false
-
-	cmd := Command
-	cmd.SetArgs([]string{"--all"})
-
-	var stderr bytes.Buffer
-	cmd.SetErr(&stderr)
-
-	// Should fail because neither --url nor --disable-api was provided
-	// The flag check happens first in runValidateAllCommand
-	err := cmd.Execute()
-	require.Error(t, err)
-	// The error should be about missing flags (checked before client connection)
-	assert.Contains(t, err.Error(), "either --url or --disable-api flag must be specified when using --all")
-}
-
-// TestValidateCommand_AllWithFile tests that --all cannot be used with a file path.
-func TestValidateCommand_AllWithFile(t *testing.T) {
-	validJSONFile := getTestRecordFile(t)
-	if validJSONFile == "" {
-		return
-	}
-
-	// Reset opts to ensure clean state
-	opts.ValidateAll = false
-	opts.SchemaURL = ""
-	opts.DisableAPI = false
+	opts.DisableAPI = true
 	opts.DisableStrict = false
 
 	cmd := Command
-	cmd.SetArgs([]string{"--all", "--disable-api", validJSONFile})
+	cmd.SetArgs([]string{"--disable-api"})
+
+	// Provide JSON via stdin - need to ensure the reader is positioned correctly
+	stdinReader := bytes.NewReader(testRecordValid)
+	cmd.SetIn(stdinReader)
+
+	var stdout bytes.Buffer
 
 	var stderr bytes.Buffer
+
+	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 
-	// Should fail because file path cannot be specified with --all
 	err := cmd.Execute()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "file path cannot be specified when using --all flag")
+	require.NoError(t, err)
+
+	// Check both stdout and stderr for validation success message
+	output := stdout.String() + stderr.String()
+	assert.True(t, strings.Contains(output, "Record is valid") || strings.Contains(output, "valid") || strings.Contains(output, "schema version"), "Output should indicate validation success: stdout=%q stderr=%q", stdout.String(), stderr.String())
 }
 
 // TestRunCommand_InvalidRecordStructure tests handling of records with invalid structure.
@@ -229,8 +158,6 @@ func TestRunCommand_InvalidRecordStructure(t *testing.T) {
 
 	// Reset global state and opts
 	corev1.SetDisableAPIValidation(true)
-
-	opts.ValidateAll = false // Ensure --all is not set
 
 	cmd := Command
 	cmd.SetArgs([]string{"--disable-api", invalidJSONFile})
@@ -349,14 +276,13 @@ func TestValidateCommand_RealFiles(t *testing.T) {
 			fileData:    testRecordValidForNonStrict,
 			fileName:    "record_valid_for_non_strict.json",
 			args:        []string{"--disable-api"},
-			expectValid: true,
+			expectValid: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset opts to ensure clean state between tests
-			opts.ValidateAll = false
 			opts.SchemaURL = ""
 			opts.DisableAPI = false
 			opts.DisableStrict = false
