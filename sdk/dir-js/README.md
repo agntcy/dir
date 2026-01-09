@@ -120,7 +120,7 @@ const jwtClient = new Client(jwtConfig, jwtTransport);
 
 ```bash
 # Clone the repository and start the server using Taskfile
-task server:start
+DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL="https://schema.oasf.outshift.com/" task server:start
 ```
 
 **Option B: Custom Server**
