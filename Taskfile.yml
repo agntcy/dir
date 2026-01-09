@@ -422,7 +422,6 @@ tasks:
       - task: sdk:release:python
 
   sdk:release:python:
-    ignore_error: true # FIXME: Need to check if package version already exists
     desc: Release python client SDK package
     dir: ./sdk/dir-py
     env:
@@ -433,7 +432,6 @@ tasks:
       - "{{.UV_BIN}} publish"
 
   sdk:release:javascript:
-    ignore_error: true # FIXME: Need to check if package version already exists
     desc: Release javascript client SDK package
     dir: ./sdk/dir-js
     cmd: |

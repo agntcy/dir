@@ -16,30 +16,15 @@ on:
         type: boolean
         description: "Make a python SDK release."
         default: false
-  workflow_call:
-    inputs:
-      javascript-release:
-        required: false
-        type: boolean
-        description: "Make a javascript SDK release."
-        default: false
-      python-release:
-        required: false
-        type: boolean
-        description: "Make a python SDK release."
-        default: false
-    secrets:
-      PYPI_API_TOKEN:
-        description: "PyPI API token for publishing Python SDK"
-        required: true
 
 permissions:
   contents: read
+  id-token: write  # Required for npm OIDC trusted publishing
 
 jobs:
   python:
     name: Python
-    if: ${{ inputs.python-release == true || inputs.python-release == 'true' }}
+    if: ${{ inputs.python-release }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -68,11 +53,8 @@ jobs:
 
   javascript:
     name: JavaScript
-    if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' }}
+    if: ${{ inputs.javascript-release }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write  # Required for npm OIDC trusted publishing
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
