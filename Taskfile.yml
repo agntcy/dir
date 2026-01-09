@@ -417,7 +417,6 @@ tasks:
     desc: Release all client SDK package
     env:
       UV_PUBLISH_TOKEN: "{{ .UV_PUBLISH_TOKEN }}"
-      NODE_AUTH_TOKEN: "{{ .NODE_AUTH_TOKEN }}"
     cmds:
       - task: sdk:release:javascript
       - task: sdk:release:python
@@ -437,8 +436,6 @@ tasks:
     ignore_error: true # FIXME: Need to check if package version already exists
     desc: Release javascript client SDK package
     dir: ./sdk/dir-js
-    env:
-      NODE_AUTH_TOKEN: "{{ .NODE_AUTH_TOKEN }}"
     cmd: |
       version=$(npm pkg get version) 
 

@@ -32,9 +32,6 @@ on:
       PYPI_API_TOKEN:
         description: "PyPI API token for publishing Python SDK"
         required: true
-      NPMJS_TOKEN:
-        description: "NPM.js token for publishing JavaScript SDK"
-        required: true
 
 permissions:
   contents: read
@@ -73,6 +70,9 @@ jobs:
     name: JavaScript
     if: ${{ inputs.javascript-release == true || inputs.javascript-release == 'true' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for npm OIDC trusted publishing
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -101,7 +101,5 @@ jobs:
           task sdk:build:javascript
 
       - name: Publish the Javascript SDK
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPMJS_TOKEN }}
         run: |
           task sdk:release:javascript
