@@ -1,0 +1,26 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.runtime.v1;
+
+import "agntcy/dir/core/v1/record.proto";
+
+// Information about a agent process instance.
+message Process {
+  // Process ID
+  string pid = 1;
+
+  // Name of the runtime environment
+  string runtime = 2;
+
+  // Process creation timestamp in the RFC3339 format.
+  string created_at = 3;
+
+  // Process metadata
+  map<string, string> annotations = 4;
+
+  // The record from which this process was created.
+  core.v1.RecordMeta record = 5;
+}

@@ -1,0 +1,146 @@
+# Docker Swarm Stack for Service Discovery
+#
+# Deploy with:
+#   1. Build image: docker compose build watcher
+#   2. Init swarm (if needed): docker swarm init
+#   3. Deploy: docker stack deploy -c docker-compose.swarm.yml discovery
+#
+# Architecture:
+# - etcd runs as single replica (use 3 for production HA)
+# - watcher runs as global service (one per node)
+# - Each watcher watches local Docker socket
+# - All watchers write to shared etcd
+#
+services:
+  # ============================================================
+  # etcd - key-value store for service discovery
+  # ============================================================
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.17
+    command:
+      - etcd
+      - --name=etcd0
+      - --data-dir=/etcd-data
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://etcd:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd0=http://etcd:2380
+    networks:
+      - discovery
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================
+  # Watcher - Global service (one per node)
+  # ============================================================
+  watcher:
+    image: discovery-watcher:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # etcd
+      - ETCD_HOST=etcd
+      - ETCD_PORT=2379
+      - ETCD_PREFIX=/discovery
+      # Runtime
+      - RUNTIME=docker
+      # Server
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - PYTHONUNBUFFERED=1
+    networks:
+      - discovery
+    ports:
+      - "8080:8080"
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+
+  # ============================================================
+  # Example services - labels go at service level for container labels
+  # ============================================================
+  service-1:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-a
+    deploy:
+      replicas: 1
+
+  service-2:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-b
+    deploy:
+      replicas: 1
+
+  service-3:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-a
+    deploy:
+      replicas: 1
+
+  service-4:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-b
+    deploy:
+      replicas: 1
+
+  service-5:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-a
+      - team-b
+    deploy:
+      replicas: 1
+
+  # No discover label - will NOT be tracked
+  service-private:
+    image: nginx:alpine
+    networks:
+      - team-internal
+    deploy:
+      replicas: 1
+
+networks:
+  discovery:
+    driver: overlay
+    attachable: true
+
+  team-a:
+    driver: overlay
+    attachable: true
+
+  team-b:
+    driver: overlay
+    attachable: true
+
+  team-internal:
+    driver: overlay
+    attachable: true
+
