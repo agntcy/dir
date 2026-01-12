@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 import 'package:flutter/material.dart';
 
 import 'ui/chat_screen.dart';
@@ -46,4 +49,3 @@ class _MyAppState extends State<MyApp> {
     );
   }
 }
-

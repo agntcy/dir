@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 
 import 'dart:async';
 import 'dart:convert';
@@ -110,7 +113,8 @@ void main() {
           'capabilities': {},
           'serverInfo': {'name': 'test', 'version': '1.0'}
         }
-      }) + '\n');
+      }) + '
+');
 
       await initFuture;
 
@@ -141,7 +145,8 @@ void main() {
             }
           ]
         }
-      }) + '\n');
+      }) + '
+');
 
       final tools = await future;
       expect(tools.length, 1);
@@ -163,7 +168,8 @@ void main() {
         'result': {
           'content': [{'type': 'text', 'text': 'result'}]
         }
-      }) + '\n');
+      }) + '
+');
 
       final result = await future;
       expect(result.isError, false);
@@ -182,7 +188,8 @@ void main() {
          'jsonrpc': '2.0',
          'id': request['id'],
          'error': {'code': -32000, 'message': 'Internal error'}
-       }) + '\n');
+       }) + '
+');
 
        expect(future, throwsA(isA<Map<String, dynamic>>()));
     });

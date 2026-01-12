@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:google_generative_ai/google_generative_ai.dart';

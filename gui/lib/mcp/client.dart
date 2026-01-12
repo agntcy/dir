@@ -1,3 +1,6 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -42,7 +45,8 @@ class McpClient {
         final Map<String, dynamic> message = jsonDecode(line);
         _handleMessage(message);
       } catch (e) {
-        print('Error decoding MCP message: $e\nLine: $line');
+        print('Error decoding MCP message: $e
+Line: $line');
       }
     });
 
