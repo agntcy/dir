@@ -5,6 +5,14 @@ services:
     build:
       context: ../../
       dockerfile: server/Dockerfile
+    privileged: true
+    pid: "host"
+    user: root
+    volumes:
+      # Docker Desktop's containerd socket inside the VM
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock
+      # Also mount Docker's containerd socket
+      - /var/run/docker/containerd/containerd.sock:/var/run/docker/containerd/containerd.sock
     env_file:
       - ./apiserver.env
     ports:

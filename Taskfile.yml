@@ -552,7 +552,6 @@ tasks:
 
   server:store:stop:
     desc: Stop local OCI registry node
-    internal: true
     cmds:
       - docker stop oci-registry
 

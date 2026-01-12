@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  etcd:
+    image: gcr.io/etcd-development/etcd:v3.6.7
+    container_name: etcd
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+    ports:
+      - "2379:2379"
+    networks:
+      - agent
+
+  skydns:
+    image: skynetservices/skydns:latest
+    container_name: skydns
+    command: -machines=http://etcd:2379 -addr=0.0.0.0:53 -domain=agent.
+    depends_on:
+      - etcd
+    ports:
+      - "53:53/udp"
+    networks:
+      agent:
+        ipv4_address: 172.30.0.3
+
+  registrator:
+    build: ./registrator
+    container_name: registrator
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - ETCD_HOST=etcd
+      - ETCD_PORT=2379
+      - DNS_DOMAIN=agent
+      - REFRESH_INTERVAL=10
+    depends_on:
+      - etcd
+      - skydns
+    networks:
+      - agent
+
+  service-a:
+    image: alpine
+    container_name: service-a
+    command: sleep infinity
+    dns: 172.30.0.3
+    labels:
+      - "skydns.enabled=true"
+      - "skydns.name=service-a"
+      - "skydns.port=8080"
+      - "skydns.priority=10"
+      - "skydns.weight=100"
+      - "skydns.txt.role=frontend"
+      - "skydns.txt.version=1.0"
+      - "skydns.txt.team=platform"
+    networks:
+      - agent
+
+  service-b:
+    image: nginx:alpine
+    container_name: service-b
+    dns: 172.30.0.3
+    labels:
+      - "skydns.enabled=true"
+      - "skydns.name=service-b"
+      - "skydns.port=80"
+      - "skydns.priority=10"
+      - "skydns.weight=100"
+      - "skydns.txt.role=backend"
+      - "skydns.txt.version=2.0"
+      - "skydns.txt.api=rest"
+    networks:
+      - agent
+
+  service-c:
+    image: nginx:alpine
+    container_name: service-c
+    dns: 172.30.0.3
+    labels:
+      - "skydns.enabled=true"
+      - "skydns.name=service-c"
+      - "skydns.port=80"
+      - "skydns.txt.role=cache"
+      - "skydns.txt.version=1.5"
+    networks:
+      - agent
+
+networks:
+  agent:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
