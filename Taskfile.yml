@@ -1941,3 +1941,14 @@ tasks:
       # Update dependencies
       - for: { var: HELM_ALL_CHART_PATHS }
         cmd: "cd {{ .ITEM }} && {{ .HELM_BIN }} dependency update"
+
+  ##
+  ## GUI
+  ##
+  gui:build:macos:
+    desc: Build the GUI for macOS
+    dir: gui
+    cmds:
+      - flutter config --enable-macos-desktop
+      - flutter create . --platforms=macos
+      - flutter build macos
