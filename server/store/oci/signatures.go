@@ -5,6 +5,7 @@ package oci
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -12,11 +13,14 @@ import (
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/cosign"
+	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+var signaturesLogger = logging.Logger("store/oci/signatures")
 
 // pushSignature stores OCI signature artifacts for a record using cosign attach signature and uploads public key to zot for verification.
 func (s *store) pushSignature(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
@@ -159,17 +163,37 @@ func (s *store) convertCosignSignatureToReferrer(blobDesc ocispec.Descriptor, da
 
 // VerifySignature verifies a record signature using the appropriate method
 // based on the configured registry type.
+//
+// For Zot registries: Uses Zot's GraphQL API as a fast path for verification.
+// If Zot verification fails, falls back to standalone verification.
+//
+// For other registries (GHCR, DockerHub): Uses standalone verification
+// which retrieves signatures and public keys from OCI referrers.
 func (s *store) VerifySignature(ctx context.Context, recordCID string) (bool, error) {
 	switch s.config.GetType() {
 	case ociconfig.RegistryTypeZot:
-		return s.verifyWithZot(ctx, recordCID)
+		// Try Zot's GraphQL API as a fast path
+		verified, err := s.verifyWithZot(ctx, recordCID)
+		if err == nil && verified {
+			return true, nil
+		}
+
+		// Fall back to standalone verification if Zot verification fails
+		// This handles cases where public keys weren't uploaded to Zot's _cosign dir
+		if err != nil {
+			referrersLogger.Debug("Zot verification failed, falling back to standalone verification",
+				"recordCID", recordCID, "error", err)
+		}
+
+		return s.verifyWithReferrers(ctx, recordCID)
 
 	case ociconfig.RegistryTypeGHCR, ociconfig.RegistryTypeDockerHub:
-		// TODO: Implement in https://github.com/agntcy/dir/issues/798
-		return false, fmt.Errorf("signature verification not yet supported for %s registry", s.config.GetType())
+		// Use standalone verification for registries without Zot extensions
+		return s.verifyWithReferrers(ctx, recordCID)
 
 	default:
-		return false, fmt.Errorf("unsupported registry type: %s", s.config.GetType())
+		// For unknown registry types, try standalone verification
+		return s.verifyWithReferrers(ctx, recordCID)
 	}
 }
 
@@ -187,4 +211,126 @@ func (s *store) verifyWithZot(ctx context.Context, recordCID string) (bool, erro
 
 	// Return the trusted status (which implies signed as well)
 	return result.IsTrusted, nil
+}
+
+// verifyWithReferrers performs signature verification using OCI referrers.
+// This works independently of Zot by:
+// 1. Retrieving signatures from OCI referrers
+// 2. Retrieving public keys from OCI referrers
+// 3. Using shared verification logic to find a valid signature
+//
+// This approach mirrors Zot's VerifyCosignSignature pattern without requiring Zot extensions.
+func (s *store) verifyWithReferrers(ctx context.Context, recordCID string) (bool, error) {
+	signaturesLogger.Debug("Starting signature verification with referrers", "recordCID", recordCID)
+
+	// Generate the expected payload for this record CID
+	digest, err := corev1.ConvertCIDToDigest(recordCID)
+	if err != nil {
+		return false, fmt.Errorf("failed to convert CID to digest: %w", err)
+	}
+
+	expectedPayload, err := cosign.GeneratePayload(digest.String())
+	if err != nil {
+		return false, fmt.Errorf("failed to generate expected payload: %w", err)
+	}
+
+	// Retrieve signatures from OCI referrers
+	signatures, err := s.pullSignatureReferrers(ctx, recordCID)
+	if err != nil {
+		return false, fmt.Errorf("failed to pull signature referrers: %w", err)
+	}
+
+	if len(signatures) == 0 {
+		signaturesLogger.Debug("No signatures found in referrers", "recordCID", recordCID)
+
+		return false, nil
+	}
+
+	signaturesLogger.Debug("Retrieved signatures from referrers", "recordCID", recordCID, "count", len(signatures))
+
+	// Retrieve public keys from OCI referrers
+	publicKeys, err := s.pullPublicKeyReferrers(ctx, recordCID)
+	if err != nil {
+		return false, fmt.Errorf("failed to pull public key referrers: %w", err)
+	}
+
+	if len(publicKeys) == 0 {
+		signaturesLogger.Debug("No public keys found in referrers", "recordCID", recordCID)
+
+		return false, errors.New("no public key found in referrer responses")
+	}
+
+	signaturesLogger.Debug("Retrieved public keys from referrers", "recordCID", recordCID, "count", len(publicKeys))
+
+	// Convert signatures to string slice for shared verification
+	sigStrings := make([]string, len(signatures))
+	for i, sig := range signatures {
+		sigStrings[i] = sig.GetSignature()
+	}
+
+	// Use shared verification logic
+	verified, err := cosign.VerifySignatures(&cosign.VerifySignaturesOptions{
+		ExpectedPayload: expectedPayload,
+		Signatures:      sigStrings,
+		PublicKeys:      publicKeys,
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to verify signatures: %w", err)
+	}
+
+	if verified {
+		signaturesLogger.Info("Signature verified successfully", "recordCID", recordCID)
+	} else {
+		signaturesLogger.Debug("No valid signature found for any public key", "recordCID", recordCID)
+	}
+
+	return verified, nil
+}
+
+// pullSignatureReferrers retrieves signature referrers for a record from OCI registry.
+func (s *store) pullSignatureReferrers(ctx context.Context, recordCID string) ([]*signv1.Signature, error) {
+	signatures := make([]*signv1.Signature, 0)
+
+	err := s.WalkReferrers(ctx, recordCID, corev1.SignatureReferrerType, func(referrer *corev1.RecordReferrer) error {
+		signature := &signv1.Signature{}
+		if err := signature.UnmarshalReferrer(referrer); err != nil {
+			signaturesLogger.Debug("Failed to decode signature from referrer", "error", err)
+
+			return nil // Skip this referrer but continue walking
+		}
+
+		signatures = append(signatures, signature)
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return signatures, nil
+}
+
+// pullPublicKeyReferrers retrieves public key referrers for a record from OCI registry.
+func (s *store) pullPublicKeyReferrers(ctx context.Context, recordCID string) ([]string, error) {
+	publicKeys := make([]string, 0)
+
+	err := s.WalkReferrers(ctx, recordCID, corev1.PublicKeyReferrerType, func(referrer *corev1.RecordReferrer) error {
+		publicKey := &signv1.PublicKey{}
+		if err := publicKey.UnmarshalReferrer(referrer); err != nil {
+			signaturesLogger.Debug("Failed to decode public key from referrer", "error", err)
+
+			return nil // Skip this referrer but continue walking
+		}
+
+		if publicKey.GetKey() != "" {
+			publicKeys = append(publicKeys, publicKey.GetKey())
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return publicKeys, nil
 }
