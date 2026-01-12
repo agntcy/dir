@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
 	sigs "github.com/sigstore/cosign/v3/pkg/signature"
@@ -31,23 +30,15 @@ type VerifySignaturesOptions struct {
 // a valid match, similar to Zot's VerifyCosignSignature pattern.
 //
 // Returns true if any signature verifies with any public key.
-// Returns false with nil error if no valid combination is found.
-// Returns false with error if all verification attempts fail with errors.
+// Returns false with nil error if no valid combination is found or if
+// no signatures/public keys are provided (record is not signed).
 func VerifySignatures(opts *VerifySignaturesOptions) (bool, error) {
 	if opts == nil {
-		return false, errors.New("verification options cannot be nil")
+		return false, nil
 	}
 
-	if len(opts.ExpectedPayload) == 0 {
-		return false, errors.New("expected payload cannot be empty")
-	}
-
-	if len(opts.Signatures) == 0 {
-		return false, errors.New("no signatures provided")
-	}
-
-	if len(opts.PublicKeys) == 0 {
-		return false, errors.New("no public keys provided")
+	if len(opts.ExpectedPayload) == 0 || len(opts.Signatures) == 0 || len(opts.PublicKeys) == 0 {
+		return false, nil
 	}
 
 	// Try each public key against each signature

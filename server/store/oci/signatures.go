@@ -5,7 +5,6 @@ package oci
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -257,7 +256,7 @@ func (s *store) verifyWithReferrers(ctx context.Context, recordCID string) (bool
 	if len(publicKeys) == 0 {
 		signaturesLogger.Debug("No public keys found in referrers", "recordCID", recordCID)
 
-		return false, errors.New("no public key found in referrer responses")
+		return false, nil
 	}
 
 	signaturesLogger.Debug("Retrieved public keys from referrers", "recordCID", recordCID, "count", len(publicKeys))
