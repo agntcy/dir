@@ -7,7 +7,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:gui/mcp/client.dart';
 import 'package:gui/mcp/model.dart';
 import 'package:gui/services/ai_service.dart';
-import 'package:gui/services/gemini_wrapper.dart';
+import 'package:gui/services/llm_provider.dart';
 
 // Mocks
 class MockMcpClient implements McpClient {
@@ -29,7 +29,7 @@ class MockMcpClient implements McpClient {
   }
 
   @override
-  Future<void> start() async {}
+  Future<void> start({Map<String, String>? environment}) async {}
 
   @override
   Future<void> stop() async {}
@@ -38,81 +38,57 @@ class MockMcpClient implements McpClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class MockGeminiFactory implements GeminiFactory {
-  final MockGenerativeModelWrapper mockModel = MockGenerativeModelWrapper();
-  List<Tool>? capturedTools;
+class MockLlmProvider implements LlmProvider {
+  List<McpTool>? initializedTools;
+  String? lastMessage;
 
   @override
-  GenerativeModelWrapper createModel({required String apiKey, required String model, List<Tool>? tools}) {
-    capturedTools = tools;
-    return mockModel;
-  }
-}
-
-class MockGenerativeModelWrapper implements GenerativeModelWrapper {
-  final MockChatSessionWrapper session = MockChatSessionWrapper();
-
-  @override
-  ChatSessionWrapper startChat({List<Content>? history}) {
-    return session;
-  }
-}
-
-class MockChatSessionWrapper implements ChatSessionWrapper {
-  List<String> userMessages = [];
-
-  GenerateContentResponse? nextResponse;
-
-  @override
-  Future<GenerateContentResponse> sendMessage(Content content) async {
-    if (content.parts.isNotEmpty && content.parts.first is TextPart) {
-        userMessages.add((content.parts.first as TextPart).text);
-    }
-    return nextResponse ?? GenerateContentResponse([Candidate(Content.model([TextPart('response')]), null, null, null, null)], null);
+  Future<void> init(List<McpTool> mcpTools) async {
+    initializedTools = mcpTools;
   }
 
   @override
-  List<Content> get history => [];
+  Future<LlmResponse> sendMessage(String message, List<Content> history) async {
+    lastMessage = message;
+    return LlmResponse(text: 'response');
+  }
 }
 
 void main() {
   group('AiService', () {
     late AiService service;
     late MockMcpClient mockClient;
-    late MockGeminiFactory mockFactory;
+    late MockLlmProvider mockProvider;
 
     setUp(() {
       mockClient = MockMcpClient();
-      mockFactory = MockGeminiFactory();
+      mockProvider = MockLlmProvider();
       service = AiService(
-        apiKey: 'dummy',
         mcpClient: mockClient,
-        geminiFactory: mockFactory,
       );
     });
 
-    test('init calls createModel with tools', () async {
+    test('init calls provider.init with tools', () async {
       mockClient.toolsToReturn = [
         McpTool(name: 'tool1', description: 'desc', inputSchema: {'type': 'object'})
       ];
 
-      await service.init();
+      await service.init(mockProvider);
 
-      expect(mockFactory.capturedTools, isNotNull);
-      final tools = mockFactory.capturedTools!;
+      expect(mockProvider.initializedTools, isNotNull);
+      final tools = mockProvider.initializedTools!;
       expect(tools.length, 1);
       final tool = tools.first;
-      expect(tool.functionDeclarations!.first.name, 'tool1');
+      expect(tool.name, 'tool1');
     });
 
-    test('sendMessage starts chat and sends message', () async {
+    test('sendMessage calls provider.sendMessage', () async {
       mockClient.toolsToReturn = [];
-      await service.init();
+      await service.init(mockProvider);
 
       await service.sendMessage('hello', []);
 
-      final session = mockFactory.mockModel.session;
-      expect(session.userMessages.contains('hello'), isTrue);
+      expect(mockProvider.lastMessage, 'hello');
     });
   });
 }

@@ -45,8 +45,7 @@ class McpClient {
         final Map<String, dynamic> message = jsonDecode(line);
         _handleMessage(message);
       } catch (e) {
-        print('Error decoding MCP message: $e
-Line: $line');
+        print('Error decoding MCP message: $e\nLine: $line');
       }
     });
 

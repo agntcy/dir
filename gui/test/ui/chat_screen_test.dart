@@ -5,16 +5,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:gui/mcp/client.dart';
 import 'package:gui/services/ai_service.dart';
+import 'package:gui/services/llm_provider.dart';
 import 'package:gui/ui/chat_screen.dart';
 
 class MockAiService implements AiService {
   @override
-  Future<void> init() async {}
+  McpClient? mcpClient;
 
   @override
-  Future<GenerateContentResponse> sendMessage(String message, List<Content> history) async {
-    return GenerateContentResponse([Candidate(Content.model([TextPart('echo: $message')]), null, null, null, null)], null);
+  Future<void> init(LlmProvider provider) async {}
+
+  @override
+  Future<String?> sendMessage(
+    String message,
+    List<Content> history, {
+    void Function(String, dynamic)? onToolOutput,
+  }) async {
+    return 'echo: $message';
   }
 
   @override
