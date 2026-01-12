@@ -9,7 +9,17 @@ on:
       - main
     tags:
       - "v*.*.*"
+    paths-ignore:
+      - "gui/**"
+      - "docs/**"
+      - "**.md"
+      - ".gitignore"
   pull_request:
+    paths-ignore:
+      - "gui/**"
+      - "docs/**"
+      - "**.md"
+      - ".gitignore"
 
 permissions:
   contents: write
