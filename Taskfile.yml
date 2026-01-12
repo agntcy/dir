@@ -244,6 +244,31 @@ tasks:
           fi
 
   ##
+  ## MCP Server
+  ##
+  mcp:build:
+    desc: Build the MCP server
+    dir: ./mcp
+    vars:
+      GOOS: "{{ .GOOS | default OS }}"
+      GOARCH: "{{ .GOARCH | default ARCH }}"
+      OUT_BINARY: "{{ .ROOT_DIR }}/build/mcp/mcp-server"
+    cmds:
+      - mkdir -p {{ .ROOT_DIR }}/build/mcp
+      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
+
+  mcp:build:server:
+    desc: Build the Directory Server binary for local MCP use
+    dir: ./server/cmd
+    vars:
+      GOOS: "{{ .GOOS | default OS }}"
+      GOARCH: "{{ .GOARCH | default ARCH }}"
+      OUT_BINARY: "{{ .ROOT_DIR }}/build/mcp/dir-server"
+    cmds:
+      - mkdir -p {{ .ROOT_DIR }}/build/mcp
+      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
+
+  ##
   ## Client SDK
   ##
   sdk:deps:common:
@@ -440,7 +465,7 @@ tasks:
     env:
       NODE_AUTH_TOKEN: "{{ .NODE_AUTH_TOKEN }}"
     cmd: |
-      version=$(npm pkg get version) 
+      version=$(npm pkg get version)
 
       if [[ $version == *"rc"* ]]; then
         npm publish --scope=@agntcy --access public --tag rc-{{.COMMIT_SHA}}
@@ -1550,15 +1575,15 @@ tasks:
       - |
         if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
           echo "[coverage] Triggering graceful shutdown of pod to flush coverage data..."
-          
+
           # Get pod matching the selector
           POD_NAME=$({{.KUBECTL_BIN}} get pods -n {{.NAMESPACE}} -l {{.POD_SELECTOR}} -o jsonpath='{.items[*].metadata.name}')
-          
+
             if [ -n "$POD_NAME" ]; then
               # Send SIGTERM to PID 1 to trigger coverage flush (like the PoC)
               echo "[coverage] Sending SIGTERM to PID 1 in pod: $POD_NAME"
               {{.KUBECTL_BIN}} exec -n {{.NAMESPACE}} $POD_NAME -- sh -c 'kill -TERM 1' 2>/dev/null || true
-              
+
               # Wait for container to restart (coverage files persist in emptyDir volume)
               echo "[coverage] Waiting for container to restart and coverage to be flushed..."
               sleep 5
@@ -1585,7 +1610,7 @@ tasks:
         if [ -d "{{.COVERAGE_DIR}}/pods" ]; then
           # Build comma-separated list of pod directories
           pod_dirs=$(find {{.COVERAGE_DIR}}/pods -mindepth 1 -maxdepth 1 -type d 2>/dev/null | tr '\n' ',' | sed 's/,$//')
-          
+
           if [ -n "$pod_dirs" ]; then
             echo "  Found pod coverage directories"
             mkdir -p {{.COVERAGE_DIR}}/server-binary
