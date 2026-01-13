@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const defaultListLimit = 100
+
 var listOpts struct {
 	limit int32
 }
@@ -46,7 +48,7 @@ Note: This feature requires a domain index to be implemented on the server.
 }
 
 func init() {
-	listCmd.Flags().Int32Var(&listOpts.limit, "limit", 100, "Maximum number of results to return")
+	listCmd.Flags().Int32Var(&listOpts.limit, "limit", defaultListLimit, "Maximum number of results to return")
 }
 
 func runListCommand(cmd *cobra.Command, domain string) error {

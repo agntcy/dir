@@ -1,11 +1,13 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:wrapcheck
 package controller
 
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -22,6 +24,9 @@ import (
 )
 
 var namingLogger = logging.Logger("controller/naming")
+
+// Sentinel error for stopping referrer walk.
+var errStopWalk = errors.New("stop walking")
 
 type namingCtrl struct {
 	namingv1.UnimplementedNamingServiceServer
@@ -49,6 +54,7 @@ func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomai
 	existingResp, err := n.CheckDomainVerification(ctx, &namingv1.CheckDomainVerificationRequest{Cid: req.GetCid()})
 	if err == nil && existingResp.GetVerified() {
 		namingLogger.Debug("Record already has domain verification", "cid", req.GetCid())
+
 		return &namingv1.VerifyDomainResponse{
 			Verified:     true,
 			Verification: existingResp.GetVerification(),
@@ -63,8 +69,18 @@ func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomai
 
 	// Extract the name from the record using adapter
 	recordName, err := extractRecordName(record)
-	if err != nil || recordName == "" {
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to extract record name: %v", err)
+
+		return &namingv1.VerifyDomainResponse{
+			Verified:     false,
+			ErrorMessage: &errMsg,
+		}, nil
+	}
+
+	if recordName == "" {
 		errMsg := "record has no name field"
+
 		return &namingv1.VerifyDomainResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
@@ -75,6 +91,7 @@ func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomai
 	publicKey, err := n.getRecordPublicKey(ctx, req.GetCid())
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to get public key: %v", err)
+
 		return &namingv1.VerifyDomainResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
@@ -151,6 +168,7 @@ func (n *namingCtrl) CheckDomainVerification(ctx context.Context, req *namingv1.
 		dv := &namingv1.DomainVerification{}
 		if err := dv.UnmarshalReferrer(referrer); err != nil {
 			namingLogger.Debug("Failed to unmarshal domain verification referrer", "error", err)
+
 			return nil // Continue walking
 		}
 
@@ -159,12 +177,13 @@ func (n *namingCtrl) CheckDomainVerification(ctx context.Context, req *namingv1.
 		return errStopWalk
 	})
 
-	if err != nil && err != errStopWalk {
+	if err != nil && !errors.Is(err, errStopWalk) {
 		return nil, status.Errorf(codes.Internal, "failed to walk referrers: %v", err)
 	}
 
 	if domainVerification == nil {
 		errMsg := "no domain verification found"
+
 		return &namingv1.CheckDomainVerificationResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
@@ -197,7 +216,7 @@ func (n *namingCtrl) ListVerifiedAgents(ctx context.Context, req *namingv1.ListV
 func (n *namingCtrl) getRecordPublicKey(ctx context.Context, cid string) ([]byte, error) {
 	referrerStore, ok := n.store.(types.ReferrerStoreAPI)
 	if !ok {
-		return nil, fmt.Errorf("store does not support referrers")
+		return nil, errors.New("store does not support referrers")
 	}
 
 	var publicKey []byte
@@ -207,6 +226,7 @@ func (n *namingCtrl) getRecordPublicKey(ctx context.Context, cid string) ([]byte
 		pk := &signv1.PublicKey{}
 		if err := pk.UnmarshalReferrer(referrer); err != nil {
 			namingLogger.Debug("Failed to unmarshal public key referrer", "error", err)
+
 			return nil // Continue walking
 		}
 
@@ -214,6 +234,7 @@ func (n *namingCtrl) getRecordPublicKey(ctx context.Context, cid string) ([]byte
 		pemKey := pk.GetKey()
 		if pemKey == "" {
 			namingLogger.Debug("Empty public key")
+
 			return nil // Continue walking
 		}
 
@@ -224,6 +245,7 @@ func (n *namingCtrl) getRecordPublicKey(ctx context.Context, cid string) ([]byte
 			keyBytes, decodeErr := base64.StdEncoding.DecodeString(pemKey)
 			if decodeErr == nil {
 				publicKey = keyBytes
+
 				return errStopWalk
 			}
 
@@ -236,6 +258,7 @@ func (n *namingCtrl) getRecordPublicKey(ctx context.Context, cid string) ([]byte
 		keyBytes, err := cryptoutils.MarshalPublicKeyToDER(parsedKey)
 		if err != nil {
 			namingLogger.Debug("Failed to marshal public key to DER", "error", err)
+
 			return nil // Continue walking
 		}
 
@@ -244,19 +267,16 @@ func (n *namingCtrl) getRecordPublicKey(ctx context.Context, cid string) ([]byte
 		return errStopWalk
 	})
 
-	if err != nil && err != errStopWalk {
-		return nil, err
+	if err != nil && !errors.Is(err, errStopWalk) {
+		return nil, fmt.Errorf("failed to walk referrers: %w", err)
 	}
 
 	if publicKey == nil {
-		return nil, fmt.Errorf("no public key found for record")
+		return nil, errors.New("no public key found for record")
 	}
 
 	return publicKey, nil
 }
-
-// Sentinel error for stopping referrer walk.
-var errStopWalk = fmt.Errorf("stop walking")
 
 // extractRecordName extracts the name from a record using the adapter pattern.
 func extractRecordName(record *corev1.Record) (string, error) {
@@ -264,7 +284,7 @@ func extractRecordName(record *corev1.Record) (string, error) {
 
 	recordData, err := adapter.GetRecordData()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get record data: %w", err)
 	}
 
 	if recordData == nil {

@@ -34,6 +34,7 @@ func ExtractDomain(name string) string {
 	// Basic validation: must contain at least one dot
 	if !strings.Contains(domain, ".") {
 		domainLogger.Debug("Invalid domain: no dot found", "domain", domain)
+
 		return ""
 	}
 

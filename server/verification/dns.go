@@ -5,11 +5,19 @@ package verification
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/agntcy/dir/utils/logging"
+)
+
+const (
+	// defaultDNSTimeout is the default timeout for DNS lookups.
+	defaultDNSTimeout = 5 * time.Second
+	// maxTruncateLen is the maximum length for truncated log strings.
+	maxTruncateLen = 50
 )
 
 var dnsLogger = logging.Logger("verification/dns")
@@ -43,7 +51,7 @@ func WithResolver(resolver *net.Resolver) DNSResolverOption {
 // NewDNSResolver creates a new DNS resolver with the given options.
 func NewDNSResolver(opts ...DNSResolverOption) *DNSResolver {
 	r := &DNSResolver{
-		timeout: 5 * time.Second,
+		timeout: defaultDNSTimeout,
 	}
 
 	for _, opt := range opts {
@@ -67,6 +75,7 @@ func (r *DNSResolver) LookupKeys(ctx context.Context, domain string) ([]PublicKe
 
 	// Perform DNS TXT lookup
 	var records []string
+
 	var err error
 
 	if r.resolver != nil {
@@ -77,9 +86,11 @@ func (r *DNSResolver) LookupKeys(ctx context.Context, domain string) ([]PublicKe
 
 	if err != nil {
 		// Check if it's a "not found" error (NXDOMAIN)
-		if dnsErr, ok := err.(*net.DNSError); ok {
+		var dnsErr *net.DNSError
+		if errors.As(err, &dnsErr) {
 			if dnsErr.IsNotFound {
 				dnsLogger.Debug("No DNS TXT records found", "domain", domain)
+
 				return nil, nil // Not an error, just no records
 			}
 		}
@@ -90,18 +101,20 @@ func (r *DNSResolver) LookupKeys(ctx context.Context, domain string) ([]PublicKe
 	dnsLogger.Debug("Found DNS TXT records", "domain", domain, "count", len(records))
 
 	// Parse OASF records
-	var keys []PublicKey
+	keys := make([]PublicKey, 0, len(records))
 
 	for _, record := range records {
 		// Skip non-OASF records
 		if !isOASFRecord(record) {
-			dnsLogger.Debug("Skipping non-OASF TXT record", "record", truncateString(record, 50))
+			dnsLogger.Debug("Skipping non-OASF TXT record", "record", truncateString(record, maxTruncateLen))
+
 			continue
 		}
 
 		key, err := ParseDNSTXTRecord(record)
 		if err != nil {
-			dnsLogger.Warn("Failed to parse OASF TXT record", "record", truncateString(record, 50), "error", err)
+			dnsLogger.Warn("Failed to parse OASF TXT record", "record", truncateString(record, maxTruncateLen), "error", err)
+
 			continue
 		}
 

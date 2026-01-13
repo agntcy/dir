@@ -6,7 +6,6 @@ package local
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -24,7 +23,7 @@ const (
 	domainVerifyTempDirPrefix = "domain-verify-test"
 )
 
-// WellKnownFile represents the structure of /.well-known/oasf.json
+// WellKnownFile represents the structure of /.well-known/oasf.json.
 type WellKnownFile struct {
 	Version int            `json:"version"`
 	Keys    []WellKnownKey `json:"keys"`
@@ -60,7 +59,7 @@ func setupDomainVerifyTestPaths() *domainVerifyTestPaths {
 // createTestRecord creates a test record with the given domain in the name field.
 func createTestRecord(domain string) []byte {
 	record := map[string]interface{}{
-		"name":           fmt.Sprintf("%s/test-agent", domain),
+		"name":           domain + "/test-agent",
 		"version":        "v1.0.0",
 		"schema_version": "0.8.0",
 		"description":    "Test agent for domain verification e2e tests",
@@ -157,7 +156,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for domain verification
 			testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/.well-known/oasf.json" {
 					w.Header().Set("Content-Type", "application/json")
-					w.Write(wellKnownJSON)
+					_, _ = w.Write(wellKnownJSON)
 				} else {
 					http.NotFound(w, r)
 				}
@@ -216,7 +215,8 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for domain verification
 			gomega.Expect(result["verified"]).To(gomega.BeTrue())
 			gomega.Expect(result["verification"]).NotTo(gomega.BeNil())
 
-			verification := result["verification"].(map[string]interface{})
+			verification, ok := result["verification"].(map[string]interface{})
+			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(verification["method"]).To(gomega.Equal("wellknown"))
 		})
 
@@ -321,7 +321,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for domain verification
 			mismatchServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/.well-known/oasf.json" {
 					w.Header().Set("Content-Type", "application/json")
-					w.Write(wellKnownJSON)
+					_, _ = w.Write(wellKnownJSON)
 				} else {
 					http.NotFound(w, r)
 				}

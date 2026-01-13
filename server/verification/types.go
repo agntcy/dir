@@ -44,7 +44,7 @@ type Result struct {
 	MatchedKeyID string
 }
 
-// WellKnownFile represents the structure of /.well-known/oasf.json
+// WellKnownFile represents the structure of /.well-known/oasf.json.
 type WellKnownFile struct {
 	// Version is the format version (currently 1).
 	Version int `json:"version"`

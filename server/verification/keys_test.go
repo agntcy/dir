@@ -57,7 +57,7 @@ func TestParseDNSTXTRecord(t *testing.T) {
 		},
 		{
 			name:     "extra whitespace",
-			record:   "  v=oasf1 ;  k=ed25519 ;  p=" + base64.StdEncoding.EncodeToString([]byte("test"))+ "  ",
+			record:   "  v=oasf1 ;  k=ed25519 ;  p=" + base64.StdEncoding.EncodeToString([]byte("test")) + "  ",
 			wantType: "ed25519",
 		},
 	}
@@ -70,11 +70,13 @@ func TestParseDNSTXTRecord(t *testing.T) {
 				if err == nil {
 					t.Errorf("ParseDNSTXTRecord() expected error, got nil")
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("ParseDNSTXTRecord() unexpected error: %v", err)
+
 				return
 			}
 
@@ -138,11 +140,13 @@ func TestParseWellKnownKey(t *testing.T) {
 				if err == nil {
 					t.Errorf("ParseWellKnownKey() expected error, got nil")
 				}
+
 				return
 			}
 
 			if err != nil {
 				t.Errorf("ParseWellKnownKey() unexpected error: %v", err)
+
 				return
 			}
 

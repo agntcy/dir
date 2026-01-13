@@ -83,6 +83,7 @@ func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []b
 	domain := ExtractDomain(recordName)
 	if domain == "" {
 		result.Error = "could not extract domain from record name"
+
 		verifierLogger.Debug("Domain extraction failed", "recordName", recordName)
 
 		return result
@@ -103,6 +104,7 @@ func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []b
 	if len(keys) == 0 {
 		result.Error = "no OASF keys found for domain"
 		result.Method = string(MethodNone)
+
 		verifierLogger.Debug("No keys found for domain", "domain", domain)
 
 		return result
@@ -114,6 +116,7 @@ func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []b
 	matchedKey, matched := MatchKey(signingKey, keys)
 	if !matched {
 		result.Error = "signing key does not match any domain key"
+
 		verifierLogger.Debug("Key mismatch", "domain", domain, "domainKeyCount", len(keys))
 
 		return result

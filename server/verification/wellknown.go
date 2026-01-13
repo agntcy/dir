@@ -14,6 +14,11 @@ import (
 	"github.com/agntcy/dir/utils/logging"
 )
 
+const (
+	// defaultMaxBodySize is the maximum size of the response body (1MB).
+	defaultMaxBodySize = 1024 * 1024
+)
+
 var wellKnownLogger = logging.Logger("verification/wellknown")
 
 // WellKnownFetcher handles fetching the well-known OASF file from domains.
@@ -67,7 +72,7 @@ func WithAllowInsecure(allow bool) WellKnownFetcherOption {
 func NewWellKnownFetcher(opts ...WellKnownFetcherOption) *WellKnownFetcher {
 	f := &WellKnownFetcher{
 		timeout:     DefaultHTTPTimeout,
-		maxBodySize: 1024 * 1024, // 1MB max
+		maxBodySize: defaultMaxBodySize,
 	}
 
 	for _, opt := range opts {
@@ -96,6 +101,7 @@ func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]Publ
 	if f.allowInsecure {
 		scheme = "http"
 	}
+
 	url := scheme + "://" + domain + WellKnownPath
 
 	wellKnownLogger.Debug("Fetching well-known OASF file", "domain", domain, "url", url)
@@ -120,6 +126,7 @@ func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]Publ
 	// Check status code
 	if resp.StatusCode == http.StatusNotFound {
 		wellKnownLogger.Debug("Well-known file not found", "domain", domain)
+
 		return nil, nil // Not an error, just no file
 	}
 
@@ -129,8 +136,8 @@ func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]Publ
 
 	// Read body with size limit
 	limitedReader := io.LimitReader(resp.Body, f.maxBodySize)
-	body, err := io.ReadAll(limitedReader)
 
+	body, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -149,13 +156,14 @@ func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]Publ
 	}
 
 	// Parse keys
-	var keys []PublicKey
+	keys := make([]PublicKey, 0, len(wellKnown.Keys))
 
 	for _, wk := range wellKnown.Keys {
 		key, err := ParseWellKnownKey(wk)
 		if err != nil {
 			wellKnownLogger.Warn("Failed to parse key from well-known file",
 				"domain", domain, "keyID", wk.ID, "error", err)
+
 			continue
 		}
 

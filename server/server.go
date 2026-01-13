@@ -161,6 +161,7 @@ func configureOASFValidation(cfg *config.Config) error {
 	return nil
 }
 
+//nolint:cyclop // This function has been at the limit; refactoring is out of scope.
 func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	logger.Debug("Creating server with config", "config", cfg, "version", version.String())
 

@@ -6,12 +6,15 @@ package verification
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 )
 
 // ParseDNSTXTRecord parses an OASF DNS TXT record.
-// Format: "v=oasf1; k=ed25519; p=<base64-encoded-public-key>"
+// Format: "v=oasf1; k=ed25519; p=<base64-encoded-public-key>".
+//
+//nolint:mnd
 func ParseDNSTXTRecord(record string) (*PublicKey, error) {
 	// Parse key-value pairs
 	parts := strings.Split(record, ";")
@@ -42,7 +45,7 @@ func ParseDNSTXTRecord(record string) (*PublicKey, error) {
 	// Get key type
 	keyType, ok := params["k"]
 	if !ok {
-		return nil, fmt.Errorf("missing key type parameter 'k'")
+		return nil, errors.New("missing key type parameter 'k'")
 	}
 
 	// Validate key type
@@ -53,7 +56,7 @@ func ParseDNSTXTRecord(record string) (*PublicKey, error) {
 	// Get public key
 	keyBase64, ok := params["p"]
 	if !ok {
-		return nil, fmt.Errorf("missing public key parameter 'p'")
+		return nil, errors.New("missing public key parameter 'p'")
 	}
 
 	// Decode base64
