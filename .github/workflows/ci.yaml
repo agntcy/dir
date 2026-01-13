@@ -9,7 +9,17 @@ on:
       - main
     tags:
       - "v*.*.*"
+    paths-ignore:
+      - "gui/**"
+      - "docs/**"
+      - "**.md"
+      - ".gitignore"
   pull_request:
+    paths-ignore:
+      - "gui/**"
+      - "docs/**"
+      - "**.md"
+      - ".gitignore"
 
 permissions:
   contents: write
@@ -141,9 +151,6 @@ jobs:
     with:
       image_repo: ghcr.io/agntcy
       release_tag: ${{ github.ref_name }}
-    secrets:
-      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      NPMJS_TOKEN: ${{ secrets.NPMJS_TOKEN }}
 
   integration:
     name: Run integration tests
