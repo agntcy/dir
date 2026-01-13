@@ -15,6 +15,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
+	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -36,6 +37,7 @@ import (
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/verification"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -279,6 +281,15 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Create health checker
 	healthChecker := healthcheck.New()
 
+	// Create domain verifier for naming service
+	var verifierOpts []verification.VerifierOption
+
+	if options.Config().Store.Verification.AllowInsecure {
+		verifierOpts = append(verifierOpts, verification.WithAllowInsecureWellKnown(true))
+	}
+
+	domainVerifier := verification.NewVerifier(verifierOpts...)
+
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
 	storev1.RegisterStoreServiceServer(grpcServer, controller.NewStoreController(storeAPI, databaseAPI, options.EventBus()))
@@ -287,6 +298,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(storeAPI))
+	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(storeAPI, domainVerifier))
 
 	// Register health service
 	healthChecker.Register(grpcServer)

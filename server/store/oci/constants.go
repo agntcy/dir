@@ -74,14 +74,6 @@ const (
 	ManifestKeySignatureAlgo = manifestDirObjectKeyPrefix + "/" + MetadataKeySignatureAlgo
 	ManifestKeySignedAt      = manifestDirObjectKeyPrefix + "/" + MetadataKeySignedAt
 
-	// Domain Verification (simple keys).
-	// These are used for on-demand verification status returned in Lookup responses.
-	MetadataKeyDomainVerified       = "domain-verified"
-	MetadataKeyDomainVerifiedAt     = "domain-verified-at"
-	MetadataKeyDomainVerifyMethod   = "domain-verify-method"
-	MetadataKeyDomainVerifiedDomain = "domain-verified-domain"
-	MetadataKeyDomainVerifyError    = "domain-verify-error"
-
 	// Versioning & Linking (standalone - no simple key equivalents).
 	ManifestKeyPreviousCid = manifestDirObjectKeyPrefix + "/" + MetadataKeyPreviousCid
 

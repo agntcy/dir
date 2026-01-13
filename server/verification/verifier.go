@@ -5,7 +5,6 @@ package verification
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/agntcy/dir/utils/logging"
@@ -22,28 +21,12 @@ type Verifier struct {
 	// wellKnown is the fetcher for well-known files.
 	wellKnown *WellKnownFetcher
 
-	// cache stores recently fetched keys to avoid repeated lookups.
-	cache map[string]*CachedKeys
-
-	// cacheMu protects the cache map.
-	cacheMu sync.RWMutex
-
-	// cacheTTL is how long to cache keys.
-	cacheTTL time.Duration
-
 	// allowInsecure allows HTTP instead of HTTPS for well-known fetching (testing only).
 	allowInsecure bool
 }
 
 // VerifierOption configures a Verifier.
 type VerifierOption func(*Verifier)
-
-// WithCacheTTL sets the cache time-to-live.
-func WithCacheTTL(ttl time.Duration) VerifierOption {
-	return func(v *Verifier) {
-		v.cacheTTL = ttl
-	}
-}
 
 // WithDNSResolver sets a custom DNS resolver.
 func WithDNSResolver(dns *DNSResolver) VerifierOption {
@@ -69,10 +52,7 @@ func WithAllowInsecureWellKnown(allow bool) VerifierOption {
 
 // NewVerifier creates a new domain verifier with the given options.
 func NewVerifier(opts ...VerifierOption) *Verifier {
-	v := &Verifier{
-		cache:    make(map[string]*CachedKeys),
-		cacheTTL: DefaultCacheTTL,
-	}
+	v := &Verifier{}
 
 	for _, opt := range opts {
 		opt(v)
@@ -152,24 +132,12 @@ func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []b
 	return result
 }
 
-// lookupKeys retrieves the public keys for a domain, using cache if available.
+// lookupKeys retrieves the public keys for a domain.
+// It tries DNS TXT records first, then falls back to well-known files.
 func (v *Verifier) lookupKeys(ctx context.Context, domain string) ([]PublicKey, VerificationMethod, error) {
-	// Check cache first
-	v.cacheMu.RLock()
-	cached, ok := v.cache[domain]
-	v.cacheMu.RUnlock()
-
-	if ok && time.Now().Before(cached.ExpiresAt) {
-		verifierLogger.Debug("Using cached keys", "domain", domain, "keyCount", len(cached.Keys))
-
-		return cached.Keys, VerificationMethod(cached.Method), nil
-	}
-
 	// Try DNS first
 	keys, err := v.dns.LookupKeys(ctx, domain)
 	if err == nil && len(keys) > 0 {
-		v.cacheKeys(domain, keys, MethodDNS)
-
 		return keys, MethodDNS, nil
 	}
 
@@ -186,27 +154,9 @@ func (v *Verifier) lookupKeys(ctx context.Context, domain string) ([]PublicKey, 
 	}
 
 	if len(keys) > 0 {
-		v.cacheKeys(domain, keys, MethodWellKnown)
-
 		return keys, MethodWellKnown, nil
 	}
 
 	// No keys found via either method
 	return nil, MethodNone, nil
-}
-
-// cacheKeys stores keys in the cache.
-func (v *Verifier) cacheKeys(domain string, keys []PublicKey, method VerificationMethod) {
-	v.cacheMu.Lock()
-	defer v.cacheMu.Unlock()
-
-	now := time.Now()
-	v.cache[domain] = &CachedKeys{
-		Keys:      keys,
-		Method:    string(method),
-		FetchedAt: now,
-		ExpiresAt: now.Add(v.cacheTTL),
-	}
-
-	verifierLogger.Debug("Cached keys", "domain", domain, "keyCount", len(keys), "method", method)
 }

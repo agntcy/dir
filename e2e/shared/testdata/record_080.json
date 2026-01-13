@@ -1,5 +1,5 @@
 {
-  "name": "directory.agntcy.org/example/research-assistant-v4",
+  "name": "127.0.0.1:8080/test-agent",
   "version": "v4.0.0",
   "schema_version": "0.8.0",
   "description": "AI research assistant for data analysis and problem solving.",

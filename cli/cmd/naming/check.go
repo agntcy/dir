@@ -1,0 +1,84 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+//nolint:wrapcheck
+package naming
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/agntcy/dir/cli/presenter"
+	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/spf13/cobra"
+)
+
+var checkCmd = &cobra.Command{
+	Use:   "check <cid>",
+	Short: "Check if a record has verified domain ownership",
+	Long: `Check if a record has verified domain ownership.
+
+This command checks whether a record has a stored domain verification.
+Unlike 'dirctl naming verify', this does not perform verification - it only
+queries for an existing verification result.
+
+Use this command to:
+- Check if a record has been domain-verified
+- Retrieve verification details (domain, method, key ID, timestamp)
+
+Usage examples:
+
+1. Check domain verification status:
+   dirctl naming check <cid>
+
+2. Check with JSON output:
+   dirctl naming check <cid> --output json
+`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runCheckCommand(cmd, args[0])
+	},
+}
+
+func runCheckCommand(cmd *cobra.Command, cid string) error {
+	// Get the client from the context
+	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
+	if !ok {
+		return errors.New("failed to get client from context")
+	}
+
+	// Call CheckDomainVerification
+	resp, err := c.CheckDomainVerification(cmd.Context(), cid)
+	if err != nil {
+		return fmt.Errorf("failed to check domain verification: %w", err)
+	}
+
+	if !resp.GetVerified() {
+		errMsg := resp.GetErrorMessage()
+		if errMsg == "" {
+			errMsg = "no verification found"
+		}
+
+		// Output the result
+		result := map[string]interface{}{
+			"cid":      cid,
+			"verified": false,
+			"message":  errMsg,
+		}
+
+		return presenter.PrintMessage(cmd, "Domain Verification Check", "No domain verification found", result)
+	}
+
+	// Output the verification details
+	v := resp.GetVerification()
+	result := map[string]interface{}{
+		"cid":            cid,
+		"verified":       true,
+		"domain":         v.GetDomain(),
+		"method":         v.GetMethod(),
+		"matched_key_id": v.GetMatchedKeyId(),
+		"verified_at":    v.GetVerifiedAt().AsTime().Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	return presenter.PrintMessage(cmd, "Domain Verification Check", "Record has verified domain ownership", result)
+}

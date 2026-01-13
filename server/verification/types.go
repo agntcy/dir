@@ -44,21 +44,6 @@ type Result struct {
 	MatchedKeyID string
 }
 
-// CachedKeys represents cached public keys for a domain.
-type CachedKeys struct {
-	// Keys is the list of public keys for the domain.
-	Keys []PublicKey
-
-	// Method is how the keys were retrieved.
-	Method string
-
-	// FetchedAt is when the keys were fetched.
-	FetchedAt time.Time
-
-	// ExpiresAt is when the cache entry expires.
-	ExpiresAt time.Time
-}
-
 // WellKnownFile represents the structure of /.well-known/oasf.json
 type WellKnownFile struct {
 	// Version is the format version (currently 1).
@@ -99,9 +84,6 @@ const DNSRecordPrefix = "_oasf."
 
 // WellKnownPath is the path for the OASF well-known file.
 const WellKnownPath = "/.well-known/oasf.json"
-
-// DefaultCacheTTL is the default time-to-live for cached verification results.
-const DefaultCacheTTL = time.Hour
 
 // DefaultHTTPTimeout is the default timeout for HTTP requests.
 const DefaultHTTPTimeout = 10 * time.Second

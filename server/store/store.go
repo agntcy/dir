@@ -8,7 +8,6 @@ import (
 
 	"github.com/agntcy/dir/server/store/eventswrap"
 	"github.com/agntcy/dir/server/store/oci"
-	"github.com/agntcy/dir/server/store/verificationwrap"
 	"github.com/agntcy/dir/server/types"
 )
 
@@ -26,9 +25,6 @@ func New(opts types.APIOptions) (types.StoreAPI, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create OCI store: %w", err)
 		}
-
-		// Wrap with domain verification (adds verification status to Lookup responses)
-		store = verificationwrap.Wrap(store, opts.Config().Store.Verification)
 
 		// Wrap with event emitter
 		store = eventswrap.Wrap(store, opts.EventBus())

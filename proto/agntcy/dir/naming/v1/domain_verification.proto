@@ -1,0 +1,24 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.naming.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// DomainVerification represents the result of verifying that a record's
+// signing key is authorized by the domain claimed in the record's name.
+message DomainVerification {
+  // The domain that was verified (e.g., "cisco.com").
+  string domain = 1;
+
+  // The verification method used: "dns" or "wellknown".
+  string method = 2;
+
+  // The ID of the domain key that matched the signing key.
+  string matched_key_id = 3;
+
+  // When the verification was performed.
+  google.protobuf.Timestamp verified_at = 4;
+}

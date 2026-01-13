@@ -9,6 +9,7 @@ import (
 	"io"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
+	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -24,6 +25,7 @@ type Client struct {
 	storev1.SyncServiceClient
 	signv1.SignServiceClient
 	eventsv1.EventServiceClient
+	namingv1.NamingServiceClient
 
 	config     *Config
 	authClient *workloadapi.Client
@@ -60,6 +62,7 @@ func New(ctx context.Context, opts ...Option) (*Client, error) {
 		SyncServiceClient:    storev1.NewSyncServiceClient(conn),
 		SignServiceClient:    signv1.NewSignServiceClient(conn),
 		EventServiceClient:   eventsv1.NewEventServiceClient(conn),
+		NamingServiceClient:  namingv1.NewNamingServiceClient(conn),
 		config:               options.config,
 		authClient:           options.authClient,
 		conn:                 conn,

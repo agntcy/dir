@@ -26,6 +26,9 @@ managed:
     - path: agntcy/dir/events/v1
       file_option: go_package
       value: github.com/agntcy/dir/api/events/v1
+    - path: agntcy/dir/naming/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/api/naming/v1
 plugins:
   # Stubs for Golang
   - remote: buf.build/protocolbuffers/go:v1.36.5

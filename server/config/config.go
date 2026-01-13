@@ -429,9 +429,6 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("store.verification.enabled")
 	v.SetDefault("store.verification.enabled", store.DefaultVerificationEnabled)
 
-	_ = v.BindEnv("store.verification.cache_ttl")
-	v.SetDefault("store.verification.cache_ttl", store.DefaultVerificationCacheTTL)
-
 	// WARNING: allow_insecure allows HTTP for well-known file fetching (testing only)
 	_ = v.BindEnv("store.verification.allow_insecure")
 	v.SetDefault("store.verification.allow_insecure", false)

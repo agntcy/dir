@@ -168,5 +168,25 @@ func Sign(ctx context.Context, c *client.Client, recordCID string) error {
 		}
 	}
 
+	// Attempt domain verification after signing.
+	// This is best-effort - if verification fails (e.g., no well-known file),
+	// signing still succeeds but domain ownership is not proven.
+	verifyResp, err := c.VerifyDomain(ctx, recordCID)
+	if err != nil {
+		// Log but don't fail - domain verification is optional
+		fmt.Fprintf(os.Stderr, "Note: domain verification skipped: %v\n", err)
+	} else if !verifyResp.GetVerified() {
+		// Verification was attempted but failed
+		errMsg := verifyResp.GetErrorMessage()
+		if errMsg != "" {
+			fmt.Fprintf(os.Stderr, "Note: domain not verified: %s\n", errMsg)
+		}
+	} else {
+		// Verification succeeded
+		fmt.Fprintf(os.Stderr, "Domain verified: %s (method: %s)\n",
+			verifyResp.GetVerification().GetDomain(),
+			verifyResp.GetVerification().GetMethod())
+	}
+
 	return nil
 }
