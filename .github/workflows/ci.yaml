@@ -151,9 +151,6 @@ jobs:
     with:
       image_repo: ghcr.io/agntcy
       release_tag: ${{ github.ref_name }}
-    secrets:
-      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      NPMJS_TOKEN: ${{ secrets.NPMJS_TOKEN }}
 
   integration:
     name: Run integration tests
