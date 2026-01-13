@@ -181,7 +181,7 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.Reco
 	if err != nil {
 		// If manifest doesn't exist, consider it already deleted
 		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "NOT_FOUND") {
-			internalLogger.Info("Manifest not found, already deleted", "cid", cid)
+			internalLogger.Info("Manifest not found (never existed or deleted already)", "cid", cid)
 
 			return nil
 		}
