@@ -141,27 +141,6 @@ func (c *CLI) Verify(recordCID string) *CommandBuilder {
 	return c.Command("verify").WithArgs(recordCID)
 }
 
-// Naming commands for domain verification.
-func (c *CLI) Naming() *NamingCommands {
-	return &NamingCommands{cli: c}
-}
-
-type NamingCommands struct {
-	cli *CLI
-}
-
-func (n *NamingCommands) Verify(cid string) *CommandBuilder {
-	return n.cli.Command("naming").WithArgs("verify", cid)
-}
-
-func (n *NamingCommands) Check(cid string) *CommandBuilder {
-	return n.cli.Command("naming").WithArgs("check", cid)
-}
-
-func (n *NamingCommands) List(domain string) *CommandBuilder {
-	return n.cli.Command("naming").WithArgs("list", domain)
-}
-
 // Network commands.
 func (c *CLI) Network() *NetworkCommands {
 	return &NetworkCommands{cli: c}
