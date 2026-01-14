@@ -455,7 +455,11 @@ tasks:
     desc: Start Directory server
     dir: server/cmd
     env:
+      # Local development settings:
+      # - Faster publication scheduling for quicker feedback
+      # - OASF validation disabled (no external schema dependency)
       DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+      DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
     cmds:
       - defer: { task: server:store:stop }
       - task: server:store:start
