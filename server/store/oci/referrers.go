@@ -9,7 +9,7 @@ import (
 	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/server/signing"
 	"github.com/agntcy/dir/utils/logging"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
@@ -47,25 +47,6 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 
 	// Map API type to internal OCI artifact type
 	ociArtifactType := apiToOCIType(referrer.GetType())
-
-	// If the referrer is a public key and using Zot registry, upload to Zot's cosign extension
-	// for signature verification. Other registries only use OCI referrers for public key storage.
-	if ociArtifactType == PublicKeyArtifactMediaType && s.config.GetType() == ociconfig.RegistryTypeZot {
-		err := s.uploadPublicKeyToZot(ctx, referrer)
-		if err != nil {
-			return status.Errorf(codes.Internal, "failed to upload public key to zot: %v", err)
-		}
-	}
-
-	// If the referrer is a signature, use cosign to attach the signature to the record instead of pushing it as a blob
-	if ociArtifactType == SignatureArtifactType {
-		err := s.pushSignature(ctx, recordCID, referrer)
-		if err != nil {
-			return status.Errorf(codes.Internal, "failed to push signature: %v", err)
-		}
-
-		return nil
-	}
 
 	// Marshal the referrer to JSON
 	referrerBytes, err := protojson.Marshal(referrer)
@@ -227,7 +208,7 @@ func (s *store) extractReferrerFromManifest(ctx context.Context, manifestDesc oc
 			return nil, status.Errorf(codes.Internal, "failed to unmarshal referrer for CID %s: %v", recordCID, err)
 		}
 	} else { // If the referrer is a signature, convert the cosign signature to a referrer
-		referrer, err = s.convertCosignSignatureToReferrer(blobDesc, referrerData)
+		referrer, err = signing.ConvertCosignSignatureToReferrer(blobDesc.Annotations, referrerData)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to convert cosign signature to referrer: %v", err)
 		}

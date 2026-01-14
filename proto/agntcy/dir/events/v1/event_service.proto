@@ -115,11 +115,16 @@ enum EventType {
   // A record was signed.
   EVENT_TYPE_RECORD_SIGNED = 9;
 
+  // A record signature was verified.
+  EVENT_TYPE_RECORD_VERIFIED = 10;
+
+  // A public key was uploaded.
+  EVENT_TYPE_PUBLIC_KEY_UPLOADED = 11;
+
   // Future event types can be added here without breaking existing clients.
   // Examples:
-  // EVENT_TYPE_RECORD_VERIFIED = 10;
-  // EVENT_TYPE_RECORD_SEARCHED = 11;
-  // EVENT_TYPE_REMOTE_RECORD_ANNOUNCED = 12;
-  // EVENT_TYPE_PEER_CONNECTED = 13;
-  // EVENT_TYPE_PEER_DISCONNECTED = 14;
+  // EVENT_TYPE_RECORD_SEARCHED = 12;
+  // EVENT_TYPE_REMOTE_RECORD_ANNOUNCED = 13;
+  // EVENT_TYPE_PEER_CONNECTED = 14;
+  // EVENT_TYPE_PEER_DISCONNECTED = 15;
 }

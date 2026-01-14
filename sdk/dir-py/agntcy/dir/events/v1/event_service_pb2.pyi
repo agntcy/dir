@@ -19,6 +19,8 @@ class EventType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     EVENT_TYPE_SYNC_COMPLETED: _ClassVar[EventType]
     EVENT_TYPE_SYNC_FAILED: _ClassVar[EventType]
     EVENT_TYPE_RECORD_SIGNED: _ClassVar[EventType]
+    EVENT_TYPE_RECORD_VERIFIED: _ClassVar[EventType]
+    EVENT_TYPE_PUBLIC_KEY_UPLOADED: _ClassVar[EventType]
 EVENT_TYPE_UNSPECIFIED: EventType
 EVENT_TYPE_RECORD_PUSHED: EventType
 EVENT_TYPE_RECORD_PULLED: EventType
@@ -29,6 +31,8 @@ EVENT_TYPE_SYNC_CREATED: EventType
 EVENT_TYPE_SYNC_COMPLETED: EventType
 EVENT_TYPE_SYNC_FAILED: EventType
 EVENT_TYPE_RECORD_SIGNED: EventType
+EVENT_TYPE_RECORD_VERIFIED: EventType
+EVENT_TYPE_PUBLIC_KEY_UPLOADED: EventType
 
 class ListenRequest(_message.Message):
     __slots__ = ("event_types", "label_filters", "cid_filters")

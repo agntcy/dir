@@ -45,7 +45,6 @@ type store struct {
 var (
 	_ types.StoreAPI         = (*store)(nil)
 	_ types.ReferrerStoreAPI = (*store)(nil)
-	_ types.VerifierStore    = (*store)(nil)
 	_ types.FullStore        = (*store)(nil)
 )
 
