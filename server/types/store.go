@@ -44,15 +44,16 @@ type ReferrerStoreAPI interface {
 	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error
 }
 
-// VerifierStore provides signature verification using Zot registry.
-// This is implemented by OCI-backed stores that have access to a Zot registry
-// with cosign/notation signature support.
+// VerifierStore provides signature verification for records.
+// Implementations vary by registry type:
+//   - Zot: uses GraphQL API for verification
+//   - Generic OCI: uses cosign library with OCI referrers
 //
-// Implementations: oci.Store (when using Zot registry)
 // Used by: sign.Controller.
 type VerifierStore interface {
-	// VerifyWithZot verifies a record signature using Zot registry GraphQL API
-	VerifyWithZot(ctx context.Context, recordCID string) (bool, error)
+	// VerifySignature verifies a record signature.
+	// Returns true if the signature is valid and trusted.
+	VerifySignature(ctx context.Context, recordCID string) (bool, error)
 }
 
 // FullStore is the complete store interface with all optional capabilities.

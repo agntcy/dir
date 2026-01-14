@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/utils/logging"
@@ -176,39 +177,35 @@ func (s *store) deleteFromRemoteRepository(ctx context.Context, ref *corev1.Reco
 
 	internalLogger.Debug("Starting remote repository deletion", "cid", cid)
 
-	var errors []string
-
-	// Phase 1: Delete manifest (tags will be cleaned up by OCI GC)
-	internalLogger.Debug("Phase 1: Deleting manifest", "cid", cid)
-
 	manifestDesc, err := s.repo.Resolve(ctx, cid)
 	if err != nil {
-		internalLogger.Debug("Failed to resolve manifest during delete (may already be deleted)", "cid", cid, "error", err)
-		errors = append(errors, fmt.Sprintf("manifest resolve: %v", err))
-	} else {
-		if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
-			internalLogger.Warn("Failed to delete manifest", "cid", cid, "error", err)
-			errors = append(errors, fmt.Sprintf("manifest delete: %v", err))
-		} else {
-			internalLogger.Debug("Manifest deleted successfully", "cid", cid, "digest", manifestDesc.Digest.String())
+		// If manifest doesn't exist, consider it already deleted
+		if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "NOT_FOUND") {
+			internalLogger.Info("Manifest not found (never existed or deleted already)", "cid", cid)
+
+			return nil
 		}
+
+		// Other errors (network, auth, etc.) are internal failures
+		return status.Errorf(codes.Internal, "failed to resolve manifest for deletion: %v", err)
 	}
 
-	// Phase 2: Skip blob deletion for remote registries (best practice)
-	// Most remote registries handle blob cleanup via garbage collection
-	internalLogger.Debug("Phase 2: Skipping blob deletion (handled by registry GC)", "cid", cid)
-	internalLogger.Info("Blob cleanup skipped for remote registry - will be handled by garbage collection",
-		"cid", cid,
-		"note", "This is the recommended approach for remote registries")
+	if err := repo.Manifests().Delete(ctx, manifestDesc); err != nil {
+		errStr := err.Error()
 
-	// Log summary
-	if len(errors) > 0 {
-		// For remote registries, partial failure is common and expected
-		// Many operations may not be supported, but this is normal
-		internalLogger.Warn("Partial delete completed with some errors", "cid", cid, "errors", errors)
-	} else {
-		internalLogger.Info("Record deletion completed successfully", "cid", cid)
+		// Check for "operation not supported" errors (e.g., GHCR returns 405)
+		if strings.Contains(errStr, "405") || strings.Contains(errStr, "unsupported") {
+			internalLogger.Warn("Registry does not support manifest deletion via OCI API", "cid", cid, "error", err, "hint", "Delete the package through the registry's web UI or native API (e.g., GitHub Packages API for GHCR)")
+
+			return status.Errorf(codes.Unimplemented, "registry does not support OCI delete API; use the registry's web UI or native API to delete packages")
+		}
+
+		internalLogger.Warn("Failed to delete manifest", "cid", cid, "error", err)
+
+		return status.Errorf(codes.Internal, "failed to delete manifest: %v", err)
 	}
 
-	return nil // Best effort - remote registries have limited delete capabilities
+	internalLogger.Debug("Manifest deleted successfully", "cid", cid, "digest", manifestDesc.Digest.String())
+
+	return nil
 }
