@@ -12,13 +12,13 @@ class Verification(_message.Message):
     def __init__(self, domain: _Optional[_Union[DomainVerification, _Mapping]] = ...) -> None: ...
 
 class DomainVerification(_message.Message):
-    __slots__ = ("domain", "method", "matched_key_id", "verified_at")
+    __slots__ = ("domain", "method", "key_id", "verified_at")
     DOMAIN_FIELD_NUMBER: _ClassVar[int]
     METHOD_FIELD_NUMBER: _ClassVar[int]
-    MATCHED_KEY_ID_FIELD_NUMBER: _ClassVar[int]
+    KEY_ID_FIELD_NUMBER: _ClassVar[int]
     VERIFIED_AT_FIELD_NUMBER: _ClassVar[int]
     domain: str
     method: str
-    matched_key_id: str
+    key_id: str
     verified_at: _timestamp_pb2.Timestamp
-    def __init__(self, domain: _Optional[str] = ..., method: _Optional[str] = ..., matched_key_id: _Optional[str] = ..., verified_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    def __init__(self, domain: _Optional[str] = ..., method: _Optional[str] = ..., key_id: _Optional[str] = ..., verified_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...

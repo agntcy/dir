@@ -73,12 +73,12 @@ func runCheckCommand(cmd *cobra.Command, cid string) error {
 	v := resp.GetVerification()
 	dv := v.GetDomain()
 	result := map[string]interface{}{
-		"cid":            cid,
-		"verified":       true,
-		"domain":         dv.GetDomain(),
-		"method":         dv.GetMethod(),
-		"matched_key_id": dv.GetMatchedKeyId(),
-		"verified_at":    dv.GetVerifiedAt().AsTime().Format("2006-01-02T15:04:05Z07:00"),
+		"cid":         cid,
+		"verified":    true,
+		"domain":      dv.GetDomain(),
+		"method":      dv.GetMethod(),
+		"key_id":      dv.GetKeyId(),
+		"verified_at": dv.GetVerifiedAt().AsTime().Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	return presenter.PrintMessage(cmd, "Name Verification Check", "Record has verified name ownership", result)

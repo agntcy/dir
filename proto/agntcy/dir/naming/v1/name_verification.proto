@@ -26,8 +26,9 @@ message DomainVerification {
   // The verification method used: "dns" or "wellknown".
   string method = 2;
 
-  // The ID of the key that matched the signing key.
-  string matched_key_id = 3;
+  // The identifier of the domain's public key that matched the record's signing key.
+  // This is the "id" field from the well-known file or derived from the DNS TXT record.
+  string key_id = 3;
 
   // When the verification was performed.
   google.protobuf.Timestamp verified_at = 4;

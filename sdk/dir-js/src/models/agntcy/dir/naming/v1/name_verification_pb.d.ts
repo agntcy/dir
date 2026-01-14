@@ -65,11 +65,12 @@ export declare type DomainVerification = Message<"agntcy.dir.naming.v1.DomainVer
   method: string;
 
   /**
-   * The ID of the key that matched the signing key.
+   * The identifier of the domain's public key that matched the record's signing key.
+   * This is the "id" field from the well-known file or derived from the DNS TXT record.
    *
-   * @generated from field: string matched_key_id = 3;
+   * @generated from field: string key_id = 3;
    */
-  matchedKeyId: string;
+  keyId: string;
 
   /**
    * When the verification was performed.
