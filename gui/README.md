@@ -83,3 +83,22 @@ export AZURE_ENDPOINT="$AZURE_OPENAI_ENDPOINT" && \
 export AZURE_DEPLOYMENT="$AZURE_OPENAI_DEPLOYMENT_NAME" && \
 flutter run -d macos --no-pub
 ```
+
+## Running Tests
+
+To run the unit and widget tests:
+
+```bash
+flutter test
+```
+
+To run the MCP integration tests (which require the built MCP server binary):
+
+1. Ensure the MCP server is built. From the project root run:
+   ```bash
+   task mcp:build
+   ```
+2. Run the tests:
+   ```bash
+   flutter test
+   ```
