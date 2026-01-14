@@ -42,20 +42,20 @@ func NewNamingController(store types.StoreAPI, verifier *verification.Verifier) 
 	}
 }
 
-// VerifyDomain performs domain ownership verification for a signed record.
-func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomainRequest) (*namingv1.VerifyDomainResponse, error) {
-	namingLogger.Debug("VerifyDomain request received", "cid", req.GetCid())
+// Verify performs name verification for a signed record.
+func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*namingv1.VerifyResponse, error) {
+	namingLogger.Debug("Verify request received", "cid", req.GetCid())
 
 	if req.GetCid() == "" {
 		return nil, status.Error(codes.InvalidArgument, "cid is required")
 	}
 
 	// Check if already verified - prevent duplicates
-	existingResp, err := n.CheckDomainVerification(ctx, &namingv1.CheckDomainVerificationRequest{Cid: req.GetCid()})
+	existingResp, err := n.GetVerificationInfo(ctx, &namingv1.GetVerificationInfoRequest{Cid: req.GetCid()})
 	if err == nil && existingResp.GetVerified() {
-		namingLogger.Debug("Record already has domain verification", "cid", req.GetCid())
+		namingLogger.Debug("Record already has name verification", "cid", req.GetCid())
 
-		return &namingv1.VerifyDomainResponse{
+		return &namingv1.VerifyResponse{
 			Verified:     true,
 			Verification: existingResp.GetVerification(),
 		}, nil
@@ -72,7 +72,7 @@ func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomai
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to extract record name: %v", err)
 
-		return &namingv1.VerifyDomainResponse{
+		return &namingv1.VerifyResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
 		}, nil
@@ -81,7 +81,7 @@ func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomai
 	if recordName == "" {
 		errMsg := "record has no name field"
 
-		return &namingv1.VerifyDomainResponse{
+		return &namingv1.VerifyResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
 		}, nil
@@ -92,7 +92,7 @@ func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomai
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to get public key: %v", err)
 
-		return &namingv1.VerifyDomainResponse{
+		return &namingv1.VerifyResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
 		}, nil
@@ -107,7 +107,7 @@ func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomai
 			errMsg = "verification failed"
 		}
 
-		return &namingv1.VerifyDomainResponse{
+		return &namingv1.VerifyResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
 		}, nil
@@ -133,24 +133,24 @@ func (n *namingCtrl) VerifyDomain(ctx context.Context, req *namingv1.VerifyDomai
 	}
 
 	if err := referrerStore.PushReferrer(ctx, req.GetCid(), referrer); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to store domain verification: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to store verification: %v", err)
 	}
 
-	namingLogger.Info("Domain verification stored",
+	namingLogger.Info("Name verification stored",
 		"cid", req.GetCid(),
 		"domain", result.Domain,
 		"method", result.Method,
 		"keyID", result.MatchedKeyID)
 
-	return &namingv1.VerifyDomainResponse{
+	return &namingv1.VerifyResponse{
 		Verified:     true,
 		Verification: domainVerification,
 	}, nil
 }
 
-// CheckDomainVerification checks if a record has verified domain ownership.
-func (n *namingCtrl) CheckDomainVerification(ctx context.Context, req *namingv1.CheckDomainVerificationRequest) (*namingv1.CheckDomainVerificationResponse, error) {
-	namingLogger.Debug("CheckDomainVerification request received", "cid", req.GetCid())
+// GetVerificationInfo retrieves the verification info for a record.
+func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetVerificationInfoRequest) (*namingv1.GetVerificationInfoResponse, error) {
+	namingLogger.Debug("GetVerificationInfo request received", "cid", req.GetCid())
 
 	if req.GetCid() == "" {
 		return nil, status.Error(codes.InvalidArgument, "cid is required")
@@ -182,15 +182,15 @@ func (n *namingCtrl) CheckDomainVerification(ctx context.Context, req *namingv1.
 	}
 
 	if domainVerification == nil {
-		errMsg := "no domain verification found"
+		errMsg := "no verification found"
 
-		return &namingv1.CheckDomainVerificationResponse{
+		return &namingv1.GetVerificationInfoResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
 		}, nil
 	}
 
-	return &namingv1.CheckDomainVerificationResponse{
+	return &namingv1.GetVerificationInfoResponse{
 		Verified:     true,
 		Verification: domainVerification,
 	}, nil

@@ -5,13 +5,13 @@ from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Opti
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
-class VerifyDomainRequest(_message.Message):
+class VerifyRequest(_message.Message):
     __slots__ = ("cid",)
     CID_FIELD_NUMBER: _ClassVar[int]
     cid: str
     def __init__(self, cid: _Optional[str] = ...) -> None: ...
 
-class VerifyDomainResponse(_message.Message):
+class VerifyResponse(_message.Message):
     __slots__ = ("verified", "verification", "error_message")
     VERIFIED_FIELD_NUMBER: _ClassVar[int]
     VERIFICATION_FIELD_NUMBER: _ClassVar[int]
@@ -21,13 +21,13 @@ class VerifyDomainResponse(_message.Message):
     error_message: str
     def __init__(self, verified: bool = ..., verification: _Optional[_Union[_domain_verification_pb2.DomainVerification, _Mapping]] = ..., error_message: _Optional[str] = ...) -> None: ...
 
-class CheckDomainVerificationRequest(_message.Message):
+class GetVerificationInfoRequest(_message.Message):
     __slots__ = ("cid",)
     CID_FIELD_NUMBER: _ClassVar[int]
     cid: str
     def __init__(self, cid: _Optional[str] = ...) -> None: ...
 
-class CheckDomainVerificationResponse(_message.Message):
+class GetVerificationInfoResponse(_message.Message):
     __slots__ = ("verified", "verification", "error_message")
     VERIFIED_FIELD_NUMBER: _ClassVar[int]
     VERIFICATION_FIELD_NUMBER: _ClassVar[int]

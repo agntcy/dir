@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from agntcy.dir.naming.v1 import domain_verification_pb2 as agntcy_dot_dir_dot_naming_dot_v1_dot_domain__verification__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)agntcy/dir/naming/v1/naming_service.proto\x12\x14\x61gntcy.dir.naming.v1\x1a.agntcy/dir/naming/v1/domain_verification.proto\"\'\n\x13VerifyDomainRequest\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xbc\x01\n\x14VerifyDomainResponse\x12\x1a\n\x08verified\x18\x01 \x01(\x08R\x08verified\x12L\n\x0cverification\x18\x02 \x01(\x0b\x32(.agntcy.dir.naming.v1.DomainVerificationR\x0cverification\x12(\n\rerror_message\x18\x03 \x01(\tH\x00R\x0c\x65rrorMessage\x88\x01\x01\x42\x10\n\x0e_error_message\"2\n\x1e\x43heckDomainVerificationRequest\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xc7\x01\n\x1f\x43heckDomainVerificationResponse\x12\x1a\n\x08verified\x18\x01 \x01(\x08R\x08verified\x12L\n\x0cverification\x18\x02 \x01(\x0b\x32(.agntcy.dir.naming.v1.DomainVerificationR\x0cverification\x12(\n\rerror_message\x18\x03 \x01(\tH\x00R\x0c\x65rrorMessage\x88\x01\x01\x42\x10\n\x0e_error_message2\xff\x01\n\rNamingService\x12\x65\n\x0cVerifyDomain\x12).agntcy.dir.naming.v1.VerifyDomainRequest\x1a*.agntcy.dir.naming.v1.VerifyDomainResponse\x12\x86\x01\n\x17\x43heckDomainVerification\x12\x34.agntcy.dir.naming.v1.CheckDomainVerificationRequest\x1a\x35.agntcy.dir.naming.v1.CheckDomainVerificationResponseB\xc6\x01\n\x18\x63om.agntcy.dir.naming.v1B\x12NamingServiceProtoP\x01Z#github.com/agntcy/dir/api/naming/v1\xa2\x02\x03\x41\x44N\xaa\x02\x14\x41gntcy.Dir.Naming.V1\xca\x02\x14\x41gntcy\\Dir\\Naming\\V1\xe2\x02 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Naming::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)agntcy/dir/naming/v1/naming_service.proto\x12\x14\x61gntcy.dir.naming.v1\x1a.agntcy/dir/naming/v1/domain_verification.proto\"!\n\rVerifyRequest\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xb6\x01\n\x0eVerifyResponse\x12\x1a\n\x08verified\x18\x01 \x01(\x08R\x08verified\x12L\n\x0cverification\x18\x02 \x01(\x0b\x32(.agntcy.dir.naming.v1.DomainVerificationR\x0cverification\x12(\n\rerror_message\x18\x03 \x01(\tH\x00R\x0c\x65rrorMessage\x88\x01\x01\x42\x10\n\x0e_error_message\".\n\x1aGetVerificationInfoRequest\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xc3\x01\n\x1bGetVerificationInfoResponse\x12\x1a\n\x08verified\x18\x01 \x01(\x08R\x08verified\x12L\n\x0cverification\x18\x02 \x01(\x0b\x32(.agntcy.dir.naming.v1.DomainVerificationR\x0cverification\x12(\n\rerror_message\x18\x03 \x01(\tH\x00R\x0c\x65rrorMessage\x88\x01\x01\x42\x10\n\x0e_error_message2\xe0\x01\n\rNamingService\x12S\n\x06Verify\x12#.agntcy.dir.naming.v1.VerifyRequest\x1a$.agntcy.dir.naming.v1.VerifyResponse\x12z\n\x13GetVerificationInfo\x12\x30.agntcy.dir.naming.v1.GetVerificationInfoRequest\x1a\x31.agntcy.dir.naming.v1.GetVerificationInfoResponseB\xc6\x01\n\x18\x63om.agntcy.dir.naming.v1B\x12NamingServiceProtoP\x01Z#github.com/agntcy/dir/api/naming/v1\xa2\x02\x03\x41\x44N\xaa\x02\x14\x41gntcy.Dir.Naming.V1\xca\x02\x14\x41gntcy\\Dir\\Naming\\V1\xe2\x02 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Naming::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,14 +33,14 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'agntcy.dir.naming.v1.naming
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\030com.agntcy.dir.naming.v1B\022NamingServiceProtoP\001Z#github.com/agntcy/dir/api/naming/v1\242\002\003ADN\252\002\024Agntcy.Dir.Naming.V1\312\002\024Agntcy\\Dir\\Naming\\V1\342\002 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\352\002\027Agntcy::Dir::Naming::V1'
-  _globals['_VERIFYDOMAINREQUEST']._serialized_start=115
-  _globals['_VERIFYDOMAINREQUEST']._serialized_end=154
-  _globals['_VERIFYDOMAINRESPONSE']._serialized_start=157
-  _globals['_VERIFYDOMAINRESPONSE']._serialized_end=345
-  _globals['_CHECKDOMAINVERIFICATIONREQUEST']._serialized_start=347
-  _globals['_CHECKDOMAINVERIFICATIONREQUEST']._serialized_end=397
-  _globals['_CHECKDOMAINVERIFICATIONRESPONSE']._serialized_start=400
-  _globals['_CHECKDOMAINVERIFICATIONRESPONSE']._serialized_end=599
-  _globals['_NAMINGSERVICE']._serialized_start=602
-  _globals['_NAMINGSERVICE']._serialized_end=857
+  _globals['_VERIFYREQUEST']._serialized_start=115
+  _globals['_VERIFYREQUEST']._serialized_end=148
+  _globals['_VERIFYRESPONSE']._serialized_start=151
+  _globals['_VERIFYRESPONSE']._serialized_end=333
+  _globals['_GETVERIFICATIONINFOREQUEST']._serialized_start=335
+  _globals['_GETVERIFICATIONINFOREQUEST']._serialized_end=381
+  _globals['_GETVERIFICATIONINFORESPONSE']._serialized_start=384
+  _globals['_GETVERIFICATIONINFORESPONSE']._serialized_end=579
+  _globals['_NAMINGSERVICE']._serialized_start=582
+  _globals['_NAMINGSERVICE']._serialized_end=806
 # @@protoc_insertion_point(module_scope)

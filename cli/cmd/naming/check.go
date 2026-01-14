@@ -15,20 +15,20 @@ import (
 
 var checkCmd = &cobra.Command{
 	Use:   "check <cid>",
-	Short: "Check if a record has verified domain ownership",
-	Long: `Check if a record has verified domain ownership.
+	Short: "Check if a record has verified name ownership",
+	Long: `Check if a record has verified name ownership.
 
-This command checks whether a record has a stored domain verification.
+This command checks whether a record has a stored name verification.
 Unlike 'dirctl naming verify', this does not perform verification - it only
 queries for an existing verification result.
 
 Use this command to:
-- Check if a record has been domain-verified
+- Check if a record has been name-verified
 - Retrieve verification details (domain, method, key ID, timestamp)
 
 Usage examples:
 
-1. Check domain verification status:
+1. Check name verification status:
    dirctl naming check <cid>
 
 2. Check with JSON output:
@@ -47,10 +47,10 @@ func runCheckCommand(cmd *cobra.Command, cid string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Call CheckDomainVerification
-	resp, err := c.CheckDomainVerification(cmd.Context(), cid)
+	// Call GetVerificationInfo
+	resp, err := c.GetVerificationInfo(cmd.Context(), cid)
 	if err != nil {
-		return fmt.Errorf("failed to check domain verification: %w", err)
+		return fmt.Errorf("failed to get verification info: %w", err)
 	}
 
 	if !resp.GetVerified() {
@@ -66,7 +66,7 @@ func runCheckCommand(cmd *cobra.Command, cid string) error {
 			"message":  errMsg,
 		}
 
-		return presenter.PrintMessage(cmd, "Domain Verification Check", "No domain verification found", result)
+		return presenter.PrintMessage(cmd, "Name Verification Check", "No name verification found", result)
 	}
 
 	// Output the verification details
@@ -80,5 +80,5 @@ func runCheckCommand(cmd *cobra.Command, cid string) error {
 		"verified_at":    v.GetVerifiedAt().AsTime().Format("2006-01-02T15:04:05Z07:00"),
 	}
 
-	return presenter.PrintMessage(cmd, "Domain Verification Check", "Record has verified domain ownership", result)
+	return presenter.PrintMessage(cmd, "Name Verification Check", "Record has verified name ownership", result)
 }

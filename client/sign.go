@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/utils/cosign"
@@ -195,37 +194,4 @@ func (c *Client) pushReferrersToStore(ctx context.Context, recordCID string, sig
 	}
 
 	return nil
-}
-
-// VerifyDomain performs domain ownership verification for a signed record.
-// This should be called after signing to verify and store the domain ownership proof.
-func (c *Client) VerifyDomain(ctx context.Context, cid string) (*namingv1.VerifyDomainResponse, error) {
-	if cid == "" {
-		return nil, errors.New("cid is required")
-	}
-
-	resp, err := c.NamingServiceClient.VerifyDomain(ctx, &namingv1.VerifyDomainRequest{
-		Cid: cid,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify domain: %w", err)
-	}
-
-	return resp, nil
-}
-
-// CheckDomainVerification checks if a record has verified domain ownership.
-func (c *Client) CheckDomainVerification(ctx context.Context, cid string) (*namingv1.CheckDomainVerificationResponse, error) {
-	if cid == "" {
-		return nil, errors.New("cid is required")
-	}
-
-	resp, err := c.NamingServiceClient.CheckDomainVerification(ctx, &namingv1.CheckDomainVerificationRequest{
-		Cid: cid,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to check domain verification: %w", err)
-	}
-
-	return resp, nil
 }

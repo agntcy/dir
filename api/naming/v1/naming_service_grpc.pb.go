@@ -22,21 +22,22 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	NamingService_VerifyDomain_FullMethodName            = "/agntcy.dir.naming.v1.NamingService/VerifyDomain"
-	NamingService_CheckDomainVerification_FullMethodName = "/agntcy.dir.naming.v1.NamingService/CheckDomainVerification"
+	NamingService_Verify_FullMethodName              = "/agntcy.dir.naming.v1.NamingService/Verify"
+	NamingService_GetVerificationInfo_FullMethodName = "/agntcy.dir.naming.v1.NamingService/GetVerificationInfo"
 )
 
 // NamingServiceClient is the client API for NamingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// NamingService provides methods to verify and check domain ownership.
+// NamingService provides methods to verify and inspect name verification state.
 type NamingServiceClient interface {
-	// VerifyDomain performs domain ownership verification for a signed record.
-	// This should be called after signing a record to verify and store the domain ownership proof.
-	VerifyDomain(ctx context.Context, in *VerifyDomainRequest, opts ...grpc.CallOption) (*VerifyDomainResponse, error)
-	// CheckDomainVerification checks if a record has verified domain ownership.
-	CheckDomainVerification(ctx context.Context, in *CheckDomainVerificationRequest, opts ...grpc.CallOption) (*CheckDomainVerificationResponse, error)
+	// Verify performs name verification for a signed record.
+	// The record's name should be prefixed with the protocol (dns:// or wellknown://)
+	// to indicate the verification method.
+	Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error)
+	// GetVerificationInfo retrieves the verification info for a record.
+	GetVerificationInfo(ctx context.Context, in *GetVerificationInfoRequest, opts ...grpc.CallOption) (*GetVerificationInfoResponse, error)
 }
 
 type namingServiceClient struct {
@@ -47,20 +48,20 @@ func NewNamingServiceClient(cc grpc.ClientConnInterface) NamingServiceClient {
 	return &namingServiceClient{cc}
 }
 
-func (c *namingServiceClient) VerifyDomain(ctx context.Context, in *VerifyDomainRequest, opts ...grpc.CallOption) (*VerifyDomainResponse, error) {
+func (c *namingServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(VerifyDomainResponse)
-	err := c.cc.Invoke(ctx, NamingService_VerifyDomain_FullMethodName, in, out, cOpts...)
+	out := new(VerifyResponse)
+	err := c.cc.Invoke(ctx, NamingService_Verify_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *namingServiceClient) CheckDomainVerification(ctx context.Context, in *CheckDomainVerificationRequest, opts ...grpc.CallOption) (*CheckDomainVerificationResponse, error) {
+func (c *namingServiceClient) GetVerificationInfo(ctx context.Context, in *GetVerificationInfoRequest, opts ...grpc.CallOption) (*GetVerificationInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CheckDomainVerificationResponse)
-	err := c.cc.Invoke(ctx, NamingService_CheckDomainVerification_FullMethodName, in, out, cOpts...)
+	out := new(GetVerificationInfoResponse)
+	err := c.cc.Invoke(ctx, NamingService_GetVerificationInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,13 +72,14 @@ func (c *namingServiceClient) CheckDomainVerification(ctx context.Context, in *C
 // All implementations should embed UnimplementedNamingServiceServer
 // for forward compatibility.
 //
-// NamingService provides methods to verify and check domain ownership.
+// NamingService provides methods to verify and inspect name verification state.
 type NamingServiceServer interface {
-	// VerifyDomain performs domain ownership verification for a signed record.
-	// This should be called after signing a record to verify and store the domain ownership proof.
-	VerifyDomain(context.Context, *VerifyDomainRequest) (*VerifyDomainResponse, error)
-	// CheckDomainVerification checks if a record has verified domain ownership.
-	CheckDomainVerification(context.Context, *CheckDomainVerificationRequest) (*CheckDomainVerificationResponse, error)
+	// Verify performs name verification for a signed record.
+	// The record's name should be prefixed with the protocol (dns:// or wellknown://)
+	// to indicate the verification method.
+	Verify(context.Context, *VerifyRequest) (*VerifyResponse, error)
+	// GetVerificationInfo retrieves the verification info for a record.
+	GetVerificationInfo(context.Context, *GetVerificationInfoRequest) (*GetVerificationInfoResponse, error)
 }
 
 // UnimplementedNamingServiceServer should be embedded to have
@@ -87,11 +89,11 @@ type NamingServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedNamingServiceServer struct{}
 
-func (UnimplementedNamingServiceServer) VerifyDomain(context.Context, *VerifyDomainRequest) (*VerifyDomainResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VerifyDomain not implemented")
+func (UnimplementedNamingServiceServer) Verify(context.Context, *VerifyRequest) (*VerifyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Verify not implemented")
 }
-func (UnimplementedNamingServiceServer) CheckDomainVerification(context.Context, *CheckDomainVerificationRequest) (*CheckDomainVerificationResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckDomainVerification not implemented")
+func (UnimplementedNamingServiceServer) GetVerificationInfo(context.Context, *GetVerificationInfoRequest) (*GetVerificationInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVerificationInfo not implemented")
 }
 func (UnimplementedNamingServiceServer) testEmbeddedByValue() {}
 
@@ -113,38 +115,38 @@ func RegisterNamingServiceServer(s grpc.ServiceRegistrar, srv NamingServiceServe
 	s.RegisterService(&NamingService_ServiceDesc, srv)
 }
 
-func _NamingService_VerifyDomain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VerifyDomainRequest)
+func _NamingService_Verify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NamingServiceServer).VerifyDomain(ctx, in)
+		return srv.(NamingServiceServer).Verify(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: NamingService_VerifyDomain_FullMethodName,
+		FullMethod: NamingService_Verify_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NamingServiceServer).VerifyDomain(ctx, req.(*VerifyDomainRequest))
+		return srv.(NamingServiceServer).Verify(ctx, req.(*VerifyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NamingService_CheckDomainVerification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckDomainVerificationRequest)
+func _NamingService_GetVerificationInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVerificationInfoRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NamingServiceServer).CheckDomainVerification(ctx, in)
+		return srv.(NamingServiceServer).GetVerificationInfo(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: NamingService_CheckDomainVerification_FullMethodName,
+		FullMethod: NamingService_GetVerificationInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NamingServiceServer).CheckDomainVerification(ctx, req.(*CheckDomainVerificationRequest))
+		return srv.(NamingServiceServer).GetVerificationInfo(ctx, req.(*GetVerificationInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -157,12 +159,12 @@ var NamingService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*NamingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "VerifyDomain",
-			Handler:    _NamingService_VerifyDomain_Handler,
+			MethodName: "Verify",
+			Handler:    _NamingService_Verify_Handler,
 		},
 		{
-			MethodName: "CheckDomainVerification",
-			Handler:    _NamingService_CheckDomainVerification_Handler,
+			MethodName: "GetVerificationInfo",
+			Handler:    _NamingService_GetVerificationInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

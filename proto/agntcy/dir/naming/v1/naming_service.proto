@@ -7,48 +7,49 @@ package agntcy.dir.naming.v1;
 
 import "agntcy/dir/naming/v1/domain_verification.proto";
 
-// NamingService provides methods to verify and check domain ownership.
+// NamingService provides methods to verify and inspect name verification state.
 service NamingService {
-  // VerifyDomain performs domain ownership verification for a signed record.
-  // This should be called after signing a record to verify and store the domain ownership proof.
-  rpc VerifyDomain(VerifyDomainRequest) returns (VerifyDomainResponse);
+  // Verify performs name verification for a signed record.
+  // The record's name should be prefixed with the protocol (dns:// or wellknown://)
+  // to indicate the verification method.
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
 
-  // CheckDomainVerification checks if a record has verified domain ownership.
-  rpc CheckDomainVerification(CheckDomainVerificationRequest) returns (CheckDomainVerificationResponse);
+  // GetVerificationInfo retrieves the verification info for a record.
+  rpc GetVerificationInfo(GetVerificationInfoRequest) returns (GetVerificationInfoResponse);
 }
 
-// VerifyDomainRequest is the request for performing domain verification.
-message VerifyDomainRequest {
+// VerifyRequest is the request for performing name verification.
+message VerifyRequest {
   // The CID of the signed record to verify.
   string cid = 1;
 }
 
-// VerifyDomainResponse is the response for domain verification.
-message VerifyDomainResponse {
-  // Whether the domain verification succeeded.
+// VerifyResponse is the response for name verification.
+message VerifyResponse {
+  // Whether the name verification succeeded.
   bool verified = 1;
 
-  // The domain verification details (only set if verified is true).
+  // The verification details (only set if verified is true).
   DomainVerification verification = 2;
 
   // Error message if verification failed.
   optional string error_message = 3;
 }
 
-// CheckDomainVerificationRequest is the request for checking domain verification.
-message CheckDomainVerificationRequest {
+// GetVerificationInfoRequest is the request for retrieving verification info.
+message GetVerificationInfoRequest {
   // The CID of the record to check.
   string cid = 1;
 }
 
-// CheckDomainVerificationResponse is the response for checking domain verification.
-message CheckDomainVerificationResponse {
-  // Whether the record has verified domain ownership.
+// GetVerificationInfoResponse is the response for retrieving verification info.
+message GetVerificationInfoResponse {
+  // Whether the record has verified name ownership.
   bool verified = 1;
 
-  // The domain verification details (only set if verified is true).
+  // The verification details (only set if verified is true).
   DomainVerification verification = 2;
 
-  // Error message if verification lookup failed.
+  // Error message if lookup failed.
   optional string error_message = 3;
 }

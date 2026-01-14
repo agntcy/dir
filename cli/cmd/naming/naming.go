@@ -11,17 +11,23 @@ import (
 // Command is the parent command for naming operations.
 var Command = &cobra.Command{
 	Use:   "naming",
-	Short: "Domain naming and verification operations",
-	Long: `Domain naming and verification operations.
+	Short: "Name verification operations",
+	Long: `Name verification operations.
 
-This command group provides access to domain ownership verification:
+This command group provides access to name ownership verification:
 
-- verify: Verify domain ownership for a signed record
-- check: Check if a record has verified domain ownership
+- verify: Verify name ownership for a signed record
+- check: Check if a record has verified name ownership
 
-Domain verification proves that a record's signing key is authorized by the
+Name verification proves that a record's signing key is authorized by the
 domain claimed in the record's name. This enables trustworthy human-readable
-naming (e.g., "cisco.com/marketing-agent").
+naming (e.g., "dns://cisco.com/marketing-agent").
+
+Protocol prefixes (required for verification):
+- dns://domain/path - verify using DNS TXT records
+- wellknown://domain/path - verify using well-known file
+
+Records without a protocol prefix will not be verified.
 
 Verification methods:
 1. DNS TXT record: _oasf.<domain> with format "v=oasf1; k=<type>; p=<key>"
@@ -29,10 +35,10 @@ Verification methods:
 
 Examples:
 
-1. Verify domain ownership after signing:
+1. Verify name ownership after signing:
    dirctl naming verify <cid>
 
-2. Check if a record has verified domain ownership:
+2. Check if a record has verified name ownership:
    dirctl naming check <cid>
 `,
 }

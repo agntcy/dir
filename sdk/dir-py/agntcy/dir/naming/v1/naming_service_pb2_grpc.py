@@ -6,7 +6,7 @@ from agntcy.dir.naming.v1 import naming_service_pb2 as agntcy_dot_dir_dot_naming
 
 
 class NamingServiceStub(object):
-    """NamingService provides methods to verify and check domain ownership.
+    """NamingService provides methods to verify and inspect name verification state.
     """
 
     def __init__(self, channel):
@@ -15,32 +15,33 @@ class NamingServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.VerifyDomain = channel.unary_unary(
-                '/agntcy.dir.naming.v1.NamingService/VerifyDomain',
-                request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyDomainRequest.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyDomainResponse.FromString,
+        self.Verify = channel.unary_unary(
+                '/agntcy.dir.naming.v1.NamingService/Verify',
+                request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyRequest.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyResponse.FromString,
                 _registered_method=True)
-        self.CheckDomainVerification = channel.unary_unary(
-                '/agntcy.dir.naming.v1.NamingService/CheckDomainVerification',
-                request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationRequest.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationResponse.FromString,
+        self.GetVerificationInfo = channel.unary_unary(
+                '/agntcy.dir.naming.v1.NamingService/GetVerificationInfo',
+                request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoRequest.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoResponse.FromString,
                 _registered_method=True)
 
 
 class NamingServiceServicer(object):
-    """NamingService provides methods to verify and check domain ownership.
+    """NamingService provides methods to verify and inspect name verification state.
     """
 
-    def VerifyDomain(self, request, context):
-        """VerifyDomain performs domain ownership verification for a signed record.
-        This should be called after signing a record to verify and store the domain ownership proof.
+    def Verify(self, request, context):
+        """Verify performs name verification for a signed record.
+        The record's name should be prefixed with the protocol (dns:// or wellknown://)
+        to indicate the verification method.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def CheckDomainVerification(self, request, context):
-        """CheckDomainVerification checks if a record has verified domain ownership.
+    def GetVerificationInfo(self, request, context):
+        """GetVerificationInfo retrieves the verification info for a record.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -49,15 +50,15 @@ class NamingServiceServicer(object):
 
 def add_NamingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'VerifyDomain': grpc.unary_unary_rpc_method_handler(
-                    servicer.VerifyDomain,
-                    request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyDomainRequest.FromString,
-                    response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyDomainResponse.SerializeToString,
+            'Verify': grpc.unary_unary_rpc_method_handler(
+                    servicer.Verify,
+                    request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyRequest.FromString,
+                    response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyResponse.SerializeToString,
             ),
-            'CheckDomainVerification': grpc.unary_unary_rpc_method_handler(
-                    servicer.CheckDomainVerification,
-                    request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationRequest.FromString,
-                    response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationResponse.SerializeToString,
+            'GetVerificationInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetVerificationInfo,
+                    request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoRequest.FromString,
+                    response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -68,11 +69,11 @@ def add_NamingServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class NamingService(object):
-    """NamingService provides methods to verify and check domain ownership.
+    """NamingService provides methods to verify and inspect name verification state.
     """
 
     @staticmethod
-    def VerifyDomain(request,
+    def Verify(request,
             target,
             options=(),
             channel_credentials=None,
@@ -85,9 +86,9 @@ class NamingService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/agntcy.dir.naming.v1.NamingService/VerifyDomain',
-            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyDomainRequest.SerializeToString,
-            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyDomainResponse.FromString,
+            '/agntcy.dir.naming.v1.NamingService/Verify',
+            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyRequest.SerializeToString,
+            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -99,7 +100,7 @@ class NamingService(object):
             _registered_method=True)
 
     @staticmethod
-    def CheckDomainVerification(request,
+    def GetVerificationInfo(request,
             target,
             options=(),
             channel_credentials=None,
@@ -112,9 +113,9 @@ class NamingService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/agntcy.dir.naming.v1.NamingService/CheckDomainVerification',
-            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationRequest.SerializeToString,
-            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationResponse.FromString,
+            '/agntcy.dir.naming.v1.NamingService/GetVerificationInfo',
+            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoRequest.SerializeToString,
+            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoResponse.FromString,
             options,
             channel_credentials,
             insecure,

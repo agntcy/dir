@@ -15,11 +15,11 @@ import type { DomainVerification } from "./domain_verification_pb.js";
 export declare const file_agntcy_dir_naming_v1_naming_service: GenFile;
 
 /**
- * VerifyDomainRequest is the request for performing domain verification.
+ * VerifyRequest is the request for performing name verification.
  *
- * @generated from message agntcy.dir.naming.v1.VerifyDomainRequest
+ * @generated from message agntcy.dir.naming.v1.VerifyRequest
  */
-export declare type VerifyDomainRequest = Message<"agntcy.dir.naming.v1.VerifyDomainRequest"> & {
+export declare type VerifyRequest = Message<"agntcy.dir.naming.v1.VerifyRequest"> & {
   /**
    * The CID of the signed record to verify.
    *
@@ -29,26 +29,26 @@ export declare type VerifyDomainRequest = Message<"agntcy.dir.naming.v1.VerifyDo
 };
 
 /**
- * Describes the message agntcy.dir.naming.v1.VerifyDomainRequest.
- * Use `create(VerifyDomainRequestSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.VerifyRequest.
+ * Use `create(VerifyRequestSchema)` to create a new message.
  */
-export declare const VerifyDomainRequestSchema: GenMessage<VerifyDomainRequest>;
+export declare const VerifyRequestSchema: GenMessage<VerifyRequest>;
 
 /**
- * VerifyDomainResponse is the response for domain verification.
+ * VerifyResponse is the response for name verification.
  *
- * @generated from message agntcy.dir.naming.v1.VerifyDomainResponse
+ * @generated from message agntcy.dir.naming.v1.VerifyResponse
  */
-export declare type VerifyDomainResponse = Message<"agntcy.dir.naming.v1.VerifyDomainResponse"> & {
+export declare type VerifyResponse = Message<"agntcy.dir.naming.v1.VerifyResponse"> & {
   /**
-   * Whether the domain verification succeeded.
+   * Whether the name verification succeeded.
    *
    * @generated from field: bool verified = 1;
    */
   verified: boolean;
 
   /**
-   * The domain verification details (only set if verified is true).
+   * The verification details (only set if verified is true).
    *
    * @generated from field: agntcy.dir.naming.v1.DomainVerification verification = 2;
    */
@@ -63,17 +63,17 @@ export declare type VerifyDomainResponse = Message<"agntcy.dir.naming.v1.VerifyD
 };
 
 /**
- * Describes the message agntcy.dir.naming.v1.VerifyDomainResponse.
- * Use `create(VerifyDomainResponseSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.VerifyResponse.
+ * Use `create(VerifyResponseSchema)` to create a new message.
  */
-export declare const VerifyDomainResponseSchema: GenMessage<VerifyDomainResponse>;
+export declare const VerifyResponseSchema: GenMessage<VerifyResponse>;
 
 /**
- * CheckDomainVerificationRequest is the request for checking domain verification.
+ * GetVerificationInfoRequest is the request for retrieving verification info.
  *
- * @generated from message agntcy.dir.naming.v1.CheckDomainVerificationRequest
+ * @generated from message agntcy.dir.naming.v1.GetVerificationInfoRequest
  */
-export declare type CheckDomainVerificationRequest = Message<"agntcy.dir.naming.v1.CheckDomainVerificationRequest"> & {
+export declare type GetVerificationInfoRequest = Message<"agntcy.dir.naming.v1.GetVerificationInfoRequest"> & {
   /**
    * The CID of the record to check.
    *
@@ -83,33 +83,33 @@ export declare type CheckDomainVerificationRequest = Message<"agntcy.dir.naming.
 };
 
 /**
- * Describes the message agntcy.dir.naming.v1.CheckDomainVerificationRequest.
- * Use `create(CheckDomainVerificationRequestSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.GetVerificationInfoRequest.
+ * Use `create(GetVerificationInfoRequestSchema)` to create a new message.
  */
-export declare const CheckDomainVerificationRequestSchema: GenMessage<CheckDomainVerificationRequest>;
+export declare const GetVerificationInfoRequestSchema: GenMessage<GetVerificationInfoRequest>;
 
 /**
- * CheckDomainVerificationResponse is the response for checking domain verification.
+ * GetVerificationInfoResponse is the response for retrieving verification info.
  *
- * @generated from message agntcy.dir.naming.v1.CheckDomainVerificationResponse
+ * @generated from message agntcy.dir.naming.v1.GetVerificationInfoResponse
  */
-export declare type CheckDomainVerificationResponse = Message<"agntcy.dir.naming.v1.CheckDomainVerificationResponse"> & {
+export declare type GetVerificationInfoResponse = Message<"agntcy.dir.naming.v1.GetVerificationInfoResponse"> & {
   /**
-   * Whether the record has verified domain ownership.
+   * Whether the record has verified name ownership.
    *
    * @generated from field: bool verified = 1;
    */
   verified: boolean;
 
   /**
-   * The domain verification details (only set if verified is true).
+   * The verification details (only set if verified is true).
    *
    * @generated from field: agntcy.dir.naming.v1.DomainVerification verification = 2;
    */
   verification?: DomainVerification;
 
   /**
-   * Error message if verification lookup failed.
+   * Error message if lookup failed.
    *
    * @generated from field: optional string error_message = 3;
    */
@@ -117,37 +117,38 @@ export declare type CheckDomainVerificationResponse = Message<"agntcy.dir.naming
 };
 
 /**
- * Describes the message agntcy.dir.naming.v1.CheckDomainVerificationResponse.
- * Use `create(CheckDomainVerificationResponseSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.GetVerificationInfoResponse.
+ * Use `create(GetVerificationInfoResponseSchema)` to create a new message.
  */
-export declare const CheckDomainVerificationResponseSchema: GenMessage<CheckDomainVerificationResponse>;
+export declare const GetVerificationInfoResponseSchema: GenMessage<GetVerificationInfoResponse>;
 
 /**
- * NamingService provides methods to verify and check domain ownership.
+ * NamingService provides methods to verify and inspect name verification state.
  *
  * @generated from service agntcy.dir.naming.v1.NamingService
  */
 export declare const NamingService: GenService<{
   /**
-   * VerifyDomain performs domain ownership verification for a signed record.
-   * This should be called after signing a record to verify and store the domain ownership proof.
+   * Verify performs name verification for a signed record.
+   * The record's name should be prefixed with the protocol (dns:// or wellknown://)
+   * to indicate the verification method.
    *
-   * @generated from rpc agntcy.dir.naming.v1.NamingService.VerifyDomain
+   * @generated from rpc agntcy.dir.naming.v1.NamingService.Verify
    */
-  verifyDomain: {
+  verify: {
     methodKind: "unary";
-    input: typeof VerifyDomainRequestSchema;
-    output: typeof VerifyDomainResponseSchema;
+    input: typeof VerifyRequestSchema;
+    output: typeof VerifyResponseSchema;
   },
   /**
-   * CheckDomainVerification checks if a record has verified domain ownership.
+   * GetVerificationInfo retrieves the verification info for a record.
    *
-   * @generated from rpc agntcy.dir.naming.v1.NamingService.CheckDomainVerification
+   * @generated from rpc agntcy.dir.naming.v1.NamingService.GetVerificationInfo
    */
-  checkDomainVerification: {
+  getVerificationInfo: {
     methodKind: "unary";
-    input: typeof CheckDomainVerificationRequestSchema;
-    output: typeof CheckDomainVerificationResponseSchema;
+    input: typeof GetVerificationInfoRequestSchema;
+    output: typeof GetVerificationInfoResponseSchema;
   },
 }>;
 

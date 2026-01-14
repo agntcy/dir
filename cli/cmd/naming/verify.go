@@ -15,12 +15,18 @@ import (
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify <cid>",
-	Short: "Verify domain ownership for a signed record",
-	Long: `Verify domain ownership for a signed record.
+	Short: "Verify name ownership for a signed record",
+	Long: `Verify name ownership for a signed record.
 
-This command performs domain ownership verification for a record that has
+This command performs name ownership verification for a record that has
 already been signed. It proves that the signing key is authorized by the
 domain claimed in the record's name field.
+
+The record's name must include a protocol prefix to specify the verification method:
+- dns://domain/path - verify using DNS TXT records
+- wellknown://domain/path - verify using well-known file
+
+Records without a protocol prefix will not be verified.
 
 The verification result is stored as a referrer to the record, so subsequent
 calls to 'dirctl naming check' can retrieve the stored verification without
@@ -29,15 +35,16 @@ re-verifying.
 Prerequisites:
 - Record must be pushed to the store
 - Record must be signed (public key referrer must exist)
-- Record's name must be in format "<domain>/<path>" (e.g., "cisco.com/agent")
+- Record's name must include a protocol prefix (dns:// or wellknown://)
+- Record's name must contain a valid domain (with at least one dot)
 
-Verification methods (tried in order):
-1. DNS TXT record at _oasf.<domain>
+Verification methods:
+1. DNS TXT record at _oasf.<domain> with format "v=oasf1; k=<type>; p=<key>"
 2. Well-known file at https://<domain>/.well-known/oasf.json
 
 Usage examples:
 
-1. Verify domain ownership:
+1. Verify name ownership:
    dirctl naming verify <cid>
 
 2. Verify with JSON output:
@@ -56,10 +63,10 @@ func runVerifyCommand(cmd *cobra.Command, cid string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Call VerifyDomain
-	resp, err := c.VerifyDomain(cmd.Context(), cid)
+	// Call Verify
+	resp, err := c.VerifyName(cmd.Context(), cid)
 	if err != nil {
-		return fmt.Errorf("failed to verify domain: %w", err)
+		return fmt.Errorf("failed to verify name: %w", err)
 	}
 
 	if !resp.GetVerified() {
@@ -75,7 +82,7 @@ func runVerifyCommand(cmd *cobra.Command, cid string) error {
 			"error":    errMsg,
 		}
 
-		return presenter.PrintMessage(cmd, "Domain Verification", "Domain verification failed", result)
+		return presenter.PrintMessage(cmd, "Name Verification", "Name verification failed", result)
 	}
 
 	// Output the success
@@ -89,5 +96,5 @@ func runVerifyCommand(cmd *cobra.Command, cid string) error {
 		"verified_at":    v.GetVerifiedAt().AsTime().Format("2006-01-02T15:04:05Z07:00"),
 	}
 
-	return presenter.PrintMessage(cmd, "Domain Verification", "Domain ownership verified successfully", result)
+	return presenter.PrintMessage(cmd, "Name Verification", "Name ownership verified successfully", result)
 }

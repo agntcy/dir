@@ -5,6 +5,7 @@ package verification
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/agntcy/dir/utils/logging"
@@ -12,8 +13,8 @@ import (
 
 var verifierLogger = logging.Logger("verification/verifier")
 
-// Verifier handles domain ownership verification for OASF records.
-// It checks DNS TXT records first, then falls back to well-known files.
+// Verifier handles name ownership verification for OASF records.
+// It supports DNS TXT records and well-known files based on the protocol prefix.
 type Verifier struct {
 	// dns is the DNS resolver for TXT record lookups.
 	dns *DNSResolver
@@ -50,7 +51,7 @@ func WithAllowInsecureWellKnown(allow bool) VerifierOption {
 	}
 }
 
-// NewVerifier creates a new domain verifier with the given options.
+// NewVerifier creates a new verifier with the given options.
 func NewVerifier(opts ...VerifierOption) *Verifier {
 	v := &Verifier{}
 
@@ -71,32 +72,37 @@ func NewVerifier(opts ...VerifierOption) *Verifier {
 	return v
 }
 
-// Verify checks if the given signing key is authorized for the domain.
-// It extracts the domain from the record name, looks up the domain's published keys,
-// and checks if the signing key matches any of them.
+// Verify checks if the given signing key is authorized for the name.
+// It parses the protocol prefix from the record name to determine the verification method:
+//   - dns://domain/path -> use DNS TXT records only
+//   - wellknown://domain/path -> use well-known file only
+//   - domain/path -> try DNS first, then fall back to well-known
 func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []byte) *Result {
 	result := &Result{
 		VerifiedAt: time.Now(),
 	}
 
-	// Extract domain from record name
-	domain := ExtractDomain(recordName)
-	if domain == "" {
-		result.Error = "could not extract domain from record name"
+	// Parse the record name
+	parsed := ParseName(recordName)
+	if parsed == nil {
+		result.Error = "could not parse record name"
 
-		verifierLogger.Debug("Domain extraction failed", "recordName", recordName)
+		verifierLogger.Debug("Name parsing failed", "recordName", recordName)
 
 		return result
 	}
 
-	result.Domain = domain
-	verifierLogger.Debug("Verifying domain ownership", "domain", domain, "recordName", recordName)
+	result.Domain = parsed.Domain
+	verifierLogger.Debug("Verifying name ownership",
+		"domain", parsed.Domain,
+		"protocol", parsed.Protocol,
+		"recordName", recordName)
 
-	// Look up keys for the domain
-	keys, method, err := v.lookupKeys(ctx, domain)
+	// Look up keys for the domain based on protocol
+	keys, method, err := v.lookupKeys(ctx, parsed)
 	if err != nil {
 		result.Error = err.Error()
-		verifierLogger.Debug("Key lookup failed", "domain", domain, "error", err)
+		verifierLogger.Debug("Key lookup failed", "domain", parsed.Domain, "error", err)
 
 		return result
 	}
@@ -105,7 +111,7 @@ func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []b
 		result.Error = "no OASF keys found for domain"
 		result.Method = string(MethodNone)
 
-		verifierLogger.Debug("No keys found for domain", "domain", domain)
+		verifierLogger.Debug("No keys found for domain", "domain", parsed.Domain)
 
 		return result
 	}
@@ -117,7 +123,7 @@ func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []b
 	if !matched {
 		result.Error = "signing key does not match any domain key"
 
-		verifierLogger.Debug("Key mismatch", "domain", domain, "domainKeyCount", len(keys))
+		verifierLogger.Debug("Key mismatch", "domain", parsed.Domain, "domainKeyCount", len(keys))
 
 		return result
 	}
@@ -126,8 +132,8 @@ func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []b
 	result.Verified = true
 	result.MatchedKeyID = matchedKey.ID
 
-	verifierLogger.Info("Domain ownership verified",
-		"domain", domain,
+	verifierLogger.Info("Name ownership verified",
+		"domain", parsed.Domain,
 		"method", method,
 		"keyID", matchedKey.ID,
 		"keyType", matchedKey.Type)
@@ -135,31 +141,30 @@ func (v *Verifier) Verify(ctx context.Context, recordName string, signingKey []b
 	return result
 }
 
-// lookupKeys retrieves the public keys for a domain.
-// It tries DNS TXT records first, then falls back to well-known files.
-func (v *Verifier) lookupKeys(ctx context.Context, domain string) ([]PublicKey, VerificationMethod, error) {
-	// Try DNS first
-	keys, err := v.dns.LookupKeys(ctx, domain)
-	if err == nil && len(keys) > 0 {
+// lookupKeys retrieves the public keys for a domain based on the protocol.
+// If no protocol prefix is specified, no verification is performed.
+func (v *Verifier) lookupKeys(ctx context.Context, parsed *ParsedName) ([]PublicKey, VerificationMethod, error) {
+	switch parsed.Protocol {
+	case DNSProtocol:
+		// DNS only
+		keys, err := v.dns.LookupKeys(ctx, parsed.Domain)
+		if err != nil {
+			return nil, MethodNone, err
+		}
+
 		return keys, MethodDNS, nil
-	}
 
-	if err != nil {
-		verifierLogger.Debug("DNS lookup failed, trying well-known", "domain", domain, "error", err)
-	} else {
-		verifierLogger.Debug("No DNS records, trying well-known", "domain", domain)
-	}
+	case WellKnownProtocol:
+		// Well-known only
+		keys, err := v.wellKnown.FetchKeys(ctx, parsed.Domain)
+		if err != nil {
+			return nil, MethodNone, err
+		}
 
-	// Fall back to well-known file
-	keys, err = v.wellKnown.FetchKeys(ctx, domain)
-	if err != nil {
-		return nil, MethodNone, err
-	}
-
-	if len(keys) > 0 {
 		return keys, MethodWellKnown, nil
-	}
 
-	// No keys found via either method
-	return nil, MethodNone, nil
+	default:
+		// No protocol prefix - skip verification
+		return nil, MethodNone, errors.New("no verification protocol specified in name (use dns:// or wellknown:// prefix)")
+	}
 }

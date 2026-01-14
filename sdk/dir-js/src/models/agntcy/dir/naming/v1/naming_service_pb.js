@@ -12,38 +12,38 @@ import { file_agntcy_dir_naming_v1_domain_verification } from "./domain_verifica
  * Describes the file agntcy/dir/naming/v1/naming_service.proto.
  */
 export const file_agntcy_dir_naming_v1_naming_service = /*@__PURE__*/
-  fileDesc("CilhZ250Y3kvZGlyL25hbWluZy92MS9uYW1pbmdfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5uYW1pbmcudjEiIgoTVmVyaWZ5RG9tYWluUmVxdWVzdBILCgNjaWQYASABKAkilgEKFFZlcmlmeURvbWFpblJlc3BvbnNlEhAKCHZlcmlmaWVkGAEgASgIEj4KDHZlcmlmaWNhdGlvbhgCIAEoCzIoLmFnbnRjeS5kaXIubmFtaW5nLnYxLkRvbWFpblZlcmlmaWNhdGlvbhIaCg1lcnJvcl9tZXNzYWdlGAMgASgJSACIAQFCEAoOX2Vycm9yX21lc3NhZ2UiLQoeQ2hlY2tEb21haW5WZXJpZmljYXRpb25SZXF1ZXN0EgsKA2NpZBgBIAEoCSKhAQofQ2hlY2tEb21haW5WZXJpZmljYXRpb25SZXNwb25zZRIQCgh2ZXJpZmllZBgBIAEoCBI+Cgx2ZXJpZmljYXRpb24YAiABKAsyKC5hZ250Y3kuZGlyLm5hbWluZy52MS5Eb21haW5WZXJpZmljYXRpb24SGgoNZXJyb3JfbWVzc2FnZRgDIAEoCUgAiAEBQhAKDl9lcnJvcl9tZXNzYWdlMv8BCg1OYW1pbmdTZXJ2aWNlEmUKDFZlcmlmeURvbWFpbhIpLmFnbnRjeS5kaXIubmFtaW5nLnYxLlZlcmlmeURvbWFpblJlcXVlc3QaKi5hZ250Y3kuZGlyLm5hbWluZy52MS5WZXJpZnlEb21haW5SZXNwb25zZRKGAQoXQ2hlY2tEb21haW5WZXJpZmljYXRpb24SNC5hZ250Y3kuZGlyLm5hbWluZy52MS5DaGVja0RvbWFpblZlcmlmaWNhdGlvblJlcXVlc3QaNS5hZ250Y3kuZGlyLm5hbWluZy52MS5DaGVja0RvbWFpblZlcmlmaWNhdGlvblJlc3BvbnNlQsYBChhjb20uYWdudGN5LmRpci5uYW1pbmcudjFCEk5hbWluZ1NlcnZpY2VQcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL25hbWluZy92MaICA0FETqoCFEFnbnRjeS5EaXIuTmFtaW5nLlYxygIUQWdudGN5XERpclxOYW1pbmdcVjHiAiBBZ250Y3lcRGlyXE5hbWluZ1xWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpOYW1pbmc6OlYxYgZwcm90bzM", [file_agntcy_dir_naming_v1_domain_verification]);
+  fileDesc("CilhZ250Y3kvZGlyL25hbWluZy92MS9uYW1pbmdfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5uYW1pbmcudjEiHAoNVmVyaWZ5UmVxdWVzdBILCgNjaWQYASABKAkikAEKDlZlcmlmeVJlc3BvbnNlEhAKCHZlcmlmaWVkGAEgASgIEj4KDHZlcmlmaWNhdGlvbhgCIAEoCzIoLmFnbnRjeS5kaXIubmFtaW5nLnYxLkRvbWFpblZlcmlmaWNhdGlvbhIaCg1lcnJvcl9tZXNzYWdlGAMgASgJSACIAQFCEAoOX2Vycm9yX21lc3NhZ2UiKQoaR2V0VmVyaWZpY2F0aW9uSW5mb1JlcXVlc3QSCwoDY2lkGAEgASgJIp0BChtHZXRWZXJpZmljYXRpb25JbmZvUmVzcG9uc2USEAoIdmVyaWZpZWQYASABKAgSPgoMdmVyaWZpY2F0aW9uGAIgASgLMiguYWdudGN5LmRpci5uYW1pbmcudjEuRG9tYWluVmVyaWZpY2F0aW9uEhoKDWVycm9yX21lc3NhZ2UYAyABKAlIAIgBAUIQCg5fZXJyb3JfbWVzc2FnZTLgAQoNTmFtaW5nU2VydmljZRJTCgZWZXJpZnkSIy5hZ250Y3kuZGlyLm5hbWluZy52MS5WZXJpZnlSZXF1ZXN0GiQuYWdudGN5LmRpci5uYW1pbmcudjEuVmVyaWZ5UmVzcG9uc2USegoTR2V0VmVyaWZpY2F0aW9uSW5mbxIwLmFnbnRjeS5kaXIubmFtaW5nLnYxLkdldFZlcmlmaWNhdGlvbkluZm9SZXF1ZXN0GjEuYWdudGN5LmRpci5uYW1pbmcudjEuR2V0VmVyaWZpY2F0aW9uSW5mb1Jlc3BvbnNlQsYBChhjb20uYWdudGN5LmRpci5uYW1pbmcudjFCEk5hbWluZ1NlcnZpY2VQcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL25hbWluZy92MaICA0FETqoCFEFnbnRjeS5EaXIuTmFtaW5nLlYxygIUQWdudGN5XERpclxOYW1pbmdcVjHiAiBBZ250Y3lcRGlyXE5hbWluZ1xWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpOYW1pbmc6OlYxYgZwcm90bzM", [file_agntcy_dir_naming_v1_domain_verification]);
 
 /**
- * Describes the message agntcy.dir.naming.v1.VerifyDomainRequest.
- * Use `create(VerifyDomainRequestSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.VerifyRequest.
+ * Use `create(VerifyRequestSchema)` to create a new message.
  */
-export const VerifyDomainRequestSchema = /*@__PURE__*/
+export const VerifyRequestSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_naming_v1_naming_service, 0);
 
 /**
- * Describes the message agntcy.dir.naming.v1.VerifyDomainResponse.
- * Use `create(VerifyDomainResponseSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.VerifyResponse.
+ * Use `create(VerifyResponseSchema)` to create a new message.
  */
-export const VerifyDomainResponseSchema = /*@__PURE__*/
+export const VerifyResponseSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_naming_v1_naming_service, 1);
 
 /**
- * Describes the message agntcy.dir.naming.v1.CheckDomainVerificationRequest.
- * Use `create(CheckDomainVerificationRequestSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.GetVerificationInfoRequest.
+ * Use `create(GetVerificationInfoRequestSchema)` to create a new message.
  */
-export const CheckDomainVerificationRequestSchema = /*@__PURE__*/
+export const GetVerificationInfoRequestSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_naming_v1_naming_service, 2);
 
 /**
- * Describes the message agntcy.dir.naming.v1.CheckDomainVerificationResponse.
- * Use `create(CheckDomainVerificationResponseSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.GetVerificationInfoResponse.
+ * Use `create(GetVerificationInfoResponseSchema)` to create a new message.
  */
-export const CheckDomainVerificationResponseSchema = /*@__PURE__*/
+export const GetVerificationInfoResponseSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_naming_v1_naming_service, 3);
 
 /**
- * NamingService provides methods to verify and check domain ownership.
+ * NamingService provides methods to verify and inspect name verification state.
  *
  * @generated from service agntcy.dir.naming.v1.NamingService
  */
