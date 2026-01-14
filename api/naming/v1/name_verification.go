@@ -8,7 +8,8 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	"github.com/agntcy/oasf-sdk/pkg/decoder"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // ReferrerType returns the referrer type for Verification.
@@ -22,10 +23,16 @@ func (v *Verification) MarshalReferrer() (*corev1.RecordReferrer, error) {
 		return nil, errors.New("verification is nil")
 	}
 
-	// Use decoder to convert proto message to structpb.
-	data, err := decoder.StructToProto(v)
+	// Use protojson to marshal the message to JSON bytes
+	jsonBytes, err := protojson.Marshal(v)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert verification to struct: %w", err)
+		return nil, fmt.Errorf("failed to marshal verification to JSON: %w", err)
+	}
+
+	// Convert JSON to structpb.Struct
+	data := &structpb.Struct{}
+	if err := protojson.Unmarshal(jsonBytes, data); err != nil {
+		return nil, fmt.Errorf("failed to convert JSON to struct: %w", err)
 	}
 
 	return &corev1.RecordReferrer{
@@ -40,14 +47,17 @@ func (v *Verification) UnmarshalReferrer(ref *corev1.RecordReferrer) error {
 		return errors.New("referrer or data is nil")
 	}
 
-	// Use decoder to convert structpb to proto message.
-	decoded, err := decoder.ProtoToStruct[Verification](ref.GetData())
+	// Convert structpb.Struct back to JSON bytes
+	jsonBytes, err := protojson.Marshal(ref.GetData())
 	if err != nil {
-		return fmt.Errorf("failed to decode verification from referrer: %w", err)
+		return fmt.Errorf("failed to marshal struct to JSON: %w", err)
 	}
 
-	// Copy the oneof field.
-	v.Info = decoded.GetInfo()
+	// Use protojson to unmarshal into the Verification message
+	// This properly handles oneof fields
+	if err := protojson.Unmarshal(jsonBytes, v); err != nil {
+		return fmt.Errorf("failed to unmarshal verification from JSON: %w", err)
+	}
 
 	return nil
 }
