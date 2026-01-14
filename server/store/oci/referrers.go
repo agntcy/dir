@@ -9,6 +9,7 @@ import (
 	"io"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
@@ -47,11 +48,12 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 	// Map API type to internal OCI artifact type
 	ociArtifactType := apiToOCIType(referrer.GetType())
 
-	// If the referrer is a public key, upload it to zot for signature verification
-	if ociArtifactType == PublicKeyArtifactMediaType {
-		err := s.uploadPublicKey(ctx, referrer)
+	// If the referrer is a public key and using Zot registry, upload to Zot's cosign extension
+	// for signature verification. Other registries only use OCI referrers for public key storage.
+	if ociArtifactType == PublicKeyArtifactMediaType && s.config.GetType() == ociconfig.RegistryTypeZot {
+		err := s.uploadPublicKeyToZot(ctx, referrer)
 		if err != nil {
-			return status.Errorf(codes.Internal, "failed to upload public key: %v", err)
+			return status.Errorf(codes.Internal, "failed to upload public key to zot: %v", err)
 		}
 	}
 

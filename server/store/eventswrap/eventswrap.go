@@ -99,11 +99,11 @@ func (s *eventsStore) IsReady(ctx context.Context) bool {
 	return s.source.IsReady(ctx)
 }
 
-// VerifyWithZot delegates to the source store if it supports Zot verification.
+// VerifySignature delegates to the source store if it supports signature verification.
 // This ensures the wrapper doesn't hide optional methods from the underlying store.
-func (s *eventsStore) VerifyWithZot(ctx context.Context, recordCID string) (bool, error) {
-	// Check if source supports Zot verification
-	zotStore, ok := s.source.(types.VerifierStore)
+func (s *eventsStore) VerifySignature(ctx context.Context, recordCID string) (bool, error) {
+	// Check if source supports signature verification
+	verifierStore, ok := s.source.(types.VerifierStore)
 	if !ok {
 		// Source doesn't support it - this shouldn't happen with OCI store,
 		// but handle gracefully
@@ -112,7 +112,7 @@ func (s *eventsStore) VerifyWithZot(ctx context.Context, recordCID string) (bool
 
 	// Delegate to source
 	//nolint:wrapcheck
-	return zotStore.VerifyWithZot(ctx, recordCID)
+	return verifierStore.VerifySignature(ctx, recordCID)
 }
 
 // PushReferrer delegates to the source store if it supports referrer operations.

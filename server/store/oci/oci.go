@@ -67,6 +67,12 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 		}, nil
 	}
 
+	// Validate registry type (logs warning for experimental types like ghcr, dockerhub)
+	registryType := cfg.GetType()
+	if !registryType.IsSupported() {
+		return nil, fmt.Errorf("unsupported registry type: %s", registryType)
+	}
+
 	repo, err := NewORASRepository(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create remote repo: %w", err)
@@ -405,7 +411,9 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 
 // IsReady checks if the storage backend is ready to serve traffic.
 // For local stores, always returns true.
-// For remote OCI registries, checks Zot's /readyz endpoint to verify it's ready.
+// For remote OCI registries:
+//   - Zot: checks /readyz endpoint
+//   - Generic: attempts a ping/tags request to verify connectivity
 func (s *store) IsReady(ctx context.Context) bool {
 	// Local directory stores are always ready
 	if s.config.LocalDir != "" {
@@ -415,7 +423,7 @@ func (s *store) IsReady(ctx context.Context) bool {
 	}
 
 	// For remote registries, check connectivity
-	_, ok := s.repo.(*remote.Repository)
+	remoteRepo, ok := s.repo.(*remote.Repository)
 	if !ok {
 		// Not a remote repository (could be wrapped), assume ready
 		logger.Debug("Store ready: not a remote repository")
@@ -423,6 +431,37 @@ func (s *store) IsReady(ctx context.Context) bool {
 		return true
 	}
 
-	// Use the zot utility package to check Zot's readiness
-	return zot.CheckReadiness(ctx, s.config.RegistryAddress, s.config.Insecure)
+	// Check readiness based on registry type
+	switch s.config.GetType() {
+	case ociconfig.RegistryTypeZot:
+		// Use the zot utility package to check Zot's readiness
+		return zot.CheckReadiness(ctx, s.config.RegistryAddress, s.config.Insecure)
+
+	case ociconfig.RegistryTypeGHCR, ociconfig.RegistryTypeDockerHub:
+		// For GHCR/Docker Hub, try to list tags to verify connectivity
+		// This is a lightweight operation that these registries support
+		err := remoteRepo.Tags(ctx, "", func(_ []string) error {
+			return nil // Just checking connectivity, don't need results
+		})
+		if err != nil {
+			// Check if it's a "repository not found" error - that's OK, registry is reachable
+			errStr := err.Error()
+			if strings.Contains(errStr, "404") || strings.Contains(errStr, "NAME_UNKNOWN") {
+				logger.Debug("Store ready: registry reachable, repository may not exist yet")
+
+				return true
+			}
+
+			logger.Debug("Store not ready: failed to connect to registry", "error", err)
+
+			return false
+		}
+
+		logger.Debug("Store ready", "registry_type", s.config.GetType())
+
+		return true
+
+	default:
+		return false
+	}
 }
