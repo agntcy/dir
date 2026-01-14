@@ -1,0 +1,11 @@
+FROM golang:1.25.2-alpine
+
+WORKDIR /app
+
+COPY test/mock-directory.go .
+
+RUN go build -o /bin/mock-directory mock-directory.go
+
+EXPOSE 8888
+
+ENTRYPOINT ["/bin/mock-directory"]

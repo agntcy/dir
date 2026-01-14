@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # ExtAuthz service (our implementation)
+  envoy-authz:
+    build:
+      context: ../..
+      dockerfile: cmd/envoy-authz/Dockerfile
+    container_name: envoy-authz
+    ports:
+      - "9002:9002"  # gRPC ext_authz
+    environment:
+      # Server settings
+      LISTEN_ADDRESS: ":9002"
+      LOG_LEVEL: "debug"
+      DEFAULT_PROVIDER: "github"
+      
+      # Authorization rules
+      ALLOWED_ORG_CONSTRUCTS: "agntcy,spiffe"
+      USER_ALLOW_LIST: ""
+      USER_DENY_LIST: ""
+      
+      # GitHub provider
+      GITHUB_ENABLED: "true"
+      GITHUB_CACHE_TTL: "5m"
+      GITHUB_API_TIMEOUT: "10s"
+    networks:
+      - authz-test
+
+  # Envoy proxy with ext_authz filter
+  envoy:
+    image: envoyproxy/envoy:v1.31-latest
+    container_name: envoy-gateway
+    ports:
+      - "8080:8080"  # HTTP/gRPC gateway
+      - "9901:9901"  # Admin interface
+    volumes:
+      - ./test/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    command: ["/usr/local/bin/envoy", "-c", "/etc/envoy/envoy.yaml", "--service-cluster", "test-cluster"]
+    depends_on:
+      - envoy-authz
+      - mock-directory
+    networks:
+      - authz-test
+
+  # Mock Directory API server (simple echo server)
+  mock-directory:
+    build:
+      context: .
+      dockerfile: test/Dockerfile.mock
+    container_name: mock-directory
+    ports:
+      - "8888:8888"
+    environment:
+      LISTEN_ADDRESS: ":8888"
+    networks:
+      - authz-test
+
+networks:
+  authz-test:
+    driver: bridge
