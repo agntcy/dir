@@ -8,7 +8,6 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 import type { DomainVerification } from "./domain_verification_pb.js";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
 
 /**
  * Describes the file agntcy/dir/naming/v1/naming_service.proto.
@@ -124,117 +123,7 @@ export declare type CheckDomainVerificationResponse = Message<"agntcy.dir.naming
 export declare const CheckDomainVerificationResponseSchema: GenMessage<CheckDomainVerificationResponse>;
 
 /**
- * ListVerifiedAgentsRequest is the request for listing verified agents.
- *
- * @generated from message agntcy.dir.naming.v1.ListVerifiedAgentsRequest
- */
-export declare type ListVerifiedAgentsRequest = Message<"agntcy.dir.naming.v1.ListVerifiedAgentsRequest"> & {
-  /**
-   * The domain to list verified agents for (e.g., "cisco.com").
-   *
-   * @generated from field: string domain = 1;
-   */
-  domain: string;
-
-  /**
-   * Maximum number of results to return (default: 100).
-   *
-   * @generated from field: int32 limit = 2;
-   */
-  limit: number;
-
-  /**
-   * Pagination token for fetching the next page.
-   *
-   * @generated from field: string page_token = 3;
-   */
-  pageToken: string;
-};
-
-/**
- * Describes the message agntcy.dir.naming.v1.ListVerifiedAgentsRequest.
- * Use `create(ListVerifiedAgentsRequestSchema)` to create a new message.
- */
-export declare const ListVerifiedAgentsRequestSchema: GenMessage<ListVerifiedAgentsRequest>;
-
-/**
- * ListVerifiedAgentsResponse is the response for listing verified agents.
- *
- * @generated from message agntcy.dir.naming.v1.ListVerifiedAgentsResponse
- */
-export declare type ListVerifiedAgentsResponse = Message<"agntcy.dir.naming.v1.ListVerifiedAgentsResponse"> & {
-  /**
-   * The list of verified agents for the domain.
-   *
-   * @generated from field: repeated agntcy.dir.naming.v1.VerifiedAgent agents = 1;
-   */
-  agents: VerifiedAgent[];
-
-  /**
-   * Token for fetching the next page of results.
-   *
-   * @generated from field: string next_page_token = 2;
-   */
-  nextPageToken: string;
-};
-
-/**
- * Describes the message agntcy.dir.naming.v1.ListVerifiedAgentsResponse.
- * Use `create(ListVerifiedAgentsResponseSchema)` to create a new message.
- */
-export declare const ListVerifiedAgentsResponseSchema: GenMessage<ListVerifiedAgentsResponse>;
-
-/**
- * VerifiedAgent represents an agent that has verified domain ownership.
- *
- * @generated from message agntcy.dir.naming.v1.VerifiedAgent
- */
-export declare type VerifiedAgent = Message<"agntcy.dir.naming.v1.VerifiedAgent"> & {
-  /**
-   * The CID of the verified record.
-   *
-   * @generated from field: string cid = 1;
-   */
-  cid: string;
-
-  /**
-   * The full name of the agent (e.g., "cisco.com/marketing-agent").
-   *
-   * @generated from field: string name = 2;
-   */
-  name: string;
-
-  /**
-   * The version of the agent.
-   *
-   * @generated from field: string version = 3;
-   */
-  version: string;
-
-  /**
-   * When the domain was verified.
-   *
-   * @generated from field: google.protobuf.Timestamp verified_at = 4;
-   */
-  verifiedAt?: Timestamp;
-
-  /**
-   * The verification method used.
-   *
-   * @generated from field: string method = 5;
-   */
-  method: string;
-};
-
-/**
- * Describes the message agntcy.dir.naming.v1.VerifiedAgent.
- * Use `create(VerifiedAgentSchema)` to create a new message.
- */
-export declare const VerifiedAgentSchema: GenMessage<VerifiedAgent>;
-
-/**
- * NamingService provides methods to check domain verification status
- * and list verified agents for a domain.
+ * NamingService provides methods to verify and check domain ownership.
  *
  * @generated from service agntcy.dir.naming.v1.NamingService
  */
@@ -259,16 +148,6 @@ export declare const NamingService: GenService<{
     methodKind: "unary";
     input: typeof CheckDomainVerificationRequestSchema;
     output: typeof CheckDomainVerificationResponseSchema;
-  },
-  /**
-   * ListVerifiedAgents lists all agents that have verified domain ownership for a given domain.
-   *
-   * @generated from rpc agntcy.dir.naming.v1.NamingService.ListVerifiedAgents
-   */
-  listVerifiedAgents: {
-    methodKind: "unary";
-    input: typeof ListVerifiedAgentsRequestSchema;
-    output: typeof ListVerifiedAgentsResponseSchema;
   },
 }>;
 

@@ -24,23 +24,19 @@ const _ = grpc.SupportPackageIsVersion8
 const (
 	NamingService_VerifyDomain_FullMethodName            = "/agntcy.dir.naming.v1.NamingService/VerifyDomain"
 	NamingService_CheckDomainVerification_FullMethodName = "/agntcy.dir.naming.v1.NamingService/CheckDomainVerification"
-	NamingService_ListVerifiedAgents_FullMethodName      = "/agntcy.dir.naming.v1.NamingService/ListVerifiedAgents"
 )
 
 // NamingServiceClient is the client API for NamingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// NamingService provides methods to check domain verification status
-// and list verified agents for a domain.
+// NamingService provides methods to verify and check domain ownership.
 type NamingServiceClient interface {
 	// VerifyDomain performs domain ownership verification for a signed record.
 	// This should be called after signing a record to verify and store the domain ownership proof.
 	VerifyDomain(ctx context.Context, in *VerifyDomainRequest, opts ...grpc.CallOption) (*VerifyDomainResponse, error)
 	// CheckDomainVerification checks if a record has verified domain ownership.
 	CheckDomainVerification(ctx context.Context, in *CheckDomainVerificationRequest, opts ...grpc.CallOption) (*CheckDomainVerificationResponse, error)
-	// ListVerifiedAgents lists all agents that have verified domain ownership for a given domain.
-	ListVerifiedAgents(ctx context.Context, in *ListVerifiedAgentsRequest, opts ...grpc.CallOption) (*ListVerifiedAgentsResponse, error)
 }
 
 type namingServiceClient struct {
@@ -71,30 +67,17 @@ func (c *namingServiceClient) CheckDomainVerification(ctx context.Context, in *C
 	return out, nil
 }
 
-func (c *namingServiceClient) ListVerifiedAgents(ctx context.Context, in *ListVerifiedAgentsRequest, opts ...grpc.CallOption) (*ListVerifiedAgentsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListVerifiedAgentsResponse)
-	err := c.cc.Invoke(ctx, NamingService_ListVerifiedAgents_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // NamingServiceServer is the server API for NamingService service.
 // All implementations should embed UnimplementedNamingServiceServer
 // for forward compatibility.
 //
-// NamingService provides methods to check domain verification status
-// and list verified agents for a domain.
+// NamingService provides methods to verify and check domain ownership.
 type NamingServiceServer interface {
 	// VerifyDomain performs domain ownership verification for a signed record.
 	// This should be called after signing a record to verify and store the domain ownership proof.
 	VerifyDomain(context.Context, *VerifyDomainRequest) (*VerifyDomainResponse, error)
 	// CheckDomainVerification checks if a record has verified domain ownership.
 	CheckDomainVerification(context.Context, *CheckDomainVerificationRequest) (*CheckDomainVerificationResponse, error)
-	// ListVerifiedAgents lists all agents that have verified domain ownership for a given domain.
-	ListVerifiedAgents(context.Context, *ListVerifiedAgentsRequest) (*ListVerifiedAgentsResponse, error)
 }
 
 // UnimplementedNamingServiceServer should be embedded to have
@@ -109,9 +92,6 @@ func (UnimplementedNamingServiceServer) VerifyDomain(context.Context, *VerifyDom
 }
 func (UnimplementedNamingServiceServer) CheckDomainVerification(context.Context, *CheckDomainVerificationRequest) (*CheckDomainVerificationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckDomainVerification not implemented")
-}
-func (UnimplementedNamingServiceServer) ListVerifiedAgents(context.Context, *ListVerifiedAgentsRequest) (*ListVerifiedAgentsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListVerifiedAgents not implemented")
 }
 func (UnimplementedNamingServiceServer) testEmbeddedByValue() {}
 
@@ -169,24 +149,6 @@ func _NamingService_CheckDomainVerification_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NamingService_ListVerifiedAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListVerifiedAgentsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NamingServiceServer).ListVerifiedAgents(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: NamingService_ListVerifiedAgents_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NamingServiceServer).ListVerifiedAgents(ctx, req.(*ListVerifiedAgentsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // NamingService_ServiceDesc is the grpc.ServiceDesc for NamingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -201,10 +163,6 @@ var NamingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CheckDomainVerification",
 			Handler:    _NamingService_CheckDomainVerification_Handler,
-		},
-		{
-			MethodName: "ListVerifiedAgents",
-			Handler:    _NamingService_ListVerifiedAgents_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

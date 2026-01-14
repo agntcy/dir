@@ -6,10 +6,8 @@ syntax = "proto3";
 package agntcy.dir.naming.v1;
 
 import "agntcy/dir/naming/v1/domain_verification.proto";
-import "google/protobuf/timestamp.proto";
 
-// NamingService provides methods to check domain verification status
-// and list verified agents for a domain.
+// NamingService provides methods to verify and check domain ownership.
 service NamingService {
   // VerifyDomain performs domain ownership verification for a signed record.
   // This should be called after signing a record to verify and store the domain ownership proof.
@@ -17,9 +15,6 @@ service NamingService {
 
   // CheckDomainVerification checks if a record has verified domain ownership.
   rpc CheckDomainVerification(CheckDomainVerificationRequest) returns (CheckDomainVerificationResponse);
-
-  // ListVerifiedAgents lists all agents that have verified domain ownership for a given domain.
-  rpc ListVerifiedAgents(ListVerifiedAgentsRequest) returns (ListVerifiedAgentsResponse);
 }
 
 // VerifyDomainRequest is the request for performing domain verification.
@@ -56,43 +51,4 @@ message CheckDomainVerificationResponse {
 
   // Error message if verification lookup failed.
   optional string error_message = 3;
-}
-
-// ListVerifiedAgentsRequest is the request for listing verified agents.
-message ListVerifiedAgentsRequest {
-  // The domain to list verified agents for (e.g., "cisco.com").
-  string domain = 1;
-
-  // Maximum number of results to return (default: 100).
-  int32 limit = 2;
-
-  // Pagination token for fetching the next page.
-  string page_token = 3;
-}
-
-// ListVerifiedAgentsResponse is the response for listing verified agents.
-message ListVerifiedAgentsResponse {
-  // The list of verified agents for the domain.
-  repeated VerifiedAgent agents = 1;
-
-  // Token for fetching the next page of results.
-  string next_page_token = 2;
-}
-
-// VerifiedAgent represents an agent that has verified domain ownership.
-message VerifiedAgent {
-  // The CID of the verified record.
-  string cid = 1;
-
-  // The full name of the agent (e.g., "cisco.com/marketing-agent").
-  string name = 2;
-
-  // The version of the agent.
-  string version = 3;
-
-  // When the domain was verified.
-  google.protobuf.Timestamp verified_at = 4;
-
-  // The verification method used.
-  string method = 5;
 }

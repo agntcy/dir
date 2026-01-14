@@ -6,8 +6,7 @@ from agntcy.dir.naming.v1 import naming_service_pb2 as agntcy_dot_dir_dot_naming
 
 
 class NamingServiceStub(object):
-    """NamingService provides methods to check domain verification status
-    and list verified agents for a domain.
+    """NamingService provides methods to verify and check domain ownership.
     """
 
     def __init__(self, channel):
@@ -26,16 +25,10 @@ class NamingServiceStub(object):
                 request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationRequest.SerializeToString,
                 response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationResponse.FromString,
                 _registered_method=True)
-        self.ListVerifiedAgents = channel.unary_unary(
-                '/agntcy.dir.naming.v1.NamingService/ListVerifiedAgents',
-                request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ListVerifiedAgentsRequest.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ListVerifiedAgentsResponse.FromString,
-                _registered_method=True)
 
 
 class NamingServiceServicer(object):
-    """NamingService provides methods to check domain verification status
-    and list verified agents for a domain.
+    """NamingService provides methods to verify and check domain ownership.
     """
 
     def VerifyDomain(self, request, context):
@@ -48,13 +41,6 @@ class NamingServiceServicer(object):
 
     def CheckDomainVerification(self, request, context):
         """CheckDomainVerification checks if a record has verified domain ownership.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def ListVerifiedAgents(self, request, context):
-        """ListVerifiedAgents lists all agents that have verified domain ownership for a given domain.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -73,11 +59,6 @@ def add_NamingServiceServicer_to_server(servicer, server):
                     request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationRequest.FromString,
                     response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationResponse.SerializeToString,
             ),
-            'ListVerifiedAgents': grpc.unary_unary_rpc_method_handler(
-                    servicer.ListVerifiedAgents,
-                    request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ListVerifiedAgentsRequest.FromString,
-                    response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ListVerifiedAgentsResponse.SerializeToString,
-            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'agntcy.dir.naming.v1.NamingService', rpc_method_handlers)
@@ -87,8 +68,7 @@ def add_NamingServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class NamingService(object):
-    """NamingService provides methods to check domain verification status
-    and list verified agents for a domain.
+    """NamingService provides methods to verify and check domain ownership.
     """
 
     @staticmethod
@@ -135,33 +115,6 @@ class NamingService(object):
             '/agntcy.dir.naming.v1.NamingService/CheckDomainVerification',
             agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationRequest.SerializeToString,
             agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.CheckDomainVerificationResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def ListVerifiedAgents(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/agntcy.dir.naming.v1.NamingService/ListVerifiedAgents',
-            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ListVerifiedAgentsRequest.SerializeToString,
-            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ListVerifiedAgentsResponse.FromString,
             options,
             channel_credentials,
             insecure,

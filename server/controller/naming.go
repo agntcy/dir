@@ -196,22 +196,6 @@ func (n *namingCtrl) CheckDomainVerification(ctx context.Context, req *namingv1.
 	}, nil
 }
 
-// ListVerifiedAgents lists all agents that have verified domain ownership for a given domain.
-func (n *namingCtrl) ListVerifiedAgents(ctx context.Context, req *namingv1.ListVerifiedAgentsRequest) (*namingv1.ListVerifiedAgentsResponse, error) {
-	namingLogger.Debug("ListVerifiedAgents request received", "domain", req.GetDomain())
-
-	if req.GetDomain() == "" {
-		return nil, status.Error(codes.InvalidArgument, "domain is required")
-	}
-
-	// TODO: Implement listing verified agents by domain.
-	// This requires either:
-	// 1. A database index of domain -> CIDs
-	// 2. Scanning all records (expensive)
-	// For now, return unimplemented.
-	return nil, status.Error(codes.Unimplemented, "listing verified agents by domain is not yet implemented")
-}
-
 // getRecordPublicKey retrieves the public key associated with a record.
 func (n *namingCtrl) getRecordPublicKey(ctx context.Context, cid string) ([]byte, error) {
 	referrerStore, ok := n.store.(types.ReferrerStoreAPI)

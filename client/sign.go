@@ -229,20 +229,3 @@ func (c *Client) CheckDomainVerification(ctx context.Context, cid string) (*nami
 
 	return resp, nil
 }
-
-// ListVerifiedAgents lists all agents that have verified domain ownership for a given domain.
-func (c *Client) ListVerifiedAgents(ctx context.Context, domain string, limit int32) (*namingv1.ListVerifiedAgentsResponse, error) {
-	if domain == "" {
-		return nil, errors.New("domain is required")
-	}
-
-	resp, err := c.NamingServiceClient.ListVerifiedAgents(ctx, &namingv1.ListVerifiedAgentsRequest{
-		Domain: domain,
-		Limit:  limit,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list verified agents: %w", err)
-	}
-
-	return resp, nil
-}

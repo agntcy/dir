@@ -18,7 +18,6 @@ This command group provides access to domain ownership verification:
 
 - verify: Verify domain ownership for a signed record
 - check: Check if a record has verified domain ownership
-- list: List all verified agents for a domain
 
 Domain verification proves that a record's signing key is authorized by the
 domain claimed in the record's name. This enables trustworthy human-readable
@@ -35,9 +34,6 @@ Examples:
 
 2. Check if a record has verified domain ownership:
    dirctl naming check <cid>
-
-3. List all verified agents for a domain:
-   dirctl naming list cisco.com
 `,
 }
 
@@ -45,10 +41,8 @@ func init() {
 	// Add all naming subcommands
 	Command.AddCommand(verifyCmd)
 	Command.AddCommand(checkCmd)
-	Command.AddCommand(listCmd)
 
 	// Add output format flags to naming subcommands
 	presenter.AddOutputFlags(verifyCmd)
 	presenter.AddOutputFlags(checkCmd)
-	presenter.AddOutputFlags(listCmd)
 }
