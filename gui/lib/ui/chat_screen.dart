@@ -71,9 +71,6 @@ class _ChatScreenState extends State<ChatScreen> {
          _initServices();
          return;
     }
-
-    // Fallback to dialog
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showConfigDialog());
   }
 
   Future<void> _showConfigDialog() async {
@@ -167,10 +164,18 @@ class _ChatScreenState extends State<ChatScreen> {
     final dirServerAddr = Platform.environment['DIRECTORY_CLIENT_SERVER_ADDRESS'] ??
                           const String.fromEnvironment('DIRECTORY_CLIENT_SERVER_ADDRESS');
 
+    final oasfSchemaUrl = Platform.environment['OASF_API_VALIDATION_SCHEMA_URL'] ??
+                          const String.fromEnvironment('OASF_API_VALIDATION_SCHEMA_URL');
+
     Map<String, String>? mcpEnv;
     if (dirServerAddr.isNotEmpty) {
       print('Configuring Directory Node at: $dirServerAddr');
       mcpEnv = {'DIRECTORY_CLIENT_SERVER_ADDRESS': dirServerAddr};
+    }
+
+    if (oasfSchemaUrl.isNotEmpty) {
+       mcpEnv ??= {};
+       mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchemaUrl;
     }
 
     _mcpClient = McpClient(executablePath: mcpPath);

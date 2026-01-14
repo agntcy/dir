@@ -263,7 +263,7 @@ tasks:
     vars:
       GOOS: "{{ .GOOS | default OS }}"
       GOARCH: "{{ .GOARCH | default ARCH }}"
-      OUT_BINARY: "{{ .ROOT_DIR }}/build/mcp/dir-server"
+      OUT_BINARY: "{{ .BIN_DIR }}/dir-server"
     cmds:
       - mkdir -p {{ .BIN_DIR }}
       - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
