@@ -11,11 +11,11 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.6.0
-	github.com/agntcy/dir/client v0.6.0
-	github.com/agntcy/dir/importer v0.6.0
-	github.com/agntcy/dir/mcp v0.6.0
-	github.com/agntcy/dir/utils v0.6.0
+	github.com/agntcy/dir/api v0.6.1
+	github.com/agntcy/dir/client v0.6.1
+	github.com/agntcy/dir/importer v0.6.1
+	github.com/agntcy/dir/mcp v0.6.1
+	github.com/agntcy/dir/utils v0.6.1
 	github.com/libp2p/go-libp2p v0.44.0
 	github.com/sigstore/sigstore v1.10.0
 	github.com/spf13/cobra v1.10.2
