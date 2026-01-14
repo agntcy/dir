@@ -185,9 +185,10 @@ func Sign(ctx context.Context, c *client.Client, recordCID string) error {
 		}
 	default:
 		// Verification succeeded
+		dv := verifyResp.GetVerification().GetDomain()
 		fmt.Fprintf(os.Stderr, "Name verified: %s (method: %s)\n",
-			verifyResp.GetVerification().GetDomain(),
-			verifyResp.GetVerification().GetMethod())
+			dv.GetDomain(),
+			dv.GetMethod())
 	}
 
 	return nil

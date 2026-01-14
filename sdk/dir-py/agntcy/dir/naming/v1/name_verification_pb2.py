@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,agntcy/dir/naming/v1/name_verification.proto\x12\x14\x61gntcy.dir.naming.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa1\x01\n\x0cVerification\x12\x16\n\x06\x64omain\x18\x01 \x01(\tR\x06\x64omain\x12\x16\n\x06method\x18\x02 \x01(\tR\x06method\x12$\n\x0ematched_key_id\x18\x03 \x01(\tR\x0cmatchedKeyId\x12;\n\x0bverified_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nverifiedAtB\xc9\x01\n\x18\x63om.agntcy.dir.naming.v1B\x15NameVerificationProtoP\x01Z#github.com/agntcy/dir/api/naming/v1\xa2\x02\x03\x41\x44N\xaa\x02\x14\x41gntcy.Dir.Naming.V1\xca\x02\x14\x41gntcy\\Dir\\Naming\\V1\xe2\x02 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Naming::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n,agntcy/dir/naming/v1/name_verification.proto\x12\x14\x61gntcy.dir.naming.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"Z\n\x0cVerification\x12\x42\n\x06\x64omain\x18\x01 \x01(\x0b\x32(.agntcy.dir.naming.v1.DomainVerificationH\x00R\x06\x64omainB\x06\n\x04info\"\xa7\x01\n\x12\x44omainVerification\x12\x16\n\x06\x64omain\x18\x01 \x01(\tR\x06\x64omain\x12\x16\n\x06method\x18\x02 \x01(\tR\x06method\x12$\n\x0ematched_key_id\x18\x03 \x01(\tR\x0cmatchedKeyId\x12;\n\x0bverified_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nverifiedAtB\xc9\x01\n\x18\x63om.agntcy.dir.naming.v1B\x15NameVerificationProtoP\x01Z#github.com/agntcy/dir/api/naming/v1\xa2\x02\x03\x41\x44N\xaa\x02\x14\x41gntcy.Dir.Naming.V1\xca\x02\x14\x41gntcy\\Dir\\Naming\\V1\xe2\x02 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Naming::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,6 +33,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'agntcy.dir.naming.v1.name_v
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\030com.agntcy.dir.naming.v1B\025NameVerificationProtoP\001Z#github.com/agntcy/dir/api/naming/v1\242\002\003ADN\252\002\024Agntcy.Dir.Naming.V1\312\002\024Agntcy\\Dir\\Naming\\V1\342\002 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\352\002\027Agntcy::Dir::Naming::V1'
-  _globals['_VERIFICATION']._serialized_start=104
-  _globals['_VERIFICATION']._serialized_end=265
+  _globals['_VERIFICATION']._serialized_start=103
+  _globals['_VERIFICATION']._serialized_end=193
+  _globals['_DOMAINVERIFICATION']._serialized_start=196
+  _globals['_DOMAINVERIFICATION']._serialized_end=363
 # @@protoc_insertion_point(module_scope)

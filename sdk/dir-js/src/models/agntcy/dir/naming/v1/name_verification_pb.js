@@ -12,7 +12,7 @@ import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
  * Describes the file agntcy/dir/naming/v1/name_verification.proto.
  */
 export const file_agntcy_dir_naming_v1_name_verification = /*@__PURE__*/
-  fileDesc("CixhZ250Y3kvZGlyL25hbWluZy92MS9uYW1lX3ZlcmlmaWNhdGlvbi5wcm90bxIUYWdudGN5LmRpci5uYW1pbmcudjEidwoMVmVyaWZpY2F0aW9uEg4KBmRvbWFpbhgBIAEoCRIOCgZtZXRob2QYAiABKAkSFgoObWF0Y2hlZF9rZXlfaWQYAyABKAkSLwoLdmVyaWZpZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQskBChhjb20uYWdudGN5LmRpci5uYW1pbmcudjFCFU5hbWVWZXJpZmljYXRpb25Qcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL25hbWluZy92MaICA0FETqoCFEFnbnRjeS5EaXIuTmFtaW5nLlYxygIUQWdudGN5XERpclxOYW1pbmdcVjHiAiBBZ250Y3lcRGlyXE5hbWluZ1xWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpOYW1pbmc6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("CixhZ250Y3kvZGlyL25hbWluZy92MS9uYW1lX3ZlcmlmaWNhdGlvbi5wcm90bxIUYWdudGN5LmRpci5uYW1pbmcudjEiUgoMVmVyaWZpY2F0aW9uEjoKBmRvbWFpbhgBIAEoCzIoLmFnbnRjeS5kaXIubmFtaW5nLnYxLkRvbWFpblZlcmlmaWNhdGlvbkgAQgYKBGluZm8ifQoSRG9tYWluVmVyaWZpY2F0aW9uEg4KBmRvbWFpbhgBIAEoCRIOCgZtZXRob2QYAiABKAkSFgoObWF0Y2hlZF9rZXlfaWQYAyABKAkSLwoLdmVyaWZpZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQskBChhjb20uYWdudGN5LmRpci5uYW1pbmcudjFCFU5hbWVWZXJpZmljYXRpb25Qcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL25hbWluZy92MaICA0FETqoCFEFnbnRjeS5EaXIuTmFtaW5nLlYxygIUQWdudGN5XERpclxOYW1pbmdcVjHiAiBBZ250Y3lcRGlyXE5hbWluZ1xWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpOYW1pbmc6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * Describes the message agntcy.dir.naming.v1.Verification.
@@ -20,4 +20,11 @@ export const file_agntcy_dir_naming_v1_name_verification = /*@__PURE__*/
  */
 export const VerificationSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_naming_v1_name_verification, 0);
+
+/**
+ * Describes the message agntcy.dir.naming.v1.DomainVerification.
+ * Use `create(DomainVerificationSchema)` to create a new message.
+ */
+export const DomainVerificationSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_naming_v1_name_verification, 1);
 

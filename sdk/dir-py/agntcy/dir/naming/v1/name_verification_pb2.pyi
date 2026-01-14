@@ -6,6 +6,12 @@ from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Opti
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Verification(_message.Message):
+    __slots__ = ("domain",)
+    DOMAIN_FIELD_NUMBER: _ClassVar[int]
+    domain: DomainVerification
+    def __init__(self, domain: _Optional[_Union[DomainVerification, _Mapping]] = ...) -> None: ...
+
+class DomainVerification(_message.Message):
     __slots__ = ("domain", "method", "matched_key_id", "verified_at")
     DOMAIN_FIELD_NUMBER: _ClassVar[int]
     METHOD_FIELD_NUMBER: _ClassVar[int]

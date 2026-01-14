@@ -46,11 +46,17 @@ func (v *Verification) UnmarshalReferrer(ref *corev1.RecordReferrer) error {
 		return fmt.Errorf("failed to decode verification from referrer: %w", err)
 	}
 
-	// Copy fields individually to avoid copying the lock.
-	v.Domain = decoded.GetDomain()
-	v.Method = decoded.GetMethod()
-	v.MatchedKeyId = decoded.GetMatchedKeyId()
-	v.VerifiedAt = decoded.GetVerifiedAt()
+	// Copy the oneof field.
+	v.Info = decoded.GetInfo()
 
 	return nil
+}
+
+// NewDomainVerification creates a new Verification with DomainVerification info.
+func NewDomainVerification(dv *DomainVerification) *Verification {
+	return &Verification{
+		Info: &Verification_Domain{
+			Domain: dv,
+		},
+	}
 }

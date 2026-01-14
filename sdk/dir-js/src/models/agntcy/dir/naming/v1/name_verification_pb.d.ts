@@ -15,12 +15,41 @@ import type { Timestamp } from "@bufbuild/protobuf/wkt";
 export declare const file_agntcy_dir_naming_v1_name_verification: GenFile;
 
 /**
- * Verification represents the result of verifying that a record's
- * signing key is authorized by the domain claimed in the record's name.
+ * Verification represents the result of verifying a record's name ownership.
+ * It uses a oneof to support different verification types.
  *
  * @generated from message agntcy.dir.naming.v1.Verification
  */
 export declare type Verification = Message<"agntcy.dir.naming.v1.Verification"> & {
+  /**
+   * @generated from oneof agntcy.dir.naming.v1.Verification.info
+   */
+  info: {
+    /**
+     * Domain verification details.
+     *
+     * Future verification types can be added here.
+     *
+     * @generated from field: agntcy.dir.naming.v1.DomainVerification domain = 1;
+     */
+    value: DomainVerification;
+    case: "domain";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message agntcy.dir.naming.v1.Verification.
+ * Use `create(VerificationSchema)` to create a new message.
+ */
+export declare const VerificationSchema: GenMessage<Verification>;
+
+/**
+ * DomainVerification represents the result of verifying that a record's
+ * signing key is authorized by the domain claimed in the record's name.
+ *
+ * @generated from message agntcy.dir.naming.v1.DomainVerification
+ */
+export declare type DomainVerification = Message<"agntcy.dir.naming.v1.DomainVerification"> & {
   /**
    * The domain that was verified (e.g., "cisco.com").
    *
@@ -51,8 +80,8 @@ export declare type Verification = Message<"agntcy.dir.naming.v1.Verification"> 
 };
 
 /**
- * Describes the message agntcy.dir.naming.v1.Verification.
- * Use `create(VerificationSchema)` to create a new message.
+ * Describes the message agntcy.dir.naming.v1.DomainVerification.
+ * Use `create(DomainVerificationSchema)` to create a new message.
  */
-export declare const VerificationSchema: GenMessage<Verification>;
+export declare const DomainVerificationSchema: GenMessage<DomainVerification>;
 

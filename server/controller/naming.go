@@ -113,13 +113,13 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 		}, nil
 	}
 
-	// Create verification object
-	verification := &namingv1.Verification{
+	// Create verification object with domain verification info
+	verification := namingv1.NewDomainVerification(&namingv1.DomainVerification{
 		Domain:       result.Domain,
 		Method:       result.Method,
 		MatchedKeyId: result.MatchedKeyID,
 		VerifiedAt:   timestamppb.New(result.VerifiedAt),
-	}
+	})
 
 	// Store the verification as a referrer
 	referrer, err := verification.MarshalReferrer()
