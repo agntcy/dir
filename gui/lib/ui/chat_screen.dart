@@ -148,9 +148,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _initServices() async {
-    // Get path from environment or default
-    String mcpPath = Platform.environment['MCP_SERVER_PATH'] ??
-                     '/Users/lumuscar/Projects/agntcy/dir/build/mcp/mcp-server';
+    // Get path from environment
+    String? mcpPath = Platform.environment['MCP_SERVER_PATH'];
+    if (mcpPath == null || mcpPath.isEmpty) {
+      debugPrint('MCP_SERVER_PATH is not set');
+      setState(() {
+        _messages.add({
+          'role': 'system',
+          'content': 'Error: MCP_SERVER_PATH environment variable is missing.'
+        });
+      });
+      return;
+    }
 
     print('Starting MCP Client with server at: $mcpPath');
 

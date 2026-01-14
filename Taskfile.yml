@@ -252,9 +252,9 @@ tasks:
     vars:
       GOOS: "{{ .GOOS | default OS }}"
       GOARCH: "{{ .GOARCH | default ARCH }}"
-      OUT_BINARY: "{{ .ROOT_DIR }}/build/mcp/mcp-server"
+      OUT_BINARY: "{{ .BIN_DIR }}/mcp-server"
     cmds:
-      - mkdir -p {{ .ROOT_DIR }}/build/mcp
+      - mkdir -p {{ .BIN_DIR }}
       - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
 
   mcp:build:server:
@@ -265,7 +265,7 @@ tasks:
       GOARCH: "{{ .GOARCH | default ARCH }}"
       OUT_BINARY: "{{ .ROOT_DIR }}/build/mcp/dir-server"
     cmds:
-      - mkdir -p {{ .ROOT_DIR }}/build/mcp
+      - mkdir -p {{ .BIN_DIR }}
       - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
 
   ##

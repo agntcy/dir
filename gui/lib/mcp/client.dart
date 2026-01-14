@@ -22,17 +22,10 @@ class McpClient {
   }) : _processStarter = processStarter ?? Process.start;
 
   Future<void> start({Map<String, String>? environment}) async {
-    final env = {
-      "OASF_API_VALIDATION_DISABLE": "true",
-    };
-    if (environment != null) {
-      env.addAll(environment);
-    }
-
     _process = await _processStarter(
       executablePath,
       [],
-      environment: env,
+      environment: environment,
     );
 
     // Handle stdout (responses)

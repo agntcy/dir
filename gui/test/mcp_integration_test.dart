@@ -8,14 +8,14 @@ import 'package:gui/mcp/client.dart';
 void main() {
   test('Integration: MCP Client connects to local binary', () async {
     // We are running from 'gui/' directory usually.
-    // The binary is at '../build/mcp' relative to 'gui/'.
+    // The binary is at '../bin' relative to 'gui/'.
     // If running via 'flutter test', the CWD is usually the project root (gui/).
-    final String binaryPath = '../build/mcp/mcp-server';
+    final String binaryPath = '../bin/mcp-server';
 
     final file = File(binaryPath);
     if (!file.existsSync()) {
       // Try absolute path if relative fails
-      final absPath = File('${Directory.current.parent.path}/build/mcp/mcp-server');
+      final absPath = File('${Directory.current.parent.path}/bin/mcp-server');
       if (!absPath.existsSync()) {
         print("CWD: ${Directory.current.path}");
         fail('MCP binary not found at $binaryPath or ${absPath.path}. Please build the server first.');
@@ -27,7 +27,10 @@ void main() {
     final client = McpClient(executablePath: binaryPath);
 
     // 1. Start the process
-    await client.start();
+    // Pass DISABLE env to avoid log noise breaking the stdio protocol during tests
+    await client.start(environment: {
+      "OASF_API_VALIDATION_DISABLE": "true",
+    });
 
     // 2. Initialize
     print('Initializing...');
