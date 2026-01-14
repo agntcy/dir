@@ -2,24 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package naming provides name ownership verification for OASF records.
-// It implements DNS TXT and well-known file verification inspired by AT Protocol
+// It implements DNS TXT and JWKS (RFC 7517) verification inspired by AT Protocol
 // and ACME DNS-01 challenge patterns.
 package naming
 
 import "time"
 
-// PublicKey represents a public key extracted from DNS TXT or well-known file.
+// PublicKey represents a public key extracted from DNS TXT or JWKS.
 type PublicKey struct {
-	// ID is an optional identifier for the key (used in well-known format).
+	// ID is an optional identifier for the key (kid in JWK, or generated for DNS).
 	ID string
 
-	// Type is the key algorithm (e.g., "ed25519", "ecdsa-p256").
+	// Type is the key algorithm (e.g., "ed25519", "ecdsa-p256", "rsa").
 	Type string
 
-	// Key is the raw public key bytes (decoded from base64).
+	// Key is the raw public key bytes in DER format for comparison.
 	Key []byte
 
-	// KeyBase64 is the original base64-encoded key string.
+	// KeyBase64 is the original base64-encoded key string (for DNS TXT records).
 	KeyBase64 string
 }
 
@@ -44,27 +44,6 @@ type Result struct {
 	MatchedKeyID string
 }
 
-// WellKnownFile represents the structure of /.well-known/oasf.json.
-type WellKnownFile struct {
-	// Version is the format version (currently 1).
-	Version int `json:"version"`
-
-	// Keys is the list of public keys for this domain.
-	Keys []WellKnownKey `json:"keys"`
-}
-
-// WellKnownKey represents a key entry in the well-known file.
-type WellKnownKey struct {
-	// ID is an optional identifier for the key.
-	ID string `json:"id,omitempty"`
-
-	// Type is the key algorithm (e.g., "ed25519").
-	Type string `json:"type"`
-
-	// PublicKey is the base64-encoded public key.
-	PublicKey string `json:"publicKey"`
-}
-
 // VerificationMethod represents the method used to verify name ownership.
 type VerificationMethod string
 
@@ -72,7 +51,7 @@ const (
 	// MethodDNS indicates verification via DNS TXT record.
 	MethodDNS VerificationMethod = "dns"
 
-	// MethodWellKnown indicates verification via well-known file.
+	// MethodWellKnown indicates verification via JWKS well-known file (RFC 7517).
 	MethodWellKnown VerificationMethod = "wellknown"
 
 	// MethodNone indicates no verification was possible.

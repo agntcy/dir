@@ -4,37 +4,87 @@
 package wellknown
 
 import (
-	"encoding/base64"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
+	"crypto/x509"
+	"errors"
 	"fmt"
 
 	"github.com/agntcy/dir/server/naming"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// ParseKey converts a WellKnownKey to a PublicKey.
-func ParseKey(wk naming.WellKnownKey) (*naming.PublicKey, error) {
-	// Validate key type
-	if !naming.IsValidKeyType(wk.Type) {
-		return nil, fmt.Errorf("unsupported key type: %s", wk.Type)
+// ConvertJWKToPublicKey converts a JWK (JSON Web Key) to our internal PublicKey format.
+// It extracts the raw public key bytes in DER format for comparison with signing keys.
+func ConvertJWKToPublicKey(key jwk.Key) (*naming.PublicKey, error) {
+	if key == nil {
+		return nil, errors.New("key is nil")
 	}
 
-	// Decode base64
-	keyBytes, err := base64.StdEncoding.DecodeString(wk.PublicKey)
-	if err != nil {
-		// Try URL-safe base64
-		keyBytes, err = base64.URLEncoding.DecodeString(wk.PublicKey)
+	// Get the raw public key
+	var rawKey interface{}
+	if err := key.Raw(&rawKey); err != nil {
+		return nil, fmt.Errorf("failed to get raw key: %w", err)
+	}
+
+	// Convert to DER format based on key type
+	var keyBytes []byte
+
+	var keyType string
+
+	var err error
+
+	switch k := rawKey.(type) {
+	case *ecdsa.PublicKey:
+		keyBytes, err = x509.MarshalPKIXPublicKey(k)
 		if err != nil {
-			// Try raw base64 (no padding)
-			keyBytes, err = base64.RawStdEncoding.DecodeString(wk.PublicKey)
-			if err != nil {
-				return nil, fmt.Errorf("invalid base64 public key: %w", err)
-			}
+			return nil, fmt.Errorf("failed to marshal ECDSA key: %w", err)
 		}
+
+		keyType = getECDSAKeyType(k)
+
+	case ed25519.PublicKey:
+		keyBytes, err = x509.MarshalPKIXPublicKey(k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal Ed25519 key: %w", err)
+		}
+
+		keyType = "ed25519"
+
+	case *rsa.PublicKey:
+		keyBytes, err = x509.MarshalPKIXPublicKey(k)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal RSA key: %w", err)
+		}
+
+		keyType = "rsa"
+
+	default:
+		return nil, fmt.Errorf("unsupported key type: %T", rawKey)
 	}
 
 	return &naming.PublicKey{
-		ID:        wk.ID,
-		Type:      wk.Type,
-		Key:       keyBytes,
-		KeyBase64: wk.PublicKey,
+		ID:   key.KeyID(),
+		Type: keyType,
+		Key:  keyBytes,
 	}, nil
+}
+
+// getECDSAKeyType returns the key type string for an ECDSA key based on its curve.
+func getECDSAKeyType(key *ecdsa.PublicKey) string {
+	if key.Curve == nil {
+		return "ecdsa"
+	}
+
+	switch key.Curve.Params().Name {
+	case "P-256":
+		return "ecdsa-p256"
+	case "P-384":
+		return "ecdsa-p384"
+	case "P-521":
+		return "ecdsa-p521"
+	default:
+		return "ecdsa"
+	}
 }
