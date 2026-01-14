@@ -113,8 +113,8 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 		}, nil
 	}
 
-	// Create domain verification object
-	domainVerification := &namingv1.DomainVerification{
+	// Create verification object
+	verification := &namingv1.Verification{
 		Domain:       result.Domain,
 		Method:       result.Method,
 		MatchedKeyId: result.MatchedKeyID,
@@ -122,9 +122,9 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 	}
 
 	// Store the verification as a referrer
-	referrer, err := domainVerification.MarshalReferrer()
+	referrer, err := verification.MarshalReferrer()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to marshal domain verification: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to marshal verification: %v", err)
 	}
 
 	referrerStore, ok := n.store.(types.ReferrerStoreAPI)
@@ -144,7 +144,7 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 
 	return &namingv1.VerifyResponse{
 		Verified:     true,
-		Verification: domainVerification,
+		Verification: verification,
 	}, nil
 }
 
@@ -161,18 +161,18 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 		return nil, status.Error(codes.Internal, "store does not support referrers")
 	}
 
-	var domainVerification *namingv1.DomainVerification
+	var verification *namingv1.Verification
 
-	// Walk domain verification referrers to find the verification
-	err := referrerStore.WalkReferrers(ctx, req.GetCid(), corev1.DomainVerificationReferrerType, func(referrer *corev1.RecordReferrer) error {
-		dv := &namingv1.DomainVerification{}
-		if err := dv.UnmarshalReferrer(referrer); err != nil {
-			namingLogger.Debug("Failed to unmarshal domain verification referrer", "error", err)
+	// Walk verification referrers to find the verification
+	err := referrerStore.WalkReferrers(ctx, req.GetCid(), corev1.VerificationReferrerType, func(referrer *corev1.RecordReferrer) error {
+		v := &namingv1.Verification{}
+		if err := v.UnmarshalReferrer(referrer); err != nil {
+			namingLogger.Debug("Failed to unmarshal verification referrer", "error", err)
 
 			return nil // Continue walking
 		}
 
-		domainVerification = dv
+		verification = v
 
 		return errStopWalk
 	})
@@ -181,7 +181,7 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 		return nil, status.Errorf(codes.Internal, "failed to walk referrers: %v", err)
 	}
 
-	if domainVerification == nil {
+	if verification == nil {
 		errMsg := "no verification found"
 
 		return &namingv1.GetVerificationInfoResponse{
@@ -192,7 +192,7 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 
 	return &namingv1.GetVerificationInfoResponse{
 		Verified:     true,
-		Verification: domainVerification,
+		Verification: verification,
 	}, nil
 }
 

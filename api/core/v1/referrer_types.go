@@ -11,6 +11,6 @@ const (
 	// SignatureReferrerType is the type for Signature referrers.
 	SignatureReferrerType = "agntcy.dir.sign.v1.Signature"
 
-	// DomainVerificationReferrerType is the type for DomainVerification referrers.
-	DomainVerificationReferrerType = "agntcy.dir.naming.v1.DomainVerification"
+	// VerificationReferrerType is the type for Verification referrers.
+	VerificationReferrerType = "agntcy.dir.naming.v1.Verification"
 )

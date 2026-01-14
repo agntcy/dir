@@ -5,7 +5,7 @@ syntax = "proto3";
 
 package agntcy.dir.naming.v1;
 
-import "agntcy/dir/naming/v1/domain_verification.proto";
+import "agntcy/dir/naming/v1/name_verification.proto";
 
 // NamingService provides methods to verify and inspect name verification state.
 service NamingService {
@@ -30,7 +30,7 @@ message VerifyResponse {
   bool verified = 1;
 
   // The verification details (only set if verified is true).
-  DomainVerification verification = 2;
+  Verification verification = 2;
 
   // Error message if verification failed.
   optional string error_message = 3;
@@ -48,7 +48,7 @@ message GetVerificationInfoResponse {
   bool verified = 1;
 
   // The verification details (only set if verified is true).
-  DomainVerification verification = 2;
+  Verification verification = 2;
 
   // Error message if lookup failed.
   optional string error_message = 3;

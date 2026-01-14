@@ -7,7 +7,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
-import type { DomainVerification } from "./domain_verification_pb.js";
+import type { Verification } from "./name_verification_pb.js";
 
 /**
  * Describes the file agntcy/dir/naming/v1/naming_service.proto.
@@ -50,9 +50,9 @@ export declare type VerifyResponse = Message<"agntcy.dir.naming.v1.VerifyRespons
   /**
    * The verification details (only set if verified is true).
    *
-   * @generated from field: agntcy.dir.naming.v1.DomainVerification verification = 2;
+   * @generated from field: agntcy.dir.naming.v1.Verification verification = 2;
    */
-  verification?: DomainVerification;
+  verification?: Verification;
 
   /**
    * Error message if verification failed.
@@ -104,9 +104,9 @@ export declare type GetVerificationInfoResponse = Message<"agntcy.dir.naming.v1.
   /**
    * The verification details (only set if verified is true).
    *
-   * @generated from field: agntcy.dir.naming.v1.DomainVerification verification = 2;
+   * @generated from field: agntcy.dir.naming.v1.Verification verification = 2;
    */
-  verification?: DomainVerification;
+  verification?: Verification;
 
   /**
    * Error message if lookup failed.
