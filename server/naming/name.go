@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package verification
+package naming
 
 import (
 	"strings"
@@ -9,7 +9,7 @@ import (
 	"github.com/agntcy/dir/utils/logging"
 )
 
-var domainLogger = logging.Logger("verification/domain")
+var nameLogger = logging.Logger("naming/name")
 
 // Protocol prefixes for name verification.
 const (
@@ -68,7 +68,7 @@ func ParseName(name string) *ParsedName {
 
 	// Validate domain (must contain at least one dot)
 	if !strings.Contains(result.Domain, ".") {
-		domainLogger.Debug("Invalid domain: no dot found", "domain", result.Domain)
+		nameLogger.Debug("Invalid domain: no dot found", "domain", result.Domain)
 
 		return nil
 	}

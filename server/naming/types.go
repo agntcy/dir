@@ -1,10 +1,10 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-// Package verification provides domain ownership verification for OASF records.
+// Package naming provides name ownership verification for OASF records.
 // It implements DNS TXT and well-known file verification inspired by AT Protocol
 // and ACME DNS-01 challenge patterns.
-package verification
+package naming
 
 import "time"
 
@@ -23,7 +23,7 @@ type PublicKey struct {
 	KeyBase64 string
 }
 
-// Result represents the outcome of a domain verification attempt.
+// Result represents the outcome of a name verification attempt.
 type Result struct {
 	// Verified is true if the signing key matches a domain-published key.
 	Verified bool
@@ -65,7 +65,7 @@ type WellKnownKey struct {
 	PublicKey string `json:"publicKey"`
 }
 
-// VerificationMethod represents the method used to verify domain ownership.
+// VerificationMethod represents the method used to verify name ownership.
 type VerificationMethod string
 
 const (
@@ -78,12 +78,3 @@ const (
 	// MethodNone indicates no verification was possible.
 	MethodNone VerificationMethod = "none"
 )
-
-// DNSRecordPrefix is the subdomain prefix for OASF DNS TXT records.
-const DNSRecordPrefix = "_oasf."
-
-// WellKnownPath is the path for the OASF well-known file.
-const WellKnownPath = "/.well-known/oasf.json"
-
-// DefaultHTTPTimeout is the default timeout for HTTP requests.
-const DefaultHTTPTimeout = 10 * time.Second

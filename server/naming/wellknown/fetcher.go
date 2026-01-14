@@ -1,7 +1,8 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package verification
+// Package wellknown provides well-known file verification for name ownership.
+package wellknown
 
 import (
 	"context"
@@ -11,18 +12,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/agntcy/dir/server/naming"
+	"github.com/agntcy/dir/server/naming/wellknown/config"
 	"github.com/agntcy/dir/utils/logging"
 )
 
-const (
-	// defaultMaxBodySize is the maximum size of the response body (1MB).
-	defaultMaxBodySize = 1024 * 1024
-)
+// WellKnownPath is the path for the OASF well-known file.
+const WellKnownPath = "/.well-known/oasf.json"
 
-var wellKnownLogger = logging.Logger("verification/wellknown")
+var logger = logging.Logger("naming/wellknown")
 
-// WellKnownFetcher handles fetching the well-known OASF file from domains.
-type WellKnownFetcher struct {
+// Fetcher handles fetching the well-known OASF file from domains.
+type Fetcher struct {
 	// client is the HTTP client to use for requests.
 	client *http.Client
 
@@ -36,43 +37,43 @@ type WellKnownFetcher struct {
 	allowInsecure bool
 }
 
-// WellKnownFetcherOption configures a WellKnownFetcher.
-type WellKnownFetcherOption func(*WellKnownFetcher)
+// Option configures a Fetcher.
+type Option func(*Fetcher)
 
 // WithHTTPClient sets a custom HTTP client.
-func WithHTTPClient(client *http.Client) WellKnownFetcherOption {
-	return func(f *WellKnownFetcher) {
+func WithHTTPClient(client *http.Client) Option {
+	return func(f *Fetcher) {
 		f.client = client
 	}
 }
 
-// WithHTTPTimeout sets the HTTP request timeout.
-func WithHTTPTimeout(timeout time.Duration) WellKnownFetcherOption {
-	return func(f *WellKnownFetcher) {
+// WithTimeout sets the HTTP request timeout.
+func WithTimeout(timeout time.Duration) Option {
+	return func(f *Fetcher) {
 		f.timeout = timeout
 	}
 }
 
 // WithMaxBodySize sets the maximum response body size.
-func WithMaxBodySize(size int64) WellKnownFetcherOption {
-	return func(f *WellKnownFetcher) {
+func WithMaxBodySize(size int64) Option {
+	return func(f *Fetcher) {
 		f.maxBodySize = size
 	}
 }
 
 // WithAllowInsecure allows HTTP instead of HTTPS for well-known file fetching.
 // WARNING: Only use for local development/testing. Never enable in production.
-func WithAllowInsecure(allow bool) WellKnownFetcherOption {
-	return func(f *WellKnownFetcher) {
+func WithAllowInsecure(allow bool) Option {
+	return func(f *Fetcher) {
 		f.allowInsecure = allow
 	}
 }
 
-// NewWellKnownFetcher creates a new well-known file fetcher with the given options.
-func NewWellKnownFetcher(opts ...WellKnownFetcherOption) *WellKnownFetcher {
-	f := &WellKnownFetcher{
-		timeout:     DefaultHTTPTimeout,
-		maxBodySize: defaultMaxBodySize,
+// NewFetcher creates a new well-known file fetcher with the given options.
+func NewFetcher(opts ...Option) *Fetcher {
+	f := &Fetcher{
+		timeout:     config.DefaultTimeout,
+		maxBodySize: config.DefaultMaxBodySize,
 	}
 
 	for _, opt := range opts {
@@ -89,9 +90,23 @@ func NewWellKnownFetcher(opts ...WellKnownFetcherOption) *WellKnownFetcher {
 	return f
 }
 
-// FetchKeys retrieves public keys from the well-known OASF file for the given domain.
+// NewFetcherFromConfig creates a new well-known fetcher from configuration.
+func NewFetcherFromConfig(cfg *config.Config) *Fetcher {
+	if cfg == nil {
+		cfg = config.DefaultConfig()
+	}
+
+	return NewFetcher(
+		WithTimeout(cfg.Timeout),
+		WithMaxBodySize(cfg.MaxBodySize),
+		WithAllowInsecure(cfg.AllowInsecure),
+	)
+}
+
+// LookupKeys retrieves public keys from the well-known OASF file for the given domain.
 // It fetches https://<domain>/.well-known/oasf.json and parses the keys.
-func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]PublicKey, error) {
+// This method implements the naming.KeyLookup interface.
+func (f *Fetcher) LookupKeys(ctx context.Context, domain string) ([]naming.PublicKey, error) {
 	// Create context with timeout
 	fetchCtx, cancel := context.WithTimeout(ctx, f.timeout)
 	defer cancel()
@@ -104,7 +119,7 @@ func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]Publ
 
 	url := scheme + "://" + domain + WellKnownPath
 
-	wellKnownLogger.Debug("Fetching well-known OASF file", "domain", domain, "url", url)
+	logger.Debug("Fetching well-known OASF file", "domain", domain, "url", url)
 
 	// Create request
 	req, err := http.NewRequestWithContext(fetchCtx, http.MethodGet, url, nil)
@@ -125,7 +140,7 @@ func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]Publ
 
 	// Check status code
 	if resp.StatusCode == http.StatusNotFound {
-		wellKnownLogger.Debug("Well-known file not found", "domain", domain)
+		logger.Debug("Well-known file not found", "domain", domain)
 
 		return nil, nil // Not an error, just no file
 	}
@@ -142,10 +157,10 @@ func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]Publ
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	wellKnownLogger.Debug("Received well-known file", "domain", domain, "size", len(body))
+	logger.Debug("Received well-known file", "domain", domain, "size", len(body))
 
 	// Parse JSON
-	var wellKnown WellKnownFile
+	var wellKnown naming.WellKnownFile
 	if err := json.Unmarshal(body, &wellKnown); err != nil {
 		return nil, fmt.Errorf("failed to parse well-known file: %w", err)
 	}
@@ -156,19 +171,19 @@ func (f *WellKnownFetcher) FetchKeys(ctx context.Context, domain string) ([]Publ
 	}
 
 	// Parse keys
-	keys := make([]PublicKey, 0, len(wellKnown.Keys))
+	keys := make([]naming.PublicKey, 0, len(wellKnown.Keys))
 
 	for _, wk := range wellKnown.Keys {
-		key, err := ParseWellKnownKey(wk)
+		key, err := ParseKey(wk)
 		if err != nil {
-			wellKnownLogger.Warn("Failed to parse key from well-known file",
+			logger.Warn("Failed to parse key from well-known file",
 				"domain", domain, "keyID", wk.ID, "error", err)
 
 			continue
 		}
 
 		keys = append(keys, *key)
-		wellKnownLogger.Debug("Parsed public key from well-known file",
+		logger.Debug("Parsed public key from well-known file",
 			"domain", domain, "keyID", key.ID, "keyType", key.Type)
 	}
 

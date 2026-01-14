@@ -32,12 +32,14 @@ import (
 	grpclogging "github.com/agntcy/dir/server/middleware/logging"
 	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
+	"github.com/agntcy/dir/server/naming"
+	"github.com/agntcy/dir/server/naming/dns"
+	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/verification"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -282,14 +284,21 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	// Create health checker
 	healthChecker := healthcheck.New()
 
-	// Create domain verifier for naming service
-	var verifierOpts []verification.VerifierOption
+	// Create naming provider for naming service
+	dnsResolver := dns.NewResolver()
+
+	var wellKnownOpts []wellknown.Option
 
 	if options.Config().Store.Verification.AllowInsecure {
-		verifierOpts = append(verifierOpts, verification.WithAllowInsecureWellKnown(true))
+		wellKnownOpts = append(wellKnownOpts, wellknown.WithAllowInsecure(true))
 	}
 
-	domainVerifier := verification.NewVerifier(verifierOpts...)
+	wellKnownFetcher := wellknown.NewFetcher(wellKnownOpts...)
+
+	namingProvider := naming.NewProvider(
+		naming.WithDNSLookup(dnsResolver),
+		naming.WithWellKnownLookup(wellKnownFetcher),
+	)
 
 	// Register APIs
 	eventsv1.RegisterEventServiceServer(grpcServer, controller.NewEventsController(eventService))
@@ -299,7 +308,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
 	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(storeAPI))
-	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(storeAPI, domainVerifier))
+	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(storeAPI, namingProvider))
 
 	// Register health service
 	healthChecker.Register(grpcServer)

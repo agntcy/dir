@@ -13,9 +13,9 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	"github.com/agntcy/dir/server/naming"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
-	"github.com/agntcy/dir/server/verification"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"google.golang.org/grpc/codes"
@@ -31,14 +31,14 @@ var errStopWalk = errors.New("stop walking")
 type namingCtrl struct {
 	namingv1.UnimplementedNamingServiceServer
 	store    types.StoreAPI
-	verifier *verification.Verifier
+	provider *naming.Provider
 }
 
 // NewNamingController creates a new naming service controller.
-func NewNamingController(store types.StoreAPI, verifier *verification.Verifier) namingv1.NamingServiceServer {
+func NewNamingController(store types.StoreAPI, provider *naming.Provider) namingv1.NamingServiceServer {
 	return &namingCtrl{
 		store:    store,
-		verifier: verifier,
+		provider: provider,
 	}
 }
 
@@ -99,7 +99,7 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 	}
 
 	// Perform verification
-	result := n.verifier.Verify(ctx, recordName, publicKey)
+	result := n.provider.Verify(ctx, recordName, publicKey)
 
 	if !result.Verified {
 		errMsg := result.Error

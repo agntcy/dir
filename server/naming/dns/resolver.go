@@ -1,7 +1,8 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package verification
+// Package dns provides DNS TXT record verification for name ownership.
+package dns
 
 import (
 	"context"
@@ -10,20 +11,23 @@ import (
 	"net"
 	"time"
 
+	"github.com/agntcy/dir/server/naming"
+	"github.com/agntcy/dir/server/naming/dns/config"
 	"github.com/agntcy/dir/utils/logging"
 )
 
 const (
-	// defaultDNSTimeout is the default timeout for DNS lookups.
-	defaultDNSTimeout = 5 * time.Second
+	// DNSRecordPrefix is the subdomain prefix for OASF DNS TXT records.
+	DNSRecordPrefix = "_oasf."
+
 	// maxTruncateLen is the maximum length for truncated log strings.
 	maxTruncateLen = 50
 )
 
-var dnsLogger = logging.Logger("verification/dns")
+var logger = logging.Logger("naming/dns")
 
-// DNSResolver handles DNS TXT record lookups for domain verification.
-type DNSResolver struct {
+// Resolver handles DNS TXT record lookups for name verification.
+type Resolver struct {
 	// resolver is the underlying DNS resolver (nil uses default).
 	resolver *net.Resolver
 
@@ -31,27 +35,27 @@ type DNSResolver struct {
 	timeout time.Duration
 }
 
-// DNSResolverOption configures a DNSResolver.
-type DNSResolverOption func(*DNSResolver)
+// Option configures a Resolver.
+type Option func(*Resolver)
 
-// WithDNSTimeout sets the DNS resolution timeout.
-func WithDNSTimeout(timeout time.Duration) DNSResolverOption {
-	return func(r *DNSResolver) {
+// WithTimeout sets the DNS resolution timeout.
+func WithTimeout(timeout time.Duration) Option {
+	return func(r *Resolver) {
 		r.timeout = timeout
 	}
 }
 
 // WithResolver sets a custom DNS resolver.
-func WithResolver(resolver *net.Resolver) DNSResolverOption {
-	return func(r *DNSResolver) {
+func WithResolver(resolver *net.Resolver) Option {
+	return func(r *Resolver) {
 		r.resolver = resolver
 	}
 }
 
-// NewDNSResolver creates a new DNS resolver with the given options.
-func NewDNSResolver(opts ...DNSResolverOption) *DNSResolver {
-	r := &DNSResolver{
-		timeout: defaultDNSTimeout,
+// NewResolver creates a new DNS resolver with the given options.
+func NewResolver(opts ...Option) *Resolver {
+	r := &Resolver{
+		timeout: config.DefaultTimeout,
 	}
 
 	for _, opt := range opts {
@@ -61,9 +65,18 @@ func NewDNSResolver(opts ...DNSResolverOption) *DNSResolver {
 	return r
 }
 
+// NewResolverFromConfig creates a new DNS resolver from configuration.
+func NewResolverFromConfig(cfg *config.Config) *Resolver {
+	if cfg == nil {
+		cfg = config.DefaultConfig()
+	}
+
+	return NewResolver(WithTimeout(cfg.Timeout))
+}
+
 // LookupKeys retrieves public keys from DNS TXT records for the given domain.
 // It looks up _oasf.<domain> and parses any OASF-formatted TXT records.
-func (r *DNSResolver) LookupKeys(ctx context.Context, domain string) ([]PublicKey, error) {
+func (r *Resolver) LookupKeys(ctx context.Context, domain string) ([]naming.PublicKey, error) {
 	// Create context with timeout
 	lookupCtx, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
@@ -71,7 +84,7 @@ func (r *DNSResolver) LookupKeys(ctx context.Context, domain string) ([]PublicKe
 	// Build the DNS name to lookup
 	dnsName := DNSRecordPrefix + domain
 
-	dnsLogger.Debug("Looking up DNS TXT records", "domain", domain, "dnsName", dnsName)
+	logger.Debug("Looking up DNS TXT records", "domain", domain, "dnsName", dnsName)
 
 	// Perform DNS TXT lookup
 	var records []string
@@ -89,7 +102,7 @@ func (r *DNSResolver) LookupKeys(ctx context.Context, domain string) ([]PublicKe
 		var dnsErr *net.DNSError
 		if errors.As(err, &dnsErr) {
 			if dnsErr.IsNotFound {
-				dnsLogger.Debug("No DNS TXT records found", "domain", domain)
+				logger.Debug("No DNS TXT records found", "domain", domain)
 
 				return nil, nil // Not an error, just no records
 			}
@@ -98,28 +111,28 @@ func (r *DNSResolver) LookupKeys(ctx context.Context, domain string) ([]PublicKe
 		return nil, fmt.Errorf("DNS lookup failed for %s: %w", dnsName, err)
 	}
 
-	dnsLogger.Debug("Found DNS TXT records", "domain", domain, "count", len(records))
+	logger.Debug("Found DNS TXT records", "domain", domain, "count", len(records))
 
 	// Parse OASF records
-	keys := make([]PublicKey, 0, len(records))
+	keys := make([]naming.PublicKey, 0, len(records))
 
 	for _, record := range records {
 		// Skip non-OASF records
 		if !isOASFRecord(record) {
-			dnsLogger.Debug("Skipping non-OASF TXT record", "record", truncateString(record, maxTruncateLen))
+			logger.Debug("Skipping non-OASF TXT record", "record", truncateString(record, maxTruncateLen))
 
 			continue
 		}
 
-		key, err := ParseDNSTXTRecord(record)
+		key, err := ParseTXTRecord(record)
 		if err != nil {
-			dnsLogger.Warn("Failed to parse OASF TXT record", "record", truncateString(record, maxTruncateLen), "error", err)
+			logger.Warn("Failed to parse OASF TXT record", "record", truncateString(record, maxTruncateLen), "error", err)
 
 			continue
 		}
 
 		keys = append(keys, *key)
-		dnsLogger.Debug("Parsed OASF public key from DNS", "domain", domain, "keyType", key.Type)
+		logger.Debug("Parsed OASF public key from DNS", "domain", domain, "keyType", key.Type)
 	}
 
 	return keys, nil
