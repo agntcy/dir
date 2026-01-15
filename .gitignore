@@ -44,3 +44,20 @@ go.work.sum
 
 # MCP server binary
 mcp/mcp-server
+
+# Local Build output
+build/
+mcp/debug/
+
+# Flutter GUI
+gui/.dart_tool/
+gui/.flutter-plugins
+gui/.flutter-plugins-dependencies
+gui/build/
+gui/android/
+gui/ios/
+gui/linux/
+gui/web/
+gui/windows/
+gui/macos/
+
