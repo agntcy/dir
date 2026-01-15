@@ -33,7 +33,7 @@ const (
 // NamingService provides methods to verify and inspect name verification state.
 type NamingServiceClient interface {
 	// Verify performs name verification for a signed record.
-	// The record's name should be prefixed with the protocol (dns:// or wellknown://)
+	// The record's name should be prefixed with the protocol (dns://, https://, or http://)
 	// to indicate the verification method.
 	Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error)
 	// GetVerificationInfo retrieves the verification info for a record.
@@ -75,7 +75,7 @@ func (c *namingServiceClient) GetVerificationInfo(ctx context.Context, in *GetVe
 // NamingService provides methods to verify and inspect name verification state.
 type NamingServiceServer interface {
 	// Verify performs name verification for a signed record.
-	// The record's name should be prefixed with the protocol (dns:// or wellknown://)
+	// The record's name should be prefixed with the protocol (dns://, https://, or http://)
 	// to indicate the verification method.
 	Verify(context.Context, *VerifyRequest) (*VerifyResponse, error)
 	// GetVerificationInfo retrieves the verification info for a record.

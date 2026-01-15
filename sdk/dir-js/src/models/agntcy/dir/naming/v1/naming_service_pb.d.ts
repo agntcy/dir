@@ -130,7 +130,7 @@ export declare const GetVerificationInfoResponseSchema: GenMessage<GetVerificati
 export declare const NamingService: GenService<{
   /**
    * Verify performs name verification for a signed record.
-   * The record's name should be prefixed with the protocol (dns:// or wellknown://)
+   * The record's name should be prefixed with the protocol (dns://, https://, or http://)
    * to indicate the verification method.
    *
    * @generated from rpc agntcy.dir.naming.v1.NamingService.Verify

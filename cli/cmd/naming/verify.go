@@ -24,7 +24,8 @@ domain claimed in the record's name field.
 
 The record's name must include a protocol prefix to specify the verification method:
 - dns://domain/path - verify using DNS TXT records
-- wellknown://domain/path - verify using well-known file
+- https://domain/path - verify using JWKS well-known file (RFC 7517)
+- http://domain/path - verify using JWKS via HTTP (testing only)
 
 Records without a protocol prefix will not be verified.
 
@@ -35,12 +36,12 @@ re-verifying.
 Prerequisites:
 - Record must be pushed to the store
 - Record must be signed (public key referrer must exist)
-- Record's name must include a protocol prefix (dns:// or wellknown://)
+- Record's name must include a protocol prefix (dns://, https://, or http://)
 - Record's name must contain a valid domain (with at least one dot)
 
 Verification methods:
 1. DNS TXT record at _oasf.<domain> with format "v=oasf1; k=<type>; p=<key>"
-2. Well-known file at https://<domain>/.well-known/oasf.json
+2. JWKS well-known file at <scheme>://<domain>/.well-known/jwks.json
 
 Usage examples:
 

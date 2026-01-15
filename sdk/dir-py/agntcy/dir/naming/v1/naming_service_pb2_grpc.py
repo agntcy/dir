@@ -33,7 +33,7 @@ class NamingServiceServicer(object):
 
     def Verify(self, request, context):
         """Verify performs name verification for a signed record.
-        The record's name should be prefixed with the protocol (dns:// or wellknown://)
+        The record's name should be prefixed with the protocol (dns://, https://, or http://)
         to indicate the verification method.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
