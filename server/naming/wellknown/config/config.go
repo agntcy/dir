@@ -15,9 +15,6 @@ const (
 type Config struct {
 	// Timeout is the maximum time to wait for HTTP requests.
 	Timeout time.Duration `json:"timeout,omitempty" mapstructure:"timeout"`
-
-	// AllowInsecure allows HTTP instead of HTTPS (for testing only).
-	AllowInsecure bool `json:"allow_insecure,omitempty" mapstructure:"allow_insecure"`
 }
 
 // DefaultConfig returns the default well-known configuration.

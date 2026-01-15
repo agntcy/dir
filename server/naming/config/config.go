@@ -8,7 +8,4 @@ package config
 type Config struct {
 	// Enabled enables name verification.
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
-
-	// AllowInsecure allows HTTP instead of HTTPS for well-known fetching (testing only).
-	AllowInsecure bool `json:"allow_insecure,omitempty" mapstructure:"allow_insecure"`
 }

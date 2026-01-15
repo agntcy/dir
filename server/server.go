@@ -286,14 +286,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 
 	// Create naming provider for naming service
 	dnsResolver := dns.NewResolver()
-
-	var wellKnownOpts []wellknown.Option
-
-	if options.Config().Store.Verification.AllowInsecure {
-		wellKnownOpts = append(wellKnownOpts, wellknown.WithAllowInsecure(true))
-	}
-
-	wellKnownFetcher := wellknown.NewFetcher(wellKnownOpts...)
+	wellKnownFetcher := wellknown.NewFetcher()
 
 	namingProvider := naming.NewProvider(
 		naming.WithDNSLookup(dnsResolver),

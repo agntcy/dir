@@ -29,9 +29,6 @@ type Fetcher struct {
 
 	// timeout is the maximum time to wait for HTTP requests.
 	timeout time.Duration
-
-	// allowInsecure allows HTTP instead of HTTPS (for testing only).
-	allowInsecure bool
 }
 
 // Option configures a Fetcher.
@@ -48,14 +45,6 @@ func WithHTTPClient(client *http.Client) Option {
 func WithTimeout(timeout time.Duration) Option {
 	return func(f *Fetcher) {
 		f.timeout = timeout
-	}
-}
-
-// WithAllowInsecure allows HTTP instead of HTTPS for well-known file fetching.
-// WARNING: Only use for local development/testing. Never enable in production.
-func WithAllowInsecure(allow bool) Option {
-	return func(f *Fetcher) {
-		f.allowInsecure = allow
 	}
 }
 
@@ -87,24 +76,18 @@ func NewFetcherFromConfig(cfg *config.Config) *Fetcher {
 
 	return NewFetcher(
 		WithTimeout(cfg.Timeout),
-		WithAllowInsecure(cfg.AllowInsecure),
 	)
 }
 
-// LookupKeys retrieves public keys from the JWKS well-known file for the given domain.
-// It fetches https://<domain>/.well-known/jwks.json and parses the keys per RFC 7517.
-// This method implements the naming.KeyLookup interface.
-func (f *Fetcher) LookupKeys(ctx context.Context, domain string) ([]naming.PublicKey, error) {
+// LookupKeysWithScheme retrieves public keys from the JWKS well-known file for the given domain.
+// The scheme parameter specifies whether to use "http" or "https".
+// This method implements the naming.KeyLookupWithScheme interface.
+func (f *Fetcher) LookupKeysWithScheme(ctx context.Context, domain, scheme string) ([]naming.PublicKey, error) {
 	// Create context with timeout
 	fetchCtx, cancel := context.WithTimeout(ctx, f.timeout)
 	defer cancel()
 
 	// Build the URL
-	scheme := "https"
-	if f.allowInsecure {
-		scheme = "http"
-	}
-
 	url := scheme + "://" + domain + WellKnownPath
 
 	logger.Debug("Fetching JWKS well-known file", "domain", domain, "url", url)
@@ -112,7 +95,6 @@ func (f *Fetcher) LookupKeys(ctx context.Context, domain string) ([]naming.Publi
 	// Fetch and parse JWKS using the jwx library
 	keySet, err := jwk.Fetch(fetchCtx, url, jwk.WithHTTPClient(f.client))
 	if err != nil {
-		// Check if it's a 404 (not found)
 		logger.Debug("Failed to fetch JWKS", "domain", domain, "error", err)
 
 		return nil, fmt.Errorf("failed to fetch JWKS from %s: %w", url, err)

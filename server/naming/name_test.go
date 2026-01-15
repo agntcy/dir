@@ -42,13 +42,23 @@ func TestParseName(t *testing.T) {
 			},
 		},
 		{
-			name:  "wellknown protocol",
-			input: "wellknown://example.org/test",
+			name:  "https protocol",
+			input: "https://example.org/test",
 			want: &ParsedName{
-				Protocol: WellKnownProtocol,
+				Protocol: HTTPSProtocol,
 				Domain:   "example.org",
 				Path:     "test",
 				FullName: "example.org/test",
+			},
+		},
+		{
+			name:  "http protocol with port",
+			input: "http://localhost:8080/agent",
+			want: &ParsedName{
+				Protocol: HTTPProtocol,
+				Domain:   "localhost:8080",
+				Path:     "agent",
+				FullName: "localhost:8080/agent",
 			},
 		},
 		{
@@ -66,14 +76,19 @@ func TestParseName(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name:    "no dot in domain",
-			input:   "localhost",
+			name:    "no dot in domain and not localhost",
+			input:   "invalid",
 			wantNil: true,
 		},
 		{
-			name:    "dns protocol with no dot",
-			input:   "dns://localhost/agent",
-			wantNil: true,
+			name:  "localhost with port is valid",
+			input: "http://localhost:8080/agent",
+			want: &ParsedName{
+				Protocol: HTTPProtocol,
+				Domain:   "localhost:8080",
+				Path:     "agent",
+				FullName: "localhost:8080/agent",
+			},
 		},
 	}
 
@@ -134,9 +149,14 @@ func TestExtractDomain(t *testing.T) {
 			want:  "cisco.com",
 		},
 		{
-			name:  "wellknown protocol",
-			input: "wellknown://example.org",
+			name:  "https protocol",
+			input: "https://example.org",
 			want:  "example.org",
+		},
+		{
+			name:  "http protocol with localhost",
+			input: "http://localhost:8080/agent",
+			want:  "localhost:8080",
 		},
 		{
 			name:  "empty string",
@@ -144,8 +164,8 @@ func TestExtractDomain(t *testing.T) {
 			want:  "",
 		},
 		{
-			name:  "no dot",
-			input: "localhost",
+			name:  "no dot and not localhost",
+			input: "invalid",
 			want:  "",
 		},
 	}

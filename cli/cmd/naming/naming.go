@@ -21,17 +21,18 @@ This command group provides access to name ownership verification:
 
 Name verification proves that a record's signing key is authorized by the
 domain claimed in the record's name. This enables trustworthy human-readable
-naming (e.g., "dns://cisco.com/marketing-agent").
+naming (e.g., "https://cisco.com/marketing-agent").
 
 Protocol prefixes (required for verification):
 - dns://domain/path - verify using DNS TXT records
-- wellknown://domain/path - verify using well-known file
+- https://domain/path - verify using JWKS well-known file (RFC 7517)
+- http://domain/path - verify using JWKS via HTTP (testing only)
 
 Records without a protocol prefix will not be verified.
 
 Verification methods:
 1. DNS TXT record: _oasf.<domain> with format "v=oasf1; k=<type>; p=<key>"
-2. Well-known file: https://<domain>/.well-known/oasf.json
+2. JWKS well-known file: <scheme>://<domain>/.well-known/jwks.json
 
 Examples:
 

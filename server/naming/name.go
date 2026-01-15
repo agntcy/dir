@@ -13,13 +13,19 @@ var nameLogger = logging.Logger("naming/name")
 
 // Protocol prefixes for name verification.
 const (
-	DNSProtocol       = "dns://"
-	WellKnownProtocol = "wellknown://"
+	// DNSProtocol indicates DNS TXT record verification.
+	DNSProtocol = "dns://"
+
+	// HTTPSProtocol indicates JWKS well-known verification via HTTPS.
+	HTTPSProtocol = "https://"
+
+	// HTTPProtocol indicates JWKS well-known verification via HTTP (testing only).
+	HTTPProtocol = "http://"
 )
 
 // ParsedName represents a parsed record name with optional protocol prefix.
 type ParsedName struct {
-	// Protocol is the verification protocol (dns://, wellknown://, or empty for auto).
+	// Protocol is the verification protocol (dns://, https://, http://, or empty).
 	Protocol string
 	// Domain is the domain part of the name.
 	Domain string
@@ -33,8 +39,9 @@ type ParsedName struct {
 //
 // Expected formats:
 //   - "dns://cisco.com/agent" -> Protocol: "dns://", Domain: "cisco.com", Path: "agent"
-//   - "wellknown://cisco.com/agent" -> Protocol: "wellknown://", Domain: "cisco.com", Path: "agent"
-//   - "cisco.com/agent" -> Protocol: "", Domain: "cisco.com", Path: "agent" (auto-detect)
+//   - "https://cisco.com/agent" -> Protocol: "https://", Domain: "cisco.com", Path: "agent"
+//   - "http://localhost:8080/agent" -> Protocol: "http://", Domain: "localhost:8080", Path: "agent"
+//   - "cisco.com/agent" -> Protocol: "", Domain: "cisco.com", Path: "agent" (no verification)
 //   - "cisco.com" -> Protocol: "", Domain: "cisco.com", Path: ""
 //
 // Returns nil if the name is invalid.
@@ -51,9 +58,12 @@ func ParseName(name string) *ParsedName {
 	case strings.HasPrefix(name, DNSProtocol):
 		result.Protocol = DNSProtocol
 		remaining = strings.TrimPrefix(name, DNSProtocol)
-	case strings.HasPrefix(name, WellKnownProtocol):
-		result.Protocol = WellKnownProtocol
-		remaining = strings.TrimPrefix(name, WellKnownProtocol)
+	case strings.HasPrefix(name, HTTPSProtocol):
+		result.Protocol = HTTPSProtocol
+		remaining = strings.TrimPrefix(name, HTTPSProtocol)
+	case strings.HasPrefix(name, HTTPProtocol):
+		result.Protocol = HTTPProtocol
+		remaining = strings.TrimPrefix(name, HTTPProtocol)
 	}
 
 	result.FullName = remaining
@@ -66,9 +76,9 @@ func ParseName(name string) *ParsedName {
 		result.Domain = remaining
 	}
 
-	// Validate domain (must contain at least one dot)
-	if !strings.Contains(result.Domain, ".") {
-		nameLogger.Debug("Invalid domain: no dot found", "domain", result.Domain)
+	// Validate domain (must contain at least one dot or be localhost with port)
+	if !strings.Contains(result.Domain, ".") && !strings.HasPrefix(result.Domain, "localhost") {
+		nameLogger.Debug("Invalid domain: no dot found and not localhost", "domain", result.Domain)
 
 		return nil
 	}
@@ -76,7 +86,7 @@ func ParseName(name string) *ParsedName {
 	return result
 }
 
-// ExtractDomain extracts the domain from an OASF record name.
+// ExtractDomain extracts the domain from a record name.
 // This is a convenience function that wraps ParseName.
 //
 // Returns empty string if the name is invalid.

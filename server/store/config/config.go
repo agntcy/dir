@@ -10,7 +10,7 @@ import (
 const (
 	DefaultProvider = "oci"
 
-	// DefaultVerificationEnabled controls whether domain verification is enabled.
+	// DefaultVerificationEnabled controls whether name verification is enabled.
 	DefaultVerificationEnabled = true
 )
 
@@ -21,18 +21,13 @@ type Config struct {
 	// Config for OCI database.
 	OCI oci.Config `json:"oci,omitempty" mapstructure:"oci"`
 
-	// Verification configures domain ownership verification.
+	// Verification configures name ownership verification.
 	Verification VerificationConfig `json:"verification,omitempty" mapstructure:"verification"`
 }
 
-// VerificationConfig defines domain verification configuration.
+// VerificationConfig defines name verification configuration.
 type VerificationConfig struct {
-	// Enabled controls whether domain verification is performed.
+	// Enabled controls whether name verification is performed.
 	// Default: true
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
-
-	// AllowInsecure allows HTTP (instead of HTTPS) for well-known file fetching.
-	// WARNING: Only use for local development/testing. Never enable in production.
-	// Default: false
-	AllowInsecure bool `json:"allow_insecure,omitempty" mapstructure:"allow_insecure"`
 }
