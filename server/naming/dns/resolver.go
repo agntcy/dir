@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/agntcy/dir/server/naming"
@@ -17,8 +18,11 @@ import (
 )
 
 const (
-	// DNSRecordPrefix is the subdomain prefix for OASF DNS TXT records.
-	DNSRecordPrefix = "_oasf."
+	// DNSRecordPrefix is the subdomain prefix for DIR naming system DNS TXT records.
+	DNSRecordPrefix = "_dir_nsys."
+
+	// RecordSchemaPrefix is the prefix that identifies DIR naming system TXT records.
+	RecordSchemaPrefix = "schema=v1"
 
 	// maxTruncateLen is the maximum length for truncated log strings.
 	maxTruncateLen = 50
@@ -75,7 +79,7 @@ func NewResolverFromConfig(cfg *config.Config) *Resolver {
 }
 
 // LookupKeys retrieves public keys from DNS TXT records for the given domain.
-// It looks up _oasf.<domain> and parses any OASF-formatted TXT records.
+// It looks up _dir_nsys.<domain> and parses DIR naming system formatted TXT records.
 func (r *Resolver) LookupKeys(ctx context.Context, domain string) ([]naming.PublicKey, error) {
 	// Create context with timeout
 	lookupCtx, cancel := context.WithTimeout(ctx, r.timeout)
@@ -113,35 +117,35 @@ func (r *Resolver) LookupKeys(ctx context.Context, domain string) ([]naming.Publ
 
 	logger.Debug("Found DNS TXT records", "domain", domain, "count", len(records))
 
-	// Parse OASF records
+	// Parse DIR naming system records
 	keys := make([]naming.PublicKey, 0, len(records))
 
 	for _, record := range records {
-		// Skip non-OASF records
-		if !isOASFRecord(record) {
-			logger.Debug("Skipping non-OASF TXT record", "record", truncateString(record, maxTruncateLen))
+		// Skip non-DIR naming system records
+		if !isDirNsysRecord(record) {
+			logger.Debug("Skipping non-DIR naming system TXT record", "record", truncateString(record, maxTruncateLen))
 
 			continue
 		}
 
 		key, err := ParseTXTRecord(record)
 		if err != nil {
-			logger.Warn("Failed to parse OASF TXT record", "record", truncateString(record, maxTruncateLen), "error", err)
+			logger.Warn("Failed to parse DIR naming system TXT record", "record", truncateString(record, maxTruncateLen), "error", err)
 
 			continue
 		}
 
 		keys = append(keys, *key)
-		logger.Debug("Parsed OASF public key from DNS", "domain", domain, "keyType", key.Type)
+		logger.Debug("Parsed public key from DNS", "domain", domain, "keyType", key.Type)
 	}
 
 	return keys, nil
 }
 
-// isOASFRecord checks if a TXT record appears to be an OASF record.
-func isOASFRecord(record string) bool {
-	// OASF records start with "v=oasf"
-	return len(record) > 6 && record[:6] == "v=oasf"
+// isDirNsysRecord checks if a TXT record is a DIR naming system record.
+func isDirNsysRecord(record string) bool {
+	// DIR naming system records start with "schema=v1"
+	return strings.HasPrefix(record, RecordSchemaPrefix)
 }
 
 // truncateString truncates a string to the given length, adding "..." if truncated.

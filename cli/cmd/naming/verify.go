@@ -40,7 +40,7 @@ Prerequisites:
 - Record's name must contain a valid domain (with at least one dot)
 
 Verification methods:
-1. DNS TXT record at _oasf.<domain> with format "v=oasf1; k=<type>; p=<key>"
+1. DNS TXT record at _dir_nsys.<domain> with format "schema=v1; v=pubkey; k=<type>; p=<key>"
 2. JWKS well-known file at <scheme>://<domain>/.well-known/jwks.json
 
 Usage examples:

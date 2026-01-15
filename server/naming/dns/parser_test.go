@@ -16,44 +16,54 @@ func TestParseTXTRecord(t *testing.T) {
 	}{
 		{
 			name:    "valid ed25519 record",
-			record:  "v=oasf1; k=ed25519; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
+			record:  "schema=v1; v=pubkey; k=ed25519; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
 			wantErr: false,
 			keyType: "ed25519",
 		},
 		{
 			name:    "valid ecdsa record",
-			record:  "v=oasf1; k=ecdsa-p256; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
+			record:  "schema=v1; v=pubkey; k=ecdsa-p256; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
 			wantErr: false,
 			keyType: "ecdsa-p256",
 		},
 		{
-			name:    "missing version",
-			record:  "k=ed25519; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
+			name:    "missing schema",
+			record:  "v=pubkey; k=ed25519; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
 			wantErr: true,
 		},
 		{
-			name:    "wrong version",
-			record:  "v=oasf2; k=ed25519; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
+			name:    "wrong schema version",
+			record:  "schema=v2; v=pubkey; k=ed25519; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
+			wantErr: true,
+		},
+		{
+			name:    "missing value type",
+			record:  "schema=v1; k=ed25519; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
+			wantErr: true,
+		},
+		{
+			name:    "wrong value type",
+			record:  "schema=v1; v=unknown; k=ed25519; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
 			wantErr: true,
 		},
 		{
 			name:    "missing key type",
-			record:  "v=oasf1; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
+			record:  "schema=v1; v=pubkey; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
 			wantErr: true,
 		},
 		{
 			name:    "unsupported key type",
-			record:  "v=oasf1; k=dsa; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
+			record:  "schema=v1; v=pubkey; k=dsa; p=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=",
 			wantErr: true,
 		},
 		{
 			name:    "missing public key",
-			record:  "v=oasf1; k=ed25519",
+			record:  "schema=v1; v=pubkey; k=ed25519",
 			wantErr: true,
 		},
 		{
 			name:    "invalid base64",
-			record:  "v=oasf1; k=ed25519; p=!!!invalid!!!",
+			record:  "schema=v1; v=pubkey; k=ed25519; p=!!!invalid!!!",
 			wantErr: true,
 		},
 	}

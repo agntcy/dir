@@ -12,8 +12,16 @@ import (
 	"github.com/agntcy/dir/server/naming"
 )
 
-// ParseTXTRecord parses an OASF DNS TXT record.
-// Format: "v=oasf1; k=ed25519; p=<base64-encoded-public-key>".
+// DIR naming system DNS TXT record format constants.
+const (
+	// ExpectedSchema is the expected schema version.
+	ExpectedSchema = "v1"
+	// ExpectedValueType is the expected value type for public keys.
+	ExpectedValueType = "pubkey"
+)
+
+// ParseTXTRecord parses a DIR naming system DNS TXT record.
+// Format: "schema=v1; v=pubkey; k=<key-type>; p=<base64-encoded-public-key>".
 //
 //nolint:mnd
 func ParseTXTRecord(record string) (*naming.PublicKey, error) {
@@ -37,10 +45,16 @@ func ParseTXTRecord(record string) (*naming.PublicKey, error) {
 		params[key] = value
 	}
 
-	// Validate version
-	version, ok := params["v"]
-	if !ok || version != "oasf1" {
-		return nil, fmt.Errorf("invalid or missing version: expected 'oasf1', got '%s'", version)
+	// Validate schema version
+	schema, ok := params["schema"]
+	if !ok || schema != ExpectedSchema {
+		return nil, fmt.Errorf("invalid or missing schema: expected '%s', got '%s'", ExpectedSchema, schema)
+	}
+
+	// Validate value type
+	valueType, ok := params["v"]
+	if !ok || valueType != ExpectedValueType {
+		return nil, fmt.Errorf("invalid or missing value type: expected '%s', got '%s'", ExpectedValueType, valueType)
 	}
 
 	// Get key type

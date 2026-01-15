@@ -31,7 +31,7 @@ Protocol prefixes (required for verification):
 Records without a protocol prefix will not be verified.
 
 Verification methods:
-1. DNS TXT record: _oasf.<domain> with format "v=oasf1; k=<type>; p=<key>"
+1. DNS TXT record: _dir_nsys.<domain> with format "schema=v1; v=pubkey; k=<type>; p=<key>"
 2. JWKS well-known file: <scheme>://<domain>/.well-known/jwks.json
 
 Examples:
