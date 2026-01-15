@@ -26,16 +26,14 @@ var storeLogger = logging.Logger("controller/store")
 type storeCtrl struct {
 	storev1.UnimplementedStoreServiceServer
 	store    types.StoreAPI
-	signing  types.SigningAPI
 	db       types.DatabaseAPI
 	eventBus *events.SafeEventBus
 }
 
-func NewStoreController(store types.StoreAPI, signing types.SigningAPI, db types.DatabaseAPI, eventBus *events.SafeEventBus) storev1.StoreServiceServer {
+func NewStoreController(store types.StoreAPI, db types.DatabaseAPI, eventBus *events.SafeEventBus) storev1.StoreServiceServer {
 	return &storeCtrl{
 		UnimplementedStoreServiceServer: storev1.UnimplementedStoreServiceServer{},
 		store:                           store,
-		signing:                         signing,
 		db:                              db,
 		eventBus:                        eventBus,
 	}
@@ -245,35 +243,10 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferrerRequest) *storev1.PushReferrerResponse {
 	storeLogger.Debug("Pushing referrer", "cid", request.GetRecordRef().GetCid(), "type", request.GetReferrer().GetType())
 
-	referrerType := request.GetReferrer().GetType()
 	recordCID := request.GetRecordRef().GetCid()
 
-	// Route signature referrers to the signing service
-	if referrerType == corev1.SignatureReferrerType {
-		if err := s.signing.PushSignature(ctx, recordCID, request.GetReferrer()); err != nil {
-			errMsg := fmt.Sprintf("failed to push signature for record %s: %v", recordCID, err)
-
-			return &storev1.PushReferrerResponse{
-				Success:      false,
-				ErrorMessage: &errMsg,
-			}
-		}
-
-		storeLogger.Debug("Signature pushed successfully via signing service", "cid", recordCID)
-
-		return &storev1.PushReferrerResponse{
-			Success: true,
-		}
-	}
-
-	// For Zot registries, also upload the public key to the _cosign directory for verification
-	if referrerType == corev1.PublicKeyReferrerType && s.signing.IsZotRegistry() {
-		if err := s.signing.UploadPublicKey(ctx, request.GetReferrer()); err != nil {
-			storeLogger.Warn("Failed to upload public key to Zot", "error", err, "cid", recordCID)
-		}
-	}
-
-	// For non-signature referrers (including public keys), store as OCI referrer
+	// Use ReferrerStoreAPI to push the referrer
+	// The store implementation handles type-specific logic (cosign for signatures, Zot for public keys)
 	refStore, ok := s.store.(types.ReferrerStoreAPI)
 	if !ok {
 		errMsg := "referrer storage not supported by current store implementation"
@@ -286,7 +259,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 
 	err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
 	if err != nil {
-		errMsg := fmt.Sprintf("failed to store referrer for record %s: %v", recordCID, err)
+		errMsg := fmt.Sprintf("failed to push referrer for record %s: %v", recordCID, err)
 
 		return &storev1.PushReferrerResponse{
 			Success:      false,
@@ -294,7 +267,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	storeLogger.Debug("Referrer stored successfully", "cid", recordCID, "type", referrerType)
+	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetReferrer().GetType())
 
 	return &storev1.PushReferrerResponse{
 		Success: true,

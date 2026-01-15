@@ -6,7 +6,6 @@ package signing
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -59,29 +58,6 @@ func New(storeAPI types.StoreAPI, opts types.APIOptions) (types.SigningAPI, erro
 
 	// Wrap with event emitter
 	return eventswrap.Wrap(s, opts.EventBus()), nil
-}
-
-// IsZotRegistry returns true if the signing service is configured for a Zot registry.
-func (s *sign) IsZotRegistry() bool {
-	return s.ociConfig != nil && s.ociConfig.GetType() == ociconfig.RegistryTypeZot
-}
-
-// constructImageReference builds the OCI image reference for a record CID.
-func (s *sign) constructImageReference(recordCID string) string {
-	if s.ociConfig == nil {
-		return ""
-	}
-
-	// Get the registry and repository from the config
-	registry := s.ociConfig.RegistryAddress
-	repository := s.ociConfig.RepositoryName
-
-	// Remove any protocol prefix from registry address for the image reference
-	registry = strings.TrimPrefix(registry, "http://")
-	registry = strings.TrimPrefix(registry, "https://")
-
-	// Use CID as tag to match the oras.Tag operation in Push method
-	return fmt.Sprintf("%s/%s:%s", registry, repository, recordCID)
 }
 
 // ConvertCosignSignatureToReferrer converts cosign signature data to a referrer.

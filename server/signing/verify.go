@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/zot"
 )
@@ -126,4 +127,52 @@ func (s *sign) verifyWithReferrers(ctx context.Context, recordCID string) (bool,
 	}
 
 	return verified, nil
+}
+
+// pullSignatureReferrers retrieves signature referrers for a record from OCI registry.
+func (s *sign) pullSignatureReferrers(ctx context.Context, recordCID string) ([]*signv1.Signature, error) {
+	signatures := make([]*signv1.Signature, 0)
+
+	err := s.store.WalkReferrers(ctx, recordCID, corev1.SignatureReferrerType, func(referrer *corev1.RecordReferrer) error {
+		signature := &signv1.Signature{}
+		if err := signature.UnmarshalReferrer(referrer); err != nil {
+			logger.Debug("Failed to decode signature from referrer", "error", err)
+
+			return nil // Skip this referrer but continue walking
+		}
+
+		signatures = append(signatures, signature)
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull signature referrers: %w", err)
+	}
+
+	return signatures, nil
+}
+
+// pullPublicKeyReferrers retrieves public key referrers for a record from OCI registry.
+func (s *sign) pullPublicKeyReferrers(ctx context.Context, recordCID string) ([]string, error) {
+	publicKeys := make([]string, 0)
+
+	err := s.store.WalkReferrers(ctx, recordCID, corev1.PublicKeyReferrerType, func(referrer *corev1.RecordReferrer) error {
+		publicKey := &signv1.PublicKey{}
+		if err := publicKey.UnmarshalReferrer(referrer); err != nil {
+			logger.Debug("Failed to decode public key from referrer", "error", err)
+
+			return nil // Skip this referrer but continue walking
+		}
+
+		if publicKey.GetKey() != "" {
+			publicKeys = append(publicKeys, publicKey.GetKey())
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to pull public key referrers: %w", err)
+	}
+
+	return publicKeys, nil
 }
