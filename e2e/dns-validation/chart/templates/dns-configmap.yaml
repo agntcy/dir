@@ -1,0 +1,46 @@
+{{- if .Values.dns.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "validation.fullname" . }}-dns-corefile
+data:
+  Corefile: |
+    {{ .Values.dns.config.domain }}:{{ .Values.dns.service.targetPort }} {
+        log
+        errors
+        
+        {{- if .Values.dns.config.health.enabled }}
+        health {
+            lameduck 5s
+        }
+        {{- end }}
+        
+        ready
+        
+        file /etc/coredns/db.{{ .Values.dns.config.domain }} {{ .Values.dns.config.domain }}
+        
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "validation.fullname" . }}-dns-zone
+data:
+  db.{{ .Values.dns.config.domain }}: |
+    $ORIGIN {{ .Values.dns.config.domain }}.
+    @   3600 IN SOA sns.dns.icann.org. noc.dns.icann.org. (
+                2024011501 ; serial
+                7200       ; refresh (2 hours)
+                3600       ; retry (1 hour)
+                1209600    ; expire (2 weeks)
+                3600       ; minimum (1 hour)
+                )
+    
+    {{- range .Values.dns.config.records }}
+    {{ .name }} {{ .ttl }} IN {{ .type }} {{ .value }}
+    {{- end }}
+{{- end }}

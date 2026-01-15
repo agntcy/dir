@@ -1,0 +1,17 @@
+{{- if .Values.http.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "validation.fullname" . }}-http
+  labels:
+    {{- include "validation.http.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.http.service.type }}
+  ports:
+    - port: {{ .Values.http.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "validation.http.selectorLabels" . | nindent 4 }}
+{{- end }}

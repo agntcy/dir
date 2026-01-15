@@ -1,0 +1,56 @@
+{{- if .Values.dns.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "validation.fullname" . }}-dns
+  labels:
+    app.kubernetes.io/name: validation
+    app.kubernetes.io/instance: {{ include "validation.fullname" . }}
+    app.kubernetes.io/component: dns
+spec:
+  replicas: {{ .Values.dns.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: validation
+      app.kubernetes.io/instance: {{ include "validation.fullname" . }}
+      app.kubernetes.io/component: dns
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: validation
+        app.kubernetes.io/instance: {{ include "validation.fullname" . }}
+        app.kubernetes.io/component: dns
+    spec:
+      containers:
+      - name: coredns
+        image: "{{ .Values.dns.image.repository }}:{{ .Values.dns.image.tag }}"
+        imagePullPolicy: {{ .Values.dns.image.pullPolicy }}
+        args:
+        - -conf
+        - /etc/coredns/Corefile
+        ports:
+        - name: dns-tcp
+          containerPort: {{ .Values.dns.service.targetPort }}
+          protocol: TCP # No UDP port-forward possible
+        {{- if .Values.dns.config.health.enabled }}
+        - name: health
+          containerPort: {{ .Values.dns.config.health.port }}
+          protocol: TCP
+        {{- end }}
+        livenessProbe:
+          {{- toYaml .Values.dns.livenessProbe | nindent 12 }}
+        resources:
+          {{- toYaml .Values.dns.resources | nindent 12 }}
+        volumeMounts:
+        - name: config
+          mountPath: /etc/coredns
+          readOnly: true
+      volumes:
+      - name: config
+        projected:
+          sources:
+          - configMap:
+              name: {{ include "validation.fullname" . }}-dns-corefile
+          - configMap:
+              name: {{ include "validation.fullname" . }}-dns-zone
+{{- end }}

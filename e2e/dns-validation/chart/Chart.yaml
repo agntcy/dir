@@ -1,0 +1,5 @@
+apiVersion: v2
+name: validation
+description: A Helm chart for record name validation - servers for DNS TXT and HTTP for well-known endpoints
+type: application
+version: 0.1.0

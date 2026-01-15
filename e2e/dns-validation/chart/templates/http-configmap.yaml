@@ -1,0 +1,38 @@
+{{- if .Values.http.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "validation.fullname" . }}-http-jwks
+data:
+  jwks.json: |
+    {{- .Files.Get "jwks.json" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "validation.fullname" . }}-http-nginx
+data:
+  nginx.conf: | 
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        include /etc/nginx/mime.types;
+        
+        server {
+            listen {{ .Values.http.service.targetPort }};
+            server_name _;
+            
+            root /usr/share/nginx/html;
+            
+            location /.well-known/ {
+                add_header Content-Type application/json;
+            }
+            
+            location / {
+                return 404;
+            }
+        }
+    }
+{{- end }}

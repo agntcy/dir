@@ -1,0 +1,17 @@
+{{- if .Values.dns.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "validation.fullname" . }}-dns
+  labels:
+    {{- include "validation.dns.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.dns.service.type }}
+  ports:
+    - port: {{ .Values.dns.service.port }}
+      targetPort: dns-tcp
+      protocol: TCP # No UDP port-forward possible
+      name: dns-tcp
+  selector:
+    {{- include "validation.dns.selectorLabels" . | nindent 4 }}
+{{- end }}
