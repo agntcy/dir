@@ -1,0 +1,55 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.naming.v1;
+
+import "agntcy/dir/naming/v1/name_verification.proto";
+
+// NamingService provides methods to verify and inspect name verification state.
+service NamingService {
+  // Verify performs name verification for a signed record.
+  // The record's name should be prefixed with the protocol (dns://, https://, or http://)
+  // to indicate the verification method.
+  rpc Verify(VerifyRequest) returns (VerifyResponse);
+
+  // GetVerificationInfo retrieves the verification info for a record.
+  rpc GetVerificationInfo(GetVerificationInfoRequest) returns (GetVerificationInfoResponse);
+}
+
+// VerifyRequest is the request for performing name verification.
+message VerifyRequest {
+  // The CID of the signed record to verify.
+  string cid = 1;
+}
+
+// VerifyResponse is the response for name verification.
+message VerifyResponse {
+  // Whether the name verification succeeded.
+  bool verified = 1;
+
+  // The verification details (only set if verified is true).
+  Verification verification = 2;
+
+  // Error message if verification failed.
+  optional string error_message = 3;
+}
+
+// GetVerificationInfoRequest is the request for retrieving verification info.
+message GetVerificationInfoRequest {
+  // The CID of the record to check.
+  string cid = 1;
+}
+
+// GetVerificationInfoResponse is the response for retrieving verification info.
+message GetVerificationInfoResponse {
+  // Whether the record has verified name ownership.
+  bool verified = 1;
+
+  // The verification details (only set if verified is true).
+  Verification verification = 2;
+
+  // Error message if lookup failed.
+  optional string error_message = 3;
+}

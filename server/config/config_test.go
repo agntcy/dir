@@ -90,6 +90,9 @@ func TestConfig(t *testing.T) {
 							AccessToken:  "access-token",
 						},
 					},
+					Verification: store.VerificationConfig{
+						Enabled: true,
+					},
 				},
 				Routing: routing.Config{
 					ListenAddress: "/ip4/1.1.1.1/tcp/1",
@@ -160,6 +163,9 @@ func TestConfig(t *testing.T) {
 						AuthConfig: oci.AuthConfig{
 							Insecure: oci.DefaultAuthConfigInsecure,
 						},
+					},
+					Verification: store.VerificationConfig{
+						Enabled: store.DefaultVerificationEnabled,
 					},
 				},
 				Routing: routing.Config{

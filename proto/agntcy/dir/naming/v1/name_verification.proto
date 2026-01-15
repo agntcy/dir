@@ -1,0 +1,35 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package agntcy.dir.naming.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Verification represents the result of verifying a record's name ownership.
+// It uses a oneof to support different verification types.
+message Verification {
+  oneof info {
+    // Domain verification details.
+    DomainVerification domain = 1;
+    // Future verification types can be added here.
+  }
+}
+
+// DomainVerification represents the result of verifying that a record's
+// signing key is authorized by the domain claimed in the record's name.
+message DomainVerification {
+  // The domain that was verified (e.g., "cisco.com").
+  string domain = 1;
+
+  // The verification method used: "dns" or "wellknown".
+  string method = 2;
+
+  // The identifier of the domain's public key that matched the record's signing key.
+  // This is the "id" field from the well-known file or derived from the DNS TXT record.
+  string key_id = 3;
+
+  // When the verification was performed.
+  google.protobuf.Timestamp verified_at = 4;
+}

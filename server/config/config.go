@@ -424,6 +424,12 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("store.oci.auth_config.refresh_token")
 
 	//
+	// Store verification configuration
+	//
+	_ = v.BindEnv("store.verification.enabled")
+	v.SetDefault("store.verification.enabled", store.DefaultVerificationEnabled)
+
+	//
 	// Routing configuration
 	//
 	_ = v.BindEnv("routing.listen_address")
