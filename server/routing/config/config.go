@@ -40,7 +40,7 @@ type Config struct {
 	RefreshInterval time.Duration `json:"refresh_interval,omitempty" mapstructure:"refresh_interval"`
 
 	// GossipSub configuration for label announcements
-	GossipSub GossipSubConfig `json:"gossipsub,omitempty" mapstructure:"gossipsub"`
+	GossipSub GossipSubConfig `json:"gossipsub" mapstructure:"gossipsub"`
 }
 
 // GossipSubConfig configures GossipSub-based label announcements.

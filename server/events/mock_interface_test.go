@@ -312,7 +312,7 @@ type mockTestingT struct {
 	lastError   string
 }
 
-func (m *mockTestingT) Errorf(format string, args ...interface{}) {
+func (m *mockTestingT) Errorf(format string, args ...any) {
 	m.errorCalled = true
 	m.lastError = fmt.Sprintf(format, args...)
 }

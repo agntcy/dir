@@ -58,8 +58,8 @@ func NewTransformer(ctx context.Context, cfg config.Config) (*Transformer, error
 }
 
 // Transform converts an MCP server response to OASF format.
-func (t *Transformer) Transform(ctx context.Context, source interface{}) (*corev1.Record, error) {
-	// Convert interface{} to ServerResponse
+func (t *Transformer) Transform(ctx context.Context, source any) (*corev1.Record, error) {
+	// Convert any to ServerResponse
 	response, ok := ServerResponseFromInterface(source)
 	if !ok {
 		return nil, fmt.Errorf("invalid source type: expected mcpapiv0.ServerResponse, got %T", source)
@@ -96,7 +96,7 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 		return nil, fmt.Errorf("failed to marshal server to JSON: %w", err)
 	}
 
-	var serverMap map[string]interface{}
+	var serverMap map[string]any
 	if err := json.Unmarshal(serverBytes, &serverMap); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal server JSON to map: %w", err)
 	}

@@ -39,7 +39,7 @@ func TestDefaultOptionsWithPanicHandler(t *testing.T) {
 	interceptor := grpc_recovery.UnaryServerInterceptor(DefaultOptions()...)
 
 	// Create handler that panics
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context.Context, req any) (any, error) {
 		panic("test panic to verify handler")
 	}
 
@@ -70,7 +70,7 @@ func TestUnaryInterceptorCatchesPanic(t *testing.T) {
 	interceptor := grpc_recovery.UnaryServerInterceptor(DefaultOptions()...)
 
 	// Create handler that panics
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context.Context, req any) (any, error) {
 		panic("test panic in unary handler")
 	}
 
@@ -95,7 +95,7 @@ func TestUnaryInterceptorNormalExecution(t *testing.T) {
 	expectedResponse := &struct{ msg string }{"success"}
 
 	// Create normal handler that doesn't panic
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context.Context, req any) (any, error) {
 		return expectedResponse, nil
 	}
 
@@ -117,7 +117,7 @@ func TestUnaryInterceptorHandlerError(t *testing.T) {
 	expectedError := status.Error(codes.NotFound, "not found")
 
 	// Create handler that returns error (not panic)
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context.Context, req any) (any, error) {
 		return nil, expectedError //nolint:wrapcheck // Test data - intentionally returning unwrapped error
 	}
 
@@ -139,7 +139,7 @@ func TestStreamInterceptorCatchesPanic(t *testing.T) {
 	interceptor := grpc_recovery.StreamServerInterceptor(DefaultOptions()...)
 
 	// Create handler that panics
-	handler := func(srv interface{}, stream grpc.ServerStream) error {
+	handler := func(srv any, stream grpc.ServerStream) error {
 		panic("test panic in stream handler")
 	}
 
@@ -163,7 +163,7 @@ func TestStreamInterceptorNormalExecution(t *testing.T) {
 	interceptor := grpc_recovery.StreamServerInterceptor(DefaultOptions()...)
 
 	// Create normal handler that doesn't panic
-	handler := func(srv interface{}, stream grpc.ServerStream) error {
+	handler := func(srv any, stream grpc.ServerStream) error {
 		return nil
 	}
 
@@ -186,7 +186,7 @@ func TestStreamInterceptorHandlerError(t *testing.T) {
 	expectedError := status.Error(codes.Canceled, "canceled")
 
 	// Create handler that returns error (not panic)
-	handler := func(srv interface{}, stream grpc.ServerStream) error {
+	handler := func(srv any, stream grpc.ServerStream) error {
 		return expectedError //nolint:wrapcheck // Test data - intentionally returning unwrapped error
 	}
 
@@ -213,7 +213,7 @@ func TestMultiplePanics(t *testing.T) {
 
 	// Test multiple panics in sequence
 	for i := range 3 {
-		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		handler := func(ctx context.Context, req any) (any, error) {
 			panic("panic number " + string(rune(i)))
 		}
 
@@ -235,7 +235,7 @@ func TestPanicTypes(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		panicValue interface{}
+		panicValue any
 	}{
 		{"string panic", "string panic"},
 		{"error panic", errors.New("error panic")},
@@ -246,7 +246,7 @@ func TestPanicTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+			handler := func(ctx context.Context, req any) (any, error) {
 				panic(tt.panicValue)
 			}
 
@@ -282,10 +282,10 @@ func (m *mockServerStream) Context() context.Context {
 	return m.ctx
 }
 
-func (m *mockServerStream) SendMsg(msg interface{}) error {
+func (m *mockServerStream) SendMsg(msg any) error {
 	return nil
 }
 
-func (m *mockServerStream) RecvMsg(msg interface{}) error {
+func (m *mockServerStream) RecvMsg(msg any) error {
 	return io.EOF
 }

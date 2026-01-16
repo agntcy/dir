@@ -97,7 +97,7 @@ func BenchmarkLocalStore(b *testing.B) {
 	}
 
 	store := loadLocalStore(&testing.T{})
-	for range b.N {
+	for b.Loop() {
 		benchmarkStep(store)
 	}
 }
@@ -108,7 +108,7 @@ func BenchmarkRemoteStore(b *testing.B) {
 	}
 
 	store := loadRemoteStore(&testing.T{})
-	for range b.N {
+	for b.Loop() {
 		benchmarkStep(store)
 	}
 }

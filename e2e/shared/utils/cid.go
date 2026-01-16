@@ -44,7 +44,7 @@ func MarshalOASFCanonical(data []byte) ([]byte, error) {
 	}
 
 	// Step 1: Parse the JSON to ensure it's valid
-	var normalized interface{}
+	var normalized any
 	if err := json.Unmarshal(data, &normalized); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON for canonical marshaling: %w", err)
 	}

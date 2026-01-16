@@ -22,13 +22,13 @@ func containsListWildcard(pattern string) bool {
 
 // BuildWildcardCondition builds a WHERE condition for wildcard or exact matching.
 // Returns the condition string and arguments for the WHERE clause.
-func BuildWildcardCondition(field string, patterns []string) (string, []interface{}) {
+func BuildWildcardCondition(field string, patterns []string) (string, []any) {
 	if len(patterns) == 0 {
 		return "", nil
 	}
 
 	conditions := make([]string, 0, len(patterns))
-	args := make([]interface{}, 0, len(patterns))
+	args := make([]any, 0, len(patterns))
 
 	for _, pattern := range patterns {
 		condition, arg := BuildSingleWildcardCondition(field, pattern)

@@ -23,7 +23,7 @@ func TestJSONHandler(t *testing.T) {
 	output := buf.String()
 
 	// Verify it's valid JSON
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 		t.Fatalf("Output is not valid JSON: %v\nOutput: %s", err, output)
 	}
@@ -83,7 +83,7 @@ func TestJSONHandlerMultipleFields(t *testing.T) {
 
 	output := buf.String()
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 		t.Fatalf("Failed to parse JSON: %v\nOutput: %s", err, output)
 	}
@@ -128,7 +128,7 @@ func TestLogLevels(t *testing.T) {
 
 			tt.logFunc(logger, "test")
 
-			var parsed map[string]interface{}
+			var parsed map[string]any
 			if err := json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &parsed); err != nil {
 				t.Fatalf("Failed to parse JSON: %v", err)
 			}
@@ -154,7 +154,7 @@ func TestComponentLogger(t *testing.T) {
 
 	output := buf.String()
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestJSONHandlerNilSafety(t *testing.T) {
 
 	output := buf.String()
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestJSONHandlerMultipleMessages(t *testing.T) {
 
 	// Verify each line is valid JSON
 	for i, line := range lines {
-		var parsed map[string]interface{}
+		var parsed map[string]any
 		if err := json.Unmarshal([]byte(line), &parsed); err != nil {
 			t.Errorf("Line %d is not valid JSON: %v\nLine: %s", i+1, err, line)
 		}
@@ -344,7 +344,7 @@ func TestLoggerFunction(t *testing.T) {
 	// Verify component field is present
 	output := buf.String()
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
@@ -376,7 +376,7 @@ func TestLoggerMultipleComponents(t *testing.T) {
 	}
 
 	// Verify first line has component1
-	var parsed1 map[string]interface{}
+	var parsed1 map[string]any
 	if err := json.Unmarshal([]byte(lines[0]), &parsed1); err != nil {
 		t.Fatalf("Failed to parse first line: %v", err)
 	}
@@ -386,7 +386,7 @@ func TestLoggerMultipleComponents(t *testing.T) {
 	}
 
 	// Verify second line has component2
-	var parsed2 map[string]interface{}
+	var parsed2 map[string]any
 	if err := json.Unmarshal([]byte(lines[1]), &parsed2); err != nil {
 		t.Fatalf("Failed to parse second line: %v", err)
 	}

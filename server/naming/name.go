@@ -69,7 +69,8 @@ func ParseName(name string) *ParsedName {
 	result.FullName = remaining
 
 	// Split domain and path
-	if idx := strings.Index(remaining, "/"); idx != -1 {
+	// NOTE: can be simplified using strings.Cut
+	if idx := strings.Index(remaining, "/"); idx != -1 { //nolint:modernize
 		result.Domain = remaining[:idx]
 		result.Path = remaining[idx+1:]
 	} else {

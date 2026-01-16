@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 
 	zotconfig "zotregistry.dev/zot/v2/pkg/api/config"
@@ -101,12 +102,10 @@ func AddRegistryToSyncConfig(filePath string, remoteRegistryURL string, remoteRe
 
 	// Check if registry already exists
 	for _, existingRegistry := range syncConfig.Registries {
-		for _, existingURL := range existingRegistry.URLs {
-			if existingURL == registryURL {
-				logger.Debug("Registry already exists in zot config", "registry_url", registryURL)
+		if slices.Contains(existingRegistry.URLs, registryURL) {
+			logger.Debug("Registry already exists in zot config", "registry_url", registryURL)
 
-				return nil
-			}
+			return nil
 		}
 	}
 
@@ -191,15 +190,7 @@ func RemoveRegistryFromSyncConfig(filePath string, remoteRegistryURL string) err
 	var filteredRegistries []zotsyncconfig.RegistryConfig
 
 	for _, registry := range syncConfig.Registries {
-		found := false
-
-		for _, url := range registry.URLs {
-			if url == registryURL {
-				found = true
-
-				break
-			}
-		}
+		found := slices.Contains(registry.URLs, registryURL)
 
 		if !found {
 			filteredRegistries = append(filteredRegistries, registry)

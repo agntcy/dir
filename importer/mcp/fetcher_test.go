@@ -45,7 +45,7 @@ func TestFetcher_Fetch(t *testing.T) {
 func TestServerResponseFromInterface(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
+		input    any
 		expectOk bool
 	}{
 		{

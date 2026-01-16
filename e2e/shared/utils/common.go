@@ -23,7 +23,6 @@ func Ptr[T any](v T) *T {
 // This generic utility eliminates the repetitive pattern of iterating over channels
 // and works with any channel type.
 func CollectItems[T any](itemsChan <-chan T) []T {
-	//nolint:prealloc // Cannot pre-allocate when reading from channel - count is unknown
 	var items []T
 	for item := range itemsChan {
 		items = append(items, item)

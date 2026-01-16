@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func convertToStringMap(m map[string]interface{}) map[string]string {
+func convertToStringMap(m map[string]any) map[string]string {
 	result := make(map[string]string)
 	for k, v := range m {
 		result[k] = fmt.Sprintf("%v", v)
@@ -25,13 +25,13 @@ func convertToStringMap(m map[string]interface{}) map[string]string {
 func TestPullRecord(t *testing.T) {
 	tests := []struct {
 		name           string
-		arguments      map[string]interface{}
+		arguments      map[string]any
 		expectError    bool
 		expectedInText []string
 	}{
 		{
 			name: "basic pull",
-			arguments: map[string]interface{}{
+			arguments: map[string]any{
 				"cid": "bafkreiabcd1234567890",
 			},
 			expectError: false,
@@ -42,7 +42,7 @@ func TestPullRecord(t *testing.T) {
 		},
 		{
 			name:        "missing CID uses placeholder",
-			arguments:   map[string]interface{}{},
+			arguments:   map[string]any{},
 			expectError: false,
 			expectedInText: []string{
 				"[User will provide CID]",
@@ -51,7 +51,7 @@ func TestPullRecord(t *testing.T) {
 		},
 		{
 			name: "with output path",
-			arguments: map[string]interface{}{
+			arguments: map[string]any{
 				"cid":         "bafkreiabcd1234567890",
 				"output_path": "my-record.json",
 			},
@@ -63,7 +63,7 @@ func TestPullRecord(t *testing.T) {
 		},
 		{
 			name: "with stdout output",
-			arguments: map[string]interface{}{
+			arguments: map[string]any{
 				"cid":         "bafkreiabcd1234567890",
 				"output_path": "stdout",
 			},

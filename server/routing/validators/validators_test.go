@@ -772,9 +772,7 @@ func BenchmarkSkillValidator_Validate(b *testing.B) {
 	key := "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1"
 	value := []byte{}
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = validator.Validate(key, value)
 	}
 }
@@ -784,9 +782,7 @@ func BenchmarkDomainValidator_Validate(b *testing.B) {
 	key := "/domains/ai/machine-learning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer2"
 	value := []byte{}
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = validator.Validate(key, value)
 	}
 }
@@ -796,9 +792,7 @@ func BenchmarkModuleValidator_Validate(b *testing.B) {
 	key := "/modules/llm/reasoning/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer3"
 	value := []byte{}
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = validator.Validate(key, value)
 	}
 }
@@ -808,9 +802,7 @@ func BenchmarkLocatorValidator_Validate(b *testing.B) {
 	key := "/locators/docker-image/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1"
 	value := []byte{}
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = validator.Validate(key, value)
 	}
 }
@@ -887,9 +879,7 @@ func BenchmarkFormatLabelKey(b *testing.B) {
 	label := "/skills/programming/golang"
 	cid := "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = FormatLabelKey(label, cid)
 	}
 }
@@ -897,9 +887,7 @@ func BenchmarkFormatLabelKey(b *testing.B) {
 func BenchmarkExtractCIDFromLabelKey(b *testing.B) {
 	labelKey := "/skills/programming/golang/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/Peer1"
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_, _ = ExtractCIDFromLabelKey(labelKey)
 	}
 }

@@ -336,7 +336,7 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		// Build OR conditions for each author pattern against the JSON string
 		var authorConditions []string
 
-		var authorArgs []interface{}
+		var authorArgs []any
 
 		for _, author := range cfg.Authors {
 			condition, arg := utils.BuildSingleWildcardCondition("records.authors", "*"+author+"*")

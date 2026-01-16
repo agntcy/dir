@@ -70,9 +70,9 @@ func NewFetcher(baseURL string, filters map[string]string, limit int) (*Fetcher,
 }
 
 // Fetch retrieves servers from the MCP registry and sends them to the output channel.
-func (f *Fetcher) Fetch(ctx context.Context) (<-chan interface{}, <-chan error) {
+func (f *Fetcher) Fetch(ctx context.Context) (<-chan any, <-chan error) {
 	// Use buffered channel to allow fetcher to work ahead of transformers
-	outputCh := make(chan interface{}, 50) //nolint:mnd
+	outputCh := make(chan any, 50) //nolint:mnd
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -184,7 +184,7 @@ func (f *Fetcher) listServersPage(ctx context.Context, cursor string) ([]mcpapiv
 
 // ServerResponseFromInterface converts an interface{} back to ServerResponse.
 // This is a helper for the transformer stage.
-func ServerResponseFromInterface(i interface{}) (mcpapiv0.ServerResponse, bool) {
+func ServerResponseFromInterface(i any) (mcpapiv0.ServerResponse, bool) {
 	resp, ok := i.(mcpapiv0.ServerResponse)
 
 	return resp, ok

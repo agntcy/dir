@@ -25,7 +25,7 @@ func TestTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		source    interface{}
+		source    any
 		wantErr   bool
 		errString string
 	}{

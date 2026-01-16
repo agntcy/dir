@@ -150,7 +150,7 @@ func isEmptySlice(value any) bool {
 		return false
 	}
 
-	if slice, ok := value.([]interface{}); ok && len(slice) == 0 {
+	if slice, ok := value.([]any); ok && len(slice) == 0 {
 		return true
 	}
 

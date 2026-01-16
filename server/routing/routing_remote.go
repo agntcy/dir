@@ -645,7 +645,7 @@ func (r *routeRemote) startMeshPeerTagging() {
 	// Start periodic tagging goroutine
 	r.wg.Add(1)
 
-	go func() {
+	r.wg.Go(func() {
 		defer r.wg.Done()
 
 		ticker := time.NewTicker(p2p.MeshPeerTaggingInterval)
@@ -664,7 +664,7 @@ func (r *routeRemote) startMeshPeerTagging() {
 				r.pubsubManager.TagMeshPeers()
 			}
 		}
-	}()
+	})
 }
 
 // handleCIDProviderNotification implements fallback label discovery via DHT+Pull.

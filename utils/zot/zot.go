@@ -129,7 +129,7 @@ func Verify(ctx context.Context, opts *VerificationOptions) (*VerificationResult
 		}
 	}`, opts.Config.RepositoryName, opts.RecordCID)
 
-	graphqlQuery := map[string]interface{}{
+	graphqlQuery := map[string]any{
 		"query": query,
 	}
 

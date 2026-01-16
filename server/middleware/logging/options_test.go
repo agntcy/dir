@@ -20,6 +20,7 @@ func fieldsToMap(t *testing.T, fields grpc_logging.Fields) map[string]string {
 	t.Helper()
 
 	fieldsMap := make(map[string]string)
+
 	for i := 0; i < len(fields); i += 2 {
 		key, ok := fields[i].(string)
 		if !ok {

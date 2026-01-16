@@ -19,10 +19,10 @@ type Config struct {
 	Provider string `json:"c,omitempty" mapstructure:"provider"`
 
 	// Config for OCI database.
-	OCI oci.Config `json:"oci,omitempty" mapstructure:"oci"`
+	OCI oci.Config `json:"oci" mapstructure:"oci"`
 
 	// Verification configures name ownership verification.
-	Verification VerificationConfig `json:"verification,omitempty" mapstructure:"verification"`
+	Verification VerificationConfig `json:"verification" mapstructure:"verification"`
 }
 
 // VerificationConfig defines name verification configuration.

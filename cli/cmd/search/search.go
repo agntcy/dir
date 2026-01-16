@@ -86,8 +86,8 @@ func searchCIDs(cmd *cobra.Command, c *client.Client, queries []*searchv1.Record
 		return fmt.Errorf("failed to search CIDs: %w", err)
 	}
 
-	// Collect results and convert to interface{} slice
-	results := make([]interface{}, 0, opts.Limit)
+	// Collect results and convert to any slice
+	results := make([]any, 0, opts.Limit)
 
 	for {
 		select {
@@ -117,7 +117,7 @@ func searchRecords(cmd *cobra.Command, c *client.Client, queries []*searchv1.Rec
 	}
 
 	// Collect records
-	results := make([]interface{}, 0, opts.Limit)
+	results := make([]any, 0, opts.Limit)
 
 	for {
 		select {

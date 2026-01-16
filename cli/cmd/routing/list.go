@@ -154,8 +154,8 @@ func runListCommand(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to list: %w", err)
 	}
 
-	// Collect results and convert to interface{} slice in a single loop
-	results := make([]interface{}, 0, listOpts.Limit)
+	// Collect results and convert to any slice in a single loop
+	results := make([]any, 0, listOpts.Limit)
 	for result := range resultCh {
 		results = append(results, result)
 	}
@@ -175,8 +175,8 @@ func listByCID(cmd *cobra.Command, c *client.Client, cid string) error {
 		return fmt.Errorf("failed to list: %w", err)
 	}
 
-	// Collect results and convert to interface{} slice in a single loop
-	results := make([]interface{}, 0, listOpts.Limit)
+	// Collect results and convert to any slice in a single loop
+	results := make([]any, 0, listOpts.Limit)
 
 	for result := range resultCh {
 		if result.GetRecordRef().GetCid() == cid {

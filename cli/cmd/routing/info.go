@@ -75,7 +75,7 @@ func runInfoCommand(cmd *cobra.Command) error {
 	stats := collectRoutingStatistics(resultCh)
 
 	// Build structured result for all output formats
-	result := map[string]interface{}{
+	result := map[string]any{
 		"totalRecords": stats.totalRecords,
 		"skills":       stats.skillCounts,
 		"locators":     stats.locatorCounts,

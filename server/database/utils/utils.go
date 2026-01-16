@@ -19,25 +19,24 @@ var logger = logging.Logger("database/utils")
 // Returns the operator and the actual value. If no operator prefix, returns empty operator.
 func ParseComparisonOperator(value string) (string, string) {
 	// Check for two-character operators first
-	if strings.HasPrefix(value, ">=") {
-		return ">=", strings.TrimPrefix(value, ">=")
+	if op, found := strings.CutPrefix(value, ">="); found {
+		return ">=", op
 	}
 
-	if strings.HasPrefix(value, "<=") {
-		return "<=", strings.TrimPrefix(value, "<=")
+	if op, found := strings.CutPrefix(value, "<="); found {
+		return "<=", op
 	}
 
-	// Then single-character operators
-	if strings.HasPrefix(value, ">") {
-		return ">", strings.TrimPrefix(value, ">")
+	if op, found := strings.CutPrefix(value, ">"); found {
+		return ">", op
 	}
 
-	if strings.HasPrefix(value, "<") {
-		return "<", strings.TrimPrefix(value, "<")
+	if op, found := strings.CutPrefix(value, "<"); found {
+		return "<", op
 	}
 
-	if strings.HasPrefix(value, "=") {
-		return "=", strings.TrimPrefix(value, "=")
+	if op, found := strings.CutPrefix(value, "="); found {
+		return "=", op
 	}
 
 	// No operator prefix
@@ -48,14 +47,14 @@ func ParseComparisonOperator(value string) (string, string) {
 // Only values with operator prefixes (>=, >, <=, <, =) are processed as comparisons (AND logic).
 // Values without operators are processed as wildcards (OR logic).
 // If both are present, they are combined with OR.
-func BuildComparisonConditions(column string, values []string) (string, []interface{}) {
+func BuildComparisonConditions(column string, values []string) (string, []any) {
 	if len(values) == 0 {
 		return "", nil
 	}
 
 	var comparisonConditions []string
 
-	var comparisonArgs []interface{}
+	var comparisonArgs []any
 
 	var wildcardValues []string
 
@@ -72,7 +71,7 @@ func BuildComparisonConditions(column string, values []string) (string, []interf
 
 	var allConditions []string
 
-	var allArgs []interface{}
+	var allArgs []any
 
 	// Comparison conditions are AND'd together (e.g., >= 1.0 AND < 2.0).
 	if len(comparisonConditions) > 0 {

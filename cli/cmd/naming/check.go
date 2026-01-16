@@ -60,7 +60,7 @@ func runCheckCommand(cmd *cobra.Command, cid string) error {
 		}
 
 		// Output the result
-		result := map[string]interface{}{
+		result := map[string]any{
 			"cid":      cid,
 			"verified": false,
 			"message":  errMsg,
@@ -72,7 +72,7 @@ func runCheckCommand(cmd *cobra.Command, cid string) error {
 	// Output the verification details
 	v := resp.GetVerification()
 	dv := v.GetDomain()
-	result := map[string]interface{}{
+	result := map[string]any{
 		"cid":         cid,
 		"verified":    true,
 		"domain":      dv.GetDomain(),

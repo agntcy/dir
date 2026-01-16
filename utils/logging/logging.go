@@ -47,6 +47,7 @@ func InitLogger(cfg *Config) {
 		// Parse log level; default to INFO if invalid.
 		if err := logLevel.UnmarshalText([]byte(strings.ToLower(cfg.LogLevel))); err != nil {
 			slog.Warn("Invalid log level, defaulting to INFO", "error", err)
+
 			logLevel = slog.LevelInfo
 		}
 
@@ -62,6 +63,7 @@ func InitLogger(cfg *Config) {
 			handler = slog.NewTextHandler(logOutput, opts)
 		default:
 			slog.Warn("Invalid log format, defaulting to text", "format", cfg.LogFormat)
+
 			handler = slog.NewTextHandler(logOutput, opts)
 		}
 

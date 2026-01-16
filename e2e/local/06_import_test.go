@@ -105,7 +105,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for the import command"
 			gomega.Expect(pullOutput).NotTo(gomega.BeEmpty())
 
 			// Verify the pulled record has expected fields
-			var record map[string]interface{}
+			var record map[string]any
 			err := json.Unmarshal([]byte(pullOutput), &record)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

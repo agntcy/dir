@@ -86,7 +86,7 @@ func runPublishCommand(cmd *cobra.Command, cid string) error {
 	}
 
 	// Output in the appropriate format
-	result := map[string]interface{}{
+	result := map[string]any{
 		"cid":     recordRef.GetCid(),
 		"status":  "Successfully submitted publication request",
 		"message": "Record will be discoverable by other peers once the publication service processes the request",

@@ -162,7 +162,7 @@ func TestBuildSingleWildcardCondition(t *testing.T) {
 		field             string
 		pattern           string
 		expectedCondition string
-		expectedArg       interface{}
+		expectedArg       any
 	}{
 		{
 			name:              "exact match",
@@ -273,7 +273,7 @@ func TestBuildWildcardCondition(t *testing.T) {
 		field             string
 		patterns          []string
 		expectedCondition string
-		expectedArgs      []interface{}
+		expectedArgs      []any
 	}{
 		{
 			name:              "empty patterns",
@@ -287,119 +287,119 @@ func TestBuildWildcardCondition(t *testing.T) {
 			field:             "name",
 			patterns:          []string{"Test"},
 			expectedCondition: "LOWER(name) = ?",
-			expectedArgs:      []interface{}{"test"},
+			expectedArgs:      []any{"test"},
 		},
 		{
 			name:              "single wildcard pattern",
 			field:             "name",
 			patterns:          []string{"Test*"},
 			expectedCondition: "LOWER(name) GLOB ?",
-			expectedArgs:      []interface{}{"test*"},
+			expectedArgs:      []any{"test*"},
 		},
 		{
 			name:              "multiple exact patterns",
 			field:             "name",
 			patterns:          []string{"Test1", "Test2"},
 			expectedCondition: "(LOWER(name) = ? OR LOWER(name) = ?)",
-			expectedArgs:      []interface{}{"test1", "test2"},
+			expectedArgs:      []any{"test1", "test2"},
 		},
 		{
 			name:              "multiple wildcard patterns",
 			field:             "name",
 			patterns:          []string{"Test*", "*Service"},
 			expectedCondition: "(LOWER(name) GLOB ? OR LOWER(name) GLOB ?)",
-			expectedArgs:      []interface{}{"test*", "*service"},
+			expectedArgs:      []any{"test*", "*service"},
 		},
 		{
 			name:              "mixed exact and wildcard patterns",
 			field:             "name",
 			patterns:          []string{"Python*", "Go", "Java*"},
 			expectedCondition: "(LOWER(name) GLOB ? OR LOWER(name) = ? OR LOWER(name) GLOB ?)",
-			expectedArgs:      []interface{}{"python*", "go", "java*"},
+			expectedArgs:      []any{"python*", "go", "java*"},
 		},
 		{
 			name:              "single pattern no parentheses",
 			field:             "version",
 			patterns:          []string{"V1.*"},
 			expectedCondition: "LOWER(version) GLOB ?",
-			expectedArgs:      []interface{}{"v1.*"},
+			expectedArgs:      []any{"v1.*"},
 		},
 		{
 			name:              "complex field name",
 			field:             "skills.name",
 			patterns:          []string{"*Script"},
 			expectedCondition: "LOWER(skills.name) GLOB ?",
-			expectedArgs:      []interface{}{"*script"},
+			expectedArgs:      []any{"*script"},
 		},
 		{
 			name:              "pattern with special chars (literal in GLOB)",
 			field:             "name",
 			patterns:          []string{"Test%_*"},
 			expectedCondition: "LOWER(name) GLOB ?",
-			expectedArgs:      []interface{}{"test%_*"},
+			expectedArgs:      []any{"test%_*"},
 		},
 		{
 			name:              "question mark as wildcard in GLOB",
 			field:             "name",
 			patterns:          []string{"Test?", "Pattern*"},
 			expectedCondition: "(LOWER(name) GLOB ? OR LOWER(name) GLOB ?)",
-			expectedArgs:      []interface{}{"test?", "pattern*"},
+			expectedArgs:      []any{"test?", "pattern*"},
 		},
 		{
 			name:              "multiple question marks in single pattern",
 			field:             "version",
 			patterns:          []string{"v?.?.?"},
 			expectedCondition: "LOWER(version) GLOB ?",
-			expectedArgs:      []interface{}{"v?.?.?"},
+			expectedArgs:      []any{"v?.?.?"},
 		},
 		{
 			name:              "mixed patterns with question marks",
 			field:             "code",
 			patterns:          []string{"AB??", "CD*", "EF", "GH?I"},
 			expectedCondition: "(LOWER(code) GLOB ? OR LOWER(code) GLOB ? OR LOWER(code) = ? OR LOWER(code) GLOB ?)",
-			expectedArgs:      []interface{}{"ab??", "cd*", "ef", "gh?i"},
+			expectedArgs:      []any{"ab??", "cd*", "ef", "gh?i"},
 		},
 		{
 			name:              "question mark with special characters",
 			field:             "filename",
 			patterns:          []string{"test?.txt", "data_?.csv"},
 			expectedCondition: "(LOWER(filename) GLOB ? OR LOWER(filename) GLOB ?)",
-			expectedArgs:      []interface{}{"test?.txt", "data_?.csv"},
+			expectedArgs:      []any{"test?.txt", "data_?.csv"},
 		},
 		{
 			name:              "list wildcard - simple character lists",
 			field:             "type",
 			patterns:          []string{"Test[ABC]", "Data[XYZ]"},
 			expectedCondition: "(LOWER(type) GLOB ? OR LOWER(type) GLOB ?)",
-			expectedArgs:      []interface{}{"test[abc]", "data[xyz]"},
+			expectedArgs:      []any{"test[abc]", "data[xyz]"},
 		},
 		{
 			name:              "list wildcard - numeric ranges",
 			field:             "version",
 			patterns:          []string{"V[0-9].0.0"},
 			expectedCondition: "LOWER(version) GLOB ?",
-			expectedArgs:      []interface{}{"v[0-9].0.0"},
+			expectedArgs:      []any{"v[0-9].0.0"},
 		},
 		{
 			name:              "list wildcard - mixed with other patterns",
 			field:             "filename",
 			patterns:          []string{"File[A-Z].txt", "exact.log", "data*.csv"},
 			expectedCondition: "(LOWER(filename) GLOB ? OR LOWER(filename) = ? OR LOWER(filename) GLOB ?)",
-			expectedArgs:      []interface{}{"file[a-z].txt", "exact.log", "data*.csv"},
+			expectedArgs:      []any{"file[a-z].txt", "exact.log", "data*.csv"},
 		},
 		{
 			name:              "list wildcard - negated ranges",
 			field:             "code",
 			patterns:          []string{"Data[^0-9]", "Test[^A-Z]"},
 			expectedCondition: "(LOWER(code) GLOB ? OR LOWER(code) GLOB ?)",
-			expectedArgs:      []interface{}{"data[^0-9]", "test[^a-z]"},
+			expectedArgs:      []any{"data[^0-9]", "test[^a-z]"},
 		},
 		{
 			name:              "list wildcard - complex combinations",
 			field:             "path",
 			patterns:          []string{"Log[0-9][A-Z]*", "File[abc]?.txt"},
 			expectedCondition: "(LOWER(path) GLOB ? OR LOWER(path) GLOB ?)",
-			expectedArgs:      []interface{}{"log[0-9][a-z]*", "file[abc]?.txt"},
+			expectedArgs:      []any{"log[0-9][a-z]*", "file[abc]?.txt"},
 		},
 	}
 
@@ -427,56 +427,56 @@ func TestWildcardIntegration(t *testing.T) {
 		field             string
 		patterns          []string
 		expectedCondition string
-		expectedArgs      []interface{}
+		expectedArgs      []any
 	}{
 		{
 			name:              "real world example - skill names",
 			field:             "skills.name",
 			patterns:          []string{"Python*", "JavaScript", "*Script", "Go"},
 			expectedCondition: "(LOWER(skills.name) GLOB ? OR LOWER(skills.name) = ? OR LOWER(skills.name) GLOB ? OR LOWER(skills.name) = ?)",
-			expectedArgs:      []interface{}{"python*", "javascript", "*script", "go"},
+			expectedArgs:      []any{"python*", "javascript", "*script", "go"},
 		},
 		{
 			name:              "real world example - locator types",
 			field:             "locators.type",
 			patterns:          []string{"HTTP*", "FTP*", "File"},
 			expectedCondition: "(LOWER(locators.type) GLOB ? OR LOWER(locators.type) GLOB ? OR LOWER(locators.type) = ?)",
-			expectedArgs:      []interface{}{"http*", "ftp*", "file"},
+			expectedArgs:      []any{"http*", "ftp*", "file"},
 		},
 		{
 			name:              "real world example - extension names",
 			field:             "extensions.name",
 			patterns:          []string{"*-Plugin", "*-Extension", "Core"},
 			expectedCondition: "(LOWER(extensions.name) GLOB ? OR LOWER(extensions.name) GLOB ? OR LOWER(extensions.name) = ?)",
-			expectedArgs:      []interface{}{"*-plugin", "*-extension", "core"},
+			expectedArgs:      []any{"*-plugin", "*-extension", "core"},
 		},
 		{
 			name:              "real world example - version patterns with question marks",
 			field:             "version",
 			patterns:          []string{"v?.0.0", "v1.?.?", "v2.*"},
 			expectedCondition: "(LOWER(version) GLOB ? OR LOWER(version) GLOB ? OR LOWER(version) GLOB ?)",
-			expectedArgs:      []interface{}{"v?.0.0", "v1.?.?", "v2.*"},
+			expectedArgs:      []any{"v?.0.0", "v1.?.?", "v2.*"},
 		},
 		{
 			name:              "real world example - file extensions with question marks",
 			field:             "filename",
 			patterns:          []string{"*.tx?", "data_?.csv", "log???.txt"},
 			expectedCondition: "(LOWER(filename) GLOB ? OR LOWER(filename) GLOB ? OR LOWER(filename) GLOB ?)",
-			expectedArgs:      []interface{}{"*.tx?", "data_?.csv", "log???.txt"},
+			expectedArgs:      []any{"*.tx?", "data_?.csv", "log???.txt"},
 		},
 		{
 			name:              "real world example - version patterns with list wildcards",
 			field:             "version",
 			patterns:          []string{"v[0-9].0.0", "v[1-3].*", "beta[a-z]"},
 			expectedCondition: "(LOWER(version) GLOB ? OR LOWER(version) GLOB ? OR LOWER(version) GLOB ?)",
-			expectedArgs:      []interface{}{"v[0-9].0.0", "v[1-3].*", "beta[a-z]"},
+			expectedArgs:      []any{"v[0-9].0.0", "v[1-3].*", "beta[a-z]"},
 		},
 		{
 			name:              "real world example - file types with list wildcards",
 			field:             "filename",
 			patterns:          []string{"*.tx[tx]", "data[0-9].csv", "log[^0-9]*"},
 			expectedCondition: "(LOWER(filename) GLOB ? OR LOWER(filename) GLOB ? OR LOWER(filename) GLOB ?)",
-			expectedArgs:      []interface{}{"*.tx[tx]", "data[0-9].csv", "log[^0-9]*"},
+			expectedArgs:      []any{"*.tx[tx]", "data[0-9].csv", "log[^0-9]*"},
 		},
 	}
 
@@ -503,7 +503,7 @@ func TestQuestionMarkWildcardFunctionality(t *testing.T) {
 		field             string
 		patterns          []string
 		expectedCondition string
-		expectedArgs      []interface{}
+		expectedArgs      []any
 		description       string
 	}{
 		{
@@ -511,7 +511,7 @@ func TestQuestionMarkWildcardFunctionality(t *testing.T) {
 			field:             "code",
 			patterns:          []string{"A?C"},
 			expectedCondition: "LOWER(code) GLOB ?",
-			expectedArgs:      []interface{}{"a?c"},
+			expectedArgs:      []any{"a?c"},
 			description:       "? should match exactly one character",
 		},
 		{
@@ -519,7 +519,7 @@ func TestQuestionMarkWildcardFunctionality(t *testing.T) {
 			field:             "serial",
 			patterns:          []string{"AB??EF"},
 			expectedCondition: "LOWER(serial) GLOB ?",
-			expectedArgs:      []interface{}{"ab??ef"},
+			expectedArgs:      []any{"ab??ef"},
 			description:       "Multiple ? should each match one character",
 		},
 		{
@@ -527,7 +527,7 @@ func TestQuestionMarkWildcardFunctionality(t *testing.T) {
 			field:             "filename",
 			patterns:          []string{"*.tx?", "data*.?sv"},
 			expectedCondition: "(LOWER(filename) GLOB ? OR LOWER(filename) GLOB ?)",
-			expectedArgs:      []interface{}{"*.tx?", "data*.?sv"},
+			expectedArgs:      []any{"*.tx?", "data*.?sv"},
 			description:       "? and * should work together",
 		},
 		{
@@ -535,7 +535,7 @@ func TestQuestionMarkWildcardFunctionality(t *testing.T) {
 			field:             "version",
 			patterns:          []string{"v1.?.0", "v?.0.0"},
 			expectedCondition: "(LOWER(version) GLOB ? OR LOWER(version) GLOB ?)",
-			expectedArgs:      []interface{}{"v1.?.0", "v?.0.0"},
+			expectedArgs:      []any{"v1.?.0", "v?.0.0"},
 			description:       "? useful for version number wildcards",
 		},
 		{
@@ -543,7 +543,7 @@ func TestQuestionMarkWildcardFunctionality(t *testing.T) {
 			field:             "type",
 			patterns:          []string{"A?B", "exact", "C?D"},
 			expectedCondition: "(LOWER(type) GLOB ? OR LOWER(type) = ? OR LOWER(type) GLOB ?)",
-			expectedArgs:      []interface{}{"a?b", "exact", "c?d"},
+			expectedArgs:      []any{"a?b", "exact", "c?d"},
 			description:       "Mix of ? wildcards and exact matches",
 		},
 	}
@@ -569,7 +569,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 		field             string
 		patterns          []string
 		expectedCondition string
-		expectedArgs      []interface{}
+		expectedArgs      []any
 		description       string
 	}{
 		{
@@ -577,7 +577,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 			field:             "type",
 			patterns:          []string{"Test[ABC]"},
 			expectedCondition: "LOWER(type) GLOB ?",
-			expectedArgs:      []interface{}{"test[abc]"},
+			expectedArgs:      []any{"test[abc]"},
 			description:       "[ABC] should match exactly one of A, B, or C",
 		},
 		{
@@ -585,7 +585,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 			field:             "version",
 			patterns:          []string{"v[0-9].0.0"},
 			expectedCondition: "LOWER(version) GLOB ?",
-			expectedArgs:      []interface{}{"v[0-9].0.0"},
+			expectedArgs:      []any{"v[0-9].0.0"},
 			description:       "[0-9] should match any single digit",
 		},
 		{
@@ -593,7 +593,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 			field:             "grade",
 			patterns:          []string{"Grade[A-F]"},
 			expectedCondition: "LOWER(grade) GLOB ?",
-			expectedArgs:      []interface{}{"grade[a-f]"},
+			expectedArgs:      []any{"grade[a-f]"},
 			description:       "[A-F] should match any letter from A to F",
 		},
 		{
@@ -601,7 +601,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 			field:             "code",
 			patterns:          []string{"Data[^0-9]"},
 			expectedCondition: "LOWER(code) GLOB ?",
-			expectedArgs:      []interface{}{"data[^0-9]"},
+			expectedArgs:      []any{"data[^0-9]"},
 			description:       "[^0-9] should match any character except digits",
 		},
 		{
@@ -609,7 +609,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 			field:             "id",
 			patterns:          []string{"ID[a-zA-Z0-9]"},
 			expectedCondition: "LOWER(id) GLOB ?",
-			expectedArgs:      []interface{}{"id[a-za-z0-9]"},
+			expectedArgs:      []any{"id[a-za-z0-9]"},
 			description:       "[a-zA-Z0-9] should match any alphanumeric character",
 		},
 		{
@@ -617,7 +617,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 			field:             "code",
 			patterns:          []string{"Test[ABC][123]"},
 			expectedCondition: "LOWER(code) GLOB ?",
-			expectedArgs:      []interface{}{"test[abc][123]"},
+			expectedArgs:      []any{"test[abc][123]"},
 			description:       "Multiple list wildcards should work together",
 		},
 		{
@@ -625,7 +625,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 			field:             "filename",
 			patterns:          []string{"File[0-9]*?.log"},
 			expectedCondition: "LOWER(filename) GLOB ?",
-			expectedArgs:      []interface{}{"file[0-9]*?.log"},
+			expectedArgs:      []any{"file[0-9]*?.log"},
 			description:       "List wildcards should work with * and ? wildcards",
 		},
 		{
@@ -633,7 +633,7 @@ func TestListWildcardFunctionality(t *testing.T) {
 			field:             "type",
 			patterns:          []string{"Test[ABC]", "exact", "Data[XYZ]"},
 			expectedCondition: "(LOWER(type) GLOB ? OR LOWER(type) = ? OR LOWER(type) GLOB ?)",
-			expectedArgs:      []interface{}{"test[abc]", "exact", "data[xyz]"},
+			expectedArgs:      []any{"test[abc]", "exact", "data[xyz]"},
 			description:       "Mix of list wildcards and exact matches",
 		},
 	}
@@ -676,9 +676,7 @@ func BenchmarkContainsWildcards(b *testing.B) {
 		"complex-pattern-*-with-multiple-*-wildcards-and-?-marks-[0-9]",
 	}
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		for _, pattern := range patterns {
 			ContainsWildcards(pattern)
 		}
@@ -689,9 +687,7 @@ func BenchmarkBuildWildcardCondition(b *testing.B) {
 	patterns := []string{"Python*", "Go", "Java*", "*Script", "TypeScript"}
 	field := "skills.name"
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		BuildWildcardCondition(field, patterns)
 	}
 }

@@ -201,7 +201,7 @@ func TestPrintSmartfWithFormatting(t *testing.T) {
 		name           string
 		outputFormat   string
 		format         string
-		args           []interface{}
+		args           []any
 		expectedStdout string
 		expectedStderr string
 	}{
@@ -209,7 +209,7 @@ func TestPrintSmartfWithFormatting(t *testing.T) {
 			name:           "human with formatting",
 			outputFormat:   string(FormatHuman),
 			format:         "Found %d items in %s\n",
-			args:           []interface{}{42, "database"},
+			args:           []any{42, "database"},
 			expectedStdout: "Found 42 items in database\n",
 			expectedStderr: emptyString,
 		},
@@ -217,7 +217,7 @@ func TestPrintSmartfWithFormatting(t *testing.T) {
 			name:           "json with formatting",
 			outputFormat:   string(FormatJSON),
 			format:         "Processing item %d of %d\n",
-			args:           []interface{}{5, 10},
+			args:           []any{5, 10},
 			expectedStdout: emptyString,
 			expectedStderr: "Processing item 5 of 10\n",
 		},
@@ -225,7 +225,7 @@ func TestPrintSmartfWithFormatting(t *testing.T) {
 			name:           "jsonl with formatting",
 			outputFormat:   string(FormatJSONL),
 			format:         "CID: %s, Status: %s\n",
-			args:           []interface{}{"bafy123", "complete"},
+			args:           []any{"bafy123", "complete"},
 			expectedStdout: emptyString,
 			expectedStderr: "CID: bafy123, Status: complete\n",
 		},
@@ -233,7 +233,7 @@ func TestPrintSmartfWithFormatting(t *testing.T) {
 			name:           "raw with formatting",
 			outputFormat:   string(FormatRaw),
 			format:         "Sync ID: %s\n",
-			args:           []interface{}{"sync-abc-123"},
+			args:           []any{"sync-abc-123"},
 			expectedStdout: emptyString,
 			expectedStderr: "Sync ID: sync-abc-123\n",
 		},

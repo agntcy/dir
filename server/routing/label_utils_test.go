@@ -406,9 +406,7 @@ func BenchmarkBuildEnhancedLabelKey(b *testing.B) {
 	cid := "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
 	peerID := "12D3KooWBhvJH9k6u7S5Q8Z8u7S5Q8Z8u7S5Q8Z8u7S5Q8Z8u7S5Q8"
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_ = BuildEnhancedLabelKey(label, cid, peerID)
 	}
 }
@@ -416,9 +414,7 @@ func BenchmarkBuildEnhancedLabelKey(b *testing.B) {
 func BenchmarkParseEnhancedLabelKey(b *testing.B) {
 	key := "/skills/AI/ML/bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku/12D3KooWBhvJH9k6u7S5Q8Z8u7S5Q8Z8u7S5Q8Z8u7S5Q8Z8u7S5Q8"
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_, _, _, _ = ParseEnhancedLabelKey(key)
 	}
 }

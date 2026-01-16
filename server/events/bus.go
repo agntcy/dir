@@ -4,6 +4,7 @@
 package events
 
 import (
+	"maps"
 	"sync"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
@@ -76,9 +77,7 @@ func (b *EventBus) Publish(event *Event) {
 		Timestamp:  event.Timestamp,
 	}
 
-	for k, v := range event.Metadata {
-		eventCopy.Metadata[k] = v
-	}
+	maps.Copy(eventCopy.Metadata, event.Metadata)
 
 	// Track the async goroutine so Unsubscribe can wait for completion
 	b.wg.Add(1)

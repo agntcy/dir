@@ -28,7 +28,7 @@ const (
 func TestPanicHandler(t *testing.T) {
 	tests := []struct {
 		name       string
-		panicValue interface{}
+		panicValue any
 		expectCode codes.Code
 		expectMsg  string
 	}{
@@ -130,7 +130,7 @@ func TestPanicHandlerWithFullContext(t *testing.T) {
 
 // TestPanicHandlerErrorIsInternal verifies that the error code is always Internal.
 func TestPanicHandlerErrorIsInternal(t *testing.T) {
-	panicValues := []interface{}{
+	panicValues := []any{
 		"string",
 		errors.New("error"),
 		42,

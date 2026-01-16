@@ -41,7 +41,7 @@ func TestInterceptorLoggerLogsMessage(t *testing.T) {
 	output := buf.String()
 
 	// Verify it's valid JSON
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 		t.Fatalf("Output is not valid JSON: %v\nOutput: %s", err, output)
 	}
@@ -86,7 +86,7 @@ func TestInterceptorLoggerLevels(t *testing.T) {
 
 			output := buf.String()
 
-			var parsed map[string]interface{}
+			var parsed map[string]any
 			if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 				t.Fatalf("Failed to parse JSON: %v", err)
 			}
@@ -141,7 +141,7 @@ func TestInterceptorLoggerMultipleFields(t *testing.T) {
 
 	output := buf.String()
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
@@ -174,7 +174,7 @@ func TestInterceptorLoggerEmptyFields(t *testing.T) {
 
 	output := buf.String()
 
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &parsed); err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}

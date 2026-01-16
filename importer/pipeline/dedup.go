@@ -171,8 +171,8 @@ func (c *MCPDuplicateChecker) buildCache(ctx context.Context) error {
 // It filters out duplicate records from the input channel and returns a channel
 // with only non-duplicate records. It tracks only the skipped (duplicate) count.
 // The transform stage will track the total records that are actually processed.
-func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan interface{}, result *Result) <-chan interface{} {
-	outputCh := make(chan interface{})
+func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan any, result *Result) <-chan any {
+	outputCh := make(chan any)
 
 	go func() {
 		defer close(outputCh)
@@ -210,7 +210,7 @@ func (c *MCPDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-ch
 }
 
 // isDuplicate checks if a source record (MCP ServerResponse) is a duplicate.
-func (c *MCPDuplicateChecker) isDuplicate(source interface{}) bool {
+func (c *MCPDuplicateChecker) isDuplicate(source any) bool {
 	// Try to extract name@version from the MCP source
 	nameVersion := extractNameVersionFromSource(source)
 	if nameVersion == "" {
@@ -233,7 +233,7 @@ func (c *MCPDuplicateChecker) isDuplicate(source interface{}) bool {
 
 // extractNameVersionFromSource extracts "name@version" from a raw MCP source.
 // This avoids the need to transform the record just to check for duplicates.
-func extractNameVersionFromSource(source interface{}) string {
+func extractNameVersionFromSource(source any) string {
 	// Try to convert to MCP ServerResponse
 	switch s := source.(type) {
 	case mcpapiv0.ServerResponse:

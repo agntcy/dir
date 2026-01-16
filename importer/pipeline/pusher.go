@@ -132,7 +132,7 @@ func (p *ClientPusher) printPushFailure(record *corev1.Record, mcpSourceJSON, er
 
 // formatJSON attempts to pretty-print JSON, fallback to raw string.
 func formatJSON(jsonStr string) string {
-	var obj interface{}
+	var obj any
 	if err := json.Unmarshal([]byte(jsonStr), &obj); err != nil {
 		return jsonStr
 	}

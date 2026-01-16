@@ -16,5 +16,5 @@ type Config struct {
 	DBType string `json:"db_type,omitempty" mapstructure:"db_type"`
 
 	// Config for SQLite database.
-	SQLite sqliteconfig.Config `json:"sqlite,omitempty" mapstructure:"sqlite"`
+	SQLite sqliteconfig.Config `json:"sqlite" mapstructure:"sqlite"`
 }
