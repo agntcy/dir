@@ -35,4 +35,6 @@ ignored = [
   "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go", # Generated protobuf code, no license file
   "github.com/grpc-ecosystem/go-grpc-middleware/v2", # Apache License 2.0 https://github.com/grpc-ecosystem/go-grpc-middleware/blob/main/LICENSE
   "gonum.org/v1/gonum", # BSD-3-Clause https://github.com/gonum/gonum/blob/master/LICENSE
+
+  "github.com/modelcontextprotocol/registry", # Apache License 2.0 https://github.com/modelcontextprotocol/registry/blob/main/LICENSE
 ]
