@@ -5,12 +5,18 @@ package oci
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
+	"github.com/agntcy/dir/server/signing"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/logging"
+	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -30,8 +36,10 @@ type ReferrersLister interface {
 }
 
 // PushReferrer pushes a generic RecordReferrer as an OCI artifact that references a record as its subject.
+// For signature referrers, it uses cosign to attach the signature.
+// For public key referrers on Zot registries, it also uploads to Zot's cosign extension.
 func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
-	referrersLogger.Debug("Pushing generic referrer to OCI store", "recordCID", recordCID, "type", referrer.GetType())
+	referrersLogger.Debug("Pushing referrer to OCI store", "recordCID", recordCID, "type", referrer.GetType())
 
 	if referrer == nil {
 		return status.Error(codes.InvalidArgument, "referrer is required") //nolint:wrapcheck
@@ -45,27 +53,121 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 		return status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
 	}
 
-	// Map API type to internal OCI artifact type
-	ociArtifactType := apiToOCIType(referrer.GetType())
+	// Route based on referrer type
+	switch referrer.GetType() {
+	case corev1.SignatureReferrerType:
+		// Use cosign to attach signatures
+		return s.pushSignatureWithCosign(ctx, recordCID, referrer)
 
-	// If the referrer is a public key and using Zot registry, upload to Zot's cosign extension
-	// for signature verification. Other registries only use OCI referrers for public key storage.
-	if ociArtifactType == PublicKeyArtifactMediaType && s.config.GetType() == ociconfig.RegistryTypeZot {
-		err := s.uploadPublicKeyToZot(ctx, referrer)
-		if err != nil {
-			return status.Errorf(codes.Internal, "failed to upload public key to zot: %v", err)
+	case corev1.PublicKeyReferrerType:
+		// Store as OCI referrer and upload to Zot if applicable
+		if err := s.pushReferrer(ctx, recordCID, referrer); err != nil {
+			return err
 		}
+		// For Zot registries, also upload to the cosign extension
+		return s.uploadPublicKeyToZot(ctx, referrer)
+
+	default:
+		// Store as generic OCI referrer
+		return s.pushReferrer(ctx, recordCID, referrer)
+	}
+}
+
+// pushSignatureWithCosign attaches a signature to a record using cosign.
+func (s *store) pushSignatureWithCosign(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
+	referrersLogger.Debug("Pushing signature with cosign", "recordCID", recordCID)
+
+	// Decode the signature from the referrer
+	signature := &signv1.Signature{}
+	if err := signature.UnmarshalReferrer(referrer); err != nil {
+		return fmt.Errorf("failed to decode signature from referrer: %w", err)
 	}
 
-	// If the referrer is a signature, use cosign to attach the signature to the record instead of pushing it as a blob
-	if ociArtifactType == SignatureArtifactType {
-		err := s.pushSignature(ctx, recordCID, referrer)
-		if err != nil {
-			return status.Errorf(codes.Internal, "failed to push signature: %v", err)
-		}
+	// Construct the OCI image reference for the record
+	imageRef := s.constructImageReference(recordCID)
+
+	// Prepare options for attaching signature
+	attachOpts := &cosign.AttachSignatureOptions{
+		ImageRef:  imageRef,
+		Signature: signature.GetSignature(),
+		Payload:   signature.GetAnnotations()["payload"],
+		Username:  s.config.Username,
+		Password:  s.config.Password,
+	}
+
+	// Attach signature using cosign
+	if err := cosign.AttachSignature(ctx, attachOpts); err != nil {
+		return fmt.Errorf("failed to attach signature with cosign: %w", err)
+	}
+
+	referrersLogger.Debug("Signature attached successfully using cosign", "recordCID", recordCID)
+
+	return nil
+}
+
+// uploadPublicKeyToZot uploads a public key to Zot's cosign extension for signature verification.
+func (s *store) uploadPublicKeyToZot(ctx context.Context, referrer *corev1.RecordReferrer) error {
+	// Only applicable for Zot registries
+	if s.config.GetType() != ociconfig.RegistryTypeZot {
+		return nil
+	}
+
+	referrersLogger.Debug("Uploading public key to Zot cosign extension")
+
+	// Decode the public key from the referrer
+	pk := &signv1.PublicKey{}
+	if err := pk.UnmarshalReferrer(referrer); err != nil {
+		return fmt.Errorf("failed to decode public key from referrer: %w", err)
+	}
+
+	publicKey := pk.GetKey()
+	if publicKey == "" {
+		return errors.New("public key is required")
+	}
+
+	// Upload the public key to Zot for signature verification
+	uploadOpts := &zot.UploadPublicKeyOptions{
+		Config: &zot.VerifyConfig{
+			RegistryAddress: s.config.RegistryAddress,
+			RepositoryName:  s.config.RepositoryName,
+			Username:        s.config.Username,
+			Password:        s.config.Password,
+			AccessToken:     s.config.AccessToken,
+			Insecure:        s.config.Insecure,
+		},
+		PublicKey: publicKey,
+	}
+
+	if err := zot.UploadPublicKey(ctx, uploadOpts); err != nil {
+		// Log warning but don't fail - the OCI referrer was already stored
+		referrersLogger.Warn("Failed to upload public key to Zot cosign extension", "error", err)
 
 		return nil
 	}
+
+	referrersLogger.Debug("Successfully uploaded public key to Zot cosign extension")
+
+	return nil
+}
+
+// constructImageReference builds the OCI image reference for a record CID.
+func (s *store) constructImageReference(recordCID string) string {
+	// Get the registry and repository from the config
+	registry := s.config.RegistryAddress
+	repository := s.config.RepositoryName
+
+	// Remove any protocol prefix from registry address for the image reference
+	registry = strings.TrimPrefix(registry, "http://")
+	registry = strings.TrimPrefix(registry, "https://")
+
+	// Use CID as tag to match the oras.Tag operation in Push method
+	return fmt.Sprintf("%s/%s:%s", registry, repository, recordCID)
+}
+
+// pushReferrer pushes a referrer as a generic OCI artifact.
+func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
+	// Map API type to internal OCI artifact type
+	ociArtifactType := apiToOCIType(referrer.GetType())
 
 	// Marshal the referrer to JSON
 	referrerBytes, err := protojson.Marshal(referrer)
@@ -227,7 +329,7 @@ func (s *store) extractReferrerFromManifest(ctx context.Context, manifestDesc oc
 			return nil, status.Errorf(codes.Internal, "failed to unmarshal referrer for CID %s: %v", recordCID, err)
 		}
 	} else { // If the referrer is a signature, convert the cosign signature to a referrer
-		referrer, err = s.convertCosignSignatureToReferrer(blobDesc, referrerData)
+		referrer, err = signing.ConvertCosignSignatureToReferrer(blobDesc.Annotations, referrerData)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to convert cosign signature to referrer: %v", err)
 		}

@@ -37,6 +37,7 @@ import (
 	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/routing"
+	"github.com/agntcy/dir/server/signing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
@@ -278,6 +279,12 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create publication service: %w", err)
 	}
 
+	// Create signing service
+	signingService, err := signing.New(storeAPI, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create signing service: %w", err)
+	}
+
 	// Create a server
 	grpcServer := grpc.NewServer(serverOpts...)
 
@@ -300,7 +307,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	routingv1.RegisterPublicationServiceServer(grpcServer, controller.NewPublicationController(databaseAPI, options))
 	searchv1.RegisterSearchServiceServer(grpcServer, controller.NewSearchController(databaseAPI, storeAPI))
 	storev1.RegisterSyncServiceServer(grpcServer, controller.NewSyncController(databaseAPI, options))
-	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(storeAPI))
+	signv1.RegisterSignServiceServer(grpcServer, controller.NewSignController(signingService))
 	namingv1.RegisterNamingServiceServer(grpcServer, controller.NewNamingController(storeAPI, namingProvider))
 
 	// Register health service

@@ -243,7 +243,10 @@ func (s storeCtrl) PushReferrer(stream storev1.StoreService_PushReferrerServer) 
 func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferrerRequest) *storev1.PushReferrerResponse {
 	storeLogger.Debug("Pushing referrer", "cid", request.GetRecordRef().GetCid(), "type", request.GetReferrer().GetType())
 
-	// Try to use referrer storage if the store supports it
+	recordCID := request.GetRecordRef().GetCid()
+
+	// Use ReferrerStoreAPI to push the referrer
+	// The store implementation handles type-specific logic (cosign for signatures, Zot for public keys)
 	refStore, ok := s.store.(types.ReferrerStoreAPI)
 	if !ok {
 		errMsg := "referrer storage not supported by current store implementation"
@@ -254,9 +257,9 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	err := refStore.PushReferrer(ctx, request.GetRecordRef().GetCid(), request.GetReferrer())
+	err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
 	if err != nil {
-		errMsg := fmt.Sprintf("failed to store referrer for record %s: %v", request.GetRecordRef().GetCid(), err)
+		errMsg := fmt.Sprintf("failed to push referrer for record %s: %v", recordCID, err)
 
 		return &storev1.PushReferrerResponse{
 			Success:      false,
@@ -264,12 +267,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	storeLogger.Debug("Referrer stored successfully", "cid", request.GetRecordRef().GetCid(), "type", request.GetReferrer().GetType())
-
-	// Emit RECORD_SIGNED event if this is a signature referrer
-	if request.GetReferrer().GetType() == corev1.SignatureReferrerType {
-		s.eventBus.RecordSigned(request.GetRecordRef().GetCid(), "client")
-	}
+	storeLogger.Debug("Referrer pushed successfully", "cid", recordCID, "type", request.GetReferrer().GetType())
 
 	return &storev1.PushReferrerResponse{
 		Success: true,

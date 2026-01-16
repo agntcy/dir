@@ -99,22 +99,6 @@ func (s *eventsStore) IsReady(ctx context.Context) bool {
 	return s.source.IsReady(ctx)
 }
 
-// VerifySignature delegates to the source store if it supports signature verification.
-// This ensures the wrapper doesn't hide optional methods from the underlying store.
-func (s *eventsStore) VerifySignature(ctx context.Context, recordCID string) (bool, error) {
-	// Check if source supports signature verification
-	verifierStore, ok := s.source.(types.VerifierStore)
-	if !ok {
-		// Source doesn't support it - this shouldn't happen with OCI store,
-		// but handle gracefully
-		return false, nil
-	}
-
-	// Delegate to source
-	//nolint:wrapcheck
-	return verifierStore.VerifySignature(ctx, recordCID)
-}
-
 // PushReferrer delegates to the source store if it supports referrer operations.
 // This is needed for signature and public key storage.
 func (s *eventsStore) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {

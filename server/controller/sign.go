@@ -17,13 +17,13 @@ var signLogger = logging.Logger("controller/sign")
 
 type signCtrl struct {
 	signv1.UnimplementedSignServiceServer
-	store types.StoreAPI
+	signing types.SigningAPI
 }
 
 // NewSignController creates a new sign service controller.
-func NewSignController(store types.StoreAPI) signv1.SignServiceServer {
+func NewSignController(signing types.SigningAPI) signv1.SignServiceServer {
 	return &signCtrl{
-		store: store,
+		signing: signing,
 	}
 }
 
@@ -43,21 +43,11 @@ func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*sign
 		return nil, status.Error(codes.InvalidArgument, "record ref must be set") //nolint:wrapcheck
 	}
 
-	// Server-side verification is enabled by zot verification.
-	return s.verify(ctx, req.GetRecordRef().GetCid())
-}
-
-// verify attempts signature verification if the store supports it.
-func (s *signCtrl) verify(ctx context.Context, recordCID string) (*signv1.VerifyResponse, error) {
-	// Check if the store supports signature verification
-	verifierStore, ok := s.store.(types.VerifierStore)
-	if !ok {
-		return nil, status.Error(codes.Unimplemented, "signature verification not available in this store configuration") //nolint:wrapcheck
-	}
+	recordCID := req.GetRecordRef().GetCid()
 
 	signLogger.Debug("Attempting signature verification", "recordCID", recordCID)
 
-	verified, err := verifierStore.VerifySignature(ctx, recordCID)
+	verified, err := s.signing.Verify(ctx, recordCID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "signature verification failed: %v", err)
 	}
