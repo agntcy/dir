@@ -38,10 +38,12 @@ def read_json_file(file_path):
             return json.load(f)
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON file: {e}")
-        exit(1)
     except FileNotFoundError:
         print(f"Input file not found: {file_path}")
-        exit(1)
+    finally:
+        f.close()
+
+    return None
 
 def write_json_file(data, file_path):
     # Ensure the directory exists
@@ -239,6 +241,8 @@ def main():
     
     # Read the record JSON file
     record_data = read_json_file(args.record)
+    if record_data is None:
+        exit(1)
 
     # Write to VSCode path
     vscode_data = extract_vscode_data(record_data)

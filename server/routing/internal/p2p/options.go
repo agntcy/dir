@@ -12,7 +12,7 @@ import (
 	"time"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
+	"github.com/libp2p/go-libp2p-kad-dht/records"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -29,7 +29,7 @@ type options struct {
 	RefreshInterval     time.Duration
 	Randevous           string
 	APIRegistrer        APIRegistrer
-	ProviderStore       providers.ProviderStore
+	ProviderStore       records.ProviderStore
 	DHTCustomOpts       func(host.Host) ([]dht.Option, error)
 }
 

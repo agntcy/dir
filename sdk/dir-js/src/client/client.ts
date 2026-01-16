@@ -4,7 +4,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { env } from 'node:process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
 
 import {
@@ -1016,27 +1016,39 @@ export class Client {
    * @private
    */
   private __sign_with_key(cid: string, req: models.sign_v1.SignWithKey): SpawnSyncReturns<string> {
-    // Write private key to a temporary file
-    const tmp_key_filename = join(tmpdir(), '.p.key');
-    writeFileSync(tmp_key_filename, String(req.privateKey));
+    const tmpDir = mkdtempSync(join(tmpdir(), 'dirctl-sign-'));
+    const tmp_key_filename = join(tmpDir, 'private.key');
 
-    // Prepare environment for command
-    const shell_env = env;
-    shell_env['COSIGN_PASSWORD'] = String(req.password);
+    try {
+      // Write private key to the temporary file with secure permissions (owner read/write only)
+      writeFileSync(tmp_key_filename, String(req.privateKey), { mode: 0o600 });
 
-    let commandArgs = ["sign", cid, "--key", tmp_key_filename];
+      // Prepare environment for command
+      const shell_env = env;
+      shell_env['COSIGN_PASSWORD'] = String(req.password);
 
-    if (this.config.spiffeEndpointSocket !== '') {
-      commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
+      let commandArgs = ["sign", cid, "--key", tmp_key_filename];
+
+      if (this.config.spiffeEndpointSocket !== '') {
+        commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
+      }
+
+      // Execute command
+      let output = spawnSync(
+        `${this.config.dirctlPath}`, commandArgs,
+        { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
+      );
+
+      return output;
+    } finally {
+      // Clean up: remove the temporary directory and its contents
+      try {
+        rmSync(tmpDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        // Log cleanup error but don't fail the operation
+        console.warn(`Failed to clean up temporary directory ${tmpDir}:`, cleanupError);
+      }
     }
-
-    // Execute command
-    let output = spawnSync(
-      `${this.config.dirctlPath}`, commandArgs,
-      { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
-    );
-
-    return output;
   }
 
   /**

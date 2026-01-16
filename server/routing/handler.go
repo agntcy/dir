@@ -10,18 +10,18 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
+	"github.com/libp2p/go-libp2p-kad-dht/records"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mh "github.com/multiformats/go-multihash"
 )
 
 var (
-	_             providers.ProviderStore = &handler{}
-	handlerLogger                         = logging.Logger("routing/handler")
+	_             records.ProviderStore = &handler{}
+	handlerLogger                       = logging.Logger("routing/handler")
 )
 
 type handler struct {
-	*providers.ProviderManager
+	*records.ProviderManager
 	hostID   string
 	notifyCh chan<- *handlerSync
 }
