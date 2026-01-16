@@ -3,45 +3,9 @@
 
 package config
 
-import "github.com/agntcy/dir/utils/logging"
-
-var logger = logging.Logger("store/oci/config")
-
-// RegistryType defines the type of OCI registry backend.
-// Only explicitly tested registries are supported.
-type RegistryType string
-
-const (
-	// RegistryTypeZot uses Zot registry.
-	RegistryTypeZot RegistryType = "zot"
-
-	// RegistryTypeGHCR uses GitHub Container Registry.
-	RegistryTypeGHCR RegistryType = "ghcr"
-
-	// RegistryTypeDockerHub uses Docker Hub registry.
-	RegistryTypeDockerHub RegistryType = "dockerhub"
-
-	// DefaultRegistryType is the default registry type for backward compatibility.
-	DefaultRegistryType = RegistryTypeZot
+import (
+	"github.com/agntcy/dir/server/types/registry"
 )
-
-// IsSupported returns true if the registry type is explicitly supported and tested.
-// Logs a warning if an experimental registry type (ghcr, dockerhub) is used.
-func (r RegistryType) IsSupported() bool {
-	switch r {
-	case RegistryTypeZot:
-		return true
-	case RegistryTypeGHCR, RegistryTypeDockerHub:
-		logger.Warn("Registry type support is experimental and not fully tested. "+
-			"The default deployment configuration (Zot registry) is not appropriate for this registry type. "+
-			"Do not use in production.",
-			"registry_type", string(r))
-
-		return true
-	default:
-		return false
-	}
-}
 
 const (
 	DefaultAuthConfigInsecure = true
@@ -52,7 +16,7 @@ const (
 type Config struct {
 	// Type specifies the registry type (zot, ghcr, dockerhub).
 	// Defaults to "zot" for backward compatibility.
-	Type RegistryType `json:"type,omitempty" mapstructure:"type"`
+	Type registry.RegistryType `json:"type,omitempty" mapstructure:"type"`
 
 	// Path to a local directory that will be to hold data instead of remote.
 	// If this is set to non-empty value, only local store will be used.
@@ -73,9 +37,9 @@ type Config struct {
 }
 
 // GetType returns the registry type, defaulting to Zot if not specified.
-func (c Config) GetType() RegistryType {
+func (c Config) GetType() registry.RegistryType {
 	if c.Type == "" {
-		return DefaultRegistryType
+		return registry.DefaultRegistryType
 	}
 
 	return c.Type

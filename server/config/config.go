@@ -21,6 +21,7 @@ import (
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	sync "github.com/agntcy/dir/server/sync/config"
 	syncmonitor "github.com/agntcy/dir/server/sync/monitor/config"
+	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -388,7 +389,7 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("store.provider", store.DefaultProvider)
 
 	_ = v.BindEnv("store.oci.type")
-	v.SetDefault("store.oci.type", string(oci.DefaultRegistryType))
+	v.SetDefault("store.oci.type", string(registry.DefaultRegistryType))
 
 	_ = v.BindEnv("store.oci.local_dir")
 	v.SetDefault("store.oci.local_dir", "")

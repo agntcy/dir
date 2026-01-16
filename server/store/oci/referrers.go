@@ -13,7 +13,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/server/signing"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/cosign"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/zot"
@@ -108,7 +108,7 @@ func (s *store) pushSignatureWithCosign(ctx context.Context, recordCID string, r
 // uploadPublicKeyToZot uploads a public key to Zot's cosign extension for signature verification.
 func (s *store) uploadPublicKeyToZot(ctx context.Context, referrer *corev1.RecordReferrer) error {
 	// Only applicable for Zot registries
-	if s.config.GetType() != ociconfig.RegistryTypeZot {
+	if s.config.GetType() != registry.RegistryTypeZot {
 		return nil
 	}
 

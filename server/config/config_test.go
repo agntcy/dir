@@ -20,6 +20,7 @@ import (
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	sync "github.com/agntcy/dir/server/sync/config"
 	monitor "github.com/agntcy/dir/server/sync/monitor/config"
+	"github.com/agntcy/dir/server/types/registry"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -75,7 +76,7 @@ func TestConfig(t *testing.T) {
 				Store: store.Config{
 					Provider: "provider",
 					OCI: oci.Config{
-						Type:            oci.RegistryTypeGHCR,
+						Type:            registry.RegistryTypeGHCR,
 						LocalDir:        "local-dir",
 						RegistryAddress: "example.com:5001",
 						RepositoryName:  "test-dir",
@@ -163,7 +164,7 @@ func TestConfig(t *testing.T) {
 				Store: store.Config{
 					Provider: store.DefaultProvider,
 					OCI: oci.Config{
-						Type:            oci.DefaultRegistryType,
+						Type:            registry.DefaultRegistryType,
 						RegistryAddress: oci.DefaultRegistryAddress,
 						RepositoryName:  oci.DefaultRepositoryName,
 						AuthConfig: oci.AuthConfig{
