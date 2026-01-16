@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/auth/authprovider
 
-go 1.25.2
+go 1.25.6
 
 require (
 	github.com/google/go-github/v50 v50.2.0

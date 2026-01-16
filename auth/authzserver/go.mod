@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/auth/authzserver
 
-go 1.25.2
+go 1.25.6
 
 require (
 	github.com/agntcy/dir/auth/authprovider v0.0.0
