@@ -3,6 +3,8 @@ module github.com/agntcy/dir/e2e
 go 1.25.6
 
 replace (
+	// Cosign does not updated the crypto11 owner
+	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/cli => ../cli
 	github.com/agntcy/dir/client => ../client

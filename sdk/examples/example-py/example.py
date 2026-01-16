@@ -3,7 +3,7 @@
 
 from google.protobuf.json_format import MessageToJson
 
-from agntcy.dir_sdk.client import Client, Config
+from agntcy.dir_sdk.client import Client
 from agntcy.dir_sdk.models import core_v1, search_v1, routing_v1
 
 

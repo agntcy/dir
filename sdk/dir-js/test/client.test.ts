@@ -3,7 +3,7 @@
 
 import { describe, test, beforeAll, afterAll, expect } from 'vitest';
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { pool as workerpool } from 'workerpool';
 import { readFileSync, rmSync } from 'node:fs';
 import { env } from 'node:process';
@@ -348,7 +348,7 @@ describe('Client', () => {
     try {
       // Generate key pair
       const cosignPath = env['COSIGN_PATH'] || 'cosign';
-      execSync(`${cosignPath} generate-key-pair`, {
+      execFileSync(cosignPath, ["generate-key-pair"], {
         env: { ...shellEnv, COSIGN_PASSWORD: keyPassword },
         encoding: 'utf8',
         stdio: 'pipe',

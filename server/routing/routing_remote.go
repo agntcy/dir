@@ -23,7 +23,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/providers"
+	"github.com/libp2p/go-libp2p-kad-dht/records"
 	record "github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -148,7 +148,7 @@ func newRemote(parentCtx context.Context,
 		p2p.WithIdentityKeyPath(opts.Config().Routing.KeyPath),
 		p2p.WithCustomDHTOpts(
 			func(h host.Host) ([]dht.Option, error) {
-				providerMgr, err := providers.NewProviderManager(h.ID(), h.Peerstore(), dstore)
+				providerMgr, err := records.NewProviderManager(parentCtx, h.ID(), h.Peerstore(), dstore)
 				if err != nil {
 					return nil, fmt.Errorf("failed to create provider manager: %w", err)
 				}
