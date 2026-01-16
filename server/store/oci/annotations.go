@@ -209,8 +209,8 @@ func parseManifestAnnotations(annotations map[string]string) *corev1.RecordMeta 
 
 	// Custom annotations (those with our custom prefix) - clean namespace
 	for key, value := range annotations {
-		if strings.HasPrefix(key, ManifestKeyCustomPrefix) {
-			customKey := strings.TrimPrefix(key, ManifestKeyCustomPrefix)
+		if after, ok := strings.CutPrefix(key, ManifestKeyCustomPrefix); ok {
+			customKey := after
 			recordMeta.Annotations[customKey] = value
 		}
 	}

@@ -22,16 +22,16 @@ import (
 
 // MCPRequest represents a JSON-RPC 2.0 request.
 type MCPRequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params,omitempty"`
-	ID      interface{} `json:"id"`
+	JSONRPC string `json:"jsonrpc"`
+	Method  string `json:"method"`
+	Params  any    `json:"params,omitempty"`
+	ID      any    `json:"id"`
 }
 
 // MCPResponse represents a JSON-RPC 2.0 response.
 type MCPResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      interface{}     `json:"id,omitempty"`
+	ID      any             `json:"id,omitempty"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *MCPError       `json:"error,omitempty"`
 }
@@ -155,9 +155,9 @@ func getSchemaAndValidate(client *MCPClient, version string, requestID int) {
 	req := MCPRequest{
 		JSONRPC: "2.0",
 		Method:  "tools/call",
-		Params: map[string]interface{}{
+		Params: map[string]any{
 			"name": "agntcy_oasf_get_schema",
-			"arguments": map[string]interface{}{
+			"arguments": map[string]any{
 				"version": version,
 			},
 		},
@@ -169,23 +169,23 @@ func getSchemaAndValidate(client *MCPClient, version string, requestID int) {
 	gomega.Expect(resp.Error).To(gomega.BeNil())
 
 	// Parse result
-	var result map[string]interface{}
+	var result map[string]any
 
 	err = json.Unmarshal(resp.Result, &result)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	content, ok := result["content"].([]interface{})
+	content, ok := result["content"].([]any)
 	gomega.Expect(ok).To(gomega.BeTrue())
 	gomega.Expect(content).To(gomega.HaveLen(1))
 
-	output, ok := content[0].(map[string]interface{})
+	output, ok := content[0].(map[string]any)
 	gomega.Expect(ok).To(gomega.BeTrue())
 	gomega.Expect(output["type"]).To(gomega.Equal("text"))
 
 	textOutput, ok := output["text"].(string)
 	gomega.Expect(ok).To(gomega.BeTrue())
 
-	var toolOutput map[string]interface{}
+	var toolOutput map[string]any
 
 	err = json.Unmarshal([]byte(textOutput), &toolOutput)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -197,7 +197,7 @@ func getSchemaAndValidate(client *MCPClient, version string, requestID int) {
 	schemaStr, ok := toolOutput["schema"].(string)
 	gomega.Expect(ok).To(gomega.BeTrue())
 
-	var schema map[string]interface{}
+	var schema map[string]any
 
 	err = json.Unmarshal([]byte(schemaStr), &schema)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -205,13 +205,13 @@ func getSchemaAndValidate(client *MCPClient, version string, requestID int) {
 }
 
 // Helper function to validate a record and parse the output.
-func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestID int) map[string]interface{} {
+func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestID int) map[string]any {
 	req := MCPRequest{
 		JSONRPC: "2.0",
 		Method:  "tools/call",
-		Params: map[string]interface{}{
+		Params: map[string]any{
 			"name": "agntcy_oasf_validate_record",
-			"arguments": map[string]interface{}{
+			"arguments": map[string]any{
 				"record_json": recordJSON,
 			},
 		},
@@ -222,23 +222,23 @@ func validateRecordAndParseOutput(client *MCPClient, recordJSON string, requestI
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	gomega.Expect(resp.Error).To(gomega.BeNil())
 
-	var result map[string]interface{}
+	var result map[string]any
 
 	err = json.Unmarshal(resp.Result, &result)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	content, ok := result["content"].([]interface{})
+	content, ok := result["content"].([]any)
 	gomega.Expect(ok).To(gomega.BeTrue())
 	gomega.Expect(content).To(gomega.HaveLen(1))
 
-	output, ok := content[0].(map[string]interface{})
+	output, ok := content[0].(map[string]any)
 	gomega.Expect(ok).To(gomega.BeTrue())
 	gomega.Expect(output["type"]).To(gomega.Equal("text"))
 
 	textOutput, ok := output["text"].(string)
 	gomega.Expect(ok).To(gomega.BeTrue())
 
-	var toolOutput map[string]interface{}
+	var toolOutput map[string]any
 
 	err = json.Unmarshal([]byte(textOutput), &toolOutput)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -272,13 +272,13 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			req := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "initialize",
-				Params: map[string]interface{}{
+				Params: map[string]any{
 					"protocolVersion": "2024-11-05",
 					"clientInfo": map[string]string{
 						"name":    "e2e-test-client",
 						"version": "1.0.0",
 					},
-					"capabilities": map[string]interface{}{},
+					"capabilities": map[string]any{},
 				},
 				ID: 1,
 			}
@@ -288,18 +288,18 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(resp.Error).To(gomega.BeNil())
 
 			// Parse result
-			var result map[string]interface{}
+			var result map[string]any
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			// Verify server info
-			serverInfo, ok := result["serverInfo"].(map[string]interface{})
+			serverInfo, ok := result["serverInfo"].(map[string]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(serverInfo["name"]).To(gomega.Equal("dir-mcp-server"))
 			gomega.Expect(serverInfo["version"]).To(gomega.Equal("v0.1.0"))
 
 			// Verify capabilities
-			capabilities, ok := result["capabilities"].(map[string]interface{})
+			capabilities, ok := result["capabilities"].(map[string]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(capabilities).To(gomega.HaveKey("tools"))
 
@@ -312,13 +312,13 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			initReq := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "initialize",
-				Params: map[string]interface{}{
+				Params: map[string]any{
 					"protocolVersion": "2024-11-05",
 					"clientInfo": map[string]string{
 						"name":    "e2e-test-client",
 						"version": "1.0.0",
 					},
-					"capabilities": map[string]interface{}{},
+					"capabilities": map[string]any{},
 				},
 				ID: 1,
 			}
@@ -331,7 +331,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			notifReq := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "initialized",
-				Params:  map[string]interface{}{},
+				Params:  map[string]any{},
 			}
 
 			notifBytes, err := json.Marshal(notifReq)
@@ -349,13 +349,13 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			initReq := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "initialize",
-				Params: map[string]interface{}{
+				Params: map[string]any{
 					"protocolVersion": "2024-11-05",
 					"clientInfo": map[string]string{
 						"name":    "e2e-test-client",
 						"version": "1.0.0",
 					},
-					"capabilities": map[string]interface{}{},
+					"capabilities": map[string]any{},
 				},
 				ID: 1,
 			}
@@ -369,7 +369,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			req := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "tools/list",
-				Params:  map[string]interface{}{},
+				Params:  map[string]any{},
 				ID:      2,
 			}
 
@@ -378,18 +378,18 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(resp.Error).To(gomega.BeNil())
 
 			// Parse result
-			var result map[string]interface{}
+			var result map[string]any
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			tools, ok := result["tools"].([]interface{})
+			tools, ok := result["tools"].([]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(tools).To(gomega.HaveLen(4))
 
 			// Verify tool names
 			toolNames := make(map[string]bool)
 			for _, tool := range tools {
-				t, ok := tool.(map[string]interface{})
+				t, ok := tool.(map[string]any)
 				gomega.Expect(ok).To(gomega.BeTrue())
 
 				name, ok := t["name"].(string)
@@ -452,7 +452,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(toolOutput["valid"]).To(gomega.BeFalse())
 			gomega.Expect(toolOutput["validation_errors"]).NotTo(gomega.BeEmpty())
 
-			errors, ok := toolOutput["validation_errors"].([]interface{})
+			errors, ok := toolOutput["validation_errors"].([]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			ginkgo.GinkgoWriter.Printf("Validation errors returned: %v\n", errors)
 		})
@@ -463,9 +463,9 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			req := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "tools/call",
-				Params: map[string]interface{}{
+				Params: map[string]any{
 					"name": "agntcy_dir_push_record",
-					"arguments": map[string]interface{}{
+					"arguments": map[string]any{
 						"record_json": recordJSON,
 					},
 				},
@@ -476,23 +476,23 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			gomega.Expect(resp.Error).To(gomega.BeNil())
 
-			var result map[string]interface{}
+			var result map[string]any
 
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			content, ok := result["content"].([]interface{})
+			content, ok := result["content"].([]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(content).To(gomega.HaveLen(1))
 
-			output, ok := content[0].(map[string]interface{})
+			output, ok := content[0].(map[string]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(output["type"]).To(gomega.Equal("text"))
 
 			textOutput, ok := output["text"].(string)
 			gomega.Expect(ok).To(gomega.BeTrue())
 
-			var toolOutput map[string]interface{}
+			var toolOutput map[string]any
 
 			err = json.Unmarshal([]byte(textOutput), &toolOutput)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -526,13 +526,13 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			initReq := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "initialize",
-				Params: map[string]interface{}{
+				Params: map[string]any{
 					"protocolVersion": "2024-11-05",
 					"clientInfo": map[string]string{
 						"name":    "e2e-test-client",
 						"version": "1.0.0",
 					},
-					"capabilities": map[string]interface{}{},
+					"capabilities": map[string]any{},
 				},
 				ID: 1,
 			}
@@ -546,9 +546,9 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			req := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "tools/call",
-				Params: map[string]interface{}{
+				Params: map[string]any{
 					"name":      "agntcy_oasf_list_versions",
-					"arguments": map[string]interface{}{},
+					"arguments": map[string]any{},
 				},
 				ID: 2,
 			}
@@ -558,26 +558,26 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(resp.Error).To(gomega.BeNil())
 
 			// Parse result
-			var result map[string]interface{}
+			var result map[string]any
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			content, ok := result["content"].([]interface{})
+			content, ok := result["content"].([]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(content).To(gomega.HaveLen(1))
 
-			output, ok := content[0].(map[string]interface{})
+			output, ok := content[0].(map[string]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(output["type"]).To(gomega.Equal("text"))
 
 			textOutput, ok := output["text"].(string)
 			gomega.Expect(ok).To(gomega.BeTrue())
 
-			var toolOutput map[string]interface{}
+			var toolOutput map[string]any
 			err = json.Unmarshal([]byte(textOutput), &toolOutput)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			availableVersions, ok := toolOutput["available_versions"].([]interface{})
+			availableVersions, ok := toolOutput["available_versions"].([]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(availableVersions).To(gomega.ContainElement("0.3.1"))
 			gomega.Expect(availableVersions).To(gomega.ContainElement("0.7.0"))
@@ -603,9 +603,9 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			req := MCPRequest{
 				JSONRPC: "2.0",
 				Method:  "tools/call",
-				Params: map[string]interface{}{
+				Params: map[string]any{
 					"name": "agntcy_oasf_get_schema",
-					"arguments": map[string]interface{}{
+					"arguments": map[string]any{
 						"version": "999.999.999",
 					},
 				},
@@ -617,21 +617,21 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 			gomega.Expect(resp.Error).To(gomega.BeNil())
 
 			// Parse result
-			var result map[string]interface{}
+			var result map[string]any
 			err = json.Unmarshal(resp.Result, &result)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-			content, ok := result["content"].([]interface{})
+			content, ok := result["content"].([]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 			gomega.Expect(content).To(gomega.HaveLen(1))
 
-			output, ok := content[0].(map[string]interface{})
+			output, ok := content[0].(map[string]any)
 			gomega.Expect(ok).To(gomega.BeTrue())
 
 			textOutput, ok := output["text"].(string)
 			gomega.Expect(ok).To(gomega.BeTrue())
 
-			var toolOutput map[string]interface{}
+			var toolOutput map[string]any
 			err = json.Unmarshal([]byte(textOutput), &toolOutput)
 			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 

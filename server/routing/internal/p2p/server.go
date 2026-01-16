@@ -67,7 +67,7 @@ func (s *Server) Info() *peer.AddrInfo {
 
 // Returns p2p specific addresses as addrinfos.
 func (s *Server) P2pInfo() []peer.AddrInfo {
-	var p2pInfos []peer.AddrInfo //nolint:prealloc
+	var p2pInfos []peer.AddrInfo
 
 	for _, addr := range s.P2pAddrs() {
 		p2pInfo, _ := peer.AddrInfoFromString(addr)
@@ -79,7 +79,7 @@ func (s *Server) P2pInfo() []peer.AddrInfo {
 
 // Returns p2p specific addresses as strings.
 func (s *Server) P2pAddrs() []string {
-	var p2pAddrs []string //nolint:prealloc
+	var p2pAddrs []string
 	for _, addr := range s.host.Addrs() {
 		p2pAddrs = append(p2pAddrs, fmt.Sprintf("%s/p2p/%s", addr.String(), s.host.ID().String()))
 	}

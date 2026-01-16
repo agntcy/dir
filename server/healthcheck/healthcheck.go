@@ -6,6 +6,7 @@ package healthcheck
 
 import (
 	"context"
+	"maps"
 	"sync"
 	"time"
 
@@ -83,11 +84,11 @@ func (c *Checker) Start(ctx context.Context) error {
 	// Start background goroutine to monitor health checks
 	c.wg.Add(1)
 
-	go func() {
+	c.wg.Go(func() {
 		defer c.wg.Done()
 
 		c.monitorHealth(ctx)
-	}()
+	})
 
 	logger.Info("Health check monitoring started")
 
@@ -130,9 +131,7 @@ func (c *Checker) updateHealthStatus(ctx context.Context) {
 	c.mu.RLock()
 
 	checks := make(map[string]CheckFunc, len(c.readinessChecks))
-	for name, check := range c.readinessChecks {
-		checks[name] = check
-	}
+	maps.Copy(checks, c.readinessChecks)
 
 	c.mu.RUnlock()
 

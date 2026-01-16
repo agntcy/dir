@@ -12,6 +12,7 @@ linters:
     - gochecknoglobals # Allow global variables
     - gochecknoinits # Allow init function
     - godox # Allow TODOs
+    - gomoddirectives # Allow replaces in go.mod
     - inamedparam # Allow unnamed args
     - ireturn # Allow returning with interfaces
     - lll # Allow long lines
@@ -19,6 +20,8 @@ linters:
     - nolintlint # Allow nolint
     - paralleltest # Allow missing t.Parallel() in tests
     - revive # Allow flexible code style conventions
+    - perfsprint # Allow concat strings with fmt.Sprintf
+    - prealloc # Allow dynamically sized slices
     - tagliatelle # Allow json(camel)
     - testpackage # Allow not having a test package
     - varnamelen # Allow short var names

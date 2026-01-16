@@ -132,17 +132,17 @@ func runCommand(cmd *cobra.Command, cid string) error {
 	}
 
 	// Create structured data object
-	structuredData := map[string]interface{}{
-		"record": map[string]interface{}{
+	structuredData := map[string]any{
+		"record": map[string]any{
 			"data": record.GetData(),
 		},
 	}
 
 	// Add public keys if any
 	if len(publicKeys) > 0 {
-		publicKeyData := make([]map[string]interface{}, len(publicKeys))
+		publicKeyData := make([]map[string]any, len(publicKeys))
 		for i, pk := range publicKeys {
-			publicKeyData[i] = map[string]interface{}{
+			publicKeyData[i] = map[string]any{
 				"key": pk.GetKey(),
 			}
 		}
@@ -152,9 +152,9 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	// Add signatures if any
 	if len(signatures) > 0 {
-		signatureData := make([]map[string]interface{}, len(signatures))
+		signatureData := make([]map[string]any, len(signatures))
 		for i, sig := range signatures {
-			signatureData[i] = map[string]interface{}{
+			signatureData[i] = map[string]any{
 				"signature": sig.GetSignature(),
 			}
 		}

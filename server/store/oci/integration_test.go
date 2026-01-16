@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -126,7 +127,7 @@ func getRegistryTags(ctx context.Context, t *testing.T) []string {
 }
 
 // getManifest fetches manifest for a specific tag from zot registry.
-func getManifest(ctx context.Context, t *testing.T, tag string) map[string]interface{} {
+func getManifest(ctx context.Context, t *testing.T, tag string) map[string]any {
 	t.Helper()
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -143,7 +144,7 @@ func getManifest(ctx context.Context, t *testing.T, tag string) map[string]inter
 
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Unexpected status when fetching manifest")
 
-	var manifest map[string]interface{}
+	var manifest map[string]any
 
 	err = json.NewDecoder(resp.Body).Decode(&manifest)
 	require.NoError(t, err, "Failed to decode manifest response")
@@ -187,12 +188,8 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 		// Verify the CID tag exists in registry
 		var hasCIDTag bool
 
-		for _, tag := range tags {
-			if tag == expectedCID {
-				hasCIDTag = true
-
-				break
-			}
+		if slices.Contains(tags, expectedCID) {
+			hasCIDTag = true
 		}
 
 		assert.True(t, hasCIDTag, "Registry should contain the CID tag: %s", expectedCID)
@@ -205,7 +202,7 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 
 		// Check manifest structure
 		require.Contains(t, manifest, "annotations", "Manifest should contain annotations")
-		annotations, ok := manifest["annotations"].(map[string]interface{})
+		annotations, ok := manifest["annotations"].(map[string]any)
 		require.True(t, ok, "Annotations should be a map")
 
 		t.Logf("Found %d manifest annotations", len(annotations))

@@ -16,14 +16,14 @@ import (
 type Fetcher interface {
 	// Fetch retrieves records from the external source and sends them to the output channel.
 	// It should close the output channel when done and send any errors to the error channel.
-	Fetch(ctx context.Context) (<-chan interface{}, <-chan error)
+	Fetch(ctx context.Context) (<-chan any, <-chan error)
 }
 
 // Transformer is an interface for transforming records from one format to another.
 // For example, converting MCP servers to OASF format.
 type Transformer interface {
 	// Transform converts a source record to a target format.
-	Transform(ctx context.Context, source interface{}) (*corev1.Record, error)
+	Transform(ctx context.Context, source any) (*corev1.Record, error)
 }
 
 // Pusher is an interface for pushing records to the destination (DIR).
@@ -38,7 +38,7 @@ type DuplicateChecker interface {
 	// FilterDuplicates filters out duplicate records from the input channel.
 	// It tracks total and skipped counts in the provided result.
 	// Returns a channel with only non-duplicate records.
-	FilterDuplicates(ctx context.Context, inputCh <-chan interface{}, result *Result) <-chan interface{}
+	FilterDuplicates(ctx context.Context, inputCh <-chan any, result *Result) <-chan any
 }
 
 // Config contains configuration for the pipeline.
@@ -91,7 +91,7 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 	fetchedCh, fetchErrCh := p.fetcher.Fetch(ctx)
 
 	// Stage 2: Filter duplicates (optional - only if duplicate checker is available)
-	var filteredCh <-chan interface{}
+	var filteredCh <-chan any
 
 	if p.duplicateChecker != nil {
 		filteredCh = p.duplicateChecker.FilterDuplicates(ctx, fetchedCh, result)
@@ -202,7 +202,7 @@ func (p *DryRunPipeline) Run(ctx context.Context) (*Result, error) {
 	fetchedCh, fetchErrCh := p.fetcher.Fetch(ctx)
 
 	// Stage 2: Filter duplicates (optional - provides accurate preview)
-	var filteredCh <-chan interface{}
+	var filteredCh <-chan any
 
 	if p.duplicateChecker != nil {
 		// Duplicate checker will filter and track skipped records for accurate preview
@@ -265,7 +265,7 @@ func (p *DryRunPipeline) Run(ctx context.Context) (*Result, error) {
 // It always tracks the total records it processes (non-duplicates after filtering).
 //
 //nolint:gocognit // Complexity is acceptable for concurrent pipeline stage
-func runTransformStage(ctx context.Context, transformer Transformer, numWorkers int, inputCh <-chan interface{}, result *Result) (<-chan *corev1.Record, <-chan error) {
+func runTransformStage(ctx context.Context, transformer Transformer, numWorkers int, inputCh <-chan any, result *Result) (<-chan *corev1.Record, <-chan error) {
 	outputCh := make(chan *corev1.Record)
 	errCh := make(chan error)
 
@@ -275,7 +275,7 @@ func runTransformStage(ctx context.Context, transformer Transformer, numWorkers 
 	for range numWorkers {
 		wg.Add(1)
 
-		go func() {
+		wg.Go(func() {
 			defer wg.Done()
 
 			for {
@@ -316,7 +316,7 @@ func runTransformStage(ctx context.Context, transformer Transformer, numWorkers 
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	// Close output channel when all workers are done

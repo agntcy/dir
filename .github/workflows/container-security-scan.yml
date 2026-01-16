@@ -44,13 +44,13 @@ jobs:
             version: ${{ needs.get-version.outputs.version }}
           - image: zot
             repo: ghcr.io/project-zot/zot
-            version: v2.1.11
+            version: v2.1.13
           - image: spire-server
             repo: ghcr.io/spiffe/spire-server
-            version: 1.13.3
+            version: 1.14.1
           - image: spire-agent
             repo: ghcr.io/spiffe/spire-agent
-            version: 1.13.3
+            version: 1.14.1
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1

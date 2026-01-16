@@ -221,7 +221,8 @@ func (m *MockEventBus) formatEvents() string {
 
 	for i, e := range m.events {
 		if i > 0 {
-			result += ", "
+			// NOTE: needs rewrite later
+			result += ", " //nolint:modernize
 		}
 
 		result += fmt.Sprintf("{Type: %v, ResourceID: %s}", e.Type, e.ResourceID)
@@ -235,5 +236,5 @@ func (m *MockEventBus) formatEvents() string {
 // TestingT is a minimal testing interface for assertions.
 // This allows the mock to be used with any testing framework.
 type TestingT interface {
-	Errorf(format string, args ...interface{})
+	Errorf(format string, args ...any)
 }

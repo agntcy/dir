@@ -69,7 +69,7 @@ type Config struct {
 	RepositoryName string `json:"repository_name,omitempty" mapstructure:"repository_name"`
 
 	// Authentication configuration
-	AuthConfig `json:"auth_config,omitempty" mapstructure:"auth_config"`
+	AuthConfig `json:"auth_config" mapstructure:"auth_config"`
 }
 
 // GetType returns the registry type, defaulting to Zot if not specified.

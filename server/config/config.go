@@ -114,43 +114,43 @@ type Config struct {
 	ListenAddress string `json:"listen_address,omitempty" mapstructure:"listen_address"`
 
 	// OASF Validation configuration
-	OASFAPIValidation OASFAPIValidationConfig `json:"oasf_api_validation,omitempty" mapstructure:"oasf_api_validation"`
+	OASFAPIValidation OASFAPIValidationConfig `json:"oasf_api_validation" mapstructure:"oasf_api_validation"`
 
 	// Logging configuration
-	Logging LoggingConfig `json:"logging,omitempty" mapstructure:"logging"`
+	Logging LoggingConfig `json:"logging" mapstructure:"logging"`
 
 	// Connection management configuration
-	Connection ConnectionConfig `json:"connection,omitempty" mapstructure:"connection"`
+	Connection ConnectionConfig `json:"connection" mapstructure:"connection"`
 
 	// Rate limiting configuration
-	RateLimit ratelimitconfig.Config `json:"ratelimit,omitempty" mapstructure:"ratelimit"`
+	RateLimit ratelimitconfig.Config `json:"ratelimit" mapstructure:"ratelimit"`
 
 	// Authn configuration (JWT or X.509 authentication)
-	Authn authn.Config `json:"authn,omitempty" mapstructure:"authn"`
+	Authn authn.Config `json:"authn" mapstructure:"authn"`
 
 	// Authz configuration
-	Authz authz.Config `json:"authz,omitempty" mapstructure:"authz"`
+	Authz authz.Config `json:"authz" mapstructure:"authz"`
 
 	// Store configuration
-	Store store.Config `json:"store,omitempty" mapstructure:"store"`
+	Store store.Config `json:"store" mapstructure:"store"`
 
 	// Routing configuration
-	Routing routing.Config `json:"routing,omitempty" mapstructure:"routing"`
+	Routing routing.Config `json:"routing" mapstructure:"routing"`
 
 	// Database configuration
-	Database database.Config `json:"database,omitempty" mapstructure:"database"`
+	Database database.Config `json:"database" mapstructure:"database"`
 
 	// Sync configuration
-	Sync sync.Config `json:"sync,omitempty" mapstructure:"sync"`
+	Sync sync.Config `json:"sync" mapstructure:"sync"`
 
 	// Publication configuration
-	Publication publication.Config `json:"publication,omitempty" mapstructure:"publication"`
+	Publication publication.Config `json:"publication" mapstructure:"publication"`
 
 	// Events configuration
-	Events events.Config `json:"events,omitempty" mapstructure:"events"`
+	Events events.Config `json:"events" mapstructure:"events"`
 
 	// Metrics configuration
-	Metrics MetricsConfig `json:"metrics,omitempty" mapstructure:"metrics"`
+	Metrics MetricsConfig `json:"metrics" mapstructure:"metrics"`
 }
 
 // OASFAPIValidationConfig defines OASF API validation configuration.
@@ -203,7 +203,7 @@ type ConnectionConfig struct {
 	ConnectionTimeout time.Duration `json:"connection_timeout,omitempty" mapstructure:"connection_timeout"`
 
 	// Keepalive configuration for connection health management.
-	Keepalive KeepaliveConfig `json:"keepalive,omitempty" mapstructure:"keepalive"`
+	Keepalive KeepaliveConfig `json:"keepalive" mapstructure:"keepalive"`
 }
 
 // KeepaliveConfig defines keepalive parameters for connection health.

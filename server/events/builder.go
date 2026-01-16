@@ -4,6 +4,7 @@
 package events
 
 import (
+	"maps"
 	"strconv"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
@@ -55,9 +56,7 @@ func (eb *EventBuilder) WithMetadataMap(metadata map[string]string) *EventBuilde
 		eb.event.Metadata = make(map[string]string)
 	}
 
-	for k, v := range metadata {
-		eb.event.Metadata[k] = v
-	}
+	maps.Copy(eb.event.Metadata, metadata)
 
 	return eb
 }

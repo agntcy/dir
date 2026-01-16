@@ -180,7 +180,7 @@ func runListSyncs(cmd *cobra.Command) error {
 	}
 
 	// Collect results
-	var results []interface{}
+	var results []any
 
 	for {
 		select {
@@ -322,7 +322,7 @@ func createSyncOperations(cmd *cobra.Command, peerResults map[string]PeerSyncInf
 	totalSyncs := 0
 	totalCIDs := 0
 
-	syncIDs := make([]interface{}, 0, len(peerResults))
+	syncIDs := make([]any, 0, len(peerResults))
 
 	for apiAddress, syncInfo := range peerResults {
 		if syncInfo.APIAddress == "" {

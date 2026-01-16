@@ -144,18 +144,18 @@ func TestParseItemFromSchemaForSkills(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		defMap   map[string]interface{}
+		defMap   map[string]any
 		expected schemaClass
 	}{
 		{
 			name: "Parse skill with name, caption (title), and ID",
-			defMap: map[string]interface{}{
+			defMap: map[string]any{
 				"title": "Test Skill Caption",
-				"properties": map[string]interface{}{
-					"name": map[string]interface{}{
+				"properties": map[string]any{
+					"name": map[string]any{
 						"const": "test_skill",
 					},
-					"id": map[string]interface{}{
+					"id": map[string]any{
 						"const": float64(123),
 					},
 				},
@@ -168,9 +168,9 @@ func TestParseItemFromSchemaForSkills(t *testing.T) {
 		},
 		{
 			name: "Parse skill with missing fields",
-			defMap: map[string]interface{}{
-				"properties": map[string]interface{}{
-					"name": map[string]interface{}{
+			defMap: map[string]any{
+				"properties": map[string]any{
+					"name": map[string]any{
 						"const": "minimal_skill",
 					},
 				},

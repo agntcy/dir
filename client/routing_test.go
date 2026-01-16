@@ -122,7 +122,7 @@ func countGoroutines() int {
 }
 
 // testContextCancellation is a helper that tests context cancellation for streaming methods.
-func testContextCancellation(t *testing.T, startStream func(context.Context) (<-chan interface{}, error), name string) {
+func testContextCancellation(t *testing.T, startStream func(context.Context) (<-chan any, error), name string) {
 	t.Helper()
 
 	initialGoroutines := countGoroutines()
@@ -194,7 +194,7 @@ drainLoop:
 }
 
 // testConsumerStopsReading is a helper that tests consumer stopping reading for streaming methods.
-func testConsumerStopsReading(t *testing.T, startStream func(context.Context) (<-chan interface{}, error), name string) {
+func testConsumerStopsReading(t *testing.T, startStream func(context.Context) (<-chan any, error), name string) {
 	t.Helper()
 
 	initialGoroutines := countGoroutines()
@@ -257,13 +257,13 @@ func TestList_ContextCancellation(t *testing.T) {
 	}
 
 	// Use helper to test context cancellation
-	testContextCancellation(t, func(ctx context.Context) (<-chan interface{}, error) {
+	testContextCancellation(t, func(ctx context.Context) (<-chan any, error) {
 		ch, err := client.List(ctx, &routingv1.ListRequest{})
 		if err != nil {
 			return nil, err
 		}
-		// Convert typed channel to interface{} channel
-		outCh := make(chan interface{})
+		// Convert typed channel to any channel
+		outCh := make(chan any)
 
 		go func() {
 			defer close(outCh)
@@ -299,13 +299,13 @@ func TestList_ConsumerStopsReading(t *testing.T) {
 	}
 
 	// Use helper to test consumer stops reading
-	testConsumerStopsReading(t, func(ctx context.Context) (<-chan interface{}, error) {
+	testConsumerStopsReading(t, func(ctx context.Context) (<-chan any, error) {
 		ch, err := client.List(ctx, &routingv1.ListRequest{})
 		if err != nil {
 			return nil, err
 		}
-		// Convert typed channel to interface{} channel
-		outCh := make(chan interface{})
+		// Convert typed channel to any channel
+		outCh := make(chan any)
 
 		go func() {
 			defer close(outCh)
@@ -377,13 +377,13 @@ func TestSearchRouting_ContextCancellation(t *testing.T) {
 	}
 
 	// Use helper to test context cancellation
-	testContextCancellation(t, func(ctx context.Context) (<-chan interface{}, error) {
+	testContextCancellation(t, func(ctx context.Context) (<-chan any, error) {
 		ch, err := client.SearchRouting(ctx, &routingv1.SearchRequest{})
 		if err != nil {
 			return nil, err
 		}
-		// Convert typed channel to interface{} channel
-		outCh := make(chan interface{})
+		// Convert typed channel to any channel
+		outCh := make(chan any)
 
 		go func() {
 			defer close(outCh)
@@ -418,13 +418,13 @@ func TestSearchRouting_ConsumerStopsReading(t *testing.T) {
 	}
 
 	// Use helper to test consumer stops reading
-	testConsumerStopsReading(t, func(ctx context.Context) (<-chan interface{}, error) {
+	testConsumerStopsReading(t, func(ctx context.Context) (<-chan any, error) {
 		ch, err := client.SearchRouting(ctx, &routingv1.SearchRequest{})
 		if err != nil {
 			return nil, err
 		}
-		// Convert typed channel to interface{} channel
-		outCh := make(chan interface{})
+		// Convert typed channel to any channel
+		outCh := make(chan any)
 
 		go func() {
 			defer close(outCh)
@@ -583,9 +583,7 @@ func BenchmarkList_NoLeak(b *testing.B) {
 
 	initialGoroutines := countGoroutines()
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		resCh, err := client.List(ctx, &routingv1.ListRequest{})

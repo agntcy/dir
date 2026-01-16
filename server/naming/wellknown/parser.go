@@ -23,7 +23,7 @@ func ConvertJWKToPublicKey(key jwk.Key) (*naming.PublicKey, error) {
 	}
 
 	// Get the raw public key
-	var rawKey interface{}
+	var rawKey any
 	if err := key.Raw(&rawKey); err != nil {
 		return nil, fmt.Errorf("failed to get raw key: %w", err)
 	}

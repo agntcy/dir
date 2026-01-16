@@ -164,7 +164,7 @@ func runSearchCommand(cmd *cobra.Command) error {
 	}
 
 	// Collect results
-	results := make([]interface{}, 0, searchOpts.Limit)
+	results := make([]any, 0, searchOpts.Limit)
 	for result := range resultCh {
 		results = append(results, result)
 	}

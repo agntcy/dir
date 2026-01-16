@@ -69,11 +69,11 @@ func (s *Service) Start(ctx context.Context) error {
 	// Start scheduler
 	s.wg.Add(1)
 
-	go func() {
+	s.wg.Go(func() {
 		defer s.wg.Done()
 
 		s.scheduler.Run(ctx, s.stopCh)
-	}()
+	})
 
 	// Start workers
 	for _, worker := range s.workers {

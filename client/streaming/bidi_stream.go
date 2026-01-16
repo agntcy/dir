@@ -83,7 +83,7 @@ func ProcessBidiStream[InT, OutT any](
 		// On error, stop and report the error.
 		wg.Add(1)
 
-		go func() {
+		wg.Go(func() {
 			defer wg.Done()
 
 			// Close the send side when done sending inputs
@@ -113,13 +113,13 @@ func ProcessBidiStream[InT, OutT any](
 					return
 				}
 			}
-		}()
+		})
 
 		// Goroutine [Receiver]: receive all responses from API and send them to outputCh.
 		// On error, stop and report the error.
 		wg.Add(1)
 
-		go func() {
+		wg.Go(func() {
 			defer wg.Done()
 
 			// Receive output from the stream
@@ -144,7 +144,7 @@ func ProcessBidiStream[InT, OutT any](
 				// Send output to the output channel
 				result.resCh <- output
 			}
-		}()
+		})
 
 		// Wait for all goroutines to complete
 		wg.Wait()

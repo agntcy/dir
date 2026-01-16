@@ -37,7 +37,7 @@ const internalServerErrorMsg = "internal server error"
 // "internal server error" message to avoid information disclosure.
 //
 // This handler should be used with go-grpc-middleware/v2 recovery interceptors.
-func PanicHandler(ctx context.Context, p interface{}) error {
+func PanicHandler(ctx context.Context, p any) error {
 	// Capture stack trace immediately
 	stack := debug.Stack()
 
@@ -45,7 +45,7 @@ func PanicHandler(ctx context.Context, p interface{}) error {
 	method, _ := grpc.Method(ctx)
 
 	// Build log fields
-	fields := []interface{}{
+	fields := []any{
 		logFieldPanic, p,
 		logFieldStack, string(stack),
 		logFieldMethod, method,

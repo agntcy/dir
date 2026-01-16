@@ -119,7 +119,7 @@ func (r *Record) Marshal() ([]byte, error) {
 
 	// Step 2: Parse and re-marshal to ensure deterministic map key ordering.
 	// This is critical - maps must have consistent key order for deterministic results.
-	var normalized interface{}
+	var normalized any
 	if err := json.Unmarshal(jsonBytes, &normalized); err != nil {
 		return nil, fmt.Errorf("failed to normalize JSON for canonical ordering: %w", err)
 	}

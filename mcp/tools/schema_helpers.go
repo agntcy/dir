@@ -6,6 +6,7 @@ package tools
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/agntcy/oasf-sdk/pkg/validator"
@@ -30,15 +31,7 @@ func validateVersion(version string) ([]string, error) {
 			strings.Join(availableVersions, ", "))
 	}
 
-	versionValid := false
-
-	for _, v := range availableVersions {
-		if version == v {
-			versionValid = true
-
-			break
-		}
-	}
+	versionValid := slices.Contains(availableVersions, version)
 
 	if !versionValid {
 		return availableVersions, fmt.Errorf("invalid version '%s'. Available versions: %s",
@@ -49,8 +42,8 @@ func validateVersion(version string) ([]string, error) {
 }
 
 // parseSchemaData parses JSON schema data into a list of schema items.
-func parseSchemaData(data []byte, parseFunc func(map[string]interface{}) schemaClass) ([]schemaClass, error) {
-	var schemaData map[string]interface{}
+func parseSchemaData(data []byte, parseFunc func(map[string]any) schemaClass) ([]schemaClass, error) {
+	var schemaData map[string]any
 	if err := json.Unmarshal(data, &schemaData); err != nil {
 		return nil, fmt.Errorf("failed to parse schema data: %w", err)
 	}
@@ -58,7 +51,7 @@ func parseSchemaData(data []byte, parseFunc func(map[string]interface{}) schemaC
 	var items []schemaClass
 
 	for _, itemDef := range schemaData {
-		defMap, ok := itemDef.(map[string]interface{})
+		defMap, ok := itemDef.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -120,7 +113,7 @@ func extractTopLevelCategories(allItems []schemaClass) []schemaClass {
 }
 
 // parseItemFromSchema extracts schema item information from the schema definition.
-func parseItemFromSchema(defMap map[string]interface{}) schemaClass {
+func parseItemFromSchema(defMap map[string]any) schemaClass {
 	item := schemaClass{}
 
 	// Extract title for caption
@@ -129,20 +122,20 @@ func parseItemFromSchema(defMap map[string]interface{}) schemaClass {
 	}
 
 	// Extract properties
-	props, ok := defMap["properties"].(map[string]interface{})
+	props, ok := defMap["properties"].(map[string]any)
 	if !ok {
 		return item
 	}
 
 	// Extract name
-	if nameField, ok := props["name"].(map[string]interface{}); ok {
+	if nameField, ok := props["name"].(map[string]any); ok {
 		if constVal, ok := nameField["const"].(string); ok {
 			item.Name = constVal
 		}
 	}
 
 	// Extract ID
-	if idField, ok := props["id"].(map[string]interface{}); ok {
+	if idField, ok := props["id"].(map[string]any); ok {
 		if constVal, ok := idField["const"].(float64); ok {
 			item.ID = int(constVal)
 		}

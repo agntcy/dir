@@ -133,8 +133,8 @@ func newCtxsN(ctx context.Context, n int) []context.Context {
 	return ctxs
 }
 
-func copyEnvelopesToIfaces(in []*Envelope) []interface{} {
-	ifaces := make([]interface{}, len(in))
+func copyEnvelopesToIfaces(in []*Envelope) []any {
+	ifaces := make([]any, len(in))
 
 	for i := range in {
 		in[i] = &Envelope{}

@@ -4,6 +4,7 @@
 package events
 
 import (
+	"slices"
 	"strings"
 
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
@@ -59,13 +60,7 @@ func Matches(event *Event, filters []Filter) bool {
 //	)
 func EventTypeFilter(types ...eventsv1.EventType) Filter {
 	return func(e *Event) bool {
-		for _, t := range types {
-			if e.Type == t {
-				return true
-			}
-		}
-
-		return false
+		return slices.Contains(types, e.Type)
 	}
 }
 
@@ -77,13 +72,7 @@ func EventTypeFilter(types ...eventsv1.EventType) Filter {
 //	filter := CIDFilter("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi")
 func CIDFilter(cids ...string) Filter {
 	return func(e *Event) bool {
-		for _, cid := range cids {
-			if e.ResourceID == cid {
-				return true
-			}
-		}
-
-		return false
+		return slices.Contains(cids, e.ResourceID)
 	}
 }
 

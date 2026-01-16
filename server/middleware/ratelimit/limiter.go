@@ -233,7 +233,7 @@ func (l *ClientLimiter) getOrCreateLimiter(key string, rps float64, burst int) *
 func (l *ClientLimiter) GetLimiterCount() int {
 	count := 0
 
-	l.limiters.Range(func(key, value interface{}) bool {
+	l.limiters.Range(func(key, value any) bool {
 		count++
 
 		return true

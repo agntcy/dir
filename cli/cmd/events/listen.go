@@ -198,8 +198,8 @@ func parseEventTypes(typeStrings []string) ([]eventsv1.EventType, error) {
 
 	for _, typeStr := range typeStrings {
 		// Handle comma-separated values
-		parts := strings.Split(typeStr, ",")
-		for _, part := range parts {
+		parts := strings.SplitSeq(typeStr, ",")
+		for part := range parts {
 			part = strings.TrimSpace(part)
 			if part == "" {
 				continue

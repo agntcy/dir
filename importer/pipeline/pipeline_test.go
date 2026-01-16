@@ -13,12 +13,12 @@ import (
 
 // mockFetcher is a mock implementation of Fetcher for testing.
 type mockFetcher struct {
-	items []interface{}
+	items []any
 	err   error
 }
 
-func (m *mockFetcher) Fetch(ctx context.Context) (<-chan interface{}, <-chan error) {
-	dataCh := make(chan interface{})
+func (m *mockFetcher) Fetch(ctx context.Context) (<-chan any, <-chan error) {
+	dataCh := make(chan any)
 	errCh := make(chan error, 1)
 
 	go func() {
@@ -48,7 +48,7 @@ type mockTransformer struct {
 	shouldFail bool
 }
 
-func (m *mockTransformer) Transform(ctx context.Context, source interface{}) (*corev1.Record, error) {
+func (m *mockTransformer) Transform(ctx context.Context, source any) (*corev1.Record, error) {
 	if m.shouldFail {
 		return nil, errors.New("transform failed")
 	}
@@ -100,8 +100,8 @@ type mockDuplicateChecker struct {
 	duplicates map[string]bool // items to mark as duplicates
 }
 
-func (m *mockDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan interface{}, result *Result) <-chan interface{} {
-	outputCh := make(chan interface{})
+func (m *mockDuplicateChecker) FilterDuplicates(ctx context.Context, inputCh <-chan any, result *Result) <-chan any {
+	outputCh := make(chan any)
 
 	go func() {
 		defer close(outputCh)
@@ -145,7 +145,7 @@ func TestPipeline_Run_Success(t *testing.T) {
 
 	// Create mock stages
 	fetcher := &mockFetcher{
-		items: []interface{}{"item1", "item2", "item3"},
+		items: []any{"item1", "item2", "item3"},
 	}
 	transformer := &mockTransformer{}
 	pusher := &mockPusher{}
@@ -185,7 +185,7 @@ func TestDryRunPipeline_Run(t *testing.T) {
 
 	// Create mock stages
 	fetcher := &mockFetcher{
-		items: []interface{}{"item1", "item2"},
+		items: []any{"item1", "item2"},
 	}
 	transformer := &mockTransformer{}
 
@@ -216,7 +216,7 @@ func TestDryRunPipeline_Run_WithDuplicateChecker(t *testing.T) {
 
 	// Create mock stages
 	fetcher := &mockFetcher{
-		items: []interface{}{"item1", "item2", "item3", "item4"},
+		items: []any{"item1", "item2", "item3", "item4"},
 	}
 	transformer := &mockTransformer{}
 
@@ -275,7 +275,7 @@ func TestPipeline_Run_TransformError(t *testing.T) {
 
 	// Create mock stages with transformer that fails
 	fetcher := &mockFetcher{
-		items: []interface{}{"item1", "item2"},
+		items: []any{"item1", "item2"},
 	}
 	transformer := &mockTransformer{shouldFail: true}
 	pusher := &mockPusher{}
@@ -315,7 +315,7 @@ func TestPipeline_Run_PushError(t *testing.T) {
 
 	// Create mock stages with pusher that fails
 	fetcher := &mockFetcher{
-		items: []interface{}{"item1", "item2"},
+		items: []any{"item1", "item2"},
 	}
 	transformer := &mockTransformer{}
 	pusher := &mockPusher{shouldFail: true}
@@ -398,7 +398,7 @@ func TestPipeline_Run_WithDuplicateChecker(t *testing.T) {
 
 	// Create mock stages
 	fetcher := &mockFetcher{
-		items: []interface{}{"item1", "item2", "item3", "item4", "item5"},
+		items: []any{"item1", "item2", "item3", "item4", "item5"},
 	}
 	transformer := &mockTransformer{}
 	pusher := &mockPusher{}

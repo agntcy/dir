@@ -6,6 +6,7 @@ package tools
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/agntcy/oasf-sdk/pkg/validator"
@@ -21,7 +22,7 @@ type GetSchemaInput struct {
 type GetSchemaOutput struct {
 	Version           string   `json:"version"                      jsonschema:"The requested OASF schema version"`
 	Schema            string   `json:"schema"                       jsonschema:"The complete OASF schema JSON content"`
-	ErrorMessage      string   `json:"error_message,omitempty"      jsonschema:"Error message if schema retrieval failed"`
+	ErrorMessage      string   `json:"error_message"                jsonschema:"Err	or message if schema retrieval failed"` //nolint:tagalign
 	AvailableVersions []string `json:"available_versions,omitempty" jsonschema:"List of available OASF schema versions"`
 }
 
@@ -49,15 +50,7 @@ func GetSchema(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaInput) 
 	}
 
 	// Check if the requested version is available
-	versionValid := false
-
-	for _, version := range availableVersions {
-		if input.Version == version {
-			versionValid = true
-
-			break
-		}
-	}
+	versionValid := slices.Contains(availableVersions, input.Version)
 
 	if !versionValid {
 		return nil, GetSchemaOutput{

@@ -464,7 +464,7 @@ func TestRecord_Decode(t *testing.T) {
 	tests := []struct {
 		name     string
 		record   *corev1.Record
-		wantResp interface{}
+		wantResp any
 		wantFail bool
 	}{
 		{

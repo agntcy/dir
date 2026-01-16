@@ -145,7 +145,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 			// Previous tests (01-06) should have generated traffic
 			foundNonZero := false
 
-			for _, line := range strings.Split(metricsContent, "\n") {
+			for line := range strings.SplitSeq(metricsContent, "\n") {
 				// Skip comments and empty lines
 				if strings.HasPrefix(line, "#") || strings.TrimSpace(line) == "" {
 					continue
@@ -186,7 +186,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 			// Look for successful operations (grpc_code="OK")
 			foundOKStatus := false
 
-			for _, line := range strings.Split(metricsContent, "\n") {
+			for line := range strings.SplitSeq(metricsContent, "\n") {
 				if strings.Contains(line, `grpc_code="OK"`) && !strings.HasPrefix(line, "#") {
 					// Parse value
 					parts := strings.Fields(line)
@@ -293,7 +293,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 			// Count lines with actual metric values (not HELP or TYPE)
 			metricLines := 0
 
-			for _, line := range strings.Split(metricsContent, "\n") {
+			for line := range strings.SplitSeq(metricsContent, "\n") {
 				if !strings.HasPrefix(line, "#") && strings.TrimSpace(line) != "" {
 					metricLines++
 				}
@@ -403,7 +403,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 			metricDataLines := 0
 			invalidLines := []string{}
 
-			for _, line := range strings.Split(metricsContent, "\n") {
+			for line := range strings.SplitSeq(metricsContent, "\n") {
 				// Skip comments and empty lines
 				if strings.HasPrefix(line, "#") || strings.TrimSpace(line) == "" {
 					continue
@@ -444,7 +444,7 @@ var _ = ginkgo.Describe("Prometheus Metrics", ginkgo.Serial, ginkgo.Label("metri
 			// Check for negative values
 			negativeLines := []string{}
 
-			for _, line := range strings.Split(metricsContent, "\n") {
+			for line := range strings.SplitSeq(metricsContent, "\n") {
 				// Skip comments
 				if strings.HasPrefix(line, "#") || strings.TrimSpace(line) == "" {
 					continue

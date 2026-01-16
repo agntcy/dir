@@ -137,7 +137,7 @@ func TestPrintMessageHumanFormat(t *testing.T) {
 			name:     "empty slice",
 			title:    "items",
 			message:  "Found items",
-			value:    []interface{}{},
+			value:    []any{},
 			expected: "No items found\n",
 		},
 	}
@@ -196,7 +196,7 @@ func TestPrintMessageJSONFormat(t *testing.T) {
 		},
 		{
 			name:     "empty slice",
-			value:    []interface{}{},
+			value:    []any{},
 			expected: emptyJSONArray,
 		},
 	}
@@ -253,7 +253,7 @@ func TestPrintMessageJSONLFormat(t *testing.T) {
 		},
 		{
 			name:     "empty slice",
-			value:    []interface{}{},
+			value:    []any{},
 			expected: emptyJSONArray,
 		},
 	}
@@ -305,7 +305,7 @@ func TestPrintMessageRawFormat(t *testing.T) {
 		},
 		{
 			name:     "empty slice",
-			value:    []interface{}{},
+			value:    []any{},
 			expected: emptyJSONArray,
 		},
 	}
@@ -352,7 +352,7 @@ func TestPrintJSONL(t *testing.T) {
 		},
 		{
 			name: "complex nested object",
-			value: map[string]interface{}{
+			value: map[string]any{
 				"id":   "123",
 				"tags": []string{"a", "b"},
 			},
@@ -379,7 +379,7 @@ func TestPrintJSONL(t *testing.T) {
 			// Verify each line is valid JSON
 			lines := bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n"))
 			for i, line := range lines {
-				var v interface{}
+				var v any
 				if err := json.Unmarshal(line, &v); err != nil {
 					t.Errorf("line %d is not valid JSON: %v", i, err)
 				}
@@ -421,7 +421,7 @@ func TestIsSliceOrArray(t *testing.T) {
 		},
 		{
 			name:     "slice of interfaces",
-			value:    []interface{}{"a", 1},
+			value:    []any{"a", 1},
 			expected: true,
 		},
 		{
@@ -463,12 +463,12 @@ func TestIsEmptySlice(t *testing.T) {
 		},
 		{
 			name:     "empty interface slice",
-			value:    []interface{}{},
+			value:    []any{},
 			expected: true,
 		},
 		{
 			name:     "non-empty interface slice",
-			value:    []interface{}{"item"},
+			value:    []any{"item"},
 			expected: false,
 		},
 		{
@@ -579,8 +579,8 @@ func TestPrintMessageJSONLMarshalError_SingleObject(t *testing.T) {
 
 func TestPrintMessageJSONLMarshalError_ArrayElement(t *testing.T) {
 	// Create an array with an element that can't be marshaled to JSON
-	invalidValue := []interface{}{
-		map[string]interface{}{"id": 1, "name": "valid"},
+	invalidValue := []any{
+		map[string]any{"id": 1, "name": "valid"},
 		make(chan int), // This will cause marshal error
 	}
 

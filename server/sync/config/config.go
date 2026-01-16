@@ -28,10 +28,10 @@ type Config struct {
 	WorkerTimeout time.Duration `json:"worker_timeout,omitempty" mapstructure:"worker_timeout"`
 
 	// Registry monitor configuration
-	RegistryMonitor monitor.Config `json:"registry_monitor,omitempty" mapstructure:"registry_monitor"`
+	RegistryMonitor monitor.Config `json:"registry_monitor" mapstructure:"registry_monitor"`
 
 	// Authentication configuration
-	AuthConfig `json:"auth_config,omitempty" mapstructure:"auth_config"`
+	AuthConfig `json:"auth_config" mapstructure:"auth_config"`
 }
 
 // AuthConfig represents the configuration for authentication.

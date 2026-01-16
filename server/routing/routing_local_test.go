@@ -162,8 +162,8 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 			// Convert label to RecordQuery
 			var queries []*routingv1.RecordQuery
 
-			if strings.HasPrefix(k, "/skills/") {
-				skillName := strings.TrimPrefix(k, "/skills/")
+			if after, ok := strings.CutPrefix(k, "/skills/"); ok {
+				skillName := after
 				queries = append(queries, &routingv1.RecordQuery{
 					Type:  routingv1.RecordQueryType_RECORD_QUERY_TYPE_SKILL,
 					Value: skillName,
@@ -219,7 +219,7 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Collect items from the channel
-	var refs []*routingv1.ListResponse //nolint:prealloc
+	var refs []*routingv1.ListResponse
 	for ref := range refsChan {
 		refs = append(refs, ref)
 	}

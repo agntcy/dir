@@ -64,7 +64,7 @@ func (a *Authorizer) Authorize(trustDomain, apiMethod string) (bool, error) {
 //   - All API methods are allowed for users within our trust domain
 //   - Only specific API methods are allowed for users outside of the trust domain
 func getPolicies(cfg config.Config) [][]string {
-	policies := [][]string{}
+	policies := make([][]string, 0, len(allowedExternalAPIMethods)+1)
 
 	// Allow all API methods for the trust domain
 	policies = append(policies, []string{cfg.TrustDomain, "*"})

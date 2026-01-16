@@ -5,6 +5,7 @@ package client
 
 import (
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -447,13 +448,7 @@ func TestClientClose_PartialSPIFFESources(t *testing.T) {
 
 // contains checks if a string slice contains a value.
 func contains(slice []string, val string) bool {
-	for _, item := range slice {
-		if item == val {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(slice, val)
 }
 
 // containsSubstring checks if a string contains a substring.
