@@ -436,3 +436,241 @@ func TestWithAuth_AllAuthModes(t *testing.T) {
 		})
 	}
 }
+
+func TestSetupGitHubAuth(t *testing.T) {
+	t.Run("should error when no token provided and no cache", func(t *testing.T) {
+		// Use non-existent cache directory to ensure no cached token
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "github",
+				Token:         "", // No token provided
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupGitHubAuth(ctx)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not authenticated with GitHub")
+	})
+
+	t.Run("should succeed with token from config", func(t *testing.T) {
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "github",
+				Token:         "gho_testtoken123456789", // Token provided
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupGitHubAuth(ctx)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, opts.authOpts)
+	})
+
+	t.Run("should succeed with token from environment", func(t *testing.T) {
+		t.Setenv("DIRECTORY_CLIENT_TOKEN", "ghp_envtoken123456789")
+
+		cfg, err := LoadConfig()
+		require.NoError(t, err)
+
+		opts := &options{
+			config: cfg,
+		}
+
+		ctx := context.Background()
+		err = opts.setupGitHubAuth(ctx)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, opts.authOpts)
+	})
+
+	t.Run("should use insecure transport", func(t *testing.T) {
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "github",
+				Token:         "gho_testtoken",
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupGitHubAuth(ctx)
+
+		require.NoError(t, err)
+		// Should have transport credentials (insecure) and per-RPC credentials (bearer token)
+		assert.Len(t, opts.authOpts, 2)
+	})
+}
+
+func TestSetupAutoDetectAuth(t *testing.T) {
+	t.Run("should use insecure for explicit 'insecure' mode", func(t *testing.T) {
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "insecure",
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupAutoDetectAuth(ctx)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, opts.authOpts)
+	})
+
+	t.Run("should use insecure for explicit 'none' mode", func(t *testing.T) {
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "none",
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupAutoDetectAuth(ctx)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, opts.authOpts)
+	})
+
+	t.Run("should auto-detect token from config", func(t *testing.T) {
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "", // Empty - auto-detect
+				Token:         "gho_autodetect123",
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupAutoDetectAuth(ctx)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, opts.authOpts)
+		// Should have both transport and per-RPC credentials
+		assert.Len(t, opts.authOpts, 2)
+	})
+
+	t.Run("should fallback to insecure when no credentials found", func(t *testing.T) {
+		// Use non-existent cache directory
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "", // Empty - auto-detect
+				Token:         "", // No token
+			},
+		}
+
+		ctx := context.Background()
+		err := opts.setupAutoDetectAuth(ctx)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, opts.authOpts)
+		// Should only have transport credentials (insecure), no per-RPC credentials
+		assert.Len(t, opts.authOpts, 1)
+	})
+
+	t.Run("should auto-detect token from environment", func(t *testing.T) {
+		t.Setenv("DIRECTORY_CLIENT_TOKEN", "ghp_fromenv123")
+
+		cfg, err := LoadConfig()
+		require.NoError(t, err)
+
+		opts := &options{
+			config: cfg,
+		}
+		opts.config.AuthMode = "" // Empty for auto-detect
+
+		ctx := context.Background()
+		err = opts.setupAutoDetectAuth(ctx)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, opts.authOpts)
+		// Should have both transport and per-RPC credentials
+		assert.Len(t, opts.authOpts, 2)
+	})
+}
+
+func TestWithAuth_GitHubMode(t *testing.T) {
+	t.Run("should setup GitHub auth when mode is 'github'", func(t *testing.T) {
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "github",
+				Token:         "gho_testtoken",
+			},
+		}
+
+		ctx := context.Background()
+		opt := withAuth(ctx)
+		err := opt(opts)
+
+		require.NoError(t, err)
+		assert.NotEmpty(t, opts.authOpts)
+	})
+
+	t.Run("should error when GitHub mode but no token", func(t *testing.T) {
+		// Use non-existent cache directory
+		t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+		opts := &options{
+			config: &Config{
+				ServerAddress: testServerAddr,
+				AuthMode:      "github",
+				Token:         "", // No token
+			},
+		}
+
+		ctx := context.Background()
+		opt := withAuth(ctx)
+		err := opt(opts)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not authenticated with GitHub")
+	})
+}
+
+func TestSetupGitHubAuth_TLSSkipVerify(t *testing.T) {
+	t.Run("should respect TlsSkipVerify flag", func(t *testing.T) {
+		testCases := []struct {
+			name          string
+			tlsSkipVerify bool
+		}{
+			{
+				name:          "with TLS skip verify enabled",
+				tlsSkipVerify: true,
+			},
+			{
+				name:          "with TLS skip verify disabled",
+				tlsSkipVerify: false,
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				opts := &options{
+					config: &Config{
+						ServerAddress: testServerAddr,
+						AuthMode:      "github",
+						Token:         "gho_testtoken",
+						TlsSkipVerify: tc.tlsSkipVerify,
+					},
+				}
+
+				ctx := context.Background()
+				err := opts.setupGitHubAuth(ctx)
+
+				require.NoError(t, err)
+				assert.NotEmpty(t, opts.authOpts)
+			})
+		}
+	})
+}
