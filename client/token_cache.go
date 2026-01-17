@@ -43,7 +43,7 @@ type CachedToken struct {
 	Provider string `json:"provider,omitempty"`
 
 	// ExpiresAt is when the token expires.
-	ExpiresAt time.Time `json:"expires_at,omitempty"`
+	ExpiresAt time.Time `json:"expires_at,omitzero"`
 
 	// User is the authenticated username.
 	User string `json:"user,omitempty"`

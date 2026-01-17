@@ -108,6 +108,7 @@ func (o *options) setupAutoDetectAuth(_ context.Context) error {
 	// 1. Check if token is provided via config/flag/env
 	if o.config.Token != "" {
 		authLogger.Debug("Auto-detected token from config/environment")
+
 		token = o.config.Token
 	} else {
 		// 2. Check for cached GitHub OAuth token
@@ -410,6 +411,7 @@ func (o *options) setupGitHubAuth(_ context.Context) error {
 	//    This allows CI/CD to use PATs: export DIRECTORY_CLIENT_TOKEN=ghp_xxx
 	if o.config.Token != "" {
 		authLogger.Debug("Using token from config/environment")
+
 		token = o.config.Token
 	} else {
 		// 2. Fall back to cached OAuth token from interactive login

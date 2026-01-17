@@ -199,6 +199,7 @@ func fetchUserInfoAndCache(
 	orgConstructs, err := provider.GetOrgConstructs(ctx, token.AccessToken)
 	if err != nil {
 		cmd.Printf("⚠  Could not fetch organizations: %v\n", err)
+
 		orgNames = []string{} // Empty orgs list
 	} else {
 		orgNames = make([]string, len(orgConstructs))

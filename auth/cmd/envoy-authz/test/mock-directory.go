@@ -97,7 +97,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	orgConstructs := r.Header.Get("X-Org-Constructs")
 
 	// Echo back the request info
-	response := map[string]interface{}{
+	response := map[string]any{
 		"message": "Mock Directory API",
 		"path":    r.URL.Path,
 		"method":  r.Method,

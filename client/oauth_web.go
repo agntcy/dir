@@ -44,9 +44,6 @@ const (
 	serverWriteTimeout      = 30 * time.Second
 	serverIdleTimeout       = 60 * time.Second
 
-	// browserOpenTimeout is the timeout for opening browser.
-	browserOpenTimeout = 5 * time.Second
-
 	// browserStartCheckDelay is how long to wait to verify browser command started successfully.
 	browserStartCheckDelay = 500 * time.Millisecond
 
@@ -362,16 +359,16 @@ func generateOAuthState() (string, error) {
 }
 
 // openBrowser opens the specified URL in the default browser.
-func openBrowser(_ context.Context, url string) error {
+func openBrowser(ctx context.Context, url string) error {
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", url)
+		cmd = exec.CommandContext(ctx, "open", url)
 	case "linux":
-		cmd = exec.Command("xdg-open", url)
+		cmd = exec.CommandContext(ctx, "xdg-open", url)
 	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+		cmd = exec.CommandContext(ctx, "rundll32", "url.dll,FileProtocolHandler", url)
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
@@ -384,6 +381,7 @@ func openBrowser(_ context.Context, url string) error {
 	// Wait briefly to catch immediate failures (e.g., command not found)
 	// Use a channel to avoid blocking indefinitely
 	done := make(chan error, 1)
+
 	go func() {
 		done <- cmd.Wait()
 	}()

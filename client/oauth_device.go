@@ -16,10 +16,9 @@ import (
 )
 
 const (
-	//nolint:gosec // G101: This is a URL endpoint, not a credential
 	// GitHub OAuth2 Device Flow endpoints.
-	githubDeviceCodeURL  = "https://github.com/login/device/code"
-	githubDeviceTokenURL = "https://github.com/login/oauth/access_token"
+	githubDeviceCodeURL  = "https://github.com/login/device/code"        //nolint:gosec // G101: URL endpoint, not a credential
+	githubDeviceTokenURL = "https://github.com/login/oauth/access_token" //nolint:gosec // G101: URL endpoint, not a credential
 
 	// Device flow polling configuration.
 	defaultDeviceInterval = 5 * time.Second
@@ -225,6 +224,7 @@ func pollForToken(ctx context.Context, clientID, deviceCode string, initialInter
 					if adjustedInterval := getAdjustedInterval(err); adjustedInterval > 0 {
 						ticker.Reset(adjustedInterval)
 					}
+
 					continue // Keep polling
 				}
 
@@ -251,6 +251,7 @@ func getAdjustedInterval(err error) time.Duration {
 			return time.Duration(deviceErr.NewInterval) * time.Second
 		}
 	}
+
 	return 0
 }
 
