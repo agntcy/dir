@@ -8,5 +8,5 @@ dependencies:
 - name: envoy-authz
   repository: file://../../envoy-authz
   version: 0.1.0
-digest: sha256:170a953120e0ca7fc7425aab6d6e3fd95aec44451d7807d50b5350139235b066
-generated: "2026-01-13T10:27:30.664817+01:00"
+digest: sha256:825cacb82bff5ce99d37efd41c95ad5d4331e9a950d165d1a7bbfc60545db620
+generated: "2026-01-17T10:25:39.99824+01:00"
