@@ -29,9 +29,10 @@ The record's name must include a protocol prefix to specify the verification met
 
 Records without a protocol prefix will not be verified.
 
-The verification result is stored as a referrer to the record, so subsequent
-calls to 'dirctl naming check' can retrieve the stored verification without
-re-verifying.
+The verification result is stored in the database, so subsequent calls to
+'dirctl naming check' can retrieve the stored verification without re-verifying.
+The verification is automatically re-checked based on TTL by the server's
+reverification scheduler.
 
 Prerequisites:
 - Record must be pushed to the store

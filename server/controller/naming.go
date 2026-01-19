@@ -9,11 +9,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
+	"github.com/agntcy/dir/server/database/sqlite"
 	"github.com/agntcy/dir/server/naming"
+	reverificationconfig "github.com/agntcy/dir/server/reverification/config"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
@@ -31,15 +34,35 @@ var errStopWalk = errors.New("stop walking")
 type namingCtrl struct {
 	namingv1.UnimplementedNamingServiceServer
 	store    types.StoreAPI
+	db       types.DatabaseAPI
 	provider *naming.Provider
+	ttl      time.Duration
+}
+
+// NamingControllerOption configures a naming controller.
+type NamingControllerOption func(*namingCtrl)
+
+// WithVerificationTTL sets the verification TTL.
+func WithVerificationTTL(ttl time.Duration) NamingControllerOption {
+	return func(n *namingCtrl) {
+		n.ttl = ttl
+	}
 }
 
 // NewNamingController creates a new naming service controller.
-func NewNamingController(store types.StoreAPI, provider *naming.Provider) namingv1.NamingServiceServer {
-	return &namingCtrl{
+func NewNamingController(store types.StoreAPI, db types.DatabaseAPI, provider *naming.Provider, opts ...NamingControllerOption) namingv1.NamingServiceServer {
+	ctrl := &namingCtrl{
 		store:    store,
+		db:       db,
 		provider: provider,
+		ttl:      reverificationconfig.DefaultTTL,
 	}
+
+	for _, opt := range opts {
+		opt(ctrl)
+	}
+
+	return ctrl
 }
 
 // Verify performs name verification for a signed record.
@@ -50,14 +73,21 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 		return nil, status.Error(codes.InvalidArgument, "cid is required")
 	}
 
-	// Check if already verified - prevent duplicates
-	existingResp, err := n.GetVerificationInfo(ctx, &namingv1.GetVerificationInfoRequest{Cid: req.GetCid()})
-	if err == nil && existingResp.GetVerified() {
-		namingLogger.Debug("Record already has name verification", "cid", req.GetCid())
+	// Check database cache first - only use if verified and not expired
+	cached, err := n.db.GetVerificationByCID(req.GetCid())
+	if err != nil && !errors.Is(err, sqlite.ErrVerificationNotFound) {
+		namingLogger.Debug("Error checking verification cache", "error", err)
+	} else if err == nil && n.isVerificationValid(cached) {
+		namingLogger.Debug("Using cached verification", "cid", req.GetCid())
 
 		return &namingv1.VerifyResponse{
-			Verified:     true,
-			Verification: existingResp.GetVerification(),
+			Verified: true,
+			Verification: namingv1.NewDomainVerification(&namingv1.DomainVerification{
+				Domain:     n.getDomainFromRecord(ctx, req.GetCid()),
+				Method:     cached.GetMethod(),
+				KeyId:      cached.GetKeyID(),
+				VerifiedAt: timestamppb.New(cached.GetUpdatedAt()),
+			}),
 		}, nil
 	}
 
@@ -68,9 +98,10 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 	}
 
 	// Extract the name from the record using adapter
-	recordName, err := extractRecordName(record)
+	recordName, err := adapters.ExtractRecordName(record)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to extract record name: %v", err)
+		n.storeFailedVerification(req.GetCid(), "", errMsg)
 
 		return &namingv1.VerifyResponse{
 			Verified:     false,
@@ -80,6 +111,7 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 
 	if recordName == "" {
 		errMsg := "record has no name field"
+		n.storeFailedVerification(req.GetCid(), "", errMsg)
 
 		return &namingv1.VerifyResponse{
 			Verified:     false,
@@ -91,6 +123,7 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 	publicKey, err := n.getRecordPublicKey(ctx, req.GetCid())
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to get public key: %v", err)
+		n.storeFailedVerification(req.GetCid(), "", errMsg)
 
 		return &namingv1.VerifyResponse{
 			Verified:     false,
@@ -107,34 +140,26 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 			errMsg = "verification failed"
 		}
 
+		n.storeFailedVerification(req.GetCid(), result.Method, errMsg)
+
 		return &namingv1.VerifyResponse{
 			Verified:     false,
 			ErrorMessage: &errMsg,
 		}, nil
 	}
 
-	// Create verification object with domain verification info
+	// Store the verification in database
+	verifiedAt := time.Now()
+
+	n.storeSuccessfulVerification(req.GetCid(), result)
+
+	// Create verification object for response
 	verification := namingv1.NewDomainVerification(&namingv1.DomainVerification{
 		Domain:     result.Domain,
 		Method:     result.Method,
 		KeyId:      result.MatchedKeyID,
-		VerifiedAt: timestamppb.New(result.VerifiedAt),
+		VerifiedAt: timestamppb.New(verifiedAt),
 	})
-
-	// Store the verification as a referrer
-	referrer, err := verification.MarshalReferrer()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to marshal verification: %v", err)
-	}
-
-	referrerStore, ok := n.store.(types.ReferrerStoreAPI)
-	if !ok {
-		return nil, status.Error(codes.Internal, "store does not support referrers")
-	}
-
-	if err := referrerStore.PushReferrer(ctx, req.GetCid(), referrer); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to store verification: %v", err)
-	}
 
 	namingLogger.Info("Name verification stored",
 		"cid", req.GetCid(),
@@ -156,33 +181,27 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 		return nil, status.Error(codes.InvalidArgument, "cid is required")
 	}
 
-	referrerStore, ok := n.store.(types.ReferrerStoreAPI)
-	if !ok {
-		return nil, status.Error(codes.Internal, "store does not support referrers")
-	}
+	// Query database for the latest verification attempt
+	latest, err := n.db.GetVerificationByCID(req.GetCid())
+	if err != nil {
+		if errors.Is(err, sqlite.ErrVerificationNotFound) {
+			errMsg := "no verification found"
 
-	var verification *namingv1.Verification
-
-	// Walk verification referrers to find the verification
-	err := referrerStore.WalkReferrers(ctx, req.GetCid(), corev1.VerificationReferrerType, func(referrer *corev1.RecordReferrer) error {
-		v := &namingv1.Verification{}
-		if err := v.UnmarshalReferrer(referrer); err != nil {
-			namingLogger.Debug("Failed to unmarshal verification referrer", "error", err)
-
-			return nil // Continue walking
+			return &namingv1.GetVerificationInfoResponse{
+				Verified:     false,
+				ErrorMessage: &errMsg,
+			}, nil
 		}
 
-		verification = v
-
-		return errStopWalk
-	})
-
-	if err != nil && !errors.Is(err, errStopWalk) {
-		return nil, status.Errorf(codes.Internal, "failed to walk referrers: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get verification: %v", err)
 	}
 
-	if verification == nil {
-		errMsg := "no verification found"
+	// Check if the latest verification is valid (verified and not expired)
+	if !n.isVerificationValid(latest) {
+		errMsg := latest.GetError()
+		if errMsg == "" {
+			errMsg = "verification invalid or expired"
+		}
 
 		return &namingv1.GetVerificationInfoResponse{
 			Verified:     false,
@@ -190,10 +209,82 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 		}, nil
 	}
 
+	// Return valid verification from database
+	namingLogger.Debug("Returning verification from database", "cid", req.GetCid())
+
 	return &namingv1.GetVerificationInfoResponse{
-		Verified:     true,
-		Verification: verification,
+		Verified: true,
+		Verification: namingv1.NewDomainVerification(&namingv1.DomainVerification{
+			Domain:     n.getDomainFromRecord(ctx, req.GetCid()),
+			Method:     latest.GetMethod(),
+			KeyId:      latest.GetKeyID(),
+			VerifiedAt: timestamppb.New(latest.GetUpdatedAt()),
+		}),
 	}, nil
+}
+
+// storeSuccessfulVerification stores a successful verification in the database.
+func (n *namingCtrl) storeSuccessfulVerification(cid string, result *naming.Result) {
+	nv := &sqlite.NameVerification{
+		RecordCID: cid,
+		Method:    result.Method,
+		KeyID:     result.MatchedKeyID,
+		Status:    sqlite.VerificationStatusVerified,
+	}
+
+	// Try to create first, if exists then update
+	if err := n.db.CreateNameVerification(nv); err != nil {
+		if err := n.db.UpdateNameVerification(nv); err != nil {
+			namingLogger.Warn("Failed to store verification in database", "error", err, "cid", cid)
+		}
+	}
+}
+
+// isVerificationValid checks if a verification is valid (verified status and not expired).
+func (n *namingCtrl) isVerificationValid(v types.NameVerificationObject) bool {
+	if v.GetStatus() != sqlite.VerificationStatusVerified {
+		return false
+	}
+
+	// Check if verification has expired: updated_at + ttl < now
+	return time.Now().Before(v.GetUpdatedAt().Add(n.ttl))
+}
+
+// storeFailedVerification stores a failed verification in the database.
+func (n *namingCtrl) storeFailedVerification(cid, method, errMsg string) {
+	nv := &sqlite.NameVerification{
+		RecordCID: cid,
+		Method:    method,
+		Status:    sqlite.VerificationStatusFailed,
+		Error:     errMsg,
+	}
+
+	// Try to create first, if exists then update
+	if err := n.db.CreateNameVerification(nv); err != nil {
+		if err := n.db.UpdateNameVerification(nv); err != nil {
+			namingLogger.Warn("Failed to store verification in database", "error", err, "cid", cid)
+		}
+	}
+}
+
+// getDomainFromRecord extracts the domain from a record's name.
+func (n *namingCtrl) getDomainFromRecord(ctx context.Context, cid string) string {
+	record, err := n.store.Pull(ctx, &corev1.RecordRef{Cid: cid})
+	if err != nil {
+		return ""
+	}
+
+	recordName, err := adapters.ExtractRecordName(record)
+	if err != nil {
+		return ""
+	}
+
+	parsed := naming.ParseName(recordName)
+	if parsed == nil {
+		return ""
+	}
+
+	return parsed.Domain
 }
 
 // getRecordPublicKey retrieves the public key associated with a record.
@@ -260,20 +351,4 @@ func (n *namingCtrl) getRecordPublicKey(ctx context.Context, cid string) ([]byte
 	}
 
 	return publicKey, nil
-}
-
-// extractRecordName extracts the name from a record using the adapter pattern.
-func extractRecordName(record *corev1.Record) (string, error) {
-	adapter := adapters.NewRecordAdapter(record)
-
-	recordData, err := adapter.GetRecordData()
-	if err != nil {
-		return "", fmt.Errorf("failed to get record data: %w", err)
-	}
-
-	if recordData == nil {
-		return "", nil
-	}
-
-	return recordData.GetName(), nil
 }

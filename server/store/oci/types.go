@@ -16,9 +16,6 @@ const (
 	// SignatureArtifactType defines the internal OCI media type for signature layers.
 	SignatureArtifactType = "application/vnd.dev.cosign.simplesigning.v1+json"
 
-	// VerificationArtifactMediaType defines the internal OCI media type for verification blobs.
-	VerificationArtifactMediaType = "application/vnd.agntcy.dir.verification.v1+json"
-
 	// DefaultReferrerArtifactMediaType defines the default internal OCI media type for referrer blobs.
 	DefaultReferrerArtifactMediaType = "application/vnd.agntcy.dir.referrer.v1+json"
 )
@@ -30,8 +27,6 @@ func apiToOCIType(apiType string) string {
 		return SignatureArtifactType
 	case corev1.PublicKeyReferrerType:
 		return PublicKeyArtifactMediaType
-	case corev1.VerificationReferrerType:
-		return VerificationArtifactMediaType
 	default:
 		return DefaultReferrerArtifactMediaType
 	}
@@ -44,8 +39,6 @@ func ociToAPIType(ociType string) string {
 		return corev1.SignatureReferrerType
 	case PublicKeyArtifactMediaType:
 		return corev1.PublicKeyReferrerType
-	case VerificationArtifactMediaType:
-		return corev1.VerificationReferrerType
 	default:
 		return ociType // Return the original OCI type if not found
 	}

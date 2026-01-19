@@ -47,3 +47,19 @@ func (r *RecordAdapter) GetRecordData() (types.RecordData, error) {
 		return nil, fmt.Errorf("unsupported record type: %T", decoded.GetRecord())
 	}
 }
+
+// ExtractRecordName extracts the name from a record using the adapter pattern.
+func ExtractRecordName(record *corev1.Record) (string, error) {
+	adapter := NewRecordAdapter(record)
+
+	recordData, err := adapter.GetRecordData()
+	if err != nil {
+		return "", fmt.Errorf("failed to get record data: %w", err)
+	}
+
+	if recordData == nil {
+		return "", nil
+	}
+
+	return recordData.GetName(), nil
+}
