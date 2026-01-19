@@ -29,6 +29,7 @@ type Service struct {
 	x509Src    x509svid.Source // Use interface to allow wrapping with retry logic
 	bundleSrc  *workloadapi.BundleSource
 	x509Closer io.Closer // Store original X509Source for cleanup
+	resolver   DIDResolver
 }
 
 // New creates a new authentication service (JWT or X.509 based on config).
@@ -68,7 +69,15 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 		}
 
 		logger.Info("X.509 authentication service initialized")
+	case config.AuthModeDID:
+		// Initialize universal resolver client
+		resolver, err := NewUniversalResolver(cfg.UniversalResolverEndpoint)
+		if err != nil {
+			return nil, err
+		}
 
+		service.resolver = resolver
+		logger.Info("DID Resolver service intitialized")
 	default:
 		_ = client.Close()
 
@@ -237,6 +246,12 @@ func (s *Service) GetServerOptions() []grpc.ServerOption {
 			),
 			grpc.ChainUnaryInterceptor(X509UnaryInterceptor()),
 			grpc.ChainStreamInterceptor(X509StreamInterceptor()),
+		}
+
+	case config.AuthModeDID:
+		return []grpc.ServerOption{
+			grpc.ChainUnaryInterceptor(DIDUnaryInterceptor(s.resolver)),
+			grpc.ChainStreamInterceptor(DIDStreamInterceptor(s.resolver)),
 		}
 
 	default:
