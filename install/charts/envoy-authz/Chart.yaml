@@ -3,7 +3,7 @@
 
 apiVersion: v2
 name: envoy-authz
-description: Envoy gateway with external authorization for GitHub/Google/Azure authentication
+description: Envoy gateway with external authorization for GitHub authentication
 type: application
 version: 0.1.0
 appVersion: "0.1.0"

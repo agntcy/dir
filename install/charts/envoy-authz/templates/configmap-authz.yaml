@@ -21,18 +21,8 @@ data:
   USER_DENY_LIST: {{ join "," .Values.authServer.authorization.userDenyList | quote }}
   
   # GitHub provider configuration
-  GITHUB_ENABLED: {{ .Values.authServer.providers.github.enabled | quote }}
-  {{- if .Values.authServer.providers.github.enabled }}
-  GITHUB_CACHE_TTL: {{ .Values.authServer.providers.github.cacheTTL | quote }}
-  GITHUB_API_TIMEOUT: {{ .Values.authServer.providers.github.apiTimeout | quote }}
-  {{- end }}
-  
-  # Google provider configuration (future)
-  {{- if .Values.authServer.providers.google }}
-  GOOGLE_ENABLED: {{ .Values.authServer.providers.google.enabled | quote }}
-  {{- end }}
-  
-  # Azure provider configuration (future)
-  {{- if .Values.authServer.providers.azure }}
-  AZURE_ENABLED: {{ .Values.authServer.providers.azure.enabled | quote }}
+  GITHUB_ENABLED: {{ .Values.authServer.github.enabled | quote }}
+  {{- if .Values.authServer.github.enabled }}
+  GITHUB_CACHE_TTL: {{ .Values.authServer.github.cacheTTL | quote }}
+  GITHUB_API_TIMEOUT: {{ .Values.authServer.github.apiTimeout | quote }}
   {{- end }}

@@ -72,34 +72,24 @@ authServer:
     logLevel: info
     defaultProvider: github
   
-  # Authorization rules (provider-agnostic)
+  # Authorization rules
   authorization:
-    # Allowed org constructs (GitHub orgs, Azure tenants, Google domains, etc.)
+    # Allowed GitHub organizations
     # Empty list = allow all authenticated users
     allowedOrgConstructs: []
     
-    # Explicitly allowed users (format: "provider:username")
-    # Example: ["github:tkircsi", "google:alice@agntcy.com"]
+    # Explicitly allowed users (format: "github:username")
+    # Example: ["github:tkircsi"]
     userAllowList: []
     
-    # Explicitly denied users (format: "provider:username")
+    # Explicitly denied users (format: "github:username")
     userDenyList: []
   
-  # Provider configurations
-  providers:
-    # GitHub provider
-    github:
-      enabled: true
-      cacheTTL: 5m
-      apiTimeout: 10s
-    
-    # Google provider (future)
-    google:
-      enabled: false
-    
-    # Azure provider (future)
-    azure:
-      enabled: false
+  # GitHub provider configuration
+  github:
+    enabled: true
+    cacheTTL: 5m
+    apiTimeout: 10s
   
   resources:
     requests:

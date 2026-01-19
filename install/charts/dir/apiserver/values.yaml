@@ -554,12 +554,12 @@ oasf:
   enabled: false
 
 # Envoy auth gateway subchart configuration (OPTIONAL)
-# Provides GitHub/Google/Azure authentication via Envoy gateway with ext_authz
+# Provides GitHub authentication via Envoy gateway with ext_authz
 # NOT installed by default. Set enabled: true to deploy.
 envoyAuthz:
   enabled: false
   
-  # When enabled, configure authorization rules and providers below
+  # When enabled, configure authorization rules below
   
   # Envoy gateway configuration
   envoy:
@@ -581,31 +581,24 @@ envoyAuthz:
     
     # Authorization rules
     authorization:
-      # Allowed org constructs (GitHub orgs, Azure tenants, Google domains)
+      # Allowed GitHub organizations
       # Empty list = allow all authenticated users
       allowedOrgConstructs: []
-      # Example: ["agntcy", "spiffe", "contoso.onmicrosoft.com", "agntcy.com"]
+      # Example: ["agntcy", "spiffe"]
       
-      # Explicitly allowed users (format: "provider:username")
+      # Explicitly allowed users (format: "github:username")
       userAllowList: []
-      # Example: ["github:tkircsi", "google:alice@agntcy.com"]
+      # Example: ["github:tkircsi"]
       
-      # Explicitly denied users (format: "provider:username")
+      # Explicitly denied users (format: "github:username")
       userDenyList: []
       # Example: ["github:malicious-user"]
     
-    # Provider configurations
-    providers:
-      github:
-        enabled: true
-        cacheTTL: 5m
-        apiTimeout: 10s
-      
-      google:
-        enabled: false
-      
-      azure:
-        enabled: false
+    # GitHub provider configuration
+    github:
+      enabled: true
+      cacheTTL: 5m
+      apiTimeout: 10s
   
   # Ingress configuration (optional - for external access)
   ingress:
