@@ -87,7 +87,7 @@ func (d *DB) CreateNameVerification(verification types.NameVerificationObject) e
 func (d *DB) UpdateNameVerification(verification types.NameVerificationObject) error {
 	result := d.gormDB.Model(&NameVerification{}).
 		Where("record_cid = ?", verification.GetRecordCID()).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"method": verification.GetMethod(),
 			"key_id": verification.GetKeyID(),
 			"status": verification.GetStatus(),

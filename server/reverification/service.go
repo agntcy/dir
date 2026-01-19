@@ -70,23 +70,15 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 
 	// Start scheduler
-	s.wg.Add(1)
-
-	go func() {
-		defer s.wg.Done()
-
+	s.wg.Go(func() {
 		s.scheduler.Run(ctx, s.stopCh)
-	}()
+	})
 
 	// Start workers
 	for _, worker := range s.workers {
-		s.wg.Add(1)
-
-		go func(w *Worker) {
-			defer s.wg.Done()
-
-			w.Run(ctx, s.stopCh)
-		}(worker)
+		s.wg.Go(func() {
+			worker.Run(ctx, s.stopCh)
+		})
 	}
 
 	logger.Info("Re-verification service started successfully")

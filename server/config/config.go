@@ -154,7 +154,7 @@ type Config struct {
 	Metrics MetricsConfig `json:"metrics" mapstructure:"metrics"`
 
 	// Reverification configuration
-	Reverification reverification.Config `json:"reverification,omitempty" mapstructure:"reverification"`
+	Reverification reverification.Config `json:"reverification,omitzero" mapstructure:"reverification"`
 }
 
 // OASFAPIValidationConfig defines OASF API validation configuration.
