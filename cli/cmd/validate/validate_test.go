@@ -256,7 +256,7 @@ func TestValidateCommand_RealFiles(t *testing.T) {
 			args:        []string{"--disable-api"},
 			expectValid: true,
 		},
-		// record_valid_for_non_strict.json - should be valid for both --disable-api and --disable-strict
+		// record_valid_for_non_strict.json - should be valid for --disable-strict and --disable-api, but invalid for strict API validation
 		{
 			name:        "record_valid_for_non_strict_API_strict",
 			fileData:    testRecordValidForNonStrict,
@@ -276,7 +276,7 @@ func TestValidateCommand_RealFiles(t *testing.T) {
 			fileData:    testRecordValidForNonStrict,
 			fileName:    "record_valid_for_non_strict.json",
 			args:        []string{"--disable-api"},
-			expectValid: false,
+			expectValid: true,
 		},
 	}
 

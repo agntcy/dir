@@ -28,8 +28,8 @@
   ],
   "domains": [
     {
-      "id": 0,
-      "name": "base_domain"
+      "id": 301,
+      "name": "life_science/biotechnology"
     }
   ],
   "modules": [
@@ -41,5 +41,5 @@
       }
     }
   ],
-  "previous_record_cid": "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+  "previous_record_cid": "asdf"
 }
