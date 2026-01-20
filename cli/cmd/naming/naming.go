@@ -16,12 +16,14 @@ var Command = &cobra.Command{
 
 This command group provides access to name ownership verification:
 
-- verify: Verify name ownership for a signed record
-- check: Check if a record has verified name ownership
+- verify: Check if a record has verified name ownership
 
 Name verification proves that a record's signing key is authorized by the
 domain claimed in the record's name. This enables trustworthy human-readable
 naming (e.g., "https://cisco.com/marketing-agent").
+
+Verification is performed automatically when signing a record with 'dirctl sign'.
+Use 'dirctl naming verify' to check the verification status.
 
 Protocol prefixes (required for verification):
 - dns://domain/path - verify using DNS TXT records
@@ -36,20 +38,18 @@ Verification methods:
 
 Examples:
 
-1. Verify name ownership after signing:
+1. Check name verification status:
    dirctl naming verify <cid>
 
-2. Check if a record has verified name ownership:
-   dirctl naming check <cid>
+2. Check with JSON output:
+   dirctl naming verify <cid> --output json
 `,
 }
 
 func init() {
 	// Add all naming subcommands
 	Command.AddCommand(verifyCmd)
-	Command.AddCommand(checkCmd)
 
 	// Add output format flags to naming subcommands
 	presenter.AddOutputFlags(verifyCmd)
-	presenter.AddOutputFlags(checkCmd)
 }
