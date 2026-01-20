@@ -6,7 +6,9 @@ from agntcy.dir.naming.v1 import naming_service_pb2 as agntcy_dot_dir_dot_naming
 
 
 class NamingServiceStub(object):
-    """NamingService provides methods to verify and inspect name verification state.
+    """NamingService provides methods to inspect name verification state.
+    Note: Verification is performed automatically by the backend scheduler
+    for signed records with verifiable names (http://, https://, dns:// prefixes).
     """
 
     def __init__(self, channel):
@@ -15,11 +17,6 @@ class NamingServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Verify = channel.unary_unary(
-                '/agntcy.dir.naming.v1.NamingService/Verify',
-                request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyRequest.SerializeToString,
-                response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyResponse.FromString,
-                _registered_method=True)
         self.GetVerificationInfo = channel.unary_unary(
                 '/agntcy.dir.naming.v1.NamingService/GetVerificationInfo',
                 request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoRequest.SerializeToString,
@@ -28,17 +25,10 @@ class NamingServiceStub(object):
 
 
 class NamingServiceServicer(object):
-    """NamingService provides methods to verify and inspect name verification state.
+    """NamingService provides methods to inspect name verification state.
+    Note: Verification is performed automatically by the backend scheduler
+    for signed records with verifiable names (http://, https://, dns:// prefixes).
     """
-
-    def Verify(self, request, context):
-        """Verify performs name verification for a signed record.
-        The record's name should be prefixed with the protocol (dns://, https://, or http://)
-        to indicate the verification method.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
 
     def GetVerificationInfo(self, request, context):
         """GetVerificationInfo retrieves the verification info for a record.
@@ -50,11 +40,6 @@ class NamingServiceServicer(object):
 
 def add_NamingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Verify': grpc.unary_unary_rpc_method_handler(
-                    servicer.Verify,
-                    request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyRequest.FromString,
-                    response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyResponse.SerializeToString,
-            ),
             'GetVerificationInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetVerificationInfo,
                     request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoRequest.FromString,
@@ -69,35 +54,10 @@ def add_NamingServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class NamingService(object):
-    """NamingService provides methods to verify and inspect name verification state.
+    """NamingService provides methods to inspect name verification state.
+    Note: Verification is performed automatically by the backend scheduler
+    for signed records with verifiable names (http://, https://, dns:// prefixes).
     """
-
-    @staticmethod
-    def Verify(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/agntcy.dir.naming.v1.NamingService/Verify',
-            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyRequest.SerializeToString,
-            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.VerifyResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
 
     @staticmethod
     def GetVerificationInfo(request,
