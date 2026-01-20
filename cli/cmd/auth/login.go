@@ -18,9 +18,6 @@ import (
 
 var (
 	// OAuth configuration flags.
-	clientID        string
-	clientSecret    string
-	scopes          string
 	callbackPort    int
 	timeout         time.Duration
 	skipBrowserOpen bool
@@ -28,35 +25,29 @@ var (
 	useWebFlow      bool
 )
 
-// getClientID returns the client ID from flag, env var, or config.
+// getClientID returns the client ID from config (includes --github-client-id flag value) or env var.
 func getClientID() string {
-	if clientID != "" {
-		return clientID
+	// Try loading from config (includes persistent flag values)
+	if cfg, err := client.LoadConfig(); err == nil && cfg.GitHubClientID != "" {
+		return cfg.GitHubClientID
 	}
 	// Check environment variable
 	if envID := os.Getenv("DIRECTORY_CLIENT_GITHUB_CLIENT_ID"); envID != "" {
 		return envID
 	}
-	// Try loading from config
-	if cfg, err := client.LoadConfig(); err == nil && cfg.GitHubClientID != "" {
-		return cfg.GitHubClientID
-	}
 
 	return ""
 }
 
-// getClientSecret returns the client secret from flag, env var, or config.
+// getClientSecret returns the client secret from config (includes --github-client-secret flag value) or env var.
 func getClientSecret() string {
-	if clientSecret != "" {
-		return clientSecret
+	// Try loading from config (includes persistent flag values)
+	if cfg, err := client.LoadConfig(); err == nil && cfg.GitHubClientSecret != "" {
+		return cfg.GitHubClientSecret
 	}
 	// Check environment variable
 	if envSecret := os.Getenv("DIRECTORY_CLIENT_GITHUB_CLIENT_SECRET"); envSecret != "" {
 		return envSecret
-	}
-	// Try loading from config
-	if cfg, err := client.LoadConfig(); err == nil && cfg.GitHubClientSecret != "" {
-		return cfg.GitHubClientSecret
 	}
 
 	return ""
@@ -72,6 +63,10 @@ By default, uses device authorization flow which works everywhere
 code to enter at github.com/login/device.
 
 Use --web to open a browser on this machine instead (requires OAuth App setup).
+
+OAuth Scopes Requested:
+  • user:email - Access user profile and email
+  • read:org - Read organization membership
 
 Device Flow (default):
   • Works in any environment (SSH, servers, containers)
@@ -109,9 +104,8 @@ Examples:
 func init() {
 	flags := loginCmd.Flags()
 	flags.BoolVar(&useWebFlow, "web", false, "Use web browser flow instead of device flow")
-	flags.StringVar(&clientID, "github-client-id", "", "GitHub OAuth App client ID (for --web, env: DIRECTORY_CLIENT_GITHUB_CLIENT_ID)")
-	flags.StringVar(&clientSecret, "github-client-secret", "", "GitHub OAuth App client secret (for --web, env: DIRECTORY_CLIENT_GITHUB_CLIENT_SECRET)")
-	flags.StringVar(&scopes, "scopes", client.DefaultOAuthScopes, "Comma-separated OAuth scopes to request")
+	// Note: --github-client-id and --github-client-secret are registered as persistent flags in cli/cmd/options.go
+	// OAuth scopes are fixed: user:email (for profile) and read:org (for organization membership)
 	flags.IntVar(&callbackPort, "callback-port", client.DefaultCallbackPort, "Port for OAuth callback server (for --web)")
 	flags.DurationVar(&timeout, "timeout", client.DefaultOAuthTimeout, "Timeout for OAuth flow")
 	flags.BoolVar(&skipBrowserOpen, "no-browser", false, "Don't automatically open the browser (for --web)")
@@ -262,8 +256,8 @@ func runWebFlow(cmd *cobra.Command, ctx context.Context, cache *client.TokenCach
 			"Or use device flow (no OAuth App needed): dirctl auth login")
 	}
 
-	// Parse scopes
-	scopeList := strings.Split(scopes, ",")
+	// Use default OAuth scopes (user:email and read:org)
+	scopeList := strings.Split(client.DefaultOAuthScopes, ",")
 	for i := range scopeList {
 		scopeList[i] = strings.TrimSpace(scopeList[i])
 	}
@@ -299,8 +293,8 @@ func runDeviceFlow(cmd *cobra.Command, ctx context.Context, cache *client.TokenC
 	// This is GitHub's official CLI client ID (publicly documented)
 	const githubCLIClientID = "178c6fc778ccc68e1d6a"
 
-	// Parse scopes
-	scopeList := strings.Split(scopes, ",")
+	// Use default OAuth scopes (user:email and read:org)
+	scopeList := strings.Split(client.DefaultOAuthScopes, ",")
 	for i := range scopeList {
 		scopeList[i] = strings.TrimSpace(scopeList[i])
 	}

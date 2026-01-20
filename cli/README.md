@@ -662,8 +662,8 @@ dirctl auth login --no-browser
 **What happens:**
 1. Opens your default browser to GitHub's authorization page
 2. You authorize the dirctl application
-3. Token is cached locally at `~/.config/dirctl/github-token.json`
-4. Token is automatically used for subsequent commands with `--auth-mode=github`
+3. Token is cached locally at `~/.config/dirctl/auth-token.json`
+4. Token is automatically detected and used for subsequent commands (no `--auth-mode` flag needed)
 
 #### `dirctl auth status`
 
@@ -685,7 +685,7 @@ Status: Authenticated
   Cached at: 2025-12-22T10:30:00Z
   Token: Valid ✓
   Estimated expiry: 2025-12-22T18:30:00Z
-  Cache file: /Users/you/.config/dirctl/github-token.json
+  Cache file: /Users/you/.config/dirctl/auth-token.json
 ```
 
 #### `dirctl auth logout`
@@ -699,32 +699,47 @@ dirctl auth logout
 
 #### Using Authenticated Commands
 
-Once authenticated via `dirctl auth login`, your cached credentials are used automatically:
+Once authenticated via `dirctl auth login`, your cached credentials are automatically detected and used:
 
 ```bash
-# Push to federation (uses cached GitHub credentials automatically)
+# Push to federation (auto-detects and uses cached GitHub credentials)
 dirctl push my-agent.json
 
-# Search federation nodes
+# Search federation nodes (auto-detects authentication)
 dirctl --server-addr=federation.agntcy.org:443 search --skill "AI"
 
-# Pull from federation
+# Pull from federation (auto-detects authentication)
 dirctl pull baeareihdr6t7s6sr2q4zo456sza66eewqc7huzatyfgvoupaqyjw23ilvi
 ```
 
-**Note:** When you have valid cached GitHub credentials from `dirctl auth login`, the CLI automatically uses GitHub authentication. You can explicitly specify `--auth-mode=github` if needed, or use other auth modes like `--auth-mode=x509` for SPIFFE environments.
+**Authentication Mode Behavior:**
+
+- **No `--auth-mode` flag (default)**: Auto-detects authentication in this order:
+  1. SPIFFE (if available in Kubernetes/SPIRE environment)
+  2. Cached GitHub credentials (if `dirctl auth login` was run)
+  3. Insecure (for local development)
+
+- **Explicit `--auth-mode=github`**: Forces GitHub authentication (required if you want to bypass SPIFFE in a SPIRE environment)
+
+- **Other modes**: Use `--auth-mode=x509`, `--auth-mode=jwt`, or `--auth-mode=tls` for specific authentication methods
+
+**Example with explicit mode:**
+```bash
+# Force GitHub auth even if SPIFFE is available
+dirctl --auth-mode=github push my-agent.json
+```
 
 ### Other Authentication Modes
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
-| `github` | GitHub OAuth (explicit) | CLI users accessing federation nodes |
+| `github` | GitHub OAuth (explicit) | Force GitHub auth, bypass SPIFFE auto-detect |
 | `x509` | SPIFFE X.509 certificates | Kubernetes workloads with SPIRE |
 | `jwt` | SPIFFE JWT tokens | Service-to-service authentication |
 | `token` | SPIFFE token file | Pre-provisioned credentials |
 | `tls` | mTLS with certificates | Custom PKI environments |
 | `insecure` / `none` | Insecure (no auth, skip auto-detect) | Testing, local development |
-| (empty) | Auto-detect (uses cached GitHub creds if available, otherwise insecure) | Default behavior |
+| (empty) | Auto-detect: SPIFFE → cached GitHub → insecure | Default behavior (recommended) |
 
 ## Configuration
 
