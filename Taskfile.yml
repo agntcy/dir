@@ -688,6 +688,79 @@ tasks:
           --wait-for-jobs \
           --timeout "15m"
 
+  deploy:kubernetes:local:ghcr:
+    aliases: [deploy:local:ghcr]
+    desc: Deploy a local Directory server in Kubernetes using GHCR as backend (no Zot)
+    deps:
+      - deploy:kubernetes:setup-cluster
+    vars:
+      # Kind args
+      KIND_CLUSTER_NAME: '{{ .KIND_CLUSTER_NAME | default "agntcy-cluster" }}'
+      # Helm args
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-ghcr" }}'
+      HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
+      HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
+      # Coverage config
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+    cmds:
+      # Validate required environment variables
+      - |
+        if [ -z "${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME:-}" ] || [ -z "${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD:-}" ] || [ -z "${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME:-}" ]; then
+          echo "ERROR: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME, DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD, and DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME must be set for GHCR deployment"
+          exit 1
+        fi
+
+        echo "Using GHCR repository: ${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME}"
+        echo "Using GHCR username: ${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME}"
+
+      # Deploy chart with GHCR backend (no Zot)
+      - |
+        {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
+
+        {{ .HELM_BIN }} upgrade dir \
+          {{ .HELM_CHART_PATH }} \
+          -f {{ .HELM_VALUES_PATH }} \
+          --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
+          --set apiserver.config.store.oci.type=ghcr \
+          --set apiserver.config.store.oci.registry_address="${DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS}" \
+          --set apiserver.config.store.oci.repository_name="${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME}" \
+          --set apiserver.config.store.oci.auth_config.username="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME}" \
+          --set apiserver.config.store.oci.auth_config.password="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD}" \
+          --set apiserver.config.store.oci.auth_config.insecure=false \
+          --set apiserver.zot.enabled=false \
+          --set apiserver.config.sync.regsync.enabled=true \
+          --set apiserver.config.sync.auth_config.username="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME}" \
+          --set apiserver.config.sync.auth_config.password="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD}" \
+          {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
+          --set apiserver.config.routing.refresh_interval="1s" \
+          {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
+          --set apiserver.config.oasf_api_validation.disable=true \
+          --namespace {{ .HELM_NAMESPACE }} \
+          --create-namespace \
+          --install \
+          --wait \
+          --wait-for-jobs \
+          --timeout "15m"
+
+  deploy:kubernetes:local:ghcr:port-forward:
+    aliases: [deploy:local:ghcr:port-forward]
+    desc: Set up port-forwarding for the local GHCR deployment
+    vars:
+      HELM_NAMESPACE: '{{ .HELM_NAMESPACE | default "dir-server-ghcr" }}'
+    cmds:
+      - |
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 8888:8888 -n {{ .HELM_NAMESPACE }} &
+        {{ .KUBECTL_BIN }} port-forward service/dir-apiserver 9090:9090 -n {{ .HELM_NAMESPACE }} &
+
+      - sleep 10
+
+  deploy:kubernetes:local:ghcr:cleanup:
+    aliases: [deploy:local:ghcr:cleanup]
+    desc: Cleanup Kubernetes environment for local GHCR deployment
+    cmds:
+      - "{{ .KIND_BIN }} delete cluster --name {{ .KIND_CLUSTER_NAME }}"
+
   deploy:kubernetes:context:
     desc: Switch context to given Kubernetes cluster
     vars:

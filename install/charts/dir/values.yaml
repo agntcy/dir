@@ -138,8 +138,8 @@ apiserver:
         # Auth credentials to use.
         auth_config:
           insecure: "true"
-          access_token: access-token
-          refresh_token: refresh-token
+          # access_token: ""
+          # refresh_token: ""
 
     # Routing settings for the peer-to-peer network.
     routing:
@@ -290,6 +290,9 @@ apiserver:
 
   # Zot registry configuration (subchart)
   zot:
+    # Enable Zot registry (set to false for external registries like GHCR)
+    enabled: true
+
     # Disable default config mounting
     mountConfig: false
 

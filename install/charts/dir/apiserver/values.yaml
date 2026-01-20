@@ -81,8 +81,10 @@ config:
       # Auth credentials to use.
       auth_config:
         insecure: "true"
-        access_token: access-token
-        refresh_token: refresh-token
+        # username: ""
+        # password: ""
+        # access_token: ""
+        # refresh_token: ""
 
   # Routing settings for the peer-to-peer network.
   routing:
