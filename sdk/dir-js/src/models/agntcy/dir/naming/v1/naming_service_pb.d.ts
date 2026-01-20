@@ -15,60 +15,6 @@ import type { Verification } from "./name_verification_pb.js";
 export declare const file_agntcy_dir_naming_v1_naming_service: GenFile;
 
 /**
- * VerifyRequest is the request for performing name verification.
- *
- * @generated from message agntcy.dir.naming.v1.VerifyRequest
- */
-export declare type VerifyRequest = Message<"agntcy.dir.naming.v1.VerifyRequest"> & {
-  /**
-   * The CID of the signed record to verify.
-   *
-   * @generated from field: string cid = 1;
-   */
-  cid: string;
-};
-
-/**
- * Describes the message agntcy.dir.naming.v1.VerifyRequest.
- * Use `create(VerifyRequestSchema)` to create a new message.
- */
-export declare const VerifyRequestSchema: GenMessage<VerifyRequest>;
-
-/**
- * VerifyResponse is the response for name verification.
- *
- * @generated from message agntcy.dir.naming.v1.VerifyResponse
- */
-export declare type VerifyResponse = Message<"agntcy.dir.naming.v1.VerifyResponse"> & {
-  /**
-   * Whether the name verification succeeded.
-   *
-   * @generated from field: bool verified = 1;
-   */
-  verified: boolean;
-
-  /**
-   * The verification details (only set if verified is true).
-   *
-   * @generated from field: agntcy.dir.naming.v1.Verification verification = 2;
-   */
-  verification?: Verification;
-
-  /**
-   * Error message if verification failed.
-   *
-   * @generated from field: optional string error_message = 3;
-   */
-  errorMessage?: string;
-};
-
-/**
- * Describes the message agntcy.dir.naming.v1.VerifyResponse.
- * Use `create(VerifyResponseSchema)` to create a new message.
- */
-export declare const VerifyResponseSchema: GenMessage<VerifyResponse>;
-
-/**
  * GetVerificationInfoRequest is the request for retrieving verification info.
  *
  * @generated from message agntcy.dir.naming.v1.GetVerificationInfoRequest
@@ -123,23 +69,13 @@ export declare type GetVerificationInfoResponse = Message<"agntcy.dir.naming.v1.
 export declare const GetVerificationInfoResponseSchema: GenMessage<GetVerificationInfoResponse>;
 
 /**
- * NamingService provides methods to verify and inspect name verification state.
+ * NamingService provides methods to inspect name verification state.
+ * Note: Verification is performed automatically by the backend scheduler
+ * for signed records with verifiable names (http://, https://, dns:// prefixes).
  *
  * @generated from service agntcy.dir.naming.v1.NamingService
  */
 export declare const NamingService: GenService<{
-  /**
-   * Verify performs name verification for a signed record.
-   * The record's name should be prefixed with the protocol (dns://, https://, or http://)
-   * to indicate the verification method.
-   *
-   * @generated from rpc agntcy.dir.naming.v1.NamingService.Verify
-   */
-  verify: {
-    methodKind: "unary";
-    input: typeof VerifyRequestSchema;
-    output: typeof VerifyResponseSchema;
-  },
   /**
    * GetVerificationInfo retrieves the verification info for a record.
    *

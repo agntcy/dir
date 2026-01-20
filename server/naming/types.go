@@ -6,8 +6,6 @@
 // and ACME DNS-01 challenge patterns.
 package naming
 
-import "time"
-
 // PublicKey represents a public key extracted from DNS TXT or JWKS.
 type PublicKey struct {
 	// ID is an optional identifier for the key (kid in JWK, or generated for DNS).
@@ -33,9 +31,6 @@ type Result struct {
 
 	// Method is how the keys were retrieved ("dns" or "wellknown").
 	Method string
-
-	// VerifiedAt is when the verification was performed.
-	VerifiedAt time.Time
 
 	// Error contains the error message if verification failed.
 	Error string

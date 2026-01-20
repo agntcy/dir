@@ -59,6 +59,11 @@ func New(path string) (*DB, error) {
 		return nil, fmt.Errorf("failed to migrate publication schema: %w", err)
 	}
 
+	// Migrate name verification schema
+	if err := db.AutoMigrate(NameVerification{}); err != nil {
+		return nil, fmt.Errorf("failed to migrate name verification schema: %w", err)
+	}
+
 	return &DB{
 		gormDB: db,
 	}, nil

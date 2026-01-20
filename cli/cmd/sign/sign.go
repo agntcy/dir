@@ -168,28 +168,5 @@ func Sign(ctx context.Context, c *client.Client, recordCID string) error {
 		}
 	}
 
-	// Attempt name verification after signing.
-	// This is best-effort - if verification fails (e.g., no well-known file),
-	// signing still succeeds but name ownership is not proven.
-	verifyResp, err := c.VerifyName(ctx, recordCID)
-
-	switch {
-	case err != nil:
-		// Log but don't fail - name verification is optional
-		fmt.Fprintf(os.Stderr, "Note: name verification skipped: %v\n", err)
-	case !verifyResp.GetVerified():
-		// Verification was attempted but failed
-		errMsg := verifyResp.GetErrorMessage()
-		if errMsg != "" {
-			fmt.Fprintf(os.Stderr, "Note: name not verified: %s\n", errMsg)
-		}
-	default:
-		// Verification succeeded
-		dv := verifyResp.GetVerification().GetDomain()
-		fmt.Fprintf(os.Stderr, "Name verified: %s (method: %s)\n",
-			dv.GetDomain(),
-			dv.GetMethod())
-	}
-
 	return nil
 }

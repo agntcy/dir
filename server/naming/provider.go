@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/agntcy/dir/utils/logging"
 )
@@ -71,9 +70,7 @@ func NewProvider(opts ...ProviderOption) *Provider {
 //   - http://domain/path -> use JWKS well-known file via HTTP (testing only)
 //   - domain/path -> no verification (protocol prefix required)
 func (p *Provider) Verify(ctx context.Context, recordName string, signingKey []byte) *Result {
-	result := &Result{
-		VerifiedAt: time.Now(),
-	}
+	result := &Result{}
 
 	// Parse the record name
 	parsed := ParseName(recordName)

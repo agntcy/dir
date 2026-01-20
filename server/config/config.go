@@ -16,6 +16,7 @@ import (
 	events "github.com/agntcy/dir/server/events/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
+	reverification "github.com/agntcy/dir/server/reverification/config"
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
@@ -151,6 +152,9 @@ type Config struct {
 
 	// Metrics configuration
 	Metrics MetricsConfig `json:"metrics" mapstructure:"metrics"`
+
+	// Reverification configuration
+	Reverification reverification.Config `json:"reverification,omitzero" mapstructure:"reverification"`
 }
 
 // OASFAPIValidationConfig defines OASF API validation configuration.
@@ -293,6 +297,7 @@ func (c ConnectionConfig) WithDefaults() ConnectionConfig {
 	return c
 }
 
+//nolint:maintidx
 func LoadConfig() (*Config, error) {
 	v := viper.NewWithOptions(
 		viper.KeyDelimiter("."),
@@ -517,6 +522,21 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("metrics.address")
 	v.SetDefault("metrics.address", DefaultMetricsAddress)
+
+	//
+	// Reverification configuration
+	//
+	_ = v.BindEnv("reverification.scheduler_interval")
+	v.SetDefault("reverification.scheduler_interval", reverification.DefaultSchedulerInterval)
+
+	_ = v.BindEnv("reverification.worker_count")
+	v.SetDefault("reverification.worker_count", reverification.DefaultWorkerCount)
+
+	_ = v.BindEnv("reverification.worker_timeout")
+	v.SetDefault("reverification.worker_timeout", reverification.DefaultWorkerTimeout)
+
+	_ = v.BindEnv("reverification.ttl")
+	v.SetDefault("reverification.ttl", reverification.DefaultTTL)
 
 	//
 	// Connection management configuration

@@ -22,7 +22,6 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
-	NamingService_Verify_FullMethodName              = "/agntcy.dir.naming.v1.NamingService/Verify"
 	NamingService_GetVerificationInfo_FullMethodName = "/agntcy.dir.naming.v1.NamingService/GetVerificationInfo"
 )
 
@@ -30,12 +29,10 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// NamingService provides methods to verify and inspect name verification state.
+// NamingService provides methods to inspect name verification state.
+// Note: Verification is performed automatically by the backend scheduler
+// for signed records with verifiable names (http://, https://, dns:// prefixes).
 type NamingServiceClient interface {
-	// Verify performs name verification for a signed record.
-	// The record's name should be prefixed with the protocol (dns://, https://, or http://)
-	// to indicate the verification method.
-	Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error)
 	// GetVerificationInfo retrieves the verification info for a record.
 	GetVerificationInfo(ctx context.Context, in *GetVerificationInfoRequest, opts ...grpc.CallOption) (*GetVerificationInfoResponse, error)
 }
@@ -46,16 +43,6 @@ type namingServiceClient struct {
 
 func NewNamingServiceClient(cc grpc.ClientConnInterface) NamingServiceClient {
 	return &namingServiceClient{cc}
-}
-
-func (c *namingServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(VerifyResponse)
-	err := c.cc.Invoke(ctx, NamingService_Verify_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *namingServiceClient) GetVerificationInfo(ctx context.Context, in *GetVerificationInfoRequest, opts ...grpc.CallOption) (*GetVerificationInfoResponse, error) {
@@ -72,12 +59,10 @@ func (c *namingServiceClient) GetVerificationInfo(ctx context.Context, in *GetVe
 // All implementations should embed UnimplementedNamingServiceServer
 // for forward compatibility.
 //
-// NamingService provides methods to verify and inspect name verification state.
+// NamingService provides methods to inspect name verification state.
+// Note: Verification is performed automatically by the backend scheduler
+// for signed records with verifiable names (http://, https://, dns:// prefixes).
 type NamingServiceServer interface {
-	// Verify performs name verification for a signed record.
-	// The record's name should be prefixed with the protocol (dns://, https://, or http://)
-	// to indicate the verification method.
-	Verify(context.Context, *VerifyRequest) (*VerifyResponse, error)
 	// GetVerificationInfo retrieves the verification info for a record.
 	GetVerificationInfo(context.Context, *GetVerificationInfoRequest) (*GetVerificationInfoResponse, error)
 }
@@ -89,9 +74,6 @@ type NamingServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedNamingServiceServer struct{}
 
-func (UnimplementedNamingServiceServer) Verify(context.Context, *VerifyRequest) (*VerifyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Verify not implemented")
-}
 func (UnimplementedNamingServiceServer) GetVerificationInfo(context.Context, *GetVerificationInfoRequest) (*GetVerificationInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVerificationInfo not implemented")
 }
@@ -113,24 +95,6 @@ func RegisterNamingServiceServer(s grpc.ServiceRegistrar, srv NamingServiceServe
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&NamingService_ServiceDesc, srv)
-}
-
-func _NamingService_Verify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VerifyRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(NamingServiceServer).Verify(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: NamingService_Verify_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NamingServiceServer).Verify(ctx, req.(*VerifyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _NamingService_GetVerificationInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -158,10 +122,6 @@ var NamingService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "agntcy.dir.naming.v1.NamingService",
 	HandlerType: (*NamingServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Verify",
-			Handler:    _NamingService_Verify_Handler,
-		},
 		{
 			MethodName: "GetVerificationInfo",
 			Handler:    _NamingService_GetVerificationInfo_Handler,

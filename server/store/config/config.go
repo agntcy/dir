@@ -3,9 +3,7 @@
 
 package config
 
-import (
-	oci "github.com/agntcy/dir/server/store/oci/config"
-)
+import oci "github.com/agntcy/dir/server/store/oci/config"
 
 const (
 	DefaultProvider = "oci"
