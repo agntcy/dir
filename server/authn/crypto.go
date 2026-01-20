@@ -19,9 +19,10 @@ import (
 	"github.com/lestrrat-go/jwx/jwk"
 )
 
-// ValidateJWK validates a JWK string
+// ValidateJWK validates a JWK string.
 func ValidateJWK(jwkString string) error {
-	var raw interface{}
+	var raw any
+
 	err := jwk.ParseRawKey([]byte(jwkString), &raw)
 	if err != nil {
 		return fmt.Errorf("can't parse jwk: %s", err.Error())
@@ -44,7 +45,7 @@ func ValidateJWK(jwkString string) error {
 	return nil
 }
 
-// ValidateEd25519PubKey validates an Ed25519 public key
+// ValidateEd25519PubKey validates an Ed25519 public key.
 func ValidateEd25519PubKey(keyBytes []byte) error {
 	if l := len(keyBytes); l != ed25519.PublicKeySize {
 		return fmt.Errorf("ed25519: bad public key length: %d", l)
@@ -52,13 +53,13 @@ func ValidateEd25519PubKey(keyBytes []byte) error {
 
 	_, err := (&edwards25519.Point{}).SetBytes(keyBytes)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to verify ed22519 pubkey: %w", err)
 	}
 
 	return nil
 }
 
-// VerifyED25519Signature verifies an Ed25519 signature
+// VerifyED25519Signature verifies an Ed25519 signature.
 func VerifyED25519Signature(pubKey ed25519.PublicKey, message []byte, signature []byte) error {
 	valid := ed25519.Verify(pubKey, message, signature)
 	if !valid {
@@ -77,13 +78,13 @@ func VerifyRSASignature(pubKey rsa.PublicKey, message []byte, signature []byte) 
 
 	err := rsa.VerifyPSS(&pubKey, crypto.SHA256, digest, signature, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to verify RSA signature: %w", err)
 	}
 
 	return nil
 }
 
-// VerifyECDSASignature uses ASN1 to decode r and s, SHA256 to calculate message digest
+// VerifyECDSASignature uses ASN1 to decode r and s, SHA256 to calculate message digest.
 func VerifyECDSASignature(pubKey ecdsa.PublicKey, message []byte, signature []byte) error {
 	hasher := crypto.SHA256.New()
 	hasher.Write(message)
@@ -97,7 +98,7 @@ func VerifyECDSASignature(pubKey ecdsa.PublicKey, message []byte, signature []by
 	return nil
 }
 
-// GetEd25519VerificationKey2020 extracts Ed25519 key from verification key 2020 format
+// GetEd25519VerificationKey2020 extracts Ed25519 key from verification key 2020 format.
 func GetEd25519VerificationKey2020(keyBytes []byte) []byte {
 	return keyBytes[2:]
 }

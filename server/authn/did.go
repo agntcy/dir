@@ -24,22 +24,36 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// DIDContextKey is used to store the DID in context
+// DIDContextKey is used to store the DID in context.
 type didContextKeyType string
 
 const (
 	DIDContextKey        didContextKeyType = "did"
 	VerificationMethodID didContextKeyType = "verification_method_id"
+	// HTTP client timeout for Universal Resolver requests.
+	resolverTimeout = 30
+
+	// Maximum age for authentication timestamps (5 minutes).
+	maxTimestampAge = 300 // seconds
+
+	// Expected number of parts in DID-Auth header format.
+	didAuthHeaderParts = 3
+
+	// Expected nume of parts in DID url.
+	didUrlParts = 2
+
+	// Byte to integer conversion base.
+	byteConversionBase = 256
 )
 
-// DIDAuthMessage represents the message structure for DID authentication
+// DIDAuthMessage represents the message structure for DID authentication.
 type DIDAuthMessage struct {
 	Method    string `json:"method"`    // gRPC method being called
 	Timestamp int64  `json:"timestamp"` // Unix timestamp
 	Nonce     string `json:"nonce"`     // Random nonce for replay protection
 }
 
-// DIDAuthPayload contains the parsed authentication data
+// DIDAuthPayload contains the parsed authentication data.
 type DIDAuthPayload struct {
 	DID                  string
 	VerificationMethodID string
@@ -47,48 +61,48 @@ type DIDAuthPayload struct {
 	Signature            []byte
 }
 
-// DIDResolver interface for resolving DIDs
+// DIDResolver interface for resolving DIDs.
 type DIDResolver interface {
-	Resolve(did string) (*DIDDocument, error)
+	Resolve(ctx context.Context, did string) (*DIDDocument, error)
 }
 
 // DIDResolutionResult represents the Universal Resolver response
 // Based on W3C DID Resolution spec: https://www.w3.org/TR/did-core/#did-resolution
 type DIDResolutionResult struct {
-	Context               interface{}            `json:"@context,omitempty"`
-	DIDDocument           *DIDDocument           `json:"didDocument,omitempty"`
-	DIDDocumentMetadata   map[string]interface{} `json:"didDocumentMetadata,omitempty"`
-	DIDResolutionMetadata ResolutionMetadata     `json:"didResolutionMetadata,omitempty"`
+	Context               any                `json:"@context,omitempty"`
+	DIDDocument           *DIDDocument       `json:"didDocument,omitempty"`
+	DIDDocumentMetadata   map[string]any     `json:"didDocumentMetadata,omitempty"`
+	DIDResolutionMetadata ResolutionMetadata `json:"didResolutionMetadata"`
 }
 
-// ResolutionMetadata contains metadata about the resolution process
+// ResolutionMetadata contains metadata about the resolution process.
 type ResolutionMetadata struct {
 	ContentType string `json:"contentType,omitempty"`
 	Error       string `json:"error,omitempty"`
 }
 
-// DIDDocument represents a W3C DID Document
+// DIDDocument represents a W3C DID Document.
 type DIDDocument struct {
-	Context            interface{}          `json:"@context,omitempty"`
+	Context            any                  `json:"@context,omitempty"`
 	ID                 string               `json:"id"`
-	Controller         interface{}          `json:"controller,omitempty"`
+	Controller         any                  `json:"controller,omitempty"`
 	VerificationMethod []VerificationMethod `json:"verificationMethod,omitempty"`
-	Authentication     interface{}          `json:"authentication,omitempty"`
-	AssertionMethod    interface{}          `json:"assertionMethod,omitempty"`
-	Service            interface{}          `json:"service,omitempty"`
+	Authentication     any                  `json:"authentication,omitempty"`
+	AssertionMethod    any                  `json:"assertionMethod,omitempty"`
+	Service            any                  `json:"service,omitempty"`
 }
 
-// VerificationMethod represents a verification method in a DID Document
+// VerificationMethod represents a verification method in a DID Document.
 type VerificationMethod struct {
-	ID                 string                 `json:"id"`
-	Type               string                 `json:"type"`
-	Controller         string                 `json:"controller"`
-	PublicKeyBase58    string                 `json:"publicKeyBase58,omitempty"`
-	PublicKeyMultibase string                 `json:"publicKeyMultibase,omitempty"`
-	PublicKeyJwk       map[string]interface{} `json:"publicKeyJwk,omitempty"`
+	ID                 string         `json:"id"`
+	Type               string         `json:"type"`
+	Controller         string         `json:"controller"`
+	PublicKeyBase58    string         `json:"publicKeyBase58,omitempty"`
+	PublicKeyMultibase string         `json:"publicKeyMultibase,omitempty"`
+	PublicKeyJwk       map[string]any `json:"publicKeyJwk,omitempty"`
 }
 
-// UniversalResolver implements DIDResolver using Universal Resolver HTTP API
+// UniversalResolver implements DIDResolver using Universal Resolver HTTP API.
 type UniversalResolver struct {
 	endpoint   string
 	httpClient *http.Client
@@ -102,18 +116,18 @@ type UniversalResolver struct {
 func NewUniversalResolver(endpoint string) (*UniversalResolver, error) {
 	return &UniversalResolver{
 		endpoint:   strings.TrimSuffix(endpoint, "/"),
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: &http.Client{Timeout: resolverTimeout * time.Second},
 	}, nil
 }
 
 // Resolve resolves a DID using the Universal Resolver HTTP API
-// API spec: https://w3c-ccg.github.io/did-resolution/
-func (r *UniversalResolver) Resolve(did string) (*DIDDocument, error) {
+// spec: https://w3c-ccg.github.io/did-resolution/
+func (r *UniversalResolver) Resolve(ctx context.Context, did string) (*DIDDocument, error) {
 	// Build URL: /1.0/identifiers/{did}
 	url := fmt.Sprintf("%s/1.0/identifiers/%s", r.endpoint, did)
 
 	// Create HTTP request
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -157,7 +171,7 @@ func (r *UniversalResolver) Resolve(did string) (*DIDDocument, error) {
 	return result.DIDDocument, nil
 }
 
-// NewDIDInterceptor creates an interceptor that verifies DID signatures
+// NewDIDInterceptor creates an interceptor that verifies DID signatures.
 func NewDIDInterceptor(resolver DIDResolver) DIDInterceptorFn {
 	return func(ctx context.Context, method string) (context.Context, error) {
 		// Extract metadata from gRPC context
@@ -191,7 +205,7 @@ func NewDIDInterceptor(resolver DIDResolver) DIDInterceptorFn {
 
 		// Check timestamp is within acceptable window (5 minutes)
 		now := time.Now().Unix()
-		if abs(now-authMsg.Timestamp) > 300 {
+		if abs(now-authMsg.Timestamp) > maxTimestampAge {
 			return ctx, status.Error(codes.Unauthenticated, "timestamp expired")
 		}
 
@@ -201,7 +215,7 @@ func NewDIDInterceptor(resolver DIDResolver) DIDInterceptorFn {
 		}
 
 		// Resolve DID Document to get public key
-		didDoc, err := resolver.Resolve(payload.DID)
+		didDoc, err := resolver.Resolve(ctx, payload.DID)
 		if err != nil {
 			return ctx, status.Error(codes.Unauthenticated, "failed to resolve DID")
 		}
@@ -226,19 +240,27 @@ func NewDIDInterceptor(resolver DIDResolver) DIDInterceptorFn {
 }
 
 // parseDIDAuthHeader parses the DID-Auth header
-// Format: "DID-Auth <did>:<verification_method_id>:<base64_message>:<base64_signature>"
+// Format: "DID-Auth <did>#<verification_method_id>;<base64_message>;<base64_signature>".
 func parseDIDAuthHeader(authHeader string) (*DIDAuthPayload, error) {
 	authData := strings.TrimPrefix(authHeader, "DID-Auth ")
-	parts := strings.Split(authData, ":")
+	parts := strings.Split(authData, ";")
 
-	if len(parts) != 4 {
-		return nil, fmt.Errorf("invalid DID-Auth format, expected 4 parts, got %d", len(parts))
+	if len(parts) != didAuthHeaderParts { // Now only 3 parts!
+		return nil, fmt.Errorf("invalid DID-Auth format, expected 3 parts, got %d", len(parts))
 	}
 
-	did := parts[0]
-	vmID := parts[1]
-	messageB64 := parts[2]
-	signatureB64 := parts[3]
+	didWithVM := parts[0] // did:cheqd:testnet:abc123#key-1
+	messageB64 := parts[1]
+	signatureB64 := parts[2]
+
+	// Split DID and verification method by '#'
+	didParts := strings.Split(didWithVM, "#")
+	if len(didParts) != didUrlParts {
+		return nil, fmt.Errorf("invalid DID URL format, must include verification method fragment (e.g., did:cheqd:testnet:abc#key-1)")
+	}
+
+	did := didParts[0]        // did:cheqd:testnet:abc123
+	vmID := "#" + didParts[1] // #key-1
 
 	// Decode base64 message
 	message, err := base64.StdEncoding.DecodeString(messageB64)
@@ -260,7 +282,7 @@ func parseDIDAuthHeader(authHeader string) (*DIDAuthPayload, error) {
 	}, nil
 }
 
-// findVerificationMethod finds a verification method in the DID Document
+// findVerificationMethod finds a verification method in the DID Document.
 func findVerificationMethod(didDoc *DIDDocument, vmID string) (*VerificationMethod, error) {
 	// Handle both full DID URLs and fragments
 	searchID := vmID
@@ -278,7 +300,7 @@ func findVerificationMethod(didDoc *DIDDocument, vmID string) (*VerificationMeth
 	return nil, fmt.Errorf("verification method %s not found in DID document", vmID)
 }
 
-// verifySignatureFromVM verifies a signature using a verification method
+// verifySignatureFromVM verifies a signature using a verification method.
 func verifySignatureFromVM(vm *VerificationMethod, message []byte, signature []byte) error {
 	switch vm.Type {
 	case "Ed25519VerificationKey2018", "Ed25519VerificationKey2020":
@@ -290,40 +312,45 @@ func verifySignatureFromVM(vm *VerificationMethod, message []byte, signature []b
 	}
 }
 
-// verifyEd25519Signature verifies an Ed25519 signature
+// verifyEd25519Signature verifies an Ed25519 signature.
 func verifyEd25519Signature(vm *VerificationMethod, message []byte, signature []byte) error {
-	var pubKeyBytes []byte
-	var err error
+	var (
+		pubKeyBytes []byte
+		err         error
+	)
 
 	// Extract public key from different formats
-	if vm.PublicKeyBase58 != "" {
+
+	switch {
+	case vm.PublicKeyBase58 != "":
 		// Decode base58 (most common for Ed25519)
 		pubKeyBytes, err = base58.Decode(vm.PublicKeyBase58)
 		if err != nil {
 			return fmt.Errorf("failed to decode publicKeyBase58: %w", err)
 		}
-	} else if vm.PublicKeyMultibase != "" {
+	case vm.PublicKeyMultibase != "":
 		// Decode multibase (starts with 'z' for base58btc)
 		pubKeyBytes, err = decodeMultibase(vm.PublicKeyMultibase)
 		if err != nil {
 			return fmt.Errorf("failed to decode publicKeyMultibase: %w", err)
 		}
-	} else if vm.PublicKeyJwk != nil {
+	case vm.PublicKeyJwk != nil:
 		// Extract from JWK
 		pubKeyBytes, err = extractEd25519FromJWK(vm.PublicKeyJwk)
 		if err != nil {
 			return fmt.Errorf("failed to extract key from JWK: %w", err)
 		}
-	} else {
+	default:
 		return fmt.Errorf("no public key found in verification method")
 	}
 
 	// Verify using local Ed25519 verification function
 	pubKey := ed25519.PublicKey(pubKeyBytes)
+
 	return VerifyED25519Signature(pubKey, message, signature)
 }
 
-// verifyJWKSignature verifies a signature from a JWK verification method
+// verifyJWKSignature verifies a signature from a JWK verification method.
 func verifyJWKSignature(vm *VerificationMethod, message []byte, signature []byte) error {
 	if vm.PublicKeyJwk == nil {
 		return fmt.Errorf("publicKeyJwk not found")
@@ -342,7 +369,9 @@ func verifyJWKSignature(vm *VerificationMethod, message []byte, signature []byte
 		if err != nil {
 			return err
 		}
+
 		pubKey := ed25519.PublicKey(pubKeyBytes)
+
 		return VerifyED25519Signature(pubKey, message, signature)
 
 	case "RSA":
@@ -351,6 +380,7 @@ func verifyJWKSignature(vm *VerificationMethod, message []byte, signature []byte
 		if err != nil {
 			return err
 		}
+
 		return VerifyRSASignature(*pubKey, message, signature)
 
 	default:
@@ -372,16 +402,20 @@ func decodeMultibase(s string) ([]byte, error) {
 
 	switch prefix {
 	case 'z': // base58btc
-		return base58.Decode(encoded)
+		decoded, err := base58.Decode(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode base58: %w", err)
+		}
+
+		return decoded, nil
 	default:
 		return nil, fmt.Errorf("unsupported multibase encoding: %c", prefix)
 	}
 }
 
-func extractEd25519FromJWK(jwk map[string]interface{}) ([]byte, error) {
+func extractEd25519FromJWK(jwk map[string]any) ([]byte, error) {
 	// Ed25519 JWK format:
 	// {"kty": "OKP", "crv": "Ed25519", "x": "<base64url>"}
-
 	crv, ok := jwk["crv"].(string)
 	if !ok || crv != "Ed25519" {
 		return nil, fmt.Errorf("invalid or missing crv field for Ed25519")
@@ -393,13 +427,17 @@ func extractEd25519FromJWK(jwk map[string]interface{}) ([]byte, error) {
 	}
 
 	// Decode base64url
-	return base64.RawURLEncoding.DecodeString(xStr)
+	decoded, err := base64.RawURLEncoding.DecodeString(xStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode x coordinate: %w", err)
+	}
+
+	return decoded, nil
 }
 
-func extractRSAFromJWK(jwk map[string]interface{}) (*rsa.PublicKey, error) {
+func extractRSAFromJWK(jwk map[string]any) (*rsa.PublicKey, error) {
 	// RSA JWK format:
 	// {"kty": "RSA", "n": "<base64url>", "e": "<base64url>"}
-
 	nStr, ok := jwk["n"].(string)
 	if !ok {
 		return nil, fmt.Errorf("n (modulus) not found in RSA JWK")
@@ -426,8 +464,8 @@ func extractRSAFromJWK(jwk map[string]interface{}) (*rsa.PublicKey, error) {
 
 	// Exponent is typically small (commonly 65537)
 	var e int
-	for i := 0; i < len(eBytes); i++ {
-		e = e*256 + int(eBytes[i])
+	for i := range eBytes {
+		e = e*byteConversionBase + int(eBytes[i])
 	}
 
 	return &rsa.PublicKey{
@@ -436,17 +474,18 @@ func extractRSAFromJWK(jwk map[string]interface{}) (*rsa.PublicKey, error) {
 	}, nil
 }
 
-// Helper function for absolute value
+// Helper function for absolute value.
 func abs(x int64) int64 {
 	if x < 0 {
 		return -x
 	}
+
 	return x
 }
 
 type DIDInterceptorFn func(ctx context.Context, method string) (context.Context, error)
 
-// didUnaryInterceptorFor wraps the DID interceptor function for unary RPCs
+// didUnaryInterceptorFor wraps the DID interceptor function for unary RPCs.
 func didUnaryInterceptorFor(fn DIDInterceptorFn) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		// Skip authentication for health check endpoints
@@ -463,7 +502,7 @@ func didUnaryInterceptorFor(fn DIDInterceptorFn) grpc.UnaryServerInterceptor {
 	}
 }
 
-// didStreamInterceptorFor wraps the DID interceptor function for stream RPCs
+// didStreamInterceptorFor wraps the DID interceptor function for stream RPCs.
 func didStreamInterceptorFor(fn DIDInterceptorFn) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		// Skip authentication for health check endpoints
@@ -486,7 +525,7 @@ func didStreamInterceptorFor(fn DIDInterceptorFn) grpc.StreamServerInterceptor {
 	}
 }
 
-// Public interceptor functions
+// Public interceptor functions.
 func DIDUnaryInterceptor(resolver DIDResolver) grpc.UnaryServerInterceptor {
 	return didUnaryInterceptorFor(NewDIDInterceptor(resolver))
 }
@@ -495,14 +534,16 @@ func DIDStreamInterceptor(resolver DIDResolver) grpc.StreamServerInterceptor {
 	return didStreamInterceptorFor(NewDIDInterceptor(resolver))
 }
 
-// Helper to extract DID from context (for authorization)
+// Helper to extract DID from context (for authorization).
 func DIDFromContext(ctx context.Context) (string, bool) {
 	did, ok := ctx.Value(DIDContextKey).(string)
+
 	return did, ok
 }
 
-// Helper to extract verification method ID from context
+// Helper to extract verification method ID from context.
 func VerificationMethodFromContext(ctx context.Context) (string, bool) {
 	vmID, ok := ctx.Value(VerificationMethodID).(string)
+
 	return vmID, ok
 }

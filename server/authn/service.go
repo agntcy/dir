@@ -77,6 +77,7 @@ func New(ctx context.Context, cfg config.Config) (*Service, error) {
 		}
 
 		service.resolver = resolver
+
 		logger.Info("DID Resolver service intitialized")
 	default:
 		_ = client.Close()
