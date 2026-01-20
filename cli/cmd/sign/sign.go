@@ -168,7 +168,5 @@ func Sign(ctx context.Context, c *client.Client, recordCID string) error {
 		}
 	}
 
-	// Note: Name verification is handled automatically by the backend scheduler
-	// after the public key is attached to the record.
 	return nil
 }
