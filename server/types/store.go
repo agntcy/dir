@@ -37,8 +37,12 @@ type StoreAPI interface {
 // Implementations: oci.Store
 // Used by: store.Controller, sync.Monitor, signing.Service.
 type ReferrerStoreAPI interface {
-	// PushReferrer pushes a referrer to content store
-	PushReferrer(context.Context, string, *corev1.RecordReferrer) error
+	// PushReferrer pushes a referrer to content store.
+	// Returns the digest of the stored referrer manifest.
+	PushReferrer(context.Context, string, *corev1.RecordReferrer) (string, error)
+
+	// GetReferrer retrieves a referrer by its digest.
+	GetReferrer(ctx context.Context, digest string) (*corev1.RecordReferrer, error)
 
 	// WalkReferrers walks referrers individually for a given record CID and optional type filter
 	WalkReferrers(ctx context.Context, recordCID string, referrerType string, walkFn func(*corev1.RecordReferrer) error) error

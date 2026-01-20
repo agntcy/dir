@@ -37,6 +37,9 @@ type SearchDatabaseAPI interface {
 
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
+
+	// SetPublicKeyCID sets the public key CID for a record (called when signing).
+	SetPublicKeyCID(recordCID, publicKeyCID string) error
 }
 
 type SyncDatabaseAPI interface {
@@ -95,7 +98,14 @@ type NameVerificationDatabaseAPI interface {
 	// GetVerificationByCID retrieves the verification for a record.
 	GetVerificationByCID(cid string) (NameVerificationObject, error)
 
-	// GetExpiredVerifications retrieves verifications that need re-verification based on TTL.
-	// A verification is expired if: updated_at + ttl < now
-	GetExpiredVerifications(ttl time.Duration) ([]NameVerificationObject, error)
+	// GetRecordsNeedingVerification retrieves signed records with verifiable names
+	// that either don't have a verification or have an expired verification.
+	GetRecordsNeedingVerification(ttl time.Duration) ([]VerifiableRecord, error)
+}
+
+// VerifiableRecord represents a record that needs name verification.
+type VerifiableRecord struct {
+	RecordCID       string
+	PublicKeyDigest string // Digest of the public key referrer for direct retrieval
+	Name            string
 }

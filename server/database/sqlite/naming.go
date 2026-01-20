@@ -122,22 +122,41 @@ func (d *DB) GetVerificationByCID(cid string) (types.NameVerificationObject, err
 	return &nv, nil
 }
 
-// GetExpiredVerifications retrieves verifications that need re-verification based on TTL.
-// A verification is expired if updated_at + ttl < now.
-func (d *DB) GetExpiredVerifications(ttl time.Duration) ([]types.NameVerificationObject, error) {
-	var verifications []NameVerification
-
+// GetRecordsNeedingVerification retrieves signed records with verifiable names
+// that either don't have a verification or have an expired verification.
+func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.VerifiableRecord, error) {
 	expiredBefore := time.Now().Add(-ttl)
 
-	if err := d.gormDB.Where("updated_at < ?", expiredBefore).
-		Find(&verifications).Error; err != nil {
-		return nil, fmt.Errorf("failed to get expired verifications: %w", err)
+	// Query records that:
+	// 1. Have a public key (signed)
+	// 2. Have a verifiable name prefix (http://, https://, dns://)
+	// 3. Either don't have a verification OR have an expired verification
+	var results []struct {
+		RecordCID    string `gorm:"column:record_cid"`
+		PublicKeyCID string `gorm:"column:public_key_cid"`
+		Name         string `gorm:"column:name"`
 	}
 
-	result := make([]types.NameVerificationObject, len(verifications))
-	for i := range verifications {
-		result[i] = &verifications[i]
+	err := d.gormDB.Table("records").
+		Select("records.record_cid, records.public_key_cid, records.name").
+		Joins("LEFT JOIN name_verifications ON records.record_cid = name_verifications.record_cid").
+		Where("records.public_key_cid IS NOT NULL").
+		Where("(records.name LIKE ? OR records.name LIKE ? OR records.name LIKE ?)",
+			"http://%", "https://%", "dns://%").
+		Where("(name_verifications.record_cid IS NULL OR name_verifications.updated_at < ?)", expiredBefore).
+		Find(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to get records needing verification: %w", err)
 	}
 
-	return result, nil
+	records := make([]types.VerifiableRecord, len(results))
+	for i := range results {
+		records[i] = types.VerifiableRecord{
+			RecordCID:       results[i].RecordCID,
+			PublicKeyDigest: results[i].PublicKeyCID,
+			Name:            results[i].Name,
+		}
+	}
+
+	return records, nil
 }

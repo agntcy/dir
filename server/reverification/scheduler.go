@@ -56,32 +56,34 @@ func (s *Scheduler) Run(ctx context.Context, stopCh <-chan struct{}) {
 	}
 }
 
-// processExpiredVerifications finds expired verifications and dispatches them to workers.
+// processExpiredVerifications finds records needing verification and dispatches them to workers.
 func (s *Scheduler) processExpiredVerifications(ctx context.Context) {
-	logger.Debug("Checking for expired verifications", "ttl", s.ttl)
+	logger.Debug("Checking for records needing verification", "ttl", s.ttl)
 
-	verifications, err := s.db.GetExpiredVerifications(s.ttl)
+	records, err := s.db.GetRecordsNeedingVerification(s.ttl)
 	if err != nil {
-		logger.Error("Failed to get expired verifications", "error", err)
+		logger.Error("Failed to get records needing verification", "error", err)
 
 		return
 	}
 
-	if len(verifications) == 0 {
-		logger.Debug("No expired verifications found")
+	if len(records) == 0 {
+		logger.Debug("No records need verification")
 
 		return
 	}
 
-	logger.Info("Found expired verifications", "count", len(verifications))
+	logger.Info("Found records needing verification", "count", len(records))
 
-	for _, v := range verifications {
+	for _, r := range records {
 		workItem := revtypes.WorkItem{
-			RecordCID: v.GetRecordCID(),
+			RecordCID:       r.RecordCID,
+			Name:            r.Name,
+			PublicKeyDigest: r.PublicKeyDigest,
 		}
 
 		if err := s.dispatchWorkItem(ctx, workItem); err != nil {
-			logger.Error("Failed to dispatch work item", "cid", v.GetRecordCID(), "error", err)
+			logger.Error("Failed to dispatch work item", "cid", r.RecordCID, "error", err)
 		}
 	}
 }

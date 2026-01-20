@@ -38,34 +38,36 @@ type ReferrersLister interface {
 // PushReferrer pushes a generic RecordReferrer as an OCI artifact that references a record as its subject.
 // For signature referrers, it uses cosign to attach the signature.
 // For public key referrers on Zot registries, it also uploads to Zot's cosign extension.
-func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
+// Returns the digest of the stored referrer manifest.
+func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) (string, error) {
 	referrersLogger.Debug("Pushing referrer to OCI store", "recordCID", recordCID, "type", referrer.GetType())
 
 	if referrer == nil {
-		return status.Error(codes.InvalidArgument, "referrer is required") //nolint:wrapcheck
+		return "", status.Error(codes.InvalidArgument, "referrer is required") //nolint:wrapcheck
 	}
 
 	if recordCID == "" {
-		return status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
+		return "", status.Error(codes.InvalidArgument, "record CID is required") //nolint:wrapcheck
 	}
 
 	if referrer.GetType() == "" {
-		return status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
+		return "", status.Error(codes.InvalidArgument, "referrer type is required") //nolint:wrapcheck
 	}
 
 	// Route based on referrer type
 	switch referrer.GetType() {
 	case corev1.SignatureReferrerType:
-		// Use cosign to attach signatures
-		return s.pushSignatureWithCosign(ctx, recordCID, referrer)
+		// Use cosign to attach signatures (doesn't return useful digest)
+		return "", s.pushSignatureWithCosign(ctx, recordCID, referrer)
 
 	case corev1.PublicKeyReferrerType:
 		// Store as OCI referrer and upload to Zot if applicable
-		if err := s.pushReferrer(ctx, recordCID, referrer); err != nil {
-			return err
+		digest, err := s.pushReferrer(ctx, recordCID, referrer)
+		if err != nil {
+			return "", err
 		}
 		// For Zot registries, also upload to the cosign extension
-		return s.uploadPublicKeyToZot(ctx, referrer)
+		return digest, s.uploadPublicKeyToZot(ctx, referrer)
 
 	default:
 		// Store as generic OCI referrer
@@ -165,26 +167,27 @@ func (s *store) constructImageReference(recordCID string) string {
 }
 
 // pushReferrer pushes a referrer as a generic OCI artifact.
-func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) error {
+// Returns the digest of the stored manifest.
+func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *corev1.RecordReferrer) (string, error) {
 	// Map API type to internal OCI artifact type
 	ociArtifactType := apiToOCIType(referrer.GetType())
 
 	// Marshal the referrer to JSON
 	referrerBytes, err := protojson.Marshal(referrer)
 	if err != nil {
-		return status.Errorf(codes.Internal, "failed to marshal referrer: %v", err)
+		return "", status.Errorf(codes.Internal, "failed to marshal referrer: %v", err)
 	}
 
 	// Push the referrer blob using internal OCI artifact type
 	blobDesc, err := oras.PushBytes(ctx, s.repo, ociArtifactType, referrerBytes)
 	if err != nil {
-		return fmt.Errorf("failed to push referrer blob: %w", err)
+		return "", fmt.Errorf("failed to push referrer blob: %w", err)
 	}
 
 	// Resolve the record manifest to get its descriptor for the subject field
 	recordManifestDesc, err := s.repo.Resolve(ctx, recordCID)
 	if err != nil {
-		return fmt.Errorf("failed to resolve record manifest for subject: %w", err)
+		return "", fmt.Errorf("failed to resolve record manifest for subject: %w", err)
 	}
 
 	// Create annotations for the referrer manifest
@@ -210,12 +213,36 @@ func (s *store) pushReferrer(ctx context.Context, recordCID string, referrer *co
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("failed to pack referrer manifest: %w", err)
+		return "", fmt.Errorf("failed to pack referrer manifest: %w", err)
 	}
 
-	referrersLogger.Debug("Referrer pushed successfully", "digest", manifestDesc.Digest.String(), "type", referrer.GetType())
+	digest := manifestDesc.Digest.String()
+	referrersLogger.Debug("Referrer pushed successfully", "digest", digest, "type", referrer.GetType())
 
-	return nil
+	return digest, nil
+}
+
+// GetReferrer retrieves a referrer by its digest.
+func (s *store) GetReferrer(ctx context.Context, digest string) (*corev1.RecordReferrer, error) {
+	referrersLogger.Debug("Getting referrer by digest", "digest", digest)
+
+	if digest == "" {
+		return nil, status.Error(codes.InvalidArgument, "digest is required") //nolint:wrapcheck
+	}
+
+	// Resolve the manifest descriptor by digest
+	manifestDesc, err := s.repo.Resolve(ctx, digest)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "failed to resolve referrer manifest: %v", err)
+	}
+
+	// Extract the referrer from the manifest
+	referrer, err := s.extractReferrerFromManifest(ctx, manifestDesc, digest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract referrer: %w", err)
+	}
+
+	return referrer, nil
 }
 
 // WalkReferrers walks through referrers for a given record CID, calling walkFn for each referrer.

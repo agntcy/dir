@@ -257,13 +257,24 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
+	digest, err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to push referrer for record %s: %v", recordCID, err)
 
 		return &storev1.PushReferrerResponse{
 			Success:      false,
 			ErrorMessage: &errMsg,
+		}
+	}
+
+	// If this is a public key referrer, store the digest for direct retrieval
+	// This enables efficient name verification without walking referrers
+	if request.GetReferrer().GetType() == corev1.PublicKeyReferrerType && digest != "" {
+		if err := s.db.SetPublicKeyCID(recordCID, digest); err != nil {
+			// Log error but don't fail the push - the referrer was already stored
+			storeLogger.Warn("Failed to update public_key_cid for record", "error", err, "cid", recordCID)
+		} else {
+			storeLogger.Debug("Record marked as signed", "cid", recordCID, "public_key_digest", digest)
 		}
 	}
 
