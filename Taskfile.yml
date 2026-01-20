@@ -327,7 +327,7 @@ tasks:
       - task: deploy:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
-          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
       - task: deploy:kubernetes:local:port-forward
 
   sdk:test-env:delete:
@@ -483,9 +483,9 @@ tasks:
     env:
       # Local development settings:
       # - Faster publication scheduling for quicker feedback
-      # - OASF validation disabled (no external schema dependency)
       DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
-      DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
+      # - OASF validation uses OASF API (schema URL is required)
+      DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
     cmds:
       - defer: { task: server:store:stop }
       - task: server:store:start
@@ -680,8 +680,6 @@ tasks:
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
-          {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}--set apiserver.config.oasf_api_validation.disable="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE }}"{{ end }} \
-          {{ if ne .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE nil }}--set apiserver.config.oasf_api_validation.strict_mode="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE }}"{{ end }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -895,7 +893,7 @@ tasks:
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
-          --set apiserver.config.oasf_api_validation.disable="true" \
+          --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -952,7 +950,7 @@ tasks:
             --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
             --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
             {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
-            --set apiserver.config.oasf_api_validation.disable="true" \
+            --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \
@@ -1103,6 +1101,94 @@ tasks:
       - task: test:e2e:local
       - task: test:e2e:network
 
+  test:e2e:local:cli:
+    desc: Run only local CLI tests (with dedicated infrastructure)
+    aliases: [e2e:local:cli]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "false" }}'
+      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
+      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    env:
+      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
+    cmds:
+      - defer: { task: deploy:kubernetes:local:cleanup }
+      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer:
+          task: test:e2e:coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+            NAMESPACE: "dir-server"
+            COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
+      - task: deploy:kubernetes:local
+        vars:
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
+          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
+          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: deploy:kubernetes:local:port-forward
+      - |
+        # Run E2E tests with coverage if enabled
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/local -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-cli.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.COVERAGE_DIR}}/local-cli.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-cli.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-cli.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-cli.out
+            rm {{.COVERAGE_DIR}}/local-cli.out.tmp
+          fi
+        else
+          go test -C ./e2e/local . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        fi
+
+  test:e2e:client:
+    desc: Run only client library tests (with dedicated infrastructure)
+    aliases: [e2e:client]
+    vars:
+      PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
+      RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
+      RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
+      E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
+      COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
+    env:
+      DIRECTORY_E2E_DEPLOYMENT_MODE: "local"
+    cmds:
+      - defer: { task: deploy:kubernetes:local:cleanup }
+      - defer: { task: deploy:kubernetes:local:port-forward:cleanup }
+      - defer:
+          task: test:e2e:coverage:extract-pods
+          vars:
+            E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+            NAMESPACE: "dir-server"
+            COVERAGE_DIR: "{{ .COVERAGE_DIR }}"
+      - task: deploy:kubernetes:local
+        vars:
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
+          DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
+          DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
+          E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      - task: deploy:kubernetes:local:port-forward
+      - |
+        # Run E2E tests with coverage if enabled
+        if [ "{{.E2E_COVERAGE_ENABLED}}" = "true" ]; then
+          mkdir -p {{.COVERAGE_DIR}}
+          go test -C ./e2e/client -covermode=atomic -coverpkg={{ .COVERAGE_PKGS }} -coverprofile={{.COVERAGE_DIR}}/local-client.out.tmp . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+          # Filter out generated files (matching codecov.yml ignores)
+          if [ -f {{.COVERAGE_DIR}}/local-client.out.tmp ]; then
+            grep -v "\.pb\.go" {{.COVERAGE_DIR}}/local-client.out.tmp | grep -v "mock_.*\.go" > {{.COVERAGE_DIR}}/local-client.out || echo "mode: atomic" > {{.COVERAGE_DIR}}/local-client.out
+            rm {{.COVERAGE_DIR}}/local-client.out.tmp
+          fi
+        else
+          go test -C ./e2e/client . -v -failfast -test.v -test.paniconexit0 -ginkgo.timeout 2h -timeout 2h -ginkgo.v
+        fi
+
   test:e2e:local:
     desc: Run end-to-end tests for local deployment (Client + CLI + Rate limiting tests)
     aliases: [e2e:local]
@@ -1130,7 +1216,7 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
-          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
       - task: deploy:kubernetes:local:port-forward
       # Run client library tests first (faster feedback)
@@ -1328,9 +1414,8 @@ tasks:
                 p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
                 p,*,/agntcy.dir.store.v1.StoreService/Lookup
                 p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
-          extraEnv:
-            - name: DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE
-              value: "true"
+            oasf_api_validation:
+              schema_url: "https://schema.oasf.outshift.com"
           spire:
             enabled: true
             trustDomain: {{ .DIR_TRUST_DOMAIN }}
