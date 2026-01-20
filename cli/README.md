@@ -362,36 +362,27 @@ Validate OASF record JSON from a file or stdin.
 This command validates OASF record JSON against the OASF schema. The JSON can be
 provided as a file path or piped from stdin (e.g., from `dirctl pull`).
 
-You must specify either `--url` for API-based validation or `--disable-api` for
-embedded schema validation.
+A schema URL must be provided via `--url` for API-based validation.
 
 **Examples:**
 ```bash
-# Validate a file using embedded schemas (no API calls)
-dirctl validate record.json --disable-api
-
 # Validate a file with API-based validation
 dirctl validate record.json --url https://schema.oasf.outshift.com
 
-# Validate a file with non-strict mode (more permissive, only works with --url)
-dirctl validate record.json --url https://schema.oasf.outshift.com --disable-strict
-
 # Validate JSON piped from stdin
-cat record.json | dirctl validate --disable-api
+cat record.json | dirctl validate --url https://schema.oasf.outshift.com
 
 # Validate a record pulled from directory
-dirctl pull <cid> --output json | dirctl validate --disable-api
+dirctl pull <cid> --output json | dirctl validate --url https://schema.oasf.outshift.com
 
 # Validate all records in a directory (using shell scripting)
 for cid in $(dirctl search --output jsonl | jq -r '.record_cid'); do
-  dirctl pull "$cid" | dirctl validate --disable-api
+  dirctl pull "$cid" | dirctl validate --url https://schema.oasf.outshift.com
 done
 ```
 
 **Flags:**
-- `--url <url>` - OASF schema URL for API-based validation (required if --disable-api is not specified)
-- `--disable-api` - Disable API-based validation (use embedded schemas instead, required if --url is not specified)
-- `--disable-strict` - Disable strict validation mode (more permissive validation, only works with --url)
+- `--url <url>` - OASF schema URL for API-based validation (required)
 
 ### 📥 **Import Operations**
 
