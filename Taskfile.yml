@@ -327,6 +327,7 @@ tasks:
       - task: deploy:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
       - task: deploy:kubernetes:local:port-forward
 
   sdk:test-env:delete:
@@ -894,6 +895,7 @@ tasks:
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
+          --set apiserver.config.oasf_api_validation.disable="true" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -950,6 +952,7 @@ tasks:
             --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
             --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
             {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
+            --set apiserver.config.oasf_api_validation.disable="true" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \
@@ -1127,6 +1130,7 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
       - task: deploy:kubernetes:local:port-forward
       - |
@@ -1170,6 +1174,7 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
       - task: deploy:kubernetes:local:port-forward
       - |
@@ -1213,6 +1218,7 @@ tasks:
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
+          DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE: "true"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
       - task: deploy:kubernetes:local:port-forward
       # Run client library tests first (faster feedback)
