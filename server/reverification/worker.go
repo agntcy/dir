@@ -95,13 +95,16 @@ func (w *Worker) reVerify(ctx context.Context, cid string) {
 	}
 
 	// Extract the name from the record
-	recordName, err := adapters.ExtractRecordName(record)
+	adapter := adapters.NewRecordAdapter(record)
+
+	recordData, err := adapter.GetRecordData()
 	if err != nil {
-		w.storeFailedVerification(cid, "", fmt.Sprintf("failed to extract record name: %v", err))
+		w.storeFailedVerification(cid, "", fmt.Sprintf("failed to get record data: %v", err))
 
 		return
 	}
 
+	recordName := recordData.GetName()
 	if recordName == "" {
 		w.storeFailedVerification(cid, "", "record has no name field")
 

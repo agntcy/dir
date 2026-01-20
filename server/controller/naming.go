@@ -98,9 +98,11 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 	}
 
 	// Extract the name from the record using adapter
-	recordName, err := adapters.ExtractRecordName(record)
+	adapter := adapters.NewRecordAdapter(record)
+
+	recordData, err := adapter.GetRecordData()
 	if err != nil {
-		errMsg := fmt.Sprintf("failed to extract record name: %v", err)
+		errMsg := fmt.Sprintf("failed to get record data: %v", err)
 		n.storeFailedVerification(req.GetCid(), "", errMsg)
 
 		return &namingv1.VerifyResponse{
@@ -109,6 +111,7 @@ func (n *namingCtrl) Verify(ctx context.Context, req *namingv1.VerifyRequest) (*
 		}, nil
 	}
 
+	recordName := recordData.GetName()
 	if recordName == "" {
 		errMsg := "record has no name field"
 		n.storeFailedVerification(req.GetCid(), "", errMsg)
@@ -274,12 +277,14 @@ func (n *namingCtrl) getDomainFromRecord(ctx context.Context, cid string) string
 		return ""
 	}
 
-	recordName, err := adapters.ExtractRecordName(record)
+	adapter := adapters.NewRecordAdapter(record)
+
+	recordData, err := adapter.GetRecordData()
 	if err != nil {
 		return ""
 	}
 
-	parsed := naming.ParseName(recordName)
+	parsed := naming.ParseName(recordData.GetName())
 	if parsed == nil {
 		return ""
 	}

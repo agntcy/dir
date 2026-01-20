@@ -15,8 +15,8 @@ const (
 	// DefaultWorkerTimeout is the default timeout for each verification.
 	DefaultWorkerTimeout = 30 * time.Second
 
-	// DefaultTTL is the default time-to-live for verifications.
-	DefaultTTL = 24 * time.Hour
+	// DefaultTTL is the default time-to-live for verifications (7 days).
+	DefaultTTL = 7 * 24 * time.Hour
 )
 
 // Config holds configuration for the re-verification service.
