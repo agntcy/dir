@@ -35,8 +35,9 @@ spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if eq .Values.zot.mountConfig false }}
+      {{- if or (and .Values.zot.enabled (eq .Values.zot.mountConfig false)) .Values.config.sync.regsync.enabled }}
       initContainers:
+      {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
         - name: init-zot-config
           image: busybox:1.36
           command:
@@ -62,6 +63,7 @@ spec:
           volumeMounts:
             - name: zot-config-storage
               mountPath: /etc/zot
+      {{- end }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -224,7 +226,7 @@ spec:
             - name: tmp-data
               mountPath: /tmp
             {{- end }}
-            {{- if eq .Values.zot.mountConfig false }}
+            {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
             - name: zot-config-storage
               mountPath: /etc/zot
             {{- end }}
@@ -288,7 +290,7 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "chart.fullname" . }}-database-pvc
         {{- end }}
-        {{- if eq .Values.zot.mountConfig false }}
+        {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
         - name: zot-config-storage
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-zot-config
