@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-//nolint:wrapcheck,dupl
+//nolint:wrapcheck
 package naming
 
 import (
@@ -15,40 +15,35 @@ import (
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify <cid>",
-	Short: "Verify name ownership for a signed record",
-	Long: `Verify name ownership for a signed record.
+	Short: "Check if a record has verified name ownership",
+	Long: `Check if a record has verified name ownership.
 
-This command performs name ownership verification for a record that has
-already been signed. It proves that the signing key is authorized by the
-domain claimed in the record's name field.
+This command checks whether a record has a stored name verification.
+It queries the server for an existing verification result that was created
+during the signing process.
+
+Name verification proves that the signing key is authorized by the domain
+claimed in the record's name field. Verification is performed automatically
+when a record is signed using 'dirctl sign'.
 
 The record's name must include a protocol prefix to specify the verification method:
 - dns://domain/path - verify using DNS TXT records
 - https://domain/path - verify using JWKS well-known file (RFC 7517)
 - http://domain/path - verify using JWKS via HTTP (testing only)
 
-Records without a protocol prefix will not be verified.
-
-The verification result is stored as a referrer to the record, so subsequent
-calls to 'dirctl naming check' can retrieve the stored verification without
-re-verifying.
-
-Prerequisites:
-- Record must be pushed to the store
-- Record must be signed (public key referrer must exist)
-- Record's name must include a protocol prefix (dns://, https://, or http://)
-- Record's name must contain a valid domain (with at least one dot)
-
 Verification methods:
 1. DNS TXT record at _dir_nsys.<domain> with format "schema=v1; v=pubkey; k=<type>; p=<key>"
 2. JWKS well-known file at <scheme>://<domain>/.well-known/jwks.json
 
+The server automatically re-verifies records based on TTL to ensure
+domain ownership remains valid.
+
 Usage examples:
 
-1. Verify name ownership:
+1. Check name verification status:
    dirctl naming verify <cid>
 
-2. Verify with JSON output:
+2. Check with JSON output:
    dirctl naming verify <cid> --output json
 `,
 	Args: cobra.ExactArgs(1),
@@ -64,29 +59,29 @@ func runVerifyCommand(cmd *cobra.Command, cid string) error {
 		return errors.New("failed to get client from context")
 	}
 
-	// Call Verify
-	resp, err := c.VerifyName(cmd.Context(), cid)
+	// Call GetVerificationInfo to check existing verification
+	resp, err := c.GetVerificationInfo(cmd.Context(), cid)
 	if err != nil {
-		return fmt.Errorf("failed to verify name: %w", err)
+		return fmt.Errorf("failed to get verification info: %w", err)
 	}
 
 	if !resp.GetVerified() {
 		errMsg := resp.GetErrorMessage()
 		if errMsg == "" {
-			errMsg = "verification failed"
+			errMsg = "no verification found"
 		}
 
-		// Output the failure
+		// Output the result
 		result := map[string]any{
 			"cid":      cid,
 			"verified": false,
-			"error":    errMsg,
+			"message":  errMsg,
 		}
 
-		return presenter.PrintMessage(cmd, "Name Verification", "Name verification failed", result)
+		return presenter.PrintMessage(cmd, "Name Verification", "No name verification found", result)
 	}
 
-	// Output the success
+	// Output the verification details
 	v := resp.GetVerification()
 	dv := v.GetDomain()
 	result := map[string]any{
@@ -98,5 +93,5 @@ func runVerifyCommand(cmd *cobra.Command, cid string) error {
 		"verified_at": dv.GetVerifiedAt().AsTime().Format("2006-01-02T15:04:05Z07:00"),
 	}
 
-	return presenter.PrintMessage(cmd, "Name Verification", "Name ownership verified successfully", result)
+	return presenter.PrintMessage(cmd, "Name Verification", "Record has verified name ownership", result)
 }

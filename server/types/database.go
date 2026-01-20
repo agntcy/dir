@@ -5,6 +5,7 @@ package types
 
 import (
 	"context"
+	"time"
 
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -20,6 +21,9 @@ type DatabaseAPI interface {
 	// PublicationDatabaseAPI handles management of the publication database.
 	PublicationDatabaseAPI
 
+	// NameVerificationDatabaseAPI handles management of name verifications.
+	NameVerificationDatabaseAPI
+
 	// IsReady checks if the database connection is ready to serve traffic.
 	IsReady(context.Context) bool
 }
@@ -33,6 +37,9 @@ type SearchDatabaseAPI interface {
 
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
+
+	// SetRecordSigned marks a record as signed (called when a public key is attached).
+	SetRecordSigned(recordCID string) error
 }
 
 type SyncDatabaseAPI interface {
@@ -79,4 +86,25 @@ type PublicationDatabaseAPI interface {
 
 	// DeletePublication deletes a publication object by its ID.
 	DeletePublication(publicationID string) error
+}
+
+type NameVerificationDatabaseAPI interface {
+	// CreateNameVerification creates a new name verification for a record.
+	CreateNameVerification(verification NameVerificationObject) error
+
+	// UpdateNameVerification updates an existing name verification for a record.
+	UpdateNameVerification(verification NameVerificationObject) error
+
+	// GetVerificationByCID retrieves the verification for a record.
+	GetVerificationByCID(cid string) (NameVerificationObject, error)
+
+	// GetRecordsNeedingVerification retrieves signed records with verifiable names
+	// that either don't have a verification or have an expired verification.
+	GetRecordsNeedingVerification(ttl time.Duration) ([]VerifiableRecord, error)
+}
+
+// VerifiableRecord represents a record that needs name verification.
+type VerifiableRecord struct {
+	RecordCID string
+	Name      string
 }

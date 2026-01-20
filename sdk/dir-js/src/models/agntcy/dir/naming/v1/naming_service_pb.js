@@ -12,38 +12,26 @@ import { file_agntcy_dir_naming_v1_name_verification } from "./name_verification
  * Describes the file agntcy/dir/naming/v1/naming_service.proto.
  */
 export const file_agntcy_dir_naming_v1_naming_service = /*@__PURE__*/
-  fileDesc("CilhZ250Y3kvZGlyL25hbWluZy92MS9uYW1pbmdfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5uYW1pbmcudjEiHAoNVmVyaWZ5UmVxdWVzdBILCgNjaWQYASABKAkiigEKDlZlcmlmeVJlc3BvbnNlEhAKCHZlcmlmaWVkGAEgASgIEjgKDHZlcmlmaWNhdGlvbhgCIAEoCzIiLmFnbnRjeS5kaXIubmFtaW5nLnYxLlZlcmlmaWNhdGlvbhIaCg1lcnJvcl9tZXNzYWdlGAMgASgJSACIAQFCEAoOX2Vycm9yX21lc3NhZ2UiKQoaR2V0VmVyaWZpY2F0aW9uSW5mb1JlcXVlc3QSCwoDY2lkGAEgASgJIpcBChtHZXRWZXJpZmljYXRpb25JbmZvUmVzcG9uc2USEAoIdmVyaWZpZWQYASABKAgSOAoMdmVyaWZpY2F0aW9uGAIgASgLMiIuYWdudGN5LmRpci5uYW1pbmcudjEuVmVyaWZpY2F0aW9uEhoKDWVycm9yX21lc3NhZ2UYAyABKAlIAIgBAUIQCg5fZXJyb3JfbWVzc2FnZTLgAQoNTmFtaW5nU2VydmljZRJTCgZWZXJpZnkSIy5hZ250Y3kuZGlyLm5hbWluZy52MS5WZXJpZnlSZXF1ZXN0GiQuYWdudGN5LmRpci5uYW1pbmcudjEuVmVyaWZ5UmVzcG9uc2USegoTR2V0VmVyaWZpY2F0aW9uSW5mbxIwLmFnbnRjeS5kaXIubmFtaW5nLnYxLkdldFZlcmlmaWNhdGlvbkluZm9SZXF1ZXN0GjEuYWdudGN5LmRpci5uYW1pbmcudjEuR2V0VmVyaWZpY2F0aW9uSW5mb1Jlc3BvbnNlQsYBChhjb20uYWdudGN5LmRpci5uYW1pbmcudjFCEk5hbWluZ1NlcnZpY2VQcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL25hbWluZy92MaICA0FETqoCFEFnbnRjeS5EaXIuTmFtaW5nLlYxygIUQWdudGN5XERpclxOYW1pbmdcVjHiAiBBZ250Y3lcRGlyXE5hbWluZ1xWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpOYW1pbmc6OlYxYgZwcm90bzM", [file_agntcy_dir_naming_v1_name_verification]);
-
-/**
- * Describes the message agntcy.dir.naming.v1.VerifyRequest.
- * Use `create(VerifyRequestSchema)` to create a new message.
- */
-export const VerifyRequestSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_naming_v1_naming_service, 0);
-
-/**
- * Describes the message agntcy.dir.naming.v1.VerifyResponse.
- * Use `create(VerifyResponseSchema)` to create a new message.
- */
-export const VerifyResponseSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_naming_v1_naming_service, 1);
+  fileDesc("CilhZ250Y3kvZGlyL25hbWluZy92MS9uYW1pbmdfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5uYW1pbmcudjEiKQoaR2V0VmVyaWZpY2F0aW9uSW5mb1JlcXVlc3QSCwoDY2lkGAEgASgJIpcBChtHZXRWZXJpZmljYXRpb25JbmZvUmVzcG9uc2USEAoIdmVyaWZpZWQYASABKAgSOAoMdmVyaWZpY2F0aW9uGAIgASgLMiIuYWdudGN5LmRpci5uYW1pbmcudjEuVmVyaWZpY2F0aW9uEhoKDWVycm9yX21lc3NhZ2UYAyABKAlIAIgBAUIQCg5fZXJyb3JfbWVzc2FnZTKLAQoNTmFtaW5nU2VydmljZRJ6ChNHZXRWZXJpZmljYXRpb25JbmZvEjAuYWdudGN5LmRpci5uYW1pbmcudjEuR2V0VmVyaWZpY2F0aW9uSW5mb1JlcXVlc3QaMS5hZ250Y3kuZGlyLm5hbWluZy52MS5HZXRWZXJpZmljYXRpb25JbmZvUmVzcG9uc2VCxgEKGGNvbS5hZ250Y3kuZGlyLm5hbWluZy52MUISTmFtaW5nU2VydmljZVByb3RvUAFaI2dpdGh1Yi5jb20vYWdudGN5L2Rpci9hcGkvbmFtaW5nL3YxogIDQUROqgIUQWdudGN5LkRpci5OYW1pbmcuVjHKAhRBZ250Y3lcRGlyXE5hbWluZ1xWMeICIEFnbnRjeVxEaXJcTmFtaW5nXFYxXEdQQk1ldGFkYXRh6gIXQWdudGN5OjpEaXI6Ok5hbWluZzo6VjFiBnByb3RvMw", [file_agntcy_dir_naming_v1_name_verification]);
 
 /**
  * Describes the message agntcy.dir.naming.v1.GetVerificationInfoRequest.
  * Use `create(GetVerificationInfoRequestSchema)` to create a new message.
  */
 export const GetVerificationInfoRequestSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_naming_v1_naming_service, 2);
+  messageDesc(file_agntcy_dir_naming_v1_naming_service, 0);
 
 /**
  * Describes the message agntcy.dir.naming.v1.GetVerificationInfoResponse.
  * Use `create(GetVerificationInfoResponseSchema)` to create a new message.
  */
 export const GetVerificationInfoResponseSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_naming_v1_naming_service, 3);
+  messageDesc(file_agntcy_dir_naming_v1_naming_service, 1);
 
 /**
- * NamingService provides methods to verify and inspect name verification state.
+ * NamingService provides methods to inspect name verification state.
+ * Note: Verification is performed automatically by the backend scheduler
+ * for signed records with verifiable names (http://, https://, dns:// prefixes).
  *
  * @generated from service agntcy.dir.naming.v1.NamingService
  */
