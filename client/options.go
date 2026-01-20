@@ -127,9 +127,12 @@ func (o *options) setupAutoDetectAuth(_ context.Context) error {
 
 	// If token found (either from config or cache), use it
 	if token != "" {
-		// Use insecure transport (Envoy gateway handles TLS termination)
-		// TODO: Add option for TLS to Envoy gateway
-		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		// Use TLS for external Envoy gateway (ingress expects HTTPS on port 443)
+		// System CA pool for validating ingress TLS certificates
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec
+		}
+		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 
 		// Add GitHub token as Bearer token in Authorization header
 		o.authOpts = append(o.authOpts, grpc.WithPerRPCCredentials(newGitHubCredentials(token)))
@@ -430,14 +433,12 @@ func (o *options) setupGitHubAuth(_ context.Context) error {
 		token = cachedToken.AccessToken
 	}
 
-	// Use insecure transport for now (Envoy gateway handles TLS termination)
-	// TODO: Add option for TLS to Envoy gateway
-	//nolint:gocritic // Both branches use insecure for now; will be fixed when TODO is implemented
-	if o.config.TlsSkipVerify {
-		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	} else {
-		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Use TLS for external Envoy gateway (ingress expects HTTPS on port 443)
+	// System CA pool for validating ingress TLS certificates
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec
 	}
+	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 
 	// Add GitHub token as Bearer token in Authorization header
 	o.authOpts = append(o.authOpts, grpc.WithPerRPCCredentials(newGitHubCredentials(token)))
