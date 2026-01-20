@@ -77,9 +77,8 @@ func (s *Scheduler) processExpiredVerifications(ctx context.Context) {
 
 	for _, r := range records {
 		workItem := revtypes.WorkItem{
-			RecordCID:       r.RecordCID,
-			Name:            r.Name,
-			PublicKeyDigest: r.PublicKeyDigest,
+			RecordCID: r.RecordCID,
+			Name:      r.Name,
 		}
 
 		if err := s.dispatchWorkItem(ctx, workItem); err != nil {

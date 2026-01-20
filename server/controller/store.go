@@ -257,7 +257,7 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	digest, err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
+	_, err := refStore.PushReferrer(ctx, recordCID, request.GetReferrer())
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to push referrer for record %s: %v", recordCID, err)
 
@@ -267,14 +267,14 @@ func (s storeCtrl) pushReferrer(ctx context.Context, request *storev1.PushReferr
 		}
 	}
 
-	// If this is a public key referrer, store the digest for direct retrieval
-	// This enables efficient name verification without walking referrers
-	if request.GetReferrer().GetType() == corev1.PublicKeyReferrerType && digest != "" {
-		if err := s.db.SetPublicKeyCID(recordCID, digest); err != nil {
+	// If this is a public key referrer, mark the record as signed
+	// This enables the scheduler to find records that need name verification
+	if request.GetReferrer().GetType() == corev1.PublicKeyReferrerType {
+		if err := s.db.SetRecordSigned(recordCID); err != nil {
 			// Log error but don't fail the push - the referrer was already stored
-			storeLogger.Warn("Failed to update public_key_cid for record", "error", err, "cid", recordCID)
+			storeLogger.Warn("Failed to mark record as signed", "error", err, "cid", recordCID)
 		} else {
-			storeLogger.Debug("Record marked as signed", "cid", recordCID, "public_key_digest", digest)
+			storeLogger.Debug("Record marked as signed", "cid", recordCID)
 		}
 	}
 

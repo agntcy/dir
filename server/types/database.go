@@ -38,8 +38,8 @@ type SearchDatabaseAPI interface {
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
 
-	// SetPublicKeyCID sets the public key CID for a record (called when signing).
-	SetPublicKeyCID(recordCID, publicKeyCID string) error
+	// SetRecordSigned marks a record as signed (called when a public key is attached).
+	SetRecordSigned(recordCID string) error
 }
 
 type SyncDatabaseAPI interface {
@@ -105,7 +105,6 @@ type NameVerificationDatabaseAPI interface {
 
 // VerifiableRecord represents a record that needs name verification.
 type VerifiableRecord struct {
-	RecordCID       string
-	PublicKeyDigest string // Digest of the public key referrer for direct retrieval
-	Name            string
+	RecordCID string
+	Name      string
 }

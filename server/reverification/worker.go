@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/server/database/sqlite"
 	"github.com/agntcy/dir/server/naming"
@@ -76,41 +77,54 @@ func (w *Worker) processWorkItem(ctx context.Context, item revtypes.WorkItem) {
 	defer cancel()
 
 	// Perform verification (stores result internally)
-	w.verify(workCtx, item.RecordCID, item.Name, item.PublicKeyDigest)
+	w.verify(workCtx, item.RecordCID, item.Name)
 }
 
 // verify performs the verification for a record.
-func (w *Worker) verify(ctx context.Context, cid, recordName, publicKeyDigest string) {
-	// Get the public key for this record using the stored digest
-	publicKey, err := w.getRecordPublicKey(ctx, publicKeyDigest)
+// It retrieves all public keys attached to the record and tries verification with each one.
+func (w *Worker) verify(ctx context.Context, cid, recordName string) {
+	// Get all public keys for this record
+	publicKeys, err := w.getRecordPublicKeys(ctx, cid)
 	if err != nil {
-		w.storeVerification(cid, "", "", fmt.Sprintf("failed to get public key: %v", err))
+		w.storeVerification(cid, "", "", fmt.Sprintf("failed to get public keys: %v", err))
 
 		return
 	}
 
-	// Perform verification
-	result := w.provider.Verify(ctx, recordName, publicKey)
+	if len(publicKeys) == 0 {
+		w.storeVerification(cid, "", "", "no public keys found for record")
 
-	if !result.Verified {
-		errMsg := result.Error
-		if errMsg == "" {
-			errMsg = "verification failed"
+		return
+	}
+
+	// Try verification with each public key until one succeeds
+	var lastResult *naming.Result
+
+	for _, publicKey := range publicKeys {
+		result := w.provider.Verify(ctx, recordName, publicKey)
+		lastResult = result
+
+		if result.Verified {
+			// Store successful verification
+			w.storeVerification(cid, result.Method, result.MatchedKeyID, "")
+
+			logger.Info("Verification successful",
+				"worker_id", w.id,
+				"cid", cid,
+				"domain", result.Domain,
+				"method", result.Method)
+
+			return
 		}
-
-		w.storeVerification(cid, result.Method, "", errMsg)
-
-		return
 	}
 
-	// Store successful verification
-	w.storeVerification(cid, result.Method, result.MatchedKeyID, "")
+	// All keys failed verification
+	errMsg := "verification failed"
+	if lastResult != nil && lastResult.Error != "" {
+		errMsg = lastResult.Error
+	}
 
-	logger.Info("Verification successful",
-		"worker_id", w.id,
-		"cid", cid,
-		"domain", result.Domain,
-		"method", result.Method)
+	w.storeVerification(cid, lastResult.Method, "", errMsg)
 }
 
 // storeVerification stores a verification result in the database.
@@ -149,52 +163,63 @@ func (w *Worker) storeVerification(cid, method, keyID, errMsg string) {
 	}
 }
 
-// getRecordPublicKey retrieves the public key by its digest.
-func (w *Worker) getRecordPublicKey(ctx context.Context, publicKeyDigest string) ([]byte, error) {
-	if publicKeyDigest == "" {
-		return nil, errors.New("public key digest is empty")
-	}
-
+// getRecordPublicKeys retrieves all public keys attached to a record.
+func (w *Worker) getRecordPublicKeys(ctx context.Context, cid string) ([][]byte, error) {
 	referrerStore, ok := w.store.(types.ReferrerStoreAPI)
 	if !ok {
 		return nil, errors.New("store does not support referrers")
 	}
 
-	// Fetch the public key referrer directly by digest
-	referrer, err := referrerStore.GetReferrer(ctx, publicKeyDigest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get public key referrer: %w", err)
-	}
+	var publicKeys [][]byte
 
-	// Unmarshal the public key
-	pk := &signv1.PublicKey{}
-	if err := pk.UnmarshalReferrer(referrer); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal public key: %w", err)
-	}
+	// Walk all public key referrers to get all keys
+	err := referrerStore.WalkReferrers(ctx, cid, corev1.PublicKeyReferrerType, func(referrer *corev1.RecordReferrer) error {
+		pk := &signv1.PublicKey{}
+		if err := pk.UnmarshalReferrer(referrer); err != nil {
+			logger.Debug("Failed to unmarshal public key referrer", "error", err)
 
-	// The public key is stored as PEM-encoded string
-	pemKey := pk.GetKey()
-	if pemKey == "" {
-		return nil, errors.New("empty public key")
-	}
-
-	// Parse the PEM-encoded public key to get the actual key
-	parsedKey, err := cryptoutils.UnmarshalPEMToPublicKey([]byte(pemKey))
-	if err != nil {
-		// Try base64 decoding if not PEM
-		keyBytes, decodeErr := base64.StdEncoding.DecodeString(pemKey)
-		if decodeErr == nil {
-			return keyBytes, nil
+			return nil // Continue walking
 		}
 
-		return nil, fmt.Errorf("failed to parse public key: %w", err)
-	}
+		// The public key is stored as PEM-encoded string
+		pemKey := pk.GetKey()
+		if pemKey == "" {
+			logger.Debug("Empty public key")
 
-	// Marshal the key to DER format for comparison
-	keyBytes, err := cryptoutils.MarshalPublicKeyToDER(parsedKey)
+			return nil // Continue walking
+		}
+
+		// Parse the PEM-encoded public key to get the actual key
+		parsedKey, err := cryptoutils.UnmarshalPEMToPublicKey([]byte(pemKey))
+		if err != nil {
+			// Try base64 decoding if not PEM
+			keyBytes, decodeErr := base64.StdEncoding.DecodeString(pemKey)
+			if decodeErr == nil {
+				publicKeys = append(publicKeys, keyBytes)
+
+				return nil // Continue walking
+			}
+
+			logger.Debug("Failed to parse public key", "error", err)
+
+			return nil // Continue walking
+		}
+
+		// Marshal the key to DER format for comparison
+		keyBytes, err := cryptoutils.MarshalPublicKeyToDER(parsedKey)
+		if err != nil {
+			logger.Debug("Failed to marshal public key to DER", "error", err)
+
+			return nil // Continue walking
+		}
+
+		publicKeys = append(publicKeys, keyBytes)
+
+		return nil // Continue walking
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal public key to DER: %w", err)
+		return nil, fmt.Errorf("failed to walk referrers: %w", err)
 	}
 
-	return keyBytes, nil
+	return publicKeys, nil
 }

@@ -23,7 +23,7 @@ type Record struct {
 	SchemaVersion string   `gorm:"column:schema_version"`
 	OASFCreatedAt string   `gorm:"column:oasf_created_at"`
 	Authors       []string `gorm:"column:authors;serializer:json"` // Stored as JSON array
-	PublicKeyCID  *string  `gorm:"column:public_key_cid;index"`    // CID of the public key referrer (nil if not signed)
+	Signed        bool     `gorm:"column:signed;default:false"`    // Whether the record has been signed (has public key attached)
 
 	Skills   []Skill   `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
 	Locators []Locator `gorm:"foreignKey:RecordCID;references:RecordCID;constraint:OnDelete:CASCADE"`
@@ -371,22 +371,22 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 	return query
 }
 
-// SetPublicKeyCID sets the public key CID for a record.
-// This is called when a record is signed to track which public key was used.
-func (d *DB) SetPublicKeyCID(recordCID, publicKeyCID string) error {
+// SetRecordSigned marks a record as signed.
+// This is called when a public key is attached to a record.
+func (d *DB) SetRecordSigned(recordCID string) error {
 	result := d.gormDB.Model(&Record{}).
 		Where("record_cid = ?", recordCID).
-		Update("public_key_cid", publicKeyCID)
+		Update("signed", true)
 
 	if result.Error != nil {
-		return fmt.Errorf("failed to set public key CID: %w", result.Error)
+		return fmt.Errorf("failed to set record as signed: %w", result.Error)
 	}
 
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("record not found: %s", recordCID)
 	}
 
-	logger.Debug("Set public key CID for record", "record_cid", recordCID, "public_key_cid", publicKeyCID)
+	logger.Debug("Marked record as signed", "record_cid", recordCID)
 
 	return nil
 }

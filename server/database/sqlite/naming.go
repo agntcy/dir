@@ -128,19 +128,18 @@ func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Verifiabl
 	expiredBefore := time.Now().Add(-ttl)
 
 	// Query records that:
-	// 1. Have a public key (signed)
+	// 1. Are signed (have public key attached)
 	// 2. Have a verifiable name prefix (http://, https://, dns://)
 	// 3. Either don't have a verification OR have an expired verification
 	var results []struct {
-		RecordCID    string `gorm:"column:record_cid"`
-		PublicKeyCID string `gorm:"column:public_key_cid"`
-		Name         string `gorm:"column:name"`
+		RecordCID string `gorm:"column:record_cid"`
+		Name      string `gorm:"column:name"`
 	}
 
 	err := d.gormDB.Table("records").
-		Select("records.record_cid, records.public_key_cid, records.name").
+		Select("records.record_cid, records.name").
 		Joins("LEFT JOIN name_verifications ON records.record_cid = name_verifications.record_cid").
-		Where("records.public_key_cid IS NOT NULL").
+		Where("records.signed = ?", true).
 		Where("(records.name LIKE ? OR records.name LIKE ? OR records.name LIKE ?)",
 			"http://%", "https://%", "dns://%").
 		Where("(name_verifications.record_cid IS NULL OR name_verifications.updated_at < ?)", expiredBefore).
@@ -152,9 +151,8 @@ func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Verifiabl
 	records := make([]types.VerifiableRecord, len(results))
 	for i := range results {
 		records[i] = types.VerifiableRecord{
-			RecordCID:       results[i].RecordCID,
-			PublicKeyDigest: results[i].PublicKeyCID,
-			Name:            results[i].Name,
+			RecordCID: results[i].RecordCID,
+			Name:      results[i].Name,
 		}
 	}
 

@@ -22,9 +22,6 @@ Name verification proves that a record's signing key is authorized by the
 domain claimed in the record's name. This enables trustworthy human-readable
 naming (e.g., "https://cisco.com/marketing-agent").
 
-Verification is performed automatically when signing a record with 'dirctl sign'.
-Use 'dirctl naming verify' to check the verification status.
-
 Protocol prefixes (required for verification):
 - dns://domain/path - verify using DNS TXT records
 - https://domain/path - verify using JWKS well-known file (RFC 7517)
