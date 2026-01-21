@@ -1,14 +1,11 @@
 """
-HTTP API server for multi-runtime service discovery.
+HTTP API routes for service discovery.
 Provides endpoints to query reachability across Docker, containerd, and Kubernetes.
 """
 
 import logging
-from typing import Optional, List
-
 from flask import Flask, jsonify, request
 
-from models import Runtime
 from storage.interface import StorageInterface
 
 logger = logging.getLogger("discovery.server")
@@ -53,12 +50,8 @@ def create_app(storage: StorageInterface) -> Flask:
         
         # Apply filters
         if runtime_filter:
-            try:
-                runtime = Runtime(runtime_filter.lower())
-                reachable = [w for w in reachable if w.runtime == runtime.value]
-            except ValueError:
-                return jsonify({"error": f"Invalid runtime: {runtime_filter}"}), 400
-        
+            reachable = [w for w in reachable if w.runtime == runtime_filter.lower()]
+
         if type_filter:
             reachable = [w for w in reachable if w.workload_type == type_filter.lower()]
         
@@ -109,12 +102,8 @@ def create_app(storage: StorageInterface) -> Flask:
         workloads = storage.list_all()
         
         if runtime_filter:
-            try:
-                runtime = Runtime(runtime_filter.lower())
-                workloads = [w for w in workloads if w.runtime == runtime.value]
-            except ValueError:
-                return jsonify({"error": f"Invalid runtime: {runtime_filter}"}), 400
-        
+            workloads = [w for w in workloads if w.runtime == runtime_filter]
+
         if group_filter:
             workloads = [w for w in workloads if group_filter in w.isolation_groups]
         
@@ -190,24 +179,3 @@ def create_app(storage: StorageInterface) -> Flask:
         })
     
     return app
-
-
-class DiscoveryServer:
-    """HTTP server for service discovery API."""
-    
-    def __init__(
-        self,
-        storage: StorageInterface,
-        host: str = "0.0.0.0",
-        port: int = 8080,
-    ):
-        self.storage = storage
-        self.host = host
-        self.port = port
-        self.app = create_app(storage)
-    
-    def serve(self) -> None:
-        """Run server in foreground (blocking)."""
-        logger.info("HTTP server listening on %s:%d", self.host, self.port)
-        from waitress import serve
-        serve(self.app, host=self.host, port=self.port, _quiet=True)

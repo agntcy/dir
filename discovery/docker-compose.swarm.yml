@@ -1,15 +1,14 @@
 # Docker Swarm Stack for Service Discovery
 #
 # Deploy with:
-#   1. Build image: docker compose build watcher
+#   1. Build images: docker compose build watcher server
 #   2. Init swarm (if needed): docker swarm init
 #   3. Deploy: docker stack deploy -c docker-compose.swarm.yml discovery
 #
 # Architecture:
 # - etcd runs as single replica (use 3 for production HA)
-# - watcher runs as global service (one per node)
-# - Each watcher watches local Docker socket
-# - All watchers write to shared etcd
+# - watcher runs as global service (one per node) - watches Docker, writes to etcd
+# - server runs as replicated service - reads from etcd, serves HTTP API
 #
 services:
   # ============================================================
@@ -43,7 +42,7 @@ services:
       retries: 3
 
   # ============================================================
-  # Watcher - Global service (one per node)
+  # Watcher - Global service (one per node) - watches Docker socket
   # ============================================================
   watcher:
     image: discovery-watcher:latest
@@ -56,6 +55,25 @@ services:
       - ETCD_PREFIX=/discovery
       # Runtime
       - RUNTIME=docker
+      - PYTHONUNBUFFERED=1
+    networks:
+      - discovery
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+
+  # ============================================================
+  # Server - HTTP API for querying discovered services
+  # ============================================================
+  server:
+    image: discovery-server:latest
+    environment:
+      # etcd
+      - ETCD_HOST=etcd
+      - ETCD_PORT=2379
+      - ETCD_PREFIX=/discovery
       # Server
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
@@ -65,7 +83,7 @@ services:
     ports:
       - "8080:8080"
     deploy:
-      mode: global
+      replicas: 2
       restart_policy:
         condition: on-failure
         delay: 5s
