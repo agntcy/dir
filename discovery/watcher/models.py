@@ -50,8 +50,9 @@ class Workload:
     namespace: Optional[str] = None      # K8s namespace (None for Docker/containerd)
     
     # Network
-    addresses: list = field(default_factory=list)         # ["ip:port", "hostname:port"]
+    addresses: list = field(default_factory=list)         # ["{name}.{network}", ...]
     isolation_groups: list = field(default_factory=list)  # Networks (Docker/containerd) or namespaces (K8s)
+    ports: list = field(default_factory=list)             # Exposed ports ["80", "443", ...]
     
     # Discovery metadata
     labels: dict = field(default_factory=dict)
@@ -84,6 +85,7 @@ class Workload:
             namespace=data.get("namespace"),
             addresses=data.get("addresses", []),
             isolation_groups=data.get("isolation_groups", []),
+            ports=data.get("ports", []),
             labels=data.get("labels", {}),
             annotations=data.get("annotations", {}),
             metadata=data.get("metadata"),

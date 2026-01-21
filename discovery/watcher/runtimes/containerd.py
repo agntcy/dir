@@ -241,15 +241,28 @@ class ContainerdAdapter(RuntimeAdapter):
             # Get network info from CNI state
             networks, ips = self._get_cni_networks(container.id)
             
-            # Build addresses
+            # Container name (from nerdctl label or short ID)
+            name = labels.get("nerdctl/name", container.id[:12])
             hostname = container.id[:12]
-            addresses = [f"{hostname}:80"]  # Default port
-            for ip in ips:
-                addresses.append(f"{ip}:80")
+            
+            # Get exposed ports from labels (nerdctl stores them as labels)
+            ports = []
+            for key, value in labels.items():
+                if key.startswith("nerdctl/ports/"):
+                    # Format: nerdctl/ports/tcp/80 = 0.0.0.0:8080
+                    parts = key.split("/")
+                    if len(parts) >= 4:
+                        ports.append(parts[3])
+            
+            # Build addresses in format {container_name}.{network_name}
+            # This is how containers are reachable in containerd/nerdctl
+            addresses = []
+            for network in networks:
+                addresses.append(f"{name}.{network}")
             
             return Workload(
                 id=container.id,
-                name=labels.get("nerdctl/name", hostname),
+                name=name,
                 hostname=hostname,
                 runtime=Runtime.CONTAINERD.value,
                 workload_type=WorkloadType.CONTAINER.value,
@@ -257,6 +270,7 @@ class ContainerdAdapter(RuntimeAdapter):
                 namespace=None,
                 addresses=addresses,
                 isolation_groups=networks,
+                ports=ports,
                 labels=labels,
             )
         except Exception as e:
