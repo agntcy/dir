@@ -33,7 +33,6 @@ import (
 	grpcratelimit "github.com/agntcy/dir/server/middleware/ratelimit"
 	grpcrecovery "github.com/agntcy/dir/server/middleware/recovery"
 	"github.com/agntcy/dir/server/naming"
-	"github.com/agntcy/dir/server/naming/dns"
 	"github.com/agntcy/dir/server/naming/wellknown"
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/reverification"
@@ -294,11 +293,9 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	healthChecker := healthcheck.New()
 
 	// Create naming provider for naming service
-	dnsResolver := dns.NewResolver()
 	wellKnownFetcher := wellknown.NewFetcher()
 
 	namingProvider := naming.NewProvider(
-		naming.WithDNSLookup(dnsResolver),
 		naming.WithWellKnownLookup(wellKnownFetcher),
 	)
 

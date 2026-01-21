@@ -23,11 +23,11 @@ message DomainVerification {
   // The domain that was verified (e.g., "cisco.com").
   string domain = 1;
 
-  // The verification method used: "dns" or "wellknown".
+  // The verification method used: "wellknown".
   string method = 2;
 
   // The identifier of the domain's public key that matched the record's signing key.
-  // This is the "id" field from the well-known file or derived from the DNS TXT record.
+  // This is the "id" field from the well-known file.
   string key_id = 3;
 
   // When the verification was performed.

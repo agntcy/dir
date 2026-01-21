@@ -58,7 +58,7 @@ export declare type DomainVerification = Message<"agntcy.dir.naming.v1.DomainVer
   domain: string;
 
   /**
-   * The verification method used: "dns" or "wellknown".
+   * The verification method used: "wellknown".
    *
    * @generated from field: string method = 2;
    */
@@ -66,7 +66,7 @@ export declare type DomainVerification = Message<"agntcy.dir.naming.v1.DomainVer
 
   /**
    * The identifier of the domain's public key that matched the record's signing key.
-   * This is the "id" field from the well-known file or derived from the DNS TXT record.
+   * This is the "id" field from the well-known file.
    *
    * @generated from field: string key_id = 3;
    */

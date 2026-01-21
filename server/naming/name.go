@@ -13,9 +13,6 @@ var nameLogger = logging.Logger("naming/name")
 
 // Protocol prefixes for name verification.
 const (
-	// DNSProtocol indicates DNS TXT record verification.
-	DNSProtocol = "dns://"
-
 	// HTTPSProtocol indicates JWKS well-known verification via HTTPS.
 	HTTPSProtocol = "https://"
 
@@ -25,7 +22,7 @@ const (
 
 // ParsedName represents a parsed record name with optional protocol prefix.
 type ParsedName struct {
-	// Protocol is the verification protocol (dns://, https://, http://, or empty).
+	// Protocol is the verification protocol (https://, http://, or empty).
 	Protocol string
 	// Domain is the domain part of the name.
 	Domain string
@@ -38,7 +35,6 @@ type ParsedName struct {
 // ParseName parses a record name, extracting any protocol prefix.
 //
 // Expected formats:
-//   - "dns://cisco.com/agent" -> Protocol: "dns://", Domain: "cisco.com", Path: "agent"
 //   - "https://cisco.com/agent" -> Protocol: "https://", Domain: "cisco.com", Path: "agent"
 //   - "http://localhost:8080/agent" -> Protocol: "http://", Domain: "localhost:8080", Path: "agent"
 //   - "cisco.com/agent" -> Protocol: "", Domain: "cisco.com", Path: "agent" (no verification)
@@ -55,9 +51,6 @@ func ParseName(name string) *ParsedName {
 	// Check for protocol prefix
 	remaining := name
 	switch {
-	case strings.HasPrefix(name, DNSProtocol):
-		result.Protocol = DNSProtocol
-		remaining = strings.TrimPrefix(name, DNSProtocol)
 	case strings.HasPrefix(name, HTTPSProtocol):
 		result.Protocol = HTTPSProtocol
 		remaining = strings.TrimPrefix(name, HTTPSProtocol)
