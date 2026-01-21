@@ -31,7 +31,7 @@ const (
 //
 // NamingService provides methods to inspect name verification state.
 // Note: Verification is performed automatically by the backend scheduler
-// for signed records with verifiable names (http://, https://, dns:// prefixes).
+// for signed records with verifiable names (http://, https:// prefixes).
 type NamingServiceClient interface {
 	// GetVerificationInfo retrieves the verification info for a record.
 	GetVerificationInfo(ctx context.Context, in *GetVerificationInfoRequest, opts ...grpc.CallOption) (*GetVerificationInfoResponse, error)
@@ -61,7 +61,7 @@ func (c *namingServiceClient) GetVerificationInfo(ctx context.Context, in *GetVe
 //
 // NamingService provides methods to inspect name verification state.
 // Note: Verification is performed automatically by the backend scheduler
-// for signed records with verifiable names (http://, https://, dns:// prefixes).
+// for signed records with verifiable names (http://, https:// prefixes).
 type NamingServiceServer interface {
 	// GetVerificationInfo retrieves the verification info for a record.
 	GetVerificationInfo(context.Context, *GetVerificationInfoRequest) (*GetVerificationInfoResponse, error)
