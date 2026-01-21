@@ -65,9 +65,7 @@ class DockerAdapter(RuntimeAdapter):
             self._client.close()
             self._client = None
     
-    # ==================== Discovery ====================
-    
-    def list_workloads(self, label_selector: dict = None) -> list:
+    def list_workloads(self) -> list:
         """List all discoverable containers."""
         if not self._client:
             return []
@@ -78,12 +76,6 @@ class DockerAdapter(RuntimeAdapter):
         workloads = []
         try:
             for container in self._client.containers.list(filters=filters):
-                # Additional label filtering
-                if label_selector and not self.matches_label_selector(
-                    container.labels or {}, label_selector
-                ):
-                    continue
-                
                 workload = self._container_to_workload(container)
                 if workload:
                     workloads.append(workload)
@@ -91,71 +83,6 @@ class DockerAdapter(RuntimeAdapter):
             print(f"[docker] Failed to list containers: {e}")
         
         return workloads
-    
-    def get_workload(self, identity: str) -> Optional[Workload]:
-        """Get container by hostname, name, or ID."""
-        if not self._client:
-            return None
-        
-        try:
-            # Try by name or ID directly
-            try:
-                container = self._client.containers.get(identity)
-                return self._container_to_workload(container)
-            except docker.errors.NotFound:
-                pass
-            
-            # Try by hostname (short ID)
-            for container in self._client.containers.list():
-                if container.id[:12] == identity:
-                    return self._container_to_workload(container)
-            
-            return None
-        except Exception as e:
-            print(f"[docker] Failed to get container {identity}: {e}")
-            return None
-    
-    def _container_to_workload(self, container) -> Optional[Workload]:
-        """Convert Docker container to Workload."""
-        try:
-            attrs = container.attrs
-            labels = container.labels or {}
-            
-            # Skip if not discoverable
-            if labels.get(self.label_key) != self.label_value:
-                return None
-            
-            # Get network information
-            network_settings = attrs.get("NetworkSettings", {})
-            networks_info = network_settings.get("Networks", {})
-            
-            # Get exposed ports
-            exposed_ports = attrs.get("Config", {}).get("ExposedPorts", {})
-            ports = [p.split("/")[0] for p in exposed_ports.keys()] if exposed_ports else ["80"]
-            
-            # Build addresses from each network
-            addresses = []
-            hostname = container.id[:12]
-            for port in ports:
-                addresses.append(f"{hostname}:{port}")
-            
-            return Workload(
-                id=container.id,
-                name=container.name,
-                hostname=hostname,
-                runtime=Runtime.DOCKER.value,
-                workload_type=WorkloadType.CONTAINER.value,
-                node=None,  # Docker single-node
-                namespace=None,
-                addresses=addresses,
-                isolation_groups=list(networks_info.keys()),
-                labels=labels,
-            )
-        except Exception as e:
-            print(f"[docker] Failed to convert container: {e}")
-            return None
-    
-    # ==================== Events ====================
     
     def watch_events(self, callback: Callable[[str, Workload], None]) -> None:
         """Watch Docker events and call callback for each."""
@@ -204,7 +131,7 @@ class DockerAdapter(RuntimeAdapter):
         except Exception as e:
             if not self._stop_event.is_set():
                 print(f"[docker] Event watch error: {e}")
-    
+
     def _get_container_workload(self, container_id: str) -> Optional[Workload]:
         """Get workload for container ID, handling not found."""
         try:
@@ -215,7 +142,43 @@ class DockerAdapter(RuntimeAdapter):
         except Exception as e:
             print(f"[docker] Failed to get container {container_id}: {e}")
             return None
-    
-    def stop_watch(self):
-        """Stop the event watch loop."""
-        self._stop_event.set()
+
+    def _container_to_workload(self, container) -> Optional[Workload]:
+        """Convert Docker container to Workload."""
+        try:
+            attrs = container.attrs
+            labels = container.labels or {}
+            
+            # Skip if not discoverable
+            if labels.get(self.label_key) != self.label_value:
+                return None
+            
+            # Get network information
+            network_settings = attrs.get("NetworkSettings", {})
+            networks_info = network_settings.get("Networks", {})
+            
+            # Get exposed ports
+            exposed_ports = attrs.get("Config", {}).get("ExposedPorts", {})
+            ports = [p.split("/")[0] for p in exposed_ports.keys()] if exposed_ports else ["80"]
+            
+            # Build addresses from each network
+            addresses = []
+            hostname = container.id[:12]
+            for port in ports:
+                addresses.append(f"{hostname}:{port}")
+            
+            return Workload(
+                id=container.id,
+                name=container.name,
+                hostname=hostname,
+                runtime=Runtime.DOCKER.value,
+                workload_type=WorkloadType.CONTAINER.value,
+                node=None,  # Docker single-node
+                namespace=None,
+                addresses=addresses,
+                isolation_groups=list(networks_info.keys()),
+                labels=labels,
+            )
+        except Exception as e:
+            print(f"[docker] Failed to convert container: {e}")
+            return None
