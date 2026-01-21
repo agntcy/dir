@@ -28,7 +28,7 @@ type NameVerification struct {
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`                                  // soft delete support
 	RecordCID string         `gorm:"column:record_cid;not null;uniqueIndex"` // one verification per record
-	Method    string         `gorm:"not null"`                               // "dns" or "wellknown"
+	Method    string         `gorm:"not null"`                               // "wellknown"
 	KeyID     string         // matched key ID (if successful)
 	Status    string         `gorm:"not null;index"` // "verified" or "failed"
 	Error     string         // error message (if failed)
@@ -129,7 +129,7 @@ func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Verifiabl
 
 	// Query records that:
 	// 1. Are signed (have public key attached)
-	// 2. Have a verifiable name prefix (http://, https://, dns://)
+	// 2. Have a verifiable name prefix (http://, https://)
 	// 3. Either don't have a verification OR have an expired verification
 	var results []struct {
 		RecordCID string `gorm:"column:record_cid"`
@@ -140,8 +140,8 @@ func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Verifiabl
 		Select("records.record_cid, records.name").
 		Joins("LEFT JOIN name_verifications ON records.record_cid = name_verifications.record_cid").
 		Where("records.signed = ?", true).
-		Where("(records.name LIKE ? OR records.name LIKE ? OR records.name LIKE ?)",
-			"http://%", "https://%", "dns://%").
+		Where("(records.name LIKE ? OR records.name LIKE ?)",
+			"http://%", "https://%").
 		Where("(name_verifications.record_cid IS NULL OR name_verifications.updated_at < ?)", expiredBefore).
 		Find(&results).Error
 	if err != nil {

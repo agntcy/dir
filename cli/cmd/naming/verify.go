@@ -27,13 +27,11 @@ claimed in the record's name field. Verification is performed automatically
 when a record is signed using 'dirctl sign'.
 
 The record's name must include a protocol prefix to specify the verification method:
-- dns://domain/path - verify using DNS TXT records
 - https://domain/path - verify using JWKS well-known file (RFC 7517)
 - http://domain/path - verify using JWKS via HTTP (testing only)
 
-Verification methods:
-1. DNS TXT record at _dir_nsys.<domain> with format "schema=v1; v=pubkey; k=<type>; p=<key>"
-2. JWKS well-known file at <scheme>://<domain>/.well-known/jwks.json
+Verification method:
+JWKS well-known file at <scheme>://<domain>/.well-known/jwks.json
 
 The server automatically re-verifies records based on TTL to ensure
 domain ownership remains valid.

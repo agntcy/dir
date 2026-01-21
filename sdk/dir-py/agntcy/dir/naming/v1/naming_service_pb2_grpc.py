@@ -8,7 +8,7 @@ from agntcy.dir.naming.v1 import naming_service_pb2 as agntcy_dot_dir_dot_naming
 class NamingServiceStub(object):
     """NamingService provides methods to inspect name verification state.
     Note: Verification is performed automatically by the backend scheduler
-    for signed records with verifiable names (http://, https://, dns:// prefixes).
+    for signed records with verifiable names (http://, https:// prefixes).
     """
 
     def __init__(self, channel):
@@ -27,7 +27,7 @@ class NamingServiceStub(object):
 class NamingServiceServicer(object):
     """NamingService provides methods to inspect name verification state.
     Note: Verification is performed automatically by the backend scheduler
-    for signed records with verifiable names (http://, https://, dns:// prefixes).
+    for signed records with verifiable names (http://, https:// prefixes).
     """
 
     def GetVerificationInfo(self, request, context):
@@ -56,7 +56,7 @@ def add_NamingServiceServicer_to_server(servicer, server):
 class NamingService(object):
     """NamingService provides methods to inspect name verification state.
     Note: Verification is performed automatically by the backend scheduler
-    for signed records with verifiable names (http://, https://, dns:// prefixes).
+    for signed records with verifiable names (http://, https:// prefixes).
     """
 
     @staticmethod

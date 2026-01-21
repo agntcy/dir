@@ -71,7 +71,7 @@ export declare const GetVerificationInfoResponseSchema: GenMessage<GetVerificati
 /**
  * NamingService provides methods to inspect name verification state.
  * Note: Verification is performed automatically by the backend scheduler
- * for signed records with verifiable names (http://, https://, dns:// prefixes).
+ * for signed records with verifiable names (http://, https:// prefixes).
  *
  * @generated from service agntcy.dir.naming.v1.NamingService
  */

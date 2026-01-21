@@ -100,10 +100,10 @@ type DomainVerification struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The domain that was verified (e.g., "cisco.com").
 	Domain string `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
-	// The verification method used: "dns" or "wellknown".
+	// The verification method used: "wellknown".
 	Method string `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`
 	// The identifier of the domain's public key that matched the record's signing key.
-	// This is the "id" field from the well-known file or derived from the DNS TXT record.
+	// This is the "id" field from the well-known file.
 	KeyId string `protobuf:"bytes,3,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
 	// When the verification was performed.
 	VerifiedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=verified_at,json=verifiedAt,proto3" json:"verified_at,omitempty"`
