@@ -14,6 +14,9 @@ class AiService {
   LlmProvider? _provider;
   final List<Map<String, dynamic>> _azureHistory = [];
 
+  /// Expose MCP client for direct tool calls
+  McpClient get mcpClient => _mcpClient;
+
   AiService({
     required McpClient mcpClient,
   }) : _mcpClient = mcpClient;
@@ -40,6 +43,8 @@ class AiService {
 
     if (_provider is AzureOpenAiProvider) {
       return _sendMessageAzure(message, onToolOutput: onToolOutput);
+    } else if (_provider is OpenAiCompatibleProvider) {
+      return _sendMessageOpenAi(message, onToolOutput: onToolOutput);
     } else {
       return _sendMessageGemini(message, history, onToolOutput: onToolOutput);
     }
@@ -155,6 +160,55 @@ class AiService {
       }
 
       response = await azureProvider.sendRaw(_azureHistory);
+    }
+
+    if (response.text != null) {
+      _azureHistory.add({"role": "assistant", "content": response.text});
+    }
+
+    return response.text;
+  }
+
+  Future<String?> _sendMessageOpenAi(
+    String message,
+    {void Function(String, dynamic)? onToolOutput}
+  ) async {
+    _azureHistory.add({"role": "user", "content": message});
+
+    final openaiProvider = _provider as OpenAiCompatibleProvider;
+    var response = await openaiProvider.sendRaw(_azureHistory);
+
+    while (response.toolCalls.isNotEmpty) {
+      final assistantMsg = {
+        "role": "assistant",
+        "content": response.text,
+        "tool_calls": response.toolCalls.map((tc) => {
+          "id": tc.id,
+          "type": "function",
+          "function": {
+            "name": tc.name,
+            "arguments": _jsonString(tc.args),
+          }
+        }).toList()
+      };
+      _azureHistory.add(assistantMsg);
+
+      for (final tc in response.toolCalls) {
+        final result = await _mcpClient.callTool(tc.name, tc.args);
+
+        if (onToolOutput != null) {
+            _notifyToolOutput(tc.name, result.content, onToolOutput);
+        }
+
+        _azureHistory.add({
+          "role": "tool",
+          "tool_call_id": tc.id,
+          "name": tc.name,
+          "content": result.content.toString(),
+        });
+      }
+
+      response = await openaiProvider.sendRaw(_azureHistory);
     }
 
     if (response.text != null) {

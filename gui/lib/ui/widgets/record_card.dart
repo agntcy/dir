@@ -444,3 +444,117 @@ class RecordCard extends StatelessWidget {
      );
   }
 }
+
+/// JSON Code Block widget with copy and download functionality
+class JsonCodeBlock extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final String? title;
+  final double maxHeight;
+
+  const JsonCodeBlock({
+    super.key,
+    required this.data,
+    this.title,
+    this.maxHeight = 300,
+  });
+
+  String get _prettyJson {
+    const encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(data);
+  }
+
+  void _copyToClipboard(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: _prettyJson));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('JSON copied to clipboard!'), duration: Duration(seconds: 2)),
+    );
+  }
+
+  void _downloadJson(BuildContext context) {
+    // For now, just copy - full download would require platform-specific code
+    _copyToClipboard(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('JSON copied! (Save to file from clipboard)'), duration: Duration(seconds: 2)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with title and actions
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withOpacity(0.3),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.data_object_rounded, size: 18, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title ?? 'Record Data',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                // Copy button
+                IconButton(
+                  onPressed: () => _copyToClipboard(context),
+                  icon: Icon(Icons.copy_rounded, size: 18, color: colorScheme.primary),
+                  tooltip: 'Copy JSON',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+                const SizedBox(width: 4),
+                // Download button
+                IconButton(
+                  onPressed: () => _downloadJson(context),
+                  icon: Icon(Icons.download_rounded, size: 18, color: colorScheme.primary),
+                  tooltip: 'Download JSON',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              ],
+            ),
+          ),
+          // Code content
+          Container(
+            width: double.infinity,
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(14),
+              child: SelectableText(
+                _prettyJson,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

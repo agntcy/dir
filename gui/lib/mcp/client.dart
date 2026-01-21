@@ -34,6 +34,12 @@ class McpClient {
         .transform(const LineSplitter())
         .listen((line) {
       if (line.trim().isEmpty) return;
+      // Skip non-JSON lines (log messages from MCP server)
+      final trimmed = line.trim();
+      if (!trimmed.startsWith('{')) {
+        print('MCP Server Log: $trimmed');
+        return;
+      }
       try {
         final Map<String, dynamic> message = jsonDecode(line);
         _handleMessage(message);
