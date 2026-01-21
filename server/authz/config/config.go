@@ -12,11 +12,11 @@ type Config struct {
 	// Indicates if authorization is enabled
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-	// Current directory node spiffe trust domain
-	TrustDomain string `json:"trust_domain,omitempty" mapstructure:"trust_domain"`
+	// Enforcer model file path
+	EnforcerModelFilePath string `json:"enforcer_model_file_path,omitempty" mapstructure:"enforcer_model_file_path"`
 
 	// List of policies for external API methods access
-	Policies map[string][]string `json:"policies,omitempty" mapstructure:"policies"`
+	EnforcerPolicyFilePath string `json:"enforcer_policy_file_path,omitempty" mapstructure:"enforcer_policy_file_path"`
 }
 
 func (c *Config) Validate() error {
@@ -24,8 +24,12 @@ func (c *Config) Validate() error {
 		return nil
 	}
 
-	if c.TrustDomain == "" {
-		return errors.New("trust domain is required for authorization")
+	if c.EnforcerModelFilePath == "" {
+		return errors.New("enforcer model file path is required")
+	}
+
+	if c.EnforcerPolicyFilePath == "" {
+		return errors.New("enforcer policy file path is required")
 	}
 
 	return nil

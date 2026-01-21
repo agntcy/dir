@@ -13,23 +13,8 @@ import (
 
 func TestAuthorizer(t *testing.T) {
 	defaultAuthz, err := NewAuthorizer(config.Config{
-		TrustDomain: "dir.com",
-	})
-	if err != nil {
-		t.Fatalf("failed to create Casbin authorizer: %v", err)
-	}
-
-	customAuthz, err := NewAuthorizer(config.Config{
-		TrustDomain: "dir.com",
-		Policies: map[string][]string{
-			"dir.com": {
-				storev1.StoreService_Delete_FullMethodName,
-				storev1.StoreService_Push_FullMethodName,
-			},
-			"other.com": {
-				storev1.StoreService_Lookup_FullMethodName,
-			},
-		},
+		EnforcerPolicyFilePath: "./policies.csv",
+		EnforcerModelFilePath:  "./model.conf",
 	})
 	if err != nil {
 		t.Fatalf("failed to create Casbin authorizer: %v", err)
@@ -52,17 +37,6 @@ func TestAuthorizer(t *testing.T) {
 		{defaultAuthz, "other.com", storev1.SyncService_RequestRegistryCredentials_FullMethodName, false},
 		{defaultAuthz, "other.com", storev1.StoreService_Push_FullMethodName, false},
 		{defaultAuthz, "other.com", routingv1.RoutingService_Publish_FullMethodName, false},
-
-		// custom policies
-		{customAuthz, "dir.com", storev1.StoreService_Delete_FullMethodName, true},
-		{customAuthz, "dir.com", storev1.StoreService_Push_FullMethodName, true},
-		{customAuthz, "dir.com", routingv1.RoutingService_Publish_FullMethodName, false},
-
-		{customAuthz, "other.com", storev1.StoreService_Pull_FullMethodName, false},
-		{customAuthz, "other.com", storev1.StoreService_Lookup_FullMethodName, true},
-		{customAuthz, "other.com", storev1.SyncService_RequestRegistryCredentials_FullMethodName, false},
-		{customAuthz, "other.com", storev1.StoreService_Push_FullMethodName, false},
-		{customAuthz, "other.com", routingv1.RoutingService_Publish_FullMethodName, false},
 	}
 
 	for _, tt := range tests {
