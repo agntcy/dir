@@ -169,24 +169,15 @@ class KubernetesAdapter(RuntimeAdapter):
         """Convert Kubernetes Pod to Workload."""
         try:
             labels = pod.metadata.labels or {}
-            
-            # Build DNS address for pod
-            # Requires: hostname + subdomain set on pod, and a headless service matching subdomain
-            # Format: {hostname}.{subdomain}.{namespace}.svc
-            hostname = pod.spec.hostname
-            subdomain = pod.spec.subdomain
             namespace = pod.metadata.namespace
             
+            # Build DNS address for pod
+            # Format: {pod-ip-dashed}.{namespace}.pod
+            # Example: 10-244-0-5.team-a.pod
             addresses = []
-            if hostname and subdomain:
-                # Full DNS name when pod has hostname + subdomain + headless service
-                addresses.append(f"{hostname}.{subdomain}.{namespace}.svc")
-            else:
-                # Fallback: pod IP-based DNS (always works but uses IP)
-                # Format: {pod-ip-dashed}.{namespace}.pod
-                if pod.status.pod_ip:
-                    ip_dashed = pod.status.pod_ip.replace(".", "-")
-                    addresses.append(f"{ip_dashed}.{namespace}.pod")
+            if pod.status.pod_ip:
+                ip_dashed = pod.status.pod_ip.replace(".", "-")
+                addresses.append(f"{ip_dashed}.{namespace}.pod")
             
             # Extract ports from all containers
             ports = []
@@ -194,8 +185,8 @@ class KubernetesAdapter(RuntimeAdapter):
                 for port in (container.ports or []):
                     ports.append(str(port.container_port))
             
-            # Isolation groups: namespace + any network policy annotations
-            isolation_groups = [pod.metadata.namespace]
+            # Isolation groups: namespace
+            isolation_groups = [namespace]
             
             # Check for network policies affecting this pod
             policy_info = self._get_pod_network_policies(pod)
@@ -207,7 +198,7 @@ class KubernetesAdapter(RuntimeAdapter):
                 runtime=Runtime.KUBERNETES.value,
                 workload_type=WorkloadType.POD.value,
                 node=pod.spec.node_name,
-                namespace=pod.metadata.namespace,
+                namespace=namespace,
                 addresses=addresses,
                 isolation_groups=isolation_groups,
                 ports=ports,

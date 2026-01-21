@@ -117,6 +117,8 @@ spec:
               value: "discover"
             - name: KUBERNETES_LABEL_VALUE
               value: "true"
+            - name: KUBERNETES_WATCH_SERVICES
+              value: "true"
             - name: ETCD_HOST
               value: "discovery-etcd"
             - name: ETCD_PORT
@@ -167,8 +169,8 @@ spec:
               value: "2379"
 # ============================================================================
 # TEST WORKLOADS (namespaces act as isolation groups)
-# Pods use hostname + subdomain + headless service for DNS resolution
-# Format: {hostname}.{subdomain}.{namespace}.svc.cluster.local
+# Pod DNS: {pod-ip-dashed}.{namespace}.pod (e.g., 10-244-0-5.team-a.pod)
+# Service DNS: {service-name}.{namespace}.svc (e.g., svc-1.team-a.svc)
 # ============================================================================
 ---
 apiVersion: v1
@@ -181,30 +183,62 @@ kind: Namespace
 metadata:
   name: team-b
 ---
-# Headless service for team-a pods (enables DNS for pods)
+# Service for service-1 pod
 apiVersion: v1
 kind: Service
 metadata:
-  name: team-a
+  name: svc-1
   namespace: team-a
-spec:
-  clusterIP: None
-  selector:
+  labels:
     discover: "true"
+spec:
+  selector:
+    app: service-1
   ports:
     - port: 80
       targetPort: 80
 ---
-# Headless service for team-b pods (enables DNS for pods)
+# Service for service-3 pod
 apiVersion: v1
 kind: Service
 metadata:
-  name: team-b
-  namespace: team-b
-spec:
-  clusterIP: None
-  selector:
+  name: svc-3
+  namespace: team-a
+  labels:
     discover: "true"
+spec:
+  selector:
+    app: service-3
+  ports:
+    - port: 80
+      targetPort: 80
+---
+# Service for service-2 pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-2
+  namespace: team-b
+  labels:
+    discover: "true"
+spec:
+  selector:
+    app: service-2
+  ports:
+    - port: 80
+      targetPort: 80
+---
+# Service for service-4 pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-4
+  namespace: team-b
+  labels:
+    discover: "true"
+spec:
+  selector:
+    app: service-4
   ports:
     - port: 80
       targetPort: 80
@@ -218,8 +252,6 @@ metadata:
     discover: "true"
     app: service-1
 spec:
-  hostname: service-1
-  subdomain: team-a
   containers:
     - name: nginx
       image: nginx:alpine
@@ -235,8 +267,6 @@ metadata:
     discover: "true"
     app: service-3
 spec:
-  hostname: service-3
-  subdomain: team-a
   containers:
     - name: nginx
       image: nginx:alpine
@@ -252,8 +282,6 @@ metadata:
     discover: "true"
     app: service-2
 spec:
-  hostname: service-2
-  subdomain: team-b
   containers:
     - name: nginx
       image: nginx:alpine
@@ -269,8 +297,6 @@ metadata:
     discover: "true"
     app: service-4
 spec:
-  hostname: service-4
-  subdomain: team-b
   containers:
     - name: nginx
       image: nginx:alpine

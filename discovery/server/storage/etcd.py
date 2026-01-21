@@ -163,17 +163,24 @@ class EtcdStorage(StorageInterface):
                 shared_groups = caller_groups & workload_groups
                 
                 # Filter addresses to only include those in shared groups
-                # Address format is {name}.{network}, so check if network is in shared groups
+                # Docker format: {name}.{network}
+                # K8s pod format: {ip-dashed}.{namespace}.pod
+                # K8s service format: {name}.{namespace}.svc
                 filtered_addresses = []
                 for addr in workload.addresses:
-                    # Extract network name from address (format: name.network)
-                    parts = addr.rsplit(".", 1)
-                    if len(parts) == 2:
+                    parts = addr.split(".")
+                    if len(parts) >= 3 and parts[-1] in ("pod", "svc"):
+                        # Kubernetes format: extract namespace (second-to-last part)
+                        namespace = parts[-2]
+                        if namespace in shared_groups:
+                            filtered_addresses.append(addr)
+                    elif len(parts) == 2:
+                        # Docker format: {name}.{network}
                         network = parts[1]
                         if network in shared_groups:
                             filtered_addresses.append(addr)
                     else:
-                        # Keep addresses that don't follow the format
+                        # Keep addresses that don't follow expected formats
                         filtered_addresses.append(addr)
                 
                 # Create a copy with filtered addresses
