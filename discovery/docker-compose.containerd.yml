@@ -1,22 +1,23 @@
-# Docker Swarm Stack for Service Discovery
+# Docker Compose for testing containerd runtime
 #
-# Deploy with:
-#   1. Build image: docker compose build watcher
-#   2. Init swarm (if needed): docker swarm init
-#   3. Deploy: docker stack deploy -c docker-compose.swarm.yml discovery
+# Requirements:
+# - Linux host with containerd installed (not via Docker)
+# - containerd socket at /run/containerd/containerd.sock
+# - CNI configured with state at /var/lib/cni/results
 #
-# Architecture:
-# - etcd runs as single replica (use 3 for production HA)
-# - watcher runs as global service (one per node)
-# - Each watcher watches local Docker socket
-# - All watchers write to shared etcd
+# Usage:
+#   nerdctl compose -f docker-compose.containerd.yml up -d
+#
+# Note: This is for testing on a Linux machine with standalone containerd.
+# On macOS/Windows, containerd can be setup with Lima.
 #
 services:
   # ============================================================
-  # etcd - key-value store for service discovery
+  # etcd - Distributed key-value store
   # ============================================================
   etcd:
     image: quay.io/coreos/etcd:v3.5.17
+    container_name: etcd
     command:
       - etcd
       - --name=etcd0
@@ -28,119 +29,101 @@ services:
       - --initial-cluster=etcd0=http://etcd:2380
     networks:
       - discovery
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
-        delay: 5s
     healthcheck:
       test: ["CMD", "etcdctl", "endpoint", "health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # ============================================================
-  # Watcher - Global service (one per node)
+  # Watcher - containerd runtime
   # ============================================================
   watcher:
-    image: discovery-watcher:latest
+    build: ./watcher
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # containerd socket (Linux only)
+      - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
+      # CNI state directory for network info
+      - /var/lib/cni/results:/var/lib/cni/results:ro
     environment:
       # etcd
       - ETCD_HOST=etcd
       - ETCD_PORT=2379
       - ETCD_PREFIX=/discovery
       # Runtime
-      - RUNTIME=docker
+      - RUNTIME=containerd
+      - CONTAINERD_SOCKET=/run/containerd/containerd.sock
+      - CONTAINERD_NAMESPACE=default
+      - CONTAINERD_CNI_STATE_DIR=/var/lib/cni/results
+      - CONTAINERD_LABEL_KEY=discover
+      - CONTAINERD_LABEL_VALUE=true
       # Server
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
       - PYTHONUNBUFFERED=1
+    depends_on:
+      etcd:
+        condition: service_healthy
     networks:
       - discovery
     ports:
       - "8080:8080"
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
-        delay: 5s
 
   # ============================================================
-  # Example services - labels go at service level for container labels
+  # Example services - must have discover=true label
   # ============================================================
   service-1:
     image: nginx:alpine
     labels:
-      discover: "true"
+      - "discover=true"
     networks:
       - team-a
-    deploy:
-      replicas: 1
 
   service-2:
     image: nginx:alpine
     labels:
-      discover: "true"
+      - "discover=true"
     networks:
       - team-b
-    deploy:
-      replicas: 1
 
   service-3:
     image: nginx:alpine
     labels:
-      discover: "true"
+      - "discover=true"
     networks:
       - team-a
-    deploy:
-      replicas: 1
 
   service-4:
     image: nginx:alpine
     labels:
-      discover: "true"
+      - "discover=true"
     networks:
       - team-b
-    deploy:
-      replicas: 1
 
   service-5:
     image: nginx:alpine
     labels:
-      discover: "true"
+      - "discover=true"
     networks:
       - team-a
       - team-b
-    deploy:
-      replicas: 1
 
-  # No discover label - will NOT be tracked
+  # Service without discover label (NOT tracked)
   service-private:
     image: nginx:alpine
+    container_name: service-private
     networks:
       - team-internal
-    deploy:
-      replicas: 1
 
 networks:
   discovery:
-    driver: overlay
-    attachable: true
+    driver: bridge
 
   team-a:
-    driver: overlay
-    attachable: true
+    driver: bridge
 
   team-b:
-    driver: overlay
-    attachable: true
+    driver: bridge
 
   team-internal:
-    driver: overlay
-    attachable: true
-
+    driver: bridge
