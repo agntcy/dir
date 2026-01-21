@@ -1,8 +1,11 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// A declarative search results widget displaying agent records
 /// with pagination, search criteria reminder, and expandable cards.
@@ -35,7 +38,7 @@ class SearchResultsWidget extends StatefulWidget {
 class _SearchResultsWidgetState extends State<SearchResultsWidget> {
   int _currentPage = 0;
   static const int _pageSize = 5;
-  String _sortBy = 'default'; // 'default', 'name', 'date'
+  String _sortBy = 'default'; // 'default', 'name', 'author', 'date'
 
 
   List<String> get _sortedCids {
@@ -62,6 +65,12 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
         final bName = _extractName(b['record'] as Map<String, dynamic>?) ?? 'zzz';
         return aName.toLowerCase().compareTo(bName.toLowerCase());
       });
+    } else if (_sortBy == 'author') {
+      cidsWithData.sort((a, b) {
+        final aAuthor = _extractAuthor(a['record'] as Map<String, dynamic>?) ?? 'zzz';
+        final bAuthor = _extractAuthor(b['record'] as Map<String, dynamic>?) ?? 'zzz';
+        return aAuthor.toLowerCase().compareTo(bAuthor.toLowerCase());
+      });
     } else if (_sortBy == 'date') {
       cidsWithData.sort((a, b) {
         final aDate = _extractDate(a['record'] as Map<String, dynamic>?);
@@ -78,6 +87,16 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
     if (record == null) return null;
     final data = record['data'] as Map<String, dynamic>?;
     return data?['name']?.toString() ?? record['name']?.toString();
+  }
+
+  String? _extractAuthor(Map<String, dynamic>? record) {
+    if (record == null) return null;
+    final data = record['data'] as Map<String, dynamic>?;
+    final authors = data?['authors'] ?? record['authors'];
+    if (authors is List && authors.isNotEmpty) {
+      return authors.first.toString();
+    }
+    return null;
   }
 
   String _extractDate(Map<String, dynamic>? record) {
@@ -103,26 +122,12 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primaryContainer.withOpacity(0.3),
-            colorScheme.surface,
-          ],
-        ),
+        color: colorScheme.surface.withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: colorScheme.primary.withOpacity(0.2),
-          width: 1.5,
+          color: colorScheme.outline.withOpacity(0.08),
+          width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -166,7 +171,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withOpacity(0.1),
+        color: Colors.transparent,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
       ),
       child: Row(
@@ -174,11 +179,12 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.15),
+              color: colorScheme.primary.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colorScheme.primary.withOpacity(0.1)),
             ),
             child: Icon(
-              Icons.search_rounded,
+              Icons.search_outlined,
               color: colorScheme.primary,
               size: 24,
             ),
@@ -268,6 +274,8 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
           const SizedBox(width: 6),
           _buildSortChip(context, 'name', 'A-Z', Icons.sort_by_alpha),
           const SizedBox(width: 6),
+          _buildSortChip(context, 'author', 'Author', Icons.person_outline),
+          const SizedBox(width: 6),
           _buildSortChip(context, 'date', 'Date', Icons.calendar_today),
         ],
       ),
@@ -285,13 +293,13 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected 
-              ? colorScheme.primary.withOpacity(0.15) 
-              : colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              ? colorScheme.primary.withOpacity(0.08) 
+              : colorScheme.surfaceContainerHighest.withOpacity(0.3),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected 
-                ? colorScheme.primary.withOpacity(0.4) 
-                : colorScheme.outline.withOpacity(0.15),
+                ? colorScheme.primary.withOpacity(0.25) 
+                : colorScheme.outline.withOpacity(0.1),
           ),
         ),
         child: Row(
@@ -404,26 +412,35 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
             onPressed: _currentPage > 0
                 ? () => setState(() => _currentPage--)
                 : null,
-            icon: const Icon(Icons.chevron_left_rounded),
+            icon: Icon(
+              Icons.chevron_left_outlined,
+              color: _currentPage > 0 
+                  ? colorScheme.primary 
+                  : colorScheme.outline.withOpacity(0.4),
+            ),
             style: IconButton.styleFrom(
-              backgroundColor: _currentPage > 0
-                  ? colorScheme.primaryContainer
-                  : colorScheme.surfaceContainerHighest,
+              backgroundColor: Colors.transparent,
+              side: BorderSide(
+                color: _currentPage > 0
+                    ? colorScheme.primary.withOpacity(0.2)
+                    : colorScheme.outline.withOpacity(0.1),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
+              color: colorScheme.surface.withOpacity(0.5),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
             ),
             child: Text(
               'Page ${_currentPage + 1} of $_totalPages',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: colorScheme.onSurface,
+                color: colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
           ),
@@ -432,11 +449,19 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
             onPressed: _currentPage < _totalPages - 1
                 ? () => setState(() => _currentPage++)
                 : null,
-            icon: const Icon(Icons.chevron_right_rounded),
+            icon: Icon(
+              Icons.chevron_right_outlined,
+              color: _currentPage < _totalPages - 1 
+                  ? colorScheme.primary 
+                  : colorScheme.outline.withOpacity(0.4),
+            ),
             style: IconButton.styleFrom(
-              backgroundColor: _currentPage < _totalPages - 1
-                  ? colorScheme.primaryContainer
-                  : colorScheme.surfaceContainerHighest,
+              backgroundColor: Colors.transparent,
+              side: BorderSide(
+                color: _currentPage < _totalPages - 1
+                    ? colorScheme.primary.withOpacity(0.2)
+                    : colorScheme.outline.withOpacity(0.1),
+              ),
             ),
           ),
           if (widget.hasMore) ...[
@@ -585,14 +610,17 @@ class AgentRecordCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: hasData 
-                    ? colorScheme.primaryContainer.withOpacity(0.4)
-                    : colorScheme.surfaceContainerHighest,
+                color: colorScheme.surface.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: hasData 
+                      ? colorScheme.primary.withOpacity(0.15) 
+                      : colorScheme.outline.withOpacity(0.1),
+                ),
               ),
               child: Icon(
-                Icons.smart_toy_rounded,
-                color: hasData ? colorScheme.primary : colorScheme.outline,
+                Icons.smart_toy_outlined,
+                color: hasData ? colorScheme.primary : colorScheme.outline.withOpacity(0.5),
                 size: 24,
               ),
             ),
@@ -750,15 +778,16 @@ class AgentRecordCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer.withOpacity(0.5),
+        color: colorScheme.surface.withOpacity(0.8),
         borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.15)),
       ),
       child: Text(
         version,
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w600,
-          color: colorScheme.onSecondaryContainer,
+          color: colorScheme.onSurface.withOpacity(0.7),
         ),
       ),
     );
@@ -776,19 +805,19 @@ class AgentRecordCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: colorScheme.primaryContainer.withOpacity(0.3),
+          color: colorScheme.surface.withOpacity(0.6),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: colorScheme.primary.withOpacity(0.2),
+            color: colorScheme.outline.withOpacity(0.1),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.fingerprint_rounded,
+              Icons.fingerprint_outlined,
               size: 12,
-              color: colorScheme.primary,
+              color: colorScheme.primary.withOpacity(0.85),
             ),
             const SizedBox(width: 4),
             Text(
@@ -871,6 +900,59 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
     );
   }
 
+  Future<void> _downloadJson(BuildContext context, Map<String, dynamic>? agentInfo) async {
+    if (agentInfo == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No data available to download'), duration: Duration(seconds: 2)),
+      );
+      return;
+    }
+
+    try {
+      // Format JSON with indentation
+      final jsonString = const JsonEncoder.withIndent('  ').convert(agentInfo);
+      
+      // Get downloads directory
+      final directory = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
+      
+      // Create filename from agent name or CID
+      final agentName = _extractDisplayName(agentInfo['name']?.toString() ?? widget.cid);
+      final sanitizedName = agentName.replaceAll(RegExp(r'[^\w\-]'), '_');
+      final fileName = 'agent_${sanitizedName}_${DateTime.now().millisecondsSinceEpoch}.json';
+      
+      // Write file
+      final file = File('${directory.path}/$fileName');
+      await file.writeAsString(jsonString);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Saved to ${file.path}')),
+              ],
+            ),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   String _formatDate(String isoDate) {
     try {
       final date = DateTime.parse(isoDate);
@@ -927,7 +1009,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.15),
+                color: colorScheme.surface.withOpacity(0.5),
                 borderRadius: BorderRadius.vertical(
                   top: const Radius.circular(16),
                   bottom: _isExpanded ? Radius.zero : const Radius.circular(16),
@@ -941,16 +1023,12 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          colorScheme.primary.withOpacity(0.3),
-                          colorScheme.tertiary.withOpacity(0.3),
-                        ],
-                      ),
+                      color: colorScheme.surface.withOpacity(0.7),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorScheme.primary.withOpacity(0.15)),
                     ),
                     child: Icon(
-                      Icons.smart_toy_rounded,
+                      Icons.smart_toy_outlined,
                       color: colorScheme.primary,
                       size: 26,
                     ),
@@ -981,10 +1059,11 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: colorScheme.secondaryContainer.withOpacity(0.5),
+                                  color: colorScheme.surface.withOpacity(0.8),
                                   borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: colorScheme.outline.withOpacity(0.15)),
                                 ),
-                                child: Text(version, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSecondaryContainer)),
+                                child: Text(version, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurface.withOpacity(0.7))),
                               ),
                             ],
                           ],
@@ -1004,23 +1083,23 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer.withOpacity(0.3),
+                            color: colorScheme.surface.withOpacity(0.6),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                            border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.fingerprint_rounded, size: 12, color: colorScheme.primary),
+                              Icon(Icons.fingerprint_outlined, size: 12, color: colorScheme.primary.withOpacity(0.7)),
                               const SizedBox(width: 4),
                               Text(
                                 widget.cid.length > 12 
                                     ? '${widget.cid.substring(0, 8)}...${widget.cid.substring(widget.cid.length - 4)}'
                                     : widget.cid.isNotEmpty ? widget.cid : 'N/A',
-                                style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: colorScheme.primary),
+                                style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: colorScheme.primary.withOpacity(0.7)),
                               ),
                               const SizedBox(width: 4),
-                              Icon(Icons.copy_rounded, size: 11, color: colorScheme.primary),
+                              Icon(Icons.copy_outlined, size: 11, color: colorScheme.primary.withOpacity(0.7)),
                             ],
                           ),
                         ),
@@ -1069,21 +1148,20 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [colorScheme.tertiaryContainer.withOpacity(0.6), colorScheme.primaryContainer.withOpacity(0.4)],
-                        ),
+                        color: colorScheme.surface.withOpacity(0.7),
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colorScheme.primary.withOpacity(0.12)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(skillName.toString().split('/').last.replaceAll('_', ' '), style: TextStyle(fontSize: 12, color: colorScheme.onTertiaryContainer)),
+                          Text(skillName.toString().split('/').last.replaceAll('_', ' '), style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withOpacity(0.8))),
                           if (skillId != null) ...[
                             const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(color: colorScheme.surface.withOpacity(0.7), borderRadius: BorderRadius.circular(4)),
-                              child: Text(skillId, style: TextStyle(fontSize: 9, fontFamily: 'monospace', color: colorScheme.primary)),
+                              decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(4)),
+                              child: Text(skillId, style: TextStyle(fontSize: 9, fontFamily: 'monospace', color: colorScheme.primary.withOpacity(0.7))),
                             ),
                           ],
                         ],
@@ -1107,10 +1185,11 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer.withOpacity(0.5),
+                        color: colorScheme.surface.withOpacity(0.7),
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colorScheme.secondary.withOpacity(0.12)),
                       ),
-                      child: Text(name.toString().replaceAll('_', ' '), style: TextStyle(fontSize: 12, color: colorScheme.onSecondaryContainer)),
+                      child: Text(name.toString().replaceAll('_', ' '), style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withOpacity(0.8))),
                     );
                   }).toList(),
                 ),
@@ -1131,20 +1210,20 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withOpacity(0.4),
+                        color: colorScheme.surface.withOpacity(0.7),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+                        border: Border.all(color: colorScheme.primary.withOpacity(0.1)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(moduleName.toString().split('/').last.replaceAll('_', ' '), style: TextStyle(fontSize: 12, color: colorScheme.onPrimaryContainer)),
+                          Text(moduleName.toString().split('/').last.replaceAll('_', ' '), style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withOpacity(0.8))),
                           if (moduleId != null) ...[
                             const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(4)),
-                              child: Text(moduleId, style: TextStyle(fontSize: 9, fontFamily: 'monospace', color: colorScheme.primary)),
+                              child: Text(moduleId, style: TextStyle(fontSize: 9, fontFamily: 'monospace', color: colorScheme.primary.withOpacity(0.7))),
                             ),
                           ],
                         ],
@@ -1167,16 +1246,16 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: colorScheme.secondaryContainer.withOpacity(0.3),
+                        color: colorScheme.surface.withOpacity(0.7),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: colorScheme.secondary.withOpacity(0.2)),
+                        border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('${e.key}:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.secondary)),
+                          Text('${e.key}:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurface.withOpacity(0.6))),
                           const SizedBox(width: 4),
-                          Text(e.value.toString(), style: TextStyle(fontSize: 11, color: colorScheme.onSecondaryContainer)),
+                          Text(e.value.toString(), style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withOpacity(0.8))),
                         ],
                       ),
                     );
@@ -1220,27 +1299,51 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                 ),
               ),
             
-            // Metadata footer
-            if (schemaVersion.isNotEmpty || createdAt.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: Row(
-                  children: [
-                    if (schemaVersion.isNotEmpty) ...[
-                      Icon(Icons.schema_outlined, size: 12, color: colorScheme.outline),
-                      const SizedBox(width: 4),
-                      Text('Schema $schemaVersion', style: TextStyle(fontSize: 10, color: colorScheme.outline)),
-                    ],
-                    if (schemaVersion.isNotEmpty && createdAt.isNotEmpty)
-                      const SizedBox(width: 16),
-                    if (createdAt.isNotEmpty) ...[
-                      Icon(Icons.calendar_today_outlined, size: 12, color: colorScheme.outline),
-                      const SizedBox(width: 4),
-                      Text(_formatDate(createdAt), style: TextStyle(fontSize: 10, color: colorScheme.outline)),
-                    ],
+            // Metadata footer with download button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Row(
+                children: [
+                  if (schemaVersion.isNotEmpty) ...[
+                    Icon(Icons.schema_outlined, size: 12, color: colorScheme.outline),
+                    const SizedBox(width: 4),
+                    Text('Schema $schemaVersion', style: TextStyle(fontSize: 10, color: colorScheme.outline)),
                   ],
-                ),
+                  if (schemaVersion.isNotEmpty && createdAt.isNotEmpty)
+                    const SizedBox(width: 16),
+                  if (createdAt.isNotEmpty) ...[
+                    Icon(Icons.calendar_today_outlined, size: 12, color: colorScheme.outline),
+                    const SizedBox(width: 4),
+                    Text('Added ${_formatDate(createdAt)}', style: TextStyle(fontSize: 10, color: colorScheme.outline)),
+                  ],
+                  const Spacer(),
+                  // Download JSON button (same style as CID badge)
+                  InkWell(
+                    onTap: () => _downloadJson(context, agentInfo),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.download_outlined, size: 12, color: colorScheme.primary.withOpacity(0.85)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Download JSON',
+                            style: TextStyle(fontSize: 10, color: colorScheme.primary.withOpacity(0.85)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ),
           ],
         ],
       ),

@@ -29,6 +29,32 @@ class LlmToolCall {
   LlmToolCall(this.name, this.args, {this.id});
 }
 
+// System instruction for AGNTCY Directory
+const String _directorySystemInstruction = '''
+You are an AI assistant for the AGNTCY Agent Directory. You help users search for and discover AI agents.
+
+SEARCH TOOL USAGE (agntcy_dir_search_local):
+- Use wildcards freely: * (zero or more chars), ? (single char), [abc] (char class)
+- names: Agent name patterns, e.g., ["*search*"], ["*gpt*"]
+- skill_names: Skill patterns, e.g., ["*python*"], ["*translation*"]
+- authors: Author patterns, e.g., ["*cisco*"], ["AGNTCY*"]
+- versions: Version patterns, e.g., ["v1.*"], ["*beta*"]
+- domain_names: Domain patterns, e.g., ["*education*"]
+
+EXAMPLES:
+- "list all agents" → names: ["*"]
+- "search agents" → names: ["*search*"]
+- "agents for text summarization" → skill_names: ["*summariz*"] OR names: ["*summariz*"]
+- "agents by author cisco" → authors: ["*cisco*"]
+
+ALWAYS use wildcards when the user describes what they want. Do NOT ask for exact names - use patterns!
+
+RESPONSE FORMAT:
+- Do NOT list CIDs in your text response - the UI displays them separately in cards
+- Just provide a brief summary like "Found X agents matching your search"
+- Let the search results widget display the agent details
+''';
+
 // --- GEMINI IMPLEMENTATION ---
 class GeminiProvider implements LlmProvider {
   final String apiKey;
@@ -59,6 +85,7 @@ class GeminiProvider implements LlmProvider {
       apiKey: apiKey,
       model: 'gemini-2.0-flash-exp',
       tools: geminiTools,
+      systemInstruction: _directorySystemInstruction,
     );
   }
 

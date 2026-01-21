@@ -218,9 +218,35 @@ class AiService {
     return response.text;
   }
 
-  void _notifyToolOutput(String name, List<dynamic> content, void Function(String, dynamic) callback) {
-     print("DEBUG: _notifyToolOutput called for $name with content: $content");
-     for (var item in content) {
+  void _notifyToolOutput(String name, dynamic content, void Function(String, dynamic) callback) {
+     print("DEBUG: _notifyToolOutput called for $name with content type: ${content.runtimeType}");
+     
+     // Handle content as either List or String
+     List<dynamic> contentList;
+     if (content is List) {
+       contentList = content;
+     } else if (content is String) {
+       // Try to parse string as JSON
+       try {
+         final parsed = jsonDecode(content);
+         if (parsed is List) {
+           contentList = parsed;
+         } else {
+           // Wrap in expected format
+           contentList = [{'type': 'text', 'text': content}];
+         }
+       } catch (e) {
+         // Not JSON, wrap as text
+         contentList = [{'type': 'text', 'text': content}];
+       }
+     } else if (content is Map) {
+       contentList = [{'type': 'text', 'text': jsonEncode(content)}];
+     } else {
+       print("DEBUG: Unexpected content type: ${content.runtimeType}");
+       return;
+     }
+     
+     for (var item in contentList) {
          if (item is Map && item['type'] == 'text') {
              try {
                  final text = item['text'] as String;
@@ -232,8 +258,6 @@ class AiService {
                         final recordInner = jsonDecode(json['record_data']);
                         if (recordInner is Map) {
                            json['data'] = recordInner;
-                           // Optional: remove the string to save space/confusion
-                           // json.remove('record_data');
                         }
                     } catch (e) {
                         print("DEBUG: Failed to parse nested record_data: $e");

@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../main.dart';
 import '../mcp/client.dart';
@@ -35,6 +36,9 @@ class _ChatScreenState extends State<ChatScreen> {
   AiService? _aiService;
   McpClient? _mcpClient;
   bool _isLoading = false;
+  
+  // Welcome message
+  static const String _welcomeMessage = 'Find published AI agents records by describing what you need (by author, name, skills, versions, domain). Or type `help` for commands.';
 
   // Config
   String _providerType = 'gemini'; // gemini, azure, openai
@@ -47,6 +51,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    // Add welcome message
+    _messages.add({'role': 'welcome', 'text': _welcomeMessage});
+    
     if (widget.aiService != null) {
       _aiService = widget.aiService;
     } else {
@@ -526,16 +533,56 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Widget _buildSuggestionChip(BuildContext context, String text) {
+    return ActionChip(
+      label: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+      side: BorderSide(
+        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+      ),
+      onPressed: () {
+        _controller.text = text;
+        _sendMessage();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GenUI MCP Client'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Blue logo for light mode, orange logo for dark mode
+            SvgPicture.asset(
+              isDark 
+                  ? 'assets/images/logo-dark.svg'   // Orange on dark
+                  : 'assets/images/logo-light.svg', // Blue on light
+              height: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Agent Directory GUI',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: Icon(Theme.of(context).brightness == Brightness.dark
-                ? Icons.light_mode
-                : Icons.dark_mode),
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => MyApp.toggleTheme(context),
             tooltip: 'Toggle Theme',
           ),
@@ -552,6 +599,91 @@ class _ChatScreenState extends State<ChatScreen> {
                 itemBuilder: (context, index) {
                   final msg = _messages[index];
                   final role = msg['role'];
+
+                  // Welcome message
+                  if (role == 'welcome') {
+                    return Container(
+                      margin: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                            Theme.of(context).colorScheme.secondary.withOpacity(0.03),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.search,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Welcome to AGNTCY Agent Directory GUI',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Discover AI agents from the network',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            msg['text'] ?? '',
+                            style: TextStyle(
+                              fontSize: 15,
+                              height: 1.6,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.85),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildSuggestionChip(context, 'list of all agents'),
+                              _buildSuggestionChip(context, 'help'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
                   // New search results widget
                   if (role == 'search_results') {
@@ -623,40 +755,49 @@ class _ChatScreenState extends State<ChatScreen> {
 
                   final text = msg['text'] ?? '';
 
-                  // User message
+                  // User message - aligned right, 80% width
                   if (role == 'user') {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            child: Icon(Icons.person, size: 16, color: Theme.of(context).colorScheme.onPrimary),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('You', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.primary)),
-                                const SizedBox(height: 4),
-                                Text(text, style: const TextStyle(fontSize: 14)),
-                              ],
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FractionallySizedBox(
+                        widthFactor: 0.8,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
                             ),
                           ),
-                        ],
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                child: Icon(Icons.person, size: 16, color: Theme.of(context).colorScheme.onPrimary),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('You', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.primary)),
+                                    const SizedBox(height: 4),
+                                    Text(text, style: const TextStyle(fontSize: 14)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   }
 
-                  // Model response
+                  // Model response - aligned left, 80% width
                   if (role == 'model') {
                     // Check if response contains JSON data (code block or raw)
                     final jsonBlockMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)\s*```').firstMatch(text);
@@ -678,42 +819,51 @@ class _ChatScreenState extends State<ChatScreen> {
                       } catch (_) {}
                     }
                     
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: Theme.of(context).colorScheme.secondary,
-                            child: Icon(Icons.smart_toy, size: 16, color: Theme.of(context).colorScheme.onSecondary),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Assistant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.secondary)),
-                                const SizedBox(height: 4),
-                                // Show text before JSON if any
-                                if (textBeforeJson.isNotEmpty) ...[
-                                  MarkdownBody(data: textBeforeJson, selectable: true),
-                                  const SizedBox(height: 8),
-                                ],
-                                // Show JSON as code block if detected
-                                if (jsonData != null)
-                                  JsonCodeBlock(data: jsonData, title: 'Record Data', maxHeight: 250)
-                                else if (jsonBlockMatch == null)
-                                  MarkdownBody(data: text, selectable: true),
-                              ],
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: 0.8,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline.withOpacity(0.15),
                             ),
                           ),
-                        ],
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Theme.of(context).colorScheme.secondary,
+                                child: Icon(Icons.smart_toy, size: 16, color: Theme.of(context).colorScheme.onSecondary),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Assistant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.secondary)),
+                                    const SizedBox(height: 4),
+                                    // Show text before JSON if any
+                                    if (textBeforeJson.isNotEmpty) ...[
+                                      MarkdownBody(data: textBeforeJson, selectable: true),
+                                      const SizedBox(height: 8),
+                                    ],
+                                    // Show JSON as code block if detected
+                                    if (jsonData != null)
+                                      JsonCodeBlock(data: jsonData, title: 'Record Data', maxHeight: 250)
+                                    else if (jsonBlockMatch == null)
+                                      MarkdownBody(data: text, selectable: true),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   }
