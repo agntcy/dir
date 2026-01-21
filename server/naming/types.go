@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package naming provides name ownership verification for OASF records.
-// It implements DNS TXT and JWKS (RFC 7517) verification inspired by AT Protocol
-// and ACME DNS-01 challenge patterns.
+// It implements JWKS (RFC 7517) verification inspired by AT Protocol.
 package naming
 
-// PublicKey represents a public key extracted from DNS TXT or JWKS.
+// PublicKey represents a public key extracted from JWKS.
 type PublicKey struct {
 	// ID is an optional identifier for the key (kid in JWK, or generated for DNS).
 	ID string
@@ -17,7 +16,7 @@ type PublicKey struct {
 	// Key is the raw public key bytes in DER format for comparison.
 	Key []byte
 
-	// KeyBase64 is the original base64-encoded key string (for DNS TXT records).
+	// KeyBase64 is the original base64-encoded key string.
 	KeyBase64 string
 }
 
@@ -29,7 +28,7 @@ type Result struct {
 	// Domain is the domain that was verified.
 	Domain string
 
-	// Method is how the keys were retrieved ("dns" or "wellknown").
+	// Method is how the keys were retrieved ("wellknown").
 	Method string
 
 	// Error contains the error message if verification failed.
@@ -43,9 +42,6 @@ type Result struct {
 type VerificationMethod string
 
 const (
-	// MethodDNS indicates verification via DNS TXT record.
-	MethodDNS VerificationMethod = "dns"
-
 	// MethodWellKnown indicates verification via JWKS well-known file (RFC 7517).
 	MethodWellKnown VerificationMethod = "wellknown"
 

@@ -13,12 +13,6 @@ import (
 
 var providerLogger = logging.Logger("naming/provider")
 
-// KeyLookup defines the interface for looking up public keys for a domain.
-type KeyLookup interface {
-	// LookupKeys retrieves public keys for the given domain.
-	LookupKeys(ctx context.Context, domain string) ([]PublicKey, error)
-}
-
 // KeyLookupWithScheme defines the interface for looking up public keys with a URL scheme.
 type KeyLookupWithScheme interface {
 	// LookupKeysWithScheme retrieves public keys for the given domain using the specified scheme.
@@ -28,22 +22,12 @@ type KeyLookupWithScheme interface {
 // Provider handles name ownership verification for OASF records.
 // It routes to the appropriate verification method based on the protocol prefix.
 type Provider struct {
-	// dns is the DNS resolver for TXT record lookups.
-	dns KeyLookup
-
 	// wellKnown is the fetcher for JWKS well-known files.
 	wellKnown KeyLookupWithScheme
 }
 
 // ProviderOption configures a Provider.
 type ProviderOption func(*Provider)
-
-// WithDNSLookup sets the DNS key lookup implementation.
-func WithDNSLookup(dns KeyLookup) ProviderOption {
-	return func(p *Provider) {
-		p.dns = dns
-	}
-}
 
 // WithWellKnownLookup sets the well-known key lookup implementation.
 func WithWellKnownLookup(wk KeyLookupWithScheme) ProviderOption {
@@ -65,7 +49,6 @@ func NewProvider(opts ...ProviderOption) *Provider {
 
 // Verify checks if the given signing key is authorized for the name.
 // It parses the protocol prefix from the record name to determine the verification method:
-//   - dns://domain/path -> use DNS TXT records
 //   - https://domain/path -> use JWKS well-known file via HTTPS
 //   - http://domain/path -> use JWKS well-known file via HTTP (testing only)
 //   - domain/path -> no verification (protocol prefix required)
@@ -135,18 +118,6 @@ func (p *Provider) Verify(ctx context.Context, recordName string, signingKey []b
 // If no protocol prefix is specified, no verification is performed.
 func (p *Provider) lookupKeys(ctx context.Context, parsed *ParsedName) ([]PublicKey, VerificationMethod, error) {
 	switch parsed.Protocol {
-	case DNSProtocol:
-		if p.dns == nil {
-			return nil, MethodNone, errors.New("DNS verification not configured")
-		}
-
-		keys, err := p.dns.LookupKeys(ctx, parsed.Domain)
-		if err != nil {
-			return nil, MethodNone, fmt.Errorf("DNS key lookup failed: %w", err)
-		}
-
-		return keys, MethodDNS, nil
-
 	case HTTPSProtocol:
 		if p.wellKnown == nil {
 			return nil, MethodNone, errors.New("JWKS verification not configured")
@@ -173,6 +144,6 @@ func (p *Provider) lookupKeys(ctx context.Context, parsed *ParsedName) ([]Public
 
 	default:
 		// No protocol prefix - skip verification
-		return nil, MethodNone, errors.New("no verification protocol specified in name (use dns://, https://, or http:// prefix)")
+		return nil, MethodNone, errors.New("no verification protocol specified in name (use https:// or http:// prefix)")
 	}
 }

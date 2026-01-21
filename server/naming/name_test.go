@@ -32,16 +32,6 @@ func TestParseName(t *testing.T) {
 			},
 		},
 		{
-			name:  "dns protocol",
-			input: "dns://cisco.com/agent",
-			want: &ParsedName{
-				Protocol: DNSProtocol,
-				Domain:   "cisco.com",
-				Path:     "agent",
-				FullName: "cisco.com/agent",
-			},
-		},
-		{
 			name:  "https protocol",
 			input: "https://example.org/test",
 			want: &ParsedName{
@@ -59,15 +49,6 @@ func TestParseName(t *testing.T) {
 				Domain:   "localhost:8080",
 				Path:     "agent",
 				FullName: "localhost:8080/agent",
-			},
-		},
-		{
-			name:  "dns protocol without path",
-			input: "dns://cisco.com",
-			want: &ParsedName{
-				Protocol: DNSProtocol,
-				Domain:   "cisco.com",
-				FullName: "cisco.com",
 			},
 		},
 		{
@@ -141,11 +122,6 @@ func TestExtractDomain(t *testing.T) {
 		{
 			name:  "domain with path",
 			input: "cisco.com/agent",
-			want:  "cisco.com",
-		},
-		{
-			name:  "dns protocol",
-			input: "dns://cisco.com/agent",
 			want:  "cisco.com",
 		},
 		{
