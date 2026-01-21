@@ -103,6 +103,41 @@ limactl stop discovery
 limactl delete discovery
 ```
 
+### Kubernetes (kind/minikube)
+
+Test inside a local Kubernetes cluster using kind or minikube.
+
+```bash
+cd discovery
+
+# Create cluster (kind)
+kind create cluster --name discovery-test
+
+# Build and load images
+docker build -t discovery-watcher:latest ./watcher
+docker build -t discovery-server:latest ./server
+kind load docker-image discovery-watcher:latest --name discovery-test
+kind load docker-image discovery-server:latest --name discovery-test
+
+# Deploy everything (etcd + watcher + server + test workloads)
+kubectl apply -f k8s.discovery.yaml
+kubectl wait --for=condition=ready pod -l app=discovery-watcher --timeout=60s
+
+# Test discovery API
+kubectl port-forward svc/discovery-server 8080:8080
+curl http://localhost:8080/stats | jq .
+curl http://localhost:8080/workloads | jq .
+
+# Discover reachable from service-1 (only sees team-a pods)
+POD_UID=$(kubectl get pod service-1 -n team-a -o jsonpath='{.metadata.uid}')
+curl "http://localhost:8080/discover?from=$POD_UID" | jq .
+
+# Cleanup
+kind delete cluster --name discovery-test
+```
+
+For minikube, use `eval $(minikube docker-env)` before building images.
+
 ## API
 
 | Endpoint                  | Description                                                                                                       |

@@ -170,16 +170,29 @@ class KubernetesAdapter(RuntimeAdapter):
         try:
             labels = pod.metadata.labels or {}
             
-            # Build addresses
+            # Build DNS address for pod
+            # Requires: hostname + subdomain set on pod, and a headless service matching subdomain
+            # Format: {hostname}.{subdomain}.{namespace}.svc
+            hostname = pod.spec.hostname
+            subdomain = pod.spec.subdomain
+            namespace = pod.metadata.namespace
+            
             addresses = []
-            if pod.status.pod_ip:
-                for container in pod.spec.containers:
-                    for port in (container.ports or []):
-                        addresses.append(f"{pod.status.pod_ip}:{port.container_port}")
-                
-                # If no ports defined, use pod IP
-                if not addresses:
-                    addresses.append(pod.status.pod_ip)
+            if hostname and subdomain:
+                # Full DNS name when pod has hostname + subdomain + headless service
+                addresses.append(f"{hostname}.{subdomain}.{namespace}.svc")
+            else:
+                # Fallback: pod IP-based DNS (always works but uses IP)
+                # Format: {pod-ip-dashed}.{namespace}.pod
+                if pod.status.pod_ip:
+                    ip_dashed = pod.status.pod_ip.replace(".", "-")
+                    addresses.append(f"{ip_dashed}.{namespace}.pod")
+            
+            # Extract ports from all containers
+            ports = []
+            for container in pod.spec.containers:
+                for port in (container.ports or []):
+                    ports.append(str(port.container_port))
             
             # Isolation groups: namespace + any network policy annotations
             isolation_groups = [pod.metadata.namespace]
@@ -197,6 +210,7 @@ class KubernetesAdapter(RuntimeAdapter):
                 namespace=pod.metadata.namespace,
                 addresses=addresses,
                 isolation_groups=isolation_groups,
+                ports=ports,
                 labels=labels,
                 annotations={
                     **(pod.metadata.annotations or {}),
@@ -212,16 +226,11 @@ class KubernetesAdapter(RuntimeAdapter):
         try:
             labels = svc.metadata.labels or {}
             
-            # Build addresses
-            addresses = []
-            for port in (svc.spec.ports or []):
-                # ClusterIP:port
-                if svc.spec.cluster_ip and svc.spec.cluster_ip != "None":
-                    addresses.append(f"{svc.spec.cluster_ip}:{port.port}")
-                
-                # DNS name
-                dns_name = f"{svc.metadata.name}.{svc.metadata.namespace}.svc.cluster.local"
-                addresses.append(f"{dns_name}:{port.port}")
+            # Build address in format {service_name}.{namespace}.svc
+            addresses = [f"{svc.metadata.name}.{svc.metadata.namespace}.svc"]
+            
+            # Extract ports from service spec
+            ports = [str(port.port) for port in (svc.spec.ports or [])]
             
             return Workload(
                 id=svc.metadata.uid,
@@ -233,6 +242,7 @@ class KubernetesAdapter(RuntimeAdapter):
                 namespace=svc.metadata.namespace,
                 addresses=addresses,
                 isolation_groups=[svc.metadata.namespace],
+                ports=ports,
                 labels=labels,
                 annotations=svc.metadata.annotations or {},
             )
