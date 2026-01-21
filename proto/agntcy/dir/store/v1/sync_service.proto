@@ -127,14 +127,21 @@ message RequestRegistryCredentialsResponse {
   // Error message if negotiation failed
   string error_message = 2;
 
-  // URL of the remote Registry being synchronized from.
-  string remote_registry_url = 3;
+  // Address of the remote Registry (e.g., "ghcr.io", "dir-zot.default.svc.cluster.local:5000")
+  string registry_address = 3;
+
+  // Repository name within the registry (e.g., "user/dir-test/dir", "dir")
+  string repository_name = 6;
 
   // Registry credentials (oneof based on credential type)
   oneof credentials {
     BasicAuthCredentials basic_auth = 4;
     // CertificateCredentials certificate = 5;
   }
+
+  // Whether the registry uses plain HTTP (insecure) instead of HTTPS
+  // When true, TLS should be disabled for connections to this registry
+  bool insecure = 7;
 }
 
 // Supporting credential type definitions

@@ -88,16 +88,20 @@ class RequestRegistryCredentialsRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class RequestRegistryCredentialsResponse(_message.Message):
-    __slots__ = ("success", "error_message", "remote_registry_url", "basic_auth")
+    __slots__ = ("success", "error_message", "registry_address", "repository_name", "basic_auth", "insecure")
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
     ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    REMOTE_REGISTRY_URL_FIELD_NUMBER: _ClassVar[int]
+    REGISTRY_ADDRESS_FIELD_NUMBER: _ClassVar[int]
+    REPOSITORY_NAME_FIELD_NUMBER: _ClassVar[int]
     BASIC_AUTH_FIELD_NUMBER: _ClassVar[int]
+    INSECURE_FIELD_NUMBER: _ClassVar[int]
     success: bool
     error_message: str
-    remote_registry_url: str
+    registry_address: str
+    repository_name: str
     basic_auth: BasicAuthCredentials
-    def __init__(self, success: bool = ..., error_message: _Optional[str] = ..., remote_registry_url: _Optional[str] = ..., basic_auth: _Optional[_Union[BasicAuthCredentials, _Mapping]] = ...) -> None: ...
+    insecure: bool
+    def __init__(self, success: bool = ..., error_message: _Optional[str] = ..., registry_address: _Optional[str] = ..., repository_name: _Optional[str] = ..., basic_auth: _Optional[_Union[BasicAuthCredentials, _Mapping]] = ..., insecure: bool = ...) -> None: ...
 
 class BasicAuthCredentials(_message.Message):
     __slots__ = ("username", "password")

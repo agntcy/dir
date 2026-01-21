@@ -12,7 +12,6 @@ import (
 	"github.com/agntcy/dir/client"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	"github.com/agntcy/dir/server/events"
-	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	syncconfig "github.com/agntcy/dir/server/sync/config"
 	"github.com/agntcy/dir/server/sync/monitor"
 	synctypes "github.com/agntcy/dir/server/sync/types"
@@ -151,7 +150,7 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	logger.Debug("Starting sync operation", "worker_id", w.id, "sync_id", item.SyncID, "remote_url", item.RemoteDirectoryURL)
 
 	// Negotiate credentials with remote node using RequestRegistryCredentials RPC
-	remoteRegistryURL, credentials, err := w.negotiateCredentials(ctx, item.RemoteDirectoryURL)
+	result, err := w.negotiateCredentials(ctx, item.RemoteDirectoryURL)
 	if err != nil {
 		return fmt.Errorf("failed to negotiate credentials: %w", err)
 	}
@@ -159,16 +158,25 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	// Store credentials for later use in sync process
 	logger.Debug("Credentials negotiated successfully", "worker_id", w.id, "sync_id", item.SyncID)
 
-	// Update sync object with remote registry URL
-	if err := w.db.UpdateSyncRemoteRegistry(item.SyncID, remoteRegistryURL); err != nil {
+	// Get the full repository URL for storage and regsync
+	remoteRepositoryURL := result.fullRepositoryURL()
+
+	// Update sync object with remote repository URL
+	if err := w.db.UpdateSyncRemoteRegistry(item.SyncID, remoteRepositoryURL); err != nil {
 		return fmt.Errorf("failed to update sync remote registry: %w", err)
 	}
 
 	// Update zot configuration with sync extension to trigger sync
-	if err := zotutils.AddRegistryToSyncConfig(zotutils.DefaultZotConfigPath, remoteRegistryURL, ociconfig.DefaultRepositoryName, zotsyncconfig.Credentials{
-		Username: credentials.Username,
-		Password: credentials.Password,
-	}, item.CIDs); err != nil {
+	if err := zotutils.AddRegistryToSyncConfig(
+		zotutils.DefaultZotConfigPath,
+		result.registryAddress,
+		result.repositoryName,
+		zotsyncconfig.Credentials{
+			Username: result.credentials.Username,
+			Password: result.credentials.Password,
+		},
+		item.CIDs,
+	); err != nil {
 		return fmt.Errorf("failed to add registry to zot sync: %w", err)
 	}
 
@@ -182,8 +190,24 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 	return nil
 }
 
+// negotiateCredentialsResult holds the result of credential negotiation.
+type negotiateCredentialsResult struct {
+	registryAddress string
+	repositoryName  string
+	credentials     syncconfig.AuthConfig
+}
+
+// fullRepositoryURL returns the full repository URL (address + path).
+func (r *negotiateCredentialsResult) fullRepositoryURL() string {
+	if r.repositoryName != "" {
+		return r.registryAddress + "/" + r.repositoryName
+	}
+
+	return r.registryAddress
+}
+
 // negotiateCredentials negotiates registry credentials with the remote Directory node.
-func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL string) (string, syncconfig.AuthConfig, error) {
+func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL string) (*negotiateCredentialsResult, error) {
 	logger.Debug("Starting credential negotiation", "worker_id", w.id, "remote_url", remoteDirectoryURL)
 
 	// Build client config based on authn settings
@@ -206,23 +230,28 @@ func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL st
 	// Create gRPC connection to the remote Directory node
 	dirClient, err := client.New(ctx, client.WithConfig(clientConfig))
 	if err != nil {
-		return "", syncconfig.AuthConfig{}, fmt.Errorf("failed to create gRPC connection to remote node %s: %w", remoteDirectoryURL, err)
+		return nil, fmt.Errorf("failed to create gRPC connection to remote node %s: %w", remoteDirectoryURL, err)
 	}
 	defer dirClient.Close()
 
 	// Make the credential negotiation request
 	resp, err := dirClient.RequestRegistryCredentials(ctx, &storev1.RequestRegistryCredentialsRequest{})
 	if err != nil {
-		return "", syncconfig.AuthConfig{}, fmt.Errorf("failed to request registry credentials from %s: %w", remoteDirectoryURL, err)
+		return nil, fmt.Errorf("failed to request registry credentials from %s: %w", remoteDirectoryURL, err)
 	}
 
 	// Check if the negotiation was successful
 	if !resp.GetSuccess() {
-		return "", syncconfig.AuthConfig{}, fmt.Errorf("credential negotiation failed: %s", resp.GetErrorMessage())
+		return nil, fmt.Errorf("credential negotiation failed: %s", resp.GetErrorMessage())
 	}
 
-	return resp.GetRemoteRegistryUrl(), syncconfig.AuthConfig{
-		Username: resp.GetBasicAuth().GetUsername(),
-		Password: resp.GetBasicAuth().GetPassword(),
+	return &negotiateCredentialsResult{
+		registryAddress: resp.GetRegistryAddress(),
+		repositoryName:  resp.GetRepositoryName(),
+		credentials: syncconfig.AuthConfig{
+			Username: resp.GetBasicAuth().GetUsername(),
+			Password: resp.GetBasicAuth().GetPassword(),
+			Insecure: resp.GetInsecure(),
+		},
 	}, nil
 }

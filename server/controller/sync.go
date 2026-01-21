@@ -126,21 +126,29 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	ociConfig := c.opts.Config().Store.OCI
 	syncConfig := c.opts.Config().Sync
 
-	// Build registry URL based on configuration
-	registryURL := ociConfig.RegistryAddress
-	if registryURL == "" {
-		registryURL = ociconfig.DefaultRegistryAddress
+	// Get registry address with default fallback
+	registryAddress := ociConfig.RegistryAddress
+	if registryAddress == "" {
+		registryAddress = ociconfig.DefaultRegistryAddress
+	}
+
+	// Get repository name with default fallback
+	repositoryName := ociConfig.RepositoryName
+	if repositoryName == "" {
+		repositoryName = ociconfig.DefaultRepositoryName
 	}
 
 	return &storev1.RequestRegistryCredentialsResponse{
-		Success:           true,
-		RemoteRegistryUrl: registryURL,
+		Success:         true,
+		RegistryAddress: registryAddress,
+		RepositoryName:  repositoryName,
 		Credentials: &storev1.RequestRegistryCredentialsResponse_BasicAuth{
 			BasicAuth: &storev1.BasicAuthCredentials{
 				Username: syncConfig.Username,
 				Password: syncConfig.Password,
 			},
 		},
+		Insecure: ociConfig.Insecure,
 	}, nil
 }
 

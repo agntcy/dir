@@ -266,11 +266,18 @@ export declare type RequestRegistryCredentialsResponse = Message<"agntcy.dir.sto
   errorMessage: string;
 
   /**
-   * URL of the remote Registry being synchronized from.
+   * Address of the remote Registry (e.g., "ghcr.io", "dir-zot.default.svc.cluster.local:5000")
    *
-   * @generated from field: string remote_registry_url = 3;
+   * @generated from field: string registry_address = 3;
    */
-  remoteRegistryUrl: string;
+  registryAddress: string;
+
+  /**
+   * Repository name within the registry (e.g., "user/dir-test/dir", "dir")
+   *
+   * @generated from field: string repository_name = 6;
+   */
+  repositoryName: string;
 
   /**
    * Registry credentials (oneof based on credential type)
@@ -286,6 +293,14 @@ export declare type RequestRegistryCredentialsResponse = Message<"agntcy.dir.sto
     value: BasicAuthCredentials;
     case: "basicAuth";
   } | { case: undefined; value?: undefined };
+
+  /**
+   * Whether the registry uses plain HTTP (insecure) instead of HTTPS
+   * When true, TLS should be disabled for connections to this registry
+   *
+   * @generated from field: bool insecure = 7;
+   */
+  insecure: boolean;
 };
 
 /**
