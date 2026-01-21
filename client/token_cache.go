@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	// DefaultTokenCacheDir is the default directory for storing cached tokens.
+	// DefaultTokenCacheDir is the default directory for storing cached tokens (relative to home directory).
+	// When XDG_CONFIG_HOME is set, tokens are stored at $XDG_CONFIG_HOME/dirctl instead.
 	//nolint:gosec // G101: This is a directory path, not a credential
 	DefaultTokenCacheDir = ".config/dirctl"
 
@@ -71,11 +72,16 @@ type TokenCache struct {
 }
 
 // NewTokenCache creates a new token cache with the default directory.
+// Respects XDG_CONFIG_HOME environment variable for config directory location.
 func NewTokenCache() *TokenCache {
-	home, _ := os.UserHomeDir()
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome == "" {
+		home, _ := os.UserHomeDir()
+		configHome = filepath.Join(home, ".config")
+	}
 
 	return &TokenCache{
-		CacheDir: filepath.Join(home, DefaultTokenCacheDir),
+		CacheDir: filepath.Join(configHome, "dirctl"),
 	}
 }
 

@@ -39,8 +39,8 @@ type Config struct {
 
 	// GitHub token (PAT or OAuth) - can be set via flag/env for CI/CD use
 	// Developers: use 'dirctl auth login' instead
-	// CI/CD: set via DIRECTORY_CLIENT_TOKEN env var or --auth-token flag
-	Token string `json:"token,omitempty" mapstructure:"token"`
+	// CI/CD: set via DIRECTORY_CLIENT_GITHUB_TOKEN env var or --github-token flag
+	GitHubToken string `json:"github_token,omitempty" mapstructure:"github_token"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -86,8 +86,8 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("github_client_secret")
 	v.SetDefault("github_client_secret", "")
 
-	_ = v.BindEnv("token")
-	v.SetDefault("token", "")
+	_ = v.BindEnv("github_token")
+	v.SetDefault("github_token", "")
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

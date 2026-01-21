@@ -106,10 +106,10 @@ func (o *options) setupAutoDetectAuth(_ context.Context) error {
 	var token string
 
 	// 1. Check if token is provided via config/flag/env
-	if o.config.Token != "" {
+	if o.config.GitHubToken != "" {
 		authLogger.Debug("Auto-detected token from config/environment")
 
-		token = o.config.Token
+		token = o.config.GitHubToken
 	} else {
 		// 2. Check for cached GitHub OAuth token
 		cache := NewTokenCache()
@@ -411,11 +411,11 @@ func (o *options) setupGitHubAuth(_ context.Context) error {
 	var token string
 
 	// 1. First, check if token is provided via config/flag/env
-	//    This allows CI/CD to use PATs: export DIRECTORY_CLIENT_TOKEN=ghp_xxx
-	if o.config.Token != "" {
+	//    This allows CI/CD to use PATs: export DIRECTORY_CLIENT_GITHUB_TOKEN=ghp_xxx
+	if o.config.GitHubToken != "" {
 		authLogger.Debug("Using token from config/environment")
 
-		token = o.config.Token
+		token = o.config.GitHubToken
 	} else {
 		// 2. Fall back to cached OAuth token from interactive login
 		cache := NewTokenCache()
@@ -426,7 +426,7 @@ func (o *options) setupGitHubAuth(_ context.Context) error {
 		}
 
 		if cachedToken == nil {
-			return errors.New("not authenticated with GitHub. Run 'dirctl auth login' or set DIRECTORY_CLIENT_TOKEN environment variable")
+			return errors.New("not authenticated with GitHub. Run 'dirctl auth login' or set DIRECTORY_CLIENT_GITHUB_TOKEN environment variable")
 		}
 
 		authLogger.Debug("Using cached GitHub OAuth token", "user", cachedToken.User)

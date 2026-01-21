@@ -446,7 +446,7 @@ func TestSetupGitHubAuth(t *testing.T) {
 			config: &Config{
 				ServerAddress: testServerAddr,
 				AuthMode:      "github",
-				Token:         "", // No token provided
+				GitHubToken:   "", // No token provided
 			},
 		}
 
@@ -462,7 +462,7 @@ func TestSetupGitHubAuth(t *testing.T) {
 			config: &Config{
 				ServerAddress: testServerAddr,
 				AuthMode:      "github",
-				Token:         "gho_testtoken123456789", // Token provided
+				GitHubToken:   "gho_testtoken123456789", // Token provided
 			},
 		}
 
@@ -474,7 +474,7 @@ func TestSetupGitHubAuth(t *testing.T) {
 	})
 
 	t.Run("should succeed with token from environment", func(t *testing.T) {
-		t.Setenv("DIRECTORY_CLIENT_TOKEN", "ghp_envtoken123456789")
+		t.Setenv("DIRECTORY_CLIENT_GITHUB_TOKEN", "ghp_envtoken123456789")
 
 		cfg, err := LoadConfig()
 		require.NoError(t, err)
@@ -495,7 +495,7 @@ func TestSetupGitHubAuth(t *testing.T) {
 			config: &Config{
 				ServerAddress: testServerAddr,
 				AuthMode:      "github",
-				Token:         "gho_testtoken",
+				GitHubToken:   "gho_testtoken",
 			},
 		}
 
@@ -544,7 +544,7 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 			config: &Config{
 				ServerAddress: testServerAddr,
 				AuthMode:      "", // Empty - auto-detect
-				Token:         "gho_autodetect123",
+				GitHubToken:   "gho_autodetect123",
 			},
 		}
 
@@ -565,7 +565,7 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 			config: &Config{
 				ServerAddress: testServerAddr,
 				AuthMode:      "", // Empty - auto-detect
-				Token:         "", // No token
+				GitHubToken:   "", // No token
 			},
 		}
 
@@ -579,7 +579,7 @@ func TestSetupAutoDetectAuth(t *testing.T) {
 	})
 
 	t.Run("should auto-detect token from environment", func(t *testing.T) {
-		t.Setenv("DIRECTORY_CLIENT_TOKEN", "ghp_fromenv123")
+		t.Setenv("DIRECTORY_CLIENT_GITHUB_TOKEN", "ghp_fromenv123")
 
 		cfg, err := LoadConfig()
 		require.NoError(t, err)
@@ -605,7 +605,7 @@ func TestWithAuth_GitHubMode(t *testing.T) {
 			config: &Config{
 				ServerAddress: testServerAddr,
 				AuthMode:      "github",
-				Token:         "gho_testtoken",
+				GitHubToken:   "gho_testtoken",
 			},
 		}
 
@@ -625,7 +625,7 @@ func TestWithAuth_GitHubMode(t *testing.T) {
 			config: &Config{
 				ServerAddress: testServerAddr,
 				AuthMode:      "github",
-				Token:         "", // No token
+				GitHubToken:   "", // No token
 			},
 		}
 
@@ -660,7 +660,7 @@ func TestSetupGitHubAuth_TLSSkipVerify(t *testing.T) {
 					config: &Config{
 						ServerAddress: testServerAddr,
 						AuthMode:      "github",
-						Token:         "gho_testtoken",
+						GitHubToken:   "gho_testtoken",
 						TlsSkipVerify: tc.tlsSkipVerify,
 					},
 				}

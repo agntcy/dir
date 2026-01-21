@@ -19,7 +19,7 @@ func init() {
 	flags := RootCmd.PersistentFlags()
 	flags.StringVar(&clientConfig.ServerAddress, "server-addr", clientConfig.ServerAddress, "Directory Server API address")
 	flags.StringVar(&clientConfig.AuthMode, "auth-mode", clientConfig.AuthMode, "Authentication mode: x509, jwt, token (SPIFFE), tls, github, insecure, none, or empty for auto-detect")
-	flags.StringVar(&clientConfig.Token, "auth-token", clientConfig.Token, "GitHub token (PAT or OAuth) for authentication - useful for CI/CD (can also use DIRECTORY_CLIENT_TOKEN env var)")
+	flags.StringVar(&clientConfig.GitHubToken, "github-token", clientConfig.GitHubToken, "GitHub token (PAT or OAuth) for authentication - useful for CI/CD (can also use DIRECTORY_CLIENT_GITHUB_TOKEN env var)")
 	flags.StringVar(&clientConfig.SpiffeSocketPath, "spiffe-socket-path", clientConfig.SpiffeSocketPath, "Path to SPIFFE Workload API socket (for x509 or JWT authentication)")
 	flags.StringVar(&clientConfig.SpiffeToken, "spiffe-token", clientConfig.SpiffeToken, "Path to JSON file containing SPIFFE X509 SVID token (for --auth-mode=token)")
 	flags.StringVar(&clientConfig.JWTAudience, "jwt-audience", clientConfig.JWTAudience, "JWT audience (for JWT authentication mode)")
