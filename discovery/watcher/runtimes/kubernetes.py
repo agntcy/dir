@@ -85,7 +85,7 @@ class KubernetesAdapter(RuntimeAdapter):
         self._networking = None
     
     def list_workloads(self) -> list:
-        """List all discoverable Pods and Services."""
+        """List all discoverable Pods with their service addresses."""
         if not self._v1:
             return []
         
@@ -94,6 +94,9 @@ class KubernetesAdapter(RuntimeAdapter):
         # Build label selector string
         selector_parts = [f"{self.label_key}={self.label_value}"]
         selector_str = ",".join(selector_parts)
+        
+        # Cache all services for lookups (services selecting discoverable pods)
+        services_by_namespace = self._get_services_by_namespace()
         
         # List Pods
         try:
@@ -109,31 +112,15 @@ class KubernetesAdapter(RuntimeAdapter):
             
             for pod in pods.items:
                 if pod.status.phase == "Running":
-                    workload = self._pod_to_workload(pod)
+                    # Find services that select this pod
+                    matching_services = self._find_services_for_pod(
+                        pod, services_by_namespace.get(pod.metadata.namespace, [])
+                    )
+                    workload = self._pod_to_workload(pod, matching_services)
                     if workload:
                         workloads.append(workload)
         except Exception as e:
             print(f"[kubernetes] Failed to list pods: {e}")
-        
-        # List Services
-        if self.include_services:
-            try:
-                if self.namespace:
-                    services = self._v1.list_namespaced_service(
-                        namespace=self.namespace,
-                        label_selector=selector_str
-                    )
-                else:
-                    services = self._v1.list_service_for_all_namespaces(
-                        label_selector=selector_str
-                    )
-                
-                for svc in services.items:
-                    workload = self._service_to_workload(svc)
-                    if workload:
-                        workloads.append(workload)
-            except Exception as e:
-                print(f"[kubernetes] Failed to list services: {e}")
         
         return workloads
     
@@ -165,19 +152,24 @@ class KubernetesAdapter(RuntimeAdapter):
         while not self._stop_event.is_set():
             self._stop_event.wait(1)
     
-    def _pod_to_workload(self, pod) -> Optional[Workload]:
-        """Convert Kubernetes Pod to Workload."""
+    def _pod_to_workload(self, pod, services: list = None) -> Optional[Workload]:
+        """Convert Kubernetes Pod to Workload, including service addresses."""
         try:
             labels = pod.metadata.labels or {}
             namespace = pod.metadata.namespace
             
-            # Build DNS address for pod
-            # Format: {pod-ip-dashed}.{namespace}.pod
-            # Example: 10-244-0-5.team-a.pod
+            # Build addresses list
             addresses = []
+            
+            # 1. Pod DNS: {pod-ip-dashed}.{namespace}.pod
             if pod.status.pod_ip:
                 ip_dashed = pod.status.pod_ip.replace(".", "-")
                 addresses.append(f"{ip_dashed}.{namespace}.pod")
+            
+            # 2. Service DNS: {service-name}.{namespace}.svc for each service selecting this pod
+            if services:
+                for svc in services:
+                    addresses.append(f"{svc.metadata.name}.{namespace}.svc")
             
             # Extract ports from all containers
             ports = []
@@ -190,6 +182,9 @@ class KubernetesAdapter(RuntimeAdapter):
             
             # Check for network policies affecting this pod
             policy_info = self._get_pod_network_policies(pod)
+            
+            # Build service names annotation
+            service_names = [svc.metadata.name for svc in (services or [])]
             
             return Workload(
                 id=pod.metadata.uid,
@@ -206,13 +201,50 @@ class KubernetesAdapter(RuntimeAdapter):
                 annotations={
                     **(pod.metadata.annotations or {}),
                     "network_policies": policy_info,
+                    "services": ",".join(service_names) if service_names else "",
                 },
             )
         except Exception as e:
             print(f"[kubernetes] Failed to convert pod: {e}")
             return None
     
+    def _get_services_by_namespace(self) -> dict:
+        """Get all services grouped by namespace."""
+        services_by_ns = {}
+        try:
+            if self.namespace:
+                services = self._v1.list_namespaced_service(namespace=self.namespace)
+            else:
+                services = self._v1.list_service_for_all_namespaces()
+            
+            for svc in services.items:
+                ns = svc.metadata.namespace
+                if ns not in services_by_ns:
+                    services_by_ns[ns] = []
+                services_by_ns[ns].append(svc)
+        except Exception as e:
+            print(f"[kubernetes] Failed to list services: {e}")
+        
+        return services_by_ns
+    
+    def _find_services_for_pod(self, pod, services: list) -> list:
+        """Find services that select this pod."""
+        matching = []
+        pod_labels = pod.metadata.labels or {}
+        
+        for svc in services:
+            selector = svc.spec.selector
+            if not selector:
+                continue
+            
+            # Check if all selector labels match pod labels
+            if all(pod_labels.get(k) == v for k, v in selector.items()):
+                matching.append(svc)
+        
+        return matching
+    
     def _service_to_workload(self, svc) -> Optional[Workload]:
+        """Convert Kubernetes Service to Workload (kept for compatibility)."""
         """Convert Kubernetes Service to Workload."""
         try:
             labels = svc.metadata.labels or {}
@@ -285,6 +317,9 @@ class KubernetesAdapter(RuntimeAdapter):
         
         while not self._stop_event.is_set():
             try:
+                # Cache services for this watch cycle
+                services_by_ns = self._get_services_by_namespace()
+                
                 if self.namespace:
                     stream = w.stream(
                         self._v1.list_namespaced_pod,
@@ -311,7 +346,12 @@ class KubernetesAdapter(RuntimeAdapter):
                     # Update resource version for resume
                     self._resource_version = pod.metadata.resource_version
                     
-                    workload = self._pod_to_workload(pod)
+                    # Find services that select this pod
+                    matching_services = self._find_services_for_pod(
+                        pod, services_by_ns.get(pod.metadata.namespace, [])
+                    )
+                    
+                    workload = self._pod_to_workload(pod, matching_services)
                     if not workload:
                         continue
                     
@@ -340,25 +380,24 @@ class KubernetesAdapter(RuntimeAdapter):
                     self._stop_event.wait(5)
     
     def _watch_services(self, callback: Callable[[str, Workload], None]):
-        """Watch Service events."""
+        """Watch Service events and update affected pods."""
         w = watch.Watch()
-        selector = f"{self.label_key}={self.label_value}"
         resource_version = None
+        selector = f"{self.label_key}={self.label_value}"
         
         while not self._stop_event.is_set():
             try:
+                # Watch ALL services (not just labeled ones) since they may select discoverable pods
                 if self.namespace:
                     stream = w.stream(
                         self._v1.list_namespaced_service,
                         namespace=self.namespace,
-                        label_selector=selector,
                         resource_version=resource_version,
                         timeout_seconds=300,
                     )
                 else:
                     stream = w.stream(
                         self._v1.list_service_for_all_namespaces,
-                        label_selector=selector,
                         resource_version=resource_version,
                         timeout_seconds=300,
                     )
@@ -369,19 +408,11 @@ class KubernetesAdapter(RuntimeAdapter):
                     
                     event_type = event['type']
                     svc = event['object']
-                    
                     resource_version = svc.metadata.resource_version
                     
-                    workload = self._service_to_workload(svc)
-                    if not workload:
-                        continue
-                    
-                    if event_type == "ADDED":
-                        callback(EventType.ADDED, workload)
-                    elif event_type == "MODIFIED":
-                        callback(EventType.MODIFIED, workload)
-                    elif event_type == "DELETED":
-                        callback(EventType.DELETED, workload)
+                    # When a service changes, refresh all discoverable pods it might select
+                    if event_type in ("ADDED", "MODIFIED", "DELETED"):
+                        self._refresh_pods_for_service(svc, callback, selector)
             
             except ApiException as e:
                 if e.status == 410:
@@ -394,3 +425,34 @@ class KubernetesAdapter(RuntimeAdapter):
                 print(f"[kubernetes] Service watch error: {e}")
                 if not self._stop_event.is_set():
                     self._stop_event.wait(5)
+    
+    def _refresh_pods_for_service(self, svc, callback, pod_selector: str):
+        """Refresh pods that a service selects."""
+        if not svc.spec.selector:
+            return
+        
+        try:
+            # Get all services in this namespace (for full address list)
+            services_by_ns = self._get_services_by_namespace()
+            namespace_services = services_by_ns.get(svc.metadata.namespace, [])
+            
+            # Find discoverable pods in the same namespace
+            pods = self._v1.list_namespaced_pod(
+                namespace=svc.metadata.namespace,
+                label_selector=pod_selector
+            )
+            
+            for pod in pods.items:
+                if pod.status.phase != "Running":
+                    continue
+                
+                # Check if this service selects this pod
+                pod_labels = pod.metadata.labels or {}
+                if all(pod_labels.get(k) == v for k, v in svc.spec.selector.items()):
+                    # Refresh this pod with updated service list
+                    matching_services = self._find_services_for_pod(pod, namespace_services)
+                    workload = self._pod_to_workload(pod, matching_services)
+                    if workload:
+                        callback(EventType.MODIFIED, workload)
+        except Exception as e:
+            print(f"[kubernetes] Failed to refresh pods for service {svc.metadata.name}: {e}")
