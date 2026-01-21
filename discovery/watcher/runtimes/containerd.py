@@ -15,6 +15,7 @@ import grpc
 from containerd.services.containers.v1 import containers_pb2_grpc, containers_pb2
 from containerd.services.tasks.v1 import tasks_pb2_grpc, tasks_pb2
 from containerd.services.events.v1 import events_pb2_grpc, events_pb2, unwrap
+from containerd.types.task import task_pb2
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -123,7 +124,8 @@ class ContainerdAdapter(RuntimeAdapter):
                         tasks_pb2.GetRequest(container_id=container.id),
                         metadata=self._get_metadata()
                     )
-                    if task_response.process.status != tasks_pb2.RUNNING:
+                    # Status enum: UNKNOWN=0, CREATED=1, RUNNING=2, STOPPED=3, PAUSED=4, PAUSING=5
+                    if task_response.process.status != task_pb2.RUNNING:
                         continue
                 except grpc.RpcError:
                     # No task means not running
@@ -209,7 +211,11 @@ class ContainerdAdapter(RuntimeAdapter):
         Get networks and IPs from CNI state files.
         
         CNI stores results in files like:
-          {network}-{container_id_prefix}-{interface}
+          {network}-{namespace}-{container_id}-{interface}
+        
+        Network names may contain hyphens (e.g., "discovery_team-a").
+        Container IDs are 64-char hex strings, so we match on the ID pattern.
+        The namespace suffix (e.g., "-default", "-moby") is stripped.
         
         Returns (networks: list[str], ips: list[str])
         """
@@ -219,7 +225,7 @@ class ContainerdAdapter(RuntimeAdapter):
         if not self.cni_state_path.exists():
             return networks, ips
         
-        # CNI files contain container ID prefix
+        # CNI files contain container ID (full or prefix)
         short_id = container_id[:12]
         
         for result_file in self.cni_state_path.glob(f"*{short_id}*"):
@@ -228,12 +234,24 @@ class ContainerdAdapter(RuntimeAdapter):
                     result = json.load(f)
                 
                 # Parse network name from filename
-                # Format: {network}-{container_id}-{interface}
+                # Format: {network}-{namespace}-{container_id}-{interface}
+                # Container ID is 64 hex chars, interface is like "eth0"
+                # Split on container ID to get network name
                 filename = result_file.name
-                parts = filename.split("-")
-                if len(parts) >= 2:
-                    network_name = parts[0]
-                    networks.append(network_name)
+                
+                # Find container ID position in filename
+                id_pos = filename.find(container_id[:12])
+                if id_pos > 0:
+                    # Network name is everything before the container ID minus trailing dash
+                    network_name = filename[:id_pos].rstrip("-")
+                    
+                    # Strip namespace suffix (e.g., "-default", "-moby")
+                    namespace_suffix = f"-{self.namespace}"
+                    if network_name.endswith(namespace_suffix):
+                        network_name = network_name[:-len(namespace_suffix)]
+                    
+                    if network_name:
+                        networks.append(network_name)
                 
                 # Get IPs from CNI result
                 for ip_config in result.get("ips", []):
@@ -244,7 +262,7 @@ class ContainerdAdapter(RuntimeAdapter):
             except (json.JSONDecodeError, KeyError, IOError):
                 continue
         
-        return networks, ips
+        return list(set(networks)), list(set(ips))
     
     # ==================== Events ====================
     

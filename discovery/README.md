@@ -78,6 +78,31 @@ docker stack rm discovery
 docker swarm leave --force
 ```
 
+### containerd (Linux or Lima VM)
+
+containerd requires direct socket access, which isn't available on macOS. Use Lima to create a Linux VM:
+
+```bash
+# Setup Lima for containerd (macOS)
+brew install lima
+limactl create --name=discovery
+limactl start discovery
+limactl shell discovery # in a new terminal
+
+# Inside VM - start watcher
+cd discovery
+nerdctl compose -f docker-compose.containerd.yml up -d
+
+# Test discovery
+curl http://localhost:8080/stats
+curl http://localhost:8080/workloads | jq .
+
+# Exit VM and cleanup (for macOS)
+exit
+limactl stop discovery
+limactl delete discovery
+```
+
 ## API
 
 | Endpoint                  | Description                                                                                                       |
