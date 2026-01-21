@@ -54,13 +54,13 @@ class ContainerdAdapter(RuntimeAdapter):
         self._cni_observer = None
         self._event_callback = None
     
-    @property
-    def runtime_type(self) -> Runtime:
-        return Runtime.CONTAINERD
-    
     def _get_metadata(self):
         """Get gRPC metadata with namespace."""
         return (('containerd-namespace', self.namespace),)
+
+    @property
+    def runtime_type(self) -> Runtime:
+        return Runtime.CONTAINERD
     
     def connect(self) -> bool:
         """Verify containerd connection."""
@@ -77,7 +77,7 @@ class ContainerdAdapter(RuntimeAdapter):
         except Exception as e:
             print(f"[containerd] Failed to connect: {e}")
             return False
-    
+
     def close(self):
         """Close containerd connection and stop watchers."""
         self._stop_event.set()
@@ -86,12 +86,9 @@ class ContainerdAdapter(RuntimeAdapter):
             self._channel = None
         if self._cni_observer:
             self._cni_observer.stop()
-            self._cni_observer.join()
             self._cni_observer = None
-    
-    # ==================== Discovery ====================
-    
-    def list_workloads(self, label_selector: dict = None) -> list:
+
+    def list_workloads(self) -> list:
         """List all discoverable containers."""
         workloads = []
         
@@ -112,10 +109,6 @@ class ContainerdAdapter(RuntimeAdapter):
                 
                 # Check discover label
                 if labels.get(self.label_key) != self.label_value:
-                    continue
-                
-                # Additional label filtering
-                if label_selector and not self.matches_label_selector(labels, label_selector):
                     continue
                 
                 # Check if running by getting task status
@@ -141,8 +134,72 @@ class ContainerdAdapter(RuntimeAdapter):
             print(f"[containerd] Failed to list containers: {e}")
         
         return workloads
-    
-    def get_workload(self, identity: str) -> Optional[Workload]:
+
+    def watch_events(self, callback: Callable[[str, Workload], None]) -> None:
+        """
+        Watch containerd events and CNI changes.
+        
+        containerd events cover: task start/exit, container create/delete
+        CNI watcher covers: network connect/disconnect (via file changes)
+        """
+        self._stop_event.clear()
+        self._event_callback = callback
+        
+        # Start CNI file watcher in background
+        if self.cni_state_path.exists():
+            self._start_cni_watcher(callback)
+        
+        # Watch containerd events via gRPC
+        try:
+            channel = grpc.insecure_channel(f'unix://{self.socket_path}')
+            events_stub = events_pb2_grpc.EventsStub(channel)
+            
+            # Subscribe to all events (filter by namespace via metadata)
+            for envelope in events_stub.Subscribe(
+                events_pb2.SubscribeRequest(),
+                metadata=self._get_metadata()
+            ):
+                if self._stop_event.is_set():
+                    break
+                
+                # Unwrap the event to get the actual event object
+                try:
+                    event = unwrap(envelope)
+                    topic = envelope.topic
+                    
+                    # Extract container ID from the event
+                    container_id = getattr(event, 'container_id', None) or getattr(event, 'id', None)
+                    
+                    if not container_id:
+                        continue
+                    
+                    if topic == "/tasks/start":
+                        workload = self._get_workload(container_id)
+                        if workload:
+                            callback(EventType.ADDED, workload)
+                    
+                    elif topic in ("/tasks/exit", "/tasks/delete", "/containers/delete"):
+                        # Create minimal workload for deletion
+                        workload = Workload(
+                            id=container_id,
+                            name=container_id[:12],
+                            hostname=container_id[:12],
+                            runtime=Runtime.CONTAINERD.value,
+                            workload_type=WorkloadType.CONTAINER.value,
+                        )
+                        callback(EventType.DELETED, workload)
+                
+                except Exception as e:
+                    print(f"[containerd] Failed to process event: {e}")
+                    continue
+            
+            channel.close()
+        
+        except Exception as e:
+            if not self._stop_event.is_set():
+                print(f"[containerd] Event watch error: {e}")
+
+    def _get_workload(self, identity: str) -> Optional[Workload]:
         """Get container by hostname, name, or ID."""
         try:
             channel = grpc.insecure_channel(f'unix://{self.socket_path}')
@@ -177,7 +234,7 @@ class ContainerdAdapter(RuntimeAdapter):
         except Exception as e:
             print(f"[containerd] Failed to get container {identity}: {e}")
             return None
-    
+
     def _container_to_workload(self, container, labels: dict) -> Optional[Workload]:
         """Convert containerd container to Workload."""
         try:
@@ -205,7 +262,45 @@ class ContainerdAdapter(RuntimeAdapter):
         except Exception as e:
             print(f"[containerd] Failed to convert container: {e}")
             return None
-    
+
+    def _start_cni_watcher(self, callback: Callable[[str, Workload], None]):
+        """Start watching CNI state directory for network changes."""
+        class CNIEventHandler(FileSystemEventHandler):
+            def __init__(handler_self, adapter):
+                handler_self.adapter = adapter
+            
+            def on_created(handler_self, event):
+                if event.is_directory:
+                    return
+                handler_self._handle_cni_change(event.src_path)
+            
+            def on_deleted(handler_self, event):
+                if event.is_directory:
+                    return
+                handler_self._handle_cni_change(event.src_path)
+            
+            def _handle_cni_change(handler_self, filepath):
+                # Extract container ID from filename
+                filename = os.path.basename(filepath)
+                parts = filename.split("-")
+                if len(parts) >= 2:
+                    # Try to find the container ID part (usually second)
+                    for part in parts[1:]:
+                        if len(part) >= 12:
+                            workload = handler_self.adapter._get_workload(part[:12])
+                            if workload:
+                                callback(EventType.NETWORK_CHANGED, workload)
+                                break
+        
+        self._cni_observer = Observer()
+        self._cni_observer.schedule(
+            CNIEventHandler(self),
+            str(self.cni_state_path),
+            recursive=False
+        )
+        self._cni_observer.start()
+        print(f"[containerd] Started CNI state watcher on {self.cni_state_path}")
+
     def _get_cni_networks(self, container_id: str) -> tuple:
         """
         Get networks and IPs from CNI state files.
@@ -263,114 +358,3 @@ class ContainerdAdapter(RuntimeAdapter):
                 continue
         
         return list(set(networks)), list(set(ips))
-    
-    # ==================== Events ====================
-    
-    def watch_events(self, callback: Callable[[str, Workload], None]) -> None:
-        """
-        Watch containerd events and CNI changes.
-        
-        containerd events cover: task start/exit, container create/delete
-        CNI watcher covers: network connect/disconnect (via file changes)
-        """
-        self._stop_event.clear()
-        self._event_callback = callback
-        
-        # Start CNI file watcher in background
-        if self.cni_state_path.exists():
-            self._start_cni_watcher(callback)
-        
-        # Watch containerd events via gRPC
-        try:
-            channel = grpc.insecure_channel(f'unix://{self.socket_path}')
-            events_stub = events_pb2_grpc.EventsStub(channel)
-            
-            # Subscribe to all events (filter by namespace via metadata)
-            for envelope in events_stub.Subscribe(
-                events_pb2.SubscribeRequest(),
-                metadata=self._get_metadata()
-            ):
-                if self._stop_event.is_set():
-                    break
-                
-                # Unwrap the event to get the actual event object
-                try:
-                    event = unwrap(envelope)
-                    topic = envelope.topic
-                    
-                    # Extract container ID from the event
-                    container_id = getattr(event, 'container_id', None) or getattr(event, 'id', None)
-                    
-                    if not container_id:
-                        continue
-                    
-                    if topic == "/tasks/start":
-                        workload = self.get_workload(container_id)
-                        if workload:
-                            callback(EventType.ADDED, workload)
-                    
-                    elif topic in ("/tasks/exit", "/tasks/delete", "/containers/delete"):
-                        # Create minimal workload for deletion
-                        workload = Workload(
-                            id=container_id,
-                            name=container_id[:12],
-                            hostname=container_id[:12],
-                            runtime=Runtime.CONTAINERD.value,
-                            workload_type=WorkloadType.CONTAINER.value,
-                        )
-                        callback(EventType.DELETED, workload)
-                
-                except Exception as e:
-                    print(f"[containerd] Failed to process event: {e}")
-                    continue
-            
-            channel.close()
-        
-        except Exception as e:
-            if not self._stop_event.is_set():
-                print(f"[containerd] Event watch error: {e}")
-    
-    def _start_cni_watcher(self, callback: Callable[[str, Workload], None]):
-        """Start watching CNI state directory for network changes."""
-        class CNIEventHandler(FileSystemEventHandler):
-            def __init__(handler_self, adapter):
-                handler_self.adapter = adapter
-            
-            def on_created(handler_self, event):
-                if event.is_directory:
-                    return
-                handler_self._handle_cni_change(event.src_path)
-            
-            def on_deleted(handler_self, event):
-                if event.is_directory:
-                    return
-                handler_self._handle_cni_change(event.src_path)
-            
-            def _handle_cni_change(handler_self, filepath):
-                # Extract container ID from filename
-                filename = os.path.basename(filepath)
-                parts = filename.split("-")
-                if len(parts) >= 2:
-                    # Try to find the container ID part (usually second)
-                    for part in parts[1:]:
-                        if len(part) >= 12:
-                            workload = handler_self.adapter.get_workload(part[:12])
-                            if workload:
-                                callback(EventType.NETWORK_CHANGED, workload)
-                                break
-        
-        self._cni_observer = Observer()
-        self._cni_observer.schedule(
-            CNIEventHandler(self),
-            str(self.cni_state_path),
-            recursive=False
-        )
-        self._cni_observer.start()
-        print(f"[containerd] Started CNI state watcher on {self.cni_state_path}")
-    
-    def stop_watch(self):
-        """Stop the event watch loop and CNI watcher."""
-        self._stop_event.set()
-        if self._cni_observer:
-            self._cni_observer.stop()
-            self._cni_observer = None

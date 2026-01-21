@@ -46,7 +46,7 @@ class RuntimeAdapter(ABC):
     # ==================== Discovery ====================
     
     @abstractmethod
-    def list_workloads(self, label_selector: dict = None) -> list:
+    def list_workloads(self) -> list:
         """
         List all discoverable workloads.
         
@@ -57,17 +57,6 @@ class RuntimeAdapter(ABC):
             List[Workload] of discoverable workloads
         """
         pass
-    
-    @abstractmethod
-    def get_workload(self, identity: str) -> Optional[Workload]:
-        """
-        Get a specific workload by identity.
-        
-        Identity can be: hostname, name, or ID (runtime-specific).
-        """
-        pass
-    
-    # ==================== Events ====================
     
     @abstractmethod
     def watch_events(self, callback: Callable[[EventType, Workload], None]) -> None:
@@ -81,20 +70,3 @@ class RuntimeAdapter(ABC):
                      event_type is one of the EventType enum values
         """
         pass
-    
-    @abstractmethod
-    def stop_watch(self):
-        """Stop the event watch loop."""
-        pass
-    
-    # ==================== Helpers ====================
-    
-    def get_label_value(self, labels: dict, key: str, default: str = None) -> str:
-        """Helper to get label value with default."""
-        return labels.get(key, default)
-    
-    def matches_label_selector(self, labels: dict, selector: dict) -> bool:
-        """Check if labels match selector."""
-        if not selector:
-            return True
-        return all(labels.get(k) == v for k, v in selector.items())

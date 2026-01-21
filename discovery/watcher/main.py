@@ -111,7 +111,7 @@ class ServiceDiscovery:
         # Stop watcher
         if self.runtime:
             try:
-                self.runtime.stop_watch()
+                self.runtime.close()
             except Exception as e:
                 logger.warning("Error stopping %s watcher: %s", self.runtime.runtime_type.value, e)
         

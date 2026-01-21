@@ -84,9 +84,7 @@ class KubernetesAdapter(RuntimeAdapter):
         self._v1 = None
         self._networking = None
     
-    # ==================== Discovery ====================
-    
-    def list_workloads(self, label_selector: dict = None) -> list:
+    def list_workloads(self) -> list:
         """List all discoverable Pods and Services."""
         if not self._v1:
             return []
@@ -95,8 +93,6 @@ class KubernetesAdapter(RuntimeAdapter):
         
         # Build label selector string
         selector_parts = [f"{self.label_key}={self.label_value}"]
-        if label_selector:
-            selector_parts.extend(f"{k}={v}" for k, v in label_selector.items())
         selector_str = ",".join(selector_parts)
         
         # List Pods
@@ -141,50 +137,33 @@ class KubernetesAdapter(RuntimeAdapter):
         
         return workloads
     
-    def get_workload(self, identity: str) -> Optional[Workload]:
-        """Get Pod or Service by identity."""
+    def watch_events(self, callback: Callable[[str, Workload], None]) -> None:
+        """Watch Kubernetes Pod and Service events."""
         if not self._v1:
-            return None
+            return
         
-        # Try to parse namespace/name format
-        namespace = self.namespace
-        name = identity
-        if "/" in identity:
-            namespace, name = identity.split("/", 1)
+        self._stop_event.clear()
         
-        # Try as Pod first
-        try:
-            if namespace:
-                pod = self._v1.read_namespaced_pod(name=name, namespace=namespace)
-            else:
-                # Search all namespaces
-                pods = self._v1.list_pod_for_all_namespaces(
-                    field_selector=f"metadata.name={name}"
-                )
-                pod = pods.items[0] if pods.items else None
-            
-            if pod:
-                return self._pod_to_workload(pod)
-        except ApiException:
-            pass
+        # Watch Pods
+        pod_thread = threading.Thread(
+            target=self._watch_pods,
+            args=(callback,),
+            daemon=True
+        )
+        pod_thread.start()
         
-        # Try as Service
+        # Watch Services (if enabled)
         if self.include_services:
-            try:
-                if namespace:
-                    svc = self._v1.read_namespaced_service(name=name, namespace=namespace)
-                else:
-                    services = self._v1.list_service_for_all_namespaces(
-                        field_selector=f"metadata.name={name}"
-                    )
-                    svc = services.items[0] if services.items else None
-                
-                if svc:
-                    return self._service_to_workload(svc)
-            except ApiException:
-                pass
+            svc_thread = threading.Thread(
+                target=self._watch_services,
+                args=(callback,),
+                daemon=True
+            )
+            svc_thread.start()
         
-        return None
+        # Keep main thread alive
+        while not self._stop_event.is_set():
+            self._stop_event.wait(1)
     
     def _pod_to_workload(self, pod) -> Optional[Workload]:
         """Convert Kubernetes Pod to Workload."""
@@ -297,36 +276,6 @@ class KubernetesAdapter(RuntimeAdapter):
             if labels.get(key) != value:
                 return False
         return True
-    
-    # ==================== Events ====================
-    
-    def watch_events(self, callback: Callable[[str, Workload], None]) -> None:
-        """Watch Kubernetes Pod and Service events."""
-        if not self._v1:
-            return
-        
-        self._stop_event.clear()
-        
-        # Watch Pods
-        pod_thread = threading.Thread(
-            target=self._watch_pods,
-            args=(callback,),
-            daemon=True
-        )
-        pod_thread.start()
-        
-        # Watch Services (if enabled)
-        if self.include_services:
-            svc_thread = threading.Thread(
-                target=self._watch_services,
-                args=(callback,),
-                daemon=True
-            )
-            svc_thread.start()
-        
-        # Keep main thread alive
-        while not self._stop_event.is_set():
-            self._stop_event.wait(1)
     
     def _watch_pods(self, callback: Callable[[str, Workload], None]):
         """Watch Pod events."""
@@ -444,7 +393,3 @@ class KubernetesAdapter(RuntimeAdapter):
                 print(f"[kubernetes] Service watch error: {e}")
                 if not self._stop_event.is_set():
                     self._stop_event.wait(5)
-    
-    def stop_watch(self):
-        """Stop the event watch loops."""
-        self._stop_event.set()
