@@ -1,0 +1,29 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: v2
+managed:
+  enabled: true
+  override:
+    # Map specific paths to desired Go packages
+    - path: agntcy/dir/runtime/v1
+      file_option: go_package
+      value: github.com/agntcy/dir/runtime/api/v1
+
+inputs:
+  - directory: .
+    paths:
+      - agntcy/dir/runtime
+
+plugins:
+  # Stubs for Golang only
+  - remote: buf.build/protocolbuffers/go:v1.36.5
+    out: ../runtime/api/runtime
+    opt:
+      - module=github.com/agntcy/dir/runtime/api
+  - remote: buf.build/grpc/go:v1.5.1
+    out: ../runtime/api/runtime
+    opt:
+      - module=github.com/agntcy/dir/runtime/api
+      - require_unimplemented_servers=false
+      - use_generic_streams_experimental=false

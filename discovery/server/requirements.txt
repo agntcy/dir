@@ -1,4 +1,0 @@
-# Core dependencies
-etcd3gw
-flask
-waitress

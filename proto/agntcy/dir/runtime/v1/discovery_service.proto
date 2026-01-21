@@ -5,15 +5,38 @@ syntax = "proto3";
 
 package agntcy.dir.runtime.v1;
 
-import "agntcy/dir/runtime/v1/process.proto";
+import "agntcy/dir/runtime/v1/workload.proto";
 
+// DiscoveryService defines the gRPC service for discovering workloads.
+// The service itself does not actually perform discovery, but rather queries the
+// underlying store for existing workloads.
+// It supports filtering workloads based on provided criteria.
 service DiscoveryService {
-  // List all record processes based on filters.
-  rpc ListProcesses(ListProcessesRequest) returns (stream Process);
+  // Get a workload by its identifier.
+  rpc GetWorkload(GetWorkloadRequest) returns (Workload);
+
+  // List all workloads based on filters.
+  rpc ListWorkloads(ListWorkloadsRequest) returns (stream Workload);
 }
 
-message ListProcessesRequest {
-  // Filters to apply when listing processes.
-  // Accepts regexp pattern if single value is provided.
-  repeated string filters = 1;
+// GetWorkloadRequest is the request message for retrieving a specific workload.
+message GetWorkloadRequest {
+  // The unique identifier of the workload to retrieve.
+  // Supports either hostname or workload ID.
+  string id = 1;
+}
+
+// ListWorkloadsRequest is the request message for listing workloads with optional filters.
+message ListWorkloadsRequest {
+  // Optional labels to filter workloads.
+  // Labels are applied in an AND fashion; only workloads matching all labels are returned.
+  // Supports regular expression syntax for label values.
+  map<string, string> labels = 1;
+
+  // Optional runtime types to filter workloads.
+  // Only workloads matching one of the specified runtime types are returned.
+  // optional string runtime_type = 2;
+
+  // Reachability filter. If set, only workloads reachable from the specified workload ID are returned.
+  // optional string reachable_from_workload_id = 3;
 }

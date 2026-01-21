@@ -16,7 +16,6 @@ import (
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
-	runtimev1 "github.com/agntcy/dir/api/runtime/v1"
 	searchv1 "github.com/agntcy/dir/api/search/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	storev1 "github.com/agntcy/dir/api/store/v1"
@@ -37,7 +36,6 @@ import (
 	"github.com/agntcy/dir/server/publication"
 	"github.com/agntcy/dir/server/reverification"
 	"github.com/agntcy/dir/server/routing"
-	"github.com/agntcy/dir/server/runtime"
 	"github.com/agntcy/dir/server/signing"
 	"github.com/agntcy/dir/server/store"
 	"github.com/agntcy/dir/server/sync"
@@ -69,7 +67,6 @@ type Server struct {
 	authzService          *authz.Service
 	publicationService    *publication.Service
 	reverificationService *reverification.Service
-	runtimeService        types.DiscoveryAPI
 	health                *healthcheck.Checker
 	grpcServer            *grpc.Server
 	metricsServer         *metrics.Server
@@ -281,12 +278,6 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create signing service: %w", err)
 	}
 
-	// Create runtime service
-	runtimeService, err := runtime.New(storeAPI)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create runtime service: %w", err)
-	}
-
 	// Create a server
 	grpcServer := grpc.NewServer(serverOpts...)
 
@@ -322,7 +313,6 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		namingProvider,
 		controller.WithVerificationTTL(options.Config().Reverification.GetTTL()),
 	))
-	runtimev1.RegisterDiscoveryServiceServer(grpcServer, controller.NewRuntimeController(runtimeService))
 
 	// Register health service
 	healthChecker.Register(grpcServer)
@@ -351,7 +341,6 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		health:                healthChecker,
 		grpcServer:            grpcServer,
 		metricsServer:         metricsServer,
-		runtimeService:        runtimeService,
 	}, nil
 }
 
@@ -382,13 +371,6 @@ func (s Server) Close(ctx context.Context) {
 	if s.eventService != nil {
 		if err := s.eventService.Stop(); err != nil {
 			logger.Error("Failed to stop event service", "error", err)
-		}
-	}
-
-	// Stop runtime service
-	if s.runtimeService != nil {
-		if err := s.runtimeService.Stop(); err != nil {
-			logger.Error("Failed to stop runtime service", "error", err)
 		}
 	}
 
@@ -496,7 +478,6 @@ func (s Server) start(ctx context.Context) error {
 	s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
 	s.health.AddReadinessCheck("store", s.store.IsReady)
 	s.health.AddReadinessCheck("routing", s.routing.IsReady)
-	s.health.AddReadinessCheck("runtime", s.runtimeService.IsReady)
 
 	// Start health check monitoring
 	if err := s.health.Start(ctx); err != nil {

@@ -1,0 +1,151 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+services:
+  # ============================================================
+  # etcd - Distributed key-value store for service discovery data
+  # ============================================================
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.17
+    container_name: etcd
+    command:
+      - etcd
+      - --name=etcd0
+      - --data-dir=/etcd-data
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://etcd:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd0=http://etcd:2380
+    networks:
+      - discovery
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================
+  # Discovery - Watches runtime and resolves metadata (writes to etcd)
+  # ============================================================
+  discovery:
+    build:
+      context: ../..
+      dockerfile: runtime/discovery/Dockerfile
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Storage (etcd)
+      - DISCOVERY_STORE_TYPE=etcd
+      - DISCOVERY_STORE_ETCD_HOST=etcd
+      - DISCOVERY_STORE_ETCD_PORT=2379
+      # Runtime (docker)
+      - DISCOVERY_RUNTIME_TYPE=docker
+      - DISCOVERY_RUNTIME_DOCKER_HOST=unix:///var/run/docker.sock
+      # Resolvers
+      - DISCOVERY_RESOLVER_A2A_ENABLED=true
+      - DISCOVERY_RESOLVER_OASF_ENABLED=true
+      - DISCOVERY_WORKERS=16
+      # Directory client config
+      - DIRECTORY_CLIENT_SERVER_ADDRESS=apiserver:8888
+      - DIRECTORY_CLIENT_AUTH_MODE=insecure
+    depends_on:
+      etcd:
+        condition: service_healthy
+    networks:
+      - discovery
+      - team-a
+      - team-b
+
+  # ============================================================
+  # Server - HTTP API for querying discovered services (reads from etcd)
+  # ============================================================
+  server:
+    build:
+      context: ../..
+      dockerfile: runtime/server/Dockerfile
+    environment:
+      # Storage (etcd)
+      - SERVER_STORE_TYPE=etcd
+      - SERVER_STORE_ETCD_HOST=etcd
+      - SERVER_STORE_ETCD_PORT=2379
+      # Server
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+    depends_on:
+      etcd:
+        condition: service_healthy
+    networks:
+      - discovery
+    ports:
+      - "8080:8080"
+
+  # ============================================================
+  # Example services - must be on discovery network to be tracked
+  # ============================================================
+
+  service-a2a:
+    image: ghcr.io/ramizpolic/a2a-helloworld:latest
+    labels:
+      - "org.agntcy/discover=true"
+      - "org.agntcy/agent-type=a2a"
+      - "org.agntcy/agent-record=dns-validation-http/example/research-assistant-v4:v4.0.0"
+    networks:
+      - team-a
+
+  service-1:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-a
+
+  service-2:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-b
+
+  service-3:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-a
+
+  service-4:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-b
+
+  service-5:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-a
+      - team-b
+
+  # Service Private - no discover label (NOT tracked)
+  service-private:
+    image: nginx:alpine
+    container_name: service-private
+    networks:
+      - team-internal
+
+networks:
+  # Discovery network - watcher lives here
+  discovery:
+    driver: bridge
+
+  team-a:
+    driver: bridge
+
+  team-b:
+    driver: bridge
+
+  team-internal:
+    driver: bridge
