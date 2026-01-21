@@ -65,22 +65,13 @@ class KubernetesConfig:
 
 
 @dataclass
-class ServerConfig:
-    """HTTP server configuration."""
-    host: str = field(default_factory=lambda: os.getenv("SERVER_HOST", "0.0.0.0"))
-    port: int = field(default_factory=lambda: int(os.getenv("SERVER_PORT", "8080")))
-    debug: bool = field(default_factory=lambda: os.getenv("DEBUG", "false").lower() == "true")
-
-
-@dataclass
 class Config:
-    """Main configuration container for service discovery."""
+    """Main configuration container for workload watcher."""
     runtime: str = field(default_factory=lambda: os.getenv("RUNTIME", "docker"))
     etcd: EtcdConfig = field(default_factory=EtcdConfig)
     docker: DockerConfig = field(default_factory=DockerConfig)
     containerd: ContainerdConfig = field(default_factory=ContainerdConfig)
     kubernetes: KubernetesConfig = field(default_factory=KubernetesConfig)
-    server: ServerConfig = field(default_factory=ServerConfig)
     
     @classmethod
     def from_env(cls) -> "Config":

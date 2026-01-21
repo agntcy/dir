@@ -1,7 +1,5 @@
 # Core dependencies
 etcd3gw
-flask
-waitress
 
 # Docker support
 docker

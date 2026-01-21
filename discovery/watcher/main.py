@@ -1,33 +1,33 @@
 """
-Service discovery entry point.
-Supports Docker, containerd, or Kubernetes workload discovery with etcd storage.
+Workload watcher entry point.
+Watches Docker, containerd, or Kubernetes for workload changes and syncs to etcd storage.
 """
 
 import signal
 import sys
 import threading
+import time
 from typing import Optional
 
 from config import load_config, Config, logger
 from models import Workload, EventType
 from storage import create_storage, StorageInterface
 from runtimes import create_runtime, RuntimeAdapter
-from server import DiscoveryServer
 
 
-class ServiceDiscovery:
+class WorkloadWatcher:
     """
-    Service discovery coordinator.
+    Workload watcher coordinator.
     
-    Manages a runtime adapter and routes workload events to storage.
+    Watches a runtime for workload events and syncs to etcd storage.
     """
     
     def __init__(self, config: Config):
         self.config = config
         self.storage: Optional[StorageInterface] = None
-        self.server: Optional[DiscoveryServer] = None
         self.runtime: Optional[RuntimeAdapter] = None
         self._running = False
+        self._stop_event = threading.Event()
     
     def _handle_event(self, event_type: EventType, workload: Workload) -> None:
         """Handle workload event from runtime."""
@@ -80,7 +80,7 @@ class ServiceDiscovery:
             logger.error("Failed to start watcher for %s: %s", self.runtime.runtime_type.value, e)
     
     def start(self) -> None:
-        """Start the service discovery system."""
+        """Start the workload watcher."""
         self._running = True
         
         # Initialize storage
@@ -96,17 +96,16 @@ class ServiceDiscovery:
         self._sync_initial_state()
         self._start_watcher()
         
-        # Initialize and start HTTP server (blocking)
-        self.server = DiscoveryServer(
-            storage=self.storage,
-            host=self.config.server.host,
-            port=self.config.server.port,
-        )
-        self.server.serve()
+        logger.info("Watcher running, press Ctrl+C to stop...")
+        
+        # Keep main thread alive
+        while not self._stop_event.is_set():
+            self._stop_event.wait(timeout=1)
     
     def stop(self) -> None:
-        """Stop the service discovery system."""
+        """Stop the workload watcher."""
         self._running = False
+        self._stop_event.set()
         
         # Stop watcher
         if self.runtime:
@@ -115,15 +114,11 @@ class ServiceDiscovery:
             except Exception as e:
                 logger.warning("Error stopping %s watcher: %s", self.runtime.runtime_type.value, e)
         
-        # Stop server
-        if self.server:
-            self.server.stop()
-        
         # Stop storage
         if self.storage:
             self.storage.close()
         
-        logger.info("Service discovery stopped")
+        logger.info("Workload watcher stopped")
 
 
 def main():
@@ -132,19 +127,18 @@ def main():
     
     # Log configuration
     logger.info("=" * 60)
-    logger.info("Service Discovery")
+    logger.info("Workload Watcher")
     logger.info("=" * 60)
     logger.info("Runtime: %s", config.runtime)
     logger.info("Storage: etcd @ %s:%d (prefix=%s)", config.etcd.host, config.etcd.port, config.etcd.prefix)
-    logger.info("HTTP server: %s:%d", config.server.host, config.server.port)
     logger.info("=" * 60)
     
-    discovery = ServiceDiscovery(config)
+    watcher = WorkloadWatcher(config)
     
     # Handle signals
     def signal_handler(sig, frame):
         logger.info("Received signal %s, shutting down...", sig)
-        discovery.stop()
+        watcher.stop()
         sys.exit(0)
     
     signal.signal(signal.SIGINT, signal_handler)
@@ -152,9 +146,9 @@ def main():
     
     # Start
     try:
-        discovery.start()
+        watcher.start()
     except KeyboardInterrupt:
-        discovery.stop()
+        watcher.stop()
 
 
 if __name__ == "__main__":

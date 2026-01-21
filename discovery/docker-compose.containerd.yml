@@ -57,6 +57,23 @@ services:
       - CONTAINERD_CNI_STATE_DIR=/var/lib/cni/results
       - CONTAINERD_LABEL_KEY=discover
       - CONTAINERD_LABEL_VALUE=true
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      etcd:
+        condition: service_healthy
+    networks:
+      - discovery
+
+  # ============================================================
+  # Server - HTTP API for querying discovered services
+  # ============================================================
+  server:
+    build: ./server
+    environment:
+      # etcd
+      - ETCD_HOST=etcd
+      - ETCD_PORT=2379
+      - ETCD_PREFIX=/discovery
       # Server
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
