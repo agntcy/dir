@@ -129,6 +129,7 @@ class EtcdStorage(StorageInterface):
         Find all workloads reachable from caller.
         
         Reachability is based on shared isolation groups (networks/namespaces).
+        Addresses are filtered to only include those in shared isolation groups.
         """
         # Find caller workload
         caller = self._identify_workload(caller_identity)
@@ -150,14 +151,49 @@ class EtcdStorage(StorageInterface):
             # Remove caller
             reachable_ids.discard(caller.id)
             
-            # Build result list
+            # Build result list with filtered addresses
             reachable = []
             for wid in reachable_ids:
                 workload = self._workloads.get(wid)
                 if not workload:
                     continue
                 
-                reachable.append(workload)
+                # Find shared groups between caller and this workload
+                workload_groups = set(workload.isolation_groups)
+                shared_groups = caller_groups & workload_groups
+                
+                # Filter addresses to only include those in shared groups
+                # Address format is {name}.{network}, so check if network is in shared groups
+                filtered_addresses = []
+                for addr in workload.addresses:
+                    # Extract network name from address (format: name.network)
+                    parts = addr.rsplit(".", 1)
+                    if len(parts) == 2:
+                        network = parts[1]
+                        if network in shared_groups:
+                            filtered_addresses.append(addr)
+                    else:
+                        # Keep addresses that don't follow the format
+                        filtered_addresses.append(addr)
+                
+                # Create a copy with filtered addresses
+                filtered_workload = Workload(
+                    id=workload.id,
+                    name=workload.name,
+                    hostname=workload.hostname,
+                    runtime=workload.runtime,
+                    workload_type=workload.workload_type,
+                    node=workload.node,
+                    namespace=workload.namespace,
+                    addresses=filtered_addresses,
+                    isolation_groups=list(shared_groups),  # Only show shared groups
+                    ports=workload.ports,
+                    labels=workload.labels,
+                    annotations=workload.annotations,
+                    metadata=workload.metadata,
+                    registrar=workload.registrar,
+                )
+                reachable.append(filtered_workload)
             
             # Sort by name
             reachable.sort(key=lambda w: w.name)

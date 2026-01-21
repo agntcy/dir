@@ -157,19 +157,23 @@ class DockerAdapter(RuntimeAdapter):
             network_settings = attrs.get("NetworkSettings", {})
             networks_info = network_settings.get("Networks", {})
             
+            # Container name and hostname
+            name = container.name
+            hostname = container.id[:12]
+            
             # Get exposed ports
             exposed_ports = attrs.get("Config", {}).get("ExposedPorts", {})
-            ports = [p.split("/")[0] for p in exposed_ports.keys()] if exposed_ports else ["80"]
+            ports = [p.split("/")[0] for p in exposed_ports.keys()] if exposed_ports else []
             
-            # Build addresses from each network
+            # Build addresses in format {container_name}.{network_name}
+            # This is how containers are reachable in Docker networks
             addresses = []
-            hostname = container.id[:12]
-            for port in ports:
-                addresses.append(f"{hostname}:{port}")
+            for network_name in networks_info.keys():
+                addresses.append(f"{name}.{network_name}")
             
             return Workload(
                 id=container.id,
-                name=container.name,
+                name=name,
                 hostname=hostname,
                 runtime=Runtime.DOCKER.value,
                 workload_type=WorkloadType.CONTAINER.value,
@@ -177,6 +181,7 @@ class DockerAdapter(RuntimeAdapter):
                 namespace=None,
                 addresses=addresses,
                 isolation_groups=list(networks_info.keys()),
+                ports=ports,
                 labels=labels,
             )
         except Exception as e:

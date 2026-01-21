@@ -64,6 +64,7 @@ def create_app(storage: StorageInterface) -> Flask:
                 "type": source.workload_type,
                 "isolation_groups": list(source.isolation_groups),
                 "addresses": source.addresses,
+                "ports": source.ports,
             },
             "reachable": [
                 {
@@ -74,8 +75,8 @@ def create_app(storage: StorageInterface) -> Flask:
                     "type": w.workload_type,
                     "isolation_groups": list(w.isolation_groups),
                     "addresses": w.addresses,
+                    "ports": w.ports,
                     "labels": w.labels,
-                    "shared_groups": list(set(source.isolation_groups) & set(w.isolation_groups)),
                 }
                 for w in reachable
             ],
@@ -117,6 +118,7 @@ def create_app(storage: StorageInterface) -> Flask:
                     "type": w.workload_type,
                     "isolation_groups": list(w.isolation_groups),
                     "addresses": w.addresses,
+                    "ports": w.ports,
                 }
                 for w in workloads
             ],
@@ -138,6 +140,7 @@ def create_app(storage: StorageInterface) -> Flask:
             "type": workload.workload_type,
             "isolation_groups": list(workload.isolation_groups),
             "addresses": workload.addresses,
+            "ports": workload.ports,
             "labels": workload.labels,
         })
     
