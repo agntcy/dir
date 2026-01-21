@@ -57,6 +57,12 @@ envoy:
 authServer:
   replicaCount: 1
   
+  # Image configuration
+  # Override these values to use custom images (e.g., development branches)
+  # image:
+  #   repository: ghcr.io/agntcy/envoy-authz-dev
+  #   tag: feat-feat-github-auth-ad4a58e
+  #   pullPolicy: IfNotPresent
   image:
     repository: ghcr.io/agntcy/envoy-authz
     tag: v0.1.0
@@ -107,6 +113,9 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
     external-dns.alpha.kubernetes.io/hostname: ""
+    # gRPC backend configuration (required for dirctl client over HTTPS)
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/grpc-backend: "true"
   tls:
     enabled: true
     secretName: ""

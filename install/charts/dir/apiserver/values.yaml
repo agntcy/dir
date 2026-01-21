@@ -556,11 +556,13 @@ oasf:
 # Envoy auth gateway subchart configuration (OPTIONAL)
 # Provides GitHub authentication via Envoy gateway with ext_authz
 # NOT installed by default. Set enabled: true to deploy.
+# Section 1: Enable/disable the subchart
 envoyAuthz:
   enabled: false
-  
-  # When enabled, configure authorization rules below
-  
+
+# Section 2: Configuration values for the envoy-authz subchart
+# NOTE: Only takes effect when envoyAuthz.enabled: true
+envoy-authz:
   # Envoy gateway configuration
   envoy:
     replicaCount: 2
@@ -574,10 +576,19 @@ envoyAuthz:
     # SPIFFE integration for mTLS with Directory
     spiffe:
       enabled: true
+      # trustDomain: example.org
+      # className: dir-spire
   
   # Authorization server configuration
   authServer:
     replicaCount: 2
+    
+    # Image configuration
+    # Override these values to use custom images (e.g., development branches)
+    # image:
+    #   repository: ghcr.io/agntcy/envoy-authz-dev
+    #   tag: feat-feat-github-auth-ad4a58e
+    #   pullPolicy: IfNotPresent
     
     # Authorization rules
     authorization:
@@ -608,3 +619,6 @@ envoyAuthz:
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt
       external-dns.alpha.kubernetes.io/hostname: ""
+      # gRPC backend configuration (required for dirctl client over HTTPS)
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+      nginx.ingress.kubernetes.io/grpc-backend: "true"
