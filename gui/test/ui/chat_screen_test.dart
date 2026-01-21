@@ -12,7 +12,7 @@ import 'package:gui/ui/chat_screen.dart';
 
 class MockAiService implements AiService {
   @override
-  McpClient? mcpClient;
+  late McpClient mcpClient;
 
   @override
   Future<void> init(LlmProvider provider) async {}

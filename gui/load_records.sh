@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# ── Colors / Logging ───────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+log()  { echo -e "${BLUE}[SETUP]${NC} $*"; }
+ok()   { echo -e "${GREEN}[OK]${NC} $*"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+err()  { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+
 # Create 20 fake agents with "search" in the title
 
 AGENTS=(
@@ -26,14 +33,12 @@ AGENTS=(
 )
 
 SKILLS=(
-  "natural_language_processing/search/query_understanding"
-  "natural_language_processing/information_retrieval/document_search"
-  "machine_learning/ranking/search_ranking"
+  "10201:natural_language_processing/natural_language_generation/text_completion"
+  "10702:natural_language_processing/analytical_reasoning/problem_solving"
 )
 
 DOMAINS=(
-  "technology/search_engines"
-  "data_science/information_retrieval"
+  "301:life_science/biotechnology"
 )
 
 AUTHORS=("Search Labs" "AI Search Inc" "AGNTCY Contributors" "OpenSearch Team" "SearchAI Corp")
@@ -41,34 +46,31 @@ AUTHORS=("Search Labs" "AI Search Inc" "AGNTCY Contributors" "OpenSearch Team" "
 for i in "${!AGENTS[@]}"; do
   IFS=':' read -r name desc version <<< "${AGENTS[$i]}"
   author="${AUTHORS[$((i % 5))]}"
-  skill_id=$((10100 + i))
-  domain_id=$((400 + i % 10))
+
+  # Parse Skill
+  IFS=':' read -r skill_id skill_name <<< "${SKILLS[$((i % 2))]}"
+
+  # Parse Domain
+  IFS=':' read -r domain_id domain_name <<< "${DOMAINS[0]}"
+
   created_date="2025-0$((1 + i % 9))-$((10 + i % 20))T10:00:00Z"
-  
+
   cat > "/tmp/agent_${i}.json" << EOF
 {
   "name": "directory.agntcy.org/test/${name}",
   "version": "${version}",
-  "description": "${desc}. This agent provides powerful search capabilities for various use cases.",
+  "description": "${desc}. This agent provides powerful search capabilities.",
   "authors": ["${author}"],
   "schema_version": "0.8.0",
   "created_at": "${created_date}",
   "skills": [
-    {"id": ${skill_id}, "name": "${SKILLS[$((i % 3))]}"},
-    {"id": $((skill_id + 100)), "name": "natural_language_processing/text_processing/tokenization"}
+    {"id": ${skill_id}, "name": "${skill_name}"}
   ],
   "domains": [
-    {"id": ${domain_id}, "name": "${DOMAINS[$((i % 2))]}"}
+    {"id": ${domain_id}, "name": "${domain_name}"}
   ],
   "locators": [
     {"type": "docker_image", "url": "ghcr.io/agntcy/${name}:${version}"}
-  ],
-  "modules": [
-    {
-      "id": $((20000 + i)),
-      "name": "core/search/engine",
-      "data": {"type": "search_module"}
-    }
   ],
   "annotations": {
     "category": "search",
@@ -77,8 +79,22 @@ for i in "${!AGENTS[@]}"; do
 }
 EOF
 
-  echo "Created agent_${i}.json: ${name}"
+  ok "Created agent_${i}.json: ${name}"
 done
 
-echo ""
-echo "Now pushing agents to directory server..."
+log "Now pushing agents to directory server..."
+
+for f in /tmp/agent_*.json; do
+  log "Pushing $f..."
+  if dirctl push "$f" --server-addr 127.0.0.1:8888; then
+    ok "Successfully pushed $f"
+  else
+    err "Failed to push $f"
+  fi
+done
+
+
+for f in /tmp/agent_*.json; do
+  echo "Pushing $f..."
+  dirctl push "$f" --server-addr 127.0.0.1:8888
+done
