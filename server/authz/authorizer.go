@@ -18,15 +18,6 @@ import (
 //go:embed model.conf
 var modelConf string
 
-// Defines the allowed external API methods that can be performed
-// by users outside of our trust domain.
-var allowedExternalAPIMethods = []string{
-	storev1.StoreService_Pull_FullMethodName,                      // store: pull
-	storev1.StoreService_PullReferrer_FullMethodName,              // store: pull referrer
-	storev1.StoreService_Lookup_FullMethodName,                    // store: lookup
-	storev1.SyncService_RequestRegistryCredentials_FullMethodName, // sync: negotiate
-}
-
 type Authorizer struct {
 	enforcer *casbin.Enforcer
 }
@@ -61,17 +52,25 @@ func (a *Authorizer) Authorize(trustDomain, apiMethod string) (bool, error) {
 }
 
 // getPolicies returns a list of authorization in the following form:
-//   - All API methods are allowed for users within our trust domain
-//   - Only specific API methods are allowed for users outside of the trust domain
 func getPolicies(cfg config.Config) [][]string {
-	policies := make([][]string, 0, len(allowedExternalAPIMethods)+1)
+	var DefaultPolicies = [][]string{
+		{cfg.TrustDomain, "*"},
+		{"*", storev1.StoreService_Pull_FullMethodName},
+	}
 
-	// Allow all API methods for the trust domain
-	policies = append(policies, []string{cfg.TrustDomain, "*"})
+	if len(cfg.Policies) == 0 {
+		logger.Info("No user-defined policies found, using default policies.")
 
-	// Allow only specific API methods for users outside of the trust domain
-	for _, method := range allowedExternalAPIMethods {
-		policies = append(policies, []string{"*", method})
+		return DefaultPolicies
+	}
+
+	policies := [][]string{}
+
+	// Apply user-defined policies
+	for domain, methods := range cfg.Policies {
+		for _, method := range methods {
+			policies = append(policies, []string{domain, method})
+		}
 	}
 
 	return policies

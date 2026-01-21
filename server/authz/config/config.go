@@ -12,9 +12,11 @@ type Config struct {
 	// Indicates if authorization is enabled
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-	// Trust domain for this Directory server
-	// Used to distinguish internal vs external requests
+	// Current directory node spiffe trust domain
 	TrustDomain string `json:"trust_domain,omitempty" mapstructure:"trust_domain"`
+
+	// List of policies for external API methods access
+	Policies map[string][]string `json:"policies,omitempty" mapstructure:"policies"`
 }
 
 func (c *Config) Validate() error {
