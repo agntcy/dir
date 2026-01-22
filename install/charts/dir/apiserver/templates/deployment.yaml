@@ -220,6 +220,11 @@ spec:
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+            {{- if .Values.config.authz.enforcer_policy_file_content }}
+            - name: config-volume
+              mountPath: /etc/agntcy/dir/authz_policies.csv
+              subPath: authz_policies.csv
+            {{- end }}
       volumes:
         - name: config-volume
           configMap:

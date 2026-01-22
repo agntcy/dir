@@ -46,9 +46,14 @@ config:
   authz:
     # Enable authorization policies
     enabled: false
-    # Trust domain for this Directory server
-    # Used to distinguish internal (same trust domain) vs external requests
-    trust_domain: "example.org"
+
+    # Content of the authorization policy file
+    enforcer_policy_file_content: |
+      p,example.org,*
+      p,*,/agntcy.dir.store.v1.StoreService/Pull
+      p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
+      p,*,/agntcy.dir.store.v1.StoreService/Lookup
+      p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 
   # Store settings for the storage backend.
   store:
@@ -211,48 +216,48 @@ config:
 spire:
   enabled: false
   trustDomain: example.org
-  
+
   # SPIRE controller className for ClusterSPIFFEID matching
-  # 
+  #
   # REQUIRED: The className field is mandatory for ClusterSPIFFEID resources.
   # The SPIRE controller manager uses className to match ClusterSPIFFEID resources
   # with the appropriate SPIRE installation. Without this field, the controller
   # will ignore the ClusterSPIFFEID and no workload registration will occur,
   # causing authentication failures and preventing the gRPC server from starting.
-  # 
+  #
   # The className must match the SPIRE installation's className.
-  # 
+  #
   # Default: "dir-spire" (matches standard SPIRE installation convention).
   # If your SPIRE installation uses a different className, override this value.
   # If not specified, falls back to "<namespace>-spire" (e.g., "my-namespace-spire").
-  # 
+  #
   # IMPORTANT: Ensure this matches your SPIRE Controller Manager's className.
   # For standard installations, SPIRE is deployed in the "spire" namespace with
   # className "dir-spire". Verify with:
   #   kubectl get deployment -n spire spire-server -o yaml | grep className
-  # 
+  #
   # See: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterspiffeid-crd.md
   className: "dir-spire"
-  
+
   # Use SPIFFE CSI driver for workload attestation (recommended)
-  # 
+  #
   # When true (recommended):
   #   - Uses SPIFFE CSI driver for proper workload registration
   #   - Workload registration happens synchronously before pod starts
   #   - SPIRE agent issues X.509-SVID with URI SAN before pod begins
   #   - Eliminates authentication delays and race conditions
   #   - Production-ready, reliable identity injection
-  # 
+  #
   # When false (legacy/debugging only):
   #   - Uses hostPath to mount SPIRE agent socket
   #   - Workload registration happens asynchronously via ClusterSPIFFEID
   #   - Pod may retry authentication during startup
   #   - Only use for debugging or when CSI driver is unavailable
-  # 
+  #
   # Requires: SPIFFE CSI driver deployed in cluster
   # See: https://github.com/spiffe/spiffe-csi
   useCSIDriver: true
-  
+
   # Custom DNS names to add to the X.509-SVID certificate SANs
   # Useful for external access with proper TLS verification without --tls-skip-verify
   # Example:
@@ -260,7 +265,7 @@ spire:
   #   - "dir-api.example.com"
   #   - "api.example.com"
   dnsNameTemplates: []
-  
+
   federation: []
     # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
     # - trustDomain: dir-cluster
@@ -280,24 +285,24 @@ pvc:
 database:
   # Database type (currently only sqlite supported)
   type: "sqlite"
-  
+
   # SQLite configuration
   sqlite:
     # Path to SQLite database file
     # Default: /tmp/dir.db (ephemeral - lost on pod restart)
     # When using PVC: /var/lib/dir/database/dir.db (persistent)
     dbPath: "/tmp/dir.db"
-  
+
   # PVC for database persistence (optional)
   # When enabled, database persists across pod restarts
   # Also allows enabling readOnlyRootFilesystem security hardening
   # IMPORTANT: When PVC is enabled, set strategy.type to "Recreate" to avoid
   # SQLite lock conflicts during updates (see strategy configuration above)
   pvc:
-    enabled: false        # Disabled by default (opt-in for backward compatibility)
-    create: true          # Create PVC automatically
-    storageClassName: ""  # Use cluster default storage class
-    size: 1Gi             # Database size (adjust based on expected record count)
+    enabled: false # Disabled by default (opt-in for backward compatibility)
+    create: true # Create PVC automatically
+    storageClassName: "" # Use cluster default storage class
+    size: 1Gi # Database size (adjust based on expected record count)
     accessMode: ReadWriteOnce
 
 # Service exposes gRPC server api
@@ -312,12 +317,12 @@ metrics:
   # Enable Prometheus metrics collection
   # Default: true (recommended for production)
   enabled: true
-  
+
   # Port for Prometheus metrics endpoint
   # Used for both the application listen address and Kubernetes service port
   # Default: 9090
   port: 9090
-  
+
   # ServiceMonitor for Prometheus Operator (optional)
   # Creates a ServiceMonitor resource for automatic Prometheus discovery
   serviceMonitor:
@@ -434,7 +439,7 @@ autoscaling:
 # Deployment strategy for pod updates
 # IMPORTANT: When using PVCs (routing or database), use "Recreate" strategy
 # to avoid file lock conflicts with BadgerDB and SQLite.
-# 
+#
 # Recreate: Terminates old pod before starting new one (default, required with PVCs)
 # - Ensures clean database shutdown and no lock conflicts
 # - Brief downtime during updates (10-15 seconds)
@@ -512,35 +517,35 @@ externalSecrets:
   # Enable ExternalSecrets integration (default: false)
   # When true, credentials are synced from Vault instead of using values.yaml
   enabled: false
-  
+
   # Vault path where credentials are stored (all credentials in one path)
   # Example: "dir_staging/dev/credentials"
   vaultPath: ""
-  
+
   # ClusterSecretStore or SecretStore name to use
   # This must be pre-configured in your cluster (managed by platform team)
   secretStore: "vault-backend"
-  
+
   # Secret store kind (default: ClusterSecretStore)
   # Options: ClusterSecretStore (cluster-wide) or SecretStore (namespace-scoped)
   secretStoreKind: "ClusterSecretStore"
-  
+
   # Refresh interval - how often ESO syncs from Vault (default: 1h)
   refreshInterval: "1h"
-  
+
   # Node identity configuration
   nodeIdentity:
     enabled: true
     # Property name in Vault secret (default: "node.privkey")
     property: "node.privkey"
-  
+
   # OCI registry authentication
   ociAuth:
     enabled: true
     # Property names in Vault secret (defaults shown)
     usernameProperty: "oci-username"
     passwordProperty: "oci-password"
-  
+
   # Sync authentication (shared with remote nodes)
   syncAuth:
     enabled: true

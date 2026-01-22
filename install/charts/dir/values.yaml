@@ -10,7 +10,7 @@ apiserver:
       - name: regcred
 
   service:
-    type: NodePort  # Default for local/dev - change to ClusterIP for cloud with Ingress
+    type: NodePort # Default for local/dev - change to ClusterIP for cloud with Ingress
 
   # Prometheus metrics configuration
   # This section configures BOTH the application metrics server AND Kubernetes service
@@ -19,12 +19,12 @@ apiserver:
     # Enable Prometheus metrics collection
     # Default: true (recommended for production)
     enabled: true
-    
+
     # Port for Prometheus metrics endpoint
     # Used for both the application listen address and Kubernetes service port
     # Default: 9090
     port: 9090
-    
+
     # ServiceMonitor for Prometheus Operator (optional)
     # Creates a ServiceMonitor resource for automatic Prometheus discovery
     serviceMonitor:
@@ -41,7 +41,7 @@ apiserver:
     # Default for local/dev: NodePort (inherits from service.type if not set)
     # Uncomment and set to LoadBalancer for production cloud deployments:
     # type: LoadBalancer
-    
+
     # Cloud provider for automatic annotation configuration
     # Options: "aws", "gcp", "azure", or leave empty for no auto-configuration
     # When set, provider-specific LoadBalancer annotations are automatically applied
@@ -50,31 +50,31 @@ apiserver:
     #   cloudProvider: "gcp"    # Auto-configures GCP External Load Balancer
     #   cloudProvider: "azure"  # Auto-configures Azure public Load Balancer
     # cloudProvider: ""
-    
+
     # AWS-specific configuration (only used when cloudProvider: "aws")
     # aws:
     #   internal: false  # Set to true for internal NLB
     #   nlbTargetType: "instance"  # Or "ip" for IP-based targets
-    
+
     # GCP-specific configuration (only used when cloudProvider: "gcp")
     # gcp:
     #   internal: false  # Set to true for internal load balancer
     #   backendConfig: ""  # Optional BackendConfig resource name
-    
+
     # Azure-specific configuration (only used when cloudProvider: "azure")
     # azure:
     #   internal: false  # Set to true for internal load balancer
     #   resourceGroup: ""  # Optional resource group name
-    
+
     # Optional: Static IP (must be reserved in cloud provider first)
     # loadBalancerIP: ""
-    
+
     # Optional: Preserve client source IPs (recommended for P2P)
     # externalTrafficPolicy: Local
-    
+
     # Optional: Fixed NodePort (only used when type is NodePort)
     # nodePort: 30555
-    
+
     # Optional: Additional custom annotations (merged with provider annotations)
     # Custom annotations override provider-generated ones
     # annotations: {}
@@ -103,9 +103,14 @@ apiserver:
     authz:
       # Enable authorization policies
       enabled: false
-      # Trust domain for this Directory server
-      # Used to distinguish internal (same trust domain) vs external requests
-      trust_domain: "example.org"
+
+      # Content of the authorization policy file
+      enforcer_policy_file_content: |
+        p,example.org,*
+        p,*,/agntcy.dir.store.v1.StoreService/Pull
+        p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
+        p,*,/agntcy.dir.store.v1.StoreService/Lookup
+        p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 
     # Store settings for the storage backend.
     store:
@@ -159,17 +164,17 @@ apiserver:
     sync:
       # How frequently the scheduler checks for pending syncs
       scheduler_interval: "30s"
-      
+
       # Maximum number of sync workers running concurrently
       worker_count: 1
-      
+
       # Timeout for individual sync operations
       worker_timeout: "10m"
-      
+
       # Registry monitor configuration
       registry_monitor:
         check_interval: "30s"
-      
+
       # Authentication configuration for sync operations
       auth_config: {}
 
@@ -177,10 +182,10 @@ apiserver:
     publication:
       # How frequently the scheduler checks for pending publications
       scheduler_interval: "1h"
-      
+
       # Maximum number of publication workers running concurrently
       worker_count: 1
-      
+
       # Timeout for individual publication operations
       worker_timeout: "30m"
 
@@ -190,11 +195,11 @@ apiserver:
       # Larger buffers allow subscribers to fall behind temporarily without dropping events
       # Default: 100
       subscriber_buffer_size: 100
-      
+
       # Enable logging when events are dropped due to slow consumers
       # Default: true
       log_slow_consumers: true
-      
+
       # Enable debug logging of all published events (verbose in production)
       # Default: false
       log_published_events: false
@@ -205,18 +210,18 @@ apiserver:
       # Enable rate limiting middleware
       # Default: false (disabled for development/testing)
       enabled: false
-      
+
       # Global rate limit (applies to all requests regardless of client)
       # Set both to 0 to disable global limiting
       # global_rps: 0       # Requests per second (float, e.g., 1000.0)
       # global_burst: 0     # Burst capacity (int, e.g., 2000)
-      
+
       # Per-client rate limit (tracked by SPIFFE ID from mTLS)
       # Default values shown below are reasonable for production
       # Set both to 0 to disable per-client limiting
-      per_client_rps: 100    # Requests per second per client (float)
-      per_client_burst: 200  # Burst capacity per client (int)
-      
+      per_client_rps: 100 # Requests per second per client (float)
+      per_client_burst: 200 # Burst capacity per client (int)
+
       # Per-method rate limit overrides (optional)
       # Allows fine-grained control over specific gRPC methods
       # Note: These can only be configured via Helm values, not environment variables
@@ -236,12 +241,12 @@ apiserver:
       #   schema_url: "http://<release-name>-ingress-controller.<namespace>.svc.cluster.local"
       # Example: schema_url: "http://dir-ingress-controller.dir-server.svc.cluster.local"
       schema_url: "https://schema.oasf.outshift.com"
-      
+
       # Disable API validation (use embedded schema validation instead)
       # When true, uses embedded schemas for validation (no HTTP calls to OASF server)
       # Default: false
       disable: false
-      
+
       # Use strict validation mode
       # Default: true
       strict_mode: true
@@ -250,29 +255,29 @@ apiserver:
   spire:
     enabled: false
     trustDomain: example.org
-    
+
     # SPIRE controller className for ClusterSPIFFEID matching
-    # 
+    #
     # REQUIRED: The className field is mandatory for ClusterSPIFFEID resources.
     # The SPIRE controller manager uses className to match ClusterSPIFFEID resources
     # with the appropriate SPIRE installation. Without this field, the controller
     # will ignore the ClusterSPIFFEID and no workload registration will occur,
     # causing authentication failures and preventing the gRPC server from starting.
-    # 
+    #
     # The className must match the SPIRE installation's className.
-    # 
+    #
     # Default: "dir-spire" (matches standard SPIRE installation convention).
     # If your SPIRE installation uses a different className, override this value.
     # If not specified, falls back to "<namespace>-spire" (e.g., "my-namespace-spire").
-    # 
+    #
     # IMPORTANT: Ensure this matches your SPIRE Controller Manager's className.
     # For standard installations, SPIRE is deployed in the "spire" namespace with
     # className "dir-spire". Verify with:
     #   kubectl get deployment -n spire spire-server -o yaml | grep className
-    # 
+    #
     # See: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterspiffeid-crd.md
     className: "dir-spire"
-    
+
     federation: []
       # # Config: https://github.com/spiffe/spire-controller-manager/blob/main/docs/clusterfederatedtrustdomain-crd.md
       # - trustDomain: dir-cluster
@@ -282,7 +287,7 @@ apiserver:
 
   # Zot registry configuration (subchart)
   zot:
-   # Disable default config mounting
+    # Disable default config mounting
     mountConfig: false
 
     # Enable default secret mounting
@@ -331,23 +336,23 @@ apiserver:
             }
           }
         }
-    
+
     # htpasswd credentials for ZOT authentication
     secretFiles:
       htpasswd: ""
-    
+
     # Extra volumes to mount the shared PVC for writable config
     # This allows the apiserver sync worker to modify ZOT's config at runtime
     extraVolumes:
       - name: zot-config-storage
         persistentVolumeClaim:
           claimName: dir-zot-config
-    
+
     # Mount the shared PVC into ZOT container
     extraVolumeMounts:
       - name: zot-config-storage
         mountPath: /etc/zot
-    
+
     # Configure zot to use the config file from the shared mounted volume
     extraArgs:
       - "serve"
@@ -359,8 +364,8 @@ apiserver:
   # OASF server subchart configuration
   oasf:
     enabled: false
-    localDeploy: true  # Creates IngressClass resource for ingress controller
-    
+    localDeploy: true # Creates IngressClass resource for ingress controller
+
     image:
       repository: ghcr.io/agntcy/oasf-server
       versions:
@@ -372,18 +377,18 @@ apiserver:
         # - server: latest
         #   schema: 0.9.0-dev
       pullPolicy: IfNotPresent
-    
+
     service:
       type: ClusterIP
       port: 8080
-    
+
     config:
       server_port: 8080
-    
+
     env: {}
     volumes: []
     volumeMounts: []
-    
+
     ingress:
       enabled: true
       className: "nginx"
@@ -395,7 +400,7 @@ apiserver:
       tls: []
       service:
         type: ClusterIP
-    
+
     resources: {}
 
   # Secrets configuration
@@ -409,14 +414,14 @@ apiserver:
     # Private key for peer-to-peer routing identity
     # If not provided, the secret will not include this key
     privKey: ""
-    
+
     # Sync authentication credentials
     # Used for authenticating sync operations between nodes
     # Username defaults to "sync" if empty, password is randomly generated if empty
     syncAuth:
       username: ""
       password: ""
-    
+
     # OCI registry authentication
     # Used for authenticating to the OCI-backed storage backend
     # Username defaults to "admin" if empty, password is randomly generated if empty
@@ -431,35 +436,35 @@ apiserver:
     # Enable ExternalSecrets integration (default: false)
     # When true, credentials are synced from Vault instead of using values.yaml
     enabled: false
-    
+
     # Vault path where credentials are stored (all credentials in one path)
     # Example: "dir_staging/dev/credentials"
     vaultPath: ""
-    
+
     # ClusterSecretStore or SecretStore name to use
     # This must be pre-configured in your cluster (managed by platform team)
     secretStore: "vault-backend"
-    
+
     # Secret store kind (default: ClusterSecretStore)
     # Options: ClusterSecretStore (cluster-wide) or SecretStore (namespace-scoped)
     secretStoreKind: "ClusterSecretStore"
-    
+
     # Refresh interval - how often ESO syncs from Vault (default: 1h)
     refreshInterval: "1h"
-    
+
     # Node identity configuration
     nodeIdentity:
       enabled: true
       # Property name in Vault secret (default: "node.privkey")
       property: "node.privkey"
-    
+
     # OCI registry authentication
     ociAuth:
       enabled: true
       # Property names in Vault secret (defaults shown)
       usernameProperty: "oci-username"
       passwordProperty: "oci-password"
-    
+
     # Sync authentication (shared with remote nodes)
     syncAuth:
       enabled: true
@@ -471,28 +476,28 @@ apiserver:
   database:
     # Database type (currently only sqlite supported)
     type: "sqlite"
-    
+
     # SQLite configuration
     sqlite:
       # Path to SQLite database file
       # Default: /tmp/dir.db (ephemeral - lost on pod restart)
       # When using PVC: /var/lib/dir/database/dir.db (persistent)
       dbPath: "/tmp/dir.db"
-    
+
     # PVC for database persistence (optional)
     # When enabled, database persists across pod restarts
     # Also allows enabling readOnlyRootFilesystem security hardening
     pvc:
-      enabled: false        # Disabled by default (opt-in for backward compatibility)
-      create: true          # Create PVC automatically
-      storageClassName: ""  # Use cluster default storage class
-      size: 1Gi             # Database size (1Gi for dev, 5Gi recommended for production)
+      enabled: false # Disabled by default (opt-in for backward compatibility)
+      create: true # Create PVC automatically
+      storageClassName: "" # Use cluster default storage class
+      size: 1Gi # Database size (1Gi for dev, 5Gi recommended for production)
       accessMode: ReadWriteOnce
 
   # Deployment strategy for pod updates
   # IMPORTANT: Use "Recreate" when PVCs are enabled (routing or database)
   # to avoid file lock conflicts with BadgerDB and SQLite
-  # 
+  #
   # Default: Recreate (prevents database lock conflicts during updates)
   # - Brief downtime during updates (10-15 seconds)
   # - Required when using PVCs to avoid CrashLoopBackOff

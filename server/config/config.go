@@ -397,7 +397,7 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("authz.enabled", "false")
 
 	_ = v.BindEnv("authz.enforcer_policy_file_path")
-	v.SetDefault("authz.enforcer_policy_file_path", DefaultConfigPath+"authz_policies.csv")
+	v.SetDefault("authz.enforcer_policy_file_path", DefaultConfigPath+"/authz_policies.csv")
 
 	//
 	// Store configuration

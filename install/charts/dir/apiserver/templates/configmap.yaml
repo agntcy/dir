@@ -15,3 +15,8 @@ data:
     {{- $_ := set $config "metrics" $metricsConfig }}
     {{- end }}
     {{- $config | toYaml | nindent 4 }}
+
+  authz_policies.csv: |
+    {{- if .Values.config.authz.enforcer_policy_file_content }}
+    {{- .Values.config.authz.enforcer_policy_file_content | nindent 4}}
+    {{- end }}
