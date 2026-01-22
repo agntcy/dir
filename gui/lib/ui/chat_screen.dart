@@ -547,10 +547,48 @@ class _ChatScreenState extends State<ChatScreen> {
         color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
       ),
       onPressed: () {
-        _controller.text = text;
-        _sendMessage();
+        if (text.toLowerCase() == 'help') {
+          _showHelpCommands();
+        } else {
+          _controller.text = text;
+          _sendMessage();
+        }
       },
     );
+  }
+  
+  void _showHelpCommands() {
+    setState(() {
+      _messages.add({
+        'role': 'user',
+        'text': 'help',
+      });
+      _messages.add({
+        'role': 'model',
+        'text': '''## Commands
+
+**Search Agents**
+
+- List of all agents - Show all registered agents
+- search for \<query\> - Search agents by name, author, or description
+- find agents with skill \<skill\> - Search by skill
+- agents by author \<name\> - Filter by author
+
+**Agent Details**
+
+- Click "See more" on any agent card to view full details
+- Click the CID badge to copy the agent identifier
+- Click "Download JSON" to save agent data
+
+**Examples**
+
+- "agents for text summarization"
+- "search by author cisco"
+- "list agents with problem solving skills"
+
+Type your query or click a suggestion to get started!''',
+      });
+    });
   }
 
   @override
@@ -676,8 +714,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              _buildSuggestionChip(context, 'list of all agents'),
-                              _buildSuggestionChip(context, 'help'),
+                              _buildSuggestionChip(context, 'List of all agents'),
+                              _buildSuggestionChip(context, 'Help'),
                             ],
                           ),
                         ],
@@ -698,6 +736,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       }
                     }
                     
+                    // Check if still loading (CIDs exist but not all records loaded)
+                    final isLoading = cids.isNotEmpty && loadedRecords.length < cids.length;
+                    
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: SearchResultsWidget(
@@ -707,6 +748,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         agentRecords: loadedRecords.isNotEmpty ? loadedRecords : null,
                         searchCriteria: msg['searchCriteria'] as Map<String, dynamic>?,
                         errorMessage: data['error_message']?.toString(),
+                        isLoading: isLoading,
                         onPullRecord: (cid) {
                           // Track which CID we're pulling
                           _pendingPullCid = cid;
@@ -839,7 +881,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               CircleAvatar(
                                 radius: 14,
                                 backgroundColor: Theme.of(context).colorScheme.secondary,
-                                child: Icon(Icons.smart_toy, size: 16, color: Theme.of(context).colorScheme.onSecondary),
+                                child: Icon(Icons.smart_toy_outlined, size: 16, color: Theme.of(context).colorScheme.onSecondary),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -850,14 +892,32 @@ class _ChatScreenState extends State<ChatScreen> {
                                     const SizedBox(height: 4),
                                     // Show text before JSON if any
                                     if (textBeforeJson.isNotEmpty) ...[
-                                      MarkdownBody(data: textBeforeJson, selectable: true),
+                                      MarkdownBody(
+                                        data: textBeforeJson, 
+                                        selectable: true,
+                                        styleSheet: MarkdownStyleSheet(
+                                          h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
+                                          p: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                                          strong: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                          listBullet: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                                        ),
+                                      ),
                                       const SizedBox(height: 8),
                                     ],
                                     // Show JSON as code block if detected
                                     if (jsonData != null)
                                       JsonCodeBlock(data: jsonData, title: 'Record Data', maxHeight: 250)
                                     else if (jsonBlockMatch == null)
-                                      MarkdownBody(data: text, selectable: true),
+                                      MarkdownBody(
+                                        data: text, 
+                                        selectable: true,
+                                        styleSheet: MarkdownStyleSheet(
+                                          h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
+                                          p: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                                          strong: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                          listBullet: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -886,6 +946,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     subtitle: MarkdownBody(
                       data: text,
                       selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
+                        p: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                        strong: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                        listBullet: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                      ),
                     ),
                   );
                 },

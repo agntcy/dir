@@ -17,6 +17,7 @@ class SearchResultsWidget extends StatefulWidget {
   final Map<String, dynamic>? searchCriteria;
   final List<Map<String, dynamic>>? agentRecords;
   final String? errorMessage;
+  final bool isLoading;
   final void Function(String cid)? onPullRecord;
   final void Function(int offset)? onLoadMore;
 
@@ -28,6 +29,7 @@ class SearchResultsWidget extends StatefulWidget {
     this.searchCriteria,
     this.agentRecords,
     this.errorMessage,
+    this.isLoading = false,
     this.onPullRecord,
     this.onLoadMore,
   });
@@ -38,7 +40,7 @@ class SearchResultsWidget extends StatefulWidget {
 
 class _SearchResultsWidgetState extends State<SearchResultsWidget> {
   int _currentPage = 0;
-  static const int _pageSize = 5;
+  static const int _pageSize = 4;
   String _sortBy = 'default'; // 'default', 'name', 'author', 'date'
 
 
@@ -155,12 +157,17 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
           if (widget.recordCids.isNotEmpty)
             _buildSortControls(context),
           
-          // Results list
+          // Results list (always show cards with their individual loading states)
           if (widget.recordCids.isNotEmpty) ...[
             _buildResultsList(context),
+            // Show loading indicator at bottom if still loading more records
+            if (widget.isLoading)
+              _buildLoadingIndicator(context),
             _buildPaginationControls(context),
-          ] else
-            _buildEmptyState(context),
+          ] else if (!widget.isLoading)
+            _buildEmptyState(context)
+          else
+            _buildLoadingIndicator(context),
         ],
       ),
     );
@@ -480,6 +487,35 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
     );
   }
 
+  Widget _buildLoadingIndicator(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colorScheme.primary.withOpacity(0.6),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            'Loading more agents...',
+            style: TextStyle(
+              fontSize: 12,
+              color: colorScheme.onSurface.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEmptyState(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     
@@ -654,10 +690,6 @@ class AgentRecordCard extends StatelessWidget {
     final llmInfo = _extractLlmInfo(agentInfo);
     final domain = _extractDomain(agentInfo);
     
-    final shortCid = cid.length > 16 
-        ? '${cid.substring(0, 8)}...${cid.substring(cid.length - 4)}'
-        : cid;
-    
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
@@ -685,7 +717,7 @@ class AgentRecordCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Agent icon
+                // Agent icon or loading spinner
                 Container(
                   width: 44,
                   height: 44,
@@ -699,15 +731,24 @@ class AgentRecordCard extends StatelessWidget {
                     ),
                   ),
                   child: Center(
-                    child: SvgPicture.asset(
-                      'assets/images/agent-icon.svg',
-                      width: 26,
-                      height: 26,
-                      colorFilter: ColorFilter.mode(
-                        hasData ? colorScheme.primary : colorScheme.outline.withOpacity(0.5),
-                        BlendMode.srcIn,
-                      ),
-                    ),
+                    child: hasData
+                        ? SvgPicture.asset(
+                            'assets/images/agent-icon.svg',
+                            width: 26,
+                            height: 26,
+                            colorFilter: ColorFilter.mode(
+                              colorScheme.primary,
+                              BlendMode.srcIn,
+                            ),
+                          )
+                        : SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colorScheme.outline.withOpacity(0.5),
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -1065,32 +1106,8 @@ class AgentRecordCard extends StatelessWidget {
     return parts.isNotEmpty ? parts.last : fullName;
   }
 
-  Widget _buildVersionBadge(BuildContext context, String version) {
-    final colorScheme = Theme.of(context).colorScheme;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: colorScheme.surface.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.15)),
-      ),
-      child: Text(
-        version,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: colorScheme.onSurface.withOpacity(0.7),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCidBadge(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final shortCid = cid.length > 12
-        ? '${cid.substring(0, 8)}...${cid.substring(cid.length - 4)}'
-        : cid;
 
     return InkWell(
       onTap: () => _copyCid(context),
@@ -1114,10 +1131,10 @@ class AgentRecordCard extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              shortCid,
+              'CID',
               style: TextStyle(
                 fontSize: 10,
-                fontFamily: 'monospace',
+                fontWeight: FontWeight.w500,
                 color: colorScheme.primary,
               ),
             ),
@@ -1355,14 +1372,12 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                             Text(author, style: TextStyle(fontSize: 13, color: colorScheme.secondary)),
                             if (version.isNotEmpty) ...[
                               const SizedBox(width: 12),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.surface.withOpacity(0.8),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: colorScheme.outline.withOpacity(0.15)),
+                              Text(
+                                version,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colorScheme.outline,
                                 ),
-                                child: Text(version, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurface.withOpacity(0.7))),
                               ),
                             ],
                           ],
@@ -1371,37 +1386,66 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     ),
                   ),
                   
-                  // CID + expand icon
+                  // CID, Download JSON + expand icon
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      // CID badge
-                      InkWell(
-                        onTap: () => _copyCid(context),
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface.withOpacity(0.6),
+                      // CID and Download JSON badges row
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // CID badge
+                          InkWell(
+                            onTap: () => _copyCid(context),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.fingerprint_outlined, size: 12, color: colorScheme.primary.withOpacity(0.7)),
-                              const SizedBox(width: 4),
-                              Text(
-                                widget.cid.length > 12 
-                                    ? '${widget.cid.substring(0, 8)}...${widget.cid.substring(widget.cid.length - 4)}'
-                                    : widget.cid.isNotEmpty ? widget.cid : 'N/A',
-                                style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: colorScheme.primary.withOpacity(0.7)),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
                               ),
-                              const SizedBox(width: 4),
-                              Icon(Icons.copy_outlined, size: 11, color: colorScheme.primary.withOpacity(0.7)),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.fingerprint_outlined, size: 12, color: colorScheme.primary.withOpacity(0.7)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'CID',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: colorScheme.primary.withOpacity(0.85)),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.copy_outlined, size: 11, color: colorScheme.primary.withOpacity(0.7)),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          // Download JSON badge
+                          InkWell(
+                            onTap: () => _downloadJson(context, agentInfo),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.download_outlined, size: 12, color: colorScheme.primary.withOpacity(0.85)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'JSON',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: colorScheme.primary.withOpacity(0.85)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Icon(
@@ -1615,31 +1659,6 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     const SizedBox(width: 4),
                     Text('Added ${_formatDate(createdAt)}', style: TextStyle(fontSize: 10, color: colorScheme.outline)),
                   ],
-                  const Spacer(),
-                  // Download JSON button (same style as CID badge)
-                  InkWell(
-                    onTap: () => _downloadJson(context, agentInfo),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surface.withOpacity(0.6),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.download_outlined, size: 12, color: colorScheme.primary.withOpacity(0.85)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Download JSON',
-                            style: TextStyle(fontSize: 10, color: colorScheme.primary.withOpacity(0.85)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
