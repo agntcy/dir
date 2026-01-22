@@ -62,7 +62,7 @@ jobs:
         run: flutter config --enable-macos-desktop
 
       - name: Build macOS app
-        run: flutter build macos --release --no-codesign
+        run: flutter build macos --release
 
       - name: Create DMG
         run: |
