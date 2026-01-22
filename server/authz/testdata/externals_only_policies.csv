@@ -1,0 +1,12 @@
+p,externals_only_other.com,/agntcy.dir.store.v1.StoreService/Push
+p,externals_only_other.com,/agntcy.dir.store.v1.StoreService/Pull
+p,externals_only_other.com,/agntcy.dir.store.v1.StoreService/Lookup
+p,externals_only_other.com,/agntcy.dir.store.v1.StoreService/Delete
+p,externals_only_other.com,/agntcy.dir.store.v1.StoreService/PushReferrer
+p,externals_only_other.com,/agntcy.dir.store.v1.StoreService/PullReferrer
+
+p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/CreateSync
+p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/ListSyncs
+p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/GetSync
+p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/DeleteSync
+p,externals_only_other2.com,/agntcy.dir.store.v1.SyncService/RequestRegistryCredentials

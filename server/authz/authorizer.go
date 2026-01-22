@@ -9,8 +9,14 @@ import (
 
 	"github.com/agntcy/dir/server/authz/config"
 	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v2/model"
 	fileadapter "github.com/casbin/casbin/v2/persist/file-adapter"
 )
+
+// Defines the Casbin authorization model
+//
+//go:embed model.conf
+var modelConf string
 
 type Authorizer struct {
 	enforcer *casbin.Enforcer
@@ -18,11 +24,16 @@ type Authorizer struct {
 
 // New creates a new Casbin-based Authorizer.
 func NewAuthorizer(cfg config.Config) (*Authorizer, error) {
+	// Create model from string
+	model, err := model.NewModelFromString(modelConf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load model: %w", err)
+	}
 
 	adapter := fileadapter.NewAdapter(cfg.EnforcerPolicyFilePath)
 
 	// Create authorization enforcer
-	enforcer, err := casbin.NewEnforcer(cfg.EnforcerModelFilePath, adapter)
+	enforcer, err := casbin.NewEnforcer(model, adapter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create enforcer: %w", err)
 	}

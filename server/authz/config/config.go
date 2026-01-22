@@ -12,9 +12,6 @@ type Config struct {
 	// Indicates if authorization is enabled
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-	// Enforcer model file path
-	EnforcerModelFilePath string `json:"enforcer_model_file_path,omitempty" mapstructure:"enforcer_model_file_path"`
-
 	// List of policies for external API methods access
 	EnforcerPolicyFilePath string `json:"enforcer_policy_file_path,omitempty" mapstructure:"enforcer_policy_file_path"`
 }
@@ -22,10 +19,6 @@ type Config struct {
 func (c *Config) Validate() error {
 	if !c.Enabled {
 		return nil
-	}
-
-	if c.EnforcerModelFilePath == "" {
-		return errors.New("enforcer model file path is required")
 	}
 
 	if c.EnforcerPolicyFilePath == "" {
