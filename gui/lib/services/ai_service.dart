@@ -14,6 +14,9 @@ class AiService {
   LlmProvider? _provider;
   final List<Map<String, dynamic>> _azureHistory = [];
 
+  /// Expose MCP client for direct tool calls
+  McpClient get mcpClient => _mcpClient;
+
   AiService({
     required McpClient mcpClient,
   }) : _mcpClient = mcpClient;
@@ -40,6 +43,8 @@ class AiService {
 
     if (_provider is AzureOpenAiProvider) {
       return _sendMessageAzure(message, onToolOutput: onToolOutput);
+    } else if (_provider is OpenAiCompatibleProvider) {
+      return _sendMessageOpenAi(message, onToolOutput: onToolOutput);
     } else {
       return _sendMessageGemini(message, history, onToolOutput: onToolOutput);
     }
@@ -164,9 +169,84 @@ class AiService {
     return response.text;
   }
 
-  void _notifyToolOutput(String name, List<dynamic> content, void Function(String, dynamic) callback) {
-     print("DEBUG: _notifyToolOutput called for $name with content: $content");
-     for (var item in content) {
+  Future<String?> _sendMessageOpenAi(
+    String message,
+    {void Function(String, dynamic)? onToolOutput}
+  ) async {
+    _azureHistory.add({"role": "user", "content": message});
+
+    final openaiProvider = _provider as OpenAiCompatibleProvider;
+    var response = await openaiProvider.sendRaw(_azureHistory);
+
+    while (response.toolCalls.isNotEmpty) {
+      final assistantMsg = {
+        "role": "assistant",
+        "content": response.text,
+        "tool_calls": response.toolCalls.map((tc) => {
+          "id": tc.id,
+          "type": "function",
+          "function": {
+            "name": tc.name,
+            "arguments": _jsonString(tc.args),
+          }
+        }).toList()
+      };
+      _azureHistory.add(assistantMsg);
+
+      for (final tc in response.toolCalls) {
+        final result = await _mcpClient.callTool(tc.name, tc.args);
+
+        if (onToolOutput != null) {
+            _notifyToolOutput(tc.name, result.content, onToolOutput);
+        }
+
+        _azureHistory.add({
+          "role": "tool",
+          "tool_call_id": tc.id,
+          "name": tc.name,
+          "content": result.content.toString(),
+        });
+      }
+
+      response = await openaiProvider.sendRaw(_azureHistory);
+    }
+
+    if (response.text != null) {
+      _azureHistory.add({"role": "assistant", "content": response.text});
+    }
+
+    return response.text;
+  }
+
+  void _notifyToolOutput(String name, dynamic content, void Function(String, dynamic) callback) {
+     print("DEBUG: _notifyToolOutput called for $name with content type: ${content.runtimeType}");
+     
+     // Handle content as either List or String
+     List<dynamic> contentList;
+     if (content is List) {
+       contentList = content;
+     } else if (content is String) {
+       // Try to parse string as JSON
+       try {
+         final parsed = jsonDecode(content);
+         if (parsed is List) {
+           contentList = parsed;
+         } else {
+           // Wrap in expected format
+           contentList = [{'type': 'text', 'text': content}];
+         }
+       } catch (e) {
+         // Not JSON, wrap as text
+         contentList = [{'type': 'text', 'text': content}];
+       }
+     } else if (content is Map) {
+       contentList = [{'type': 'text', 'text': jsonEncode(content)}];
+     } else {
+       print("DEBUG: Unexpected content type: ${content.runtimeType}");
+       return;
+     }
+     
+     for (var item in contentList) {
          if (item is Map && item['type'] == 'text') {
              try {
                  final text = item['text'] as String;
@@ -178,8 +258,6 @@ class AiService {
                         final recordInner = jsonDecode(json['record_data']);
                         if (recordInner is Map) {
                            json['data'] = recordInner;
-                           // Optional: remove the string to save space/confusion
-                           // json.remove('record_data');
                         }
                     } catch (e) {
                         print("DEBUG: Failed to parse nested record_data: $e");

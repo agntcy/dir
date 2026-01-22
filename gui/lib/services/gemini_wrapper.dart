@@ -4,13 +4,28 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 abstract class GeminiFactory {
-  GenerativeModelWrapper createModel({required String apiKey, required String model, List<Tool>? tools});
+  GenerativeModelWrapper createModel({
+    required String apiKey, 
+    required String model, 
+    List<Tool>? tools,
+    String? systemInstruction,
+  });
 }
 
 class RealGeminiFactory implements GeminiFactory {
   @override
-  GenerativeModelWrapper createModel({required String apiKey, required String model, List<Tool>? tools}) {
-    return RealGenerativeModel(GenerativeModel(model: model, apiKey: apiKey, tools: tools));
+  GenerativeModelWrapper createModel({
+    required String apiKey, 
+    required String model, 
+    List<Tool>? tools,
+    String? systemInstruction,
+  }) {
+    return RealGenerativeModel(GenerativeModel(
+      model: model, 
+      apiKey: apiKey, 
+      tools: tools,
+      systemInstruction: systemInstruction != null ? Content.text(systemInstruction) : null,
+    ));
   }
 }
 

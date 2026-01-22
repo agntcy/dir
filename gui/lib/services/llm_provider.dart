@@ -29,6 +29,32 @@ class LlmToolCall {
   LlmToolCall(this.name, this.args, {this.id});
 }
 
+// System instruction for AGNTCY Directory
+const String _directorySystemInstruction = '''
+You are an AI assistant for the AGNTCY Agent Directory. You help users search for and discover AI agents.
+
+SEARCH TOOL USAGE (agntcy_dir_search_local):
+- Use wildcards freely: * (zero or more chars), ? (single char), [abc] (char class)
+- names: Agent name patterns, e.g., ["*search*"], ["*gpt*"]
+- skill_names: Skill patterns, e.g., ["*python*"], ["*translation*"]
+- authors: Author patterns, e.g., ["*cisco*"], ["AGNTCY*"]
+- versions: Version patterns, e.g., ["v1.*"], ["*beta*"]
+- domain_names: Domain patterns, e.g., ["*education*"]
+
+EXAMPLES:
+- "list all agents" → names: ["*"]
+- "search agents" → names: ["*search*"]
+- "agents for text summarization" → skill_names: ["*summariz*"] OR names: ["*summariz*"]
+- "agents by author cisco" → authors: ["*cisco*"]
+
+ALWAYS use wildcards when the user describes what they want. Do NOT ask for exact names - use patterns!
+
+RESPONSE FORMAT:
+- Do NOT list CIDs in your text response - the UI displays them separately in cards
+- Just provide a brief summary like "Found X agents matching your search"
+- Let the search results widget display the agent details
+''';
+
 // --- GEMINI IMPLEMENTATION ---
 class GeminiProvider implements LlmProvider {
   final String apiKey;
@@ -57,8 +83,9 @@ class GeminiProvider implements LlmProvider {
 
     _model = geminiFactory.createModel(
       apiKey: apiKey,
-      model: 'gemini-1.5-pro',
+      model: 'gemini-2.0-flash-exp',
       tools: geminiTools,
+      systemInstruction: _directorySystemInstruction,
     );
   }
 
@@ -108,6 +135,109 @@ class GeminiProvider implements LlmProvider {
           description: jsonSchema['description']);
     }
     return Schema.string();
+  }
+}
+
+// --- OPENAI COMPATIBLE IMPLEMENTATION (for AI Gateways) ---
+class OpenAiCompatibleProvider implements LlmProvider {
+  final String apiKey;
+  final String endpoint; // Full endpoint URL for chat completions
+  List<Map<String, dynamic>>? _formattedTools;
+
+  OpenAiCompatibleProvider({
+    required this.apiKey,
+    required this.endpoint,
+  });
+
+  @override
+  Future<void> init(List<McpTool> mcpTools) async {
+    _formattedTools = mcpTools.map((t) {
+      var schema = t.inputSchema;
+      if (schema.isEmpty) {
+        schema = {"type": "object", "properties": <String, dynamic>{}};
+      } else {
+        if (!schema.containsKey('type')) schema['type'] = 'object';
+        if (!schema.containsKey('properties')) schema['properties'] = <String, dynamic>{};
+      }
+      return {
+        "type": "function",
+        "function": {
+          "name": t.name,
+          "description": t.description,
+          "parameters": schema,
+        }
+      };
+    }).toList();
+  }
+
+  Future<LlmResponse> sendRaw(List<Map<String, dynamic>> messages) async {
+    var url = endpoint.trim();
+    if (!url.endsWith('/chat/completions')) {
+      url = url.endsWith('/') ? '${url}chat/completions' : '$url/chat/completions';
+    }
+
+    print('Calling OpenAI-compatible URL: $url');
+    final body = {
+      "messages": messages,
+      "model": "gpt-4o", // Default model, gateway will route appropriately
+      if (_formattedTools != null && _formattedTools!.isNotEmpty) "tools": _formattedTools,
+    };
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $apiKey",
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("OpenAI API Error: ${response.statusCode} - ${response.body}");
+    }
+
+    final data = jsonDecode(response.body);
+    final choice = data['choices'][0];
+    final messageData = choice['message'];
+
+    final content = messageData['content'] as String?;
+    final toolCallsJson = messageData['tool_calls'] as List<dynamic>?;
+
+    final toolCalls = <LlmToolCall>[];
+    if (toolCallsJson != null) {
+      for (final tc in toolCallsJson) {
+        final func = tc['function'];
+        toolCalls.add(LlmToolCall(
+          func['name'],
+          jsonDecode(func['arguments']),
+          id: tc['id'],
+        ));
+      }
+    }
+
+    return LlmResponse(text: content, toolCalls: toolCalls);
+  }
+
+  @override
+  Future<LlmResponse> sendMessage(String message, List<Content> history) async {
+    final messages = _convertHistory(history);
+    messages.add({"role": "user", "content": message});
+    return sendRaw(messages);
+  }
+
+  List<Map<String, dynamic>> _convertHistory(List<Content> history) {
+    final List<Map<String, dynamic>> openAiMessages = [];
+    for (final h in history) {
+      String role = h.role == 'model' ? 'assistant' : (h.role == 'function' ? 'tool' : 'user');
+      String text = "";
+      for (final part in h.parts) {
+        if (part is TextPart) text += part.text;
+      }
+      if (text.isNotEmpty) {
+        openAiMessages.add({'role': role, 'content': text});
+      }
+    }
+    return openAiMessages;
   }
 }
 

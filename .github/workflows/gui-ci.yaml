@@ -1,0 +1,131 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: GUI CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "gui/**"
+  pull_request:
+    paths:
+      - "gui/**"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./gui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.6'
+
+      - name: Build MCP Server
+        run: |
+          mkdir -p ../bin
+          cd ../mcp
+          go build -o ../bin/mcp-server main.go
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./gui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Create macOS runner
+        run: flutter create --platforms=macos .
+
+      - name: Configure macOS app
+        run: |
+          sed -i '' 's/PRODUCT_NAME = gui/PRODUCT_NAME = AGNTCY Directory/' macos/Runner/Configs/AppInfo.xcconfig
+          sed -i '' 's/<true\/>/<false\/>/' macos/Runner/Release.entitlements
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Build macOS app
+        run: flutter build macos --release
+
+      - name: Create DMG
+        run: |
+          hdiutil create -volname "AGNTCY Directory" \
+            -srcfolder "build/macos/Build/Products/Release/AGNTCY Directory.app" \
+            -ov -format UDZO \
+            "AGNTCY-Directory.dmg"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: agntcy-directory-macos
+          path: gui/AGNTCY-Directory.dmg
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ./gui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Create Windows runner
+        run: flutter create --platforms=windows .
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows app
+        run: flutter build windows --release
+
+      - name: Archive Windows build
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath agntcy-directory-windows.zip
+
+      - name: Upload Windows Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: agntcy-directory-windows
+          path: gui/agntcy-directory-windows.zip

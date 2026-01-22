@@ -1,15 +1,18 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../main.dart';
 import '../mcp/client.dart';
 import '../services/ai_service.dart';
 import '../services/llm_provider.dart';
 import 'widgets/record_card.dart';
+import 'widgets/search_results_widget.dart';
 
 class ChatScreen extends StatefulWidget {
   final AiService? aiService;
@@ -22,23 +25,35 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final List<Content> _history = [];
   final List<Map<String, dynamic>> _messages = []; // For UI display
+  
+  // Track pulled records by CID for associating with search results
+  final Map<String, Map<String, dynamic>> _pulledRecords = {};
+  String? _pendingPullCid; // CID currently being pulled
 
   AiService? _aiService;
   McpClient? _mcpClient;
   bool _isLoading = false;
+  
+  // Welcome message
+  static const String _welcomeMessage = 'Find published AI agents records by describing what you need (by author, name, skills, versions, domain). Or type `help` for commands.';
 
   // Config
-  String _providerType = 'gemini'; // gemini, azure
+  String _providerType = 'gemini'; // gemini, azure, openai
   String? _apiKey;
   String? _azureEndpoint;
   String? _azureDeployment;
   String _azureApiVersion = '2024-10-21'; // Default
+  String? _openaiEndpoint; // For OpenAI-compatible gateways
 
   @override
   void initState() {
     super.initState();
+    // Add welcome message
+    _messages.add({'role': 'welcome', 'text': _welcomeMessage});
+    
     if (widget.aiService != null) {
       _aiService = widget.aiService;
     } else {
@@ -46,7 +61,40 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    _mcpClient?.stop();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOutQuart,
+        );
+      }
+    });
+  }
+
   void _checkEnvAndInit() {
+    // Check for OpenAI-compatible gateway (e.g., Outshift AI Gateway)
+    final openaiKey = Platform.environment['OPENAI_API_KEY'] ?? const String.fromEnvironment('OPENAI_API_KEY');
+    final openaiEndpoint = Platform.environment['OPENAI_ENDPOINT'] ?? const String.fromEnvironment('OPENAI_ENDPOINT');
+
+    if (openaiKey.isNotEmpty && openaiEndpoint.isNotEmpty) {
+        print('Auto-configuring OpenAI-compatible gateway from Environment');
+        _providerType = 'openai';
+        _apiKey = openaiKey;
+        _openaiEndpoint = openaiEndpoint;
+        _initServices();
+        return;
+    }
+
     // Check for Azure Env (Runtime env preferred, then compile-time)
     final azureKey = Platform.environment['AZURE_API_KEY'] ?? const String.fromEnvironment('AZURE_API_KEY');
     final azureEp = Platform.environment['AZURE_ENDPOINT'] ?? const String.fromEnvironment('AZURE_ENDPOINT');
@@ -167,26 +215,39 @@ class _ChatScreenState extends State<ChatScreen> {
     final oasfSchemaUrl = Platform.environment['OASF_API_VALIDATION_SCHEMA_URL'] ??
                           const String.fromEnvironment('OASF_API_VALIDATION_SCHEMA_URL');
 
-    Map<String, String>? mcpEnv;
+    Map<String, String> mcpEnv = {};
     if (dirServerAddr.isNotEmpty) {
       print('Configuring Directory Node at: $dirServerAddr');
-      mcpEnv = {'DIRECTORY_CLIENT_SERVER_ADDRESS': dirServerAddr};
+      mcpEnv['DIRECTORY_CLIENT_SERVER_ADDRESS'] = dirServerAddr;
     }
 
     if (oasfSchemaUrl.isNotEmpty) {
-       mcpEnv ??= {};
        mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchemaUrl;
+    } else {
+       // Disable OASF API validation if schema URL is not provided
+       mcpEnv['OASF_API_VALIDATION_DISABLE'] = 'true';
+       print('OASF API validation disabled (no schema URL configured)');
     }
 
     _mcpClient = McpClient(executablePath: mcpPath);
     try {
+      print('DEBUG: Starting MCP client...');
       await _mcpClient!.start(environment: mcpEnv);
+      print('DEBUG: MCP client started, initializing...');
       await _mcpClient!.initialize();
+      print('DEBUG: MCP client initialized');
 
       _aiService = AiService(mcpClient: _mcpClient!);
+      print('DEBUG: AiService created');
 
       LlmProvider provider;
-      if (_providerType == 'azure') {
+      if (_providerType == 'openai') {
+         print('DEBUG: Creating OpenAI-compatible provider with endpoint: $_openaiEndpoint');
+         provider = OpenAiCompatibleProvider(
+           apiKey: _apiKey!,
+           endpoint: _openaiEndpoint!,
+         );
+      } else if (_providerType == 'azure') {
          provider = AzureOpenAiProvider(
            apiKey: _apiKey!,
            endpoint: _azureEndpoint!,
@@ -197,24 +258,161 @@ class _ChatScreenState extends State<ChatScreen> {
          provider = GeminiProvider(apiKey: _apiKey!);
       }
 
+      print('DEBUG: Initializing AI service with provider...');
       await _aiService!.init(provider);
+      print('DEBUG: AI service initialized successfully!');
 
-      setState(() {});
-    } catch (e) {
+      setState(() {
+        _messages.add({'role': 'system', 'text': 'Ready! You can now send messages.'});
+      });
+    } catch (e, stackTrace) {
+      print('DEBUG: Error during initialization: $e');
+      print('DEBUG: Stack trace: $stackTrace');
       _addSystemMessage('Error initializing services: $e');
     }
-  }
-
-  @override
-  void dispose() {
-    _mcpClient?.stop();
-    super.dispose();
   }
 
   void _addSystemMessage(String text) {
     setState(() {
       _messages.add({'role': 'system', 'text': text});
     });
+  }
+
+  /// Extract search criteria from user message for display
+  Map<String, dynamic> _extractSearchCriteria(String userMessage) {
+    // Simple heuristic extraction - show the user's query
+    final criteria = <String, dynamic>{};
+    
+    final lowerMsg = userMessage.toLowerCase();
+    
+    // Detect keywords
+    if (lowerMsg.contains('name')) {
+      criteria['filter'] = 'name';
+    }
+    if (lowerMsg.contains('skill')) {
+      criteria['filter'] = 'skill';
+    }
+    if (lowerMsg.contains('*')) {
+      criteria['pattern'] = 'wildcard (*)';
+    }
+    if (lowerMsg.contains('all')) {
+      criteria['scope'] = 'all agents';
+    }
+    
+    // Always show the query
+    criteria['query'] = userMessage.length > 60 
+        ? '${userMessage.substring(0, 60)}...' 
+        : userMessage;
+    
+    return criteria;
+  }
+
+  /// Auto-pull all records to populate agent info in search results
+  Future<void> _autoPullRecords(List<String> cids) async {
+    if (_aiService == null) return;
+    
+    print('DEBUG: Auto-pulling ${cids.length} records...');
+    
+    for (final cid in cids) {
+      // Skip if already pulled
+      if (_pulledRecords.containsKey(cid)) {
+        print('DEBUG: Skipping $cid - already pulled');
+        continue;
+      }
+      
+      try {
+        print('DEBUG: Pulling record $cid...');
+        // Call the MCP tool directly to pull the record
+        final result = await _aiService!.mcpClient.callTool(
+          'agntcy_dir_pull_record',
+          {'cid': cid},
+        );
+        
+        if (result.isError) {
+          print('ERROR: Pull failed for $cid: ${result.content}');
+          continue;
+        }
+        
+        print('DEBUG: Pull result type: ${result.content.runtimeType}');
+        
+        // Parse the result - MCP returns [{type: 'text', text: 'json...'}]
+        dynamic parsed;
+        final content = result.content;
+        
+        if (content is List && content.isNotEmpty) {
+          for (final item in content) {
+            if (item is Map && item['type'] == 'text' && item['text'] != null) {
+              try {
+                parsed = jsonDecode(item['text'] as String);
+                print('DEBUG: Parsed from MCP text content');
+                break;
+              } catch (e) {
+                print('DEBUG: Failed to parse text content: $e');
+              }
+            }
+          }
+        } else if (content is String) {
+          try {
+            parsed = jsonDecode(content);
+          } catch (e) {
+            print('DEBUG: Failed to parse string content: $e');
+          }
+        } else if (content is Map) {
+          parsed = content;
+        }
+        
+        if (parsed == null) {
+          print('DEBUG: Could not parse content for $cid');
+          continue;
+        }
+        
+        print('DEBUG: Parsed data keys: ${parsed is Map ? (parsed as Map).keys.toList() : 'not a map'}');
+        
+        if (parsed is Map) {
+          final recordData = Map<String, dynamic>.from(parsed);
+          
+          // Check for nested data fields - handle both 'data' and 'record_data' keys
+          Map<String, dynamic> agentData;
+          if (recordData.containsKey('record_data')) {
+            // record_data might be a JSON string or a Map
+            final recordDataValue = recordData['record_data'];
+            if (recordDataValue is String) {
+              try {
+                agentData = Map<String, dynamic>.from(jsonDecode(recordDataValue));
+                print('DEBUG: Parsed record_data from JSON string');
+              } catch (e) {
+                print('DEBUG: Failed to parse record_data string: $e');
+                agentData = recordData;
+              }
+            } else if (recordDataValue is Map) {
+              agentData = Map<String, dynamic>.from(recordDataValue);
+              print('DEBUG: Found record_data as Map');
+            } else {
+              agentData = recordData;
+            }
+          } else if (recordData.containsKey('data') && recordData['data'] is Map) {
+            print('DEBUG: Found nested data, extracting agent info');
+            agentData = Map<String, dynamic>.from(recordData['data'] as Map);
+          } else {
+            agentData = recordData;
+          }
+          
+          agentData['cid'] = cid;
+          _pulledRecords[cid] = agentData;
+          
+          print('DEBUG: Stored record for $cid with name: ${agentData['name']}');
+          
+          // Update UI to show loaded data
+          if (mounted) {
+            setState(() {});
+          }
+        }
+      } catch (e, stackTrace) {
+        print('ERROR: Auto-pulling record $cid: $e');
+        print('Stack: $stackTrace');
+      }
+    }
+    print('DEBUG: Auto-pull complete. Pulled records count: ${_pulledRecords.length}');
   }
 
   Future<void> _sendMessage() async {
@@ -227,6 +425,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add({'role': 'user', 'text': text});
       _isLoading = true;
     });
+    _scrollToBottom();
 
     try {
       final responseText = await _aiService!.sendMessage(
@@ -234,7 +433,73 @@ class _ChatScreenState extends State<ChatScreen> {
         _history,
         onToolOutput: (name, data) {
           setState(() {
-            if (data is List) {
+            if (data is Map) {
+              final mapData = Map<String, dynamic>.from(data);
+              
+              // Check if this is a search result
+              if (name == 'agntcy_dir_search_local' && mapData.containsKey('count')) {
+                // Remove any previous search_results from this conversation turn
+                // to avoid duplicate search widgets
+                _messages.removeWhere((m) => m['role'] == 'search_results');
+                
+                _messages.add({
+                  'role': 'search_results',
+                  'data': mapData,
+                  'source': name,
+                  'searchCriteria': _extractSearchCriteria(text),
+                });
+                
+                // Auto-pull all records to get full agent data
+                // Use Future.microtask to schedule this outside of setState
+                final cids = (mapData['record_cids'] as List?)?.cast<String>() ?? [];
+                Future.microtask(() => _autoPullRecords(cids));
+              }
+              // Check if this is a pulled record
+              else if (name == 'agntcy_dir_pull_record' && mapData.containsKey('data')) {
+                // Try to get CID from pending, or extract from user message
+                String cid = _pendingPullCid ?? '';
+                
+                // If no pending CID, try to extract from the last user message
+                if (cid.isEmpty) {
+                  for (int i = _messages.length - 1; i >= 0; i--) {
+                    final msg = _messages[i];
+                    if (msg['role'] == 'user' && msg['text'] != null) {
+                      final userText = msg['text'].toString();
+                      // Extract CID from "Pull the record with CID: X" pattern
+                      final cidMatch = RegExp(r'CID[:\s]+([a-z0-9]+)', caseSensitive: false)
+                          .firstMatch(userText);
+                      if (cidMatch != null) {
+                        cid = cidMatch.group(1) ?? '';
+                      }
+                      break;
+                    }
+                  }
+                }
+                
+                final recordWithCid = {'cid': cid, ...mapData};
+                
+                // Store in pulled records map
+                if (cid.isNotEmpty) {
+                  _pulledRecords[cid] = recordWithCid;
+                  _pendingPullCid = null;
+                }
+                
+                // Show expandable detail card (expanded by default)
+                _messages.add({
+                  'role': 'agent_record',
+                  'data': recordWithCid,
+                  'source': name,
+                });
+              }
+              // Generic record
+              else {
+                _messages.add({
+                  'role': 'record',
+                  'data': mapData,
+                  'source': name
+                });
+              }
+            } else if (data is List) {
                for (var item in data) {
                  if (item is Map) {
                     _messages.add({
@@ -244,14 +509,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     });
                  }
                }
-            } else if (data is Map) {
-               _messages.add({
-                 'role': 'record',
-                 'data': Map<String, dynamic>.from(data),
-                 'source': name
-               });
-            }
+             }
           });
+          // Don't scroll during tool processing - only after final response
         },
       );
 
@@ -260,10 +520,12 @@ class _ChatScreenState extends State<ChatScreen> {
         _history.add(Content.model([TextPart(responseText ?? '')]));
         _messages.add({'role': 'model', 'text': responseText});
       });
+      _scrollToBottom();
     } catch (e) {
       setState(() {
         _messages.add({'role': 'error', 'text': e.toString()});
       });
+      _scrollToBottom();
     } finally {
       setState(() {
         _isLoading = false;
@@ -271,16 +533,94 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Widget _buildSuggestionChip(BuildContext context, String text) {
+    return ActionChip(
+      label: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+      side: BorderSide(
+        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+      ),
+      onPressed: () {
+        if (text.toLowerCase() == 'help') {
+          _showHelpCommands();
+        } else {
+          _controller.text = text;
+          _sendMessage();
+        }
+      },
+    );
+  }
+  
+  void _showHelpCommands() {
+    setState(() {
+      _messages.add({
+        'role': 'user',
+        'text': 'help',
+      });
+      _messages.add({
+        'role': 'model',
+        'text': '''## Commands
+
+**Search Agents**
+
+- List of all agents - Show all registered agents
+- search for \<query\> - Search agents by name, author, or description
+- find agents with skill \<skill\> - Search by skill
+- agents by author \<name\> - Filter by author
+
+**Agent Details**
+
+- Click "See more" on any agent card to view full details
+- Click the CID badge to copy the agent identifier
+- Click "Download JSON" to save agent data
+
+**Examples**
+
+- "agents for text summarization"
+- "search by author cisco"
+- "list agents with problem solving skills"
+
+Type your query or click a suggestion to get started!''',
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('GenUI MCP Client'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Blue logo for light mode, orange logo for dark mode
+            SvgPicture.asset(
+              isDark 
+                  ? 'assets/images/logo-dark.svg'   // Orange on dark
+                  : 'assets/images/logo-light.svg', // Blue on light
+              height: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Agent Directory GUI',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: Icon(Theme.of(context).brightness == Brightness.dark
-                ? Icons.light_mode
-                : Icons.dark_mode),
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => MyApp.toggleTheme(context),
             tooltip: 'Toggle Theme',
           ),
@@ -291,16 +631,155 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Expanded(
               child: ListView.builder(
+                controller: _scrollController,
+                physics: const ClampingScrollPhysics(), // No elastic bounce effect
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
                   final msg = _messages[index];
                   final role = msg['role'];
 
+                  // Welcome message
+                  if (role == 'welcome') {
+                    return Container(
+                      margin: const EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Theme.of(context).colorScheme.primary.withOpacity(0.05),
+                            Theme.of(context).colorScheme.secondary.withOpacity(0.03),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.search,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Welcome to AGNTCY Agent Directory GUI',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Discover AI agents from the network',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            msg['text'] ?? '',
+                            style: TextStyle(
+                              fontSize: 15,
+                              height: 1.6,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.85),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildSuggestionChip(context, 'List of all agents'),
+                              _buildSuggestionChip(context, 'Help'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // New search results widget
+                  if (role == 'search_results') {
+                    final data = msg['data'] as Map<String, dynamic>;
+                    final cids = (data['record_cids'] as List?)?.cast<String>() ?? [];
+                    
+                    // Collect loaded records from the _pulledRecords map
+                    final loadedRecords = <Map<String, dynamic>>[];
+                    for (final cid in cids) {
+                      if (_pulledRecords.containsKey(cid)) {
+                        loadedRecords.add(_pulledRecords[cid]!);
+                      }
+                    }
+                    
+                    // Check if still loading (CIDs exist but not all records loaded)
+                    final isLoading = cids.isNotEmpty && loadedRecords.length < cids.length;
+                    
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: SearchResultsWidget(
+                        totalCount: data['count'] ?? 0,
+                        hasMore: data['has_more'] ?? false,
+                        recordCids: cids,
+                        agentRecords: loadedRecords.isNotEmpty ? loadedRecords : null,
+                        searchCriteria: msg['searchCriteria'] as Map<String, dynamic>?,
+                        errorMessage: data['error_message']?.toString(),
+                        isLoading: isLoading,
+                        onPullRecord: (cid) {
+                          // Track which CID we're pulling
+                          _pendingPullCid = cid;
+                          // Ask AI to pull the record
+                          _controller.text = 'Pull the record with CID: $cid';
+                          _sendMessage();
+                        },
+                      ),
+                    );
+                  }
+
+                  // Agent record (pulled) - full detail card
+                  if (role == 'agent_record') {
+                    final data = msg['data'] as Map<String, dynamic>;
+                    final cid = data['cid']?.toString() ?? '';
+                    
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: AgentDetailCard(
+                        cid: cid,
+                        agentData: data,
+                      ),
+                    );
+                  }
+
+                  // Record data as JSON code block
                   if (role == 'record') {
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: RecordCard(
-                        data: msg['data'],
+                      child: JsonCodeBlock(
+                        data: msg['data'] as Map<String, dynamic>,
                         title: 'Record from ${msg['source']}',
                       ),
                     );
@@ -318,13 +797,162 @@ class _ChatScreenState extends State<ChatScreen> {
 
                   final text = msg['text'] ?? '';
 
+                  // User message - aligned right, 80% width
+                  if (role == 'user') {
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FractionallySizedBox(
+                        widthFactor: 0.8,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                child: Icon(Icons.person, size: 16, color: Theme.of(context).colorScheme.onPrimary),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('You', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.primary)),
+                                    const SizedBox(height: 4),
+                                    Text(text, style: const TextStyle(fontSize: 14)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Model response - aligned left, 80% width
+                  if (role == 'model') {
+                    // Check if response contains JSON data (code block or raw)
+                    final jsonBlockMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)\s*```').firstMatch(text);
+                    final trimmedText = text.trim();
+                    final isRawJson = trimmedText.startsWith('{') && trimmedText.endsWith('}');
+                    
+                    // Try to extract JSON
+                    String textBeforeJson = '';
+                    Map<String, dynamic>? jsonData;
+                    
+                    if (jsonBlockMatch != null) {
+                      textBeforeJson = text.substring(0, jsonBlockMatch.start).trim();
+                      try {
+                        jsonData = jsonDecode(jsonBlockMatch.group(1)!);
+                      } catch (_) {}
+                    } else if (isRawJson) {
+                      try {
+                        jsonData = jsonDecode(trimmedText);
+                      } catch (_) {}
+                    }
+                    
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: 0.8,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline.withOpacity(0.15),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Theme.of(context).colorScheme.secondary,
+                                child: Icon(Icons.smart_toy_outlined, size: 16, color: Theme.of(context).colorScheme.onSecondary),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Assistant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Theme.of(context).colorScheme.secondary)),
+                                    const SizedBox(height: 4),
+                                    // Show text before JSON if any
+                                    if (textBeforeJson.isNotEmpty) ...[
+                                      MarkdownBody(
+                                        data: textBeforeJson, 
+                                        selectable: true,
+                                        styleSheet: MarkdownStyleSheet(
+                                          h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
+                                          p: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                                          strong: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                          listBullet: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                    ],
+                                    // Show JSON as code block if detected
+                                    if (jsonData != null)
+                                      JsonCodeBlock(data: jsonData, title: 'Record Data', maxHeight: 250)
+                                    else if (jsonBlockMatch == null)
+                                      MarkdownBody(
+                                        data: text, 
+                                        selectable: true,
+                                        styleSheet: MarkdownStyleSheet(
+                                          h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
+                                          p: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                                          strong: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                          listBullet: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  // System/error messages
                   return ListTile(
-                    title: Text(role.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    leading: Icon(
+                      role == 'error' ? Icons.error : Icons.info,
+                      color: role == 'error' ? Colors.red : Theme.of(context).colorScheme.secondary,
+                      size: 20,
+                    ),
+                    title: Text(
+                      role == 'error' ? 'Error' : 'System',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: role == 'error' ? Colors.red : Theme.of(context).colorScheme.secondary,
+                      ),
+                    ),
                     subtitle: MarkdownBody(
                       data: text,
                       selectable: true,
+                      styleSheet: MarkdownStyleSheet(
+                        h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
+                        p: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                        strong: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                        listBullet: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface),
+                      ),
                     ),
-                    tileColor: role == 'user' ? Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5) : null,
                   );
                 },
               ),
