@@ -58,7 +58,7 @@ for i in "${!AGENTS[@]}"; do
 
   # Determine number of skills (some agents have many skills for +n testing)
   # Every 4th agent (0, 4, 8, 12, 16) has 5 skills
-  # Every 5th agent (5, 10, 15) has 6 skills  
+  # Every 5th agent (5, 10, 15) has 6 skills
   if [ $((i % 4)) -eq 0 ]; then
     # 5 skills
     skills_json='{"id": 10201, "name": "natural_language_processing/natural_language_generation/text_completion"},{"id": 10702, "name": "natural_language_processing/analytical_reasoning/problem_solving"},{"id": 10201, "name": "natural_language_processing/natural_language_generation/text_completion"},{"id": 10702, "name": "natural_language_processing/analytical_reasoning/problem_solving"},{"id": 10201, "name": "natural_language_processing/natural_language_generation/text_completion"}'
@@ -82,7 +82,7 @@ for i in "${!AGENTS[@]}"; do
   IFS=':' read -r domain_id domain_name <<< "${DOMAINS[0]}"
 
   created_date="2025-0$((1 + i % 9))-$((10 + i % 20))T10:00:00Z"
-  
+
   # Determine modules based on index for variety in LLM types
   modules_json=""
   case $((i % 4)) in
@@ -105,7 +105,7 @@ for i in "${!AGENTS[@]}"; do
   else
     modules_section=""
   fi
-  
+
   # Get protocol for this agent (for A2A/MCP icons)
   protocol="${PROTOCOLS[$((i % 4))]}"
   if [ -n "$protocol" ]; then
@@ -152,10 +152,4 @@ for f in /tmp/agent_*.json; do
   else
     err "Failed to push $f"
   fi
-done
-
-
-for f in /tmp/agent_*.json; do
-  echo "Pushing $f..."
-  dirctl push "$f" --server-addr 127.0.0.1:8888
 done
