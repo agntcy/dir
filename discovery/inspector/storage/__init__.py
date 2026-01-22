@@ -1,4 +1,6 @@
-"""Storage module for the discovery API server."""
+"""
+Storage module for inspector.
+"""
 
 from storage.interface import StorageInterface
 from storage.etcd import EtcdStorage

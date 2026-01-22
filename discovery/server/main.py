@@ -23,7 +23,7 @@ class DiscoveryServer:
     def start(self) -> None:
         """Start the discovery API server."""
         # Initialize storage
-        self.storage = create_storage(self.config.etcd)
+        self.storage = create_storage(self.config)
         
         # Create Flask app
         self.app = create_app(self.storage)

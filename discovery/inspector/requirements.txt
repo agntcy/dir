@@ -1,0 +1,5 @@
+# Core dependencies
+etcd3gw
+
+# HTTP requests for health checks and API discovery
+requests

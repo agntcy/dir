@@ -8,6 +8,10 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
                          ┌─────────────────────────────────────┐
                          │               etcd                  │
                          │    (distributed metadata store)     │
+                         │                                     │
+                         │  /discovery/workloads/{id}/data     │
+                         │  /discovery/metadata/{id}/health    │
+                         │  /discovery/metadata/{id}/openapi   │
                          └──────────┬──────────────┬───────────┘
                                     │              │
                               write │              │ read
@@ -19,11 +23,12 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
                │  - Tracks workloads    │    │  - Filtering by network  │
                └────────────┬───────────┘    └──────────────────────────┘
                             │
-                            │ watch
-                            │
-         ┌──────────────────┼──────────────────┐
-         │                  │                  │
-  ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐
+                            │ watch            ┌──────────────────────────┐
+                            │                  │       Inspector          │
+         ┌──────────────────┼──────────────────│  - Watches workloads     │
+         │                  │                  │  - Health checks         │
+         │                  │                  │  - OpenAPI discovery     │
+  ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐──────────────────────┘
   │   Docker    │    │ containerd  │    │ Kubernetes │
   │   Socket    │    │   Socket    │    │    API     │
   └──────┬──────┘    └──────┬──────┘    └──────┬─────┘
@@ -39,6 +44,14 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
     │service-3│        │service-4│        │         │
     └─────────┘        └─────────┘        └─────────┘
 ```
+
+**Components:**
+
+| Component   | Path         | Description                                        |
+| ----------- | ------------ | -------------------------------------------------- |
+| `watcher`   | `./watcher`  | Watches runtime (Docker/containerd/K8s) for workloads and writes to etcd |
+| `server`    | `./server`   | HTTP API for querying discovered services and reachability |
+| `inspector` | `./inspector`| Watches etcd for workloads and extracts metadata (health, OpenAPI) |
 
 ## Quick Start
 
@@ -84,7 +97,8 @@ docker swarm leave --force
 
 ### containerd (Linux or Lima VM)
 
-containerd requires direct socket access, which isn't available on macOS. Use Lima to create a Linux VM:
+containerd requires direct socket access, which isn't available on macOS. Use Lima to create a Linux VM.
+For network isolation, ensure that CNI is set up and that containerd is using CNI networks.
 
 ```bash
 # Setup Lima for containerd (macOS)
@@ -126,10 +140,12 @@ kind create cluster --name discovery-test
 # Build and load images
 docker build -t discovery-watcher:latest ./watcher
 docker build -t discovery-server:latest ./server
+docker build -t discovery-inspector:latest ./inspector
 kind load docker-image discovery-watcher:latest --name discovery-test
 kind load docker-image discovery-server:latest --name discovery-test
+kind load docker-image discovery-inspector:latest --name discovery-test
 
-# Deploy everything (etcd + watcher + server + test workloads)
+# Deploy everything (etcd + watcher + server + inspector + test workloads)
 kubectl apply -f k8s.discovery.yaml
 kubectl wait --for=condition=ready pod -l app=discovery-watcher --timeout=60s
 kubectl port-forward svc/discovery-server 8080:8080 # in a new terminal
@@ -141,11 +157,12 @@ curl http://localhost:8080/stats | jq .
 PID=$(kubectl get pod service-1 -n team-a -o jsonpath='{.metadata.uid}')
 curl "http://localhost:8080/discover?from=$PID" | jq .
 
+# Check inspector logs
+kubectl logs -l app=discovery-inspector --follow
+
 # Cleanup
 kind delete cluster --name discovery-test
 ```
-
-For minikube, use `eval $(minikube docker-env)` before building images.
 
 ## API
 
@@ -155,34 +172,6 @@ For minikube, use `eval $(minikube docker-env)` before building images.
 | `GET /workloads`          | List all registered workloads                                                                                     |
 | `GET /stats`              | Registry statistics                                                                                               |
 | `GET /health`             | Health check                                                                                                      |
-
-### Example: Discover Reachable Services
-
-```bash
-curl "http://localhost:8080/discover?from=discovery-service-1-1"
-```
-
-```json
-{
-  "source": {
-    "name": "discovery-service-1-1",
-    "isolation_groups": ["discovery_team-a"]
-  },
-  "reachable": [
-    {
-      "name": "discovery-service-3-1",
-      "isolation_groups": ["discovery_team-a"],
-      "shared_groups": ["discovery_team-a"]
-    },
-    {
-      "name": "discovery-service-5-1", 
-      "isolation_groups": ["discovery_team-a", "discovery_team-b"],
-      "shared_groups": ["discovery_team-a"]
-    }
-  ],
-  "count": 2
-}
-```
 
 ## Configuration
 
@@ -201,8 +190,6 @@ curl "http://localhost:8080/discover?from=discovery-service-1-1"
 | `ETCD_HOST`     | `localhost`  | etcd hostname                |
 | `ETCD_PORT`     | `2379`       | etcd port                    |
 | `ETCD_PREFIX`   | `/discovery` | Key prefix for etcd storage  |
-| `ETCD_USERNAME` | -            | etcd authentication username |
-| `ETCD_PASSWORD` | -            | etcd authentication password |
 
 ### Runtime
 
@@ -223,6 +210,22 @@ curl "http://localhost:8080/discover?from=discovery-service-1-1"
 | `KUBERNETES_LABEL_KEY`      | `discover`                        | Label key for discoverable pods                         |
 | `KUBERNETES_LABEL_VALUE`    | `true`                            | Label value to match                                    |
 | `KUBERNETES_WATCH_SERVICES` | `true`                            | Watch services in addition to pods                      |
+
+### Inspector
+
+| Variable                | Default               | Description                                    |
+| ----------------------- | --------------------- | ---------------------------------------------- |
+| `ETCD_RUNTIME_PREFIX`   | `/discovery/workloads`| etcd prefix where workloads are stored         |
+| `ETCD_METADATA_PREFIX`  | `/discovery/metadata` | etcd prefix for metadata output                |
+| `HEALTH_ENABLED`        | `true`                | Enable health check processor                  |
+| `HEALTH_TIMEOUT`        | `5`                   | Health check timeout (seconds)                 |
+| `HEALTH_PATHS`          | `/health,/healthz,/ready` | Paths to probe for health                  |
+| `OPENAPI_ENABLED`       | `true`                | Enable OpenAPI discovery processor             |
+| `OPENAPI_TIMEOUT`       | `10`                  | OpenAPI fetch timeout (seconds)                |
+| `OPENAPI_PATHS`         | `/openapi.json,/swagger.json,/api-docs` | Paths to check for OpenAPI spec |
+| `PROCESSOR_WORKERS`     | `4`                   | Number of worker threads                       |
+| `PROCESSOR_RETRY_COUNT` | `3`                   | Number of retries for failed processing        |
+| `PROCESSOR_RETRY_DELAY` | `5`                   | Delay between retries (seconds)                |
 
 ## Network Isolation
 

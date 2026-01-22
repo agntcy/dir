@@ -168,6 +168,50 @@ spec:
             - name: ETCD_PORT
               value: "2379"
 # ============================================================================
+# INSPECTOR - Metadata extraction (health checks, OpenAPI discovery)
+# ============================================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery-inspector
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discovery-inspector
+  template:
+    metadata:
+      labels:
+        app: discovery-inspector
+        # Label used by NetworkPolicy to allow inspector ingress
+        role: inspector
+    spec:
+      containers:
+        - name: inspector
+          image: discovery-inspector:latest
+          imagePullPolicy: Never
+          env:
+            - name: ETCD_HOST
+              value: "discovery-etcd"
+            - name: ETCD_PORT
+              value: "2379"
+            - name: ETCD_RUNTIME_PREFIX
+              value: "/discovery/workloads"
+            - name: ETCD_METADATA_PREFIX
+              value: "/discovery/metadata"
+            - name: HEALTH_ENABLED
+              value: "true"
+            - name: HEALTH_TIMEOUT
+              value: "5"
+            - name: OPENAPI_ENABLED
+              value: "true"
+            - name: OPENAPI_TIMEOUT
+              value: "10"
+            - name: PROCESSOR_WORKERS
+              value: "4"
+# ============================================================================
 # TEST WORKLOADS (namespaces act as isolation groups)
 # Pod DNS: {pod-ip-dashed}.{namespace}.pod (e.g., 10-244-0-5.team-a.pod)
 # Service DNS: {service-name}.{namespace}.svc (e.g., svc-1.team-a.svc)
@@ -302,6 +346,57 @@ spec:
       image: nginx:alpine
       ports:
         - containerPort: 80
+# ============================================================================
+# NETWORK POLICY - Allow inspector to reach discoverable pods
+# ============================================================================
+---
+# Allow inspector (from default namespace) to reach team-a pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-inspector-ingress
+  namespace: team-a
+spec:
+  podSelector:
+    matchLabels:
+      discover: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default
+          podSelector:
+            matchLabels:
+              role: inspector
+      ports:
+        - protocol: TCP
+          port: 80
+---
+# Allow inspector (from default namespace) to reach team-b pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-inspector-ingress
+  namespace: team-b
+spec:
+  podSelector:
+    matchLabels:
+      discover: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default
+          podSelector:
+            matchLabels:
+              role: inspector
+      ports:
+        - protocol: TCP
+          port: 80
 # ============================================================================
 # NETWORK POLICY (optional - tests NetworkPolicy detection)
 # ============================================================================
