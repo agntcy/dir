@@ -35,3 +35,75 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./gui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Build macOS app
+        run: flutter build macos --release --no-codesign
+
+      - name: Create DMG
+        run: |
+          hdiutil create -volname "AGNTCY Directory" \
+            -srcfolder "build/macos/Build/Products/Release/AGNTCY Directory.app" \
+            -ov -format UDZO \
+            "AGNTCY-Directory.dmg"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: agntcy-directory-macos
+          path: gui/AGNTCY-Directory.dmg
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ./gui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows app
+        run: flutter build windows --release
+
+      - name: Archive Windows build
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath agntcy-directory-windows.zip
+
+      - name: Upload Windows Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: agntcy-directory-windows
+          path: gui/agntcy-directory-windows.zip
