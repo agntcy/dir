@@ -1,39 +1,43 @@
 # Service Discovery
 
-Network-aware service discovery for container workloads. Watches container runtimes (Docker, containerd, Kubernetes) and exposes an HTTP API for discovering reachable services based on network isolation.
+Network-aware service discovery for runtime workloads. Watches processes in a runtimes (Docker, containerd, Kubernetes) and exposes an HTTP API for discovering reachable services based on network isolation.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                              etcd                                   │
-│                    (distributed metadata registry)                  │
-└────────────────────────────────┬────────────────────────────────────┘
-                                 │ read/write
-                    ┌────────────┴────────────┐
-                    │         Watcher         │
-                    │   - Watches runtime     │
-                    │   - Tracks networks     │
-                    │   - HTTP API            │
-                    └────────────┬────────────┘
-                                 │ watch/read
-              ┌──────────────────┼──────────────────┐
-              │                  │                  │
-       ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐
-       │   Docker    │    │ containerd  │    │ Kubernetes │
-       │   Socket    │    │   Socket    │    │    API     │
-       └──────┬──────┘    └──────┬──────┘    └──────┬─────┘
-              │                  │                  │
-              └──────────────────┼──────────────────┘
-                                 │
-              ┌──────────────────┼──────────────────┐
-              │                  │                  │
-         ┌────┴────┐        ┌────┴────┐        ┌────┴────┐
-         │ team-a  │        │ team-b  │        │    *    │
-         ├─────────┤        ├─────────┤        ├─────────┤
-         │service-1│        │service-2│        │service-5│
-         │service-3│        │service-4│        │         │
-         └─────────┘        └─────────┘        └─────────┘
+                         ┌─────────────────────────────────────┐
+                         │               etcd                  │
+                         │    (distributed metadata store)     │
+                         └──────────┬──────────────┬───────────┘
+                                    │              │
+                              write │              │ read
+                                    │              │
+               ┌────────────────────┴───┐    ┌─────┴────────────────────┐
+               │        Watcher         │    │         Server           │
+               │  - Watches runtime     │    │  - HTTP API              │
+               │  - Tracks networks     │    │  - Reachability queries  │
+               │  - Tracks workloads    │    │  - Filtering by network  │
+               └────────────┬───────────┘    └──────────────────────────┘
+                            │
+                            │ watch
+                            │
+         ┌──────────────────┼──────────────────┐
+         │                  │                  │
+  ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐
+  │   Docker    │    │ containerd  │    │ Kubernetes │
+  │   Socket    │    │   Socket    │    │    API     │
+  └──────┬──────┘    └──────┬──────┘    └──────┬─────┘
+         │                  │                  │
+         └──────────────────┼──────────────────┘
+                            │
+         ┌──────────────────┼──────────────────┐
+         │                  │                  │
+    ┌────┴────┐        ┌────┴────┐        ┌────┴────┐
+    │ team-a  │        │ team-b  │        │    *    │
+    ├─────────┤        ├─────────┤        ├─────────┤
+    │service-1│        │service-2│        │service-5│
+    │service-3│        │service-4│        │         │
+    └─────────┘        └─────────┘        └─────────┘
 ```
 
 ## Quick Start
@@ -93,9 +97,15 @@ limactl shell discovery # in a new terminal
 cd discovery
 nerdctl compose -f docker-compose.containerd.yml up -d
 
-# Test discovery
+# Check stats
 curl http://localhost:8080/stats
-curl http://localhost:8080/workloads | jq .
+
+# Discover services (from hostname or name)
+CID=$(nerdctl ps -q -f name=service-1)
+curl http://localhost:8080/discover?from=$CID | jq .
+
+# Cleanup
+nerdctl compose down
 
 # Exit VM and cleanup (for macOS)
 exit
@@ -122,15 +132,14 @@ kind load docker-image discovery-server:latest --name discovery-test
 # Deploy everything (etcd + watcher + server + test workloads)
 kubectl apply -f k8s.discovery.yaml
 kubectl wait --for=condition=ready pod -l app=discovery-watcher --timeout=60s
+kubectl port-forward svc/discovery-server 8080:8080 # in a new terminal
 
-# Test discovery API
-kubectl port-forward svc/discovery-server 8080:8080
+# Check stats
 curl http://localhost:8080/stats | jq .
-curl http://localhost:8080/workloads | jq .
 
-# Discover reachable from service-1 (only sees team-a pods)
-POD_UID=$(kubectl get pod service-1 -n team-a -o jsonpath='{.metadata.uid}')
-curl "http://localhost:8080/discover?from=$POD_UID" | jq .
+# Discover services (from hostname or name)
+PID=$(kubectl get pod service-1 -n team-a -o jsonpath='{.metadata.uid}')
+curl "http://localhost:8080/discover?from=$PID" | jq .
 
 # Cleanup
 kind delete cluster --name discovery-test
