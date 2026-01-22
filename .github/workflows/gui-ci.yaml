@@ -69,6 +69,11 @@ jobs:
       - name: Create macOS runner
         run: flutter create --platforms=macos .
 
+      - name: Configure macOS app
+        run: |
+          sed -i '' 's/PRODUCT_NAME = gui/PRODUCT_NAME = AGNTCY Directory/' macos/Runner/Configs/AppInfo.xcconfig
+          sed -i '' 's/<true\/>/<false\/>/' macos/Runner/Release.entitlements
+
       - name: Enable macOS desktop
         run: flutter config --enable-macos-desktop
 
