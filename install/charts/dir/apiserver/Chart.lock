@@ -5,5 +5,8 @@ dependencies:
 - name: oasf
   repository: oci://ghcr.io/agntcy/oasf/helm-charts
   version: v0.5.1
-digest: sha256:d8692235a2bb4c08e5ad81770ef5724b4fa6fee9856c8f6353a46757e3c4bffd
-generated: "2026-01-16T09:12:48.873231+01:00"
+- name: envoy-authz
+  repository: file://../../envoy-authz
+  version: 0.1.0
+digest: sha256:825cacb82bff5ce99d37efd41c95ad5d4331e9a950d165d1a7bbfc60545db620
+generated: "2026-01-17T10:25:39.99824+01:00"

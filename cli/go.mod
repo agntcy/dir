@@ -6,6 +6,7 @@ replace (
 	// Cosign does not updated the crypto11 owner
 	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/auth/authprovider => ../auth/authprovider
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/importer => ../importer
 	github.com/agntcy/dir/mcp => ../mcp
@@ -24,6 +25,7 @@ replace (
 
 require (
 	github.com/agntcy/dir/api v0.6.1
+	github.com/agntcy/dir/auth/authprovider v0.0.0
 	github.com/agntcy/dir/client v0.6.1
 	github.com/agntcy/dir/importer v0.6.1
 	github.com/agntcy/dir/mcp v0.6.1
@@ -47,6 +49,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/JohannesKaufmann/html-to-markdown v1.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
 	github.com/agntcy/oasf-sdk/pkg v0.0.14 // indirect
@@ -93,6 +96,7 @@ require (
 	github.com/clipperhouse/displaywidth v0.7.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
+	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/cloudwego/eino v0.7.20 // indirect
 	github.com/cloudwego/eino-ext/components/model/claude v0.1.13 // indirect
@@ -153,6 +157,7 @@ require (
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-containerregistry v0.20.7 // indirect
+	github.com/google/go-github/v50 v50.2.0 // indirect
 	github.com/google/go-github/v73 v73.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/jsonschema-go v0.4.2 // indirect

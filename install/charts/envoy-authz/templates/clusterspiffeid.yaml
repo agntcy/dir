@@ -1,0 +1,20 @@
+{{/*
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.envoy.spiffe.enabled }}
+apiVersion: spire.spiffe.io/v1alpha1
+kind: ClusterSPIFFEID
+metadata:
+  name: {{ include "envoy-authz.fullname" . }}-envoy-gateway
+spec:
+  className: {{ .Values.envoy.spiffe.className | default "dir-spire" }}
+  spiffeIDTemplate: "spiffe://{{ .Values.envoy.spiffe.trustDomain }}/ns/{{ .Release.Namespace }}/sa/{{ include "envoy-authz.envoyServiceAccountName" . }}"
+  podSelector:
+    matchLabels:
+      {{- include "envoy-authz.envoySelector" . | nindent 6 }}
+  workloadSelectorTemplates:
+    - "k8s:ns:{{ .Release.Namespace }}"
+    - "k8s:sa:{{ include "envoy-authz.envoyServiceAccountName" . }}"
+{{- end }}
