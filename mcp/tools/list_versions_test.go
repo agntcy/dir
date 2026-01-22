@@ -12,6 +12,9 @@ import (
 )
 
 func TestListVersions(t *testing.T) {
+	// ListVersions doesn't require schema URL, but set it for consistency
+	t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "https://schema.oasf.outshift.com")
+
 	t.Run("should return available versions", func(t *testing.T) {
 		ctx := context.Background()
 		input := ListVersionsInput{}
@@ -21,8 +24,11 @@ func TestListVersions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, output.ErrorMessage)
 		assert.NotEmpty(t, output.AvailableVersions)
+		assert.NotEmpty(t, output.DefaultVersion, "Default version should be set")
 		assert.Positive(t, output.Count)
 		assert.Len(t, output.AvailableVersions, output.Count)
+		// Default version should be in the available versions list
+		assert.Contains(t, output.AvailableVersions, output.DefaultVersion, "Default version should be in available versions")
 	})
 
 	t.Run("should include known versions", func(t *testing.T) {
@@ -34,5 +40,6 @@ func TestListVersions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, output.AvailableVersions, "0.7.0")
 		assert.Contains(t, output.AvailableVersions, "0.3.1")
+		assert.NotEmpty(t, output.DefaultVersion, "Default version should be set")
 	})
 }

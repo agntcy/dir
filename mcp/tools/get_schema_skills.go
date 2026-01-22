@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/agntcy/oasf-sdk/pkg/validator"
+	"github.com/agntcy/oasf-sdk/pkg/schema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -37,12 +37,12 @@ type GetSchemaSkillsOutput struct {
 // GetSchemaSkills retrieves skills from the OASF schema for the specified version.
 // If parent_skill is provided, returns only sub-skills under that parent.
 // Otherwise, returns all top-level skills.
-func GetSchemaSkills(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaSkillsInput) (
+func GetSchemaSkills(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaSkillsInput) (
 	*mcp.CallToolResult,
 	GetSchemaSkillsOutput,
 	error,
 ) {
-	availableVersions, err := validateVersion(input.Version)
+	availableVersions, err := validateVersion(ctx, input.Version)
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaSkillsOutput{
@@ -51,7 +51,19 @@ func GetSchemaSkills(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaS
 		}, nil
 	}
 
-	skillsJSON, err := validator.GetSchemaSkills(input.Version)
+	// Get schema instance
+	schemaInstance, err := getSchemaInstance()
+	if err != nil {
+		//nolint:nilerr // MCP tools communicate errors through output, not error return
+		return nil, GetSchemaSkillsOutput{
+			Version:           input.Version,
+			ErrorMessage:      fmt.Sprintf("Failed to initialize schema client: %v", err),
+			AvailableVersions: availableVersions,
+		}, nil
+	}
+
+	// Get skills using the schema package with WithVersion option
+	skillsJSON, err := schemaInstance.GetSchemaSkills(ctx, schema.WithVersion(input.Version))
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaSkillsOutput{
