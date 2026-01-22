@@ -1,0 +1,155 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Global configuration
+nameOverride: ""
+fullnameOverride: ""
+
+# Envoy Gateway configuration
+envoy:
+  replicaCount: 1
+  
+  image:
+    repository: envoyproxy/envoy
+    tag: v1.31-latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  
+  # Backend configuration (Directory API)
+  backend:
+    # Address of Directory API server
+    # Example: dir-dir-dev-argoapp-apiserver.dir-dev-dir.svc.cluster.local
+    address: ""
+    port: 8888
+    # Connection timeout
+    timeout: 30s
+  
+  # SPIFFE integration for mTLS with Directory
+  spiffe:
+    enabled: true
+    # SPIFFE ID will be: spiffe://{trustDomain}/ns/{namespace}/sa/envoy-gateway
+    # Assigned automatically by SPIRE
+    
+    # Trust domain (must match SPIRE deployment)
+    trustDomain: example.org
+    
+    # SPIRE controller className (must match SPIRE Controller Manager)
+    className: dir-spire
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Admin interface (for debugging)
+  admin:
+    enabled: true
+    port: 9901
+
+# Authorization Server configuration
+authServer:
+  replicaCount: 1
+  
+  # Image configuration
+  # Override these values to use custom images (e.g., development branches)
+  # image:
+  #   repository: ghcr.io/agntcy/envoy-authz-dev
+  #   tag: feat-feat-github-auth-ad4a58e
+  #   pullPolicy: IfNotPresent
+  image:
+    repository: ghcr.io/agntcy/envoy-authz
+    tag: v0.1.0
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 9002
+  
+  # Service configuration
+  config:
+    listenAddress: ":9002"
+    logLevel: info
+    defaultProvider: github
+  
+  # Authorization rules
+  authorization:
+    # Allowed GitHub organizations
+    # Empty list = allow all authenticated users
+    allowedOrgConstructs: []
+    
+    # Explicitly allowed users (format: "github:username")
+    # Example: ["github:tkircsi"]
+    userAllowList: []
+    
+    # Explicitly denied users (format: "github:username")
+    userDenyList: []
+  
+  # GitHub provider configuration
+  github:
+    enabled: true
+    cacheTTL: 5m
+    apiTimeout: 10s
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Ingress configuration (optional)
+ingress:
+  enabled: false
+  className: nginx
+  host: ""
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    external-dns.alpha.kubernetes.io/hostname: ""
+    # gRPC backend configuration (required for dirctl client over HTTPS)
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/grpc-backend: "true"
+  tls:
+    enabled: true
+    secretName: ""
+
+# Service account
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 65532
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

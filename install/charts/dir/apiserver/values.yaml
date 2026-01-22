@@ -552,3 +552,73 @@ externalSecrets:
 # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
 oasf:
   enabled: false
+
+# Envoy auth gateway subchart configuration (OPTIONAL)
+# Provides GitHub authentication via Envoy gateway with ext_authz
+# NOT installed by default. Set enabled: true to deploy.
+# Section 1: Enable/disable the subchart
+envoyAuthz:
+  enabled: false
+
+# Section 2: Configuration values for the envoy-authz subchart
+# NOTE: Only takes effect when envoyAuthz.enabled: true
+envoy-authz:
+  # Envoy gateway configuration
+  envoy:
+    replicaCount: 2
+    
+    # Backend Directory API address (required when enabled)
+    # Set to the full service name of Directory API
+    backend:
+      address: ""  # e.g., dir-dir-dev-argoapp-apiserver.dir-dev-dir.svc.cluster.local
+      port: 8888
+    
+    # SPIFFE integration for mTLS with Directory
+    spiffe:
+      enabled: true
+      # trustDomain: example.org
+      # className: dir-spire
+  
+  # Authorization server configuration
+  authServer:
+    replicaCount: 2
+    
+    # Image configuration
+    # Override these values to use custom images (e.g., development branches)
+    # image:
+    #   repository: ghcr.io/agntcy/envoy-authz-dev
+    #   tag: feat-feat-github-auth-ad4a58e
+    #   pullPolicy: IfNotPresent
+    
+    # Authorization rules
+    authorization:
+      # Allowed GitHub organizations
+      # Empty list = allow all authenticated users
+      allowedOrgConstructs: []
+      # Example: ["agntcy", "spiffe"]
+      
+      # Explicitly allowed users (format: "github:username")
+      userAllowList: []
+      # Example: ["github:tkircsi"]
+      
+      # Explicitly denied users (format: "github:username")
+      userDenyList: []
+      # Example: ["github:malicious-user"]
+    
+    # GitHub provider configuration
+    github:
+      enabled: true
+      cacheTTL: 5m
+      apiTimeout: 10s
+  
+  # Ingress configuration (optional - for external access)
+  ingress:
+    enabled: false
+    className: nginx
+    host: ""  # e.g., gateway.dev.ads.outshift.io
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      external-dns.alpha.kubernetes.io/hostname: ""
+      # gRPC backend configuration (required for dirctl client over HTTPS)
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+      nginx.ingress.kubernetes.io/grpc-backend: "true"

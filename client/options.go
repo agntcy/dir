@@ -78,16 +78,76 @@ func withAuth(ctx context.Context) Option {
 			return o.setupSpiffeAuth(ctx)
 		case "tls":
 			return o.setupTlsAuth(ctx)
-		case "":
-			// Empty auth mode - use insecure connection (for development/testing only)
-			o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-			return nil
+		case "github":
+			// Explicit GitHub auth mode - use cached credentials or fail
+			return o.setupGitHubAuth(ctx)
+		case "insecure", "none", "":
+			// Insecure/none/empty auth mode - try auto-detection first, fallback to insecure
+			return o.setupAutoDetectAuth(ctx)
 		default:
 			// Invalid auth mode specified - return error to prevent silent security issues
-			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509', 'token', or empty for insecure)", o.config.AuthMode)
+			return fmt.Errorf("unsupported auth mode: %s (supported: 'jwt', 'x509', 'token', 'tls', 'github', 'insecure', 'none', or empty for auto-detect)", o.config.AuthMode)
 		}
 	}
+}
+
+// setupAutoDetectAuth attempts to auto-detect available credentials and falls back to insecure if none found.
+// This is used when auth mode is empty, "insecure", or "none".
+func (o *options) setupAutoDetectAuth(_ context.Context) error {
+	// For explicit "insecure" or "none" mode, skip auto-detection
+	if o.config.AuthMode == "insecure" || o.config.AuthMode == "none" {
+		authLogger.Debug("Using insecure connection (explicit mode)", "auth_mode", o.config.AuthMode)
+		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+		return nil
+	}
+
+	// Empty auth mode - auto-detect based on available credentials
+	var token string
+
+	// 1. Check if token is provided via config/flag/env
+	if o.config.GitHubToken != "" {
+		authLogger.Debug("Auto-detected token from config/environment")
+
+		token = o.config.GitHubToken
+	} else {
+		// 2. Check for cached GitHub OAuth token
+		cache := NewTokenCache()
+
+		cachedToken, err := cache.GetValidToken()
+		if err != nil {
+			authLogger.Debug("Error loading cached GitHub token, falling back to insecure", "error", err)
+		}
+
+		if cachedToken != nil {
+			authLogger.Debug("Auto-detected cached GitHub OAuth token", "user", cachedToken.User)
+			token = cachedToken.AccessToken
+		}
+	}
+
+	// If token found (either from config or cache), use it
+	if token != "" {
+		// Use TLS for external Envoy gateway (ingress expects HTTPS on port 443)
+		// System CA pool for validating ingress TLS certificates
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec
+		}
+		o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+
+		// Add GitHub token as Bearer token in Authorization header
+		o.authOpts = append(o.authOpts, grpc.WithPerRPCCredentials(newGitHubCredentials(token)))
+
+		authLogger.Debug("GitHub authentication configured via auto-detect")
+
+		return nil
+	}
+
+	// No cached credentials - use insecure connection (for local development only)
+	authLogger.Debug("No cached credentials found, using insecure connection")
+
+	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	return nil
 }
 
 func (o *options) setupJWTAuth(ctx context.Context) error {
@@ -341,6 +401,49 @@ func (o *options) setupSpiffeAuth(_ context.Context) error {
 
 	// Update options
 	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+
+	return nil
+}
+
+func (o *options) setupGitHubAuth(_ context.Context) error {
+	authLogger.Debug("Setting up GitHub authentication")
+
+	var token string
+
+	// 1. First, check if token is provided via config/flag/env
+	//    This allows CI/CD to use PATs: export DIRECTORY_CLIENT_GITHUB_TOKEN=ghp_xxx
+	if o.config.GitHubToken != "" {
+		authLogger.Debug("Using token from config/environment")
+
+		token = o.config.GitHubToken
+	} else {
+		// 2. Fall back to cached OAuth token from interactive login
+		cache := NewTokenCache()
+
+		cachedToken, err := cache.GetValidToken()
+		if err != nil {
+			authLogger.Debug("Error loading cached token", "error", err)
+		}
+
+		if cachedToken == nil {
+			return errors.New("not authenticated with GitHub. Run 'dirctl auth login' or set DIRECTORY_CLIENT_GITHUB_TOKEN environment variable")
+		}
+
+		authLogger.Debug("Using cached GitHub OAuth token", "user", cachedToken.User)
+		token = cachedToken.AccessToken
+	}
+
+	// Use TLS for external Envoy gateway (ingress expects HTTPS on port 443)
+	// System CA pool for validating ingress TLS certificates
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: o.config.TlsSkipVerify, //nolint:gosec
+	}
+	o.authOpts = append(o.authOpts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+
+	// Add GitHub token as Bearer token in Authorization header
+	o.authOpts = append(o.authOpts, grpc.WithPerRPCCredentials(newGitHubCredentials(token)))
+
+	authLogger.Debug("GitHub authentication configured")
 
 	return nil
 }

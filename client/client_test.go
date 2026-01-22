@@ -30,12 +30,10 @@ const (
 	testServerInsecureMode = "" // Empty string means insecure
 
 	// Timeout constants.
-	testContextTimeout       = 5 * time.Second
-	testContextShortTimeout  = 1 * time.Second
-	testContextVeryShort     = 10 * time.Millisecond
-	testConnectionCloseWait  = 50 * time.Millisecond
-	testCleanupWait          = 10 * time.Millisecond
-	testConnectionStateCheck = 100 * time.Millisecond
+	testContextTimeout      = 5 * time.Second
+	testContextVeryShort    = 10 * time.Millisecond
+	testConnectionCloseWait = 50 * time.Millisecond
+	testCleanupWait         = 10 * time.Millisecond
 )
 
 // createTestServer creates a test gRPC server with all required services.

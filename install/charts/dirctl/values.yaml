@@ -30,7 +30,7 @@ cronjobs:
     schedule: '* * * * *'
     args:
       - 'info'
-      - 'baeareiesad3lyuacjirp6gxudrzheltwbodtsg7ieqpox36w5j637rchwq'
+      - 'baeareiewcutw33ouiesfbhlbqdthqlpms6zgsomw7drlnt2ys3hbzruszm'
 
   # Push cronjob
   push:

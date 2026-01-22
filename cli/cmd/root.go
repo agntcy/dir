@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/agntcy/dir/cli/cmd/auth"
 	"github.com/agntcy/dir/cli/cmd/delete"
 	"github.com/agntcy/dir/cli/cmd/events"
 	importcmd "github.com/agntcy/dir/cli/cmd/import"
@@ -58,6 +59,8 @@ func init() {
 	network.Command.Hidden = true
 
 	RootCmd.AddCommand(
+		// auth commands
+		auth.Command, // Contains: login, logout, status
 		// local commands
 		version.Command,
 		// initialize.Command, // REMOVED: Initialize functionality

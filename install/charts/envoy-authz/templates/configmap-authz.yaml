@@ -1,0 +1,28 @@
+{{/*
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "envoy-authz.fullname" . }}-authz-config
+  labels:
+    {{- include "envoy-authz.authzLabels" . | nindent 4 }}
+data:
+  # Server configuration
+  LISTEN_ADDRESS: {{ .Values.authServer.config.listenAddress | quote }}
+  LOG_LEVEL: {{ .Values.authServer.config.logLevel | quote }}
+  DEFAULT_PROVIDER: {{ .Values.authServer.config.defaultProvider | quote }}
+  
+  # Authorization rules
+  ALLOWED_ORG_CONSTRUCTS: {{ join "," .Values.authServer.authorization.allowedOrgConstructs | quote }}
+  USER_ALLOW_LIST: {{ join "," .Values.authServer.authorization.userAllowList | quote }}
+  USER_DENY_LIST: {{ join "," .Values.authServer.authorization.userDenyList | quote }}
+  
+  # GitHub provider configuration
+  GITHUB_ENABLED: {{ .Values.authServer.github.enabled | quote }}
+  {{- if .Values.authServer.github.enabled }}
+  GITHUB_CACHE_TTL: {{ .Values.authServer.github.cacheTTL | quote }}
+  GITHUB_API_TIMEOUT: {{ .Values.authServer.github.apiTimeout | quote }}
+  {{- end }}

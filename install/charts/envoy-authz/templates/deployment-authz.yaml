@@ -1,0 +1,56 @@
+{{/*
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "envoy-authz.fullname" . }}-authz
+  labels:
+    {{- include "envoy-authz.authzLabels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.authServer.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "envoy-authz.authzSelector" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-authz.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "envoy-authz.authzSelector" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "envoy-authz.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: authz-server
+        image: "{{ .Values.authServer.image.repository }}:{{ .Values.authServer.image.tag }}"
+        imagePullPolicy: {{ .Values.authServer.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        ports:
+        - name: grpc
+          containerPort: 9002
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: {{ include "envoy-authz.fullname" . }}-authz-config
+        # Health probes disabled for distroless image
+        # TODO: Add grpc_health_probe binary to image or use tcpSocket probe
+        # livenessProbe:
+        #   tcpSocket:
+        #     port: 9002
+        #   initialDelaySeconds: 10
+        #   periodSeconds: 30
+        # readinessProbe:
+        #   tcpSocket:
+        #     port: 9002
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 10
+        resources:
+          {{- toYaml .Values.authServer.resources | nindent 10 }}

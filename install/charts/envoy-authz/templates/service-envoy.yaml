@@ -1,0 +1,30 @@
+{{/*
+Copyright AGNTCY Contributors (https://github.com/agntcy)
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "envoy-authz.fullname" . }}-envoy
+  labels:
+    {{- include "envoy-authz.envoyLabels" . | nindent 4 }}
+  {{- with .Values.envoy.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.envoy.service.type }}
+  ports:
+  - port: {{ .Values.envoy.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  {{- if .Values.envoy.admin.enabled }}
+  - port: {{ .Values.envoy.admin.port }}
+    targetPort: admin
+    protocol: TCP
+    name: admin
+  {{- end }}
+  selector:
+    {{- include "envoy-authz.envoySelector" . | nindent 4 }}
