@@ -1152,15 +1152,17 @@ class AgentRecordCard extends StatelessWidget {
 
   void _copyCid(BuildContext context) {
     Clipboard.setData(ClipboardData(text: cid));
+    final colorScheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        content: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('CID copied to clipboard'),
+            Icon(Icons.check_circle, color: colorScheme.primary, size: 18),
+            const SizedBox(width: 8),
+            Text('CID copied to clipboard', style: TextStyle(color: colorScheme.onSurface)),
           ],
         ),
+        backgroundColor: colorScheme.surface,
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1205,15 +1207,36 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
 
   void _copyCid(BuildContext context) {
     Clipboard.setData(ClipboardData(text: widget.cid));
+    final colorScheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('CID copied!'), duration: Duration(seconds: 1)),
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: colorScheme.primary, size: 18),
+            const SizedBox(width: 8),
+            Text('CID copied!', style: TextStyle(color: colorScheme.onSurface)),
+          ],
+        ),
+        backgroundColor: colorScheme.surface,
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 
   Future<void> _downloadJson(BuildContext context, Map<String, dynamic>? agentInfo) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    
     if (agentInfo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No data available to download'), duration: Duration(seconds: 2)),
+        SnackBar(
+          content: Text('No data available to download', style: TextStyle(color: colorScheme.onSurface)),
+          backgroundColor: colorScheme.surface,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
       return;
     }
@@ -1235,15 +1258,17 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
       await file.writeAsString(jsonString);
       
       if (context.mounted) {
+        final cs = Theme.of(context).colorScheme;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                Icon(Icons.check_circle, color: cs.primary, size: 18),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Saved to ${file.path}')),
+                Expanded(child: Text('Saved to ${file.path}', style: TextStyle(color: cs.onSurface))),
               ],
             ),
+            backgroundColor: cs.surface,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1255,7 +1280,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to save: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 3),
           ),
         );
