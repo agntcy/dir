@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// A declarative search results widget displaying agent records
@@ -565,6 +566,74 @@ class AgentRecordCard extends StatelessWidget {
     return data;
   }
 
+  // Extract agent types from modules (only A2A and MCP, no OASF default)
+  List<String> _extractAgentTypes(Map<String, dynamic>? agentInfo) {
+    final types = <String>[];
+    final modules = agentInfo?['modules'] as List? ?? [];
+    
+    for (final module in modules) {
+      final name = (module['name'] ?? '').toString().toLowerCase();
+      final data = module['data'] as Map<String, dynamic>? ?? {};
+      final protocol = (data['protocol'] ?? '').toString().toLowerCase();
+      
+      // Check module name or protocol field
+      if (name.contains('mcp') || protocol.contains('mcp')) {
+        if (!types.contains('MCP')) types.add('MCP');
+      }
+      if (name.contains('a2a') || protocol.contains('a2a')) {
+        if (!types.contains('A2A')) types.add('A2A');
+      }
+    }
+    
+    // Also check annotations for protocol info
+    final annotations = agentInfo?['annotations'] as Map<String, dynamic>? ?? {};
+    final annotationProtocol = (annotations['protocol'] ?? '').toString().toLowerCase();
+    if (annotationProtocol.contains('mcp') && !types.contains('MCP')) {
+      types.add('MCP');
+    }
+    if (annotationProtocol.contains('a2a') && !types.contains('A2A')) {
+      types.add('A2A');
+    }
+    
+    return types; // Return empty list if no A2A/MCP - don't default to OASF
+  }
+  
+  // Extract LLM info from modules
+  String? _extractLlmInfo(Map<String, dynamic>? agentInfo) {
+    final modules = agentInfo?['modules'] as List? ?? [];
+    for (final module in modules) {
+      final name = (module['name'] ?? '').toString().toLowerCase();
+      if (name.contains('llm') || name.contains('model')) {
+        final data = module['data'] as Map<String, dynamic>?;
+        final models = data?['models'] as List?;
+        if (models != null && models.isNotEmpty) {
+          final firstModel = models.first as Map<String, dynamic>?;
+          if (firstModel != null) {
+            final provider = firstModel['provider']?.toString() ?? '';
+            final model = firstModel['model']?.toString() ?? '';
+            if (provider.isNotEmpty || model.isNotEmpty) {
+              return model.isNotEmpty ? model : provider;
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+  
+  // Extract first domain
+  String? _extractDomain(Map<String, dynamic>? agentInfo) {
+    final domains = agentInfo?['domains'] as List? ?? [];
+    if (domains.isNotEmpty) {
+      final first = domains.first;
+      final name = first['name']?.toString() ?? '';
+      if (name.isNotEmpty) {
+        return name.split('/').last.replaceAll('_', ' ');
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -578,6 +647,12 @@ class AgentRecordCard extends StatelessWidget {
     final authors = agentInfo?['authors'];
     final author = authors is List && authors.isNotEmpty ? authors.first.toString() : '';
     final version = agentInfo?['version']?.toString() ?? '';
+    
+    // Extract additional info for condensed view
+    final skills = agentInfo?['skills'] as List? ?? [];
+    final agentTypes = _extractAgentTypes(agentInfo);
+    final llmInfo = _extractLlmInfo(agentInfo);
+    final domain = _extractDomain(agentInfo);
     
     final shortCid = cid.length > 16 
         ? '${cid.substring(0, 8)}...${cid.substring(cid.length - 4)}'
@@ -602,101 +677,319 @@ class AgentRecordCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Agent icon
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: colorScheme.surface.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: hasData 
-                      ? colorScheme.primary.withOpacity(0.15) 
-                      : colorScheme.outline.withOpacity(0.1),
-                ),
-              ),
-              child: Icon(
-                Icons.smart_toy_outlined,
-                color: hasData ? colorScheme.primary : colorScheme.outline.withOpacity(0.5),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 14),
-              
-            // Name, Author, Version
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Name
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: hasData ? colorScheme.onSurface : colorScheme.onSurface.withOpacity(0.6),
+            // Top row: Icon, Name/Author, CID/Button
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Agent icon
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: hasData 
+                          ? colorScheme.primary.withOpacity(0.15) 
+                          : colorScheme.outline.withOpacity(0.1),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 5),
-                  // Author & Version row
-                  Row(
-                    children: [
-                      Icon(Icons.person_outline, size: 13, color: hasData ? colorScheme.secondary : colorScheme.outline),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          hasData && author.isNotEmpty ? author : 'Loading...', 
-                          style: TextStyle(
-                            fontSize: 12, 
-                            color: hasData ? colorScheme.secondary : colorScheme.outline,
-                            fontStyle: hasData ? FontStyle.normal : FontStyle.italic,
-                          ), 
-                          maxLines: 1, 
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      'assets/images/agent-icon.svg',
+                      width: 26,
+                      height: 26,
+                      colorFilter: ColorFilter.mode(
+                        hasData ? colorScheme.primary : colorScheme.outline.withOpacity(0.5),
+                        BlendMode.srcIn,
                       ),
-                      const SizedBox(width: 10),
-                      _buildVersionBadge(context, hasData && version.isNotEmpty ? version : '--'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                  
+                // Name, Author, Version
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Name
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: hasData ? colorScheme.onSurface : colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 5),
+                      // Author & Version row
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 13, color: hasData ? colorScheme.secondary : colorScheme.outline),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              hasData && author.isNotEmpty ? author : 'Loading...', 
+                              style: TextStyle(
+                                fontSize: 12, 
+                                color: hasData ? colorScheme.secondary : colorScheme.outline,
+                                fontStyle: hasData ? FontStyle.normal : FontStyle.italic,
+                              ), 
+                              maxLines: 1, 
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            hasData && version.isNotEmpty ? version : '--',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(width: 10),
-              
-            // CID badge + See more button (always show both)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Always show CID badge with copy
-                _buildCidBadge(context),
-                // Always show "See more" if callback provided
-                if (onPullDetails != null) ...[
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: onPullDetails,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colorScheme.primary,
-                      side: BorderSide(color: colorScheme.primary.withOpacity(0.5)),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      minimumSize: const Size(0, 32),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: Text('See more', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
-                  ),
-                ],
+                ),
+                
+                const SizedBox(width: 10),
+                  
+                // CID badge + See more button
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildCidBadge(context),
+                    if (onPullDetails != null) ...[
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: onPullDetails,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colorScheme.primary,
+                          side: BorderSide(color: colorScheme.primary.withOpacity(0.5)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          minimumSize: const Size(0, 32),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: Text('See more', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
+            
+            // Bottom row: Modules, Skills, Model, Domain - all as tags with labels
+            if (hasData && (agentTypes.isNotEmpty || skills.isNotEmpty || llmInfo != null || domain != null)) ...[
+              const SizedBox(height: 10),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // Determine if we need compact mode (narrow width)
+                  final isCompact = constraints.maxWidth < 400;
+                  
+                  return Wrap(
+                    spacing: 10,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      // Modules as tags (e.g., "2 A2A", "1 MCP Server")
+                      if (agentTypes.isNotEmpty)
+                        _buildLabeledSection(
+                          context,
+                          'modules:',
+                          _buildModulesTags(context, agentTypes, isCompact),
+                        ),
+                      
+                      // Skills with +n overflow (only if valid skills exist)
+                      if (skills.isNotEmpty && skills.any((s) => (s['name']?.toString() ?? '').isNotEmpty))
+                        _buildLabeledSection(
+                          context,
+                          'skills:',
+                          _buildSkillsCondensed(context, skills, isCompact ? 1 : 2),
+                        ),
+                      
+                      // LLM info
+                      if (llmInfo != null)
+                        _buildLabeledSection(
+                          context,
+                          'model:',
+                          _buildInfoChip(context, llmInfo),
+                        ),
+                      
+                      // Domain
+                      if (domain != null)
+                        _buildLabeledSection(
+                          context,
+                          'domain:',
+                          _buildInfoChip(context, domain),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+  
+  Widget _buildModulesTags(BuildContext context, List<String> types, bool isCompact) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    // Mock counts for demo - in real app would come from data
+    final moduleCounts = <String, int>{
+      'A2A': 2,
+      'MCP': 3,
+    };
+    
+    final maxVisible = isCompact ? 1 : types.length;
+    final visibleTypes = types.take(maxVisible).toList();
+    final remaining = types.length - maxVisible;
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...visibleTypes.map((type) {
+          final count = moduleCounts[type] ?? 1;
+          final label = type == 'MCP' ? '$count MCP Server' : '$count $type';
+          return Container(
+            margin: const EdgeInsets.only(right: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: colorScheme.primary.withOpacity(0.15)),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 10, color: colorScheme.primary.withOpacity(0.85)),
+            ),
+          );
+        }),
+        if (remaining > 0)
+          Tooltip(
+            message: types.skip(maxVisible).map((t) {
+              final count = moduleCounts[t] ?? 1;
+              return t == 'MCP' ? '$count MCP Server' : '$count $t';
+            }).join('\n'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: colorScheme.primary.withOpacity(0.15)),
+              ),
+              child: Text(
+                '+$remaining',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: colorScheme.primary.withOpacity(0.85)),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+  
+  Widget _buildSkillsCondensed(BuildContext context, List skills, [int maxVisible = 2]) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    // Filter out skills with empty names
+    final validSkills = skills.where((skill) {
+      final skillName = skill['name']?.toString() ?? '';
+      return skillName.isNotEmpty;
+    }).toList();
+    
+    if (validSkills.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    
+    final visibleSkills = validSkills.take(maxVisible).toList();
+    final remaining = validSkills.length - maxVisible;
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...visibleSkills.map((skill) {
+          final skillName = skill['name']?.toString() ?? '';
+          final displayName = skillName.split('/').last.replaceAll('_', ' ');
+          if (displayName.isEmpty) return const SizedBox.shrink();
+          return Container(
+            margin: const EdgeInsets.only(right: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: colorScheme.primary.withOpacity(0.15)),
+            ),
+            child: Text(
+              displayName,
+              style: TextStyle(fontSize: 10, color: colorScheme.primary.withOpacity(0.85)),
+            ),
+          );
+        }),
+        if (remaining > 0)
+          Tooltip(
+            message: validSkills.skip(maxVisible).map((s) {
+              final name = s['name']?.toString() ?? '';
+              return name.split('/').last.replaceAll('_', ' ');
+            }).join('\n'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: colorScheme.primary.withOpacity(0.15)),
+              ),
+              child: Text(
+                '+$remaining',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: colorScheme.primary.withOpacity(0.85)),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+  
+  Widget _buildInfoChip(BuildContext context, String label) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.15)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 10, color: colorScheme.primary.withOpacity(0.85)),
+      ),
+    );
+  }
+  
+  Widget _buildLabeledSection(BuildContext context, String label, Widget content) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w400,
+            color: colorScheme.outline.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(width: 4),
+        content,
+      ],
     );
   }
   
@@ -1027,10 +1320,16 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: colorScheme.primary.withOpacity(0.15)),
                     ),
-                    child: Icon(
-                      Icons.smart_toy_outlined,
-                      color: colorScheme.primary,
-                      size: 26,
+                    child: Center(
+                      child: SvgPicture.asset(
+                        'assets/images/agent-icon.svg',
+                        width: 28,
+                        height: 28,
+                        colorFilter: ColorFilter.mode(
+                          colorScheme.primary,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
