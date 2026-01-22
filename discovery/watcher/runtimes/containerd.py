@@ -188,6 +188,23 @@ class ContainerdAdapter(RuntimeAdapter):
                             workload_type=WorkloadType.CONTAINER.value,
                         )
                         callback(EventType.DELETED, workload)
+                    
+                    elif topic == "/tasks/paused":
+                        # Paused containers are not reachable - remove from discovery
+                        workload = Workload(
+                            id=container_id,
+                            name=container_id[:12],
+                            hostname=container_id[:12],
+                            runtime=Runtime.CONTAINERD.value,
+                            workload_type=WorkloadType.CONTAINER.value,
+                        )
+                        callback(EventType.PAUSED, workload)
+                    
+                    elif topic == "/tasks/resumed":
+                        # Resumed container is reachable again - re-add to discovery
+                        workload = self._get_workload(container_id)
+                        if workload:
+                            callback(EventType.ADDED, workload)
                 
                 except Exception as e:
                     print(f"[containerd] Failed to process event: {e}")

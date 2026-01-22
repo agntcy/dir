@@ -25,6 +25,7 @@ class EventType(Enum):
     ADDED = "added"
     MODIFIED = "modified"
     DELETED = "deleted"
+    PAUSED = "paused"
     NETWORK_CHANGED = "network_changed"
 
 

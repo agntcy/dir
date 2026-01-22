@@ -7,7 +7,7 @@ Key structure:
 Uses native etcd3 library for proper gRPC communication.
 """
 
-from typing import Optional
+from typing import Optional, Set
 
 import etcd3
 
@@ -84,3 +84,20 @@ class EtcdStorage(StorageInterface):
         except Exception as e:
             logger.error("Failed to deregister %s: %s", workload_id[:12], e)
             return False
+
+    def list_workload_ids(self) -> Set[str]:
+        """List all registered workload IDs (keys only, no values)."""
+        try:
+            ids = set()
+            # Use keys_only=True to avoid fetching values
+            for _, metadata in self.client.get_prefix(self.workloads_prefix, keys_only=True):
+                # Extract ID from key: /discovery/workloads/{id}
+                key = metadata.key.decode("utf-8")
+                workload_id = key[len(self.workloads_prefix):]
+                if workload_id:
+                    ids.add(workload_id)
+            logger.debug("Listed %d workload IDs from etcd", len(ids))
+            return ids
+        except Exception as e:
+            logger.error("Failed to list workload IDs: %s", e)
+            return set()

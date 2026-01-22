@@ -361,7 +361,8 @@ class KubernetesAdapter(RuntimeAdapter):
                     elif event_type == "MODIFIED":
                         if pod.status.phase == "Running":
                             callback(EventType.MODIFIED, workload)
-                        elif pod.status.phase in ("Succeeded", "Failed"):
+                        elif pod.status.phase in ("Succeeded", "Failed", "Pending"):
+                            # Pod is no longer running - remove from discovery
                             callback(EventType.DELETED, workload)
                     elif event_type == "DELETED":
                         callback(EventType.DELETED, workload)

@@ -66,16 +66,23 @@ class DockerAdapter(RuntimeAdapter):
             self._client = None
     
     def list_workloads(self) -> list:
-        """List all discoverable containers."""
+        """List all discoverable containers (running, not paused)."""
         if not self._client:
             return []
         
-        # Build filter for discover label
-        filters = {"label": f"{self.label_key}={self.label_value}"}
+        # Build filter for discover label and running state
+        # Note: status=running excludes paused containers
+        filters = {
+            "label": f"{self.label_key}={self.label_value}",
+            "status": "running",
+        }
         
         workloads = []
         try:
             for container in self._client.containers.list(filters=filters):
+                # Double-check container is not paused (status filter should handle this)
+                if container.status == "paused":
+                    continue
                 workload = self._container_to_workload(container)
                 if workload:
                     workloads.append(workload)
@@ -121,6 +128,24 @@ class DockerAdapter(RuntimeAdapter):
                         workload_type=WorkloadType.CONTAINER.value,
                     )
                     callback(EventType.DELETED, workload)
+                
+                elif action == "pause":
+                    # Paused containers are not reachable - remove from discovery
+                    attrs = event.get("Actor", {}).get("Attributes", {})
+                    workload = Workload(
+                        id=container_id,
+                        name=attrs.get("name", container_id[:12]),
+                        hostname=container_id[:12],
+                        runtime=Runtime.DOCKER.value,
+                        workload_type=WorkloadType.CONTAINER.value,
+                    )
+                    callback(EventType.PAUSED, workload)
+                
+                elif action == "unpause":
+                    # Unpaused container is reachable again - re-add to discovery
+                    workload = self._get_container_workload(container_id)
+                    if workload:
+                        callback(EventType.ADDED, workload)
                 
                 elif action in ("connect", "disconnect"):
                     # Network changed - re-fetch full workload

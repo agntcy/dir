@@ -5,6 +5,7 @@ The watcher only needs to register/deregister workloads to etcd.
 """
 
 from abc import ABC, abstractmethod
+from typing import Set
 from models import Workload
 
 
@@ -43,5 +44,14 @@ class StorageInterface(ABC):
         Remove a workload by ID.
         Idempotent - no error if not exists.
         Returns True on success.
+        """
+        pass
+    
+    @abstractmethod
+    def list_workload_ids(self) -> Set[str]:
+        """
+        List all registered workload IDs.
+        Used for reconciliation on startup.
+        Returns set of workload IDs.
         """
         pass

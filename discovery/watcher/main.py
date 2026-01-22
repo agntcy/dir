@@ -44,24 +44,46 @@ class WorkloadWatcher:
                 workload.id[:12],
                 list(workload.isolation_groups)
             )
-        elif event_type == EventType.DELETED:
+        elif event_type in (EventType.DELETED, EventType.PAUSED):
             self.storage.deregister(workload.id)
             logger.info(
-                "[DELETED] %s workload: %s (%s)",
+                "[%s] %s workload: %s (%s)",
+                event_type.value.upper(),
                 workload.runtime,
                 workload.name,
                 workload.id[:12]
             )
     
     def _sync_initial_state(self) -> None:
-        """Sync initial workload state from runtime."""
+        """Sync initial workload state from runtime and clean up stale entries."""
         logger.info("Syncing initial workload state...")
         
         try:
-            workloads = self.runtime.list_workloads()
-            for workload in workloads:
+            # Get current workloads from runtime
+            current_workloads = self.runtime.list_workloads()
+            current_ids = {w.id for w in current_workloads}
+            
+            # Get existing workloads from etcd
+            stored_ids = self.storage.list_workload_ids()
+            
+            # Find stale workloads (in etcd but not in runtime)
+            stale_ids = stored_ids - current_ids
+            if stale_ids:
+                logger.info("Cleaning up %d stale workloads...", len(stale_ids))
+                for stale_id in stale_ids:
+                    self.storage.deregister(stale_id)
+                    logger.info("[CLEANUP] Removed stale workload: %s", stale_id[:12])
+            
+            # Register current workloads
+            for workload in current_workloads:
                 self.storage.register(workload)
-            logger.info("Synced %d workloads from %s", len(workloads), self.runtime.runtime_type.value)
+            
+            logger.info(
+                "Synced %d workloads from %s (removed %d stale)",
+                len(current_workloads),
+                self.runtime.runtime_type.value,
+                len(stale_ids)
+            )
         except Exception as e:
             logger.error("Failed to sync from %s: %s", self.runtime.runtime_type.value, e)
     
