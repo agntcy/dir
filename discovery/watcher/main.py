@@ -130,7 +130,8 @@ def main():
     logger.info("Workload Watcher")
     logger.info("=" * 60)
     logger.info("Runtime: %s", config.runtime)
-    logger.info("Storage: etcd @ %s:%d (prefix=%s)", config.etcd.host, config.etcd.port, config.etcd.prefix)
+    logger.info("Storage: etcd @ %s:%d", config.etcd.host, config.etcd.port)
+    logger.info("Workloads prefix: %s", config.etcd.workloads_prefix)
     logger.info("=" * 60)
     
     watcher = WorkloadWatcher(config)

@@ -26,7 +26,7 @@ class EtcdConfig:
     """etcd storage configuration."""
     host: str = field(default_factory=lambda: os.getenv("ETCD_HOST", "localhost"))
     port: int = field(default_factory=lambda: int(os.getenv("ETCD_PORT", "2379")))
-    prefix: str = field(default_factory=lambda: os.getenv("ETCD_PREFIX", "/discovery"))
+    workloads_prefix: str = field(default_factory=lambda: os.getenv("ETCD_WORKLOADS_PREFIX", "/discovery/workloads/"))
     username: Optional[str] = field(default_factory=lambda: os.getenv("ETCD_USERNAME"))
     password: Optional[str] = field(default_factory=lambda: os.getenv("ETCD_PASSWORD"))
     

@@ -1,7 +1,11 @@
 """
 Storage interface for metadata inspector.
 
-The inspector reads workloads and writes metadata.
+Key structure:
+  /discovery/workloads/{id}            → Workload JSON (watched by inspector)
+  /discovery/metadata/{id}/{processor} → Processor metadata JSON (written by inspector)
+
+The inspector watches workloads and writes metadata to a separate prefix.
 """
 
 from abc import ABC, abstractmethod
@@ -15,8 +19,8 @@ class StorageInterface(ABC):
     Abstract interface for inspector storage.
     
     The inspector:
-    - Reads/watches workloads from runtime storage
-    - Writes metadata results to metadata storage
+    - Watches workloads from /discovery/workloads/{id}
+    - Writes metadata to /discovery/metadata/{id}/{processor}
     """
     
     @abstractmethod
@@ -32,11 +36,11 @@ class StorageInterface(ABC):
         """Close connection to storage backend."""
         pass
     
-    # ==================== Runtime Reading ====================
+    # ==================== Workload Reading ====================
     
     @abstractmethod
     def list_workloads(self) -> list:
-        """List all workloads from runtime storage."""
+        """List all workloads (ignores metadata keys)."""
         pass
     
     @abstractmethod
@@ -47,7 +51,7 @@ class StorageInterface(ABC):
     @abstractmethod
     def watch_workloads(self) -> Generator[Tuple[str, Optional[Workload]], None, None]:
         """
-        Watch for workload changes.
+        Watch for workload changes (ignores metadata changes).
         
         Yields:
             Tuple of (event_type, workload) where event_type is 'PUT' or 'DELETE'
@@ -57,14 +61,16 @@ class StorageInterface(ABC):
     # ==================== Metadata Writing ====================
     
     @abstractmethod
-    def set_metadata(self, workload_id: str, key: str, data: dict) -> bool:
+    def set_metadata(self, workload_id: str, processor_key: str, data: dict) -> bool:
         """
         Write metadata for a workload.
         
         Args:
             workload_id: The workload ID
-            key: Metadata key (e.g., 'health', 'openapi')
+            processor_key: Processor name (e.g., 'health', 'openapi')
             data: Metadata dict to store
+        
+        Writes to: /discovery/workloads/{workload_id}/metadata/{processor_key}
         
         Returns:
             True on success
@@ -72,13 +78,13 @@ class StorageInterface(ABC):
         pass
     
     @abstractmethod
-    def delete_metadata(self, workload_id: str, key: Optional[str] = None) -> bool:
+    def delete_metadata(self, workload_id: str, processor_key: Optional[str] = None) -> bool:
         """
         Delete metadata for a workload.
         
         Args:
             workload_id: The workload ID
-            key: Optional specific key to delete, or all if None
+            processor_key: Optional specific processor to delete, or all metadata if None
             
         Returns:
             True on success

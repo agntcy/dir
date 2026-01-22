@@ -52,7 +52,7 @@ services:
       # etcd
       - ETCD_HOST=etcd
       - ETCD_PORT=2379
-      - ETCD_PREFIX=/discovery
+      - ETCD_WORKLOADS_PREFIX=/discovery/workloads/
       # Runtime
       - RUNTIME=docker
       - PYTHONUNBUFFERED=1
@@ -73,7 +73,8 @@ services:
       # etcd
       - ETCD_HOST=etcd
       - ETCD_PORT=2379
-      - ETCD_PREFIX=/discovery
+      - ETCD_WORKLOADS_PREFIX=/discovery/workloads/
+      - ETCD_METADATA_PREFIX=/discovery/metadata/
       # Server
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
@@ -97,12 +98,12 @@ services:
       # etcd
       - ETCD_HOST=etcd
       - ETCD_PORT=2379
-      - ETCD_RUNTIME_PREFIX=/discovery/workloads
-      - ETCD_METADATA_PREFIX=/discovery/metadata
+      - ETCD_WORKLOADS_PREFIX=/discovery/workloads/
+      - ETCD_METADATA_PREFIX=/discovery/metadata/
       # Processors
       - HEALTH_ENABLED=true
       - HEALTH_TIMEOUT=5
-      - HEALTH_PATHS=/health,/healthz,/ready
+      - HEALTH_PATHS=/
       - OPENAPI_ENABLED=true
       - OPENAPI_TIMEOUT=10
       - OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
@@ -110,7 +111,8 @@ services:
       - PYTHONUNBUFFERED=1
     networks:
       - discovery
-      - inspection
+      - team-a
+      - team-b
     deploy:
       replicas: 1
       restart_policy:
@@ -126,7 +128,6 @@ services:
       discover: "true"
     networks:
       - team-a
-      - inspection
     deploy:
       replicas: 1
 
@@ -136,7 +137,6 @@ services:
       discover: "true"
     networks:
       - team-b
-      - inspection
     deploy:
       replicas: 1
 
@@ -146,7 +146,6 @@ services:
       discover: "true"
     networks:
       - team-a
-      - inspection
     deploy:
       replicas: 1
 
@@ -156,7 +155,6 @@ services:
       discover: "true"
     networks:
       - team-b
-      - inspection
     deploy:
       replicas: 1
 
@@ -167,7 +165,6 @@ services:
     networks:
       - team-a
       - team-b
-      - inspection
     deploy:
       replicas: 1
 
@@ -181,11 +178,6 @@ services:
 
 networks:
   discovery:
-    driver: overlay
-    attachable: true
-
-  # Inspection network - inspector uses this to reach discoverable services
-  inspection:
     driver: overlay
     attachable: true
 

@@ -53,7 +53,9 @@ def main():
     logger.info("=" * 60)
     logger.info("Discovery API Server")
     logger.info("=" * 60)
-    logger.info("Storage: etcd @ %s:%d (prefix=%s)", config.etcd.host, config.etcd.port, config.etcd.prefix)
+    logger.info("Storage: etcd @ %s:%d", config.etcd.host, config.etcd.port)
+    logger.info("Workloads prefix: %s", config.etcd.workloads_prefix)
+    logger.info("Metadata prefix: %s", config.etcd.metadata_prefix)
     logger.info("HTTP server: %s:%d", config.server.host, config.server.port)
     logger.info("=" * 60)
     

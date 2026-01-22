@@ -65,6 +65,7 @@ def create_app(storage: StorageInterface) -> Flask:
                 "isolation_groups": list(source.isolation_groups),
                 "addresses": source.addresses,
                 "ports": source.ports,
+                "metadata": source.metadata or {},
             },
             "reachable": [
                 {
@@ -77,6 +78,7 @@ def create_app(storage: StorageInterface) -> Flask:
                     "addresses": w.addresses,
                     "ports": w.ports,
                     "labels": w.labels,
+                    "metadata": w.metadata or {},
                 }
                 for w in reachable
             ],
@@ -119,6 +121,8 @@ def create_app(storage: StorageInterface) -> Flask:
                     "isolation_groups": list(w.isolation_groups),
                     "addresses": w.addresses,
                     "ports": w.ports,
+                    "labels": w.labels,
+                    "metadata": w.metadata or {},
                 }
                 for w in workloads
             ],
@@ -142,6 +146,7 @@ def create_app(storage: StorageInterface) -> Flask:
             "addresses": workload.addresses,
             "ports": workload.ports,
             "labels": workload.labels,
+            "metadata": workload.metadata or {},
         })
     
     @app.route('/health', methods=['GET'])

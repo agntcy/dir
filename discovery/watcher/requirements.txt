@@ -1,5 +1,5 @@
 # Core dependencies
-etcd3gw
+etcd3
 
 # Docker support
 docker

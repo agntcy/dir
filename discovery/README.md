@@ -9,12 +9,11 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
                          │               etcd                  │
                          │    (distributed metadata store)     │
                          │                                     │
-                         │  /discovery/workloads/{id}/data     │
-                         │  /discovery/metadata/{id}/health    │
-                         │  /discovery/metadata/{id}/openapi   │
+                         │  /discovery/workloads/{id}     ◄─── watcher writes
+                         │  /discovery/metadata/{id}/{proc} ◄── inspector writes
                          └──────────┬──────────────┬───────────┘
                                     │              │
-                              write │              │ read
+                              write │              │ read (watch)
                                     │              │
                ┌────────────────────┴───┐    ┌─────┴────────────────────┐
                │        Watcher         │    │         Server           │
@@ -28,7 +27,7 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
          ┌──────────────────┼──────────────────│  - Watches workloads     │
          │                  │                  │  - Health checks         │
          │                  │                  │  - OpenAPI discovery     │
-  ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐──────────────────────┘
+  ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐────────────────────┘
   │   Docker    │    │ containerd  │    │ Kubernetes │
   │   Socket    │    │   Socket    │    │    API     │
   └──────┬──────┘    └──────┬──────┘    └──────┬─────┘
@@ -44,6 +43,18 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
     │service-3│        │service-4│        │         │
     └─────────┘        └─────────┘        └─────────┘
 ```
+
+### Key Structure
+
+| Prefix | Owner | Description |
+|--------|-------|-------------|
+| `/discovery/workloads/{id}` | Watcher | Workload JSON (container/pod info, networks, ports) |
+| `/discovery/metadata/{id}/{processor}` | Inspector | Processor metadata (health, openapi, etc.) |
+
+**Benefits of separate prefixes:**
+- **Clean watches**: Inspector watches only workloads, ignores metadata changes
+- **Clear ownership**: Watcher owns workloads, Inspector owns metadata
+- **Efficient**: No key parsing needed to filter events
 
 **Components:**
 
@@ -213,13 +224,12 @@ kind delete cluster --name discovery-test
 
 ### Inspector
 
-| Variable                | Default               | Description                                    |
-| ----------------------- | --------------------- | ---------------------------------------------- |
-| `ETCD_RUNTIME_PREFIX`   | `/discovery/workloads`| etcd prefix where workloads are stored         |
-| `ETCD_METADATA_PREFIX`  | `/discovery/metadata` | etcd prefix for metadata output                |
+| Variable                | Default                  | Description                                    |
+| ----------------------- | ------------------------ | ---------------------------------------------- |
+| `ETCD_PREFIX`           | `/discovery/workloads/`  | etcd prefix for workloads and metadata         |
 | `HEALTH_ENABLED`        | `true`                | Enable health check processor                  |
 | `HEALTH_TIMEOUT`        | `5`                   | Health check timeout (seconds)                 |
-| `HEALTH_PATHS`          | `/health,/healthz,/ready` | Paths to probe for health                  |
+| `HEALTH_PATHS`          | `/` | Paths to probe for health                  |
 | `OPENAPI_ENABLED`       | `true`                | Enable OpenAPI discovery processor             |
 | `OPENAPI_TIMEOUT`       | `10`                  | OpenAPI fetch timeout (seconds)                |
 | `OPENAPI_PATHS`         | `/openapi.json,/swagger.json,/api-docs` | Paths to check for OpenAPI spec |

@@ -84,15 +84,10 @@ class HealthProcessor(ProcessorInterface):
         for addr in workload.addresses:
             for port in workload.ports:
                 for path in self.paths:
-                    # Handle different address formats
-                    if ".pod" in addr or ".svc" in addr:
-                        # Kubernetes DNS format
-                        url = f"http://{addr}:{port}{path}"
-                    else:
-                        # Docker format (name.network)
-                        url = f"http://{addr}:{port}{path}"
-                    urls_to_try.append(url)
+                    urls_to_try.append(f"http://{addr}:{port}{path}")
         
+        logger.info("[health] Probing (%s) URLs for workload %s", ','.join(urls_to_try), workload.name)
+
         # Try each URL
         for url in urls_to_try:
             result = self._probe_url(url)
@@ -104,6 +99,13 @@ class HealthProcessor(ProcessorInterface):
                     result.response_time_ms or 0
                 )
                 return result.to_dict()
+            else:
+                logger.warning(
+                    "[health] %s health probe failed at %s: %s",
+                    workload.name,
+                    result.endpoint,
+                    result.error or f"HTTP {result.status_code}"
+                )
         
         # All probes failed
         logger.warning("[health] %s is unhealthy - no endpoints responded", workload.name)

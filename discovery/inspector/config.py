@@ -25,8 +25,8 @@ class EtcdConfig:
     """etcd storage configuration."""
     host: str = field(default_factory=lambda: os.getenv("ETCD_HOST", "localhost"))
     port: int = field(default_factory=lambda: int(os.getenv("ETCD_PORT", "2379")))
-    runtime_prefix: str = field(default_factory=lambda: os.getenv("ETCD_RUNTIME_PREFIX", "/discovery/workloads"))
-    metadata_prefix: str = field(default_factory=lambda: os.getenv("ETCD_METADATA_PREFIX", "/discovery/metadata"))
+    workloads_prefix: str = field(default_factory=lambda: os.getenv("ETCD_WORKLOADS_PREFIX", "/discovery/workloads/"))
+    metadata_prefix: str = field(default_factory=lambda: os.getenv("ETCD_METADATA_PREFIX", "/discovery/metadata/"))
     username: Optional[str] = field(default_factory=lambda: os.getenv("ETCD_USERNAME"))
     password: Optional[str] = field(default_factory=lambda: os.getenv("ETCD_PASSWORD"))
     
@@ -41,7 +41,7 @@ class ProcessorConfig:
     # Health check settings
     health_enabled: bool = field(default_factory=lambda: os.getenv("HEALTH_ENABLED", "true").lower() == "true")
     health_timeout: int = field(default_factory=lambda: int(os.getenv("HEALTH_TIMEOUT", "5")))
-    health_paths: list = field(default_factory=lambda: os.getenv("HEALTH_PATHS", "/health,/healthz,/ready").split(","))
+    health_paths: list = field(default_factory=lambda: os.getenv("HEALTH_PATHS", "/").split(","))
     
     # OpenAPI settings
     openapi_enabled: bool = field(default_factory=lambda: os.getenv("OPENAPI_ENABLED", "true").lower() == "true")

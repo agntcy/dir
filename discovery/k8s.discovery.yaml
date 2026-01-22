@@ -123,6 +123,8 @@ spec:
               value: "discovery-etcd"
             - name: ETCD_PORT
               value: "2379"
+            - name: ETCD_WORKLOADS_PREFIX
+              value: "/discovery/workloads/"
 # ============================================================================
 # SERVER
 # ============================================================================
@@ -167,6 +169,10 @@ spec:
               value: "discovery-etcd"
             - name: ETCD_PORT
               value: "2379"
+            - name: ETCD_WORKLOADS_PREFIX
+              value: "/discovery/workloads/"
+            - name: ETCD_METADATA_PREFIX
+              value: "/discovery/metadata/"
 # ============================================================================
 # INSPECTOR - Metadata extraction (health checks, OpenAPI discovery)
 # ============================================================================
@@ -197,10 +203,10 @@ spec:
               value: "discovery-etcd"
             - name: ETCD_PORT
               value: "2379"
-            - name: ETCD_RUNTIME_PREFIX
-              value: "/discovery/workloads"
+            - name: ETCD_WORKLOADS_PREFIX
+              value: "/discovery/workloads/"
             - name: ETCD_METADATA_PREFIX
-              value: "/discovery/metadata"
+              value: "/discovery/metadata/"
             - name: HEALTH_ENABLED
               value: "true"
             - name: HEALTH_TIMEOUT

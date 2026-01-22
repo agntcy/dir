@@ -1,5 +1,6 @@
 # Core dependencies
-etcd3gw
+etcd3
+protobuf>=3.20,<4
 
 # HTTP requests for health checks and API discovery
 requests

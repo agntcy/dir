@@ -162,7 +162,7 @@ def main():
     logger.info("Metadata Inspector")
     logger.info("=" * 60)
     logger.info("etcd: %s:%d", config.etcd.host, config.etcd.port)
-    logger.info("Runtime prefix: %s", config.etcd.runtime_prefix)
+    logger.info("Workloads prefix: %s", config.etcd.workloads_prefix)
     logger.info("Metadata prefix: %s", config.etcd.metadata_prefix)
     logger.info("Workers: %d", config.processor.worker_count)
     logger.info("Health check: %s", "enabled" if config.processor.health_enabled else "disabled")
