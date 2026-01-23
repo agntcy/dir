@@ -7,6 +7,7 @@ replace (
 	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 	github.com/agntcy/dir/api => ../api
+	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
 
 	// go-libp2p v0.46.0 does not support latest dependencies
@@ -17,6 +18,7 @@ replace (
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1
 	github.com/agntcy/dir/api v0.6.1
+	github.com/agntcy/dir/client v0.6.1
 	github.com/agntcy/dir/utils v0.6.1
 	github.com/agntcy/oasf-sdk/pkg v0.0.14
 	github.com/casbin/casbin/v2 v2.135.0
