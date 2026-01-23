@@ -28,6 +28,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _openaiKeyController = TextEditingController();
   final _openaiEndpointController = TextEditingController();
 
+  final _ollamaEndpointController = TextEditingController();
+  final _ollamaModelController = TextEditingController();
+
   // Directory Configuration
   final _directoryUrlController = TextEditingController();
   final _directoryTokenController = TextEditingController();
@@ -56,6 +59,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _openaiKeyController.text = prefs.getString('openai_api_key') ?? '';
       _openaiEndpointController.text = prefs.getString('openai_endpoint') ?? '';
 
+      _ollamaEndpointController.text = prefs.getString('ollama_endpoint') ?? 'http://localhost:11434/api/chat';
+      _ollamaModelController.text = prefs.getString('ollama_model') ?? 'gemma3:4b';
+
       _directoryUrlController.text = prefs.getString('directory_server_address') ?? '';
       _directoryTokenController.text = prefs.getString('directory_github_token') ?? '';
       _oasfSchemaController.text = prefs.getString('oasf_schema_url') ?? '';
@@ -80,6 +86,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('openai_api_key', _openaiKeyController.text.trim());
     await prefs.setString('openai_endpoint', _openaiEndpointController.text.trim());
 
+    await prefs.setString('ollama_endpoint', _ollamaEndpointController.text.trim());
+    await prefs.setString('ollama_model', _ollamaModelController.text.trim());
+
     await prefs.setString('directory_server_address', _directoryUrlController.text.trim());
     await prefs.setString('directory_github_token', _directoryTokenController.text.trim());
     await prefs.setString('oasf_schema_url', _oasfSchemaController.text.trim());
@@ -101,6 +110,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _azureApiVersionController.dispose();
     _openaiKeyController.dispose();
     _openaiEndpointController.dispose();
+    _ollamaEndpointController.dispose();
+    _ollamaModelController.dispose();
 
     _directoryUrlController.dispose();
     _directoryTokenController.dispose();
@@ -145,6 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   DropdownMenuItem(value: 'gemini', child: Text('Google Gemini')),
                   DropdownMenuItem(value: 'azure', child: Text('Azure OpenAI')),
                   DropdownMenuItem(value: 'openai', child: Text('OpenAI Compatible (Claude, etc.)')),
+                  DropdownMenuItem(value: 'ollama', child: Text('Ollama (Local)')),
                 ],
                 onChanged: (value) {
                   setState(() {
@@ -267,6 +279,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   validator: (value) {
                     if (_selectedProvider == 'openai' && (value == null || value.isEmpty)) {
                       return 'Please enter Base URL';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+
+              if (_selectedProvider == 'ollama') ...[
+                const Text('Ollama Configuration', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _ollamaEndpointController,
+                  decoration: const InputDecoration(
+                    labelText: 'Endpoint',
+                    border: OutlineInputBorder(),
+                    hintText: 'http://localhost:11434/api/chat',
+                  ),
+                  validator: (value) {
+                    if (_selectedProvider == 'ollama' && (value == null || value.isEmpty)) {
+                      return 'Please enter Endpoint';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _ollamaModelController,
+                  decoration: const InputDecoration(
+                    labelText: 'Model Name',
+                    border: OutlineInputBorder(),
+                    hintText: 'llama3.2',
+                  ),
+                  validator: (value) {
+                    if (_selectedProvider == 'ollama' && (value == null || value.isEmpty)) {
+                      return 'Please enter Model Name';
                     }
                     return null;
                   },

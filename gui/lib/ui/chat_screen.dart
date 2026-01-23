@@ -56,6 +56,9 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _directoryToken;
   String? _oasfSchemaUrl;
 
+  String? _ollamaEndpoint;
+  String? _ollamaModel;
+
   @override
   void initState() {
     super.initState();
@@ -88,6 +91,9 @@ class _ChatScreenState extends State<ChatScreen> {
         } else if (_providerType == 'openai') {
           _apiKey = prefs.getString('openai_api_key');
           _openaiEndpoint = prefs.getString('openai_endpoint');
+        } else if (_providerType == 'ollama') {
+          _ollamaEndpoint = prefs.getString('ollama_endpoint');
+          _ollamaModel = prefs.getString('ollama_model');
         }
 
         // Load Directory Config
@@ -96,7 +102,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _oasfSchemaUrl = prefs.getString('oasf_schema_url');
       });
 
-      if (_apiKey != null && _apiKey!.isNotEmpty) {
+      if ((_providerType == 'ollama') || (_apiKey != null && _apiKey!.isNotEmpty)) {
         print('Configured $_providerType from Settings');
         setState(() => _isConfigured = true);
         _initServices();
@@ -173,6 +179,22 @@ class _ChatScreenState extends State<ChatScreen> {
          _initServices();
          return;
     }
+
+    // Check for Ollama (local) - implicit if configured?
+    // Usually local usage doesn't need env vars unless we want to force it.
+    // We'll skip auto-init for Ollama unless specific ENV is present to force it.
+    final ollamaEp = Platform.environment['OLLAMA_ENDPOINT'] ?? const String.fromEnvironment('OLLAMA_ENDPOINT');
+    if (ollamaEp.isNotEmpty) {
+        print('Auto-configuring Ollama from Environment');
+        _providerType = 'ollama';
+        _ollamaEndpoint = ollamaEp;
+        _ollamaModel = Platform.environment['OLLAMA_MODEL'] ?? const String.fromEnvironment('OLLAMA_MODEL');
+        if (_ollamaModel == null || _ollamaModel!.isEmpty) _ollamaModel = 'gemma3:4b'; // Default
+
+        setState(() => _isConfigured = true);
+        _initServices();
+        return;
+    }
   }
 
   Future<void> _showConfigDialog() async {
@@ -193,14 +215,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       items: const [
                         DropdownMenuItem(value: 'gemini', child: Text('Google Gemini')),
                         DropdownMenuItem(value: 'azure', child: Text('Azure OpenAI')),
+                        DropdownMenuItem(value: 'ollama', child: Text('Ollama')),
                       ],
                       onChanged: (v) => setState(() => _providerType = v!),
                     ),
                     const SizedBox(height: 10),
-                    TextField(
-                      decoration: const InputDecoration(labelText: 'API Key'),
-                      onChanged: (v) => _apiKey = v,
-                    ),
+                    if (_providerType != 'ollama')
+                      TextField(
+                        decoration: const InputDecoration(labelText: 'API Key'),
+                        onChanged: (v) => _apiKey = v,
+                      ),
                     if (_providerType == 'azure') ...[
                       const SizedBox(height: 10),
                       TextField(
@@ -218,6 +242,18 @@ class _ChatScreenState extends State<ChatScreen> {
                         decoration: const InputDecoration(labelText: 'API Version'),
                         onChanged: (v) => _azureApiVersion = v,
                       ),
+                    ],
+                    if (_providerType == 'ollama') ...[
+                      const SizedBox(height: 10),
+                      TextField(
+                        decoration: const InputDecoration(labelText: 'Endpoint (default: http://localhost:11434/api/chat)'),
+                        onChanged: (v) => _ollamaEndpoint = v,
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        decoration: const InputDecoration(labelText: 'Model (default: gemma3:4b)'),
+                        onChanged: (v) => _ollamaModel = v,
+                      ),
                     ]
                   ],
                 ),
@@ -226,7 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 TextButton(
                   onPressed: () {
                     // Validation
-                    if (_apiKey == null || _apiKey!.isEmpty) return;
+                    if (_providerType != 'ollama' && (_apiKey == null || _apiKey!.isEmpty)) return;
 
                     if (_providerType == 'azure') {
                       if (_azureEndpoint == null || _azureEndpoint!.isEmpty) return;
@@ -356,6 +392,11 @@ class _ChatScreenState extends State<ChatScreen> {
            endpoint: _azureEndpoint!,
            deploymentId: _azureDeployment!,
            apiVersion: _azureApiVersion,
+         );
+      } else if (_providerType == 'ollama') {
+         provider = OllamaProvider(
+            endpoint: _ollamaEndpoint?.isEmpty ?? true ? 'http://localhost:11434/api/chat' : _ollamaEndpoint!,
+            model: _ollamaModel?.isEmpty ?? true ? 'gemma3:4b' : _ollamaModel!,
          );
       } else {
          provider = GeminiProvider(apiKey: _apiKey!);
