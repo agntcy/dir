@@ -104,6 +104,9 @@ apiserver:
       # Enable authorization policies
       enabled: false
 
+      # Path to the authorization policy file
+      enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
+
       # Content of the authorization policy file
       enforcer_policy_file_content: |
         p,example.org,*
