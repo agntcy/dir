@@ -17,6 +17,6 @@ data:
     {{- $config | toYaml | nindent 4 }}
 
   authz_policies.csv: |
-    {{- if .Values.config.authz.enforcer_policy_file_content }}
-    {{- .Values.config.authz.enforcer_policy_file_content | nindent 4}}
+    {{- if .Values.config.authz.enforcer_policy_csv }}
+    {{- .Values.config.authz.enforcer_policy_csv | nindent 4}}
     {{- end }}

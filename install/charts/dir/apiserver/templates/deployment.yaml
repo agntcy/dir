@@ -225,7 +225,7 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
-            {{- if and .Values.config.authz.enabled (ne .Values.config.authz.enforcer_policy_file_path "") (ne .Values.config.authz.enforcer_policy_file_content "") }}
+            {{- if and .Values.config.authz.enabled (ne .Values.config.authz.enforcer_policy_file_path "") (ne .Values.config.authz.enforcer_policy_csv "") }}
             - name: config-volume
               mountPath: {{ .Values.config.authz.enforcer_policy_file_path | quote }}
               subPath: authz_policies.csv
