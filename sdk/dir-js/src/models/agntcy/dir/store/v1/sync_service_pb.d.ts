@@ -239,13 +239,6 @@ export declare const DeleteSyncResponseSchema: GenMessage<DeleteSyncResponse>;
  * @generated from message agntcy.dir.store.v1.RequestRegistryCredentialsRequest
  */
 export declare type RequestRegistryCredentialsRequest = Message<"agntcy.dir.store.v1.RequestRegistryCredentialsRequest"> & {
-  /**
-   * Identity of the requesting node
-   * For example: spiffe://example.org/service/foo
-   *
-   * @generated from field: string requesting_node_id = 1;
-   */
-  requestingNodeId: string;
 };
 
 /**

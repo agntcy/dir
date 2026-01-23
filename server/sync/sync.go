@@ -40,10 +40,14 @@ func New(db types.DatabaseAPI, store types.StoreAPI, opts types.APIOptions) (*Se
 		return nil, fmt.Errorf("failed to create registry monitor service: %w", err)
 	}
 
+	// Copy sync config and add authn config for remote directory connections
+	syncConfig := opts.Config().Sync
+	syncConfig.Authn = opts.Config().Authn
+
 	return &Service{
 		db:             db,
 		store:          store,
-		config:         opts.Config().Sync,
+		config:         syncConfig,
 		monitorService: monitorService,
 		eventBus:       opts.EventBus(),
 		stopCh:         make(chan struct{}),
@@ -63,7 +67,7 @@ func (s *Service) Start(ctx context.Context) error {
 	// Create and start workers
 	s.workers = make([]*Worker, s.config.WorkerCount)
 	for i := range s.config.WorkerCount {
-		s.workers[i] = NewWorker(i, s.db, s.store, workQueue, s.config.WorkerTimeout, s.monitorService, s.eventBus)
+		s.workers[i] = NewWorker(i, s.db, s.store, workQueue, s.config.WorkerTimeout, s.monitorService, s.eventBus, s.config.Authn)
 	}
 
 	// Start scheduler

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	"github.com/agntcy/dir/client"
+	authnconfig "github.com/agntcy/dir/server/authn/config"
 	"github.com/agntcy/dir/server/events"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	syncconfig "github.com/agntcy/dir/server/sync/config"
@@ -16,8 +18,6 @@ import (
 	synctypes "github.com/agntcy/dir/server/sync/types"
 	"github.com/agntcy/dir/server/types"
 	zotutils "github.com/agntcy/dir/utils/zot"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	zotsyncconfig "zotregistry.dev/zot/v2/pkg/extensions/config/sync"
 )
 
@@ -30,10 +30,11 @@ type Worker struct {
 	timeout        time.Duration
 	monitorService *monitor.MonitorService
 	eventBus       *events.SafeEventBus
+	authnConfig    authnconfig.Config
 }
 
 // NewWorker creates a new worker instance.
-func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration, monitorService *monitor.MonitorService, eventBus *events.SafeEventBus) *Worker {
+func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration, monitorService *monitor.MonitorService, eventBus *events.SafeEventBus, authnConfig authnconfig.Config) *Worker {
 	return &Worker{
 		id:             id,
 		db:             db,
@@ -42,6 +43,7 @@ func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-c
 		timeout:        timeout,
 		monitorService: monitorService,
 		eventBus:       eventBus,
+		authnConfig:    authnConfig,
 	}
 }
 
@@ -184,26 +186,32 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL string) (string, syncconfig.AuthConfig, error) {
 	logger.Debug("Starting credential negotiation", "worker_id", w.id, "remote_url", remoteDirectoryURL)
 
+	// Build client config based on authn settings
+	// When authn is not enabled, use insecure mode
+	clientConfig := &client.Config{
+		ServerAddress: remoteDirectoryURL,
+		AuthMode:      "insecure",
+	}
+
+	if w.authnConfig.Enabled {
+		clientConfig.AuthMode = string(w.authnConfig.Mode)
+		clientConfig.SpiffeSocketPath = w.authnConfig.SocketPath
+
+		// Get the first audience for JWT authentication (if configured)
+		if len(w.authnConfig.Audiences) > 0 {
+			clientConfig.JWTAudience = w.authnConfig.Audiences[0]
+		}
+	}
+
 	// Create gRPC connection to the remote Directory node
-	conn, err := grpc.NewClient(
-		remoteDirectoryURL,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	dirClient, err := client.New(ctx, client.WithConfig(clientConfig))
 	if err != nil {
 		return "", syncconfig.AuthConfig{}, fmt.Errorf("failed to create gRPC connection to remote node %s: %w", remoteDirectoryURL, err)
 	}
-	defer conn.Close()
-
-	// Create SyncService client
-	syncClient := storev1.NewSyncServiceClient(conn)
-
-	// TODO: Get actual peer ID from the routing system or configuration
-	requestingNodeID := "directory://local-node"
+	defer dirClient.Close()
 
 	// Make the credential negotiation request
-	resp, err := syncClient.RequestRegistryCredentials(ctx, &storev1.RequestRegistryCredentialsRequest{
-		RequestingNodeId: requestingNodeID,
-	})
+	resp, err := dirClient.RequestRegistryCredentials(ctx, &storev1.RequestRegistryCredentialsRequest{})
 	if err != nil {
 		return "", syncconfig.AuthConfig{}, fmt.Errorf("failed to request registry credentials from %s: %w", remoteDirectoryURL, err)
 	}

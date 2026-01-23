@@ -84,10 +84,8 @@ class DeleteSyncResponse(_message.Message):
     def __init__(self) -> None: ...
 
 class RequestRegistryCredentialsRequest(_message.Message):
-    __slots__ = ("requesting_node_id",)
-    REQUESTING_NODE_ID_FIELD_NUMBER: _ClassVar[int]
-    requesting_node_id: str
-    def __init__(self, requesting_node_id: _Optional[str] = ...) -> None: ...
+    __slots__ = ()
+    def __init__(self) -> None: ...
 
 class RequestRegistryCredentialsResponse(_message.Message):
     __slots__ = ("success", "error_message", "remote_registry_url", "basic_auth")

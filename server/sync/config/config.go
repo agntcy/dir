@@ -6,6 +6,7 @@ package config
 import (
 	"time"
 
+	authnconfig "github.com/agntcy/dir/server/authn/config"
 	monitor "github.com/agntcy/dir/server/sync/monitor/config"
 )
 
@@ -30,8 +31,11 @@ type Config struct {
 	// Registry monitor configuration
 	RegistryMonitor monitor.Config `json:"registry_monitor" mapstructure:"registry_monitor"`
 
-	// Authentication configuration
+	// Authentication configuration for local registry
 	AuthConfig `json:"auth_config" mapstructure:"auth_config"`
+
+	// Authn configuration for connecting to remote directory nodes.
+	Authn authnconfig.Config `json:"authn" mapstructure:"authn"`
 }
 
 // AuthConfig represents the configuration for authentication.
