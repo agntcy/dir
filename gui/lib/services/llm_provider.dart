@@ -142,12 +142,14 @@ class GeminiProvider implements LlmProvider {
 class OpenAiCompatibleProvider implements LlmProvider {
   final String apiKey;
   final String endpoint; // Full endpoint URL for chat completions
+  final http.Client _client;
   List<Map<String, dynamic>>? _formattedTools;
 
   OpenAiCompatibleProvider({
     required this.apiKey,
     required this.endpoint,
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   Future<void> init(List<McpTool> mcpTools) async {
@@ -183,7 +185,7 @@ class OpenAiCompatibleProvider implements LlmProvider {
       if (_formattedTools != null && _formattedTools!.isNotEmpty) "tools": _formattedTools,
     };
 
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse(url),
       headers: {
         "Content-Type": "application/json",
@@ -247,6 +249,7 @@ class AzureOpenAiProvider implements LlmProvider {
   final String endpoint; // e.g., https://my-resource.openai.azure.com/
   final String deploymentId;
   final String apiVersion;
+  final http.Client _client;
   List<Map<String, dynamic>>? _formattedTools;
 
   AzureOpenAiProvider({
@@ -254,7 +257,8 @@ class AzureOpenAiProvider implements LlmProvider {
     required this.endpoint,
     required this.deploymentId,
     this.apiVersion = '2024-10-21',
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   Future<void> init(List<McpTool> mcpTools) async {
@@ -309,7 +313,7 @@ Future<LlmResponse> sendRaw(List<Map<String, dynamic>> messages) async {
       if (_formattedTools != null && _formattedTools!.isNotEmpty) "tools": _formattedTools,
     };
 
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse(url),
       headers: {
         "Content-Type": "application/json",
