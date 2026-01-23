@@ -110,6 +110,11 @@ func TestConfig(t *testing.T) {
 					SQLite: databaseconfig.SQLiteConfig{
 						DBPath: "sqlite.db",
 					},
+					Postgres: databaseconfig.PostgresConfig{
+						Host:     databaseconfig.DefaultPostgresHost,
+						Port:     databaseconfig.DefaultPostgresPort,
+						Database: databaseconfig.DefaultPostgresDatabase,
+					},
 				},
 				Sync: sync.Config{
 					SchedulerInterval: 1 * time.Second,
@@ -185,6 +190,11 @@ func TestConfig(t *testing.T) {
 					DBType: database.DefaultDBType,
 					SQLite: databaseconfig.SQLiteConfig{
 						DBPath: databaseconfig.DefaultSQLiteDBPath,
+					},
+					Postgres: databaseconfig.PostgresConfig{
+						Host:     databaseconfig.DefaultPostgresHost,
+						Port:     databaseconfig.DefaultPostgresPort,
+						Database: databaseconfig.DefaultPostgresDatabase,
 					},
 				},
 				Sync: sync.Config{

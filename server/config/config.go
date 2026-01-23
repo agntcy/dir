@@ -466,8 +466,22 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("database.db_type")
 	v.SetDefault("database.db_type", database.DefaultDBType)
 
+	// SQLite configuration
 	_ = v.BindEnv("database.sqlite.db_path")
 	v.SetDefault("database.sqlite.db_path", databaseconfig.DefaultSQLiteDBPath)
+
+	// PostgreSQL configuration
+	_ = v.BindEnv("database.postgres.host")
+	v.SetDefault("database.postgres.host", databaseconfig.DefaultPostgresHost)
+
+	_ = v.BindEnv("database.postgres.port")
+	v.SetDefault("database.postgres.port", databaseconfig.DefaultPostgresPort)
+
+	_ = v.BindEnv("database.postgres.database")
+	v.SetDefault("database.postgres.database", databaseconfig.DefaultPostgresDatabase)
+
+	_ = v.BindEnv("database.postgres.username")
+	_ = v.BindEnv("database.postgres.password")
 
 	//
 	// Sync configuration

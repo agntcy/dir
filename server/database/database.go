@@ -9,10 +9,11 @@ import (
 	"os"
 	"time"
 
-	 "github.com/agntcy/dir/server/database/config"
+	"github.com/agntcy/dir/server/database/config"
 	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
 	"github.com/glebarez/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 )
@@ -20,7 +21,8 @@ import (
 type DB string
 
 const (
-	SQLite DB = "sqlite"
+	SQLite   DB = "sqlite"
+	Postgres DB = "postgres"
 )
 
 func New(opts types.APIOptions) (types.DatabaseAPI, error) {
@@ -32,6 +34,13 @@ func New(opts types.APIOptions) (types.DatabaseAPI, error) {
 		}
 
 		return sqliteDB, nil
+	case Postgres:
+		postgresDB, err := newPostgres(opts.Config().Database.Postgres)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create PostgreSQL database: %w", err)
+		}
+
+		return postgresDB, nil
 	default:
 		return nil, fmt.Errorf("unsupported database=%s", db)
 	}
@@ -63,6 +72,36 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
+	}
+
+	return gormdb.InitDB(db)
+}
+
+// newPostgres creates a new database connection using PostgreSQL driver.
+func newPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
+	host := cfg.Host
+	if host == "" {
+		host = config.DefaultPostgresHost
+	}
+
+	port := cfg.Port
+	if port == 0 {
+		port = config.DefaultPostgresPort
+	}
+
+	database := cfg.Database
+	if database == "" {
+		database = config.DefaultPostgresDatabase
+	}
+
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		host, port, cfg.Username, cfg.Password, database)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: newCustomLogger(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to PostgreSQL database: %w", err)
 	}
 
 	return gormdb.InitDB(db)
