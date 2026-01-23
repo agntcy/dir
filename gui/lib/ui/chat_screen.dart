@@ -244,17 +244,27 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _initServices() async {
     // Get path from environment or search in bundled/dev locations
     String? mcpPath = Platform.environment['MCP_SERVER_PATH'];
+
+    // Debug Mode Details
+    debugPrint('Searching for MCP Server...');
+    debugPrint('Current Directory: ${Directory.current.path}');
+    debugPrint('Resolved Executable: ${Platform.resolvedExecutable}');
+
     if (mcpPath == null || mcpPath.isEmpty) {
       // 1. Check bundled resource (macOS mostly)
       // Platform.resolvedExecutable points to .../Contents/MacOS/AGNTCY Directory
       final exeDir = File(Platform.resolvedExecutable).parent;
       final macResourcePath = '${exeDir.parent.path}/Resources/mcp-server';
+      debugPrint('Checking Bundle Path: $macResourcePath');
 
       // 2. Check same directory (Linux/Windows bundled)
       final localPath = '${exeDir.path}/mcp-server';
+      debugPrint('Checking Local Path: $localPath');
 
       // 3. Check development path (relative to gui root)
+      // When running 'flutter run', CWD might be the gui root, or nested.
       final devPath = '${Directory.current.path}/../bin/mcp-server';
+      debugPrint('Checking Dev Path: $devPath');
 
       if (await File(macResourcePath).exists()) {
         mcpPath = macResourcePath;
@@ -268,12 +278,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (mcpPath == null || mcpPath.isEmpty) {
       debugPrint('MCP_SERVER_PATH is not set and binary not found in default locations');
-      setState(() {
-        _messages.add({
-          'role': 'system',
-          'content': 'Error: MCP_SERVER_PATH not set and mcp-server binary not found.'
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'role': 'system',
+            'text': 'Error: MCP_SERVER_PATH not set and mcp-server binary not found.\nChecked:\n- Bundle Resources\n- App Directory\n- ../bin/mcp-server'
+          });
         });
-      });
+      }
       return;
     }
 

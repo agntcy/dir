@@ -288,7 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 decoration: const InputDecoration(
                   labelText: 'OASF Schema URL (Optional)',
                   border: OutlineInputBorder(),
-                  helperText: 'Custom validation schema URL',
+                  helperText: 'Custom validation schema URL (e.g. https://schema.oasf.outshift.com)',
                 ),
               ),
             ],
