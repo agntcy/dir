@@ -14,14 +14,13 @@ service NamingService {
   // GetVerificationInfo retrieves the verification info for a record.
   rpc GetVerificationInfo(GetVerificationInfoRequest) returns (GetVerificationInfoResponse);
 
-  // Resolve resolves a record reference (name with optional version) to a single CID.
+  // Resolve resolves a record reference (name with optional version) to CIDs.
   // Supports Docker-style references:
-  //   - "name" -> resolves to the latest version
-  //   - "name:version" -> resolves to the specific version
-  //   - "name@cid" -> resolves to a hash-verified record (latest version)
-  //   - "name:version@cid" -> resolves to a hash-verified record (specific version)
-  // Returns an error if no matching record is found or if multiple records
-  // match the same name+version (ambiguous).
+  //   - "name" -> returns all versions (sorted by semver, latest first)
+  //   - "name:version" -> returns the specific version
+  //   - "name@cid" -> hash-verified lookup (latest version)
+  //   - "name:version@cid" -> hash-verified lookup (specific version)
+  // Returns an error if no matching record is found.
   rpc Resolve(ResolveRequest) returns (ResolveResponse);
 }
 
@@ -43,18 +42,30 @@ message GetVerificationInfoResponse {
   optional string error_message = 3;
 }
 
-// ResolveRequest is the request for resolving a record reference to a CID.
+// ResolveRequest is the request for resolving a record reference to CIDs.
 message ResolveRequest {
   // The name of the record to resolve (e.g., "cisco.com/agent").
   string name = 1;
 
   // Optional version to resolve to (e.g., "v1.0.0").
-  // If not specified, resolves to the latest version by semver.
+  // If not specified, returns all versions sorted by semver (latest first).
   optional string version = 2;
 }
 
-// ResolveResponse is the response containing the resolved CID.
+// ResolveResponse is the response containing the resolved records.
 message ResolveResponse {
-  // The CID of the resolved record.
-  string cid = 1;
+  // The resolved record references, sorted by version (latest first).
+  repeated RecordRef records = 1;
+}
+
+// RecordRef represents a resolved record with its name, version, and CID.
+message RecordRef {
+  // The name of the record.
+  string name = 1;
+
+  // The version of the record.
+  string version = 2;
+
+  // The CID of the record.
+  string cid = 3;
 }

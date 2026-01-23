@@ -43,12 +43,13 @@ class NamingServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Resolve(self, request, context):
-        """Resolve resolves a record reference (name with optional version) to a single CID.
+        """Resolve resolves a record reference (name with optional version) to CIDs.
         Supports Docker-style references:
-        - "name" -> resolves to the latest version (by semver)
-        - "name:version" -> resolves to the specific version
-        Returns an error if no matching record is found or if multiple records
-        match the same name+version (ambiguous).
+        - "name" -> returns all versions (sorted by semver, latest first)
+        - "name:version" -> returns the specific version
+        - "name@cid" -> hash-verified lookup (latest version)
+        - "name:version@cid" -> hash-verified lookup (specific version)
+        Returns an error if no matching record is found.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

@@ -7,6 +7,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -142,9 +143,9 @@ func (n *namingCtrl) getDomainFromRecord(ctx context.Context, cid string) string
 	return parsed.Domain
 }
 
-// Resolve resolves a record reference (name with optional version) to a single CID.
-// If version is specified, returns the exact match.
-// If no version is specified, returns the latest version by semver.
+// Resolve resolves a record reference (name with optional version) to CIDs.
+// If version is specified, returns the exact match(es).
+// If no version is specified, returns all versions sorted by semver (latest first).
 // Names without protocol prefix are searched with both http:// and https://.
 func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) (*namingv1.ResolveResponse, error) {
 	namingLogger.Debug("Resolve request received", "name", req.GetName(), "version", req.GetVersion())
@@ -177,45 +178,34 @@ func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) 
 		return nil, status.Errorf(codes.NotFound, "no record found with name %q", req.GetName())
 	}
 
-	// If version was specified and we have multiple matches, it's ambiguous
-	if req.GetVersion() != "" && len(records) > 1 {
-		return nil, status.Errorf(codes.FailedPrecondition,
-			"multiple records found with name %q and version %q, pull by CID directly",
-			req.GetName(), req.GetVersion())
-	}
+	// Sort records by semver (latest first)
+	sortRecordsBySemver(records)
 
-	// If only one match, return it
-	if len(records) == 1 {
-		return &namingv1.ResolveResponse{
-			Cid: records[0].GetCid(),
-		}, nil
-	}
+	// Convert to response format
+	refs := make([]*namingv1.RecordRef, 0, len(records))
 
-	// Multiple matches without version specified - find the latest by semver
-	return n.findLatestBySemver(records)
-}
-
-// findLatestBySemver finds the record with the highest semver version from the given records.
-func (n *namingCtrl) findLatestBySemver(records []types.Record) (*namingv1.ResolveResponse, error) {
-	if len(records) == 0 {
-		return nil, status.Error(codes.Internal, "no records provided")
-	}
-
-	// Find the record with the highest semver version
-	latest := records[0]
-
-	for _, r := range records[1:] {
-		latestData, _ := latest.GetRecordData()
-		rData, _ := r.GetRecordData()
-
-		if compareSemver(rData.GetVersion(), latestData.GetVersion()) > 0 {
-			latest = r
-		}
+	for _, r := range records {
+		data, _ := r.GetRecordData()
+		refs = append(refs, &namingv1.RecordRef{
+			Name:    data.GetName(),
+			Version: data.GetVersion(),
+			Cid:     r.GetCid(),
+		})
 	}
 
 	return &namingv1.ResolveResponse{
-		Cid: latest.GetCid(),
+		Records: refs,
 	}, nil
+}
+
+// sortRecordsBySemver sorts records by semver version in descending order (latest first).
+func sortRecordsBySemver(records []types.Record) {
+	sort.Slice(records, func(i, j int) bool {
+		iData, _ := records[i].GetRecordData()
+		jData, _ := records[j].GetRecordData()
+
+		return compareSemver(iData.GetVersion(), jData.GetVersion()) > 0
+	})
 }
 
 // compareSemver compares two version strings using semver.

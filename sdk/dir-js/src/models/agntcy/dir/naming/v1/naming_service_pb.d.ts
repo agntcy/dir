@@ -69,7 +69,7 @@ export declare type GetVerificationInfoResponse = Message<"agntcy.dir.naming.v1.
 export declare const GetVerificationInfoResponseSchema: GenMessage<GetVerificationInfoResponse>;
 
 /**
- * ResolveRequest is the request for resolving a record reference to a CID.
+ * ResolveRequest is the request for resolving a record reference to CIDs.
  *
  * @generated from message agntcy.dir.naming.v1.ResolveRequest
  */
@@ -83,7 +83,7 @@ export declare type ResolveRequest = Message<"agntcy.dir.naming.v1.ResolveReques
 
   /**
    * Optional version to resolve to (e.g., "v1.0.0").
-   * If not specified, resolves to the latest version by semver.
+   * If not specified, returns all versions sorted by semver (latest first).
    *
    * @generated from field: optional string version = 2;
    */
@@ -97,17 +97,17 @@ export declare type ResolveRequest = Message<"agntcy.dir.naming.v1.ResolveReques
 export declare const ResolveRequestSchema: GenMessage<ResolveRequest>;
 
 /**
- * ResolveResponse is the response containing the resolved CID.
+ * ResolveResponse is the response containing the resolved records.
  *
  * @generated from message agntcy.dir.naming.v1.ResolveResponse
  */
 export declare type ResolveResponse = Message<"agntcy.dir.naming.v1.ResolveResponse"> & {
   /**
-   * The CID of the resolved record.
+   * The resolved record references, sorted by version (latest first).
    *
-   * @generated from field: string cid = 1;
+   * @generated from field: repeated agntcy.dir.naming.v1.RecordRef records = 1;
    */
-  cid: string;
+  records: RecordRef[];
 };
 
 /**
@@ -115,6 +115,40 @@ export declare type ResolveResponse = Message<"agntcy.dir.naming.v1.ResolveRespo
  * Use `create(ResolveResponseSchema)` to create a new message.
  */
 export declare const ResolveResponseSchema: GenMessage<ResolveResponse>;
+
+/**
+ * RecordRef represents a resolved record with its name, version, and CID.
+ *
+ * @generated from message agntcy.dir.naming.v1.RecordRef
+ */
+export declare type RecordRef = Message<"agntcy.dir.naming.v1.RecordRef"> & {
+  /**
+   * The name of the record.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * The version of the record.
+   *
+   * @generated from field: string version = 2;
+   */
+  version: string;
+
+  /**
+   * The CID of the record.
+   *
+   * @generated from field: string cid = 3;
+   */
+  cid: string;
+};
+
+/**
+ * Describes the message agntcy.dir.naming.v1.RecordRef.
+ * Use `create(RecordRefSchema)` to create a new message.
+ */
+export declare const RecordRefSchema: GenMessage<RecordRef>;
 
 /**
  * NamingService provides methods for name resolution and verification.
@@ -135,12 +169,13 @@ export declare const NamingService: GenService<{
     output: typeof GetVerificationInfoResponseSchema;
   },
   /**
-   * Resolve resolves a record reference (name with optional version) to a single CID.
+   * Resolve resolves a record reference (name with optional version) to CIDs.
    * Supports Docker-style references:
-   *   - "name" -> resolves to the latest version (by semver)
-   *   - "name:version" -> resolves to the specific version
-   * Returns an error if no matching record is found or if multiple records
-   * match the same name+version (ambiguous).
+   *   - "name" -> returns all versions (sorted by semver, latest first)
+   *   - "name:version" -> returns the specific version
+   *   - "name@cid" -> hash-verified lookup (latest version)
+   *   - "name:version@cid" -> hash-verified lookup (specific version)
+   * Returns an error if no matching record is found.
    *
    * @generated from rpc agntcy.dir.naming.v1.NamingService.Resolve
    */

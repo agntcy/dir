@@ -221,7 +221,13 @@ func resolveToCID(cmd *cobra.Command, c *client.Client, input string) (string, e
 		return "", fmt.Errorf("failed to resolve record: %w", err)
 	}
 
-	resolvedCID := resp.GetCid()
+	records := resp.GetRecords()
+	if len(records) == 0 {
+		return "", fmt.Errorf("no records found for %q", input)
+	}
+
+	// Use the first record (latest version, since they're sorted by semver descending)
+	resolvedCID := records[0].GetCid()
 
 	// If a digest was provided, verify it matches the resolved CID
 	if ref.HasDigest() && ref.Digest != resolvedCID {

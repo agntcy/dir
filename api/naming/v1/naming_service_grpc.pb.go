@@ -36,13 +36,14 @@ const (
 type NamingServiceClient interface {
 	// GetVerificationInfo retrieves the verification info for a record.
 	GetVerificationInfo(ctx context.Context, in *GetVerificationInfoRequest, opts ...grpc.CallOption) (*GetVerificationInfoResponse, error)
-	// Resolve resolves a record reference (name with optional version) to a single CID.
+	// Resolve resolves a record reference (name with optional version) to CIDs.
 	// Supports Docker-style references:
-	//   - "name" -> resolves to the latest version (by semver)
-	//   - "name:version" -> resolves to the specific version
+	//   - "name" -> returns all versions (sorted by semver, latest first)
+	//   - "name:version" -> returns the specific version
+	//   - "name@cid" -> hash-verified lookup (latest version)
+	//   - "name:version@cid" -> hash-verified lookup (specific version)
 	//
-	// Returns an error if no matching record is found or if multiple records
-	// match the same name+version (ambiguous).
+	// Returns an error if no matching record is found.
 	Resolve(ctx context.Context, in *ResolveRequest, opts ...grpc.CallOption) (*ResolveResponse, error)
 }
 
@@ -84,13 +85,14 @@ func (c *namingServiceClient) Resolve(ctx context.Context, in *ResolveRequest, o
 type NamingServiceServer interface {
 	// GetVerificationInfo retrieves the verification info for a record.
 	GetVerificationInfo(context.Context, *GetVerificationInfoRequest) (*GetVerificationInfoResponse, error)
-	// Resolve resolves a record reference (name with optional version) to a single CID.
+	// Resolve resolves a record reference (name with optional version) to CIDs.
 	// Supports Docker-style references:
-	//   - "name" -> resolves to the latest version (by semver)
-	//   - "name:version" -> resolves to the specific version
+	//   - "name" -> returns all versions (sorted by semver, latest first)
+	//   - "name:version" -> returns the specific version
+	//   - "name@cid" -> hash-verified lookup (latest version)
+	//   - "name:version@cid" -> hash-verified lookup (specific version)
 	//
-	// Returns an error if no matching record is found or if multiple records
-	// match the same name+version (ambiguous).
+	// Returns an error if no matching record is found.
 	Resolve(context.Context, *ResolveRequest) (*ResolveResponse, error)
 }
 
