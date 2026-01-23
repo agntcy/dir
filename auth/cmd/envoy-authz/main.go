@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
@@ -20,6 +21,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -53,15 +55,27 @@ func main() {
 		"default", config.DefaultProvider,
 	)
 
-	// Create authorization server
-	authzConfig := &authzserver.Config{
-		DefaultProvider:      config.DefaultProvider,
-		AllowedOrgConstructs: parseList(config.AllowedOrgConstructs),
-		UserAllowList:        parseList(config.UserAllowList),
-		UserDenyList:         parseList(config.UserDenyList),
+	// Load RBAC configuration from file
+	rbacConfigPath := getEnv("RBAC_CONFIG_PATH", "/etc/envoy-authz/rbac-config.yaml")
+
+	authzConfig, err := loadRBACConfig(rbacConfigPath, config.DefaultProvider)
+	if err != nil {
+		logger.Error("failed to load RBAC configuration", "path", rbacConfigPath, "error", err)
+		os.Exit(1)
 	}
 
-	authzServer := authzserver.NewAuthorizationServer(providers, authzConfig, logger)
+	logger.Info("loaded RBAC configuration",
+		"roles", len(authzConfig.Roles),
+		"defaultRole", authzConfig.DefaultRole,
+		"denyListSize", len(authzConfig.UserDenyList),
+	)
+
+	// Create authorization server
+	authzServer, err := authzserver.NewAuthorizationServer(providers, authzConfig, logger)
+	if err != nil {
+		logger.Error("failed to create authorization server", "error", err)
+		os.Exit(1)
+	}
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
@@ -107,12 +121,10 @@ func main() {
 
 // Config holds service configuration.
 type Config struct {
-	ListenAddress        string
-	DefaultProvider      string
-	AllowedOrgConstructs string
-	UserAllowList        string
-	UserDenyList         string
-	CacheTTL             time.Duration
+	ListenAddress   string
+	DefaultProvider string
+	UserDenyList    string // TODO: Move to RBAC ConfigMap
+	CacheTTL        time.Duration
 
 	// Provider-specific configs
 	GitHub struct {
@@ -127,12 +139,10 @@ type Config struct {
 // loadConfig loads configuration from environment variables.
 func loadConfig() *Config {
 	config := &Config{
-		ListenAddress:        getEnv("LISTEN_ADDRESS", ":9002"),
-		DefaultProvider:      getEnv("DEFAULT_PROVIDER", authprovider.ProviderGithub),
-		AllowedOrgConstructs: getEnv("ALLOWED_ORG_CONSTRUCTS", ""),
-		UserAllowList:        getEnv("USER_ALLOW_LIST", ""),
-		UserDenyList:         getEnv("USER_DENY_LIST", ""),
-		CacheTTL:             parseDuration(getEnv("CACHE_TTL", "5m"), defaultCacheTTL),
+		ListenAddress:   getEnv("LISTEN_ADDRESS", ":9002"),
+		DefaultProvider: getEnv("DEFAULT_PROVIDER", authprovider.ProviderGithub),
+		UserDenyList:    getEnv("USER_DENY_LIST", ""), // TODO: Move to RBAC ConfigMap
+		CacheTTL:        parseDuration(getEnv("CACHE_TTL", "5m"), defaultCacheTTL),
 	}
 
 	// GitHub provider config
@@ -199,23 +209,6 @@ func parseDuration(s string, defaultValue time.Duration) time.Duration {
 	return defaultValue
 }
 
-func parseList(s string) []string {
-	if s == "" {
-		return []string{}
-	}
-
-	parts := strings.Split(s, ",")
-
-	result := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if trimmed := strings.TrimSpace(part); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-
-	return result
-}
-
 func getProviderNames(providers map[string]authprovider.Provider) []string {
 	names := make([]string, 0, len(providers))
 	for name := range providers {
@@ -223,4 +216,40 @@ func getProviderNames(providers map[string]authprovider.Provider) []string {
 	}
 
 	return names
+}
+
+// loadRBACConfig loads RBAC configuration from a YAML file.
+func loadRBACConfig(path, defaultProvider string) (*authzserver.Config, error) {
+	// Read YAML file
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read RBAC config file: %w", err)
+	}
+
+	// Define a struct to parse the YAML
+	var yamlConfig struct {
+		DefaultRole  string                      `yaml:"defaultRole"`
+		UserDenyList []string                    `yaml:"userDenyList"`
+		Roles        map[string]authzserver.Role `yaml:"roles"`
+	}
+
+	// Parse YAML
+	if err := yaml.Unmarshal(data, &yamlConfig); err != nil {
+		return nil, fmt.Errorf("failed to parse RBAC config: %w", err)
+	}
+
+	// Build authzserver.Config
+	config := &authzserver.Config{
+		DefaultProvider: defaultProvider,
+		Roles:           yamlConfig.Roles,
+		DefaultRole:     yamlConfig.DefaultRole,
+		UserDenyList:    yamlConfig.UserDenyList,
+	}
+
+	// Validate configuration
+	if err := config.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid RBAC config: %w", err)
+	}
+
+	return config, nil
 }

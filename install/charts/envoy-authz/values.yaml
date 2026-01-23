@@ -78,18 +78,97 @@ authServer:
     logLevel: info
     defaultProvider: github
   
-  # Authorization rules
+  # RBAC (Role-Based Access Control) Configuration
   authorization:
-    # Allowed GitHub organizations
-    # Empty list = allow all authenticated users
-    allowedOrgConstructs: []
+    # Default role assigned to authenticated users with no explicit role assignment
+    # Set to empty string ("") to deny by default
+    # Example: "reader"
+    defaultRole: ""
     
-    # Explicitly allowed users (format: "github:username")
-    # Example: ["github:tkircsi"]
-    userAllowList: []
-    
-    # Explicitly denied users (format: "github:username")
+    # User deny list (highest priority - blocks access even if user has a role)
+    # Format: "github:username" or "username"
+    # Example: ["github:blocked-user", "banned-account"]
     userDenyList: []
+    
+    # Role definitions
+    # Each role specifies:
+    #   - allowedMethods: List of API methods or "*" for wildcard
+    #   - users: List of GitHub usernames assigned to this role
+    #   - orgs: List of GitHub organizations assigned to this role
+    #
+    # Available API Methods (use full gRPC path format: /package.Service/Method):
+    #
+    # StoreService (Content Storage):
+    #   - /agntcy.dir.store.v1.StoreService/Push              # Write objects
+    #   - /agntcy.dir.store.v1.StoreService/Pull              # Read objects
+    #   - /agntcy.dir.store.v1.StoreService/Lookup            # Get object metadata
+    #   - /agntcy.dir.store.v1.StoreService/Delete            # Delete objects
+    #   - /agntcy.dir.store.v1.StoreService/PushReferrer      # Write referrers
+    #   - /agntcy.dir.store.v1.StoreService/PullReferrer      # Read referrers
+    #
+    # SyncService (Node Synchronization):
+    #   - /agntcy.dir.store.v1.SyncService/CreateSync                   # Create sync operation
+    #   - /agntcy.dir.store.v1.SyncService/ListSyncs                    # List all syncs
+    #   - /agntcy.dir.store.v1.SyncService/GetSync                      # Get sync status
+    #   - /agntcy.dir.store.v1.SyncService/DeleteSync                   # Delete sync
+    #   - /agntcy.dir.store.v1.SyncService/RequestRegistryCredentials   # Request credentials
+    #
+    # RoutingService (DHT Operations):
+    #   - /agntcy.dir.routing.v1.RoutingService/Publish        # Publish to DHT
+    #   - /agntcy.dir.routing.v1.RoutingService/Unpublish      # Remove from DHT
+    #   - /agntcy.dir.routing.v1.RoutingService/Search         # Search DHT
+    #   - /agntcy.dir.routing.v1.RoutingService/List           # List DHT records
+    #
+    # PublicationService (Publication Management):
+    #   - /agntcy.dir.routing.v1.PublicationService/CreatePublication  # Create publication
+    #   - /agntcy.dir.routing.v1.PublicationService/ListPublications   # List publications
+    #   - /agntcy.dir.routing.v1.PublicationService/GetPublication     # Get publication details
+    #
+    # SearchService (Record Search):
+    #   - /agntcy.dir.search.v1.SearchService/SearchCIDs       # Search by CID
+    #   - /agntcy.dir.search.v1.SearchService/SearchRecords    # Search records
+    #
+    # SignService (Cryptographic Signing):
+    #   - /agntcy.dir.sign.v1.SignService/Sign                 # Sign data
+    #   - /agntcy.dir.sign.v1.SignService/Verify               # Verify signature
+    #
+    # NamingService (Name Resolution):
+    #   - /agntcy.dir.naming.v1.NamingService/GetVerificationInfo  # Get verification info
+    #
+    # EventService (Event Streaming):
+    #   - /agntcy.dir.events.v1.EventService/Listen            # Listen to events
+    #
+    roles:
+      # Example: Admin role with full access
+      # admin:
+      #   allowedMethods:
+      #     - "*"  # Wildcard = all methods
+      #   users:
+      #     - "github:alice"
+      #     - "bob"  # "github:" prefix is optional
+      #   orgs:
+      #     - "agntcy"
+      
+      # Example: Reader role with limited access
+      # reader:
+      #   allowedMethods:
+      #     - "/agntcy.dir.store.v1.StoreService/Pull"
+      #     - "/agntcy.dir.store.v1.StoreService/Lookup"
+      #     - "/agntcy.dir.store.v1.StoreService/PullReferrer"
+      #   users:
+      #     - "github:charlie"
+      #   orgs:
+      #     - "contributors"
+      
+      # Example: Writer role with push/pull access
+      # writer:
+      #   allowedMethods:
+      #     - "/agntcy.dir.store.v1.StoreService/Push"
+      #     - "/agntcy.dir.store.v1.StoreService/Pull"
+      #     - "/agntcy.dir.store.v1.StoreService/Lookup"
+      #   users: []
+      #   orgs:
+      #     - "developers"
   
   # GitHub provider configuration
   github:
