@@ -60,16 +60,16 @@ type Role struct {
 	// AllowedMethods is a list of gRPC methods this role can access.
 	// Use "*" for wildcard (all methods).
 	// Format: "/package.Service/Method" (e.g., "/store.StoreService/Push")
-	AllowedMethods []string
+	AllowedMethods []string `json:"allowedMethods" mapstructure:"allowedMethods" yaml:"allowedMethods"`
 
 	// Orgs is a list of organization names assigned to this role.
 	// Users in these orgs will have this role's permissions.
-	Orgs []string
+	Orgs []string `json:"orgs" mapstructure:"orgs" yaml:"orgs"`
 
 	// Users is a list of specific users assigned to this role.
 	// Format: "provider:username" (e.g., "github:alice")
 	// User assignments take precedence over org assignments.
-	Users []string
+	Users []string `json:"users" mapstructure:"users" yaml:"users"`
 }
 
 // NewAuthorizationServer creates a new authorization server with multiple providers.
