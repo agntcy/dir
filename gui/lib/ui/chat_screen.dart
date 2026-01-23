@@ -43,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
   static const String _welcomeMessage = 'Find published AI agents records by describing what you need (by author, name, skills, versions, domain). Or type `help` for commands.';
 
   // Config
+  bool _isConfigured = false;
   String _providerType = 'gemini'; // gemini, azure, openai
   String? _apiKey;
   String? _azureEndpoint;
@@ -63,6 +64,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (widget.aiService != null) {
       _aiService = widget.aiService;
+      _isConfigured = true;
     } else {
       _initConfig();
     }
@@ -95,6 +97,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (_apiKey != null && _apiKey!.isNotEmpty) {
         print('Configured $_providerType from Settings');
+        setState(() => _isConfigured = true);
         _initServices();
         return;
       }
@@ -134,6 +137,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _providerType = 'openai';
         _apiKey = openaiKey;
         _openaiEndpoint = openaiEndpoint;
+        setState(() => _isConfigured = true);
         _initServices();
         return;
     }
@@ -149,6 +153,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _apiKey = azureKey;
         _azureEndpoint = azureEp;
         _azureDeployment = azureDep;
+        setState(() => _isConfigured = true);
         _initServices();
         return;
     }
@@ -159,6 +164,7 @@ class _ChatScreenState extends State<ChatScreen> {
          print('Auto-configuring Gemini from Environment');
          _providerType = 'gemini';
          _apiKey = geminiKey;
+         setState(() => _isConfigured = true);
          _initServices();
          return;
     }
@@ -737,6 +743,28 @@ Type your query or click a suggestion to get started!''',
       body: SelectionArea(
         child: Column(
           children: [
+            if (!_isConfigured)
+              Container(
+                width: double.infinity,
+                color: Theme.of(context).colorScheme.errorContainer,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                       child: Text(
+                         'AI Provider not configured. Please check settings.',
+                         style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontWeight: FontWeight.bold),
+                       ),
+                    ),
+                    TextButton(
+                      onPressed: _openSettings,
+                      child: const Text('Settings'),
+                    ),
+                  ],
+                ),
+              ),
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,

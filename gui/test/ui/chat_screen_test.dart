@@ -216,5 +216,18 @@ void main() {
       expect(find.textContaining('"some": "data"'), findsOneWidget);
       expect(find.textContaining('123'), findsOneWidget);
     });
+
+    testWidgets('ChatScreen shows warning when unconfigured', (WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: DefaultAssetBundle(
+          bundle: MockAssetBundle(),
+          child: const ChatScreen(aiService: null),
+        ),
+      ));
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('AI Provider not configured. Please check settings.'), findsOneWidget);
+    });
   });
 }
