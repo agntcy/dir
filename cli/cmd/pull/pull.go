@@ -14,7 +14,6 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/cli/util/reference"
-	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
@@ -92,7 +91,7 @@ func runCommand(cmd *cobra.Command, input string) error {
 	}
 
 	// Resolve the input to a CID
-	recordCID, err := resolveToCID(cmd, c, input)
+	recordCID, err := reference.ResolveToCID(cmd.Context(), c, input)
 	if err != nil {
 		return err
 	}
@@ -197,43 +196,4 @@ func runCommand(cmd *cobra.Command, input string) error {
 
 	// Output the structured data
 	return presenter.PrintMessage(cmd, "record", "Record data with keys and signatures", structuredData)
-}
-
-// resolveToCID resolves the input to a CID.
-// Supports formats:
-//   - CID directly (e.g., "bafyreib...")
-//   - name (e.g., "cisco.com/agent") -> latest semver version
-//   - name:version (e.g., "cisco.com/agent:v1.0.0") -> specific version
-//   - name@digest (e.g., "cisco.com/agent@bafyreib...") -> hash-verified pull
-//   - name:version@digest -> hash-verified pull of specific version
-func resolveToCID(cmd *cobra.Command, c *client.Client, input string) (string, error) {
-	// Parse the input as a reference
-	ref := reference.Parse(input)
-
-	// If it's a raw CID (no name), use it directly
-	if ref.IsCID() {
-		return ref.Digest, nil
-	}
-
-	// Resolve the name via the server
-	resp, err := c.Resolve(cmd.Context(), ref.Name, ref.Version)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve record: %w", err)
-	}
-
-	records := resp.GetRecords()
-	if len(records) == 0 {
-		return "", fmt.Errorf("no records found for %q", input)
-	}
-
-	// Use the first record (latest version, since they're sorted by semver descending)
-	resolvedCID := records[0].GetCid()
-
-	// If a digest was provided, verify it matches the resolved CID
-	if ref.HasDigest() && ref.Digest != resolvedCID {
-		return "", fmt.Errorf("hash verification failed: resolved CID %q does not match expected digest %q",
-			resolvedCID, ref.Digest)
-	}
-
-	return resolvedCID, nil
 }

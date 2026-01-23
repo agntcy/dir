@@ -214,4 +214,70 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			_ = cli.Pull(recordName + ":v4.0.0@" + cidV5).ShouldFail()
 		})
 	})
+
+	// Test info command with name resolution
+	ginkgo.Context("Info by name", ginkgo.Ordered, func() {
+		var (
+			tempDir   string
+			recordCID string
+		)
+
+		const recordName = "directory.agntcy.org/example/research-assistant-v4"
+
+		ginkgo.BeforeAll(func() {
+			var err error
+			tempDir, err = os.MkdirTemp("", "info-resolve-test")
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Write and push record
+			recordPath := filepath.Join(tempDir, "record.json")
+			err = os.WriteFile(recordPath, testdata.ExpectedRecordV080V4JSON, 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			recordCID = cli.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
+		})
+
+		ginkgo.AfterAll(func() {
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		ginkgo.It("should get info by CID", func() {
+			output := cli.Info(recordCID).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+		})
+
+		ginkgo.It("should get info by name", func() {
+			output := cli.Info(recordName).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+		})
+
+		ginkgo.It("should get info by name with version", func() {
+			output := cli.Info(recordName+":v4.0.0").
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+		})
+
+		ginkgo.It("should get info with hash verification", func() {
+			output := cli.Info(recordName+"@"+recordCID).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
+		})
+
+		ginkgo.It("should fail info for non-existent name", func() {
+			_ = cli.Info("nonexistent.example.com/agent").ShouldFail()
+		})
+	})
 })

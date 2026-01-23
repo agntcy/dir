@@ -5,8 +5,11 @@
 package reference
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/client"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/mod/semver"
 )
@@ -91,4 +94,43 @@ func IsCID(input string) bool {
 	_, err := cid.Decode(input)
 
 	return err == nil
+}
+
+// ResolveToCID resolves the input to a CID using the provided client.
+// Supports formats:
+//   - CID directly (e.g., "bafyreib...")
+//   - name (e.g., "cisco.com/agent") -> latest semver version
+//   - name:version (e.g., "cisco.com/agent:v1.0.0") -> specific version
+//   - name@digest (e.g., "cisco.com/agent@bafyreib...") -> hash-verified lookup
+//   - name:version@digest -> hash-verified lookup of specific version
+func ResolveToCID(ctx context.Context, c *client.Client, input string) (string, error) {
+	// Parse the input as a reference
+	ref := Parse(input)
+
+	// If it's a raw CID (no name), use it directly
+	if ref.IsCID() {
+		return ref.Digest, nil
+	}
+
+	// Resolve the name via the server
+	resp, err := c.Resolve(ctx, ref.Name, ref.Version)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve record: %w", err)
+	}
+
+	records := resp.GetRecords()
+	if len(records) == 0 {
+		return "", fmt.Errorf("no records found for %q", input)
+	}
+
+	// Use the first record (latest version, since they're sorted by semver descending)
+	resolvedCID := records[0].GetCid()
+
+	// If a digest was provided, verify it matches the resolved CID
+	if ref.HasDigest() && ref.Digest != resolvedCID {
+		return "", fmt.Errorf("hash verification failed: resolved CID %q does not match expected digest %q",
+			resolvedCID, ref.Digest)
+	}
+
+	return resolvedCID, nil
 }
