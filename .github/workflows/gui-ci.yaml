@@ -63,6 +63,17 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.6'
+
+      - name: Build MCP Server
+        run: |
+          mkdir -p assets/bin
+          cd ../mcp
+          go build -o ../gui/assets/bin/mcp-server main.go
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -79,6 +90,9 @@ jobs:
 
       - name: Build macOS app
         run: flutter build macos --release
+
+      - name: Bundle MCP Server
+        run: cp assets/bin/mcp-server "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/"
 
       - name: Create DMG
         run: |
@@ -109,6 +123,18 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.6'
+
+      - name: Build MCP Server
+        shell: bash
+        run: |
+          mkdir -p assets/bin
+          cd ../mcp
+          go build -o ../gui/assets/bin/mcp-server.exe main.go
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -120,6 +146,9 @@ jobs:
 
       - name: Build Windows app
         run: flutter build windows --release
+
+      - name: Bundle MCP Server
+        run: Copy-Item -Path assets\bin\mcp-server.exe -Destination build\windows\x64\runner\Release\
 
       - name: Archive Windows build
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath agntcy-directory-windows.zip
