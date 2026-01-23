@@ -1,7 +1,7 @@
 al.essio.dev/pkg/shellescape v1.6.0 h1:NxFcEqzFSEVCGN2yq7Huv/9hyCEGVa/TncnOOBBeXHA=
 al.essio.dev/pkg/shellescape v1.6.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260119115944-846878e4ef08.1 h1:HiuctoLelL1KG7Bwaw0Y0owdFI5XnjtAyDH2WWBPZY4=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260119115944-846878e4ef08.1/go.mod h1:RA6Inven3rnt6tAMhFaQ7s2DfRWoyOyIQ9/WUX+29TQ=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1 h1:r3w0jzp/UVgJxE0TvqEeMaf9iGdto5/m0nzYx0iTKOc=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1/go.mod h1:RA6Inven3rnt6tAMhFaQ7s2DfRWoyOyIQ9/WUX+29TQ=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1 h1:EeGnBiwWBhl7z7s6nKVtH+3HdHAWvV1JzqEcb365TA0=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
 cloud.google.com/go v0.123.0 h1:2NAUJwPR47q+E35uaJeYoNhuNEM9kM8SjgRgdeOJUSE=

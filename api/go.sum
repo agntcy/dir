@@ -1,5 +1,5 @@
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260115113053-9b110d5996b7.1 h1:B3NDaMIJkcS6DACQ2D7OJmG1soeE0CWJoXvnF/HyG5g=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260115113053-9b110d5996b7.1/go.mod h1:RA6Inven3rnt6tAMhFaQ7s2DfRWoyOyIQ9/WUX+29TQ=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1 h1:r3w0jzp/UVgJxE0TvqEeMaf9iGdto5/m0nzYx0iTKOc=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1/go.mod h1:RA6Inven3rnt6tAMhFaQ7s2DfRWoyOyIQ9/WUX+29TQ=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1 h1:EeGnBiwWBhl7z7s6nKVtH+3HdHAWvV1JzqEcb365TA0=
 buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
 github.com/agntcy/oasf-sdk/pkg v0.0.16 h1:GKjUwoDH8qsBnRqCYJMgoaWXhsTYi0QX9z6L9BcN+qM=

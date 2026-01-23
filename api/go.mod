@@ -3,7 +3,7 @@ module github.com/agntcy/dir/api
 go 1.25.6
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260115113053-9b110d5996b7.1
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1
 	github.com/agntcy/oasf-sdk/pkg v0.0.16
 	github.com/multiformats/go-multihash v0.2.3
