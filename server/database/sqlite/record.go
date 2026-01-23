@@ -412,6 +412,19 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		query = query.Where("modules.module_id IN ?", cfg.ModuleIDs)
 	}
 
+	// Handle verified filter.
+	if cfg.Verified != nil {
+		if *cfg.Verified {
+			// Filter for verified records only
+			query = query.Joins("JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
+				Where("name_verifications.status = ?", VerificationStatusVerified)
+		} else {
+			// Filter for non-verified records (either no verification or failed)
+			query = query.Joins("LEFT JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
+				Where("name_verifications.status IS NULL OR name_verifications.status != ?", VerificationStatusVerified)
+		}
+	}
+
 	return query
 }
 

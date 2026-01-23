@@ -42,6 +42,10 @@ Examples:
    dirctl search --version ">=1.0.0" --version "<2.0.0"
    dirctl search --created-at ">=2024-01-01"
 
+5. Search for verified records only:
+   dirctl search --verified
+   dirctl search --name "cisco.com/*" --verified
+
 Supported wildcards:
   * - matches zero or more characters
   ? - matches exactly one character
