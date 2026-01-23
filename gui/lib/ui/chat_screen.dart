@@ -28,7 +28,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<Content> _history = [];
   final List<Map<String, dynamic>> _messages = []; // For UI display
-  
+
   // Track pulled records by CID for associating with search results
   final Map<String, Map<String, dynamic>> _pulledRecords = {};
   String? _pendingPullCid; // CID currently being pulled
@@ -36,7 +36,7 @@ class _ChatScreenState extends State<ChatScreen> {
   AiService? _aiService;
   McpClient? _mcpClient;
   bool _isLoading = false;
-  
+
   // Welcome message
   static const String _welcomeMessage = 'Find published AI agents records by describing what you need (by author, name, skills, versions, domain). Or type `help` for commands.';
 
@@ -53,7 +53,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     // Add welcome message
     _messages.add({'role': 'welcome', 'text': _welcomeMessage});
-    
+
     if (widget.aiService != null) {
       _aiService = widget.aiService;
     } else {
@@ -193,14 +193,36 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _initServices() async {
-    // Get path from environment
+    // Get path from environment or search in bundled/dev locations
     String? mcpPath = Platform.environment['MCP_SERVER_PATH'];
     if (mcpPath == null || mcpPath.isEmpty) {
-      debugPrint('MCP_SERVER_PATH is not set');
+      // 1. Check bundled resource (macOS mostly)
+      // Platform.resolvedExecutable points to .../Contents/MacOS/AGNTCY Directory
+      final exeDir = File(Platform.resolvedExecutable).parent;
+      final macResourcePath = '${exeDir.parent.path}/Resources/mcp-server';
+
+      // 2. Check same directory (Linux/Windows bundled)
+      final localPath = '${exeDir.path}/mcp-server';
+
+      // 3. Check development path (relative to gui root)
+      final devPath = '${Directory.current.path}/../bin/mcp-server';
+
+      if (await File(macResourcePath).exists()) {
+        mcpPath = macResourcePath;
+      } else if (await File(localPath).exists()) {
+        mcpPath = localPath;
+      } else if (await File(devPath).exists()) {
+        // Normalize path for clean printing
+        mcpPath = File(devPath).absolute.path;
+      }
+    }
+
+    if (mcpPath == null || mcpPath.isEmpty) {
+      debugPrint('MCP_SERVER_PATH is not set and binary not found in default locations');
       setState(() {
         _messages.add({
           'role': 'system',
-          'content': 'Error: MCP_SERVER_PATH environment variable is missing.'
+          'content': 'Error: MCP_SERVER_PATH not set and mcp-server binary not found.'
         });
       });
       return;
@@ -282,9 +304,9 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic> _extractSearchCriteria(String userMessage) {
     // Simple heuristic extraction - show the user's query
     final criteria = <String, dynamic>{};
-    
+
     final lowerMsg = userMessage.toLowerCase();
-    
+
     // Detect keywords
     if (lowerMsg.contains('name')) {
       criteria['filter'] = 'name';
@@ -298,28 +320,28 @@ class _ChatScreenState extends State<ChatScreen> {
     if (lowerMsg.contains('all')) {
       criteria['scope'] = 'all agents';
     }
-    
+
     // Always show the query
-    criteria['query'] = userMessage.length > 60 
-        ? '${userMessage.substring(0, 60)}...' 
+    criteria['query'] = userMessage.length > 60
+        ? '${userMessage.substring(0, 60)}...'
         : userMessage;
-    
+
     return criteria;
   }
 
   /// Auto-pull all records to populate agent info in search results
   Future<void> _autoPullRecords(List<String> cids) async {
     if (_aiService == null) return;
-    
+
     print('DEBUG: Auto-pulling ${cids.length} records...');
-    
+
     for (final cid in cids) {
       // Skip if already pulled
       if (_pulledRecords.containsKey(cid)) {
         print('DEBUG: Skipping $cid - already pulled');
         continue;
       }
-      
+
       try {
         print('DEBUG: Pulling record $cid...');
         // Call the MCP tool directly to pull the record
@@ -327,18 +349,18 @@ class _ChatScreenState extends State<ChatScreen> {
           'agntcy_dir_pull_record',
           {'cid': cid},
         );
-        
+
         if (result.isError) {
           print('ERROR: Pull failed for $cid: ${result.content}');
           continue;
         }
-        
+
         print('DEBUG: Pull result type: ${result.content.runtimeType}');
-        
+
         // Parse the result - MCP returns [{type: 'text', text: 'json...'}]
         dynamic parsed;
         final content = result.content;
-        
+
         if (content is List && content.isNotEmpty) {
           for (final item in content) {
             if (item is Map && item['type'] == 'text' && item['text'] != null) {
@@ -360,17 +382,17 @@ class _ChatScreenState extends State<ChatScreen> {
         } else if (content is Map) {
           parsed = content;
         }
-        
+
         if (parsed == null) {
           print('DEBUG: Could not parse content for $cid');
           continue;
         }
-        
+
         print('DEBUG: Parsed data keys: ${parsed is Map ? (parsed as Map).keys.toList() : 'not a map'}');
-        
+
         if (parsed is Map) {
           final recordData = Map<String, dynamic>.from(parsed);
-          
+
           // Check for nested data fields - handle both 'data' and 'record_data' keys
           Map<String, dynamic> agentData;
           if (recordData.containsKey('record_data')) {
@@ -396,12 +418,12 @@ class _ChatScreenState extends State<ChatScreen> {
           } else {
             agentData = recordData;
           }
-          
+
           agentData['cid'] = cid;
           _pulledRecords[cid] = agentData;
-          
+
           print('DEBUG: Stored record for $cid with name: ${agentData['name']}');
-          
+
           // Update UI to show loaded data
           if (mounted) {
             setState(() {});
@@ -435,20 +457,20 @@ class _ChatScreenState extends State<ChatScreen> {
           setState(() {
             if (data is Map) {
               final mapData = Map<String, dynamic>.from(data);
-              
+
               // Check if this is a search result
               if (name == 'agntcy_dir_search_local' && mapData.containsKey('count')) {
                 // Remove any previous search_results from this conversation turn
                 // to avoid duplicate search widgets
                 _messages.removeWhere((m) => m['role'] == 'search_results');
-                
+
                 _messages.add({
                   'role': 'search_results',
                   'data': mapData,
                   'source': name,
                   'searchCriteria': _extractSearchCriteria(text),
                 });
-                
+
                 // Auto-pull all records to get full agent data
                 // Use Future.microtask to schedule this outside of setState
                 final cids = (mapData['record_cids'] as List?)?.cast<String>() ?? [];
@@ -458,7 +480,7 @@ class _ChatScreenState extends State<ChatScreen> {
               else if (name == 'agntcy_dir_pull_record' && mapData.containsKey('data')) {
                 // Try to get CID from pending, or extract from user message
                 String cid = _pendingPullCid ?? '';
-                
+
                 // If no pending CID, try to extract from the last user message
                 if (cid.isEmpty) {
                   for (int i = _messages.length - 1; i >= 0; i--) {
@@ -475,15 +497,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
                   }
                 }
-                
+
                 final recordWithCid = {'cid': cid, ...mapData};
-                
+
                 // Store in pulled records map
                 if (cid.isNotEmpty) {
                   _pulledRecords[cid] = recordWithCid;
                   _pendingPullCid = null;
                 }
-                
+
                 // Show expandable detail card (expanded by default)
                 _messages.add({
                   'role': 'agent_record',
@@ -556,7 +578,7 @@ class _ChatScreenState extends State<ChatScreen> {
       },
     );
   }
-  
+
   void _showHelpCommands() {
     setState(() {
       _messages.add({
@@ -594,7 +616,7 @@ Type your query or click a suggestion to get started!''',
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -602,7 +624,7 @@ Type your query or click a suggestion to get started!''',
           children: [
             // Blue logo for light mode, orange logo for dark mode
             SvgPicture.asset(
-              isDark 
+              isDark
                   ? 'assets/images/logo-dark.svg'   // Orange on dark
                   : 'assets/images/logo-light.svg', // Blue on light
               height: 28,
@@ -727,7 +749,7 @@ Type your query or click a suggestion to get started!''',
                   if (role == 'search_results') {
                     final data = msg['data'] as Map<String, dynamic>;
                     final cids = (data['record_cids'] as List?)?.cast<String>() ?? [];
-                    
+
                     // Collect loaded records from the _pulledRecords map
                     final loadedRecords = <Map<String, dynamic>>[];
                     for (final cid in cids) {
@@ -735,10 +757,10 @@ Type your query or click a suggestion to get started!''',
                         loadedRecords.add(_pulledRecords[cid]!);
                       }
                     }
-                    
+
                     // Check if still loading (CIDs exist but not all records loaded)
                     final isLoading = cids.isNotEmpty && loadedRecords.length < cids.length;
-                    
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: SearchResultsWidget(
@@ -764,7 +786,7 @@ Type your query or click a suggestion to get started!''',
                   if (role == 'agent_record') {
                     final data = msg['data'] as Map<String, dynamic>;
                     final cid = data['cid']?.toString() ?? '';
-                    
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: AgentDetailCard(
@@ -845,11 +867,11 @@ Type your query or click a suggestion to get started!''',
                     final jsonBlockMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)\s*```').firstMatch(text);
                     final trimmedText = text.trim();
                     final isRawJson = trimmedText.startsWith('{') && trimmedText.endsWith('}');
-                    
+
                     // Try to extract JSON
                     String textBeforeJson = '';
                     Map<String, dynamic>? jsonData;
-                    
+
                     if (jsonBlockMatch != null) {
                       textBeforeJson = text.substring(0, jsonBlockMatch.start).trim();
                       try {
@@ -860,7 +882,7 @@ Type your query or click a suggestion to get started!''',
                         jsonData = jsonDecode(trimmedText);
                       } catch (_) {}
                     }
-                    
+
                     return Align(
                       alignment: Alignment.centerLeft,
                       child: FractionallySizedBox(
@@ -893,7 +915,7 @@ Type your query or click a suggestion to get started!''',
                                     // Show text before JSON if any
                                     if (textBeforeJson.isNotEmpty) ...[
                                       MarkdownBody(
-                                        data: textBeforeJson, 
+                                        data: textBeforeJson,
                                         selectable: true,
                                         styleSheet: MarkdownStyleSheet(
                                           h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
@@ -909,7 +931,7 @@ Type your query or click a suggestion to get started!''',
                                       JsonCodeBlock(data: jsonData, title: 'Record Data', maxHeight: 250)
                                     else if (jsonBlockMatch == null)
                                       MarkdownBody(
-                                        data: text, 
+                                        data: text,
                                         selectable: true,
                                         styleSheet: MarkdownStyleSheet(
                                           h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
