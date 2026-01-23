@@ -78,18 +78,97 @@ authServer:
     logLevel: info
     defaultProvider: github
   
-  # Authorization rules
+  # RBAC (Role-Based Access Control) Configuration
   authorization:
-    # Allowed GitHub organizations
-    # Empty list = allow all authenticated users
-    allowedOrgConstructs: []
+    # Default role assigned to authenticated users with no explicit role assignment
+    # Set to empty string ("") to deny by default
+    # Example: "reader"
+    defaultRole: ""
     
-    # Explicitly allowed users (format: "github:username")
-    # Example: ["github:tkircsi"]
-    userAllowList: []
-    
-    # Explicitly denied users (format: "github:username")
+    # User deny list (highest priority - blocks access even if user has a role)
+    # Format: "github:username" or "username"
+    # Example: ["github:blocked-user", "banned-account"]
     userDenyList: []
+    
+    # Role definitions
+    # Each role specifies:
+    #   - allowedMethods: List of API methods or "*" for wildcard
+    #   - users: List of GitHub usernames assigned to this role
+    #   - orgs: List of GitHub organizations assigned to this role
+    #
+    # Available API Methods (use full gRPC path format):
+    #
+    # StoreService (Content Storage):
+    #   - /store.StoreService/Push              # Write objects
+    #   - /store.StoreService/Pull              # Read objects
+    #   - /store.StoreService/Lookup            # Get object metadata
+    #   - /store.StoreService/Delete            # Delete objects
+    #   - /store.StoreService/PushReferrer      # Write referrers
+    #   - /store.StoreService/PullReferrer      # Read referrers
+    #
+    # SyncService (Node Synchronization):
+    #   - /store.SyncService/CreateSync                   # Create sync operation
+    #   - /store.SyncService/ListSyncs                    # List all syncs
+    #   - /store.SyncService/GetSync                      # Get sync status
+    #   - /store.SyncService/DeleteSync                   # Delete sync
+    #   - /store.SyncService/RequestRegistryCredentials   # Request credentials
+    #
+    # RoutingService (DHT Operations):
+    #   - /routing.RoutingService/Publish        # Publish to DHT
+    #   - /routing.RoutingService/Unpublish      # Remove from DHT
+    #   - /routing.RoutingService/Search         # Search DHT
+    #   - /routing.RoutingService/List           # List DHT records
+    #
+    # PublicationService (Publication Management):
+    #   - /routing.PublicationService/CreatePublication  # Create publication
+    #   - /routing.PublicationService/ListPublications   # List publications
+    #   - /routing.PublicationService/GetPublication     # Get publication details
+    #
+    # SearchService (Record Search):
+    #   - /search.SearchService/SearchCIDs       # Search by CID
+    #   - /search.SearchService/SearchRecords    # Search records
+    #
+    # SignService (Cryptographic Signing):
+    #   - /sign.SignService/Sign                 # Sign data
+    #   - /sign.SignService/Verify               # Verify signature
+    #
+    # NamingService (Name Resolution):
+    #   - /naming.NamingService/GetVerificationInfo  # Get verification info
+    #
+    # EventService (Event Streaming):
+    #   - /events.EventService/Listen            # Listen to events
+    #
+    roles:
+      # Example: Admin role with full access
+      # admin:
+      #   allowedMethods:
+      #     - "*"  # Wildcard = all methods
+      #   users:
+      #     - "github:alice"
+      #     - "bob"  # "github:" prefix is optional
+      #   orgs:
+      #     - "agntcy"
+      
+      # Example: Reader role with limited access
+      # reader:
+      #   allowedMethods:
+      #     - "/store.StoreService/Pull"
+      #     - "/store.StoreService/Lookup"
+      #     - "/store.StoreService/PullReferrer"
+      #   users:
+      #     - "github:charlie"
+      #   orgs:
+      #     - "contributors"
+      
+      # Example: Writer role with push/pull access
+      # writer:
+      #   allowedMethods:
+      #     - "/store.StoreService/Push"
+      #     - "/store.StoreService/Pull"
+      #     - "/store.StoreService/Lookup"
+      #   users: []
+      #   orgs:
+      #     - "developers"
   
   # GitHub provider configuration
   github:

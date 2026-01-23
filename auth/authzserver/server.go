@@ -32,7 +32,7 @@ type AuthorizationServer struct {
 	authv3.UnimplementedAuthorizationServer
 
 	providers       map[string]authprovider.Provider
-	config          *Config
+	roleResolver    *RoleResolver
 	logger          *slog.Logger
 	defaultProvider string
 }
@@ -42,18 +42,34 @@ type Config struct {
 	// DefaultProvider is used when provider cannot be auto-detected
 	DefaultProvider string
 
-	// AllowedOrgConstructs restricts access to users in these org constructs.
-	// Works across all providers (GitHub orgs, Azure tenants, Google domains, etc.)
-	// Empty list means no org restriction.
-	AllowedOrgConstructs []string
+	// Roles defines the available roles and their permissions.
+	// Key is the role name, value is the Role definition.
+	Roles map[string]Role
 
-	// UserAllowList explicitly allows specific users regardless of org membership.
-	// Format: "provider:username" (e.g., "github:tkircsi", "google:alice@agntcy.com")
-	UserAllowList []string
+	// DefaultRole is assigned to authenticated users who don't have an explicit role.
+	// Empty string means deny by default.
+	DefaultRole string
 
-	// UserDenyList explicitly denies specific users (takes precedence over allow lists).
-	// Format: "provider:username"
+	// UserDenyList explicitly denies specific users (takes precedence over all roles).
+	// Format: "provider:username" (e.g., "github:blocked-user")
 	UserDenyList []string
+}
+
+// Role defines a set of permissions and the users/orgs assigned to it.
+type Role struct {
+	// AllowedMethods is a list of gRPC methods this role can access.
+	// Use "*" for wildcard (all methods).
+	// Format: "/package.Service/Method" (e.g., "/store.StoreService/Push")
+	AllowedMethods []string
+
+	// Orgs is a list of organization names assigned to this role.
+	// Users in these orgs will have this role's permissions.
+	Orgs []string
+
+	// Users is a list of specific users assigned to this role.
+	// Format: "provider:username" (e.g., "github:alice")
+	// User assignments take precedence over org assignments.
+	Users []string
 }
 
 // NewAuthorizationServer creates a new authorization server with multiple providers.
@@ -61,7 +77,7 @@ func NewAuthorizationServer(
 	providers map[string]authprovider.Provider,
 	config *Config,
 	logger *slog.Logger,
-) *AuthorizationServer {
+) (*AuthorizationServer, error) {
 	if config == nil {
 		config = &Config{}
 	}
@@ -74,12 +90,18 @@ func NewAuthorizationServer(
 		config.DefaultProvider = authprovider.ProviderGithub
 	}
 
+	// Create role resolver for RBAC (Casbin-based)
+	roleResolver, err := NewRoleResolver(config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create role resolver: %w", err)
+	}
+
 	return &AuthorizationServer{
 		providers:       providers,
-		config:          config,
+		roleResolver:    roleResolver,
 		logger:          logger,
 		defaultProvider: config.DefaultProvider,
-	}
+	}, nil
 }
 
 // Check implements the ext_authz Check RPC.
@@ -140,12 +162,19 @@ func (s *AuthorizationServer) Check(ctx context.Context, req *authv3.CheckReques
 		orgConstructs = []authprovider.OrgConstruct{}
 	}
 
-	// Check authorization rules
-	if err := s.checkAuthorization(identity, orgConstructs); err != nil {
+	// Extract API method from request path
+	apiMethod := httpReq.GetPath() // e.g., "/store.StoreService/Push"
+
+	// Check authorization rules (role-based) - delegate to RoleResolver
+	userKey := fmt.Sprintf("%s:%s", identity.Provider, identity.Username)
+
+	userOrgs := extractOrgNames(orgConstructs)
+	if err := s.roleResolver.Authorize(identity.Username, userKey, userOrgs, apiMethod); err != nil {
 		s.logger.Info("authorization denied",
 			"provider", identity.Provider,
 			"user", identity.Username,
-			"org_constructs", extractOrgNames(orgConstructs),
+			"org_constructs", userOrgs,
+			"method", apiMethod,
 			"reason", err.Error(),
 		)
 
@@ -155,7 +184,8 @@ func (s *AuthorizationServer) Check(ctx context.Context, req *authv3.CheckReques
 	s.logger.Info("authorization granted",
 		"provider", identity.Provider,
 		"user", identity.Username,
-		"org_constructs", extractOrgNames(orgConstructs),
+		"org_constructs", userOrgs,
+		"method", apiMethod,
 	)
 
 	return s.allowResponse(identity, orgConstructs), nil
@@ -209,48 +239,6 @@ func extractBearerToken(authHeader string) (string, error) {
 	}
 
 	return token, nil
-}
-
-// checkAuthorization checks if the user is authorized based on configured rules.
-func (s *AuthorizationServer) checkAuthorization(
-	identity *authprovider.UserIdentity,
-	orgConstructs []authprovider.OrgConstruct,
-) error {
-	userKey := fmt.Sprintf("%s:%s", identity.Provider, identity.Username)
-
-	// Priority 1: Check deny list (highest priority)
-	for _, denied := range s.config.UserDenyList {
-		if strings.EqualFold(userKey, denied) || strings.EqualFold(identity.Username, denied) {
-			return fmt.Errorf("user %q is in the deny list", identity.Username)
-		}
-	}
-
-	// Priority 2: Check user allow list (explicit allow)
-	for _, allowed := range s.config.UserAllowList {
-		if strings.EqualFold(userKey, allowed) || strings.EqualFold(identity.Username, allowed) {
-			return nil // Explicitly allowed, skip other checks
-		}
-	}
-
-	// Priority 3: Check org construct membership
-	if len(s.config.AllowedOrgConstructs) == 0 {
-		return nil // No org restrictions, allow all authenticated users
-	}
-
-	// Build map of user's org constructs
-	userOrgSet := make(map[string]bool)
-	for _, oc := range orgConstructs {
-		userOrgSet[strings.ToLower(oc.Name)] = true
-	}
-
-	// Check against allowed list
-	for _, allowed := range s.config.AllowedOrgConstructs {
-		if userOrgSet[strings.ToLower(allowed)] {
-			return nil // User in allowed org construct
-		}
-	}
-
-	return fmt.Errorf("user %q is not a member of any allowed organization/tenant/domain", identity.Username)
 }
 
 // allowResponse creates an OK response with user information headers.
@@ -349,4 +337,53 @@ func extractOrgNames(orgConstructs []authprovider.OrgConstruct) []string {
 	}
 
 	return names
+}
+
+// Validate validates the configuration and checks for common errors.
+func (c *Config) Validate() error {
+	// Check that roles map is not nil
+	if c.Roles == nil {
+		c.Roles = make(map[string]Role)
+	}
+
+	// Warn about duplicate user assignments across roles
+	userAssignments := make(map[string][]string)
+	orgAssignments := make(map[string][]string)
+
+	for roleName, role := range c.Roles {
+		// Track user assignments
+		for _, user := range role.Users {
+			userAssignments[strings.ToLower(user)] = append(userAssignments[strings.ToLower(user)], roleName)
+		}
+
+		// Track org assignments
+		for _, org := range role.Orgs {
+			orgAssignments[strings.ToLower(org)] = append(orgAssignments[strings.ToLower(org)], roleName)
+		}
+	}
+
+	// Warn about conflicts (but don't error - we handle this with "most permissive wins")
+	for user, roles := range userAssignments {
+		if len(roles) > 1 {
+			// Note: In production, you might want to log this as a warning
+			// For now, we silently handle it (most permissive wins)
+			_ = user // Avoid unused variable warning
+		}
+	}
+
+	for org, roles := range orgAssignments {
+		if len(roles) > 1 {
+			// Note: In production, you might want to log this as a warning
+			_ = org // Avoid unused variable warning
+		}
+	}
+
+	// Validate default role exists if specified
+	if c.DefaultRole != "" {
+		if _, ok := c.Roles[c.DefaultRole]; !ok {
+			return fmt.Errorf("default role %q is not defined in roles map", c.DefaultRole)
+		}
+	}
+
+	return nil
 }

@@ -15,14 +15,56 @@ data:
   LOG_LEVEL: {{ .Values.authServer.config.logLevel | quote }}
   DEFAULT_PROVIDER: {{ .Values.authServer.config.defaultProvider | quote }}
   
-  # Authorization rules
-  ALLOWED_ORG_CONSTRUCTS: {{ join "," .Values.authServer.authorization.allowedOrgConstructs | quote }}
-  USER_ALLOW_LIST: {{ join "," .Values.authServer.authorization.userAllowList | quote }}
-  USER_DENY_LIST: {{ join "," .Values.authServer.authorization.userDenyList | quote }}
-  
   # GitHub provider configuration
   GITHUB_ENABLED: {{ .Values.authServer.github.enabled | quote }}
   {{- if .Values.authServer.github.enabled }}
   GITHUB_CACHE_TTL: {{ .Values.authServer.github.cacheTTL | quote }}
   GITHUB_API_TIMEOUT: {{ .Values.authServer.github.apiTimeout | quote }}
   {{- end }}
+  
+  # RBAC configuration (YAML format)
+  rbac-config.yaml: |
+    # Default role assigned to users with no explicit role assignment
+    {{- if .Values.authServer.authorization.defaultRole }}
+    defaultRole: {{ .Values.authServer.authorization.defaultRole | quote }}
+    {{- end }}
+    
+    # Users explicitly denied access (highest priority)
+    userDenyList:
+      {{- if .Values.authServer.authorization.userDenyList }}
+      {{- range .Values.authServer.authorization.userDenyList }}
+      - {{ . | quote }}
+      {{- end }}
+      {{- else }}
+      []
+      {{- end }}
+    
+    # Role definitions
+    roles:
+      {{- if .Values.authServer.authorization.roles }}
+      {{- range $roleName, $role := .Values.authServer.authorization.roles }}
+      {{ $roleName }}:
+        allowedMethods:
+          {{- range $role.allowedMethods }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- if $role.users }}
+        users:
+          {{- range $role.users }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- else }}
+        users: []
+        {{- end }}
+        {{- if $role.orgs }}
+        orgs:
+          {{- range $role.orgs }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- else }}
+        orgs: []
+        {{- end }}
+      {{- end }}
+      {{- else }}
+      {}
+      {{- end }}

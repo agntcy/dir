@@ -40,6 +40,10 @@ spec:
         envFrom:
         - configMapRef:
             name: {{ include "envoy-authz.fullname" . }}-authz-config
+        volumeMounts:
+        - name: rbac-config
+          mountPath: /etc/envoy-authz
+          readOnly: true
         # Health probes disabled for distroless image
         # TODO: Add grpc_health_probe binary to image or use tcpSocket probe
         # livenessProbe:
@@ -54,3 +58,10 @@ spec:
         #   periodSeconds: 10
         resources:
           {{- toYaml .Values.authServer.resources | nindent 10 }}
+      volumes:
+      - name: rbac-config
+        configMap:
+          name: {{ include "envoy-authz.fullname" . }}-authz-config
+          items:
+          - key: rbac-config.yaml
+            path: rbac-config.yaml
