@@ -12,7 +12,7 @@ import (
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
-	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	databaseconfig "github.com/agntcy/dir/server/database/config"
 	events "github.com/agntcy/dir/server/events/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
@@ -467,7 +467,7 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("database.db_type", database.DefaultDBType)
 
 	_ = v.BindEnv("database.sqlite.db_path")
-	v.SetDefault("database.sqlite.db_path", sqliteconfig.DefaultSQLiteDBPath)
+	v.SetDefault("database.sqlite.db_path", databaseconfig.DefaultSQLiteDBPath)
 
 	//
 	// Sync configuration

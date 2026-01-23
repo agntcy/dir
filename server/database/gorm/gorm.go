@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package sqlite
+package gorm
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 )
 
-var logger = logging.Logger("database/sqlite")
+var logger = logging.Logger("database/gorm")
 
 type DB struct {
 	gormDB *gorm.DB

@@ -12,7 +12,7 @@ import (
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
 	database "github.com/agntcy/dir/server/database/config"
-	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	databaseconfig "github.com/agntcy/dir/server/database/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	reverification "github.com/agntcy/dir/server/reverification/config"
@@ -107,7 +107,7 @@ func TestConfig(t *testing.T) {
 				},
 				Database: database.Config{
 					DBType: "sqlite",
-					SQLite: sqliteconfig.Config{
+					SQLite: databaseconfig.SQLiteConfig{
 						DBPath: "sqlite.db",
 					},
 				},
@@ -183,8 +183,8 @@ func TestConfig(t *testing.T) {
 				},
 				Database: database.Config{
 					DBType: database.DefaultDBType,
-					SQLite: sqliteconfig.Config{
-						DBPath: sqliteconfig.DefaultSQLiteDBPath,
+					SQLite: databaseconfig.SQLiteConfig{
+						DBPath: databaseconfig.DefaultSQLiteDBPath,
 					},
 				},
 				Sync: sync.Config{
