@@ -118,9 +118,6 @@ message DeleteSyncResponse {
 }
 
 message RequestRegistryCredentialsRequest {
-  // Identity of the requesting node
-  // For example: spiffe://example.org/service/foo
-  string requesting_node_id = 1;
 }
 
 message RequestRegistryCredentialsResponse {

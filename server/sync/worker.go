@@ -197,13 +197,8 @@ func (w *Worker) negotiateCredentials(ctx context.Context, remoteDirectoryURL st
 	// Create SyncService client
 	syncClient := storev1.NewSyncServiceClient(conn)
 
-	// TODO: Get actual peer ID from the routing system or configuration
-	requestingNodeID := "directory://local-node"
-
 	// Make the credential negotiation request
-	resp, err := syncClient.RequestRegistryCredentials(ctx, &storev1.RequestRegistryCredentialsRequest{
-		RequestingNodeId: requestingNodeID,
-	})
+	resp, err := syncClient.RequestRegistryCredentials(ctx, &storev1.RequestRegistryCredentialsRequest{})
 	if err != nil {
 		return "", syncconfig.AuthConfig{}, fmt.Errorf("failed to request registry credentials from %s: %w", remoteDirectoryURL, err)
 	}

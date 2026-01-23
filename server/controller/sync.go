@@ -122,14 +122,6 @@ func (c *syncCtlr) DeleteSync(_ context.Context, req *storev1.DeleteSyncRequest)
 func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.RequestRegistryCredentialsRequest) (*storev1.RequestRegistryCredentialsResponse, error) {
 	syncLogger.Debug("Called sync controller's RequestRegistryCredentials method", "req", req)
 
-	// Validate requesting node ID
-	if req.GetRequestingNodeId() == "" {
-		return &storev1.RequestRegistryCredentialsResponse{
-			Success:      false,
-			ErrorMessage: "requesting node ID is required",
-		}, nil
-	}
-
 	// Get OCI configuration to determine registry details
 	ociConfig := c.opts.Config().Store.OCI
 	syncConfig := c.opts.Config().Sync
