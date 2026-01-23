@@ -7,6 +7,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -17,6 +18,7 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
+	"golang.org/x/mod/semver"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -138,4 +140,133 @@ func (n *namingCtrl) getDomainFromRecord(ctx context.Context, cid string) string
 	}
 
 	return parsed.Domain
+}
+
+// Resolve resolves a record reference (name with optional version) to a single CID.
+// If version is specified, returns the exact match.
+// If no version is specified, returns the latest version by semver.
+// Names without protocol prefix are searched with both http:// and https://.
+func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) (*namingv1.ResolveResponse, error) {
+	namingLogger.Debug("Resolve request received", "name", req.GetName(), "version", req.GetVersion())
+
+	if req.GetName() == "" {
+		return nil, status.Error(codes.InvalidArgument, "name is required")
+	}
+
+	// Build filter options: filter by name (with protocol variations if not specified)
+	filterOptions := []types.FilterOption{
+		types.WithNames(expandNameWithProtocols(req.GetName())...),
+	}
+
+	// Add version filter if specified
+	if req.GetVersion() != "" {
+		filterOptions = append(filterOptions, types.WithVersions(req.GetVersion()))
+	}
+
+	// Get matching records
+	records, err := n.db.GetRecords(filterOptions...)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to search records: %v", err)
+	}
+
+	if len(records) == 0 {
+		if req.GetVersion() != "" {
+			return nil, status.Errorf(codes.NotFound, "no record found with name %q and version %q", req.GetName(), req.GetVersion())
+		}
+
+		return nil, status.Errorf(codes.NotFound, "no record found with name %q", req.GetName())
+	}
+
+	// If version was specified and we have multiple matches, it's ambiguous
+	if req.GetVersion() != "" && len(records) > 1 {
+		return nil, status.Errorf(codes.FailedPrecondition,
+			"multiple records found with name %q and version %q, pull by CID directly",
+			req.GetName(), req.GetVersion())
+	}
+
+	// If only one match, return it
+	if len(records) == 1 {
+		return &namingv1.ResolveResponse{
+			Cid: records[0].GetCid(),
+		}, nil
+	}
+
+	// Multiple matches without version specified - find the latest by semver
+	return n.findLatestBySemver(records)
+}
+
+// findLatestBySemver finds the record with the highest semver version from the given records.
+func (n *namingCtrl) findLatestBySemver(records []types.Record) (*namingv1.ResolveResponse, error) {
+	if len(records) == 0 {
+		return nil, status.Error(codes.Internal, "no records provided")
+	}
+
+	// Find the record with the highest semver version
+	latest := records[0]
+
+	for _, r := range records[1:] {
+		latestData, _ := latest.GetRecordData()
+		rData, _ := r.GetRecordData()
+
+		if compareSemver(rData.GetVersion(), latestData.GetVersion()) > 0 {
+			latest = r
+		}
+	}
+
+	return &namingv1.ResolveResponse{
+		Cid: latest.GetCid(),
+	}, nil
+}
+
+// compareSemver compares two version strings using semver.
+// Returns >0 if a > b, <0 if a < b, 0 if equal.
+// Handles versions with or without 'v' prefix.
+// Falls back to string comparison if not valid semver.
+func compareSemver(a, b string) int {
+	va := ensureVPrefix(a)
+	vb := ensureVPrefix(b)
+
+	if semver.IsValid(va) && semver.IsValid(vb) {
+		return semver.Compare(va, vb)
+	}
+
+	// Fall back to string comparison
+	if a > b {
+		return 1
+	} else if a < b {
+		return -1
+	}
+
+	return 0
+}
+
+// ensureVPrefix adds 'v' prefix if not present (semver package requires it).
+func ensureVPrefix(version string) string {
+	if version == "" {
+		return ""
+	}
+
+	if version[0] != 'v' {
+		return "v" + version
+	}
+
+	return version
+}
+
+// expandNameWithProtocols returns name variations to search for.
+// If the name already has a protocol prefix, returns it as-is.
+// Otherwise, returns exact match plus http:// and https:// variations.
+// This allows finding both:
+// - Records with protocol prefixes (verifiable names like "https://cisco.com/agent")
+// - Records without protocol prefixes (non-verifiable names like "my-org/agent").
+func expandNameWithProtocols(name string) []string {
+	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
+		return []string{name}
+	}
+
+	return []string{
+		name, // exact match for non-verifiable names
+		"http://" + name,
+		"https://" + name,
+	}
 }

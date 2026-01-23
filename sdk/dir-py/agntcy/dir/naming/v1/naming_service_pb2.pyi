@@ -20,3 +20,17 @@ class GetVerificationInfoResponse(_message.Message):
     verification: _name_verification_pb2.Verification
     error_message: str
     def __init__(self, verified: bool = ..., verification: _Optional[_Union[_name_verification_pb2.Verification, _Mapping]] = ..., error_message: _Optional[str] = ...) -> None: ...
+
+class ResolveRequest(_message.Message):
+    __slots__ = ("name", "version")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    VERSION_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    version: str
+    def __init__(self, name: _Optional[str] = ..., version: _Optional[str] = ...) -> None: ...
+
+class ResolveResponse(_message.Message):
+    __slots__ = ("cid",)
+    CID_FIELD_NUMBER: _ClassVar[int]
+    cid: str
+    def __init__(self, cid: _Optional[str] = ...) -> None: ...

@@ -1,0 +1,174 @@
+// Copyright AGNTCY Contributors (https://github.com/agntcy)
+// SPDX-License-Identifier: Apache-2.0
+
+package local
+
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/agntcy/dir/e2e/shared/config"
+	"github.com/agntcy/dir/e2e/shared/testdata"
+	"github.com/agntcy/dir/e2e/shared/utils"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
+)
+
+var _ = ginkgo.Describe("Name resolution - pull by name", func() {
+	var cli *utils.CLI
+
+	ginkgo.BeforeEach(func() {
+		if cfg.DeploymentMode != config.DeploymentModeLocal {
+			ginkgo.Skip("Skipping test, not in local mode")
+		}
+
+		utils.ResetCLIState()
+		cli = utils.NewCLI()
+	})
+
+	// Test pulling by name using existing test records
+	ginkgo.Context("Pull by name", ginkgo.Ordered, func() {
+		var (
+			tempDir   string
+			recordCID string
+		)
+
+		// Record name from record_080.json: "directory.agntcy.org/example/research-assistant-v4"
+		const recordName = "directory.agntcy.org/example/research-assistant-v4"
+
+		ginkgo.BeforeAll(func() {
+			var err error
+			tempDir, err = os.MkdirTemp("", "resolve-test")
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Write and push record_080.json
+			recordPath := filepath.Join(tempDir, "record_080.json")
+			err = os.WriteFile(recordPath, testdata.ExpectedRecordV080V4JSON, 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			recordCID = cli.Push(recordPath).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(recordCID).NotTo(gomega.BeEmpty())
+		})
+
+		ginkgo.AfterAll(func() {
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		ginkgo.It("should pull record by full name", func() {
+			output := cli.Pull(recordName).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordName))
+			gomega.Expect(output).To(gomega.ContainSubstring("v4.0.0"))
+		})
+
+		ginkgo.It("should pull record by name with version", func() {
+			output := cli.Pull(recordName+":v4.0.0").
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordName))
+			gomega.Expect(output).To(gomega.ContainSubstring("v4.0.0"))
+		})
+
+		ginkgo.It("should pull by CID directly", func() {
+			output := cli.Pull(recordCID).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordName))
+		})
+
+		ginkgo.It("should fail for non-existent name", func() {
+			_ = cli.Pull("nonexistent.example.com/agent").ShouldFail()
+		})
+
+		ginkgo.It("should fail for non-existent version", func() {
+			_ = cli.Pull(recordName + ":v99.0.0").ShouldFail()
+		})
+	})
+
+	// Test version resolution with multiple versions of the same record
+	ginkgo.Context("Version resolution - latest by semver", ginkgo.Ordered, func() {
+		var (
+			tempDir string
+			cidV4   string
+			cidV5   string
+		)
+
+		// Both records have the same name but different versions
+		const recordName = "directory.agntcy.org/example/research-assistant-v4"
+
+		ginkgo.BeforeAll(func() {
+			var err error
+			tempDir, err = os.MkdirTemp("", "version-resolve-test")
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Push v4.0.0 (from record_080.json)
+			recordV4Path := filepath.Join(tempDir, "record_v4.json")
+			err = os.WriteFile(recordV4Path, testdata.ExpectedRecordV080V4JSON, 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			cidV4 = cli.Push(recordV4Path).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(cidV4).NotTo(gomega.BeEmpty())
+
+			// Push v5.0.0 (from record_080_v5.json)
+			recordV5Path := filepath.Join(tempDir, "record_v5.json")
+			err = os.WriteFile(recordV5Path, testdata.ExpectedRecordV080V5JSON, 0o600)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			cidV5 = cli.Push(recordV5Path).WithArgs("--output", "raw").ShouldSucceed()
+			gomega.Expect(cidV5).NotTo(gomega.BeEmpty())
+
+			// Ensure different CIDs (different content)
+			gomega.Expect(cidV4).NotTo(gomega.Equal(cidV5))
+		})
+
+		ginkgo.AfterAll(func() {
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		ginkgo.It("should pull latest version (v5.0.0) when no version specified", func() {
+			output := cli.Pull(recordName).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring("v5.0.0"))
+		})
+
+		ginkgo.It("should pull specific version v4.0.0 with name:version", func() {
+			output := cli.Pull(recordName+":v4.0.0").
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring("v4.0.0"))
+		})
+
+		ginkgo.It("should pull specific version v5.0.0 with name:version", func() {
+			output := cli.Pull(recordName+":v5.0.0").
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring("v5.0.0"))
+		})
+
+		ginkgo.It("should pull v4 by CID directly", func() {
+			output := cli.Pull(cidV4).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring("v4.0.0"))
+		})
+
+		ginkgo.It("should pull v5 by CID directly", func() {
+			output := cli.Pull(cidV5).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring("v5.0.0"))
+		})
+	})
+})

@@ -428,7 +428,7 @@ var _ = ginkgo.Describe("MCP Server Protocol Tests", func() {
 		})
 
 		ginkgo.It("should validate a valid 0.8.0 record", func() {
-			recordJSON := string(testdata.ExpectedRecordV080JSON)
+			recordJSON := string(testdata.ExpectedRecordV080V4JSON)
 			toolOutput := validateRecordAndParseOutput(client, recordJSON, 6)
 
 			gomega.Expect(toolOutput["valid"]).To(gomega.BeTrue())

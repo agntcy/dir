@@ -69,7 +69,55 @@ export declare type GetVerificationInfoResponse = Message<"agntcy.dir.naming.v1.
 export declare const GetVerificationInfoResponseSchema: GenMessage<GetVerificationInfoResponse>;
 
 /**
- * NamingService provides methods to inspect name verification state.
+ * ResolveRequest is the request for resolving a record reference to a CID.
+ *
+ * @generated from message agntcy.dir.naming.v1.ResolveRequest
+ */
+export declare type ResolveRequest = Message<"agntcy.dir.naming.v1.ResolveRequest"> & {
+  /**
+   * The name of the record to resolve (e.g., "cisco.com/agent").
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * Optional version to resolve to (e.g., "v1.0.0").
+   * If not specified, resolves to the latest version by semver.
+   *
+   * @generated from field: optional string version = 2;
+   */
+  version?: string;
+};
+
+/**
+ * Describes the message agntcy.dir.naming.v1.ResolveRequest.
+ * Use `create(ResolveRequestSchema)` to create a new message.
+ */
+export declare const ResolveRequestSchema: GenMessage<ResolveRequest>;
+
+/**
+ * ResolveResponse is the response containing the resolved CID.
+ *
+ * @generated from message agntcy.dir.naming.v1.ResolveResponse
+ */
+export declare type ResolveResponse = Message<"agntcy.dir.naming.v1.ResolveResponse"> & {
+  /**
+   * The CID of the resolved record.
+   *
+   * @generated from field: string cid = 1;
+   */
+  cid: string;
+};
+
+/**
+ * Describes the message agntcy.dir.naming.v1.ResolveResponse.
+ * Use `create(ResolveResponseSchema)` to create a new message.
+ */
+export declare const ResolveResponseSchema: GenMessage<ResolveResponse>;
+
+/**
+ * NamingService provides methods for name resolution and verification.
  * Note: Verification is performed automatically by the backend scheduler
  * for signed records with verifiable names (http://, https:// prefixes).
  *
@@ -85,6 +133,21 @@ export declare const NamingService: GenService<{
     methodKind: "unary";
     input: typeof GetVerificationInfoRequestSchema;
     output: typeof GetVerificationInfoResponseSchema;
+  },
+  /**
+   * Resolve resolves a record reference (name with optional version) to a single CID.
+   * Supports Docker-style references:
+   *   - "name" -> resolves to the latest version (by semver)
+   *   - "name:version" -> resolves to the specific version
+   * Returns an error if no matching record is found or if multiple records
+   * match the same name+version (ambiguous).
+   *
+   * @generated from rpc agntcy.dir.naming.v1.NamingService.Resolve
+   */
+  resolve: {
+    methodKind: "unary";
+    input: typeof ResolveRequestSchema;
+    output: typeof ResolveResponseSchema;
   },
 }>;
 

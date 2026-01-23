@@ -26,3 +26,22 @@ func (c *Client) GetVerificationInfo(ctx context.Context, cid string) (*namingv1
 
 	return resp, nil
 }
+
+// Resolve resolves a record reference (name with optional version) to a single CID.
+// If version is empty, returns the latest version by semver.
+func (c *Client) Resolve(ctx context.Context, name string, version string) (*namingv1.ResolveResponse, error) {
+	req := &namingv1.ResolveRequest{
+		Name: name,
+	}
+
+	if version != "" {
+		req.Version = &version
+	}
+
+	resp, err := c.NamingServiceClient.Resolve(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve record: %w", err)
+	}
+
+	return resp, nil
+}

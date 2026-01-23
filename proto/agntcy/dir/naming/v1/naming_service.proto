@@ -7,12 +7,20 @@ package agntcy.dir.naming.v1;
 
 import "agntcy/dir/naming/v1/name_verification.proto";
 
-// NamingService provides methods to inspect name verification state.
+// NamingService provides methods for name resolution and verification.
 // Note: Verification is performed automatically by the backend scheduler
 // for signed records with verifiable names (http://, https:// prefixes).
 service NamingService {
   // GetVerificationInfo retrieves the verification info for a record.
   rpc GetVerificationInfo(GetVerificationInfoRequest) returns (GetVerificationInfoResponse);
+
+  // Resolve resolves a record reference (name with optional version) to a single CID.
+  // Supports Docker-style references:
+  //   - "name" -> resolves to the latest version (by semver)
+  //   - "name:version" -> resolves to the specific version
+  // Returns an error if no matching record is found or if multiple records
+  // match the same name+version (ambiguous).
+  rpc Resolve(ResolveRequest) returns (ResolveResponse);
 }
 
 // GetVerificationInfoRequest is the request for retrieving verification info.
@@ -31,4 +39,20 @@ message GetVerificationInfoResponse {
 
   // Error message if lookup failed.
   optional string error_message = 3;
+}
+
+// ResolveRequest is the request for resolving a record reference to a CID.
+message ResolveRequest {
+  // The name of the record to resolve (e.g., "cisco.com/agent").
+  string name = 1;
+
+  // Optional version to resolve to (e.g., "v1.0.0").
+  // If not specified, resolves to the latest version by semver.
+  optional string version = 2;
+}
+
+// ResolveResponse is the response containing the resolved CID.
+message ResolveResponse {
+  // The CID of the resolved record.
+  string cid = 1;
 }

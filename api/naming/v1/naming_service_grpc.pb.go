@@ -23,18 +23,27 @@ const _ = grpc.SupportPackageIsVersion8
 
 const (
 	NamingService_GetVerificationInfo_FullMethodName = "/agntcy.dir.naming.v1.NamingService/GetVerificationInfo"
+	NamingService_Resolve_FullMethodName             = "/agntcy.dir.naming.v1.NamingService/Resolve"
 )
 
 // NamingServiceClient is the client API for NamingService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// NamingService provides methods to inspect name verification state.
+// NamingService provides methods for name resolution and verification.
 // Note: Verification is performed automatically by the backend scheduler
 // for signed records with verifiable names (http://, https:// prefixes).
 type NamingServiceClient interface {
 	// GetVerificationInfo retrieves the verification info for a record.
 	GetVerificationInfo(ctx context.Context, in *GetVerificationInfoRequest, opts ...grpc.CallOption) (*GetVerificationInfoResponse, error)
+	// Resolve resolves a record reference (name with optional version) to a single CID.
+	// Supports Docker-style references:
+	//   - "name" -> resolves to the latest version (by semver)
+	//   - "name:version" -> resolves to the specific version
+	//
+	// Returns an error if no matching record is found or if multiple records
+	// match the same name+version (ambiguous).
+	Resolve(ctx context.Context, in *ResolveRequest, opts ...grpc.CallOption) (*ResolveResponse, error)
 }
 
 type namingServiceClient struct {
@@ -55,16 +64,34 @@ func (c *namingServiceClient) GetVerificationInfo(ctx context.Context, in *GetVe
 	return out, nil
 }
 
+func (c *namingServiceClient) Resolve(ctx context.Context, in *ResolveRequest, opts ...grpc.CallOption) (*ResolveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveResponse)
+	err := c.cc.Invoke(ctx, NamingService_Resolve_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NamingServiceServer is the server API for NamingService service.
 // All implementations should embed UnimplementedNamingServiceServer
 // for forward compatibility.
 //
-// NamingService provides methods to inspect name verification state.
+// NamingService provides methods for name resolution and verification.
 // Note: Verification is performed automatically by the backend scheduler
 // for signed records with verifiable names (http://, https:// prefixes).
 type NamingServiceServer interface {
 	// GetVerificationInfo retrieves the verification info for a record.
 	GetVerificationInfo(context.Context, *GetVerificationInfoRequest) (*GetVerificationInfoResponse, error)
+	// Resolve resolves a record reference (name with optional version) to a single CID.
+	// Supports Docker-style references:
+	//   - "name" -> resolves to the latest version (by semver)
+	//   - "name:version" -> resolves to the specific version
+	//
+	// Returns an error if no matching record is found or if multiple records
+	// match the same name+version (ambiguous).
+	Resolve(context.Context, *ResolveRequest) (*ResolveResponse, error)
 }
 
 // UnimplementedNamingServiceServer should be embedded to have
@@ -76,6 +103,9 @@ type UnimplementedNamingServiceServer struct{}
 
 func (UnimplementedNamingServiceServer) GetVerificationInfo(context.Context, *GetVerificationInfoRequest) (*GetVerificationInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVerificationInfo not implemented")
+}
+func (UnimplementedNamingServiceServer) Resolve(context.Context, *ResolveRequest) (*ResolveResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Resolve not implemented")
 }
 func (UnimplementedNamingServiceServer) testEmbeddedByValue() {}
 
@@ -115,6 +145,24 @@ func _NamingService_GetVerificationInfo_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NamingService_Resolve_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NamingServiceServer).Resolve(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NamingService_Resolve_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NamingServiceServer).Resolve(ctx, req.(*ResolveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NamingService_ServiceDesc is the grpc.ServiceDesc for NamingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -125,6 +173,10 @@ var NamingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVerificationInfo",
 			Handler:    _NamingService_GetVerificationInfo_Handler,
+		},
+		{
+			MethodName: "Resolve",
+			Handler:    _NamingService_Resolve_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

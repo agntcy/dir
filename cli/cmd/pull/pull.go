@@ -13,43 +13,61 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
+	"github.com/agntcy/dir/cli/util/reference"
+	"github.com/agntcy/dir/client"
 	"github.com/spf13/cobra"
 )
 
 var Command = &cobra.Command{
-	Use:   "pull",
+	Use:   "pull <cid-or-name[:version]>",
 	Short: "Pull record from Directory server",
 	Long: `This command pulls the record from Directory API. The data can be validated against its hash, as
 the returned object is content-addressable.
 
+You can pull by CID or by name. The command auto-detects whether the argument is a CID or a name:
+- If it's a valid CID (e.g., bafyrei...), it pulls directly by CID
+- Otherwise, it resolves the name to a CID and pulls it
+
+When pulling by name without a version, the latest version (by semver) is returned.
+
 Usage examples:
 
-1. Pull by cid and output
+1. Pull by CID:
 
-	dirctl pull <cid>
+	dirctl pull bafyreib...
 
-2. Pull by cid and output public key
+2. Pull by name (latest version):
 
-	dirctl pull <cid> --public-key
+	dirctl pull cisco.com/marketing-agent
+	dirctl pull https://cisco.com/marketing-agent
 
-3. Pull by cid and output signature
+3. Pull by name with specific version:
 
-	dirctl pull <cid> --signature
+	dirctl pull cisco.com/marketing-agent:v1.0.0
+	dirctl pull https://cisco.com/marketing-agent:v2.1.0
 
-4. Output formats:
+4. Pull with public key:
+
+	dirctl pull <cid-or-name> --public-key
+
+5. Pull with signature:
+
+	dirctl pull <cid-or-name> --signature
+
+6. Output formats:
 
 	# Get record as JSON
-	dirctl pull <cid> --output json
+	dirctl pull <cid-or-name> --output json
 	
 	# Get record with public key as JSON
-	dirctl pull <cid> --public-key --output json
+	dirctl pull <cid-or-name> --public-key --output json
 	
 	# Get raw record data for piping
-	dirctl pull <cid> --output raw > record.json
+	dirctl pull <cid-or-name> --output raw > record.json
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return errors.New("cid is a required argument")
+			return errors.New("cid or name is a required argument")
 		}
 
 		return runCommand(cmd, args[0])
@@ -57,16 +75,22 @@ Usage examples:
 }
 
 //nolint:cyclop,gocognit
-func runCommand(cmd *cobra.Command, cid string) error {
+func runCommand(cmd *cobra.Command, input string) error {
 	// Get the client from the context.
 	c, ok := ctxUtils.GetClientFromContext(cmd.Context())
 	if !ok {
 		return errors.New("failed to get client from context")
 	}
 
+	// Resolve the input to a CID
+	recordCID, err := resolveToCID(cmd, c, input)
+	if err != nil {
+		return err
+	}
+
 	// Fetch record from store
 	record, err := c.Pull(cmd.Context(), &corev1.RecordRef{
-		Cid: cid,
+		Cid: recordCID,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to pull data: %w", err)
@@ -84,7 +108,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
-				Cid: cid,
+				Cid: recordCID,
 			},
 			ReferrerType: &publicKeyType,
 		})
@@ -111,7 +135,7 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 		resultCh, err := c.PullReferrer(cmd.Context(), &storev1.PullReferrerRequest{
 			RecordRef: &corev1.RecordRef{
-				Cid: cid,
+				Cid: recordCID,
 			},
 			ReferrerType: &signatureType,
 		})
@@ -164,4 +188,27 @@ func runCommand(cmd *cobra.Command, cid string) error {
 
 	// Output the structured data
 	return presenter.PrintMessage(cmd, "record", "Record data with keys and signatures", structuredData)
+}
+
+// resolveToCID resolves the input to a CID.
+// Supports formats:
+//   - CID directly (e.g., "bafyreib...")
+//   - name (e.g., "cisco.com/agent") -> latest semver version
+//   - name:version (e.g., "cisco.com/agent:v1.0.0") -> specific version
+func resolveToCID(cmd *cobra.Command, c *client.Client, input string) (string, error) {
+	// Parse the input as a reference
+	ref := reference.Parse(input)
+
+	// If it's a raw CID, use it directly
+	if ref.IsCID() {
+		return ref.CID, nil
+	}
+
+	// Otherwise, resolve via the server
+	resp, err := c.Resolve(cmd.Context(), ref.Name, ref.Version)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve record: %w", err)
+	}
+
+	return resp.GetCid(), nil
 }

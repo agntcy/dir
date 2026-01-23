@@ -181,6 +181,50 @@ func (d *DB) AddRecord(record types.Record) error {
 	return nil
 }
 
+// GetRecords retrieves full records based on the provided filters.
+func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
+	// Create default configuration.
+	cfg := &types.RecordFilters{}
+
+	// Apply all options.
+	for _, opt := range opts {
+		if opt == nil {
+			return nil, errors.New("nil option provided")
+		}
+
+		opt(cfg)
+	}
+
+	// Start with the base query for records.
+	query := d.gormDB.Model(&Record{})
+
+	// Apply pagination.
+	if cfg.Limit > 0 {
+		query = query.Limit(cfg.Limit)
+	}
+
+	if cfg.Offset > 0 {
+		query = query.Offset(cfg.Offset)
+	}
+
+	// Apply all filters.
+	query = d.handleFilterOptions(query, cfg)
+
+	// Execute the query.
+	var records []Record
+	if err := query.Find(&records).Error; err != nil {
+		return nil, fmt.Errorf("failed to query records: %w", err)
+	}
+
+	// Convert to interface type.
+	result := make([]types.Record, len(records))
+	for i := range records {
+		result[i] = &records[i]
+	}
+
+	return result, nil
+}
+
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
 // This is optimized for cases where only CIDs are needed, avoiding expensive joins and preloads.
 func (d *DB) GetRecordCIDs(opts ...types.FilterOption) ([]string, error) {
