@@ -24,7 +24,8 @@
   ],
   "domains": [
     {
-      "name": "life_science/biotechnology"
+      "name": "life_science/biotechnology",
+			"id": 301
     }
   ],
   "modules": [
