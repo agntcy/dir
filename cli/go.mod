@@ -31,7 +31,7 @@ require (
 	github.com/agntcy/dir/mcp v0.6.1
 	github.com/agntcy/dir/utils v0.6.1
 	github.com/libp2p/go-libp2p v0.46.0
-	github.com/sigstore/sigstore v1.10.3
+	github.com/sigstore/sigstore v1.10.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
