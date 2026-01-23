@@ -57,8 +57,7 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":            "sync-user",
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":            "sync-password",
 				"DIRECTORY_SERVER_AUTHZ_ENABLED":                        "true",
-				"DIRECTORY_SERVER_AUTHZ_SOCKET_PATH":                    "/test/agent.sock",
-				"DIRECTORY_SERVER_AUTHZ_TRUST_DOMAIN":                   "dir.com",
+				"DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH":      "/tmp/authz_policies.csv",
 				"DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL":       "10s",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_COUNT":             "1",
 				"DIRECTORY_SERVER_PUBLICATION_WORKER_TIMEOUT":           "10s",
@@ -125,8 +124,8 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Authz: authz.Config{
-					Enabled:     true,
-					TrustDomain: "dir.com",
+					Enabled:                true,
+					EnforcerPolicyFilePath: "/tmp/authz_policies.csv",
 				},
 				Publication: publication.Config{
 					SchedulerInterval: 10 * time.Second,
@@ -196,7 +195,10 @@ func TestConfig(t *testing.T) {
 						CheckInterval: monitor.DefaultCheckInterval,
 					},
 				},
-				Authz: authz.Config{},
+				Authz: authz.Config{
+					Enabled:                false,
+					EnforcerPolicyFilePath: DefaultConfigPath + "/authz_policies.csv",
+				},
 				Publication: publication.Config{
 					SchedulerInterval: publication.DefaultPublicationSchedulerInterval,
 					WorkerCount:       publication.DefaultPublicationWorkerCount,

@@ -1410,7 +1410,12 @@ tasks:
                 - "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
             authz:
               enabled: true
-              trust_domain: {{ .DIR_TRUST_DOMAIN }}
+              enforcer_policy_file_content: |
+                p,{{ .DIR_TRUST_DOMAIN }},*
+                p,*,/agntcy.dir.store.v1.StoreService/Pull
+                p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
+                p,*,/agntcy.dir.store.v1.StoreService/Lookup
+                p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
           extraEnv:
             - name: DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE
               value: "true"

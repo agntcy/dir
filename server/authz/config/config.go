@@ -12,9 +12,8 @@ type Config struct {
 	// Indicates if authorization is enabled
 	Enabled bool `json:"enabled,omitempty" mapstructure:"enabled"`
 
-	// Trust domain for this Directory server
-	// Used to distinguish internal vs external requests
-	TrustDomain string `json:"trust_domain,omitempty" mapstructure:"trust_domain"`
+	// List of policies for external API methods access
+	EnforcerPolicyFilePath string `json:"enforcer_policy_file_path,omitempty" mapstructure:"enforcer_policy_file_path"`
 }
 
 func (c *Config) Validate() error {
@@ -22,8 +21,8 @@ func (c *Config) Validate() error {
 		return nil
 	}
 
-	if c.TrustDomain == "" {
-		return errors.New("trust domain is required for authorization")
+	if c.EnforcerPolicyFilePath == "" {
+		return errors.New("enforcer policy file path is required")
 	}
 
 	return nil

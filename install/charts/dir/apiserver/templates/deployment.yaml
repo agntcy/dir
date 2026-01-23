@@ -123,6 +123,10 @@ spec:
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+            {{- if and .Values.config.authz.enabled (ne .Values.config.authz.enforcer_policy_file_path "") }}
+            - name: DIRECTORY_SERVER_AUTHZ_ENFORCER_POLICY_FILE_PATH
+              value: {{ .Values.config.authz.enforcer_policy_file_path | quote }}
+            {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -219,6 +223,12 @@ spec:
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+            {{- if and .Values.config.authz.enabled (ne .Values.config.authz.enforcer_policy_file_path "") (ne .Values.config.authz.enforcer_policy_csv "") }}
+            - name: config-volume
+              mountPath: {{ .Values.config.authz.enforcer_policy_file_path | quote }}
+              subPath: authz_policies.csv
             {{- end }}
       volumes:
         - name: config-volume
