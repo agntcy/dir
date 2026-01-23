@@ -51,7 +51,7 @@ PARAMETERS:
 - schema_versions: Schema version patterns (e.g., "0.8.*")
 - module_ids: Exact module IDs (e.g., "201")
 
-WILDCARDS: * (zero+), ? (one), [abc] (char class)
+WILDCARDS: * (zero+), ? (one char)
 
 EXAMPLES:
 "find Python agents" → { "skill_names": ["*python*"] }

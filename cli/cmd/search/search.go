@@ -49,7 +49,6 @@ Examples:
 Supported wildcards:
   * - matches zero or more characters
   ? - matches exactly one character
-  [] - matches any character within brackets (e.g., [0-9], [a-z])
 `,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runSearchCommand(cmd)
