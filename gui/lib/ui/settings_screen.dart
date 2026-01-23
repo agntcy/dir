@@ -23,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _azureKeyController = TextEditingController();
   final _azureEndpointController = TextEditingController();
   final _azureDeploymentController = TextEditingController();
+  final _azureApiVersionController = TextEditingController();
 
   final _openaiKeyController = TextEditingController();
   final _openaiEndpointController = TextEditingController();
@@ -50,6 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _azureKeyController.text = prefs.getString('azure_api_key') ?? '';
       _azureEndpointController.text = prefs.getString('azure_endpoint') ?? '';
       _azureDeploymentController.text = prefs.getString('azure_deployment') ?? '';
+      _azureApiVersionController.text = prefs.getString('azure_api_version') ?? '2024-10-21';
 
       _openaiKeyController.text = prefs.getString('openai_api_key') ?? '';
       _openaiEndpointController.text = prefs.getString('openai_endpoint') ?? '';
@@ -73,6 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('azure_api_key', _azureKeyController.text.trim());
     await prefs.setString('azure_endpoint', _azureEndpointController.text.trim());
     await prefs.setString('azure_deployment', _azureDeploymentController.text.trim());
+    await prefs.setString('azure_api_version', _azureApiVersionController.text.trim());
 
     await prefs.setString('openai_api_key', _openaiKeyController.text.trim());
     await prefs.setString('openai_endpoint', _openaiEndpointController.text.trim());
@@ -95,6 +98,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _azureKeyController.dispose();
     _azureEndpointController.dispose();
     _azureDeploymentController.dispose();
+    _azureApiVersionController.dispose();
     _openaiKeyController.dispose();
     _openaiEndpointController.dispose();
 
@@ -212,6 +216,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   validator: (value) {
                     if (_selectedProvider == 'azure' && (value == null || value.isEmpty)) {
                       return 'Please enter Deployment Name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _azureApiVersionController,
+                  decoration: const InputDecoration(
+                    labelText: 'API Version',
+                    border: OutlineInputBorder(),
+                    hintText: '2024-10-21',
+                  ),
+                  validator: (value) {
+                    if (_selectedProvider == 'azure' && (value == null || value.isEmpty)) {
+                      return 'Please enter API Version';
                     }
                     return null;
                   },

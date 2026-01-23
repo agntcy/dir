@@ -84,6 +84,7 @@ class _ChatScreenState extends State<ChatScreen> {
           _apiKey = prefs.getString('azure_api_key');
           _azureEndpoint = prefs.getString('azure_endpoint');
           _azureDeployment = prefs.getString('azure_deployment');
+          _azureApiVersion = prefs.getString('azure_api_version') ?? '2024-10-21';
         } else if (_providerType == 'openai') {
           _apiKey = prefs.getString('openai_api_key');
           _openaiEndpoint = prefs.getString('openai_endpoint');
@@ -146,6 +147,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final azureKey = Platform.environment['AZURE_API_KEY'] ?? const String.fromEnvironment('AZURE_API_KEY');
     final azureEp = Platform.environment['AZURE_ENDPOINT'] ?? const String.fromEnvironment('AZURE_ENDPOINT');
     final azureDep = Platform.environment['AZURE_DEPLOYMENT'] ?? const String.fromEnvironment('AZURE_DEPLOYMENT');
+    final azureApiVer = Platform.environment['AZURE_OPENAI_API_VERSION'] ?? const String.fromEnvironment('AZURE_OPENAI_API_VERSION');
 
     if (azureKey.isNotEmpty && azureEp.isNotEmpty && azureDep.isNotEmpty) {
         print('Auto-configuring Azure from Environment');
@@ -153,6 +155,9 @@ class _ChatScreenState extends State<ChatScreen> {
         _apiKey = azureKey;
         _azureEndpoint = azureEp;
         _azureDeployment = azureDep;
+        if (azureApiVer.isNotEmpty) {
+           _azureApiVersion = azureApiVer;
+        }
         setState(() => _isConfigured = true);
         _initServices();
         return;
