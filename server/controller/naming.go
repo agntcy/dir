@@ -182,11 +182,11 @@ func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) 
 	sortRecordsBySemver(records)
 
 	// Convert to response format
-	refs := make([]*namingv1.RecordRef, 0, len(records))
+	refs := make([]*corev1.NamedRecordRef, 0, len(records))
 
 	for _, r := range records {
 		data, _ := r.GetRecordData()
-		refs = append(refs, &namingv1.RecordRef{
+		refs = append(refs, &corev1.NamedRecordRef{
 			Name:    data.GetName(),
 			Version: data.GetVersion(),
 			Cid:     r.GetCid(),

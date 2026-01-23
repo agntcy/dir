@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package agntcy.dir.naming.v1;
 
+import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/naming/v1/name_verification.proto";
 
 // NamingService provides methods for name resolution and verification.
@@ -55,17 +56,5 @@ message ResolveRequest {
 // ResolveResponse is the response containing the resolved records.
 message ResolveResponse {
   // The resolved record references, sorted by version (latest first).
-  repeated RecordRef records = 1;
-}
-
-// RecordRef represents a resolved record with its name, version, and CID.
-message RecordRef {
-  // The name of the record.
-  string name = 1;
-
-  // The version of the record.
-  string version = 2;
-
-  // The CID of the record.
-  string cid = 3;
+  repeated agntcy.dir.core.v1.NamedRecordRef records = 1;
 }

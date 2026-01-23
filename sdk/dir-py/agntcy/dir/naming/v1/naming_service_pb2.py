@@ -22,10 +22,11 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from agntcy.dir.core.v1 import record_pb2 as agntcy_dot_dir_dot_core_dot_v1_dot_record__pb2
 from agntcy.dir.naming.v1 import name_verification_pb2 as agntcy_dot_dir_dot_naming_dot_v1_dot_name__verification__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)agntcy/dir/naming/v1/naming_service.proto\x12\x14\x61gntcy.dir.naming.v1\x1a,agntcy/dir/naming/v1/name_verification.proto\".\n\x1aGetVerificationInfoRequest\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xbd\x01\n\x1bGetVerificationInfoResponse\x12\x1a\n\x08verified\x18\x01 \x01(\x08R\x08verified\x12\x46\n\x0cverification\x18\x02 \x01(\x0b\x32\".agntcy.dir.naming.v1.VerificationR\x0cverification\x12(\n\rerror_message\x18\x03 \x01(\tH\x00R\x0c\x65rrorMessage\x88\x01\x01\x42\x10\n\x0e_error_message\"O\n\x0eResolveRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n\x07version\x18\x02 \x01(\tH\x00R\x07version\x88\x01\x01\x42\n\n\x08_version\"L\n\x0fResolveResponse\x12\x39\n\x07records\x18\x01 \x03(\x0b\x32\x1f.agntcy.dir.naming.v1.RecordRefR\x07records\"K\n\tRecordRef\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07version\x18\x02 \x01(\tR\x07version\x12\x10\n\x03\x63id\x18\x03 \x01(\tR\x03\x63id2\xe3\x01\n\rNamingService\x12z\n\x13GetVerificationInfo\x12\x30.agntcy.dir.naming.v1.GetVerificationInfoRequest\x1a\x31.agntcy.dir.naming.v1.GetVerificationInfoResponse\x12V\n\x07Resolve\x12$.agntcy.dir.naming.v1.ResolveRequest\x1a%.agntcy.dir.naming.v1.ResolveResponseB\xc6\x01\n\x18\x63om.agntcy.dir.naming.v1B\x12NamingServiceProtoP\x01Z#github.com/agntcy/dir/api/naming/v1\xa2\x02\x03\x41\x44N\xaa\x02\x14\x41gntcy.Dir.Naming.V1\xca\x02\x14\x41gntcy\\Dir\\Naming\\V1\xe2\x02 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Naming::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n)agntcy/dir/naming/v1/naming_service.proto\x12\x14\x61gntcy.dir.naming.v1\x1a\x1f\x61gntcy/dir/core/v1/record.proto\x1a,agntcy/dir/naming/v1/name_verification.proto\".\n\x1aGetVerificationInfoRequest\x12\x10\n\x03\x63id\x18\x01 \x01(\tR\x03\x63id\"\xbd\x01\n\x1bGetVerificationInfoResponse\x12\x1a\n\x08verified\x18\x01 \x01(\x08R\x08verified\x12\x46\n\x0cverification\x18\x02 \x01(\x0b\x32\".agntcy.dir.naming.v1.VerificationR\x0cverification\x12(\n\rerror_message\x18\x03 \x01(\tH\x00R\x0c\x65rrorMessage\x88\x01\x01\x42\x10\n\x0e_error_message\"O\n\x0eResolveRequest\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n\x07version\x18\x02 \x01(\tH\x00R\x07version\x88\x01\x01\x42\n\n\x08_version\"O\n\x0fResolveResponse\x12<\n\x07records\x18\x01 \x03(\x0b\x32\".agntcy.dir.core.v1.NamedRecordRefR\x07records2\xe3\x01\n\rNamingService\x12z\n\x13GetVerificationInfo\x12\x30.agntcy.dir.naming.v1.GetVerificationInfoRequest\x1a\x31.agntcy.dir.naming.v1.GetVerificationInfoResponse\x12V\n\x07Resolve\x12$.agntcy.dir.naming.v1.ResolveRequest\x1a%.agntcy.dir.naming.v1.ResolveResponseB\xc6\x01\n\x18\x63om.agntcy.dir.naming.v1B\x12NamingServiceProtoP\x01Z#github.com/agntcy/dir/api/naming/v1\xa2\x02\x03\x41\x44N\xaa\x02\x14\x41gntcy.Dir.Naming.V1\xca\x02\x14\x41gntcy\\Dir\\Naming\\V1\xe2\x02 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Naming::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,16 +34,14 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'agntcy.dir.naming.v1.naming
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\030com.agntcy.dir.naming.v1B\022NamingServiceProtoP\001Z#github.com/agntcy/dir/api/naming/v1\242\002\003ADN\252\002\024Agntcy.Dir.Naming.V1\312\002\024Agntcy\\Dir\\Naming\\V1\342\002 Agntcy\\Dir\\Naming\\V1\\GPBMetadata\352\002\027Agntcy::Dir::Naming::V1'
-  _globals['_GETVERIFICATIONINFOREQUEST']._serialized_start=113
-  _globals['_GETVERIFICATIONINFOREQUEST']._serialized_end=159
-  _globals['_GETVERIFICATIONINFORESPONSE']._serialized_start=162
-  _globals['_GETVERIFICATIONINFORESPONSE']._serialized_end=351
-  _globals['_RESOLVEREQUEST']._serialized_start=353
-  _globals['_RESOLVEREQUEST']._serialized_end=432
-  _globals['_RESOLVERESPONSE']._serialized_start=434
-  _globals['_RESOLVERESPONSE']._serialized_end=510
-  _globals['_RECORDREF']._serialized_start=512
-  _globals['_RECORDREF']._serialized_end=587
-  _globals['_NAMINGSERVICE']._serialized_start=590
-  _globals['_NAMINGSERVICE']._serialized_end=817
+  _globals['_GETVERIFICATIONINFOREQUEST']._serialized_start=146
+  _globals['_GETVERIFICATIONINFOREQUEST']._serialized_end=192
+  _globals['_GETVERIFICATIONINFORESPONSE']._serialized_start=195
+  _globals['_GETVERIFICATIONINFORESPONSE']._serialized_end=384
+  _globals['_RESOLVEREQUEST']._serialized_start=386
+  _globals['_RESOLVEREQUEST']._serialized_end=465
+  _globals['_RESOLVERESPONSE']._serialized_start=467
+  _globals['_RESOLVERESPONSE']._serialized_end=546
+  _globals['_NAMINGSERVICE']._serialized_start=549
+  _globals['_NAMINGSERVICE']._serialized_end=776
 # @@protoc_insertion_point(module_scope)

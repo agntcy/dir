@@ -8,6 +8,7 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 import type { Verification } from "./name_verification_pb.js";
+import type { NamedRecordRef } from "../../core/v1/record_pb.js";
 
 /**
  * Describes the file agntcy/dir/naming/v1/naming_service.proto.
@@ -105,9 +106,9 @@ export declare type ResolveResponse = Message<"agntcy.dir.naming.v1.ResolveRespo
   /**
    * The resolved record references, sorted by version (latest first).
    *
-   * @generated from field: repeated agntcy.dir.naming.v1.RecordRef records = 1;
+   * @generated from field: repeated agntcy.dir.core.v1.NamedRecordRef records = 1;
    */
-  records: RecordRef[];
+  records: NamedRecordRef[];
 };
 
 /**
@@ -115,40 +116,6 @@ export declare type ResolveResponse = Message<"agntcy.dir.naming.v1.ResolveRespo
  * Use `create(ResolveResponseSchema)` to create a new message.
  */
 export declare const ResolveResponseSchema: GenMessage<ResolveResponse>;
-
-/**
- * RecordRef represents a resolved record with its name, version, and CID.
- *
- * @generated from message agntcy.dir.naming.v1.RecordRef
- */
-export declare type RecordRef = Message<"agntcy.dir.naming.v1.RecordRef"> & {
-  /**
-   * The name of the record.
-   *
-   * @generated from field: string name = 1;
-   */
-  name: string;
-
-  /**
-   * The version of the record.
-   *
-   * @generated from field: string version = 2;
-   */
-  version: string;
-
-  /**
-   * The CID of the record.
-   *
-   * @generated from field: string cid = 3;
-   */
-  cid: string;
-};
-
-/**
- * Describes the message agntcy.dir.naming.v1.RecordRef.
- * Use `create(RecordRefSchema)` to create a new message.
- */
-export declare const RecordRefSchema: GenMessage<RecordRef>;
 
 /**
  * NamingService provides methods for name resolution and verification.

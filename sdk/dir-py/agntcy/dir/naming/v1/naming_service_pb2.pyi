@@ -1,3 +1,4 @@
+from agntcy.dir.core.v1 import record_pb2 as _record_pb2
 from agntcy.dir.naming.v1 import name_verification_pb2 as _name_verification_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
@@ -33,15 +34,5 @@ class ResolveRequest(_message.Message):
 class ResolveResponse(_message.Message):
     __slots__ = ("records",)
     RECORDS_FIELD_NUMBER: _ClassVar[int]
-    records: _containers.RepeatedCompositeFieldContainer[RecordRef]
-    def __init__(self, records: _Optional[_Iterable[_Union[RecordRef, _Mapping]]] = ...) -> None: ...
-
-class RecordRef(_message.Message):
-    __slots__ = ("name", "version", "cid")
-    NAME_FIELD_NUMBER: _ClassVar[int]
-    VERSION_FIELD_NUMBER: _ClassVar[int]
-    CID_FIELD_NUMBER: _ClassVar[int]
-    name: str
-    version: str
-    cid: str
-    def __init__(self, name: _Optional[str] = ..., version: _Optional[str] = ..., cid: _Optional[str] = ...) -> None: ...
+    records: _containers.RepeatedCompositeFieldContainer[_record_pb2.NamedRecordRef]
+    def __init__(self, records: _Optional[_Iterable[_Union[_record_pb2.NamedRecordRef, _Mapping]]] = ...) -> None: ...
