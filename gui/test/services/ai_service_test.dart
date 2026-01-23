@@ -1,7 +1,6 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:gui/mcp/client.dart';
@@ -9,86 +8,93 @@ import 'package:gui/mcp/model.dart';
 import 'package:gui/services/ai_service.dart';
 import 'package:gui/services/llm_provider.dart';
 
-// Mocks
-class MockMcpClient implements McpClient {
-  List<McpTool> toolsToReturn = [];
-  Map<String, McpToolResult> toolResults = {};
+class MockMcpClient extends McpClient {
+  MockMcpClient() : super(executablePath: 'mock');
 
   @override
-  String get executablePath => '';
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<List<McpTool>> listTools() async => toolsToReturn;
-
-  @override
-  Future<McpToolResult> callTool(String name, Map<String, dynamic> arguments) async {
-    return toolResults[name] ?? McpToolResult(content: 'default');
+  Future<List<McpTool>> listTools() async {
+    return [
+      McpTool(name: 'tool1', description: 'desc', inputSchema: {})
+    ];
   }
 
   @override
-  Future<void> start({Map<String, String>? environment}) async {}
-
-  @override
-  Future<void> stop() async {}
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+  Future<McpToolResult> callTool(String name, Map<String, dynamic> args) async {
+    return McpToolResult(content: '{"status": "ok", "result": "$name"}');
+  }
 }
 
 class MockLlmProvider implements LlmProvider {
-  List<McpTool>? initializedTools;
-  String? lastMessage;
+  bool initialized = false;
+
+  // State for sequential responses
+  int _callCount = 0;
+  final List<LlmResponse> responses;
+
+  MockLlmProvider({required this.responses});
 
   @override
-  Future<void> init(List<McpTool> mcpTools) async {
-    initializedTools = mcpTools;
+  Future<void> init(List<McpTool> tools) async {
+    initialized = true;
   }
 
   @override
   Future<LlmResponse> sendMessage(String message, List<Content> history) async {
-    lastMessage = message;
-    return LlmResponse(text: 'response');
+    if (_callCount < responses.length) {
+      return responses[_callCount++];
+    }
+    return LlmResponse(text: 'EndOfConversation');
   }
 }
 
 void main() {
-  group('AiService', () {
-    late AiService service;
-    late MockMcpClient mockClient;
-    late MockLlmProvider mockProvider;
+  group('AiService Tests', () {
+    test('init initializes provider with tools', () async {
+      final mcp = MockMcpClient();
+      final service = AiService(mcpClient: mcp);
+      final provider = MockLlmProvider(responses: []);
 
-    setUp(() {
-      mockClient = MockMcpClient();
-      mockProvider = MockLlmProvider();
-      service = AiService(
-        mcpClient: mockClient,
-      );
+      await service.init(provider);
+
+      expect(provider.initialized, true);
     });
 
-    test('init calls provider.init with tools', () async {
-      mockClient.toolsToReturn = [
-        McpTool(name: 'tool1', description: 'desc', inputSchema: {'type': 'object'})
-      ];
+    test('sendMessage returns simple text', () async {
+      final mcp = MockMcpClient();
+      final service = AiService(mcpClient: mcp);
+      final provider = MockLlmProvider(responses: [
+        LlmResponse(text: 'Hello User')
+      ]);
+      await service.init(provider);
 
-      await service.init(mockProvider);
-
-      expect(mockProvider.initializedTools, isNotNull);
-      final tools = mockProvider.initializedTools!;
-      expect(tools.length, 1);
-      final tool = tools.first;
-      expect(tool.name, 'tool1');
+      final res = await service.sendMessage('Hi', []);
+      expect(res, 'Hello User');
     });
 
-    test('sendMessage calls provider.sendMessage', () async {
-      mockClient.toolsToReturn = [];
-      await service.init(mockProvider);
+    test('sendMessage handles tool execution loop', () async {
+      final mcp = MockMcpClient();
+      final service = AiService(mcpClient: mcp);
 
-      await service.sendMessage('hello', []);
+      // 1st response: Call tool
+      // 2nd response: Final answer
+      final provider = MockLlmProvider(responses: [
+        LlmResponse(toolCalls: [
+          LlmToolCall('tool1', {'arg': 'val'})
+        ]),
+        LlmResponse(text: 'Tool Result Used')
+      ]);
 
-      expect(mockProvider.lastMessage, 'hello');
+      await service.init(provider);
+
+      bool toolCallbackCalled = false;
+      final res = await service.sendMessage('Use tool', [], onToolOutput: (name, res) {
+        expect(name, 'tool1');
+        expect(res['result'], 'tool1');
+        toolCallbackCalled = true;
+      });
+
+      expect(res, 'Tool Result Used');
+      expect(toolCallbackCalled, true);
     });
   });
 }

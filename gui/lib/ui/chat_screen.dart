@@ -7,10 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../mcp/client.dart';
 import '../services/ai_service.dart';
 import '../services/llm_provider.dart';
+import 'settings_screen.dart';
 import 'widgets/record_card.dart';
 import 'widgets/search_results_widget.dart';
 
@@ -48,6 +50,11 @@ class _ChatScreenState extends State<ChatScreen> {
   String _azureApiVersion = '2024-10-21'; // Default
   String? _openaiEndpoint; // For OpenAI-compatible gateways
 
+  // Directory Config
+  String? _directoryUrl;
+  String? _directoryToken;
+  String? _oasfSchemaUrl;
+
   @override
   void initState() {
     super.initState();
@@ -57,8 +64,44 @@ class _ChatScreenState extends State<ChatScreen> {
     if (widget.aiService != null) {
       _aiService = widget.aiService;
     } else {
-      _checkEnvAndInit();
+      _initConfig();
     }
+  }
+
+  Future<void> _initConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedProvider = prefs.getString('provider');
+
+    if (storedProvider != null && storedProvider.isNotEmpty) {
+      // Load from Prefs
+      setState(() {
+        _providerType = storedProvider;
+        if (_providerType == 'gemini') {
+          _apiKey = prefs.getString('gemini_api_key');
+        } else if (_providerType == 'azure') {
+          _apiKey = prefs.getString('azure_api_key');
+          _azureEndpoint = prefs.getString('azure_endpoint');
+          _azureDeployment = prefs.getString('azure_deployment');
+        } else if (_providerType == 'openai') {
+          _apiKey = prefs.getString('openai_api_key');
+          _openaiEndpoint = prefs.getString('openai_endpoint');
+        }
+
+        // Load Directory Config
+        _directoryUrl = prefs.getString('directory_server_address');
+        _directoryToken = prefs.getString('directory_github_token');
+        _oasfSchemaUrl = prefs.getString('oasf_schema_url');
+      });
+
+      if (_apiKey != null && _apiKey!.isNotEmpty) {
+        print('Configured $_providerType from Settings');
+        _initServices();
+        return;
+      }
+    }
+
+    // Fallback to Env
+    _checkEnvAndInit();
   }
 
   @override
@@ -230,12 +273,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
     print('Starting MCP Client with server at: $mcpPath');
 
-    // Get Directory Server Address
-    final dirServerAddr = Platform.environment['DIRECTORY_CLIENT_SERVER_ADDRESS'] ??
+    // Get Directory Server Address - Prefer Settings, then Env
+    String dirServerAddr = _directoryUrl ?? '';
+    if (dirServerAddr.isEmpty) {
+        dirServerAddr = Platform.environment['DIRECTORY_CLIENT_SERVER_ADDRESS'] ??
                           const String.fromEnvironment('DIRECTORY_CLIENT_SERVER_ADDRESS');
+    }
 
-    final oasfSchemaUrl = Platform.environment['OASF_API_VALIDATION_SCHEMA_URL'] ??
+    String oasfSchema = _oasfSchemaUrl ?? '';
+    if (oasfSchema.isEmpty) {
+        oasfSchema = Platform.environment['OASF_API_VALIDATION_SCHEMA_URL'] ??
                           const String.fromEnvironment('OASF_API_VALIDATION_SCHEMA_URL');
+    }
 
     Map<String, String> mcpEnv = {};
     if (dirServerAddr.isNotEmpty) {
@@ -243,8 +292,17 @@ class _ChatScreenState extends State<ChatScreen> {
       mcpEnv['DIRECTORY_CLIENT_SERVER_ADDRESS'] = dirServerAddr;
     }
 
-    if (oasfSchemaUrl.isNotEmpty) {
-       mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchemaUrl;
+    // Auth Token configuration
+    if (_directoryToken != null && _directoryToken!.isNotEmpty) {
+       mcpEnv['DIRECTORY_CLIENT_GITHUB_TOKEN'] = _directoryToken!;
+       // If a token is provided, we assume GitHub auth mode for the token unless specified otherwise
+       // In future we might want a dropdown for Auth Mode in settings
+       mcpEnv['DIRECTORY_CLIENT_AUTH_MODE'] = 'github';
+       print('Configuring Directory Auth Token (using github mode)');
+    }
+
+    if (oasfSchema.isNotEmpty) {
+       mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchema;
     } else {
        // Disable OASF API validation if schema URL is not provided
        mcpEnv['OASF_API_VALIDATION_DISABLE'] = 'true';
@@ -613,6 +671,29 @@ Type your query or click a suggestion to get started!''',
     });
   }
 
+  Future<void> _openSettings() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
+
+    if (result == true) {
+      // Config changed
+      setState(() {
+        _messages.add({
+          'role': 'system',
+          'text': 'Configuration updated. Re-connecting services...',
+        });
+      });
+
+      _aiService = null;
+      _mcpClient?.stop(); // Ensure old client is stopped
+      _mcpClient = null;
+
+      await _initConfig();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -641,6 +722,11 @@ Type your query or click a suggestion to get started!''',
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: _openSettings,
+          ),
           IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => MyApp.toggleTheme(context),
