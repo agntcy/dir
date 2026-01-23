@@ -51,6 +51,11 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 		})
 
 		ginkgo.AfterAll(func() {
+			// Clean up pushed record
+			if recordCID != "" {
+				_, _ = cli.Delete(recordCID).Execute()
+			}
+
 			if tempDir != "" {
 				_ = os.RemoveAll(tempDir)
 			}
@@ -148,6 +153,15 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 		})
 
 		ginkgo.AfterAll(func() {
+			// Clean up pushed records
+			if cidV4 != "" {
+				_, _ = cli.Delete(cidV4).Execute()
+			}
+
+			if cidV5 != "" {
+				_, _ = cli.Delete(cidV5).Execute()
+			}
+
 			if tempDir != "" {
 				_ = os.RemoveAll(tempDir)
 			}
@@ -239,6 +253,11 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 		})
 
 		ginkgo.AfterAll(func() {
+			// Clean up pushed record
+			if recordCID != "" {
+				_, _ = cli.Delete(recordCID).Execute()
+			}
+
 			if tempDir != "" {
 				_ = os.RemoveAll(tempDir)
 			}
