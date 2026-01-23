@@ -17,8 +17,8 @@ type DB struct {
 	gormDB *gorm.DB
 }
 
-// InitDB initializes the database with migrations and returns a DB instance.
-func InitDB(db *gorm.DB) (*DB, error) {
+// New creates a new DB instance from a gorm.DB connection and runs migrations.
+func New(db *gorm.DB) (*DB, error) {
 	// Migrate record-related schema
 	if err := db.AutoMigrate(Record{}, Locator{}, Skill{}, Module{}, Domain{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate record schema: %w", err)

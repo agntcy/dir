@@ -44,3 +44,10 @@ dependencies:
     version: "0.1.0"
     repository: "file://../../envoy-authz"
     condition: envoyAuthz.enabled
+  # PostgreSQL database (OPTIONAL)
+  # Only installed when explicitly enabled via: postgresql.enabled: true
+  # Default: disabled (uses SQLite)
+  - name: postgresql
+    version: "16.4.1"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled

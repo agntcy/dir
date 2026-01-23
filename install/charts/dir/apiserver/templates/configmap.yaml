@@ -14,6 +14,25 @@ data:
     {{- $metricsConfig := dict "enabled" .Values.metrics.enabled "address" (printf ":%d" (.Values.metrics.port | int)) }}
     {{- $_ := set $config "metrics" $metricsConfig }}
     {{- end }}
+    {{- /* Database configuration */ -}}
+    {{- $dbConfig := dict "db_type" .Values.database.type }}
+    {{- if eq .Values.database.type "sqlite" }}
+    {{- $sqliteConfig := dict "db_path" .Values.database.sqlite.dbPath }}
+    {{- $_ := set $dbConfig "sqlite" $sqliteConfig }}
+    {{- else if eq .Values.database.type "postgres" }}
+    {{- $pgConfig := dict }}
+    {{- if .Values.database.postgres.host }}
+    {{- $_ := set $pgConfig "host" .Values.database.postgres.host }}
+    {{- end }}
+    {{- if .Values.database.postgres.port }}
+    {{- $_ := set $pgConfig "port" (.Values.database.postgres.port | int) }}
+    {{- end }}
+    {{- if .Values.database.postgres.database }}
+    {{- $_ := set $pgConfig "database" .Values.database.postgres.database }}
+    {{- end }}
+    {{- $_ := set $dbConfig "postgres" $pgConfig }}
+    {{- end }}
+    {{- $_ := set $config "database" $dbConfig }}
     {{- $config | toYaml | nindent 4 }}
 
   authz_policies.csv: |

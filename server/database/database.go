@@ -74,7 +74,12 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
 	}
 
-	return gormdb.InitDB(db)
+	gdb, err := gormdb.New(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize SQLite database: %w", err)
+	}
+
+	return gdb, nil
 }
 
 // newPostgres creates a new database connection using PostgreSQL driver.
@@ -104,5 +109,10 @@ func newPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database: %w", err)
 	}
 
-	return gormdb.InitDB(db)
+	gdb, err := gormdb.New(db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PostgreSQL database: %w", err)
+	}
+
+	return gdb, nil
 }
