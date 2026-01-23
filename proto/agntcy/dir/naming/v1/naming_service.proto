@@ -16,8 +16,10 @@ service NamingService {
 
   // Resolve resolves a record reference (name with optional version) to a single CID.
   // Supports Docker-style references:
-  //   - "name" -> resolves to the latest version (by semver)
+  //   - "name" -> resolves to the latest version
   //   - "name:version" -> resolves to the specific version
+  //   - "name@cid" -> resolves to a hash-verified record (latest version)
+  //   - "name:version@cid" -> resolves to a hash-verified record (specific version)
   // Returns an error if no matching record is found or if multiple records
   // match the same name+version (ambiguous).
   rpc Resolve(ResolveRequest) returns (ResolveResponse);

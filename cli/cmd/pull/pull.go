@@ -19,7 +19,7 @@ import (
 )
 
 var Command = &cobra.Command{
-	Use:   "pull <cid-or-name[:version]>",
+	Use:   "pull <cid-or-name[:version][@digest]>",
 	Short: "Pull record from Directory server",
 	Long: `This command pulls the record from Directory API. The data can be validated against its hash, as
 the returned object is content-addressable.
@@ -29,6 +29,10 @@ You can pull by CID or by name. The command auto-detects whether the argument is
 - Otherwise, it resolves the name to a CID and pulls it
 
 When pulling by name without a version, the latest version (by semver) is returned.
+
+For hash-verified pulls, append @digest to verify the resolved record matches the expected CID:
+- name@digest  - verify latest version matches the digest
+- name:version@digest - verify specific version matches the digest
 
 Usage examples:
 
@@ -46,15 +50,20 @@ Usage examples:
 	dirctl pull cisco.com/marketing-agent:v1.0.0
 	dirctl pull https://cisco.com/marketing-agent:v2.1.0
 
-4. Pull with public key:
+4. Pull with hash verification:
+
+	dirctl pull cisco.com/marketing-agent@bafyreib...
+	dirctl pull cisco.com/marketing-agent:v1.0.0@bafyreib...
+
+5. Pull with public key:
 
 	dirctl pull <cid-or-name> --public-key
 
-5. Pull with signature:
+6. Pull with signature:
 
 	dirctl pull <cid-or-name> --signature
 
-6. Output formats:
+7. Output formats:
 
 	# Get record as JSON
 	dirctl pull <cid-or-name> --output json
@@ -195,20 +204,30 @@ func runCommand(cmd *cobra.Command, input string) error {
 //   - CID directly (e.g., "bafyreib...")
 //   - name (e.g., "cisco.com/agent") -> latest semver version
 //   - name:version (e.g., "cisco.com/agent:v1.0.0") -> specific version
+//   - name@digest (e.g., "cisco.com/agent@bafyreib...") -> hash-verified pull
+//   - name:version@digest -> hash-verified pull of specific version
 func resolveToCID(cmd *cobra.Command, c *client.Client, input string) (string, error) {
 	// Parse the input as a reference
 	ref := reference.Parse(input)
 
-	// If it's a raw CID, use it directly
+	// If it's a raw CID (no name), use it directly
 	if ref.IsCID() {
-		return ref.CID, nil
+		return ref.Digest, nil
 	}
 
-	// Otherwise, resolve via the server
+	// Resolve the name via the server
 	resp, err := c.Resolve(cmd.Context(), ref.Name, ref.Version)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve record: %w", err)
 	}
 
-	return resp.GetCid(), nil
+	resolvedCID := resp.GetCid()
+
+	// If a digest was provided, verify it matches the resolved CID
+	if ref.HasDigest() && ref.Digest != resolvedCID {
+		return "", fmt.Errorf("hash verification failed: resolved CID %q does not match expected digest %q",
+			resolvedCID, ref.Digest)
+	}
+
+	return resolvedCID, nil
 }

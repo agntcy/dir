@@ -19,30 +19,47 @@ type Ref struct {
 	// Version is the optional version (e.g., "v1.0.0").
 	Version string
 
-	// CID is set if the input is a raw CID (direct pull by content address).
-	CID string
+	// Digest is the optional digest/CID for hash-verification (e.g., "bafyreib...").
+	// When set with Name, it's used to verify the resolved record matches this CID.
+	Digest string
 }
 
-// IsCID returns true if the reference is just a raw CID.
+// IsCID returns true if the reference is just a raw CID (no name).
 func (r Ref) IsCID() bool {
-	return r.CID != ""
+	return r.Digest != "" && r.Name == ""
+}
+
+// HasDigest returns true if the reference has a digest for hash-verification.
+func (r Ref) HasDigest() bool {
+	return r.Digest != ""
 }
 
 // Parse parses an input string into a record reference.
 // Supports formats:
-//   - CID directly: "bafyreib..." -> CID (direct pull by content address)
+//   - CID directly: "bafyreib..." -> Digest only (direct pull by content address)
 //   - Name only: "cisco.com/agent" -> Name (resolves to latest version)
 //   - Name:version: "cisco.com/agent:v1.0.0" -> Name + Version (resolves to specific version)
+//   - Name@digest: "cisco.com/agent@bafyreib..." -> Name + Digest (hash-verified pull)
+//   - Name:version@digest: "cisco.com/agent:v1.0.0@bafyreib..." -> Name + Version + Digest
 func Parse(input string) Ref {
-	// If the entire input is a valid CID, return it as a CID reference
+	// If the entire input is a valid CID, return it as a digest-only reference
 	if IsCID(input) {
-		return Ref{CID: input}
+		return Ref{Digest: input}
 	}
 
-	// Parse name:version
-	name, version := parseNameAndVersion(input)
+	ref := Ref{}
 
-	return Ref{Name: name, Version: version}
+	// Check for @digest suffix first - accept any non-empty string after @
+	// The server will validate if it's a valid CID
+	if atIdx := strings.LastIndex(input, "@"); atIdx != -1 && atIdx < len(input)-1 {
+		ref.Digest = input[atIdx+1:]
+		input = input[:atIdx]
+	}
+
+	// Parse name:version from remaining input
+	ref.Name, ref.Version = parseNameAndVersion(input)
+
+	return ref
 }
 
 // parseNameAndVersion parses input in the format "name:version" or just "name".

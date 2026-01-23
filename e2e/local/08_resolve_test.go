@@ -82,6 +82,28 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			gomega.Expect(output).To(gomega.ContainSubstring(recordName))
 		})
 
+		ginkgo.It("should pull with hash verification (name@digest)", func() {
+			output := cli.Pull(recordName+"@"+recordCID).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordName))
+		})
+
+		ginkgo.It("should pull with hash verification (name:version@digest)", func() {
+			output := cli.Pull(recordName+":v4.0.0@"+recordCID).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring(recordName))
+		})
+
+		ginkgo.It("should fail hash verification with wrong digest", func() {
+			// Use a fake CID that won't match
+			wrongDigest := "bafyreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			_ = cli.Pull(recordName + "@" + wrongDigest).ShouldFail()
+		})
+
 		ginkgo.It("should fail for non-existent name", func() {
 			_ = cli.Pull("nonexistent.example.com/agent").ShouldFail()
 		})
@@ -169,6 +191,27 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 				ShouldSucceed()
 
 			gomega.Expect(output).To(gomega.ContainSubstring("v5.0.0"))
+		})
+
+		ginkgo.It("should pull v4 with hash verification", func() {
+			output := cli.Pull(recordName+":v4.0.0@"+cidV4).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring("v4.0.0"))
+		})
+
+		ginkgo.It("should pull v5 with hash verification", func() {
+			output := cli.Pull(recordName+":v5.0.0@"+cidV5).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			gomega.Expect(output).To(gomega.ContainSubstring("v5.0.0"))
+		})
+
+		ginkgo.It("should fail hash verification when version and digest mismatch", func() {
+			// Try to pull v4 but provide v5's CID - should fail
+			_ = cli.Pull(recordName + ":v4.0.0@" + cidV5).ShouldFail()
 		})
 	})
 })
