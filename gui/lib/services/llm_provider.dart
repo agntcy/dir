@@ -142,12 +142,14 @@ class GeminiProvider implements LlmProvider {
 class OpenAiCompatibleProvider implements LlmProvider {
   final String apiKey;
   final String endpoint; // Full endpoint URL for chat completions
+  final http.Client _client;
   List<Map<String, dynamic>>? _formattedTools;
 
   OpenAiCompatibleProvider({
     required this.apiKey,
     required this.endpoint,
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   Future<void> init(List<McpTool> mcpTools) async {
@@ -183,7 +185,7 @@ class OpenAiCompatibleProvider implements LlmProvider {
       if (_formattedTools != null && _formattedTools!.isNotEmpty) "tools": _formattedTools,
     };
 
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse(url),
       headers: {
         "Content-Type": "application/json",
@@ -241,12 +243,132 @@ class OpenAiCompatibleProvider implements LlmProvider {
   }
 }
 
+// --- OLLAMA IMPLEMENTATION ---
+class OllamaProvider implements LlmProvider {
+  final String endpoint; // e.g., http://localhost:11434/api/chat
+  final String model;
+  final http.Client _client;
+  List<Map<String, dynamic>>? _formattedTools;
+
+  OllamaProvider({
+    required this.endpoint,
+    required this.model,
+    http.Client? client,
+  }) : _client = client ?? http.Client();
+
+  @override
+  Future<void> init(List<McpTool> mcpTools) async {
+    _formattedTools = mcpTools.map((t) {
+      // Ollama 0.4+ supports JSON schema directly in 'parameters' or as tool definitions
+      var schema = t.inputSchema;
+       if (schema.isEmpty) {
+        schema = {"type": "object", "properties": <String, dynamic>{}};
+      } else {
+        if (!schema.containsKey('type')) schema['type'] = 'object';
+        if (!schema.containsKey('properties')) schema['properties'] = <String, dynamic>{};
+      }
+      return {
+        "type": "function",
+        "function": {
+          "name": t.name,
+          "description": t.description,
+          "parameters": schema,
+        }
+      };
+    }).toList();
+  }
+
+  @override
+  Future<LlmResponse> sendMessage(String message, List<Content> history) async {
+    final messages = _convertHistory(history);
+    messages.add({"role": "user", "content": message});
+    return sendRaw(messages);
+  }
+
+  Future<LlmResponse> sendRaw(List<Map<String, dynamic>> messages) async {
+    final body = {
+      "model": model,
+      "messages": messages,
+      "stream": false, // Non-streaming for simplicity initially
+      if (_formattedTools != null && _formattedTools!.isNotEmpty) "tools": _formattedTools,
+    };
+
+    print('Calling Ollama: $endpoint with model $model');
+    var response = await _client.post(
+      Uri.parse(endpoint),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(body),
+    );
+
+    // Handle "does not support tools" error by retrying without tools
+    if (response.statusCode == 400 && response.body.contains("does not support tools")) {
+       print('Model indicates no tool support. Retrying without tools.');
+       body.remove('tools');
+       response = await _client.post(
+        Uri.parse(endpoint),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(body),
+      );
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception("Ollama API Error: ${response.statusCode} - ${response.body}");
+    }
+
+    final data = jsonDecode(response.body);
+    final messageData = data['message'];
+
+    final content = messageData['content'] as String?;
+    final toolCallsJson = messageData['tool_calls'] as List<dynamic>?;
+
+    final toolCalls = <LlmToolCall>[];
+    if (toolCallsJson != null) {
+      for (final tc in toolCallsJson) {
+        final func = tc['function'];
+        // Ollama 'arguments' comes as Map, unlike OpenAI string
+        Map<String, dynamic> args;
+        if (func['arguments'] is String) {
+           args = jsonDecode(func['arguments']);
+        } else {
+           args = func['arguments'];
+        }
+
+        toolCalls.add(LlmToolCall(
+          func['name'],
+          args,
+          id: tc['id'],
+        ));
+      }
+    }
+
+    return LlmResponse(text: content, toolCalls: toolCalls);
+  }
+   List<Map<String, dynamic>> _convertHistory(List<Content> history) {
+    // Similar to OpenAI, but be careful with mapping
+    final List<Map<String, dynamic>> ollamaMessages = [];
+     for (final h in history) {
+      String role = h.role == 'model' ? 'assistant' : (h.role == 'function' ? 'tool' : 'user');
+      if (role == 'tool') continue; // Skip tool outputs for now unless we implement full tool conversation flow logic for Ollama
+
+      String text = "";
+      for (final part in h.parts) {
+        if (part is TextPart) text += part.text;
+      }
+      if (text.isNotEmpty) {
+        ollamaMessages.add({'role': role, 'content': text});
+      }
+    }
+    return ollamaMessages;
+  }
+}
+
 // --- AZURE OPENAI IMPLEMENTATION ---
 class AzureOpenAiProvider implements LlmProvider {
   final String apiKey;
   final String endpoint; // e.g., https://my-resource.openai.azure.com/
   final String deploymentId;
   final String apiVersion;
+  final http.Client _client;
   List<Map<String, dynamic>>? _formattedTools;
 
   AzureOpenAiProvider({
@@ -254,7 +376,8 @@ class AzureOpenAiProvider implements LlmProvider {
     required this.endpoint,
     required this.deploymentId,
     this.apiVersion = '2024-10-21',
-  });
+    http.Client? client,
+  }) : _client = client ?? http.Client();
 
   @override
   Future<void> init(List<McpTool> mcpTools) async {
@@ -309,7 +432,7 @@ Future<LlmResponse> sendRaw(List<Map<String, dynamic>> messages) async {
       if (_formattedTools != null && _formattedTools!.isNotEmpty) "tools": _formattedTools,
     };
 
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse(url),
       headers: {
         "Content-Type": "application/json",

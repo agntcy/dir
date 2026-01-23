@@ -7,10 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../mcp/client.dart';
 import '../services/ai_service.dart';
 import '../services/llm_provider.dart';
+import 'settings_screen.dart';
 import 'widgets/record_card.dart';
 import 'widgets/search_results_widget.dart';
 
@@ -28,7 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<Content> _history = [];
   final List<Map<String, dynamic>> _messages = []; // For UI display
-  
+
   // Track pulled records by CID for associating with search results
   final Map<String, Map<String, dynamic>> _pulledRecords = {};
   String? _pendingPullCid; // CID currently being pulled
@@ -36,11 +38,12 @@ class _ChatScreenState extends State<ChatScreen> {
   AiService? _aiService;
   McpClient? _mcpClient;
   bool _isLoading = false;
-  
+
   // Welcome message
   static const String _welcomeMessage = 'Find published AI agents records by describing what you need (by author, name, skills, versions, domain). Or type `help` for commands.';
 
   // Config
+  bool _isConfigured = false;
   String _providerType = 'gemini'; // gemini, azure, openai
   String? _apiKey;
   String? _azureEndpoint;
@@ -48,17 +51,67 @@ class _ChatScreenState extends State<ChatScreen> {
   String _azureApiVersion = '2024-10-21'; // Default
   String? _openaiEndpoint; // For OpenAI-compatible gateways
 
+  // Directory Config
+  String? _directoryUrl;
+  String? _directoryToken;
+  String? _oasfSchemaUrl;
+
+  String? _ollamaEndpoint;
+  String? _ollamaModel;
+
   @override
   void initState() {
     super.initState();
     // Add welcome message
     _messages.add({'role': 'welcome', 'text': _welcomeMessage});
-    
+
     if (widget.aiService != null) {
       _aiService = widget.aiService;
+      _isConfigured = true;
     } else {
-      _checkEnvAndInit();
+      _initConfig();
     }
+  }
+
+  Future<void> _initConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedProvider = prefs.getString('provider');
+
+    if (storedProvider != null && storedProvider.isNotEmpty) {
+      // Load from Prefs
+      setState(() {
+        _providerType = storedProvider;
+        if (_providerType == 'gemini') {
+          _apiKey = prefs.getString('gemini_api_key');
+        } else if (_providerType == 'azure') {
+          _apiKey = prefs.getString('azure_api_key');
+          _azureEndpoint = prefs.getString('azure_endpoint');
+          _azureDeployment = prefs.getString('azure_deployment');
+          _azureApiVersion = prefs.getString('azure_api_version') ?? '2024-10-21';
+        } else if (_providerType == 'openai') {
+          _apiKey = prefs.getString('openai_api_key');
+          _openaiEndpoint = prefs.getString('openai_endpoint');
+        } else if (_providerType == 'ollama') {
+          _ollamaEndpoint = prefs.getString('ollama_endpoint');
+          _ollamaModel = prefs.getString('ollama_model');
+        }
+
+        // Load Directory Config
+        _directoryUrl = prefs.getString('directory_server_address');
+        _directoryToken = prefs.getString('directory_github_token');
+        _oasfSchemaUrl = prefs.getString('oasf_schema_url');
+      });
+
+      if ((_providerType == 'ollama') || (_apiKey != null && _apiKey!.isNotEmpty)) {
+        print('Configured $_providerType from Settings');
+        setState(() => _isConfigured = true);
+        _initServices();
+        return;
+      }
+    }
+
+    // Fallback to Env
+    _checkEnvAndInit();
   }
 
   @override
@@ -91,6 +144,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _providerType = 'openai';
         _apiKey = openaiKey;
         _openaiEndpoint = openaiEndpoint;
+        setState(() => _isConfigured = true);
         _initServices();
         return;
     }
@@ -99,6 +153,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final azureKey = Platform.environment['AZURE_API_KEY'] ?? const String.fromEnvironment('AZURE_API_KEY');
     final azureEp = Platform.environment['AZURE_ENDPOINT'] ?? const String.fromEnvironment('AZURE_ENDPOINT');
     final azureDep = Platform.environment['AZURE_DEPLOYMENT'] ?? const String.fromEnvironment('AZURE_DEPLOYMENT');
+    final azureApiVer = Platform.environment['AZURE_OPENAI_API_VERSION'] ?? const String.fromEnvironment('AZURE_OPENAI_API_VERSION');
 
     if (azureKey.isNotEmpty && azureEp.isNotEmpty && azureDep.isNotEmpty) {
         print('Auto-configuring Azure from Environment');
@@ -106,6 +161,10 @@ class _ChatScreenState extends State<ChatScreen> {
         _apiKey = azureKey;
         _azureEndpoint = azureEp;
         _azureDeployment = azureDep;
+        if (azureApiVer.isNotEmpty) {
+           _azureApiVersion = azureApiVer;
+        }
+        setState(() => _isConfigured = true);
         _initServices();
         return;
     }
@@ -116,8 +175,25 @@ class _ChatScreenState extends State<ChatScreen> {
          print('Auto-configuring Gemini from Environment');
          _providerType = 'gemini';
          _apiKey = geminiKey;
+         setState(() => _isConfigured = true);
          _initServices();
          return;
+    }
+
+    // Check for Ollama (local) - implicit if configured?
+    // Usually local usage doesn't need env vars unless we want to force it.
+    // We'll skip auto-init for Ollama unless specific ENV is present to force it.
+    final ollamaEp = Platform.environment['OLLAMA_ENDPOINT'] ?? const String.fromEnvironment('OLLAMA_ENDPOINT');
+    if (ollamaEp.isNotEmpty) {
+        print('Auto-configuring Ollama from Environment');
+        _providerType = 'ollama';
+        _ollamaEndpoint = ollamaEp;
+        _ollamaModel = Platform.environment['OLLAMA_MODEL'] ?? const String.fromEnvironment('OLLAMA_MODEL');
+        if (_ollamaModel == null || _ollamaModel!.isEmpty) _ollamaModel = 'gemma3:4b'; // Default
+
+        setState(() => _isConfigured = true);
+        _initServices();
+        return;
     }
   }
 
@@ -139,14 +215,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       items: const [
                         DropdownMenuItem(value: 'gemini', child: Text('Google Gemini')),
                         DropdownMenuItem(value: 'azure', child: Text('Azure OpenAI')),
+                        DropdownMenuItem(value: 'ollama', child: Text('Ollama')),
                       ],
                       onChanged: (v) => setState(() => _providerType = v!),
                     ),
                     const SizedBox(height: 10),
-                    TextField(
-                      decoration: const InputDecoration(labelText: 'API Key'),
-                      onChanged: (v) => _apiKey = v,
-                    ),
+                    if (_providerType != 'ollama')
+                      TextField(
+                        decoration: const InputDecoration(labelText: 'API Key'),
+                        onChanged: (v) => _apiKey = v,
+                      ),
                     if (_providerType == 'azure') ...[
                       const SizedBox(height: 10),
                       TextField(
@@ -164,6 +242,18 @@ class _ChatScreenState extends State<ChatScreen> {
                         decoration: const InputDecoration(labelText: 'API Version'),
                         onChanged: (v) => _azureApiVersion = v,
                       ),
+                    ],
+                    if (_providerType == 'ollama') ...[
+                      const SizedBox(height: 10),
+                      TextField(
+                        decoration: const InputDecoration(labelText: 'Endpoint (default: http://localhost:11434/api/chat)'),
+                        onChanged: (v) => _ollamaEndpoint = v,
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        decoration: const InputDecoration(labelText: 'Model (default: gemma3:4b)'),
+                        onChanged: (v) => _ollamaModel = v,
+                      ),
                     ]
                   ],
                 ),
@@ -172,7 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 TextButton(
                   onPressed: () {
                     // Validation
-                    if (_apiKey == null || _apiKey!.isEmpty) return;
+                    if (_providerType != 'ollama' && (_apiKey == null || _apiKey!.isEmpty)) return;
 
                     if (_providerType == 'azure') {
                       if (_azureEndpoint == null || _azureEndpoint!.isEmpty) return;
@@ -193,27 +283,67 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _initServices() async {
-    // Get path from environment
+    // Get path from environment or search in bundled/dev locations
     String? mcpPath = Platform.environment['MCP_SERVER_PATH'];
+
+    // Debug Mode Details
+    debugPrint('Searching for MCP Server...');
+    debugPrint('Current Directory: ${Directory.current.path}');
+    debugPrint('Resolved Executable: ${Platform.resolvedExecutable}');
+
     if (mcpPath == null || mcpPath.isEmpty) {
-      debugPrint('MCP_SERVER_PATH is not set');
-      setState(() {
-        _messages.add({
-          'role': 'system',
-          'content': 'Error: MCP_SERVER_PATH environment variable is missing.'
+      // 1. Check bundled resource (macOS mostly)
+      // Platform.resolvedExecutable points to .../Contents/MacOS/AGNTCY Directory
+      final exeDir = File(Platform.resolvedExecutable).parent;
+      final macResourcePath = '${exeDir.parent.path}/Resources/mcp-server';
+      debugPrint('Checking Bundle Path: $macResourcePath');
+
+      // 2. Check same directory (Linux/Windows bundled)
+      final localPath = '${exeDir.path}/mcp-server';
+      debugPrint('Checking Local Path: $localPath');
+
+      // 3. Check development path (relative to gui root)
+      // When running 'flutter run', CWD might be the gui root, or nested.
+      final devPath = '${Directory.current.path}/../bin/mcp-server';
+      debugPrint('Checking Dev Path: $devPath');
+
+      if (await File(macResourcePath).exists()) {
+        mcpPath = macResourcePath;
+      } else if (await File(localPath).exists()) {
+        mcpPath = localPath;
+      } else if (await File(devPath).exists()) {
+        // Normalize path for clean printing
+        mcpPath = File(devPath).absolute.path;
+      }
+    }
+
+    if (mcpPath == null || mcpPath.isEmpty) {
+      debugPrint('MCP_SERVER_PATH is not set and binary not found in default locations');
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'role': 'system',
+            'text': 'Error: MCP_SERVER_PATH not set and mcp-server binary not found.\nChecked:\n- Bundle Resources\n- App Directory\n- ../bin/mcp-server'
+          });
         });
-      });
+      }
       return;
     }
 
     print('Starting MCP Client with server at: $mcpPath');
 
-    // Get Directory Server Address
-    final dirServerAddr = Platform.environment['DIRECTORY_CLIENT_SERVER_ADDRESS'] ??
+    // Get Directory Server Address - Prefer Settings, then Env
+    String dirServerAddr = _directoryUrl ?? '';
+    if (dirServerAddr.isEmpty) {
+        dirServerAddr = Platform.environment['DIRECTORY_CLIENT_SERVER_ADDRESS'] ??
                           const String.fromEnvironment('DIRECTORY_CLIENT_SERVER_ADDRESS');
+    }
 
-    final oasfSchemaUrl = Platform.environment['OASF_API_VALIDATION_SCHEMA_URL'] ??
+    String oasfSchema = _oasfSchemaUrl ?? '';
+    if (oasfSchema.isEmpty) {
+        oasfSchema = Platform.environment['OASF_API_VALIDATION_SCHEMA_URL'] ??
                           const String.fromEnvironment('OASF_API_VALIDATION_SCHEMA_URL');
+    }
 
     Map<String, String> mcpEnv = {};
     if (dirServerAddr.isNotEmpty) {
@@ -221,8 +351,17 @@ class _ChatScreenState extends State<ChatScreen> {
       mcpEnv['DIRECTORY_CLIENT_SERVER_ADDRESS'] = dirServerAddr;
     }
 
-    if (oasfSchemaUrl.isNotEmpty) {
-       mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchemaUrl;
+    // Auth Token configuration
+    if (_directoryToken != null && _directoryToken!.isNotEmpty) {
+       mcpEnv['DIRECTORY_CLIENT_GITHUB_TOKEN'] = _directoryToken!;
+       // If a token is provided, we assume GitHub auth mode for the token unless specified otherwise
+       // In future we might want a dropdown for Auth Mode in settings
+       mcpEnv['DIRECTORY_CLIENT_AUTH_MODE'] = 'github';
+       print('Configuring Directory Auth Token (using github mode)');
+    }
+
+    if (oasfSchema.isNotEmpty) {
+       mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchema;
     } else {
        // Disable OASF API validation if schema URL is not provided
        mcpEnv['OASF_API_VALIDATION_DISABLE'] = 'true';
@@ -254,6 +393,11 @@ class _ChatScreenState extends State<ChatScreen> {
            deploymentId: _azureDeployment!,
            apiVersion: _azureApiVersion,
          );
+      } else if (_providerType == 'ollama') {
+         provider = OllamaProvider(
+            endpoint: _ollamaEndpoint?.isEmpty ?? true ? 'http://localhost:11434/api/chat' : _ollamaEndpoint!,
+            model: _ollamaModel?.isEmpty ?? true ? 'gemma3:4b' : _ollamaModel!,
+         );
       } else {
          provider = GeminiProvider(apiKey: _apiKey!);
       }
@@ -282,9 +426,9 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic> _extractSearchCriteria(String userMessage) {
     // Simple heuristic extraction - show the user's query
     final criteria = <String, dynamic>{};
-    
+
     final lowerMsg = userMessage.toLowerCase();
-    
+
     // Detect keywords
     if (lowerMsg.contains('name')) {
       criteria['filter'] = 'name';
@@ -298,28 +442,28 @@ class _ChatScreenState extends State<ChatScreen> {
     if (lowerMsg.contains('all')) {
       criteria['scope'] = 'all agents';
     }
-    
+
     // Always show the query
-    criteria['query'] = userMessage.length > 60 
-        ? '${userMessage.substring(0, 60)}...' 
+    criteria['query'] = userMessage.length > 60
+        ? '${userMessage.substring(0, 60)}...'
         : userMessage;
-    
+
     return criteria;
   }
 
   /// Auto-pull all records to populate agent info in search results
   Future<void> _autoPullRecords(List<String> cids) async {
     if (_aiService == null) return;
-    
+
     print('DEBUG: Auto-pulling ${cids.length} records...');
-    
+
     for (final cid in cids) {
       // Skip if already pulled
       if (_pulledRecords.containsKey(cid)) {
         print('DEBUG: Skipping $cid - already pulled');
         continue;
       }
-      
+
       try {
         print('DEBUG: Pulling record $cid...');
         // Call the MCP tool directly to pull the record
@@ -327,18 +471,18 @@ class _ChatScreenState extends State<ChatScreen> {
           'agntcy_dir_pull_record',
           {'cid': cid},
         );
-        
+
         if (result.isError) {
           print('ERROR: Pull failed for $cid: ${result.content}');
           continue;
         }
-        
+
         print('DEBUG: Pull result type: ${result.content.runtimeType}');
-        
+
         // Parse the result - MCP returns [{type: 'text', text: 'json...'}]
         dynamic parsed;
         final content = result.content;
-        
+
         if (content is List && content.isNotEmpty) {
           for (final item in content) {
             if (item is Map && item['type'] == 'text' && item['text'] != null) {
@@ -360,17 +504,17 @@ class _ChatScreenState extends State<ChatScreen> {
         } else if (content is Map) {
           parsed = content;
         }
-        
+
         if (parsed == null) {
           print('DEBUG: Could not parse content for $cid');
           continue;
         }
-        
+
         print('DEBUG: Parsed data keys: ${parsed is Map ? (parsed as Map).keys.toList() : 'not a map'}');
-        
+
         if (parsed is Map) {
           final recordData = Map<String, dynamic>.from(parsed);
-          
+
           // Check for nested data fields - handle both 'data' and 'record_data' keys
           Map<String, dynamic> agentData;
           if (recordData.containsKey('record_data')) {
@@ -396,12 +540,12 @@ class _ChatScreenState extends State<ChatScreen> {
           } else {
             agentData = recordData;
           }
-          
+
           agentData['cid'] = cid;
           _pulledRecords[cid] = agentData;
-          
+
           print('DEBUG: Stored record for $cid with name: ${agentData['name']}');
-          
+
           // Update UI to show loaded data
           if (mounted) {
             setState(() {});
@@ -435,20 +579,20 @@ class _ChatScreenState extends State<ChatScreen> {
           setState(() {
             if (data is Map) {
               final mapData = Map<String, dynamic>.from(data);
-              
+
               // Check if this is a search result
               if (name == 'agntcy_dir_search_local' && mapData.containsKey('count')) {
                 // Remove any previous search_results from this conversation turn
                 // to avoid duplicate search widgets
                 _messages.removeWhere((m) => m['role'] == 'search_results');
-                
+
                 _messages.add({
                   'role': 'search_results',
                   'data': mapData,
                   'source': name,
                   'searchCriteria': _extractSearchCriteria(text),
                 });
-                
+
                 // Auto-pull all records to get full agent data
                 // Use Future.microtask to schedule this outside of setState
                 final cids = (mapData['record_cids'] as List?)?.cast<String>() ?? [];
@@ -458,7 +602,7 @@ class _ChatScreenState extends State<ChatScreen> {
               else if (name == 'agntcy_dir_pull_record' && mapData.containsKey('data')) {
                 // Try to get CID from pending, or extract from user message
                 String cid = _pendingPullCid ?? '';
-                
+
                 // If no pending CID, try to extract from the last user message
                 if (cid.isEmpty) {
                   for (int i = _messages.length - 1; i >= 0; i--) {
@@ -475,15 +619,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
                   }
                 }
-                
+
                 final recordWithCid = {'cid': cid, ...mapData};
-                
+
                 // Store in pulled records map
                 if (cid.isNotEmpty) {
                   _pulledRecords[cid] = recordWithCid;
                   _pendingPullCid = null;
                 }
-                
+
                 // Show expandable detail card (expanded by default)
                 _messages.add({
                   'role': 'agent_record',
@@ -556,7 +700,7 @@ class _ChatScreenState extends State<ChatScreen> {
       },
     );
   }
-  
+
   void _showHelpCommands() {
     setState(() {
       _messages.add({
@@ -591,10 +735,33 @@ Type your query or click a suggestion to get started!''',
     });
   }
 
+  Future<void> _openSettings() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+    );
+
+    if (result == true) {
+      // Config changed
+      setState(() {
+        _messages.add({
+          'role': 'system',
+          'text': 'Configuration updated. Re-connecting services...',
+        });
+      });
+
+      _aiService = null;
+      _mcpClient?.stop(); // Ensure old client is stopped
+      _mcpClient = null;
+
+      await _initConfig();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -602,7 +769,7 @@ Type your query or click a suggestion to get started!''',
           children: [
             // Blue logo for light mode, orange logo for dark mode
             SvgPicture.asset(
-              isDark 
+              isDark
                   ? 'assets/images/logo-dark.svg'   // Orange on dark
                   : 'assets/images/logo-light.svg', // Blue on light
               height: 28,
@@ -620,6 +787,11 @@ Type your query or click a suggestion to get started!''',
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: _openSettings,
+          ),
+          IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => MyApp.toggleTheme(context),
             tooltip: 'Toggle Theme',
@@ -629,6 +801,28 @@ Type your query or click a suggestion to get started!''',
       body: SelectionArea(
         child: Column(
           children: [
+            if (!_isConfigured)
+              Container(
+                width: double.infinity,
+                color: Theme.of(context).colorScheme.errorContainer,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                       child: Text(
+                         'AI Provider not configured. Please check settings.',
+                         style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontWeight: FontWeight.bold),
+                       ),
+                    ),
+                    TextButton(
+                      onPressed: _openSettings,
+                      child: const Text('Settings'),
+                    ),
+                  ],
+                ),
+              ),
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
@@ -727,7 +921,7 @@ Type your query or click a suggestion to get started!''',
                   if (role == 'search_results') {
                     final data = msg['data'] as Map<String, dynamic>;
                     final cids = (data['record_cids'] as List?)?.cast<String>() ?? [];
-                    
+
                     // Collect loaded records from the _pulledRecords map
                     final loadedRecords = <Map<String, dynamic>>[];
                     for (final cid in cids) {
@@ -735,10 +929,10 @@ Type your query or click a suggestion to get started!''',
                         loadedRecords.add(_pulledRecords[cid]!);
                       }
                     }
-                    
+
                     // Check if still loading (CIDs exist but not all records loaded)
                     final isLoading = cids.isNotEmpty && loadedRecords.length < cids.length;
-                    
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: SearchResultsWidget(
@@ -764,7 +958,7 @@ Type your query or click a suggestion to get started!''',
                   if (role == 'agent_record') {
                     final data = msg['data'] as Map<String, dynamic>;
                     final cid = data['cid']?.toString() ?? '';
-                    
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: AgentDetailCard(
@@ -845,11 +1039,11 @@ Type your query or click a suggestion to get started!''',
                     final jsonBlockMatch = RegExp(r'```(?:json)?\s*([\s\S]*?)\s*```').firstMatch(text);
                     final trimmedText = text.trim();
                     final isRawJson = trimmedText.startsWith('{') && trimmedText.endsWith('}');
-                    
+
                     // Try to extract JSON
                     String textBeforeJson = '';
                     Map<String, dynamic>? jsonData;
-                    
+
                     if (jsonBlockMatch != null) {
                       textBeforeJson = text.substring(0, jsonBlockMatch.start).trim();
                       try {
@@ -860,7 +1054,7 @@ Type your query or click a suggestion to get started!''',
                         jsonData = jsonDecode(trimmedText);
                       } catch (_) {}
                     }
-                    
+
                     return Align(
                       alignment: Alignment.centerLeft,
                       child: FractionallySizedBox(
@@ -893,7 +1087,7 @@ Type your query or click a suggestion to get started!''',
                                     // Show text before JSON if any
                                     if (textBeforeJson.isNotEmpty) ...[
                                       MarkdownBody(
-                                        data: textBeforeJson, 
+                                        data: textBeforeJson,
                                         selectable: true,
                                         styleSheet: MarkdownStyleSheet(
                                           h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
@@ -909,7 +1103,7 @@ Type your query or click a suggestion to get started!''',
                                       JsonCodeBlock(data: jsonData, title: 'Record Data', maxHeight: 250)
                                     else if (jsonBlockMatch == null)
                                       MarkdownBody(
-                                        data: text, 
+                                        data: text,
                                         selectable: true,
                                         styleSheet: MarkdownStyleSheet(
                                           h2: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),

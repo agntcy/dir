@@ -13,6 +13,7 @@ class AiService {
 
   LlmProvider? _provider;
   final List<Map<String, dynamic>> _azureHistory = [];
+  final List<Map<String, dynamic>> _ollamaHistory = [];
 
   /// Expose MCP client for direct tool calls
   McpClient get mcpClient => _mcpClient;
@@ -32,6 +33,7 @@ class AiService {
     // 2. Init Provider
     await _provider!.init(_tools);
     _azureHistory.clear();
+    _ollamaHistory.clear();
   }
 
   Future<String?> sendMessage(
@@ -45,6 +47,8 @@ class AiService {
       return _sendMessageAzure(message, onToolOutput: onToolOutput);
     } else if (_provider is OpenAiCompatibleProvider) {
       return _sendMessageOpenAi(message, onToolOutput: onToolOutput);
+    } else if (_provider is OllamaProvider) {
+      return _sendMessageOllama(message, onToolOutput: onToolOutput);
     } else {
       return _sendMessageGemini(message, history, onToolOutput: onToolOutput);
     }
@@ -218,9 +222,68 @@ class AiService {
     return response.text;
   }
 
+  Future<String?> _sendMessageOllama(
+    String message,
+    {void Function(String, dynamic)? onToolOutput}
+  ) async {
+    _ollamaHistory.add({"role": "user", "content": message});
+
+    final ollamaProvider = _provider as OllamaProvider;
+    var response = await ollamaProvider.sendRaw(_ollamaHistory);
+
+    while (response.toolCalls.isNotEmpty) {
+      final callIds = <dynamic, String>{}; // Map tc object to ID
+
+      final toolCallsData = response.toolCalls.map((tc) {
+          final id = (tc.id != null && tc.id!.isNotEmpty)
+              ? tc.id!
+              : "call_${DateTime.now().microsecondsSinceEpoch}_${tc.name}";
+          callIds[tc] = id;
+
+          return {
+            "id": id,
+            "type": "function",
+            "function": {
+              "name": tc.name,
+              "arguments": tc.args, // Pass Map directly for Ollama
+            }
+          };
+      }).toList();
+
+      final assistantMsg = {
+        "role": "assistant",
+        "content": response.text ?? "",
+        "tool_calls": toolCallsData
+      };
+      _ollamaHistory.add(assistantMsg);
+
+      for (final tc in response.toolCalls) {
+        final result = await _mcpClient.callTool(tc.name, tc.args);
+
+        if (onToolOutput != null) {
+            _notifyToolOutput(tc.name, result.content, onToolOutput);
+        }
+
+        _ollamaHistory.add({
+          "role": "tool",
+          "tool_call_id": callIds[tc],
+          "content": result.content.toString(),
+        });
+      }
+
+      response = await ollamaProvider.sendRaw(_ollamaHistory);
+    }
+
+    if (response.text != null) {
+      _ollamaHistory.add({"role": "assistant", "content": response.text});
+    }
+
+    return response.text;
+  }
+
   void _notifyToolOutput(String name, dynamic content, void Function(String, dynamic) callback) {
      print("DEBUG: _notifyToolOutput called for $name with content type: ${content.runtimeType}");
-     
+
      // Handle content as either List or String
      List<dynamic> contentList;
      if (content is List) {
@@ -245,7 +308,7 @@ class AiService {
        print("DEBUG: Unexpected content type: ${content.runtimeType}");
        return;
      }
-     
+
      for (var item in contentList) {
          if (item is Map && item['type'] == 'text') {
              try {
