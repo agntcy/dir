@@ -30,12 +30,14 @@ require (
 	github.com/agntcy/dir/importer v0.6.1
 	github.com/agntcy/dir/mcp v0.6.1
 	github.com/agntcy/dir/utils v0.6.1
+	github.com/ipfs/go-cid v0.6.0
 	github.com/libp2p/go-libp2p v0.46.0
 	github.com/sigstore/sigstore v1.10.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.47.0
+	golang.org/x/mod v0.32.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -178,7 +180,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/invopop/yaml v0.3.1 // indirect
-	github.com/ipfs/go-cid v0.6.0 // indirect
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -288,7 +289,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
-	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect

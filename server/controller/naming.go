@@ -7,7 +7,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"sort"
 	"strings"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
-	"golang.org/x/mod/semver"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -145,7 +143,7 @@ func (n *namingCtrl) getDomainFromRecord(ctx context.Context, cid string) string
 
 // Resolve resolves a record reference (name with optional version) to CIDs.
 // If version is specified, returns the exact match(es).
-// If no version is specified, returns all versions sorted by semver (latest first).
+// If no version is specified, returns all versions sorted by created_at (newest first).
 // Names without protocol prefix are searched with both http:// and https://.
 func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) (*namingv1.ResolveResponse, error) {
 	namingLogger.Debug("Resolve request received", "name", req.GetName(), "version", req.GetVersion())
@@ -178,8 +176,7 @@ func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) 
 		return nil, status.Errorf(codes.NotFound, "no record found with name %q", req.GetName())
 	}
 
-	// Sort records by semver (latest first)
-	sortRecordsBySemver(records)
+	// Records are already sorted by created_at DESC from the database query
 
 	// Convert to response format
 	refs := make([]*corev1.NamedRecordRef, 0, len(records))
@@ -196,51 +193,6 @@ func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) 
 	return &namingv1.ResolveResponse{
 		Records: refs,
 	}, nil
-}
-
-// sortRecordsBySemver sorts records by semver version in descending order (latest first).
-func sortRecordsBySemver(records []types.Record) {
-	sort.Slice(records, func(i, j int) bool {
-		iData, _ := records[i].GetRecordData()
-		jData, _ := records[j].GetRecordData()
-
-		return compareSemver(iData.GetVersion(), jData.GetVersion()) > 0
-	})
-}
-
-// compareSemver compares two version strings using semver.
-// Returns >0 if a > b, <0 if a < b, 0 if equal.
-// Handles versions with or without 'v' prefix.
-// Falls back to string comparison if not valid semver.
-func compareSemver(a, b string) int {
-	va := ensureVPrefix(a)
-	vb := ensureVPrefix(b)
-
-	if semver.IsValid(va) && semver.IsValid(vb) {
-		return semver.Compare(va, vb)
-	}
-
-	// Fall back to string comparison
-	if a > b {
-		return 1
-	} else if a < b {
-		return -1
-	}
-
-	return 0
-}
-
-// ensureVPrefix adds 'v' prefix if not present (semver package requires it).
-func ensureVPrefix(version string) string {
-	if version == "" {
-		return ""
-	}
-
-	if version[0] != 'v' {
-		return "v" + version
-	}
-
-	return version
 }
 
 // expandNameWithProtocols returns name variations to search for.
