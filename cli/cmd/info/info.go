@@ -29,7 +29,7 @@ You can lookup by CID or by name. The command auto-detects whether the argument 
 - If it's a valid CID (e.g., bafyrei...), it looks up directly by CID
 - Otherwise, it resolves the name to a CID and looks it up
 
-When looking up by name without a version, the latest version (by semver) is used.
+When looking up by name without a version, the most recently created version is used.
 
 Usage examples:
 

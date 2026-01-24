@@ -27,7 +27,7 @@ You can pull by CID or by name. The command auto-detects whether the argument is
 - If it's a valid CID (e.g., bafyrei...), it pulls directly by CID
 - Otherwise, it resolves the name to a CID and pulls it
 
-When pulling by name without a version, the latest version (by semver) is returned.
+When pulling by name without a version, the most recently created version is used.
 
 For hash-verified pulls, append @digest to verify the resolved record matches the expected CID:
 - name@digest  - verify latest version matches the digest

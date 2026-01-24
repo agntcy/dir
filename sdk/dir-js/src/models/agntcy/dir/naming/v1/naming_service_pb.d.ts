@@ -84,7 +84,6 @@ export declare type ResolveRequest = Message<"agntcy.dir.naming.v1.ResolveReques
 
   /**
    * Optional version to resolve to (e.g., "v1.0.0").
-   * If not specified, returns all versions sorted by semver (latest first).
    *
    * @generated from field: optional string version = 2;
    */
@@ -104,7 +103,7 @@ export declare const ResolveRequestSchema: GenMessage<ResolveRequest>;
  */
 export declare type ResolveResponse = Message<"agntcy.dir.naming.v1.ResolveResponse"> & {
   /**
-   * The resolved record references, sorted by version (latest first).
+   * The resolved record references (newest first by created_at).
    *
    * @generated from field: repeated agntcy.dir.core.v1.NamedRecordRef records = 1;
    */
@@ -138,7 +137,7 @@ export declare const NamingService: GenService<{
   /**
    * Resolve resolves a record reference (name with optional version) to CIDs.
    * Supports Docker-style references:
-   *   - "name" -> returns all versions (sorted by semver, latest first)
+   *   - "name" -> returns all versions (newest first)
    *   - "name:version" -> returns the specific version
    *   - "name@cid" -> hash-verified lookup (latest version)
    *   - "name:version@cid" -> hash-verified lookup (specific version)

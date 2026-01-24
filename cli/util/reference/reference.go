@@ -99,7 +99,7 @@ func IsCID(input string) bool {
 // ResolveToCID resolves the input to a CID using the provided client.
 // Supports formats:
 //   - CID directly (e.g., "bafyreib...")
-//   - name (e.g., "cisco.com/agent") -> latest semver version
+//   - name (e.g., "cisco.com/agent") -> latest version
 //   - name:version (e.g., "cisco.com/agent:v1.0.0") -> specific version
 //   - name@digest (e.g., "cisco.com/agent@bafyreib...") -> hash-verified lookup
 //   - name:version@digest -> hash-verified lookup of specific version
@@ -123,7 +123,6 @@ func ResolveToCID(ctx context.Context, c *client.Client, input string) (string, 
 		return "", fmt.Errorf("no records found for %q", input)
 	}
 
-	// Use the first record (latest version, since they're sorted by semver descending)
 	resolvedCID := records[0].GetCid()
 
 	// If a digest was provided, verify it matches the resolved CID

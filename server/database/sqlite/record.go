@@ -209,8 +209,6 @@ func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
 
 	// Apply all filters.
 	query = d.handleFilterOptions(query, cfg)
-
-	// Sort by created_at descending (newest first).
 	query = query.Order("records.created_at DESC")
 
 	// Execute the query.

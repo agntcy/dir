@@ -45,7 +45,7 @@ class NamingServiceServicer(object):
     def Resolve(self, request, context):
         """Resolve resolves a record reference (name with optional version) to CIDs.
         Supports Docker-style references:
-        - "name" -> returns all versions (sorted by semver, latest first)
+        - "name" -> returns all versions (newest first)
         - "name:version" -> returns the specific version
         - "name@cid" -> hash-verified lookup (latest version)
         - "name:version@cid" -> hash-verified lookup (specific version)

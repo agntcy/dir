@@ -143,7 +143,7 @@ func (n *namingCtrl) getDomainFromRecord(ctx context.Context, cid string) string
 
 // Resolve resolves a record reference (name with optional version) to CIDs.
 // If version is specified, returns the exact match(es).
-// If no version is specified, returns all versions sorted by created_at (newest first).
+// If no version is specified, returns all versions (newest first).
 // Names without protocol prefix are searched with both http:// and https://.
 func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) (*namingv1.ResolveResponse, error) {
 	namingLogger.Debug("Resolve request received", "name", req.GetName(), "version", req.GetVersion())
@@ -175,8 +175,6 @@ func (n *namingCtrl) Resolve(ctx context.Context, req *namingv1.ResolveRequest) 
 
 		return nil, status.Errorf(codes.NotFound, "no record found with name %q", req.GetName())
 	}
-
-	// Records are already sorted by created_at DESC from the database query
 
 	// Convert to response format
 	refs := make([]*corev1.NamedRecordRef, 0, len(records))

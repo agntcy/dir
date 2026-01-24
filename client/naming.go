@@ -28,7 +28,7 @@ func (c *Client) GetVerificationInfo(ctx context.Context, cid string) (*namingv1
 }
 
 // Resolve resolves a record reference (name with optional version) to CIDs.
-// Returns all matching records sorted by semver (latest first).
+// Returns all matching records sorted by created_at descending (newest first).
 // If version is empty, returns all versions; otherwise returns matches for the specific version.
 func (c *Client) Resolve(ctx context.Context, name string, version string) (*namingv1.ResolveResponse, error) {
 	req := &namingv1.ResolveRequest{

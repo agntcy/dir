@@ -17,7 +17,7 @@ service NamingService {
 
   // Resolve resolves a record reference (name with optional version) to CIDs.
   // Supports Docker-style references:
-  //   - "name" -> returns all versions (sorted by semver, latest first)
+  //   - "name" -> returns all versions (newest first)
   //   - "name:version" -> returns the specific version
   //   - "name@cid" -> hash-verified lookup (latest version)
   //   - "name:version@cid" -> hash-verified lookup (specific version)
@@ -49,12 +49,11 @@ message ResolveRequest {
   string name = 1;
 
   // Optional version to resolve to (e.g., "v1.0.0").
-  // If not specified, returns all versions sorted by semver (latest first).
   optional string version = 2;
 }
 
 // ResolveResponse is the response containing the resolved records.
 message ResolveResponse {
-  // The resolved record references, sorted by version (latest first).
+  // The resolved record references (newest first by created_at).
   repeated agntcy.dir.core.v1.NamedRecordRef records = 1;
 }

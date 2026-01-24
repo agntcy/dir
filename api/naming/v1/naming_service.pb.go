@@ -141,7 +141,6 @@ type ResolveRequest struct {
 	// The name of the record to resolve (e.g., "cisco.com/agent").
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Optional version to resolve to (e.g., "v1.0.0").
-	// If not specified, returns all versions sorted by semver (latest first).
 	Version       *string `protobuf:"bytes,2,opt,name=version,proto3,oneof" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -194,7 +193,7 @@ func (x *ResolveRequest) GetVersion() string {
 // ResolveResponse is the response containing the resolved records.
 type ResolveResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The resolved record references, sorted by version (latest first).
+	// The resolved record references (newest first by created_at).
 	Records       []*v1.NamedRecordRef `protobuf:"bytes,1,rep,name=records,proto3" json:"records,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

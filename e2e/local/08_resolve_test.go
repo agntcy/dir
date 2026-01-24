@@ -119,7 +119,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 	})
 
 	// Test version resolution with multiple versions of the same record
-	ginkgo.Context("Version resolution - latest by semver", ginkgo.Ordered, func() {
+	ginkgo.Context("Version resolution - latest by created_at", ginkgo.Ordered, func() {
 		var (
 			tempDir string
 			cidV4   string
