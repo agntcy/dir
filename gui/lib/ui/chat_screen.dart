@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../mcp/client.dart';
 import '../services/ai_service.dart';
+import '../services/analytics_service.dart';
 import '../services/llm_provider.dart';
 import 'settings_screen.dart';
 import 'widgets/record_card.dart';
@@ -571,11 +572,19 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
+    // Log message event
+    AnalyticsService().logEvent('send_message', params: {
+      'provider': _providerType,
+      'model': _providerType == 'ollama' ? _ollamaModel : (_providerType == 'azure' ? _azureDeployment : 'gemini'),
+      'has_context': _history.isNotEmpty,
+    });
+
     try {
       final responseText = await _aiService!.sendMessage(
         text,
         _history,
         onToolOutput: (name, data) {
+          AnalyticsService().logEvent('tool_use', params: {'tool_name': name});
           setState(() {
             if (data is Map) {
               final mapData = Map<String, dynamic>.from(data);
