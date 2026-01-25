@@ -11,15 +11,38 @@ import (
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
 )
 
-// GetVerificationInfo retrieves the verification info for a record.
+// GetVerificationInfo retrieves the verification info for a record by CID.
 func (c *Client) GetVerificationInfo(ctx context.Context, cid string) (*namingv1.GetVerificationInfoResponse, error) {
 	if cid == "" {
 		return nil, errors.New("cid is required")
 	}
 
 	resp, err := c.NamingServiceClient.GetVerificationInfo(ctx, &namingv1.GetVerificationInfoRequest{
-		Cid: cid,
+		Cid: &cid,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get verification info: %w", err)
+	}
+
+	return resp, nil
+}
+
+// GetVerificationInfoByName retrieves the verification info for a record by name.
+// If version is empty, the latest version is used.
+func (c *Client) GetVerificationInfoByName(ctx context.Context, name string, version string) (*namingv1.GetVerificationInfoResponse, error) {
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+
+	req := &namingv1.GetVerificationInfoRequest{
+		Name: &name,
+	}
+
+	if version != "" {
+		req.Version = &version
+	}
+
+	resp, err := c.NamingServiceClient.GetVerificationInfo(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get verification info: %w", err)
 	}

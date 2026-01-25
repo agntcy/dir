@@ -60,15 +60,38 @@ func NewNamingController(store types.StoreAPI, db types.DatabaseAPI, provider *n
 }
 
 // GetVerificationInfo retrieves the verification info for a record.
+// Accepts either a CID directly or a name (with optional version) that will be resolved first.
 func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetVerificationInfoRequest) (*namingv1.GetVerificationInfoResponse, error) {
-	namingLogger.Debug("GetVerificationInfo request received", "cid", req.GetCid())
+	namingLogger.Debug("GetVerificationInfo request received", "cid", req.GetCid(), "name", req.GetName(), "version", req.GetVersion())
 
-	if req.GetCid() == "" {
-		return nil, status.Error(codes.InvalidArgument, "cid is required")
+	// Determine the CID to use
+	cid := req.GetCid()
+
+	if cid == "" {
+		// No CID provided, try to resolve from name
+		if req.GetName() == "" {
+			return nil, status.Error(codes.InvalidArgument, "either cid or name is required")
+		}
+
+		// Resolve name to CID
+		resolveResp, err := n.Resolve(ctx, &namingv1.ResolveRequest{
+			Name:    req.GetName(),
+			Version: req.Version,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if len(resolveResp.GetRecords()) == 0 {
+			return nil, status.Errorf(codes.NotFound, "no record found with name %q", req.GetName())
+		}
+
+		// Use the first (latest) record
+		cid = resolveResp.GetRecords()[0].GetCid()
 	}
 
 	// Query database for the latest verification attempt
-	latest, err := n.db.GetVerificationByCID(req.GetCid())
+	latest, err := n.db.GetVerificationByCID(cid)
 	if err != nil {
 		if errors.Is(err, sqlite.ErrVerificationNotFound) {
 			errMsg := "no verification found"
@@ -96,12 +119,12 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 	}
 
 	// Return valid verification from database
-	namingLogger.Debug("Returning verification from database", "cid", req.GetCid())
+	namingLogger.Debug("Returning verification from database", "cid", cid)
 
 	return &namingv1.GetVerificationInfoResponse{
 		Verified: true,
 		Verification: namingv1.NewDomainVerification(&namingv1.DomainVerification{
-			Domain:     n.getDomainFromRecord(ctx, req.GetCid()),
+			Domain:     n.getDomainFromRecord(ctx, cid),
 			Method:     latest.GetMethod(),
 			KeyId:      latest.GetKeyID(),
 			VerifiedAt: timestamppb.New(latest.GetUpdatedAt()),

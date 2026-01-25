@@ -17,16 +17,35 @@ export declare const file_agntcy_dir_naming_v1_naming_service: GenFile;
 
 /**
  * GetVerificationInfoRequest is the request for retrieving verification info.
+ * Either cid OR name must be provided. If name is provided, it will be resolved
+ * to a CID first (using the latest version if version is not specified).
  *
  * @generated from message agntcy.dir.naming.v1.GetVerificationInfoRequest
  */
 export declare type GetVerificationInfoRequest = Message<"agntcy.dir.naming.v1.GetVerificationInfoRequest"> & {
   /**
    * The CID of the record to check.
+   * If provided, name and version are ignored.
    *
-   * @generated from field: string cid = 1;
+   * @generated from field: optional string cid = 1;
    */
-  cid: string;
+  cid?: string;
+
+  /**
+   * The name of the record to check (e.g., "cisco.com/agent").
+   * Used when cid is not provided.
+   *
+   * @generated from field: optional string name = 2;
+   */
+  name?: string;
+
+  /**
+   * Optional version when looking up by name (e.g., "v1.0.0").
+   * If not specified, the latest version is used.
+   *
+   * @generated from field: optional string version = 3;
+   */
+  version?: string;
 };
 
 /**

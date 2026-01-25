@@ -26,9 +26,20 @@ service NamingService {
 }
 
 // GetVerificationInfoRequest is the request for retrieving verification info.
+// Either cid OR name must be provided. If name is provided, it will be resolved
+// to a CID first (using the latest version if version is not specified).
 message GetVerificationInfoRequest {
   // The CID of the record to check.
-  string cid = 1;
+  // If provided, name and version are ignored.
+  optional string cid = 1;
+
+  // The name of the record to check (e.g., "cisco.com/agent").
+  // Used when cid is not provided.
+  optional string name = 2;
+
+  // Optional version when looking up by name (e.g., "v1.0.0").
+  // If not specified, the latest version is used.
+  optional string version = 3;
 }
 
 // GetVerificationInfoResponse is the response for retrieving verification info.

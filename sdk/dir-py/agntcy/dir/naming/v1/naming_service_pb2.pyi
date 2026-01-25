@@ -8,10 +8,14 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class GetVerificationInfoRequest(_message.Message):
-    __slots__ = ("cid",)
+    __slots__ = ("cid", "name", "version")
     CID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    VERSION_FIELD_NUMBER: _ClassVar[int]
     cid: str
-    def __init__(self, cid: _Optional[str] = ...) -> None: ...
+    name: str
+    version: str
+    def __init__(self, cid: _Optional[str] = ..., name: _Optional[str] = ..., version: _Optional[str] = ...) -> None: ...
 
 class GetVerificationInfoResponse(_message.Message):
     __slots__ = ("verified", "verification", "error_message")
