@@ -1410,7 +1410,7 @@ tasks:
                 - "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
             authz:
               enabled: true
-              enforcer_policy_file_content: |
+              enforcer_policy_csv: |
                 p,{{ .DIR_TRUST_DOMAIN }},*
                 p,*,/agntcy.dir.store.v1.StoreService/Pull
                 p,*,/agntcy.dir.store.v1.StoreService/PullReferrer

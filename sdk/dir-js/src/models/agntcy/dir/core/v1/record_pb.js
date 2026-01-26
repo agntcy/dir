@@ -12,7 +12,7 @@ import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
  * Describes the file agntcy/dir/core/v1/record.proto.
  */
 export const file_agntcy_dir_core_v1_record = /*@__PURE__*/
-  fileDesc("Ch9hZ250Y3kvZGlyL2NvcmUvdjEvcmVjb3JkLnByb3RvEhJhZ250Y3kuZGlyLmNvcmUudjEiGAoJUmVjb3JkUmVmEgsKA2NpZBgBIAEoCSK/AQoKUmVjb3JkTWV0YRILCgNjaWQYASABKAkSRAoLYW5ub3RhdGlvbnMYAiADKAsyLy5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkTWV0YS5Bbm5vdGF0aW9uc0VudHJ5EhYKDnNjaGVtYV92ZXJzaW9uGAMgASgJEhIKCmNyZWF0ZWRfYXQYBCABKAkaMgoQQW5ub3RhdGlvbnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIi8KBlJlY29yZBIlCgRkYXRhGAEgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCKKAgoOUmVjb3JkUmVmZXJyZXISDAoEdHlwZRgBIAEoCRIxCgpyZWNvcmRfcmVmGAIgASgLMh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhJICgthbm5vdGF0aW9ucxgDIAMoCzIzLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWZlcnJlci5Bbm5vdGF0aW9uc0VudHJ5EhIKCmNyZWF0ZWRfYXQYBCABKAkSJQoEZGF0YRgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QaMgoQQW5ub3RhdGlvbnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQrMBChZjb20uYWdudGN5LmRpci5jb3JlLnYxQgtSZWNvcmRQcm90b1ABWiFnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL2NvcmUvdjGiAgNBREOqAhJBZ250Y3kuRGlyLkNvcmUuVjHKAhJBZ250Y3lcRGlyXENvcmVcVjHiAh5BZ250Y3lcRGlyXENvcmVcVjFcR1BCTWV0YWRhdGHqAhVBZ250Y3k6OkRpcjo6Q29yZTo6VjFiBnByb3RvMw", [file_google_protobuf_struct]);
+  fileDesc("Ch9hZ250Y3kvZGlyL2NvcmUvdjEvcmVjb3JkLnByb3RvEhJhZ250Y3kuZGlyLmNvcmUudjEiGAoJUmVjb3JkUmVmEgsKA2NpZBgBIAEoCSI8Cg5OYW1lZFJlY29yZFJlZhIMCgRuYW1lGAEgASgJEg8KB3ZlcnNpb24YAiABKAkSCwoDY2lkGAMgASgJIr8BCgpSZWNvcmRNZXRhEgsKA2NpZBgBIAEoCRJECgthbm5vdGF0aW9ucxgCIAMoCzIvLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRNZXRhLkFubm90YXRpb25zRW50cnkSFgoOc2NoZW1hX3ZlcnNpb24YAyABKAkSEgoKY3JlYXRlZF9hdBgEIAEoCRoyChBBbm5vdGF0aW9uc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiLwoGUmVjb3JkEiUKBGRhdGEYASABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0IooCCg5SZWNvcmRSZWZlcnJlchIMCgR0eXBlGAEgASgJEjEKCnJlY29yZF9yZWYYAiABKAsyHS5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkUmVmEkgKC2Fubm90YXRpb25zGAMgAygLMjMuYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZmVycmVyLkFubm90YXRpb25zRW50cnkSEgoKY3JlYXRlZF9hdBgEIAEoCRIlCgRkYXRhGAUgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBoyChBBbm5vdGF0aW9uc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCswEKFmNvbS5hZ250Y3kuZGlyLmNvcmUudjFCC1JlY29yZFByb3RvUAFaIWdpdGh1Yi5jb20vYWdudGN5L2Rpci9hcGkvY29yZS92MaICA0FEQ6oCEkFnbnRjeS5EaXIuQ29yZS5WMcoCEkFnbnRjeVxEaXJcQ29yZVxWMeICHkFnbnRjeVxEaXJcQ29yZVxWMVxHUEJNZXRhZGF0YeoCFUFnbnRjeTo6RGlyOjpDb3JlOjpWMWIGcHJvdG8z", [file_google_protobuf_struct]);
 
 /**
  * Describes the message agntcy.dir.core.v1.RecordRef.
@@ -22,23 +22,30 @@ export const RecordRefSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_core_v1_record, 0);
 
 /**
+ * Describes the message agntcy.dir.core.v1.NamedRecordRef.
+ * Use `create(NamedRecordRefSchema)` to create a new message.
+ */
+export const NamedRecordRefSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_core_v1_record, 1);
+
+/**
  * Describes the message agntcy.dir.core.v1.RecordMeta.
  * Use `create(RecordMetaSchema)` to create a new message.
  */
 export const RecordMetaSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_core_v1_record, 1);
+  messageDesc(file_agntcy_dir_core_v1_record, 2);
 
 /**
  * Describes the message agntcy.dir.core.v1.Record.
  * Use `create(RecordSchema)` to create a new message.
  */
 export const RecordSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_core_v1_record, 2);
+  messageDesc(file_agntcy_dir_core_v1_record, 3);
 
 /**
  * Describes the message agntcy.dir.core.v1.RecordReferrer.
  * Use `create(RecordReferrerSchema)` to create a new message.
  */
 export const RecordReferrerSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_core_v1_record, 3);
+  messageDesc(file_agntcy_dir_core_v1_record, 4);
 
