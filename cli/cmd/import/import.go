@@ -4,22 +4,18 @@
 package importcmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
+	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/importer/config"
-	"github.com/agntcy/dir/importer/enricher"
 	_ "github.com/agntcy/dir/importer/mcp" // Import MCP importer to trigger its init() function for auto-registration.
 	"github.com/agntcy/dir/importer/types"
 	"github.com/agntcy/dir/importer/types/factory"
 	"github.com/spf13/cobra"
-)
-
-var (
-	cfg          config.Config
-	registryType string
 )
 
 var Command = &cobra.Command{
@@ -51,30 +47,16 @@ Examples:
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --enrich \
     --enrich-config=/path/to/mcphost.json \
     --enrich-prompt=/path/to/custom-prompt.md
+
+  # Import and sign records with OIDC (opens browser for authentication)
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --sign
+
+  # Import and sign records with a private key
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --sign --key=/path/to/cosign.key
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runImport(cmd)
 	},
-}
-
-func init() {
-	// Add flags
-	Command.Flags().StringVar(&registryType, "type", "", "Registry type (mcp, a2a)")
-	Command.Flags().StringVar(&cfg.RegistryURL, "url", "", "Registry base URL")
-	Command.Flags().StringToStringVar(&cfg.Filters, "filter", nil, "Filters (key=value)")
-	Command.Flags().IntVar(&cfg.Limit, "limit", 0, "Maximum number of records to import (0 = no limit)")
-	Command.Flags().BoolVar(&cfg.DryRun, "dry-run", false, "Preview without importing")
-	Command.Flags().BoolVar(&cfg.Force, "force", false, "Force push even if record already exists")
-	Command.Flags().BoolVar(&cfg.Debug, "debug", false, "Enable debug output for deduplication and validation failures")
-
-	Command.Flags().BoolVar(&cfg.Enrich, "enrich", false, "Enrich the records with LLM")
-	Command.Flags().StringVar(&cfg.EnricherConfigFile, "enrich-config", enricher.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
-	Command.Flags().StringVar(&cfg.EnricherSkillsPromptTemplate, "enrich-skills-prompt", "", "Optional: path to custom skills prompt template file or inline prompt (empty = use default)")
-	Command.Flags().StringVar(&cfg.EnricherDomainsPromptTemplate, "enrich-domains-prompt", "", "Optional: path to custom domains prompt template file or inline prompt (empty = use default)")
-
-	// Mark required flags
-	Command.MarkFlagRequired("type") //nolint:errcheck
-	Command.MarkFlagRequired("url")  //nolint:errcheck
 }
 
 func runImport(cmd *cobra.Command) error {
@@ -85,29 +67,40 @@ func runImport(cmd *cobra.Command) error {
 	}
 
 	// Set the registry type from the string flag
-	cfg.RegistryType = config.RegistryType(registryType)
+	opts.Config.RegistryType = config.RegistryType(opts.RegistryType)
+
+	// Set up signing function if enabled
+	if opts.Sign {
+		opts.SignFunc = func(ctx context.Context, cid string) error {
+			return signcmd.Sign(ctx, c, cid)
+		}
+	}
 
 	// Validate configuration
-	if err := cfg.Validate(); err != nil {
+	if err := opts.Validate(); err != nil {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Create importer instance from pre-initialized factory, passing client separately
-	importer, err := factory.Create(c, cfg)
+	// Create importer instance from pre-initialized factory
+	importer, err := factory.Create(c, opts.Config)
 	if err != nil {
 		return fmt.Errorf("failed to create importer: %w", err)
 	}
 
 	// Run import with progress reporting
-	presenter.Printf(cmd, "Starting import from %s registry at %s...\n", cfg.RegistryType, cfg.RegistryURL)
+	presenter.Printf(cmd, "Starting import from %s registry at %s...\n", opts.Config.RegistryType, opts.RegistryURL)
 
-	if cfg.DryRun {
+	if opts.DryRun {
 		presenter.Printf(cmd, "Mode: DRY RUN (preview only)\n")
+	}
+
+	if opts.Sign {
+		presenter.Printf(cmd, "Signing: ENABLED\n")
 	}
 
 	presenter.Printf(cmd, "\n")
 
-	result, err := importer.Run(cmd.Context(), cfg)
+	result, err := importer.Run(cmd.Context(), opts.Config)
 	if err != nil {
 		return fmt.Errorf("import failed: %w", err)
 	}
@@ -141,7 +134,7 @@ func printSummary(cmd *cobra.Command, result *types.ImportResult) {
 		}
 	}
 
-	if cfg.DryRun {
+	if opts.DryRun {
 		presenter.Printf(cmd, "\nNote: This was a dry run. No records were actually imported.\n")
 	}
 }
