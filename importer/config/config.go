@@ -34,6 +34,9 @@ type ClientInterface interface {
 	PullBatch(ctx context.Context, recordRefs []*corev1.RecordRef) ([]*corev1.Record, error)
 }
 
+// SignFunc is a function type for signing records after push.
+type SignFunc func(ctx context.Context, cid string) error
+
 // Config contains configuration for an import operation.
 type Config struct {
 	RegistryType RegistryType      // Registry type identifier
@@ -42,6 +45,7 @@ type Config struct {
 	Limit        int               // Number of records to import (default: 0 for all)
 	Concurrency  int               // Number of concurrent workers (default: 1)
 	DryRun       bool              // If true, preview without actually importing
+	SignFunc     SignFunc          // Function to sign records (if set, signing is enabled)
 
 	Enrich                        bool   // If true, enrich the records with LLM
 	EnricherConfigFile            string // Path to MCPHost configuration file (e.g., mcphost.json)
