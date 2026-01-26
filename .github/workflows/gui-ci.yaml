@@ -22,6 +22,9 @@ jobs:
     defaults:
       run:
         working-directory: ./gui
+    env:
+      MEASUREMENT_ID: ${{ vars.MEASUREMENT_ID }}
+      API_SECRET: ${{ secrets.API_SECRET }}
 
     steps:
       - name: Checkout code
@@ -37,6 +40,11 @@ jobs:
         with:
           go-version: '1.25.6'
 
+      - name: Create .env file
+        run: |
+          echo "MEASUREMENT_ID=$MEASUREMENT_ID" > .env
+          echo "API_SECRET=$API_SECRET" >> .env
+
       - name: Build MCP Server
         run: |
           mkdir -p ../bin
@@ -45,6 +53,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate Code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Run tests with coverage
         run: flutter test --coverage
@@ -80,9 +91,10 @@ jobs:
         with:
           go-version: '1.25.6'
 
-      - name: Inject Analytics Config
+      - name: Create .env file
         run: |
-          echo "{\"measurement_id\": \"$MEASUREMENT_ID\", \"api_secret\": \"$API_SECRET\"}" > analytics_config.json
+          echo "MEASUREMENT_ID=$MEASUREMENT_ID" > .env
+          echo "API_SECRET=$API_SECRET" >> .env
 
       - name: Build MCP Server
         run: |
@@ -92,6 +104,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate Code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Create macOS runner
         run: flutter create --platforms=macos .
@@ -158,10 +173,11 @@ jobs:
         with:
           go-version: '1.25.6'
 
-      - name: Inject Analytics Config
+      - name: Create .env file
         shell: bash
         run: |
-          echo "{\"measurement_id\": \"$MEASUREMENT_ID\", \"api_secret\": \"$API_SECRET\"}" > analytics_config.json
+          echo "MEASUREMENT_ID=$MEASUREMENT_ID" > .env
+          echo "API_SECRET=$API_SECRET" >> .env
 
       - name: Build MCP Server
         shell: bash
@@ -172,6 +188,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate Code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Create Windows runner
         run: flutter create --platforms=windows .
