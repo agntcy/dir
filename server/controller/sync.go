@@ -12,7 +12,9 @@ import (
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
+	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,7 +37,14 @@ func NewSyncController(db types.DatabaseAPI, opts types.APIOptions) storev1.Sync
 	}
 }
 
-func (c *syncCtlr) CreateSync(_ context.Context, req *storev1.CreateSyncRequest) (*storev1.CreateSyncResponse, error) {
+func IsRegsyncRequired(localRegistryType registry.RegistryType, remoteRegistryURL string) bool {
+	registryType := registry.DetectRegistryType(remoteRegistryURL)
+
+	// Use regsync if either the local or remote registry is not Zot
+	return localRegistryType != registry.RegistryTypeZot || registryType != registry.RegistryTypeZot
+}
+
+func (c *syncCtlr) CreateSync(ctx context.Context, req *storev1.CreateSyncRequest) (*storev1.CreateSyncResponse, error) {
 	syncLogger.Debug("Called sync controller's CreateSync method")
 
 	// Validate the remote directory URL
@@ -43,7 +52,19 @@ func (c *syncCtlr) CreateSync(_ context.Context, req *storev1.CreateSyncRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid remote directory URL: %v", err)
 	}
 
-	id, err := c.db.CreateSync(req.GetRemoteDirectoryUrl(), req.GetCids())
+	// Default to Zot sync if local registry is not Zot
+	localRegistryType := c.opts.Config().Store.OCI.GetType()
+	requiresRegsync := c.opts.Config().Store.OCI.GetType() != registry.RegistryTypeZot
+
+	// Try to get registry URL from remote directory to determine sync type
+	result, err := sync.NegotiateCredentials(ctx, req.GetRemoteDirectoryUrl(), c.opts.Config().Authn)
+	if err != nil {
+		syncLogger.Warn("Failed to negotiate credentials with remote", "remote_url", req.GetRemoteDirectoryUrl(), "error", err)
+	} else {
+		requiresRegsync = IsRegsyncRequired(localRegistryType, result.FullRepositoryURL())
+	}
+
+	id, err := c.db.CreateSync(req.GetRemoteDirectoryUrl(), req.GetCids(), requiresRegsync)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sync: %w", err)
 	}

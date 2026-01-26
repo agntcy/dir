@@ -62,7 +62,7 @@ func DetectRegistryType(url string) RegistryType {
 		return RegistryTypeGHCR
 	case strings.Contains(url, "docker.io") || strings.Contains(url, "registry.hub.docker.com"):
 		return RegistryTypeDockerHub
-	case strings.Contains(url, "zot") || strings.Contains(url, "localhost"):
+	case strings.Contains(url, "zot") || strings.Contains(url, "localhost") || strings.Contains(url, "127.0.0.1"):
 		return RegistryTypeZot
 	default:
 		return RegistryTypeUnknown
