@@ -318,9 +318,30 @@ The following environment variables can be used with both binary and Docker conf
 #### Directory Client Configuration
 
 - `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
-- `DIRECTORY_CLIENT_AUTH_MODE` - Authentication mode: `none`, `x509`, `jwt`, `token`
+- `DIRECTORY_CLIENT_AUTH_MODE` - Authentication mode: `none`, `x509`, `jwt`, `token`, `github`
 - `DIRECTORY_CLIENT_SPIFFE_TOKEN` - Path to SPIFFE token file (for token authentication)
+- `DIRECTORY_CLIENT_GITHUB_TOKEN` - GitHub Personal Access Token (for GitHub authentication)
 - `DIRECTORY_CLIENT_TLS_SKIP_VERIFY` - Skip TLS verification (set to `true` if needed)
+
+#### GitHub Authentication
+
+**Recommended: Personal Access Token (PAT)**
+
+For MCP servers running in your IDE, we recommend using a GitHub Personal Access Token (PAT). Unlike OAuth tokens that expire every 8 hours, PATs provide long-lived authentication without requiring frequent re-login and IDE restarts.
+
+**Setup Steps:**
+
+1. Create a GitHub PAT at [GitHub Settings → Personal access tokens](https://github.com/settings/tokens)
+   - Select scopes: `user:email` and `read:org`
+   - Set expiration: 90 days, 1 year, or no expiration
+2. Add the token to your MCP configuration (see examples below)
+3. Set `DIRECTORY_CLIENT_AUTH_MODE` to `"github"`
+
+**Alternative: OAuth Token**
+
+If you prefer shorter-lived credentials, you can use OAuth tokens obtained via `dirctl auth login`. Note that OAuth tokens expire every 8 hours, requiring you to re-authenticate and restart your IDE for the MCP server to pick up the new token.
+
+**Security Note:** Never commit tokens to version control. IDE configuration files are local and protected by OS file permissions.
 
 #### OASF Validation Configuration
 
@@ -408,6 +429,43 @@ The following environment variables can be used with both binary and Docker conf
   }
 }
 ```
+
+**Example - Use GitHub authentication with PAT (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "prod.gateway.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_AUTH_MODE": "github",
+        "DIRECTORY_CLIENT_GITHUB_TOKEN": "ghp_your_personal_access_token_here"
+      }
+    }
+  }
+}
+```
+
+**Example - Use GitHub authentication with OAuth token (Cursor):**
+
+```json
+{
+  "mcpServers": {
+    "dir-mcp-server": {
+      "command": "/absolute/path/to/dirctl",
+      "args": ["mcp", "serve"],
+      "env": {
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "prod.gateway.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_AUTH_MODE": "github"
+      }
+    }
+  }
+}
+```
+
+Before starting the MCP server with OAuth token configuration, authenticate using `dirctl auth login`. The server will automatically load your cached token from `~/.config/dirctl/auth-token.json`. Remember to re-authenticate and restart your IDE when the token expires (every 8 hours).
 
 **Note:** After changing the configuration, fully restart your IDE (e.g., quit and reopen Cursor) for the MCP server to reload with the new settings.
 
