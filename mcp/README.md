@@ -9,7 +9,7 @@
 Lists all available OASF schema versions supported by the server.
 
 **Input:** None  
-**Output:** `available_versions` ([]string), `count` (int), `error_message` (string)
+**Output:** `available_versions` ([]string), `default_version` (string), `count` (int), `error_message` (string)
 
 ### `agntcy_oasf_get_schema`
 
@@ -344,24 +344,18 @@ If you prefer shorter-lived credentials, you can use OAuth tokens obtained via `
 
 #### OASF Validation Configuration
 
-- `OASF_API_VALIDATION_SCHEMA_URL` - OASF schema URL for API-based validation
-  - **Required** when `OASF_API_VALIDATION_DISABLE` is `false` or not set
-  - URL of the OASF server to use for validation
-  - If API validation is enabled but this is not set, the server will return an error
+- `OASF_API_VALIDATION_SCHEMA_URL` - OASF schema URL for validation and schema operations
+  - **Required** - The MCP server requires this environment variable to be set
+  - URL of the OASF schema server to use for validation and schema retrieval
+  - If not set, the server will fail to start with an error
   - Example: `https://schema.oasf.outshift.com`
+  
+  This URL is used for:
+  - Validating OASF agent records
+  - Retrieving schema content, versions, skills, and domains
+  - All schema-related operations
 
-- `OASF_API_VALIDATION_DISABLE` - Disable API-based validation
-  - **Default**: `false` (API validation enabled)
-  - When `true`, uses embedded schemas instead of the API validator
-  - When `false` or not set, uses API validation and requires `OASF_API_VALIDATION_SCHEMA_URL` to be set
-
-- `OASF_API_VALIDATION_STRICT_MODE` - API validation strictness mode
-  - **Default**: `true` (strict mode)
-  - **Strict mode** (`true`): Fails on unknown attributes, deprecated fields, and schema violations
-  - **Non-strict mode** (`false`): More permissive, only fails on critical errors
-  - Only applies when API validation is enabled
-
-**Example - Use OASF API validation (Cursor):**
+**Example - Basic configuration (Cursor):**
 
 ```json
 {
@@ -378,7 +372,7 @@ If you prefer shorter-lived credentials, you can use OAuth tokens obtained via `
 }
 ```
 
-**Example - Use custom OASF server (Cursor):**
+**Example - Use custom OASF schema server (Cursor):**
 
 ```json
 {
@@ -388,40 +382,6 @@ If you prefer shorter-lived credentials, you can use OAuth tokens obtained via `
       "args": ["mcp", "serve"],
       "env": {
         "OASF_API_VALIDATION_SCHEMA_URL": "http://localhost:8080",
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
-      }
-    }
-  }
-}
-```
-
-**Example - Use non-strict validation mode (Cursor):**
-
-```json
-{
-  "mcpServers": {
-    "dir-mcp-server": {
-      "command": "/absolute/path/to/dirctl",
-      "args": ["mcp", "serve"],
-      "env": {
-        "OASF_API_VALIDATION_STRICT_MODE": "false",
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
-      }
-    }
-  }
-}
-```
-
-**Example - Use embedded schemas (Cursor):**
-
-```json
-{
-  "mcpServers": {
-    "dir-mcp-server": {
-      "command": "/absolute/path/to/dirctl",
-      "args": ["mcp", "serve"],
-      "env": {
-        "OASF_API_VALIDATION_DISABLE": "true",
         "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
       }
     }

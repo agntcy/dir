@@ -11,6 +11,7 @@ import (
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -122,9 +123,9 @@ func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
 }
 
 func TestRecord_Validate(t *testing.T) {
-	// Configure validation for unit tests: use embedded schemas (no API validation)
-	// This ensures tests don't depend on external services or require schema URL configuration
-	corev1.SetDisableAPIValidation(true)
+	if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
+		t.Fatalf("Failed to initialize validator: %v", err)
+	}
 
 	tests := []struct {
 		name      string
@@ -213,205 +214,71 @@ func TestRecord_Validate(t *testing.T) {
 	}
 }
 
-func TestRecord_SetSchemaURL(t *testing.T) {
-	// Test that SetSchemaURL changes the package-level variable
-	// Note: This test modifies global state, so we should be careful about test isolation
-
-	// Save original state
-	originalURL := ""
-	originalDisable := false
-
-	defer func() {
-		corev1.SetSchemaURL(originalURL)
-		corev1.SetDisableAPIValidation(originalDisable)
-	}()
-
+func TestRecord_InitializeValidator(t *testing.T) {
+	// Test that InitializeValidator initializes the validator correctly
 	tests := []struct {
 		name      string
 		schemaURL string
-		wantSet   bool
+		wantError bool
 	}{
 		{
-			name:      "set valid schema URL",
+			name:      "initialize with valid schema URL",
 			schemaURL: "https://schema.oasf.outshift.com",
-			wantSet:   true,
+			wantError: false,
 		},
 		{
-			name:      "set empty schema URL (disable API validator)",
+			name:      "initialize with empty schema URL returns error",
 			schemaURL: "",
-			wantSet:   true,
-		},
-		{
-			name:      "set custom schema URL",
-			schemaURL: "https://custom.schema.url",
-			wantSet:   true,
+			wantError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// This should not panic or error
-			corev1.SetSchemaURL(tt.schemaURL)
-			// When schema URL is empty, disable API validation to use embedded schemas
-			corev1.SetDisableAPIValidation(tt.schemaURL == "")
+			err := corev1.InitializeValidator(tt.schemaURL)
+			if tt.wantError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 
-			// We can't directly verify the internal state, but we can verify
-			// that calling SetSchemaURL doesn't panic and that validation
-			// still works afterwards (when using a valid URL or empty URL)
-			record := corev1.New(&oasfv1alpha1.Record{
-				Name:          "test-agent",
-				SchemaVersion: "0.7.0",
-				Description:   "A test agent",
-				Version:       "1.0.0",
-				CreatedAt:     "2024-01-01T00:00:00Z",
-				Authors: []string{
-					"Jane Doe <jane.doe@example.com>",
-				},
-				Locators: []*oasfv1alpha1.Locator{
-					{
-						Type: "helm_chart",
-						Url:  "https://example.com/helm-chart.tgz",
+				// Verify that validation works after initialization
+				record := corev1.New(&oasfv1alpha1.Record{
+					Name:          "test-agent",
+					SchemaVersion: "0.7.0",
+					Description:   "A test agent",
+					Version:       "1.0.0",
+					CreatedAt:     "2024-01-01T00:00:00Z",
+					Authors: []string{
+						"Jane Doe <jane.doe@example.com>",
 					},
-				},
-				Skills: []*oasfv1alpha1.Skill{
-					{
-						Name: "natural_language_processing/natural_language_understanding",
+					Locators: []*oasfv1alpha1.Locator{
+						{
+							Type: "helm_chart",
+							Url:  "https://example.com/helm-chart.tgz",
+						},
 					},
-				},
-			})
+					Skills: []*oasfv1alpha1.Skill{
+						{
+							Name: "natural_language_processing/natural_language_understanding",
+						},
+					},
+				})
 
-			// Validation should work for valid URLs or empty URL (embedded validation)
-			// For invalid URLs, we expect a network error which is acceptable for this test
-			valid, _, err := record.Validate(context.Background())
-			if err != nil {
-				// If it's a network error (like "no such host"), that's expected for invalid URLs
-				// and we just verify that SetSchemaURL didn't panic
-				if tt.schemaURL != "" && tt.schemaURL != "https://schema.oasf.outshift.com" {
-					// For custom/invalid URLs, network errors are expected
-					return
+				// Validation should work for valid URLs
+				// For invalid URLs, we expect a network error which is acceptable for this test
+				valid, _, err := record.Validate(context.Background())
+				if err != nil {
+					// If it's a network error (like "no such host"), that's expected for invalid URLs
+					if tt.schemaURL != "" && tt.schemaURL != "https://schema.oasf.outshift.com" {
+						// For custom/invalid URLs, network errors are expected
+						return
+					}
+
+					t.Fatalf("Validate() error = %v", err)
 				}
 
-				t.Fatalf("Validate() error = %v", err)
+				assert.True(t, valid)
 			}
-
-			assert.True(t, valid)
-		})
-	}
-}
-
-// testRecordWithValidation is a helper function to create a test record and validate it.
-// This reduces code duplication between similar tests.
-// Note: This function assumes API validation is disabled (uses embedded schemas).
-func testRecordWithValidation(t *testing.T) {
-	t.Helper()
-
-	// Ensure API validation is disabled for unit tests
-	corev1.SetDisableAPIValidation(true)
-
-	record := corev1.New(&oasfv1alpha1.Record{
-		Name:          "test-agent",
-		SchemaVersion: "0.7.0",
-		Description:   "A test agent",
-		Version:       "1.0.0",
-		CreatedAt:     "2024-01-01T00:00:00Z",
-		Authors: []string{
-			"Jane Doe <jane.doe@example.com>",
-		},
-		Locators: []*oasfv1alpha1.Locator{
-			{
-				Type: "helm_chart",
-				Url:  "https://example.com/helm-chart.tgz",
-			},
-		},
-		Skills: []*oasfv1alpha1.Skill{
-			{
-				Name: "natural_language_processing/natural_language_understanding",
-			},
-		},
-		Modules: []*oasfv1alpha1.Module{
-			{
-				Name: "test-extension",
-			},
-		},
-	})
-
-	// Validation should still work
-	valid, _, err := record.Validate(context.Background())
-	if err != nil {
-		t.Fatalf("Validate() error = %v", err)
-	}
-
-	assert.True(t, valid)
-}
-
-func TestRecord_SetDisableAPIValidation(t *testing.T) {
-	// Test that SetDisableAPIValidation changes the package-level variable
-	// Note: This test modifies global state, so we should be careful about test isolation
-
-	// Save original state
-	originalDisable := false
-	defer corev1.SetDisableAPIValidation(originalDisable) // Restore after test
-
-	tests := []struct {
-		name           string
-		disableAPI     bool
-		wantDisableAPI bool
-	}{
-		{
-			name:           "disable API validation",
-			disableAPI:     true,
-			wantDisableAPI: true,
-		},
-		{
-			name:           "enable API validation",
-			disableAPI:     false,
-			wantDisableAPI: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// This should not panic or error
-			corev1.SetDisableAPIValidation(tt.disableAPI)
-
-			// Verify that calling SetDisableAPIValidation doesn't panic and that validation still works
-			testRecordWithValidation(t)
-		})
-	}
-}
-
-func TestRecord_SetStrictValidation(t *testing.T) {
-	// Test that SetStrictValidation changes the package-level variable
-	// Note: This test modifies global state, so we should be careful about test isolation
-
-	// Save original state
-	originalStrict := true
-	defer corev1.SetStrictValidation(originalStrict) // Restore after test
-
-	tests := []struct {
-		name       string
-		strict     bool
-		wantStrict bool
-	}{
-		{
-			name:       "enable strict validation",
-			strict:     true,
-			wantStrict: true,
-		},
-		{
-			name:       "disable strict validation",
-			strict:     false,
-			wantStrict: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// This should not panic or error
-			corev1.SetStrictValidation(tt.strict)
-
-			// Verify that calling SetStrictValidation doesn't panic and that validation still works
-			testRecordWithValidation(t)
 		})
 	}
 }

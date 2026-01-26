@@ -12,6 +12,8 @@ import (
 )
 
 func TestGetSchema(t *testing.T) {
+	t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "https://schema.oasf.outshift.com")
+
 	t.Run("should return schema for valid version", func(t *testing.T) {
 		ctx := context.Background()
 		input := GetSchemaInput{Version: "0.7.0"}

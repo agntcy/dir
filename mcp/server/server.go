@@ -22,32 +22,15 @@ import (
 //nolint:maintidx // Function registers all MCP tools and prompts, complexity is acceptable
 func Serve(ctx context.Context) error {
 	// Configure OASF validation
-	// Note: Logging to stderr is intentional - MCP servers communicate over stdin/stdout,
-	// so stderr is used for logging/debugging messages that don't interfere with the protocol.
-	disableAPIValidation := os.Getenv("OASF_API_VALIDATION_DISABLE") == "true"
-	if disableAPIValidation {
-		corev1.SetDisableAPIValidation(true)
-		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validation disabled, using embedded schemas\n")
-	} else {
-		// Read schema URL from environment variable
-		// Should be set in mcphost.json or via OASF_API_VALIDATION_SCHEMA_URL environment variable
-		// If API validation is enabled but schema URL is not provided, this is a configuration error
-		schemaURL := os.Getenv("OASF_API_VALIDATION_SCHEMA_URL")
+	// Schema URL is required for OASF validation
+	schemaURL := os.Getenv("OASF_API_VALIDATION_SCHEMA_URL")
+	if schemaURL == "" {
+		return errors.New("OASF_API_VALIDATION_SCHEMA_URL environment variable is required. Set it to the OASF schema URL (e.g., https://schema.oasf.outshift.com)")
+	}
 
-		// If schema URL is empty, API validation cannot be enabled
-		if schemaURL == "" {
-			return errors.New("OASF API validation is enabled but schema_url is not configured. Set OASF_API_VALIDATION_SCHEMA_URL environment variable (e.g., in mcphost.json), or set OASF_API_VALIDATION_DISABLE=true to use embedded schema validation")
-		}
-
-		// Read strict validation setting (default to strict for safety)
-		strictValidation := os.Getenv("OASF_API_VALIDATION_STRICT_MODE") != "false"
-
-		corev1.SetSchemaURL(schemaURL)
-		corev1.SetDisableAPIValidation(false)
-		corev1.SetStrictValidation(strictValidation)
-
-		fmt.Fprintf(os.Stderr, "[MCP Server] OASF API validator configured with schema_url=%s, strict mode=%t\n",
-			schemaURL, strictValidation)
+	// Initialize validator with schema URL
+	if err := corev1.InitializeValidator(schemaURL); err != nil {
+		return fmt.Errorf("failed to initialize OASF validator: %w", err)
 	}
 
 	// Create MCP server for Directory operations
