@@ -13,14 +13,15 @@ import (
 
 //nolint:nestif
 func TestTransformer_Transform(t *testing.T) {
-	// Create transformer with enrichment disabled for testing
+	// Enrichment is mandatory - transformer requires enricher initialization
+	// Tests will be skipped if enricher cannot be initialized (no LLM available)
 	cfg := config.Config{
-		Enrich: false,
+		EnricherConfigFile: "testdata/mcphost.json",
 	}
 
 	transformer, err := NewTransformer(t.Context(), cfg)
 	if err != nil {
-		t.Fatalf("failed to create transformer: %v", err)
+		t.Skipf("Skipping test: enrichment is mandatory but enricher initialization failed: %v", err)
 	}
 
 	tests := []struct {
@@ -87,14 +88,15 @@ func TestTransformer_Transform(t *testing.T) {
 
 //nolint:nestif
 func TestTransformer_ConvertToOASF(t *testing.T) {
-	// Create transformer with enrichment disabled for testing
+	// Enrichment is mandatory - transformer requires enricher initialization
+	// Tests will be skipped if enricher cannot be initialized (no LLM available)
 	cfg := config.Config{
-		Enrich: false,
+		EnricherConfigFile: "testdata/mcphost.json",
 	}
 
 	transformer, err := NewTransformer(t.Context(), cfg)
 	if err != nil {
-		t.Fatalf("failed to create transformer: %v", err)
+		t.Skipf("Skipping test: enrichment is mandatory but enricher initialization failed: %v", err)
 	}
 
 	tests := []struct {

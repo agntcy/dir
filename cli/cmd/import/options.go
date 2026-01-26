@@ -29,8 +29,7 @@ func init() {
 	flags.BoolVar(&opts.Force, "force", false, "Force push even if record already exists")
 	flags.BoolVar(&opts.Debug, "debug", false, "Enable debug output for deduplication and validation failures")
 
-	// Enrichment flags
-	flags.BoolVar(&opts.Enrich, "enrich", false, "Enrich the records with LLM")
+	// Enrichment is mandatory - these flags configure the enrichment process
 	flags.StringVar(&opts.EnricherConfigFile, "enrich-config", enricher.DefaultConfigFile, "Path to MCPHost configuration file (mcphost.json)")
 	flags.StringVar(&opts.EnricherSkillsPromptTemplate, "enrich-skills-prompt", "", "Optional: path to custom skills prompt template file or inline prompt (empty = use default)")
 	flags.StringVar(&opts.EnricherDomainsPromptTemplate, "enrich-domains-prompt", "", "Optional: path to custom domains prompt template file or inline prompt (empty = use default)")
