@@ -65,22 +65,6 @@ app.kubernetes.io/component: http
 {{- end }}
 
 {{/*
-DNS component labels
-*/}}
-{{- define "validation.dns.labels" -}}
-{{ include "validation.labels" . }}
-app.kubernetes.io/component: dns
-{{- end }}
-
-{{/*
-DNS selector labels
-*/}}
-{{- define "validation.dns.selectorLabels" -}}
-{{ include "validation.selectorLabels" . }}
-app.kubernetes.io/component: dns
-{{- end }}
-
-{{/*
 Create the name of the service account to use
 */}}
 {{- define "validation.serviceAccountName" -}}
@@ -88,14 +72,5 @@ Create the name of the service account to use
 {{- default (include "validation.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Validate that at least one component is enabled
-*/}}
-{{- define "validation.validateEnabled" -}}
-{{- if and (not .Values.http.enabled) (not .Values.dns.enabled) }}
-{{- fail "At least one component (http or dns) must be enabled" }}
 {{- end }}
 {{- end }}
