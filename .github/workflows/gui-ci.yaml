@@ -140,8 +140,11 @@ jobs:
 
       - name: Create DMG
         run: |
+          mkdir -p "build/macos/Build/Products/Release/dmg_staging"
+          cp -R "build/macos/Build/Products/Release/AGNTCY Directory.app" "build/macos/Build/Products/Release/dmg_staging/"
+          ln -s /Applications "build/macos/Build/Products/Release/dmg_staging/Applications"
           hdiutil create -volname "AGNTCY Directory" \
-            -srcfolder "build/macos/Build/Products/Release/AGNTCY Directory.app" \
+            -srcfolder "build/macos/Build/Products/Release/dmg_staging" \
             -ov -format UDZO \
             "AGNTCY-Directory.dmg"
 
