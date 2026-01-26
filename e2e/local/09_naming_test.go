@@ -144,6 +144,7 @@ var _ = ginkgo.Describe("Running dirctl e2e tests for DNS name verification", fu
 				if err != nil {
 					return ""
 				}
+
 				return output
 			}, verificationWaitTimeout, verificationPollInterval).Should(
 				gomega.ContainSubstring("verified"),
