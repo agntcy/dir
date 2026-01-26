@@ -137,8 +137,10 @@ Use this tool after validating your record to store it in the Directory.
 	}, tools.PushRecord)
 
 	// Add tool for searching local records
+	// Use manually defined schema to avoid union types (type: ["array", "null"]) that mcphost can't parse
 	mcp.AddTool(server, &mcp.Tool{
-		Name: "agntcy_dir_search_local",
+		Name:        "agntcy_dir_search_local",
+		InputSchema: tools.SearchLocalInputSchema(),
 		Description: strings.TrimSpace(`
 Searches for agent records on the local directory node using structured query filters.
 This tool supports flexible wildcard patterns for matching records based on:
@@ -227,7 +229,7 @@ For "a2a" format, wrap the A2A card data in an "a2aCard" object:
   }
 }
 
-**Important - Enrichment Required**: The domains and skills in the resulting OASF record 
+**Important - Enrichment Required**: The domains and skills in the resulting OASF record
 from the oasf-sdk translator are incomplete and MUST be enriched. Follow these steps:
 
 1. Remove any existing domains and skills fields from the imported record
