@@ -169,4 +169,7 @@ enum SyncStatus {
   
   // Sync operation has been successfully deleted and cleaned up
   SYNC_STATUS_DELETED = 5;
+
+  // Sync operation has completed successfully
+  SYNC_STATUS_COMPLETED = 6;
 }

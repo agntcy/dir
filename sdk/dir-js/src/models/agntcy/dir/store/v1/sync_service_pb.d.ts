@@ -379,6 +379,13 @@ export enum SyncStatus {
    * @generated from enum value: SYNC_STATUS_DELETED = 5;
    */
   DELETED = 5,
+
+  /**
+   * Sync operation has completed successfully
+   *
+   * @generated from enum value: SYNC_STATUS_COMPLETED = 6;
+   */
+  COMPLETED = 6,
 }
 
 /**

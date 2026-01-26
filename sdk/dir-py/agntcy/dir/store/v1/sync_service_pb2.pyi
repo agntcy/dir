@@ -14,12 +14,14 @@ class SyncStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     SYNC_STATUS_FAILED: _ClassVar[SyncStatus]
     SYNC_STATUS_DELETE_PENDING: _ClassVar[SyncStatus]
     SYNC_STATUS_DELETED: _ClassVar[SyncStatus]
+    SYNC_STATUS_COMPLETED: _ClassVar[SyncStatus]
 SYNC_STATUS_UNSPECIFIED: SyncStatus
 SYNC_STATUS_PENDING: SyncStatus
 SYNC_STATUS_IN_PROGRESS: SyncStatus
 SYNC_STATUS_FAILED: SyncStatus
 SYNC_STATUS_DELETE_PENDING: SyncStatus
 SYNC_STATUS_DELETED: SyncStatus
+SYNC_STATUS_COMPLETED: SyncStatus
 
 class CreateSyncRequest(_message.Message):
     __slots__ = ("remote_directory_url", "cids")
