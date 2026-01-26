@@ -119,7 +119,7 @@ jobs:
       - name: Configure macOS app
         run: |
           sed -i '' 's/PRODUCT_NAME = gui/PRODUCT_NAME = AGNTCY Directory/' macos/Runner/Configs/AppInfo.xcconfig
-          sed -i '' 's/<\/dict>/	<key>com.apple.security.network.client<\/key>\n	<true\/>\n<\/dict>/' macos/Runner/Release.entitlements
+          sed -i '' 's/<\/dict>/	<key>com.apple.security.network.client<\/key>\n	<true\/>\n	<key>com.apple.security.cs.disable-library-validation<\/key>\n	<true\/>\n<\/dict>/' macos/Runner/Release.entitlements
 
       - name: Enable macOS desktop
         run: flutter config --enable-macos-desktop
