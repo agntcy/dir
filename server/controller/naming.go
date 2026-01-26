@@ -12,7 +12,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	namingv1 "github.com/agntcy/dir/api/naming/v1"
-	"github.com/agntcy/dir/server/database/sqlite"
+	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/naming"
 	reverificationconfig "github.com/agntcy/dir/server/reverification/config"
 	"github.com/agntcy/dir/server/types"
@@ -93,7 +93,7 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 	// Query database for the latest verification attempt
 	latest, err := n.db.GetVerificationByCID(cid)
 	if err != nil {
-		if errors.Is(err, sqlite.ErrVerificationNotFound) {
+		if errors.Is(err, gormdb.ErrVerificationNotFound) {
 			errMsg := "no verification found"
 
 			return &namingv1.GetVerificationInfoResponse{
@@ -134,7 +134,7 @@ func (n *namingCtrl) GetVerificationInfo(ctx context.Context, req *namingv1.GetV
 
 // isVerificationValid checks if a verification is valid (verified status and not expired).
 func (n *namingCtrl) isVerificationValid(v types.NameVerificationObject) bool {
-	if v.GetStatus() != sqlite.VerificationStatusVerified {
+	if v.GetStatus() != gormdb.VerificationStatusVerified {
 		return false
 	}
 

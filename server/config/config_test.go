@@ -11,8 +11,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
-	database "github.com/agntcy/dir/server/database/config"
-	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	dbconfig "github.com/agntcy/dir/server/database/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	reverification "github.com/agntcy/dir/server/reverification/config"
@@ -105,10 +104,15 @@ func TestConfig(t *testing.T) {
 						Enabled: true, // Default value
 					},
 				},
-				Database: database.Config{
+				Database: dbconfig.Config{
 					DBType: "sqlite",
-					SQLite: sqliteconfig.Config{
+					SQLite: dbconfig.SQLiteConfig{
 						DBPath: "sqlite.db",
+					},
+					Postgres: dbconfig.PostgresConfig{
+						Host:     dbconfig.DefaultPostgresHost,
+						Port:     dbconfig.DefaultPostgresPort,
+						Database: dbconfig.DefaultPostgresDatabase,
 					},
 				},
 				Sync: sync.Config{
@@ -181,10 +185,15 @@ func TestConfig(t *testing.T) {
 						Enabled: routing.DefaultGossipSubEnabled,
 					},
 				},
-				Database: database.Config{
-					DBType: database.DefaultDBType,
-					SQLite: sqliteconfig.Config{
-						DBPath: sqliteconfig.DefaultSQLiteDBPath,
+				Database: dbconfig.Config{
+					DBType: dbconfig.DefaultDBType,
+					SQLite: dbconfig.SQLiteConfig{
+						DBPath: dbconfig.DefaultSQLiteDBPath,
+					},
+					Postgres: dbconfig.PostgresConfig{
+						Host:     dbconfig.DefaultPostgresHost,
+						Port:     dbconfig.DefaultPostgresPort,
+						Database: dbconfig.DefaultPostgresDatabase,
 					},
 				},
 				Sync: sync.Config{

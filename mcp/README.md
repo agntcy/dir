@@ -82,7 +82,6 @@ Searches for agent records on the local directory node using structured query fi
 **Wildcard Patterns:**
 - `*` - Matches zero or more characters
 - `?` - Matches exactly one character
-- `[]` - Matches any character within brackets (e.g., `[0-9]`, `[a-z]`, `[abc]`)
 
 **Examples:**
 ```json

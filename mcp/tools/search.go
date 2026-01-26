@@ -16,17 +16,17 @@ import (
 type SearchLocalInput struct {
 	Limit          int      `json:"limit,omitempty"           jsonschema:"Maximum number of results to return (default: 100 max: 1000)"`
 	Offset         int      `json:"offset,omitempty"          jsonschema:"Pagination offset (default: 0)"`
-	Names          []string `json:"names,omitempty"           jsonschema:"Agent name patterns (supports wildcards: * ? [])"`
-	Versions       []string `json:"versions,omitempty"        jsonschema:"Version patterns (supports wildcards: * ? [])"`
+	Names          []string `json:"names,omitempty"           jsonschema:"Agent name patterns (supports wildcards: * ?)"`
+	Versions       []string `json:"versions,omitempty"        jsonschema:"Version patterns (supports wildcards: * ?)"`
 	SkillIDs       []string `json:"skill_ids,omitempty"       jsonschema:"Skill ID patterns (exact match only)"`
-	SkillNames     []string `json:"skill_names,omitempty"     jsonschema:"Skill name patterns (supports wildcards: * ? [])"`
-	Locators       []string `json:"locators,omitempty"        jsonschema:"Locator patterns (supports wildcards: * ? [])"`
-	ModuleNames    []string `json:"module_names,omitempty"    jsonschema:"Module name patterns (supports wildcards: * ? [])"`
+	SkillNames     []string `json:"skill_names,omitempty"     jsonschema:"Skill name patterns (supports wildcards: * ?)"`
+	Locators       []string `json:"locators,omitempty"        jsonschema:"Locator patterns (supports wildcards: * ?)"`
+	ModuleNames    []string `json:"module_names,omitempty"    jsonschema:"Module name patterns (supports wildcards: * ?)"`
 	DomainIDs      []string `json:"domain_ids,omitempty"      jsonschema:"Domain ID patterns (exact match only)"`
-	DomainNames    []string `json:"domain_names,omitempty"    jsonschema:"Domain name patterns (supports wildcards: * ? [])"`
-	CreatedAts     []string `json:"created_ats,omitempty"     jsonschema:"Created_at timestamp patterns (supports wildcards: * ? [])"`
-	Authors        []string `json:"authors,omitempty"         jsonschema:"Author name patterns (supports wildcards: * ? [])"`
-	SchemaVersions []string `json:"schema_versions,omitempty" jsonschema:"Schema version patterns (supports wildcards: * ? [])"`
+	DomainNames    []string `json:"domain_names,omitempty"    jsonschema:"Domain name patterns (supports wildcards: * ?)"`
+	CreatedAts     []string `json:"created_ats,omitempty"     jsonschema:"Created_at timestamp patterns (supports wildcards: * ?)"`
+	Authors        []string `json:"authors,omitempty"         jsonschema:"Author name patterns (supports wildcards: * ?)"`
+	SchemaVersions []string `json:"schema_versions,omitempty" jsonschema:"Schema version patterns (supports wildcards: * ?)"`
 	ModuleIDs      []string `json:"module_ids,omitempty"      jsonschema:"Module ID patterns (exact match only)"`
 }
 

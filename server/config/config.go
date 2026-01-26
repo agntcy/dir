@@ -11,8 +11,7 @@ import (
 
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
-	database "github.com/agntcy/dir/server/database/config"
-	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	dbconfig "github.com/agntcy/dir/server/database/config"
 	events "github.com/agntcy/dir/server/events/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
@@ -139,7 +138,7 @@ type Config struct {
 	Routing routing.Config `json:"routing" mapstructure:"routing"`
 
 	// Database configuration
-	Database database.Config `json:"database" mapstructure:"database"`
+	Database dbconfig.Config `json:"database" mapstructure:"database"`
 
 	// Sync configuration
 	Sync sync.Config `json:"sync" mapstructure:"sync"`
@@ -464,10 +463,24 @@ func LoadConfig() (*Config, error) {
 	// Database configuration
 	//
 	_ = v.BindEnv("database.db_type")
-	v.SetDefault("database.db_type", database.DefaultDBType)
+	v.SetDefault("database.db_type", dbconfig.DefaultDBType)
 
+	// SQLite configuration
 	_ = v.BindEnv("database.sqlite.db_path")
-	v.SetDefault("database.sqlite.db_path", sqliteconfig.DefaultSQLiteDBPath)
+	v.SetDefault("database.sqlite.db_path", dbconfig.DefaultSQLiteDBPath)
+
+	// PostgreSQL configuration
+	_ = v.BindEnv("database.postgres.host")
+	v.SetDefault("database.postgres.host", dbconfig.DefaultPostgresHost)
+
+	_ = v.BindEnv("database.postgres.port")
+	v.SetDefault("database.postgres.port", dbconfig.DefaultPostgresPort)
+
+	_ = v.BindEnv("database.postgres.database")
+	v.SetDefault("database.postgres.database", dbconfig.DefaultPostgresDatabase)
+
+	_ = v.BindEnv("database.postgres.username")
+	_ = v.BindEnv("database.postgres.password")
 
 	//
 	// Sync configuration

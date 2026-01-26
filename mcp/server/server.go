@@ -159,10 +159,10 @@ Use this tool after validating your record to store it in the Directory.
 		Description: strings.TrimSpace(`
 Searches for agent records on the local directory node using structured query filters.
 This tool supports flexible wildcard patterns for matching records based on:
-- Agent names (e.g., "gpt*", "agent-?", "web-[0-9]")
+- Agent names (e.g., "gpt*", "agent-?", "web-*")
 - Versions (e.g., "v1.*", "*-beta", "v?.0.?")
 - Skill IDs (exact match only, e.g., "10201")
-- Skill names (e.g., "*python*", "Image*", "[A-M]*")
+- Skill names (e.g., "*python*", "Image*")
 - Locators (e.g., "docker-image:*", "http*")
 - Modules (e.g., "*-plugin", "core*")
 

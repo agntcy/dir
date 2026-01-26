@@ -20,7 +20,6 @@ export declare const file_agntcy_dir_search_v1_record_query: GenFile;
  *   Wildcard match:   { type: RECORD_QUERY_TYPE_NAME, value: "web*" }
  *   Pattern match:    { type: RECORD_QUERY_TYPE_SKILL_NAME, value: "*machine*learning*" }
  *   Question mark:    { type: RECORD_QUERY_TYPE_VERSION, value: "v1.0.?" }
- *   List wildcards:   { type: RECORD_QUERY_TYPE_NAME, value: "agent-[0-9]" }
  *   Complex match:    { type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://*.example.com/*" }
  *
  * @generated from message agntcy.dir.search.v1.RecordQuery
@@ -38,7 +37,6 @@ export declare type RecordQuery = Message<"agntcy.dir.search.v1.RecordQuery"> & 
    * Supports wildcard patterns:
    *   '*' - matches zero or more characters
    *   '?' - matches exactly one character
-   *   '[]' - matches any character within brackets (e.g., [0-9], [a-z], [abc])
    *
    * @generated from field: string value = 2;
    */
@@ -66,7 +64,7 @@ export enum RecordQueryType {
 
   /**
    * Query for a record name.
-   * Supports wildcard patterns: "web*", "*service", "api-*-v2", "???api", "agent-[0-9]"
+   * Supports wildcard patterns: "web*", "*service", "api-*-v2", "???api"
    *
    * @generated from enum value: RECORD_QUERY_TYPE_NAME = 1;
    */
@@ -74,7 +72,7 @@ export enum RecordQueryType {
 
   /**
    * Query for a record version.
-   * Supports wildcard patterns: "v1.*", "v2.*", "*-beta", "v1.0.?", "v[0-9].*"
+   * Supports wildcard patterns: "v1.*", "v2.*", "*-beta", "v1.0.?"
    *
    * @generated from enum value: RECORD_QUERY_TYPE_VERSION = 2;
    */
@@ -90,7 +88,7 @@ export enum RecordQueryType {
 
   /**
    * Query for a skill name.
-   * Supports wildcard patterns: "python*", "*script", "*machine*learning*", "Pytho?", "[A-M]*"
+   * Supports wildcard patterns: "python*", "*script", "*machine*learning*", "Pytho?"
    *
    * @generated from enum value: RECORD_QUERY_TYPE_SKILL_NAME = 4;
    */
@@ -98,7 +96,7 @@ export enum RecordQueryType {
 
   /**
    * Query for a locator type.
-   * Supports wildcard patterns: "http*", "ftp*", "*docker*", "[hf]tt[ps]*"
+   * Supports wildcard patterns: "http*", "ftp*", "*docker*"
    *
    * @generated from enum value: RECORD_QUERY_TYPE_LOCATOR = 5;
    */
@@ -106,7 +104,7 @@ export enum RecordQueryType {
 
   /**
    * Query for a module name.
-   * Supports wildcard patterns: "*-plugin", "*-module", "core*", "mod-?", "plugin-[0-9]"
+   * Supports wildcard patterns: "*-plugin", "*-module", "core*", "mod-?"
    *
    * @generated from enum value: RECORD_QUERY_TYPE_MODULE_NAME = 6;
    */
