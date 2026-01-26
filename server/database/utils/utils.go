@@ -191,6 +191,10 @@ func QueryToFilters(queries []*searchv1.RecordQuery) ([]types.FilterOption, erro
 
 			options = append(options, types.WithModuleIDs(u64))
 
+		case searchv1.RecordQueryType_RECORD_QUERY_TYPE_VERIFIED:
+			verified := strings.EqualFold(query.GetValue(), "true")
+			options = append(options, types.WithVerified(verified))
+
 		default:
 			logger.Warn("Unknown query type", "type", query.GetType())
 		}

@@ -77,4 +77,8 @@ enum RecordQueryType {
   // Query for a module ID.
   // Numeric field - exact match only, no wildcard support.
   RECORD_QUERY_TYPE_MODULE_ID = 12;
+
+  // Query for verified records (name ownership verified via JWKS).
+  // Boolean field - use "true" or "false" as value.
+  RECORD_QUERY_TYPE_VERIFIED = 13;
 }

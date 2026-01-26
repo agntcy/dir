@@ -48,6 +48,10 @@ func (c *CLI) Pull(cid string) *CommandBuilder {
 	return c.Command("pull").WithArgs(cid)
 }
 
+func (c *CLI) Info(cidOrName string) *CommandBuilder {
+	return c.Command("info").WithArgs(cidOrName)
+}
+
 func (c *CLI) Delete(cid string) *CommandBuilder {
 	return c.Command("delete").WithArgs(cid)
 }

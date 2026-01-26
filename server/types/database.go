@@ -35,6 +35,9 @@ type SearchDatabaseAPI interface {
 	// GetRecordCIDs retrieves record CIDs based on the provided filters.
 	GetRecordCIDs(opts ...FilterOption) ([]string, error)
 
+	// GetRecords retrieves full records based on the provided filters.
+	GetRecords(opts ...FilterOption) ([]Record, error)
+
 	// RemoveRecord removes a record from the search database by CID.
 	RemoveRecord(cid string) error
 
@@ -100,11 +103,5 @@ type NameVerificationDatabaseAPI interface {
 
 	// GetRecordsNeedingVerification retrieves signed records with verifiable names
 	// that either don't have a verification or have an expired verification.
-	GetRecordsNeedingVerification(ttl time.Duration) ([]VerifiableRecord, error)
-}
-
-// VerifiableRecord represents a record that needs name verification.
-type VerifiableRecord struct {
-	RecordCID string
-	Name      string
+	GetRecordsNeedingVerification(ttl time.Duration) ([]Record, error)
 }
