@@ -7,20 +7,19 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "gui/v*"
     paths:
       - "gui/**"
   pull_request:
     paths:
       - "gui/**"
-  release:
-    types: [published]
 
 permissions:
   contents: write
 
 jobs:
   test:
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Test
     runs-on: ubuntu-latest
     defaults:
@@ -72,7 +71,6 @@ jobs:
           flags: gui
 
   build-macos:
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Build macOS
     runs-on: macos-latest
     defaults:
@@ -119,7 +117,7 @@ jobs:
       - name: Configure macOS app
         run: |
           sed -i '' 's/PRODUCT_NAME = gui/PRODUCT_NAME = AGNTCY Directory/' macos/Runner/Configs/AppInfo.xcconfig
-          sed -i '' 's/<\/dict>/	<key>com.apple.security.network.client<\/key>\n	<true\/>\n<\/dict>/' macos/Runner/Release.entitlements
+          sed -i '' 's/<\/dict>/	<key>com.apple.security.network.client<\/key>\n	<true\/>\n	<key>com.apple.security.cs.disable-library-validation<\/key>\n	<true\/>\n<\/dict>/' macos/Runner/Release.entitlements
 
       - name: Enable macOS desktop
         run: flutter config --enable-macos-desktop
@@ -138,6 +136,11 @@ jobs:
           codesign --force --sign - --options runtime "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/mcp-server"
           codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements --options runtime "build/macos/Build/Products/Release/AGNTCY Directory.app"
 
+      - name: Verify macOS app signature
+        run: |
+          codesign --verify --deep --strict --verbose=2 "build/macos/Build/Products/Release/AGNTCY Directory.app"
+          spctl --assess --verbose --type execute "build/macos/Build/Products/Release/AGNTCY Directory.app" || true
+
       - name: Create DMG
         run: |
           mkdir -p "build/macos/Build/Products/Release/dmg_staging"
@@ -154,14 +157,15 @@ jobs:
           name: agntcy-directory-macos
           path: gui/AGNTCY-Directory.dmg
 
-      - name: Upload Release Asset
-        if: github.event_name == 'release'
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/gui/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.event.release.tag_name }} gui/AGNTCY-Directory.dmg --clobber
+        run: |
+          gh release create ${{ github.ref_name }} AGNTCY-Directory.dmg --generate-notes || \
+          gh release upload ${{ github.ref_name }} AGNTCY-Directory.dmg --clobber
 
   build-windows:
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Build Windows
     runs-on: windows-latest
     defaults:
@@ -225,8 +229,10 @@ jobs:
           name: agntcy-directory-windows
           path: gui/agntcy-directory-windows.zip
 
-      - name: Upload Release Asset
-        if: github.event_name == 'release'
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/gui/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.event.release.tag_name }} gui/agntcy-directory-windows.zip --clobber
+        run: |
+          gh release create ${{ github.ref_name }} agntcy-directory-windows.zip --generate-notes || \
+          gh release upload ${{ github.ref_name }} agntcy-directory-windows.zip --clobber
