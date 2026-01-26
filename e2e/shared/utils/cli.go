@@ -145,6 +145,19 @@ func (c *CLI) Verify(recordCID string) *CommandBuilder {
 	return c.Command("verify").WithArgs(recordCID)
 }
 
+// Naming commands - all naming operations are now under the naming subcommand.
+func (c *CLI) Naming() *NamingCommands {
+	return &NamingCommands{cli: c}
+}
+
+type NamingCommands struct {
+	cli *CLI
+}
+
+func (n *NamingCommands) Verify(cidOrName string) *CommandBuilder {
+	return n.cli.Command("naming").WithArgs("verify", cidOrName)
+}
+
 // Network commands.
 func (c *CLI) Network() *NetworkCommands {
 	return &NetworkCommands{cli: c}

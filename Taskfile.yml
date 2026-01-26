@@ -666,6 +666,7 @@ tasks:
           -f {{ .HELM_VALUES_PATH }} \
           --set apiserver.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
+          {{ if .DIRECTORY_SERVER_REVERIFICATION_SCHEDULER_INTERVAL }}--set apiserver.config.reverification.scheduler_interval="{{ .DIRECTORY_SERVER_REVERIFICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
           --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
           --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
@@ -1194,6 +1195,7 @@ tasks:
     aliases: [e2e:local]
     vars:
       PUBLICATION_SCHEDULER_INTERVAL: '{{ .PUBLICATION_SCHEDULER_INTERVAL | default "1s" }}'
+      REVERIFICATION_SCHEDULER_INTERVAL: '{{ .REVERIFICATION_SCHEDULER_INTERVAL | default "5s" }}'
       RATELIMIT_ENABLED: '{{ .RATELIMIT_ENABLED | default "true" }}'
       RATELIMIT_GLOBAL_RPS: '{{ .RATELIMIT_GLOBAL_RPS | default "100" }}'
       RATELIMIT_GLOBAL_BURST: '{{ .RATELIMIT_GLOBAL_BURST | default "200" }}'
@@ -1213,11 +1215,21 @@ tasks:
       - task: deploy:kubernetes:local
         vars:
           DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
+          DIRECTORY_SERVER_REVERIFICATION_SCHEDULER_INTERVAL: "{{ .REVERIFICATION_SCHEDULER_INTERVAL }}"
           DIRECTORY_SERVER_RATELIMIT_ENABLED: "{{ .RATELIMIT_ENABLED }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_RPS: "{{ .RATELIMIT_GLOBAL_RPS }}"
           DIRECTORY_SERVER_RATELIMIT_GLOBAL_BURST: "{{ .RATELIMIT_GLOBAL_BURST }}"
           DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+      # Deploy dns-validation chart for name verification tests
+      # This serves JWKS at /.well-known/jwks.json for DNS name validation
+      - |
+        {{ .HELM_BIN }} upgrade dns-validation \
+          {{ .ROOT_DIR }}/e2e/dns-validation/chart \
+          --namespace dir-server \
+          --install \
+          --wait \
+          --timeout "5m"
       - task: deploy:kubernetes:local:port-forward
       # Run client library tests first (faster feedback)
       - |
