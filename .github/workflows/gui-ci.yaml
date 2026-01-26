@@ -7,20 +7,19 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "gui/v*"
     paths:
       - "gui/**"
   pull_request:
     paths:
       - "gui/**"
-  release:
-    types: [published]
 
 permissions:
   contents: write
 
 jobs:
   test:
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Test
     runs-on: ubuntu-latest
     defaults:
@@ -72,7 +71,6 @@ jobs:
           flags: gui
 
   build-macos:
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Build macOS
     runs-on: macos-latest
     defaults:
@@ -159,14 +157,15 @@ jobs:
           name: agntcy-directory-macos
           path: gui/AGNTCY-Directory.dmg
 
-      - name: Upload Release Asset
-        if: github.event_name == 'release'
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/gui/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.event.release.tag_name }} AGNTCY-Directory.dmg --clobber
+        run: |
+          gh release create ${{ github.ref_name }} AGNTCY-Directory.dmg --generate-notes || \
+          gh release upload ${{ github.ref_name }} AGNTCY-Directory.dmg --clobber
 
   build-windows:
-    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Build Windows
     runs-on: windows-latest
     defaults:
@@ -230,8 +229,10 @@ jobs:
           name: agntcy-directory-windows
           path: gui/agntcy-directory-windows.zip
 
-      - name: Upload Release Asset
-        if: github.event_name == 'release'
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/gui/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.event.release.tag_name }} agntcy-directory-windows.zip --clobber
+        run: |
+          gh release create ${{ github.ref_name }} agntcy-directory-windows.zip --generate-notes || \
+          gh release upload ${{ github.ref_name }} agntcy-directory-windows.zip --clobber
