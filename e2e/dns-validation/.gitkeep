@@ -1,3 +1,0 @@
-# Pre-generated cosign keys for DNS name verification e2e tests
-# Generated with: COSIGN_PASSWORD= cosign generate-key-pair
-# The cosign.pub key is converted to JWK format in chart/jwks.json
