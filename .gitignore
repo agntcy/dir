@@ -63,3 +63,4 @@ gui/web/
 gui/windows/
 gui/macos/
 
+gui/.env

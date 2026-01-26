@@ -12,6 +12,8 @@ on:
   pull_request:
     paths:
       - "gui/**"
+  release:
+    types: [published]
 
 jobs:
   test:
@@ -44,8 +46,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run tests
-        run: flutter test
+      - name: Run tests with coverage
+        run: flutter test --coverage
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./gui/coverage/lcov.info
+          flags: gui
 
   build-macos:
     name: Build macOS
@@ -53,6 +62,9 @@ jobs:
     defaults:
       run:
         working-directory: ./gui
+    env:
+      MEASUREMENT_ID: ${{ vars.MEASUREMENT_ID }}
+      API_SECRET: ${{ secrets.API_SECRET }}
 
     steps:
       - name: Checkout code
@@ -67,6 +79,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25.6'
+
+      - name: Inject Analytics Config
+        run: |
+          echo "{\"measurement_id\": \"$MEASUREMENT_ID\", \"api_secret\": \"$API_SECRET\"}" > analytics_config.json
 
       - name: Build MCP Server
         run: |
@@ -107,12 +123,26 @@ jobs:
           name: agntcy-directory-macos
           path: gui/AGNTCY-Directory.dmg
 
+      - name: Upload Release Asset
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: gui/AGNTCY-Directory.dmg
+          asset_name: AGNTCY_Directory_macOS.dmg
+          asset_content_type: application/x-apple-diskimage
+
   build-windows:
     name: Build Windows
     runs-on: windows-latest
     defaults:
       run:
         working-directory: ./gui
+    env:
+      MEASUREMENT_ID: ${{ vars.MEASUREMENT_ID }}
+      API_SECRET: ${{ secrets.API_SECRET }}
 
     steps:
       - name: Checkout code
@@ -127,6 +157,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25.6'
+
+      - name: Inject Analytics Config
+        shell: bash
+        run: |
+          echo "{\"measurement_id\": \"$MEASUREMENT_ID\", \"api_secret\": \"$API_SECRET\"}" > analytics_config.json
 
       - name: Build MCP Server
         shell: bash
@@ -158,3 +193,14 @@ jobs:
         with:
           name: agntcy-directory-windows
           path: gui/agntcy-directory-windows.zip
+
+      - name: Upload Release Asset
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: gui/agntcy-directory-windows.zip
+          asset_name: AGNTCY_Directory_Windows.zip
+          asset_content_type: application/zip

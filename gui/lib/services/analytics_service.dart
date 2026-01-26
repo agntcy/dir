@@ -7,13 +7,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-class AnalyticsService {
-  // Defaults (fallback)
-  String _measurementId = 'G-7QZ03P9QGC';
-  String _apiSecret = '2aYPyiPoQBiOuvhY7ad01Q';
+import '../env/env.dart';
 
-  // Remote Config URL (Raw GitHub File)
-  static const String _configUrl = 'https://raw.githubusercontent.com/agntcy/dir/main/gui/analytics_config.json';
+class AnalyticsService {
+  // Secured via Envied
+  final String _measurementId = Env.measurementId;
+  final String _apiSecret = Env.apiSecret;
 
   static const String _logEndpoint = 'https://www.google-analytics.com/mp/collect';
   static const String _debugEndpoint = 'https://www.google-analytics.com/debug/mp/collect';
@@ -45,35 +44,14 @@ class AnalyticsService {
       _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
 
       // Attempt to fetch latest config from GitHub
-      await _fetchRemoteConfig();
+      // Not needed now as we use Envied
+      // await _fetchRemoteConfig();
 
       if (kDebugMode) {
         print('Analytics Initialized. ClientID: $_clientId, SessionID: $_sessionId');
       }
     } catch (e) {
       if (kDebugMode) print('Failed to init analytics: $e');
-    }
-  }
-
-  /// Fetches the analytics configuration from the GitHub repository.
-  /// Allows dynamic updates of Measurement ID and API Secret without app updates.
-  Future<void> _fetchRemoteConfig() async {
-    try {
-      final response = await _client.get(Uri.parse(_configUrl));
-      if (response.statusCode == 200) {
-        final config = jsonDecode(response.body);
-        if (config is Map) {
-          if (config['measurement_id'] != null) {
-             _measurementId = config['measurement_id'];
-          }
-          if (config['api_secret'] != null) {
-             _apiSecret = config['api_secret'];
-          }
-           if (kDebugMode) print('Analytics Config Updated from Remote: $_measurementId');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) print('Failed to fetch analytics config: $e');
     }
   }
 
