@@ -361,13 +361,19 @@ class _ChatScreenState extends State<ChatScreen> {
        print('Configuring Directory Auth Token (using github mode)');
     }
 
-    if (oasfSchema.isNotEmpty) {
-       mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchema;
-    } else {
-       // Disable OASF API validation if schema URL is not provided
-       mcpEnv['OASF_API_VALIDATION_DISABLE'] = 'true';
-       print('OASF API validation disabled (no schema URL configured)');
+    // OASF Schema URL is required for validation
+    if (oasfSchema.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'role': 'system',
+            'text': 'Error: OASF Schema URL is required for validation. Please configure it in Settings.',
+          });
+        });
+      }
+      return;
     }
+    mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchema;
 
     _mcpClient = McpClient(executablePath: mcpPath);
     try {

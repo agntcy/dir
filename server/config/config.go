@@ -159,20 +159,9 @@ type Config struct {
 // OASFAPIValidationConfig defines OASF API validation configuration.
 type OASFAPIValidationConfig struct {
 	// SchemaURL is the OASF schema URL for API-based validation.
-	// When set, records will be validated using the OASF API validator instead of embedded schemas.
+	// This is required - records will be validated using the OASF API validator.
 	// The default value is set in the Helm chart values.yaml (apiserver.config.oasf_api_validation.schema_url).
-	// This field should not be left empty when API validation is enabled (disable=false).
 	SchemaURL string `json:"schema_url,omitempty" mapstructure:"schema_url"`
-
-	// Disable disables API validation and uses embedded schema validation instead.
-	// Default: false (uses API validation)
-	Disable bool `json:"disable,omitempty" mapstructure:"disable"`
-
-	// StrictMode enables strict validation mode (fails on warnings).
-	// When false, uses non-strict validation mode (allows warnings, only fails on errors).
-	// Default: true (strict mode)
-	// Only applies when Disable is false
-	StrictMode bool `json:"strict_mode,omitempty" mapstructure:"strict_mode"`
 }
 
 // LoggingConfig defines gRPC request/response logging configuration.
@@ -332,13 +321,7 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("oasf_api_validation.schema_url")
 	// Note: No default set here - default should come from Helm chart values.yaml
-	// If schema_url is empty and API validation is enabled, server will fail to start with validation error
-
-	_ = v.BindEnv("oasf_api_validation.disable")
-	v.SetDefault("oasf_api_validation.disable", false)
-
-	_ = v.BindEnv("oasf_api_validation.strict_mode")
-	v.SetDefault("oasf_api_validation.strict_mode", true)
+	// Schema URL is required for OASF API validation
 
 	//
 	// Logging configuration (gRPC request/response logging)
