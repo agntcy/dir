@@ -210,11 +210,15 @@ spec:
             - name: HEALTH_ENABLED
               value: "true"
             - name: HEALTH_TIMEOUT
-              value: "5"
+              value: "5s"
+            - name: HEALTH_PATHS
+              value: "/health,/healthz,/"
             - name: OPENAPI_ENABLED
               value: "true"
             - name: OPENAPI_TIMEOUT
-              value: "10"
+              value: "10s"
+            - name: OPENAPI_PATHS
+              value: "/openapi.json,/swagger.json,/api-docs"
             - name: PROCESSOR_WORKERS
               value: "4"
 # ============================================================================

@@ -60,11 +60,25 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
 
 | Component   | Path         | Description                                        |
 | ----------- | ------------ | -------------------------------------------------- |
-| `watcher`   | `./watcher`  | Watches runtime (Docker/containerd/K8s) for workloads and writes to etcd |
-| `server`    | `./server`   | HTTP API for querying discovered services and reachability |
-| `inspector` | `./inspector`| Watches etcd for workloads and extracts metadata (health, OpenAPI) |
+| `watcher`   | `./go/cmd/watcher`  | Watches runtime (Docker/K8s) for workloads and writes to etcd |
+| `server`    | `./go/cmd/server`   | HTTP API for querying discovered services and reachability |
+| `inspector` | `./go/cmd/inspector`| Watches etcd for workloads and extracts metadata (health, OpenAPI) |
 
 ## Quick Start
+
+### Build Go Binaries (Local Development)
+
+```bash
+cd discovery/go
+
+# Build all binaries
+go build -o bin/watcher ./cmd/watcher
+go build -o bin/server ./cmd/server
+go build -o bin/inspector ./cmd/inspector
+
+# Or use go install
+go install ./cmd/...
+```
 
 ### Docker Compose
 
@@ -73,11 +87,14 @@ cd discovery
 docker compose up -d --build
 
 # Check stats
-curl http://localhost:8080/stats
+curl http://localhost:8080/health
+
+# List all workloads
+curl http://localhost:8080/workloads | jq .
 
 # Discover services (from hostname or name)
 CID=$(docker ps -q -f name=service-1)
-curl http://localhost:8080/discover?from=$CID | jq .
+curl "http://localhost:8080/discover?from=$CID" | jq .
 
 # Cleanup
 docker compose down
@@ -88,14 +105,19 @@ docker compose down
 ```bash
 cd discovery
 docker swarm init
-docker build -t discovery-watcher:latest ./watcher
+
+# Build Go images
+docker build -t discovery-watcher:latest -f go/cmd/watcher/Dockerfile go/
+docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
+docker build -t discovery-inspector:latest -f go/cmd/inspector/Dockerfile go/
+
 docker stack deploy -c docker-compose.swarm.yml discovery
 
 # Wait for services to start
 sleep 10
 
 # Check stats
-curl http://localhost:8080/stats
+curl http://localhost:8080/health
 
 # Discover services (from hostname or name)
 CID=$(docker ps -q -f name=discovery_service-1)
@@ -104,38 +126,6 @@ curl http://localhost:8080/discover?from=$CID | jq .
 # Cleanup
 docker stack rm discovery
 docker swarm leave --force
-```
-
-### containerd (Linux or Lima VM)
-
-containerd requires direct socket access, which isn't available on macOS. Use Lima to create a Linux VM.
-For network isolation, ensure that CNI is set up and that containerd is using CNI networks.
-
-```bash
-# Setup Lima for containerd (macOS)
-brew install lima
-limactl create --name=discovery
-limactl start discovery
-limactl shell discovery # in a new terminal
-
-# Inside VM - start watcher
-cd discovery
-nerdctl compose -f docker-compose.containerd.yml up -d
-
-# Check stats
-curl http://localhost:8080/stats
-
-# Discover services (from hostname or name)
-CID=$(nerdctl ps -q -f name=service-1)
-curl http://localhost:8080/discover?from=$CID | jq .
-
-# Cleanup
-nerdctl compose down
-
-# Exit VM and cleanup (for macOS)
-exit
-limactl stop discovery
-limactl delete discovery
 ```
 
 ### Kubernetes (kind/minikube)
@@ -148,10 +138,10 @@ cd discovery
 # Create cluster (kind)
 kind create cluster --name discovery-test
 
-# Build and load images
-docker build -t discovery-watcher:latest ./watcher
-docker build -t discovery-server:latest ./server
-docker build -t discovery-inspector:latest ./inspector
+# Build and load Go images
+docker build -t discovery-watcher:latest -f go/cmd/watcher/Dockerfile go/
+docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
+docker build -t discovery-inspector:latest -f go/cmd/inspector/Dockerfile go/
 kind load docker-image discovery-watcher:latest --name discovery-test
 kind load docker-image discovery-server:latest --name discovery-test
 kind load docker-image discovery-inspector:latest --name discovery-test
@@ -161,8 +151,11 @@ kubectl apply -f k8s.discovery.yaml
 kubectl wait --for=condition=ready pod -l app=discovery-watcher --timeout=60s
 kubectl port-forward svc/discovery-server 8080:8080 # in a new terminal
 
-# Check stats
-curl http://localhost:8080/stats | jq .
+# Check health
+curl http://localhost:8080/health | jq .
+
+# List all workloads
+curl http://localhost:8080/workloads | jq .
 
 # Discover services (from hostname or name)
 PID=$(kubectl get pod service-1 -n team-a -o jsonpath='{.metadata.uid}')
@@ -181,7 +174,7 @@ kind delete cluster --name discovery-test
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `GET /discover?from={id}` | Discover workloads reachable from source. Hostnames or full container IDs are accepted for source identification. |
 | `GET /workloads`          | List all registered workloads                                                                                     |
-| `GET /stats`              | Registry statistics                                                                                               |
+| `GET /workload/{id}`      | Get a single workload by ID                                                                                       |
 | `GET /health`             | Health check                                                                                                      |
 
 ## Configuration
@@ -206,15 +199,9 @@ kind delete cluster --name discovery-test
 
 | Variable                    | Default                           | Description                                             |
 | --------------------------- | --------------------------------- | ------------------------------------------------------- |
-| `RUNTIME`                   | `docker`                          | Runtime to watch (`docker`, `containerd`, `kubernetes`) |
-| `DOCKER_SOCKET`             | `unix:///var/run/docker.sock`     | Docker socket path                                      |
-| `DOCKER_LABEL_KEY`          | `discover`                        | Label key for discoverable containers                   |
-| `DOCKER_LABEL_VALUE`        | `true`                            | Label value to match                                    |
-| `CONTAINERD_SOCKET`         | `/run/containerd/containerd.sock` | containerd socket path                                  |
-| `CONTAINERD_NAMESPACE`      | `default`                         | containerd namespace to watch                           |
-| `CONTAINERD_CNI_STATE_DIR`  | `/var/lib/cni/results`            | CNI state directory for network info                    |
-| `CONTAINERD_LABEL_KEY`      | `discover`                        | Label key for discoverable containers                   |
-| `CONTAINERD_LABEL_VALUE`    | `true`                            | Label value to match                                    |
+| `RUNTIME`                   | `docker`                          | Runtime to watch (`docker`, `kubernetes`) |
+| `DOCKER_HOST`               | `unix:///var/run/docker.sock`     | Docker socket path                                      |
+| `DOCKER_FILTER_LABEL`       | `discover=true`                   | Label filter for discoverable containers                |
 | `KUBECONFIG`                | -                                 | Path to kubeconfig file                                 |
 | `KUBERNETES_NAMESPACE`      | -                                 | Namespace to watch (all if not set)                     |
 | `KUBERNETES_IN_CLUSTER`     | `false`                           | Use in-cluster config                                   |
@@ -226,16 +213,14 @@ kind delete cluster --name discovery-test
 
 | Variable                | Default                  | Description                                    |
 | ----------------------- | ------------------------ | ---------------------------------------------- |
-| `ETCD_PREFIX`           | `/discovery/workloads/`  | etcd prefix for workloads and metadata         |
-| `HEALTH_ENABLED`        | `true`                | Enable health check processor                  |
-| `HEALTH_TIMEOUT`        | `5`                   | Health check timeout (seconds)                 |
-| `HEALTH_PATHS`          | `/` | Paths to probe for health                  |
-| `OPENAPI_ENABLED`       | `true`                | Enable OpenAPI discovery processor             |
-| `OPENAPI_TIMEOUT`       | `10`                  | OpenAPI fetch timeout (seconds)                |
+| `ETCD_METADATA_PREFIX`  | `/discovery/metadata/`   | etcd prefix for metadata                       |
+| `HEALTH_ENABLED`        | `true`                   | Enable health check processor                  |
+| `HEALTH_TIMEOUT`        | `5s`                     | Health check timeout (Go duration)             |
+| `HEALTH_PATHS`          | `/health,/healthz,/`     | Paths to probe for health                      |
+| `OPENAPI_ENABLED`       | `true`                   | Enable OpenAPI discovery processor             |
+| `OPENAPI_TIMEOUT`       | `10s`                    | OpenAPI fetch timeout (Go duration)            |
 | `OPENAPI_PATHS`         | `/openapi.json,/swagger.json,/api-docs` | Paths to check for OpenAPI spec |
-| `PROCESSOR_WORKERS`     | `4`                   | Number of worker threads                       |
-| `PROCESSOR_RETRY_COUNT` | `3`                   | Number of retries for failed processing        |
-| `PROCESSOR_RETRY_DELAY` | `5`                   | Delay between retries (seconds)                |
+| `PROCESSOR_WORKERS`     | `4`                      | Number of worker goroutines                    |
 
 ## Network Isolation
 

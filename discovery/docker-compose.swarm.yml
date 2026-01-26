@@ -1,7 +1,10 @@
-# Docker Swarm Stack for Service Discovery
+# Docker Swarm Stack for Service Discovery (Go)
 #
 # Deploy with:
-#   1. Build images: docker compose build watcher server
+#   1. Build Go images:
+#      docker build -t discovery-watcher:latest -f go/cmd/watcher/Dockerfile go/
+#      docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
+#      docker build -t discovery-inspector:latest -f go/cmd/inspector/Dockerfile go/
 #   2. Init swarm (if needed): docker swarm init
 #   3. Deploy: docker stack deploy -c docker-compose.swarm.yml discovery
 #
@@ -42,7 +45,7 @@ services:
       retries: 3
 
   # ============================================================
-  # Watcher - Global service (one per node) - watches Docker socket
+  # Watcher - Global service (one per node) - watches Docker socket (Go)
   # ============================================================
   watcher:
     image: discovery-watcher:latest
@@ -55,7 +58,8 @@ services:
       - ETCD_WORKLOADS_PREFIX=/discovery/workloads/
       # Runtime
       - RUNTIME=docker
-      - PYTHONUNBUFFERED=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_FILTER_LABEL=discover=true
     networks:
       - discovery
     deploy:
@@ -65,7 +69,7 @@ services:
         delay: 5s
 
   # ============================================================
-  # Server - HTTP API for querying discovered services
+  # Server - HTTP API for querying discovered services (Go)
   # ============================================================
   server:
     image: discovery-server:latest
@@ -78,7 +82,6 @@ services:
       # Server
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
-      - PYTHONUNBUFFERED=1
     networks:
       - discovery
     ports:
@@ -92,6 +95,9 @@ services:
   # ============================================================
   # Inspector - Watches workloads and extracts metadata
   # ============================================================
+  # ============================================================
+  # Inspector - Watches workloads and extracts metadata (Go)
+  # ============================================================
   inspector:
     image: discovery-inspector:latest
     environment:
@@ -102,13 +108,12 @@ services:
       - ETCD_METADATA_PREFIX=/discovery/metadata/
       # Processors
       - HEALTH_ENABLED=true
-      - HEALTH_TIMEOUT=5
-      - HEALTH_PATHS=/
+      - HEALTH_TIMEOUT=5s
+      - HEALTH_PATHS=/health,/healthz,/
       - OPENAPI_ENABLED=true
-      - OPENAPI_TIMEOUT=10
+      - OPENAPI_TIMEOUT=10s
       - OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
       - PROCESSOR_WORKERS=4
-      - PYTHONUNBUFFERED=1
     networks:
       - discovery
       - team-a
