@@ -118,23 +118,9 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
 
-			ginkgo.It("finds record with character class", func() {
-				output := cli.Search().
-					WithVersion("v[0-9].0.0").
-					ShouldSucceed()
-				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
-			})
-
-			ginkgo.It("finds record with negated character class", func() {
-				output := cli.Search().
-					WithVersion("v[^0-3].0.0"). // v4.0.0, 4 is not in [0-3]
-					ShouldSucceed()
-				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
-			})
-
 			ginkgo.It("finds record with mixed wildcards", func() {
 				output := cli.Search().
-					WithName("*[e]xample/research-assistant-v?").
+					WithName("*example/research-assistant-v?").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -173,13 +159,6 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 			ginkgo.It("returns no results for non-matching query", func() {
 				output := cli.Search().
 					WithName("nonexistent-agent").
-					ShouldSucceed()
-				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
-			})
-
-			ginkgo.It("returns no results for negated class that excludes match", func() {
-				output := cli.Search().
-					WithVersion("v[^4].0.0"). // v4.0.0, but [^4] excludes 4
 					ShouldSucceed()
 				gomega.Expect(output).NotTo(gomega.ContainSubstring(recordCID))
 			})

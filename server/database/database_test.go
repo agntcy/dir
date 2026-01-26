@@ -1,16 +1,16 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package sqlite
+package database
 
 import (
 	"testing"
 
+	dbconfig "github.com/agntcy/dir/server/database/config"
+	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/types"
-	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 // Test helpers implementing types interfaces.
@@ -81,14 +81,13 @@ func (d *testDomain) GetID() uint64                     { return d.id }
 func (d *testDomain) GetName() string                   { return d.name }
 func (d *testDomain) GetAnnotations() map[string]string { return nil }
 
-func setupTestDB(t *testing.T) *DB {
+func setupTestDB(t *testing.T) *gormdb.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open("file::memory:"), &gorm.Config{Logger: newCustomLogger()})
+	db, err := newSQLite(dbconfig.SQLiteConfig{DBPath: "file::memory:"})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&Record{}, &Skill{}, &Locator{}, &Module{}, &Domain{}, &Sync{}))
 
-	return &DB{gormDB: db}
+	return db
 }
 
 // Test fixtures based on OASF 0.8.0 schema.
@@ -172,7 +171,7 @@ var (
 	}
 )
 
-func seedDB(t *testing.T, db *DB) {
+func seedDB(t *testing.T, db *gormdb.DB) {
 	t.Helper()
 
 	for _, r := range []types.Record{marketingAgent, healthcareAgent, codeAssistant} {

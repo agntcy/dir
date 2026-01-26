@@ -40,6 +40,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
+	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 	oras.land/oras-go/v2 v2.6.0
 	zotregistry.dev/zot/v2 v2.1.13
@@ -67,6 +68,10 @@ require (
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-github/v73 v73.0.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.7.5 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect

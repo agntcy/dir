@@ -96,9 +96,24 @@ spec:
                   name: {{ include "chart.fullname" . }}
                   key: oci-password
             {{- end }}
+            {{- if eq .Values.database.type "sqlite" }}
             {{- if .Values.database.sqlite.dbPath }}
             - name: DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH
               value: {{ .Values.database.sqlite.dbPath }}
+            {{- end }}
+            {{- else if eq .Values.database.type "postgres" }}
+            {{- if or .Values.secrets.postgresAuth.username .Values.secrets.postgresAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.postgresAuth.enabled) }}
+            - name: DIRECTORY_SERVER_DATABASE_POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" . }}
+                  key: postgres-username
+            - name: DIRECTORY_SERVER_DATABASE_POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" . }}
+                  key: postgres-password
+            {{- end }}
             {{- end }}
             {{- if eq .Values.spire.enabled true }}
             - name: DIRECTORY_SERVER_AUTHZ_ENABLED
