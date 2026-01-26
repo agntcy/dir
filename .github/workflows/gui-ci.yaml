@@ -128,10 +128,12 @@ jobs:
         run: flutter build macos --release
 
       - name: Bundle MCP Server
-        run: cp assets/bin/mcp-server "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/"
+        run: |
+          cp assets/bin/mcp-server "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/"
+          chmod +x "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/mcp-server"
 
       - name: Re-sign macOS app
-        run: codesign --force --deep --sign - "build/macos/Build/Products/Release/AGNTCY Directory.app"
+        run: codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements --options runtime "build/macos/Build/Products/Release/AGNTCY Directory.app"
 
       - name: Create DMG
         run: |
@@ -148,14 +150,9 @@ jobs:
 
       - name: Upload Release Asset
         if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: gui/AGNTCY-Directory.dmg
-          asset_name: AGNTCY_Directory_macOS.dmg
-          asset_content_type: application/x-apple-diskimage
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.event.release.tag_name }} gui/AGNTCY-Directory.dmg --clobber
 
   build-windows:
     if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
@@ -224,11 +221,6 @@ jobs:
 
       - name: Upload Release Asset
         if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: gui/agntcy-directory-windows.zip
-          asset_name: AGNTCY_Directory_Windows.zip
-          asset_content_type: application/zip
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.event.release.tag_name }} gui/agntcy-directory-windows.zip --clobber
