@@ -137,7 +137,7 @@ var (
 			},
 			modules: []types.Module{
 				&testModule{id: 202, name: "integration/mcp"},
-				&testModule{id: 102, name: "core/llm"},
+				&testModule{id: 10201, name: "core/llm/model"},
 			},
 			domains: []types.Domain{
 				&testDomain{id: 901, name: "healthcare/medical_technology"},

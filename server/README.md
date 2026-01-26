@@ -6,35 +6,23 @@ The Directory server supports configuration via environment variables, YAML conf
 
 ### OASF Validation Configuration
 
-The server validates all records server-side. By default, records are validated using API validation in strict mode. This ensures consistent, strict validation for all records regardless of their source.
+The server validates all records server-side. Records are validated using the configured OASF schema URL.
 
-- **`oasf_api_validation.schema_url`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL`** - OASF schema URL for API-based validation
+- **`oasf_api_validation.schema_url`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL`** - OASF schema URL for API-based validation (required)
   - **Default**: `https://schema.oasf.outshift.com`
   - URL of the OASF server to use for validation
   - This affects all record validation operations including push, sync, and import
 
-- **`oasf_api_validation.disable`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE`** - Use embedded schema validation instead of API validator
-  - **Default**: `false` (uses API validation)
-  - When `true`, uses embedded schemas for validation (no HTTP calls to OASF server)
-
-- **`oasf_api_validation.strict_mode`** / **`DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE`** - Use strict validation mode
-  - **Default**: `true` (strict mode - fails on warnings)
-  - When `false`, uses non-strict validation mode (allows warnings, only fails on errors)
-  - Only applies when `oasf_api_validation.disable` is `false`
-
 **Example with environment variables:**
 ```bash
-# Use default OASF API validator with strict validation (default behavior)
+# Use default OASF API validator
 ./dirctl-apiserver
 
 # Use custom OASF server
 DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL=http://localhost:8080 ./dirctl-apiserver
 
-# Use embedded schema validation (no API calls)
-DIRECTORY_SERVER_OASF_API_VALIDATION_DISABLE=true ./dirctl-apiserver
-
-# Use non-strict API validation (allows warnings)
-DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE=false ./dirctl-apiserver
+# Use custom OASF server
+DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL="http://localhost:8080" ./dirctl-apiserver
 ```
 
 **Example with YAML configuration:**
@@ -42,8 +30,6 @@ DIRECTORY_SERVER_OASF_API_VALIDATION_STRICT_MODE=false ./dirctl-apiserver
 # server.config.yml
 oasf_api_validation:
   schema_url: "https://schema.oasf.outshift.com"
-  disable: false
-  strict_mode: true
 listen_address: "0.0.0.0:8888"
 ```
 

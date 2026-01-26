@@ -9,7 +9,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/agntcy/oasf-sdk/pkg/validator"
+	"github.com/agntcy/oasf-sdk/pkg/schema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -28,16 +28,37 @@ type GetSchemaOutput struct {
 
 // GetSchema retrieves the OASF schema content for the specified version.
 // This tool provides direct access to the complete OASF schema JSON.
-func GetSchema(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaInput) (
+func GetSchema(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaInput) (
 	*mcp.CallToolResult,
 	GetSchemaOutput,
 	error,
 ) {
-	// Get available schema versions from the OASF SDK
-	availableVersions, err := validator.GetAvailableSchemaVersions()
+	// Get schema instance
+	schemaInstance, err := getSchemaInstance()
+	if err != nil {
+		// Try to get available versions for error message
+		var availableVersions []string
+
+		if inst, getErr := getSchemaInstance(); getErr == nil {
+			if versions, getVersErr := inst.GetAvailableSchemaVersions(ctx); getVersErr == nil {
+				availableVersions = versions
+			}
+		}
+
+		return nil, GetSchemaOutput{
+			Version:           input.Version,
+			ErrorMessage:      fmt.Sprintf("Failed to initialize schema client: %v", err),
+			AvailableVersions: availableVersions,
+		}, nil
+	}
+
+	// Get available schema versions for validation
+	availableVersions, err := schemaInstance.GetAvailableSchemaVersions(ctx)
 	if err != nil {
 		return nil, GetSchemaOutput{
-			ErrorMessage: fmt.Sprintf("Failed to get available schema versions: %v", err),
+			Version:           input.Version,
+			ErrorMessage:      fmt.Sprintf("Failed to get available schema versions: %v", err),
+			AvailableVersions: []string{},
 		}, nil
 	}
 
@@ -59,8 +80,8 @@ func GetSchema(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaInput) 
 		}, nil
 	}
 
-	// Get schema content using the OASF SDK
-	schemaContent, err := validator.GetSchemaContent(input.Version)
+	// Get schema content using the OASF SDK with WithVersion option
+	schemaContent, err := schemaInstance.GetRecordSchemaContent(ctx, schema.WithVersion(input.Version))
 	if err != nil {
 		return nil, GetSchemaOutput{
 			Version:           input.Version,

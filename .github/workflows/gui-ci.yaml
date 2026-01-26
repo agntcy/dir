@@ -12,14 +12,23 @@ on:
   pull_request:
     paths:
       - "gui/**"
+  release:
+    types: [published]
+
+permissions:
+  contents: write
 
 jobs:
   test:
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./gui
+    env:
+      MEASUREMENT_ID: ${{ vars.MEASUREMENT_ID }}
+      API_SECRET: ${{ secrets.API_SECRET }}
 
     steps:
       - name: Checkout code
@@ -34,6 +43,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25.6'
+
+      - name: Create .env file
+        run: |
+          echo "MEASUREMENT_ID=$MEASUREMENT_ID" > .env
+          echo "API_SECRET=$API_SECRET" >> .env
 
       - name: Build MCP Server
         run: |
@@ -44,15 +58,29 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run tests
-        run: flutter test
+      - name: Generate Code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Run tests with coverage
+        run: flutter test --coverage
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./gui/coverage/lcov.info
+          flags: gui
 
   build-macos:
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Build macOS
     runs-on: macos-latest
     defaults:
       run:
         working-directory: ./gui
+    env:
+      MEASUREMENT_ID: ${{ vars.MEASUREMENT_ID }}
+      API_SECRET: ${{ secrets.API_SECRET }}
 
     steps:
       - name: Checkout code
@@ -68,6 +96,11 @@ jobs:
         with:
           go-version: '1.25.6'
 
+      - name: Create .env file
+        run: |
+          echo "MEASUREMENT_ID=$MEASUREMENT_ID" > .env
+          echo "API_SECRET=$API_SECRET" >> .env
+
       - name: Build MCP Server
         run: |
           mkdir -p assets/bin
@@ -76,6 +109,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate Code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Create macOS runner
         run: flutter create --platforms=macos .
@@ -92,7 +128,12 @@ jobs:
         run: flutter build macos --release
 
       - name: Bundle MCP Server
-        run: cp assets/bin/mcp-server "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/"
+        run: |
+          cp assets/bin/mcp-server "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/"
+          chmod +x "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/mcp-server"
+
+      - name: Re-sign macOS app
+        run: codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements --options runtime "build/macos/Build/Products/Release/AGNTCY Directory.app"
 
       - name: Create DMG
         run: |
@@ -107,12 +148,22 @@ jobs:
           name: agntcy-directory-macos
           path: gui/AGNTCY-Directory.dmg
 
+      - name: Upload Release Asset
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.event.release.tag_name }} gui/AGNTCY-Directory.dmg --clobber
+
   build-windows:
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
     name: Build Windows
     runs-on: windows-latest
     defaults:
       run:
         working-directory: ./gui
+    env:
+      MEASUREMENT_ID: ${{ vars.MEASUREMENT_ID }}
+      API_SECRET: ${{ secrets.API_SECRET }}
 
     steps:
       - name: Checkout code
@@ -128,6 +179,12 @@ jobs:
         with:
           go-version: '1.25.6'
 
+      - name: Create .env file
+        shell: bash
+        run: |
+          echo "MEASUREMENT_ID=$MEASUREMENT_ID" > .env
+          echo "API_SECRET=$API_SECRET" >> .env
+
       - name: Build MCP Server
         shell: bash
         run: |
@@ -137,6 +194,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate Code
+        run: flutter pub run build_runner build --delete-conflicting-outputs
 
       - name: Create Windows runner
         run: flutter create --platforms=windows .
@@ -158,3 +218,9 @@ jobs:
         with:
           name: agntcy-directory-windows
           path: gui/agntcy-directory-windows.zip
+
+      - name: Upload Release Asset
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.event.release.tag_name }} gui/agntcy-directory-windows.zip --clobber

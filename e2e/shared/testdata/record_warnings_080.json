@@ -34,25 +34,25 @@
   ],
   "modules": [
     {
-      "name": "license",
       "data": {
-        "header": "Copyright (c) 2025 Cisco and/or its affiliates.",
-        "license": "Apache-2.0"
-      }
-    },
-    {
-      "name": "runtime/framework",
-      "data": {
-        "name": "crewai",
-        "version": "0.55.2"
-      }
-    },
-    {
-      "name": "runtime/language",
-      "data": {
-        "type": "python",
-        "version": ">=3.11,<3.13"
-      }
+        "acp": {
+          "input": "input",
+          "output": "output",
+          "config": "example config",
+          "capabilities": {}
+        },
+        "deployment": {
+          "deployment_options": [
+            {
+              "type": "docker",
+              "image": "example/image:latest"
+            }
+          ]
+        }
+      },
+      "id": 201,
+      "name": "integration/acp"
     }
-  ]
+  ],
+  "previous_record_cid": "xyz"
 }

@@ -39,7 +39,7 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260119115944-846878e4ef08.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1 // indirect
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
@@ -55,7 +55,7 @@ require (
 	github.com/agntcy/dir/auth/authprovider v0.0.0 // indirect
 	github.com/agntcy/dir/importer v0.6.1 // indirect
 	github.com/agntcy/dir/mcp v0.6.1 // indirect
-	github.com/agntcy/oasf-sdk/pkg v0.0.14 // indirect
+	github.com/agntcy/oasf-sdk/pkg v0.0.16 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.19.0 // indirect
@@ -266,9 +266,6 @@ require (
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
-	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
-	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yargevad/filepathx v1.0.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect

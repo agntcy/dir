@@ -10,6 +10,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/server/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -222,9 +223,11 @@ func TestKeepaliveServerParameters_StructCreation(t *testing.T) {
 // TestServerInitialization_SchemaURL verifies that the server correctly
 // configures the OASF schema URL during initialization.
 func TestServerInitialization_SchemaURL(t *testing.T) {
-	// Configure validation for unit tests: use embedded schemas (no API validation)
+	// Configure validation for unit tests: use a valid schema URL
 	// This ensures tests don't depend on external services or require schema URL configuration
-	corev1.SetDisableAPIValidation(true)
+	if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
+		t.Fatalf("Failed to initialize validator: %v", err)
+	}
 
 	tests := []struct {
 		name      string
@@ -237,10 +240,6 @@ func TestServerInitialization_SchemaURL(t *testing.T) {
 		{
 			name:      "custom schema URL",
 			schemaURL: "https://custom.schema.url",
-		},
-		{
-			name:      "empty schema URL (disable API validator)",
-			schemaURL: "",
 		},
 	}
 
@@ -267,9 +266,11 @@ func TestServerInitialization_SchemaURL(t *testing.T) {
 // TestServerInitialization_OASFValidation verifies that the server correctly
 // configures OASF validation settings during initialization.
 func TestServerInitialization_OASFValidation(t *testing.T) {
-	// Configure validation for unit tests: use embedded schemas (no API validation)
+	// Configure validation for unit tests: use a valid schema URL
 	// This ensures tests don't depend on external services or require schema URL configuration
-	corev1.SetDisableAPIValidation(true)
+	if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
+		t.Fatalf("Failed to initialize validator: %v", err)
+	}
 
 	tests := []struct {
 		name                 string
@@ -290,12 +291,6 @@ func TestServerInitialization_OASFValidation(t *testing.T) {
 			strictValidation:     true,
 		},
 		{
-			name:                 "disable API validation",
-			schemaURL:            "",
-			disableAPIValidation: true,
-			strictValidation:     true,
-		},
-		{
 			name:                 "non-strict validation mode",
 			schemaURL:            "https://schema.oasf.outshift.com", // Default from Helm chart
 			disableAPIValidation: false,
@@ -309,9 +304,7 @@ func TestServerInitialization_OASFValidation(t *testing.T) {
 			cfg := &config.Config{
 				ListenAddress: config.DefaultListenAddress,
 				OASFAPIValidation: config.OASFAPIValidationConfig{
-					SchemaURL:  tt.schemaURL,
-					Disable:    tt.disableAPIValidation,
-					StrictMode: tt.strictValidation,
+					SchemaURL: tt.schemaURL,
 				},
 				Connection: config.DefaultConnectionConfig(),
 			}
@@ -319,12 +312,47 @@ func TestServerInitialization_OASFValidation(t *testing.T) {
 			// Verify config values are set correctly
 			assert.NotNil(t, cfg)
 			assert.Equal(t, tt.schemaURL, cfg.OASFAPIValidation.SchemaURL)
-			assert.Equal(t, tt.disableAPIValidation, cfg.OASFAPIValidation.Disable)
-			assert.Equal(t, tt.strictValidation, cfg.OASFAPIValidation.StrictMode)
 
 			// Note: We can't fully test New() because it tries to start services
 			// that require database connections, but we can verify that the config
 			// values are correctly set and would be used during server initialization
+		})
+	}
+}
+
+// TestServerInitialization_EmptySchemaURL verifies that the server fails to start
+// when the schema URL is empty or missing, since OASF schema URL is required.
+func TestServerInitialization_EmptySchemaURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		schemaURL string
+	}{
+		{
+			name:      "empty schema URL",
+			schemaURL: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a config with empty schema URL
+			cfg := &config.Config{
+				ListenAddress: config.DefaultListenAddress,
+				OASFAPIValidation: config.OASFAPIValidationConfig{
+					SchemaURL: tt.schemaURL,
+				},
+				Connection: config.DefaultConnectionConfig(),
+			}
+
+			// Verify that InitializeValidator fails with empty schema URL
+			err := corev1.InitializeValidator(cfg.OASFAPIValidation.SchemaURL)
+			require.Error(t, err, "InitializeValidator should fail with empty schema URL")
+			assert.Contains(t, err.Error(), "schema URL", "Error should mention schema URL")
+
+			// Verify that configureOASFValidation would fail
+			err = configureOASFValidation(cfg)
+			require.Error(t, err, "configureOASFValidation should fail with empty schema URL")
+			assert.Contains(t, err.Error(), "failed to initialize OASF validator", "Error should mention validator initialization")
 		})
 	}
 }

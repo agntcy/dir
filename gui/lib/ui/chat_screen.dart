@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../mcp/client.dart';
 import '../services/ai_service.dart';
+import '../services/analytics_service.dart';
 import '../services/llm_provider.dart';
 import 'settings_screen.dart';
 import 'widgets/record_card.dart';
@@ -360,13 +361,19 @@ class _ChatScreenState extends State<ChatScreen> {
        print('Configuring Directory Auth Token (using github mode)');
     }
 
-    if (oasfSchema.isNotEmpty) {
-       mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchema;
-    } else {
-       // Disable OASF API validation if schema URL is not provided
-       mcpEnv['OASF_API_VALIDATION_DISABLE'] = 'true';
-       print('OASF API validation disabled (no schema URL configured)');
+    // OASF Schema URL is required for validation
+    if (oasfSchema.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'role': 'system',
+            'text': 'Error: OASF Schema URL is required for validation. Please configure it in Settings.',
+          });
+        });
+      }
+      return;
     }
+    mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchema;
 
     _mcpClient = McpClient(executablePath: mcpPath);
     try {
@@ -571,11 +578,19 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
+    // Log message event
+    AnalyticsService().logEvent('send_message', params: {
+      'provider': _providerType,
+      'model': _providerType == 'ollama' ? _ollamaModel : (_providerType == 'azure' ? _azureDeployment : 'gemini'),
+      'has_context': _history.isNotEmpty,
+    });
+
     try {
       final responseText = await _aiService!.sendMessage(
         text,
         _history,
         onToolOutput: (name, data) {
+          AnalyticsService().logEvent('tool_use', params: {'tool_name': name});
           setState(() {
             if (data is Map) {
               final mapData = Map<String, dynamic>.from(data);
