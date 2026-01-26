@@ -3,9 +3,16 @@
 
 import 'package:flutter/material.dart';
 
+import 'services/analytics_service.dart';
 import 'ui/chat_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Analytics
+  await AnalyticsService().init();
+  AnalyticsService().logEvent('app_launch');
+
   runApp(const MyApp());
 }
 
@@ -17,8 +24,8 @@ class AgntcyColors {
   static const Color lightBackground = Color(0xFFFFFFFF);  // White background
   static const Color lightTextPrimary = Color(0xFF1C1E21); // Dark text
   static const Color lightTextSecondary = Color(0xFF828282); // Gray text
-  
-  // Dark theme  
+
+  // Dark theme
   static const Color darkAccent = Color(0xFFFBAF45);       // Orange/amber accent
   static const Color darkSurface = Color(0xFF04142B);      // Very dark navy surface
   static const Color darkBackground = Color(0xFF020B18);   // Even darker background
