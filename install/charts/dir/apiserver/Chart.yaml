@@ -48,6 +48,6 @@ dependencies:
   # Only installed when explicitly enabled via: postgresql.enabled: true
   # Default: disabled (uses SQLite)
   - name: postgresql
-    version: "16.4.1"
+    version: "18.2.3"
     repository: "https://charts.bitnami.com/bitnami"
     condition: postgresql.enabled
