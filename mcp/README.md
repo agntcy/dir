@@ -389,40 +389,6 @@ If you prefer shorter-lived credentials, you can use OAuth tokens obtained via `
 }
 ```
 
-**Example - Use non-strict validation mode (Cursor):**
-
-```json
-{
-  "mcpServers": {
-    "dir-mcp-server": {
-      "command": "/absolute/path/to/dirctl",
-      "args": ["mcp", "serve"],
-      "env": {
-        "OASF_API_VALIDATION_STRICT_MODE": "false",
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
-      }
-    }
-  }
-}
-```
-
-**Example - Use embedded schemas (Cursor):**
-
-```json
-{
-  "mcpServers": {
-    "dir-mcp-server": {
-      "command": "/absolute/path/to/dirctl",
-      "args": ["mcp", "serve"],
-      "env": {
-        "OASF_API_VALIDATION_DISABLE": "true",
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
-      }
-    }
-  }
-}
-```
-
 **Example - Use GitHub authentication with PAT (Cursor):**
 
 ```json
