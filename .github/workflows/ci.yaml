@@ -9,17 +9,7 @@ on:
       - main
     tags:
       - "v*.*.*"
-    paths-ignore:
-      - "gui/**"
-      - "docs/**"
-      - "**.md"
-      - ".gitignore"
   pull_request:
-    paths-ignore:
-      - "gui/**"
-      - "docs/**"
-      - "**.md"
-      - ".gitignore"
 
 permissions:
   contents: write
@@ -32,8 +22,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      
+      - name: Check for code changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '!gui/**'
+              - '!docs/**'
+              - '!README.md'
+              - '!CHANGELOG.md'
+              - '!CONTRIBUTING.md'
+              - '!CODE_OF_CONDUCT.md'
+              - '!SECURITY.md'
+              - '!LICENSE.md'
+              - '!MAINTAINERS.md'
+              - '!CONTRIBUTORS.md'
+              - '!AUTHZ.md'
+              - '!API_SPEC.md'
+              - '!RELEASE.md'
+              - '!.gitignore'
+
   lint:
     name: Lint
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -66,6 +88,8 @@ jobs:
 
   license:
     name: License
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -100,6 +124,8 @@ jobs:
 
   verify:
     name: Verify
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -172,11 +198,18 @@ jobs:
     name: Success
     # https://github.com/actions/runner/issues/2566
     # https://github.com/actions/toolkit/issues/581
+    # Success if all needed jobs either passed or were skipped (no failures/cancellations)
     if: ${{ !cancelled() && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'failure') }}
     needs:
+      - changes
       - test
       - release
     runs-on: ubuntu-latest
     steps:
       - name: Echo Success
-        run: echo "::notice Success!"
+        run: |
+          if [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
+            echo "::notice Success! All code checks passed."
+          else
+            echo "::notice Success! No code changes detected, skipped builds and tests."
+          fi
