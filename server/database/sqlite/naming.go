@@ -124,37 +124,30 @@ func (d *DB) GetVerificationByCID(cid string) (types.NameVerificationObject, err
 
 // GetRecordsNeedingVerification retrieves signed records with verifiable names
 // that either don't have a verification or have an expired verification.
-func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.VerifiableRecord, error) {
+func (d *DB) GetRecordsNeedingVerification(ttl time.Duration) ([]types.Record, error) {
 	expiredBefore := time.Now().Add(-ttl)
 
 	// Query records that:
 	// 1. Are signed (have public key attached)
 	// 2. Have a verifiable name prefix (http://, https://)
 	// 3. Either don't have a verification OR have an expired verification
-	var results []struct {
-		RecordCID string `gorm:"column:record_cid"`
-		Name      string `gorm:"column:name"`
-	}
+	var records []Record
 
 	err := d.gormDB.Table("records").
-		Select("records.record_cid, records.name").
 		Joins("LEFT JOIN name_verifications ON records.record_cid = name_verifications.record_cid").
 		Where("records.signed = ?", true).
 		Where("(records.name LIKE ? OR records.name LIKE ?)",
 			"http://%", "https://%").
 		Where("(name_verifications.record_cid IS NULL OR name_verifications.updated_at < ?)", expiredBefore).
-		Find(&results).Error
+		Find(&records).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to get records needing verification: %w", err)
 	}
 
-	records := make([]types.VerifiableRecord, len(results))
-	for i := range results {
-		records[i] = types.VerifiableRecord{
-			RecordCID: results[i].RecordCID,
-			Name:      results[i].Name,
-		}
+	result := make([]types.Record, len(records))
+	for i := range records {
+		result[i] = &records[i]
 	}
 
-	return records, nil
+	return result, nil
 }

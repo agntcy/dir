@@ -159,6 +159,14 @@ export enum RecordQueryType {
    * @generated from enum value: RECORD_QUERY_TYPE_MODULE_ID = 12;
    */
   MODULE_ID = 12,
+
+  /**
+   * Query for verified records (name ownership verified via JWKS).
+   * Boolean field - use "true" or "false" as value.
+   *
+   * @generated from enum value: RECORD_QUERY_TYPE_VERIFIED = 13;
+   */
+  VERIFIED = 13,
 }
 
 /**
