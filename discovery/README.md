@@ -16,17 +16,17 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
                               write │              │ read (watch)
                                     │              │
                ┌────────────────────┴───┐    ┌─────┴────────────────────┐
-               │        Watcher         │    │         Server           │
-               │  - Watches runtime     │    │  - HTTP API              │
+               │        Watcher         │    │     Dir DiscoveryAPI     │
+               │  - Watches runtime     │    │  - gRPC API              │
                │  - Tracks networks     │    │  - Reachability queries  │
                │  - Tracks workloads    │    │  - Filtering by network  │
                └────────────┬───────────┘    └──────────────────────────┘
                             │
                             │ watch            ┌──────────────────────────┐
-                            │                  │       Inspector          │
+                            │                  │   Workload Supervisor    │
          ┌──────────────────┼──────────────────│  - Watches workloads     │
-         │                  │                  │  - Health checks         │
-         │                  │                  │  - OpenAPI discovery     │
+         │                  │                  │  - MCP discovery         │
+         │                  │                  │  - A2A discovery         │
   ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐────────────────────┘
   │   Docker    │    │ containerd  │    │ Kubernetes │
   │   Socket    │    │   Socket    │    │    API     │
