@@ -15,6 +15,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 jobs:
   test:
     if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'gui')
@@ -126,6 +129,9 @@ jobs:
 
       - name: Bundle MCP Server
         run: cp assets/bin/mcp-server "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/"
+
+      - name: Re-sign macOS app
+        run: codesign --force --deep --sign - "build/macos/Build/Products/Release/AGNTCY Directory.app"
 
       - name: Create DMG
         run: |
