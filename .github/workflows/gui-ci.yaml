@@ -128,10 +128,12 @@ jobs:
         run: flutter build macos --release
 
       - name: Bundle MCP Server
-        run: cp assets/bin/mcp-server "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/"
+        run: |
+          cp assets/bin/mcp-server "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/"
+          chmod +x "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/mcp-server"
 
       - name: Re-sign macOS app
-        run: codesign --force --deep --sign - "build/macos/Build/Products/Release/AGNTCY Directory.app"
+        run: codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements --options runtime "build/macos/Build/Products/Release/AGNTCY Directory.app"
 
       - name: Create DMG
         run: |
