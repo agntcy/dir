@@ -133,7 +133,10 @@ jobs:
           chmod +x "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/mcp-server"
 
       - name: Re-sign macOS app
-        run: codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements --options runtime "build/macos/Build/Products/Release/AGNTCY Directory.app"
+        run: |
+          xattr -cr "build/macos/Build/Products/Release/AGNTCY Directory.app"
+          codesign --force --sign - --options runtime "build/macos/Build/Products/Release/AGNTCY Directory.app/Contents/Resources/mcp-server"
+          codesign --force --deep --sign - --entitlements macos/Runner/Release.entitlements --options runtime "build/macos/Build/Products/Release/AGNTCY Directory.app"
 
       - name: Create DMG
         run: |
