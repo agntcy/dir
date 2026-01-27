@@ -51,19 +51,6 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
 | `/discovery/workloads/{id}` | Watcher | Workload JSON (container/pod info, networks, ports) |
 | `/discovery/metadata/{id}/{processor}` | Inspector | Processor metadata (health, openapi, etc.) |
 
-**Benefits of separate prefixes:**
-- **Clean watches**: Inspector watches only workloads, ignores metadata changes
-- **Clear ownership**: Watcher owns workloads, Inspector owns metadata
-- **Efficient**: No key parsing needed to filter events
-
-**Components:**
-
-| Component   | Path         | Description                                        |
-| ----------- | ------------ | -------------------------------------------------- |
-| `watcher`   | `./go/cmd/watcher`  | Watches runtime (Docker/K8s) for workloads and writes to etcd |
-| `server`    | `./go/cmd/server`   | HTTP API for querying discovered services and reachability |
-| `inspector` | `./go/cmd/inspector`| Watches etcd for workloads and extracts metadata (health, OpenAPI) |
-
 ## Quick Start
 
 ### Build Go Binaries (Local Development)
@@ -179,48 +166,63 @@ kind delete cluster --name discovery-test
 
 ## Configuration
 
-### Web Server
+All environment variables are prefixed with `DISCOVERY_` and use underscores as separators.
 
-| Variable      | Default   | Description              |
-| ------------- | --------- | ------------------------ |
-| `SERVER_HOST` | `0.0.0.0` | HTTP server bind address |
-| `SERVER_PORT` | `8080`    | HTTP server port         |
-| `DEBUG`       | `false`   | Enable debug mode        |
+### Server
 
-### Storage
+| Variable                | Default   | Description              |
+| ----------------------- | --------- | ------------------------ |
+| `DISCOVERY_SERVER_HOST` | `0.0.0.0` | HTTP server bind address |
+| `DISCOVERY_SERVER_PORT` | `8080`    | HTTP server port         |
 
-| Variable        | Default      | Description                  |
-| --------------- | ------------ | ---------------------------- |
-| `ETCD_HOST`     | `localhost`  | etcd hostname                |
-| `ETCD_PORT`     | `2379`       | etcd port                    |
-| `ETCD_PREFIX`   | `/discovery` | Key prefix for etcd storage  |
+### Storage (etcd)
+
+| Variable                          | Default                  | Description                    |
+| --------------------------------- | ------------------------ | ------------------------------ |
+| `DISCOVERY_STORAGE_HOST`          | `localhost`              | etcd hostname                  |
+| `DISCOVERY_STORAGE_PORT`          | `2379`                   | etcd port                      |
+| `DISCOVERY_STORAGE_USERNAME`      | -                        | etcd username                  |
+| `DISCOVERY_STORAGE_PASSWORD`      | -                        | etcd password                  |
+| `DISCOVERY_STORAGE_DIAL_TIMEOUT`  | `5s`                     | etcd dial timeout              |
+| `DISCOVERY_STORAGE_WORKLOADS_PREFIX` | `/discovery/workloads/` | etcd prefix for workloads     |
+| `DISCOVERY_STORAGE_METADATA_PREFIX`  | `/discovery/metadata/`  | etcd prefix for metadata      |
 
 ### Runtime
 
-| Variable                    | Default                           | Description                                             |
-| --------------------------- | --------------------------------- | ------------------------------------------------------- |
-| `RUNTIME`                   | `docker`                          | Runtime to watch (`docker`, `kubernetes`) |
-| `DOCKER_HOST`               | `unix:///var/run/docker.sock`     | Docker socket path                                      |
-| `DOCKER_FILTER_LABEL`       | `discover=true`                   | Label filter for discoverable containers                |
-| `KUBECONFIG`                | -                                 | Path to kubeconfig file                                 |
-| `KUBERNETES_NAMESPACE`      | -                                 | Namespace to watch (all if not set)                     |
-| `KUBERNETES_IN_CLUSTER`     | `false`                           | Use in-cluster config                                   |
-| `KUBERNETES_LABEL_KEY`      | `discover`                        | Label key for discoverable pods                         |
-| `KUBERNETES_LABEL_VALUE`    | `true`                            | Label value to match                                    |
-| `KUBERNETES_WATCH_SERVICES` | `true`                            | Watch services in addition to pods                      |
+| Variable                                    | Default                       | Description                            |
+| ------------------------------------------- | ----------------------------- | -------------------------------------- |
+| `DISCOVERY_RUNTIME_TYPE`                    | `docker`                      | Runtime to watch (`docker`, `kubernetes`) |
 
-### Inspector
+#### Docker Runtime
 
-| Variable                | Default                  | Description                                    |
-| ----------------------- | ------------------------ | ---------------------------------------------- |
-| `ETCD_METADATA_PREFIX`  | `/discovery/metadata/`   | etcd prefix for metadata                       |
-| `HEALTH_ENABLED`        | `true`                   | Enable health check processor                  |
-| `HEALTH_TIMEOUT`        | `5s`                     | Health check timeout (Go duration)             |
-| `HEALTH_PATHS`          | `/health,/healthz,/`     | Paths to probe for health                      |
-| `OPENAPI_ENABLED`       | `true`                   | Enable OpenAPI discovery processor             |
-| `OPENAPI_TIMEOUT`       | `10s`                    | OpenAPI fetch timeout (Go duration)            |
-| `OPENAPI_PATHS`         | `/openapi.json,/swagger.json,/api-docs` | Paths to check for OpenAPI spec |
-| `PROCESSOR_WORKERS`     | `4`                      | Number of worker goroutines                    |
+| Variable                              | Default                       | Description                            |
+| ------------------------------------- | ----------------------------- | -------------------------------------- |
+| `DISCOVERY_RUNTIME_DOCKER_HOST`       | `unix:///var/run/docker.sock` | Docker socket path                     |
+| `DISCOVERY_RUNTIME_DOCKER_LABEL_KEY`  | `discover`                    | Label key for discoverable containers  |
+| `DISCOVERY_RUNTIME_DOCKER_LABEL_VALUE`| `true`                        | Label value to match                   |
+
+#### Kubernetes Runtime
+
+| Variable                                       | Default    | Description                           |
+| ---------------------------------------------- | ---------- | ------------------------------------- |
+| `DISCOVERY_RUNTIME_KUBERNETES_KUBECONFIG`      | -          | Path to kubeconfig file               |
+| `DISCOVERY_RUNTIME_KUBERNETES_NAMESPACE`       | -          | Namespace to watch (all if not set)   |
+| `DISCOVERY_RUNTIME_KUBERNETES_IN_CLUSTER`      | `false`    | Use in-cluster config                 |
+| `DISCOVERY_RUNTIME_KUBERNETES_LABEL_KEY`       | `discover` | Label key for discoverable pods       |
+| `DISCOVERY_RUNTIME_KUBERNETES_LABEL_VALUE`     | `true`     | Label value to match                  |
+| `DISCOVERY_RUNTIME_KUBERNETES_WATCH_SERVICES`  | `true`     | Watch services in addition to pods    |
+
+### Processor (Inspector)
+
+| Variable                              | Default                                 | Description                        |
+| ------------------------------------- | --------------------------------------- | ---------------------------------- |
+| `DISCOVERY_PROCESSOR_WORKERS`         | `4`                                     | Number of worker goroutines        |
+| `DISCOVERY_PROCESSOR_HEALTH_ENABLED`  | `true`                                  | Enable health check processor      |
+| `DISCOVERY_PROCESSOR_HEALTH_TIMEOUT`  | `5s`                                    | Health check timeout (Go duration) |
+| `DISCOVERY_PROCESSOR_HEALTH_PATHS`    | `/health,/healthz,/`                    | Paths to probe for health          |
+| `DISCOVERY_PROCESSOR_OPENAPI_ENABLED` | `true`                                  | Enable OpenAPI discovery processor |
+| `DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT` | `10s`                                   | OpenAPI fetch timeout (Go duration)|
+| `DISCOVERY_PROCESSOR_OPENAPI_PATHS`   | `/openapi.json,/swagger.json,/api-docs` | Paths to check for OpenAPI spec    |
 
 ## Network Isolation
 
