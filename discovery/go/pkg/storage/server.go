@@ -12,8 +12,7 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"github.com/agntcy/dir/discovery/pkg/config"
-	"github.com/agntcy/dir/discovery/pkg/models"
+	models "github.com/agntcy/dir/discovery/pkg/types"
 )
 
 // ServerStorage provides read-only etcd operations with in-memory indices for the server.
@@ -37,7 +36,7 @@ type ServerStorage struct {
 }
 
 // NewServerStorage creates a new server storage with in-memory indices.
-func NewServerStorage(cfg *config.EtcdConfig) (*ServerStorage, error) {
+func NewServerStorage(cfg Config) (*ServerStorage, error) {
 	client, err := clientv3.New(clientv3.Config{
 		Endpoints:   cfg.Endpoints(),
 		DialTimeout: cfg.DialTimeout,
@@ -259,13 +258,13 @@ func (s *ServerStorage) FindReachable(callerIdentity string) (*models.Reachabili
 
 		// Create filtered workload
 		filtered := &models.Workload{
-			ID:              workload.ID,
-			Name:            workload.Name,
-			Hostname:        workload.Hostname,
-			Runtime:         workload.Runtime,
-			WorkloadType:    workload.WorkloadType,
-			Node:            workload.Node,
-			Namespace:       workload.Namespace,
+			ID:           workload.ID,
+			Name:         workload.Name,
+			Hostname:     workload.Hostname,
+			Runtime:      workload.Runtime,
+			WorkloadType: workload.WorkloadType,
+			// Node:            workload.Node,
+			// Namespace:       workload.Namespace,
 			Addresses:       filteredAddrs,
 			IsolationGroups: sharedGroups,
 			Ports:           workload.Ports,
@@ -531,9 +530,9 @@ func (s *ServerStorage) updateWorkloadIndex(workloadID string, workload *models.
 		s.byHostname[workload.Hostname] = workloadID
 	}
 
-	if workload.Namespace != "" {
-		s.byName[workload.Namespace+"/"+workload.Name] = workloadID
-	}
+	// if workload.Namespace != "" {
+	// 	s.byName[workload.Namespace+"/"+workload.Name] = workloadID
+	// }
 	s.byName[workload.Name] = workloadID
 
 	for _, group := range workload.IsolationGroups {
@@ -563,9 +562,9 @@ func (s *ServerStorage) removeWorkloadIndexLocked(workloadID string) {
 	}
 
 	nameKey := workload.Name
-	if workload.Namespace != "" {
-		nameKey = workload.Namespace + "/" + workload.Name
-	}
+	// if workload.Namespace != "" {
+	// 	nameKey = workload.Namespace + "/" + workload.Name
+	// }
 	if s.byName[nameKey] == workloadID {
 		delete(s.byName, nameKey)
 	}

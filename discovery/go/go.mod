@@ -15,7 +15,13 @@ require (
 )
 
 require (
+	github.com/alecthomas/repr v0.4.0 // indirect
+	github.com/hexops/gotextdiff v1.0.3 // indirect
+)
+
+require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/alecthomas/assert/v2 v2.11.0
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect

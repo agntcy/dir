@@ -28,14 +28,14 @@ func main() {
 	log.Println("============================================================")
 	log.Println("Discovery Server (Go)")
 	log.Println("============================================================")
-	log.Printf("Storage: etcd @ %s", cfg.Etcd.Endpoints()[0])
-	log.Printf("Workloads prefix: %s", cfg.Etcd.WorkloadsPrefix)
-	log.Printf("Metadata prefix: %s", cfg.Etcd.MetadataPrefix)
+	log.Printf("Storage: etcd @ %s", cfg.Storage.Endpoints()[0])
+	log.Printf("Workloads prefix: %s", cfg.Storage.WorkloadsPrefix)
+	log.Printf("Metadata prefix: %s", cfg.Storage.MetadataPrefix)
 	log.Printf("Server: %s", cfg.Server.Addr())
 	log.Println("============================================================")
 
 	// Initialize storage
-	store, err = storage.NewServerStorage(&cfg.Etcd)
+	store, err = storage.NewServerStorage(cfg.Storage)
 	if err != nil {
 		log.Fatalf("Failed to connect to storage: %v", err)
 	}

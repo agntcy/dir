@@ -9,9 +9,9 @@ import (
 	"syscall"
 
 	"github.com/agntcy/dir/discovery/pkg/config"
-	"github.com/agntcy/dir/discovery/pkg/models"
 	"github.com/agntcy/dir/discovery/pkg/runtime"
 	"github.com/agntcy/dir/discovery/pkg/storage"
+	"github.com/agntcy/dir/discovery/pkg/types"
 )
 
 func main() {
@@ -23,27 +23,17 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	log.Printf("Runtime: %s", cfg.Runtime)
+	log.Printf("Runtime: %s", cfg.Runtime.Type)
 
 	// Create runtime adapter
-	var adapter runtime.Adapter
-
-	switch cfg.Runtime {
-	case "docker":
-		adapter, err = runtime.NewDockerAdapter(&cfg.Docker)
-	case "kubernetes":
-		adapter, err = runtime.NewKubernetesAdapter(&cfg.Kubernetes)
-	default:
-		log.Fatalf("Unknown runtime: %s", cfg.Runtime)
-	}
-
+	adapter, err := runtime.NewAdapter(cfg.Runtime)
 	if err != nil {
 		log.Fatalf("Failed to create runtime adapter: %v", err)
 	}
 	defer adapter.Close()
 
 	// Create storage
-	store, err := storage.NewWatcherStorage(&cfg.Etcd)
+	store, err := storage.NewWatcherStorage(cfg.Storage)
 	if err != nil {
 		log.Fatalf("Failed to create storage: %v", err)
 	}
@@ -60,7 +50,7 @@ func main() {
 	}
 
 	// Watch for events
-	eventCh := make(chan *models.WorkloadEvent, 100)
+	eventCh := make(chan *types.RuntimeEvent, 100)
 	go func() {
 		if err := adapter.WatchEvents(ctx, eventCh); err != nil {
 			log.Printf("Watch error: %v", err)
@@ -93,7 +83,7 @@ func main() {
 }
 
 // reconcile syncs the current runtime state with etcd.
-func reconcile(ctx context.Context, adapter runtime.Adapter, store *storage.WatcherStorage) error {
+func reconcile(ctx context.Context, adapter types.RuntimeAdapter, store *storage.WatcherStorage) error {
 	// Get current workloads from runtime
 	workloads, err := adapter.ListWorkloads(ctx)
 	if err != nil {
@@ -133,9 +123,9 @@ func reconcile(ctx context.Context, adapter runtime.Adapter, store *storage.Watc
 }
 
 // handleEvent processes a workload event.
-func handleEvent(ctx context.Context, store *storage.WatcherStorage, event *models.WorkloadEvent) {
+func handleEvent(ctx context.Context, store *storage.WatcherStorage, event *types.RuntimeEvent) {
 	switch event.Type {
-	case models.EventTypeAdded, models.EventTypeModified, models.EventTypeNetworkChanged:
+	case types.RuntimeEventTypeAdded, types.RuntimeEventTypeModified:
 		if event.Workload != nil {
 			if err := store.Register(ctx, event.Workload); err != nil {
 				log.Printf("Failed to register workload %s: %v", event.Workload.Name, err)
@@ -144,7 +134,7 @@ func handleEvent(ctx context.Context, store *storage.WatcherStorage, event *mode
 			}
 		}
 
-	case models.EventTypeDeleted:
+	case types.RuntimeEventTypeDeleted:
 		if event.Workload != nil {
 			if err := store.Deregister(ctx, event.Workload.ID); err != nil {
 				log.Printf("Failed to deregister workload %s: %v", event.Workload.ID[:12], err)
@@ -153,7 +143,7 @@ func handleEvent(ctx context.Context, store *storage.WatcherStorage, event *mode
 			}
 		}
 
-	case models.EventTypePaused:
+	case types.RuntimeEventTypePaused:
 		// Re-register with updated state (paused workloads might have different behavior)
 		if event.Workload != nil {
 			if err := store.Register(ctx, event.Workload); err != nil {

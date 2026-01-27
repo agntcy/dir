@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/agntcy/dir/discovery/pkg/config"
-	"github.com/agntcy/dir/discovery/pkg/models"
 	"github.com/agntcy/dir/discovery/pkg/processor"
 	"github.com/agntcy/dir/discovery/pkg/storage"
+	"github.com/agntcy/dir/discovery/pkg/types"
 )
 
 func main() {
@@ -27,31 +27,16 @@ func main() {
 	}
 
 	// Create storage client
-	store, err := storage.NewInspectorStorage(&cfg.Etcd)
+	store, err := storage.NewInspectorStorage(cfg.Storage)
 	if err != nil {
 		log.Fatalf("Failed to create storage client: %v", err)
 	}
 	defer store.Close()
 
 	// Create processors
-	processors := []processor.Processor{
-		processor.NewHealthProcessor(&cfg.Processor.Health),
-		processor.NewOpenAPIProcessor(&cfg.Processor.OpenAPI),
-	}
-
-	// Filter to enabled processors
-	var enabledProcessors []processor.Processor
-	for _, p := range processors {
-		if p.Enabled() {
-			enabledProcessors = append(enabledProcessors, p)
-			log.Printf("Processor enabled: %s", p.Name())
-		} else {
-			log.Printf("Processor disabled: %s", p.Name())
-		}
-	}
-
-	if len(enabledProcessors) == 0 {
-		log.Fatal("No processors enabled")
+	processors, err := processor.NewProcessors(cfg.Processor)
+	if err != nil {
+		log.Fatalf("Failed to create processors: %v", err)
 	}
 
 	// Create context with cancellation
@@ -59,14 +44,14 @@ func main() {
 	defer cancel()
 
 	// Create work queue and worker pool
-	workQueue := make(chan *models.Workload, 100)
+	workQueue := make(chan *types.Workload, 100)
 	var wg sync.WaitGroup
 
 	// Start workers
 	numWorkers := cfg.Processor.Workers
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go worker(ctx, &wg, i, workQueue, store, enabledProcessors)
+		go worker(ctx, &wg, i, workQueue, store, processors)
 	}
 	log.Printf("Started %d workers", numWorkers)
 
@@ -164,9 +149,9 @@ func worker(
 	ctx context.Context,
 	wg *sync.WaitGroup,
 	id int,
-	queue <-chan *models.Workload,
+	queue <-chan *types.Workload,
 	store *storage.InspectorStorage,
-	processors []processor.Processor,
+	processors []types.WorkloadProcessor,
 ) {
 	defer wg.Done()
 	log.Printf("Worker %d started", id)
@@ -189,8 +174,8 @@ func worker(
 func processWorkload(
 	ctx context.Context,
 	store *storage.InspectorStorage,
-	processors []processor.Processor,
-	workload *models.Workload,
+	processors []types.WorkloadProcessor,
+	workload *types.Workload,
 ) {
 	log.Printf("Processing workload %s (%s)", workload.Name, workload.ID[:12])
 

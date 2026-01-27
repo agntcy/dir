@@ -1,5 +1,0 @@
-# Core dependencies
-etcd3
-protobuf>=3.20,<4
-flask
-waitress

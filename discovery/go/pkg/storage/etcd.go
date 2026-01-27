@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agntcy/dir/discovery/pkg/config"
-	"github.com/agntcy/dir/discovery/pkg/models"
+	models "github.com/agntcy/dir/discovery/pkg/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -39,7 +38,7 @@ type WatcherStorage struct {
 }
 
 // NewWatcherStorage creates a new watcher storage.
-func NewWatcherStorage(cfg *config.EtcdConfig) (*WatcherStorage, error) {
+func NewWatcherStorage(cfg Config) (*WatcherStorage, error) {
 	client, err := clientv3.New(clientv3.Config{
 		Endpoints:   cfg.Endpoints(),
 		DialTimeout: cfg.DialTimeout,
@@ -133,7 +132,7 @@ type InspectorStorage struct {
 }
 
 // NewInspectorStorage creates a new inspector storage.
-func NewInspectorStorage(cfg *config.EtcdConfig) (*InspectorStorage, error) {
+func NewInspectorStorage(cfg Config) (*InspectorStorage, error) {
 	client, err := clientv3.New(clientv3.Config{
 		Endpoints:   cfg.Endpoints(),
 		DialTimeout: cfg.DialTimeout,
