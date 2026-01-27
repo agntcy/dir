@@ -40,13 +40,13 @@ Examples:
   # Preview without importing
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --dry-run
 
-  # Enable LLM-based enrichment with default configuration
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --enrich
+  # Import with default enrichment configuration
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io
 
-  # Use custom MCPHost configuration and prompt template
-  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --enrich \
-    --enrich-config=/path/to/mcphost.json \
-    --enrich-prompt=/path/to/custom-prompt.md
+  # Use custom MCPHost configuration and prompt templates
+  dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io \
+    --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
+    --enrich-domains-prompt=/path/to/custom-domains-prompt.md
 
   # Import and sign records with OIDC (opens browser for authentication)
   dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io --sign
