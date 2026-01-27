@@ -1,9 +1,9 @@
 # Docker Swarm Stack for Service Discovery (Go)
 #
 # Deploy with:
-#   1. Build Go images:
-#      docker build -t discovery:latest -f go/cmd/discovery/Dockerfile go/
-#      docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
+#   1. Build images:
+#      docker build -t discovery:latest -f cmd/discovery/Dockerfile .
+#      docker build -t discovery-server:latest -f cmd/server/Dockerfile .
 #   2. Init swarm (if needed): docker swarm init
 #   3. Deploy: docker stack deploy -c docker-compose.swarm.yml discovery
 #

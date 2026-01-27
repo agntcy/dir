@@ -63,7 +63,7 @@ Network-aware service discovery for runtime workloads. Watches processes in runt
 ### Build Go Binaries (Local Development)
 
 ```bash
-cd discovery/go
+cd discovery
 
 # Build binaries
 go build -o bin/discovery ./cmd/discovery
@@ -99,9 +99,9 @@ docker compose down
 cd discovery
 docker swarm init
 
-# Build Go images
-docker build -t discovery:latest -f go/cmd/discovery/Dockerfile go/
-docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
+# Build images
+docker build -t discovery:latest -f cmd/discovery/Dockerfile .
+docker build -t discovery-server:latest -f cmd/server/Dockerfile .
 
 docker stack deploy -c docker-compose.swarm.yml discovery
 
@@ -130,9 +130,9 @@ cd discovery
 # Create cluster (kind)
 kind create cluster --name discovery-test
 
-# Build and load Go images
-docker build -t discovery:latest -f go/cmd/discovery/Dockerfile go/
-docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
+# Build and load images
+docker build -t discovery:latest -f cmd/discovery/Dockerfile .
+docker build -t discovery-server:latest -f cmd/server/Dockerfile .
 kind load docker-image discovery:latest --name discovery-test
 kind load docker-image discovery-server:latest --name discovery-test
 

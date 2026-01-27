@@ -27,7 +27,7 @@ services:
   # ============================================================
   discovery:
     build:
-      context: ./go
+      context: .
       dockerfile: cmd/discovery/Dockerfile
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -64,7 +64,7 @@ services:
   # ============================================================
   server:
     build:
-      context: ./go
+      context: .
       dockerfile: cmd/server/Dockerfile
     environment:
       # Storage (etcd)

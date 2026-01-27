@@ -44,7 +44,7 @@ services:
   # ============================================================
   discovery:
     build:
-      context: ./go
+      context: .
       dockerfile: cmd/discovery/Dockerfile
     volumes:
       # containerd socket (Linux only)
@@ -85,7 +85,7 @@ services:
   # ============================================================
   server:
     build:
-      context: ./go
+      context: .
       dockerfile: cmd/server/Dockerfile
     environment:
       # Storage (etcd)
