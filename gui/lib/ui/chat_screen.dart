@@ -299,13 +299,19 @@ class _ChatScreenState extends State<ChatScreen> {
       final macResourcePath = '${exeDir.parent.path}/Resources/mcp-server';
       debugPrint('Checking Bundle Path: $macResourcePath');
 
+      // Determines binary name based on platform
+      String binaryName = 'mcp-server';
+      if (Platform.isWindows) {
+        binaryName = 'mcp-server.exe';
+      }
+
       // 2. Check same directory (Linux/Windows bundled)
-      final localPath = '${exeDir.path}/mcp-server';
+      final localPath = '${exeDir.path}/$binaryName';
       debugPrint('Checking Local Path: $localPath');
 
       // 3. Check development path (relative to gui root)
       // When running 'flutter run', CWD might be the gui root, or nested.
-      final devPath = '${Directory.current.path}/../bin/mcp-server';
+      final devPath = '${Directory.current.path}/../bin/$binaryName';
       debugPrint('Checking Dev Path: $devPath');
 
       if (await File(macResourcePath).exists()) {
@@ -322,9 +328,10 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint('MCP_SERVER_PATH is not set and binary not found in default locations');
       if (mounted) {
         setState(() {
+          String binaryName = Platform.isWindows ? 'mcp-server.exe' : 'mcp-server';
           _messages.add({
             'role': 'system',
-            'text': 'Error: MCP_SERVER_PATH not set and mcp-server binary not found.\nChecked:\n- Bundle Resources\n- App Directory\n- ../bin/mcp-server'
+            'text': 'Error: MCP_SERVER_PATH not set and $binaryName binary not found.\nChecked:\n- Bundle Resources\n- App Directory\n- ../bin/$binaryName'
           });
         });
       }
