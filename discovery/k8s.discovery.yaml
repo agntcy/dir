@@ -109,21 +109,21 @@ spec:
           image: discovery-watcher:latest
           imagePullPolicy: Never
           env:
-            - name: RUNTIME
+            - name: DISCOVERY_RUNTIME_TYPE
               value: "kubernetes"
-            - name: KUBERNETES_IN_CLUSTER
+            - name: DISCOVERY_RUNTIME_KUBERNETES_IN_CLUSTER
               value: "true"
-            - name: KUBERNETES_LABEL_KEY
+            - name: DISCOVERY_RUNTIME_KUBERNETES_LABEL_KEY
               value: "discover"
-            - name: KUBERNETES_LABEL_VALUE
+            - name: DISCOVERY_RUNTIME_KUBERNETES_LABEL_VALUE
               value: "true"
-            - name: KUBERNETES_WATCH_SERVICES
+            - name: DISCOVERY_RUNTIME_KUBERNETES_WATCH_SERVICES
               value: "true"
-            - name: ETCD_HOST
+            - name: DISCOVERY_STORAGE_HOST
               value: "discovery-etcd"
-            - name: ETCD_PORT
+            - name: DISCOVERY_STORAGE_PORT
               value: "2379"
-            - name: ETCD_WORKLOADS_PREFIX
+            - name: DISCOVERY_STORAGE_WORKLOADS_PREFIX
               value: "/discovery/workloads/"
 # ============================================================================
 # SERVER
@@ -165,14 +165,18 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: ETCD_HOST
+            - name: DISCOVERY_STORAGE_HOST
               value: "discovery-etcd"
-            - name: ETCD_PORT
+            - name: DISCOVERY_STORAGE_PORT
               value: "2379"
-            - name: ETCD_WORKLOADS_PREFIX
+            - name: DISCOVERY_STORAGE_WORKLOADS_PREFIX
               value: "/discovery/workloads/"
-            - name: ETCD_METADATA_PREFIX
+            - name: DISCOVERY_STORAGE_METADATA_PREFIX
               value: "/discovery/metadata/"
+            - name: DISCOVERY_SERVER_HOST
+              value: "0.0.0.0"
+            - name: DISCOVERY_SERVER_PORT
+              value: "8080"
 # ============================================================================
 # INSPECTOR - Metadata extraction (health checks, OpenAPI discovery)
 # ============================================================================
@@ -199,27 +203,27 @@ spec:
           image: discovery-inspector:latest
           imagePullPolicy: Never
           env:
-            - name: ETCD_HOST
+            - name: DISCOVERY_STORAGE_HOST
               value: "discovery-etcd"
-            - name: ETCD_PORT
+            - name: DISCOVERY_STORAGE_PORT
               value: "2379"
-            - name: ETCD_WORKLOADS_PREFIX
+            - name: DISCOVERY_STORAGE_WORKLOADS_PREFIX
               value: "/discovery/workloads/"
-            - name: ETCD_METADATA_PREFIX
+            - name: DISCOVERY_STORAGE_METADATA_PREFIX
               value: "/discovery/metadata/"
-            - name: HEALTH_ENABLED
+            - name: DISCOVERY_PROCESSOR_HEALTH_ENABLED
               value: "true"
-            - name: HEALTH_TIMEOUT
+            - name: DISCOVERY_PROCESSOR_HEALTH_TIMEOUT
               value: "5s"
-            - name: HEALTH_PATHS
+            - name: DISCOVERY_PROCESSOR_HEALTH_PATHS
               value: "/health,/healthz,/"
-            - name: OPENAPI_ENABLED
+            - name: DISCOVERY_PROCESSOR_OPENAPI_ENABLED
               value: "true"
-            - name: OPENAPI_TIMEOUT
+            - name: DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT
               value: "10s"
-            - name: OPENAPI_PATHS
+            - name: DISCOVERY_PROCESSOR_OPENAPI_PATHS
               value: "/openapi.json,/swagger.json,/api-docs"
-            - name: PROCESSOR_WORKERS
+            - name: DISCOVERY_PROCESSOR_WORKERS
               value: "4"
 # ============================================================================
 # TEST WORKLOADS (namespaces act as isolation groups)

@@ -52,12 +52,12 @@ services:
       # CNI state directory for network info
       - /var/lib/cni/results:/var/lib/cni/results:ro
     environment:
-      # etcd
-      - ETCD_HOST=etcd
-      - ETCD_PORT=2379
-      - ETCD_WORKLOADS_PREFIX=/discovery/workloads/
+      # Storage (etcd)
+      - DISCOVERY_STORAGE_HOST=etcd
+      - DISCOVERY_STORAGE_PORT=2379
+      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
       # Runtime - TODO: implement containerd adapter
-      - RUNTIME=containerd
+      - DISCOVERY_RUNTIME_TYPE=containerd
       - CONTAINERD_SOCKET=/run/containerd/containerd.sock
       - CONTAINERD_NAMESPACE=default
       - CONTAINERD_CNI_STATE_DIR=/var/lib/cni/results
@@ -77,14 +77,14 @@ services:
       context: ./go
       dockerfile: cmd/server/Dockerfile
     environment:
-      # etcd
-      - ETCD_HOST=etcd
-      - ETCD_PORT=2379
-      - ETCD_WORKLOADS_PREFIX=/discovery/workloads/
-      - ETCD_METADATA_PREFIX=/discovery/metadata/
+      # Storage (etcd)
+      - DISCOVERY_STORAGE_HOST=etcd
+      - DISCOVERY_STORAGE_PORT=2379
+      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
+      - DISCOVERY_STORAGE_METADATA_PREFIX=/discovery/metadata/
       # Server
-      - SERVER_HOST=0.0.0.0
-      - SERVER_PORT=8080
+      - DISCOVERY_SERVER_HOST=0.0.0.0
+      - DISCOVERY_SERVER_PORT=8080
     depends_on:
       etcd:
         condition: service_healthy
@@ -101,19 +101,19 @@ services:
       context: ./go
       dockerfile: cmd/inspector/Dockerfile
     environment:
-      # etcd
-      - ETCD_HOST=etcd
-      - ETCD_PORT=2379
-      - ETCD_WORKLOADS_PREFIX=/discovery/workloads/
-      - ETCD_METADATA_PREFIX=/discovery/metadata/
+      # Storage (etcd)
+      - DISCOVERY_STORAGE_HOST=etcd
+      - DISCOVERY_STORAGE_PORT=2379
+      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
+      - DISCOVERY_STORAGE_METADATA_PREFIX=/discovery/metadata/
       # Processors
-      - HEALTH_ENABLED=true
-      - HEALTH_TIMEOUT=5s
-      - HEALTH_PATHS=/health,/healthz,/
-      - OPENAPI_ENABLED=true
-      - OPENAPI_TIMEOUT=10s
-      - OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
-      - PROCESSOR_WORKERS=4
+      - DISCOVERY_PROCESSOR_HEALTH_ENABLED=true
+      - DISCOVERY_PROCESSOR_HEALTH_TIMEOUT=5s
+      - DISCOVERY_PROCESSOR_HEALTH_PATHS=/health,/healthz,/
+      - DISCOVERY_PROCESSOR_OPENAPI_ENABLED=true
+      - DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT=10s
+      - DISCOVERY_PROCESSOR_OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
+      - DISCOVERY_PROCESSOR_WORKERS=4
     depends_on:
       etcd:
         condition: service_healthy
