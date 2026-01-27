@@ -52,19 +52,24 @@ func (c *syncCtlr) CreateSync(ctx context.Context, req *storev1.CreateSyncReques
 		return nil, status.Errorf(codes.InvalidArgument, "invalid remote directory URL: %v", err)
 	}
 
+	var remoteRegistryAddress string
+
 	// Default to Zot sync if local registry is not Zot
-	localRegistryType := c.opts.Config().Store.OCI.GetType()
 	requiresRegsync := c.opts.Config().Store.OCI.GetType() != registry.RegistryTypeZot
 
-	// Try to get registry URL from remote directory to determine sync type
 	result, err := sync.NegotiateCredentials(ctx, req.GetRemoteDirectoryUrl(), c.opts.Config().Authn)
 	if err != nil {
 		syncLogger.Warn("Failed to negotiate credentials with remote", "remote_url", req.GetRemoteDirectoryUrl(), "error", err)
 	} else {
-		requiresRegsync = IsRegsyncRequired(localRegistryType, result.FullRepositoryURL())
+		// Check if regsync is required
+		registryType := registry.DetectRegistryType(result.FullRepositoryURL())
+		requiresRegsync = requiresRegsync || registryType != registry.RegistryTypeZot
+
+		// Store the registry address
+		remoteRegistryAddress = result.RegistryAddress
 	}
 
-	id, err := c.db.CreateSync(req.GetRemoteDirectoryUrl(), req.GetCids(), requiresRegsync)
+	id, err := c.db.CreateSync(req.GetRemoteDirectoryUrl(), remoteRegistryAddress, req.GetCids(), requiresRegsync)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sync: %w", err)
 	}

@@ -154,11 +154,6 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 
 	logger.Debug("Credentials negotiated successfully", "worker_id", w.id, "sync_id", item.SyncID)
 
-	// Update sync object with remote repository URL
-	if err := w.db.UpdateSyncRemoteRegistry(item.SyncID, result.FullRepositoryURL()); err != nil {
-		return fmt.Errorf("failed to update sync remote registry: %w", err)
-	}
-
 	// Update zot configuration with sync extension to trigger sync
 	if err := zotutils.AddRegistryToSyncConfig(
 		zotutils.DefaultZotConfigPath,

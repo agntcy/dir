@@ -48,10 +48,11 @@ func (sync *Sync) GetRequiresRegsync() bool {
 	return sync.RequiresRegsync
 }
 
-func (d *DB) CreateSync(remoteURL string, cids []string, requiresRegsync bool) (string, error) {
+func (d *DB) CreateSync(remoteURL string, remoteRegistryAddress string, cids []string, requiresRegsync bool) (string, error) {
 	sync := &Sync{
 		ID:                 uuid.NewString(),
 		RemoteDirectoryURL: remoteURL,
+		RemoteRegistryURL:  remoteRegistryAddress,
 		CIDs:               cids,
 		Status:             storev1.SyncStatus_SYNC_STATUS_PENDING,
 		RequiresRegsync:    requiresRegsync,

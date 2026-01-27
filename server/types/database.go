@@ -47,7 +47,7 @@ type SearchDatabaseAPI interface {
 
 type SyncDatabaseAPI interface {
 	// CreateSync creates a new sync object in the database.
-	CreateSync(remoteURL string, cids []string, requiresRegsync bool) (string, error)
+	CreateSync(remoteURL string, remoteRegistryAddress string, cids []string, requiresRegsync bool) (string, error)
 
 	// GetSyncByID retrieves a sync object by its ID.
 	GetSyncByID(syncID string) (SyncObject, error)
