@@ -65,12 +65,7 @@ services:
       - CONTAINERD_LABEL_KEY=discover
       - CONTAINERD_LABEL_VALUE=true
       # Processors
-      - DISCOVERY_PROCESSOR_HEALTH_ENABLED=true
-      - DISCOVERY_PROCESSOR_HEALTH_TIMEOUT=5s
-      - DISCOVERY_PROCESSOR_HEALTH_PATHS=/health,/healthz,/
-      - DISCOVERY_PROCESSOR_OPENAPI_ENABLED=true
-      - DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT=10s
-      - DISCOVERY_PROCESSOR_OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
+      - DISCOVERY_PROCESSOR_A2A_ENABLED=true
       - DISCOVERY_PROCESSOR_WORKERS=4
     depends_on:
       etcd:

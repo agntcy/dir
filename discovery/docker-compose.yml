@@ -44,12 +44,7 @@ services:
       - DISCOVERY_RUNTIME_DOCKER_LABEL_KEY=discover
       - DISCOVERY_RUNTIME_DOCKER_LABEL_VALUE=true
       # Processors
-      - DISCOVERY_PROCESSOR_HEALTH_ENABLED=true
-      - DISCOVERY_PROCESSOR_HEALTH_TIMEOUT=5s
-      - DISCOVERY_PROCESSOR_HEALTH_PATHS=/health,/healthz,/
-      - DISCOVERY_PROCESSOR_OPENAPI_ENABLED=true
-      - DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT=10s
-      - DISCOVERY_PROCESSOR_OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
+      - DISCOVERY_PROCESSOR_A2A_ENABLED=true
       - DISCOVERY_PROCESSOR_WORKERS=4
     depends_on:
       etcd:
@@ -87,6 +82,13 @@ services:
   # Example services - must be on discovery network to be tracked
   # ============================================================
 
+
+  service-a2a:
+    image: a2a-helloworld:latest
+    labels:
+      - "discover=true"
+    networks:
+      - team-a
 
   service-1:
     image: nginx:alpine

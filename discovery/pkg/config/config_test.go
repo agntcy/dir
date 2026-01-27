@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agntcy/dir/discovery/pkg/processor/a2a"
 	processor "github.com/agntcy/dir/discovery/pkg/processor/config"
-	"github.com/agntcy/dir/discovery/pkg/processor/health"
-	"github.com/agntcy/dir/discovery/pkg/processor/openapi"
 	runtime "github.com/agntcy/dir/discovery/pkg/runtime/config"
 	"github.com/agntcy/dir/discovery/pkg/runtime/docker"
 	"github.com/agntcy/dir/discovery/pkg/runtime/k8s"
@@ -52,13 +51,10 @@ func TestConfig(t *testing.T) {
 				"DISCOVERY_STORAGE_METADATA_PREFIX":  "/custom/metadata/",
 
 				// processor
-				"DISCOVERY_PROCESSOR_WORKERS":         "8",
-				"DISCOVERY_PROCESSOR_HEALTH_ENABLED":  "true",
-				"DISCOVERY_PROCESSOR_HEALTH_TIMEOUT":  "15s",
-				"DISCOVERY_PROCESSOR_HEALTH_PATHS":    "/abc,/efg",
-				"DISCOVERY_PROCESSOR_OPENAPI_ENABLED": "true",
-				"DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT": "20s",
-				"DISCOVERY_PROCESSOR_OPENAPI_PATHS":   "/openapi,/openapi2",
+				"DISCOVERY_PROCESSOR_WORKERS":     "8",
+				"DISCOVERY_PROCESSOR_A2A_ENABLED": "true",
+				"DISCOVERY_PROCESSOR_A2A_TIMEOUT": "20s",
+				"DISCOVERY_PROCESSOR_A2A_PATHS":   "/a2a,/a2a2",
 			},
 			ExpectedConfig: &Config{
 				Server: ServerConfig{
@@ -92,15 +88,10 @@ func TestConfig(t *testing.T) {
 				},
 				Processor: processor.Config{
 					Workers: 8,
-					OpenAPI: openapi.Config{
+					A2A: a2a.Config{
 						Enabled: true,
 						Timeout: 20 * time.Second,
-						Paths:   []string{"/openapi", "/openapi2"},
-					},
-					Health: health.Config{
-						Enabled: true,
-						Timeout: 15 * time.Second,
-						Paths:   []string{"/abc", "/efg"},
+						Paths:   []string{"/a2a", "/a2a2"},
 					},
 				},
 			},

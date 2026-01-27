@@ -3,9 +3,8 @@ package processor
 import (
 	"fmt"
 
+	"github.com/agntcy/dir/discovery/pkg/processor/a2a"
 	"github.com/agntcy/dir/discovery/pkg/processor/config"
-	"github.com/agntcy/dir/discovery/pkg/processor/health"
-	"github.com/agntcy/dir/discovery/pkg/processor/openapi"
 	"github.com/agntcy/dir/discovery/pkg/types"
 )
 
@@ -13,12 +12,8 @@ func NewProcessors(cfg config.Config) ([]types.WorkloadProcessor, error) {
 	var processors []types.WorkloadProcessor
 
 	// Create processors based on configuration
-	if cfg.Health.Enabled {
-		processors = append(processors, health.NewProcessor(cfg.Health))
-	}
-
-	if cfg.OpenAPI.Enabled {
-		processors = append(processors, openapi.NewProcessor(cfg.OpenAPI))
+	if cfg.A2A.Enabled {
+		processors = append(processors, a2a.NewProcessor(cfg.A2A))
 	}
 
 	// Validate created processors

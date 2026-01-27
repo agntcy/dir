@@ -73,6 +73,16 @@ go build -o bin/server ./cmd/server
 go install ./cmd/...
 ```
 
+### Build Example A2A Server
+
+```bash
+git clone https://github.com/a2aproject/a2a-samples
+cd a2a-samples/samples/python/agents/helloworld
+docker build -t a2a-helloworld . -f Containerfile
+cd ../../../../..
+rm -rf a2a-samples
+```
+
 ### Docker Compose
 
 ```bash
@@ -215,17 +225,14 @@ All environment variables are prefixed with `DISCOVERY_` and use underscores as 
 | `DISCOVERY_RUNTIME_KUBERNETES_LABEL_VALUE`     | `true`     | Label value to match                  |
 | `DISCOVERY_RUNTIME_KUBERNETES_WATCH_SERVICES`  | `true`     | Watch services in addition to pods    |
 
-### Processor (Inspector)
+### Processor
 
 | Variable                              | Default                                 | Description                        |
 | ------------------------------------- | --------------------------------------- | ---------------------------------- |
 | `DISCOVERY_PROCESSOR_WORKERS`         | `4`                                     | Number of worker goroutines        |
-| `DISCOVERY_PROCESSOR_HEALTH_ENABLED`  | `true`                                  | Enable health check processor      |
-| `DISCOVERY_PROCESSOR_HEALTH_TIMEOUT`  | `5s`                                    | Health check timeout (Go duration) |
-| `DISCOVERY_PROCESSOR_HEALTH_PATHS`    | `/health,/healthz,/`                    | Paths to probe for health          |
-| `DISCOVERY_PROCESSOR_OPENAPI_ENABLED` | `true`                                  | Enable OpenAPI discovery processor |
-| `DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT` | `10s`                                   | OpenAPI fetch timeout (Go duration)|
-| `DISCOVERY_PROCESSOR_OPENAPI_PATHS`   | `/openapi.json,/swagger.json,/api-docs` | Paths to check for OpenAPI spec    |
+| `DISCOVERY_PROCESSOR_A2A_ENABLED`     | `true`                                  | Enable A2A discovery processor     |
+| `DISCOVERY_PROCESSOR_A2A_TIMEOUT`  | `5s`                                    | Health check timeout (Go duration) |
+| `DISCOVERY_PROCESSOR_A2A_PATHS`    | `/.well-known/agent-card.json,/.well-known/card.json`                    | Paths to probe for A2A details          |
 
 ## Network Isolation
 

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/agntcy/dir/discovery/pkg/processor/a2a"
 	processor "github.com/agntcy/dir/discovery/pkg/processor/config"
 	runtime "github.com/agntcy/dir/discovery/pkg/runtime/config"
 	"github.com/agntcy/dir/discovery/pkg/storage"
@@ -159,12 +160,9 @@ func LoadConfig() (*Config, error) {
 	// Processor configuration
 	//
 	v.SetDefault("processor.workers", DefaultProcessorWorkers)
-	v.SetDefault("processor.health.enabled", DefaultHealthEnabled)
-	v.SetDefault("processor.health.timeout", DefaultHealthTimeout)
-	v.SetDefault("processor.health.paths", []string{"/health", "/healthz", "/"})
-	v.SetDefault("processor.openapi.enabled", DefaultOpenAPIEnabled)
-	v.SetDefault("processor.openapi.timeout", DefaultOpenAPITimeout)
-	v.SetDefault("processor.openapi.paths", []string{"/openapi.json", "/swagger.json", "/api-docs"})
+	v.SetDefault("processor.a2a.enabled", DefaultHealthEnabled)
+	v.SetDefault("processor.a2a.timeout", DefaultHealthTimeout)
+	v.SetDefault("processor.a2a.paths", a2a.DefaultDiscoveryPaths)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(
