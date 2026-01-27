@@ -9,6 +9,7 @@ package regsync
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -222,7 +223,7 @@ func (t *Task) runRegsync(ctx context.Context, syncID string) error {
 
 	if err != nil {
 		// Check if it was a timeout
-		if execCtx.Err() == context.DeadlineExceeded {
+		if errors.Is(execCtx.Err(), context.DeadlineExceeded) {
 			return fmt.Errorf("regsync command timed out after %v", timeout)
 		}
 

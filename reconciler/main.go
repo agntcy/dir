@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -139,7 +140,7 @@ func startHealthServer(readinessCheck func(ctx context.Context) bool) *http.Serv
 	go func() {
 		logger.Info("Starting health check server", "address", port)
 
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("Health check server error", "error", err)
 		}
 	}()
