@@ -33,8 +33,8 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			recordCID string
 		)
 
-		// Record name from record_080.json: "directory.agntcy.org/example/research-assistant-v4"
-		const recordName = "directory.agntcy.org/example/research-assistant-v4"
+		// Record name from record_080.json: "http://dns-validation-http/example/research-assistant-v4"
+		const recordName = "http://dns-validation-http/example/research-assistant-v4"
 
 		ginkgo.BeforeAll(func() {
 			var err error
@@ -127,7 +127,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 		)
 
 		// Both records have the same name but different versions
-		const recordName = "directory.agntcy.org/example/research-assistant-v4"
+		const recordName = "http://dns-validation-http/example/research-assistant-v4"
 
 		ginkgo.BeforeAll(func() {
 			var err error
@@ -236,7 +236,7 @@ var _ = ginkgo.Describe("Name resolution - pull by name", func() {
 			recordCID string
 		)
 
-		const recordName = "directory.agntcy.org/example/research-assistant-v4"
+		const recordName = "http://dns-validation-http/example/research-assistant-v4"
 
 		ginkgo.BeforeAll(func() {
 			var err error

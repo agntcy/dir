@@ -16,7 +16,7 @@ import (
 )
 
 // Test data for OASF 0.8.0 record:
-//   - name: "directory.agntcy.org/example/research-assistant-v4"
+//   - name: "http://dns-validation-http/example/research-assistant-v4"
 //   - version: "v4.0.0"
 //   - schema_version: "0.8.0"
 //   - authors: ["AGNTCY Contributors"]
@@ -68,7 +68,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 		ginkgo.Context("exact match searches", func() {
 			ginkgo.It("finds record by name", func() {
 				output := cli.Search().
-					WithName("directory.agntcy.org/example/research-assistant-v4").
+					WithName("http://dns-validation-http/example/research-assistant-v4").
 					ShouldSucceed()
 				gomega.Expect(output).To(gomega.ContainSubstring(recordCID))
 			})
@@ -272,7 +272,7 @@ var _ = ginkgo.Describe("Search functionality for OASF 0.8.0 records", func() {
 
 		ginkgo.It("returns full record data with JSON output", func() {
 			output := cli.SearchRecords().
-				WithName("directory.agntcy.org/example/research-assistant-v4").
+				WithName("http://dns-validation-http/example/research-assistant-v4").
 				WithArgs("--output", "json").
 				ShouldSucceed()
 
