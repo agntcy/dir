@@ -37,7 +37,6 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
       initContainers:
-      {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
         - name: init-zot-config
           image: busybox:1.36
           command:
@@ -63,7 +62,6 @@ spec:
           volumeMounts:
             - name: zot-config-storage
               mountPath: /etc/zot
-      {{- end }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -104,7 +102,7 @@ spec:
               value: {{ .Values.database.sqlite.dbPath }}
             {{- end }}
             {{- else if eq .Values.database.type "postgres" }}
-            {{- if or .Values.secrets.postgresAuth.username .Values.secrets.postgresAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.postgresAuth.enabled) }}
+            {{- if include "chart.postgres.credentialsConfigured" . }}
             - name: DIRECTORY_SERVER_DATABASE_POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:

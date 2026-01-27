@@ -703,11 +703,18 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # Validate required environment variables
       - |
         if [ -z "${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME:-}" ] || [ -z "${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD:-}" ] || [ -z "${DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME:-}" ]; then
           echo "ERROR: DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME, DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD, and DIRECTORY_SERVER_STORE_OCI_REPOSITORY_NAME must be set for GHCR deployment"
+          exit 1
+        fi
+
+        if [ -z "${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME:-}" ] || [ -z "${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD:-}" ]; then
+          echo "ERROR: DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME and DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD must be set for GHCR deployment"
+          echo "These credentials are shared with remote directories that want to sync to your GHCR registry"
           exit 1
         fi
 
@@ -729,12 +736,22 @@ tasks:
           --set apiserver.config.store.oci.auth_config.password="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD}" \
           --set apiserver.config.store.oci.auth_config.insecure=false \
           --set apiserver.zot.enabled=false \
-          --set apiserver.config.sync.regsync.enabled=true \
-          --set apiserver.config.sync.auth_config.username="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME}" \
-          --set apiserver.config.sync.auth_config.password="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD}" \
+          --set apiserver.reconciler.regsync.enabled=true \
+          --set apiserver.secrets.ociAuth.username="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME}" \
+          --set apiserver.secrets.ociAuth.password="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD}" \
+          --set apiserver.secrets.syncAuth.username="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME}" \
+          --set apiserver.secrets.syncAuth.password="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
-          {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
+          --set apiserver.database.type=postgres \
+          --set apiserver.database.postgres.host=dir-postgresql.{{ .HELM_NAMESPACE }}.svc.cluster.local \
+          --set apiserver.database.postgres.port=5432 \
+          --set apiserver.postgresql.enabled=true \
+          --set apiserver.postgresql.auth.username=dir \
+          --set apiserver.postgresql.auth.password=dirpassword \
+          --set apiserver.postgresql.auth.database=dir \
+          --set apiserver.reconciler.enabled=true \
+          --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
           --set apiserver.config.oasf_api_validation.disable=true \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \

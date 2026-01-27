@@ -130,7 +130,7 @@ apiserver:
         # cache_dir: ""
 
         # Registry address to connect to
-        registry_address: "dir-zot.dir-server.svc.cluster.local:5000"
+        registry_address: ""
         # All data will be stored under this repo.
         # Objects are pushed as tags, manifests, and blobs.
         # repository_name: ""
