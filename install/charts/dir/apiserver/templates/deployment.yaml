@@ -35,7 +35,7 @@ spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if or (and .Values.zot.enabled (eq .Values.zot.mountConfig false)) .Values.config.sync.regsync.enabled }}
+      {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
       initContainers:
       {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
         - name: init-zot-config

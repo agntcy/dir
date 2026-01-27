@@ -61,12 +61,19 @@ func NegotiateCredentials(ctx context.Context, remoteDirectoryURL string, authnC
 		return nil, fmt.Errorf("credential negotiation failed: %s", resp.GetErrorMessage())
 	}
 
+	// Extract credentials from response, handling nil BasicAuth
+	var username, password string
+	if basicAuth := resp.GetBasicAuth(); basicAuth != nil {
+		username = basicAuth.GetUsername()
+		password = basicAuth.GetPassword()
+	}
+
 	return &CredentialsResult{
 		RegistryAddress: resp.GetRegistryAddress(),
 		RepositoryName:  resp.GetRepositoryName(),
 		Credentials: syncconfig.AuthConfig{
-			Username: resp.GetBasicAuth().GetUsername(),
-			Password: resp.GetBasicAuth().GetPassword(),
+			Username: username,
+			Password: password,
 			Insecure: resp.GetInsecure(),
 		},
 	}, nil
