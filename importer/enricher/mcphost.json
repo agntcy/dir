@@ -11,5 +11,5 @@
       }
     }
   },
-  "model": "ollama:qwen3:8b"
+  "model": "azure:gpt-4o"
 }

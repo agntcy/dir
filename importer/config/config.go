@@ -47,7 +47,7 @@ type Config struct {
 	DryRun       bool              // If true, preview without actually importing
 	SignFunc     SignFunc          // Function to sign records (if set, signing is enabled)
 
-	Enrich                        bool   // If true, enrich the records with LLM
+	// Enrichment is mandatory - these fields are always used
 	EnricherConfigFile            string // Path to MCPHost configuration file (e.g., mcphost.json)
 	EnricherSkillsPromptTemplate  string // Optional: path to custom skills prompt template or inline prompt (empty = use default)
 	EnricherDomainsPromptTemplate string // Optional: path to custom domains prompt template or inline prompt (empty = use default)

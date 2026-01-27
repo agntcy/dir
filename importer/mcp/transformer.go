@@ -32,24 +32,18 @@ type Transformer struct {
 }
 
 // NewTransformer creates a new MCP transformer.
-// If cfg.Enrich is true, it initializes an enricher client using cfg.EnricherConfig.
+// Enrichment is mandatory - the transformer will always initialize an enricher client.
 func NewTransformer(ctx context.Context, cfg config.Config) (*Transformer, error) {
-	var host *enricher.MCPHostClient
+	// Enrichment is mandatory - always initialize enricher
+	enricherCfg := enricher.Config{
+		ConfigFile:            cfg.EnricherConfigFile,
+		SkillsPromptTemplate:  cfg.EnricherSkillsPromptTemplate,
+		DomainsPromptTemplate: cfg.EnricherDomainsPromptTemplate,
+	}
 
-	if cfg.Enrich {
-		// Create enricher configuration
-		enricherCfg := enricher.Config{
-			ConfigFile:            cfg.EnricherConfigFile,
-			SkillsPromptTemplate:  cfg.EnricherSkillsPromptTemplate,
-			DomainsPromptTemplate: cfg.EnricherDomainsPromptTemplate,
-		}
-
-		var err error
-
-		host, err = enricher.NewMCPHost(ctx, enricherCfg)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create MCPHost client: %w", err)
-		}
+	host, err := enricher.NewMCPHost(ctx, enricherCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MCPHost client (enrichment is mandatory): %w", err)
 	}
 
 	return &Transformer{
@@ -128,11 +122,9 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 		return nil, fmt.Errorf("failed to convert MCP data to OASF record: %w", err)
 	}
 
-	// Enrich the record with proper OASF skills and domains if enrichment is enabled
-	if t.host != nil {
-		if err := t.enrichRecord(ctx, recordStruct); err != nil {
-			return nil, err
-		}
+	// Enrichment is mandatory - always enrich the record
+	if err := t.enrichRecord(ctx, recordStruct); err != nil {
+		return nil, err
 	}
 
 	return &corev1.Record{
