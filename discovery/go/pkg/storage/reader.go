@@ -4,6 +4,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -12,18 +13,18 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	models "github.com/agntcy/dir/discovery/pkg/types"
+	"github.com/agntcy/dir/discovery/pkg/types"
 )
 
-// ServerStorage provides read-only etcd operations with in-memory indices for the server.
-type ServerStorage struct {
+// reader provides read-only etcd operations with in-memory indices for the server.
+type reader struct {
 	client          *clientv3.Client
 	workloadsPrefix string
 	metadataPrefix  string
 
 	// In-memory indices (protected by mutex)
 	mu         sync.RWMutex
-	workloads  map[string]*models.Workload       // id → Workload
+	workloads  map[string]*types.Workload        // id → Workload
 	metadata   map[string]map[string]interface{} // id → {processor: data}
 	byHostname map[string]string                 // hostname → id
 	byName     map[string]string                 // "namespace/name" or "name" → id
@@ -35,8 +36,8 @@ type ServerStorage struct {
 	wg     sync.WaitGroup
 }
 
-// NewServerStorage creates a new server storage with in-memory indices.
-func NewServerStorage(cfg Config) (*ServerStorage, error) {
+// NewReader creates a new server storage with in-memory indices.
+func NewReader(cfg Config) (types.StoreReader, error) {
 	client, err := clientv3.New(clientv3.Config{
 		Endpoints:   cfg.Endpoints(),
 		DialTimeout: cfg.DialTimeout,
@@ -57,11 +58,11 @@ func NewServerStorage(cfg Config) (*ServerStorage, error) {
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
-	s := &ServerStorage{
+	s := &reader{
 		client:          client,
 		workloadsPrefix: cfg.WorkloadsPrefix,
 		metadataPrefix:  cfg.MetadataPrefix,
-		workloads:       make(map[string]*models.Workload),
+		workloads:       make(map[string]*types.Workload),
 		metadata:        make(map[string]map[string]interface{}),
 		byHostname:      make(map[string]string),
 		byName:          make(map[string]string),
@@ -88,67 +89,54 @@ func NewServerStorage(cfg Config) (*ServerStorage, error) {
 }
 
 // Close stops watches and closes the etcd connection.
-func (s *ServerStorage) Close() error {
+func (s *reader) Close() error {
 	s.cancel()
 	s.wg.Wait()
 	return s.client.Close()
 }
 
+func (s *reader) Count() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.workloads)
+}
+
 // Get returns a workload by ID.
-func (s *ServerStorage) Get(id string) *models.Workload {
+func (s *reader) Get(id string) (*types.Workload, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	workload := s.workloads[id]
-	if workload != nil {
-		return s.workloadWithMetadata(workload)
+	// Try by ID
+	if workload := s.workloads[id]; workload != nil {
+		return s.workloadWithMetadata(workload), nil
 	}
-	return nil
-}
 
-// GetByHostname returns a workload by hostname.
-func (s *ServerStorage) GetByHostname(hostname string) *models.Workload {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if id, ok := s.byHostname[hostname]; ok {
+	// Try by hostname
+	if id, ok := s.byHostname[id]; ok {
 		if workload := s.workloads[id]; workload != nil {
-			return s.workloadWithMetadata(workload)
+			return s.workloadWithMetadata(workload), nil
 		}
 	}
-	return nil
-}
 
-// GetByName returns a workload by name (and optional namespace).
-func (s *ServerStorage) GetByName(name, namespace string) *models.Workload {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	var id string
-	if namespace != "" {
-		id = s.byName[namespace+"/"+name]
-	}
-	if id == "" {
-		id = s.byName[name]
-	}
-
-	if id != "" {
+	// Try by name
+	if id, ok := s.byName[id]; ok {
 		if workload := s.workloads[id]; workload != nil {
-			return s.workloadWithMetadata(workload)
+			return s.workloadWithMetadata(workload), nil
 		}
 	}
-	return nil
+
+	return nil, fmt.Errorf("workload not found: %s", id)
 }
 
-// ListAll returns all workloads with optional filters.
-func (s *ServerStorage) ListAll(runtime string, labelFilter map[string]string) []*models.Workload {
+// List returns all workloads with optional filters.
+func (s *reader) List(runtime types.RuntimeType, labelFilter map[string]string) []*types.Workload {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var results []*models.Workload
+	var results []*types.Workload
 	for _, workload := range s.workloads {
 		// Filter by runtime
-		if runtime != "" && string(workload.Runtime) != runtime {
+		if runtime != "" && workload.Runtime != runtime {
 			continue
 		}
 
@@ -172,41 +160,11 @@ func (s *ServerStorage) ListAll(runtime string, labelFilter map[string]string) [
 	return results
 }
 
-// IdentifyWorkload finds a workload by hostname, name, or ID.
-func (s *ServerStorage) IdentifyWorkload(identity string) *models.Workload {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	// Try hostname first
-	if id, ok := s.byHostname[identity]; ok {
-		return s.workloadWithMetadata(s.workloads[id])
-	}
-
-	// Try name
-	if id, ok := s.byName[identity]; ok {
-		return s.workloadWithMetadata(s.workloads[id])
-	}
-
-	// Try ID directly
-	if workload, ok := s.workloads[identity]; ok {
-		return s.workloadWithMetadata(workload)
-	}
-
-	// Try ID prefix
-	for id, workload := range s.workloads {
-		if strings.HasPrefix(id, identity) {
-			return s.workloadWithMetadata(workload)
-		}
-	}
-
-	return nil
-}
-
 // FindReachable finds all workloads reachable from the caller.
-func (s *ServerStorage) FindReachable(callerIdentity string) (*models.ReachabilityResult, error) {
-	caller := s.IdentifyWorkload(callerIdentity)
-	if caller == nil {
-		return nil, nil
+func (s *reader) FindReachable(callerIdentity string) (*types.ReachabilityResult, error) {
+	caller, err := s.Get(callerIdentity)
+	if err != nil {
+		return nil, err
 	}
 
 	s.mu.RLock()
@@ -218,7 +176,7 @@ func (s *ServerStorage) FindReachable(callerIdentity string) (*models.Reachabili
 	}
 
 	if len(callerGroups) == 0 {
-		return &models.ReachabilityResult{Caller: caller, Reachable: nil, Count: 0}, nil
+		return &types.ReachabilityResult{Caller: caller, Reachable: nil, Count: 0}, nil
 	}
 
 	// Find all workloads sharing at least one group
@@ -233,7 +191,7 @@ func (s *ServerStorage) FindReachable(callerIdentity string) (*models.Reachabili
 	delete(reachableIDs, caller.ID)
 
 	// Build result list with filtered addresses
-	var reachable []*models.Workload
+	var reachable []*types.Workload
 	for id := range reachableIDs {
 		workload := s.workloads[id]
 		if workload == nil {
@@ -257,7 +215,7 @@ func (s *ServerStorage) FindReachable(callerIdentity string) (*models.Reachabili
 		filteredAddrs := s.filterAddresses(workload.Addresses, sharedGroups)
 
 		// Create filtered workload
-		filtered := &models.Workload{
+		filtered := &types.Workload{
 			ID:           workload.ID,
 			Name:         workload.Name,
 			Hostname:     workload.Hostname,
@@ -280,7 +238,7 @@ func (s *ServerStorage) FindReachable(callerIdentity string) (*models.Reachabili
 		return reachable[i].Name < reachable[j].Name
 	})
 
-	return &models.ReachabilityResult{
+	return &types.ReachabilityResult{
 		Caller:    caller,
 		Reachable: reachable,
 		Count:     len(reachable),
@@ -288,7 +246,7 @@ func (s *ServerStorage) FindReachable(callerIdentity string) (*models.Reachabili
 }
 
 // filterAddresses filters addresses to only those in shared isolation groups.
-func (s *ServerStorage) filterAddresses(addresses []string, sharedGroups []string) []string {
+func (s *reader) filterAddresses(addresses []string, sharedGroups []string) []string {
 	sharedSet := make(map[string]struct{})
 	for _, g := range sharedGroups {
 		sharedSet[g] = struct{}{}
@@ -317,14 +275,14 @@ func (s *ServerStorage) filterAddresses(addresses []string, sharedGroups []strin
 }
 
 // workloadWithMetadata returns a copy of workload with merged metadata.
-func (s *ServerStorage) workloadWithMetadata(workload *models.Workload) *models.Workload {
+func (s *reader) workloadWithMetadata(workload *types.Workload) *types.Workload {
 	result := *workload
 	result.Metadata = s.mergeMetadata(workload)
 	return &result
 }
 
 // mergeMetadata merges stored metadata with workload metadata.
-func (s *ServerStorage) mergeMetadata(workload *models.Workload) map[string]interface{} {
+func (s *reader) mergeMetadata(workload *types.Workload) map[string]interface{} {
 	stored := s.metadata[workload.ID]
 	if stored == nil && workload.Metadata == nil {
 		return nil
@@ -341,7 +299,7 @@ func (s *ServerStorage) mergeMetadata(workload *models.Workload) map[string]inte
 }
 
 // loadWorkloads loads all workloads from etcd.
-func (s *ServerStorage) loadWorkloads() error {
+func (s *reader) loadWorkloads() error {
 	log.Printf("[storage] Loading workloads from %s", s.workloadsPrefix)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -356,7 +314,7 @@ func (s *ServerStorage) loadWorkloads() error {
 		key := string(kv.Key)
 		workloadID := strings.TrimPrefix(key, s.workloadsPrefix)
 
-		workload, err := models.FromJSON(kv.Value)
+		workload, err := types.FromJSON(kv.Value)
 		if err != nil {
 			log.Printf("[storage] Failed to parse workload %s: %v", workloadID, err)
 			continue
@@ -370,7 +328,7 @@ func (s *ServerStorage) loadWorkloads() error {
 }
 
 // loadMetadata loads all metadata from etcd.
-func (s *ServerStorage) loadMetadata() error {
+func (s *reader) loadMetadata() error {
 	log.Printf("[storage] Loading metadata from %s", s.metadataPrefix)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -410,7 +368,7 @@ func (s *ServerStorage) loadMetadata() error {
 }
 
 // startWatches starts background watch goroutines.
-func (s *ServerStorage) startWatches() {
+func (s *reader) startWatches() {
 	s.wg.Add(2)
 	go s.watchWorkloads()
 	go s.watchMetadata()
@@ -418,7 +376,7 @@ func (s *ServerStorage) startWatches() {
 }
 
 // watchWorkloads watches for workload changes.
-func (s *ServerStorage) watchWorkloads() {
+func (s *reader) watchWorkloads() {
 	defer s.wg.Done()
 
 	watchChan := s.client.Watch(s.ctx, s.workloadsPrefix, clientv3.WithPrefix())
@@ -440,7 +398,7 @@ func (s *ServerStorage) watchWorkloads() {
 
 				switch event.Type {
 				case clientv3.EventTypePut:
-					workload, err := models.FromJSON(event.Kv.Value)
+					workload, err := types.FromJSON(event.Kv.Value)
 					if err != nil {
 						log.Printf("[storage] Watch: failed to parse workload %s: %v", workloadID, err)
 						continue
@@ -461,7 +419,7 @@ func (s *ServerStorage) watchWorkloads() {
 }
 
 // watchMetadata watches for metadata changes.
-func (s *ServerStorage) watchMetadata() {
+func (s *reader) watchMetadata() {
 	defer s.wg.Done()
 
 	watchChan := s.client.Watch(s.ctx, s.metadataPrefix, clientv3.WithPrefix())
@@ -516,7 +474,7 @@ func (s *ServerStorage) watchMetadata() {
 }
 
 // updateWorkloadIndex updates in-memory indices for a workload.
-func (s *ServerStorage) updateWorkloadIndex(workloadID string, workload *models.Workload) {
+func (s *reader) updateWorkloadIndex(workloadID string, workload *types.Workload) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -544,14 +502,14 @@ func (s *ServerStorage) updateWorkloadIndex(workloadID string, workload *models.
 }
 
 // removeWorkloadIndex removes workload from all indices.
-func (s *ServerStorage) removeWorkloadIndex(workloadID string) {
+func (s *reader) removeWorkloadIndex(workloadID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.removeWorkloadIndexLocked(workloadID)
 }
 
 // removeWorkloadIndexLocked removes workload from indices (must hold lock).
-func (s *ServerStorage) removeWorkloadIndexLocked(workloadID string) {
+func (s *reader) removeWorkloadIndexLocked(workloadID string) {
 	workload := s.workloads[workloadID]
 	if workload == nil {
 		return

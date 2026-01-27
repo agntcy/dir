@@ -12,9 +12,10 @@ import (
 
 	"github.com/agntcy/dir/discovery/pkg/config"
 	"github.com/agntcy/dir/discovery/pkg/storage"
+	"github.com/agntcy/dir/discovery/pkg/types"
 )
 
-var store *storage.ServerStorage
+var store types.StoreReader
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -35,7 +36,7 @@ func main() {
 	log.Println("============================================================")
 
 	// Initialize storage
-	store, err = storage.NewServerStorage(cfg.Storage)
+	store, err = storage.NewReader(cfg.Storage)
 	if err != nil {
 		log.Fatalf("Failed to connect to storage: %v", err)
 	}
@@ -50,7 +51,6 @@ func main() {
 	}))
 
 	// Routes
-	router.GET("/health", healthHandler)
 	router.GET("/healthz", healthHandler)
 	router.GET("/discover", discoverHandler)
 	router.GET("/workloads", workloadsHandler)
@@ -101,7 +101,7 @@ func discoverHandler(c *gin.Context) {
 // workloadsHandler returns all registered workloads.
 func workloadsHandler(c *gin.Context) {
 	runtime := c.Query("runtime")
-	workloads := store.ListAll(runtime, nil)
+	workloads := store.List(types.RuntimeType(runtime), nil)
 
 	c.JSON(http.StatusOK, gin.H{
 		"workloads": workloads,
@@ -117,8 +117,8 @@ func workloadHandler(c *gin.Context) {
 		return
 	}
 
-	workload := store.IdentifyWorkload(id)
-	if workload == nil {
+	workload, err := store.Get(id)
+	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "workload not found"})
 		return
 	}

@@ -2,15 +2,14 @@
 #
 # Deploy with:
 #   1. Build Go images:
-#      docker build -t discovery-watcher:latest -f go/cmd/watcher/Dockerfile go/
+#      docker build -t discovery:latest -f go/cmd/discovery/Dockerfile go/
 #      docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
-#      docker build -t discovery-inspector:latest -f go/cmd/inspector/Dockerfile go/
 #   2. Init swarm (if needed): docker swarm init
 #   3. Deploy: docker stack deploy -c docker-compose.swarm.yml discovery
 #
 # Architecture:
 # - etcd runs as single replica (use 3 for production HA)
-# - watcher runs as global service (one per node) - watches Docker, writes to etcd
+# - discovery runs as global service (one per node) - watches Docker, processes metadata, writes to etcd
 # - server runs as replicated service - reads from etcd, serves HTTP API
 #
 services:
@@ -45,10 +44,10 @@ services:
       retries: 3
 
   # ============================================================
-  # Watcher - Global service (one per node) - watches Docker socket (Go)
+  # Discovery - Global service (one per node) - watches Docker, processes metadata, writes to etcd
   # ============================================================
-  watcher:
-    image: discovery-watcher:latest
+  discovery:
+    image: discovery:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -56,13 +55,24 @@ services:
       - DISCOVERY_STORAGE_HOST=etcd
       - DISCOVERY_STORAGE_PORT=2379
       - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
+      - DISCOVERY_STORAGE_METADATA_PREFIX=/discovery/metadata/
       # Runtime
       - DISCOVERY_RUNTIME_TYPE=docker
       - DISCOVERY_RUNTIME_DOCKER_HOST=unix:///var/run/docker.sock
       - DISCOVERY_RUNTIME_DOCKER_LABEL_KEY=discover
       - DISCOVERY_RUNTIME_DOCKER_LABEL_VALUE=true
+      # Processors
+      - DISCOVERY_PROCESSOR_HEALTH_ENABLED=true
+      - DISCOVERY_PROCESSOR_HEALTH_TIMEOUT=5s
+      - DISCOVERY_PROCESSOR_HEALTH_PATHS=/health,/healthz,/
+      - DISCOVERY_PROCESSOR_OPENAPI_ENABLED=true
+      - DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT=10s
+      - DISCOVERY_PROCESSOR_OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
+      - DISCOVERY_PROCESSOR_WORKERS=4
     networks:
       - discovery
+      - team-a
+      - team-b
     deploy:
       mode: global
       restart_policy:
@@ -70,7 +80,7 @@ services:
         delay: 5s
 
   # ============================================================
-  # Server - HTTP API for querying discovered services (Go)
+  # Server - HTTP API for querying discovered services (reads from etcd)
   # ============================================================
   server:
     image: discovery-server:latest
@@ -89,38 +99,6 @@ services:
       - "8080:8080"
     deploy:
       replicas: 2
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-
-  # ============================================================
-  # Inspector - Watches workloads and extracts metadata
-  # ============================================================
-  # ============================================================
-  # Inspector - Watches workloads and extracts metadata (Go)
-  # ============================================================
-  inspector:
-    image: discovery-inspector:latest
-    environment:
-      # Storage (etcd)
-      - DISCOVERY_STORAGE_HOST=etcd
-      - DISCOVERY_STORAGE_PORT=2379
-      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
-      - DISCOVERY_STORAGE_METADATA_PREFIX=/discovery/metadata/
-      # Processors
-      - DISCOVERY_PROCESSOR_HEALTH_ENABLED=true
-      - DISCOVERY_PROCESSOR_HEALTH_TIMEOUT=5s
-      - DISCOVERY_PROCESSOR_HEALTH_PATHS=/health,/healthz,/
-      - DISCOVERY_PROCESSOR_OPENAPI_ENABLED=true
-      - DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT=10s
-      - DISCOVERY_PROCESSOR_OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
-      - DISCOVERY_PROCESSOR_WORKERS=4
-    networks:
-      - discovery
-      - team-a
-      - team-b
-    deploy:
-      replicas: 1
       restart_policy:
         condition: on-failure
         delay: 5s

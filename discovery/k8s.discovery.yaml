@@ -1,10 +1,10 @@
 # Discovery Service - Kubernetes Deployment
-# Includes: etcd, watcher (with RBAC), server, test workloads, and network policy
+# Includes: etcd, discovery (with RBAC), server, test workloads, and network policy
 #
 # Usage:
 #   kubectl apply -f k8s.discovery.yaml
 #   kubectl wait --for=condition=ready pod -l app=etcd --timeout=60s
-#   kubectl wait --for=condition=ready pod -l app=discovery-watcher --timeout=60s
+#   kubectl wait --for=condition=ready pod -l app=discovery --timeout=60s
 #   kubectl wait --for=condition=ready pod -l app=discovery-server --timeout=60s
 #   kubectl wait --for=condition=ready pod -l discover=true -n team-a --timeout=60s
 #   kubectl wait --for=condition=ready pod -l discover=true -n team-b --timeout=60s
@@ -54,19 +54,19 @@ spec:
           ports:
             - containerPort: 2379
 # ============================================================================
-# WATCHER (with RBAC)
+# DISCOVERY (with RBAC) - Watches runtime and processes metadata (writes to etcd)
 # ============================================================================
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: discovery-watcher
+  name: discovery
   namespace: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: discovery-watcher
+  name: discovery
 rules:
   - apiGroups: [""]
     resources: ["pods", "services", "namespaces"]
@@ -78,35 +78,37 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: discovery-watcher
+  name: discovery
 subjects:
   - kind: ServiceAccount
-    name: discovery-watcher
+    name: discovery
     namespace: default
 roleRef:
   kind: ClusterRole
-  name: discovery-watcher
+  name: discovery
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: discovery-watcher
+  name: discovery
   namespace: default
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: discovery-watcher
+      app: discovery
   template:
     metadata:
       labels:
-        app: discovery-watcher
+        app: discovery
+        # Label used by NetworkPolicy to allow discovery ingress
+        role: inspector
     spec:
-      serviceAccountName: discovery-watcher
+      serviceAccountName: discovery
       containers:
-        - name: watcher
-          image: discovery-watcher:latest
+        - name: discovery
+          image: discovery:latest
           imagePullPolicy: Never
           env:
             - name: DISCOVERY_RUNTIME_TYPE
@@ -125,8 +127,24 @@ spec:
               value: "2379"
             - name: DISCOVERY_STORAGE_WORKLOADS_PREFIX
               value: "/discovery/workloads/"
+            - name: DISCOVERY_STORAGE_METADATA_PREFIX
+              value: "/discovery/metadata/"
+            - name: DISCOVERY_PROCESSOR_HEALTH_ENABLED
+              value: "true"
+            - name: DISCOVERY_PROCESSOR_HEALTH_TIMEOUT
+              value: "5s"
+            - name: DISCOVERY_PROCESSOR_HEALTH_PATHS
+              value: "/health,/healthz,/"
+            - name: DISCOVERY_PROCESSOR_OPENAPI_ENABLED
+              value: "true"
+            - name: DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT
+              value: "10s"
+            - name: DISCOVERY_PROCESSOR_OPENAPI_PATHS
+              value: "/openapi.json,/swagger.json,/api-docs"
+            - name: DISCOVERY_PROCESSOR_WORKERS
+              value: "4"
 # ============================================================================
-# SERVER
+# SERVER (reads from etcd)
 # ============================================================================
 ---
 apiVersion: v1
@@ -177,54 +195,6 @@ spec:
               value: "0.0.0.0"
             - name: DISCOVERY_SERVER_PORT
               value: "8080"
-# ============================================================================
-# INSPECTOR - Metadata extraction (health checks, OpenAPI discovery)
-# ============================================================================
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: discovery-inspector
-  namespace: default
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: discovery-inspector
-  template:
-    metadata:
-      labels:
-        app: discovery-inspector
-        # Label used by NetworkPolicy to allow inspector ingress
-        role: inspector
-    spec:
-      containers:
-        - name: inspector
-          image: discovery-inspector:latest
-          imagePullPolicy: Never
-          env:
-            - name: DISCOVERY_STORAGE_HOST
-              value: "discovery-etcd"
-            - name: DISCOVERY_STORAGE_PORT
-              value: "2379"
-            - name: DISCOVERY_STORAGE_WORKLOADS_PREFIX
-              value: "/discovery/workloads/"
-            - name: DISCOVERY_STORAGE_METADATA_PREFIX
-              value: "/discovery/metadata/"
-            - name: DISCOVERY_PROCESSOR_HEALTH_ENABLED
-              value: "true"
-            - name: DISCOVERY_PROCESSOR_HEALTH_TIMEOUT
-              value: "5s"
-            - name: DISCOVERY_PROCESSOR_HEALTH_PATHS
-              value: "/health,/healthz,/"
-            - name: DISCOVERY_PROCESSOR_OPENAPI_ENABLED
-              value: "true"
-            - name: DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT
-              value: "10s"
-            - name: DISCOVERY_PROCESSOR_OPENAPI_PATHS
-              value: "/openapi.json,/swagger.json,/api-docs"
-            - name: DISCOVERY_PROCESSOR_WORKERS
-              value: "4"
 # ============================================================================
 # TEST WORKLOADS (namespaces act as isolation groups)
 # Pod DNS: {pod-ip-dashed}.{namespace}.pod (e.g., 10-244-0-5.team-a.pod)

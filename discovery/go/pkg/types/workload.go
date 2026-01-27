@@ -61,10 +61,3 @@ func FromJSON(data []byte) (*Workload, error) {
 	}
 	return &w, nil
 }
-
-// ReachabilityResult represents the result of a reachability query.
-type ReachabilityResult struct {
-	Caller    *Workload   `json:"caller"`
-	Reachable []*Workload `json:"reachable"`
-	Count     int         `json:"count"`
-}

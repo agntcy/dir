@@ -1,6 +1,6 @@
 # Service Discovery
 
-Network-aware service discovery for runtime workloads. Watches processes in a runtimes (Docker, containerd, Kubernetes) and exposes an HTTP API for discovering reachable services based on network isolation.
+Network-aware service discovery for runtime workloads. Watches processes in runtimes (Docker, containerd, Kubernetes) and exposes an HTTP API for discovering reachable services based on network isolation.
 
 ## Architecture
 
@@ -9,25 +9,24 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
                          │               etcd                  │
                          │    (distributed metadata store)     │
                          │                                     │
-                         │  /discovery/workloads/{id}     ◄─── watcher writes
-                         │  /discovery/metadata/{id}/{proc} ◄── inspector writes
+                         │  /discovery/workloads/{id}     ◄─── discovery writes
+                         │  /discovery/metadata/{id}/{proc} ◄── discovery writes
                          └──────────┬──────────────┬───────────┘
                                     │              │
                               write │              │ read (watch)
                                     │              │
                ┌────────────────────┴───┐    ┌─────┴────────────────────┐
-               │        Watcher         │    │     Dir DiscoveryAPI     │
-               │  - Watches runtime     │    │  - gRPC API              │
-               │  - Tracks networks     │    │  - Reachability queries  │
-               │  - Tracks workloads    │    │  - Filtering by network  │
+               │       Discovery        │    │         Server           │
+               │  - Watches runtime     │    │  - HTTP API              │
+               │  - Processes metadata  │    │  - Reachability queries  │
+               │  - Writes to etcd      │    │  - Reads from etcd       │
                └────────────┬───────────┘    └──────────────────────────┘
                             │
-                            │ watch            ┌──────────────────────────┐
-                            │                  │   Workload Supervisor    │
-         ┌──────────────────┼──────────────────│  - Watches workloads     │
-         │                  │                  │  - MCP discovery         │
-         │                  │                  │  - A2A discovery         │
-  ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐────────────────────┘
+                            │ watch
+                            │
+         ┌──────────────────┼──────────────────┐
+         │                  │                  │
+  ┌──────┴──────┐    ┌──────┴──────┐    ┌──────┴─────┐
   │   Docker    │    │ containerd  │    │ Kubernetes │
   │   Socket    │    │   Socket    │    │    API     │
   └──────┬──────┘    └──────┬──────┘    └──────┬─────┘
@@ -44,12 +43,20 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
     └─────────┘        └─────────┘        └─────────┘
 ```
 
+### Components
+
+| Component | Description |
+|-----------|-------------|
+| **etcd** | Distributed key-value store for workload data |
+| **Discovery** | Watches runtime, processes metadata, writes to etcd |
+| **Server** | HTTP API for querying workloads, reads from etcd |
+
 ### Key Structure
 
 | Prefix | Owner | Description |
 |--------|-------|-------------|
-| `/discovery/workloads/{id}` | Watcher | Workload JSON (container/pod info, networks, ports) |
-| `/discovery/metadata/{id}/{processor}` | Inspector | Processor metadata (health, openapi, etc.) |
+| `/discovery/workloads/{id}` | Discovery | Workload JSON (container/pod info, networks, ports) |
+| `/discovery/metadata/{id}/{processor}` | Discovery | Processor metadata (health, openapi, etc.) |
 
 ## Quick Start
 
@@ -58,10 +65,9 @@ Network-aware service discovery for runtime workloads. Watches processes in a ru
 ```bash
 cd discovery/go
 
-# Build all binaries
-go build -o bin/watcher ./cmd/watcher
+# Build binaries
+go build -o bin/discovery ./cmd/discovery
 go build -o bin/server ./cmd/server
-go build -o bin/inspector ./cmd/inspector
 
 # Or use go install
 go install ./cmd/...
@@ -94,9 +100,8 @@ cd discovery
 docker swarm init
 
 # Build Go images
-docker build -t discovery-watcher:latest -f go/cmd/watcher/Dockerfile go/
+docker build -t discovery:latest -f go/cmd/discovery/Dockerfile go/
 docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
-docker build -t discovery-inspector:latest -f go/cmd/inspector/Dockerfile go/
 
 docker stack deploy -c docker-compose.swarm.yml discovery
 
@@ -126,16 +131,14 @@ cd discovery
 kind create cluster --name discovery-test
 
 # Build and load Go images
-docker build -t discovery-watcher:latest -f go/cmd/watcher/Dockerfile go/
+docker build -t discovery:latest -f go/cmd/discovery/Dockerfile go/
 docker build -t discovery-server:latest -f go/cmd/server/Dockerfile go/
-docker build -t discovery-inspector:latest -f go/cmd/inspector/Dockerfile go/
-kind load docker-image discovery-watcher:latest --name discovery-test
+kind load docker-image discovery:latest --name discovery-test
 kind load docker-image discovery-server:latest --name discovery-test
-kind load docker-image discovery-inspector:latest --name discovery-test
 
-# Deploy everything (etcd + watcher + server + inspector + test workloads)
+# Deploy everything (etcd + discovery + server + test workloads)
 kubectl apply -f k8s.discovery.yaml
-kubectl wait --for=condition=ready pod -l app=discovery-watcher --timeout=60s
+kubectl wait --for=condition=ready pod -l app=discovery --timeout=60s
 kubectl port-forward svc/discovery-server 8080:8080 # in a new terminal
 
 # Check health
@@ -148,8 +151,8 @@ curl http://localhost:8080/workloads | jq .
 PID=$(kubectl get pod service-1 -n team-a -o jsonpath='{.metadata.uid}')
 curl "http://localhost:8080/discover?from=$PID" | jq .
 
-# Check inspector logs
-kubectl logs -l app=discovery-inspector --follow
+# Check discovery logs
+kubectl logs -l app=discovery --follow
 
 # Cleanup
 kind delete cluster --name discovery-test

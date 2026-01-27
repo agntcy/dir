@@ -39,13 +39,13 @@ services:
       retries: 5
 
   # ============================================================
-  # Watcher - containerd runtime (Go)
+  # Discovery - containerd runtime (watches runtime, processes metadata, writes to etcd)
   # NOTE: containerd adapter not yet implemented in Go
   # ============================================================
-  watcher:
+  discovery:
     build:
       context: ./go
-      dockerfile: cmd/watcher/Dockerfile
+      dockerfile: cmd/discovery/Dockerfile
     volumes:
       # containerd socket (Linux only)
       - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
@@ -56,6 +56,7 @@ services:
       - DISCOVERY_STORAGE_HOST=etcd
       - DISCOVERY_STORAGE_PORT=2379
       - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
+      - DISCOVERY_STORAGE_METADATA_PREFIX=/discovery/metadata/
       # Runtime - TODO: implement containerd adapter
       - DISCOVERY_RUNTIME_TYPE=containerd
       - CONTAINERD_SOCKET=/run/containerd/containerd.sock
@@ -63,14 +64,24 @@ services:
       - CONTAINERD_CNI_STATE_DIR=/var/lib/cni/results
       - CONTAINERD_LABEL_KEY=discover
       - CONTAINERD_LABEL_VALUE=true
+      # Processors
+      - DISCOVERY_PROCESSOR_HEALTH_ENABLED=true
+      - DISCOVERY_PROCESSOR_HEALTH_TIMEOUT=5s
+      - DISCOVERY_PROCESSOR_HEALTH_PATHS=/health,/healthz,/
+      - DISCOVERY_PROCESSOR_OPENAPI_ENABLED=true
+      - DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT=10s
+      - DISCOVERY_PROCESSOR_OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
+      - DISCOVERY_PROCESSOR_WORKERS=4
     depends_on:
       etcd:
         condition: service_healthy
     networks:
       - discovery
+      - team-a
+      - team-b
 
   # ============================================================
-  # Server - HTTP API for querying discovered services (Go)
+  # Server - HTTP API for querying discovered services (reads from etcd)
   # ============================================================
   server:
     build:
@@ -92,37 +103,6 @@ services:
       - discovery
     ports:
       - "8080:8080"
-
-  # ============================================================
-  # Inspector - Watches workloads and extracts metadata (Go)
-  # ============================================================
-  inspector:
-    build:
-      context: ./go
-      dockerfile: cmd/inspector/Dockerfile
-    environment:
-      # Storage (etcd)
-      - DISCOVERY_STORAGE_HOST=etcd
-      - DISCOVERY_STORAGE_PORT=2379
-      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
-      - DISCOVERY_STORAGE_METADATA_PREFIX=/discovery/metadata/
-      # Processors
-      - DISCOVERY_PROCESSOR_HEALTH_ENABLED=true
-      - DISCOVERY_PROCESSOR_HEALTH_TIMEOUT=5s
-      - DISCOVERY_PROCESSOR_HEALTH_PATHS=/health,/healthz,/
-      - DISCOVERY_PROCESSOR_OPENAPI_ENABLED=true
-      - DISCOVERY_PROCESSOR_OPENAPI_TIMEOUT=10s
-      - DISCOVERY_PROCESSOR_OPENAPI_PATHS=/openapi.json,/swagger.json,/api-docs
-      - DISCOVERY_PROCESSOR_WORKERS=4
-    depends_on:
-      etcd:
-        condition: service_healthy
-      watcher:
-        condition: service_started
-    networks:
-      - discovery
-      - team-a
-      - team-b
 
   # ============================================================
   # Example services - must have discover=true label
