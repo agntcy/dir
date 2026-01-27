@@ -32,7 +32,7 @@ linters:
     goheader:
       values:
         regexp:
-          YEAR: 202[4-5]
+          YEAR: 202[4-6]
       template: |-
         Copyright AGNTCY Contributors (https://github.com/agntcy)
         SPDX-License-Identifier: Apache-2.0
