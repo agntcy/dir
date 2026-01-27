@@ -161,9 +161,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/gui/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          gh release create ${{ github.ref_name }} AGNTCY-Directory.dmg --generate-notes || \
-          gh release upload ${{ github.ref_name }} AGNTCY-Directory.dmg --clobber
+          gh release create "${{ github.ref_name }}" AGNTCY-Directory.dmg --generate-notes || \
+          gh release upload "${{ github.ref_name }}" AGNTCY-Directory.dmg --clobber
 
   build-windows:
     name: Build Windows
@@ -221,7 +222,14 @@ jobs:
         run: Copy-Item -Path assets\bin\mcp-server.exe -Destination build\windows\x64\runner\Release\
 
       - name: Archive Windows build
-        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath agntcy-directory-windows.zip
+        run: |
+          if (Test-Path "build\windows\x64\runner\Release") {
+            Get-ChildItem "build\windows\x64\runner\Release"
+            Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath agntcy-directory-windows.zip
+          } else {
+            Write-Error "Build directory build\windows\x64\runner\Release does not exist. Build likely failed."
+            exit 1
+          }
 
       - name: Upload Windows Build
         uses: actions/upload-artifact@v4
@@ -233,6 +241,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/gui/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          gh release create ${{ github.ref_name }} agntcy-directory-windows.zip --generate-notes || \
-          gh release upload ${{ github.ref_name }} agntcy-directory-windows.zip --clobber
+          gh release create "${{ github.ref_name }}" agntcy-directory-windows.zip --generate-notes || \
+          gh release upload "${{ github.ref_name }}" agntcy-directory-windows.zip --clobber
