@@ -17,6 +17,7 @@ import (
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/server/database"
+	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -59,7 +60,7 @@ func run() error {
 
 	// Register tasks
 	if cfg.Regsync.Enabled {
-		regsyncTask, err := regsync.NewTask(cfg.Regsync, db)
+		regsyncTask, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
 		if err != nil {
 			return err
 		}
