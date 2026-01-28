@@ -72,3 +72,21 @@ func (d *DB) IsReady(ctx context.Context) bool {
 
 	return true
 }
+
+// Close closes the database connection.
+func (d *DB) Close() error {
+	if d.gormDB == nil {
+		return nil
+	}
+
+	sqlDB, err := d.gormDB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get SQL DB: %w", err)
+	}
+
+	if err := sqlDB.Close(); err != nil {
+		return fmt.Errorf("failed to close SQL DB: %w", err)
+	}
+
+	return nil
+}

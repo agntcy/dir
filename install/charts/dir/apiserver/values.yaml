@@ -73,7 +73,7 @@ config:
       # cache_dir: ""
 
       # Registry address to connect to
-      registry_address: "dir-zot.dir-server.svc.cluster.local:5000"
+      registry_address: ""
       # All data will be stored under this repo.
       # Objects are pushed as tags, manifests, and blobs.
       # repository_name: ""
@@ -81,8 +81,10 @@ config:
       # Auth credentials to use.
       auth_config:
         insecure: "true"
-        access_token: access-token
-        refresh_token: refresh-token
+        # username: ""
+        # password: ""
+        # access_token: ""
+        # refresh_token: ""
 
   # Routing settings for the peer-to-peer network.
   routing:
@@ -527,8 +529,9 @@ secrets:
     username: ""
     password: ""
 
-  # PostgreSQL authentication (only used when database.type: "postgres")
-  # Username and password for connecting to the PostgreSQL database
+  # PostgreSQL authentication (only used when database.type: "postgres" AND postgresql.enabled: false)
+  # When postgresql subchart is enabled, credentials are taken from postgresql.auth.* instead.
+  # Username defaults to "dir", password is randomly generated if empty.
   postgresAuth:
     username: ""
     password: ""
@@ -659,11 +662,35 @@ envoy-authz:
       nginx.ingress.kubernetes.io/grpc-backend: "true"
 
 # PostgreSQL subchart configuration (OPTIONAL)
-# Deploy PostgreSQL alongside the apiserver for multi-instance deployments
+# Deploy PostgreSQL alongside the apiserver for multi-instance deployments.
 # NOT installed by default. Set enabled: true to deploy.
+#
+# CREDENTIALS: When enabled, postgresql.auth.* is the single source of truth.
+# The apiserver will automatically use these credentials (no need to also set secrets.postgresAuth.*).
 postgresql:
   enabled: false
   auth:
     username: "dir"
     password: "dirpassword"
     database: "dir"
+
+# Reconciler configuration
+# The reconciler handles async operations including sync for non-Zot registries using regsync.
+# Uses the same PostgreSQL database as the apiserver (database.postgres.*).
+# Requires database.type: "postgres" to be configured.
+reconciler:
+  # Enable the reconciler deployment (default: false)
+  enabled: false
+
+  image:
+    repository: ghcr.io/agntcy/dir-reconciler
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Regsync task configuration
+  regsync:
+    enabled: true
+    interval: "30s"
+    timeout: "10m"
+
+  resources: {}

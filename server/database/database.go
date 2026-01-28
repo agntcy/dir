@@ -35,7 +35,7 @@ func New(opts types.APIOptions) (types.DatabaseAPI, error) {
 
 		return sqliteDB, nil
 	case Postgres:
-		postgresDB, err := newPostgres(opts.Config().Database.Postgres)
+		postgresDB, err := NewPostgres(opts.Config().Database.Postgres)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create PostgreSQL database: %w", err)
 		}
@@ -82,8 +82,8 @@ func newSQLite(cfg config.SQLiteConfig) (*gormdb.DB, error) {
 	return gdb, nil
 }
 
-// newPostgres creates a new database connection using PostgreSQL driver.
-func newPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
+// NewPostgres creates a new database connection using PostgreSQL driver.
+func NewPostgres(cfg config.PostgresConfig) (*gormdb.DB, error) {
 	host := cfg.Host
 	if host == "" {
 		host = config.DefaultPostgresHost
