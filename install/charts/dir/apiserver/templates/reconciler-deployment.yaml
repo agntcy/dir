@@ -56,6 +56,8 @@ spec:
             {{- end }}
             # Local registry configuration (inherits from apiserver's OCI store config)
             # When zot.enabled=true, registry address is auto-detected as internal Zot service
+            - name: RECONCILER_LOCAL_REGISTRY_TYPE
+              value: {{ .Values.config.store.oci.type | quote }}
             - name: RECONCILER_LOCAL_REGISTRY_REGISTRY_ADDRESS
               value: {{ include "chart.oci.registryAddress" . | quote }}
             - name: RECONCILER_LOCAL_REGISTRY_REPOSITORY_NAME

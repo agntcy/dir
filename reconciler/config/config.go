@@ -106,6 +106,7 @@ func LoadConfig() (*Config, error) {
 	//
 	// Local registry configuration (shared by all tasks)
 	//
+	_ = v.BindEnv("local_registry.type")
 	_ = v.BindEnv("local_registry.registry_address")
 	_ = v.BindEnv("local_registry.repository_name")
 	_ = v.BindEnv("local_registry.auth_config.username")
