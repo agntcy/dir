@@ -239,7 +239,13 @@ func processorWorker(
 	}
 }
 
-// processWorkload runs all processors on a workload.
+// processorResult holds the result from a single processor execution.
+type processorResult struct {
+	name   string
+	result interface{}
+}
+
+// processWorkload runs all processors on a workload in parallel.
 func processWorkload(
 	ctx context.Context,
 	store types.StoreWriter,
@@ -251,47 +257,65 @@ func processWorkload(
 	const maxRetries = 6
 	const retryDelay = 15 * time.Second
 
-	// Collect metadata from all processors
-	metadata := make(map[string]interface{})
+	// Channel to collect results from processors
+	resultCh := make(chan processorResult, len(processors))
+	var wg sync.WaitGroup
 
 	for _, p := range processors {
 		if !p.ShouldProcess(workload) {
 			continue
 		}
 
-		// Retry processor up to maxRetries times
-		var result interface{}
-		var err error
-		for attempt := 1; attempt <= maxRetries; attempt++ {
-			// Run processor with timeout
-			procCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-			result, err = p.Process(procCtx, workload)
-			cancel()
+		wg.Add(1)
+		go func(proc types.WorkloadProcessor) {
+			defer wg.Done()
 
-			if err == nil {
-				break
-			}
+			// Retry processor up to maxRetries times
+			var result interface{}
+			var err error
+			for attempt := 1; attempt <= maxRetries; attempt++ {
+				// Run processor with timeout
+				procCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+				result, err = proc.Process(procCtx, workload)
+				cancel()
 
-			log.Printf("Processor %s failed for %s (attempt %d/%d): %v", p.Name(), workload.Name, attempt, maxRetries, err)
+				if err == nil {
+					break
+				}
 
-			if attempt < maxRetries {
-				// Wait before retrying, but respect context cancellation
-				select {
-				case <-time.After(retryDelay):
-				case <-ctx.Done():
-					log.Printf("Context cancelled, stopping retries for processor %s", p.Name())
-					return
+				log.Printf("Processor %s failed for %s (attempt %d/%d): %v", proc.Name(), workload.Name, attempt, maxRetries, err)
+
+				if attempt < maxRetries {
+					// Wait before retrying, but respect context cancellation
+					select {
+					case <-time.After(retryDelay):
+					case <-ctx.Done():
+						log.Printf("Context cancelled, stopping retries for processor %s", proc.Name())
+						return
+					}
 				}
 			}
-		}
 
-		if err != nil {
-			log.Printf("Processor %s exhausted all retries for %s", p.Name(), workload.Name)
-			continue
-		}
+			if err != nil {
+				log.Printf("Processor %s exhausted all retries for %s", proc.Name(), workload.Name)
+				return
+			}
 
-		// Add processor result to metadata
-		metadata[p.Name()] = result
+			// Send result to channel
+			resultCh <- processorResult{name: proc.Name(), result: result}
+		}(p)
+	}
+
+	// Wait for all processors to complete and close the channel
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	// Collect metadata from all processors
+	metadata := make(map[string]interface{})
+	for res := range resultCh {
+		metadata[res.name] = res.result
 	}
 
 	// Update workload with collected metadata
