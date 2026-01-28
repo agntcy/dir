@@ -62,9 +62,8 @@ runs:
       shell: bash
       env:
         RECORD_PATHS: ${{ inputs.record_paths }}
-        DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ inputs.directory_address }}
+        DIRECTORY_ADDRESS: ${{ inputs.directory_address }}
         DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ inputs.github_token }}
-        DIRECTORY_CLIENT_TLS_SKIP_VERIFY: ${{ inputs.tls_skip_verify }}
         SIGN_RECORDS: ${{ inputs.sign }}
         PUBLISH_RECORDS: ${{ inputs.publish }}
       run: |

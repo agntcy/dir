@@ -20,6 +20,7 @@
 set -euo pipefail
 
 : "${RECORD_PATHS:?RECORD_PATHS is required}"
+: "${DIRECTORY_ADDRESS:?DIRECTORY_ADDRESS is required}"
 SIGN_RECORDS="${SIGN_RECORDS:-false}"
 PUBLISH_RECORDS="${PUBLISH_RECORDS:-false}"
 
@@ -29,7 +30,7 @@ FAILED_FILES="[]"
 ALL_SUCCESS=true
 
 echo "=== Push OASF Records ==="
-echo "Directory: ${DIRECTORY_CLIENT_SERVER_ADDRESS:-<not set>}"
+echo "Directory: $DIRECTORY_ADDRESS"
 echo "Sign records: $SIGN_RECORDS"
 echo "Publish to DHT: $PUBLISH_RECORDS"
 echo ""
@@ -87,7 +88,7 @@ for FILE in "${ALL_FILES[@]}"; do
   echo "----------------------------------------"
   
   # Build push command
-  PUSH_CMD="dirctl push \"$FILE\" --output raw"
+  PUSH_CMD="dirctl push \"$FILE\" --server-addr=\"$DIRECTORY_ADDRESS\" --output raw"
   if [ "$SIGN_RECORDS" = "true" ]; then
     PUSH_CMD="$PUSH_CMD --sign"
   fi
@@ -107,7 +108,7 @@ for FILE in "${ALL_FILES[@]}"; do
     if [ "$PUBLISH_RECORDS" = "true" ]; then
       echo "Publishing to DHT..."
       set +e
-      PUBLISH_OUTPUT=$(dirctl routing publish "$CID" 2>&1)
+      PUBLISH_OUTPUT=$(dirctl routing publish "$CID" --server-addr="$DIRECTORY_ADDRESS" 2>&1)
       PUBLISH_EXIT=$?
       set -e
       

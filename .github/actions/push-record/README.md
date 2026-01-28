@@ -56,11 +56,10 @@ jobs:
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `record_paths` | Paths to OASF record JSON files (one per line, supports globs) | No | `record.json` |
-| `directory_address` | Directory server address (host:port) | Yes | - |
+| `directory_address` | Directory server address (host or host:port) | Yes | - |
 | `publish` | Publish to DHT for network discovery after pushing | No | `false` |
 | `sign` | Sign records after pushing | No | `false` |
 | `github_token` | GitHub token for Directory authentication | No | - |
-| `tls_skip_verify` | Skip TLS certificate verification | No | `false` |
 | `dirctl_version` | Version of dirctl to use | No | `latest` |
 
 ## Outputs
