@@ -86,6 +86,9 @@ spec:
               value: {{ .Values.reconciler.indexer.enabled | quote }}
             - name: RECONCILER_INDEXER_INTERVAL
               value: {{ .Values.reconciler.indexer.interval | quote }}
+            # OASF validation configuration (inherits from apiserver's config)
+            - name: RECONCILER_SCHEMA_URL
+              value: {{ .Values.config.oasf_api_validation.schema_url | quote }}
           ports:
             - name: health
               containerPort: 8080

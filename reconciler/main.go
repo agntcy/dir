@@ -7,12 +7,14 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/service"
 	"github.com/agntcy/dir/reconciler/tasks/indexer"
@@ -47,6 +49,17 @@ func run() error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
+	}
+
+	// Initialize OASF validator for record validation
+	if cfg.SchemaURL != "" {
+		if err := corev1.InitializeValidator(cfg.SchemaURL); err != nil {
+			return fmt.Errorf("failed to initialize OASF validator: %w", err)
+		}
+
+		logger.Info("OASF validator initialized", "schema_url", cfg.SchemaURL)
+	} else {
+		logger.Warn("OASF schema URL not configured, record validation will be skipped")
 	}
 
 	// Create database connection

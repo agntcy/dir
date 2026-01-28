@@ -50,6 +50,9 @@ type Config struct {
 	// LocalRegistry holds configuration for the local OCI registry.
 	LocalRegistry ociconfig.Config `json:"local_registry" mapstructure:"local_registry"`
 
+	// SchemaURL is the OASF schema URL for record validation.
+	SchemaURL string `json:"schema_url" mapstructure:"schema_url"`
+
 	// Regsync holds the regsync task configuration.
 	Regsync regsync.Config `json:"regsync" mapstructure:"regsync"`
 
@@ -145,6 +148,11 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("indexer.interval")
 	v.SetDefault("indexer.interval", indexer.DefaultInterval)
+
+	//
+	// OASF validation configuration
+	//
+	_ = v.BindEnv("schema_url")
 
 	// Unmarshal into config struct
 	config := &Config{}
