@@ -1,0 +1,54 @@
+name: Import MCP Records
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  import-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup dirctl
+        uses: ./.github/actions/setup-dirctl
+
+      - name: Create Enricher Config
+        run: |
+          cat <<'EOF' > mcphost_ci.json
+          {
+            "mcpServers": {
+              "dir-mcp-server": {
+                "command": "dirctl",
+                "args": [
+                  "mcp",
+                  "serve"
+                ],
+                "env": {
+                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
+                  "AZURE_RESOURCE_NAME": "phoenix-project-agents",
+                  "AZURE_API_VERSION": "2024-10-21",
+                  "AZURE_API_KEY": "${AZURE_OPENAI_API_KEY}",
+                  "AZURE_OPENAI_BASE_URL": "${AZURE_OPENAI_ENDPOINT}"
+                }
+              }
+            },
+            "model": "azure:gpt-4o"
+          }
+          EOF
+
+      - name: Import MCP Records (Dry Run)
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+        run: |
+          dirctl import \
+            --type=mcp \
+            --url=https://registry.modelcontextprotocol.io/v0.1 \
+            --limit=100 \
+            --dry-run \
+            --force \
+            --enrich \
+            --enrich-config=mcphost_ci.json
