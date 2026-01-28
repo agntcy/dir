@@ -21,6 +21,7 @@ type Sync struct {
 	RemoteRegistryURL  string             `gorm:"not null"`
 	CIDs               []string           `gorm:"serializer:json;not null"`
 	Status             storev1.SyncStatus `gorm:"not null"`
+	RequiresRegsync    bool               `gorm:"not null;default:false"`
 }
 
 func (sync *Sync) GetID() string {
@@ -43,12 +44,18 @@ func (sync *Sync) GetStatus() storev1.SyncStatus {
 	return sync.Status
 }
 
-func (d *DB) CreateSync(remoteURL string, cids []string) (string, error) {
+func (sync *Sync) GetRequiresRegsync() bool {
+	return sync.RequiresRegsync
+}
+
+func (d *DB) CreateSync(remoteURL string, remoteRegistryAddress string, cids []string, requiresRegsync bool) (string, error) {
 	sync := &Sync{
 		ID:                 uuid.NewString(),
 		RemoteDirectoryURL: remoteURL,
+		RemoteRegistryURL:  remoteRegistryAddress,
 		CIDs:               cids,
 		Status:             storev1.SyncStatus_SYNC_STATUS_PENDING,
+		RequiresRegsync:    requiresRegsync,
 	}
 
 	if err := d.gormDB.Create(sync).Error; err != nil {
@@ -95,6 +102,36 @@ func (d *DB) GetSyncs(offset, limit int) ([]types.SyncObject, error) {
 func (d *DB) GetSyncsByStatus(status storev1.SyncStatus) ([]types.SyncObject, error) {
 	var syncs []Sync
 	if err := d.gormDB.Where("status = ?", status).Find(&syncs).Error; err != nil {
+		return nil, err
+	}
+
+	// convert to types.SyncObject
+	syncObjects := make([]types.SyncObject, len(syncs))
+	for i, sync := range syncs {
+		syncObjects[i] = &sync
+	}
+
+	return syncObjects, nil
+}
+
+func (d *DB) GetZotSyncsByStatus(status storev1.SyncStatus) ([]types.SyncObject, error) {
+	var syncs []Sync
+	if err := d.gormDB.Where("status = ? AND requires_regsync = ?", status, false).Find(&syncs).Error; err != nil {
+		return nil, err
+	}
+
+	// convert to types.SyncObject
+	syncObjects := make([]types.SyncObject, len(syncs))
+	for i, sync := range syncs {
+		syncObjects[i] = &sync
+	}
+
+	return syncObjects, nil
+}
+
+func (d *DB) GetRegsyncSyncsByStatus(status storev1.SyncStatus) ([]types.SyncObject, error) {
+	var syncs []Sync
+	if err := d.gormDB.Where("status = ? AND requires_regsync = ?", status, true).Find(&syncs).Error; err != nil {
 		return nil, err
 	}
 

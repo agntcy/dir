@@ -15,6 +15,7 @@ import (
 	"github.com/agntcy/dir/server/store/cache"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -68,7 +69,7 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 
 	// Validate registry type (logs warning for experimental types like ghcr, dockerhub)
 	registryType := cfg.GetType()
-	if !registryType.IsSupported() {
+	if !registry.IsSupported(registryType) {
 		return nil, fmt.Errorf("unsupported registry type: %s", registryType)
 	}
 
@@ -432,11 +433,11 @@ func (s *store) IsReady(ctx context.Context) bool {
 
 	// Check readiness based on registry type
 	switch s.config.GetType() {
-	case ociconfig.RegistryTypeZot:
+	case registry.RegistryTypeZot:
 		// Use the zot utility package to check Zot's readiness
 		return zot.CheckReadiness(ctx, s.config.RegistryAddress, s.config.Insecure)
 
-	case ociconfig.RegistryTypeGHCR, ociconfig.RegistryTypeDockerHub:
+	case registry.RegistryTypeGHCR, registry.RegistryTypeDockerHub:
 		// For GHCR/Docker Hub, try to list tags to verify connectivity
 		// This is a lightweight operation that these registries support
 		err := remoteRepo.Tags(ctx, "", func(_ []string) error {
@@ -459,6 +460,9 @@ func (s *store) IsReady(ctx context.Context) bool {
 		logger.Debug("Store ready", "registry_type", s.config.GetType())
 
 		return true
+
+	case registry.RegistryTypeUnknown:
+		return false
 
 	default:
 		return false

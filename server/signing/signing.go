@@ -12,6 +12,7 @@ import (
 	"github.com/agntcy/dir/server/signing/eventswrap"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
+	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/agntcy/dir/utils/zot"
 )
@@ -41,7 +42,7 @@ func New(storeAPI types.StoreAPI, opts types.APIOptions) (types.SigningAPI, erro
 	}
 
 	// Configure Zot verification if using Zot registry
-	if cfg.Store.OCI.GetType() == ociconfig.RegistryTypeZot {
+	if cfg.Store.OCI.GetType() == registry.RegistryTypeZot {
 		s.zotConfig = &zot.VerifyConfig{
 			RegistryAddress: cfg.Store.OCI.RegistryAddress,
 			RepositoryName:  cfg.Store.OCI.RepositoryName,

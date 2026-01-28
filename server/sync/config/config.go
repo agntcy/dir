@@ -42,4 +42,5 @@ type Config struct {
 type AuthConfig struct {
 	Username string `json:"username,omitempty" mapstructure:"username"`
 	Password string `json:"password,omitempty" mapstructure:"password"`
+	Insecure bool   `json:"insecure,omitempty" mapstructure:"insecure"` // Use plain HTTP instead of HTTPS
 }

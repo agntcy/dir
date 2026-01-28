@@ -73,7 +73,7 @@ func (s *Scheduler) processPendingSyncs(ctx context.Context) {
 
 // processPendingSyncCreations handles syncs that need to be created.
 func (s *Scheduler) processPendingSyncCreations(ctx context.Context) error {
-	syncs, err := s.db.GetSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_PENDING)
+	syncs, err := s.db.GetZotSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_PENDING)
 	if err != nil {
 		return fmt.Errorf("failed to get pending syncs from database: %w", err)
 	}
@@ -107,7 +107,7 @@ func (s *Scheduler) processPendingSyncCreations(ctx context.Context) error {
 
 // processPendingSyncDeletions handles syncs that need to be deleted.
 func (s *Scheduler) processPendingSyncDeletions(ctx context.Context) error {
-	syncs, err := s.db.GetSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING)
+	syncs, err := s.db.GetZotSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING)
 	if err != nil {
 		return fmt.Errorf("failed to get delete pending syncs from database: %w", err)
 	}

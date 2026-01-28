@@ -35,7 +35,7 @@ spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if eq .Values.zot.mountConfig false }}
+      {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
       initContainers:
         - name: init-zot-config
           image: busybox:1.36
@@ -102,7 +102,7 @@ spec:
               value: {{ .Values.database.sqlite.dbPath }}
             {{- end }}
             {{- else if eq .Values.database.type "postgres" }}
-            {{- if or .Values.secrets.postgresAuth.username .Values.secrets.postgresAuth.password (and .Values.externalSecrets.enabled .Values.externalSecrets.postgresAuth.enabled) }}
+            {{- if include "chart.postgres.credentialsConfigured" . }}
             - name: DIRECTORY_SERVER_DATABASE_POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -224,7 +224,7 @@ spec:
             - name: tmp-data
               mountPath: /tmp
             {{- end }}
-            {{- if eq .Values.zot.mountConfig false }}
+            {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
             - name: zot-config-storage
               mountPath: /etc/zot
             {{- end }}
@@ -288,7 +288,7 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "chart.fullname" . }}-database-pvc
         {{- end }}
-        {{- if eq .Values.zot.mountConfig false }}
+        {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
         - name: zot-config-storage
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-zot-config

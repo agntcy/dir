@@ -10,6 +10,14 @@ metadata:
 data:
   server.config.yml: |
     {{- $config := deepCopy .Values.config }}
+    {{- /* Dynamically set OCI registry address and repository name */ -}}
+    {{- if and (hasKey $config "store") (hasKey $config.store "oci") }}
+    {{- $_ := set $config.store.oci "registry_address" (include "chart.oci.registryAddress" .) }}
+    {{- $repoName := include "chart.oci.repositoryName" . }}
+    {{- if $repoName }}
+    {{- $_ := set $config.store.oci "repository_name" $repoName }}
+    {{- end }}
+    {{- end }}
     {{- if .Values.metrics }}
     {{- $metricsConfig := dict "enabled" .Values.metrics.enabled "address" (printf ":%d" (.Values.metrics.port | int)) }}
     {{- $_ := set $config "metrics" $metricsConfig }}
@@ -27,9 +35,8 @@ data:
     {{- if .Values.database.postgres.port }}
     {{- $_ := set $pgConfig "port" (.Values.database.postgres.port | int) }}
     {{- end }}
-    {{- if .Values.database.postgres.database }}
-    {{- $_ := set $pgConfig "database" .Values.database.postgres.database }}
-    {{- end }}
+    {{- /* Use helper to derive database name from postgresql subchart when enabled */ -}}
+    {{- $_ := set $pgConfig "database" (include "chart.postgres.database" .) }}
     {{- $_ := set $dbConfig "postgres" $pgConfig }}
     {{- end }}
     {{- $_ := set $config "database" $dbConfig }}
