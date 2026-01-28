@@ -19,7 +19,11 @@ func NewProcessors(cfg config.Config) ([]types.WorkloadProcessor, error) {
 
 	// Create OASF processor
 	if cfg.OASF.Enabled {
-		processors = append(processors, oasf.NewProcessor(cfg.OASF))
+		oasfProc, err := oasf.NewProcessor(cfg.OASF)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create OASF processor: %w", err)
+		}
+		processors = append(processors, oasfProc)
 	}
 
 	// Validate created processors

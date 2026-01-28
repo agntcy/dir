@@ -41,10 +41,13 @@ services:
       # Processors
       - DISCOVERY_PROCESSOR_A2A_ENABLED=true
       - DISCOVERY_PROCESSOR_WORKERS=16
+      # Directory client config
+      - DIRECTORY_CLIENT_SERVER_ADDRESS=http://apiserver:8888
     depends_on:
       etcd:
         condition: service_healthy
     networks:
+      - dir-network
       - discovery
       - team-a
       - team-b
@@ -81,7 +84,7 @@ services:
     labels:
       - "discover=true"
       - "org.agntcy/type=a2a,oasf"
-      - "org.agntcy/oasf=my-record:v1"
+      - "org.agntcy/oasf=dns-validation-http/example/research-assistant-v4:v4.0.0"
     networks:
       - team-a
 
@@ -142,3 +145,7 @@ networks:
 
   team-internal:
     driver: bridge
+
+  dir-network:
+    name: dir-network
+    external: true
