@@ -667,12 +667,55 @@ envoy-authz:
 #
 # CREDENTIALS: When enabled, postgresql.auth.* is the single source of truth.
 # The apiserver will automatically use these credentials (no need to also set secrets.postgresAuth.*).
+#
+# Performance optimizations for dev/CI (override for production):
+# - Persistence disabled (no PVC provisioning overhead)
+# - Reduced probe delays for faster readiness detection
+# - Network policies disabled for faster pod scheduling
+# - Minimal resource preset
 postgresql:
   enabled: true
   auth:
     username: "dir"
     password: "dirpassword"
     database: "dir"
+  # Use standalone architecture (no replication overhead)
+  architecture: standalone
+  primary:
+    # Faster startup with reduced probe delays
+    # Default livenessProbe.initialDelaySeconds is 30s - reduced to 5s
+    livenessProbe:
+      enabled: true
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 6
+    # Default readinessProbe.initialDelaySeconds is 5s - reduced to 3s
+    readinessProbe:
+      enabled: true
+      initialDelaySeconds: 3
+      periodSeconds: 3
+      timeoutSeconds: 3
+      failureThreshold: 6
+    # Enable startup probe to allow slow starts without killing the container
+    startupProbe:
+      enabled: true
+      initialDelaySeconds: 0
+      periodSeconds: 2
+      timeoutSeconds: 2
+      failureThreshold: 30
+    # Use nano preset (smallest) - override for production
+    resourcesPreset: "nano"
+    # Disable persistence for faster startup (no PVC provisioning)
+    # Enable persistence.enabled: true for production!
+    persistence:
+      enabled: false
+    # Disable network policies for faster pod scheduling in dev/CI
+    networkPolicy:
+      enabled: false
+  # Disable metrics sidecar
+  metrics:
+    enabled: false
 
 # Reconciler configuration
 # The reconciler handles async operations including sync for non-Zot registries using regsync.
