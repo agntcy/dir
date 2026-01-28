@@ -54,11 +54,19 @@ while IFS= read -r PATTERN || [[ -n "$PATTERN" ]]; do
   # shellcheck disable=SC2206
   MATCHED_FILES=($PATTERN)
   
-  if [ ${#MATCHED_FILES[@]} -eq 0 ]; then
+  # Filter to only existing files (nullglob doesn't work for non-glob patterns)
+  EXISTING_FILES=()
+  for f in "${MATCHED_FILES[@]}"; do
+    if [ -f "$f" ]; then
+      EXISTING_FILES+=("$f")
+    fi
+  done
+  
+  if [ ${#EXISTING_FILES[@]} -eq 0 ]; then
     echo "  Warning: No files found matching pattern: $PATTERN"
   else
-    echo "  Matched ${#MATCHED_FILES[@]} file(s)"
-    ALL_FILES+=("${MATCHED_FILES[@]}")
+    echo "  Matched ${#EXISTING_FILES[@]} file(s)"
+    ALL_FILES+=("${EXISTING_FILES[@]}")
   fi
 done <<< "$RECORD_PATHS"
 
