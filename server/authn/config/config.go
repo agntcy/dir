@@ -14,6 +14,7 @@ type AuthMode string
 const (
 	AuthModeJWT  AuthMode = "jwt"
 	AuthModeX509 AuthMode = "x509"
+	AuthModeDID  AuthMode = "did"
 )
 
 // Config contains configuration for authentication services.
@@ -29,6 +30,12 @@ type Config struct {
 
 	// Expected audiences for JWT validation (only used in JWT mode)
 	Audiences []string `json:"audiences,omitempty" mapstructure:"audiences"`
+
+	// Universal Resolver endpoint for DID resolution (only used in DID mode)
+	// Examples:
+	//   - "https://resolver.cheqd.net" (Cheqd hosted, did:cheqd only)
+	//   - "https://dev.uniresolver.io" (DIF public)
+	UniversalResolverEndpoint string `json:"universal_resolver_endpoint,omitempty" mapstructure:"universal_resolver_endpoint"`
 }
 
 func (c *Config) Validate() error {
@@ -47,6 +54,17 @@ func (c *Config) Validate() error {
 		}
 	case AuthModeX509:
 		// No additional validation required for X.509
+	case AuthModeDID:
+		if c.UniversalResolverEndpoint == "" {
+			c.UniversalResolverEndpoint = "https://dev.uniresolver.io"
+		}
+
+		// Validate endpoint format (basic check)
+		if len(c.UniversalResolverEndpoint) < 7 ||
+			(c.UniversalResolverEndpoint[:7] != "http://" &&
+				c.UniversalResolverEndpoint[:8] != "https://") {
+			return errors.New("universal_resolver_endpoint must be a valid HTTP(S) URL")
+		}
 	default:
 		return fmt.Errorf("invalid auth mode: %s (must be 'jwt' or 'x509')", c.Mode)
 	}

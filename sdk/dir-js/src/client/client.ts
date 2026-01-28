@@ -16,6 +16,7 @@ import {
 import { createGrpcTransport } from '@connectrpc/connect-node';
 import { createClient as createClientSpiffe, X509SVID } from 'spiffe';
 import * as models from '../models';
+import { createDIDAuthInterceptor } from './did';
 
 /**
  * Configuration class for the AGNTCY Directory client.
@@ -36,7 +37,7 @@ export class Config {
   serverAddress: string;
   dirctlPath: string;
   spiffeEndpointSocket: string;
-  authMode: '' | 'x509' | 'jwt' | 'tls';
+  authMode: '' | 'x509' | 'jwt' | 'tls' | 'did';
   jwtAudience: string;
   tlsCaFile: string;
   tlsCertFile: string
@@ -55,7 +56,7 @@ export class Config {
     serverAddress = Config.DEFAULT_SERVER_ADDRESS,
     dirctlPath = Config.DEFAULT_DIRCTL_PATH,
     spiffeEndpointSocket = Config.DEFAULT_SPIFFE_ENDPOINT_SOCKET,
-    authMode: '' | 'x509' | 'jwt' | 'tls' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt' | 'tls',
+    authMode: '' | 'x509' | 'jwt' | 'tls' | 'did' = Config.DEFAULT_AUTH_MODE as '' | 'x509' | 'jwt' | 'tls' | 'did',
     jwtAudience = Config.DEFAULT_JWT_AUDIENCE,
     tlsCaFile = Config.DEFAULT_TLS_CA_FILE,
     tlsCertFile = Config.DEFAULT_TLS_CERT_FILE,
@@ -238,6 +239,9 @@ export class Client {
       case 'tls':
         return await this.createTLSTransport(config);
 
+      case 'did':
+        return await this.createDIDTransport(config);
+
       default:
         throw new Error(`Unsupported auth mode: ${config.authMode}`);
     }
@@ -387,6 +391,20 @@ export class Client {
 
     return transport;
   }
+
+  private static async createDIDTransport(config: Config): Promise<Transport> {
+    // Create DID auth interceptor
+    const didInterceptor = createDIDAuthInterceptor();
+
+    // Create transport with DID interceptor
+    const transport = createGrpcTransport({
+      baseUrl: config.serverAddress,
+      interceptors: [didInterceptor],
+    });
+
+    return transport;
+  }
+
   /**
    * Request generator helper function for streaming requests.
    */
@@ -756,7 +774,7 @@ export class Client {
    */
   sign(req: models.sign_v1.SignRequest, oidc_client_id = 'sigstore'): void {
 
-    var output;
+    let output;
 
     switch (req.provider?.request.case) {
       case 'oidc':
@@ -1027,14 +1045,14 @@ export class Client {
       const shell_env = env;
       shell_env['COSIGN_PASSWORD'] = String(req.password);
 
-      let commandArgs = ["sign", cid, "--key", tmp_key_filename];
+      const commandArgs = ["sign", cid, "--key", tmp_key_filename];
 
       if (this.config.spiffeEndpointSocket !== '') {
         commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
       }
 
       // Execute command
-      let output = spawnSync(
+      const output = spawnSync(
         `${this.config.dirctlPath}`, commandArgs,
         { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
       );
@@ -1072,7 +1090,7 @@ export class Client {
     oidc_client_id: string,
   ): SpawnSyncReturns<string> {
     // Prepare command
-    let commandArgs = ["sign", cid];
+    const commandArgs = ["sign", cid];
     if (req.idToken !== '') {
       commandArgs.push(...["--oidc-token", req.idToken]);
     }
@@ -1100,7 +1118,7 @@ export class Client {
     }
 
     // Execute command
-    let output = spawnSync(`${this.config.dirctlPath}`, commandArgs, {
+    const output = spawnSync(`${this.config.dirctlPath}`, commandArgs, {
       env: { ...env },
       encoding: 'utf8',
       stdio: 'pipe',
