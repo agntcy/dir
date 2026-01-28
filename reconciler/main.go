@@ -15,6 +15,7 @@ import (
 
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/service"
+	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/server/database"
 	"github.com/agntcy/dir/server/store/oci"
@@ -55,6 +56,18 @@ func run() error {
 	}
 	defer db.Close()
 
+	// Create OCI store for accessing the local registry
+	store, err := oci.New(cfg.LocalRegistry)
+	if err != nil {
+		return err
+	}
+
+	// Create ORAS repository client for registry operations (e.g., listing tags)
+	repo, err := oci.NewORASRepository(cfg.LocalRegistry)
+	if err != nil {
+		return err
+	}
+
 	// Create service
 	svc := service.New()
 
@@ -68,13 +81,22 @@ func run() error {
 		svc.RegisterTask(regsyncTask)
 	}
 
+	if cfg.Indexer.Enabled {
+		indexerTask, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db)
+		if err != nil {
+			return err
+		}
+
+		svc.RegisterTask(indexerTask)
+	}
+
 	// Create context that listens for signals
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start health check server with database readiness check
+	// Start health check server with database and store readiness check
 	healthServer := startHealthServer(func(ctx context.Context) bool {
-		return db.IsReady(ctx)
+		return db.IsReady(ctx) && store.IsReady(ctx)
 	})
 
 	// Start the service

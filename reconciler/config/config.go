@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	dbconfig "github.com/agntcy/dir/server/database/config"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -51,6 +52,9 @@ type Config struct {
 
 	// Regsync holds the regsync task configuration.
 	Regsync regsync.Config `json:"regsync" mapstructure:"regsync"`
+
+	// Indexer holds the indexer task configuration.
+	Indexer indexer.Config `json:"indexer" mapstructure:"indexer"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -132,6 +136,15 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("regsync.authn.socket_path")
 	_ = v.BindEnv("regsync.authn.audiences")
+
+	//
+	// Indexer task configuration
+	//
+	_ = v.BindEnv("indexer.enabled")
+	v.SetDefault("indexer.enabled", true)
+
+	_ = v.BindEnv("indexer.interval")
+	v.SetDefault("indexer.interval", indexer.DefaultInterval)
 
 	// Unmarshal into config struct
 	config := &Config{}

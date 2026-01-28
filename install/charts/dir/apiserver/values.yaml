@@ -675,7 +675,9 @@ postgresql:
     database: "dir"
 
 # Reconciler configuration
-# The reconciler handles async operations including sync for non-Zot registries using regsync.
+# The reconciler handles async operations including:
+# - regsync: sync for non-Zot registries
+# - indexer: indexes synced records into the database for search
 # Uses the same PostgreSQL database as the apiserver (database.postgres.*).
 # Requires database.type: "postgres" to be configured.
 reconciler:
@@ -692,5 +694,11 @@ reconciler:
     enabled: true
     interval: "30s"
     timeout: "10m"
+
+  # Indexer task configuration
+  # Indexes synced records into the database for search
+  indexer:
+    enabled: true
+    interval: "1h"
 
   resources: {}
