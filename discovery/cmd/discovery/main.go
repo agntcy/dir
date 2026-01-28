@@ -248,6 +248,9 @@ func processWorkload(
 ) {
 	log.Printf("Processing workload %s (%s)", workload.Name, workload.ID[:12])
 
+	const maxRetries = 6
+	const retryDelay = 15 * time.Second
+
 	// Collect metadata from all processors
 	metadata := make(map[string]interface{})
 
@@ -256,13 +259,29 @@ func processWorkload(
 			continue
 		}
 
-		// Run processor with timeout
-		procCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		result, err := p.Process(procCtx, workload)
-		cancel()
+		// Retry processor up to maxRetries times
+		var result interface{}
+		var err error
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			// Run processor with timeout
+			procCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			result, err = p.Process(procCtx, workload)
+			cancel()
+
+			if err == nil {
+				break
+			}
+
+			log.Printf("Processor %s failed for %s (attempt %d/%d): %v", p.Name(), workload.Name, attempt, maxRetries, err)
+
+			if attempt < maxRetries {
+				// Wait before retrying
+				time.Sleep(retryDelay)
+			}
+		}
 
 		if err != nil {
-			log.Printf("Processor %s failed for %s: %v", p.Name(), workload.Name, err)
+			log.Printf("Processor %s exhausted all retries for %s", p.Name(), workload.Name)
 			continue
 		}
 
