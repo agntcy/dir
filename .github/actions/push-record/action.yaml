@@ -1,0 +1,76 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Push OASF Record
+description: |
+  Push agent records to a Directory node's OCI registry.
+  Optionally publish to the DHT for network discovery.
+  Optionally sign records for authenticity verification.
+author: agntcy
+branding:
+  icon: upload-cloud
+  color: blue
+
+inputs:
+  record_paths:
+    description: |
+      Paths to OASF record JSON files to push (one per line).
+      Supports glob patterns (e.g., "agents/*.json").
+    required: false
+    default: "record.json"
+  directory_address:
+    description: Directory server address (host:port)
+    required: true
+  publish:
+    description: Publish records to DHT for network discovery after pushing
+    required: false
+    default: "false"
+  sign:
+    description: Sign records after pushing (requires OIDC or key configuration)
+    required: false
+    default: "false"
+  github_token:
+    description: GitHub token for authentication with Directory
+    required: false
+    default: ""
+  tls_skip_verify:
+    description: Skip TLS certificate verification (not recommended for production)
+    required: false
+    default: "false"
+  dirctl_version:
+    description: Version of dirctl to use
+    required: false
+    default: "latest"
+
+outputs:
+  success:
+    description: Whether all records were pushed successfully ("true" or "false")
+    value: ${{ steps.push.outputs.success }}
+  cids:
+    description: JSON object mapping file paths to their CIDs
+    value: ${{ steps.push.outputs.cids }}
+  failed_files:
+    description: JSON array of file paths that failed to push
+    value: ${{ steps.push.outputs.failed_files }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup dirctl
+      uses: agntcy/dir/.github/actions/setup-dirctl@main
+      with:
+        version: ${{ inputs.dirctl_version }}
+
+    - name: Push records
+      id: push
+      shell: bash
+      env:
+        RECORD_PATHS: ${{ inputs.record_paths }}
+        DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ inputs.directory_address }}
+        DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ inputs.github_token }}
+        DIRECTORY_CLIENT_TLS_SKIP_VERIFY: ${{ inputs.tls_skip_verify }}
+        SIGN_RECORDS: ${{ inputs.sign }}
+        PUBLISH_RECORDS: ${{ inputs.publish }}
+      run: |
+        chmod +x "${{ github.action_path }}/push.sh"
+        "${{ github.action_path }}/push.sh"
