@@ -33,10 +33,6 @@ inputs:
     description: GitHub token for authentication with Directory
     required: false
     default: ""
-  tls_skip_verify:
-    description: Skip TLS certificate verification (not recommended for production)
-    required: false
-    default: "false"
   dirctl_version:
     description: Version of dirctl to use
     required: false

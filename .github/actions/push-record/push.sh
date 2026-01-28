@@ -16,7 +16,6 @@
 # Directory client configuration (via environment):
 #   DIRECTORY_CLIENT_SERVER_ADDRESS  - Directory server address
 #   DIRECTORY_CLIENT_GITHUB_TOKEN    - GitHub token for auth
-#   DIRECTORY_CLIENT_TLS_SKIP_VERIFY - Skip TLS verification
 
 set -euo pipefail
 
