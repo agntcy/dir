@@ -3,7 +3,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -32,7 +31,6 @@ type WorkloadEvent struct {
 type writer struct {
 	client          *clientv3.Client
 	workloadsPrefix string
-	metadataPrefix  string
 }
 
 // NewWriter creates a new writer storage for discovery.
@@ -61,7 +59,6 @@ func NewWriter(cfg Config) (types.StoreWriter, error) {
 	return &writer{
 		client:          client,
 		workloadsPrefix: cfg.WorkloadsPrefix,
-		metadataPrefix:  cfg.MetadataPrefix,
 	}, nil
 }
 
@@ -97,16 +94,49 @@ func (s *writer) DeregisterWorkload(ctx context.Context, workloadID string) erro
 	}
 
 	log.Printf("[storage] Deregistered workload %s", workloadID[:12])
+	return nil
+}
 
-	// Delete all metadata for this workload
-	prefix := s.metadataPrefix + workloadID + "/"
-	_, err = s.client.Delete(ctx, prefix, clientv3.WithPrefix())
+// UpdateWorkloadMetadata updates the metadata field of an existing workload.
+func (s *writer) UpdateWorkloadMetadata(ctx context.Context, workloadID string, metadata map[string]interface{}) error {
+	key := s.workloadsPrefix + workloadID
+
+	// Get current workload
+	resp, err := s.client.Get(ctx, key)
+	if err != nil {
+		return err
+	}
+	if len(resp.Kvs) == 0 {
+		log.Printf("[storage] Workload %s not found, skipping metadata update", workloadID[:12])
+		return nil
+	}
+
+	// Parse current workload
+	workload, err := models.FromJSON(resp.Kvs[0].Value)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[storage] Deleted all metadata for %s", workloadID[:12])
+	// Merge metadata
+	if workload.Metadata == nil {
+		workload.Metadata = make(map[string]interface{})
+	}
+	for k, v := range metadata {
+		workload.Metadata[k] = v
+	}
 
+	// Write back
+	value, err := workload.ToJSON()
+	if err != nil {
+		return err
+	}
+
+	_, err = s.client.Put(ctx, key, string(value))
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[storage] Updated metadata for workload %s", workloadID[:12])
 	return nil
 }
 
@@ -172,22 +202,4 @@ func (s *writer) WatchWorkloads(ctx context.Context, events chan<- *WorkloadEven
 			}
 		}
 	}
-}
-
-// SetMetadata writes metadata for a workload.
-func (s *writer) SetMetadata(ctx context.Context, workloadID, processorKey string, data interface{}) error {
-	key := s.metadataPrefix + workloadID + "/" + processorKey
-
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
-	_, err = s.client.Put(ctx, key, string(jsonData))
-	if err != nil {
-		return err
-	}
-
-	log.Printf("[storage] Set metadata %s for %s", processorKey, workloadID[:12])
-	return nil
 }

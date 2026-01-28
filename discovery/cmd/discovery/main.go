@@ -248,6 +248,9 @@ func processWorkload(
 ) {
 	log.Printf("Processing workload %s (%s)", workload.Name, workload.ID[:12])
 
+	// Collect metadata from all processors
+	metadata := make(map[string]interface{})
+
 	for _, p := range processors {
 		if !p.ShouldProcess(workload) {
 			continue
@@ -263,9 +266,14 @@ func processWorkload(
 			continue
 		}
 
-		// Store metadata in etcd
-		if err := store.SetMetadata(ctx, workload.ID, p.Name(), result); err != nil {
-			log.Printf("Failed to store metadata for %s/%s: %v", workload.ID[:12], p.Name(), err)
+		// Add processor result to metadata
+		metadata[p.Name()] = result
+	}
+
+	// Update workload with collected metadata
+	if len(metadata) > 0 {
+		if err := store.UpdateWorkloadMetadata(ctx, workload.ID, metadata); err != nil {
+			log.Printf("Failed to update metadata for %s: %v", workload.ID[:12], err)
 		}
 	}
 }

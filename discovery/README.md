@@ -10,7 +10,6 @@ Network-aware service discovery for runtime workloads. Watches processes in runt
                          │    (distributed metadata store)     │
                          │                                     │
                          │  /discovery/workloads/{id}     ◄─── discovery writes
-                         │  /discovery/metadata/{id}/{proc} ◄── discovery writes
                          └──────────┬──────────────┬───────────┘
                                     │              │
                               write │              │ read (watch)
@@ -48,15 +47,14 @@ Network-aware service discovery for runtime workloads. Watches processes in runt
 | Component | Description |
 |-----------|-------------|
 | **etcd** | Distributed key-value store for workload data |
-| **Discovery** | Watches runtime, processes metadata, writes to etcd |
+| **Discovery** | Single instance that watches runtime, processes metadata, writes to etcd |
 | **Server** | HTTP API for querying workloads, reads from etcd |
 
 ### Key Structure
 
 | Prefix | Owner | Description |
 |--------|-------|-------------|
-| `/discovery/workloads/{id}` | Discovery | Workload JSON (container/pod info, networks, ports) |
-| `/discovery/metadata/{id}/{processor}` | Discovery | Processor metadata (health, openapi, etc.) |
+| `/discovery/workloads/{id}` | Discovery | Workload JSON (container/pod info, networks, ports, metadata) |
 
 ## Quick Start
 
@@ -198,7 +196,6 @@ All environment variables are prefixed with `DISCOVERY_` and use underscores as 
 | `DISCOVERY_STORAGE_PASSWORD`      | -                        | etcd password                  |
 | `DISCOVERY_STORAGE_DIAL_TIMEOUT`  | `5s`                     | etcd dial timeout              |
 | `DISCOVERY_STORAGE_WORKLOADS_PREFIX` | `/discovery/workloads/` | etcd prefix for workloads     |
-| `DISCOVERY_STORAGE_METADATA_PREFIX`  | `/discovery/metadata/`  | etcd prefix for metadata      |
 
 ### Runtime
 

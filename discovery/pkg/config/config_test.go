@@ -48,7 +48,6 @@ func TestConfig(t *testing.T) {
 				"DISCOVERY_STORAGE_PASSWORD":         "pass",
 				"DISCOVERY_STORAGE_DIAL_TIMEOUT":     "10s",
 				"DISCOVERY_STORAGE_WORKLOADS_PREFIX": "/custom/workloads/",
-				"DISCOVERY_STORAGE_METADATA_PREFIX":  "/custom/metadata/",
 
 				// processor
 				"DISCOVERY_PROCESSOR_WORKERS":     "8",
@@ -84,7 +83,6 @@ func TestConfig(t *testing.T) {
 					Password:        "pass",
 					DialTimeout:     10 * time.Second,
 					WorkloadsPrefix: "/custom/workloads/",
-					MetadataPrefix:  "/custom/metadata/",
 				},
 				Processor: processor.Config{
 					Workers: 8,

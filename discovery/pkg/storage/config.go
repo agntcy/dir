@@ -24,9 +24,6 @@ type Config struct {
 
 	// WorkloadsPrefix is the etcd key prefix for workloads.
 	WorkloadsPrefix string `json:"workloads_prefix,omitempty" mapstructure:"workloads_prefix"`
-
-	// MetadataPrefix is the etcd key prefix for metadata.
-	MetadataPrefix string `json:"metadata_prefix,omitempty" mapstructure:"metadata_prefix"`
 }
 
 func (c *Config) Endpoints() []string {

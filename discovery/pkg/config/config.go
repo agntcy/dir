@@ -32,7 +32,6 @@ const (
 	DefaultEtcdPort            = 2379
 	DefaultEtcdDialTimeout     = 5 * time.Second
 	DefaultEtcdWorkloadsPrefix = "/discovery/workloads/"
-	DefaultEtcdMetadataPrefix  = "/discovery/metadata/"
 
 	// Runtime configuration defaults.
 	DefaultRuntimeType = "docker"
@@ -126,7 +125,6 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("storage.password", "")
 	v.SetDefault("storage.dial_timeout", DefaultEtcdDialTimeout)
 	v.SetDefault("storage.workloads_prefix", DefaultEtcdWorkloadsPrefix)
-	v.SetDefault("storage.metadata_prefix", DefaultEtcdMetadataPrefix)
 
 	//
 	// Runtime configuration

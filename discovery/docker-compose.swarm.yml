@@ -55,7 +55,6 @@ services:
       - DISCOVERY_STORAGE_HOST=etcd
       - DISCOVERY_STORAGE_PORT=2379
       - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
-      - DISCOVERY_STORAGE_METADATA_PREFIX=/discovery/metadata/
       # Runtime
       - DISCOVERY_RUNTIME_TYPE=docker
       - DISCOVERY_RUNTIME_DOCKER_HOST=unix:///var/run/docker.sock
@@ -69,7 +68,10 @@ services:
       - team-a
       - team-b
     deploy:
-      mode: global
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -84,7 +86,6 @@ services:
       - DISCOVERY_STORAGE_HOST=etcd
       - DISCOVERY_STORAGE_PORT=2379
       - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
-      - DISCOVERY_STORAGE_METADATA_PREFIX=/discovery/metadata/
       # Server
       - DISCOVERY_SERVER_HOST=0.0.0.0
       - DISCOVERY_SERVER_PORT=8080

@@ -3,7 +3,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"sort"
@@ -20,15 +19,13 @@ import (
 type reader struct {
 	client          *clientv3.Client
 	workloadsPrefix string
-	metadataPrefix  string
 
 	// In-memory indices (protected by mutex)
 	mu         sync.RWMutex
-	workloads  map[string]*types.Workload        // id → Workload
-	metadata   map[string]map[string]interface{} // id → {processor: data}
-	byHostname map[string]string                 // hostname → id
-	byName     map[string]string                 // "namespace/name" or "name" → id
-	byGroup    map[string]map[string]struct{}    // group → {ids}
+	workloads  map[string]*types.Workload     // id → Workload
+	byHostname map[string]string              // hostname → id
+	byName     map[string]string              // "namespace/name" or "name" → id
+	byGroup    map[string]map[string]struct{} // group → {ids}
 
 	// Watch control
 	ctx    context.Context
@@ -61,9 +58,7 @@ func NewReader(cfg Config) (types.StoreReader, error) {
 	s := &reader{
 		client:          client,
 		workloadsPrefix: cfg.WorkloadsPrefix,
-		metadataPrefix:  cfg.MetadataPrefix,
 		workloads:       make(map[string]*types.Workload),
-		metadata:        make(map[string]map[string]interface{}),
 		byHostname:      make(map[string]string),
 		byName:          make(map[string]string),
 		byGroup:         make(map[string]map[string]struct{}),
@@ -77,9 +72,6 @@ func NewReader(cfg Config) (types.StoreReader, error) {
 	if err := s.loadWorkloads(); err != nil {
 		client.Close()
 		return nil, err
-	}
-	if err := s.loadMetadata(); err != nil {
-		log.Printf("[storage] Warning: failed to load metadata: %v", err)
 	}
 
 	// Start watches
@@ -108,20 +100,20 @@ func (s *reader) Get(id string) (*types.Workload, error) {
 
 	// Try by ID
 	if workload := s.workloads[id]; workload != nil {
-		return s.workloadWithMetadata(workload), nil
+		return workload, nil
 	}
 
 	// Try by hostname
 	if id, ok := s.byHostname[id]; ok {
 		if workload := s.workloads[id]; workload != nil {
-			return s.workloadWithMetadata(workload), nil
+			return workload, nil
 		}
 	}
 
 	// Try by name
 	if id, ok := s.byName[id]; ok {
 		if workload := s.workloads[id]; workload != nil {
-			return s.workloadWithMetadata(workload), nil
+			return workload, nil
 		}
 	}
 
@@ -154,7 +146,7 @@ func (s *reader) List(runtime types.RuntimeType, labelFilter map[string]string) 
 			}
 		}
 
-		results = append(results, s.workloadWithMetadata(workload))
+		results = append(results, workload)
 	}
 
 	return results
@@ -228,7 +220,7 @@ func (s *reader) FindReachable(callerIdentity string) (*types.ReachabilityResult
 			Ports:           workload.Ports,
 			Labels:          workload.Labels,
 			Annotations:     workload.Annotations,
-			Metadata:        s.mergeMetadata(workload),
+			Metadata:        workload.Metadata,
 		}
 		reachable = append(reachable, filtered)
 	}
@@ -274,30 +266,6 @@ func (s *reader) filterAddresses(addresses []string, sharedGroups []string) []st
 	return filtered
 }
 
-// workloadWithMetadata returns a copy of workload with merged metadata.
-func (s *reader) workloadWithMetadata(workload *types.Workload) *types.Workload {
-	result := *workload
-	result.Metadata = s.mergeMetadata(workload)
-	return &result
-}
-
-// mergeMetadata merges stored metadata with workload metadata.
-func (s *reader) mergeMetadata(workload *types.Workload) map[string]interface{} {
-	stored := s.metadata[workload.ID]
-	if stored == nil && workload.Metadata == nil {
-		return nil
-	}
-
-	merged := make(map[string]interface{})
-	for k, v := range workload.Metadata {
-		merged[k] = v
-	}
-	for k, v := range stored {
-		merged[k] = v
-	}
-	return merged
-}
-
 // loadWorkloads loads all workloads from etcd.
 func (s *reader) loadWorkloads() error {
 	log.Printf("[storage] Loading workloads from %s", s.workloadsPrefix)
@@ -327,52 +295,11 @@ func (s *reader) loadWorkloads() error {
 	return nil
 }
 
-// loadMetadata loads all metadata from etcd.
-func (s *reader) loadMetadata() error {
-	log.Printf("[storage] Loading metadata from %s", s.metadataPrefix)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	resp, err := s.client.Get(ctx, s.metadataPrefix, clientv3.WithPrefix())
-	if err != nil {
-		return err
-	}
-
-	for _, kv := range resp.Kvs {
-		key := string(kv.Key)
-		relativeKey := strings.TrimPrefix(key, s.metadataPrefix)
-		parts := strings.SplitN(relativeKey, "/", 2)
-
-		if len(parts) >= 2 {
-			workloadID := parts[0]
-			processor := parts[1]
-
-			var data interface{}
-			if err := json.Unmarshal(kv.Value, &data); err != nil {
-				log.Printf("[storage] Failed to parse metadata %s/%s: %v", workloadID, processor, err)
-				continue
-			}
-
-			s.mu.Lock()
-			if s.metadata[workloadID] == nil {
-				s.metadata[workloadID] = make(map[string]interface{})
-			}
-			s.metadata[workloadID][processor] = data
-			s.mu.Unlock()
-		}
-	}
-
-	log.Printf("[storage] Loaded metadata for %d workloads", len(s.metadata))
-	return nil
-}
-
 // startWatches starts background watch goroutines.
 func (s *reader) startWatches() {
-	s.wg.Add(2)
+	s.wg.Add(1)
 	go s.watchWorkloads()
-	go s.watchMetadata()
-	log.Printf("[storage] Started watch threads")
+	log.Printf("[storage] Started watch thread")
 }
 
 // watchWorkloads watches for workload changes.
@@ -408,65 +335,7 @@ func (s *reader) watchWorkloads() {
 
 				case clientv3.EventTypeDelete:
 					s.removeWorkloadIndex(workloadID)
-					s.mu.Lock()
-					delete(s.metadata, workloadID)
-					s.mu.Unlock()
 					log.Printf("[storage] Watch: removed workload %s", workloadID[:12])
-				}
-			}
-		}
-	}
-}
-
-// watchMetadata watches for metadata changes.
-func (s *reader) watchMetadata() {
-	defer s.wg.Done()
-
-	watchChan := s.client.Watch(s.ctx, s.metadataPrefix, clientv3.WithPrefix())
-	log.Printf("[storage] Watching metadata at %s", s.metadataPrefix)
-
-	for {
-		select {
-		case <-s.ctx.Done():
-			return
-		case watchResp := <-watchChan:
-			if watchResp.Err() != nil {
-				log.Printf("[storage] Metadata watch error: %v", watchResp.Err())
-				continue
-			}
-
-			for _, event := range watchResp.Events {
-				key := string(event.Kv.Key)
-				relativeKey := strings.TrimPrefix(key, s.metadataPrefix)
-				parts := strings.SplitN(relativeKey, "/", 2)
-
-				if len(parts) < 2 {
-					continue
-				}
-
-				workloadID := parts[0]
-				processor := parts[1]
-
-				switch event.Type {
-				case clientv3.EventTypePut:
-					var data interface{}
-					if err := json.Unmarshal(event.Kv.Value, &data); err != nil {
-						log.Printf("[storage] Watch: failed to parse metadata: %v", err)
-						continue
-					}
-					s.mu.Lock()
-					if s.metadata[workloadID] == nil {
-						s.metadata[workloadID] = make(map[string]interface{})
-					}
-					s.metadata[workloadID][processor] = data
-					s.mu.Unlock()
-
-				case clientv3.EventTypeDelete:
-					s.mu.Lock()
-					if s.metadata[workloadID] != nil {
-						delete(s.metadata[workloadID], processor)
-					}
-					s.mu.Unlock()
 				}
 			}
 		}

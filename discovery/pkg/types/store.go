@@ -4,16 +4,16 @@ package types
 import "context"
 
 // StoreWriter is the interface for writing workload data to storage.
-// Used by the discovery component to register/deregister workloads and metadata.
+// Used by the discovery component to register/deregister workloads.
 type StoreWriter interface {
 	// RegisterWorkload writes a workload to storage.
 	RegisterWorkload(ctx context.Context, workload *Workload) error
 
-	// DeregisterWorkload removes a workload and its metadata from storage.
+	// DeregisterWorkload removes a workload from storage.
 	DeregisterWorkload(ctx context.Context, workloadID string) error
 
-	// SetMetadata writes processor metadata for a workload.
-	SetMetadata(ctx context.Context, workloadID, processorKey string, data interface{}) error
+	// UpdateWorkloadMetadata updates the metadata field of an existing workload.
+	UpdateWorkloadMetadata(ctx context.Context, workloadID string, metadata map[string]interface{}) error
 
 	// ListWorkloadIDs returns all workload IDs from storage.
 	ListWorkloadIDs(ctx context.Context) (map[string]struct{}, error)

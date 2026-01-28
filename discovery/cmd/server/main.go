@@ -31,7 +31,6 @@ func main() {
 	log.Println("============================================================")
 	log.Printf("Storage: etcd @ %s", cfg.Storage.Endpoints()[0])
 	log.Printf("Workloads prefix: %s", cfg.Storage.WorkloadsPrefix)
-	log.Printf("Metadata prefix: %s", cfg.Storage.MetadataPrefix)
 	log.Printf("Server: %s", cfg.Server.Addr())
 	log.Println("============================================================")
 

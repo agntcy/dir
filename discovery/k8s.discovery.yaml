@@ -127,8 +127,6 @@ spec:
               value: "2379"
             - name: DISCOVERY_STORAGE_WORKLOADS_PREFIX
               value: "/discovery/workloads/"
-            - name: DISCOVERY_STORAGE_METADATA_PREFIX
-              value: "/discovery/metadata/"
             - name: DISCOVERY_PROCESSOR_A2A_ENABLED
               value: "true"
             - name: DISCOVERY_PROCESSOR_WORKERS
@@ -179,8 +177,6 @@ spec:
               value: "2379"
             - name: DISCOVERY_STORAGE_WORKLOADS_PREFIX
               value: "/discovery/workloads/"
-            - name: DISCOVERY_STORAGE_METADATA_PREFIX
-              value: "/discovery/metadata/"
             - name: DISCOVERY_SERVER_HOST
               value: "0.0.0.0"
             - name: DISCOVERY_SERVER_PORT
