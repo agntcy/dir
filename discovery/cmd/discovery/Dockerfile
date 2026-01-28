@@ -1,30 +1,53 @@
+# syntax=docker/dockerfile:1@sha256:fe40cf4e92cd0c467be2cfc30657a680ae2398318afd50b0c80585784c604f28
+
 # Discovery Service Dockerfile
 # Combines watcher and inspector into a single component (writes to etcd)
-FROM golang:1.22-alpine AS builder
+# Build context must be repo root to access local replace directives
 
-WORKDIR /app
+# xx is a helper for cross-compilation
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0@sha256:c64defb9ed5a91eacb37f96ccc3d4cd72521c4bd18d5442905b95e2226b0e707 AS xx
 
-# Install build dependencies
-RUN apk add --no-cache git ca-certificates
+FROM --platform=$BUILDPLATFORM golang:1.25.6-bookworm@sha256:2f768d462dbffbb0f0b3a5171009f162945b086f326e0b2a8fd5d29c3219ff14 AS builder
 
-# Copy go.mod first for better layer caching
-COPY go.mod go.sum ./
-RUN go mod download
+COPY --link --from=xx / /
 
-# Copy source code
-COPY . .
+ARG TARGETPLATFORM
 
-# Build the discovery binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /discovery ./cmd/discovery
+RUN --mount=type=cache,id=${TARGETPLATFORM}-apt,target=/var/cache/apt,sharing=locked \
+    apt-get update \
+    && xx-apt-get install -y --no-install-recommends \
+    gcc \
+    libc6-dev
 
-# Final image
-FROM alpine:3.19
+WORKDIR /build/discovery
 
-RUN apk add --no-cache ca-certificates tzdata
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=bind,source=.,target=/build,ro \
+    xx-go mod download -x
 
-COPY --from=builder /discovery /usr/local/bin/discovery
+ARG BUILD_OPTS
+ARG EXTRA_LDFLAGS
+
+ENV CGO_ENABLED=0
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=bind,source=.,target=/build,ro \
+    xx-go build ${BUILD_OPTS} -ldflags="-s -w -extldflags -static ${EXTRA_LDFLAGS}" \
+    -o /bin/discovery ./cmd/discovery
+
+RUN xx-verify /bin/discovery
+
+# Production image - minimal distroless
+FROM gcr.io/distroless/static:nonroot@sha256:c0f429e16b13e583da7e5a6ec20dd656d325d88e6819cafe0adb0828976529dc AS production
+
+WORKDIR /
+
+COPY --from=builder /bin/discovery ./discovery
 
 # Run as root to access Docker socket (for docker runtime)
-# For kubernetes runtime, can run as non-root
+# For kubernetes runtime, use nonroot user
+USER 0:0
 
-ENTRYPOINT ["/usr/local/bin/discovery"]
+ENTRYPOINT ["./discovery"]

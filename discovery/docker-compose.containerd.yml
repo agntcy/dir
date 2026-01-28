@@ -45,8 +45,8 @@ services:
   # ============================================================
   discovery:
     build:
-      context: .
-      dockerfile: cmd/discovery/Dockerfile
+      context: ../
+      dockerfile: discovery/cmd/discovery/Dockerfile
     volumes:
       # containerd socket (Linux only)
       - /run/containerd/containerd.sock:/run/containerd/containerd.sock:ro
@@ -80,8 +80,8 @@ services:
   # ============================================================
   server:
     build:
-      context: .
-      dockerfile: cmd/server/Dockerfile
+      context: ../
+      dockerfile: discovery/cmd/server/Dockerfile
     environment:
       # Storage (etcd)
       - DISCOVERY_STORAGE_HOST=etcd

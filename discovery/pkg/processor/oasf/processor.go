@@ -8,7 +8,6 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
-	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/client"
 	"github.com/agntcy/dir/discovery/pkg/types"
 )
@@ -59,6 +58,9 @@ func (p *processor) ShouldProcess(workload *types.Workload) bool {
 func (p *processor) Process(ctx context.Context, workload *types.Workload) (interface{}, error) {
 	// Get the name of the OASF record from the workload labels
 	recordFQDN := workload.Labels[p.labelKey]
+	log.Printf("[oasf] Started processing workload %s with (%s)", workload.Name, recordFQDN)
+
+	// Split the record FQDN into name and zone
 	nameParts := strings.SplitN(recordFQDN, ":", 2)
 	if len(nameParts) != 2 {
 		return nil, fmt.Errorf("invalid OASF record format in label %s: %s", p.labelKey, recordFQDN)
@@ -82,27 +84,11 @@ func (p *processor) Process(ctx context.Context, workload *types.Workload) (inte
 		return nil, fmt.Errorf("failed to pull OASF record %s: %v", recordFQDN, err)
 	}
 
-	// Convert the record data to a map
-	recordData := record.Data.AsMap()
-
-	// Check if its signed
-	signed, err := p.client.Verify(ctx, &signv1.VerifyRequest{RecordRef: &corev1.RecordRef{Cid: recordRef.Cid}})
-	if err != nil {
-		return nil, fmt.Errorf("failed to verify OASF record %s: %v", recordFQDN, err)
-	}
-
-	// Check if its name is verified
-	verified, err := p.client.GetVerificationInfo(ctx, recordRef.Cid)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get verification info for OASF record %s: %v", recordFQDN, err)
-	}
-
 	log.Printf("[oasf] %s scraped successfully", workload.Name)
 
 	// Return the record data along with its validity
 	return map[string]any{
-		"record":   recordData,
-		"signed":   signed.Success,
-		"verified": verified.Verified,
+		"cid":    recordRef.Cid,
+		"record": record.Data.AsMap(),
 	}, nil
 }

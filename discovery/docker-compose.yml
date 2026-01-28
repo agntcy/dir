@@ -27,8 +27,8 @@ services:
   # ============================================================
   discovery:
     build:
-      context: .
-      dockerfile: cmd/discovery/Dockerfile
+      context: ../
+      dockerfile: discovery/cmd/discovery/Dockerfile
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
@@ -42,7 +42,8 @@ services:
       - DISCOVERY_PROCESSOR_A2A_ENABLED=true
       - DISCOVERY_PROCESSOR_WORKERS=16
       # Directory client config
-      - DIRECTORY_CLIENT_SERVER_ADDRESS=http://apiserver:8888
+      - DIRECTORY_CLIENT_SERVER_ADDRESS=apiserver:8888
+      - DIRECTORY_CLIENT_AUTH_MODE=insecure
     depends_on:
       etcd:
         condition: service_healthy
@@ -57,8 +58,8 @@ services:
   # ============================================================
   server:
     build:
-      context: .
-      dockerfile: cmd/server/Dockerfile
+      context: ../
+      dockerfile: discovery/cmd/server/Dockerfile
     environment:
       # Storage (etcd)
       - DISCOVERY_STORAGE_HOST=etcd

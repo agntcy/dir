@@ -107,9 +107,11 @@ docker compose down
 cd discovery
 docker swarm init
 
-# Build images
-docker build -t discovery:latest -f cmd/discovery/Dockerfile .
-docker build -t discovery-server:latest -f cmd/server/Dockerfile .
+# Build images (from repo root to include local replace dependencies)
+cd ..
+docker build -t discovery:latest -f discovery/cmd/discovery/Dockerfile .
+docker build -t discovery-server:latest -f discovery/cmd/server/Dockerfile .
+cd discovery
 
 docker stack deploy -c docker-compose.swarm.yml discovery
 
@@ -138,11 +140,13 @@ cd discovery
 # Create cluster (kind)
 kind create cluster --name discovery-test
 
-# Build and load images
-docker build -t discovery:latest -f cmd/discovery/Dockerfile .
-docker build -t discovery-server:latest -f cmd/server/Dockerfile .
+# Build and load images (from repo root to include local replace dependencies)
+cd ..
+docker build -t discovery:latest -f discovery/cmd/discovery/Dockerfile .
+docker build -t discovery-server:latest -f discovery/cmd/server/Dockerfile .
 kind load docker-image discovery:latest --name discovery-test
 kind load docker-image discovery-server:latest --name discovery-test
+cd discovery
 
 # Deploy everything (etcd + discovery + server + test workloads)
 kubectl apply -f k8s.discovery.yaml
