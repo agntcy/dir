@@ -12,6 +12,16 @@ class RecordRef(_message.Message):
     cid: str
     def __init__(self, cid: _Optional[str] = ...) -> None: ...
 
+class NamedRecordRef(_message.Message):
+    __slots__ = ("name", "version", "cid")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    VERSION_FIELD_NUMBER: _ClassVar[int]
+    CID_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    version: str
+    cid: str
+    def __init__(self, name: _Optional[str] = ..., version: _Optional[str] = ..., cid: _Optional[str] = ...) -> None: ...
+
 class RecordMeta(_message.Message):
     __slots__ = ("cid", "annotations", "schema_version", "created_at")
     class AnnotationsEntry(_message.Message):

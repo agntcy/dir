@@ -286,7 +286,9 @@ pvc:
 
 # Database configuration
 database:
-  # Database type (currently only sqlite supported)
+  # Database type: "sqlite" or "postgres"
+  # - sqlite: Single-file embedded database
+  # - postgres: External PostgreSQL database
   type: "sqlite"
 
   # SQLite configuration
@@ -295,8 +297,20 @@ database:
     # Default: /tmp/dir.db (ephemeral - lost on pod restart)
     # When using PVC: /var/lib/dir/database/dir.db (persistent)
     dbPath: "/tmp/dir.db"
-
-  # PVC for database persistence (optional)
+  
+  # PostgreSQL configuration
+  # Requires an external PostgreSQL instance (deploy separately or use managed service)
+  postgres:
+    # PostgreSQL host address
+    host: ""
+    
+    # PostgreSQL port (default: 5432)
+    port: 5432
+    
+    # Database name
+    database: "dir"
+  
+  # PVC for SQLite database persistence (optional)
   # When enabled, database persists across pod restarts
   # Also allows enabling readOnlyRootFilesystem security hardening
   # IMPORTANT: When PVC is enabled, set strategy.type to "Recreate" to avoid
@@ -513,6 +527,12 @@ secrets:
     username: ""
     password: ""
 
+  # PostgreSQL authentication (only used when database.type: "postgres")
+  # Username and password for connecting to the PostgreSQL database
+  postgresAuth:
+    username: ""
+    password: ""
+
 # Method 2: ExternalSecrets configuration
 # Syncs credentials from HashiCorp Vault (or other secret providers) using External Secrets Operator
 # When enabled, the Helm-managed secret (above) is NOT created
@@ -555,6 +575,13 @@ externalSecrets:
     # Property names in Vault secret (defaults shown)
     usernameProperty: "sync-username"
     passwordProperty: "sync-password"
+  
+  # PostgreSQL authentication (only used when database.type: "postgres")
+  postgresAuth:
+    enabled: false  # Enable when using PostgreSQL with Vault-managed credentials
+    # Property names in Vault secret (defaults shown)
+    usernameProperty: "postgres-username"
+    passwordProperty: "postgres-password"
 
 # OASF server subchart configuration (OPTIONAL)
 # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
@@ -630,3 +657,13 @@ envoy-authz:
       # gRPC backend configuration (required for dirctl client over HTTPS)
       nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
       nginx.ingress.kubernetes.io/grpc-backend: "true"
+
+# PostgreSQL subchart configuration (OPTIONAL)
+# Deploy PostgreSQL alongside the apiserver for multi-instance deployments
+# NOT installed by default. Set enabled: true to deploy.
+postgresql:
+  enabled: false
+  auth:
+    username: "dir"
+    password: "dirpassword"
+    database: "dir"

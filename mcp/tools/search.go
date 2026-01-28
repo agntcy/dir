@@ -5,6 +5,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	searchv1 "github.com/agntcy/dir/api/search/v1"
@@ -16,17 +17,17 @@ import (
 type SearchLocalInput struct {
 	Limit          int      `json:"limit,omitempty"           jsonschema:"Maximum number of results to return (default: 100 max: 1000)"`
 	Offset         int      `json:"offset,omitempty"          jsonschema:"Pagination offset (default: 0)"`
-	Names          []string `json:"names,omitempty"           jsonschema:"Agent name patterns (supports wildcards: * ? [])"`
-	Versions       []string `json:"versions,omitempty"        jsonschema:"Version patterns (supports wildcards: * ? [])"`
+	Names          []string `json:"names,omitempty"           jsonschema:"Agent name patterns (supports wildcards: * ?)"`
+	Versions       []string `json:"versions,omitempty"        jsonschema:"Version patterns (supports wildcards: * ?)"`
 	SkillIDs       []string `json:"skill_ids,omitempty"       jsonschema:"Skill ID patterns (exact match only)"`
-	SkillNames     []string `json:"skill_names,omitempty"     jsonschema:"Skill name patterns (supports wildcards: * ? [])"`
-	Locators       []string `json:"locators,omitempty"        jsonschema:"Locator patterns (supports wildcards: * ? [])"`
-	ModuleNames    []string `json:"module_names,omitempty"    jsonschema:"Module name patterns (supports wildcards: * ? [])"`
+	SkillNames     []string `json:"skill_names,omitempty"     jsonschema:"Skill name patterns (supports wildcards: * ?)"`
+	Locators       []string `json:"locators,omitempty"        jsonschema:"Locator patterns (supports wildcards: * ?)"`
+	ModuleNames    []string `json:"module_names,omitempty"    jsonschema:"Module name patterns (supports wildcards: * ?)"`
 	DomainIDs      []string `json:"domain_ids,omitempty"      jsonschema:"Domain ID patterns (exact match only)"`
-	DomainNames    []string `json:"domain_names,omitempty"    jsonschema:"Domain name patterns (supports wildcards: * ? [])"`
-	CreatedAts     []string `json:"created_ats,omitempty"     jsonschema:"Created_at timestamp patterns (supports wildcards: * ? [])"`
-	Authors        []string `json:"authors,omitempty"         jsonschema:"Author name patterns (supports wildcards: * ? [])"`
-	SchemaVersions []string `json:"schema_versions,omitempty" jsonschema:"Schema version patterns (supports wildcards: * ? [])"`
+	DomainNames    []string `json:"domain_names,omitempty"    jsonschema:"Domain name patterns (supports wildcards: * ?)"`
+	CreatedAts     []string `json:"created_ats,omitempty"     jsonschema:"Created_at timestamp patterns (supports wildcards: * ?)"`
+	Authors        []string `json:"authors,omitempty"         jsonschema:"Author name patterns (supports wildcards: * ?)"`
+	SchemaVersions []string `json:"schema_versions,omitempty" jsonschema:"Schema version patterns (supports wildcards: * ?)"`
 	ModuleIDs      []string `json:"module_ids,omitempty"      jsonschema:"Module ID patterns (exact match only)"`
 }
 
@@ -256,4 +257,89 @@ func buildQueries(input SearchLocalInput) []*searchv1.RecordQuery {
 	}
 
 	return queries
+}
+
+// SearchLocalInputSchema returns the JSON schema for SearchLocalInput.
+// This is manually defined to avoid union types (type: ["array", "null"]) that mcphost can't parse.
+// The MCP SDK auto-generates union types for optional array fields, which causes parsing failures in mcphost.
+func SearchLocalInputSchema() json.RawMessage {
+	schemaJSON := `{
+		"type": "object",
+		"properties": {
+			"limit": {
+				"type": "integer",
+				"description": "Maximum number of results to return (default: 100 max: 1000)"
+			},
+			"offset": {
+				"type": "integer",
+				"description": "Pagination offset (default: 0)"
+			},
+			"names": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Agent name patterns (supports wildcards: * ? [])"
+			},
+			"versions": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Version patterns (supports wildcards: * ? [])"
+			},
+			"skill_ids": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Skill ID patterns (exact match only)"
+			},
+			"skill_names": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Skill name patterns (supports wildcards: * ? [])"
+			},
+			"locators": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Locator patterns (supports wildcards: * ? [])"
+			},
+			"module_names": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Module name patterns (supports wildcards: * ? [])"
+			},
+			"domain_ids": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Domain ID patterns (exact match only)"
+			},
+			"domain_names": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Domain name patterns (supports wildcards: * ? [])"
+			},
+			"created_ats": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Created_at timestamp patterns (supports wildcards: * ? [])"
+			},
+			"authors": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Author name patterns (supports wildcards: * ? [])"
+			},
+			"schema_versions": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Schema version patterns (supports wildcards: * ? [])"
+			},
+			"module_ids": {
+				"type": "array",
+				"items": {"type": "string"},
+				"description": "Module ID patterns (exact match only)"
+			}
+		}
+	}`
+
+	var schema json.RawMessage
+
+	_ = json.Unmarshal([]byte(schemaJSON), &schema)
+
+	return schema
 }

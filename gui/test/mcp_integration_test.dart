@@ -27,9 +27,9 @@ void main() {
     final client = McpClient(executablePath: binaryPath);
 
     // 1. Start the process
-    // Pass DISABLE env to avoid log noise breaking the stdio protocol during tests
+    // Pass schema URL for OASF validation (required)
     await client.start(environment: {
-      "OASF_API_VALIDATION_DISABLE": "true",
+      "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
     });
 
     // 2. Initialize

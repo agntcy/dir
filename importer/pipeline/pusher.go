@@ -20,15 +20,17 @@ var logger = logging.Logger("importer/pipeline")
 
 // ClientPusher is a Pusher implementation that uses the DIR client.
 type ClientPusher struct {
-	client config.ClientInterface
-	debug  bool
+	client   config.ClientInterface
+	debug    bool
+	signFunc config.SignFunc
 }
 
 // NewClientPusher creates a new ClientPusher.
-func NewClientPusher(client config.ClientInterface, debug bool) *ClientPusher {
+func NewClientPusher(client config.ClientInterface, debug bool, signFunc config.SignFunc) *ClientPusher {
 	return &ClientPusher{
-		client: client,
-		debug:  debug,
+		client:   client,
+		debug:    debug,
+		signFunc: signFunc,
 	}
 }
 
@@ -76,6 +78,19 @@ func (p *ClientPusher) Push(ctx context.Context, inputCh <-chan *corev1.Record) 
 				p.handlePushError(err, record, mcpSourceJSON, errCh, ctx)
 
 				continue
+			}
+
+			// Sign record if signing is enabled
+			if p.signFunc != nil {
+				if signErr := p.signFunc(ctx, ref.GetCid()); signErr != nil {
+					logger.Warn("Failed to sign record", "cid", ref.GetCid(), "error", signErr)
+					// Send signing error but don't fail the import - record was pushed successfully
+					select {
+					case errCh <- fmt.Errorf("signing failed for CID %s: %w", ref.GetCid(), signErr):
+					case <-ctx.Done():
+						return
+					}
+				}
 			}
 
 			// Send reference (success)

@@ -6,13 +6,14 @@
 /* eslint-disable */
 
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import { file_agntcy_dir_core_v1_record } from "../../core/v1/record_pb.js";
 import { file_agntcy_dir_naming_v1_name_verification } from "./name_verification_pb.js";
 
 /**
  * Describes the file agntcy/dir/naming/v1/naming_service.proto.
  */
 export const file_agntcy_dir_naming_v1_naming_service = /*@__PURE__*/
-  fileDesc("CilhZ250Y3kvZGlyL25hbWluZy92MS9uYW1pbmdfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5uYW1pbmcudjEiKQoaR2V0VmVyaWZpY2F0aW9uSW5mb1JlcXVlc3QSCwoDY2lkGAEgASgJIpcBChtHZXRWZXJpZmljYXRpb25JbmZvUmVzcG9uc2USEAoIdmVyaWZpZWQYASABKAgSOAoMdmVyaWZpY2F0aW9uGAIgASgLMiIuYWdudGN5LmRpci5uYW1pbmcudjEuVmVyaWZpY2F0aW9uEhoKDWVycm9yX21lc3NhZ2UYAyABKAlIAIgBAUIQCg5fZXJyb3JfbWVzc2FnZTKLAQoNTmFtaW5nU2VydmljZRJ6ChNHZXRWZXJpZmljYXRpb25JbmZvEjAuYWdudGN5LmRpci5uYW1pbmcudjEuR2V0VmVyaWZpY2F0aW9uSW5mb1JlcXVlc3QaMS5hZ250Y3kuZGlyLm5hbWluZy52MS5HZXRWZXJpZmljYXRpb25JbmZvUmVzcG9uc2VCxgEKGGNvbS5hZ250Y3kuZGlyLm5hbWluZy52MUISTmFtaW5nU2VydmljZVByb3RvUAFaI2dpdGh1Yi5jb20vYWdudGN5L2Rpci9hcGkvbmFtaW5nL3YxogIDQUROqgIUQWdudGN5LkRpci5OYW1pbmcuVjHKAhRBZ250Y3lcRGlyXE5hbWluZ1xWMeICIEFnbnRjeVxEaXJcTmFtaW5nXFYxXEdQQk1ldGFkYXRh6gIXQWdudGN5OjpEaXI6Ok5hbWluZzo6VjFiBnByb3RvMw", [file_agntcy_dir_naming_v1_name_verification]);
+  fileDesc("CilhZ250Y3kvZGlyL25hbWluZy92MS9uYW1pbmdfc2VydmljZS5wcm90bxIUYWdudGN5LmRpci5uYW1pbmcudjEidAoaR2V0VmVyaWZpY2F0aW9uSW5mb1JlcXVlc3QSEAoDY2lkGAEgASgJSACIAQESEQoEbmFtZRgCIAEoCUgBiAEBEhQKB3ZlcnNpb24YAyABKAlIAogBAUIGCgRfY2lkQgcKBV9uYW1lQgoKCF92ZXJzaW9uIpcBChtHZXRWZXJpZmljYXRpb25JbmZvUmVzcG9uc2USEAoIdmVyaWZpZWQYASABKAgSOAoMdmVyaWZpY2F0aW9uGAIgASgLMiIuYWdudGN5LmRpci5uYW1pbmcudjEuVmVyaWZpY2F0aW9uEhoKDWVycm9yX21lc3NhZ2UYAyABKAlIAIgBAUIQCg5fZXJyb3JfbWVzc2FnZSJACg5SZXNvbHZlUmVxdWVzdBIMCgRuYW1lGAEgASgJEhQKB3ZlcnNpb24YAiABKAlIAIgBAUIKCghfdmVyc2lvbiJGCg9SZXNvbHZlUmVzcG9uc2USMwoHcmVjb3JkcxgBIAMoCzIiLmFnbnRjeS5kaXIuY29yZS52MS5OYW1lZFJlY29yZFJlZjLjAQoNTmFtaW5nU2VydmljZRJ6ChNHZXRWZXJpZmljYXRpb25JbmZvEjAuYWdudGN5LmRpci5uYW1pbmcudjEuR2V0VmVyaWZpY2F0aW9uSW5mb1JlcXVlc3QaMS5hZ250Y3kuZGlyLm5hbWluZy52MS5HZXRWZXJpZmljYXRpb25JbmZvUmVzcG9uc2USVgoHUmVzb2x2ZRIkLmFnbnRjeS5kaXIubmFtaW5nLnYxLlJlc29sdmVSZXF1ZXN0GiUuYWdudGN5LmRpci5uYW1pbmcudjEuUmVzb2x2ZVJlc3BvbnNlQsYBChhjb20uYWdudGN5LmRpci5uYW1pbmcudjFCEk5hbWluZ1NlcnZpY2VQcm90b1ABWiNnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL25hbWluZy92MaICA0FETqoCFEFnbnRjeS5EaXIuTmFtaW5nLlYxygIUQWdudGN5XERpclxOYW1pbmdcVjHiAiBBZ250Y3lcRGlyXE5hbWluZ1xWMVxHUEJNZXRhZGF0YeoCF0FnbnRjeTo6RGlyOjpOYW1pbmc6OlYxYgZwcm90bzM", [file_agntcy_dir_core_v1_record, file_agntcy_dir_naming_v1_name_verification]);
 
 /**
  * Describes the message agntcy.dir.naming.v1.GetVerificationInfoRequest.
@@ -29,7 +30,21 @@ export const GetVerificationInfoResponseSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_naming_v1_naming_service, 1);
 
 /**
- * NamingService provides methods to inspect name verification state.
+ * Describes the message agntcy.dir.naming.v1.ResolveRequest.
+ * Use `create(ResolveRequestSchema)` to create a new message.
+ */
+export const ResolveRequestSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_naming_v1_naming_service, 2);
+
+/**
+ * Describes the message agntcy.dir.naming.v1.ResolveResponse.
+ * Use `create(ResolveResponseSchema)` to create a new message.
+ */
+export const ResolveResponseSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_naming_v1_naming_service, 3);
+
+/**
+ * NamingService provides methods for name resolution and verification.
  * Note: Verification is performed automatically by the backend scheduler
  * for signed records with verifiable names (http://, https:// prefixes).
  *

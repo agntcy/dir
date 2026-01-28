@@ -13,7 +13,7 @@ import (
 )
 
 func TestGetSchemaSkills(t *testing.T) {
-	t.Parallel()
+	t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "https://schema.oasf.outshift.com")
 
 	ctx := context.Background()
 
@@ -115,7 +115,8 @@ func TestGetSchemaSkills(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "https://schema.oasf.outshift.com")
+			// Note: t.Setenv cannot be used with t.Parallel(), so we run tests sequentially
 
 			result, output, err := GetSchemaSkills(ctx, nil, tt.input)
 

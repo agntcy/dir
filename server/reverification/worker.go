@@ -12,7 +12,7 @@ import (
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
-	"github.com/agntcy/dir/server/database/sqlite"
+	gormdb "github.com/agntcy/dir/server/database/gorm"
 	"github.com/agntcy/dir/server/naming"
 	revtypes "github.com/agntcy/dir/server/reverification/types"
 	"github.com/agntcy/dir/server/types"
@@ -130,12 +130,12 @@ func (w *Worker) verify(ctx context.Context, cid, recordName string) {
 // storeVerification stores a verification result in the database.
 // If errMsg is empty, the verification is considered successful.
 func (w *Worker) storeVerification(cid, method, keyID, errMsg string) {
-	verificationStatus := sqlite.VerificationStatusVerified
+	verificationStatus := gormdb.VerificationStatusVerified
 	if errMsg != "" {
-		verificationStatus = sqlite.VerificationStatusFailed
+		verificationStatus = gormdb.VerificationStatusFailed
 	}
 
-	nv := &sqlite.NameVerification{
+	nv := &gormdb.NameVerification{
 		RecordCID: cid,
 		Method:    method,
 		KeyID:     keyID,
@@ -147,7 +147,7 @@ func (w *Worker) storeVerification(cid, method, keyID, errMsg string) {
 	_, err := w.db.GetVerificationByCID(cid)
 
 	switch {
-	case errors.Is(err, sqlite.ErrVerificationNotFound):
+	case errors.Is(err, gormdb.ErrVerificationNotFound):
 		// No existing verification, create new one
 		if err := w.db.CreateNameVerification(nv); err != nil {
 			logger.Warn("Failed to create verification in database", "error", err, "cid", cid)

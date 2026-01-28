@@ -65,7 +65,7 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 		p := pipeline.NewDryRun(fetcher, duplicateChecker, transformer, pipelineConfig)
 		pipelineResult, err = p.Run(ctx)
 	} else {
-		pusher := pipeline.NewClientPusher(i.client, cfg.Debug)
+		pusher := pipeline.NewClientPusher(i.client, cfg.Debug, cfg.SignFunc)
 
 		// If --force is set, duplicateChecker will be nil (no deduplication)
 		// Otherwise, build cache of existing records for deduplication

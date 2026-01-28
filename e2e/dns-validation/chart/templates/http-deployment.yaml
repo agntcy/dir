@@ -1,0 +1,51 @@
+{{- if .Values.http.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "validation.fullname" . }}-http
+  labels:
+    app.kubernetes.io/name: validation
+    app.kubernetes.io/instance: {{ include "validation.fullname" . }}
+    app.kubernetes.io/component: http
+spec:
+  replicas: {{ .Values.http.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: validation
+      app.kubernetes.io/instance: {{ include "validation.fullname" . }}
+      app.kubernetes.io/component: http
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: validation
+        app.kubernetes.io/instance: {{ include "validation.fullname" . }}
+        app.kubernetes.io/component: http
+    spec:
+      containers:
+      - name: nginx
+        image: "{{ .Values.http.image.repository }}:{{ .Values.http.image.tag }}"
+        imagePullPolicy: {{ .Values.http.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.http.service.targetPort }}
+          protocol: TCP
+        livenessProbe:
+          {{- toYaml .Values.http.livenessProbe | nindent 12 }}
+        resources:
+          {{- toYaml .Values.http.resources | nindent 12 }}
+        volumeMounts:
+        - name: jwks
+          mountPath: /usr/share/nginx/html/.well-known
+          readOnly: true
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+          readOnly: true
+      volumes:
+      - name: jwks
+        configMap:
+          name: {{ include "validation.fullname" . }}-http-jwks
+      - name: nginx-config
+        configMap:
+          name: {{ include "validation.fullname" . }}-http-nginx
+{{- end }}

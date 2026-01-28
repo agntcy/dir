@@ -5,13 +5,13 @@ package validate
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,38 +24,46 @@ var testRecordInvalid []byte
 //go:embed testdata/record_valid.json
 var testRecordValid []byte
 
-//go:embed testdata/record_valid_for_schema.json
-var testRecordValidForSchema []byte
+//go:embed testdata/record_valid_with_warnings.json
+var testRecordValidWithWarnings []byte
 
-//go:embed testdata/record_valid_for_non_strict.json
-var testRecordValidForNonStrict []byte
-
-// TestValidateCommand_NoArgs tests that the command reads from stdin when no file is provided.
-func TestValidateCommand_NoArgs(t *testing.T) {
-	// Reset opts to ensure clean state
+// TestValidateCommand_NoFileArgs tests that the command reads from stdin when no file path is provided.
+// Note: --url flag is still required for validation.
+func TestValidateCommand_NoFileArgs(t *testing.T) {
+	// Reset opts to ensure clean state - cobra will populate it during Execute()
 	opts.SchemaURL = ""
-	opts.DisableAPI = false
-	opts.DisableStrict = false
 
 	cmd := Command
-	cmd.SetArgs([]string{})
+	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com"})
+	cmd.SetContext(context.Background())
 
-	// Provide JSON via stdin
+	// Provide JSON via stdin (no file path argument)
 	cmd.SetIn(bytes.NewReader(testRecordValid))
 
+	var stdout bytes.Buffer
+
 	var stderr bytes.Buffer
+
+	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 
-	// Should fail because neither --url nor --disable-api was specified
+	// Should succeed with valid schema URL
 	err := cmd.Execute()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "either --url or --disable-api flag must be specified")
+	require.NoError(t, err, "Command should succeed. stdout: %q, stderr: %q", stdout.String(), stderr.String())
+
+	// Verify output contains success message
+	output := stdout.String() + stderr.String()
+	assert.Contains(t, output, "Record is valid", "Should show validation success message")
 }
 
 // TestValidateCommand_TooManyArgs tests that the command only accepts one file path.
 func TestValidateCommand_TooManyArgs(t *testing.T) {
+	// Reset opts to ensure clean state
+	opts.SchemaURL = ""
+
 	cmd := Command
-	cmd.SetArgs([]string{"file1.json", "file2.json"})
+	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", "file1.json", "file2.json"})
+	cmd.SetContext(context.Background())
 
 	var stderr bytes.Buffer
 	cmd.SetErr(&stderr)
@@ -67,8 +75,12 @@ func TestValidateCommand_TooManyArgs(t *testing.T) {
 
 // TestValidateCommand_FileNotFound tests error handling for non-existent files.
 func TestValidateCommand_FileNotFound(t *testing.T) {
+	// Reset opts to ensure clean state
+	opts.SchemaURL = ""
+
 	cmd := Command
-	cmd.SetArgs([]string{"nonexistent.json"})
+	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", "nonexistent.json"})
+	cmd.SetContext(context.Background())
 
 	var stderr bytes.Buffer
 	cmd.SetErr(&stderr)
@@ -86,8 +98,12 @@ func TestValidateCommand_InvalidJSON(t *testing.T) {
 	err := os.WriteFile(invalidJSONFile, []byte("{ invalid json }"), 0o600)
 	require.NoError(t, err)
 
+	// Reset opts to ensure clean state
+	opts.SchemaURL = ""
+
 	cmd := Command
-	cmd.SetArgs([]string{invalidJSONFile})
+	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", invalidJSONFile})
+	cmd.SetContext(context.Background())
 
 	var stderr bytes.Buffer
 	cmd.SetErr(&stderr)
@@ -109,20 +125,42 @@ func TestValidateCommand_CommandInitialization(t *testing.T) {
 
 	// Check that flags are registered
 	flags := Command.Flags()
-	assert.NotNil(t, flags.Lookup("disable-api"))
-	assert.NotNil(t, flags.Lookup("disable-strict"))
 	assert.NotNil(t, flags.Lookup("url"))
+}
+
+// TestValidateCommand_EmptySchemaURL tests that the command returns an error when schema URL is empty.
+func TestValidateCommand_EmptySchemaURL(t *testing.T) {
+	// Reset opts to ensure clean state
+	opts.SchemaURL = ""
+
+	cmd := Command
+	cmd.SetArgs([]string{})
+	cmd.SetContext(context.Background())
+
+	// Provide JSON via stdin
+	cmd.SetIn(bytes.NewReader(testRecordValid))
+
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+
+	// Should fail because empty schema URL is not allowed
+	err := cmd.Execute()
+	require.Error(t, err)
+	// Check for either the schema URL required message or validator initialization failure
+	assert.True(t,
+		strings.Contains(err.Error(), "schema URL is required") ||
+			strings.Contains(err.Error(), "failed to initialize validator"),
+		"Error should mention schema URL requirement or validator initialization: %s", err.Error())
 }
 
 // TestValidateCommand_Stdin tests that the command can read from stdin.
 func TestValidateCommand_Stdin(t *testing.T) {
 	// Reset opts to ensure clean state
 	opts.SchemaURL = ""
-	opts.DisableAPI = true
-	opts.DisableStrict = false
 
 	cmd := Command
-	cmd.SetArgs([]string{"--disable-api"})
+	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com"})
+	cmd.SetContext(context.Background())
 
 	// Provide JSON via stdin - need to ensure the reader is positioned correctly
 	stdinReader := bytes.NewReader(testRecordValid)
@@ -156,11 +194,12 @@ func TestRunCommand_InvalidRecordStructure(t *testing.T) {
 	err := os.WriteFile(invalidJSONFile, []byte(invalidRecord), 0o600)
 	require.NoError(t, err)
 
-	// Reset global state and opts
-	corev1.SetDisableAPIValidation(true)
+	// Reset opts
+	opts.SchemaURL = ""
 
 	cmd := Command
-	cmd.SetArgs([]string{"--disable-api", invalidJSONFile})
+	cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", invalidJSONFile})
+	cmd.SetContext(context.Background())
 
 	var stdout bytes.Buffer
 
@@ -180,113 +219,48 @@ func TestRunCommand_InvalidRecordStructure(t *testing.T) {
 	assert.True(t, hasParseError, "Error output should mention parsing/decoding issue: %s", output)
 }
 
-// TestValidateCommand_RealFiles tests validation of actual testdata files with different validation settings.
+// TestValidateCommand_RealFiles tests validation of actual testdata files.
 func TestValidateCommand_RealFiles(t *testing.T) {
 	tests := []struct {
-		name           string
-		fileData       []byte
-		fileName       string
-		args           []string
-		expectValid    bool
-		expectErrorMsg string // If empty, no specific error message expected
+		name              string
+		fileData          []byte
+		fileName          string
+		expectValid       bool
+		expectErrorOutput bool // If true, expects error output
+		expectWarnings    bool // If true, expects warning messages in output
+		expectEmptyOutput bool // If true, expects no validation messages (just success)
 	}{
-		// record_invalid.json - should fail with all 3 validation settings
 		{
-			name:        "record_invalid_API_strict",
-			fileData:    testRecordInvalid,
-			fileName:    "record_invalid.json",
-			args:        []string{"--url", "https://schema.oasf.outshift.com/"},
-			expectValid: false,
+			name:              "record_invalid should fail validation and return error",
+			fileData:          testRecordInvalid,
+			fileName:          "record_invalid.json",
+			expectValid:       false,
+			expectErrorOutput: true,
+			expectWarnings:    false,
+			expectEmptyOutput: false,
 		},
 		{
-			name:        "record_invalid_API_non_strict",
-			fileData:    testRecordInvalid,
-			fileName:    "record_invalid.json",
-			args:        []string{"--url", "https://schema.oasf.outshift.com/", "--disable-strict"},
-			expectValid: false,
+			name:              "record_valid should be valid and return empty string",
+			fileData:          testRecordValid,
+			fileName:          "record_valid.json",
+			expectValid:       true,
+			expectErrorOutput: false,
+			expectWarnings:    false,
+			expectEmptyOutput: true,
 		},
 		{
-			name:        "record_invalid_embedded",
-			fileData:    testRecordInvalid,
-			fileName:    "record_invalid.json",
-			args:        []string{"--disable-api"},
-			expectValid: false,
-		},
-		// record_valid.json - should be valid with all 3 validation settings
-		{
-			name:        "record_valid_API_strict",
-			fileData:    testRecordValid,
-			fileName:    "record_valid.json",
-			args:        []string{"--url", "https://schema.oasf.outshift.com/"},
-			expectValid: true,
-		},
-		{
-			name:        "record_valid_API_non_strict",
-			fileData:    testRecordValid,
-			fileName:    "record_valid.json",
-			args:        []string{"--url", "https://schema.oasf.outshift.com/", "--disable-strict"},
-			expectValid: true,
-		},
-		{
-			name:        "record_valid_embedded",
-			fileData:    testRecordValid,
-			fileName:    "record_valid.json",
-			args:        []string{"--disable-api"},
-			expectValid: true,
-		},
-		// record_valid_for_schema.json - should only be valid if --disable-api
-		{
-			name:        "record_valid_for_schema_API_strict",
-			fileData:    testRecordValidForSchema,
-			fileName:    "record_valid_for_schema.json",
-			args:        []string{"--url", "https://schema.oasf.outshift.com/"},
-			expectValid: false,
-		},
-		{
-			name:        "record_valid_for_schema_API_non_strict",
-			fileData:    testRecordValidForSchema,
-			fileName:    "record_valid_for_schema.json",
-			args:        []string{"--url", "https://schema.oasf.outshift.com/", "--disable-strict"},
-			expectValid: true,
-		},
-		{
-			name:        "record_valid_for_schema_embedded",
-			fileData:    testRecordValidForSchema,
-			fileName:    "record_valid_for_schema.json",
-			args:        []string{"--disable-api"},
-			expectValid: true,
-		},
-		// record_valid_for_non_strict.json - should be valid for --disable-strict and --disable-api, but invalid for strict API validation
-		{
-			name:        "record_valid_for_non_strict_API_strict",
-			fileData:    testRecordValidForNonStrict,
-			fileName:    "record_valid_for_non_strict.json",
-			args:        []string{"--url", "https://schema.oasf.outshift.com/"},
-			expectValid: false,
-		},
-		{
-			name:        "record_valid_for_non_strict_API_non_strict",
-			fileData:    testRecordValidForNonStrict,
-			fileName:    "record_valid_for_non_strict.json",
-			args:        []string{"--url", "https://schema.oasf.outshift.com/", "--disable-strict"},
-			expectValid: true,
-		},
-		{
-			name:        "record_valid_for_non_strict_embedded",
-			fileData:    testRecordValidForNonStrict,
-			fileName:    "record_valid_for_non_strict.json",
-			args:        []string{"--disable-api"},
-			expectValid: true,
+			name:              "record_valid_with_warnings should be valid but return warning messages",
+			fileData:          testRecordValidWithWarnings,
+			fileName:          "record_valid_with_warnings.json",
+			expectValid:       true,
+			expectErrorOutput: false,
+			expectWarnings:    true,
+			expectEmptyOutput: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Reset opts to ensure clean state between tests
-			opts.SchemaURL = ""
-			opts.DisableAPI = false
-			opts.DisableStrict = false
-
 			// Create a temporary file with the embedded testdata content
 			tmpDir := t.TempDir()
 			filePath := filepath.Join(tmpDir, tt.fileName)
@@ -294,13 +268,16 @@ func TestValidateCommand_RealFiles(t *testing.T) {
 			err := os.WriteFile(filePath, tt.fileData, 0o600)
 			require.NoError(t, err)
 
-			// Build command args (create new slice to avoid modifying original)
-			args := make([]string, len(tt.args), len(tt.args)+1)
-			copy(args, tt.args)
-			args = append(args, filePath)
+			// Reset opts to ensure clean state between tests
+			// Note: cobra will populate opts.SchemaURL when parsing --url flag during Execute()
+			opts.SchemaURL = ""
 
 			cmd := Command
-			cmd.SetArgs(args)
+			cmd.SetArgs([]string{"--url", "https://schema.oasf.outshift.com", filePath})
+			cmd.SetContext(context.Background())
+
+			// Verify flag is set before execution (cobra will parse it during Execute)
+			// We can't check opts.SchemaURL here because it's only populated during Execute()
 
 			var stdout bytes.Buffer
 
@@ -312,15 +289,39 @@ func TestValidateCommand_RealFiles(t *testing.T) {
 			// Execute the command
 			err = cmd.Execute()
 
-			if tt.expectValid {
-				// Expect validation to succeed
-				assert.NoError(t, err)
-			} else {
-				// Expect validation to fail
-				require.Error(t, err, "Expected validation to fail")
+			// Combine stdout and stderr for checking output
+			output := stdout.String() + stderr.String()
 
-				if tt.expectErrorMsg != "" {
-					assert.Contains(t, err.Error(), tt.expectErrorMsg)
+			if tt.expectValid {
+				// Expect validation to succeed (no error returned)
+				require.NoError(t, err, "Validation should succeed for %s", tt.fileName)
+
+				if tt.expectEmptyOutput {
+					// Should have no validation error/warning messages, just success message
+					assert.Contains(t, output, "Record is valid", "Should show validation success message")
+					// Should not contain ERROR: or WARNING: prefixes
+					assert.NotContains(t, output, "ERROR:", "Should not contain error messages for valid record")
+					assert.NotContains(t, output, "WARNING:", "Should not contain warning messages for valid record without warnings")
+					assert.NotContains(t, output, "warning(s):", "Should not show warnings section")
+				}
+
+				if tt.expectWarnings {
+					// Should contain warning messages
+					assert.Contains(t, output, "Record is valid", "Should still show validation success")
+					assert.Contains(t, output, "WARNING:", "Should contain warning messages in output")
+					assert.Contains(t, output, "warning(s):", "Should show warnings count")
+				}
+			} else {
+				// Expect validation to fail (error returned)
+				require.Error(t, err, "Expected validation to fail for %s", tt.fileName)
+
+				if tt.expectErrorOutput {
+					// Should contain error messages
+					assert.Contains(t, output, "ERROR:", "Should contain error messages in output")
+					assert.Contains(t, output, "record validation failed", "Should show validation failure message")
+					assert.Contains(t, output, "message(s):", "Should show message count")
+					// Should not show success message
+					assert.NotContains(t, output, "Record is valid", "Should not show success message for invalid record")
 				}
 			}
 		})

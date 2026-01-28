@@ -25,20 +25,14 @@ require (
 	github.com/agntcy/dir/api v0.6.1
 	github.com/agntcy/dir/client v0.6.1
 	github.com/agntcy/dir/utils v0.6.1
-	github.com/agntcy/oasf-sdk/pkg v0.0.14
+	github.com/agntcy/oasf-sdk/pkg v0.0.16
 	github.com/mark3labs/mcphost v0.33.2
 	github.com/modelcontextprotocol/registry v1.4.0
 	google.golang.org/protobuf v1.36.11
 )
 
 require (
-	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
-	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
-	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-)
-
-require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260115113053-9b110d5996b7.1 // indirect; indirect // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1 // indirect; indirect // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
@@ -237,7 +231,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
-	github.com/theupdateframework/go-tuf/v2 v2.4.0 // indirect
+	github.com/theupdateframework/go-tuf/v2 v2.4.1 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

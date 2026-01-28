@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -146,21 +145,14 @@ func Run(ctx context.Context, cfg *config.Config) error {
 }
 
 func configureOASFValidation(cfg *config.Config) error {
-	// Configure OASF validation based on server configuration
-	// Schema URL comes from configuration (Helm chart values.yaml sets default)
-	// If schema URL is empty and API validation is enabled, treat as misconfiguration
-	if cfg.OASFAPIValidation.SchemaURL == "" && !cfg.OASFAPIValidation.Disable {
-		return errors.New("oasf_api_validation.schema_url must be set when API validation is enabled (disable=false). Set it in Helm chart values.yaml or via DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL environment variable")
+	// Initialize OASF validator with schema URL from configuration
+	// Schema URL is required for OASF API validation
+	if err := corev1.InitializeValidator(cfg.OASFAPIValidation.SchemaURL); err != nil {
+		return fmt.Errorf("failed to initialize OASF validator: %w", err)
 	}
 
-	corev1.SetSchemaURL(cfg.OASFAPIValidation.SchemaURL)
-	corev1.SetDisableAPIValidation(cfg.OASFAPIValidation.Disable)
-	corev1.SetStrictValidation(cfg.OASFAPIValidation.StrictMode)
-
 	logger.Info("OASF validator configured",
-		"schema_url", cfg.OASFAPIValidation.SchemaURL,
-		"disable_api_validation", cfg.OASFAPIValidation.Disable,
-		"strict_validation", cfg.OASFAPIValidation.StrictMode)
+		"schema_url", cfg.OASFAPIValidation.SchemaURL)
 
 	return nil
 }

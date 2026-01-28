@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   prepare:
+    if: startsWith(github.event.release.tag_name, 'v')
     name: Prepare
     runs-on: ubuntu-latest
     outputs:

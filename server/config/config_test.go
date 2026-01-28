@@ -11,8 +11,7 @@ import (
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
-	database "github.com/agntcy/dir/server/database/config"
-	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	dbconfig "github.com/agntcy/dir/server/database/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
 	reverification "github.com/agntcy/dir/server/reverification/config"
@@ -65,9 +64,7 @@ func TestConfig(t *testing.T) {
 			ExpectedConfig: &Config{
 				ListenAddress: "example.com:8889",
 				OASFAPIValidation: OASFAPIValidationConfig{
-					SchemaURL:  "https://custom.schema.url",
-					Disable:    false,
-					StrictMode: true, // Default is true (set in config.go)
+					SchemaURL: "https://custom.schema.url",
 				},
 				Connection: DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
@@ -105,10 +102,15 @@ func TestConfig(t *testing.T) {
 						Enabled: true, // Default value
 					},
 				},
-				Database: database.Config{
+				Database: dbconfig.Config{
 					DBType: "sqlite",
-					SQLite: sqliteconfig.Config{
+					SQLite: dbconfig.SQLiteConfig{
 						DBPath: "sqlite.db",
+					},
+					Postgres: dbconfig.PostgresConfig{
+						Host:     dbconfig.DefaultPostgresHost,
+						Port:     dbconfig.DefaultPostgresPort,
+						Database: dbconfig.DefaultPostgresDatabase,
 					},
 				},
 				Sync: sync.Config{
@@ -150,9 +152,7 @@ func TestConfig(t *testing.T) {
 			ExpectedConfig: &Config{
 				ListenAddress: DefaultListenAddress,
 				OASFAPIValidation: OASFAPIValidationConfig{
-					SchemaURL:  "",    // Empty when not configured - default should come from Helm chart
-					Disable:    false, // Default is false (set in config.go)
-					StrictMode: true,  // Default is true (set in config.go)
+					SchemaURL: "", // Empty when not configured - default should come from Helm chart
 				},
 				Connection: DefaultConnectionConfig(), // Connection defaults applied
 				Authn: authn.Config{
@@ -181,10 +181,15 @@ func TestConfig(t *testing.T) {
 						Enabled: routing.DefaultGossipSubEnabled,
 					},
 				},
-				Database: database.Config{
-					DBType: database.DefaultDBType,
-					SQLite: sqliteconfig.Config{
-						DBPath: sqliteconfig.DefaultSQLiteDBPath,
+				Database: dbconfig.Config{
+					DBType: dbconfig.DefaultDBType,
+					SQLite: dbconfig.SQLiteConfig{
+						DBPath: dbconfig.DefaultSQLiteDBPath,
+					},
+					Postgres: dbconfig.PostgresConfig{
+						Host:     dbconfig.DefaultPostgresHost,
+						Port:     dbconfig.DefaultPostgresPort,
+						Database: dbconfig.DefaultPostgresDatabase,
 					},
 				},
 				Sync: sync.Config{
@@ -233,9 +238,11 @@ func TestConfig(t *testing.T) {
 
 // TestConfig_SchemaURL tests that OASF schema URL configuration is correctly parsed.
 func TestConfig_SchemaURL(t *testing.T) {
-	// Configure validation for unit tests: use embedded schemas (no API validation)
+	// Configure validation for unit tests: use a valid schema URL
 	// This ensures tests don't depend on external services or require schema URL configuration
-	corev1.SetDisableAPIValidation(true)
+	if err := corev1.InitializeValidator("https://schema.oasf.outshift.com"); err != nil {
+		t.Fatalf("Failed to initialize validator: %v", err)
+	}
 
 	tests := []struct {
 		name              string
@@ -255,7 +262,7 @@ func TestConfig_SchemaURL(t *testing.T) {
 			expectedSchemaURL: "https://custom.schema.url",
 		},
 		{
-			name: "empty schema URL (disable API validator)",
+			name: "explicitly empty schema URL",
 			envVars: map[string]string{
 				"DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL": "",
 			},

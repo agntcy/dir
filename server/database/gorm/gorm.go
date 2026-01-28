@@ -1,49 +1,24 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package sqlite
+package gorm
 
 import (
 	"context"
 	"fmt"
-	"log"
-	"os"
-	"time"
 
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	gormlogger "gorm.io/gorm/logger"
 )
 
-var logger = logging.Logger("database/sqlite")
+var logger = logging.Logger("database/gorm")
 
 type DB struct {
 	gormDB *gorm.DB
 }
 
-func newCustomLogger() gormlogger.Interface {
-	// Create a custom logger configuration that ignores "record not found" errors
-	// since these are expected during normal operation (checking if records exist)
-	return gormlogger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags),
-		gormlogger.Config{
-			SlowThreshold:             200 * time.Millisecond, //nolint:mnd
-			LogLevel:                  gormlogger.Warn,
-			IgnoreRecordNotFoundError: true,
-			Colorful:                  true,
-		},
-	)
-}
-
-func New(path string) (*DB, error) {
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{
-		Logger: newCustomLogger(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
-	}
-
+// New creates a new DB instance from a gorm.DB connection and runs migrations.
+func New(db *gorm.DB) (*DB, error) {
 	// Migrate record-related schema
 	if err := db.AutoMigrate(Record{}, Locator{}, Skill{}, Module{}, Domain{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate record schema: %w", err)

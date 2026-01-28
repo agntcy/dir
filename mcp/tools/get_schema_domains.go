@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/agntcy/oasf-sdk/pkg/validator"
+	"github.com/agntcy/oasf-sdk/pkg/schema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -37,12 +37,12 @@ type GetSchemaDomainsOutput struct {
 // GetSchemaDomains retrieves domains from the OASF schema for the specified version.
 // If parent_domain is provided, returns only sub-domains under that parent.
 // Otherwise, returns all top-level domains.
-func GetSchemaDomains(_ context.Context, _ *mcp.CallToolRequest, input GetSchemaDomainsInput) (
+func GetSchemaDomains(ctx context.Context, _ *mcp.CallToolRequest, input GetSchemaDomainsInput) (
 	*mcp.CallToolResult,
 	GetSchemaDomainsOutput,
 	error,
 ) {
-	availableVersions, err := validateVersion(input.Version)
+	availableVersions, err := validateVersion(ctx, input.Version)
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaDomainsOutput{
@@ -51,7 +51,19 @@ func GetSchemaDomains(_ context.Context, _ *mcp.CallToolRequest, input GetSchema
 		}, nil
 	}
 
-	domainsJSON, err := validator.GetSchemaDomains(input.Version)
+	// Get schema instance
+	schemaInstance, err := getSchemaInstance()
+	if err != nil {
+		//nolint:nilerr // MCP tools communicate errors through output, not error return
+		return nil, GetSchemaDomainsOutput{
+			Version:           input.Version,
+			ErrorMessage:      fmt.Sprintf("Failed to initialize schema client: %v", err),
+			AvailableVersions: availableVersions,
+		}, nil
+	}
+
+	// Get domains using the schema package with WithVersion option
+	domainsJSON, err := schemaInstance.GetSchemaDomains(ctx, schema.WithVersion(input.Version))
 	if err != nil {
 		//nolint:nilerr // MCP tools communicate errors through output, not error return
 		return nil, GetSchemaDomainsOutput{

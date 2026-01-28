@@ -97,7 +97,7 @@ config:
   authz:
     enabled: true
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
-    enforcer_policy_file_content: |
+    enforcer_policy_csv: |
       p,example.org,*
       p,*,/agntcy.dir.store.v1.StoreService/Pull
       p,*,/agntcy.dir.store.v1.StoreService/PullReferrer

@@ -58,6 +58,14 @@ type EnrichmentResponse struct {
 }
 
 func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
+	// Apply environment variables from config file to current process
+	// Note: mcphost doesn't pass env vars from mcphost.json to spawned processes,
+	// so we set them in the current process environment where they'll be inherited by child processes.
+	if err := applyEnvVarsFromConfig(config.ConfigFile); err != nil {
+		logger.Debug("Failed to apply env vars from config", "error", err)
+		// Don't fail if env vars can't be applied - they might not be needed
+	}
+
 	// Initialize MCP Host
 	host, err := sdk.New(ctx, &sdk.Options{
 		ConfigFile: config.ConfigFile,
@@ -86,6 +94,55 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 		skillsPromptTemplate:  skillsPrompt,
 		domainsPromptTemplate: domainsPrompt,
 	}, nil
+}
+
+// applyEnvVarsFromConfig reads environment variables from mcphost.json and sets them
+// in the current process environment. This ensures they're inherited by spawned processes.
+// Environment variables already set in the current process are not overridden.
+func applyEnvVarsFromConfig(configFile string) error {
+	configBytes, err := os.ReadFile(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var cfg map[string]any
+	if err := json.Unmarshal(configBytes, &cfg); err != nil {
+		return fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	servers, ok := cfg["mcpServers"].(map[string]any)
+	if !ok {
+		return nil // No mcpServers section
+	}
+
+	dirServer, ok := servers["dir-mcp-server"].(map[string]any)
+	if !ok {
+		return nil // No dir-mcp-server configuration
+	}
+
+	env, ok := dirServer["env"].(map[string]any)
+	if !ok {
+		return nil // No env section
+	}
+
+	// Set environment variables from config (only if not already set)
+	for key, value := range env {
+		strValue, ok := value.(string)
+		if !ok {
+			continue // Skip non-string values
+		}
+
+		// Only set if not already set (allow override from shell)
+		if os.Getenv(key) == "" {
+			if err := os.Setenv(key, strValue); err != nil {
+				return fmt.Errorf("failed to set environment variable %s: %w", key, err)
+			}
+
+			logger.Debug("Set environment variable from config", "key", key)
+		}
+	}
+
+	return nil
 }
 
 // loadPromptTemplate loads the prompt template from config or uses the provided default.

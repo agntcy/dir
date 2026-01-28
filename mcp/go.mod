@@ -13,14 +13,14 @@ replace (
 require (
 	github.com/agntcy/dir/api v0.6.1
 	github.com/agntcy/dir/client v0.6.1
-	github.com/agntcy/oasf-sdk/pkg v0.0.14
+	github.com/agntcy/oasf-sdk/pkg v0.0.16
 	github.com/modelcontextprotocol/go-sdk v1.2.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/protobuf v1.36.11
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260119115944-846878e4ef08.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1 // indirect
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -134,15 +134,12 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
-	github.com/theupdateframework/go-tuf/v2 v2.4.0 // indirect
+	github.com/theupdateframework/go-tuf/v2 v2.4.1 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/transparency-dev/formats v0.0.0-20260119090622-e70c80e9488a // indirect
 	github.com/transparency-dev/merkle v0.0.2 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
-	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
-	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	gitlab.com/gitlab-org/api/client-go v1.16.0 // indirect
 	go.mongodb.org/mongo-driver v1.17.7 // indirect

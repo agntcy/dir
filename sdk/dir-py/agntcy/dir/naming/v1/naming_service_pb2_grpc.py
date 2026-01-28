@@ -6,7 +6,7 @@ from agntcy.dir.naming.v1 import naming_service_pb2 as agntcy_dot_dir_dot_naming
 
 
 class NamingServiceStub(object):
-    """NamingService provides methods to inspect name verification state.
+    """NamingService provides methods for name resolution and verification.
     Note: Verification is performed automatically by the backend scheduler
     for signed records with verifiable names (http://, https:// prefixes).
     """
@@ -22,16 +22,34 @@ class NamingServiceStub(object):
                 request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoRequest.SerializeToString,
                 response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoResponse.FromString,
                 _registered_method=True)
+        self.Resolve = channel.unary_unary(
+                '/agntcy.dir.naming.v1.NamingService/Resolve',
+                request_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ResolveRequest.SerializeToString,
+                response_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ResolveResponse.FromString,
+                _registered_method=True)
 
 
 class NamingServiceServicer(object):
-    """NamingService provides methods to inspect name verification state.
+    """NamingService provides methods for name resolution and verification.
     Note: Verification is performed automatically by the backend scheduler
     for signed records with verifiable names (http://, https:// prefixes).
     """
 
     def GetVerificationInfo(self, request, context):
         """GetVerificationInfo retrieves the verification info for a record.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Resolve(self, request, context):
+        """Resolve resolves a record reference (name with optional version) to CIDs.
+        Supports Docker-style references:
+        - "name" -> returns all versions (newest first)
+        - "name:version" -> returns the specific version
+        - "name@cid" -> hash-verified lookup (latest version)
+        - "name:version@cid" -> hash-verified lookup (specific version)
+        Returns an error if no matching record is found.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -45,6 +63,11 @@ def add_NamingServiceServicer_to_server(servicer, server):
                     request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoRequest.FromString,
                     response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoResponse.SerializeToString,
             ),
+            'Resolve': grpc.unary_unary_rpc_method_handler(
+                    servicer.Resolve,
+                    request_deserializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ResolveRequest.FromString,
+                    response_serializer=agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ResolveResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'agntcy.dir.naming.v1.NamingService', rpc_method_handlers)
@@ -54,7 +77,7 @@ def add_NamingServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class NamingService(object):
-    """NamingService provides methods to inspect name verification state.
+    """NamingService provides methods for name resolution and verification.
     Note: Verification is performed automatically by the backend scheduler
     for signed records with verifiable names (http://, https:// prefixes).
     """
@@ -76,6 +99,33 @@ class NamingService(object):
             '/agntcy.dir.naming.v1.NamingService/GetVerificationInfo',
             agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoRequest.SerializeToString,
             agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.GetVerificationInfoResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Resolve(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agntcy.dir.naming.v1.NamingService/Resolve',
+            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ResolveRequest.SerializeToString,
+            agntcy_dot_dir_dot_naming_dot_v1_dot_naming__service__pb2.ResolveResponse.FromString,
             options,
             channel_credentials,
             insecure,
