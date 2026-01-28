@@ -29,12 +29,9 @@ data:
     {{- $_ := set $dbConfig "sqlite" $sqliteConfig }}
     {{- else if eq .Values.database.type "postgres" }}
     {{- $pgConfig := dict }}
-    {{- if .Values.database.postgres.host }}
-    {{- $_ := set $pgConfig "host" .Values.database.postgres.host }}
-    {{- end }}
-    {{- if .Values.database.postgres.port }}
-    {{- $_ := set $pgConfig "port" (.Values.database.postgres.port | int) }}
-    {{- end }}
+    {{- /* Use helper to derive host from postgresql subchart when enabled */ -}}
+    {{- $_ := set $pgConfig "host" (include "chart.postgres.host" .) }}
+    {{- $_ := set $pgConfig "port" (.Values.database.postgres.port | default 5432 | int) }}
     {{- /* Use helper to derive database name from postgresql subchart when enabled */ -}}
     {{- $_ := set $pgConfig "database" (include "chart.postgres.database" .) }}
     {{- $_ := set $dbConfig "postgres" $pgConfig }}
