@@ -35,9 +35,9 @@ spec:
           env:
             # Database configuration (inherits from apiserver's postgres config)
             - name: RECONCILER_DATABASE_HOST
-              value: {{ .Values.database.postgres.host | quote }}
+              value: {{ include "chart.postgres.host" . | quote }}
             - name: RECONCILER_DATABASE_PORT
-              value: {{ .Values.database.postgres.port | quote }}
+              value: {{ .Values.database.postgres.port | default 5432 | quote }}
             - name: RECONCILER_DATABASE_DATABASE
               value: {{ include "chart.postgres.database" . | quote }}
             - name: RECONCILER_DATABASE_SSL_MODE

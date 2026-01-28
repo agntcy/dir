@@ -480,8 +480,8 @@ apiserver:
 
   # Database configuration
   database:
-    # Database type (currently only sqlite supported)
-    type: "sqlite"
+    # Database type: "sqlite" or "postgres"
+    type: "postgres"
 
     # SQLite configuration
     sqlite:

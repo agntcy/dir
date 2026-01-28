@@ -116,6 +116,20 @@ Single source of truth based on configuration mode:
 */}}
 
 {{/*
+Get PostgreSQL host.
+When subchart is enabled, derive from release name. Otherwise use explicit config.
+*/}}
+{{- define "chart.postgres.host" -}}
+{{- if .Values.postgresql.enabled -}}
+{{- printf "%s-postgresql" .Release.Name -}}
+{{- else if .Values.database.postgres.host -}}
+{{- .Values.database.postgres.host -}}
+{{- else -}}
+localhost
+{{- end -}}
+{{- end -}}
+
+{{/*
 Get PostgreSQL username.
 */}}
 {{- define "chart.postgres.username" -}}
