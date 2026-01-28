@@ -35,16 +35,12 @@ services:
       # Storage (etcd)
       - DISCOVERY_STORAGE_HOST=etcd
       - DISCOVERY_STORAGE_PORT=2379
-      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
-      # Runtime (docker or kubernetes)
+      # Runtime (docker)
       - DISCOVERY_RUNTIME_TYPE=docker
-      # Docker settings
       - DISCOVERY_RUNTIME_DOCKER_HOST=unix:///var/run/docker.sock
-      - DISCOVERY_RUNTIME_DOCKER_LABEL_KEY=discover
-      - DISCOVERY_RUNTIME_DOCKER_LABEL_VALUE=true
       # Processors
       - DISCOVERY_PROCESSOR_A2A_ENABLED=true
-      - DISCOVERY_PROCESSOR_WORKERS=4
+      - DISCOVERY_PROCESSOR_WORKERS=16
     depends_on:
       etcd:
         condition: service_healthy
@@ -64,7 +60,6 @@ services:
       # Storage (etcd)
       - DISCOVERY_STORAGE_HOST=etcd
       - DISCOVERY_STORAGE_PORT=2379
-      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
       # Server
       - DISCOVERY_SERVER_HOST=0.0.0.0
       - DISCOVERY_SERVER_PORT=8080
@@ -85,6 +80,8 @@ services:
     image: a2a-helloworld:latest
     labels:
       - "discover=true"
+      - "org.agntcy/type=a2a,oasf"
+      - "org.agntcy/oasf=my-record:v1"
     networks:
       - team-a
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/agntcy/dir/discovery/pkg/processor/a2a"
 	processor "github.com/agntcy/dir/discovery/pkg/processor/config"
+	"github.com/agntcy/dir/discovery/pkg/processor/oasf"
 	runtime "github.com/agntcy/dir/discovery/pkg/runtime/config"
 	"github.com/agntcy/dir/discovery/pkg/storage"
 	"github.com/mitchellh/mapstructure"
@@ -52,10 +53,10 @@ const (
 	DefaultServerPort = 8080
 
 	// Processor configuration defaults.
-	DefaultHealthEnabled    = true
-	DefaultHealthTimeout    = 5 * time.Second
-	DefaultOpenAPIEnabled   = true
-	DefaultOpenAPITimeout   = 10 * time.Second
+	DefaultA2AEnabled       = true
+	DefaultA2ATimeout       = 5 * time.Second
+	DefaultOASFEnabled      = true
+	DefaultOASFTimeout      = 10 * time.Second
 	DefaultProcessorWorkers = 4
 )
 
@@ -158,9 +159,14 @@ func LoadConfig() (*Config, error) {
 	// Processor configuration
 	//
 	v.SetDefault("processor.workers", DefaultProcessorWorkers)
-	v.SetDefault("processor.a2a.enabled", DefaultHealthEnabled)
-	v.SetDefault("processor.a2a.timeout", DefaultHealthTimeout)
+	v.SetDefault("processor.a2a.enabled", DefaultA2AEnabled)
+	v.SetDefault("processor.a2a.timeout", DefaultA2ATimeout)
 	v.SetDefault("processor.a2a.paths", a2a.DefaultDiscoveryPaths)
+	v.SetDefault("processor.a2a.label_key", a2a.DefaultLabelKey)
+	v.SetDefault("processor.a2a.label_value", a2a.DefaultLabelValue)
+	v.SetDefault("processor.oasf.enabled", DefaultOASFEnabled)
+	v.SetDefault("processor.oasf.timeout", DefaultOASFTimeout)
+	v.SetDefault("processor.oasf.label_key", oasf.DefaultLabelKey)
 
 	// Load configuration into struct
 	decodeHooks := mapstructure.ComposeDecodeHookFunc(

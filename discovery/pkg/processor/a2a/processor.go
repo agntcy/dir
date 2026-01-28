@@ -14,9 +14,11 @@ import (
 
 // processor probes workloads for A2A endpoints.
 type processor struct {
-	timeout time.Duration
-	paths   []string
-	client  *http.Client
+	timeout    time.Duration
+	paths      []string
+	client     *http.Client
+	labelKey   string
+	labelValue string
 }
 
 // NewProcessor creates a new A2A processor.
@@ -27,6 +29,8 @@ func NewProcessor(cfg Config) types.WorkloadProcessor {
 		client: &http.Client{
 			Timeout: cfg.Timeout,
 		},
+		labelKey:   cfg.LabelKey,
+		labelValue: cfg.LabelValue,
 	}
 }
 
@@ -37,6 +41,16 @@ func (p *processor) Name() string {
 
 // ShouldProcess returns whether to process the workload.
 func (p *processor) ShouldProcess(workload *types.Workload) bool {
+	// If workload does not have a label key with expected value, skip it
+	if val, ok := workload.Labels[p.labelKey]; ok {
+		if !strings.Contains(strings.ToLower(val), strings.ToLower(p.labelValue)) {
+			return false
+		}
+	} else {
+		return false
+	}
+
+	// Only process workloads with addresses and ports
 	return len(workload.Addresses) > 0 && len(workload.Ports) > 0
 }
 
