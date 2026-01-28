@@ -7,16 +7,20 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/reconciler/config"
 	"github.com/agntcy/dir/reconciler/service"
+	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	"github.com/agntcy/dir/server/database"
+	"github.com/agntcy/dir/server/store/oci"
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -47,6 +51,17 @@ func run() error {
 		return err
 	}
 
+	// Initialize OASF validator for record validation
+	if cfg.SchemaURL != "" {
+		if err := corev1.InitializeValidator(cfg.SchemaURL); err != nil {
+			return fmt.Errorf("failed to initialize OASF validator: %w", err)
+		}
+
+		logger.Info("OASF validator initialized", "schema_url", cfg.SchemaURL)
+	} else {
+		logger.Warn("OASF schema URL not configured, record validation will be skipped")
+	}
+
 	// Create database connection
 	db, err := database.NewPostgres(cfg.Database)
 	if err != nil {
@@ -54,12 +69,24 @@ func run() error {
 	}
 	defer db.Close()
 
+	// Create OCI store for accessing the local registry
+	store, err := oci.New(cfg.LocalRegistry)
+	if err != nil {
+		return err
+	}
+
+	// Create ORAS repository client for registry operations (e.g., listing tags)
+	repo, err := oci.NewORASRepository(cfg.LocalRegistry)
+	if err != nil {
+		return err
+	}
+
 	// Create service
 	svc := service.New()
 
 	// Register tasks
 	if cfg.Regsync.Enabled {
-		regsyncTask, err := regsync.NewTask(cfg.Regsync, db)
+		regsyncTask, err := regsync.NewTask(cfg.Regsync, cfg.LocalRegistry, db)
 		if err != nil {
 			return err
 		}
@@ -67,13 +94,22 @@ func run() error {
 		svc.RegisterTask(regsyncTask)
 	}
 
+	if cfg.Indexer.Enabled {
+		indexerTask, err := indexer.NewTask(cfg.Indexer, cfg.LocalRegistry, store, repo, db)
+		if err != nil {
+			return err
+		}
+
+		svc.RegisterTask(indexerTask)
+	}
+
 	// Create context that listens for signals
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start health check server with database readiness check
+	// Start health check server with database and store readiness check
 	healthServer := startHealthServer(func(ctx context.Context) bool {
-		return db.IsReady(ctx)
+		return db.IsReady(ctx) && store.IsReady(ctx)
 	})
 
 	// Start the service

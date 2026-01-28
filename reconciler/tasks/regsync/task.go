@@ -18,6 +18,7 @@ import (
 	"time"
 
 	storev1 "github.com/agntcy/dir/api/store/v1"
+	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	serversync "github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -34,6 +35,7 @@ var logger = logging.Logger("reconciler/regsync")
 // It checks the database for pending syncs and runs the regsync binary.
 type Task struct {
 	config        Config
+	localRegistry ociconfig.Config
 	db            types.SyncDatabaseAPI
 	regsyncConfig *RegsyncConfig
 
@@ -42,7 +44,7 @@ type Task struct {
 }
 
 // NewTask creates a new regsync reconciliation task.
-func NewTask(config Config, db types.SyncDatabaseAPI) (*Task, error) {
+func NewTask(config Config, localRegistry ociconfig.Config, db types.SyncDatabaseAPI) (*Task, error) {
 	// Ensure config directory exists
 	configDir := filepath.Dir(config.GetConfigPath())
 	if err := os.MkdirAll(configDir, configDirPermissions); err != nil {
@@ -53,16 +55,17 @@ func NewTask(config Config, db types.SyncDatabaseAPI) (*Task, error) {
 	regsyncConfig := NewRegsyncConfig()
 
 	// Add local registry credential
-	localHost := trimScheme(config.LocalRegistry.RegistryAddress)
+	localHost := trimScheme(localRegistry.RegistryAddress)
 	regsyncConfig.AddCredential(
 		localHost,
-		config.LocalRegistry.Username,
-		config.LocalRegistry.Password,
-		config.LocalRegistry.Insecure,
+		localRegistry.Username,
+		localRegistry.Password,
+		localRegistry.Insecure,
 	)
 
 	return &Task{
 		config:        config,
+		localRegistry: localRegistry,
 		db:            db,
 		regsyncConfig: regsyncConfig,
 	}, nil
@@ -285,10 +288,10 @@ func (t *Task) isProcessing() bool {
 
 // buildTargetURL builds the target registry URL for syncs.
 func (t *Task) buildTargetURL() string {
-	localHost := trimScheme(t.config.LocalRegistry.RegistryAddress)
+	localHost := trimScheme(t.localRegistry.RegistryAddress)
 
-	if t.config.LocalRegistry.RepositoryName != "" {
-		return fmt.Sprintf("%s/%s", localHost, t.config.LocalRegistry.RepositoryName)
+	if t.localRegistry.RepositoryName != "" {
+		return fmt.Sprintf("%s/%s", localHost, t.localRegistry.RepositoryName)
 	}
 
 	return localHost

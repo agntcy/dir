@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/agntcy/dir/reconciler/tasks/indexer"
 	"github.com/agntcy/dir/reconciler/tasks/regsync"
 	dbconfig "github.com/agntcy/dir/server/database/config"
+	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/spf13/viper"
 )
@@ -45,8 +47,17 @@ type Config struct {
 	// Database holds PostgreSQL connection configuration.
 	Database dbconfig.PostgresConfig `json:"database" mapstructure:"database"`
 
+	// LocalRegistry holds configuration for the local OCI registry.
+	LocalRegistry ociconfig.Config `json:"local_registry" mapstructure:"local_registry"`
+
+	// SchemaURL is the OASF schema URL for record validation.
+	SchemaURL string `json:"schema_url" mapstructure:"schema_url"`
+
 	// Regsync holds the regsync task configuration.
 	Regsync regsync.Config `json:"regsync" mapstructure:"regsync"`
+
+	// Indexer holds the indexer task configuration.
+	Indexer indexer.Config `json:"indexer" mapstructure:"indexer"`
 }
 
 // LoadConfig loads the configuration from file and environment variables.
@@ -93,6 +104,16 @@ func LoadConfig() (*Config, error) {
 	v.SetDefault("database.ssl_mode", "disable")
 
 	//
+	// Local registry configuration (shared by all tasks)
+	//
+	_ = v.BindEnv("local_registry.type")
+	_ = v.BindEnv("local_registry.registry_address")
+	_ = v.BindEnv("local_registry.repository_name")
+	_ = v.BindEnv("local_registry.auth_config.username")
+	_ = v.BindEnv("local_registry.auth_config.password")
+	_ = v.BindEnv("local_registry.auth_config.insecure")
+
+	//
 	// Regsync task configuration
 	//
 	_ = v.BindEnv("regsync.enabled")
@@ -110,13 +131,6 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("regsync.timeout")
 	v.SetDefault("regsync.timeout", regsync.DefaultTimeout)
 
-	// Local registry configuration
-	_ = v.BindEnv("regsync.local_registry.registry_address")
-	_ = v.BindEnv("regsync.local_registry.repository_name")
-	_ = v.BindEnv("regsync.local_registry.auth_config.username")
-	_ = v.BindEnv("regsync.local_registry.auth_config.password")
-	_ = v.BindEnv("regsync.local_registry.auth_config.insecure")
-
 	// Authentication configuration for remote Directory connections
 	_ = v.BindEnv("regsync.authn.enabled")
 	v.SetDefault("regsync.authn.enabled", false)
@@ -126,6 +140,20 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("regsync.authn.socket_path")
 	_ = v.BindEnv("regsync.authn.audiences")
+
+	//
+	// Indexer task configuration
+	//
+	_ = v.BindEnv("indexer.enabled")
+	v.SetDefault("indexer.enabled", true)
+
+	_ = v.BindEnv("indexer.interval")
+	v.SetDefault("indexer.interval", indexer.DefaultInterval)
+
+	//
+	// OASF validation configuration
+	//
+	_ = v.BindEnv("schema_url")
 
 	// Unmarshal into config struct
 	config := &Config{}

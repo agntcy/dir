@@ -7,7 +7,6 @@ import (
 	"time"
 
 	authn "github.com/agntcy/dir/server/authn/config"
-	oci "github.com/agntcy/dir/server/store/oci/config"
 )
 
 const (
@@ -40,9 +39,6 @@ type Config struct {
 
 	// Timeout is the maximum duration for a single regsync command execution.
 	Timeout time.Duration `json:"timeout,omitempty" mapstructure:"timeout"`
-
-	// LocalRegistry holds configuration for the local registry.
-	LocalRegistry oci.Config `json:"local_registry" mapstructure:"local_registry"`
 
 	// Authn holds authentication configuration for connecting to remote Directory nodes.
 	Authn authn.Config `json:"authn" mapstructure:"authn"`
