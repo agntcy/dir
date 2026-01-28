@@ -275,8 +275,13 @@ func processWorkload(
 			log.Printf("Processor %s failed for %s (attempt %d/%d): %v", p.Name(), workload.Name, attempt, maxRetries, err)
 
 			if attempt < maxRetries {
-				// Wait before retrying
-				time.Sleep(retryDelay)
+				// Wait before retrying, but respect context cancellation
+				select {
+				case <-time.After(retryDelay):
+				case <-ctx.Done():
+					log.Printf("Context cancelled, stopping retries for processor %s", p.Name())
+					return
+				}
 			}
 		}
 
