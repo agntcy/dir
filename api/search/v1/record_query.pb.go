@@ -31,22 +31,22 @@ const (
 	// Unspecified query type.
 	RecordQueryType_RECORD_QUERY_TYPE_UNSPECIFIED RecordQueryType = 0
 	// Query for a record name.
-	// Supports wildcard patterns: "web*", "*service", "api-*-v2", "???api", "agent-[0-9]"
+	// Supports wildcard patterns: "web*", "*service", "api-*-v2", "???api"
 	RecordQueryType_RECORD_QUERY_TYPE_NAME RecordQueryType = 1
 	// Query for a record version.
-	// Supports wildcard patterns: "v1.*", "v2.*", "*-beta", "v1.0.?", "v[0-9].*"
+	// Supports wildcard patterns: "v1.*", "v2.*", "*-beta", "v1.0.?"
 	RecordQueryType_RECORD_QUERY_TYPE_VERSION RecordQueryType = 2
 	// Query for a skill ID.
 	// Numeric field - exact match only, no wildcard support.
 	RecordQueryType_RECORD_QUERY_TYPE_SKILL_ID RecordQueryType = 3
 	// Query for a skill name.
-	// Supports wildcard patterns: "python*", "*script", "*machine*learning*", "Pytho?", "[A-M]*"
+	// Supports wildcard patterns: "python*", "*script", "*machine*learning*", "Pytho?"
 	RecordQueryType_RECORD_QUERY_TYPE_SKILL_NAME RecordQueryType = 4
 	// Query for a locator type.
-	// Supports wildcard patterns: "http*", "ftp*", "*docker*", "[hf]tt[ps]*"
+	// Supports wildcard patterns: "http*", "ftp*", "*docker*"
 	RecordQueryType_RECORD_QUERY_TYPE_LOCATOR RecordQueryType = 5
 	// Query for a module name.
-	// Supports wildcard patterns: "*-plugin", "*-module", "core*", "mod-?", "plugin-[0-9]"
+	// Supports wildcard patterns: "*-plugin", "*-module", "core*", "mod-?"
 	RecordQueryType_RECORD_QUERY_TYPE_MODULE_NAME RecordQueryType = 6
 	// Query for a domain ID.
 	// Numeric field - exact match only, no wildcard support.
@@ -66,6 +66,9 @@ const (
 	// Query for a module ID.
 	// Numeric field - exact match only, no wildcard support.
 	RecordQueryType_RECORD_QUERY_TYPE_MODULE_ID RecordQueryType = 12
+	// Query for verified records (name ownership verified via JWKS).
+	// Boolean field - use "true" or "false" as value.
+	RecordQueryType_RECORD_QUERY_TYPE_VERIFIED RecordQueryType = 13
 )
 
 // Enum value maps for RecordQueryType.
@@ -84,6 +87,7 @@ var (
 		10: "RECORD_QUERY_TYPE_AUTHOR",
 		11: "RECORD_QUERY_TYPE_SCHEMA_VERSION",
 		12: "RECORD_QUERY_TYPE_MODULE_ID",
+		13: "RECORD_QUERY_TYPE_VERIFIED",
 	}
 	RecordQueryType_value = map[string]int32{
 		"RECORD_QUERY_TYPE_UNSPECIFIED":    0,
@@ -99,6 +103,7 @@ var (
 		"RECORD_QUERY_TYPE_AUTHOR":         10,
 		"RECORD_QUERY_TYPE_SCHEMA_VERSION": 11,
 		"RECORD_QUERY_TYPE_MODULE_ID":      12,
+		"RECORD_QUERY_TYPE_VERIFIED":       13,
 	}
 )
 
@@ -136,7 +141,6 @@ func (RecordQueryType) EnumDescriptor() ([]byte, []int) {
 //	Wildcard match:   { type: RECORD_QUERY_TYPE_NAME, value: "web*" }
 //	Pattern match:    { type: RECORD_QUERY_TYPE_SKILL_NAME, value: "*machine*learning*" }
 //	Question mark:    { type: RECORD_QUERY_TYPE_VERSION, value: "v1.0.?" }
-//	List wildcards:   { type: RECORD_QUERY_TYPE_NAME, value: "agent-[0-9]" }
 //	Complex match:    { type: RECORD_QUERY_TYPE_LOCATOR, value: "docker-image:https://*.example.com/*" }
 type RecordQuery struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -147,7 +151,6 @@ type RecordQuery struct {
 	//
 	//	'*' - matches zero or more characters
 	//	'?' - matches exactly one character
-	//	'[]' - matches any character within brackets (e.g., [0-9], [a-z], [abc])
 	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -210,7 +213,7 @@ var file_agntcy_dir_search_v1_record_query_proto_rawDesc = string([]byte{
 	0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x51, 0x75, 0x65, 0x72, 0x79, 0x54,
 	0x79, 0x70, 0x65, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c,
 	0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x2a,
-	0xbe, 0x03, 0x0a, 0x0f, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x51, 0x75, 0x65, 0x72, 0x79, 0x54,
+	0xde, 0x03, 0x0a, 0x0f, 0x52, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x51, 0x75, 0x65, 0x72, 0x79, 0x54,
 	0x79, 0x70, 0x65, 0x12, 0x21, 0x0a, 0x1d, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44, 0x5f, 0x51, 0x55,
 	0x45, 0x52, 0x59, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49,
 	0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x1a, 0x0a, 0x16, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44,
@@ -238,6 +241,8 @@ var file_agntcy_dir_search_v1_record_query_proto_rawDesc = string([]byte{
 	0x43, 0x48, 0x45, 0x4d, 0x41, 0x5f, 0x56, 0x45, 0x52, 0x53, 0x49, 0x4f, 0x4e, 0x10, 0x0b, 0x12,
 	0x1f, 0x0a, 0x1b, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44, 0x5f, 0x51, 0x55, 0x45, 0x52, 0x59, 0x5f,
 	0x54, 0x59, 0x50, 0x45, 0x5f, 0x4d, 0x4f, 0x44, 0x55, 0x4c, 0x45, 0x5f, 0x49, 0x44, 0x10, 0x0c,
+	0x12, 0x1e, 0x0a, 0x1a, 0x52, 0x45, 0x43, 0x4f, 0x52, 0x44, 0x5f, 0x51, 0x55, 0x45, 0x52, 0x59,
+	0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x56, 0x45, 0x52, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x0d,
 	0x42, 0xc4, 0x01, 0x0a, 0x18, 0x63, 0x6f, 0x6d, 0x2e, 0x61, 0x67, 0x6e, 0x74, 0x63, 0x79, 0x2e,
 	0x64, 0x69, 0x72, 0x2e, 0x73, 0x65, 0x61, 0x72, 0x63, 0x68, 0x2e, 0x76, 0x31, 0x42, 0x10, 0x52,
 	0x65, 0x63, 0x6f, 0x72, 0x64, 0x51, 0x75, 0x65, 0x72, 0x79, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50,

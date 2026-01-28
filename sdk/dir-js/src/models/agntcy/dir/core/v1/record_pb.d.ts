@@ -35,6 +35,40 @@ export declare type RecordRef = Message<"agntcy.dir.core.v1.RecordRef"> & {
 export declare const RecordRefSchema: GenMessage<RecordRef>;
 
 /**
+ * Represents a named reference to a Record with version information.
+ *
+ * @generated from message agntcy.dir.core.v1.NamedRecordRef
+ */
+export declare type NamedRecordRef = Message<"agntcy.dir.core.v1.NamedRecordRef"> & {
+  /**
+   * The name of the record.
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * The version of the record.
+   *
+   * @generated from field: string version = 2;
+   */
+  version: string;
+
+  /**
+   * The CID of the record.
+   *
+   * @generated from field: string cid = 3;
+   */
+  cid: string;
+};
+
+/**
+ * Describes the message agntcy.dir.core.v1.NamedRecordRef.
+ * Use `create(NamedRecordRefSchema)` to create a new message.
+ */
+export declare const NamedRecordRefSchema: GenMessage<NamedRecordRef>;
+
+/**
  * Defines metadata about a record.
  *
  * @generated from message agntcy.dir.core.v1.RecordMeta

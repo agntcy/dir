@@ -25,50 +25,23 @@ const (
 )
 
 var (
-	defaultValidator     *validator.Validator
-	configMu             sync.RWMutex
-	schemaURL            = "" // Set via SetSchemaURL() from configuration
-	disableAPIValidation = false
-	strictValidation     = true
+	defaultValidator *validator.Validator
+	configMu         sync.RWMutex
 )
 
-func init() {
+// InitializeValidator initializes the OASF validator with the given schema URL.
+func InitializeValidator(schemaURL string) error {
+	configMu.Lock()
+	defer configMu.Unlock()
+
 	var err error
 
-	defaultValidator, err = validator.New()
+	defaultValidator, err = validator.New(schemaURL)
 	if err != nil {
-		panic(fmt.Sprintf("failed to initialize OASF-SDK validator: %v", err))
+		return fmt.Errorf("failed to initialize OASF-SDK validator: %w", err)
 	}
-}
 
-// SetSchemaURL configures the schema URL to use for API-based validation.
-// This function is thread-safe and can be called concurrently with validation operations.
-func SetSchemaURL(url string) {
-	configMu.Lock()
-	defer configMu.Unlock()
-
-	schemaURL = url
-}
-
-// SetDisableAPIValidation configures whether to disable API-based validation.
-// When true, embedded schemas will be used instead of the API validator.
-// This function is thread-safe and can be called concurrently with validation operations.
-func SetDisableAPIValidation(disable bool) {
-	configMu.Lock()
-	defer configMu.Unlock()
-
-	disableAPIValidation = disable
-}
-
-// SetStrictValidation configures whether to use strict validation mode.
-// When true, uses strict validation (fails on unknown attributes, deprecated fields, etc.).
-// When false, uses non-strict validation (more permissive, only fails on critical errors).
-// This function is thread-safe and can be called concurrently with validation operations.
-func SetStrictValidation(strict bool) {
-	configMu.Lock()
-	defer configMu.Unlock()
-
-	strictValidation = strict
+	return nil
 }
 
 // GetCid calculates and returns the CID for this record.
@@ -163,7 +136,8 @@ func (r *Record) Decode() (DecodedRecord, error) {
 	}, nil
 }
 
-// Validate validates the Record's data against its embedded schema using the OASF SDK.
+// Validate validates the Record's data using the OASF SDK.
+// The validator must be initialized with InitializeValidator before calling this method.
 func (r *Record) Validate(ctx context.Context) (bool, []string, error) {
 	if r == nil || r.GetData() == nil {
 		return false, []string{"record is nil"}, nil
@@ -174,41 +148,44 @@ func (r *Record) Validate(ctx context.Context) (bool, []string, error) {
 		return false, []string{fmt.Sprintf("record size %d bytes exceeds maximum allowed size of %d bytes (4MB)", recordSize, maxRecordSize)}, nil
 	}
 
-	// Validate the record using OASF SDK
-	// Read configuration atomically to avoid race conditions
+	// Read validator atomically to avoid race conditions
 	configMu.RLock()
 
-	currentSchemaURL := schemaURL
-	currentDisableAPIValidation := disableAPIValidation
-	currentStrictValidation := strictValidation
+	validator := defaultValidator
 
 	configMu.RUnlock()
 
-	// If API validation is not disabled, use API-based validation with configured schema URL
-	if !currentDisableAPIValidation {
-		// Safety check: schema URL must be set for API validation
-		if currentSchemaURL == "" {
-			return false, []string{"API validation is enabled but schema_url is not configured"}, nil
-		}
-
-		// Create a context with timeout for API validation HTTP calls.
-		// We use the caller's context as parent so validation respects cancellation,
-		// but add our own timeout to prevent hanging if the OASF server is slow/unreachable.
-		validationCtx, cancel := context.WithTimeout(ctx, DefaultValidationTimeout)
-		defer cancel()
-
-		//nolint:wrapcheck
-		return defaultValidator.ValidateRecord(
-			validationCtx,
-			r.GetData(),
-			validator.WithSchemaURL(currentSchemaURL),
-			validator.WithStrict(currentStrictValidation),
-		)
+	if validator == nil {
+		return false, []string{"validator not initialized, call InitializeValidator first"}, nil
 	}
 
-	// Use embedded schemas (no HTTP calls, so we can use the original context)
-	//nolint:wrapcheck
-	return defaultValidator.ValidateRecord(ctx, r.GetData())
+	// Create a context with timeout for API validation HTTP calls.
+	// We use the caller's context as parent so validation respects cancellation,
+	// but add our own timeout to prevent hanging if the OASF server is slow/unreachable.
+	validationCtx, cancel := context.WithTimeout(ctx, DefaultValidationTimeout)
+	defer cancel()
+
+	valid, errors, warnings, err := validator.ValidateRecord(validationCtx, r.GetData())
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to validate record: %w", err)
+	}
+
+	// Prefix errors and warnings before combining them
+	prefixedErrors := make([]string, len(errors))
+	for i, e := range errors {
+		prefixedErrors[i] = "ERROR: " + e
+	}
+
+	prefixedWarnings := make([]string, len(warnings))
+	for i, w := range warnings {
+		prefixedWarnings[i] = "WARNING: " + w
+	}
+
+	allMessages := make([]string, 0, len(prefixedErrors)+len(prefixedWarnings))
+	allMessages = append(allMessages, prefixedErrors...)
+	allMessages = append(allMessages, prefixedWarnings...)
+
+	return valid, allMessages, nil
 }
 
 // UnmarshalRecord unmarshals canonical Record JSON bytes to a Record.

@@ -13,8 +13,6 @@ import (
 )
 
 func TestGetSchemaDomains(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 
 	tests := []struct {
@@ -115,7 +113,8 @@ func TestGetSchemaDomains(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			t.Setenv("OASF_API_VALIDATION_SCHEMA_URL", "https://schema.oasf.outshift.com")
+			// Note: t.Setenv cannot be used with t.Parallel(), so we run tests sequentially
 
 			result, output, err := GetSchemaDomains(ctx, nil, tt.input)
 

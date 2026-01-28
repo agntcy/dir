@@ -19,6 +19,7 @@ type RecordFilters struct {
 	CreatedAts     []string
 	Authors        []string
 	SchemaVersions []string
+	Verified       *bool // Filter by verified status (name ownership verified via JWKS)
 }
 
 type FilterOption func(*RecordFilters)
@@ -125,5 +126,12 @@ func WithSchemaVersions(versions ...string) FilterOption {
 func WithModuleIDs(ids ...uint64) FilterOption {
 	return func(sc *RecordFilters) {
 		sc.ModuleIDs = append(sc.ModuleIDs, ids...)
+	}
+}
+
+// WithVerified filters records by verified status.
+func WithVerified(verified bool) FilterOption {
+	return func(sc *RecordFilters) {
+		sc.Verified = &verified
 	}
 }

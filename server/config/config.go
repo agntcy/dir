@@ -11,8 +11,7 @@ import (
 
 	authn "github.com/agntcy/dir/server/authn/config"
 	authz "github.com/agntcy/dir/server/authz/config"
-	database "github.com/agntcy/dir/server/database/config"
-	sqliteconfig "github.com/agntcy/dir/server/database/sqlite/config"
+	dbconfig "github.com/agntcy/dir/server/database/config"
 	events "github.com/agntcy/dir/server/events/config"
 	ratelimitconfig "github.com/agntcy/dir/server/middleware/ratelimit/config"
 	publication "github.com/agntcy/dir/server/publication/config"
@@ -139,7 +138,7 @@ type Config struct {
 	Routing routing.Config `json:"routing" mapstructure:"routing"`
 
 	// Database configuration
-	Database database.Config `json:"database" mapstructure:"database"`
+	Database dbconfig.Config `json:"database" mapstructure:"database"`
 
 	// Sync configuration
 	Sync sync.Config `json:"sync" mapstructure:"sync"`
@@ -160,20 +159,9 @@ type Config struct {
 // OASFAPIValidationConfig defines OASF API validation configuration.
 type OASFAPIValidationConfig struct {
 	// SchemaURL is the OASF schema URL for API-based validation.
-	// When set, records will be validated using the OASF API validator instead of embedded schemas.
+	// This is required - records will be validated using the OASF API validator.
 	// The default value is set in the Helm chart values.yaml (apiserver.config.oasf_api_validation.schema_url).
-	// This field should not be left empty when API validation is enabled (disable=false).
 	SchemaURL string `json:"schema_url,omitempty" mapstructure:"schema_url"`
-
-	// Disable disables API validation and uses embedded schema validation instead.
-	// Default: false (uses API validation)
-	Disable bool `json:"disable,omitempty" mapstructure:"disable"`
-
-	// StrictMode enables strict validation mode (fails on warnings).
-	// When false, uses non-strict validation mode (allows warnings, only fails on errors).
-	// Default: true (strict mode)
-	// Only applies when Disable is false
-	StrictMode bool `json:"strict_mode,omitempty" mapstructure:"strict_mode"`
 }
 
 // LoggingConfig defines gRPC request/response logging configuration.
@@ -333,13 +321,7 @@ func LoadConfig() (*Config, error) {
 	//
 	_ = v.BindEnv("oasf_api_validation.schema_url")
 	// Note: No default set here - default should come from Helm chart values.yaml
-	// If schema_url is empty and API validation is enabled, server will fail to start with validation error
-
-	_ = v.BindEnv("oasf_api_validation.disable")
-	v.SetDefault("oasf_api_validation.disable", false)
-
-	_ = v.BindEnv("oasf_api_validation.strict_mode")
-	v.SetDefault("oasf_api_validation.strict_mode", true)
+	// Schema URL is required for OASF API validation
 
 	//
 	// Logging configuration (gRPC request/response logging)
@@ -464,10 +446,24 @@ func LoadConfig() (*Config, error) {
 	// Database configuration
 	//
 	_ = v.BindEnv("database.db_type")
-	v.SetDefault("database.db_type", database.DefaultDBType)
+	v.SetDefault("database.db_type", dbconfig.DefaultDBType)
 
+	// SQLite configuration
 	_ = v.BindEnv("database.sqlite.db_path")
-	v.SetDefault("database.sqlite.db_path", sqliteconfig.DefaultSQLiteDBPath)
+	v.SetDefault("database.sqlite.db_path", dbconfig.DefaultSQLiteDBPath)
+
+	// PostgreSQL configuration
+	_ = v.BindEnv("database.postgres.host")
+	v.SetDefault("database.postgres.host", dbconfig.DefaultPostgresHost)
+
+	_ = v.BindEnv("database.postgres.port")
+	v.SetDefault("database.postgres.port", dbconfig.DefaultPostgresPort)
+
+	_ = v.BindEnv("database.postgres.database")
+	v.SetDefault("database.postgres.database", dbconfig.DefaultPostgresDatabase)
+
+	_ = v.BindEnv("database.postgres.username")
+	_ = v.BindEnv("database.postgres.password")
 
 	//
 	// Sync configuration

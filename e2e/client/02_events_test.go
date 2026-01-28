@@ -83,7 +83,7 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 		// Get CIDs for V031, V070, and V080 testdata
 		v031Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV031JSON)
 		v070Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
-		v080Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV080JSON)
+		v080Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV080V4JSON)
 
 		// IMPORTANT: Unpublish first to remove routing labels, then delete from store
 		if v031Record != nil {

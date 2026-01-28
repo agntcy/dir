@@ -79,10 +79,10 @@ jobs:
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir push command on Peer 1"
-            bin/dirctl push e2e/shared/testdata/record_070.json --server-addr 127.0.0.1:8890 > digest.txt
+            bin/dirctl push e2e/shared/testdata/record_070.json --server-addr 127.0.0.1:8890 --output raw > digest.txt
           else
             echo "Running dir push command"
-            bin/dirctl push e2e/shared/testdata/record_070.json > digest.txt
+            bin/dirctl push e2e/shared/testdata/record_070.json --output raw > digest.txt
           fi
           echo "Pushed image digest:"
           cat digest.txt
@@ -92,42 +92,42 @@ jobs:
 
           if [ "${{ inputs.network }}" = "true" ]; then
             echo "Running dir publish command on Peer 1"
-            bin/dirctl publish $(cat digest.txt) --server-addr 127.0.0.1:8890
+            bin/dirctl routing publish $(cat digest.txt) --server-addr 127.0.0.1:8890
             echo "Waiting for publish to complete"
             sleep 120
           else
             echo "Running dir publish command"
-            bin/dirctl publish $(cat digest.txt)
+            bin/dirctl routing publish $(cat digest.txt)
           fi
 
-      - name: Run list info command
+      - name: Run routing info command
         continue-on-error: true
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
-            echo "Running dir list info command on Peer 1"
-            bin/dirctl list info --server-addr 127.0.0.1:8890
-            echo "Running dir list info command on Peer 2"
-            bin/dirctl list info --server-addr 127.0.0.1:8891
-            echo "Running dir list info command on Peer 3"
-            bin/dirctl list info --server-addr 127.0.0.1:8892
+            echo "Running dir routing info command on Peer 1"
+            bin/dirctl routing info --server-addr 127.0.0.1:8890
+            echo "Running dir routing info command on Peer 2"
+            bin/dirctl routing info --server-addr 127.0.0.1:8891
+            echo "Running dir routing info command on Peer 3"
+            bin/dirctl routing info --server-addr 127.0.0.1:8892
           else
-            echo "Running dir list info command"
-            bin/dirctl list info
+            echo "Running dir routing info command"
+            bin/dirctl routing info
           fi
 
-      - name: Run list search by skill command
+      - name: Run routing list by skill command
         continue-on-error: true
         run: |
           if [ "${{ inputs.network }}" = "true" ]; then
-            echo "Running dir list search by skill command on Peer 1"
-            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8890
-            echo "Running dir list search by skill command on Peer 2"
-            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8891
-            echo "Running dir list search by skill command on Peer 3"
-            bin/dirctl list "/skills/Natural Language Processing" --server-addr 127.0.0.1:8892
+            echo "Running dir routing list by skill command on Peer 1"
+            bin/dirctl routing list --skill "Natural Language Processing" --server-addr 127.0.0.1:8890
+            echo "Running dir routing list by skill command on Peer 2"
+            bin/dirctl routing list --skill "Natural Language Processing" --server-addr 127.0.0.1:8891
+            echo "Running dir routing list by skill command on Peer 3"
+            bin/dirctl routing list --skill "Natural Language Processing" --server-addr 127.0.0.1:8892
           else
-            echo "Running dir list search by skill command"
-            bin/dirctl list "/skills/Natural Language Processing"
+            echo "Running dir routing list by skill command"
+            bin/dirctl routing list --skill "Natural Language Processing"
           fi
 
       - name: Run pull command
@@ -200,7 +200,7 @@ jobs:
       - name: Push record
         run: |
           echo "Pushing record"
-          bin/dirctl push e2e/shared/testdata/record_070.json > digest.txt
+          bin/dirctl push e2e/shared/testdata/record_070.json --output raw > digest.txt
 
       - name: Sign record
         run: |
@@ -261,7 +261,7 @@ jobs:
       - name: Push record
         run: |
           echo "Pushing record"
-          bin/dirctl push e2e/shared/testdata/record_070.json > digest.txt
+          bin/dirctl push e2e/shared/testdata/record_070.json --output raw > digest.txt
 
       - name: Sign record
         run: |

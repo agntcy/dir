@@ -48,6 +48,10 @@ func (c *CLI) Pull(cid string) *CommandBuilder {
 	return c.Command("pull").WithArgs(cid)
 }
 
+func (c *CLI) Info(cidOrName string) *CommandBuilder {
+	return c.Command("info").WithArgs(cidOrName)
+}
+
 func (c *CLI) Delete(cid string) *CommandBuilder {
 	return c.Command("delete").WithArgs(cid)
 }
@@ -139,6 +143,19 @@ func (r *RoutingCommands) WithArgs(args ...string) *CommandBuilder {
 
 func (c *CLI) Verify(recordCID string) *CommandBuilder {
 	return c.Command("verify").WithArgs(recordCID)
+}
+
+// Naming commands - all naming operations are now under the naming subcommand.
+func (c *CLI) Naming() *NamingCommands {
+	return &NamingCommands{cli: c}
+}
+
+type NamingCommands struct {
+	cli *CLI
+}
+
+func (n *NamingCommands) Verify(cidOrName string) *CommandBuilder {
+	return n.cli.Command("naming").WithArgs("verify", cidOrName)
 }
 
 // Network commands.

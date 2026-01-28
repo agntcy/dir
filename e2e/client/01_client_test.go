@@ -107,7 +107,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		},
 		{
 			name:     "Record_080_Agent",
-			jsonData: testdata.ExpectedRecordV080JSON,
+			jsonData: testdata.ExpectedRecordV080V4JSON,
 			expectedSkillLabels: []string{
 				"/skills/natural_language_processing/natural_language_generation/text_completion",
 				"/skills/natural_language_processing/analytical_reasoning/problem_solving",

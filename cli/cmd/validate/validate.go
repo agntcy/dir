@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/cli/presenter"
@@ -22,28 +23,18 @@ var Command = &cobra.Command{
 	Long: `Validate OASF record JSON against the OASF schema. The JSON can be provided
 as a file path or piped from stdin (e.g., from dirctl pull).
 
-You must specify either --url for API-based validation or --disable-api for
-embedded schema validation.
+A schema URL must be provided via --url for API-based validation.
 
 Usage examples:
 
-1. Validate a file using embedded schemas (no API calls):
-   dirctl validate record.json --disable-api
-
-2. Validate a file with API-based validation:
+1. Validate a file with API-based validation:
    dirctl validate record.json --url https://schema.oasf.outshift.com
 
-3. Validate a file with non-strict mode (more permissive, only works with --url):
-   dirctl validate record.json --url https://schema.oasf.outshift.com --disable-strict
+2. Validate JSON piped from stdin:
+   cat record.json | dirctl validate --url https://schema.oasf.outshift.com
 
-4. Validate JSON piped from stdin:
-   cat record.json | dirctl validate --disable-api
-
-5. Validate a record pulled from directory:
-   dirctl pull <cid> --output json | dirctl validate --disable-api
-
-Note: You must specify either --url (for API validation) or --disable-api
-(for embedded schema validation).
+3. Validate a record pulled from directory:
+   dirctl pull <cid> --output json | dirctl validate --url https://schema.oasf.outshift.com
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var jsonData []byte
@@ -78,12 +69,14 @@ func runCommand(cmd *cobra.Command, jsonData []byte) error {
 		return fmt.Errorf("failed to parse record JSON: %w", err)
 	}
 
-	// Configure validation settings
-	configureValidationSettings()
+	// Initialize validator with schema URL
+	// Note: opts.SchemaURL is populated by cobra during flag parsing in Execute()
+	if opts.SchemaURL == "" {
+		return fmt.Errorf("schema URL is required, use --url flag to provide it")
+	}
 
-	// Check if flags are provided
-	if opts.SchemaURL == "" && !opts.DisableAPI {
-		return errors.New("either --url or --disable-api flag must be specified")
+	if err := corev1.InitializeValidator(opts.SchemaURL); err != nil {
+		return fmt.Errorf("failed to initialize validator: %w", err)
 	}
 
 	// Validate the record
@@ -96,66 +89,55 @@ func runCommand(cmd *cobra.Command, jsonData []byte) error {
 
 	// Output results
 	if !valid {
-		return outputValidationErrors(cmd, validationErrors)
+		return outputValidationErrors(cmd, record, validationErrors)
 	}
 
-	return outputValidationSuccess(cmd, record)
+	return outputValidationSuccess(cmd, record, validationErrors)
 }
 
-func outputValidationSuccess(cmd *cobra.Command, record *corev1.Record) error {
+func outputValidationSuccess(cmd *cobra.Command, record *corev1.Record, warnings []string) error {
 	schemaVersion := record.GetSchemaVersion()
 
-	// Print validation success message
+	// Build the complete message with all validation messages
+	var msg strings.Builder
 	if schemaVersion != "" {
-		presenter.Printf(cmd, "Record is valid (schema version: %s)\n", schemaVersion)
+		msg.WriteString(fmt.Sprintf("Record is valid (schema version: %s)", schemaVersion))
 	} else {
-		presenter.Printf(cmd, "Record is valid\n")
+		msg.WriteString("Record is valid")
 	}
+
+	if len(warnings) > 0 {
+		msg.WriteString(fmt.Sprintf(" with %d warning(s):\n", len(warnings)))
+
+		for i, warning := range warnings {
+			msg.WriteString(fmt.Sprintf("  %d. %s\n", i+1, warning))
+		}
+	}
+
+	presenter.Print(cmd, msg.String())
 
 	return nil
 }
 
-func outputValidationErrors(cmd *cobra.Command, validationErrors []string) error {
+func outputValidationErrors(_ *cobra.Command, record *corev1.Record, validationErrors []string) error {
 	if len(validationErrors) > 0 {
-		presenter.Printf(cmd, "Validation failed with %d error(s):\n", len(validationErrors))
+		schemaVersion := record.GetSchemaVersion()
 
-		for i, errMsg := range validationErrors {
-			presenter.Printf(cmd, "  %d. %s\n", i+1, errMsg)
-		}
-
-		return errors.New("record validation failed")
-	}
-
-	return errors.New("record validation failed (no error details available)")
-}
-
-// configureValidationSettings configures validation settings based on flags.
-func configureValidationSettings() {
-	// Configure validation settings based on flags
-	// Note: These are global settings, but they're thread-safe
-	// Require either --url or --disable-api to be explicitly set
-	switch {
-	case opts.SchemaURL != "":
-		// API validation enabled with provided URL
-		corev1.SetDisableAPIValidation(false)
-		corev1.SetSchemaURL(opts.SchemaURL)
-	case opts.DisableAPI:
-		// Explicitly disable API validation (use embedded schemas)
-		corev1.SetDisableAPIValidation(true)
-	default:
-		// Neither --url nor --disable-api was provided
-		// This will be checked in runCommand
-		corev1.SetDisableAPIValidation(true)
-	}
-
-	// Configure strict validation (only applies to API validation)
-	// Note: --disable-strict only works with --url (API validation)
-	if opts.SchemaURL != "" {
-		if opts.DisableStrict {
-			corev1.SetStrictValidation(false)
+		// Build the complete error message with all validation messages
+		var errorMsg strings.Builder
+		if schemaVersion != "" {
+			errorMsg.WriteString(fmt.Sprintf("record validation failed (schema version: %s) with %d message(s):\n", schemaVersion, len(validationErrors)))
 		} else {
-			corev1.SetStrictValidation(true)
+			errorMsg.WriteString(fmt.Sprintf("record validation failed with %d message(s):\n", len(validationErrors)))
 		}
+
+		for i, msg := range validationErrors {
+			errorMsg.WriteString(fmt.Sprintf("  %d. %s\n", i+1, msg))
+		}
+
+		return errors.New(errorMsg.String())
 	}
-	// For embedded schemas (--disable-api), strict validation setting is ignored
+
+	// Fallback if no error details available
+	return errors.New("record validation failed (no error details available)")
 }

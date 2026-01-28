@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../mcp/client.dart';
 import '../services/ai_service.dart';
+import '../services/analytics_service.dart';
 import '../services/llm_provider.dart';
 import 'settings_screen.dart';
 import 'widgets/record_card.dart';
@@ -298,13 +299,19 @@ class _ChatScreenState extends State<ChatScreen> {
       final macResourcePath = '${exeDir.parent.path}/Resources/mcp-server';
       debugPrint('Checking Bundle Path: $macResourcePath');
 
+      // Determines binary name based on platform
+      String binaryName = 'mcp-server';
+      if (Platform.isWindows) {
+        binaryName = 'mcp-server.exe';
+      }
+
       // 2. Check same directory (Linux/Windows bundled)
-      final localPath = '${exeDir.path}/mcp-server';
+      final localPath = '${exeDir.path}/$binaryName';
       debugPrint('Checking Local Path: $localPath');
 
       // 3. Check development path (relative to gui root)
       // When running 'flutter run', CWD might be the gui root, or nested.
-      final devPath = '${Directory.current.path}/../bin/mcp-server';
+      final devPath = '${Directory.current.path}/../bin/$binaryName';
       debugPrint('Checking Dev Path: $devPath');
 
       if (await File(macResourcePath).exists()) {
@@ -321,9 +328,10 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint('MCP_SERVER_PATH is not set and binary not found in default locations');
       if (mounted) {
         setState(() {
+          String binaryName = Platform.isWindows ? 'mcp-server.exe' : 'mcp-server';
           _messages.add({
             'role': 'system',
-            'text': 'Error: MCP_SERVER_PATH not set and mcp-server binary not found.\nChecked:\n- Bundle Resources\n- App Directory\n- ../bin/mcp-server'
+            'text': 'Error: MCP_SERVER_PATH not set and $binaryName binary not found.\nChecked:\n- Bundle Resources\n- App Directory\n- ../bin/$binaryName'
           });
         });
       }
@@ -360,13 +368,19 @@ class _ChatScreenState extends State<ChatScreen> {
        print('Configuring Directory Auth Token (using github mode)');
     }
 
-    if (oasfSchema.isNotEmpty) {
-       mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchema;
-    } else {
-       // Disable OASF API validation if schema URL is not provided
-       mcpEnv['OASF_API_VALIDATION_DISABLE'] = 'true';
-       print('OASF API validation disabled (no schema URL configured)');
+    // OASF Schema URL is required for validation
+    if (oasfSchema.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'role': 'system',
+            'text': 'Error: OASF Schema URL is required for validation. Please configure it in Settings.',
+          });
+        });
+      }
+      return;
     }
+    mcpEnv['OASF_API_VALIDATION_SCHEMA_URL'] = oasfSchema;
 
     _mcpClient = McpClient(executablePath: mcpPath);
     try {
@@ -571,11 +585,19 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
 
+    // Log message event
+    AnalyticsService().logEvent('send_message', params: {
+      'provider': _providerType,
+      'model': _providerType == 'ollama' ? _ollamaModel : (_providerType == 'azure' ? _azureDeployment : 'gemini'),
+      'has_context': _history.isNotEmpty,
+    });
+
     try {
       final responseText = await _aiService!.sendMessage(
         text,
         _history,
         onToolOutput: (name, data) {
+          AnalyticsService().logEvent('tool_use', params: {'tool_name': name});
           setState(() {
             if (data is Map) {
               final mapData = Map<String, dynamic>.from(data);

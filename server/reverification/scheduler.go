@@ -76,13 +76,20 @@ func (s *Scheduler) processExpiredVerifications(ctx context.Context) {
 	logger.Info("Found records needing verification", "count", len(records))
 
 	for _, r := range records {
+		recordData, err := r.GetRecordData()
+		if err != nil {
+			logger.Warn("Failed to get record data", "cid", r.GetCid(), "error", err)
+
+			continue
+		}
+
 		workItem := revtypes.WorkItem{
-			RecordCID: r.RecordCID,
-			Name:      r.Name,
+			RecordCID: r.GetCid(),
+			Name:      recordData.GetName(),
 		}
 
 		if err := s.dispatchWorkItem(ctx, workItem); err != nil {
-			logger.Error("Failed to dispatch work item", "cid", r.RecordCID, "error", err)
+			logger.Error("Failed to dispatch work item", "cid", r.GetCid(), "error", err)
 		}
 	}
 }

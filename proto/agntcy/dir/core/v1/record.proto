@@ -14,6 +14,18 @@ message RecordRef {
   string cid = 1;
 }
 
+// Represents a named reference to a Record with version information.
+message NamedRecordRef {
+  // The name of the record.
+  string name = 1;
+
+  // The version of the record.
+  string version = 2;
+
+  // The CID of the record.
+  string cid = 3;
+}
+
 // Defines metadata about a record.
 message RecordMeta {
   // CID of the record.

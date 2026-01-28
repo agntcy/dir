@@ -9,7 +9,7 @@
 Lists all available OASF schema versions supported by the server.
 
 **Input:** None  
-**Output:** `available_versions` ([]string), `count` (int), `error_message` (string)
+**Output:** `available_versions` ([]string), `default_version` (string), `count` (int), `error_message` (string)
 
 ### `agntcy_oasf_get_schema`
 
@@ -82,7 +82,6 @@ Searches for agent records on the local directory node using structured query fi
 **Wildcard Patterns:**
 - `*` - Matches zero or more characters
 - `?` - Matches exactly one character
-- `[]` - Matches any character within brackets (e.g., `[0-9]`, `[a-z]`, `[abc]`)
 
 **Examples:**
 ```json
@@ -318,30 +317,45 @@ The following environment variables can be used with both binary and Docker conf
 #### Directory Client Configuration
 
 - `DIRECTORY_CLIENT_SERVER_ADDRESS` - Directory server address (default: `0.0.0.0:8888`)
-- `DIRECTORY_CLIENT_AUTH_MODE` - Authentication mode: `none`, `x509`, `jwt`, `token`
+- `DIRECTORY_CLIENT_AUTH_MODE` - Authentication mode: `none`, `x509`, `jwt`, `token`, `github`
 - `DIRECTORY_CLIENT_SPIFFE_TOKEN` - Path to SPIFFE token file (for token authentication)
+- `DIRECTORY_CLIENT_GITHUB_TOKEN` - GitHub Personal Access Token (for GitHub authentication)
 - `DIRECTORY_CLIENT_TLS_SKIP_VERIFY` - Skip TLS verification (set to `true` if needed)
+
+#### GitHub Authentication
+
+**Recommended: Personal Access Token (PAT)**
+
+For MCP servers running in your IDE, we recommend using a GitHub Personal Access Token (PAT). Unlike OAuth tokens that expire every 8 hours, PATs provide long-lived authentication without requiring frequent re-login and IDE restarts.
+
+**Setup Steps:**
+
+1. Create a GitHub PAT at [GitHub Settings → Personal access tokens](https://github.com/settings/tokens)
+   - Select scopes: `user:email` and `read:org`
+   - Set expiration: 90 days, 1 year, or no expiration
+2. Add the token to your MCP configuration (see examples below)
+3. Set `DIRECTORY_CLIENT_AUTH_MODE` to `"github"`
+
+**Alternative: OAuth Token**
+
+If you prefer shorter-lived credentials, you can use OAuth tokens obtained via `dirctl auth login`. Note that OAuth tokens expire every 8 hours, requiring you to re-authenticate and restart your IDE for the MCP server to pick up the new token.
+
+**Security Note:** Never commit tokens to version control. IDE configuration files are local and protected by OS file permissions.
 
 #### OASF Validation Configuration
 
-- `OASF_API_VALIDATION_SCHEMA_URL` - OASF schema URL for API-based validation
-  - **Required** when `OASF_API_VALIDATION_DISABLE` is `false` or not set
-  - URL of the OASF server to use for validation
-  - If API validation is enabled but this is not set, the server will return an error
+- `OASF_API_VALIDATION_SCHEMA_URL` - OASF schema URL for validation and schema operations
+  - **Required** - The MCP server requires this environment variable to be set
+  - URL of the OASF schema server to use for validation and schema retrieval
+  - If not set, the server will fail to start with an error
   - Example: `https://schema.oasf.outshift.com`
+  
+  This URL is used for:
+  - Validating OASF agent records
+  - Retrieving schema content, versions, skills, and domains
+  - All schema-related operations
 
-- `OASF_API_VALIDATION_DISABLE` - Disable API-based validation
-  - **Default**: `false` (API validation enabled)
-  - When `true`, uses embedded schemas instead of the API validator
-  - When `false` or not set, uses API validation and requires `OASF_API_VALIDATION_SCHEMA_URL` to be set
-
-- `OASF_API_VALIDATION_STRICT_MODE` - API validation strictness mode
-  - **Default**: `true` (strict mode)
-  - **Strict mode** (`true`): Fails on unknown attributes, deprecated fields, and schema violations
-  - **Non-strict mode** (`false`): More permissive, only fails on critical errors
-  - Only applies when API validation is enabled
-
-**Example - Use OASF API validation (Cursor):**
+**Example - Basic configuration (Cursor):**
 
 ```json
 {
@@ -358,7 +372,7 @@ The following environment variables can be used with both binary and Docker conf
 }
 ```
 
-**Example - Use custom OASF server (Cursor):**
+**Example - Use custom OASF schema server (Cursor):**
 
 ```json
 {
@@ -375,7 +389,7 @@ The following environment variables can be used with both binary and Docker conf
 }
 ```
 
-**Example - Use non-strict validation mode (Cursor):**
+**Example - Use GitHub authentication with PAT (Cursor):**
 
 ```json
 {
@@ -384,15 +398,16 @@ The following environment variables can be used with both binary and Docker conf
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "OASF_API_VALIDATION_STRICT_MODE": "false",
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "prod.gateway.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_AUTH_MODE": "github",
+        "DIRECTORY_CLIENT_GITHUB_TOKEN": "ghp_your_personal_access_token_here"
       }
     }
   }
 }
 ```
 
-**Example - Use embedded schemas (Cursor):**
+**Example - Use GitHub authentication with OAuth token (Cursor):**
 
 ```json
 {
@@ -401,13 +416,15 @@ The following environment variables can be used with both binary and Docker conf
       "command": "/absolute/path/to/dirctl",
       "args": ["mcp", "serve"],
       "env": {
-        "OASF_API_VALIDATION_DISABLE": "true",
-        "DIRECTORY_CLIENT_SERVER_ADDRESS": "localhost:8888"
+        "DIRECTORY_CLIENT_SERVER_ADDRESS": "prod.gateway.ads.outshift.io:443",
+        "DIRECTORY_CLIENT_AUTH_MODE": "github"
       }
     }
   }
 }
 ```
+
+Before starting the MCP server with OAuth token configuration, authenticate using `dirctl auth login`. The server will automatically load your cached token from `~/.config/dirctl/auth-token.json`. Remember to re-authenticate and restart your IDE when the token expires (every 8 hours).
 
 **Note:** After changing the configuration, fully restart your IDE (e.g., quit and reopen Cursor) for the MCP server to reload with the new settings.
 

@@ -8,6 +8,7 @@
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import type { Message } from "@bufbuild/protobuf";
 import type { Verification } from "./name_verification_pb.js";
+import type { NamedRecordRef } from "../../core/v1/record_pb.js";
 
 /**
  * Describes the file agntcy/dir/naming/v1/naming_service.proto.
@@ -16,16 +17,35 @@ export declare const file_agntcy_dir_naming_v1_naming_service: GenFile;
 
 /**
  * GetVerificationInfoRequest is the request for retrieving verification info.
+ * Either cid OR name must be provided. If name is provided, it will be resolved
+ * to a CID first (using the latest version if version is not specified).
  *
  * @generated from message agntcy.dir.naming.v1.GetVerificationInfoRequest
  */
 export declare type GetVerificationInfoRequest = Message<"agntcy.dir.naming.v1.GetVerificationInfoRequest"> & {
   /**
    * The CID of the record to check.
+   * If provided, name and version are ignored.
    *
-   * @generated from field: string cid = 1;
+   * @generated from field: optional string cid = 1;
    */
-  cid: string;
+  cid?: string;
+
+  /**
+   * The name of the record to check (e.g., "cisco.com/agent").
+   * Used when cid is not provided.
+   *
+   * @generated from field: optional string name = 2;
+   */
+  name?: string;
+
+  /**
+   * Optional version when looking up by name (e.g., "v1.0.0").
+   * If not specified, the latest version is used.
+   *
+   * @generated from field: optional string version = 3;
+   */
+  version?: string;
 };
 
 /**
@@ -69,7 +89,54 @@ export declare type GetVerificationInfoResponse = Message<"agntcy.dir.naming.v1.
 export declare const GetVerificationInfoResponseSchema: GenMessage<GetVerificationInfoResponse>;
 
 /**
- * NamingService provides methods to inspect name verification state.
+ * ResolveRequest is the request for resolving a record reference to CIDs.
+ *
+ * @generated from message agntcy.dir.naming.v1.ResolveRequest
+ */
+export declare type ResolveRequest = Message<"agntcy.dir.naming.v1.ResolveRequest"> & {
+  /**
+   * The name of the record to resolve (e.g., "cisco.com/agent").
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * Optional version to resolve to (e.g., "v1.0.0").
+   *
+   * @generated from field: optional string version = 2;
+   */
+  version?: string;
+};
+
+/**
+ * Describes the message agntcy.dir.naming.v1.ResolveRequest.
+ * Use `create(ResolveRequestSchema)` to create a new message.
+ */
+export declare const ResolveRequestSchema: GenMessage<ResolveRequest>;
+
+/**
+ * ResolveResponse is the response containing the resolved records.
+ *
+ * @generated from message agntcy.dir.naming.v1.ResolveResponse
+ */
+export declare type ResolveResponse = Message<"agntcy.dir.naming.v1.ResolveResponse"> & {
+  /**
+   * The resolved record references (newest first by created_at).
+   *
+   * @generated from field: repeated agntcy.dir.core.v1.NamedRecordRef records = 1;
+   */
+  records: NamedRecordRef[];
+};
+
+/**
+ * Describes the message agntcy.dir.naming.v1.ResolveResponse.
+ * Use `create(ResolveResponseSchema)` to create a new message.
+ */
+export declare const ResolveResponseSchema: GenMessage<ResolveResponse>;
+
+/**
+ * NamingService provides methods for name resolution and verification.
  * Note: Verification is performed automatically by the backend scheduler
  * for signed records with verifiable names (http://, https:// prefixes).
  *
@@ -85,6 +152,22 @@ export declare const NamingService: GenService<{
     methodKind: "unary";
     input: typeof GetVerificationInfoRequestSchema;
     output: typeof GetVerificationInfoResponseSchema;
+  },
+  /**
+   * Resolve resolves a record reference (name with optional version) to CIDs.
+   * Supports Docker-style references:
+   *   - "name" -> returns all versions (newest first)
+   *   - "name:version" -> returns the specific version
+   *   - "name@cid" -> hash-verified lookup (latest version)
+   *   - "name:version@cid" -> hash-verified lookup (specific version)
+   * Returns an error if no matching record is found.
+   *
+   * @generated from rpc agntcy.dir.naming.v1.NamingService.Resolve
+   */
+  resolve: {
+    methodKind: "unary";
+    input: typeof ResolveRequestSchema;
+    output: typeof ResolveResponseSchema;
   },
 }>;
 

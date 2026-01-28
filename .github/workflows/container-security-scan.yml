@@ -51,6 +51,9 @@ jobs:
           - image: spire-agent
             repo: ghcr.io/spiffe/spire-agent
             version: 1.14.1
+          - image: postgresql
+            repo: docker.io/bitnami/postgresql
+            digest: sha256:e9d4bdd350e8446c630d84dfd56da4ab1c9779802d47d043948861eff452b895
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -61,18 +64,25 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Pull image (explicit version)
+      - name: Pull image (explicit version or digest)
         run: |
           set -euo pipefail
-          IMAGE_REF="${{ matrix.repo }}:${{ matrix.version }}"
+          # Use digest if provided, otherwise use version tag
+          if [ -n "${{ matrix.digest }}" ]; then
+            IMAGE_REF="${{ matrix.repo }}@${{ matrix.digest }}"
+          else
+            IMAGE_REF="${{ matrix.repo }}:${{ matrix.version }}"
+          fi
           echo "Pulling $IMAGE_REF"
           docker pull "$IMAGE_REF"
           docker image inspect "$IMAGE_REF" >/dev/null 2>&1
+          # Export for subsequent steps
+          echo "IMAGE_REF=$IMAGE_REF" >> $GITHUB_ENV
 
       - name: Run Trivy vulnerability scan (image)
         uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5 # v0.24.0
         with:
-          image-ref: ${{ matrix.repo }}:${{ matrix.version }}
+          image-ref: ${{ env.IMAGE_REF }}
           format: sarif
           output: trivy-${{ matrix.image }}.sarif
           vuln-type: "os,library"

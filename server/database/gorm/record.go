@@ -1,7 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
-package sqlite
+package gorm
 
 import (
 	"errors"
@@ -179,6 +179,51 @@ func (d *DB) AddRecord(record types.Record) error {
 		"domains", len(sqliteRecord.Domains))
 
 	return nil
+}
+
+// GetRecords retrieves full records based on the provided filters.
+func (d *DB) GetRecords(opts ...types.FilterOption) ([]types.Record, error) {
+	// Create default configuration.
+	cfg := &types.RecordFilters{}
+
+	// Apply all options.
+	for _, opt := range opts {
+		if opt == nil {
+			return nil, errors.New("nil option provided")
+		}
+
+		opt(cfg)
+	}
+
+	// Start with the base query for records.
+	query := d.gormDB.Model(&Record{})
+
+	// Apply pagination.
+	if cfg.Limit > 0 {
+		query = query.Limit(cfg.Limit)
+	}
+
+	if cfg.Offset > 0 {
+		query = query.Offset(cfg.Offset)
+	}
+
+	// Apply all filters.
+	query = d.handleFilterOptions(query, cfg)
+	query = query.Order("records.created_at DESC")
+
+	// Execute the query.
+	var records []Record
+	if err := query.Find(&records).Error; err != nil {
+		return nil, fmt.Errorf("failed to query records: %w", err)
+	}
+
+	// Convert to interface type.
+	result := make([]types.Record, len(records))
+	for i := range records {
+		result[i] = &records[i]
+	}
+
+	return result, nil
 }
 
 // GetRecordCIDs retrieves only record CIDs based on the provided options.
@@ -366,6 +411,19 @@ func (d *DB) handleFilterOptions(query *gorm.DB, cfg *types.RecordFilters) *gorm
 		}
 
 		query = query.Where("modules.module_id IN ?", cfg.ModuleIDs)
+	}
+
+	// Handle verified filter.
+	if cfg.Verified != nil {
+		if *cfg.Verified {
+			// Filter for verified records only
+			query = query.Joins("JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
+				Where("name_verifications.status = ?", VerificationStatusVerified)
+		} else {
+			// Filter for non-verified records (either no verification or failed)
+			query = query.Joins("LEFT JOIN name_verifications ON name_verifications.record_cid = records.record_cid").
+				Where("name_verifications.status IS NULL OR name_verifications.status != ?", VerificationStatusVerified)
+		}
 	}
 
 	return query

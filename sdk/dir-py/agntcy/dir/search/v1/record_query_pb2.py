@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\'agntcy/dir/search/v1/record_query.proto\x12\x14\x61gntcy.dir.search.v1\"^\n\x0bRecordQuery\x12\x39\n\x04type\x18\x01 \x01(\x0e\x32%.agntcy.dir.search.v1.RecordQueryTypeR\x04type\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value*\xbe\x03\n\x0fRecordQueryType\x12!\n\x1dRECORD_QUERY_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n\x16RECORD_QUERY_TYPE_NAME\x10\x01\x12\x1d\n\x19RECORD_QUERY_TYPE_VERSION\x10\x02\x12\x1e\n\x1aRECORD_QUERY_TYPE_SKILL_ID\x10\x03\x12 \n\x1cRECORD_QUERY_TYPE_SKILL_NAME\x10\x04\x12\x1d\n\x19RECORD_QUERY_TYPE_LOCATOR\x10\x05\x12!\n\x1dRECORD_QUERY_TYPE_MODULE_NAME\x10\x06\x12\x1f\n\x1bRECORD_QUERY_TYPE_DOMAIN_ID\x10\x07\x12!\n\x1dRECORD_QUERY_TYPE_DOMAIN_NAME\x10\x08\x12 \n\x1cRECORD_QUERY_TYPE_CREATED_AT\x10\t\x12\x1c\n\x18RECORD_QUERY_TYPE_AUTHOR\x10\n\x12$\n RECORD_QUERY_TYPE_SCHEMA_VERSION\x10\x0b\x12\x1f\n\x1bRECORD_QUERY_TYPE_MODULE_ID\x10\x0c\x42\xc4\x01\n\x18\x63om.agntcy.dir.search.v1B\x10RecordQueryProtoP\x01Z#github.com/agntcy/dir/api/search/v1\xa2\x02\x03\x41\x44S\xaa\x02\x14\x41gntcy.Dir.Search.V1\xca\x02\x14\x41gntcy\\Dir\\Search\\V1\xe2\x02 Agntcy\\Dir\\Search\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Search::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\'agntcy/dir/search/v1/record_query.proto\x12\x14\x61gntcy.dir.search.v1\"^\n\x0bRecordQuery\x12\x39\n\x04type\x18\x01 \x01(\x0e\x32%.agntcy.dir.search.v1.RecordQueryTypeR\x04type\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value*\xde\x03\n\x0fRecordQueryType\x12!\n\x1dRECORD_QUERY_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n\x16RECORD_QUERY_TYPE_NAME\x10\x01\x12\x1d\n\x19RECORD_QUERY_TYPE_VERSION\x10\x02\x12\x1e\n\x1aRECORD_QUERY_TYPE_SKILL_ID\x10\x03\x12 \n\x1cRECORD_QUERY_TYPE_SKILL_NAME\x10\x04\x12\x1d\n\x19RECORD_QUERY_TYPE_LOCATOR\x10\x05\x12!\n\x1dRECORD_QUERY_TYPE_MODULE_NAME\x10\x06\x12\x1f\n\x1bRECORD_QUERY_TYPE_DOMAIN_ID\x10\x07\x12!\n\x1dRECORD_QUERY_TYPE_DOMAIN_NAME\x10\x08\x12 \n\x1cRECORD_QUERY_TYPE_CREATED_AT\x10\t\x12\x1c\n\x18RECORD_QUERY_TYPE_AUTHOR\x10\n\x12$\n RECORD_QUERY_TYPE_SCHEMA_VERSION\x10\x0b\x12\x1f\n\x1bRECORD_QUERY_TYPE_MODULE_ID\x10\x0c\x12\x1e\n\x1aRECORD_QUERY_TYPE_VERIFIED\x10\rB\xc4\x01\n\x18\x63om.agntcy.dir.search.v1B\x10RecordQueryProtoP\x01Z#github.com/agntcy/dir/api/search/v1\xa2\x02\x03\x41\x44S\xaa\x02\x14\x41gntcy.Dir.Search.V1\xca\x02\x14\x41gntcy\\Dir\\Search\\V1\xe2\x02 Agntcy\\Dir\\Search\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Search::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,7 +33,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\n\030com.agntcy.dir.search.v1B\020RecordQueryProtoP\001Z#github.com/agntcy/dir/api/search/v1\242\002\003ADS\252\002\024Agntcy.Dir.Search.V1\312\002\024Agntcy\\Dir\\Search\\V1\342\002 Agntcy\\Dir\\Search\\V1\\GPBMetadata\352\002\027Agntcy::Dir::Search::V1'
   _globals['_RECORDQUERYTYPE']._serialized_start=162
-  _globals['_RECORDQUERYTYPE']._serialized_end=608
+  _globals['_RECORDQUERYTYPE']._serialized_end=640
   _globals['_RECORDQUERY']._serialized_start=65
   _globals['_RECORDQUERY']._serialized_end=159
 # @@protoc_insertion_point(module_scope)

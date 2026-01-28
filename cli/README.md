@@ -362,36 +362,27 @@ Validate OASF record JSON from a file or stdin.
 This command validates OASF record JSON against the OASF schema. The JSON can be
 provided as a file path or piped from stdin (e.g., from `dirctl pull`).
 
-You must specify either `--url` for API-based validation or `--disable-api` for
-embedded schema validation.
+A schema URL must be provided via `--url` for API-based validation.
 
 **Examples:**
 ```bash
-# Validate a file using embedded schemas (no API calls)
-dirctl validate record.json --disable-api
-
 # Validate a file with API-based validation
 dirctl validate record.json --url https://schema.oasf.outshift.com
 
-# Validate a file with non-strict mode (more permissive, only works with --url)
-dirctl validate record.json --url https://schema.oasf.outshift.com --disable-strict
-
 # Validate JSON piped from stdin
-cat record.json | dirctl validate --disable-api
+cat record.json | dirctl validate --url https://schema.oasf.outshift.com
 
 # Validate a record pulled from directory
-dirctl pull <cid> --output json | dirctl validate --disable-api
+dirctl pull <cid> --output json | dirctl validate --url https://schema.oasf.outshift.com
 
 # Validate all records in a directory (using shell scripting)
 for cid in $(dirctl search --output jsonl | jq -r '.record_cid'); do
-  dirctl pull "$cid" | dirctl validate --disable-api
+  dirctl pull "$cid" | dirctl validate --url https://schema.oasf.outshift.com
 done
 ```
 
 **Flags:**
-- `--url <url>` - OASF schema URL for API-based validation (required if --disable-api is not specified)
-- `--disable-api` - Disable API-based validation (use embedded schemas instead, required if --url is not specified)
-- `--disable-strict` - Disable strict validation mode (more permissive validation, only works with --url)
+- `--url <url>` - OASF schema URL for API-based validation (required)
 
 ### 📥 **Import Operations**
 
@@ -452,7 +443,6 @@ dirctl import --type=mcp \
 | `--dry-run` | - | Preview without importing | No | false |
 | `--debug` | - | Enable debug output (shows MCP source and OASF record for failures) | No | false |
 | `--force` | - | Force reimport of existing records (skip deduplication) | No | false |
-| `--enrich` | - | Enable LLM-based enrichment for OASF skills/domains | No | false |
 | `--enrich-config` | - | Path to MCPHost configuration file (mcphost.json) | No | importer/enricher/mcphost.json |
 | `--enrich-skills-prompt` | - | Optional: path to custom skills prompt template or inline prompt | No | "" (uses default) |
 | `--enrich-domains-prompt` | - | Optional: path to custom domains prompt template or inline prompt | No | "" (uses default) |
@@ -474,13 +464,14 @@ For the Model Context Protocol registry, available filters include:
 
 See the [MCP Registry API docs](https://registry.modelcontextprotocol.io/docs#/operations/list-servers#Query-Parameters) for the complete list of supported filters.
 
-#### LLM-based Enrichment
+#### LLM-based Enrichment (Mandatory)
 
-The import command supports automatic enrichment of MCP server records using LLM models to map them to appropriate OASF skills and domains. This is powered by [mcphost](https://github.com/mark3labs/mcphost), which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.
+**Enrichment is mandatory** - the import command automatically enriches MCP server records using LLM models to map them to appropriate OASF skills and domains. Records from the oasf-sdk translator are incomplete and require enrichment to be valid. This is powered by [mcphost](https://github.com/mark3labs/mcphost), which provides a Model Context Protocol (MCP) host that can run AI models with tool-calling capabilities.
 
 **Requirements:**
 - `dirctl` binary (includes the built-in MCP server with `agntcy_oasf_get_schema_skills` and `agntcy_oasf_get_schema_domains` tools)
 - An LLM model with tool-calling support (GPT-4o, Claude, or compatible Ollama models)
+- The `mcphost.json` configuration file must include the `dir-mcp-server` entry that runs `dirctl mcp serve`. This MCP server provides the schema tools needed for enrichment.
 
 **How it works:**
 1. The enricher starts an MCP server using `dirctl mcp serve`
@@ -498,7 +489,10 @@ The import command supports automatic enrichment of MCP server records using LLM
   "mcpServers": {
     "dir-mcp-server": {
       "command": "dirctl",
-      "args": ["mcp", "serve"]
+      "args": ["mcp", "serve"],
+      "env": {
+        "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
+      }
     }
   },
   "model": "azure:gpt-4o",
@@ -537,40 +531,35 @@ These can be used as starting points for customization.
 **Examples:**
 
 ```bash
-# Import with LLM enrichment using default config
+# Import with default enrichment configuration
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich \
   --debug
 
 # Import with custom mcphost configuration
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich \
   --enrich-config=/path/to/custom-mcphost.json
 
 # Import with custom prompt templates (from files)
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich \
   --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
   --enrich-domains-prompt=/path/to/custom-domains-prompt.md
 
 # Import with all custom enrichment settings and debug output
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
-  --enrich \
   --enrich-config=/path/to/mcphost.json \
   --enrich-skills-prompt=/path/to/custom-skills-prompt.md \
   --enrich-domains-prompt=/path/to/custom-domains-prompt.md \
   --debug
 
-# Import latest 10 servers with enrichment and force reimport
+# Import latest 10 servers with force reimport
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --filter=version=latest \
   --limit=10 \
-  --enrich \
   --force
 ```
 
@@ -817,11 +806,10 @@ dirctl import --type=mcp \
   --limit=10 \
   --force
 
-# 4. Import with LLM enrichment for better skill mapping
+# 4. Import with debug output (enrichment is automatic)
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --limit=5 \
-  --enrich \
   --debug
 
 # 5. Search imported records
