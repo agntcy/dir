@@ -42,6 +42,9 @@ jobs:
           - image: dir-ctl
             repo: ghcr.io/${{ github.repository_owner }}/dir-ctl
             version: ${{ needs.get-version.outputs.version }}
+          - image: dir-reconciler
+            repo: ghcr.io/${{ github.repository_owner }}/dir-reconciler
+            version: ${{ needs.get-version.outputs.version }}
           - image: zot
             repo: ghcr.io/project-zot/zot
             version: v2.1.14
