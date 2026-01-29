@@ -291,7 +291,7 @@ database:
   # Database type: "sqlite" or "postgres"
   # - sqlite: Single-file embedded database
   # - postgres: External PostgreSQL database
-  type: "sqlite"
+  type: "postgres"
 
   # SQLite configuration
   sqlite:
@@ -661,14 +661,14 @@ envoy-authz:
       nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
       nginx.ingress.kubernetes.io/grpc-backend: "true"
 
-# PostgreSQL subchart configuration (OPTIONAL)
-# Deploy PostgreSQL alongside the apiserver for multi-instance deployments.
-# NOT installed by default. Set enabled: true to deploy.
-#
-# CREDENTIALS: When enabled, postgresql.auth.* is the single source of truth.
-# The apiserver will automatically use these credentials (no need to also set secrets.postgresAuth.*).
+# PostgreSQL subchart configuration
+# Deploys PostgreSQL alongside the apiserver for dev/production use.
+# Set enabled: false when using SQLite or external PostgreSQL.
+# Note: database.type (above) controls which backend the apiserver uses;
+#       postgresql.enabled controls whether to deploy this subchart.
+# When enabled, postgresql.auth.* is the single source of truth for credentials.
 postgresql:
-  enabled: false
+  enabled: true
   auth:
     username: "dir"
     password: "dirpassword"
@@ -679,7 +679,7 @@ postgresql:
 # - regsync: sync for non-Zot registries
 # - indexer: indexes synced records into the database for search
 # Uses the same PostgreSQL database as the apiserver (database.postgres.*).
-# Requires database.type: "postgres" to be configured.
+# Requires database.type: "postgres" - shares the same database as the apiserver.
 reconciler:
   # Enable the reconciler deployment (default: false)
   enabled: false

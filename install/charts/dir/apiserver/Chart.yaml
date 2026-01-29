@@ -45,9 +45,9 @@ dependencies:
     version: "0.1.0"
     repository: "file://../../envoy-authz"
     condition: envoyAuthz.enabled
-  # PostgreSQL database (OPTIONAL)
-  # Only installed when explicitly enabled via: postgresql.enabled: true
-  # Default: disabled (uses SQLite)
+  # PostgreSQL database (Bitnami subchart)
+  # Disable when using SQLite or external PostgreSQL via: postgresql.enabled: false
+  # Default: enabled (postgresql.enabled: true in values.yaml)
   - name: postgresql
     version: "18.2.3"
     repository: "https://charts.bitnami.com/bitnami"
