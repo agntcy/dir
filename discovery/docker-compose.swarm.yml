@@ -1,0 +1,175 @@
+# Docker Swarm Stack for Service Discovery (Go)
+#
+# Deploy with:
+#   1. Build images:
+#      docker build -t discovery:latest -f cmd/discovery/Dockerfile .
+#      docker build -t discovery-server:latest -f cmd/server/Dockerfile .
+#   2. Init swarm (if needed): docker swarm init
+#   3. Deploy: docker stack deploy -c docker-compose.swarm.yml discovery
+#
+# Architecture:
+# - etcd runs as single replica (use 3 for production HA)
+# - discovery runs as global service (one per node) - watches Docker, processes metadata, writes to etcd
+# - server runs as replicated service - reads from etcd, serves HTTP API
+#
+services:
+  # ============================================================
+  # etcd - key-value store for service discovery
+  # ============================================================
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.17
+    command:
+      - etcd
+      - --name=etcd0
+      - --data-dir=/etcd-data
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://etcd:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd0=http://etcd:2380
+    networks:
+      - discovery
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================
+  # Discovery - Global service (one per node) - watches Docker, processes metadata, writes to etcd
+  # ============================================================
+  discovery:
+    image: discovery:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Storage (etcd)
+      - DISCOVERY_STORAGE_HOST=etcd
+      - DISCOVERY_STORAGE_PORT=2379
+      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
+      # Runtime
+      - DISCOVERY_RUNTIME_TYPE=docker
+      - DISCOVERY_RUNTIME_DOCKER_HOST=unix:///var/run/docker.sock
+      - DISCOVERY_RUNTIME_DOCKER_LABEL_KEY=discover
+      - DISCOVERY_RUNTIME_DOCKER_LABEL_VALUE=true
+      # Processors
+      - DISCOVERY_PROCESSOR_A2A_ENABLED=true
+      - DISCOVERY_PROCESSOR_WORKERS=4
+    networks:
+      - discovery
+      - team-a
+      - team-b
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+
+  # ============================================================
+  # Server - HTTP API for querying discovered services (reads from etcd)
+  # ============================================================
+  server:
+    image: discovery-server:latest
+    environment:
+      # Storage (etcd)
+      - DISCOVERY_STORAGE_HOST=etcd
+      - DISCOVERY_STORAGE_PORT=2379
+      - DISCOVERY_STORAGE_WORKLOADS_PREFIX=/discovery/workloads/
+      # Server
+      - DISCOVERY_SERVER_HOST=0.0.0.0
+      - DISCOVERY_SERVER_PORT=8080
+    networks:
+      - discovery
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+
+  # ============================================================
+  # Example services - labels go at service level for container labels
+  # ============================================================
+  service-1:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-a
+    deploy:
+      replicas: 1
+
+  service-2:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-b
+    deploy:
+      replicas: 1
+
+  service-3:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-a
+    deploy:
+      replicas: 1
+
+  service-4:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-b
+    deploy:
+      replicas: 1
+
+  service-5:
+    image: nginx:alpine
+    labels:
+      discover: "true"
+    networks:
+      - team-a
+      - team-b
+    deploy:
+      replicas: 1
+
+  # No discover label - will NOT be tracked
+  service-private:
+    image: nginx:alpine
+    networks:
+      - team-internal
+    deploy:
+      replicas: 1
+
+networks:
+  discovery:
+    driver: overlay
+    attachable: true
+
+  team-a:
+    driver: overlay
+    attachable: true
+
+  team-b:
+    driver: overlay
+    attachable: true
+
+  team-internal:
+    driver: overlay
+    attachable: true
+
