@@ -55,6 +55,7 @@ class _ChatScreenState extends State<ChatScreen> {
   // Directory Config
   String? _directoryUrl;
   String? _directoryToken;
+  String? _directoryAuthMode;
   String? _oasfSchemaUrl;
 
   String? _ollamaEndpoint;
@@ -100,6 +101,7 @@ class _ChatScreenState extends State<ChatScreen> {
         // Load Directory Config
         _directoryUrl = prefs.getString('directory_server_address');
         _directoryToken = prefs.getString('directory_github_token');
+        _directoryAuthMode = prefs.getString('directory_auth_mode');
         _oasfSchemaUrl = prefs.getString('oasf_schema_url');
       });
 
@@ -360,12 +362,28 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     // Auth Token configuration
-    if (_directoryToken != null && _directoryToken!.isNotEmpty) {
-       mcpEnv['DIRECTORY_CLIENT_GITHUB_TOKEN'] = _directoryToken!;
-       // If a token is provided, we assume GitHub auth mode for the token unless specified otherwise
-       // In future we might want a dropdown for Auth Mode in settings
-       mcpEnv['DIRECTORY_CLIENT_AUTH_MODE'] = 'github';
-       print('Configuring Directory Auth Token (using github mode)');
+    String authToken = _directoryToken ?? '';
+    if (authToken.isEmpty) {
+      authToken = Platform.environment['DIRECTORY_CLIENT_GITHUB_TOKEN'] ??
+          const String.fromEnvironment('DIRECTORY_CLIENT_GITHUB_TOKEN');
+    }
+
+    String authMode = _directoryAuthMode ?? '';
+    if (authMode.isEmpty) {
+      authMode = Platform.environment['DIRECTORY_CLIENT_AUTH_MODE'] ??
+            const String.fromEnvironment('DIRECTORY_CLIENT_AUTH_MODE');
+    }
+
+    if (authToken.isNotEmpty) {
+       mcpEnv['DIRECTORY_CLIENT_GITHUB_TOKEN'] = authToken;
+
+       if (authMode.isNotEmpty) {
+         mcpEnv['DIRECTORY_CLIENT_AUTH_MODE'] = authMode;
+       } else {
+         // Default to github if only token is present
+         mcpEnv['DIRECTORY_CLIENT_AUTH_MODE'] = 'github';
+       }
+       print('Configuring Directory Auth Token (using ${mcpEnv['DIRECTORY_CLIENT_AUTH_MODE']} mode)');
     }
 
     // OASF Schema URL is required for validation
