@@ -15,7 +15,7 @@ Lists all available OASF schema versions supported by the server.
 
 Retrieves the complete OASF schema JSON content for the specified version.
 
-**Input:** `version` (string) - OASF schema version (e.g., "0.3.1", "0.7.0")  
+**Input:** `version` (string) - OASF schema version (e.g., "0.7.0", "0.8.0")  
 **Output:** `version` (string), `schema` (string), `available_versions` ([]string), `error_message` (string)
 
 ### `agntcy_oasf_get_schema_skills`

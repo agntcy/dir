@@ -15,7 +15,7 @@ import (
 
 // GetSchemaInput represents the input for getting OASF schema content.
 type GetSchemaInput struct {
-	Version string `json:"version" jsonschema:"OASF schema version to retrieve (e.g., 0.3.1, 0.7.0)"`
+	Version string `json:"version" jsonschema:"OASF schema version to retrieve (e.g., 0.7.0, 0.8.0)"`
 }
 
 // GetSchemaOutput represents the output after getting OASF schema content.

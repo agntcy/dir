@@ -6,7 +6,7 @@ package routing
 import (
 	"testing"
 
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	"github.com/agntcy/dir/server/events"
@@ -37,11 +37,11 @@ func TestRoutingPublishEmitsEvent(t *testing.T) {
 	}
 
 	// Create a test record
-	record := corev1.New(&typesv1alpha0.Record{
+	record := corev1.New(&typesv1alpha1.Record{
 		Name:          "test-agent",
-		SchemaVersion: "v0.3.1",
-		Skills: []*typesv1alpha0.Skill{
-			{CategoryName: toPtr("AI"), ClassName: toPtr("Processing")},
+		SchemaVersion: "0.7.0",
+		Skills: []*typesv1alpha1.Skill{
+			{Name: "ai/processing"},
 		},
 	})
 

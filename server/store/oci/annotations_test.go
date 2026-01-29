@@ -6,7 +6,6 @@ package oci
 import (
 	"testing"
 
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
@@ -82,44 +81,43 @@ func TestExtractManifestAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "V1 basic record",
-			record: corev1.New(&typesv1alpha0.Record{
+			name: "V070 basic record",
+			record: corev1.New(&typesv1alpha1.Record{
 				Name:          "test-agent",
 				Version:       "1.0.0",
 				Description:   "Test agent description",
-				SchemaVersion: "v0.3.1",
+				SchemaVersion: "0.7.0",
 				CreatedAt:     "2023-01-01T00:00:00Z",
 				Authors:       []string{"author1", "author2"},
 			}),
 			contains: map[string]string{
 				manifestDirObjectTypeKey: "record",
-				ManifestKeyOASFVersion:   "v0.3.1",
+				ManifestKeyOASFVersion:   "0.7.0",
 				ManifestKeyName:          "test-agent",
 				ManifestKeyVersion:       "1.0.0",
 				ManifestKeyDescription:   "Test agent description",
-				ManifestKeySchemaVersion: "v0.3.1",
+				ManifestKeySchemaVersion: "0.7.0",
 				ManifestKeyCreatedAt:     "2023-01-01T00:00:00Z",
 				ManifestKeyAuthors:       "author1,author2",
 				ManifestKeySigned:        "false",
 			},
 		},
 		{
-			name: "V1 with skills and extensions",
-			record: corev1.New(&typesv1alpha0.Record{
+			name: "V070 with skills and modules",
+			record: corev1.New(&typesv1alpha1.Record{
 				Name:          "skill-agent",
 				Version:       "2.0.0",
-				SchemaVersion: "v0.3.1",
-				Skills: []*typesv1alpha0.Skill{
-					{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
-					{CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
+				SchemaVersion: "0.7.0",
+				Skills: []*typesv1alpha1.Skill{
+					{Name: "natural_language_processing/text_completion"},
+					{Name: "machine_learning/inference"},
 				},
-				Locators: []*typesv1alpha0.Locator{
-					{Type: "docker"},
-					{Type: "helm"},
+				Locators: []*typesv1alpha1.Locator{
+					{Type: "docker_image", Url: "ghcr.io/test/agent"},
+					{Type: "helm_chart", Url: "oci://registry.example.com/charts/agent"},
 				},
-				Extensions: []*typesv1alpha0.Extension{
-					{Name: "security"},
-					{Name: "monitoring"},
+				Modules: []*typesv1alpha1.Module{
+					{Name: "runtime/model"},
 				},
 				Annotations: map[string]string{
 					"custom1": "value1",
@@ -129,10 +127,10 @@ func TestExtractManifestAnnotations(t *testing.T) {
 			contains: map[string]string{
 				ManifestKeyName:    "skill-agent",
 				ManifestKeyVersion: "2.0.0",
-				// NOTE: V1 skills use "categoryName/className" format, unlike V2/V3 which use simple names
-				ManifestKeySkills:                   "nlp/processing,ml/inference",
-				ManifestKeyLocatorTypes:             "docker,helm",
-				ManifestKeyModuleNames:              "security,monitoring",
+				// NOTE: 0.7.0 skills use hierarchical format
+				ManifestKeySkills:                   "natural_language_processing/text_completion,machine_learning/inference",
+				ManifestKeyLocatorTypes:             "docker_image,helm_chart",
+				ManifestKeyModuleNames:              "runtime/model",
 				ManifestKeyCustomPrefix + "custom1": "value1",
 				ManifestKeyCustomPrefix + "custom2": "value2",
 			},
@@ -162,11 +160,11 @@ func TestExtractManifestAnnotations(t *testing.T) {
 		},
 		{
 			name: "Record with signature",
-			record: corev1.New(&typesv1alpha0.Record{
+			record: corev1.New(&typesv1alpha1.Record{
 				Name:          "signed-agent",
 				Version:       "1.0.0",
-				SchemaVersion: "v0.3.1",
-				Signature: &typesv1alpha0.Signature{
+				SchemaVersion: "0.7.0",
+				Signature: &typesv1alpha1.Signature{
 					Algorithm: "ed25519",
 					SignedAt:  "2023-01-01T12:00:00Z",
 					Signature: "signature-bytes",
@@ -346,15 +344,15 @@ func TestParseManifestAnnotations(t *testing.T) {
 
 func TestExtractManifestAnnotations_EdgeCases(t *testing.T) {
 	t.Run("Record with empty data", func(t *testing.T) {
-		record := corev1.New(&typesv1alpha0.Record{
-			SchemaVersion: "v0.3.1",
+		record := corev1.New(&typesv1alpha1.Record{
+			SchemaVersion: "0.7.0",
 		})
 
 		result := extractManifestAnnotations(record)
 
 		// Should still have basic annotations
 		assert.Equal(t, "record", result[manifestDirObjectTypeKey])
-		assert.Equal(t, "v0.3.1", result[ManifestKeyOASFVersion])
+		assert.Equal(t, "0.7.0", result[ManifestKeyOASFVersion])
 		assert.Equal(t, "false", result[ManifestKeySigned])
 	})
 
@@ -371,16 +369,16 @@ func TestExtractManifestAnnotations_EdgeCases(t *testing.T) {
 
 func TestRoundTripConversion(t *testing.T) {
 	// Test that we can extract manifest annotations and parse them back correctly
-	// NOTE: This test uses V1 format where skills have "categoryName/className" structure
-	originalRecord := corev1.New(&typesv1alpha0.Record{
+	// NOTE: This test uses 0.7.0 format where skills use hierarchical names
+	originalRecord := corev1.New(&typesv1alpha1.Record{
 		Name:          "roundtrip-agent",
 		Version:       "1.0.0",
 		Description:   "Test roundtrip conversion",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 		CreatedAt:     "2023-01-01T00:00:00Z",
 		Authors:       []string{"author1", "author2"},
-		Skills: []*typesv1alpha0.Skill{
-			{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
+		Skills: []*typesv1alpha1.Skill{
+			{Name: "natural_language_processing/text_completion"},
 		},
 		Annotations: map[string]string{
 			"custom": "value",
@@ -394,16 +392,16 @@ func TestRoundTripConversion(t *testing.T) {
 	recordMeta := parseManifestAnnotations(manifestAnnotations)
 
 	// Verify round-trip conversion
-	assert.Equal(t, "v0.3.1", recordMeta.GetSchemaVersion())
+	assert.Equal(t, "0.7.0", recordMeta.GetSchemaVersion())
 	assert.Equal(t, "2023-01-01T00:00:00Z", recordMeta.GetCreatedAt())
 	assert.Equal(t, "roundtrip-agent", recordMeta.GetAnnotations()[MetadataKeyName])
 	assert.Equal(t, "1.0.0", recordMeta.GetAnnotations()[MetadataKeyVersion])
 	assert.Equal(t, "Test roundtrip conversion", recordMeta.GetAnnotations()[MetadataKeyDescription])
-	assert.Equal(t, "v0.3.1", recordMeta.GetAnnotations()[MetadataKeyOASFVersion])
+	assert.Equal(t, "0.7.0", recordMeta.GetAnnotations()[MetadataKeyOASFVersion])
 	assert.Equal(t, "author1,author2", recordMeta.GetAnnotations()[MetadataKeyAuthors])
 	assert.Equal(t, "2", recordMeta.GetAnnotations()[MetadataKeyAuthorsCount])
-	// NOTE: V1 skills return "categoryName/className" format, not just className
-	assert.Equal(t, "nlp/processing", recordMeta.GetAnnotations()[MetadataKeySkills])
+	// NOTE: 0.7.0 skills use hierarchical name format
+	assert.Equal(t, "natural_language_processing/text_completion", recordMeta.GetAnnotations()[MetadataKeySkills])
 	assert.Equal(t, "1", recordMeta.GetAnnotations()[MetadataKeySkillsCount])
 	assert.Equal(t, "value", recordMeta.GetAnnotations()["custom"])
 }

@@ -82,5 +82,5 @@ const (
 
 	// Fallback values for error recovery scenarios.
 	// Used when parsing corrupted storage, legacy records, or external modifications.
-	FallbackSchemaVersion = "v0.3.1"
+	FallbackSchemaVersion = "0.7.0"
 )

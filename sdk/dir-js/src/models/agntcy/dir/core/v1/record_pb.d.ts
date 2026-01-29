@@ -115,8 +115,8 @@ export declare const RecordMetaSchema: GenMessage<RecordMeta>;
  *
  * Supported schemas:
  *
- * v0.3.1: https://schema.oasf.outshift.com/0.3.1/objects/agent
  * v0.7.0: https://schema.oasf.outshift.com/0.7.0/objects/record
+ * v0.8.0: https://schema.oasf.outshift.com/0.8.0/objects/record
  *
  * @generated from message agntcy.dir.core.v1.Record
  */

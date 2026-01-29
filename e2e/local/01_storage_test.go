@@ -48,20 +48,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		shouldFailPush     bool // If true, push should fail (validation failure test)
 	}{
 		{
-			name:              "OASF_0.3.1_Record",
-			fileName:          "oasf_0.3.1_record_test.json",
-			jsonData:          testdata.ExpectedRecordV031JSON,
-			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v1",
-			expectedSkillIDs:  []string{"10201", "10702"},
-			expectedSkillNames: []string{
-				"Natural Language Processing/Text Completion",
-				"Natural Language Processing/Problem Solving",
-			},
-			expectedLocator: "docker-image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedModule:  "", // 0.3.1 schema doesn't have modules
-			shouldFailPush:  false,
-		},
-		{
 			name:              "OASF_0.7.0_Record",
 			fileName:          "oasf_0.7.0_record_test.json",
 			jsonData:          testdata.ExpectedRecordV070JSON,

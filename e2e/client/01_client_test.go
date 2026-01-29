@@ -87,15 +87,6 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		expectedModuleLabel string
 	}{
 		{
-			name:     "Record_031_Agent",
-			jsonData: testdata.ExpectedRecordV031JSON,
-			expectedSkillLabels: []string{
-				"/skills/Natural Language Processing/Text Completion",
-				"/skills/Natural Language Processing/Problem Solving",
-			},
-			expectedModuleLabel: "", // record_031.json has no modules or extensions
-		},
-		{
 			name:     "Record_070_Agent",
 			jsonData: testdata.ExpectedRecordV070JSON,
 			expectedSkillLabels: []string{

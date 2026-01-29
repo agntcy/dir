@@ -18,7 +18,7 @@ const (
 // CreateRecordInput defines the input parameters for the create_agent_record prompt.
 type CreateRecordInput struct {
 	OutputPath    string `json:"output_path"    jsonschema:"Where to output the record: file path (e.g., agent.json), 'stdout' to display only. Defaults to stdout"`
-	SchemaVersion string `json:"schema_version" jsonschema:"OASF schema version to use (e.g., 0.7.0, 0.3.1). Defaults to 0.7.0"`
+	SchemaVersion string `json:"schema_version" jsonschema:"OASF schema version to use (e.g., 0.7.0, 0.8.0). Defaults to 0.7.0"`
 }
 
 // CreateRecord implements the create_agent_record prompt.

@@ -39,7 +39,6 @@ func TestListVersions(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Contains(t, output.AvailableVersions, "0.7.0")
-		assert.Contains(t, output.AvailableVersions, "0.3.1")
 		assert.NotEmpty(t, output.DefaultVersion, "Default version should be set")
 	})
 }
