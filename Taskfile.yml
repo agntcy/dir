@@ -684,6 +684,8 @@ tasks:
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
+          --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
+          --set apiserver.reconciler.indexer.interval="30s" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -755,6 +757,7 @@ tasks:
           --set apiserver.postgresql.auth.database=dir \
           --set apiserver.reconciler.enabled=true \
           --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+          --set apiserver.reconciler.indexer.interval="30s" \
           --set apiserver.config.oasf_api_validation.disable=true \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -822,6 +825,7 @@ tasks:
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           --set apiserver.log_level="DEBUG" \
+          --set apiserver.reconciler.image.tag="{{ .IMAGE_TAG }}" \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -988,6 +992,8 @@ tasks:
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
+          --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
+          --set apiserver.reconciler.indexer.interval="30s" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -1045,6 +1051,8 @@ tasks:
             --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
             {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
             --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
+            --set apiserver.reconciler.image.tag="{{ .DEPLOY_IMAGE_TAG }}" \
+            --set apiserver.reconciler.indexer.interval="30s" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \

@@ -681,8 +681,8 @@ postgresql:
 # Uses the same PostgreSQL database as the apiserver (database.postgres.*).
 # Requires database.type: "postgres" - shares the same database as the apiserver.
 reconciler:
-  # Enable the reconciler deployment (default: false)
-  enabled: false
+  # Enable the reconciler deployment (default: true)
+  enabled: true
 
   image:
     repository: ghcr.io/agntcy/dir-reconciler
