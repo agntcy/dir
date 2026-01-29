@@ -21,18 +21,17 @@ inputs:
   directory_address:
     description: Directory server address (host:port)
     required: true
-  publish:
-    description: Publish records to DHT for network discovery after pushing
-    required: false
-    default: "false"
+  github_token:
+    description: GitHub PAT for authentication with Directory
+    required: true
   sign:
     description: Sign records after pushing (requires OIDC or key configuration)
     required: false
     default: "false"
-  github_token:
-    description: GitHub token for authentication with Directory
+  publish:
+    description: Publish records to DHT for network discovery after pushing
     required: false
-    default: ""
+    default: "false"
   dirctl_version:
     description: Version of dirctl to use
     required: false

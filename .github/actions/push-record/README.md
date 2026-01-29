@@ -51,15 +51,24 @@ jobs:
           echo '${{ steps.push.outputs.cids }}' | jq .
 ```
 
+## Authentication
+
+For CI/CD, create a GitHub Personal Access Token (PAT) and store it as a repository secret:
+
+1. Go to GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens
+2. Create a new token with `read:org` scope (to read organization membership)
+3. Store it as a repository secret (e.g., `DIRECTORY_TOKEN`)
+4. Pass it to the action via `github_token: ${{ secrets.DIRECTORY_TOKEN }}`
+
 ## Inputs
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `record_paths` | Paths to OASF record JSON files (one per line, supports globs) | No | `record.json` |
-| `directory_address` | Directory server address (host or host:port) | Yes | - |
+| `directory_address` | Directory server address (host:port) | Yes | - |
 | `publish` | Publish to DHT for network discovery after pushing | No | `false` |
 | `sign` | Sign records after pushing | No | `false` |
-| `github_token` | GitHub token for Directory authentication | No | - |
+| `github_token` | GitHub PAT for Directory authentication | Yes | - |
 | `dirctl_version` | Version of dirctl to use | No | `latest` |
 
 ## Outputs

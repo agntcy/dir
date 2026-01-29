@@ -1,21 +1,6 @@
 #!/usr/bin/env bash
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
-#
-# Push OASF records to a Directory node's OCI registry.
-# Optionally publish to DHT and/or sign records.
-#
-# Required environment variables:
-#   RECORD_PATHS - Paths or glob patterns to record file(s), one per line
-#
-# Optional environment variables:
-#   SIGN_RECORDS    - Set to "true" to sign records after pushing
-#   PUBLISH_RECORDS - Set to "true" to publish to DHT after pushing
-#   GITHUB_OUTPUT   - GitHub Actions output file (for CI integration)
-#
-# Directory client configuration (via environment):
-#   DIRECTORY_CLIENT_SERVER_ADDRESS  - Directory server address
-#   DIRECTORY_CLIENT_GITHUB_TOKEN    - GitHub token for auth
 
 set -euo pipefail
 
@@ -88,7 +73,7 @@ for FILE in "${ALL_FILES[@]}"; do
   echo "----------------------------------------"
   
   # Build push command
-  PUSH_CMD="dirctl push \"$FILE\" --server-addr=\"$DIRECTORY_ADDRESS\" --output raw"
+  PUSH_CMD="dirctl push \"$FILE\" --server-addr=\"$DIRECTORY_ADDRESS\" --github-token=\"$DIRECTORY_CLIENT_GITHUB_TOKEN\" --output raw"
   if [ "$SIGN_RECORDS" = "true" ]; then
     PUSH_CMD="$PUSH_CMD --sign"
   fi
@@ -108,7 +93,7 @@ for FILE in "${ALL_FILES[@]}"; do
     if [ "$PUBLISH_RECORDS" = "true" ]; then
       echo "Publishing to DHT..."
       set +e
-      PUBLISH_OUTPUT=$(dirctl routing publish "$CID" --server-addr="$DIRECTORY_ADDRESS" 2>&1)
+      PUBLISH_OUTPUT=$(dirctl routing publish "$CID" --server-addr="$DIRECTORY_ADDRESS" --github-token="$DIRECTORY_CLIENT_GITHUB_TOKEN" 2>&1)
       PUBLISH_EXIT=$?
       set -e
       
