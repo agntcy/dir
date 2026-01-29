@@ -75,6 +75,19 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			expectedModule:  "core/llm/model",
 			shouldFailPush:  false,
 		},
+		{
+			name:              "OASF_1.0.0-rc.1_Record",
+			fileName:          "oasf_1.0.0-rc.1_record_test.json",
+			jsonData:          testdata.ExpectedRecordV100RC1JSON,
+			expectedAgentName: "burger_seller_agent",
+			expectedSkillIDs:  []string{"10101"},
+			expectedSkillNames: []string{
+				"natural_language_processing/natural_language_understanding/contextual_comprehension",
+			},
+			expectedLocator: "container_image:https://ghcr.io/agntcy/burger-seller-agent",
+			expectedModule:  "integration/mcp",
+			shouldFailPush:  false,
+		},
 	}
 
 	// Test each OASF version (V1, V2, V3) to identify JSON marshal/unmarshal issues

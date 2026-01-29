@@ -18,7 +18,7 @@ const (
 // CreateRecordInput defines the input parameters for the create_agent_record prompt.
 type CreateRecordInput struct {
 	OutputPath    string `json:"output_path"    jsonschema:"Where to output the record: file path (e.g., agent.json), 'stdout' to display only. Defaults to stdout"`
-	SchemaVersion string `json:"schema_version" jsonschema:"OASF schema version to use (e.g., 0.7.0, 0.8.0). Defaults to 0.7.0"`
+	SchemaVersion string `json:"schema_version" jsonschema:"OASF schema version to use (e.g., 0.7.0, 0.8.0, 1.0.0-rc.1). Defaults to 1.0.0-rc.1"`
 }
 
 // CreateRecord implements the create_agent_record prompt.
@@ -43,7 +43,7 @@ func CreateRecord(_ context.Context, req *mcp.GetPromptRequest) (
 
 	schemaVersion := args["schema_version"]
 	if schemaVersion == "" {
-		schemaVersion = "0.7.0"
+		schemaVersion = "1.0.0-rc.1"
 	}
 
 	promptText := fmt.Sprintf(strings.TrimSpace(`

@@ -1,0 +1,101 @@
+{
+  "name": "burger_seller_agent",
+  "schema_version": "1.0.0-rc.1",
+  "version": "1.0.0",
+  "description": "Helps with creating burger orders",
+  "authors": [
+    "Example Organization"
+  ],
+  "created_at": "2025-01-01T00:00:00Z",
+  "skills": [
+    {
+      "name": "natural_language_processing/natural_language_understanding/contextual_comprehension",
+      "id": 10101
+    }
+  ],
+  "locators": [
+    {
+      "type": "container_image",
+      "urls": [
+        "https://ghcr.io/agntcy/burger-seller-agent"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "name": "integration/mcp",
+      "data": {
+        "name": "github-mcp-server",
+        "connections": [
+          {
+            "type": "stdio",
+            "command": "docker",
+            "args": [
+              "run",
+              "-i",
+              "--rm",
+              "-e",
+              "GITHUB_PERSONAL_ACCESS_TOKEN",
+              "ghcr.io/github/github-mcp-server"
+            ],
+            "env_vars": [
+              {
+                "name": "GITHUB_PERSONAL_ACCESS_TOKEN",
+                "default_value": "",
+                "description": "Secret value for GITHUB_PERSONAL_ACCESS_TOKEN"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "integration/a2a",
+      "data": {
+        "card_data": {
+          "protocolVersions": [
+            "0.2.6"
+          ],
+          "name": "burger_seller_agent",
+          "description": "Helps with creating burger orders",
+          "supportedInterfaces": [
+            {
+              "url": "https://burger-agent-109790610330.us-central1.run.app",
+              "protocolBinding": "HTTP+JSON"
+            }
+          ],
+          "provider": {
+            "url": "https://example.com",
+            "organization": "Example Organization"
+          },
+          "version": "1.0.0",
+          "capabilities": {
+            "streaming": true
+          },
+          "defaultInputModes": [
+            "text",
+            "text/plain"
+          ],
+          "defaultOutputModes": [
+            "text",
+            "text/plain"
+          ],
+          "skills": [
+            {
+              "id": "create_burger_order",
+              "name": "Burger Order Creation Tool",
+              "description": "Helps with creating burger orders",
+              "tags": [
+                "burger order creation"
+              ],
+              "examples": [
+                "I want to order 2 classic cheeseburgers"
+              ]
+            }
+          ]
+        },
+        "card_schema_version": "v1.0.0"
+      }
+    }
+  ]
+}

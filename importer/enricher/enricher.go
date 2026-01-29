@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 
+	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mark3labs/mcphost/sdk"
@@ -193,32 +194,31 @@ func (c *MCPHostClient) EnrichWithDomains(ctx context.Context, record *typesv1al
 	return c.enrichField(ctx, record, fieldTypeDomains, c.domainsPromptTemplate)
 }
 
+// EnrichWithSkillsV1 enriches the record with OASF skills using the LLM and MCP tools (for v1 records).
+func (c *MCPHostClient) EnrichWithSkillsV1(ctx context.Context, record *typesv1.Record) (*typesv1.Record, error) {
+	return c.enrichFieldV1(ctx, record, fieldTypeSkills, c.skillsPromptTemplate)
+}
+
+// EnrichWithDomainsV1 enriches the record with OASF domains using the LLM and MCP tools (for v1 records).
+func (c *MCPHostClient) EnrichWithDomainsV1(ctx context.Context, record *typesv1.Record) (*typesv1.Record, error) {
+	return c.enrichFieldV1(ctx, record, fieldTypeDomains, c.domainsPromptTemplate)
+}
+
 // enrichField is the generic enrichment method that handles both skills and domains.
+//
+//nolint:dupl // Similar structure to enrichFieldV1 but uses different types
 func (c *MCPHostClient) enrichField(
 	ctx context.Context,
 	record *typesv1alpha1.Record,
 	fType fieldType,
 	promptTemplate string,
 ) (*typesv1alpha1.Record, error) {
-	// Marshal the record to JSON
-	recordJSON, err := json.Marshal(record)
+	enrichedFields, err := c.runEnrichmentPrompt(ctx, record, fType, promptTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal record: %w", err)
+		return nil, err
 	}
 
-	// Run prompt with the specified template
-	response, err := c.runPrompt(ctx, promptTemplate, recordJSON)
-	if err != nil {
-		return nil, fmt.Errorf("failed to run prompt for %s: %w", fType, err)
-	}
-
-	// Parse response to get enriched fields
-	enrichedFields, err := c.parseResponse(response, fType)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse %s: %w", fType, err)
-	}
-
-	// Filter by confidence threshold and add to record
+	// Add enriched fields to record
 	for _, field := range enrichedFields {
 		if field.Confidence >= DefaultConfidenceThreshold {
 			switch fType {
@@ -248,6 +248,76 @@ func (c *MCPHostClient) enrichField(
 	logger.Debug(fmt.Sprintf("Enriched record with %s", fType), "record", string(enrichedRecordJSON))
 
 	return record, nil
+}
+
+// enrichFieldV1 is the generic enrichment method that handles both skills and domains for v1 records.
+//
+//nolint:dupl // Similar structure to enrichField but uses different types
+func (c *MCPHostClient) enrichFieldV1(
+	ctx context.Context,
+	record *typesv1.Record,
+	fType fieldType,
+	promptTemplate string,
+) (*typesv1.Record, error) {
+	enrichedFields, err := c.runEnrichmentPrompt(ctx, record, fType, promptTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add enriched fields to record
+	for _, field := range enrichedFields {
+		if field.Confidence >= DefaultConfidenceThreshold {
+			switch fType {
+			case fieldTypeSkills:
+				record.Skills = append(record.Skills, &typesv1.Skill{
+					Name: field.Name,
+					Id:   field.ID,
+				})
+			case fieldTypeDomains:
+				record.Domains = append(record.Domains, &typesv1.Domain{
+					Name: field.Name,
+					Id:   field.ID,
+				})
+			}
+
+			logger.Debug(fmt.Sprintf("Added %s", fType), "name", field.Name, "id", field.ID, "confidence", field.Confidence, "reasoning", field.Reasoning)
+		} else {
+			logger.Debug(fmt.Sprintf("Skipped low-confidence %s", fType), "name", field.Name, "confidence", field.Confidence, "threshold", DefaultConfidenceThreshold)
+		}
+	}
+
+	enrichedRecordJSON, err := json.Marshal(record)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal enriched record: %w", err)
+	}
+
+	logger.Debug(fmt.Sprintf("Enriched record with %s", fType), "record", string(enrichedRecordJSON))
+
+	return record, nil
+}
+
+// runEnrichmentPrompt runs the enrichment prompt and parses the response.
+// This is shared between enrichField and enrichFieldV1 to avoid code duplication.
+func (c *MCPHostClient) runEnrichmentPrompt(ctx context.Context, record any, fType fieldType, promptTemplate string) ([]EnrichedField, error) {
+	// Marshal the record to JSON
+	recordJSON, err := json.Marshal(record)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal record: %w", err)
+	}
+
+	// Run prompt with the specified template
+	response, err := c.runPrompt(ctx, promptTemplate, recordJSON)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run prompt for %s: %w", fType, err)
+	}
+
+	// Parse response to get enriched fields
+	enrichedFields, err := c.parseResponse(response, fType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", fType, err)
+	}
+
+	return enrichedFields, nil
 }
 
 func runGetSchemaToolsPrompt(ctx context.Context, host *sdk.MCPHost) {

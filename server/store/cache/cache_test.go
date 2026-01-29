@@ -194,7 +194,7 @@ func TestCachedStore_Pull_CacheMiss(t *testing.T) {
 	require.NoError(t, err)
 	pulledDecoded2, err := pulledRecord2.Decode()
 	require.NoError(t, err)
-	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded2.GetV1Alpha0().GetName())
+	assert.Equal(t, decoded.GetV1Alpha1().GetName(), pulledDecoded2.GetV1Alpha1().GetName())
 
 	// Verify mock was called only once (first pull), not for the second pull (cache hit)
 	mockStore.AssertExpectations(t)

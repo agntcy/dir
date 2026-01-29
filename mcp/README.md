@@ -15,7 +15,7 @@ Lists all available OASF schema versions supported by the server.
 
 Retrieves the complete OASF schema JSON content for the specified version.
 
-**Input:** `version` (string) - OASF schema version (e.g., "0.7.0", "0.8.0")  
+**Input:** `version` (string) - OASF schema version (e.g., "0.7.0", "0.8.0", "1.0.0-rc.1")  
 **Output:** `version` (string), `schema` (string), `available_versions` ([]string), `error_message` (string)
 
 ### `agntcy_oasf_get_schema_skills`
@@ -168,7 +168,7 @@ Analyzes the **current directory** codebase and automatically generates a comple
   - File path (e.g., `"agent.json"`) to save to file
   - `"stdout"` to display only (no file saved)
   - Empty or omitted defaults to `"stdout"`
-- `schema_version` (string) - OASF schema version to use (defaults to "0.7.0")
+- `schema_version` (string) - OASF schema version to use (defaults to "1.0.0-rc.1")
 
 **Use when:** You want to automatically generate an OASF record for the current directory's codebase.
 

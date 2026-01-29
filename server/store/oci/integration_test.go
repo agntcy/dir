@@ -273,16 +273,16 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 
 		// Verify pulled record matches original
 		decodedOriginalAgent, _ := record.Decode()
-		originalAgent := decodedOriginalAgent.GetV1Alpha0()
+		originalAgent := decodedOriginalAgent.GetV1Alpha1()
 		decodedPulledAgent, _ := pulledRecord.Decode()
-		pulledAgent := decodedPulledAgent.GetV1Alpha0()
+		pulledAgent := decodedPulledAgent.GetV1Alpha1()
 
 		assert.Equal(t, originalAgent.GetName(), pulledAgent.GetName())
 		assert.Equal(t, originalAgent.GetVersion(), pulledAgent.GetVersion())
 		assert.Equal(t, originalAgent.GetDescription(), pulledAgent.GetDescription())
 		assert.Len(t, pulledAgent.GetSkills(), len(originalAgent.GetSkills()))
 		assert.Len(t, pulledAgent.GetLocators(), len(originalAgent.GetLocators()))
-		assert.Len(t, pulledAgent.GetExtensions(), len(originalAgent.GetExtensions()))
+		assert.Len(t, pulledAgent.GetModules(), len(originalAgent.GetModules()))
 
 		t.Logf("Successfully pulled and verified record integrity")
 	})

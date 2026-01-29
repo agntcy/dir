@@ -38,7 +38,7 @@ Record file: %s
 Here's the complete workflow:
 
 1. **Read Record**: Load the record from the file
-2. **Validate Schema**: Use the agntcy_oasf_validate_record tool to verify the record is valid OASF (0.7.0 or 0.8.0)
+2. **Validate Schema**: Use the agntcy_oasf_validate_record tool to verify the record is valid OASF (0.7.0, 0.8.0, or 1.0.0-rc.1)
 3. **Check Server**: Confirm Directory server is configured (DIRECTORY_CLIENT_SERVER_ADDRESS environment variable)
 4. **Push Record**: Use the agntcy_dir_push_record tool to upload the validated record to the Directory server
 5. **Return CID**: Display the Content Identifier (CID) and server address for the stored record
