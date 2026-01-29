@@ -28,7 +28,7 @@ appVersion: "1.16.0"
 
 dependencies:
   - name: zot
-    version: "0.1.95"
+    version: "0.1.97"
     repository: "http://zotregistry.dev/helm-charts"
     condition: zot.enabled
   # OASF server subchart (OPTIONAL - opt-in only)
