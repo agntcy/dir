@@ -18,7 +18,7 @@ inputs:
       Supports glob patterns (e.g., "agents/*.json").
     required: false
     default: "record.json"
-  directory_address:
+  server_addr:
     description: Directory server address (host:port)
     required: true
   github_token:
