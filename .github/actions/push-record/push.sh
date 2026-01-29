@@ -16,7 +16,7 @@ FAILED_FILES="[]"
 ALL_SUCCESS=true
 
 echo "=== Push OASF Records ==="
-echo "Directory: $DIRECTORY_ADDRESS"
+echo "Server address: $SERVER_ADDR"
 echo "Sign records: $SIGN_RECORDS"
 echo "Publish to DHT: $PUBLISH_RECORDS"
 echo ""
