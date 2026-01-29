@@ -1,5 +1,5 @@
 // Package storage provides server-side etcd storage with in-memory indices.
-package storage
+package etcd
 
 import (
 	"context"

@@ -33,8 +33,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       # Storage (etcd)
-      - DISCOVERY_STORAGE_HOST=etcd
-      - DISCOVERY_STORAGE_PORT=2379
+      - DISCOVERY_STORAGE_TYPE=etcd
+      - DISCOVERY_STORAGE_ETCD_HOST=etcd
+      - DISCOVERY_STORAGE_ETCD_PORT=2379
       # Runtime (docker)
       - DISCOVERY_RUNTIME_TYPE=docker
       - DISCOVERY_RUNTIME_DOCKER_HOST=unix:///var/run/docker.sock
@@ -62,8 +63,9 @@ services:
       dockerfile: discovery/cmd/server/Dockerfile
     environment:
       # Storage (etcd)
-      - DISCOVERY_STORAGE_HOST=etcd
-      - DISCOVERY_STORAGE_PORT=2379
+      - DISCOVERY_STORAGE_TYPE=etcd
+      - DISCOVERY_STORAGE_ETCD_HOST=etcd
+      - DISCOVERY_STORAGE_ETCD_PORT=2379
       # Server
       - DISCOVERY_SERVER_HOST=0.0.0.0
       - DISCOVERY_SERVER_PORT=8080

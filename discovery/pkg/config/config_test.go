@@ -9,10 +9,12 @@ import (
 
 	"github.com/agntcy/dir/discovery/pkg/processor/a2a"
 	processor "github.com/agntcy/dir/discovery/pkg/processor/config"
+	"github.com/agntcy/dir/discovery/pkg/processor/oasf"
 	runtime "github.com/agntcy/dir/discovery/pkg/runtime/config"
 	"github.com/agntcy/dir/discovery/pkg/runtime/docker"
 	"github.com/agntcy/dir/discovery/pkg/runtime/k8s"
-	"github.com/agntcy/dir/discovery/pkg/storage"
+	storage "github.com/agntcy/dir/discovery/pkg/storage/config"
+	"github.com/agntcy/dir/discovery/pkg/storage/etcd"
 	"github.com/alecthomas/assert/v2"
 )
 
@@ -42,18 +44,24 @@ func TestConfig(t *testing.T) {
 				"DISCOVERY_RUNTIME_KUBERNETES_WATCH_SERVICES": "true",
 
 				// storage
-				"DISCOVERY_STORAGE_HOST":             "etcd.local",
-				"DISCOVERY_STORAGE_PORT":             "1234",
-				"DISCOVERY_STORAGE_USERNAME":         "user",
-				"DISCOVERY_STORAGE_PASSWORD":         "pass",
-				"DISCOVERY_STORAGE_DIAL_TIMEOUT":     "10s",
-				"DISCOVERY_STORAGE_WORKLOADS_PREFIX": "/custom/workloads/",
+				"DISCOVERY_STORAGE_TYPE":                  "etcd",
+				"DISCOVERY_STORAGE_ETCD_HOST":             "etcd.local",
+				"DISCOVERY_STORAGE_ETCD_PORT":             "1234",
+				"DISCOVERY_STORAGE_ETCD_USERNAME":         "user",
+				"DISCOVERY_STORAGE_ETCD_PASSWORD":         "pass",
+				"DISCOVERY_STORAGE_ETCD_DIAL_TIMEOUT":     "10s",
+				"DISCOVERY_STORAGE_ETCD_WORKLOADS_PREFIX": "/custom/workloads/",
 
 				// processor
-				"DISCOVERY_PROCESSOR_WORKERS":     "8",
-				"DISCOVERY_PROCESSOR_A2A_ENABLED": "true",
-				"DISCOVERY_PROCESSOR_A2A_TIMEOUT": "20s",
-				"DISCOVERY_PROCESSOR_A2A_PATHS":   "/a2a,/a2a2",
+				"DISCOVERY_PROCESSOR_WORKERS":         "8",
+				"DISCOVERY_PROCESSOR_A2A_ENABLED":     "true",
+				"DISCOVERY_PROCESSOR_A2A_TIMEOUT":     "20s",
+				"DISCOVERY_PROCESSOR_A2A_PATHS":       "/a2a,/a2a2",
+				"DISCOVERY_PROCESSOR_A2A_LABEL_KEY":   "a2a_key",
+				"DISCOVERY_PROCESSOR_A2A_LABEL_VALUE": "a2a_value",
+				"DISCOVERY_PROCESSOR_OASF_ENABLED":    "false",
+				"DISCOVERY_PROCESSOR_OASF_TIMEOUT":    "15s",
+				"DISCOVERY_PROCESSOR_OASF_LABEL_KEY":  "oasf_key",
 			},
 			ExpectedConfig: &Config{
 				Server: ServerConfig{
@@ -77,19 +85,29 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Storage: storage.Config{
-					Host:            "etcd.local",
-					Port:            1234,
-					Username:        "user",
-					Password:        "pass",
-					DialTimeout:     10 * time.Second,
-					WorkloadsPrefix: "/custom/workloads/",
+					StorageType: "etcd",
+					Etcd: etcd.Config{
+						Host:            "etcd.local",
+						Port:            1234,
+						Username:        "user",
+						Password:        "pass",
+						DialTimeout:     10 * time.Second,
+						WorkloadsPrefix: "/custom/workloads/",
+					},
 				},
 				Processor: processor.Config{
 					Workers: 8,
 					A2A: a2a.Config{
-						Enabled: true,
-						Timeout: 20 * time.Second,
-						Paths:   []string{"/a2a", "/a2a2"},
+						Enabled:    true,
+						Timeout:    20 * time.Second,
+						Paths:      []string{"/a2a", "/a2a2"},
+						LabelKey:   "a2a_key",
+						LabelValue: "a2a_value",
+					},
+					OASF: oasf.Config{
+						Enabled:  false,
+						Timeout:  15 * time.Second,
+						LabelKey: "oasf_key",
 					},
 				},
 			},

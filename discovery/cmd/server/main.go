@@ -25,12 +25,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+	if cfg.Storage.StorageType != "etcd" {
+		log.Fatalf("Unsupported storage type: %s", cfg.Storage.StorageType)
+	}
 
 	log.Println("============================================================")
 	log.Println("Discovery Server (Go)")
 	log.Println("============================================================")
-	log.Printf("Storage: etcd @ %s", cfg.Storage.Endpoints()[0])
-	log.Printf("Workloads prefix: %s", cfg.Storage.WorkloadsPrefix)
+	log.Printf("Storage: etcd @ %s", cfg.Storage.Etcd.Endpoints()[0])
+	log.Printf("Workloads prefix: %s", cfg.Storage.Etcd.WorkloadsPrefix)
 	log.Printf("Server: %s", cfg.Server.Addr())
 	log.Println("============================================================")
 

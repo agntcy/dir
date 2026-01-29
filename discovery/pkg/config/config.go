@@ -16,7 +16,7 @@ import (
 	processor "github.com/agntcy/dir/discovery/pkg/processor/config"
 	"github.com/agntcy/dir/discovery/pkg/processor/oasf"
 	runtime "github.com/agntcy/dir/discovery/pkg/runtime/config"
-	"github.com/agntcy/dir/discovery/pkg/storage"
+	storage "github.com/agntcy/dir/discovery/pkg/storage/config"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -120,12 +120,13 @@ func LoadConfig() (*Config, error) {
 	//
 	// Storage configuration
 	//
-	v.SetDefault("storage.host", DefaultEtcdHost)
-	v.SetDefault("storage.port", DefaultEtcdPort)
-	v.SetDefault("storage.username", "")
-	v.SetDefault("storage.password", "")
-	v.SetDefault("storage.dial_timeout", DefaultEtcdDialTimeout)
-	v.SetDefault("storage.workloads_prefix", DefaultEtcdWorkloadsPrefix)
+	v.SetDefault("storage.type", "etcd")
+	v.SetDefault("storage.etcd.host", DefaultEtcdHost)
+	v.SetDefault("storage.etcd.port", DefaultEtcdPort)
+	v.SetDefault("storage.etcd.username", "")
+	v.SetDefault("storage.etcd.password", "")
+	v.SetDefault("storage.etcd.dial_timeout", DefaultEtcdDialTimeout)
+	v.SetDefault("storage.etcd.workloads_prefix", DefaultEtcdWorkloadsPrefix)
 
 	//
 	// Runtime configuration

@@ -30,12 +30,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+	if cfg.Storage.StorageType != "etcd" {
+		log.Fatalf("Unsupported storage type: %s", cfg.Storage.StorageType)
+	}
 
 	log.Println("============================================================")
 	log.Println("Discovery Service (Watcher + Inspector)")
 	log.Println("============================================================")
 	log.Printf("Runtime: %s", cfg.Runtime.Type)
-	log.Printf("Storage: %s:%d", cfg.Storage.Host, cfg.Storage.Port)
+	log.Printf("Storage: %s:%d", cfg.Storage.Etcd.Host, cfg.Storage.Etcd.Port)
 	log.Printf("Processor workers: %d", cfg.Processor.Workers)
 	log.Println("============================================================")
 

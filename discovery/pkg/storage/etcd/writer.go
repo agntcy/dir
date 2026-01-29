@@ -1,5 +1,5 @@
 // Package storage provides etcd storage implementations.
-package storage
+package etcd
 
 import (
 	"context"
