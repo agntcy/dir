@@ -28,7 +28,7 @@ appVersion: "1.16.0"
 
 dependencies:
   - name: zot
-    version: "0.1.95"
+    version: "0.1.97"
     repository: "http://zotregistry.dev/helm-charts"
     condition: zot.enabled
   # OASF server subchart (OPTIONAL - opt-in only)
@@ -45,9 +45,9 @@ dependencies:
     version: "0.1.0"
     repository: "file://../../envoy-authz"
     condition: envoyAuthz.enabled
-  # PostgreSQL database (OPTIONAL)
-  # Only installed when explicitly enabled via: postgresql.enabled: true
-  # Default: disabled (uses SQLite)
+  # PostgreSQL database (Bitnami subchart)
+  # Disable when using SQLite or external PostgreSQL via: postgresql.enabled: false
+  # Default: enabled (postgresql.enabled: true in values.yaml)
   - name: postgresql
     version: "18.2.3"
     repository: "https://charts.bitnami.com/bitnami"

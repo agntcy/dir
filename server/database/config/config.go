@@ -4,7 +4,7 @@
 package config
 
 const (
-	DefaultDBType = "sqlite"
+	DefaultDBType = "postgres"
 
 	// SQLite defaults.
 	DefaultSQLiteDBPath = "/tmp/dir.db"
