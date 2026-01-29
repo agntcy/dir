@@ -7,7 +7,6 @@ import (
 	"time"
 
 	authnconfig "github.com/agntcy/dir/server/authn/config"
-	monitor "github.com/agntcy/dir/server/sync/monitor/config"
 )
 
 const (
@@ -27,9 +26,6 @@ type Config struct {
 
 	// Worker timeout.
 	WorkerTimeout time.Duration `json:"worker_timeout,omitempty" mapstructure:"worker_timeout"`
-
-	// Registry monitor configuration
-	RegistryMonitor monitor.Config `json:"registry_monitor" mapstructure:"registry_monitor"`
 
 	// Authentication configuration for local registry
 	AuthConfig `json:"auth_config" mapstructure:"auth_config"`

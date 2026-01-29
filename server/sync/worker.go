@@ -11,7 +11,6 @@ import (
 	storev1 "github.com/agntcy/dir/api/store/v1"
 	authnconfig "github.com/agntcy/dir/server/authn/config"
 	"github.com/agntcy/dir/server/events"
-	"github.com/agntcy/dir/server/sync/monitor"
 	synctypes "github.com/agntcy/dir/server/sync/types"
 	"github.com/agntcy/dir/server/types"
 	zotutils "github.com/agntcy/dir/utils/zot"
@@ -20,27 +19,25 @@ import (
 
 // Worker processes sync work items.
 type Worker struct {
-	id             int
-	db             types.DatabaseAPI
-	store          types.StoreAPI
-	workQueue      <-chan synctypes.WorkItem
-	timeout        time.Duration
-	monitorService *monitor.MonitorService
-	eventBus       *events.SafeEventBus
-	authnConfig    authnconfig.Config
+	id          int
+	db          types.DatabaseAPI
+	store       types.StoreAPI
+	workQueue   <-chan synctypes.WorkItem
+	timeout     time.Duration
+	eventBus    *events.SafeEventBus
+	authnConfig authnconfig.Config
 }
 
 // NewWorker creates a new worker instance.
-func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration, monitorService *monitor.MonitorService, eventBus *events.SafeEventBus, authnConfig authnconfig.Config) *Worker {
+func NewWorker(id int, db types.DatabaseAPI, store types.StoreAPI, workQueue <-chan synctypes.WorkItem, timeout time.Duration, eventBus *events.SafeEventBus, authnConfig authnconfig.Config) *Worker {
 	return &Worker{
-		id:             id,
-		db:             db,
-		store:          store,
-		workQueue:      workQueue,
-		timeout:        timeout,
-		monitorService: monitorService,
-		eventBus:       eventBus,
-		authnConfig:    authnConfig,
+		id:          id,
+		db:          db,
+		store:       store,
+		workQueue:   workQueue,
+		timeout:     timeout,
+		eventBus:    eventBus,
+		authnConfig: authnConfig,
 	}
 }
 
@@ -130,13 +127,6 @@ func (w *Worker) deleteSync(_ context.Context, item synctypes.WorkItem) error {
 		return fmt.Errorf("failed to remove registry from zot sync: %w", err)
 	}
 
-	// Start graceful monitoring shutdown - this will continue monitoring
-	// until all records that zot may still be syncing are indexed
-	if err := w.monitorService.StopSyncMonitoring(item.SyncID); err != nil { //nolint:contextcheck
-		// Warn but continue
-		logger.Warn("Failed to initiate graceful monitoring shutdown", "worker_id", w.id, "sync_id", item.SyncID, "error", err)
-	}
-
 	return nil
 }
 
@@ -166,11 +156,6 @@ func (w *Worker) addSync(ctx context.Context, item synctypes.WorkItem) error {
 		item.CIDs,
 	); err != nil {
 		return fmt.Errorf("failed to add registry to zot sync: %w", err)
-	}
-
-	// Start monitoring the local registry for changes after Zot sync is configured
-	if err := w.monitorService.StartSyncMonitoring(item.SyncID); err != nil { //nolint:contextcheck
-		return fmt.Errorf("failed to start registry monitoring: %w", err)
 	}
 
 	logger.Debug("Sync operation completed", "worker_id", w.id, "sync_id", item.SyncID)

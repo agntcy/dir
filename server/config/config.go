@@ -20,7 +20,6 @@ import (
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
 	sync "github.com/agntcy/dir/server/sync/config"
-	syncmonitor "github.com/agntcy/dir/server/sync/monitor/config"
 	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
@@ -478,9 +477,6 @@ func LoadConfig() (*Config, error) {
 
 	_ = v.BindEnv("sync.worker_timeout")
 	v.SetDefault("sync.worker_timeout", sync.DefaultSyncWorkerTimeout)
-
-	_ = v.BindEnv("sync.registry_monitor.check_interval")
-	v.SetDefault("sync.registry_monitor.check_interval", syncmonitor.DefaultCheckInterval)
 
 	_ = v.BindEnv("sync.auth_config.username")
 	_ = v.BindEnv("sync.auth_config.password")

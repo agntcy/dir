@@ -5,12 +5,10 @@ package sync
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/sync/config"
-	"github.com/agntcy/dir/server/sync/monitor"
 	synctypes "github.com/agntcy/dir/server/sync/types"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
@@ -20,11 +18,10 @@ var logger = logging.Logger("sync")
 
 // Service manages the synchronization operations.
 type Service struct {
-	db             types.DatabaseAPI
-	store          types.StoreAPI
-	config         config.Config
-	monitorService *monitor.MonitorService
-	eventBus       *events.SafeEventBus
+	db       types.DatabaseAPI
+	store    types.StoreAPI
+	config   config.Config
+	eventBus *events.SafeEventBus
 
 	scheduler *Scheduler
 	workers   []*Worker
@@ -35,22 +32,16 @@ type Service struct {
 
 // New creates a new sync service.
 func New(db types.DatabaseAPI, store types.StoreAPI, opts types.APIOptions) (*Service, error) {
-	monitorService, err := monitor.NewMonitorService(db, store, opts.Config().Store.OCI, opts.Config().Sync.RegistryMonitor)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create registry monitor service: %w", err)
-	}
-
 	// Copy sync config and add authn config for remote directory connections
 	syncConfig := opts.Config().Sync
 	syncConfig.Authn = opts.Config().Authn
 
 	return &Service{
-		db:             db,
-		store:          store,
-		config:         syncConfig,
-		monitorService: monitorService,
-		eventBus:       opts.EventBus(),
-		stopCh:         make(chan struct{}),
+		db:       db,
+		store:    store,
+		config:   syncConfig,
+		eventBus: opts.EventBus(),
+		stopCh:   make(chan struct{}),
 	}, nil
 }
 
@@ -67,7 +58,7 @@ func (s *Service) Start(ctx context.Context) error {
 	// Create and start workers
 	s.workers = make([]*Worker, s.config.WorkerCount)
 	for i := range s.config.WorkerCount {
-		s.workers[i] = NewWorker(i, s.db, s.store, workQueue, s.config.WorkerTimeout, s.monitorService, s.eventBus, s.config.Authn)
+		s.workers[i] = NewWorker(i, s.db, s.store, workQueue, s.config.WorkerTimeout, s.eventBus, s.config.Authn)
 	}
 
 	// Start scheduler
@@ -99,16 +90,9 @@ func (s *Service) Start(ctx context.Context) error {
 func (s *Service) Stop() error {
 	logger.Info("Stopping sync service")
 
-	// Stop all workers and scheduler first
+	// Stop all workers and scheduler
 	close(s.stopCh)
 	s.wg.Wait()
-
-	// Stop monitor service
-	if err := s.monitorService.Stop(); err != nil {
-		logger.Error("Failed to stop monitor service", "error", err)
-
-		return fmt.Errorf("failed to stop monitor service: %w", err)
-	}
 
 	logger.Info("Sync service stopped")
 
