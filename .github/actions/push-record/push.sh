@@ -5,7 +5,8 @@
 set -euo pipefail
 
 : "${RECORD_PATHS:?RECORD_PATHS is required}"
-: "${DIRECTORY_ADDRESS:?DIRECTORY_ADDRESS is required}"
+: "${SERVER_ADDR:?SERVER_ADDR is required}"
+: "${GITHUB_TOKEN:?GITHUB_TOKEN is required}"
 SIGN_RECORDS="${SIGN_RECORDS:-false}"
 PUBLISH_RECORDS="${PUBLISH_RECORDS:-false}"
 
@@ -73,7 +74,7 @@ for FILE in "${ALL_FILES[@]}"; do
   echo "----------------------------------------"
   
   # Build push command
-  PUSH_CMD="dirctl push \"$FILE\" --server-addr=\"$DIRECTORY_ADDRESS\" --github-token=\"$DIRECTORY_CLIENT_GITHUB_TOKEN\" --output raw"
+  PUSH_CMD="dirctl push \"$FILE\" --server-addr=\"$SERVER_ADDR\" --github-token=\"$GITHUB_TOKEN\" --output raw"
   if [ "$SIGN_RECORDS" = "true" ]; then
     PUSH_CMD="$PUSH_CMD --sign"
   fi
@@ -93,7 +94,7 @@ for FILE in "${ALL_FILES[@]}"; do
     if [ "$PUBLISH_RECORDS" = "true" ]; then
       echo "Publishing to DHT..."
       set +e
-      PUBLISH_OUTPUT=$(dirctl routing publish "$CID" --server-addr="$DIRECTORY_ADDRESS" --github-token="$DIRECTORY_CLIENT_GITHUB_TOKEN" 2>&1)
+      PUBLISH_OUTPUT=$(dirctl routing publish "$CID" --server-addr="$SERVER_ADDR" --github-token="$GITHUB_TOKEN" 2>&1)
       PUBLISH_EXIT=$?
       set -e
       
