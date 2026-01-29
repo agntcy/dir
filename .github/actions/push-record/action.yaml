@@ -32,10 +32,6 @@ inputs:
     description: Publish records to DHT for network discovery after pushing
     required: false
     default: "false"
-  dirctl_version:
-    description: Version of dirctl to use
-    required: false
-    default: "latest"
 
 outputs:
   success:
@@ -51,11 +47,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup dirctl
-      uses: agntcy/dir/.github/actions/setup-dirctl@main
-      with:
-        version: ${{ inputs.dirctl_version }}
-
     - name: Push records
       id: push
       shell: bash

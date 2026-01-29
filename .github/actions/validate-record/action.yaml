@@ -25,10 +25,6 @@ inputs:
     description: Whether to fail the action on validation warnings (not just errors)
     required: false
     default: "false"
-  dirctl_version:
-    description: Version of dirctl to use
-    required: false
-    default: "latest"
 
 outputs:
   valid:
@@ -44,11 +40,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup dirctl
-      uses: agntcy/dir/.github/actions/setup-dirctl@main
-      with:
-        version: ${{ inputs.dirctl_version }}
-
     - name: Validate records
       id: validate
       shell: bash
