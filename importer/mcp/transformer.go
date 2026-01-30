@@ -40,6 +40,7 @@ func NewTransformer(ctx context.Context, cfg config.Config) (*Transformer, error
 		ConfigFile:            cfg.EnricherConfigFile,
 		SkillsPromptTemplate:  cfg.EnricherSkillsPromptTemplate,
 		DomainsPromptTemplate: cfg.EnricherDomainsPromptTemplate,
+		RequestsPerMinute:     cfg.EnricherRequestsPerMinute,
 	}
 
 	host, err := enricher.NewMCPHost(ctx, enricherCfg)

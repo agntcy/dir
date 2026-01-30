@@ -51,8 +51,12 @@ type Config struct {
 	EnricherConfigFile            string // Path to MCPHost configuration file (e.g., mcphost.json)
 	EnricherSkillsPromptTemplate  string // Optional: path to custom skills prompt template or inline prompt (empty = use default)
 	EnricherDomainsPromptTemplate string // Optional: path to custom domains prompt template or inline prompt (empty = use default)
-	Force                         bool   // If true, push even if record already exists
-	Debug                         bool   // If true, enable verbose debug output
+
+	// Rate limiting for LLM API calls to avoid provider rate limit errors
+	EnricherRequestsPerMinute int // Maximum LLM requests per minute (0 = use default of 10)
+
+	Force bool // If true, push even if record already exists
+	Debug bool // If true, enable verbose debug output
 }
 
 // Validate checks if the configuration is valid.

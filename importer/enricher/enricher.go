@@ -10,11 +10,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mark3labs/mcphost/sdk"
+	"golang.org/x/time/rate"
 )
 
 var logger = logging.Logger("importer/enricher")
@@ -29,18 +31,25 @@ const (
 	DebugMode                  = false
 	DefaultConfigFile          = "importer/enricher/mcphost.json"
 	DefaultConfidenceThreshold = 0.5
+
+	// DefaultRequestsPerMinute is the default rate limit for LLM API calls.
+	DefaultRequestsPerMinute = 10
 )
 
 type Config struct {
 	ConfigFile            string // Path to mcphost configuration file (e.g., mcphost.json)
 	SkillsPromptTemplate  string // Optional: path to custom skills prompt template file or inline prompt (empty = use default)
 	DomainsPromptTemplate string // Optional: path to custom domains prompt template file or inline prompt (empty = use default)
+
+	// Rate limiting to avoid hitting LLM provider rate limits
+	RequestsPerMinute int // Maximum requests per minute (0 = use default of 10)
 }
 
 type MCPHostClient struct {
 	host                  *sdk.MCPHost
 	skillsPromptTemplate  string
 	domainsPromptTemplate string
+	rateLimiter           *rate.Limiter
 }
 
 // EnrichedField represents a single enriched field (skill or domain) with metadata.
@@ -90,10 +99,21 @@ func NewMCPHost(ctx context.Context, config Config) (*MCPHostClient, error) {
 		runGetSchemaToolsPrompt(ctx, host)
 	}
 
+	// Initialize rate limiter with configured value or default
+	requestsPerMinute := config.RequestsPerMinute
+	if requestsPerMinute <= 0 {
+		requestsPerMinute = DefaultRequestsPerMinute
+	}
+
+	// Convert requests per minute to rate.Limit (requests per second)
+	rateLimit := rate.Limit(float64(requestsPerMinute) / 60.0) //nolint:mnd
+	rateLimiter := rate.NewLimiter(rateLimit, 1)               // burst of 1 request
+
 	return &MCPHostClient{
 		host:                  host,
 		skillsPromptTemplate:  skillsPrompt,
 		domainsPromptTemplate: domainsPrompt,
+		rateLimiter:           rateLimiter,
 	}, nil
 }
 
@@ -340,6 +360,19 @@ func runGetSchemaToolsPrompt(ctx context.Context, host *sdk.MCPHost) {
 
 func (c *MCPHostClient) runPrompt(ctx context.Context, promptTemplate string, recordJSON []byte) (string, error) {
 	prompt := promptTemplate + string(recordJSON)
+
+	// Apply rate limiting before making the LLM API call
+	// This blocks until a token is available or context is cancelled
+	startWait := time.Now()
+
+	if err := c.rateLimiter.Wait(ctx); err != nil {
+		return "", fmt.Errorf("rate limiter wait failed: %w", err)
+	}
+
+	waitDuration := time.Since(startWait)
+	if waitDuration > time.Second {
+		logger.Debug("Rate limiter delayed request", "wait_duration", waitDuration.Round(time.Millisecond))
+	}
 
 	var (
 		response string
