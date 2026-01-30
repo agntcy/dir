@@ -35,6 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _directoryUrlController = TextEditingController();
   final _directoryTokenController = TextEditingController();
   final _oasfSchemaController = TextEditingController();
+  String _directoryAuthMode = 'github';
 
   bool _isLoading = true;
 
@@ -64,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       _directoryUrlController.text = prefs.getString('directory_server_address') ?? '';
       _directoryTokenController.text = prefs.getString('directory_github_token') ?? '';
+      _directoryAuthMode = prefs.getString('directory_auth_mode') ?? 'github';
       _oasfSchemaController.text = prefs.getString('oasf_schema_url') ?? '';
 
       _isLoading = false;
@@ -91,6 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     await prefs.setString('directory_server_address', _directoryUrlController.text.trim());
     await prefs.setString('directory_github_token', _directoryTokenController.text.trim());
+    await prefs.setString('directory_auth_mode', _directoryAuthMode);
     await prefs.setString('oasf_schema_url', _oasfSchemaController.text.trim());
 
     if (mounted) {
@@ -334,6 +337,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   hintText: 'e.g. localhost:8888 or custom URL',
                   helperText: 'Leave empty for default (localhost:8888)',
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<String>(
+                value: _directoryAuthMode,
+                decoration: const InputDecoration(
+                  labelText: 'Authentication Mode',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'github', child: Text('GitHub (Token)')),
+                  DropdownMenuItem(value: 'token', child: Text('Custom Token')),
+                  DropdownMenuItem(value: 'none', child: Text('None')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _directoryAuthMode = value);
+                  }
+                },
               ),
               const SizedBox(height: 16),
 
