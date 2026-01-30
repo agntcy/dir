@@ -2,6 +2,15 @@ name: Import MCP Records
 
 on:
   workflow_dispatch:
+    inputs:
+      import_config:
+        description: 'JSON configuration for imports (list of filter objects) or path to file'
+        required: false
+        default: '.github/workflows/scripts/import-records.json'
+      dry_run:
+        description: 'Run in dry-run mode'
+        type: boolean
+        default: false
   schedule:
     - cron: '0 0 * * *'
 
@@ -39,17 +48,63 @@ jobs:
           }
           EOF
 
-      - name: Import MCP Records (Dry Run)
+      - name: Import MCP Records
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
         run: |
-          dirctl import \
-            --type=mcp \
-            --url=https://registry.modelcontextprotocol.io/v0.1 \
-            --limit=100 \
-            --dry-run \
-            --force \
-            --enrich \
-            --enrich-config=mcphost_ci.json \
-            --debug
+          # Determine if IMPORT_CONFIG is a file path or direct JSON content
+          if [ -f "$IMPORT_CONFIG" ]; then
+            echo "Loading config from file: $IMPORT_CONFIG"
+            CONFIG_CONTENT=$(cat "$IMPORT_CONFIG")
+          else
+            echo "Loading config from input string"
+            CONFIG_CONTENT="$IMPORT_CONFIG"
+          fi
+
+          # Function to check for dry run value
+          DRY_RUN_FLAG=""
+          if [[ "${DRY_RUN,,}" == "true" ]]; then
+             DRY_RUN_FLAG="--dry-run"
+          fi
+
+          # base command array
+          BASE_CMD=(dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich --enrich-config=mcphost_ci.json --force --debug)
+          if [ -n "$DRY_RUN_FLAG" ]; then
+            BASE_CMD+=("$DRY_RUN_FLAG")
+          fi
+
+          # Get array length using jq
+          LENGTH=$(echo "$CONFIG_CONTENT" | jq 'length')
+
+          if [ -z "$LENGTH" ] || [ "$LENGTH" = "null" ]; then
+             echo "Error: Invalid JSON configuration or not an array"
+             exit 1
+          fi
+
+          for (( i=0; i<$LENGTH; i++ )); do
+            echo "--- Processing Entry $((i+1)) ---"
+
+            # Extract values using jq
+            SEARCH=$(echo "$CONFIG_CONTENT" | jq -r ".[$i].search // empty")
+            VERSION=$(echo "$CONFIG_CONTENT" | jq -r ".[$i].version // empty")
+            UPDATED_SINCE=$(echo "$CONFIG_CONTENT" | jq -r ".[$i].updated_since // empty")
+
+            # Build entry-specific arguments
+            ENTRY_CMD=("${BASE_CMD[@]}")
+
+            if [ -n "$SEARCH" ]; then
+              ENTRY_CMD+=(--filter="search=$SEARCH")
+            fi
+            if [ -n "$VERSION" ]; then
+              ENTRY_CMD+=(--filter="version=$VERSION")
+            fi
+            if [ -n "$UPDATED_SINCE" ]; then
+              ENTRY_CMD+=(--filter="updated_since=$UPDATED_SINCE")
+            fi
+
+            echo "Running: ${ENTRY_CMD[*]}"
+            "${ENTRY_CMD[@]}"
+          done
