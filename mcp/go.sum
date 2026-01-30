@@ -1,9 +1,9 @@
 al.essio.dev/pkg/shellescape v1.6.0 h1:NxFcEqzFSEVCGN2yq7Huv/9hyCEGVa/TncnOOBBeXHA=
 al.essio.dev/pkg/shellescape v1.6.0/go.mod h1:6sIqp7X2P6mThCQ7twERpZTuigpr6KbZWtls1U8I890=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1 h1:r3w0jzp/UVgJxE0TvqEeMaf9iGdto5/m0nzYx0iTKOc=
-buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1/go.mod h1:RA6Inven3rnt6tAMhFaQ7s2DfRWoyOyIQ9/WUX+29TQ=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1 h1:EeGnBiwWBhl7z7s6nKVtH+3HdHAWvV1JzqEcb365TA0=
-buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260128161637-a77f334c8c86.1 h1:zAc/7WXMpvrf+5QcPfoI81shUjFaatEFEIVkflk/xvo=
+buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260128161637-a77f334c8c86.1/go.mod h1:EEQp9sY+88ieMjKf9W4Uf9t3X6qV1nHY0DcGOxsMlac=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260127123814-046ed24ce65a.1 h1:c5Knf+Ki5RRjRAZIK11brQyaI2On4lOvel/cNg4hnJc=
+buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260127123814-046ed24ce65a.1/go.mod h1:y7UzNChPK2OBXQxpwimQg6fSgSFLC1jZXTk9Y7HFfNc=
 cloud.google.com/go v0.123.0 h1:2NAUJwPR47q+E35uaJeYoNhuNEM9kM8SjgRgdeOJUSE=
 cloud.google.com/go v0.123.0/go.mod h1:xBoMV08QcqUGuPW65Qfm1o9Y4zKZBpGS+7bImXLTAZU=
 cloud.google.com/go/auth v0.18.0 h1:wnqy5hrv7p3k7cShwAU/Br3nzod7fxoqG+k0VZ+/Pk0=
@@ -43,8 +43,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/ThalesGroup/crypto11 v1.6.0 h1:Og9EMn44fBS4GNnGnH1aqHnF2wL6F7IU/RhpJajWX/4=
 github.com/ThalesGroup/crypto11 v1.6.0/go.mod h1:H6LRjN5R5SHxTrLqGNteisLDI0/IC6+SGx1pHtbwizE=
-github.com/agntcy/oasf-sdk/pkg v0.0.16 h1:GKjUwoDH8qsBnRqCYJMgoaWXhsTYi0QX9z6L9BcN+qM=
-github.com/agntcy/oasf-sdk/pkg v0.0.16/go.mod h1:NGu7mUHubij1u+yawzrglJwRCEz/ujbhcK3wX8tGcbs=
+github.com/agntcy/oasf-sdk/pkg v1.0.0-rc.1 h1:lVYM2MffPFfQVaCQZ9/bfVSUY9hFBMpFkNEZvpkrqVQ=
+github.com/agntcy/oasf-sdk/pkg v1.0.0-rc.1/go.mod h1:pfewyMhSx+M54QWuZLKEK7hMy5wfszZl9cQMWE9x/2g=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2/go.mod h1:WaHUgvxTVq04UNunO+XhnAqY/wQc+bxr74GqbsZ/Jqw=
 github.com/aws/aws-sdk-go v1.55.8 h1:JRmEUbU52aJQZ2AjX4q4Wu7t4uZjOu71uyNmaWlUkJQ=

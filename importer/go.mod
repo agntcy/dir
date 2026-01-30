@@ -21,18 +21,18 @@ replace (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260127123814-046ed24ce65a.1
 	github.com/agntcy/dir/api v0.6.1
 	github.com/agntcy/dir/client v0.6.1
 	github.com/agntcy/dir/utils v0.6.1
-	github.com/agntcy/oasf-sdk/pkg v0.0.16
+	github.com/agntcy/oasf-sdk/pkg v1.0.0-rc.1
 	github.com/mark3labs/mcphost v0.33.2
 	github.com/modelcontextprotocol/registry v1.4.0
 	google.golang.org/protobuf v1.36.11
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1 // indirect; indirect // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260128161637-a77f334c8c86.1 // indirect; indirect // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
