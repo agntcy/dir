@@ -438,39 +438,25 @@ class TestClient(unittest.TestCase):
             assert e is None
 
     def test_resolve(self) -> None:
-        # Push a record with a known name
-        test_name = f"agntcy-resolve-test-{str(uuid.uuid4())[:8]}"
-        records = [
-            core_v1.Record(
-                data={
-                    "name": test_name,
-                    "version": "v1.0.0",
-                    "schema_version": "0.7.0",
-                    "description": "Test record for resolve",
-                    "authors": ["Test"],
-                    "created_at": "2025-03-19T17:06:37Z",
-                    "skills": [],
-                    "locators": [],
-                    "domains": [],
-                    "modules": [],
-                }
-            )
-        ]
+        # Push a record using built-in generator
+        records = self.gen_records(1, "resolve")
+        record_name = records[0].data["name"]
+        record_version = records[0].data["version"]
 
         record_refs = self.client.push(records=records)
         assert len(record_refs) == 1
 
         # Resolve by name
-        resolve_response = self.client.resolve(name=test_name)
+        resolve_response = self.client.resolve(name=record_name)
 
         assert resolve_response is not None
         assert len(resolve_response.records) > 0
         assert resolve_response.records[0].cid == record_refs[0].cid
-        assert resolve_response.records[0].name == test_name
-        assert resolve_response.records[0].version == "v1.0.0"
+        assert resolve_response.records[0].name == record_name
+        assert resolve_response.records[0].version == record_version
 
         # Resolve by name with version
-        resolve_with_version_response = self.client.resolve(name=test_name, version="v1.0.0")
+        resolve_with_version_response = self.client.resolve(name=record_name, version=record_version)
 
         assert resolve_with_version_response is not None
         assert len(resolve_with_version_response.records) == 1

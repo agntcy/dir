@@ -552,31 +552,17 @@ describe('Client', () => {
   });
 
   test('resolve', async () => {
-    // Push a record with a known name
-    const testName = `agntcy-resolve-test-${uuidv4().substring(0, 8)}`;
-    const records = [
-      create(models.core_v1.RecordSchema, {
-        data: {
-          name: testName,
-          version: 'v1.0.0',
-          schema_version: '0.7.0',
-          description: 'Test record for resolve',
-          authors: ['Test'],
-          created_at: '2025-03-19T17:06:37Z',
-          skills: [],
-          locators: [],
-          domains: [],
-          modules: [],
-        },
-      }),
-    ];
+    // Push a record using built-in generator
+    const records = genRecords(1, 'resolve');
+    const recordName = records[0].data?.name as string;
+    const recordVersion = records[0].data?.version as string;
 
     const recordRefs = await client.push(records);
     expect(recordRefs).toHaveLength(1);
 
     // Resolve by name
     const resolveRequest = create(models.naming_v1.ResolveRequestSchema, {
-      name: testName,
+      name: recordName,
     });
     const resolveResponse = await client.resolve(resolveRequest);
 
@@ -584,13 +570,13 @@ describe('Client', () => {
     expect(resolveResponse.records).toBeInstanceOf(Array);
     expect(resolveResponse.records.length).toBeGreaterThan(0);
     expect(resolveResponse.records[0].cid).toEqual(recordRefs[0].cid);
-    expect(resolveResponse.records[0].name).toEqual(testName);
-    expect(resolveResponse.records[0].version).toEqual('v1.0.0');
+    expect(resolveResponse.records[0].name).toEqual(recordName);
+    expect(resolveResponse.records[0].version).toEqual(recordVersion);
 
     // Resolve by name with version
     const resolveWithVersionRequest = create(models.naming_v1.ResolveRequestSchema, {
-      name: testName,
-      version: 'v1.0.0',
+      name: recordName,
+      version: recordVersion,
     });
     const resolveWithVersionResponse = await client.resolve(resolveWithVersionRequest);
 
