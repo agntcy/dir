@@ -489,6 +489,9 @@ tasks:
       DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
       # - OASF validation uses OASF API (schema URL is required)
       DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
+      # - Use SQLite for local development (no PostgreSQL required)
+      DIRECTORY_SERVER_DATABASE_DB_TYPE: sqlite
+      DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH: /tmp/dir.db
     cmds:
       - defer: { task: server:store:stop }
       - task: server:store:start
