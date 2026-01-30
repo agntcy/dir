@@ -550,4 +550,69 @@ describe('Client', () => {
 
     expect(getResponse.publicationId).toEqual(createResponse.publicationId);
   });
+
+  test('resolve', async () => {
+    // Push a record with a known name
+    const testName = `agntcy-resolve-test-${uuidv4().substring(0, 8)}`;
+    const records = [
+      create(models.core_v1.RecordSchema, {
+        data: {
+          name: testName,
+          version: 'v1.0.0',
+          schema_version: '0.7.0',
+          description: 'Test record for resolve',
+          authors: ['Test'],
+          created_at: '2025-03-19T17:06:37Z',
+          skills: [],
+          locators: [],
+          domains: [],
+          modules: [],
+        },
+      }),
+    ];
+
+    const recordRefs = await client.push(records);
+    expect(recordRefs).toHaveLength(1);
+
+    // Resolve by name
+    const resolveRequest = create(models.naming_v1.ResolveRequestSchema, {
+      name: testName,
+    });
+    const resolveResponse = await client.resolve(resolveRequest);
+
+    expect(resolveResponse).not.toBeNull();
+    expect(resolveResponse.records).toBeInstanceOf(Array);
+    expect(resolveResponse.records.length).toBeGreaterThan(0);
+    expect(resolveResponse.records[0].cid).toEqual(recordRefs[0].cid);
+    expect(resolveResponse.records[0].name).toEqual(testName);
+    expect(resolveResponse.records[0].version).toEqual('v1.0.0');
+
+    // Resolve by name with version
+    const resolveWithVersionRequest = create(models.naming_v1.ResolveRequestSchema, {
+      name: testName,
+      version: 'v1.0.0',
+    });
+    const resolveWithVersionResponse = await client.resolve(resolveWithVersionRequest);
+
+    expect(resolveWithVersionResponse).not.toBeNull();
+    expect(resolveWithVersionResponse.records).toHaveLength(1);
+    expect(resolveWithVersionResponse.records[0].cid).toEqual(recordRefs[0].cid);
+  });
+
+  test('getVerificationInfo', async () => {
+    // Push a record
+    const records = genRecords(1, 'verification');
+    const recordRefs = await client.push(records);
+
+    // Get verification info by CID (record is not signed, so it should return unverified)
+    const verifyByCidRequest = create(models.naming_v1.GetVerificationInfoRequestSchema, {
+      cid: recordRefs[0].cid,
+    });
+    const verifyByCidResponse = await client.getVerificationInfo(verifyByCidRequest);
+
+    expect(verifyByCidResponse).not.toBeNull();
+    // Unsigned records should return verified=false
+    expect(verifyByCidResponse.verified).toBe(false);
+    expect(verifyByCidResponse.errorMessage).toBeDefined();
+  });
 });

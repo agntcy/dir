@@ -147,6 +147,7 @@ export class Client {
   signClient: GrpcClient<typeof models.sign_v1.SignService>;
   syncClient: GrpcClient<typeof models.store_v1.SyncService>;
   eventClient: GrpcClient<typeof models.events_v1.EventService>;
+  namingClient: GrpcClient<typeof models.naming_v1.NamingService>;
 
   /**
    * Initialize the client with the given configuration.
@@ -197,6 +198,7 @@ export class Client {
     this.signClient = createClient(models.sign_v1.SignService, grpcTransport);
     this.syncClient = createClient(models.store_v1.SyncService, grpcTransport);
     this.eventClient = createClient(models.events_v1.EventService, grpcTransport);
+    this.namingClient = createClient(models.naming_v1.NamingService, grpcTransport);
   }
 
   private static convertToPEM(bytes: Uint8Array, label: string): string {
@@ -1000,6 +1002,70 @@ export class Client {
     return await this.publicationClient.getPublication(request);
   }
 
+  /**
+   * Resolve a record name to CIDs.
+   *
+   * Resolves a record reference (name with optional version) to content identifiers (CIDs).
+   * When no version is specified, returns all versions sorted by creation time (newest first).
+   *
+   * @param request - ResolveRequest containing the name and optional version
+   * @returns Promise that resolves to a ResolveResponse containing the resolved record references
+   *
+   * @throws {Error} If the gRPC call fails or the resolve operation fails
+   *
+   * @example
+   * ```typescript
+   * import { create } from "@bufbuild/protobuf";
+   *
+   * // Resolve latest version
+   * const request = create(models.naming_v1.ResolveRequestSchema, { name: "cisco.com/agent" });
+   * const response = await client.resolve(request);
+   * console.log(`Latest CID: ${response.records[0].cid}`);
+   *
+   * // Resolve specific version
+   * const request = create(models.naming_v1.ResolveRequestSchema, { name: "cisco.com/agent", version: "v1.0.0" });
+   * const response = await client.resolve(request);
+   * ```
+   */
+  async resolve(
+    request: models.naming_v1.ResolveRequest,
+  ): Promise<models.naming_v1.ResolveResponse> {
+    return await this.namingClient.resolve(request);
+  }
+
+  /**
+   * Get verification info for a record.
+   *
+   * Retrieves the name verification status for a record. Can look up by CID directly
+   * or by name (with optional version) which will be resolved first.
+   *
+   * @param request - GetVerificationInfoRequest containing cid, name, and/or version
+   * @returns Promise that resolves to a GetVerificationInfoResponse containing verification status
+   *
+   * @throws {Error} If the gRPC call fails or the operation fails
+   *
+   * @example
+   * ```typescript
+   * import { create } from "@bufbuild/protobuf";
+   *
+   * // Check by CID
+   * const request = create(models.naming_v1.GetVerificationInfoRequestSchema, { cid: "bafyreib..." });
+   * const response = await client.getVerificationInfo(request);
+   *
+   * // Check by name (latest version)
+   * const request = create(models.naming_v1.GetVerificationInfoRequestSchema, { name: "cisco.com/agent" });
+   * const response = await client.getVerificationInfo(request);
+   *
+   * // Check by name with specific version
+   * const request = create(models.naming_v1.GetVerificationInfoRequestSchema, { name: "cisco.com/agent", version: "v1.0.0" });
+   * const response = await client.getVerificationInfo(request);
+   * ```
+   */
+  async getVerificationInfo(
+    request: models.naming_v1.GetVerificationInfoRequest,
+  ): Promise<models.naming_v1.GetVerificationInfoResponse> {
+    return await this.namingClient.getVerificationInfo(request);
+  }
 
   /**
    * Sign a record using a private key.

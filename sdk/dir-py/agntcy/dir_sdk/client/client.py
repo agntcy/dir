@@ -23,6 +23,7 @@ from agntcy.dir_sdk.client.config import Config
 from agntcy.dir_sdk.models import (
     core_v1,
     events_v1,
+    naming_v1,
     routing_v1,
     search_v1,
     sign_v1,
@@ -148,6 +149,7 @@ class Client:
         self.sign_client = sign_v1.SignServiceStub(channel)
         self.sync_client = store_v1.SyncServiceStub(channel)
         self.event_client = events_v1.EventServiceStub(channel)
+        self.naming_client = naming_v1.NamingServiceStub(channel)
 
     def __create_grpc_channel(self) -> grpc.Channel:
         # Handle different authentication modes
@@ -1049,6 +1051,107 @@ class Client:
 
         return results
 
+    def resolve(
+        self,
+        name: str,
+        version: str | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> naming_v1.ResolveResponse:
+        """Resolve a record name to CIDs.
+
+        Resolves a record reference (name with optional version) to content identifiers (CIDs).
+        When no version is specified, returns all versions sorted by creation time (newest first).
+
+        Args:
+            name: The name of the record to resolve (e.g., "cisco.com/agent")
+            version: Optional version to resolve to (e.g., "v1.0.0")
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            naming_v1.ResolveResponse: Response containing the resolved record references
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the resolve operation fails
+
+        Example:
+            >>> # Resolve latest version
+            >>> response = client.resolve("cisco.com/agent")
+            >>> print(f"Latest CID: {response.records[0].cid}")
+            >>>
+            >>> # Resolve specific version
+            >>> response = client.resolve("cisco.com/agent", "v1.0.0")
+
+        """
+        try:
+            req = naming_v1.ResolveRequest(name=name)
+            if version:
+                req.version = version
+            response = self.naming_client.Resolve(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during resolve: %s", e)
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error during resolve: %s", e)
+            msg = f"Failed to resolve name: {e}"
+            raise RuntimeError(msg) from e
+
+        return response
+
+    def get_verification_info(
+        self,
+        cid: str | None = None,
+        name: str | None = None,
+        version: str | None = None,
+        metadata: Sequence[tuple[str, str]] | None = None,
+    ) -> naming_v1.GetVerificationInfoResponse:
+        """Get verification info for a record.
+
+        Retrieves the name verification status for a record. Can look up by CID directly
+        or by name (with optional version) which will be resolved first.
+
+        Args:
+            cid: Optional CID of the record to check
+            name: Optional name of the record to check (e.g., "cisco.com/agent")
+            version: Optional version when looking up by name (e.g., "v1.0.0")
+            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+
+        Returns:
+            naming_v1.GetVerificationInfoResponse: Response containing verification status
+
+        Raises:
+            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
+            RuntimeError: If the operation fails
+
+        Example:
+            >>> # Check by CID
+            >>> response = client.get_verification_info(cid="bafyreib...")
+            >>>
+            >>> # Check by name (latest version)
+            >>> response = client.get_verification_info(name="cisco.com/agent")
+            >>>
+            >>> # Check by name with specific version
+            >>> response = client.get_verification_info(name="cisco.com/agent", version="v1.0.0")
+
+        """
+        try:
+            req = naming_v1.GetVerificationInfoRequest()
+            if cid:
+                req.cid = cid
+            if name:
+                req.name = name
+            if version:
+                req.version = version
+            response = self.naming_client.GetVerificationInfo(req, metadata=metadata)
+        except grpc.RpcError as e:
+            logger.exception("gRPC error during get_verification_info: %s", e)
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error during get_verification_info: %s", e)
+            msg = f"Failed to get verification info: {e}"
+            raise RuntimeError(msg) from e
+
+        return response
 
     def verify(
         self,

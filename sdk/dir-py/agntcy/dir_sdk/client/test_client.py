@@ -437,6 +437,58 @@ class TestClient(unittest.TestCase):
         except Exception as e:
             assert e is None
 
+    def test_resolve(self) -> None:
+        # Push a record with a known name
+        test_name = f"agntcy-resolve-test-{str(uuid.uuid4())[:8]}"
+        records = [
+            core_v1.Record(
+                data={
+                    "name": test_name,
+                    "version": "v1.0.0",
+                    "schema_version": "0.7.0",
+                    "description": "Test record for resolve",
+                    "authors": ["Test"],
+                    "created_at": "2025-03-19T17:06:37Z",
+                    "skills": [],
+                    "locators": [],
+                    "domains": [],
+                    "modules": [],
+                }
+            )
+        ]
+
+        record_refs = self.client.push(records=records)
+        assert len(record_refs) == 1
+
+        # Resolve by name
+        resolve_response = self.client.resolve(name=test_name)
+
+        assert resolve_response is not None
+        assert len(resolve_response.records) > 0
+        assert resolve_response.records[0].cid == record_refs[0].cid
+        assert resolve_response.records[0].name == test_name
+        assert resolve_response.records[0].version == "v1.0.0"
+
+        # Resolve by name with version
+        resolve_with_version_response = self.client.resolve(name=test_name, version="v1.0.0")
+
+        assert resolve_with_version_response is not None
+        assert len(resolve_with_version_response.records) == 1
+        assert resolve_with_version_response.records[0].cid == record_refs[0].cid
+
+    def test_get_verification_info(self) -> None:
+        # Push a record
+        records = self.gen_records(1, "verification")
+        record_refs = self.client.push(records=records)
+
+        # Get verification info by CID (record is not signed, so it should return unverified)
+        verify_response = self.client.get_verification_info(cid=record_refs[0].cid)
+
+        assert verify_response is not None
+        # Unsigned records should return verified=false
+        assert verify_response.verified is False
+        assert verify_response.error_message is not None or verify_response.error_message == ""
+
     def gen_records(self, count: int, test_function_name: str) -> list[core_v1.Record]:
         """
         Generate test records with unique names.
