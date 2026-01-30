@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -10,9 +11,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../env/env.dart';
 
 class AnalyticsService {
-  // Secured via Envied
-  final String _measurementId = Env.measurementId;
-  final String _apiSecret = Env.apiSecret;
+  // Secured via Envied, but capable of runtime override
+  String _measurementId = Env.measurementId;
+  String _apiSecret = Env.apiSecret;
 
   static const String _logEndpoint = 'https://www.google-analytics.com/mp/collect';
   static const String _debugEndpoint = 'https://www.google-analytics.com/debug/mp/collect';
@@ -47,8 +48,21 @@ class AnalyticsService {
       // Not needed now as we use Envied
       // await _fetchRemoteConfig();
 
-      if (kDebugMode) {
-        print('Analytics Initialized. ClientID: $_clientId, SessionID: $_sessionId');
+      // Runtime Overrides (useful for CI/CD or dev without rebuilding)
+      if (Platform.environment.containsKey('MEASUREMENT_ID')) {
+        _measurementId = Platform.environment['MEASUREMENT_ID']!;
+      }
+      if (Platform.environment.containsKey('GA_API_SECRET')) {
+        _apiSecret = Platform.environment['GA_API_SECRET']!;
+      }
+
+      if (_measurementId == 'G-LOCALDEV00') {
+         // If still default, warn
+         print('WARNING: Analytics using placeholder MEASUREMENT_ID (G-LOCALDEV00). No data will be sent to real GA4.');
+      }
+
+      if (kDebugMode || _measurementId == 'G-LOCALDEV00') {
+        print('Analytics Initialized. ClientID: $_clientId, SessionID: $_sessionId, MID: $_measurementId');
       }
     } catch (e) {
       if (kDebugMode) print('Failed to init analytics: $e');
@@ -79,6 +93,7 @@ class AnalyticsService {
     final uri = Uri.parse('$_logEndpoint?measurement_id=$_measurementId&api_secret=$_apiSecret');
 
     try {
+      print('GA4: Sending event "$name" ...');
       // specialized logging for non-web platforms via http
       // Fire and forget - don't await full response in critical path if unimportant
       _client.post(
@@ -86,12 +101,14 @@ class AnalyticsService {
         headers: {'Content-Type': 'application/json'},
         body: body,
       ).then((response) {
-        if (kDebugMode && response.statusCode >= 300) {
-           print('Analytics Error [${response.statusCode}]: ${response.body}');
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+           print('GA4: Success [${response.statusCode}] for event "$name"');
+        } else {
+           print('GA4: Error [${response.statusCode}]: ${response.body}');
         }
       });
     } catch (e) {
-      if (kDebugMode) print('Analytics exception: $e');
+      print('GA4: Exception: $e');
     }
   }
 
