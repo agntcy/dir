@@ -10,8 +10,8 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v0.6.1
-	github.com/agntcy/dir/utils v0.6.1
+	github.com/agntcy/dir/api v1.0.0-rc.1
+	github.com/agntcy/dir/utils v1.0.0-rc.1
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/spf13/viper v1.21.0
 	github.com/spiffe/go-spiffe/v2 v2.6.0
