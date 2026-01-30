@@ -31,42 +31,6 @@ on:
         description: "Whether to also build coverage-instrumented images for E2E tests."
 
 jobs:
-  cli:
-    name: CLI
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 0
-
-      - name: Setup Taskfile
-        shell: bash
-        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-
-      - name: Setup Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
-        with:
-          go-version: "1.25.6"
-          cache-dependency-path: "**/*.sum"
-          cache: true # NOTE: Default value, just to be explicit
-
-      - name: Create artifacts directory
-        run: |
-          mkdir /tmp/artifacts
-
-      - name: Build CLI
-        run: |
-          task cli:compile
-          mv ./bin/dirctl /tmp/artifacts/dirctl
-
-      - name: Upload CLI artifact
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        with:
-          name: dirctl-bin
-          path: /tmp/artifacts/dirctl
-          retention-days: 7
-
   prepare:
     name: Prepare
     outputs:
