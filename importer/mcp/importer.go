@@ -6,10 +6,16 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/agntcy/dir/importer/config"
 	"github.com/agntcy/dir/importer/pipeline"
 	"github.com/agntcy/dir/importer/types"
+)
+
+const (
+	// DryRunOutputFile is the prefix for the output file name in dry-run mode.
+	DryRunOutputFile = "import-dry-%s-run.jsonl"
 )
 
 // Importer implements the Importer interface for MCP registry using a pipeline architecture.
@@ -50,8 +56,14 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 	// Create and run the appropriate pipeline based on dry-run mode
 	var pipelineResult *pipeline.Result
 
+	var outputFile string
+
 	//nolint:nestif // Complexity is acceptable for pipeline setup with different modes
 	if cfg.DryRun {
+		// Generate output filename with timestamp
+		outputFile = fmt.Sprintf(DryRunOutputFile, time.Now().Format("2006-01-02-150405"))
+		pipelineConfig.DryRunOutput = outputFile
+
 		// Create duplicate checker for accurate dry-run preview (unless --force is set)
 		var duplicateChecker pipeline.DuplicateChecker
 		if !cfg.Force {
@@ -93,6 +105,7 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 		SkippedCount:  pipelineResult.SkippedCount,
 		FailedCount:   pipelineResult.FailedCount,
 		Errors:        pipelineResult.Errors,
+		OutputFile:    outputFile,
 	}
 
 	return result, nil

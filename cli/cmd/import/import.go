@@ -136,5 +136,9 @@ func printSummary(cmd *cobra.Command, result *types.ImportResult) {
 
 	if opts.DryRun {
 		presenter.Printf(cmd, "\nNote: This was a dry run. No records were actually imported.\n")
+
+		if result.OutputFile != "" {
+			presenter.Printf(cmd, "Records saved to: %s\n", result.OutputFile)
+		}
 	}
 }

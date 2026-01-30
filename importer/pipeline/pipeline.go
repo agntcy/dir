@@ -5,7 +5,9 @@ package pipeline
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -45,6 +47,8 @@ type DuplicateChecker interface {
 type Config struct {
 	// TransformerWorkers is the number of concurrent workers for the transformer stage.
 	TransformerWorkers int
+	// DryRunOutput is the file path to write transformed records in dry-run mode.
+	DryRunOutput string
 }
 
 // Result contains the results of the pipeline execution.
@@ -216,18 +220,11 @@ func (p *DryRunPipeline) Run(ctx context.Context) (*Result, error) {
 	// Transform stage always tracks all records it processes
 	transformedCh, transformErrCh := runTransformStage(ctx, p.transformer, p.config.TransformerWorkers, filteredCh, result)
 
-	// Drain the transformed channel to prevent blocking
-	go func() {
-		for range transformedCh {
-			// Just drain, records are counted but not pushed
-		}
-	}()
-
 	// Collect errors from fetch and transform stages
 	var wg sync.WaitGroup
 
-	// Fetch errors and transform errors
-	wg.Add(2) //nolint:mnd
+	// Fetch errors, transform errors, and record collection
+	wg.Add(3) //nolint:mnd
 
 	// Collect fetch errors
 	go func() {
@@ -255,9 +252,50 @@ func (p *DryRunPipeline) Run(ctx context.Context) (*Result, error) {
 		}
 	}()
 
+	// Collect transformed records - write to file, then drain any remaining
+	go func() {
+		defer wg.Done()
+
+		// Always drain the channel to prevent blocking upstream goroutines
+		defer func() {
+			for range transformedCh {
+			}
+		}()
+
+		// Write records to output file
+		if err := writeRecordsToFile(p.config.DryRunOutput, transformedCh); err != nil {
+			result.mu.Lock()
+			result.Errors = append(result.Errors, fmt.Errorf("failed to write records to file: %w", err))
+			result.mu.Unlock()
+		}
+	}()
+
 	wg.Wait()
 
 	return result, nil
+}
+
+// writeRecordsToFile writes records from the channel to a file in JSONL format.
+func writeRecordsToFile(outputPath string, recordsCh <-chan *corev1.Record) error {
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+
+	for record := range recordsCh {
+		if record == nil {
+			continue
+		}
+
+		if err := encoder.Encode(record.GetData()); err != nil {
+			return fmt.Errorf("failed to encode record: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // runTransformStage runs the transformation stage with concurrent workers.
