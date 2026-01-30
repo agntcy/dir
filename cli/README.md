@@ -430,6 +430,22 @@ dirctl import --type=mcp \
 dirctl import --type=mcp \
   --url=https://registry.modelcontextprotocol.io/v0.1 \
   --dry-run
+
+# Import and sign records with OIDC (opens browser for authentication)
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --sign
+
+# Import and sign records with a private key
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --sign \
+  --key=/path/to/cosign.key
+
+# Import with rate limiting for LLM API calls
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich-rate-limit=5
 ```
 
 **Configuration Options:**
@@ -446,6 +462,12 @@ dirctl import --type=mcp \
 | `--enrich-config` | - | Path to MCPHost configuration file (mcphost.json) | No | importer/enricher/mcphost.json |
 | `--enrich-skills-prompt` | - | Optional: path to custom skills prompt template or inline prompt | No | "" (uses default) |
 | `--enrich-domains-prompt` | - | Optional: path to custom domains prompt template or inline prompt | No | "" (uses default) |
+| `--enrich-rate-limit` | - | Maximum LLM API requests per minute (to avoid rate limit errors) | No | 10 |
+| `--sign` | - | Sign records after pushing (uses OIDC by default) | No | false |
+| `--key` | - | Path to private key file for signing (requires `--sign`) | No | - |
+| `--oidc-token` | - | OIDC token for non-interactive signing (requires `--sign`) | No | - |
+| `--fulcio-url` | - | Sigstore Fulcio URL (requires `--sign`) | No | https://fulcio.sigstore.dev |
+| `--rekor-url` | - | Sigstore Rekor URL (requires `--sign`) | No | https://rekor.sigstore.dev |
 | `--server-addr` | `DIRECTORY_CLIENT_SERVER_ADDRESS` | DIR server address | No | localhost:8888 |
 
 **Import Behavior:**
@@ -561,6 +583,34 @@ dirctl import --type=mcp \
   --filter=version=latest \
   --limit=10 \
   --force
+```
+
+#### Signing Records During Import
+
+Records can be signed during import using the `--sign` flag. Signing options work the same as the standalone `dirctl sign` command (see [Security & Verification](#-security--verification)).
+
+```bash
+# Sign with OIDC (opens browser)
+dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign
+
+# Sign with a private key
+dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --sign --key=/path/to/cosign.key
+```
+
+#### Rate Limiting for LLM API Calls
+
+When importing large batches of records, the enrichment process makes LLM API calls for each record. To avoid hitting rate limits from LLM providers, use the `--enrich-rate-limit` flag:
+
+```bash
+# Import with reduced rate limit (5 requests per minute)
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich-rate-limit=5
+
+# Import with higher rate limit for providers with generous limits
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich-rate-limit=30
 ```
 
 ### 🔄 **Synchronization**
@@ -812,7 +862,19 @@ dirctl import --type=mcp \
   --limit=5 \
   --debug
 
-# 5. Search imported records
+# 5. Import with signing enabled
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --limit=5 \
+  --sign
+
+# 6. Import with rate limiting for LLM API calls
+dirctl import --type=mcp \
+  --url=https://registry.modelcontextprotocol.io/v0.1 \
+  --enrich-rate-limit=5 \
+  --debug
+
+# 7. Search imported records
 dirctl search --module "runtime/mcp"
 ```
 
