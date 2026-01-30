@@ -5,6 +5,108 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0-rc.1] - 2026-01-30
+
+### Key Highlights
+
+This release candidate marks a major milestone with production-ready authentication, authorization, 
+database scalability, and async operations support:
+
+**Authentication & Authorization**
+- Multi-provider authentication via Envoy External Authorization (GitHub OAuth2 + PAT support)
+- Role-Based Access Control (RBAC) with Casbin policy engine
+- Dynamic authorization policies with user/org/role-based permissions
+- CLI authentication flows (`dirctl auth login/logout/status`)
+
+**Database & Scalability**
+- PostgreSQL as default database (replaces SQLite for production)
+- Bitnami PostgreSQL Helm subchart integration
+- Reconciler service for async operations (regsync + search indexer)
+- Cross-registry sync support (GHCR, Docker Hub, Zot)
+
+**Observability & Operations**
+- Domain ownership verification and re-verification service
+- Enhanced GUI with Flutter implementation and Google Analytics
+- Improved MCP tools and workflows
+- OASF 1.0.0-rc.1 compatibility
+
+### Compatibility Matrix
+
+| Component              | Version       | Compatible With             |
+| ---------------------- | ------------- | --------------------------- |
+| **dir-apiserver**      | v1.0.0-rc.1   | oasf v1.0.0-rc.1            |
+| **dirctl**             | v1.0.0-rc.1   | dir-apiserver >= v0.6.0     |
+| **dir-go**             | v1.0.0-rc.1   | dir-apiserver >= v0.6.0     |
+| **dir-py**             | v1.0.0-rc.1   | dir-apiserver >= v0.6.0     |
+| **dir-js**             | v1.0.0-rc.1   | dir-apiserver >= v0.6.0     |
+| **envoy-authz**        | v1.0.0-rc.1   | dir-apiserver v1.0.0-rc.1   |
+| **dir-reconciler**     | v1.0.0-rc.1   | dir-apiserver v1.0.0-rc.1   |
+| **helm-charts/dir**    | v1.0.0-rc.1   | dir-apiserver v1.0.0-rc.1   |
+| **helm-charts/dirctl** | v1.0.0-rc.1   | dirctl v1.0.0-rc.1          |
+
+### Added
+- **Auth**: Envoy External Authorization with GitHub OAuth2 and PAT support (#807)
+- **Auth**: Casbin-based RBAC with role/user/org policy engine (#845)
+- **Auth**: Dynamic authorization policies with wildcard method matching (#834)
+- **Auth**: CLI authentication commands (`dirctl auth login/logout/status`) (#807)
+- **Database**: PostgreSQL support with Bitnami subchart integration (#849, #876)
+- **Reconciler**: Async operations service with task-based architecture (#835)
+- **Reconciler**: Regsync task for cross-registry synchronization (GHCR, Docker Hub) (#835)
+- **Reconciler**: Search indexer task for database-backed search (#875)
+- **Verification**: Domain ownership verification system (#803)
+- **Verification**: Re-verification service and verification storage (#826)
+- **CLI**: `dirctl pull by name` for pulling records by name (#842)
+- **CLI**: `dirctl validate` command for record validation (#793)
+- **CLI**: `--sign` flag for import command (#858)
+- **GUI**: Initial Flutter UI implementation with MCP integration (#804)
+- **GUI**: Google Analytics via Measurement Protocol (#850)
+- **GUI**: Runtime configuration for GA4 analytics (#883)
+- **MCP**: GitHub authentication setup documentation with PAT recommendations (#853)
+- **SDK**: JavaScript SDK npm trusted publishers (#800)
+- **Dependencies**: OASF 1.0.0-rc.1 support (#884)
+- **Testing**: HTTP validation for record names (e2e) (#818)
+
+### Changed
+- **Database**: Default database type changed from SQLite to PostgreSQL (#876)
+- **PostgreSQL**: Helm subchart enabled by default (Bitnami 18.2.3) (#876)
+- **Auth**: Server-side signature verification (moved from client) (#809)
+- **Storage**: Abstract OCI registry interface for multi-backend support (#801)
+- **Validation**: Server-side validation configuration (#785)
+- **Sync**: Worker authentication with remote directory nodes (#848)
+- **CLI**: UI/UX improvements for Agent Directory GUI (#837)
+- **Release**: Decouple SDK releases from main CI/CD (#800)
+- **Refactor**: Remove DNS name verification (#833)
+- **Dependencies**: Bump zot to latest version (#879)
+- **Dependencies**: Update go-tuf/v2 to v2.4.0 (#838)
+- **Dependencies**: Update OASF SDK to v0.0.16 (#847)
+- **Dependencies**: Bump lodash to v4.1.23 in SDK JavaScript (#869)
+- **Dependencies**: Bump github.com/theupdateframework/go-tuf/v2 to v2.4.1 (#868)
+- **Dependencies**: Bump github.com/sigstore/cosign/v3 to v3.0.4 (#817)
+- **Security**: Update Go packages to fix vulnerabilities (#839, #821)
+
+### Fixed
+- **Reconciler**: Docker warning with regsync version (#885)
+- **Authz**: Federation e2e authorization config (#854)
+- **GUI**: mcp-server.exe extension handling on Windows (#866)
+- **GUI**: Runtime GA4 analytics configuration (#883)
+- **GUI**: Test coverage and flaky tests (#843)
+- **Importer**: Mandatory enrichment and MCP fixes (#860)
+- **SDK**: Python version resolution for SDK tests (#865)
+- **SDK**: Python package updates (#824)
+- **SDK**: JavaScript SDK example and CI validation (#794)
+- **CLI**: Unit tests with OASF server update (#827)
+- **CI**: Post-release tag filtering and robust Windows build (#864)
+- **CI**: Release upload paths and signature verification (#862)
+- **CI**: Robust macOS signing and release upload (#861, #859, #855)
+- **CI**: mcp-server permissions on macOS (#859)
+- **CI**: Write permissions for macOS app re-signing (#855)
+- **CI**: Skip full runs on non-code changes with paths-ignore (#806)
+
+### Removed
+- **Refactor**: DNS name verification (replaced with domain ownership verification) (#833)
+
+[Full Changelog](https://github.com/agntcy/dir/compare/v0.6.0...v1.0.0-rc.1)
+
 ## [v0.6.0] - 2025-12-19
 
 ### Key Highlights

@@ -7,6 +7,7 @@ module-sets:
     modules:
       - github.com/agntcy/dir/api
       - github.com/agntcy/dir/client
+      - github.com/agntcy/dir/cli
       - github.com/agntcy/dir/e2e
       - github.com/agntcy/dir/importer
       - github.com/agntcy/dir/mcp
@@ -17,7 +18,3 @@ module-sets:
       - github.com/agntcy/dir/auth/authzserver
       - github.com/agntcy/dir/auth/cmd/envoy-authz
 
-  cli:
-    version: v1.0.0-rc.1
-    modules:
-      - github.com/agntcy/dir/cli
