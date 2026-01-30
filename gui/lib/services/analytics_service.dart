@@ -93,6 +93,7 @@ class AnalyticsService {
     final uri = Uri.parse('$_logEndpoint?measurement_id=$_measurementId&api_secret=$_apiSecret');
 
     try {
+      print('GA4: Sending event "$name" ...');
       // specialized logging for non-web platforms via http
       // Fire and forget - don't await full response in critical path if unimportant
       _client.post(
@@ -100,12 +101,14 @@ class AnalyticsService {
         headers: {'Content-Type': 'application/json'},
         body: body,
       ).then((response) {
-        if (kDebugMode && response.statusCode >= 300) {
-           print('Analytics Error [${response.statusCode}]: ${response.body}');
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+           print('GA4: Success [${response.statusCode}] for event "$name"');
+        } else {
+           print('GA4: Error [${response.statusCode}]: ${response.body}');
         }
       });
     } catch (e) {
-      if (kDebugMode) print('Analytics exception: $e');
+      print('GA4: Exception: $e');
     }
   }
 
