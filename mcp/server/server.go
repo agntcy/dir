@@ -261,7 +261,7 @@ Analyzes the current directory codebase and automatically creates a complete OAS
 			},
 			{
 				Name:        "schema_version",
-				Description: "OASF schema version to use (e.g., 0.7.0, 0.3.1). Defaults to 0.7.0",
+				Description: "OASF schema version to use (e.g., 0.7.0, 0.8.0, 1.0.0-rc.1). Defaults to 1.0.0-rc.1",
 				Required:    false,
 			},
 		},

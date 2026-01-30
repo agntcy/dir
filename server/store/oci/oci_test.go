@@ -9,7 +9,6 @@ import (
 	"os"
 	"testing"
 
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
@@ -38,9 +37,9 @@ var (
 func TestStorePushLookupPullDelete(t *testing.T) {
 	store := loadLocalStore(t)
 
-	agent := &typesv1alpha0.Record{
+	agent := &typesv1alpha1.Record{
 		Name:          "test-agent",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 		Description:   "A test agent",
 	}
 
@@ -70,7 +69,7 @@ func TestStorePushLookupPullDelete(t *testing.T) {
 
 	// Verify the pulled agent data
 	decoded, _ := record.Decode()
-	pulledAgent := decoded.GetV1Alpha0()
+	pulledAgent := decoded.GetV1Alpha1()
 	assert.NotNil(t, pulledAgent, "pulled agent should not be nil")
 	assert.Equal(t, agent.GetName(), pulledAgent.GetName())
 	assert.Equal(t, agent.GetSchemaVersion(), pulledAgent.GetSchemaVersion())
@@ -115,9 +114,9 @@ func BenchmarkRemoteStore(b *testing.B) {
 
 func benchmarkStep(store types.StoreAPI) {
 	// Create test record
-	agent := &typesv1alpha0.Record{
+	agent := &typesv1alpha1.Record{
 		Name:          "bench-agent",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 		Description:   "A benchmark agent",
 	}
 
@@ -193,33 +192,27 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 		locatorVerifier      func(t *testing.T, record *corev1.Record)
 	}{
 		{
-			name: "V1_Agent_CategoryClass_Skills",
-			record: corev1.New(&typesv1alpha0.Record{
-				Name:          "test-v1-agent",
+			name: "V070_Agent_Skills",
+			record: corev1.New(&typesv1alpha1.Record{
+				Name:          "test-v070-agent",
 				Version:       "1.0.0",
-				SchemaVersion: "v0.3.1",
-				Description:   "Test v1 agent with hierarchical skills",
-				Skills: []*typesv1alpha0.Skill{
+				SchemaVersion: "0.7.0",
+				Description:   "Test 0.7.0 agent with skills",
+				Skills: []*typesv1alpha1.Skill{
 					{
-						CategoryName: stringPtr("Natural Language Processing"),
-						CategoryUid:  1,
-						ClassName:    stringPtr("Text Completion"),
-						ClassUid:     10201,
+						Name: "natural_language_processing/text_completion",
 					},
 					{
-						CategoryName: stringPtr("Machine Learning"),
-						CategoryUid:  2,
-						ClassName:    stringPtr("Classification"),
-						ClassUid:     20301,
+						Name: "machine_learning/classification",
 					},
 				},
-				Locators: []*typesv1alpha0.Locator{
+				Locators: []*typesv1alpha1.Locator{
 					{
-						Type: "docker-image",
-						Url:  "ghcr.io/agntcy/test-v1-agent",
+						Type: "docker_image",
+						Url:  "ghcr.io/agntcy/test-v070-agent",
 					},
 					{
-						Type: "helm-chart",
+						Type: "helm_chart",
 						Url:  "oci://registry.example.com/charts/test-agent",
 					},
 				},
@@ -230,32 +223,27 @@ func TestAllVersionsSkillsAndLocatorsPreservation(t *testing.T) {
 				t.Helper()
 
 				decoded, _ := record.Decode()
-				v1Agent := decoded.GetV1Alpha0()
-				require.NotNil(t, v1Agent, "should be v1 agent")
+				v1Agent := decoded.GetV1Alpha1()
+				require.NotNil(t, v1Agent, "should be v1alpha1 agent")
 				skills := v1Agent.GetSkills()
-				require.Len(t, skills, 2, "v1 should have 2 skills")
+				require.Len(t, skills, 2, "should have 2 skills")
 
-				// V1 uses category/class format
-				assert.Equal(t, "Natural Language Processing", skills[0].GetCategoryName())
-				assert.Equal(t, "Text Completion", skills[0].GetClassName())
-				assert.Equal(t, uint64(10201), skills[0].GetClassUid())
-
-				assert.Equal(t, "Machine Learning", skills[1].GetCategoryName())
-				assert.Equal(t, "Classification", skills[1].GetClassName())
-				assert.Equal(t, uint64(20301), skills[1].GetClassUid())
+				// 0.7.0 uses hierarchical name format
+				assert.Equal(t, "natural_language_processing/text_completion", skills[0].GetName())
+				assert.Equal(t, "machine_learning/classification", skills[1].GetName())
 			},
 			locatorVerifier: func(t *testing.T, record *corev1.Record) {
 				t.Helper()
 
 				decoded, _ := record.Decode()
-				v1Agent := decoded.GetV1Alpha0()
+				v1Agent := decoded.GetV1Alpha1()
 				locators := v1Agent.GetLocators()
-				require.Len(t, locators, 2, "v1 should have 2 locators")
+				require.Len(t, locators, 2, "should have 2 locators")
 
-				assert.Equal(t, "docker-image", locators[0].GetType())
-				assert.Equal(t, "ghcr.io/agntcy/test-v1-agent", locators[0].GetUrl())
+				assert.Equal(t, "docker_image", locators[0].GetType())
+				assert.Equal(t, "ghcr.io/agntcy/test-v070-agent", locators[0].GetUrl())
 
-				assert.Equal(t, "helm-chart", locators[1].GetType())
+				assert.Equal(t, "helm_chart", locators[1].GetType())
 				assert.Equal(t, "oci://registry.example.com/charts/test-agent", locators[1].GetUrl())
 			},
 		},

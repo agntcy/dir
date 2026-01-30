@@ -106,7 +106,7 @@ var _ = ginkgo.Describe("Events CLI Commands", ginkgo.Serial, ginkgo.Label("even
 			// Full streaming reception tested in e2e/client/02_events_test.go
 
 			recordFile := filepath.Join(tempDir, "events_push_test.json")
-			_ = os.WriteFile(recordFile, testdata.ExpectedRecordV031JSON, 0o600)
+			_ = os.WriteFile(recordFile, testdata.ExpectedRecordV070JSON, 0o600)
 
 			pushCID = cli.Push(recordFile).WithArgs("--output", "raw").ShouldSucceed()
 			gomega.Expect(pushCID).NotTo(gomega.BeEmpty())

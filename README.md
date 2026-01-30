@@ -145,7 +145,7 @@ Directory API services can be deployed either using the `Taskfile` or directly v
 This will start the necessary components such as storage and API services.
 
 ```bash
-DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL="https://schema.oasf.outshift.com/" task server:start
+task server:start
 ```
 
 ### Using Helm chart

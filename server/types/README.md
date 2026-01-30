@@ -318,25 +318,25 @@ func ProcessAnyRecord(record *corev1.Record) error {
 The same function works with different OASF versions:
 
 ```go
-// OASF v0.3.1 record
-v1Record := corev1.New(&typesv1alpha0.Agent{
+// OASF 0.7.0 record
+v070Record := corev1.New(&typesv1alpha1.Record{
     Name: "nlp-agent",
-    Skills: []*typesv1alpha0.Skill{
-        {CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
+    Skills: []*typesv1alpha1.Skill{
+        {Name: "natural_language_processing/text_completion"},
     },
 })
 
-// OASF 0.7.0 record
-v3Record := corev1.New(&typesv1alpha1.Record{
+// OASF 0.8.0 record
+v080Record := corev1.New(&typesv1alpha1.Record{
     Name: "nlp-agent",
     Skills: []*typesv1alpha1.Skill{
-        {Name: "natural-language-processing"},
+        {Name: "natural_language_processing/text_completion"},
     },
 })
 
 // Same processing function works for both
-ProcessAnyRecord(v1Record) // Works!
-ProcessAnyRecord(v3Record) // Works!
+ProcessAnyRecord(v070Record) // Works!
+ProcessAnyRecord(v080Record) // Works!
 ```
 
 ### Advanced Search Patterns

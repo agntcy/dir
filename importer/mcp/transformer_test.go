@@ -379,72 +379,79 @@ func TestUpdateFieldsInStruct(t *testing.T) {
 				return
 			}
 
-			verifyFieldUpdate(t, testStruct, tt.fieldName, tt.items, tt.wantFieldLen, tt.name)
+			verifyFieldUpdateWithItems(t, testStruct, tt.fieldName, tt.items, tt.wantFieldLen, tt.name)
 		})
 	}
 }
 
 func TestUpdateSkillsInStruct(t *testing.T) {
-	recordStruct := &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			"name":    structpb.NewStringValue("test-server"),
-			"version": structpb.NewStringValue("1.0.0"),
-		},
-	}
-
+	recordStruct := createTestRecordStruct()
 	skills := []*typesv1alpha1.Skill{
 		{Name: "skill1", Id: 1},
 		{Name: "skill2", Id: 2},
 	}
 
-	err := updateSkillsInStruct(recordStruct, skills)
+	// Convert to []enrichedItem for the function
+	enrichedSkills := make([]enrichedItem, len(skills))
+	for i, skill := range skills {
+		enrichedSkills[i] = skill
+	}
+
+	err := updateSkillsInStruct(recordStruct, enrichedSkills)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Verify skills field was added
-	skillsVal, ok := recordStruct.GetFields()["skills"]
-	if !ok {
-		t.Fatal("skills field was not added")
-	}
-
-	skillsList := skillsVal.GetListValue()
-	if skillsList == nil || len(skillsList.GetValues()) != 2 {
-		t.Errorf("skills list length = %d, want 2", len(skillsList.GetValues()))
-	}
+	verifyFieldUpdate(t, recordStruct, "skills", 2)
 }
 
 func TestUpdateDomainsInStruct(t *testing.T) {
-	recordStruct := &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			"name":    structpb.NewStringValue("test-server"),
-			"version": structpb.NewStringValue("1.0.0"),
-		},
-	}
-
+	recordStruct := createTestRecordStruct()
 	domains := []*typesv1alpha1.Domain{
 		{Name: "domain1", Id: 10},
 		{Name: "domain2", Id: 20},
 	}
 
-	err := updateDomainsInStruct(recordStruct, domains)
+	// Convert to []enrichedItem for the function
+	enrichedDomains := make([]enrichedItem, len(domains))
+	for i, domain := range domains {
+		enrichedDomains[i] = domain
+	}
+
+	err := updateDomainsInStruct(recordStruct, enrichedDomains)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Verify domains field was added
-	domainsVal, ok := recordStruct.GetFields()["domains"]
-	if !ok {
-		t.Fatal("domains field was not added")
-	}
+	verifyFieldUpdate(t, recordStruct, "domains", 2)
+}
 
-	domainsList := domainsVal.GetListValue()
-	if domainsList == nil || len(domainsList.GetValues()) != 2 {
-		t.Errorf("domains list length = %d, want 2", len(domainsList.GetValues()))
+// createTestRecordStruct creates a test record struct for testing.
+func createTestRecordStruct() *structpb.Struct {
+	return &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"name":    structpb.NewStringValue("test-server"),
+			"version": structpb.NewStringValue("1.0.0"),
+		},
 	}
 }
 
-func verifyFieldUpdate(t *testing.T, testStruct *structpb.Struct, fieldName string, items []mockEnrichedItem, wantFieldLen int, testName string) {
+// verifyFieldUpdate verifies that a field was updated in a struct with the expected length.
+func verifyFieldUpdate(t *testing.T, recordStruct *structpb.Struct, fieldName string, wantFieldLen int) {
+	t.Helper()
+
+	fieldVal, ok := recordStruct.GetFields()[fieldName]
+	if !ok {
+		t.Fatalf("%s field was not added", fieldName)
+	}
+
+	fieldList := fieldVal.GetListValue()
+	if fieldList == nil || len(fieldList.GetValues()) != wantFieldLen {
+		t.Errorf("%s list length = %d, want %d", fieldName, len(fieldList.GetValues()), wantFieldLen)
+	}
+}
+
+func verifyFieldUpdateWithItems(t *testing.T, testStruct *structpb.Struct, fieldName string, items []mockEnrichedItem, wantFieldLen int, testName string) {
 	t.Helper()
 
 	fieldVal, ok := testStruct.GetFields()[fieldName]

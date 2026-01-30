@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/agntcy/dir/importer/config"
@@ -134,10 +135,90 @@ func (t *Transformer) convertToOASF(ctx context.Context, response mcpapiv0.Serve
 
 // enrichRecord handles the enrichment of a record with skills and domains.
 func (t *Transformer) enrichRecord(ctx context.Context, recordStruct *structpb.Struct) error {
-	// Convert structpb.Struct to typesv1alpha1.Record for enrichment
+	// Detect schema version and convert structpb.Struct to appropriate OASF record type
+	schemaVersion, err := getSchemaVersion(recordStruct)
+	if err != nil {
+		return fmt.Errorf("failed to get schema version: %w", err)
+	}
+
+	// Enrich based on schema version
+	enrichedSkills, enrichedDomains, err := t.enrichRecordByVersion(ctx, recordStruct, schemaVersion)
+	if err != nil {
+		return err
+	}
+
+	// Update both skills and domains fields, preserve everything else from the original record
+	if err := updateSkillsInStruct(recordStruct, enrichedSkills); err != nil {
+		return fmt.Errorf("failed to update skills in record: %w", err)
+	}
+
+	if err := updateDomainsInStruct(recordStruct, enrichedDomains); err != nil {
+		return fmt.Errorf("failed to update domains in record: %w", err)
+	}
+
+	return nil
+}
+
+// enrichRecordByVersion enriches a record based on its schema version.
+func (t *Transformer) enrichRecordByVersion(ctx context.Context, recordStruct *structpb.Struct, schemaVersion string) ([]enrichedItem, []enrichedItem, error) {
+	switch schemaVersion {
+	case "1.0.0-rc.1":
+		return t.enrichV1Record(ctx, recordStruct)
+	default:
+		return t.enrichV1Alpha1Record(ctx, recordStruct)
+	}
+}
+
+// enrichV1Record enriches a v1 (1.0.0-rc.1) record.
+//
+//nolint:dupl // Similar structure to enrichV1Alpha1Record but uses different types
+func (t *Transformer) enrichV1Record(ctx context.Context, recordStruct *structpb.Struct) ([]enrichedItem, []enrichedItem, error) {
+	oasfRecord, err := structToOASFRecordV1(recordStruct)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to convert struct to OASF v1 record for enrichment: %w", err)
+	}
+
+	// Clear default skills and domains before enrichment - let the LLM select appropriate ones
+	oasfRecord.Skills = nil
+	oasfRecord.Domains = nil
+
+	// Context with timeout for enrichment operations
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute) //nolint:mnd
+	defer cancel()
+
+	// Enrich with skills
+	enrichedRecord, err := t.host.EnrichWithSkillsV1(ctxWithTimeout, oasfRecord)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to enrich record with skills: %w", err)
+	}
+
+	// Enrich with domains (using the already skill-enriched record)
+	enrichedRecord, err = t.host.EnrichWithDomainsV1(ctxWithTimeout, enrichedRecord)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to enrich record with domains: %w", err)
+	}
+
+	// Extract skills and domains
+	enrichedSkills := make([]enrichedItem, 0, len(enrichedRecord.GetSkills()))
+	for _, skill := range enrichedRecord.GetSkills() {
+		enrichedSkills = append(enrichedSkills, skill)
+	}
+
+	enrichedDomains := make([]enrichedItem, 0, len(enrichedRecord.GetDomains()))
+	for _, domain := range enrichedRecord.GetDomains() {
+		enrichedDomains = append(enrichedDomains, domain)
+	}
+
+	return enrichedSkills, enrichedDomains, nil
+}
+
+// enrichV1Alpha1Record enriches a v1alpha1 (0.7.0, 0.8.0) record.
+//
+//nolint:dupl // Similar structure to enrichV1Record but uses different types
+func (t *Transformer) enrichV1Alpha1Record(ctx context.Context, recordStruct *structpb.Struct) ([]enrichedItem, []enrichedItem, error) {
 	oasfRecord, err := structToOASFRecord(recordStruct)
 	if err != nil {
-		return fmt.Errorf("failed to convert struct to OASF record for enrichment: %w", err)
+		return nil, nil, fmt.Errorf("failed to convert struct to OASF record for enrichment: %w", err)
 	}
 
 	// Clear default skills and domains before enrichment - let the LLM select appropriate ones
@@ -151,25 +232,46 @@ func (t *Transformer) enrichRecord(ctx context.Context, recordStruct *structpb.S
 	// Enrich with skills
 	enrichedRecord, err := t.host.EnrichWithSkills(ctxWithTimeout, oasfRecord)
 	if err != nil {
-		return fmt.Errorf("failed to enrich record with skills: %w", err)
+		return nil, nil, fmt.Errorf("failed to enrich record with skills: %w", err)
 	}
 
 	// Enrich with domains (using the already skill-enriched record)
 	enrichedRecord, err = t.host.EnrichWithDomains(ctxWithTimeout, enrichedRecord)
 	if err != nil {
-		return fmt.Errorf("failed to enrich record with domains: %w", err)
+		return nil, nil, fmt.Errorf("failed to enrich record with domains: %w", err)
 	}
 
-	// Update both skills and domains fields, preserve everything else from the original record
-	if err := updateSkillsInStruct(recordStruct, enrichedRecord.GetSkills()); err != nil {
-		return fmt.Errorf("failed to update skills in record: %w", err)
+	// Extract skills and domains
+	enrichedSkills := make([]enrichedItem, 0, len(enrichedRecord.GetSkills()))
+	for _, skill := range enrichedRecord.GetSkills() {
+		enrichedSkills = append(enrichedSkills, skill)
 	}
 
-	if err := updateDomainsInStruct(recordStruct, enrichedRecord.GetDomains()); err != nil {
-		return fmt.Errorf("failed to update domains in record: %w", err)
+	enrichedDomains := make([]enrichedItem, 0, len(enrichedRecord.GetDomains()))
+	for _, domain := range enrichedRecord.GetDomains() {
+		enrichedDomains = append(enrichedDomains, domain)
 	}
 
-	return nil
+	return enrichedSkills, enrichedDomains, nil
+}
+
+// getSchemaVersion extracts the schema_version from a structpb.Struct.
+func getSchemaVersion(s *structpb.Struct) (string, error) {
+	if s == nil {
+		return "", errors.New("struct is nil")
+	}
+
+	fields := s.GetFields()
+	if fields == nil {
+		return "", errors.New("struct has no fields")
+	}
+
+	schemaVersionField, ok := fields["schema_version"]
+	if !ok {
+		return "", errors.New("schema_version field not found")
+	}
+
+	return schemaVersionField.GetStringValue(), nil
 }
 
 // structToOASFRecord converts a structpb.Struct to typesv1alpha1.Record for enrichment.
@@ -184,6 +286,23 @@ func structToOASFRecord(s *structpb.Struct) (*typesv1alpha1.Record, error) {
 	var record typesv1alpha1.Record
 	if err := protojson.Unmarshal(jsonBytes, &record); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON to OASF record: %w", err)
+	}
+
+	return &record, nil
+}
+
+// structToOASFRecordV1 converts a structpb.Struct to typesv1.Record for enrichment.
+func structToOASFRecordV1(s *structpb.Struct) (*typesv1.Record, error) {
+	// Marshal struct to JSON
+	jsonBytes, err := protojson.Marshal(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal struct to JSON: %w", err)
+	}
+
+	// Unmarshal JSON into typesv1.Record
+	var record typesv1.Record
+	if err := protojson.Unmarshal(jsonBytes, &record); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON to OASF v1 record: %w", err)
 	}
 
 	return &record, nil
@@ -233,12 +352,12 @@ func updateFieldsInStruct[T enrichedItem](recordStruct *structpb.Struct, fieldNa
 
 // updateSkillsInStruct updates the skills field in a structpb.Struct with enriched skills.
 // This preserves all other fields including schema_version, name, version, etc.
-func updateSkillsInStruct(recordStruct *structpb.Struct, enrichedSkills []*typesv1alpha1.Skill) error {
+func updateSkillsInStruct(recordStruct *structpb.Struct, enrichedSkills []enrichedItem) error {
 	return updateFieldsInStruct(recordStruct, "skills", enrichedSkills)
 }
 
 // updateDomainsInStruct updates the domains field in a structpb.Struct with enriched domains.
 // This preserves all other fields including schema_version, name, version, etc.
-func updateDomainsInStruct(recordStruct *structpb.Struct, enrichedDomains []*typesv1alpha1.Domain) error {
+func updateDomainsInStruct(recordStruct *structpb.Struct, enrichedDomains []enrichedItem) error {
 	return updateFieldsInStruct(recordStruct, "domains", enrichedDomains)
 }

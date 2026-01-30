@@ -214,8 +214,9 @@ func (x *RecordMeta) GetCreatedAt() string {
 //
 // Supported schemas:
 //
-// v0.3.1: https://schema.oasf.outshift.com/0.3.1/objects/agent
 // v0.7.0: https://schema.oasf.outshift.com/0.7.0/objects/record
+// v0.8.0: https://schema.oasf.outshift.com/0.8.0/objects/record
+// v1.0.0-rc.1: https://schema.oasf.outshift.com/1.0.0-rc.1/objects/record
 type Record struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Data          *structpb.Struct       `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`

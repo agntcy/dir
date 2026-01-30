@@ -9,7 +9,7 @@ The OCI storage system enables:
 - **Rich metadata annotations** for discovery and filtering
 - **Multiple discovery tags** for enhanced browsability
 - **Content-addressable storage** using CIDs calculated from ORAS digest operations
-- **Version-agnostic record handling** across OASF v0.3.1, v0.4.0, and v0.5.0
+- **Version-agnostic record handling** across OASF v0.7.0, v0.8.0, and v1.0.0-rc.1
 - **Registry-aware operations** optimized for local vs remote storage
 
 ## Architecture
@@ -268,19 +268,19 @@ All tags are normalized for OCI compliance:
 For an AWS EC2 management agent with ORAS-calculated CID:
 
 ```go
-record := corev1.New(&typesv1alpha0.Record{
+record := corev1.New(&typesv1alpha1.Record{
     Name:    "aws-ec2-agent",
     Version: "1.2.0",
-    Skills: []*typesv1alpha0.Skill{
-        {Name: "ec2-management"},
-        {Name: "auto-scaling"},
+    Skills: []*typesv1alpha1.Skill{
+        {Name: "cloud_computing/ec2_management"},
+        {Name: "cloud_computing/auto_scaling"},
     },
-    Locators: []*typesv1alpha0.Locator{
-        {Type: "docker"},
-        {Type: "helm"},
+    Locators: []*typesv1alpha1.Locator{
+        {Type: "docker_image", Url: "ghcr.io/test/agent"},
+        {Type: "helm_chart", Url: "oci://registry.example.com/charts/agent"},
     },
-    Extensions: []*typesv1alpha0.Extension{
-        {Name: "monitoring"},
+    Modules: []*typesv1alpha1.Module{
+        {Name: "runtime/monitoring"},
     },
     Annotations: map[string]string{
         "team":    "platform",
@@ -310,18 +310,18 @@ The system supports multiple OASF versions with automatic detection:
 
 | OASF Version | API Version | Features |
 |--------------|-------------|----------|
-| **v0.3.1** | `objects/v1` | Basic agents with hierarchical skills (`category/class`) |
-| **v0.4.0** | `objects/v2` | Agent records with simple skill names |
-| **v0.5.0** | `objects/v3` | Full records with enhanced metadata |
+| **v0.7.0** | `objects/v2` | Agent records with hierarchical skill names |
+| **v0.8.0** | `objects/v4` | Enhanced records with improved metadata |
+| **v1.0.0-rc.1** | `objects/v5` | Latest records with full feature set including multiple URLs in locators |
 
 ### Version-Specific Examples
 
-#### OASF v0.3.1 (objects/v1)
+#### OASF v0.7.0 (objects/v2)
 ```go
 // Skills use hierarchical format
-skills := []*typesv1alpha0.Skill{
-    {CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
-    {CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
+skills := []*typesv1alpha1.Skill{
+    {Name: "natural_language_processing/text_completion"},
+    {Name: "machine_learning/inference"},
 }
 // Generates tags: skill.nlp.processing, skill.ml.inference
 ```
@@ -329,9 +329,9 @@ skills := []*typesv1alpha0.Skill{
 #### OASF v0.5.0 (objects/v3)
 ```go
 // Skills use simple names
-skills := []*typesv1alpha0.Skill{
-    {Name: "natural-language-processing"},
-    {Name: "machine-learning"},
+skills := []*typesv1alpha1.Skill{
+    {Name: "natural_language_processing/text_completion"},
+    {Name: "machine_learning/inference"},
 }
 // Generates tags: skill.natural-language-processing, skill.machine-learning
 ```

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	routingv1 "github.com/agntcy/dir/api/routing/v1"
 	"github.com/agntcy/dir/server/datastore"
@@ -97,19 +97,19 @@ func (m *mockStore) IsReady(_ context.Context) bool {
 
 func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 	var (
-		testRecord = corev1.New(&typesv1alpha0.Record{
+		testRecord = corev1.New(&typesv1alpha1.Record{
 			Name:          "test-agent-1",
-			SchemaVersion: "v0.3.1",
-			Skills: []*typesv1alpha0.Skill{
-				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+			SchemaVersion: "0.7.0",
+			Skills: []*typesv1alpha1.Skill{
+				{Name: "category1/class1"},
 			},
 		})
-		testRecord2 = corev1.New(&typesv1alpha0.Record{
+		testRecord2 = corev1.New(&typesv1alpha1.Record{
 			Name:          "test-agent-2",
-			SchemaVersion: "v0.3.1",
-			Skills: []*typesv1alpha0.Skill{
-				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
+			SchemaVersion: "0.7.0",
+			Skills: []*typesv1alpha1.Skill{
+				{Name: "category1/class1"},
+				{Name: "category2/class2"},
 			},
 		})
 
@@ -231,12 +231,12 @@ func TestPublishList_ValidSingleSkillQuery(t *testing.T) {
 func TestPublishList_ValidMultiSkillQuery(t *testing.T) {
 	// Test data
 	var (
-		testRecord = corev1.New(&typesv1alpha0.Record{
+		testRecord = corev1.New(&typesv1alpha1.Record{
 			Name:          "test-agent-multi",
-			SchemaVersion: "v0.3.1",
-			Skills: []*typesv1alpha0.Skill{
-				{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
-				{CategoryName: toPtr("category2"), ClassName: toPtr("class2")},
+			SchemaVersion: "0.7.0",
+			Skills: []*typesv1alpha1.Skill{
+				{Name: "category1/class1"},
+				{Name: "category2/class2"},
 			},
 		})
 		testRef = &corev1.RecordRef{Cid: testRecord.GetCid()}
@@ -332,11 +332,11 @@ func Benchmark_RouteLocal(b *testing.B) {
 	badgerRouter := newLocal(store, badgerDatastore, testPeerID)
 	inMemoryRouter := newLocal(store, inMemoryDatastore, testPeerID)
 
-	record := corev1.New(&typesv1alpha0.Record{
+	record := corev1.New(&typesv1alpha1.Record{
 		Name:          "bench-agent",
-		SchemaVersion: "v0.3.1",
-		Skills: []*typesv1alpha0.Skill{
-			{CategoryName: toPtr("category1"), ClassName: toPtr("class1")},
+		SchemaVersion: "0.7.0",
+		Skills: []*typesv1alpha1.Skill{
+			{Name: "category1/class1"},
 		},
 	})
 

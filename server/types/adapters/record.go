@@ -37,8 +37,8 @@ func (r *RecordAdapter) GetRecordData() (types.RecordData, error) {
 
 	// Determine record type and create appropriate adapter
 	switch {
-	case decoded.HasV1Alpha0():
-		return NewV1Alpha0Adapter(decoded.GetV1Alpha0()), nil
+	case decoded.HasV1():
+		return NewV1Adapter(decoded.GetV1()), nil
 	case decoded.HasV1Alpha1():
 		return NewV1Alpha1Adapter(decoded.GetV1Alpha1()), nil
 	case decoded.HasV1Alpha2():

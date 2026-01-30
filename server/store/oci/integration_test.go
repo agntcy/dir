@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
@@ -38,24 +38,23 @@ var integrationConfig = ociconfig.Config{
 
 // createTestRecord creates a comprehensive test record for integration testing.
 func createTestRecord() *corev1.Record {
-	return corev1.New(&typesv1alpha0.Record{
+	return corev1.New(&typesv1alpha1.Record{
 		Name:          "integration-test-agent",
 		Version:       "v1.0.0",
 		Description:   "Integration test agent for OCI storage",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 		CreatedAt:     "2023-01-01T00:00:00Z",
 		Authors:       []string{"integration-test@example.com"},
-		Skills: []*typesv1alpha0.Skill{
-			{CategoryName: stringPtr("nlp"), ClassName: stringPtr("processing")},
-			{CategoryName: stringPtr("ml"), ClassName: stringPtr("inference")},
+		Skills: []*typesv1alpha1.Skill{
+			{Name: "natural_language_processing/text_completion"},
+			{Name: "machine_learning/inference"},
 		},
-		Locators: []*typesv1alpha0.Locator{
-			{Type: "docker"},
-			{Type: "helm"},
+		Locators: []*typesv1alpha1.Locator{
+			{Type: "docker_image", Url: "ghcr.io/test/agent"},
+			{Type: "helm_chart", Url: "oci://registry.example.com/charts/agent"},
 		},
-		Extensions: []*typesv1alpha0.Extension{
-			{Name: "security"},
-			{Name: "monitoring"},
+		Modules: []*typesv1alpha1.Module{
+			{Name: "runtime/model"},
 		},
 		Annotations: map[string]string{
 			"team":        "integration-test",
@@ -213,8 +212,8 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 			"org.agntcy.dir/name":           "integration-test-agent",
 			"org.agntcy.dir/version":        "v1.0.0",
 			"org.agntcy.dir/description":    "Integration test agent for OCI storage",
-			"org.agntcy.dir/oasf-version":   "v0.3.1",
-			"org.agntcy.dir/schema-version": "v0.3.1",
+			"org.agntcy.dir/oasf-version":   "0.7.0",
+			"org.agntcy.dir/schema-version": "0.7.0",
 			"org.agntcy.dir/created-at":     "2023-01-01T00:00:00Z",
 			"org.agntcy.dir/authors":        "integration-test@example.com",
 			// NOTE: V1 skills use "categoryName/className" hierarchical format
@@ -259,9 +258,9 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 		// Verify metadata contains expected fields
 		assert.Equal(t, "integration-test-agent", meta.GetAnnotations()["name"])
 		assert.Equal(t, "v1.0.0", meta.GetAnnotations()["version"])
-		// NOTE: V1 skills use "categoryName/className" hierarchical format
-		assert.Equal(t, "nlp/processing,ml/inference", meta.GetAnnotations()["skills"])
-		assert.Equal(t, "v0.3.1", meta.GetSchemaVersion())
+		// NOTE: 0.7.0 skills use hierarchical format
+		assert.Equal(t, "natural_language_processing/text_completion,machine_learning/inference", meta.GetAnnotations()["skills"])
+		assert.Equal(t, "0.7.0", meta.GetSchemaVersion())
 		assert.Equal(t, "2023-01-01T00:00:00Z", meta.GetCreatedAt())
 	})
 
@@ -274,16 +273,16 @@ func TestIntegrationOCIStoreWorkflow(t *testing.T) {
 
 		// Verify pulled record matches original
 		decodedOriginalAgent, _ := record.Decode()
-		originalAgent := decodedOriginalAgent.GetV1Alpha0()
+		originalAgent := decodedOriginalAgent.GetV1Alpha1()
 		decodedPulledAgent, _ := pulledRecord.Decode()
-		pulledAgent := decodedPulledAgent.GetV1Alpha0()
+		pulledAgent := decodedPulledAgent.GetV1Alpha1()
 
 		assert.Equal(t, originalAgent.GetName(), pulledAgent.GetName())
 		assert.Equal(t, originalAgent.GetVersion(), pulledAgent.GetVersion())
 		assert.Equal(t, originalAgent.GetDescription(), pulledAgent.GetDescription())
 		assert.Len(t, pulledAgent.GetSkills(), len(originalAgent.GetSkills()))
 		assert.Len(t, pulledAgent.GetLocators(), len(originalAgent.GetLocators()))
-		assert.Len(t, pulledAgent.GetExtensions(), len(originalAgent.GetExtensions()))
+		assert.Len(t, pulledAgent.GetModules(), len(originalAgent.GetModules()))
 
 		t.Logf("Successfully pulled and verified record integrity")
 	})

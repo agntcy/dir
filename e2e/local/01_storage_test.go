@@ -48,20 +48,6 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 		shouldFailPush     bool // If true, push should fail (validation failure test)
 	}{
 		{
-			name:              "OASF_0.3.1_Record",
-			fileName:          "oasf_0.3.1_record_test.json",
-			jsonData:          testdata.ExpectedRecordV031JSON,
-			expectedAgentName: "directory.agntcy.org/cisco/marketing-strategy-v1",
-			expectedSkillIDs:  []string{"10201", "10702"},
-			expectedSkillNames: []string{
-				"Natural Language Processing/Text Completion",
-				"Natural Language Processing/Problem Solving",
-			},
-			expectedLocator: "docker-image:https://ghcr.io/agntcy/marketing-strategy",
-			expectedModule:  "", // 0.3.1 schema doesn't have modules
-			shouldFailPush:  false,
-		},
-		{
 			name:              "OASF_0.7.0_Record",
 			fileName:          "oasf_0.7.0_record_test.json",
 			jsonData:          testdata.ExpectedRecordV070JSON,
@@ -87,6 +73,19 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			},
 			expectedLocator: "docker_image:https://ghcr.io/agntcy/research-assistant",
 			expectedModule:  "core/llm/model",
+			shouldFailPush:  false,
+		},
+		{
+			name:              "OASF_1.0.0-rc.1_Record",
+			fileName:          "oasf_1.0.0-rc.1_record_test.json",
+			jsonData:          testdata.ExpectedRecordV100RC1JSON,
+			expectedAgentName: "burger_seller_agent",
+			expectedSkillIDs:  []string{"10101"},
+			expectedSkillNames: []string{
+				"natural_language_processing/natural_language_understanding/contextual_comprehension",
+			},
+			expectedLocator: "container_image:https://ghcr.io/agntcy/burger-seller-agent",
+			expectedModule:  "integration/mcp",
 			shouldFailPush:  false,
 		},
 	}

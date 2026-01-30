@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	eventsv1 "github.com/agntcy/dir/api/events/v1"
 	"github.com/agntcy/dir/server/events"
@@ -29,9 +29,9 @@ func (m *mockStore) Push(_ context.Context, record *corev1.Record) (*corev1.Reco
 func (m *mockStore) Pull(_ context.Context, _ *corev1.RecordRef) (*corev1.Record, error) {
 	m.pullCalled = true
 	// Create a minimal record for testing
-	record := corev1.New(&typesv1alpha0.Record{
+	record := corev1.New(&typesv1alpha1.Record{
 		Name:          "test-record",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 	})
 
 	return record, nil
@@ -66,9 +66,9 @@ func TestEventsWrapPush(t *testing.T) {
 	defer realBus.Unsubscribe(subID)
 
 	// Create test record
-	record := corev1.New(&typesv1alpha0.Record{
+	record := corev1.New(&typesv1alpha1.Record{
 		Name:          "test-agent",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 	})
 
 	// Push record
@@ -219,7 +219,7 @@ func TestEventsWrapWithNilBus(t *testing.T) {
 	mockSrc := &mockStore{}
 	wrappedStore := Wrap(mockSrc, events.NewSafeEventBus(nil))
 
-	record := corev1.New(&typesv1alpha0.Record{Name: "test", SchemaVersion: "v0.3.1"})
+	record := corev1.New(&typesv1alpha1.Record{Name: "test", SchemaVersion: "0.7.0"})
 
 	// Should not panic
 	_, err := wrappedStore.Push(t.Context(), record)

@@ -7,7 +7,6 @@ import (
 	"context"
 	"testing"
 
-	oasfv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
 	oasfv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/stretchr/testify/assert"
@@ -22,15 +21,6 @@ func TestRecord_GetCid(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{
-			name: "v0.3.1 agent record",
-			record: corev1.New(&oasfv1alpha0.Record{
-				Name:          "test-agent",
-				SchemaVersion: "v0.3.1",
-				Description:   "A test agent",
-			}),
-			wantErr: false,
-		},
 		{
 			name: "v0.5.0 record",
 			record: corev1.New(&oasfv1alpha1.Record{
@@ -81,7 +71,7 @@ func TestRecord_GetCid(t *testing.T) {
 }
 
 func TestRecord_GetCid_Consistency(t *testing.T) {
-	// Create two identical v0.3.1 records.
+	// Create two identical 0.7.0 records.
 	record1 := corev1.New(&oasfv1alpha1.Record{
 		Name:          "test-agent",
 		SchemaVersion: "0.7.0",
@@ -98,24 +88,24 @@ func TestRecord_GetCid_Consistency(t *testing.T) {
 	cid1 := record1.GetCid()
 	cid2 := record2.GetCid()
 
-	assert.Equal(t, cid1, cid2, "Identical v0.3.1 records should have identical CIDs")
+	assert.Equal(t, cid1, cid2, "Identical 0.7.0 records should have identical CIDs")
 }
 
 func TestRecord_GetCid_CrossVersion_Difference(t *testing.T) {
-	// Create two different records
-	record1 := corev1.New(&oasfv1alpha0.Record{
-		Name:          "test-agent",
-		SchemaVersion: "0.3.1",
-		Description:   "A test agent",
-	})
-
-	record2 := corev1.New(&oasfv1alpha1.Record{
+	// Create two different records with different schema versions
+	record1 := corev1.New(&oasfv1alpha1.Record{
 		Name:          "test-agent",
 		SchemaVersion: "0.7.0",
 		Description:   "A test agent",
 	})
 
-	// Both records should have the same CID.
+	record2 := corev1.New(&oasfv1alpha1.Record{
+		Name:          "test-agent",
+		SchemaVersion: "0.8.0",
+		Description:   "A test agent",
+	})
+
+	// Both records should have different CIDs due to different schema versions.
 	cid1 := record1.GetCid()
 	cid2 := record2.GetCid()
 
@@ -335,23 +325,6 @@ func TestRecord_Decode(t *testing.T) {
 		wantFail bool
 	}{
 		{
-			name: "valid v0.3.1 record",
-			record: corev1.New(&oasfv1alpha0.Record{
-				Name:          "valid-agent-v2",
-				SchemaVersion: "v0.3.1",
-				Description:   "A valid agent record",
-				Version:       "1.0.0",
-				CreatedAt:     "2024-01-01T00:00:00Z",
-			}),
-			wantResp: &oasfv1alpha0.Record{
-				Name:          "valid-agent-v2",
-				SchemaVersion: "v0.3.1",
-				Description:   "A valid agent record",
-				Version:       "1.0.0",
-				CreatedAt:     "2024-01-01T00:00:00Z",
-			},
-		},
-		{
 			name: "valid 0.7.0 record",
 			record: corev1.New(&oasfv1alpha1.Record{
 				Name:          "valid-agent-v2",
@@ -367,6 +340,40 @@ func TestRecord_Decode(t *testing.T) {
 				Version:       "1.0.0",
 				CreatedAt:     "2024-01-01T00:00:00Z",
 			},
+		},
+		{
+			name: "valid 1.0.0-rc.1 record",
+			record: func() *corev1.Record {
+				record, _ := corev1.UnmarshalRecord([]byte(`{
+					"name": "test-agent-v3",
+					"schema_version": "1.0.0-rc.1",
+					"version": "1.0.0",
+					"description": "A valid agent record",
+					"created_at": "2024-01-01T00:00:00Z",
+					"authors": ["test@example.com"],
+					"skills": [{"name": "natural_language_processing/natural_language_understanding/contextual_comprehension", "id": 10101}],
+					"locators": [{"type": "container_image", "urls": ["https://example.com/agent"]}]
+				}`))
+
+				return record
+			}(),
+			wantResp: func() any {
+				// Decode the expected record to get the v1 record
+				record, _ := corev1.UnmarshalRecord([]byte(`{
+					"name": "test-agent-v3",
+					"schema_version": "1.0.0-rc.1",
+					"version": "1.0.0",
+					"description": "A valid agent record",
+					"created_at": "2024-01-01T00:00:00Z",
+					"authors": ["test@example.com"],
+					"skills": [{"name": "natural_language_processing/natural_language_understanding/contextual_comprehension", "id": 10101}],
+					"locators": [{"type": "container_image", "urls": ["https://example.com/agent"]}]
+				}`))
+				decoded, _ := record.Decode()
+
+				return decoded.GetRecord()
+			}(),
+			wantFail: false,
 		},
 		{
 			name:     "nil record",

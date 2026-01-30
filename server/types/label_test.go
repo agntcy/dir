@@ -14,35 +14,28 @@ import (
 )
 
 func TestGetLabelsFromRecord(t *testing.T) {
-	t.Run("valid_v1alpha0_record", func(t *testing.T) {
-		// Create a valid v1alpha0 record JSON
+	t.Run("valid_v1alpha1_record", func(t *testing.T) {
+		// Create a valid v1alpha1 record JSON
 		recordJSON := `{
 			"name": "test-agent",
 			"version": "1.0.0",
-			"schema_version": "v0.3.1",
+			"schema_version": "0.7.0",
 			"authors": ["test"],
 			"created_at": "2023-01-01T00:00:00Z",
 			"skills": [
 				{
-					"category_name": "Natural Language Processing",
-					"category_uid": 1,
-					"class_name": "Text Completion",
-					"class_uid": 10201
+					"name": "natural_language_processing/text_completion"
 				}
 			],
 			"locators": [
 				{
-					"type": "docker-image",
-					"url": "https://example.com/test",
-					"size": 1000,
-					"digest": "sha256:abc123"
+					"type": "docker_image",
+					"url": "https://example.com/test"
 				}
 			],
-			"extensions": [
+			"modules": [
 				{
-					"name": "schema.oasf.agntcy.org/features/runtime/model",
-					"version": "v0.0.0",
-					"data": {}
+					"name": "runtime/model"
 				}
 			]
 		}`
@@ -64,9 +57,9 @@ func TestGetLabelsFromRecord(t *testing.T) {
 		}
 
 		// Check expected labels are present
-		assert.Contains(t, labelStrings, "/skills/Natural Language Processing/Text Completion")
-		assert.Contains(t, labelStrings, "/locators/docker-image")
-		assert.Contains(t, labelStrings, "/modules/runtime/model") // Schema prefix stripped
+		assert.Contains(t, labelStrings, "/skills/natural_language_processing/text_completion")
+		assert.Contains(t, labelStrings, "/locators/docker_image")
+		assert.Contains(t, labelStrings, "/modules/runtime/model")
 	})
 
 	t.Run("valid_v1alpha1_record", func(t *testing.T) {

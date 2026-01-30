@@ -35,7 +35,7 @@ func TestCreateRecord(t *testing.T) {
 		content := textContent.Text
 		assert.Contains(t, content, "current directory")
 		assert.Contains(t, content, "Display the complete JSON record")
-		assert.Contains(t, content, "0.7.0")
+		assert.Contains(t, content, "1.0.0-rc.1")
 		assert.Contains(t, content, "agntcy_oasf_get_schema")
 		assert.Contains(t, content, "agntcy_oasf_validate_record")
 	})
@@ -66,7 +66,7 @@ func TestCreateRecord(t *testing.T) {
 		req := &mcp.GetPromptRequest{
 			Params: &mcp.GetPromptParams{
 				Arguments: map[string]string{
-					"schema_version": "0.3.1",
+					"schema_version": "1.0.0-rc.1",
 				},
 			},
 		}
@@ -79,6 +79,6 @@ func TestCreateRecord(t *testing.T) {
 		require.True(t, ok, "Content should be TextContent")
 
 		content := textContent.Text
-		assert.Contains(t, content, "0.3.1")
+		assert.Contains(t, content, "1.0.0-rc.1")
 	})
 }

@@ -1,7 +1,7 @@
 {
   "name": "directory.agntcy.org/cisco/marketing-strategy",
-  "version": "v1.0.0",
-  "schema_version": "v0.3.1",
+  "version": "1.0.0",
+  "schema_version": "1.0.0-rc.1",
   "description": "Research agent for Cisco's marketing strategy.",
   "authors": [
     "Cisco Systems"
@@ -12,22 +12,20 @@
   },
   "skills": [
     {
-      "category_name": "Natural Language Processing",
-      "category_uid": 1,
-      "class_name": "Text Completion",
-      "class_uid": 10201
+      "name": "natural_language_processing/text_completion",
+      "id": 10201
     },
     {
-      "category_name": "Natural Language Processing",
-      "category_uid": 1,
-      "class_name": "Problem Solving",
-      "class_uid": 10702
+      "name": "natural_language_processing/problem_solving",
+      "id": 10702
     }
   ],
   "locators": [
     {
-      "type": "docker-image",
-      "url": "https://ghcr.io/agntcy/marketing-strategy"
+      "type": "container_image",
+      "urls": [
+        "https://ghcr.io/agntcy/marketing-strategy"
+      ]
     }
   ]
 }

@@ -39,8 +39,8 @@ require (
 )
 
 require (
-	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260123101512-5343249fabf1.1 // indirect
-	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260109151047-d2be6d341048.1 // indirect
+	buf.build/gen/go/agntcy/oasf-sdk/protocolbuffers/go v1.36.11-20260128161637-a77f334c8c86.1 // indirect
+	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260127123814-046ed24ce65a.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
@@ -55,7 +55,7 @@ require (
 	github.com/agntcy/dir/auth/authprovider v0.0.0 // indirect
 	github.com/agntcy/dir/importer v0.6.1 // indirect
 	github.com/agntcy/dir/mcp v0.6.1 // indirect
-	github.com/agntcy/oasf-sdk/pkg v0.0.16 // indirect
+	github.com/agntcy/oasf-sdk/pkg v1.0.0-rc.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.19.0 // indirect

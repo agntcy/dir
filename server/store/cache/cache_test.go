@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	typesv1alpha0 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha0"
+	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
@@ -80,11 +80,11 @@ func TestCachedStore_Push(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := corev1.New(&typesv1alpha0.Record{
+	record := corev1.New(&typesv1alpha1.Record{
 		Name:          "test-agent",
 		Description:   "Test agent",
 		Version:       "1.0.0",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 	})
 	decoded, err := record.Decode()
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestCachedStore_Push(t *testing.T) {
 	require.NoError(t, err)
 	pulledDecoded, err := pulledRecord.Decode()
 	require.NoError(t, err)
-	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded.GetV1Alpha0().GetName())
+	assert.Equal(t, decoded.GetV1Alpha1().GetName(), pulledDecoded.GetV1Alpha1().GetName())
 
 	// Verify mock was called only once (push), not for the pull (cache hit)
 	mockStore.AssertExpectations(t)
@@ -123,11 +123,11 @@ func TestCachedStore_Pull_CacheHit(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := corev1.New(&typesv1alpha0.Record{
+	record := corev1.New(&typesv1alpha1.Record{
 		Name:          "test-agent",
 		Description:   "Test agent",
 		Version:       "1.0.0",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 	})
 	decoded, err := record.Decode()
 	require.NoError(t, err)
@@ -152,7 +152,7 @@ func TestCachedStore_Pull_CacheHit(t *testing.T) {
 	require.NoError(t, err)
 	pulledDecoded, err := pulledRecord.Decode()
 	require.NoError(t, err)
-	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded.GetV1Alpha0().GetName())
+	assert.Equal(t, decoded.GetV1Alpha1().GetName(), pulledDecoded.GetV1Alpha1().GetName())
 
 	// Verify mock was NOT called (cache hit)
 	mockStore.AssertNotCalled(t, "Pull")
@@ -162,11 +162,11 @@ func TestCachedStore_Pull_CacheMiss(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record
-	record := corev1.New(&typesv1alpha0.Record{
+	record := corev1.New(&typesv1alpha1.Record{
 		Name:          "test-agent",
 		Description:   "Test agent",
 		Version:       "1.0.0",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 	})
 	decoded, err := record.Decode()
 	require.NoError(t, err)
@@ -187,14 +187,14 @@ func TestCachedStore_Pull_CacheMiss(t *testing.T) {
 	require.NoError(t, err)
 	pulledDecoded, err := pulledRecord.Decode()
 	require.NoError(t, err)
-	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded.GetV1Alpha0().GetName())
+	assert.Equal(t, decoded.GetV1Alpha1().GetName(), pulledDecoded.GetV1Alpha1().GetName())
 
 	// Test that subsequent pull hits cache (verifies it was cached after first pull)
 	pulledRecord2, err := cachedStore.Pull(ctx, ref)
 	require.NoError(t, err)
 	pulledDecoded2, err := pulledRecord2.Decode()
 	require.NoError(t, err)
-	assert.Equal(t, decoded.GetV1Alpha0().GetName(), pulledDecoded2.GetV1Alpha0().GetName())
+	assert.Equal(t, decoded.GetV1Alpha1().GetName(), pulledDecoded2.GetV1Alpha1().GetName())
 
 	// Verify mock was called only once (first pull), not for the second pull (cache hit)
 	mockStore.AssertExpectations(t)
@@ -209,7 +209,7 @@ func TestCachedStore_Lookup_CacheHit(t *testing.T) {
 	meta := &corev1.RecordMeta{
 		Cid:           recordCID,
 		Annotations:   map[string]string{"test": "value"},
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 		CreatedAt:     "2023-01-01T00:00:00Z",
 	}
 
@@ -242,7 +242,7 @@ func TestCachedStore_Lookup_CacheMiss(t *testing.T) {
 	meta := &corev1.RecordMeta{
 		Cid:           recordCID,
 		Annotations:   map[string]string{"test": "value"},
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 		CreatedAt:     "2023-01-01T00:00:00Z",
 	}
 
@@ -273,11 +273,11 @@ func TestCachedStore_Delete(t *testing.T) {
 	ctx := t.Context()
 
 	// Create test record and metadata
-	record := corev1.New(&typesv1alpha0.Record{
+	record := corev1.New(&typesv1alpha1.Record{
 		Name:          "test-agent",
 		Description:   "Test agent",
 		Version:       "1.0.0",
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 	})
 
 	recordCID := record.GetCid()
@@ -286,7 +286,7 @@ func TestCachedStore_Delete(t *testing.T) {
 	meta := &corev1.RecordMeta{
 		Cid:           recordCID,
 		Annotations:   map[string]string{"test": "value"},
-		SchemaVersion: "v0.3.1",
+		SchemaVersion: "0.7.0",
 		CreatedAt:     "2023-01-01T00:00:00Z",
 	}
 

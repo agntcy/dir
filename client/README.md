@@ -173,7 +173,7 @@ defer c.Close() // Always close to cleanup resources
 
 ```bash
 # Clone the repository and start the server using Taskfile
-DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL="https://schema.oasf.outshift.com/" task server:start
+task server:start
 ```
 
 **Option B: Custom Server**
