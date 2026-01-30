@@ -27,7 +27,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.filter.outputs.code }}
+      code: ${{ steps.result.outputs.code }}
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -52,6 +52,16 @@ jobs:
               - '!API_SPEC.md'
               - '!RELEASE.md'
               - '!.gitignore'
+
+      - name: Determine result
+        id: result
+        run: |
+          # Always run for tag pushes (releases), otherwise use paths-filter result
+          if [[ "${{ startsWith(github.ref, 'refs/tags/') }}" == "true" ]]; then
+            echo "code=true" >> $GITHUB_OUTPUT
+          else
+            echo "code=${{ steps.filter.outputs.code }}" >> $GITHUB_OUTPUT
+          fi
 
   lint:
     name: Lint
