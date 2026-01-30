@@ -550,4 +550,55 @@ describe('Client', () => {
 
     expect(getResponse.publicationId).toEqual(createResponse.publicationId);
   });
+
+  test('resolve', async () => {
+    // Push a record using built-in generator
+    const records = genRecords(1, 'resolve');
+    const recordName = records[0].data?.name as string;
+    const recordVersion = records[0].data?.version as string;
+
+    const recordRefs = await client.push(records);
+    expect(recordRefs).toHaveLength(1);
+
+    // Resolve by name
+    const resolveRequest = create(models.naming_v1.ResolveRequestSchema, {
+      name: recordName,
+    });
+    const resolveResponse = await client.resolve(resolveRequest);
+
+    expect(resolveResponse).not.toBeNull();
+    expect(resolveResponse.records).toBeInstanceOf(Array);
+    expect(resolveResponse.records.length).toBeGreaterThan(0);
+    expect(resolveResponse.records[0].cid).toEqual(recordRefs[0].cid);
+    expect(resolveResponse.records[0].name).toEqual(recordName);
+    expect(resolveResponse.records[0].version).toEqual(recordVersion);
+
+    // Resolve by name with version
+    const resolveWithVersionRequest = create(models.naming_v1.ResolveRequestSchema, {
+      name: recordName,
+      version: recordVersion,
+    });
+    const resolveWithVersionResponse = await client.resolve(resolveWithVersionRequest);
+
+    expect(resolveWithVersionResponse).not.toBeNull();
+    expect(resolveWithVersionResponse.records).toHaveLength(1);
+    expect(resolveWithVersionResponse.records[0].cid).toEqual(recordRefs[0].cid);
+  });
+
+  test('getVerificationInfo', async () => {
+    // Push a record
+    const records = genRecords(1, 'verification');
+    const recordRefs = await client.push(records);
+
+    // Get verification info by CID (record is not signed, so it should return unverified)
+    const verifyByCidRequest = create(models.naming_v1.GetVerificationInfoRequestSchema, {
+      cid: recordRefs[0].cid,
+    });
+    const verifyByCidResponse = await client.getVerificationInfo(verifyByCidRequest);
+
+    expect(verifyByCidResponse).not.toBeNull();
+    // Unsigned records should return verified=false
+    expect(verifyByCidResponse.verified).toBe(false);
+    expect(verifyByCidResponse.errorMessage).toBeDefined();
+  });
 });
