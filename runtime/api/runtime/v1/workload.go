@@ -30,10 +30,8 @@ func (x *Workload) DeepCopy() *Workload {
 		return nil
 	}
 
-	// Convert via reflection
-	data, _ := proto.Marshal(x)
-	out := &Workload{}
-	_ = proto.Unmarshal(data, out)
+	// Create via reflection
+	cloned, _ := proto.Clone(x).(*Workload)
 
-	return out
+	return cloned
 }
