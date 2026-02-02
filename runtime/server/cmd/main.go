@@ -1,6 +1,7 @@
 // Copyright AGNTCY Contributors (https://github.com/agntcy)
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:nlreturn
 package main
 
 import (
@@ -24,7 +25,8 @@ func main() {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		logger.Fatal("Failed to load configuration", "error", err)
+		logger.Error("Failed to load configuration", "error", err)
+		return
 	}
 
 	logger.Info("============================================================")
@@ -38,7 +40,8 @@ func main() {
 	// Initialize database
 	db, err := database.NewDatabase(cfg.Store)
 	if err != nil {
-		logger.Fatal("Failed to initialize database", "error", err)
+		logger.Error("Failed to initialize database", "error", err)
+		return
 	}
 	defer db.Close()
 
@@ -54,7 +57,8 @@ func main() {
 	//nolint:noctx
 	listener, err := net.Listen("tcp", cfg.Addr())
 	if err != nil {
-		logger.Fatal("Failed to listen", "address", cfg.Addr(), "error", err)
+		logger.Error("Failed to listen", "address", cfg.Addr(), "error", err)
+		return
 	}
 
 	// Start server in goroutine
@@ -62,7 +66,8 @@ func main() {
 		logger.Info("gRPC server listening", "address", cfg.Addr())
 
 		if err := grpcServer.Serve(listener); err != nil {
-			logger.Fatal("Server error", "error", err)
+			logger.Error("Server error", "error", err)
+			return
 		}
 	}()
 
