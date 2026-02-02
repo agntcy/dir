@@ -182,16 +182,20 @@ Uses release name + "reconciler" (without the chart name "apiserver").
 
 {{/*
 Get OCI registry address.
-When zot.enabled=true (internal Zot), returns the Kubernetes internal service address.
-Otherwise, returns the user-configured config.store.oci.registry_address.
+Priority order:
+  1. Explicit user configuration (config.store.oci.registry_address) - always respected
+  2. Auto-detected internal Zot service (when zot.enabled=true and no explicit address)
+
+This allows users to deploy the Zot subchart for convenience while still using
+external ingress with TLS by explicitly setting registry_address.
 
 Note: Uses (get .Values.zot "enabled") for nil-safe access since zot may not be defined.
 */}}
 {{- define "chart.oci.registryAddress" -}}
-{{- if and .Values.zot (get .Values.zot "enabled") -}}
-{{- printf "%s-zot.%s.svc.cluster.local:5000" .Release.Name .Release.Namespace -}}
-{{- else -}}
+{{- if .Values.config.store.oci.registry_address -}}
 {{- .Values.config.store.oci.registry_address -}}
+{{- else if and .Values.zot (get .Values.zot "enabled") -}}
+{{- printf "%s-zot.%s.svc.cluster.local:5000" .Release.Name .Release.Namespace -}}
 {{- end -}}
 {{- end -}}
 

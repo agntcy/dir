@@ -55,7 +55,8 @@ spec:
                   key: postgres-password
             {{- end }}
             # Local registry configuration (inherits from apiserver's OCI store config)
-            # When zot.enabled=true, registry address is auto-detected as internal Zot service
+            # When config.store.oci.registry_address is set, it takes precedence
+            # Otherwise, when zot.enabled=true, registry address is auto-detected as internal Zot service
             - name: RECONCILER_LOCAL_REGISTRY_TYPE
               value: {{ .Values.config.store.oci.type | quote }}
             - name: RECONCILER_LOCAL_REGISTRY_REGISTRY_ADDRESS
