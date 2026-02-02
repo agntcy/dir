@@ -405,6 +405,9 @@ func (c *MCPHostClient) runPrompt(ctx context.Context, promptTemplate string, re
 
 		logger.Info("Response", "response", response)
 
+		// Clear session after each prompt to prevent context accumulation
+		c.host.ClearSession()
+
 		return response, nil
 	}
 
@@ -413,6 +416,11 @@ func (c *MCPHostClient) runPrompt(ctx context.Context, promptTemplate string, re
 	if err != nil {
 		return "", fmt.Errorf("failed to send prompt: %w", err)
 	}
+
+	// Clear session after each prompt to prevent context accumulation.
+	// Without this, the mcphost SDK accumulates conversation history across
+	// all prompts, eventually hitting the model's context window limit.
+	c.host.ClearSession()
 
 	return response, nil
 }
