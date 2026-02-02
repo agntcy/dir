@@ -30,7 +30,7 @@ const (
 	DefaultConfigPath = "/etc/agntcy/discovery"
 
 	// Default workers for processing tasks.
-	DefaultWorkers = 4
+	DefaultWorkers = 16
 
 	// Default runtime type.
 	DefaultRuntimeType = docker.RuntimeType
@@ -136,7 +136,7 @@ func LoadConfig() (*Config, error) {
 	//
 	// A2A resolver
 	//
-	v.SetDefault("resolver.a2a.enabled", false)
+	v.SetDefault("resolver.a2a.enabled", true)
 	v.SetDefault("resolver.a2a.timeout", a2a.DefaultTimeout)
 	v.SetDefault("resolver.a2a.paths", a2a.DefaultDiscoveryPaths)
 	v.SetDefault("resolver.a2a.label_key", a2a.DefaultLabelKey)
@@ -145,7 +145,7 @@ func LoadConfig() (*Config, error) {
 	//
 	// OASF resolver
 	//
-	v.SetDefault("resolver.oasf.enabled", false)
+	v.SetDefault("resolver.oasf.enabled", true)
 	v.SetDefault("resolver.oasf.timeout", oasf.DefaultTimeout)
 	v.SetDefault("resolver.oasf.label_key", oasf.DefaultLabelKey)
 

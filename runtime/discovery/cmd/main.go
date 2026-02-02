@@ -33,7 +33,9 @@ func main() {
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		logger.Fatal("failed to load configuration", "error", err)
+		logger.Error("failed to load configuration", "error", err)
+
+		return
 	}
 
 	logger.Info("============================================================")
@@ -48,14 +50,18 @@ func main() {
 	// Create runtime adapter
 	adapter, err := runtime.NewAdapter(cfg.Runtime)
 	if err != nil {
-		logger.Fatal("failed to create runtime adapter", "error", err)
+		logger.Error("failed to create runtime adapter", "error", err)
+
+		return
 	}
 	defer adapter.Close()
 
 	// Create storage writer
 	writer, err := store.New(cfg.Store)
 	if err != nil {
-		logger.Fatal("failed to create storage", "error", err)
+		logger.Error("failed to create storage", "error", err)
+
+		return
 	}
 	defer writer.Close()
 
@@ -66,7 +72,9 @@ func main() {
 	// Create resolvers
 	resolvers, err := resolver.NewResolvers(ctx, cfg.Resolver)
 	if err != nil {
-		logger.Fatal("failed to create resolvers", "error", err)
+		logger.Error("failed to create resolvers", "error", err)
+
+		return
 	}
 
 	// Create work queue and worker pool for processing
@@ -167,11 +175,14 @@ func reconcile(ctx context.Context, adapter types.RuntimeAdapter, writer storety
 			continue
 		}
 
-		// Queue for metadata processing
+		// Queue for metadata processing (blocks if queue is full)
 		select {
 		case workQueue <- w:
-		default:
-			logger.Warn("work queue full, skipping workload", "workload", w.GetId())
+		case <-ctx.Done():
+			logger.Warn("context cancelled during reconciliation", "workload", w.GetId())
+
+			//nolint:wrapcheck
+			return ctx.Err()
 		}
 	}
 
@@ -209,11 +220,13 @@ func handleRuntimeEvent(ctx context.Context, writer storetypes.Store, workQueue 
 
 		logger.Info("registered workload", "workload", workloadID, "event_type", event.Type)
 
-		// Queue for metadata processing
+		// Queue for metadata processing (blocks if queue is full)
 		select {
 		case workQueue <- event.Workload:
-		default:
-			logger.Warn("work queue full, dropping workload", "workload", workloadID)
+		case <-ctx.Done():
+			logger.Warn("context cancelled, workload not queued", "workload", workloadID)
+
+			return
 		}
 
 	case types.RuntimeEventTypeDeleted, types.RuntimeEventTypePaused:
@@ -341,17 +354,20 @@ func resolveWorkload(
 		close(resultCh)
 	}()
 
+	// Deep clone a workload to avoid race conditions
+	cloned := workload.DeepCopy()
+
 	// Collect all results first
 	for res := range resultCh {
 		// Apply resolver result to local copy
-		if err := res.resolver.Apply(ctx, workload, res.result); err != nil {
+		if err := res.resolver.Apply(ctx, cloned, res.result); err != nil {
 			resolveLog.Error("failed to apply result", "error", err)
 
 			continue
 		}
 
 		// Send patched workload to storage
-		if err := writer.PatchWorkload(ctx, workload); err != nil {
+		if err := writer.PatchWorkload(ctx, cloned); err != nil {
 			resolveLog.Error("failed to update workload in storage", "error", err)
 
 			continue

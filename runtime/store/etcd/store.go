@@ -157,7 +157,7 @@ func (s *store) ListWorkloads(ctx context.Context) ([]*runtimev1.Workload, error
 		key := string(kv.Key)
 		workloadID := strings.TrimPrefix(key, s.workloadsPrefix)
 
-		var workload *runtimev1.Workload
+		workload := &runtimev1.Workload{}
 
 		err := json.Unmarshal(kv.Value, &workload)
 		if err != nil {

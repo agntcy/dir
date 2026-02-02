@@ -47,12 +47,6 @@ func (l *Logger) Debug(msg string, args ...any) {
 	l.Logger.Debug(msg, args...)
 }
 
-// Fatal logs an error message and exits.
-func (l *Logger) Fatal(msg string, args ...any) {
-	l.Logger.Error(msg, args...)
-	os.Exit(1)
-}
-
 // With returns a new Logger with the provided attributes.
 func (l *Logger) With(args ...any) *Logger {
 	return &Logger{
