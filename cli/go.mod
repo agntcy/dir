@@ -24,12 +24,12 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v1.0.0-rc.1
-	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.1
-	github.com/agntcy/dir/client v1.0.0-rc.1
-	github.com/agntcy/dir/importer v1.0.0-rc.1
-	github.com/agntcy/dir/mcp v1.0.0-rc.1
-	github.com/agntcy/dir/utils v1.0.0-rc.1
+	github.com/agntcy/dir/api v1.0.0-rc.2
+	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.2
+	github.com/agntcy/dir/client v1.0.0-rc.2
+	github.com/agntcy/dir/importer v1.0.0-rc.2
+	github.com/agntcy/dir/mcp v1.0.0-rc.2
+	github.com/agntcy/dir/utils v1.0.0-rc.2
 	github.com/ipfs/go-cid v0.6.0
 	github.com/libp2p/go-libp2p v0.46.0
 	github.com/sigstore/sigstore v1.10.4

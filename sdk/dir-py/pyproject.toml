@@ -1,6 +1,6 @@
 [project]
 name = "agntcy-dir"
-version = "1.0.0rc1"
+version = "1.0.0rc2"
 description = "Directory SDK"
 readme = "README.md"
 requires-python = ">=3.10"

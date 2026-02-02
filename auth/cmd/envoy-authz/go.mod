@@ -3,8 +3,8 @@ module github.com/agntcy/dir/auth/cmd/envoy-authz
 go 1.25.6
 
 require (
-	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.1
-	github.com/agntcy/dir/auth/authzserver v1.0.0-rc.1
+	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.2
+	github.com/agntcy/dir/auth/authzserver v1.0.0-rc.2
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0
 	google.golang.org/grpc v1.78.0
 	gopkg.in/yaml.v3 v3.0.1

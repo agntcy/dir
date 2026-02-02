@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0-rc.2] - 2026-02-02
+
+### Fixed
+- **Helm**: Fix Reconciler Zot connectivity by respecting explicit `registry_address` configuration. The `chart.oci.registryAddress` helper was incorrectly forcing the internal Zot service address when the Zot subchart configuration existed, ignoring the explicitly configured external `config.store.oci.registry_address`. This caused the Reconciler to attempt HTTPS connections to the internal HTTP-only Zot service, resulting in TLS handshake failures and indexer task failures. The fix ensures the Reconciler uses the same external Zot registry configuration as the apiserver.
+
 ## [v1.0.0-rc.1] - 2026-01-30
 
 ### Key Highlights
