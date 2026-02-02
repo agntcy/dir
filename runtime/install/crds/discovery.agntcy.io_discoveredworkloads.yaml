@@ -40,7 +40,7 @@ spec:
     schema:
       openAPIV3Schema:
         description: DiscoveredWorkload is the Schema for the discoveredworkloads
-          API
+          API.
         properties:
           apiVersion:
             description: |-
@@ -120,7 +120,7 @@ spec:
                 type: string
             type: object
           status:
-            description: DiscoveredWorkloadStatus defines the observed state of DiscoveredWorkload
+            description: DiscoveredWorkloadStatus defines the observed state of DiscoveredWorkload.
             properties:
               conditions:
                 description: Conditions represent the latest available observations
