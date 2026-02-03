@@ -102,10 +102,10 @@ func (r *resolver) Resolve(ctx context.Context, workload *runtimev1.Workload) (a
 
 	// Return the record data along with its validity
 	return map[string]any{
-		"cid":          recordRef.GetCid(),
-		"name":         nameVersion,
-		"verification": verified,
-		"record":       record.GetData().AsMap(),
+		"cid":      recordRef.GetCid(),
+		"name":     nameVersion,
+		"verified": verified,
+		"record":   record.GetData().AsMap(),
 	}, nil
 }
 
