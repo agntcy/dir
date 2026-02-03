@@ -1,6 +1,12 @@
 name: Import MCP Records
 
 on:
+  # TODO: Remove this push trigger before merging to main
+  push:
+    branches:
+      - '852-sync-mcp-cards-from-external-mcp-registry'
+    paths:
+      - '.github/workflows/import-records.yaml'
   workflow_dispatch:
     inputs:
       import_config:
@@ -64,9 +70,11 @@ jobs:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
-          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          # Force dry-run for push triggers (testing), use input for workflow_dispatch
+          DRY_RUN: ${{ github.event_name == 'push' && 'true' || inputs.dry_run || 'false' }}
           RATE_LIMIT: ${{ inputs.rate_limit || '2' }}
-          SIGN: ${{ inputs.sign || 'false' }}
+          # Disable signing for push triggers (testing), use input for workflow_dispatch/schedule
+          SIGN: ${{ github.event_name == 'push' && 'false' || inputs.sign || 'true' }}
         run: |
           # Determine if IMPORT_CONFIG is a file path or direct JSON content
           if [ -f "$IMPORT_CONFIG" ]; then
