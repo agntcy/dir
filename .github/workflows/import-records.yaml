@@ -1,12 +1,9 @@
 name: Import MCP Records
 
 on:
-  # TODO: Remove this push trigger before merging to main
   push:
     branches:
       - '852-sync-mcp-cards-from-external-mcp-registry'
-    paths:
-      - '.github/workflows/import-records.yaml'
   workflow_dispatch:
     inputs:
       import_config:
@@ -16,11 +13,11 @@ on:
       dry_run:
         description: 'Run in dry-run mode'
         type: boolean
-        default: false
+        default: true
       rate_limit:
         description: 'LLM API requests per minute (to avoid rate limit errors)'
         type: number
-        default: 2
+        default: 10
       sign:
         description: 'Sign records after pushing (uses OIDC)'
         type: boolean
@@ -38,8 +35,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup dirctl
-        uses: ./.github/actions/setup-dirctl
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.6"
+
+      - name: Setup Taskfile
+        shell: bash
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      - name: Build dirctl
+        run: |
+          task cli:compile
+          ls -la bin/
 
       - name: Create Enricher Config
         run: |
@@ -47,7 +55,7 @@ jobs:
           {
             "mcpServers": {
               "dir-mcp-server": {
-                "command": "dirctl",
+                "command": "bin/dirctl",
                 "args": [
                   "mcp",
                   "serve"
@@ -65,16 +73,24 @@ jobs:
           }
           EOF
 
+      - name: Get GitHub OIDC Token
+        id: oidc-token
+        if: ${{ inputs.sign == true || (github.event_name == 'schedule') }}
+        run: |
+          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+          echo "::add-mask::$OIDC_TOKEN"
+          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
+
       - name: Import MCP Records
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
-          # Force dry-run for push triggers (testing), use input for workflow_dispatch
-          DRY_RUN: ${{ github.event_name == 'push' && 'true' || inputs.dry_run || 'false' }}
-          RATE_LIMIT: ${{ inputs.rate_limit || '2' }}
-          # Disable signing for push triggers (testing), use input for workflow_dispatch/schedule
-          SIGN: ${{ github.event_name == 'push' && 'false' || inputs.sign || 'true' }}
+          IMPORT_CONFIG: ${{ inputs.import_config }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          RATE_LIMIT: ${{ inputs.rate_limit }}
+          SIGN: ${{ inputs.sign }}
+          OIDC_TOKEN: ${{ steps.oidc-token.outputs.token }}
         run: |
           # Determine if IMPORT_CONFIG is a file path or direct JSON content
           if [ -f "$IMPORT_CONFIG" ]; then
@@ -91,18 +107,18 @@ jobs:
              DRY_RUN_FLAG="--dry-run"
           fi
 
-          SIGN_FLAG=""
-          if [[ "${SIGN,,}" == "true" ]]; then
-             SIGN_FLAG="--sign"
+          SIGN_FLAGS=""
+          if [[ "${SIGN,,}" == "true" ]] && [ -n "$OIDC_TOKEN" ]; then
+             SIGN_FLAGS="--sign --oidc-token=$OIDC_TOKEN --oidc-provider-url=https://token.actions.githubusercontent.com --oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"
           fi
 
           # base command array with rate limiting and debug enabled
-          BASE_CMD=(dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich --enrich-config=mcphost_ci.json --enrich-rate-limit="$RATE_LIMIT" --force --debug)
+          BASE_CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="$RATE_LIMIT" --force --debug)
           if [ -n "$DRY_RUN_FLAG" ]; then
             BASE_CMD+=("$DRY_RUN_FLAG")
           fi
-          if [ -n "$SIGN_FLAG" ]; then
-            BASE_CMD+=("$SIGN_FLAG")
+          if [ -n "$SIGN_FLAGS" ]; then
+            BASE_CMD+=($SIGN_FLAGS)
           fi
 
           # Get array length using jq
