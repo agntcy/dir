@@ -26,5 +26,6 @@ type WorkloadResolver interface {
 
 	// Apply applies fetched result to the workload.
 	// Apply method is called sequentially to avoid race conditions.
+	// Results can also be errors, not only successful data.
 	Apply(ctx context.Context, workload *runtimev1.Workload, result any) error
 }

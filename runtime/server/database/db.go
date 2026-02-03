@@ -47,20 +47,13 @@ func (d *Database) Count(ctx context.Context) int {
 }
 
 func (d *Database) Get(ctx context.Context, id string) (*v1.Workload, error) {
-	results, err := d.store.ListWorkloads(ctx)
+	// Fetch workload from store
+	workload, err := d.store.GetWorkload(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list workloads: %w", err)
+		return nil, fmt.Errorf("failed to get workload by ID: %w", err)
 	}
 
-	// Search by ID, hostname, or name
-	for _, workload := range results {
-		switch id {
-		case workload.GetId(), workload.GetHostname(), workload.GetName():
-			return workload, nil
-		}
-	}
-
-	return nil, fmt.Errorf("workload with ID %s not found", id)
+	return workload, nil
 }
 
 func (d *Database) List(ctx context.Context, labelFilter map[string]string) ([]*v1.Workload, error) {

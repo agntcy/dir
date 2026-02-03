@@ -30,6 +30,9 @@ type StoreWriter interface {
 // StoreReader is the interface for reading workload data from storage.
 // Used by the server component to rebuild database state.
 type StoreReader interface {
+	// GetWorkload returns a workload from storage by its ID.
+	GetWorkload(ctx context.Context, workloadID string) (*runtimev1.Workload, error)
+
 	// ListWorkloadIDs returns all workload IDs from storage.
 	ListWorkloadIDs(ctx context.Context) (map[string]struct{}, error)
 

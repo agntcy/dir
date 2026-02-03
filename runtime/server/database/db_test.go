@@ -6,6 +6,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	v1 "github.com/agntcy/dir/runtime/api/runtime/v1"
@@ -15,6 +16,16 @@ import (
 type mockStore struct {
 	workloads []*v1.Workload
 	listErr   error
+}
+
+func (m *mockStore) GetWorkload(ctx context.Context, id string) (*v1.Workload, error) {
+	for _, w := range m.workloads {
+		if w.GetId() == id || w.GetName() == id || w.GetHostname() == id {
+			return w, nil
+		}
+	}
+
+	return nil, fmt.Errorf("workload with ID %s not found", id)
 }
 
 func (m *mockStore) ListWorkloadIDs(ctx context.Context) (map[string]struct{}, error) {

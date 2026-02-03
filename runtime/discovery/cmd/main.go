@@ -283,6 +283,7 @@ func resolverWorker(
 type resolverResult struct {
 	resolver types.WorkloadResolver
 	result   any
+	err      error
 }
 
 // resolveWorkload runs all resolvers on a workload in parallel.
@@ -347,14 +348,8 @@ func resolveWorkload(
 				}
 			}
 
-			if err != nil {
-				resolveLog.Error("exhausted all retries")
-
-				return
-			}
-
 			// Send result to channel
-			resultCh <- resolverResult{resolver: res, result: result}
+			resultCh <- resolverResult{resolver: res, result: result, err: err}
 		}(r)
 	}
 
@@ -369,8 +364,15 @@ func resolveWorkload(
 
 	// Collect all results first
 	for res := range resultCh {
+		// Get result from channel
+		// In case of error, ensure that its captured as well
+		result := res.result
+		if res.err != nil {
+			result = map[string]any{"error": res.err.Error()}
+		}
+
 		// Apply resolver result to local copy
-		if err := res.resolver.Apply(ctx, cloned, res.result); err != nil {
+		if err := res.resolver.Apply(ctx, cloned, result); err != nil {
 			resolveLog.Error("failed to apply result", "error", err)
 
 			continue

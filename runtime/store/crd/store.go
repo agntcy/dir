@@ -149,6 +149,23 @@ func (s *store) UpdateWorkload(ctx context.Context, workload *runtimev1.Workload
 	return nil
 }
 
+// GetWorkload retrieves a workload by ID.
+func (s *store) GetWorkload(ctx context.Context, workloadID string) (*runtimev1.Workload, error) {
+	// Get the CR from Kubernetes
+	obj, err := s.client.Resource(s.gvr).Namespace(s.namespace).Get(ctx, crName(workloadID), metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CR: %w", err)
+	}
+
+	// Convert CR to Workload
+	workload, err := s.crToWorkload(obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert CR to workload: %w", err)
+	}
+
+	return workload, nil
+}
+
 // ListWorkloadIDs returns all workload IDs from CRDs.
 func (s *store) ListWorkloadIDs(ctx context.Context) (map[string]struct{}, error) {
 	list, err := s.client.Resource(s.gvr).Namespace(s.namespace).List(ctx, metav1.ListOptions{})

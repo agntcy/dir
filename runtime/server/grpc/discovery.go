@@ -25,14 +25,10 @@ func NewDiscovery(db *database.Database) *Discovery {
 
 // GetWorkload retrieves a workload by its identifier.
 func (s *Discovery) GetWorkload(ctx context.Context, req *runtimev1.GetWorkloadRequest) (*runtimev1.Workload, error) {
-	if req.GetId() == "" {
-		//nolint:wrapcheck
-		return nil, status.Error(codes.InvalidArgument, "workload ID is required")
-	}
-
+	// Fetch workload from database
 	workload, err := s.db.Get(ctx, req.GetId())
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "workload not found: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get workload: %v", err)
 	}
 
 	return workload, nil

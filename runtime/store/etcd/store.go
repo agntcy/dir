@@ -127,6 +127,29 @@ func (s *store) UpdateWorkload(ctx context.Context, workload *runtimev1.Workload
 	return nil
 }
 
+// GetWorkload retrieves a workload by ID.
+func (s *store) GetWorkload(ctx context.Context, workloadID string) (*runtimev1.Workload, error) {
+	key := s.workloadsPrefix + workloadID
+
+	// Get workload from etcd
+	resp, err := s.client.Get(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get workload from etcd: %w", err)
+	}
+
+	if len(resp.Kvs) == 0 {
+		return nil, fmt.Errorf("workload not found: %s", workloadID)
+	}
+
+	// Unmarshal workload
+	workload := &runtimev1.Workload{}
+	if err := json.Unmarshal(resp.Kvs[0].Value, &workload); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal workload: %w", err)
+	}
+
+	return workload, nil
+}
+
 // ListWorkloadIDs returns all workload IDs in the store.
 func (s *store) ListWorkloadIDs(ctx context.Context) (map[string]struct{}, error) {
 	resp, err := s.client.Get(ctx, s.workloadsPrefix, clientv3.WithPrefix(), clientv3.WithKeysOnly())
