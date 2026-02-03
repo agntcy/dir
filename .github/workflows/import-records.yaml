@@ -7,21 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       import_config:
-        description: 'JSON configuration for imports (list of filter objects) or path to file'
+        description: 'JSON config path or content (default: .github/workflows/scripts/import-records.json)'
         required: false
-        default: '.github/workflows/scripts/import-records.json'
       dry_run:
-        description: 'Run in dry-run mode'
+        description: 'Run in dry-run mode (default: false)'
         type: boolean
-        default: true
       rate_limit:
-        description: 'LLM API requests per minute (to avoid rate limit errors)'
+        description: 'LLM API requests per minute (default: 10)'
         type: number
-        default: 10
       sign:
-        description: 'Sign records after pushing (uses OIDC)'
+        description: 'Sign records after pushing with OIDC (default: true)'
         type: boolean
-        default: true
   schedule:
     - cron: '0 0 * * *'
 
@@ -86,10 +82,10 @@ jobs:
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          IMPORT_CONFIG: ${{ inputs.import_config }}
-          DRY_RUN: ${{ inputs.dry_run }}
-          RATE_LIMIT: ${{ inputs.rate_limit }}
-          SIGN: ${{ inputs.sign }}
+          IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
+          DRY_RUN: ${{ inputs.dry_run || 'true' }}
+          RATE_LIMIT: ${{ inputs.rate_limit || '10' }}
+          SIGN: ${{ inputs.sign || 'true' }}
           OIDC_TOKEN: ${{ steps.oidc-token.outputs.token }}
         run: |
           # Determine if IMPORT_CONFIG is a file path or direct JSON content
