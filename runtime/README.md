@@ -180,6 +180,9 @@ Workloads are discovered based on labels. The discovery component watches for wo
 
 ### Resolver Labels
 
+Resolvers extract metadata from discovered workloads based on their labels.
+They provide additional information about the workload's capabilities.
+
 | Label/Annotation | Description |
 |------------------|-------------|
 | `org.agntcy/agent-type: a2a` | Enables A2A resolver - fetches A2A agent card from workload |
@@ -200,8 +203,9 @@ Discovered workloads have a `services` field that holds metadata extracted by re
   "type": "pod",
   "labels": {
     "app": "service-a2a",
+    "org.agntcy/discover": "true",
     "org.agntcy/agent-type": "a2a",
-    "org.agntcy/discover": "true"
+    "org.agntcy/agent-record": "my-agent:1.0.0"
   },
   "addresses": [
     "10-244-0-9.team-a.pod"
@@ -221,7 +225,7 @@ Discovered workloads have a `services` field that holds metadata extracted by re
     },
     "oasf": {
       "cid": "baf123",
-      "name": "my-agent",
+      "name": "my-agent:1.0.0",
       "record": {
         "name": "my-agent",
         "version": "1.0.0",
@@ -243,6 +247,14 @@ Discovered workloads have a `services` field that holds metadata extracted by re
 | `DISCOVERY_RESOLVER_A2A_ENABLED` | Enable A2A resolver | `true` |
 | `DISCOVERY_RESOLVER_OASF_ENABLED` | Enable OASF resolver | `true` |
 | `DISCOVERY_WORKERS` | Number of resolver workers | `16` |
+
+#### Discovery OASF Resolver
+
+The OASF resolver requires Directory client configuration via environment variables. 
+These are the same as those used by the Directory client library, e.g. `DIRECTORY_CLIENT_SERVER_ADDRESS`.
+Refer to the [Directory Client README](../client/README.md) for all available options.
+
+When a workload has the `org.agntcy/agent-record` label, the resolver will attempt to fetch the corresponding record from Directory and validate its signature before attaching it to the workload.
 
 ### Server Component
 
