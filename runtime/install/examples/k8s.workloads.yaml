@@ -1,13 +1,6 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-# Example workloads for testing runtime discovery with Kubernetes
-# These services should be deployed AFTER the discovery stack is running.
-#
-# Usage:
-#   helm install runtime runtime/install/chart/
-#   kubectl apply -f runtime/install/examples/k8s-workloads.yaml
-
 # ============================================================================
 # NAMESPACES (simulate isolation groups)
 # ============================================================================

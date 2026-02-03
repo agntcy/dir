@@ -58,6 +58,25 @@ discovery:
 
   affinity: {}
 
+  # Environment variables for the discovery container
+  # Use this to configure DIRECTORY_CLIENT_* variables for Dir client
+  # Example:
+  # env:
+  #   - name: DIRECTORY_CLIENT_SERVER_ADDRESS
+  #     value: "directory.example.com:443"
+  #   - name: DIRECTORY_CLIENT_AUTH_MODE
+  #     value: "insecure"
+  env: []
+
+  # Environment variables from ConfigMaps or Secrets
+  # Example:
+  # envFrom:
+  #   - configMapRef:
+  #       name: directory-client-config
+  #   - secretRef:
+  #       name: directory-client-secrets
+  envFrom: []
+
   # Discovery configuration (mounted as /etc/agntcy/discovery/discovery.config.yml)
   # This config is passed directly to the discovery service as a YAML file
   config:

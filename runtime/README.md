@@ -66,7 +66,7 @@ In Kubernetes environments, CRDs can be used for a more native experience to ens
 ```
 Runtime Discovery --------> Runtime Server (for querying workloads via gRPC)
       │
-      └-------------------> CRD (Kubernetes environments)
+      └-------------------> CRD (for querying workloads via Kubernetes API)
 ```
 
 ### Server (`runtime/server/`)
@@ -182,6 +182,8 @@ Workloads are discovered based on labels. The discovery component watches for wo
 |------------------|-------------|
 | `org.agntcy/agent-type: a2a` | Enables A2A resolver - fetches A2A agent card from workload |
 | `org.agntcy/agent-record: <fqdn>` | Enables OASF resolver - resolves record from Directory (e.g., `my-agent:v1.0.0`) |
+
+To configure OASF resolver, the Directory client must be set up using environment variables (e.g., `DIRECTORY_CLIENT_SERVER_ADDRESS`, `DIRECTORY_CLIENT_AUTH_MODE`).
 
 ### Workload Services
 

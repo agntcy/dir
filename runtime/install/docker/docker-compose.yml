@@ -1,16 +1,6 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-# Runtime Discovery Stack for Docker
-# Deploys etcd, discovery service, and server.
-#
-# Usage:
-#   cd runtime/install/docker
-#   docker compose up -d
-#
-# After stack is running, deploy example workloads:
-#   docker compose -f ../examples/docker-compose.yml up -d
-
 services:
   # ============================================================
   # etcd - Distributed key-value store for service discovery data
@@ -39,9 +29,7 @@ services:
   # Discovery - Watches runtime and resolves metadata (writes to etcd)
   # ============================================================
   discovery:
-    build:
-      context: ../../..
-      dockerfile: runtime/discovery/Dockerfile
+    image: ghcr.io/agntcy/dir-runtime-discovery:latest
     container_name: runtime-discovery
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -70,9 +58,7 @@ services:
   # Server - gRPC API for querying discovered services (reads from etcd)
   # ============================================================
   server:
-    build:
-      context: ../../..
-      dockerfile: runtime/server/Dockerfile
+    image: ghcr.io/agntcy/dir-runtime-server:latest
     container_name: runtime-server
     environment:
       # Storage (etcd)

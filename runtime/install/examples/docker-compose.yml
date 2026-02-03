@@ -1,13 +1,6 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-# Example workloads for testing runtime discovery
-# These services should be deployed AFTER the discovery stack is running.
-#
-# Usage:
-#   docker compose -f runtime/install/docker/docker-compose.yml up -d
-#   docker compose -f runtime/install/examples/docker-compose.yml up -d
-
 services:
   # ============================================================
   # A2A Agent Example - Exposes A2A agent card
