@@ -20,6 +20,8 @@ group "default" {
     "dir-apiserver",
     "dir-ctl",
     "dir-reconciler",
+    "dir-runtime-discovery",
+    "dir-runtime-server",
     "envoy-authz",
   ]
 }
@@ -101,6 +103,26 @@ target "dir-reconciler" {
     REGSYNC_VERSION = "${REGSYNC_VERSION}"
   }
   tags = get_tag(target.docker-metadata-action.tags, "${target.dir-reconciler.name}")
+}
+
+target "dir-runtime-discovery" {
+  context = "."
+  dockerfile = "./runtime/discovery/Dockerfile"
+  inherits = [
+    "_common",
+    "docker-metadata-action",
+  ]
+  tags = get_tag(target.docker-metadata-action.tags, "${target.dir-runtime-discovery.name}")
+}
+
+target "dir-runtime-server" {
+  context = "."
+  dockerfile = "./runtime/server/Dockerfile"
+  inherits = [
+    "_common",
+    "docker-metadata-action",
+  ]
+  tags = get_tag(target.docker-metadata-action.tags, "${target.dir-runtime-server.name}")
 }
 
 target "sdks-test" {

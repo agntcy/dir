@@ -1,0 +1,26 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "runtime.discovery.fullname" . }}
+  labels:
+    {{- include "runtime.discovery.labels" . | nindent 4 }}
+rules:
+  # Runtime discovery permissions - read pods, services, namespaces
+  - apiGroups: [""]
+    resources: ["pods", "services", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  # Network policy discovery
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch"]
+  # CRD permissions for writing discovered workloads
+  - apiGroups: ["discovery.agntcy.io"]
+    resources: ["discoveredworkloads"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Status subresource permissions
+  - apiGroups: ["discovery.agntcy.io"]
+    resources: ["discoveredworkloads/status"]
+    verbs: ["get", "update", "patch"]

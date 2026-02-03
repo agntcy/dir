@@ -1,0 +1,75 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "runtime.discovery.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "runtime.discovery.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.discovery.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "runtime.discovery.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/discovery-configmap.yaml") . | sha256sum }}
+        {{- with .Values.discovery.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "runtime.discovery.selectorLabels" . | nindent 8 }}
+        role: inspector
+    spec:
+      {{- with .Values.discovery.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "runtime.discovery.serviceAccountName" . }}
+      {{- with .Values.discovery.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: discovery
+          image: "{{ .Values.discovery.image.repository }}:{{ .Values.discovery.image.tag }}"
+          imagePullPolicy: {{ .Values.discovery.image.pullPolicy }}
+          {{- with .Values.discovery.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.discovery.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.discovery.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/agntcy/discovery
+              readOnly: true
+          {{- with .Values.discovery.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "runtime.discovery.fullname" . }}
+      {{- with .Values.discovery.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.discovery.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.discovery.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
