@@ -34,6 +34,9 @@ func init() {
 	flags.StringVar(&opts.EnricherSkillsPromptTemplate, "enrich-skills-prompt", "", "Optional: path to custom skills prompt template file or inline prompt (empty = use default)")
 	flags.StringVar(&opts.EnricherDomainsPromptTemplate, "enrich-domains-prompt", "", "Optional: path to custom domains prompt template file or inline prompt (empty = use default)")
 
+	// Rate limiting for LLM API calls
+	flags.IntVar(&opts.EnricherRequestsPerMinute, "enrich-rate-limit", enricher.DefaultRequestsPerMinute, "Maximum LLM API requests per minute (to avoid rate limit errors)")
+
 	// Signing flags
 	flags.BoolVar(&opts.Sign, "sign", false, "Sign records after pushing")
 	signcmd.AddSigningFlags(flags)
