@@ -11,12 +11,23 @@ on:
         description: 'Run in dry-run mode'
         type: boolean
         default: false
+      rate_limit:
+        description: 'LLM API requests per minute (to avoid rate limit errors)'
+        type: number
+        default: 2
+      sign:
+        description: 'Sign records after pushing (uses OIDC)'
+        type: boolean
+        default: true
   schedule:
     - cron: '0 0 * * *'
 
 jobs:
   import-mcp:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC signing with Sigstore
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,6 +65,8 @@ jobs:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          RATE_LIMIT: ${{ inputs.rate_limit || '2' }}
+          SIGN: ${{ inputs.sign || 'false' }}
         run: |
           # Determine if IMPORT_CONFIG is a file path or direct JSON content
           if [ -f "$IMPORT_CONFIG" ]; then
@@ -64,16 +77,24 @@ jobs:
             CONFIG_CONTENT="$IMPORT_CONFIG"
           fi
 
-          # Function to check for dry run value
+          # Build optional flags
           DRY_RUN_FLAG=""
           if [[ "${DRY_RUN,,}" == "true" ]]; then
              DRY_RUN_FLAG="--dry-run"
           fi
 
-          # base command array
-          BASE_CMD=(dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich --enrich-config=mcphost_ci.json --force --debug)
+          SIGN_FLAG=""
+          if [[ "${SIGN,,}" == "true" ]]; then
+             SIGN_FLAG="--sign"
+          fi
+
+          # base command array with rate limiting and debug enabled
+          BASE_CMD=(dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich --enrich-config=mcphost_ci.json --enrich-rate-limit="$RATE_LIMIT" --force --debug)
           if [ -n "$DRY_RUN_FLAG" ]; then
             BASE_CMD+=("$DRY_RUN_FLAG")
+          fi
+          if [ -n "$SIGN_FLAG" ]; then
+            BASE_CMD+=("$SIGN_FLAG")
           fi
 
           # Get array length using jq
