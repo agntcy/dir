@@ -10,6 +10,7 @@ import (
 	"time"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/client"
 	runtimev1 "github.com/agntcy/dir/runtime/api/runtime/v1"
 	"github.com/agntcy/dir/runtime/discovery/types"
@@ -89,13 +90,22 @@ func (r *resolver) Resolve(ctx context.Context, workload *runtimev1.Workload) (a
 		return nil, fmt.Errorf("failed to pull OASF record %s: %w", nameVersion, err)
 	}
 
+	// Get the record signature verified status
+	verified, err := r.client.Verify(ctx, &signv1.VerifyRequest{
+		RecordRef: &corev1.RecordRef{Cid: recordRef.GetCid()},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify OASF record %s: %w", nameVersion, err)
+	}
+
 	logger.Info("resolved successfully", "workload", workload.GetId(), "record", nameVersion)
 
 	// Return the record data along with its validity
 	return map[string]any{
-		"cid":    recordRef.GetCid(),
-		"name":   nameVersion,
-		"record": record.GetData().AsMap(),
+		"cid":          recordRef.GetCid(),
+		"name":         nameVersion,
+		"verification": verified,
+		"record":       record.GetData().AsMap(),
 	}, nil
 }
 
