@@ -50,12 +50,12 @@ spec:
               mountPath: /etc/agntcy/server
               readOnly: true
           livenessProbe:
-            grpc:
+            tcpSocket:
               port: {{ .Values.server.config.port }}
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
-            grpc:
+            tcpSocket:
               port: {{ .Values.server.config.port }}
             initialDelaySeconds: 5
             periodSeconds: 5

@@ -116,6 +116,12 @@ kind load docker-image ghcr.io/agntcy/dir-runtime-discovery:latest --name runtim
 kind load docker-image ghcr.io/agntcy/dir-runtime-server:latest --name runtime
 ```
 
+#### Deploy Example Workloads
+
+```bash
+kubectl apply -f runtime/install/examples/k8s.workloads.yaml
+```
+
 #### Deploy with CRD Storage
 
 ```bash
@@ -153,12 +159,6 @@ kubectl port-forward svc/runtime-server 8080:8080 &
 grpcurl -plaintext localhost:8080 agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
 ```
 
-#### Deploy Example Workloads
-
-```bash
-kubectl apply -f runtime/install/examples/k8s.workloads.yaml
-```
-
 #### Cleanup
 
 ```bash
@@ -189,6 +189,26 @@ Discovered workloads have a `services` field that holds metadata extracted by re
 
 ```json
 {
+  "id": "4467371c-84fd-4683-ab30-93895d78bab7",
+  "name": "service-a2a",
+  "hostname": "service-a2a",
+  "runtime": "kubernetes",
+  "workloadType": "pod",
+  "labels": {
+    "app": "service-a2a",
+    "org.agntcy/agent-type": "a2a",
+    "org.agntcy/discover": "true"
+  },
+  "addresses": [
+    "10-244-0-9.team-a.pod"
+  ],
+  "ports": [
+    "8080",
+    "9999"
+  ],
+  "isolationGroups": [
+    "team-a"
+  ],
   "services": {
     "a2a": {
       "name": "My Agent",
@@ -232,9 +252,7 @@ Discovered workloads have a `services` field that holds metadata extracted by re
 
 The server exposes a gRPC API defined in `proto/agntcy/dir/runtime/v1/discovery_service.proto`.
 
-### Service: DiscoveryService
-
-#### GetWorkload
+### GetWorkload
 
 Get a specific workload by ID, name, or hostname.
 
@@ -243,7 +261,7 @@ grpcurl -plaintext -d '{"id": "my-service"}' \
   localhost:8080 agntcy.dir.runtime.v1.DiscoveryService/GetWorkload
 ```
 
-#### ListWorkloads
+### ListWorkloads
 
 Stream all workloads with optional label filters. Labels support regex patterns.
 
