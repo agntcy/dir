@@ -1,0 +1,27 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+{{- if .Values.etcd.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "runtime.fullname" . }}-etcd
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "runtime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+spec:
+  type: {{ .Values.etcd.service.type }}
+  ports:
+    - port: {{ .Values.etcd.service.port }}
+      targetPort: client
+      protocol: TCP
+      name: client
+    - port: {{ .Values.etcd.service.peerPort }}
+      targetPort: peer
+      protocol: TCP
+      name: peer
+  selector:
+    {{- include "runtime.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+{{- end }}

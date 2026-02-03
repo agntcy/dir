@@ -1,0 +1,223 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Example workloads for testing runtime discovery with Kubernetes
+# These services should be deployed AFTER the discovery stack is running.
+#
+# Usage:
+#   helm install runtime runtime/install/chart/
+#   kubectl apply -f runtime/install/examples/k8s-workloads.yaml
+
+# ============================================================================
+# NAMESPACES (simulate isolation groups)
+# ============================================================================
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-b
+
+# ============================================================================
+# SERVICES
+# ============================================================================
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-1
+  namespace: team-a
+spec:
+  selector:
+    app: service-1
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-3
+  namespace: team-a
+spec:
+  selector:
+    app: service-3
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-2
+  namespace: team-b
+spec:
+  selector:
+    app: service-2
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-4
+  namespace: team-b
+spec:
+  selector:
+    app: service-4
+  ports:
+    - port: 80
+      targetPort: 80
+
+# ============================================================================
+# PODS - Basic Services
+# ============================================================================
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service-1
+  namespace: team-a
+  labels:
+    org.agntcy/discover: "true"
+    app: service-1
+spec:
+  containers:
+    - name: nginx
+      image: nginx:alpine
+      ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service-3
+  namespace: team-a
+  labels:
+    org.agntcy/discover: "true"
+    app: service-3
+spec:
+  containers:
+    - name: nginx
+      image: nginx:alpine
+      ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service-2
+  namespace: team-b
+  labels:
+    org.agntcy/discover: "true"
+    app: service-2
+spec:
+  containers:
+    - name: nginx
+      image: nginx:alpine
+      ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service-4
+  namespace: team-b
+  labels:
+    org.agntcy/discover: "true"
+    app: service-4
+spec:
+  containers:
+    - name: nginx
+      image: nginx:alpine
+      ports:
+        - containerPort: 80
+
+# ============================================================================
+# PODS - A2A Agent Example
+# ============================================================================
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: service-a2a
+  namespace: team-a
+  labels:
+    app: service-a2a
+    org.agntcy/discover: "true"
+    org.agntcy/agent-type: "a2a"
+    ## TODO: DNS names are not yet supported in k8s manifest labels
+    # org.agntcy/agent-record: "dns-validation-http/example/research-assistant-v4:v4.0.0"
+spec:
+  containers:
+    - name: a2a-helloworld
+      image: ghcr.io/ramizpolic/a2a-helloworld:latest
+      ports:
+        - containerPort: 8080
+        - containerPort: 9999
+
+# ============================================================================
+# NETWORK POLICIES (optional - for testing network isolation)
+# ============================================================================
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-inspector-ingress
+  namespace: team-a
+spec:
+  podSelector:
+    matchLabels:
+      org.agntcy/discover: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default
+          podSelector:
+            matchLabels:
+              role: inspector
+      ports:
+        - protocol: TCP
+          port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-inspector-ingress
+  namespace: team-b
+spec:
+  podSelector:
+    matchLabels:
+      org.agntcy/discover: "true"
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: default
+          podSelector:
+            matchLabels:
+              role: inspector
+      ports:
+        - protocol: TCP
+          port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all
+  namespace: team-a
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

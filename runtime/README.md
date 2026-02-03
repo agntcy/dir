@@ -34,7 +34,7 @@ The system is split into two independent components:
 │  │    Store Writer     │    │                         │                      
 │  └─────────────────────┘    │                         │                      
 └────────────│────────────────┘                         │                      
-             │ write                                    │
+             │ write/manage                             │
              ▼                                          │
   ┌──────────────────────────────┐                      │
   │ Storage Backend              │       read/watch     │
@@ -48,69 +48,121 @@ The system is split into two independent components:
 ### Discovery (`runtime/discovery/`)
 
 The discovery component is responsible for:
-- **Watching container runtimes** for workloads with the `org.agntcy/discover=true` label
+- **Watching runtimes** for workloads with the `org.agntcy/discover=true` label. Supported runtimes:
+  - **Docker**: Watches Docker daemon for labeled containers
+  - **Kubernetes**: Watches Kubernetes API for labeled pods/services
+  - Extensible architecture allows adding more runtimes in the future
 - **Resolving workload metadata** using configurable resolvers:
   - **A2A resolver**: Extracts A2A agent card from workloads with `org.agntcy/type: a2a` label
-  - **OASF resolver**: Resolves OASF records from Directory for workloads with `org.agntcy/agent-record` annotation
+  - **OASF resolver**: Resolves OASF records from Directory for workloads with `org.agntcy/agent-record` label
+  - Extensible architecture allows adding more resolvers in the future
 - **Writing workloads** to the storage backend (etcd or CRDs)
+
+The storage backend can be used to expose discovered workloads to other components (e.g., clients/servers) without coupling them directly and to reduce attack surface.
+
+In non-Kubernetes environments, etcd is recommended as the storage backend for better portability.
+In Kubernetes environments, CRDs can be used for a more native experience to ensure clients can access workloads via the Kubernetes API.
+
+```
+Runtime Discovery --------> Runtime Server (for querying workloads via gRPC)
+      │
+      └-------------------> CRD (Kubernetes environments)
+```
 
 ### Server (`runtime/server/`)
 
 The server component provides a **gRPC API** for querying discovered workloads
 
-## Installation
+## Example Setup
 
 ### Docker Compose
 
 ```bash
-cd runtime/install
-docker-compose up -d
+# Deploy the stack
+docker compose -f runtime/install/docker/docker-compose.yml up -d
+
+# Deploy example workloads
+docker compose -f runtime/install/examples/docker-compose.yml up -d
+
+# Add discovery to all networks (required for resolvers to work)
+docker network connect examples_team-a runtime-discovery
+docker network connect examples_team-b runtime-discovery
+docker restart runtime-discovery
+
+# Query the API
+grpcurl -plaintext localhost:8080 agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
+
+# Cleanup
+docker compose -f runtime/install/docker/docker-compose.yml down
+docker compose -f runtime/install/examples/docker-compose.yml down
 ```
 
-### Kubernetes (KIND)
+### Kubernetes
 
-Create a KIND cluster and deploy with etcd or CRD storage.
+The Helm chart supports both CRD and etcd storage backends.
 
 #### Setup KIND Cluster
 
 ```bash
 # Create cluster
-kind create cluster --name discovery
+kind create cluster --name runtime
 
 # Build images
-docker build -t discovery:latest -f runtime/discovery/Dockerfile .
-docker build -t discovery-server:latest -f runtime/server/Dockerfile .
+docker build -t ghcr.io/agntcy/dir-runtime-discovery:latest -f runtime/discovery/Dockerfile .
+docker build -t ghcr.io/agntcy/dir-runtime-server:latest -f runtime/server/Dockerfile .
 
 # Load images into KIND
-kind load docker-image discovery:latest --name discovery
-kind load docker-image discovery-server:latest --name discovery
-```
-
-#### Deploy with etcd Storage
-
-```bash
-kubectl apply -f runtime/install/k8s.etcd.yaml
-kubectl wait --for=condition=ready pod -l app=discovery-etcd --timeout=60s
-kubectl wait --for=condition=ready pod -l app=discovery --timeout=60s
-kubectl wait --for=condition=ready pod -l app=discovery-server --timeout=60s
-kubectl port-forward svc/discovery-server 8080:8080 &
+kind load docker-image ghcr.io/agntcy/dir-runtime-discovery:latest --name runtime
+kind load docker-image ghcr.io/agntcy/dir-runtime-server:latest --name runtime
 ```
 
 #### Deploy with CRD Storage
 
 ```bash
-kubectl apply -f runtime/install/crds/
-kubectl apply -f runtime/install/k8s.crd.yaml
-kubectl wait --for=condition=Established crd/discoveredworkloads.discovery.agntcy.io
-kubectl wait --for=condition=ready pod -l app=discovery --timeout=60s
-kubectl wait --for=condition=ready pod -l app=discovery-server --timeout=60s
-kubectl port-forward svc/discovery-server 8080:8080 &
+# Install the chart with CRD storage (default)
+helm install runtime runtime/install/chart/
+
+# Wait for pods
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=discovery --timeout=60s
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=server --timeout=60s
+
+# Query the gRPC API
+kubectl port-forward svc/runtime-server 8080:8080 &
+grpcurl -plaintext localhost:8080 agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
+
+# Query the Kubernetes API to see discovered workloads
+kubectl get dw
+```
+
+#### Deploy with etcd Storage
+
+```bash
+# Install the chart with etcd storage
+helm install runtime runtime/install/chart/ \
+  --set etcd.enabled=true \
+  --set discovery.config.store.type=etcd \
+  --set server.config.store.type=etcd
+
+# Wait for pods
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=etcd --timeout=60s
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=discovery --timeout=60s
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=server --timeout=60s
+
+# Query the gRPC API
+kubectl port-forward svc/runtime-server 8080:8080 &
+grpcurl -plaintext localhost:8080 agntcy.dir.runtime.v1.DiscoveryService/ListWorkloads
+```
+
+#### Deploy Example Workloads
+
+```bash
+kubectl apply -f runtime/install/examples/k8s.workloads.yaml
 ```
 
 #### Cleanup
 
 ```bash
-kind delete cluster --name discovery
+kind delete cluster --name runtime
 ```
 
 ## Workload Labels
@@ -144,9 +196,13 @@ Discovered workloads have a `services` field that holds metadata extracted by re
       "capabilities": [...]
     },
     "oasf": {
+      "cid": "baf123",
       "name": "my-agent",
-      "version": "1.0.0",
-      "skills": [...]
+      "record" {
+        "name": "my-agent",
+        "version": "1.0.0",
+        "skills": [...]
+      }
     }
   }
 }

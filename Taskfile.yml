@@ -180,7 +180,7 @@ tasks:
       - deps:controller-gen
     cmds:
       - go run {{ .CONTROLLER_GEN_BIN }} object paths=./crd/v1/...
-      - go run {{ .CONTROLLER_GEN_BIN }} crd:ignoreUnexportedFields=true object:headerFile="./crd/v1/boilerplate.go.txt" paths="./crd/v1/..." output:crd:artifacts:config="../install/crds"
+      - go run {{ .CONTROLLER_GEN_BIN }} crd:ignoreUnexportedFields=true object:headerFile="./crd/v1/boilerplate.go.txt" paths="./crd/v1/..." output:crd:artifacts:config="../install/chart/templates"
 
   ##
   ## API

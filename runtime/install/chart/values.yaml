@@ -1,0 +1,244 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+# Default values for runtime chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ============================================================================
+# Discovery Service Configuration
+# ============================================================================
+discovery:
+  # Number of replicas for the discovery deployment
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/agntcy/dir-runtime-discovery
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets: []
+
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  # Discovery configuration (mounted as /etc/agntcy/discovery/discovery.config.yml)
+  # This config is passed directly to the discovery service as a YAML file
+  config:
+    # Number of workers for processing tasks
+    workers: 16
+
+    # Store configuration for writing discovered workloads
+    store:
+      # Storage type: "crd" or "etcd"
+      type: crd
+      crd:
+        namespace: "default"
+      etcd:
+        host: etcd
+        port: 2379
+        username: ""
+        password: ""
+        dial_timeout: 5s
+        workloads_prefix: /workloads
+
+    # Runtime configuration for watching containers/pods
+    runtime:
+      # Runtime type: "kubernetes" or "docker"
+      type: kubernetes
+      kubernetes:
+        # Kubeconfig path (empty for in-cluster)
+        kubeconfig: ""
+        # Namespace to watch (empty for all namespaces)
+        namespace: ""
+        # Label key to filter pods for discovery
+        label_key: org.agntcy/discover
+        # Label value to filter pods for discovery
+        label_value: "true"
+      docker:
+        host: unix:///var/run/docker.sock
+        label_key: org.agntcy/discover
+        label_value: "true"
+
+    # Resolver configuration for inspecting workloads
+    resolver:
+      a2a:
+        enabled: true
+        timeout: 5s
+        paths:
+          - /.well-known/agent.json
+        label_key: org.agntcy/agent-type
+        label_value: a2a
+      oasf:
+        enabled: true
+        timeout: 5s
+        label_key: org.agntcy/agent-record
+
+# ============================================================================
+# Server Configuration
+# ============================================================================
+server:
+  # Enable or disable the server deployment
+  enabled: true
+
+  # Number of replicas for the server deployment
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/agntcy/dir-runtime-server
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets: []
+
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  service:
+    type: ClusterIP
+    port: 8080
+    # nodePort: 30080  # Only used when type is NodePort
+
+  # Server configuration (mounted as /etc/agntcy/server/server.config.yml)
+  # This config is passed directly to the server as a YAML file
+  config:
+    # Server bind address
+    host: 0.0.0.0
+    # Server listen port
+    port: 8080
+
+    # Store configuration for reading discovered workloads
+    store:
+      # Storage type: "crd" or "etcd"
+      type: crd
+      crd:
+        namespace: "default"
+      etcd:
+        host: etcd
+        port: 2379
+        username: ""
+        password: ""
+        dial_timeout: 5s
+        workloads_prefix: /workloads
+
+# ============================================================================
+# Etcd Configuration (Optional)
+# ============================================================================
+etcd:
+  # Enable or disable the etcd deployment
+  # Set to true when using etcd as the store type for discovery/server
+  enabled: false
+
+  # Number of replicas for the etcd deployment
+  replicaCount: 1
+
+  image:
+    repository: quay.io/coreos/etcd
+    tag: v3.5.12
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets: []
+
+  podAnnotations: {}
+
+  podSecurityContext:
+    fsGroup: 1000
+
+  securityContext:
+    runAsUser: 1000
+    runAsNonRoot: true
+
+  resources: {}
+    # limits:
+    #   cpu: 200m
+    #   memory: 256Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  service:
+    type: ClusterIP
+    port: 2379
+    peerPort: 2380
+
+  # Persistence configuration
+  persistence:
+    enabled: false
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 1Gi
