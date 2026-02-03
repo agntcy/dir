@@ -92,7 +92,9 @@ spec:
                 description: Name is the human-readable name of the workload.
                 type: string
               ports:
-                description: Ports are the exposed ports.
+                description: |-
+                  Ports are the exposed ports.
+                  Specified as strings to accommodate various formats (e.g., "80/tcp", "443").
                 items:
                   type: string
                 type: array
@@ -114,9 +116,9 @@ spec:
                       workload references.
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
-              workload_type:
-                description: WorkloadType is the type of workload (e.g., process,
-                  container, pod).
+              type:
+                description: Type is the type of workload (e.g., process, container,
+                  pod).
                 type: string
             type: object
           status:

@@ -95,8 +95,8 @@ func (s *store) DeregisterWorkload(ctx context.Context, workloadID string) error
 	return nil
 }
 
-// PatchWorkload performs a full update of an existing workload in storage.
-func (s *store) PatchWorkload(ctx context.Context, workload *runtimev1.Workload) error {
+// UpdateWorkload performs a full update of an existing workload in storage.
+func (s *store) UpdateWorkload(ctx context.Context, workload *runtimev1.Workload) error {
 	key := s.workloadsPrefix + workload.GetId()
 
 	// Get existing workload

@@ -13,6 +13,7 @@ import (
 	runtimev1 "github.com/agntcy/dir/runtime/api/runtime/v1"
 	"github.com/agntcy/dir/runtime/store/types"
 	"github.com/agntcy/dir/runtime/utils"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -92,9 +93,8 @@ func (s *store) RegisterWorkload(ctx context.Context, workload *runtimev1.Worklo
 	_, err = s.client.Resource(s.gvr).Namespace(s.namespace).Create(ctx, obj, metav1.CreateOptions{})
 	if err != nil {
 		// If already exists, update it
-		if strings.Contains(err.Error(), "already exists") {
-			//nolint:wrapcheck
-			return s.PatchWorkload(ctx, workload)
+		if errors.IsAlreadyExists(err) {
+			return s.UpdateWorkload(ctx, workload)
 		}
 
 		return fmt.Errorf("failed to create CR: %w", err)
@@ -121,8 +121,8 @@ func (s *store) DeregisterWorkload(ctx context.Context, workloadID string) error
 	return nil
 }
 
-// PatchWorkload performs a full update of an existing workload CR.
-func (s *store) PatchWorkload(ctx context.Context, workload *runtimev1.Workload) error {
+// UpdateWorkload performs a full update of an existing workload CR.
+func (s *store) UpdateWorkload(ctx context.Context, workload *runtimev1.Workload) error {
 	// Get existing CR
 	existing, err := s.client.Resource(s.gvr).Namespace(s.namespace).Get(ctx, crName(workload.GetId()), metav1.GetOptions{})
 	if err != nil {
@@ -238,9 +238,9 @@ func (s *store) workloadToCR(workload *runtimev1.Workload) (*unstructured.Unstru
 			Name:      crName(workload.GetId()),
 			Namespace: s.namespace,
 			Labels: map[string]string{
-				"discovery.agntcy.io/workload-id":   workload.GetId(),
-				"discovery.agntcy.io/runtime":       workload.GetRuntime(),
-				"discovery.agntcy.io/workload-type": workload.GetWorkloadType(),
+				"discovery.agntcy.io/id":      workload.GetId(),
+				"discovery.agntcy.io/runtime": workload.GetRuntime(),
+				"discovery.agntcy.io/type":    workload.GetType(),
 			},
 		},
 		Spec: workload,

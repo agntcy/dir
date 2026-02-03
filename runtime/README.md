@@ -75,6 +75,12 @@ The server component provides a **gRPC API** for querying discovered workloads
 
 ## Example Setup
 
+### Build Container Images
+
+```bash
+IMAGE_TAG=latest task build
+```
+
 ### Docker Compose
 
 ```bash
@@ -106,10 +112,6 @@ The Helm chart supports both CRD and etcd storage backends.
 ```bash
 # Create cluster
 kind create cluster --name runtime
-
-# Build images
-docker build -t ghcr.io/agntcy/dir-runtime-discovery:latest -f runtime/discovery/Dockerfile .
-docker build -t ghcr.io/agntcy/dir-runtime-server:latest -f runtime/server/Dockerfile .
 
 # Load images into KIND
 kind load docker-image ghcr.io/agntcy/dir-runtime-discovery:latest --name runtime
@@ -195,7 +197,7 @@ Discovered workloads have a `services` field that holds metadata extracted by re
   "name": "service-a2a",
   "hostname": "service-a2a",
   "runtime": "kubernetes",
-  "workloadType": "pod",
+  "type": "pod",
   "labels": {
     "app": "service-a2a",
     "org.agntcy/agent-type": "a2a",
@@ -220,7 +222,7 @@ Discovered workloads have a `services` field that holds metadata extracted by re
     "oasf": {
       "cid": "baf123",
       "name": "my-agent",
-      "record" {
+      "record": {
         "name": "my-agent",
         "version": "1.0.0",
         "skills": [...]

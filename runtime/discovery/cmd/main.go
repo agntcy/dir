@@ -29,6 +29,7 @@ const (
 
 var logger = utils.NewLogger("process", "discovery")
 
+//nolint:cyclop
 func main() {
 	// Load configuration
 	cfg, err := config.LoadConfig()
@@ -100,10 +101,13 @@ func main() {
 
 	// Start watching runtime for events
 	runtimeEventCh := make(chan *types.RuntimeEvent, queueBufferSize)
+	watchErrCh := make(chan error, 1)
 
 	go func() {
 		if err := adapter.WatchEvents(ctx, runtimeEventCh); err != nil {
 			logger.Error("watch error", "error", err)
+
+			watchErrCh <- err
 		}
 	}()
 
@@ -123,10 +127,16 @@ func main() {
 		}
 	}()
 
-	// Wait for shutdown signal
+	// Wait for shutdown signal or watch error
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
+
+	select {
+	case <-sigCh:
+		logger.Info("received shutdown signal")
+	case err := <-watchErrCh:
+		logger.Error("watch failed, shutting down", "error", err)
+	}
 
 	logger.Info("shutting down")
 	cancel()
@@ -367,7 +377,7 @@ func resolveWorkload(
 		}
 
 		// Send patched workload to storage
-		if err := writer.PatchWorkload(ctx, cloned); err != nil {
+		if err := writer.UpdateWorkload(ctx, cloned); err != nil {
 			resolveLog.Error("failed to update workload in storage", "error", err)
 
 			continue

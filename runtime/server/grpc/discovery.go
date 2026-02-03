@@ -50,6 +50,13 @@ func (s *Discovery) ListWorkloads(req *runtimev1.ListWorkloadsRequest, stream ru
 
 	// Apply label filters if provided
 	for _, workload := range workloads {
+		select {
+		case <-ctx.Done():
+			//nolint:wrapcheck
+			return status.Error(codes.Canceled, "client disconnected")
+		default:
+		}
+
 		if err := stream.Send(workload); err != nil {
 			return status.Errorf(codes.Internal, "failed to send workload: %v", err)
 		}

@@ -62,19 +62,28 @@ func main() {
 	}
 
 	// Start server in goroutine
+	serverErrCh := make(chan error, 1)
+
 	go func() {
 		logger.Info("gRPC server listening", "address", cfg.Addr())
 
 		if err := grpcServer.Serve(listener); err != nil {
 			logger.Error("Server error", "error", err)
-			return
+
+			serverErrCh <- err
 		}
 	}()
 
-	// Wait for shutdown signal
+	// Wait for shutdown signal or server error
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
+
+	select {
+	case <-sigCh:
+		logger.Info("Received shutdown signal")
+	case err := <-serverErrCh:
+		logger.Error("Server failed, shutting down", "error", err)
+	}
 
 	logger.Info("Shutting down server...")
 	grpcServer.GracefulStop()

@@ -20,8 +20,8 @@ type StoreWriter interface {
 	// DeregisterWorkload removes a workload from storage.
 	DeregisterWorkload(ctx context.Context, workloadID string) error
 
-	// PatchWorkload performs a full update of an existing workload in storage.
-	PatchWorkload(ctx context.Context, workload *runtimev1.Workload) error
+	// UpdateWorkload performs a full update of an existing workload in storage.
+	UpdateWorkload(ctx context.Context, workload *runtimev1.Workload) error
 
 	// Close closes the storage connection.
 	Close() error

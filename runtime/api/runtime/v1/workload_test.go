@@ -21,11 +21,11 @@ func TestWorkload_DeepCopy(t *testing.T) {
 
 	t.Run("copies basic fields", func(t *testing.T) {
 		original := &Workload{
-			Id:           "test-id",
-			Name:         "test-name",
-			Hostname:     "test-host",
-			Runtime:      "docker",
-			WorkloadType: "container",
+			Id:       "test-id",
+			Name:     "test-name",
+			Hostname: "test-host",
+			Runtime:  "docker",
+			Type:     "container",
 		}
 
 		copied := original.DeepCopy()
@@ -42,8 +42,8 @@ func TestWorkload_DeepCopy(t *testing.T) {
 		if copied.Runtime != original.Runtime {
 			t.Errorf("Runtime = %v, want %v", copied.Runtime, original.Runtime)
 		}
-		if copied.WorkloadType != original.WorkloadType {
-			t.Errorf("WorkloadType = %v, want %v", copied.WorkloadType, original.WorkloadType)
+		if copied.Type != original.Type {
+			t.Errorf("Type = %v, want %v", copied.Type, original.Type)
 		}
 	})
 
@@ -151,6 +151,45 @@ func TestWorkload_DeepCopy(t *testing.T) {
 		// Verify values
 		if copied.Services.A2A.GetFields()["name"].GetStringValue() != "agent" {
 			t.Error("Services.A2A.name not copied correctly")
+		}
+	})
+}
+
+func TestRuntimeType_GetName(t *testing.T) {
+	t.Run("returns correct name for enum values", func(t *testing.T) {
+		tests := []struct {
+			input    RuntimeType
+			expected string
+		}{
+			{RuntimeType_RUNTIME_TYPE_UNSPECIFIED, "unspecified"},
+			{RuntimeType_RUNTIME_TYPE_DOCKER, "docker"},
+			{RuntimeType_RUNTIME_TYPE_KUBERNETES, "kubernetes"},
+		}
+
+		for _, test := range tests {
+			if test.input.GetName() != test.expected {
+				t.Errorf("GetName() = %v, want %v", test.input.GetName(), test.expected)
+			}
+		}
+	})
+}
+
+func TestWorkloadType_GetName(t *testing.T) {
+	t.Run("returns correct name for enum values", func(t *testing.T) {
+		tests := []struct {
+			input    WorkloadType
+			expected string
+		}{
+			{WorkloadType_WORKLOAD_TYPE_UNSPECIFIED, "unspecified"},
+			{WorkloadType_WORKLOAD_TYPE_PROCESS, "process"},
+			{WorkloadType_WORKLOAD_TYPE_CONTAINER, "container"},
+			{WorkloadType_WORKLOAD_TYPE_POD, "pod"},
+		}
+
+		for _, test := range tests {
+			if test.input.GetName() != test.expected {
+				t.Errorf("GetName() = %v, want %v", test.input.GetName(), test.expected)
+			}
 		}
 	})
 }
