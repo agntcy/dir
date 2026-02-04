@@ -134,33 +134,24 @@ jobs:
         run: |
           echo "--- Processing Entry $((ENTRY_INDEX + 1)) ---"
 
-          # Build optional flags
-          DRY_RUN_FLAG=""
-          if [[ "${DRY_RUN,,}" == "true" ]]; then
-             DRY_RUN_FLAG="--dry-run"
-          fi
-
-          SIGN_FLAGS=""
-          if [[ "${SIGN,,}" == "true" ]] && [ -n "$OIDC_TOKEN" ]; then
-             SIGN_FLAGS="--sign --oidc-token=$OIDC_TOKEN --oidc-provider-url=https://token.actions.githubusercontent.com --oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"
-          fi
-
-          # Base command array with rate limiting and debug enabled
           CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="$RATE_LIMIT" --force --debug)
-          if [ -n "$DRY_RUN_FLAG" ]; then
-            CMD+=("$DRY_RUN_FLAG")
-          fi
-          if [ -n "$SIGN_FLAGS" ]; then
-            CMD+=($SIGN_FLAGS)
+
+          if [[ "${DRY_RUN,,}" == "true" ]]; then
+             CMD+=("--dry-run")
           fi
 
-          # Add entry-specific filters
+          if [[ "${SIGN,,}" == "true" ]] && [ -n "$OIDC_TOKEN" ]; then
+             CMD+=("--sign --oidc-token=$OIDC_TOKEN --oidc-provider-url=https://token.actions.githubusercontent.com --oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}")
+          fi
+
           if [ -n "$ENTRY_SEARCH" ]; then
             CMD+=(--filter="search=$ENTRY_SEARCH")
           fi
+
           if [ -n "$ENTRY_VERSION" ]; then
             CMD+=(--filter="version=$ENTRY_VERSION")
           fi
+          
           if [ -n "$ENTRY_UPDATED_SINCE" ]; then
             CMD+=(--filter="updated_since=$ENTRY_UPDATED_SINCE")
           fi
