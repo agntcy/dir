@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/presenter"
@@ -108,7 +110,23 @@ func runImport(cmd *cobra.Command) error {
 	// Print summary
 	printSummary(cmd, result)
 
+	// Write CIDs to output file if specified
+	if opts.OutputCIDFile != "" && len(result.ImportedCIDs) > 0 {
+		if err := writeCIDsToFile(opts.OutputCIDFile, result.ImportedCIDs); err != nil {
+			return fmt.Errorf("failed to write CIDs to file: %w", err)
+		}
+
+		presenter.Printf(cmd, "CIDs written to: %s\n", opts.OutputCIDFile)
+	}
+
 	return nil
+}
+
+// writeCIDsToFile writes a list of CIDs to a file, one per line.
+func writeCIDsToFile(path string, cids []string) error {
+	content := strings.Join(cids, "\n") + "\n"
+
+	return os.WriteFile(path, []byte(content), 0o600) //nolint:mnd,wrapcheck
 }
 
 func printSummary(cmd *cobra.Command, result *types.ImportResult) {

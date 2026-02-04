@@ -13,8 +13,9 @@ var opts = &options{}
 
 type options struct {
 	config.Config
-	RegistryType string
-	Sign         bool // Sign records after pushing (flag binding)
+	RegistryType  string
+	Sign          bool   // Sign records after pushing (flag binding)
+	OutputCIDFile string // File to write imported CIDs to (for deferred signing)
 }
 
 func init() {
@@ -39,6 +40,7 @@ func init() {
 
 	// Signing flags
 	flags.BoolVar(&opts.Sign, "sign", false, "Sign records after pushing")
+	flags.StringVar(&opts.OutputCIDFile, "output-cids", "", "File to write imported CIDs (one per line, for deferred signing)")
 	signcmd.AddSigningFlags(flags)
 
 	// Mark required flags

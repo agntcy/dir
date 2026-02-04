@@ -22,5 +22,6 @@ type ImportResult struct {
 	SkippedCount  int
 	FailedCount   int
 	Errors        []error
-	OutputFile    string // Path to output file (only set in dry-run mode)
+	OutputFile    string   // Path to output file (only set in dry-run mode)
+	ImportedCIDs  []string // CIDs of successfully imported records
 }

@@ -4,43 +4,51 @@ on:
   workflow_dispatch:
     inputs:
       import_config:
-        description: 'JSON config path or content (default: .github/workflows/scripts/import-records.json)'
+        description: 'JSON config file path or inline JSON content'
+        type: string
+        default: '.github/workflows/scripts/import-records.json'
       dry_run:
-        description: 'Run in dry-run mode (default: true)'
+        description: 'Dry run mode - no records will be imported'
         type: boolean
+        default: true
       rate_limit:
-        description: 'LLM API requests per minute (default: 10)'
+        description: 'LLM API requests per minute to avoid rate limiting errors'
         type: number
+        default: 2
       sign:
-        description: 'Sign records after pushing with OIDC (default: true)'
+        description: 'Sign records with OIDC after importing'
         type: boolean
+        default: true
+      force:
+        description: 'Force push even if record already exists'
+        type: boolean
+        default: false
       server_address:
         description: 'Directory server address'
         type: string
+        default: 'prod.gateway.ads.outshift.io:443'
   schedule:
     - cron: '0 0 * * *'
-
-# Default values for non-workflow_dispatch triggers (push, schedule)
-env:
-  DEFAULT_IMPORT_CONFIG: '.github/workflows/scripts/import-records.json'
-  DEFAULT_DRY_RUN: 'true'
-  DEFAULT_RATE_LIMIT: '2'
-  DEFAULT_SIGN: 'true'
-  DEFAULT_SERVER_ADDRESS: 'prod.gateway.ads.outshift.io:443'
 
 jobs:
   setup-matrix:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      # Resolved inputs with proper fallback for non-dispatch triggers (github.event.inputs.* returns strings, avoiding boolean falsy issues)
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'true' }}
+      rate_limit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.rate_limit || '2' }}
+      server_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.server_address || 'prod.gateway.ads.outshift.io:443' }}
+      sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
+      force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
+    env:
+      IMPORT_CONFIG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.import_config || '.github/workflows/scripts/import-records.json' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up matrix from config
         id: set-matrix
-        env:
-          IMPORT_CONFIG: ${{ inputs.import_config || env.DEFAULT_IMPORT_CONFIG }}
         run: |
           # Determine if IMPORT_CONFIG is a file path or direct JSON content
           if [ -f "$IMPORT_CONFIG" ]; then
@@ -73,6 +81,12 @@ jobs:
       fail-fast: false
       matrix:
         entry: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+    env:
+      DRY_RUN: ${{ needs.setup-matrix.outputs.dry_run }}
+      RATE_LIMIT: ${{ needs.setup-matrix.outputs.rate_limit }}
+      SERVER_ADDRESS: ${{ needs.setup-matrix.outputs.server_address }}
+      SIGN: ${{ needs.setup-matrix.outputs.sign }}
+      FORCE: ${{ needs.setup-matrix.outputs.force }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -113,16 +127,8 @@ jobs:
           }
           EOF
 
-      - name: Get GitHub OIDC Token
-        id: oidc-token
-        if: ${{ (inputs.sign || env.DEFAULT_SIGN) == 'true' && (inputs.dry_run || env.DEFAULT_DRY_RUN) == 'false' }}
-        run: |
-          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
-          echo "::add-mask::$OIDC_TOKEN"
-          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
-
       - name: Import MCP Records
+        id: import
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
@@ -131,19 +137,23 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT: 'gpt-4o'
           AZURE_OPENAI_API_VERSION: '2024-10-21'
           DIRECTORY_CLIENT_AUTH_MODE: 'github'
-          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ inputs.server_address || env.DEFAULT_SERVER_ADDRESS }}
+          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
           DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }} 
         run: |
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
-          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ inputs.rate_limit || env.DEFAULT_RATE_LIMIT }}")
+          CIDS_FILE="imported-cids-${{ matrix.entry.index }}.txt"
+          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ env.RATE_LIMIT }}")
 
-          if [[ "${{ inputs.dry_run || env.DEFAULT_DRY_RUN }}" == "true" ]]; then
+          if [[ "${{ env.DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
+          else
+             # Output CIDs for deferred signing (only in non-dry-run mode)
+             CMD+=("--output-cids=$CIDS_FILE")
           fi
 
-          if [[ "${{ inputs.sign || env.DEFAULT_SIGN }}" == "true" && -n "${{ steps.oidc-token.outputs.token }}" ]]; then
-             CMD+=("--sign" "--oidc-token=${{ steps.oidc-token.outputs.token }}" "--oidc-provider-url=https://token.actions.githubusercontent.com" "--oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}")
+          if [[ "${{ env.FORCE }}" == "true" ]]; then
+             CMD+=("--force")
           fi
 
           if [ -n "${{ matrix.entry.search }}" ]; then
@@ -162,9 +172,66 @@ jobs:
           OUTPUT=$("${CMD[@]}" 2>&1)
           echo "$OUTPUT"
 
-          # Print jsonl output
+          # Print jsonl output (dry-run mode)
           JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to:' | sed 's/.*Records saved to: //')
           if [ -n "$JSONL_FILE" ] && [ -f "$JSONL_FILE" ]; then
             echo "--- JSONL Output ($JSONL_FILE) ---"
             cat "$JSONL_FILE"
+          fi
+
+          # Output CIDs file path for signing step
+          echo "cids_file=$CIDS_FILE" >> $GITHUB_OUTPUT
+
+      # Sign records with fresh OIDC tokens after import completes
+      # This avoids token expiration issues during long-running imports
+      - name: Sign Imported Records
+        if: ${{ env.SIGN == 'true' && env.DRY_RUN == 'false' }}
+        env:
+          DIRECTORY_CLIENT_AUTH_MODE: 'github'
+          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ env.SERVER_ADDRESS }}
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }}
+        run: |
+          CIDS_FILE="${{ steps.import.outputs.cids_file }}"
+          
+          if [ ! -f "$CIDS_FILE" ]; then
+            echo "No CIDs file found - no records were imported"
+            exit 0
+          fi
+
+          CID_COUNT=$(wc -l < "$CIDS_FILE" | tr -d ' ')
+          if [ "$CID_COUNT" -eq 0 ]; then
+            echo "No CIDs to sign"
+            exit 0
+          fi
+
+          echo "Signing $CID_COUNT records..."
+          SIGNED=0
+          FAILED=0
+
+          while IFS= read -r CID || [ -n "$CID" ]; do
+            [ -z "$CID" ] && continue
+            
+            echo "Signing CID: $CID"
+            
+            # Get fresh OIDC token for each signing operation to avoid expiration
+            OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+            
+            if bin/dirctl sign "$CID" \
+              --oidc-token="$OIDC_TOKEN" \
+              --oidc-provider-url="https://token.actions.githubusercontent.com" \
+              --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"; then
+              SIGNED=$((SIGNED + 1))
+            else
+              echo "Failed to sign CID: $CID"
+              FAILED=$((FAILED + 1))
+            fi
+          done < "$CIDS_FILE"
+
+          echo "=== Signing Summary ==="
+          echo "Signed: $SIGNED"
+          echo "Failed: $FAILED"
+          
+          if [ "$FAILED" -gt 0 ]; then
+            exit 1
           fi

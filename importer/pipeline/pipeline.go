@@ -58,6 +58,7 @@ type Result struct {
 	SkippedCount  int
 	FailedCount   int
 	Errors        []error
+	ImportedCIDs  []string // CIDs of successfully imported records
 	mu            sync.Mutex
 }
 
@@ -150,6 +151,7 @@ func (p *Pipeline) Run(ctx context.Context) (*Result, error) {
 				// Valid CID - record successfully imported
 				result.mu.Lock()
 				result.ImportedCount++
+				result.ImportedCIDs = append(result.ImportedCIDs, ref.GetCid())
 				result.mu.Unlock()
 			}
 		}
