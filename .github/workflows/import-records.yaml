@@ -21,6 +21,10 @@ on:
         description: 'Sign records after pushing with OIDC (default: true)'
         type: boolean
         default: true
+      server_address:
+        description: 'Directory server address'
+        type: string
+        default: 'prod.gateway.ads.outshift.io:443'
   schedule:
     - cron: '0 0 * * *'
 
@@ -118,6 +122,7 @@ jobs:
           echo "::add-mask::$OIDC_TOKEN"
           echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
 
+      # TODO Clean up defaults when on push removed
       - name: Import MCP Records
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
@@ -126,6 +131,9 @@ jobs:
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_DEPLOYMENT: 'gpt-4o'
           AZURE_OPENAI_API_VERSION: '2024-10-21'
+          DIRECTORY_CLIENT_AUTH_MODE: 'github'
+          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ inputs.server_address }}
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT || 'prod.gateway.ads.outshift.io:443' }} 
         run: |
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 

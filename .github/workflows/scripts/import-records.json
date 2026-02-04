@@ -1,35 +1,5 @@
 [
   {
-    "search": "com.microsoft"
-  },
-  {
-    "search": "io.github.microsoft"
-  },
-  {
-    "search": "io.github.github/"
-  },
-  {
-    "search": "io.github.google"
-  },
-  {
     "search": "io.github.aws"
-  },
-  {
-    "search": "com.cisco"
-  },
-  {
-    "search": "com.thousandeyes"
-  },
-  {
-    "search": "io.github.redhat"
-  },
-  {
-    "search": "io.github.arm"
-  },
-  {
-    "search": "io.github.pagerduty"
-  },
-  {
-    "search": "com.postman"
   }
 ]
