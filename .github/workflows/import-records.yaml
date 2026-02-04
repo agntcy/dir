@@ -148,5 +148,13 @@ jobs:
             fi
 
             echo "Running: ${ENTRY_CMD[*]}"
-            "${ENTRY_CMD[@]}"
+            OUTPUT=$("${ENTRY_CMD[@]}" 2>&1)
+            echo "$OUTPUT"
+
+            # Print jsonl output
+            JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to:' | sed 's/.*Records saved to: //')
+            if [ -n "$JSONL_FILE" ] && [ -f "$JSONL_FILE" ]; then
+              echo "--- JSONL Output ($JSONL_FILE) ---"
+              cat "$JSONL_FILE"
+            fi
           done
