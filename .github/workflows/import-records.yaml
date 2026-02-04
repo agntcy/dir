@@ -4,19 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       import_config:
-        description: 'JSON config path or content (default: .github/workflows/scripts/import-records.json)'
+        description: 'JSON config file path or inline JSON content'
+        type: string
+        default: '.github/workflows/scripts/import-records.json'
       dry_run:
-        description: 'Run in dry-run mode (default: true)'
+        description: 'Dry run mode - no records will be imported'
         type: boolean
+        default: true
       rate_limit:
-        description: 'LLM API requests per minute (default: 10)'
+        description: 'LLM API requests per minute to avoid rate limiting errors'
         type: number
+        default: 2
       sign:
-        description: 'Sign records after pushing with OIDC (default: true)'
+        description: 'Sign records with OIDC after importing'
         type: boolean
+        default: true
       server_address:
         description: 'Directory server address'
         type: string
+        default: 'prod.gateway.ads.outshift.io:443'
   schedule:
     - cron: '0 0 * * *'
 
