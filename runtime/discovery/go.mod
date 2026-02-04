@@ -14,10 +14,10 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/client v0.6.1
-	github.com/agntcy/dir/runtime/api v0.0.0-00010101000000-000000000000
-	github.com/agntcy/dir/runtime/store v0.0.0-00010101000000-000000000000
-	github.com/agntcy/dir/runtime/utils v0.0.0-00010101000000-000000000000
+	github.com/agntcy/dir/client v1.0.0
+	github.com/agntcy/dir/runtime/api v1.0.0
+	github.com/agntcy/dir/runtime/store v1.0.0
+	github.com/agntcy/dir/runtime/utils v1.0.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
 	github.com/spf13/viper v1.21.0
@@ -32,8 +32,8 @@ require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260127123814-046ed24ce65a.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/api v1.0.0-rc.2
-	github.com/agntcy/dir/utils v1.0.0-rc.2 // indirect
+	github.com/agntcy/dir/api v1.0.0
+	github.com/agntcy/dir/utils v1.0.0 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.0-rc.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect

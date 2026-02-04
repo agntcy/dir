@@ -3,7 +3,7 @@
 
 module-sets:
   directory:
-    version: v1.0.0-rc.2
+    version: v1.0.0
     modules:
       - github.com/agntcy/dir/api
       - github.com/agntcy/dir/client
@@ -17,4 +17,9 @@ module-sets:
       - github.com/agntcy/dir/auth/authprovider
       - github.com/agntcy/dir/auth/authzserver
       - github.com/agntcy/dir/auth/cmd/envoy-authz
+      - github.com/agntcy/dir/runtime/discovery
+      - github.com/agntcy/dir/runtime/api
+      - github.com/agntcy/dir/runtime/store
+      - github.com/agntcy/dir/runtime/utils
+      - github.com/agntcy/dir/runtime/server
 

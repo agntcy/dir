@@ -22,9 +22,9 @@ replace (
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260127123814-046ed24ce65a.1
-	github.com/agntcy/dir/api v1.0.0-rc.2
-	github.com/agntcy/dir/client v1.0.0-rc.2
-	github.com/agntcy/dir/utils v1.0.0-rc.2
+	github.com/agntcy/dir/api v1.0.0
+	github.com/agntcy/dir/client v1.0.0
+	github.com/agntcy/dir/utils v1.0.0
 	github.com/agntcy/oasf-sdk/pkg v1.0.0-rc.1
 	github.com/mark3labs/mcphost v0.33.2
 	github.com/modelcontextprotocol/registry v1.4.0
