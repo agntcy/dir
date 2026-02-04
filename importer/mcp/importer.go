@@ -106,6 +106,7 @@ func (i *Importer) Run(ctx context.Context, cfg config.Config) (*types.ImportRes
 		FailedCount:   pipelineResult.FailedCount,
 		Errors:        pipelineResult.Errors,
 		OutputFile:    outputFile,
+		ImportedCIDs:  pipelineResult.ImportedCIDs,
 	}
 
 	return result, nil
