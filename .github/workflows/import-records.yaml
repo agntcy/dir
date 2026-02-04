@@ -1,15 +1,12 @@
 name: Import MCP Records
 
 on:
-  push:
-    branches:
-      - '852-sync-mcp-cards-from-external-mcp-registry'
   workflow_dispatch:
     inputs:
       import_config:
         description: 'JSON config path or content (default: .github/workflows/scripts/import-records.json)'
       dry_run:
-        description: 'Run in dry-run mode (default: false)'
+        description: 'Run in dry-run mode (default: true)'
         type: boolean
       rate_limit:
         description: 'LLM API requests per minute (default: 10)'
@@ -26,7 +23,7 @@ on:
 # Default values for non-workflow_dispatch triggers (push, schedule)
 env:
   DEFAULT_IMPORT_CONFIG: '.github/workflows/scripts/import-records.json'
-  DEFAULT_DRY_RUN: 'false'
+  DEFAULT_DRY_RUN: 'true'
   DEFAULT_RATE_LIMIT: '2'
   DEFAULT_SIGN: 'true'
   DEFAULT_SERVER_ADDRESS: 'prod.gateway.ads.outshift.io:443'
@@ -125,7 +122,6 @@ jobs:
           echo "::add-mask::$OIDC_TOKEN"
           echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
 
-      # TODO Clean up defaults when on push removed
       - name: Import MCP Records
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
@@ -140,7 +136,7 @@ jobs:
         run: |
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
-          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ inputs.rate_limit || env.DEFAULT_RATE_LIMIT }}" --force --debug)
+          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ inputs.rate_limit || env.DEFAULT_RATE_LIMIT }}")
 
           if [[ "${{ inputs.dry_run || env.DEFAULT_DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
