@@ -79,6 +79,7 @@ jobs:
         shell: bash
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 
+      # TODO: Remove when release 1.0.0 is out
       - name: Build dirctl
         run: |
           task cli:compile
@@ -107,7 +108,7 @@ jobs:
 
       - name: Get GitHub OIDC Token
         id: oidc-token
-        if: ${{ inputs.sign == true || (github.event_name == 'schedule') }}
+        if: ${{ inputs.sign == true && inputs.dry_run == false }}
         run: |
           OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
