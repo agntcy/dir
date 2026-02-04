@@ -1,0 +1,73 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+services:
+  # ============================================================
+  # A2A Agent Example - Exposes A2A agent card
+  # ============================================================
+  service-a2a:
+    image: ghcr.io/ramizpolic/a2a-helloworld:latest
+    labels:
+      - "org.agntcy/discover=true"
+      - "org.agntcy/agent-type=a2a"
+      - "org.agntcy/agent-record=dns-validation-http/example/research-assistant-v4:v4.0.0"
+    networks:
+      - team-a
+
+  # ============================================================
+  # Basic Services - Simple nginx containers for testing
+  # ============================================================
+  service-1:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-a
+
+  service-2:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-b
+
+  service-3:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-a
+
+  service-4:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-b
+
+  # Service on multiple networks
+  service-5:
+    image: nginx:alpine
+    labels:
+      - "org.agntcy/discover=true"
+    networks:
+      - team-a
+      - team-b
+
+  # ============================================================
+  # Private Service - No discover label (NOT tracked)
+  # ============================================================
+  service-private:
+    image: nginx:alpine
+    container_name: service-private
+    networks:
+      - team-internal
+
+networks:
+  # Team networks - simulates isolated network environments
+  team-a:
+    driver: bridge
+  team-b:
+    driver: bridge
+  team-internal:
+    driver: bridge

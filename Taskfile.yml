@@ -59,6 +59,10 @@ vars:
   COSIGN_BIN: "{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}"
   HUB_API_VERSION: "main"
 
+  ## Runtime CRD
+  CONTROLLER_GEN_VERSION: "v0.17.3"
+  CONTROLLER_GEN_BIN: "sigs.k8s.io/controller-tools/cmd/controller-gen@{{ .CONTROLLER_GEN_VERSION }}"
+
   ## Go module discovery
   GO_MOD_DIR:
     sh: find . -name go.mod -not -path "./tmp*" -exec dirname {} \;
@@ -167,6 +171,18 @@ tasks:
         git push --set-upstream origin release/{{.RELEASE_VERSION}} || true
 
   ##
+  ## Runtime
+  ##
+  runtime:gen:
+    desc: Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations
+    dir: ./runtime/api
+    deps:
+      - deps:controller-gen
+    cmds:
+      - go run {{ .CONTROLLER_GEN_BIN }} object paths=./crd/v1/...
+      - go run {{ .CONTROLLER_GEN_BIN }} crd:ignoreUnexportedFields=true object:headerFile="./crd/v1/boilerplate.go.txt" paths="./crd/v1/..." output:crd:artifacts:config="../install/chart/templates"
+
+  ##
   ## API
   ##
   api:gen:
@@ -179,18 +195,32 @@ tasks:
     # In translation, this is interpreted as a regular multi-line shell script.
     cmds:
       - "{{.BUFBUILD_BIN}} dep update"
-      - "{{.BUFBUILD_BIN}} generate"
+      - for:
+          matrix:
+            TEMPLATE: ["buf.gen.runtime.yaml", "buf.gen.yaml"]
+        cmd: |
+          {{.BUFBUILD_BIN}} generate --template {{.ITEM.TEMPLATE}}
+      - task: runtime:gen
 
   api:clean:
     desc: Clean generated API stubs
     deps:
+      # Standard API
       - api:clean:go
       - api:clean:python
       - api:clean:javascript
+      # Runtime API
+      - api:clean:runtime:go
 
   api:clean:go:
     desc: Clean generated golang API stubs
     dir: ./api
+    cmds:
+      - find . \( -name "*.pb.go" \) -type f -delete
+
+  api:clean:runtime:go:
+    desc: Clean runtime generated golang API stubs
+    dir: ./runtime
     cmds:
       - find . \( -name "*.pb.go" \) -type f -delete
 
@@ -552,7 +582,6 @@ tasks:
 
   server:store:stop:
     desc: Stop local OCI registry node
-    internal: true
     cmds:
       - docker stop oci-registry
 
@@ -1856,6 +1885,16 @@ tasks:
       - task: deps:bufbuild
       - task: deps:uv
       - task: deps:cosign
+
+  deps:controller-gen:
+    desc: Ensure controller-gen is installed
+    internal: true
+    preconditions:
+      - which go
+    cmds:
+      - cmd: go install {{.CONTROLLER_GEN_BIN}}
+    status:
+      - which controller-gen
 
   deps:bin-dir:
     desc: Create bin directory

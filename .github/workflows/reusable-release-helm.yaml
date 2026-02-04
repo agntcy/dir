@@ -37,7 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        chart: [dir, dirctl, envoy-authz]
+        include:
+          - chart: dir
+            source_path: install/charts/dir
+          - chart: dirctl
+            source_path: install/charts/dirctl
+          - chart: envoy-authz
+            source_path: install/charts/envoy-authz
+          - chart: runtime
+            source_path: runtime/install/chart
     permissions:
       packages: write
     steps:
@@ -59,21 +67,21 @@ jobs:
       - name: Helm update nested dependencies
         if: matrix.chart == 'dir'
         shell: bash
-        run: helm dependency update install/charts/dir/apiserver
+        run: helm dependency update ${{ matrix.source_path }}/apiserver
 
       - name: Helm update
         shell: bash
-        run: helm dependency update install/charts/${{ matrix.chart }}
+        run: helm dependency update ${{ matrix.source_path }}
 
       - name: Helm lint
         shell: bash
-        run: helm lint install/charts/${{ matrix.chart }} --with-subcharts
+        run: helm lint ${{ matrix.source_path }} --with-subcharts
 
       - name: Helm package
         id: build
         shell: bash
         run: |
-          helm package install/charts/${{ matrix.chart }} --dependency-update --version ${{ inputs.release_tag }}
+          helm package ${{ matrix.source_path }} --dependency-update --version ${{ inputs.release_tag }}
           echo "package=${{ matrix.chart }}-${{ inputs.release_tag }}.tgz" >> "$GITHUB_OUTPUT"
 
       - name: Helm push to GHCR OCI registry

@@ -1,0 +1,19 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "runtime.discovery.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "runtime.discovery.labels" . | nindent 4 }}
+data:
+  discovery.config.yml: |
+    {{- $config := deepCopy .Values.discovery.config }}
+    {{- if .Values.etcd.enabled }}
+    {{- $_ := set $config.store.etcd "host" (include "runtime.etcd.fullname" .) }}
+    {{- $_ := set $config.store.etcd "port" (.Values.etcd.service.port | int) }}
+    {{- end }}
+    {{- $config | toYaml | nindent 4 }}
+

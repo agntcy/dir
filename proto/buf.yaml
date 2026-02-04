@@ -18,10 +18,12 @@ lint:
       - agntcy/dir/routing/v1/routing_service.proto
       - agntcy/dir/store/v1/store_service.proto
       - agntcy/dir/store/v1/sync_service.proto
+      - agntcy/dir/runtime/v1/discovery_service.proto
     RPC_REQUEST_RESPONSE_UNIQUE:
       - agntcy/dir/routing/v1/publication_service.proto
       - agntcy/dir/routing/v1/routing_service.proto
       - agntcy/dir/store/v1/store_service.proto
+      - agntcy/dir/runtime/v1/discovery_service.proto
   enum_zero_value_suffix: _UNSPECIFIED
 breaking:
   use:

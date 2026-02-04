@@ -1,0 +1,22 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+{{- if and .Values.etcd.enabled .Values.etcd.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "runtime.fullname" . }}-etcd
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "runtime.labels" . | nindent 4 }}
+    app.kubernetes.io/component: etcd
+spec:
+  accessModes:
+    - {{ .Values.etcd.persistence.accessMode }}
+  {{- if .Values.etcd.persistence.storageClass }}
+  storageClassName: {{ .Values.etcd.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.etcd.persistence.size }}
+{{- end }}
