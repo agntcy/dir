@@ -17,4 +17,5 @@ module-sets:
       - github.com/agntcy/dir/auth/authprovider
       - github.com/agntcy/dir/auth/authzserver
       - github.com/agntcy/dir/auth/cmd/envoy-authz
+      - github.com/agntcy/dir/runtime/discovery
 
