@@ -112,8 +112,8 @@ It is not advised to use artifacts with mismatched versions.
 All container images are distributed via [GitHub Packages](https://github.com/orgs/agntcy/packages?repo_name=dir).
 
 ```bash
-docker pull ghcr.io/agntcy/dir-ctl:v1.0.0-rc.1
-docker pull ghcr.io/agntcy/dir-apiserver:v1.0.0-rc.1
+docker pull ghcr.io/agntcy/dir-ctl:v1.0.0
+docker pull ghcr.io/agntcy/dir-apiserver:v1.0.0
 ```
 
 ### Helm charts
@@ -121,7 +121,7 @@ docker pull ghcr.io/agntcy/dir-apiserver:v1.0.0-rc.1
 All helm charts are distributed as OCI artifacts via [GitHub Packages](https://github.com/agntcy/dir/pkgs/container/dir%2Fhelm-charts%2Fdir).
 
 ```bash
-helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.0.0-rc.1
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.0.0
 ```
 
 ### Binaries
@@ -153,8 +153,8 @@ task server:start
 This will deploy Directory services into an existing Kubernetes cluster.
 
 ```bash
-helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.0.0-rc.1
-helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.0.0-rc.1
+helm pull oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.0.0
+helm upgrade --install dir oci://ghcr.io/agntcy/dir/helm-charts/dir --version v1.0.0
 ```
 
 ### Using Docker Compose
