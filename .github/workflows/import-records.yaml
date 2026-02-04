@@ -8,25 +8,28 @@ on:
     inputs:
       import_config:
         description: 'JSON config path or content (default: .github/workflows/scripts/import-records.json)'
-        required: false
       dry_run:
         description: 'Run in dry-run mode (default: false)'
         type: boolean
-        default: true
       rate_limit:
         description: 'LLM API requests per minute (default: 10)'
         type: number
-        default: 2
       sign:
         description: 'Sign records after pushing with OIDC (default: true)'
         type: boolean
-        default: true
       server_address:
         description: 'Directory server address'
         type: string
-        default: 'prod.gateway.ads.outshift.io:443'
   schedule:
     - cron: '0 0 * * *'
+
+# Default values for non-workflow_dispatch triggers (push, schedule)
+env:
+  DEFAULT_IMPORT_CONFIG: '.github/workflows/scripts/import-records.json'
+  DEFAULT_DRY_RUN: 'false'
+  DEFAULT_RATE_LIMIT: '2'
+  DEFAULT_SIGN: 'true'
+  DEFAULT_SERVER_ADDRESS: 'prod.gateway.ads.outshift.io:443'
 
 jobs:
   setup-matrix:
@@ -40,7 +43,7 @@ jobs:
       - name: Set up matrix from config
         id: set-matrix
         env:
-          IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
+          IMPORT_CONFIG: ${{ inputs.import_config || env.DEFAULT_IMPORT_CONFIG }}
         run: |
           # Determine if IMPORT_CONFIG is a file path or direct JSON content
           if [ -f "$IMPORT_CONFIG" ]; then
@@ -115,7 +118,7 @@ jobs:
 
       - name: Get GitHub OIDC Token
         id: oidc-token
-        if: ${{ (inputs.sign || true) == true && (inputs.dry_run || true) == false }}
+        if: ${{ (inputs.sign || env.DEFAULT_SIGN) == 'true' && (inputs.dry_run || env.DEFAULT_DRY_RUN) == 'false' }}
         run: |
           OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
@@ -132,18 +135,18 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT: 'gpt-4o'
           AZURE_OPENAI_API_VERSION: '2024-10-21'
           DIRECTORY_CLIENT_AUTH_MODE: 'github'
-          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ inputs.server_address }}
-          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT || 'prod.gateway.ads.outshift.io:443' }} 
+          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ inputs.server_address || env.DEFAULT_SERVER_ADDRESS }}
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }} 
         run: |
           echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
-          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ inputs.rate_limit || 2 }}" --force --debug)
+          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ inputs.rate_limit || env.DEFAULT_RATE_LIMIT }}" --force --debug)
 
-          if [[ "${{ inputs.dry_run || true }}" == "true" ]]; then
+          if [[ "${{ inputs.dry_run || env.DEFAULT_DRY_RUN }}" == "true" ]]; then
              CMD+=("--dry-run")
           fi
 
-          if [[ "${{ inputs.sign || true }}" == "true" && -n "${{ steps.oidc-token.outputs.token }}" ]]; then
+          if [[ "${{ inputs.sign || env.DEFAULT_SIGN }}" == "true" && -n "${{ steps.oidc-token.outputs.token }}" ]]; then
              CMD+=("--sign" "--oidc-token=${{ steps.oidc-token.outputs.token }}" "--oidc-provider-url=https://token.actions.githubusercontent.com" "--oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}")
           fi
 
