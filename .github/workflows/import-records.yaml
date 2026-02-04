@@ -57,11 +57,7 @@ jobs:
                   "serve"
                 ],
                 "env": {
-                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com",
-                  "AZURE_RESOURCE_NAME": "phoenix-project-agents",
-                  "AZURE_API_VERSION": "2024-10-21",
-                  "AZURE_API_KEY": "${AZURE_OPENAI_API_KEY}",
-                  "AZURE_OPENAI_BASE_URL": "${AZURE_OPENAI_ENDPOINT}"
+                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
                 }
               }
             },
@@ -82,7 +78,11 @@ jobs:
       - name: Import MCP Records
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT: 'gpt-4o'
+          AZURE_OPENAI_API_VERSION: '2024-10-21'
           IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
           DRY_RUN: ${{ inputs.dry_run || 'true' }}
           RATE_LIMIT: ${{ inputs.rate_limit || '2' }}
