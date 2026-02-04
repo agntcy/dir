@@ -22,11 +22,50 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up matrix from config
+        id: set-matrix
+        env:
+          IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
+        run: |
+          # Determine if IMPORT_CONFIG is a file path or direct JSON content
+          if [ -f "$IMPORT_CONFIG" ]; then
+            echo "Loading config from file: $IMPORT_CONFIG"
+            CONFIG_CONTENT=$(cat "$IMPORT_CONFIG")
+          else
+            echo "Loading config from input string"
+            CONFIG_CONTENT="$IMPORT_CONFIG"
+          fi
+
+          # Validate JSON is an array
+          LENGTH=$(echo "$CONFIG_CONTENT" | jq 'length')
+          if [ -z "$LENGTH" ] || [ "$LENGTH" = "null" ]; then
+            echo "Error: Invalid JSON configuration or not an array"
+            exit 1
+          fi
+
+          # Add index to each entry for display purposes
+          MATRIX=$(echo "$CONFIG_CONTENT" | jq -c '[to_entries | .[] | .value + {index: .key}]')
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix with $LENGTH entries"
+
   import-mcp:
+    needs: setup-matrix
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write  # Required for OIDC signing with Sigstore
+    strategy:
+      fail-fast: false
+      matrix:
+        entry: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -83,20 +122,16 @@ jobs:
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_DEPLOYMENT: 'gpt-4o'
           AZURE_OPENAI_API_VERSION: '2024-10-21'
-          IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
           DRY_RUN: ${{ inputs.dry_run || 'true' }}
           RATE_LIMIT: ${{ inputs.rate_limit || '2' }}
           SIGN: ${{ inputs.sign || 'true' }}
           OIDC_TOKEN: ${{ steps.oidc-token.outputs.token }}
+          ENTRY_SEARCH: ${{ matrix.entry.search }}
+          ENTRY_VERSION: ${{ matrix.entry.version }}
+          ENTRY_UPDATED_SINCE: ${{ matrix.entry.updated_since }}
+          ENTRY_INDEX: ${{ matrix.entry.index }}
         run: |
-          # Determine if IMPORT_CONFIG is a file path or direct JSON content
-          if [ -f "$IMPORT_CONFIG" ]; then
-            echo "Loading config from file: $IMPORT_CONFIG"
-            CONFIG_CONTENT=$(cat "$IMPORT_CONFIG")
-          else
-            echo "Loading config from input string"
-            CONFIG_CONTENT="$IMPORT_CONFIG"
-          fi
+          echo "--- Processing Entry $((ENTRY_INDEX + 1)) ---"
 
           # Build optional flags
           DRY_RUN_FLAG=""
@@ -109,52 +144,33 @@ jobs:
              SIGN_FLAGS="--sign --oidc-token=$OIDC_TOKEN --oidc-provider-url=https://token.actions.githubusercontent.com --oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}"
           fi
 
-          # base command array with rate limiting and debug enabled
-          BASE_CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="$RATE_LIMIT" --force --debug)
+          # Base command array with rate limiting and debug enabled
+          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="$RATE_LIMIT" --force --debug)
           if [ -n "$DRY_RUN_FLAG" ]; then
-            BASE_CMD+=("$DRY_RUN_FLAG")
+            CMD+=("$DRY_RUN_FLAG")
           fi
           if [ -n "$SIGN_FLAGS" ]; then
-            BASE_CMD+=($SIGN_FLAGS)
+            CMD+=($SIGN_FLAGS)
           fi
 
-          # Get array length using jq
-          LENGTH=$(echo "$CONFIG_CONTENT" | jq 'length')
-
-          if [ -z "$LENGTH" ] || [ "$LENGTH" = "null" ]; then
-             echo "Error: Invalid JSON configuration or not an array"
-             exit 1
+          # Add entry-specific filters
+          if [ -n "$ENTRY_SEARCH" ]; then
+            CMD+=(--filter="search=$ENTRY_SEARCH")
+          fi
+          if [ -n "$ENTRY_VERSION" ]; then
+            CMD+=(--filter="version=$ENTRY_VERSION")
+          fi
+          if [ -n "$ENTRY_UPDATED_SINCE" ]; then
+            CMD+=(--filter="updated_since=$ENTRY_UPDATED_SINCE")
           fi
 
-          for (( i=0; i<$LENGTH; i++ )); do
-            echo "--- Processing Entry $((i+1)) ---"
+          echo "Running: ${CMD[*]}"
+          OUTPUT=$("${CMD[@]}" 2>&1)
+          echo "$OUTPUT"
 
-            # Extract values using jq
-            SEARCH=$(echo "$CONFIG_CONTENT" | jq -r ".[$i].search // empty")
-            VERSION=$(echo "$CONFIG_CONTENT" | jq -r ".[$i].version // empty")
-            UPDATED_SINCE=$(echo "$CONFIG_CONTENT" | jq -r ".[$i].updated_since // empty")
-
-            # Build entry-specific arguments
-            ENTRY_CMD=("${BASE_CMD[@]}")
-
-            if [ -n "$SEARCH" ]; then
-              ENTRY_CMD+=(--filter="search=$SEARCH")
-            fi
-            if [ -n "$VERSION" ]; then
-              ENTRY_CMD+=(--filter="version=$VERSION")
-            fi
-            if [ -n "$UPDATED_SINCE" ]; then
-              ENTRY_CMD+=(--filter="updated_since=$UPDATED_SINCE")
-            fi
-
-            echo "Running: ${ENTRY_CMD[*]}"
-            OUTPUT=$("${ENTRY_CMD[@]}" 2>&1)
-            echo "$OUTPUT"
-
-            # Print jsonl output
-            JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to:' | sed 's/.*Records saved to: //')
-            if [ -n "$JSONL_FILE" ] && [ -f "$JSONL_FILE" ]; then
-              echo "--- JSONL Output ($JSONL_FILE) ---"
-              cat "$JSONL_FILE"
-            fi
-          done
+          # Print jsonl output
+          JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to:' | sed 's/.*Records saved to: //')
+          if [ -n "$JSONL_FILE" ] && [ -f "$JSONL_FILE" ]; then
+            echo "--- JSONL Output ($JSONL_FILE) ---"
+            cat "$JSONL_FILE"
+          fi
