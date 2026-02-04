@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0] - 2026-02-04
+
+### Added
+- **Runtime**: Runtime process discovery service with multi-runtime support (#808)
+  - Event-based Docker container discovery with real-time monitoring
+  - Containerd runtime support for container lifecycle tracking
+  - Kubernetes workload discovery via CRD-based integration
+  - gRPC API for querying discovered processes and workloads
+  - Helm chart and installation scripts for deployment
+  - CRD (CustomResourceDefinition) for DiscoveredWorkload resources
+  - ETCD-based storage backend for workload state persistence
+- **Importer**: Rate limiting for LLM API calls to prevent quota exhaustion (#888)
+- **Importer**: Enhanced dry-run functionality to save output records to file for debugging (#888)
+- **Importer**: Max-steps parameter for model configuration control (#888)
+- **CI/CD**: Scheduled MCP import workflow for automated registry population (#874)
+  - Filtered MCP import via configurable input settings
+  - Signing and rate limiting support during automated imports
+  - Production authentication for scheduled imports
+
+### Changed
+- **Importer**: Clear enricher session after each prompt to prevent context accumulation (#888)
+
+### Fixed
+- **E2E**: Add comprehensive tests for remote name resolution functionality (#895)
+
 ## [v1.0.0-rc.2] - 2026-02-02
 
 ### Fixed
