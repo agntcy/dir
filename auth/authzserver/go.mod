@@ -3,7 +3,7 @@ module github.com/agntcy/dir/auth/authzserver
 go 1.25.6
 
 require (
-	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.2
+	github.com/agntcy/dir/auth/authprovider v1.0.0
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516
