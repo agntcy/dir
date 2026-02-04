@@ -1,0 +1,170 @@
+name: Import MCP Records
+
+on:
+  workflow_dispatch:
+    inputs:
+      import_config:
+        description: 'JSON config path or content (default: .github/workflows/scripts/import-records.json)'
+      dry_run:
+        description: 'Run in dry-run mode (default: true)'
+        type: boolean
+      rate_limit:
+        description: 'LLM API requests per minute (default: 10)'
+        type: number
+      sign:
+        description: 'Sign records after pushing with OIDC (default: true)'
+        type: boolean
+      server_address:
+        description: 'Directory server address'
+        type: string
+  schedule:
+    - cron: '0 0 * * *'
+
+# Default values for non-workflow_dispatch triggers (push, schedule)
+env:
+  DEFAULT_IMPORT_CONFIG: '.github/workflows/scripts/import-records.json'
+  DEFAULT_DRY_RUN: 'true'
+  DEFAULT_RATE_LIMIT: '2'
+  DEFAULT_SIGN: 'true'
+  DEFAULT_SERVER_ADDRESS: 'prod.gateway.ads.outshift.io:443'
+
+jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up matrix from config
+        id: set-matrix
+        env:
+          IMPORT_CONFIG: ${{ inputs.import_config || env.DEFAULT_IMPORT_CONFIG }}
+        run: |
+          # Determine if IMPORT_CONFIG is a file path or direct JSON content
+          if [ -f "$IMPORT_CONFIG" ]; then
+            echo "Loading config from file: $IMPORT_CONFIG"
+            CONFIG_CONTENT=$(cat "$IMPORT_CONFIG")
+          else
+            echo "Loading config from input string"
+            CONFIG_CONTENT="$IMPORT_CONFIG"
+          fi
+
+          # Validate JSON is an array
+          LENGTH=$(echo "$CONFIG_CONTENT" | jq 'length')
+          if [ -z "$LENGTH" ] || [ "$LENGTH" = "null" ]; then
+            echo "Error: Invalid JSON configuration or not an array"
+            exit 1
+          fi
+
+          # Add index to each entry for display purposes
+          MATRIX=$(echo "$CONFIG_CONTENT" | jq -c '[to_entries | .[] | .value + {index: .key}]')
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix with $LENGTH entries"
+
+  import-mcp:
+    needs: setup-matrix
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC signing with Sigstore
+    strategy:
+      fail-fast: false
+      matrix:
+        entry: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.6"
+
+      - name: Setup Taskfile
+        shell: bash
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
+
+      # TODO: Remove when release 1.0.0 is out
+      - name: Build dirctl
+        run: |
+          task cli:compile
+          ls -la bin/
+
+      - name: Create Enricher Config
+        run: |
+          cat <<'EOF' > mcphost_ci.json
+          {
+            "mcpServers": {
+              "dir-mcp-server": {
+                "command": "bin/dirctl",
+                "args": [
+                  "mcp",
+                  "serve"
+                ],
+                "env": {
+                  "OASF_API_VALIDATION_SCHEMA_URL": "https://schema.oasf.outshift.com"
+                }
+              }
+            },
+            "model": "azure:gpt-4o",
+            "max-steps": 10
+          }
+          EOF
+
+      - name: Get GitHub OIDC Token
+        id: oidc-token
+        if: ${{ (inputs.sign || env.DEFAULT_SIGN) == 'true' && (inputs.dry_run || env.DEFAULT_DRY_RUN) == 'false' }}
+        run: |
+          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+          echo "::add-mask::$OIDC_TOKEN"
+          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Import MCP Records
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT: 'gpt-4o'
+          AZURE_OPENAI_API_VERSION: '2024-10-21'
+          DIRECTORY_CLIENT_AUTH_MODE: 'github'
+          DIRECTORY_CLIENT_SERVER_ADDRESS: ${{ inputs.server_address || env.DEFAULT_SERVER_ADDRESS }}
+          DIRECTORY_CLIENT_GITHUB_TOKEN: ${{ secrets.DIRECTORY_MCP_BOT_PAT }} 
+        run: |
+          echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
+
+          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ inputs.rate_limit || env.DEFAULT_RATE_LIMIT }}")
+
+          if [[ "${{ inputs.dry_run || env.DEFAULT_DRY_RUN }}" == "true" ]]; then
+             CMD+=("--dry-run")
+          fi
+
+          if [[ "${{ inputs.sign || env.DEFAULT_SIGN }}" == "true" && -n "${{ steps.oidc-token.outputs.token }}" ]]; then
+             CMD+=("--sign" "--oidc-token=${{ steps.oidc-token.outputs.token }}" "--oidc-provider-url=https://token.actions.githubusercontent.com" "--oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}")
+          fi
+
+          if [ -n "${{ matrix.entry.search }}" ]; then
+            CMD+=(--filter="search=${{ matrix.entry.search }}")
+          fi
+
+          if [ -n "${{ matrix.entry.version }}" ]; then
+            CMD+=(--filter="version=${{ matrix.entry.version }}")
+          fi
+          
+          if [ -n "${{ matrix.entry.updated_since }}" ]; then
+            CMD+=(--filter="updated_since=${{ matrix.entry.updated_since }}")
+          fi
+
+          echo "Running: ${CMD[*]}"
+          OUTPUT=$("${CMD[@]}" 2>&1)
+          echo "$OUTPUT"
+
+          # Print jsonl output
+          JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to:' | sed 's/.*Records saved to: //')
+          if [ -n "$JSONL_FILE" ] && [ -f "$JSONL_FILE" ]; then
+            echo "--- JSONL Output ($JSONL_FILE) ---"
+            cat "$JSONL_FILE"
+          fi
