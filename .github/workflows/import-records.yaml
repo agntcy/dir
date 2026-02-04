@@ -65,7 +65,8 @@ jobs:
                 }
               }
             },
-            "model": "azure:gpt-4o"
+            "model": "azure:gpt-4o",
+            "max-steps": 10
           }
           EOF
 
@@ -84,7 +85,7 @@ jobs:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           IMPORT_CONFIG: ${{ inputs.import_config || '.github/workflows/scripts/import-records.json' }}
           DRY_RUN: ${{ inputs.dry_run || 'true' }}
-          RATE_LIMIT: ${{ inputs.rate_limit || '10' }}
+          RATE_LIMIT: ${{ inputs.rate_limit || '2' }}
           SIGN: ${{ inputs.sign || 'true' }}
           OIDC_TOKEN: ${{ steps.oidc-token.outputs.token }}
         run: |
