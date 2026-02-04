@@ -10,10 +10,11 @@ import (
 
 // Package-level variables for tracking CIDs across all network tests.
 var (
-	deployTestCIDs       []string
-	syncTestCIDs         []string
-	remoteSearchTestCIDs []string
-	gossipsubTestCIDs    []string
+	deployTestCIDs         []string
+	syncTestCIDs           []string
+	remoteSearchTestCIDs   []string
+	gossipsubTestCIDs      []string
+	nameResolutionTestCIDs []string
 )
 
 // This ensures clean state between different test files (Describe blocks).
@@ -65,6 +66,8 @@ func RegisterCIDForCleanup(cid, testFile string) {
 		remoteSearchTestCIDs = append(remoteSearchTestCIDs, cid)
 	case "gossipsub":
 		gossipsubTestCIDs = append(gossipsubTestCIDs, cid)
+	case "name_resolution":
+		nameResolutionTestCIDs = append(nameResolutionTestCIDs, cid)
 	default:
 		ginkgo.GinkgoWriter.Printf("Warning: Unknown test file %s for CID %s", testFile, cid)
 	}
@@ -77,6 +80,7 @@ func CleanupAllNetworkTests() {
 	allCIDs = append(allCIDs, syncTestCIDs...)
 	allCIDs = append(allCIDs, remoteSearchTestCIDs...)
 	allCIDs = append(allCIDs, gossipsubTestCIDs...)
+	allCIDs = append(allCIDs, nameResolutionTestCIDs...)
 
 	CleanupNetworkRecords(allCIDs, "all network tests")
 }
