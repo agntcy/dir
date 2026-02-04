@@ -12,12 +12,15 @@ on:
       dry_run:
         description: 'Run in dry-run mode (default: false)'
         type: boolean
+        default: true
       rate_limit:
         description: 'LLM API requests per minute (default: 10)'
         type: number
+        default: 2
       sign:
         description: 'Sign records after pushing with OIDC (default: true)'
         type: boolean
+        default: true
   schedule:
     - cron: '0 0 * * *'
 
@@ -108,7 +111,7 @@ jobs:
 
       - name: Get GitHub OIDC Token
         id: oidc-token
-        if: ${{ inputs.sign == true && inputs.dry_run == false }}
+        if: ${{ (inputs.sign || true) == true && (inputs.dry_run || true) == false }}
         run: |
           OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
@@ -123,37 +126,29 @@ jobs:
           AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_DEPLOYMENT: 'gpt-4o'
           AZURE_OPENAI_API_VERSION: '2024-10-21'
-          DRY_RUN: ${{ inputs.dry_run || 'true' }}
-          RATE_LIMIT: ${{ inputs.rate_limit || '2' }}
-          SIGN: ${{ inputs.sign || 'true' }}
-          OIDC_TOKEN: ${{ steps.oidc-token.outputs.token }}
-          ENTRY_SEARCH: ${{ matrix.entry.search }}
-          ENTRY_VERSION: ${{ matrix.entry.version }}
-          ENTRY_UPDATED_SINCE: ${{ matrix.entry.updated_since }}
-          ENTRY_INDEX: ${{ matrix.entry.index }}
         run: |
-          echo "--- Processing Entry $((ENTRY_INDEX + 1)) ---"
+          echo "--- Processing Entry $((${{ matrix.entry.index }} + 1)) ---"
 
-          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="$RATE_LIMIT" --force --debug)
+          CMD=(bin/dirctl import --type=mcp --url=https://registry.modelcontextprotocol.io/v0.1 --enrich-config=mcphost_ci.json --enrich-rate-limit="${{ inputs.rate_limit || 2 }}" --force --debug)
 
-          if [[ "${DRY_RUN,,}" == "true" ]]; then
+          if [[ "${{ inputs.dry_run || true }}" == "true" ]]; then
              CMD+=("--dry-run")
           fi
 
-          if [[ "${SIGN,,}" == "true" ]] && [ -n "$OIDC_TOKEN" ]; then
-             CMD+=("--sign --oidc-token=$OIDC_TOKEN --oidc-provider-url=https://token.actions.githubusercontent.com --oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}")
+          if [[ "${{ inputs.sign || true }}" == "true" && -n "${{ steps.oidc-token.outputs.token }}" ]]; then
+             CMD+=("--sign" "--oidc-token=${{ steps.oidc-token.outputs.token }}" "--oidc-provider-url=https://token.actions.githubusercontent.com" "--oidc-client-id=https://github.com/${{ github.repository }}/.github/workflows/import-records.yaml@${{ github.ref }}")
           fi
 
-          if [ -n "$ENTRY_SEARCH" ]; then
-            CMD+=(--filter="search=$ENTRY_SEARCH")
+          if [ -n "${{ matrix.entry.search }}" ]; then
+            CMD+=(--filter="search=${{ matrix.entry.search }}")
           fi
 
-          if [ -n "$ENTRY_VERSION" ]; then
-            CMD+=(--filter="version=$ENTRY_VERSION")
+          if [ -n "${{ matrix.entry.version }}" ]; then
+            CMD+=(--filter="version=${{ matrix.entry.version }}")
           fi
           
-          if [ -n "$ENTRY_UPDATED_SINCE" ]; then
-            CMD+=(--filter="updated_since=$ENTRY_UPDATED_SINCE")
+          if [ -n "${{ matrix.entry.updated_since }}" ]; then
+            CMD+=(--filter="updated_since=${{ matrix.entry.updated_since }}")
           fi
 
           echo "Running: ${CMD[*]}"
