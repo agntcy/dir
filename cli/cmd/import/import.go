@@ -126,7 +126,7 @@ func runImport(cmd *cobra.Command) error {
 func writeCIDsToFile(path string, cids []string) error {
 	content := strings.Join(cids, "\n") + "\n"
 
-	return os.WriteFile(path, []byte(content), 0o600)
+	return os.WriteFile(path, []byte(content), 0o600) //nolint:mnd,wrapcheck
 }
 
 func printSummary(cmd *cobra.Command, result *types.ImportResult) {

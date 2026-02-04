@@ -19,6 +19,10 @@ on:
         description: 'Sign records with OIDC after importing'
         type: boolean
         default: true
+      force:
+        description: 'Force push even if record already exists'
+        type: boolean
+        default: false
       server_address:
         description: 'Directory server address'
         type: string
@@ -36,6 +40,7 @@ jobs:
       rate_limit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.rate_limit || '2' }}
       server_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.server_address || 'prod.gateway.ads.outshift.io:443' }}
       sign: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.sign || 'true' }}
+      force: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force || 'false' }}
     env:
       IMPORT_CONFIG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.import_config || '.github/workflows/scripts/import-records.json' }}
     steps:
@@ -81,6 +86,7 @@ jobs:
       RATE_LIMIT: ${{ needs.setup-matrix.outputs.rate_limit }}
       SERVER_ADDRESS: ${{ needs.setup-matrix.outputs.server_address }}
       SIGN: ${{ needs.setup-matrix.outputs.sign }}
+      FORCE: ${{ needs.setup-matrix.outputs.force }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -144,6 +150,10 @@ jobs:
           else
              # Output CIDs for deferred signing (only in non-dry-run mode)
              CMD+=("--output-cids=$CIDS_FILE")
+          fi
+
+          if [[ "${{ env.FORCE }}" == "true" ]]; then
+             CMD+=("--force")
           fi
 
           if [ -n "${{ matrix.entry.search }}" ]; then
