@@ -199,10 +199,16 @@ class McpClient {
   Future<List<McpTool>> listTools() async {
     final result = await _sendRequest('tools/list');
     final tools = (result['tools'] as List).map((t) => McpTool.fromJson(t)).toList();
-    return tools;
+
+    // Filter out forbidden tools that write to the agent directory
+    return tools.where((tool) => !_isForbiddenTool(tool.name)).toList();
   }
 
   Future<McpToolResult> callTool(String name, Map<String, dynamic> arguments) async {
+    if (_isForbiddenTool(name)) {
+       return McpToolResult(content: "Error: Tool '$name' is restricted and cannot be called from the GUI.", isError: true);
+    }
+
     try {
       final result = await _sendRequest('tools/call', {
         'name': name,
@@ -221,10 +227,16 @@ class McpClient {
     final prompts = (result['prompts'] as List)
         .map((p) => McpPrompt.fromJson(p))
         .toList();
-    return prompts;
+
+    // Filter out forbidden prompts
+    return prompts.where((p) => !_isForbiddenPrompt(p.name)).toList();
   }
 
   Future<McpGetPromptResult> getPrompt(String name, [Map<String, String>? arguments]) async {
+    if (_isForbiddenPrompt(name)) {
+       throw Exception("Error: Prompt '$name' is restricted and cannot be used from the GUI.");
+    }
+
     final result = await _sendRequest('prompts/get', {
       'name': name,
       if (arguments != null) 'arguments': arguments,
@@ -235,5 +247,20 @@ class McpClient {
   Future<void> stop() async {
     _process?.kill();
     _process = null;
+  }
+
+  bool _isForbiddenTool(String name) {
+    // Prevent tools that write to the agent directory or perform modifying operations
+    const forbiddenTools = {
+      'agntcy_dir_push_record',
+    };
+    return forbiddenTools.contains(name);
+  }
+
+  bool _isForbiddenPrompt(String name) {
+     const forbiddenPrompts = {
+       'push_record',
+     };
+     return forbiddenPrompts.contains(name);
   }
 }
