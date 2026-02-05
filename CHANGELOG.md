@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.0.0] - 2026-02-04
+## [v1.0.0] - 2026-02-05
 
 ### Added
 - **Runtime**: Runtime process discovery service with multi-runtime support (#808)
@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Helm chart and installation scripts for deployment
   - CRD (CustomResourceDefinition) for DiscoveredWorkload resources
   - ETCD-based storage backend for workload state persistence
+- **MCP**: Signature verification tool for validating signed records (#906)
+- **GUI**: Record signature verification support in Flutter UI (#909)
 - **Importer**: Rate limiting for LLM API calls to prevent quota exhaustion (#888)
 - **Importer**: Enhanced dry-run functionality to save output records to file for debugging (#888)
 - **Importer**: Max-steps parameter for model configuration control (#888)
@@ -23,12 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Filtered MCP import via configurable input settings
   - Signing and rate limiting support during automated imports
   - Production authentication for scheduled imports
+- **CI/CD**: Security scanning for runtime container images (#912)
 
 ### Changed
 - **Importer**: Clear enricher session after each prompt to prevent context accumulation (#888)
+- **Dependencies**: Bump OASF and oasf-sdk from 1.0.0-rc.1 to 1.0.0 (#908)
 
 ### Fixed
+- **Runtime**: Enable OASF resolvers with annotations for proper name resolution (#910, #911)
+- **GUI**: Restrict MCP write access to Agent Directory for security (#902)
+- **CI/CD**: Fix workflow inputs for improved automation (#900)
 - **E2E**: Add comprehensive tests for remote name resolution functionality (#895)
+- **Docs**: Extend runtime discovery and runtime documentation (#903)
 
 ## [v1.0.0-rc.2] - 2026-02-02
 
