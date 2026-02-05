@@ -1,7 +1,9 @@
 # Runtime Discovery
 
-This directory contains the runtime discovery components that watch container runtimes
+This service contains the runtime discovery components that watch runtimes
 (Docker, Kubernetes) for workloads and provide a gRPC API for querying them.
+In addition, it also resolves workloads using various resolvers (A2A, OASF)
+to extract and provide details about the workload's capabilities.
 
 ## Architecture
 
@@ -53,8 +55,8 @@ The discovery component is responsible for:
   - **Kubernetes**: Watches Kubernetes API for labeled pods/services
   - Extensible architecture allows adding more runtimes in the future
 - **Resolving workload metadata** using configurable resolvers:
-  - **A2A resolver**: Extracts A2A agent card from workloads with `org.agntcy/type: a2a` label
-  - **OASF resolver**: Resolves OASF records from Directory for workloads with `org.agntcy/agent-record` label
+  - **A2A resolver**: Extracts A2A agent card from workloads with `org.agntcy/agent-type=a2a` label
+  - **OASF resolver**: Resolves OASF records from Directory for workloads with `org.agntcy/agent-record=<fqdn>` label
   - Extensible architecture allows adding more resolvers in the future
 - **Writing workloads** to the storage backend (etcd or CRDs)
 
@@ -185,8 +187,8 @@ They provide additional information about the workload's capabilities.
 
 | Label/Annotation | Description |
 |------------------|-------------|
-| `org.agntcy/agent-type: a2a` | Enables A2A resolver - fetches A2A agent card from workload |
-| `org.agntcy/agent-record: <fqdn>` | Enables OASF resolver - resolves record from Directory (e.g., `my-agent:v1.0.0`) |
+| `org.agntcy/agent-type=a2a` | Enables A2A resolver - fetches A2A agent card from workload |
+| `org.agntcy/agent-record=<fqdn>` | Enables OASF resolver - resolves record from Directory (e.g., `my-agent:v1.0.0`) |
 
 To configure OASF resolver, the Directory client must be set up using environment variables (e.g., `DIRECTORY_CLIENT_SERVER_ADDRESS`, `DIRECTORY_CLIENT_AUTH_MODE`).
 
@@ -242,27 +244,56 @@ Discovered workloads have a `services` field that holds metadata extracted by re
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `DISCOVERY_RUNTIME_TYPE` | Runtime type (`docker`, `kubernetes`) | `docker` |
-| `DISCOVERY_STORE_TYPE` | Storage type (`etcd`, `crd`) | `etcd` |
-| `DISCOVERY_RESOLVER_A2A_ENABLED` | Enable A2A resolver | `true` |
-| `DISCOVERY_RESOLVER_OASF_ENABLED` | Enable OASF resolver | `true` |
 | `DISCOVERY_WORKERS` | Number of resolver workers | `16` |
-
-#### Discovery OASF Resolver
+| `DISCOVERY_STORE_TYPE` | Storage type (`etcd`, `crd`) | `etcd` |
+| `DISCOVERY_STORE_ETCD_HOST` | etcd server hostname | `localhost` |
+| `DISCOVERY_STORE_ETCD_PORT` | etcd server port | `2379` |
+| `DISCOVERY_STORE_ETCD_USERNAME` | etcd username for authentication | `` |
+| `DISCOVERY_STORE_ETCD_PASSWORD` | etcd password for authentication | `` |
+| `DISCOVERY_STORE_ETCD_DIAL_TIMEOUT` | Timeout for connecting to etcd | `5s` |
+| `DISCOVERY_STORE_ETCD_WORKLOADS_PREFIX` | etcd key prefix for workloads | `/discovery/workloads/` |
+| `DISCOVERY_STORE_CRD_NAMESPACE` | Namespace to store workloads in | `default` |
+| `DISCOVERY_STORE_CRD_KUBECONFIG` | Path to kubeconfig file (empty for in-cluster) | `` |
+| `DISCOVERY_STORE_CRD_RESYNC_PERIOD` | How often to resync the cache from the API server | `30s` |
+| `DISCOVERY_RUNTIME_TYPE` | Runtime type (`docker`, `kubernetes`) | `docker` |
+| `DISCOVERY_RUNTIME_DOCKER_HOST` | Docker daemon socket path | `unix:///var/run/docker.sock` |
+| `DISCOVERY_RUNTIME_DOCKER_LABEL_KEY` | Label key to filter containers | `org.agntcy/discover` |
+| `DISCOVERY_RUNTIME_DOCKER_LABEL_VALUE` | Label value to filter containers | `true` |
+| `DISCOVERY_RUNTIME_KUBERNETES_KUBECONFIG` | Path to kubeconfig file (empty for in-cluster) | `` |
+| `DISCOVERY_RUNTIME_KUBERNETES_NAMESPACE` | Namespace to watch (empty for all namespaces) | `` |
+| `DISCOVERY_RUNTIME_KUBERNETES_LABEL_KEY` | Label key to filter pods | `org.agntcy/discover` |
+| `DISCOVERY_RUNTIME_KUBERNETES_LABEL_VALUE` | Label value to filter pods | `true` |
+| `DISCOVERY_RESOLVER_A2A_ENABLED` | Enable A2A resolver | `true` |
+| `DISCOVERY_RESOLVER_A2A_TIMEOUT` | Timeout for A2A discovery | `5s` |
+| `DISCOVERY_RESOLVER_A2A_PATHS` | Comma-separated list of paths to probe for A2A discovery | `/.well-known/agent-card.json,/.well-known/card.json` |
+| `DISCOVERY_RESOLVER_A2A_LABEL_KEY` | Label key to identify A2A workloads | `org.agntcy/agent-type` |
+| `DISCOVERY_RESOLVER_A2A_LABEL_VALUE` | Label value to identify A2A workloads | `a2a` |
+| `DISCOVERY_RESOLVER_OASF_ENABLED` | Enable OASF resolver | `true` |
+| `DISCOVERY_RESOLVER_OASF_TIMEOUT` | Timeout for OASF resolution | `5s` |
+| `DISCOVERY_RESOLVER_OASF_LABEL_KEY` | Label key to identify OASF workloads | `org.agntcy/agent-record` |
 
 The OASF resolver requires Directory client configuration via environment variables. 
 These are the same as those used by the Directory client library, e.g. `DIRECTORY_CLIENT_SERVER_ADDRESS`.
 Refer to the [Directory Client README](../client/README.md) for all available options.
 
-When a workload has the `org.agntcy/agent-record` label, the resolver will attempt to fetch the corresponding record from Directory and validate its signature before attaching it to the workload.
+When a workload has the configured OASF resolver label, the resolver will attempt to fetch the corresponding record from Directory and validate its signature before attaching it to the workload.
 
 ### Server Component
 
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
-| `SERVER_STORE_TYPE` | Storage type (`etcd`, `crd`) | `etcd` |
-| `SERVER_HOST` | Server bind host | `0.0.0.0` |
+| `SERVER_HOST` | Server bind address | `0.0.0.0` |
 | `SERVER_PORT` | Server listen port | `8080` |
+| `SERVER_STORE_TYPE` | Storage type (`etcd`, `crd`) | `etcd` |
+| `SERVER_STORE_ETCD_HOST` | etcd server hostname | `localhost` |
+| `SERVER_STORE_ETCD_PORT` | etcd server port | `2379` |
+| `SERVER_STORE_ETCD_USERNAME` | etcd username for authentication | `` |
+| `SERVER_STORE_ETCD_PASSWORD` | etcd password for authentication | `` |
+| `SERVER_STORE_ETCD_DIAL_TIMEOUT` | Timeout for connecting to etcd | `5s` |
+| `SERVER_STORE_ETCD_WORKLOADS_PREFIX` | etcd key prefix for workloads | `/discovery/workloads/` |
+| `SERVER_STORE_CRD_NAMESPACE` | Namespace to read workloads from | `default` |
+| `SERVER_STORE_CRD_KUBECONFIG` | Path to kubeconfig file (empty for in-cluster) | `` |
+| `SERVER_STORE_CRD_RESYNC_PERIOD` | How often to resync the cache from the API server | `30s` |
 
 ## gRPC API
 
