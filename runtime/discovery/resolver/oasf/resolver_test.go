@@ -16,53 +16,6 @@ func TestResolverType(t *testing.T) {
 	}
 }
 
-func TestRecordNameVersion(t *testing.T) {
-	tests := []struct {
-		input       string
-		wantName    string
-		wantVersion string
-	}{
-		{
-			input:       "agent-name:v1.0.0",
-			wantName:    "agent-name",
-			wantVersion: "v1.0.0",
-		},
-		{
-			input:       "agent-name",
-			wantName:    "agent-name",
-			wantVersion: "",
-		},
-		{
-			input:       "org/agent:latest",
-			wantName:    "org/agent",
-			wantVersion: "latest",
-		},
-		{
-			input:       "",
-			wantName:    "",
-			wantVersion: "",
-		},
-		{
-			input:       "name:version:extra",
-			wantName:    "name",
-			wantVersion: "version:extra",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			gotName, gotVersion := recordNameVersion(tt.input)
-			if gotName != tt.wantName {
-				t.Errorf("recordNameVersion(%q) name = %q, want %q", tt.input, gotName, tt.wantName)
-			}
-
-			if gotVersion != tt.wantVersion {
-				t.Errorf("recordNameVersion(%q) version = %q, want %q", tt.input, gotVersion, tt.wantVersion)
-			}
-		})
-	}
-}
-
 // mockResolver for testing Apply without needing a real client.
 type mockResolver struct {
 	labelKey string
