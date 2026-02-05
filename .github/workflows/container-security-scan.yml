@@ -42,6 +42,12 @@ jobs:
           - image: dir-ctl
             repo: ghcr.io/${{ github.repository_owner }}/dir-ctl
             version: ${{ needs.get-version.outputs.version }}
+          - image: dir-runtime-discovery
+            repo: ghcr.io/${{ github.repository_owner }}/dir-runtime-discovery
+            version: ${{ needs.get-version.outputs.version }}
+          - image: dir-runtime-server
+            repo: ghcr.io/${{ github.repository_owner }}/dir-runtime-server
+            version: ${{ needs.get-version.outputs.version }}
           - image: zot
             repo: ghcr.io/project-zot/zot
             version: v2.1.14
