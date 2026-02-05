@@ -48,7 +48,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
     if (widget.agentRecords == null || widget.agentRecords!.isEmpty) {
       return widget.recordCids;
     }
-    
+
     // Create a list with CID and associated data for sorting
     final cidsWithData = widget.recordCids.map((cid) {
       Map<String, dynamic>? record;
@@ -60,7 +60,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
       }
       return {'cid': cid, 'record': record};
     }).toList();
-    
+
     // Sort based on selected option
     if (_sortBy == 'name') {
       cidsWithData.sort((a, b) {
@@ -82,7 +82,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
         return bDate.compareTo(aDate);
       });
     }
-    
+
     return cidsWithData.map((e) => e['cid'] as String).toList();
   }
 
@@ -137,26 +137,26 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
         children: [
           // Header with count and criteria
           _buildHeader(context),
-          
+
           // Error message if any
           if (widget.errorMessage != null && widget.errorMessage!.isNotEmpty)
             _buildErrorBanner(context),
-          
+
           // Search criteria reminder
           if (widget.searchCriteria != null && widget.searchCriteria!.isNotEmpty)
             _buildSearchCriteriaReminder(context),
-          
+
           // Divider line
           if (widget.searchCriteria != null && widget.searchCriteria!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Divider(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
             ),
-          
+
           // Sort controls
           if (widget.recordCids.isNotEmpty)
             _buildSortControls(context),
-          
+
           // Results list (always show cards with their individual loading states)
           if (widget.recordCids.isNotEmpty) ...[
             _buildResultsList(context),
@@ -175,7 +175,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
 
   Widget _buildHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -229,7 +229,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
   Widget _buildSearchCriteriaReminder(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final criteria = widget.searchCriteria!;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -265,7 +265,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
 
   Widget _buildSortControls(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
@@ -293,20 +293,20 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
   Widget _buildSortChip(BuildContext context, String value, String label, IconData icon) {
     final colorScheme = Theme.of(context).colorScheme;
     final isSelected = _sortBy == value;
-    
+
     return InkWell(
       onTap: () => setState(() => _sortBy = value),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? colorScheme.primary.withOpacity(0.08) 
+          color: isSelected
+              ? colorScheme.primary.withOpacity(0.08)
               : colorScheme.surfaceContainerHighest.withOpacity(0.3),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected 
-                ? colorScheme.primary.withOpacity(0.25) 
+            color: isSelected
+                ? colorScheme.primary.withOpacity(0.25)
                 : colorScheme.outline.withOpacity(0.1),
           ),
         ),
@@ -317,8 +317,8 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
               icon,
               size: 12,
               // Grey only for inactive state
-              color: isSelected 
-                  ? colorScheme.primary 
+              color: isSelected
+                  ? colorScheme.primary
                   : colorScheme.onSurface.withOpacity(0.4),
             ),
             const SizedBox(width: 4),
@@ -328,8 +328,8 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 // Grey only for inactive state
-                color: isSelected 
-                    ? colorScheme.primary 
+                color: isSelected
+                    ? colorScheme.primary
                     : colorScheme.onSurface.withOpacity(0.4),
               ),
             ),
@@ -342,7 +342,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
   Widget _buildCriteriaChip(BuildContext context, String key, dynamic value) {
     final colorScheme = Theme.of(context).colorScheme;
     String displayValue = value is List ? value.join(', ') : value.toString();
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -381,7 +381,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
         children: _paginatedCids.asMap().entries.map((entry) {
           final index = entry.key;
           final cid = entry.value;
-          
+
           // Find matching agent record if available
           Map<String, dynamic>? agentRecord;
           if (widget.agentRecords != null) {
@@ -392,12 +392,12 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
               }
             }
           }
-          
+
           return AgentRecordCard(
             cid: cid,
             agentData: agentRecord,
             index: _currentPage * _pageSize + index + 1,
-            onPullDetails: widget.onPullRecord != null 
+            onPullDetails: widget.onPullRecord != null
                 ? () => widget.onPullRecord!(cid)
                 : null,
           );
@@ -408,9 +408,9 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
 
   Widget _buildPaginationControls(BuildContext context) {
     if (_totalPages <= 1) return const SizedBox(height: 12);
-    
+
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       child: Row(
@@ -422,8 +422,8 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
                 : null,
             icon: Icon(
               Icons.chevron_left_outlined,
-              color: _currentPage > 0 
-                  ? colorScheme.primary 
+              color: _currentPage > 0
+                  ? colorScheme.primary
                   : colorScheme.outline.withOpacity(0.4),
             ),
             style: IconButton.styleFrom(
@@ -459,8 +459,8 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
                 : null,
             icon: Icon(
               Icons.chevron_right_outlined,
-              color: _currentPage < _totalPages - 1 
-                  ? colorScheme.primary 
+              color: _currentPage < _totalPages - 1
+                  ? colorScheme.primary
                   : colorScheme.outline.withOpacity(0.4),
             ),
             style: IconButton.styleFrom(
@@ -489,7 +489,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
 
   Widget _buildLoadingIndicator(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -518,7 +518,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
 
   Widget _buildEmptyState(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     return Container(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -606,12 +606,12 @@ class AgentRecordCard extends StatelessWidget {
   List<String> _extractAgentTypes(Map<String, dynamic>? agentInfo) {
     final types = <String>[];
     final modules = agentInfo?['modules'] as List? ?? [];
-    
+
     for (final module in modules) {
       final name = (module['name'] ?? '').toString().toLowerCase();
       final data = module['data'] as Map<String, dynamic>? ?? {};
       final protocol = (data['protocol'] ?? '').toString().toLowerCase();
-      
+
       // Check module name or protocol field
       if (name.contains('mcp') || protocol.contains('mcp')) {
         if (!types.contains('MCP')) types.add('MCP');
@@ -620,7 +620,7 @@ class AgentRecordCard extends StatelessWidget {
         if (!types.contains('A2A')) types.add('A2A');
       }
     }
-    
+
     // Also check annotations for protocol info
     final annotations = agentInfo?['annotations'] as Map<String, dynamic>? ?? {};
     final annotationProtocol = (annotations['protocol'] ?? '').toString().toLowerCase();
@@ -630,10 +630,10 @@ class AgentRecordCard extends StatelessWidget {
     if (annotationProtocol.contains('a2a') && !types.contains('A2A')) {
       types.add('A2A');
     }
-    
+
     return types; // Return empty list if no A2A/MCP - don't default to OASF
   }
-  
+
   // Extract LLM info from modules
   String? _extractLlmInfo(Map<String, dynamic>? agentInfo) {
     final modules = agentInfo?['modules'] as List? ?? [];
@@ -656,7 +656,7 @@ class AgentRecordCard extends StatelessWidget {
     }
     return null;
   }
-  
+
   // Extract first domain
   String? _extractDomain(Map<String, dynamic>? agentInfo) {
     final domains = agentInfo?['domains'] as List? ?? [];
@@ -674,22 +674,22 @@ class AgentRecordCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final agentInfo = _extractAgentInfo();
-    
+
     final hasData = agentInfo != null && agentInfo.containsKey('name') && agentInfo['name'] != null;
-    
+
     // Extract display values
     final rawName = hasData ? agentInfo!['name']?.toString() ?? '' : '';
     final name = hasData ? _extractDisplayName(rawName) : 'Loading agent...';
     final authors = agentInfo?['authors'];
     final author = authors is List && authors.isNotEmpty ? authors.first.toString() : '';
     final version = agentInfo?['version']?.toString() ?? '';
-    
+
     // Extract additional info for condensed view
     final skills = agentInfo?['skills'] as List? ?? [];
     final agentTypes = _extractAgentTypes(agentInfo);
     final llmInfo = _extractLlmInfo(agentInfo);
     final domain = _extractDomain(agentInfo);
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
@@ -725,8 +725,8 @@ class AgentRecordCard extends StatelessWidget {
                     color: colorScheme.surface.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: hasData 
-                          ? colorScheme.primary.withOpacity(0.15) 
+                      color: hasData
+                          ? colorScheme.primary.withOpacity(0.15)
                           : colorScheme.outline.withOpacity(0.1),
                     ),
                   ),
@@ -752,7 +752,7 @@ class AgentRecordCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 14),
-                  
+
                 // Name, Author, Version
                 Expanded(
                   child: Column(
@@ -778,13 +778,13 @@ class AgentRecordCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              hasData && author.isNotEmpty ? author : 'Loading...', 
+                              hasData && author.isNotEmpty ? author : 'Loading...',
                               style: TextStyle(
-                                fontSize: 12, 
+                                fontSize: 12,
                                 color: hasData ? colorScheme.secondary : colorScheme.outline,
                                 fontStyle: hasData ? FontStyle.normal : FontStyle.italic,
-                              ), 
-                              maxLines: 1, 
+                              ),
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -801,9 +801,9 @@ class AgentRecordCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(width: 10),
-                  
+
                 // CID badge + See more button
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -827,7 +827,7 @@ class AgentRecordCard extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             // Bottom row: Modules, Skills, Model, Domain - all as tags with labels
             if (hasData && (agentTypes.isNotEmpty || skills.isNotEmpty || llmInfo != null || domain != null)) ...[
               const SizedBox(height: 10),
@@ -835,7 +835,7 @@ class AgentRecordCard extends StatelessWidget {
                 builder: (context, constraints) {
                   // Determine if we need compact mode (narrow width)
                   final isCompact = constraints.maxWidth < 400;
-                  
+
                   return Wrap(
                     spacing: 10,
                     runSpacing: 6,
@@ -848,7 +848,7 @@ class AgentRecordCard extends StatelessWidget {
                           'modules:',
                           _buildModulesTags(context, agentTypes, isCompact),
                         ),
-                      
+
                       // Skills with +n overflow (only if valid skills exist)
                       if (skills.isNotEmpty && skills.any((s) => (s['name']?.toString() ?? '').isNotEmpty))
                         _buildLabeledSection(
@@ -856,7 +856,7 @@ class AgentRecordCard extends StatelessWidget {
                           'skills:',
                           _buildSkillsCondensed(context, skills, isCompact ? 1 : 2),
                         ),
-                      
+
                       // LLM info
                       if (llmInfo != null)
                         _buildLabeledSection(
@@ -864,7 +864,7 @@ class AgentRecordCard extends StatelessWidget {
                           'model:',
                           _buildInfoChip(context, llmInfo),
                         ),
-                      
+
                       // Domain
                       if (domain != null)
                         _buildLabeledSection(
@@ -882,20 +882,20 @@ class AgentRecordCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildModulesTags(BuildContext context, List<String> types, bool isCompact) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     // Mock counts for demo - in real app would come from data
     final moduleCounts = <String, int>{
       'A2A': 2,
       'MCP': 3,
     };
-    
+
     final maxVisible = isCompact ? 1 : types.length;
     final visibleTypes = types.take(maxVisible).toList();
     final remaining = types.length - maxVisible;
-    
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -938,23 +938,23 @@ class AgentRecordCard extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildSkillsCondensed(BuildContext context, List skills, [int maxVisible = 2]) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     // Filter out skills with empty names
     final validSkills = skills.where((skill) {
       final skillName = skill['name']?.toString() ?? '';
       return skillName.isNotEmpty;
     }).toList();
-    
+
     if (validSkills.isEmpty) {
       return const SizedBox.shrink();
     }
-    
+
     final visibleSkills = validSkills.take(maxVisible).toList();
     final remaining = validSkills.length - maxVisible;
-    
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -998,7 +998,7 @@ class AgentRecordCard extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildInfoChip(BuildContext context, String label) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
@@ -1014,7 +1014,7 @@ class AgentRecordCard extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildLabeledSection(BuildContext context, String label, Widget content) {
     final colorScheme = Theme.of(context).colorScheme;
     return Row(
@@ -1033,7 +1033,7 @@ class AgentRecordCard extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildSkillChip(BuildContext context, String name, String? id) {
     final colorScheme = Theme.of(context).colorScheme;
     final displayName = name.split('/').last.replaceAll('_', ' ');
@@ -1175,11 +1175,13 @@ class AgentRecordCard extends StatelessWidget {
 class AgentDetailCard extends StatefulWidget {
   final String cid;
   final Map<String, dynamic>? agentData;
+  final Function(String)? onVerify;
 
   const AgentDetailCard({
     super.key,
     required this.cid,
     this.agentData,
+    this.onVerify,
   });
 
   @override
@@ -1227,7 +1229,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
 
   Future<void> _downloadJson(BuildContext context, Map<String, dynamic>? agentInfo) async {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     if (agentInfo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1244,19 +1246,19 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
     try {
       // Format JSON with indentation
       final jsonString = const JsonEncoder.withIndent('  ').convert(agentInfo);
-      
+
       // Get downloads directory
       final directory = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
-      
+
       // Create filename from agent name or CID
       final agentName = _extractDisplayName(agentInfo['name']?.toString() ?? widget.cid);
       final sanitizedName = agentName.replaceAll(RegExp(r'[^\w\-]'), '_');
       final fileName = 'agent_${sanitizedName}_${DateTime.now().millisecondsSinceEpoch}.json';
-      
+
       // Write file
       final file = File('${directory.path}/$fileName');
       await file.writeAsString(jsonString);
-      
+
       if (context.mounted) {
         final cs = Theme.of(context).colorScheme;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1301,9 +1303,9 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final agentInfo = _extractAgentInfo();
-    
+
     final hasData = agentInfo != null && agentInfo.containsKey('name');
-    
+
     final name = _extractDisplayName(agentInfo?['name']?.toString() ?? 'Unknown Agent');
     final authors = agentInfo?['authors'];
     final author = authors is List && authors.isNotEmpty ? authors.first.toString() : 'Unknown';
@@ -1316,7 +1318,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
     final annotations = agentInfo?['annotations'] as Map<String, dynamic>? ?? {};
     final schemaVersion = agentInfo?['schema_version']?.toString() ?? '';
     final createdAt = agentInfo?['created_at']?.toString() ?? '';
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
@@ -1375,7 +1377,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  
+
                   // Main info
                   Expanded(
                     child: Column(
@@ -1410,7 +1412,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                       ],
                     ),
                   ),
-                  
+
                   // CID, Download JSON + expand icon
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -1470,6 +1472,68 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 6),
+                          // Verify badge
+                          Builder(builder: (context) {
+                             final status = widget.agentData?['_verificationStatus'];
+                             final isVerifying = widget.agentData?['_isVerifying'] == true;
+                             final isVerified = status == 'verified';
+                             final isError = status == 'error' || status == 'failed';
+
+                             Color badgeColor = colorScheme.surface.withOpacity(0.6);
+                             Color contentColor = colorScheme.primary.withOpacity(0.85);
+                             IconData icon = Icons.verified_user_outlined;
+                             String label = 'Verify';
+
+                             if (isVerified) {
+                               badgeColor = Colors.green.withOpacity(0.1);
+                               contentColor = Colors.green;
+                               icon = Icons.verified;
+                               label = 'Verified';
+                             } else if (isError) {
+                               badgeColor = Colors.red.withOpacity(0.1);
+                               contentColor = Colors.red;
+                               icon = Icons.error_outline;
+                               label = 'Failed';
+                             }
+
+                             return Tooltip(
+                               message: widget.agentData?['_verificationMessage'] ?? 'Verify signature',
+                               child: InkWell(
+                                onTap: isVerifying ? null : () => widget.onVerify?.call(widget.cid),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: contentColor.withOpacity(0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isVerifying)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 6),
+                                          child: SizedBox(
+                                            width: 10,
+                                            height: 10,
+                                            child: CircularProgressIndicator(strokeWidth: 1.5, color: contentColor)
+                                          ),
+                                        )
+                                      else
+                                        Icon(icon, size: 12, color: contentColor),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        label,
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: contentColor),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                             );
+                          }),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -1484,7 +1548,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
               ),
             ),
           ),
-          
+
           // Expandable content
           if (_isExpanded) ...[
             // Description
@@ -1500,7 +1564,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                   ),
                 ),
               ),
-            
+
             // Skills
             if (skills.isNotEmpty)
               _buildDetailSection(
@@ -1538,7 +1602,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                   }).toList(),
                 ),
               ),
-            
+
             // Domains
             if (domains.isNotEmpty)
               _buildDetailSection(
@@ -1562,7 +1626,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                   }).toList(),
                 ),
               ),
-            
+
             // Modules
             if (modules.isNotEmpty)
               _buildDetailSection(
@@ -1600,7 +1664,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                   }).toList(),
                 ),
               ),
-            
+
             // Annotations
             if (annotations.isNotEmpty)
               _buildDetailSection(
@@ -1630,7 +1694,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                   }).toList(),
                 ),
               ),
-            
+
             // Locators
             if (locators.isNotEmpty)
               _buildDetailSection(
@@ -1666,7 +1730,7 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                   }).toList(),
                 ),
               ),
-            
+
             // Metadata footer with download button
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
