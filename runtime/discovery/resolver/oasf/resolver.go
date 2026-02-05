@@ -55,12 +55,20 @@ func (r *resolver) Name() types.WorkloadResolverType {
 
 // CanResolve returns whether this resolver can resolve the workload.
 func (r *resolver) CanResolve(workload *runtimev1.Workload) bool {
-	// If workload does not have a label key, skip it
-	if _, hasLabel := workload.GetLabels()[r.labelKey]; !hasLabel {
-		return false
+	// If workload has a label key, mark it as resolvable
+	if _, hasLabel := workload.GetLabels()[r.labelKey]; hasLabel {
+		return true
 	}
 
-	return true
+	// If workload has an annotation key, mark it as resolvable.
+	// Annotations may need to be used in K8s environments where labels are
+	// limited in length and structure, e.g. DNS-styled labels.
+	if _, hasAnnotation := workload.GetAnnotations()[r.labelKey]; hasAnnotation {
+		return true
+	}
+
+	// Otherwise, cannot resolve
+	return false
 }
 
 // Resolve fetches OASF record for the workload.
