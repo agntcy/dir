@@ -173,6 +173,18 @@ Use this tool to retrieve agent records by their CID for inspection or validatio
 		`),
 	}, tools.PullRecord)
 
+	// Add tool for verifying record signatures
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "agntcy_dir_verify_record",
+		Description: strings.TrimSpace(`
+Verifies the digital signature of a record in the Directory by its CID.
+This tool performs a server-side verification of the record's integrity and authenticity.
+Returns the verification status (trusted/not trusted).
+
+Use this tool to ensure a record has been properly signed and hasn't been tampered with.
+		`),
+	}, tools.VerifyRecord)
+
 	// Add tool for exporting OASF records to other formats
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "agntcy_oasf_export_record",
