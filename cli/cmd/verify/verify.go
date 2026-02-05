@@ -79,10 +79,12 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 	opts := presenter.GetOutputOptions(cmd)
 	if opts.Format == presenter.FormatHuman {
 		presenter.Println(cmd, fmt.Sprintf("Record signature is: %s", status))
+
 		if response.GetSuccess() {
 			metadata := response.GetSignerMetadata()
 			if len(metadata) > 0 {
 				presenter.Println(cmd, "Signer Metadata:")
+
 				for k, v := range metadata {
 					presenter.Println(cmd, fmt.Sprintf("  %s: %s", k, v))
 				}
