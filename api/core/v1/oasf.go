@@ -25,7 +25,7 @@ type DecodedRecord interface {
 	HasV1Alpha2() bool
 	GetV1Alpha2() *typesv1alpha2.Record
 
-	// HasV1 checks if the record is of type V1 (OASF 1.0.0-rc.1).
+	// HasV1 checks if the record is of type V1 (OASF 1.0.0).
 	HasV1() bool
 	GetV1() *typesv1.Record
 }

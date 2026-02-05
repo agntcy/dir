@@ -1,6 +1,6 @@
 {
   "name": "burger_seller_agent",
-  "schema_version": "1.0.0-rc.1",
+  "schema_version": "1.0.0",
   "version": "1.0.0",
   "description": "Helps with creating burger orders",
   "authors": [

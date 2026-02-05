@@ -13,7 +13,7 @@ replace (
 require (
 	github.com/agntcy/dir/api v1.0.0
 	github.com/agntcy/dir/client v1.0.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.0-rc.1
+	github.com/agntcy/oasf-sdk/pkg v1.0.0
 	github.com/modelcontextprotocol/go-sdk v1.2.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/protobuf v1.36.11

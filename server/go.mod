@@ -20,7 +20,7 @@ require (
 	github.com/agntcy/dir/api v1.0.0
 	github.com/agntcy/dir/client v1.0.0
 	github.com/agntcy/dir/utils v1.0.0
-	github.com/agntcy/oasf-sdk/pkg v1.0.0-rc.1
+	github.com/agntcy/oasf-sdk/pkg v1.0.0
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3

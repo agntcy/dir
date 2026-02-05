@@ -10,7 +10,7 @@ import (
 )
 
 // V1Adapter adapts typesv1.Record to types.RecordData interface.
-// This adapter is for OASF 1.0.0-rc.1 schema.
+// This adapter is for OASF 1.0.0 schema.
 type V1Adapter struct {
 	record *typesv1.Record
 }
@@ -176,7 +176,7 @@ func (l *V1LocatorAdapter) GetType() string {
 }
 
 // GetURL implements types.Locator interface.
-// For v1 (1.0.0-rc.1), locators use urls (plural) instead of url (singular).
+// For v1 (1.0.0), locators use urls (plural) instead of url (singular).
 func (l *V1LocatorAdapter) GetURL() string {
 	if l.locator == nil {
 		return ""
