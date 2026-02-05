@@ -342,11 +342,11 @@ func TestRecord_Decode(t *testing.T) {
 			},
 		},
 		{
-			name: "valid 1.0.0-rc.1 record",
+			name: "valid 1.0.0 record",
 			record: func() *corev1.Record {
 				record, _ := corev1.UnmarshalRecord([]byte(`{
 					"name": "test-agent-v3",
-					"schema_version": "1.0.0-rc.1",
+					"schema_version": "1.0.0",
 					"version": "1.0.0",
 					"description": "A valid agent record",
 					"created_at": "2024-01-01T00:00:00Z",
@@ -361,7 +361,7 @@ func TestRecord_Decode(t *testing.T) {
 				// Decode the expected record to get the v1 record
 				record, _ := corev1.UnmarshalRecord([]byte(`{
 					"name": "test-agent-v3",
-					"schema_version": "1.0.0-rc.1",
+					"schema_version": "1.0.0",
 					"version": "1.0.0",
 					"description": "A valid agent record",
 					"created_at": "2024-01-01T00:00:00Z",

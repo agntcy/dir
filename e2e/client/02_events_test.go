@@ -80,10 +80,10 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 	// Clean up all testdata records after all event tests
 	// This prevents interfering with existing 01_client_test.go tests
 	ginkgo.AfterAll(func() {
-		// Get CIDs for V070, V080, and V100RC1 testdata
+		// Get CIDs for V070, V080, and V100 testdata
 		v070Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV070JSON)
 		v080Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV080V4JSON)
-		v100RC1Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV100RC1JSON)
+		v100Record, _ := corev1.UnmarshalRecord(testdata.ExpectedRecordV100JSON)
 
 		// IMPORTANT: Unpublish first to remove routing labels, then delete from store
 		if v070Record != nil {
@@ -104,14 +104,14 @@ var _ = ginkgo.Describe("Event Streaming E2E Tests", ginkgo.Ordered, ginkgo.Seri
 			})
 			_ = c.Delete(context.Background(), v080Ref)
 		}
-		if v100RC1Record != nil {
-			v100RC1Ref := &corev1.RecordRef{Cid: v100RC1Record.GetCid()}
+		if v100Record != nil {
+			v100Ref := &corev1.RecordRef{Cid: v100Record.GetCid()}
 			_ = c.Unpublish(context.Background(), &routingv1.UnpublishRequest{
 				Request: &routingv1.UnpublishRequest_RecordRefs{
-					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.RecordRef{v100RC1Ref}},
+					RecordRefs: &routingv1.RecordRefs{Refs: []*corev1.RecordRef{v100Ref}},
 				},
 			})
-			_ = c.Delete(context.Background(), v100RC1Ref)
+			_ = c.Delete(context.Background(), v100Ref)
 		}
 
 		// Close the client

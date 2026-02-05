@@ -163,14 +163,14 @@ func (t *Transformer) enrichRecord(ctx context.Context, recordStruct *structpb.S
 // enrichRecordByVersion enriches a record based on its schema version.
 func (t *Transformer) enrichRecordByVersion(ctx context.Context, recordStruct *structpb.Struct, schemaVersion string) ([]enrichedItem, []enrichedItem, error) {
 	switch schemaVersion {
-	case "1.0.0-rc.1":
+	case "1.0.0", "1.0.0-rc.1":
 		return t.enrichV1Record(ctx, recordStruct)
 	default:
 		return t.enrichV1Alpha1Record(ctx, recordStruct)
 	}
 }
 
-// enrichV1Record enriches a v1 (1.0.0-rc.1) record.
+// enrichV1Record enriches a v1 (1.0.0) record.
 //
 //nolint:dupl // Similar structure to enrichV1Alpha1Record but uses different types
 func (t *Transformer) enrichV1Record(ctx context.Context, recordStruct *structpb.Struct) ([]enrichedItem, []enrichedItem, error) {

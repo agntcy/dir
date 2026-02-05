@@ -1,7 +1,7 @@
 {
   "name": "directory.agntcy.org/cisco/marketing-strategy",
   "version": "1.0.0",
-  "schema_version": "1.0.0-rc.1",
+  "schema_version": "1.0.0",
   "description": "Research agent for Cisco's marketing strategy.",
   "authors": [
     "Cisco Systems"

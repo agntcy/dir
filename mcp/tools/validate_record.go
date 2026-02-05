@@ -19,7 +19,7 @@ type ValidateRecordInput struct {
 // ValidateRecordOutput represents the output after validating an agent record.
 type ValidateRecordOutput struct {
 	Valid            bool     `json:"valid"                       jsonschema:"Whether the record is valid according to OASF schema validation"`
-	SchemaVersion    string   `json:"schema_version,omitempty"    jsonschema:"Detected OASF schema version (e.g. 0.7.0, 0.8.0, or 1.0.0-rc.1)"`
+	SchemaVersion    string   `json:"schema_version,omitempty"    jsonschema:"Detected OASF schema version (e.g. 0.7.0, 0.8.0, or 1.0.0)"`
 	ValidationErrors []string `json:"validation_errors,omitempty" jsonschema:"List of validation error messages. Only present if valid=false. Use these to fix the record"`
 	ErrorMessage     string   `json:"error_message,omitempty"     jsonschema:"General error message if validation process failed"`
 }

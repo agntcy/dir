@@ -9,7 +9,7 @@ The OCI storage system enables:
 - **Rich metadata annotations** for discovery and filtering
 - **Multiple discovery tags** for enhanced browsability
 - **Content-addressable storage** using CIDs calculated from ORAS digest operations
-- **Version-agnostic record handling** across OASF v0.7.0, v0.8.0, and v1.0.0-rc.1
+- **Version-agnostic record handling** across OASF v0.7.0, v0.8.0, and v1.0.0
 - **Registry-aware operations** optimized for local vs remote storage
 
 ## Architecture
@@ -312,7 +312,7 @@ The system supports multiple OASF versions with automatic detection:
 |--------------|-------------|----------|
 | **v0.7.0** | `objects/v2` | Agent records with hierarchical skill names |
 | **v0.8.0** | `objects/v4` | Enhanced records with improved metadata |
-| **v1.0.0-rc.1** | `objects/v5` | Latest records with full feature set including multiple URLs in locators |
+| **v1.0.0** | `objects/v5` | Latest records with full feature set including multiple URLs in locators |
 
 ### Version-Specific Examples
 

@@ -76,9 +76,9 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests using a local single no
 			shouldFailPush:  false,
 		},
 		{
-			name:              "OASF_1.0.0-rc.1_Record",
-			fileName:          "oasf_1.0.0-rc.1_record_test.json",
-			jsonData:          testdata.ExpectedRecordV100RC1JSON,
+			name:              "OASF_1.0.0_Record",
+			fileName:          "oasf_1.0.0_record_test.json",
+			jsonData:          testdata.ExpectedRecordV100JSON,
 			expectedAgentName: "burger_seller_agent",
 			expectedSkillIDs:  []string{"10101"},
 			expectedSkillNames: []string{

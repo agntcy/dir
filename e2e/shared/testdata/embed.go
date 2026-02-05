@@ -26,5 +26,5 @@ var ExpectedRecordV070SyncV5JSON []byte
 //go:embed record_warnings_080.json
 var ExpectedRecordWarningsV080JSON []byte
 
-//go:embed record_100_rc1.json
-var ExpectedRecordV100RC1JSON []byte
+//go:embed record_100.json
+var ExpectedRecordV100JSON []byte
