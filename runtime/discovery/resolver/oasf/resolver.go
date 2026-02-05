@@ -74,7 +74,7 @@ func (r *resolver) CanResolve(workload *runtimev1.Workload) bool {
 // Resolve fetches OASF record for the workload.
 func (r *resolver) Resolve(ctx context.Context, workload *runtimev1.Workload) (any, error) {
 	// Get the name of the OASF record from the workload labels
-	name, version := recordNameVersion(workload.GetLabels()[r.labelKey])
+	name, version := recordNameVersion(workload)
 	nameVersion := name + ":" + version
 
 	logger.Info("started resolving", "workload", workload.GetId(), "record", nameVersion)
@@ -136,7 +136,17 @@ func (r *resolver) Apply(ctx context.Context, workload *runtimev1.Workload, resu
 }
 
 //nolint:mnd
-func recordNameVersion(recordFQDN string) (string, string) {
+func (r *resolver) recordNameVersion(workload *runtimev1.Workload) (string, string) {
+	// Get the record FQDN from the workload labels or annotations
+	var recordFQDN string
+	if val, hasLabel := workload.GetLabels()[r.labelKey]; hasLabel {
+		recordFQDN = val
+	} else if val, hasAnnotation := workload.GetAnnotations()[r.labelKey]; hasAnnotation {
+		recordFQDN = val
+	} else {
+		return "", ""
+	}
+
 	// Split the record FQDN into name and version
 	// Expected formats: name, name:version
 	nameParts := strings.SplitN(recordFQDN, ":", 2)
