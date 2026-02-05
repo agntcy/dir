@@ -55,18 +55,26 @@ func (r *resolver) Name() types.WorkloadResolverType {
 
 // CanResolve returns whether this resolver can resolve the workload.
 func (r *resolver) CanResolve(workload *runtimev1.Workload) bool {
-	// If workload does not have a label key, skip it
-	if _, hasLabel := workload.GetLabels()[r.labelKey]; !hasLabel {
-		return false
+	// If workload has a label key, mark it as resolvable
+	if _, hasLabel := workload.GetLabels()[r.labelKey]; hasLabel {
+		return true
 	}
 
-	return true
+	// If workload has an annotation key, mark it as resolvable.
+	// Annotations may need to be used in K8s environments where labels are
+	// limited in length and structure, e.g. DNS-styled labels.
+	if _, hasAnnotation := workload.GetAnnotations()[r.labelKey]; hasAnnotation {
+		return true
+	}
+
+	// Otherwise, cannot resolve
+	return false
 }
 
 // Resolve fetches OASF record for the workload.
 func (r *resolver) Resolve(ctx context.Context, workload *runtimev1.Workload) (any, error) {
 	// Get the name of the OASF record from the workload labels
-	name, version := recordNameVersion(workload.GetLabels()[r.labelKey])
+	name, version := r.getRecordNameVersion(workload)
 	nameVersion := name + ":" + version
 
 	logger.Info("started resolving", "workload", workload.GetId(), "record", nameVersion)
@@ -128,7 +136,17 @@ func (r *resolver) Apply(ctx context.Context, workload *runtimev1.Workload, resu
 }
 
 //nolint:mnd
-func recordNameVersion(recordFQDN string) (string, string) {
+func (r *resolver) getRecordNameVersion(workload *runtimev1.Workload) (string, string) {
+	// Get the record FQDN from the workload labels or annotations
+	var recordFQDN string
+	if val, hasLabel := workload.GetLabels()[r.labelKey]; hasLabel {
+		recordFQDN = val
+	} else if val, hasAnnotation := workload.GetAnnotations()[r.labelKey]; hasAnnotation {
+		recordFQDN = val
+	} else {
+		return "", ""
+	}
+
 	// Split the record FQDN into name and version
 	// Expected formats: name, name:version
 	nameParts := strings.SplitN(recordFQDN, ":", 2)
