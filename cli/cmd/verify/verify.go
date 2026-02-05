@@ -37,7 +37,7 @@ Usage examples:
 
 	# Get verification result as JSON
 	dirctl verify <record-cid> --output json
-	
+
 	# Get raw verification status for scripting
 	dirctl verify <record-cid> --output raw
 `,
@@ -76,5 +76,32 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 		status = "not trusted"
 	}
 
-	return presenter.PrintMessage(cmd, "signature", "Record signature is", status)
+	opts := presenter.GetOutputOptions(cmd)
+	if opts.Format == presenter.FormatHuman {
+		presenter.Println(cmd, fmt.Sprintf("Record signature is: %s", status))
+		if response.GetSuccess() {
+			metadata := response.GetSignerMetadata()
+			if len(metadata) > 0 {
+				presenter.Println(cmd, "Signer Metadata:")
+				for k, v := range metadata {
+					presenter.Println(cmd, fmt.Sprintf("  %s: %s", k, v))
+				}
+			}
+		}
+
+		return nil
+	}
+
+	result := map[string]any{
+		"status":  status,
+		"success": response.GetSuccess(),
+	}
+
+	if response.GetSuccess() {
+		if metadata := response.GetSignerMetadata(); len(metadata) > 0 {
+			result["signer_metadata"] = metadata
+		}
+	}
+
+	return presenter.PrintMessage(cmd, "signature", "Record signature is", result)
 }

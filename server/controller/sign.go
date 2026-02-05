@@ -47,7 +47,7 @@ func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*sign
 
 	signLogger.Debug("Attempting signature verification", "recordCID", recordCID)
 
-	verified, err := s.signing.Verify(ctx, recordCID)
+	verified, metadata, err := s.signing.Verify(ctx, recordCID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "signature verification failed: %v", err)
 	}
@@ -60,7 +60,8 @@ func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*sign
 	}
 
 	return &signv1.VerifyResponse{
-		Success:      verified,
-		ErrorMessage: &errMsg,
+		Success:        verified,
+		ErrorMessage:   &errMsg,
+		SignerMetadata: metadata, // Pass signer metadata to response
 	}, nil
 }

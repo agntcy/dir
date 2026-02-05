@@ -79,7 +79,15 @@ message VerifyRequest {
 message VerifyResponse {
   // The verify process result
   bool success = 1;
-  
+
   // Optional error message if verification failed
   optional string error_message = 2;
+
+  // Metadata about the signer
+  // Common keys:
+  // - "provider": "zot" or "key"
+  // - "author": Identity of the signer (Zot provider only)
+  // - "tool": Tool used for signing (Zot provider only)
+  // - "public_key": Public key used for verification (Key provider only)
+  map<string, string> signer_metadata = 3;
 }

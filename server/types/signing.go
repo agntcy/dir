@@ -10,6 +10,6 @@ import (
 // SigningAPI handles signature operations for records.
 type SigningAPI interface {
 	// Verify verifies a record signature.
-	// Returns true if the signature is valid and trusted.
-	Verify(ctx context.Context, recordCID string) (bool, error)
+	// Returns true if the signature is valid and trusted, along with metadata about the signer.
+	Verify(ctx context.Context, recordCID string) (bool, map[string]string, error)
 }

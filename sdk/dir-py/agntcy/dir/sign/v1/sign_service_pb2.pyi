@@ -1,5 +1,6 @@
 from agntcy.dir.core.v1 import record_pb2 as _record_pb2
 from agntcy.dir.sign.v1 import signature_pb2 as _signature_pb2
+from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
@@ -62,9 +63,18 @@ class VerifyRequest(_message.Message):
     def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ...) -> None: ...
 
 class VerifyResponse(_message.Message):
-    __slots__ = ("success", "error_message")
+    __slots__ = ("success", "error_message", "signer_metadata")
+    class SignerMetadataEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: str
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
     ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    SIGNER_METADATA_FIELD_NUMBER: _ClassVar[int]
     success: bool
     error_message: str
-    def __init__(self, success: bool = ..., error_message: _Optional[str] = ...) -> None: ...
+    signer_metadata: _containers.ScalarMap[str, str]
+    def __init__(self, success: bool = ..., error_message: _Optional[str] = ..., signer_metadata: _Optional[_Mapping[str, str]] = ...) -> None: ...

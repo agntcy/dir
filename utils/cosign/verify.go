@@ -29,16 +29,16 @@ type VerifySignaturesOptions struct {
 // It iterates through all combinations of public keys and signatures to find
 // a valid match, similar to Zot's VerifyCosignSignature pattern.
 //
-// Returns true if any signature verifies with any public key.
+// Returns true with metadata if any signature verifies with any public key.
 // Returns false with nil error if no valid combination is found or if
 // no signatures/public keys are provided (record is not signed).
-func VerifySignatures(opts *VerifySignaturesOptions) (bool, error) {
+func VerifySignatures(opts *VerifySignaturesOptions) (bool, map[string]string, error) {
 	if opts == nil {
-		return false, nil
+		return false, nil, nil
 	}
 
 	if len(opts.ExpectedPayload) == 0 || len(opts.Signatures) == 0 || len(opts.PublicKeys) == 0 {
-		return false, nil
+		return false, nil, nil
 	}
 
 	// Try each public key against each signature
@@ -51,12 +51,15 @@ func VerifySignatures(opts *VerifySignaturesOptions) (bool, error) {
 			}
 
 			if verified {
-				return true, nil
+				return true, map[string]string{
+					"provider":   "key",
+					"public_key": publicKey,
+				}, nil
 			}
 		}
 	}
 
-	return false, nil
+	return false, nil, nil
 }
 
 // verifySignatureWithKey verifies a single signature using a specific public key.
