@@ -330,10 +330,10 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint('MCP_SERVER_PATH is not set and binary not found in default locations');
       if (mounted) {
         setState(() {
-          String binaryName = Platform.isWindows ? 'mcp-server.exe' : 'mcp-server';
+           String binaryName = Platform.isWindows ? 'mcp-server.exe' : 'mcp-server';
           _messages.add({
             'role': 'system',
-            'text': 'Error: MCP_SERVER_PATH not set and $binaryName binary not found.\nChecked:\n- Bundle Resources\n- App Directory\n- ../bin/$binaryName'
+            'text': 'Error: MCP_SERVER_PATH not set and $binaryName binary not found.'
           });
         });
       }
@@ -589,6 +589,78 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     }
     print('DEBUG: Auto-pull complete. Pulled records count: ${_pulledRecords.length}');
+  }
+
+  Future<void> _verifyRecord(String cid) async {
+    if (_mcpClient == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('MCP Client not initialized')),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      if (_pulledRecords.containsKey(cid)) {
+        _pulledRecords[cid]!['_isVerifying'] = true;
+        // Reset previous status
+        _pulledRecords[cid]!.remove('_verificationStatus');
+        _pulledRecords[cid]!.remove('_verificationMessage');
+      }
+    });
+
+    try {
+      final result = await _mcpClient!.callTool('agntcy_dir_verify_record', {'cid': cid});
+
+      bool success = false;
+      String message = '';
+
+      if (!result.isError) {
+        // Handle content as list of text objects
+        if (result.content is List && (result.content as List).isNotEmpty) {
+          final contentList = result.content as List;
+          final text = contentList[0]['text'].toString();
+
+          if (text.contains('not trusted')) {
+            success = false;
+            message = text;
+          } else if (text.contains('trusted')) {
+            success = true;
+            message = text;
+          } else {
+            message = text;
+            // Best effort guess if trusted keyword is missing
+            success = !text.toLowerCase().contains('error') && !text.toLowerCase().contains('failed');
+          }
+        } else {
+          message = result.content.toString();
+        }
+      } else {
+        message = result.content.toString();
+      }
+
+      if (mounted) {
+        setState(() {
+          if (_pulledRecords.containsKey(cid)) {
+            _pulledRecords[cid]!['_isVerifying'] = false;
+            _pulledRecords[cid]!['_verificationStatus'] = success ? 'verified' : 'failed';
+            _pulledRecords[cid]!['_verificationMessage'] = message;
+          }
+        });
+      }
+
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          if (_pulledRecords.containsKey(cid)) {
+            _pulledRecords[cid]!['_isVerifying'] = false;
+            _pulledRecords[cid]!['_verificationStatus'] = 'error';
+            _pulledRecords[cid]!['_verificationMessage'] = e.toString();
+          }
+        });
+      }
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -1004,6 +1076,7 @@ Type your query or click a suggestion to get started!''',
                       child: AgentDetailCard(
                         cid: cid,
                         agentData: data,
+                        onVerify: _verifyRecord,
                       ),
                     );
                   }

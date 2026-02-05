@@ -32,6 +32,19 @@ class AnalyticsService {
   /// Generates or retrieves a persistent Client ID and creates a new Session ID.
   Future<void> init() async {
     try {
+      // Runtime Overrides (useful for CI/CD or dev without rebuilding)
+      if (Platform.environment.containsKey('MEASUREMENT_ID')) {
+        _measurementId = Platform.environment['MEASUREMENT_ID']!;
+      }
+      if (Platform.environment.containsKey('GA_API_SECRET')) {
+        _apiSecret = Platform.environment['GA_API_SECRET']!;
+      }
+
+      if (_measurementId.isEmpty || _apiSecret.isEmpty) {
+        print('Analytics disabled: MEASUREMENT_ID or API_SECRET not configured.');
+        return;
+      }
+
       final prefs = await SharedPreferences.getInstance();
       _clientId = prefs.getString('ga_client_id');
 
@@ -43,18 +56,6 @@ class AnalyticsService {
       // Generate a new session ID for this app run
       // GA4 sessions are usually defined by a unique ID and a timestamp
       _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
-
-      // Attempt to fetch latest config from GitHub
-      // Not needed now as we use Envied
-      // await _fetchRemoteConfig();
-
-      // Runtime Overrides (useful for CI/CD or dev without rebuilding)
-      if (Platform.environment.containsKey('MEASUREMENT_ID')) {
-        _measurementId = Platform.environment['MEASUREMENT_ID']!;
-      }
-      if (Platform.environment.containsKey('GA_API_SECRET')) {
-        _apiSecret = Platform.environment['GA_API_SECRET']!;
-      }
 
       if (_measurementId == 'G-LOCALDEV00') {
          // If still default, warn
