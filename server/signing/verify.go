@@ -55,9 +55,11 @@ func (s *sign) verifyWithZot(ctx context.Context, recordCID string) (bool, map[s
 	if result.Author != "" {
 		metadata["author"] = result.Author
 	}
+
 	if result.Tool != "" {
 		metadata["tool"] = result.Tool
 	}
+
 	metadata["provider"] = "zot"
 
 	// Return the trusted status (which implies signed as well)
