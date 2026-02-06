@@ -3,7 +3,7 @@
 
 module-sets:
   directory:
-    version: v1.0.0
+    version: v1.0.0-rc.3
     modules:
       - github.com/agntcy/dir/api
       - github.com/agntcy/dir/client
