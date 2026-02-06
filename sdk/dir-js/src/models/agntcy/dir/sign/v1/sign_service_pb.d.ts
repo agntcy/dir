@@ -216,6 +216,18 @@ export declare type VerifyResponse = Message<"agntcy.dir.sign.v1.VerifyResponse"
    * @generated from field: optional string error_message = 2;
    */
   errorMessage?: string;
+
+  /**
+   * Metadata about the signer
+   * Common keys:
+   * - "provider": "zot" or "key"
+   * - "author": Identity of the signer (Zot provider only)
+   * - "tool": Tool used for signing (Zot provider only)
+   * - "public_key": Public key used for verification (Key provider only)
+   *
+   * @generated from field: map<string, string> signer_metadata = 3;
+   */
+  signerMetadata: { [key: string]: string };
 };
 
 /**

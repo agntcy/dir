@@ -14,19 +14,19 @@ import (
 )
 
 // Verify verifies a record signature.
-// It returns true if the signature is valid and trusted.
+// It returns true if the signature is valid and trusted, along with metadata about the signer.
 //
 // The verification strategy depends on the available backends:
 //   - If Zot is configured: tries Zot's GraphQL API first, falls back to referrers
 //   - Otherwise: uses OCI referrers for standalone verification
-func (s *sign) Verify(ctx context.Context, recordCID string) (bool, error) {
+func (s *sign) Verify(ctx context.Context, recordCID string) (bool, map[string]string, error) {
 	logger.Debug("Verifying signature", "recordCID", recordCID)
 
 	// Try Zot verification if configured
 	if s.zotConfig != nil {
-		verified, err := s.verifyWithZot(ctx, recordCID)
+		verified, metadata, err := s.verifyWithZot(ctx, recordCID)
 		if err == nil && verified {
-			return true, nil
+			return true, metadata, nil
 		}
 
 		if err != nil {
@@ -40,7 +40,7 @@ func (s *sign) Verify(ctx context.Context, recordCID string) (bool, error) {
 }
 
 // verifyWithZot queries Zot's verification API to check if a signature is valid.
-func (s *sign) verifyWithZot(ctx context.Context, recordCID string) (bool, error) {
+func (s *sign) verifyWithZot(ctx context.Context, recordCID string) (bool, map[string]string, error) {
 	verifyOpts := &zot.VerificationOptions{
 		Config:    s.zotConfig,
 		RecordCID: recordCID,
@@ -48,11 +48,22 @@ func (s *sign) verifyWithZot(ctx context.Context, recordCID string) (bool, error
 
 	result, err := zot.Verify(ctx, verifyOpts)
 	if err != nil {
-		return false, fmt.Errorf("failed to verify with zot: %w", err)
+		return false, nil, fmt.Errorf("failed to verify with zot: %w", err)
 	}
 
+	metadata := make(map[string]string)
+	if result.Author != "" {
+		metadata["author"] = result.Author
+	}
+
+	if result.Tool != "" {
+		metadata["tool"] = result.Tool
+	}
+
+	metadata["provider"] = "zot"
+
 	// Return the trusted status (which implies signed as well)
-	return result.IsTrusted, nil
+	return result.IsTrusted, metadata, nil
 }
 
 // verifyWithReferrers performs signature verification using OCI referrers.
@@ -62,30 +73,30 @@ func (s *sign) verifyWithZot(ctx context.Context, recordCID string) (bool, error
 // 3. Using shared verification logic to find a valid signature
 //
 // This approach mirrors Zot's VerifyCosignSignature pattern without requiring Zot extensions.
-func (s *sign) verifyWithReferrers(ctx context.Context, recordCID string) (bool, error) {
+func (s *sign) verifyWithReferrers(ctx context.Context, recordCID string) (bool, map[string]string, error) {
 	logger.Debug("Starting signature verification with referrers", "recordCID", recordCID)
 
 	// Generate the expected payload for this record CID
 	digest, err := corev1.ConvertCIDToDigest(recordCID)
 	if err != nil {
-		return false, fmt.Errorf("failed to convert CID to digest: %w", err)
+		return false, nil, fmt.Errorf("failed to convert CID to digest: %w", err)
 	}
 
 	expectedPayload, err := cosign.GeneratePayload(digest.String())
 	if err != nil {
-		return false, fmt.Errorf("failed to generate expected payload: %w", err)
+		return false, nil, fmt.Errorf("failed to generate expected payload: %w", err)
 	}
 
 	// Retrieve signatures from OCI referrers
 	signatures, err := s.pullSignatureReferrers(ctx, recordCID)
 	if err != nil {
-		return false, fmt.Errorf("failed to pull signature referrers: %w", err)
+		return false, nil, fmt.Errorf("failed to pull signature referrers: %w", err)
 	}
 
 	if len(signatures) == 0 {
 		logger.Debug("No signatures found in referrers", "recordCID", recordCID)
 
-		return false, nil
+		return false, nil, nil
 	}
 
 	logger.Debug("Retrieved signatures from referrers", "recordCID", recordCID, "count", len(signatures))
@@ -93,13 +104,13 @@ func (s *sign) verifyWithReferrers(ctx context.Context, recordCID string) (bool,
 	// Retrieve public keys from OCI referrers
 	publicKeys, err := s.pullPublicKeyReferrers(ctx, recordCID)
 	if err != nil {
-		return false, fmt.Errorf("failed to pull public key referrers: %w", err)
+		return false, nil, fmt.Errorf("failed to pull public key referrers: %w", err)
 	}
 
 	if len(publicKeys) == 0 {
 		logger.Debug("No public keys found in referrers", "recordCID", recordCID)
 
-		return false, nil
+		return false, nil, nil
 	}
 
 	logger.Debug("Retrieved public keys from referrers", "recordCID", recordCID, "count", len(publicKeys))
@@ -111,13 +122,13 @@ func (s *sign) verifyWithReferrers(ctx context.Context, recordCID string) (bool,
 	}
 
 	// Use shared verification logic
-	verified, err := cosign.VerifySignatures(&cosign.VerifySignaturesOptions{
+	verified, metadata, err := cosign.VerifySignatures(&cosign.VerifySignaturesOptions{
 		ExpectedPayload: expectedPayload,
 		Signatures:      sigStrings,
 		PublicKeys:      publicKeys,
 	})
 	if err != nil {
-		return false, fmt.Errorf("failed to verify signatures: %w", err)
+		return false, nil, fmt.Errorf("failed to verify signatures: %w", err)
 	}
 
 	if verified {
@@ -126,7 +137,7 @@ func (s *sign) verifyWithReferrers(ctx context.Context, recordCID string) (bool,
 		logger.Debug("No valid signature found for any public key", "recordCID", recordCID)
 	}
 
-	return verified, nil
+	return verified, metadata, nil
 }
 
 // pullSignatureReferrers retrieves signature referrers for a record from OCI registry.

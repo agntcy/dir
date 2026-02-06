@@ -29,14 +29,14 @@ func Wrap(source types.SigningAPI, eventBus *events.SafeEventBus) types.SigningA
 }
 
 // Verify verifies a record signature and emits a RECORD_VERIFIED event.
-func (s *eventsSigning) Verify(ctx context.Context, recordCID string) (bool, error) {
-	verified, err := s.source.Verify(ctx, recordCID)
+func (s *eventsSigning) Verify(ctx context.Context, recordCID string) (bool, map[string]string, error) {
+	verified, metadata, err := s.source.Verify(ctx, recordCID)
 	if err != nil {
-		return false, err //nolint:wrapcheck // Transparent wrapper - pass through errors unchanged
+		return false, nil, err //nolint:wrapcheck // Transparent wrapper - pass through errors unchanged
 	}
 
 	// Emit event after verification
 	s.eventBus.RecordVerified(recordCID, verified)
 
-	return verified, nil
+	return verified, metadata, nil
 }
