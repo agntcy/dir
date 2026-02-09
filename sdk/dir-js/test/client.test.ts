@@ -400,7 +400,7 @@ describe('Client', () => {
 
       // Verify test
       for (const ref of recordRefs) {
-        const response = await client.verify(
+        const response = client.verify(
           create(models.sign_v1.VerifyRequestSchema, {
             recordRef: ref,
           }),

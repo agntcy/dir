@@ -13,115 +13,124 @@ import { file_agntcy_dir_sign_v1_signature } from "./signature_pb.js";
  * Describes the file agntcy/dir/sign/v1/sign_service.proto.
  */
 export const file_agntcy_dir_sign_v1_sign_service = /*@__PURE__*/
-  fileDesc("CiVhZ250Y3kvZGlyL3NpZ24vdjEvc2lnbl9zZXJ2aWNlLnByb3RvEhJhZ250Y3kuZGlyLnNpZ24udjEiewoLU2lnblJlcXVlc3QSMQoKcmVjb3JkX3JlZhgBIAEoCzIdLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWYSOQoIcHJvdmlkZXIYAiABKAsyJy5hZ250Y3kuZGlyLnNpZ24udjEuU2lnblJlcXVlc3RQcm92aWRlciKCAQoTU2lnblJlcXVlc3RQcm92aWRlchIwCgRvaWRjGAEgASgLMiAuYWdudGN5LmRpci5zaWduLnYxLlNpZ25XaXRoT0lEQ0gAEi4KA2tleRgCIAEoCzIfLmFnbnRjeS5kaXIuc2lnbi52MS5TaWduV2l0aEtleUgAQgkKB3JlcXVlc3QimwIKDFNpZ25XaXRoT0lEQxIQCghpZF90b2tlbhgBIAEoCRI6CgdvcHRpb25zGAIgASgLMikuYWdudGN5LmRpci5zaWduLnYxLlNpZ25XaXRoT0lEQy5TaWduT3B0cxq8AQoIU2lnbk9wdHMSFwoKZnVsY2lvX3VybBgBIAEoCUgAiAEBEhYKCXJla29yX3VybBgCIAEoCUgBiAEBEhoKDXRpbWVzdGFtcF91cmwYAyABKAlIAogBARIeChFvaWRjX3Byb3ZpZGVyX3VybBgEIAEoCUgDiAEBQg0KC19mdWxjaW9fdXJsQgwKCl9yZWtvcl91cmxCEAoOX3RpbWVzdGFtcF91cmxCFAoSX29pZGNfcHJvdmlkZXJfdXJsIkYKC1NpZ25XaXRoS2V5EhMKC3ByaXZhdGVfa2V5GAEgASgMEhUKCHBhc3N3b3JkGAIgASgMSACIAQFCCwoJX3Bhc3N3b3JkIkAKDFNpZ25SZXNwb25zZRIwCglzaWduYXR1cmUYASABKAsyHS5hZ250Y3kuZGlyLnNpZ24udjEuU2lnbmF0dXJlInYKDVZlcmlmeVJlcXVlc3QSMQoKcmVjb3JkX3JlZhgBIAEoCzIdLmFnbnRjeS5kaXIuY29yZS52MS5SZWNvcmRSZWYSMgoHb3B0aW9ucxgCIAEoCzIhLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlPcHRpb25zIpgBCg1WZXJpZnlPcHRpb25zEjYKA2tleRgBIAEoCzInLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlXaXRoUHVibGljS2V5SAASOgoEb2lkYxgCIAEoCzIqLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlXaXRoT0lEQ0lkZW50aXR5SABCEwoRdmVyaWZpY2F0aW9uX3R5cGUiKQoTVmVyaWZ5V2l0aFB1YmxpY0tleRISCgpwdWJsaWNfa2V5GAEgASgJIm0KFlZlcmlmeVdpdGhPSURDSWRlbnRpdHkSDgoGaXNzdWVyGAEgASgJEhAKCGlkZW50aXR5GAIgASgJEjEKCnRydXN0X3Jvb3QYAyABKAsyHS5hZ250Y3kuZGlyLnNpZ24udjEuVHJ1c3RSb290IsABCglUcnVzdFJvb3QSHAoPZnVsY2lvX3Jvb3RfcGVtGAEgASgJSACIAQESIQoUcmVrb3JfcHVibGljX2tleV9wZW0YAiABKAlIAYgBARIlCh10aW1lc3RhbXBfYXV0aG9yaXR5X3Jvb3RzX3BlbRgDIAMoCRIeChZjdF9sb2dfcHVibGljX2tleXNfcGVtGAQgAygJQhIKEF9mdWxjaW9fcm9vdF9wZW1CFwoVX3Jla29yX3B1YmxpY19rZXlfcGVtIogCCg5WZXJpZnlSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhoKDWVycm9yX21lc3NhZ2UYAiABKAlIAIgBARJPCg9zaWduZXJfbWV0YWRhdGEYAyADKAsyNi5hZ250Y3kuZGlyLnNpZ24udjEuVmVyaWZ5UmVzcG9uc2UuU2lnbmVyTWV0YWRhdGFFbnRyeRIvCgdzaWduZXJzGAQgAygLMh4uYWdudGN5LmRpci5zaWduLnYxLlNpZ25lckluZm8aNQoTU2lnbmVyTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBQhAKDl9lcnJvcl9tZXNzYWdlIoEBCgpTaWduZXJJbmZvEjAKA2tleRgBIAEoCzIhLmFnbnRjeS5kaXIuc2lnbi52MS5LZXlTaWduZXJJbmZvSAASMgoEb2lkYxgCIAEoCzIiLmFnbnRjeS5kaXIuc2lnbi52MS5PSURDU2lnbmVySW5mb0gAQg0KC3NpZ25lcl90eXBlIjYKDUtleVNpZ25lckluZm8SEgoKcHVibGljX2tleRgBIAEoCRIRCglhbGdvcml0aG0YAiABKAkiMgoOT0lEQ1NpZ25lckluZm8SDgoGaXNzdWVyGAEgASgJEhAKCGlkZW50aXR5GAIgASgJMqkBCgtTaWduU2VydmljZRJJCgRTaWduEh8uYWdudGN5LmRpci5zaWduLnYxLlNpZ25SZXF1ZXN0GiAuYWdudGN5LmRpci5zaWduLnYxLlNpZ25SZXNwb25zZRJPCgZWZXJpZnkSIS5hZ250Y3kuZGlyLnNpZ24udjEuVmVyaWZ5UmVxdWVzdBoiLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlSZXNwb25zZUK4AQoWY29tLmFnbnRjeS5kaXIuc2lnbi52MUIQU2lnblNlcnZpY2VQcm90b1ABWiFnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL3NpZ24vdjGiAgNBRFOqAhJBZ250Y3kuRGlyLlNpZ24uVjHKAhJBZ250Y3lcRGlyXFNpZ25cVjHiAh5BZ250Y3lcRGlyXFNpZ25cVjFcR1BCTWV0YWRhdGHqAhVBZ250Y3k6OkRpcjo6U2lnbjo6VjFiBnByb3RvMw", [file_agntcy_dir_core_v1_record, file_agntcy_dir_sign_v1_signature]);
+  fileDesc("CiVhZ250Y3kvZGlyL3NpZ24vdjEvc2lnbl9zZXJ2aWNlLnByb3RvEhJhZ250Y3kuZGlyLnNpZ24udjEisQEKD1NpZ25PcHRpb25zT0lEQxISCgpmdWxjaW9fdXJsGAEgASgJEhEKCXJla29yX3VybBgCIAEoCRIVCg10aW1lc3RhbXBfdXJsGAMgASgJEhkKEW9pZGNfcHJvdmlkZXJfdXJsGAQgASgJEhYKDm9pZGNfY2xpZW50X2lkGAUgASgJEhoKEm9pZGNfY2xpZW50X3NlY3JldBgGIAEoCRIRCglza2lwX3Rsb2cYByABKAgigwEKEVZlcmlmeU9wdGlvbnNPSURDEhYKDnR1Zl9taXJyb3JfdXJsGAEgASgJEhkKEXRydXN0ZWRfcm9vdF9wYXRoGAIgASgJEhMKC2lnbm9yZV90bG9nGAMgASgIEhIKCmlnbm9yZV90c2EYBCABKAgSEgoKaWdub3JlX3NjdBgFIAEoCCJ7CgtTaWduUmVxdWVzdBIxCgpyZWNvcmRfcmVmGAEgASgLMh0uYWdudGN5LmRpci5jb3JlLnYxLlJlY29yZFJlZhI5Cghwcm92aWRlchgCIAEoCzInLmFnbnRjeS5kaXIuc2lnbi52MS5TaWduUmVxdWVzdFByb3ZpZGVyIoIBChNTaWduUmVxdWVzdFByb3ZpZGVyEi4KA2tleRgBIAEoCzIfLmFnbnRjeS5kaXIuc2lnbi52MS5TaWduV2l0aEtleUgAEjAKBG9pZGMYAiABKAsyIC5hZ250Y3kuZGlyLnNpZ24udjEuU2lnbldpdGhPSURDSABCCQoHcmVxdWVzdCJGCgtTaWduV2l0aEtleRITCgtwcml2YXRlX2tleRgBIAEoDBIVCghwYXNzd29yZBgCIAEoDEgAiAEBQgsKCV9wYXNzd29yZCJnCgxTaWduV2l0aE9JREMSEAoIaWRfdG9rZW4YASABKAkSOQoHb3B0aW9ucxgCIAEoCzIjLmFnbnRjeS5kaXIuc2lnbi52MS5TaWduT3B0aW9uc09JRENIAIgBAUIKCghfb3B0aW9ucyJACgxTaWduUmVzcG9uc2USMAoJc2lnbmF0dXJlGAEgASgLMh0uYWdudGN5LmRpci5zaWduLnYxLlNpZ25hdHVyZSJ/Cg1WZXJpZnlSZXF1ZXN0EjEKCnJlY29yZF9yZWYYASABKAsyHS5hZ250Y3kuZGlyLmNvcmUudjEuUmVjb3JkUmVmEjsKCHByb3ZpZGVyGAIgASgLMikuYWdudGN5LmRpci5zaWduLnYxLlZlcmlmeVJlcXVlc3RQcm92aWRlciK6AQoVVmVyaWZ5UmVxdWVzdFByb3ZpZGVyEjAKA2tleRgBIAEoCzIhLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlXaXRoS2V5SAASMgoEb2lkYxgCIAEoCzIiLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlXaXRoT0lEQ0gAEjAKA2FueRgDIAEoCzIhLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlXaXRoQW55SABCCQoHcmVxdWVzdCIjCg1WZXJpZnlXaXRoS2V5EhIKCnB1YmxpY19rZXkYASABKAwiegoOVmVyaWZ5V2l0aE9JREMSDgoGaXNzdWVyGAEgASgJEg8KB3N1YmplY3QYAiABKAkSOwoHb3B0aW9ucxgDIAEoCzIlLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlPcHRpb25zT0lEQ0gAiAEBQgoKCF9vcHRpb25zImIKDVZlcmlmeVdpdGhBbnkSQAoMb2lkY19vcHRpb25zGAEgASgLMiUuYWdudGN5LmRpci5zaWduLnYxLlZlcmlmeU9wdGlvbnNPSURDSACIAQFCDwoNX29pZGNfb3B0aW9ucyKAAQoOVmVyaWZ5UmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBIvCgdzaWduZXJzGAIgAygLMh4uYWdudGN5LmRpci5zaWduLnYxLlNpZ25lckluZm8SGgoNZXJyb3JfbWVzc2FnZRgDIAEoCUgAiAEBQhAKDl9lcnJvcl9tZXNzYWdlInoKClNpZ25lckluZm8SMAoDa2V5GAEgASgLMiEuYWdudGN5LmRpci5zaWduLnYxLlNpZ25lckluZm9LZXlIABIyCgRvaWRjGAIgASgLMiIuYWdudGN5LmRpci5zaWduLnYxLlNpZ25lckluZm9PSURDSABCBgoEdHlwZSI2Cg1TaWduZXJJbmZvS2V5EhIKCnB1YmxpY19rZXkYASABKAkSEQoJYWxnb3JpdGhtGAIgASgJIjEKDlNpZ25lckluZm9PSURDEg4KBmlzc3VlchgBIAEoCRIPCgdzdWJqZWN0GAIgASgJMqkBCgtTaWduU2VydmljZRJJCgRTaWduEh8uYWdudGN5LmRpci5zaWduLnYxLlNpZ25SZXF1ZXN0GiAuYWdudGN5LmRpci5zaWduLnYxLlNpZ25SZXNwb25zZRJPCgZWZXJpZnkSIS5hZ250Y3kuZGlyLnNpZ24udjEuVmVyaWZ5UmVxdWVzdBoiLmFnbnRjeS5kaXIuc2lnbi52MS5WZXJpZnlSZXNwb25zZUK4AQoWY29tLmFnbnRjeS5kaXIuc2lnbi52MUIQU2lnblNlcnZpY2VQcm90b1ABWiFnaXRodWIuY29tL2FnbnRjeS9kaXIvYXBpL3NpZ24vdjGiAgNBRFOqAhJBZ250Y3kuRGlyLlNpZ24uVjHKAhJBZ250Y3lcRGlyXFNpZ25cVjHiAh5BZ250Y3lcRGlyXFNpZ25cVjFcR1BCTWV0YWRhdGHqAhVBZ250Y3k6OkRpcjo6U2lnbjo6VjFiBnByb3RvMw", [file_agntcy_dir_core_v1_record, file_agntcy_dir_sign_v1_signature]);
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignOptionsOIDC.
+ * Use `create(SignOptionsOIDCSchema)` to create a new message.
+ */
+export const SignOptionsOIDCSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 0);
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyOptionsOIDC.
+ * Use `create(VerifyOptionsOIDCSchema)` to create a new message.
+ */
+export const VerifyOptionsOIDCSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 1);
 
 /**
  * Describes the message agntcy.dir.sign.v1.SignRequest.
  * Use `create(SignRequestSchema)` to create a new message.
  */
 export const SignRequestSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 0);
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 2);
 
 /**
  * Describes the message agntcy.dir.sign.v1.SignRequestProvider.
  * Use `create(SignRequestProviderSchema)` to create a new message.
  */
 export const SignRequestProviderSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 1);
-
-/**
- * Describes the message agntcy.dir.sign.v1.SignWithOIDC.
- * Use `create(SignWithOIDCSchema)` to create a new message.
- */
-export const SignWithOIDCSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 2);
-
-/**
- * Describes the message agntcy.dir.sign.v1.SignWithOIDC.SignOpts.
- * Use `create(SignWithOIDC_SignOptsSchema)` to create a new message.
- */
-export const SignWithOIDC_SignOptsSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 2, 0);
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 3);
 
 /**
  * Describes the message agntcy.dir.sign.v1.SignWithKey.
  * Use `create(SignWithKeySchema)` to create a new message.
  */
 export const SignWithKeySchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 3);
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 4);
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignWithOIDC.
+ * Use `create(SignWithOIDCSchema)` to create a new message.
+ */
+export const SignWithOIDCSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 5);
 
 /**
  * Describes the message agntcy.dir.sign.v1.SignResponse.
  * Use `create(SignResponseSchema)` to create a new message.
  */
 export const SignResponseSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 4);
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 6);
 
 /**
  * Describes the message agntcy.dir.sign.v1.VerifyRequest.
  * Use `create(VerifyRequestSchema)` to create a new message.
  */
 export const VerifyRequestSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 5);
-
-/**
- * Describes the message agntcy.dir.sign.v1.VerifyOptions.
- * Use `create(VerifyOptionsSchema)` to create a new message.
- */
-export const VerifyOptionsSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 6);
-
-/**
- * Describes the message agntcy.dir.sign.v1.VerifyWithPublicKey.
- * Use `create(VerifyWithPublicKeySchema)` to create a new message.
- */
-export const VerifyWithPublicKeySchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_sign_v1_sign_service, 7);
 
 /**
- * Describes the message agntcy.dir.sign.v1.VerifyWithOIDCIdentity.
- * Use `create(VerifyWithOIDCIdentitySchema)` to create a new message.
+ * Describes the message agntcy.dir.sign.v1.VerifyRequestProvider.
+ * Use `create(VerifyRequestProviderSchema)` to create a new message.
  */
-export const VerifyWithOIDCIdentitySchema = /*@__PURE__*/
+export const VerifyRequestProviderSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_sign_v1_sign_service, 8);
 
 /**
- * Describes the message agntcy.dir.sign.v1.TrustRoot.
- * Use `create(TrustRootSchema)` to create a new message.
+ * Describes the message agntcy.dir.sign.v1.VerifyWithKey.
+ * Use `create(VerifyWithKeySchema)` to create a new message.
  */
-export const TrustRootSchema = /*@__PURE__*/
+export const VerifyWithKeySchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_sign_v1_sign_service, 9);
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyWithOIDC.
+ * Use `create(VerifyWithOIDCSchema)` to create a new message.
+ */
+export const VerifyWithOIDCSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 10);
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyWithAny.
+ * Use `create(VerifyWithAnySchema)` to create a new message.
+ */
+export const VerifyWithAnySchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 11);
 
 /**
  * Describes the message agntcy.dir.sign.v1.VerifyResponse.
  * Use `create(VerifyResponseSchema)` to create a new message.
  */
 export const VerifyResponseSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 10);
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 12);
 
 /**
  * Describes the message agntcy.dir.sign.v1.SignerInfo.
  * Use `create(SignerInfoSchema)` to create a new message.
  */
 export const SignerInfoSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 11);
-
-/**
- * Describes the message agntcy.dir.sign.v1.KeySignerInfo.
- * Use `create(KeySignerInfoSchema)` to create a new message.
- */
-export const KeySignerInfoSchema = /*@__PURE__*/
-  messageDesc(file_agntcy_dir_sign_v1_sign_service, 12);
-
-/**
- * Describes the message agntcy.dir.sign.v1.OIDCSignerInfo.
- * Use `create(OIDCSignerInfoSchema)` to create a new message.
- */
-export const OIDCSignerInfoSchema = /*@__PURE__*/
   messageDesc(file_agntcy_dir_sign_v1_sign_service, 13);
 
 /**
+ * Describes the message agntcy.dir.sign.v1.SignerInfoKey.
+ * Use `create(SignerInfoKeySchema)` to create a new message.
+ */
+export const SignerInfoKeySchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 14);
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignerInfoOIDC.
+ * Use `create(SignerInfoOIDCSchema)` to create a new message.
+ */
+export const SignerInfoOIDCSchema = /*@__PURE__*/
+  messageDesc(file_agntcy_dir_sign_v1_sign_service, 15);
+
+/**
  * SignService provides methods to sign and verify records.
+ *
+ * NOTE: This is a client-side service and is not available on the server.
  *
  * @generated from service agntcy.dir.sign.v1.SignService
  */

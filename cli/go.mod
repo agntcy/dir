@@ -29,9 +29,9 @@ require (
 	github.com/agntcy/dir/client v1.0.0-rc.3
 	github.com/agntcy/dir/importer v1.0.0-rc.3
 	github.com/agntcy/dir/mcp v1.0.0-rc.3
-	github.com/agntcy/dir/utils v1.0.0-rc.3
 	github.com/ipfs/go-cid v0.6.0
 	github.com/libp2p/go-libp2p v0.46.0
+	github.com/sigstore/cosign/v3 v3.0.4
 	github.com/sigstore/sigstore v1.10.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -54,6 +54,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
+	github.com/agntcy/dir/utils v1.0.0-rc.3 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.0 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
@@ -237,7 +238,6 @@ require (
 	github.com/sassoftware/relic v7.2.1+incompatible // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.10.0 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
-	github.com/sigstore/cosign/v3 v3.0.4 // indirect
 	github.com/sigstore/protobuf-specs v0.5.0 // indirect
 	github.com/sigstore/rekor v1.5.0 // indirect
 	github.com/sigstore/rekor-tiles/v2 v2.1.0 // indirect

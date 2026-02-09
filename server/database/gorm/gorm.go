@@ -39,11 +39,6 @@ func New(db *gorm.DB) (*DB, error) {
 		return nil, fmt.Errorf("failed to migrate name verification schema: %w", err)
 	}
 
-	// Migrate signature verification cache schema
-	if err := db.AutoMigrate(SignatureVerification{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate signature verification schema: %w", err)
-	}
-
 	return &DB{
 		gormDB: db,
 	}, nil

@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n(agntcy/dir/events/v1/event_service.proto\x12\x14\x61gntcy.dir.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x97\x01\n\rListenRequest\x12@\n\x0b\x65vent_types\x18\x01 \x03(\x0e\x32\x1f.agntcy.dir.events.v1.EventTypeR\neventTypes\x12#\n\rlabel_filters\x18\x02 \x03(\tR\x0clabelFilters\x12\x1f\n\x0b\x63id_filters\x18\x03 \x03(\tR\ncidFilters\"C\n\x0eListenResponse\x12\x31\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x1b.agntcy.dir.events.v1.EventR\x05\x65vent\"\xc3\x02\n\x05\x45vent\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x33\n\x04type\x18\x02 \x01(\x0e\x32\x1f.agntcy.dir.events.v1.EventTypeR\x04type\x12\x38\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1f\n\x0bresource_id\x18\x04 \x01(\tR\nresourceId\x12\x16\n\x06labels\x18\x05 \x03(\tR\x06labels\x12\x45\n\x08metadata\x18\x07 \x03(\x0b\x32).agntcy.dir.events.v1.Event.MetadataEntryR\x08metadata\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01*\x80\x03\n\tEventType\x12\x1a\n\x16\x45VENT_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n\x18\x45VENT_TYPE_RECORD_PUSHED\x10\x01\x12\x1c\n\x18\x45VENT_TYPE_RECORD_PULLED\x10\x02\x12\x1d\n\x19\x45VENT_TYPE_RECORD_DELETED\x10\x03\x12\x1f\n\x1b\x45VENT_TYPE_RECORD_PUBLISHED\x10\x04\x12!\n\x1d\x45VENT_TYPE_RECORD_UNPUBLISHED\x10\x05\x12\x1b\n\x17\x45VENT_TYPE_SYNC_CREATED\x10\x06\x12\x1d\n\x19\x45VENT_TYPE_SYNC_COMPLETED\x10\x07\x12\x1a\n\x16\x45VENT_TYPE_SYNC_FAILED\x10\x08\x12\x1c\n\x18\x45VENT_TYPE_RECORD_SIGNED\x10\t\x12\x1e\n\x1a\x45VENT_TYPE_RECORD_VERIFIED\x10\n\x12\"\n\x1e\x45VENT_TYPE_PUBLIC_KEY_UPLOADED\x10\x0b\x32\x65\n\x0c\x45ventService\x12U\n\x06Listen\x12#.agntcy.dir.events.v1.ListenRequest\x1a$.agntcy.dir.events.v1.ListenResponse0\x01\x42\xc5\x01\n\x18\x63om.agntcy.dir.events.v1B\x11\x45ventServiceProtoP\x01Z#github.com/agntcy/dir/api/events/v1\xa2\x02\x03\x41\x44\x45\xaa\x02\x14\x41gntcy.Dir.Events.V1\xca\x02\x14\x41gntcy\\Dir\\Events\\V1\xe2\x02 Agntcy\\Dir\\Events\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Events::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n(agntcy/dir/events/v1/event_service.proto\x12\x14\x61gntcy.dir.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x97\x01\n\rListenRequest\x12@\n\x0b\x65vent_types\x18\x01 \x03(\x0e\x32\x1f.agntcy.dir.events.v1.EventTypeR\neventTypes\x12#\n\rlabel_filters\x18\x02 \x03(\tR\x0clabelFilters\x12\x1f\n\x0b\x63id_filters\x18\x03 \x03(\tR\ncidFilters\"C\n\x0eListenResponse\x12\x31\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x1b.agntcy.dir.events.v1.EventR\x05\x65vent\"\xc3\x02\n\x05\x45vent\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x33\n\x04type\x18\x02 \x01(\x0e\x32\x1f.agntcy.dir.events.v1.EventTypeR\x04type\x12\x38\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1f\n\x0bresource_id\x18\x04 \x01(\tR\nresourceId\x12\x16\n\x06labels\x18\x05 \x03(\tR\x06labels\x12\x45\n\x08metadata\x18\x07 \x03(\x0b\x32).agntcy.dir.events.v1.Event.MetadataEntryR\x08metadata\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01*\xe0\x02\n\tEventType\x12\x1a\n\x16\x45VENT_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n\x18\x45VENT_TYPE_RECORD_PUSHED\x10\x01\x12\x1c\n\x18\x45VENT_TYPE_RECORD_PULLED\x10\x02\x12\x1d\n\x19\x45VENT_TYPE_RECORD_DELETED\x10\x03\x12\x1f\n\x1b\x45VENT_TYPE_RECORD_PUBLISHED\x10\x04\x12!\n\x1d\x45VENT_TYPE_RECORD_UNPUBLISHED\x10\x05\x12\x1b\n\x17\x45VENT_TYPE_SYNC_CREATED\x10\x06\x12\x1d\n\x19\x45VENT_TYPE_SYNC_COMPLETED\x10\x07\x12\x1a\n\x16\x45VENT_TYPE_SYNC_FAILED\x10\x08\x12\x1c\n\x18\x45VENT_TYPE_RECORD_SIGNED\x10\t\x12\"\n\x1e\x45VENT_TYPE_PUBLIC_KEY_UPLOADED\x10\n2e\n\x0c\x45ventService\x12U\n\x06Listen\x12#.agntcy.dir.events.v1.ListenRequest\x1a$.agntcy.dir.events.v1.ListenResponse0\x01\x42\xc5\x01\n\x18\x63om.agntcy.dir.events.v1B\x11\x45ventServiceProtoP\x01Z#github.com/agntcy/dir/api/events/v1\xa2\x02\x03\x41\x44\x45\xaa\x02\x14\x41gntcy.Dir.Events.V1\xca\x02\x14\x41gntcy\\Dir\\Events\\V1\xe2\x02 Agntcy\\Dir\\Events\\V1\\GPBMetadata\xea\x02\x17\x41gntcy::Dir::Events::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,7 +36,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_EVENT_METADATAENTRY']._loaded_options = None
   _globals['_EVENT_METADATAENTRY']._serialized_options = b'8\001'
   _globals['_EVENTTYPE']._serialized_start=649
-  _globals['_EVENTTYPE']._serialized_end=1033
+  _globals['_EVENTTYPE']._serialized_end=1001
   _globals['_LISTENREQUEST']._serialized_start=100
   _globals['_LISTENREQUEST']._serialized_end=251
   _globals['_LISTENRESPONSE']._serialized_start=253
@@ -45,6 +45,6 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_EVENT']._serialized_end=646
   _globals['_EVENT_METADATAENTRY']._serialized_start=587
   _globals['_EVENT_METADATAENTRY']._serialized_end=646
-  _globals['_EVENTSERVICE']._serialized_start=1035
-  _globals['_EVENTSERVICE']._serialized_end=1136
+  _globals['_EVENTSERVICE']._serialized_start=1003
+  _globals['_EVENTSERVICE']._serialized_end=1104
 # @@protoc_insertion_point(module_scope)

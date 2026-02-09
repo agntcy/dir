@@ -10,12 +10,13 @@ Directory services including routing, search, store, and signing operations.
 import builtins
 import logging
 import os
-from typing import List
+import json
 import subprocess
 import tempfile
 from collections.abc import Sequence
 
 import grpc
+from google.protobuf import json_format
 from cryptography.hazmat.primitives import serialization
 from spiffe import WorkloadApiClient, X509Source
 
@@ -1156,7 +1157,6 @@ class Client:
     def verify(
         self,
         req: sign_v1.VerifyRequest,
-        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> sign_v1.VerifyResponse:
         """Verify a cryptographic signature on a record.
 
@@ -1164,16 +1164,18 @@ class Client:
         to ensure its authenticity and integrity. This operation verifies
         that the record has not been tampered with since signing.
 
+        The verification process uses the external dirctl command-line tool
+        to perform the actual cryptographic operations.
+
         Args:
             req: VerifyRequest containing the record reference and verification
-                 parameters
-            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+                 parameters. The provider can specify either key-based verification
+                 (with a public key) or OIDC-based verification
 
         Returns:
             VerifyResponse containing the verification result and details
 
         Raises:
-            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the verification operation fails
 
         Example:
@@ -1181,20 +1183,234 @@ class Client:
             ...     record_ref=core_v1.RecordRef(cid="QmExample123")
             ... )
             >>> response = client.verify(req)
-            >>> print(f"Signature valid: {response.valid}")
+            >>> print(f"Signature valid: {response.success}")
 
         """
         try:
-            response = self.sign_client.Verify(req, metadata=metadata)
-        except grpc.RpcError as e:
-            logger.exception("gRPC error during verify: %s", e)
-            raise
+            provider = req.provider
+            if provider is not None and provider.HasField("key") and len(provider.key.public_key) > 0:
+                return self._verify_with_key(req.record_ref, provider.key)
+            elif provider is not None and provider.HasField("oidc"):
+                return self._verify_with_oidc(req.record_ref, provider.oidc)
+            elif provider is not None and provider.HasField("any"):
+                return self._verify_with_any(req.record_ref, provider.any)
+            else:
+                # Default: verify any valid signature
+                return self._verify_with_any(req.record_ref, None)
+        except RuntimeError as e:
+            msg = f"Failed to verify the object: {e}"
+            raise RuntimeError(msg) from e
         except Exception as e:
-            logger.exception("Unexpected error during verify: %s", e)
+            logger.exception("Verification operation failed: %s", e)
             msg = f"Failed to verify the object: {e}"
             raise RuntimeError(msg) from e
 
-        return response
+    def _verify_with_key(
+        self,
+        record_ref: core_v1.RecordRef,
+        key_verifier: sign_v1.VerifyWithKey,
+    ) -> sign_v1.VerifyResponse:
+        """Verify a record using a public key.
+
+        This private method handles key-based verification by passing the public key
+        file path to the dirctl command.
+
+        Args:
+            record_ref: Reference to the record to verify
+            key_verifier: VerifyWithKey containing the path to the public key file
+
+        Returns:
+            VerifyResponse containing the verification result
+
+        Raises:
+            RuntimeError: If any error occurs during verification
+
+        """
+        try:
+            # Decode the public key path from bytes
+            key_path = key_verifier.public_key.decode("utf-8")
+
+            # Build and execute the verification command
+            command = [
+                self.config.dirctl_path,
+                "verify",
+                record_ref.cid,
+                "--key",
+                key_path,
+                "--output",
+                "json",
+            ]
+
+            result = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                timeout=60,  # 1 minute timeout
+            )
+
+            return self._parse_verify_response(result.stdout)
+
+        except subprocess.CalledProcessError as e:
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "dirctl verification timed out"
+            raise RuntimeError(msg) from e
+        except Exception as e:
+            msg = f"Unexpected error during key-based verification: {e}"
+            raise RuntimeError(msg) from e
+
+    def _verify_with_any(
+        self,
+        record_ref: core_v1.RecordRef,
+        any_verifier: sign_v1.VerifyWithAny | None,
+    ) -> sign_v1.VerifyResponse:
+        """Verify a record using any valid signature.
+
+        This private method handles verification of any signature on the record,
+        with optional OIDC options for OIDC-based signatures.
+
+        Args:
+            record_ref: Reference to the record to verify
+            any_verifier: VerifyWithAny containing optional OIDC verification options,
+                          or None for default verification
+
+        Returns:
+            VerifyResponse containing the verification result
+
+        Raises:
+            RuntimeError: If any error occurs during verification
+
+        """
+        try:
+            # Build base command
+            command = [self.config.dirctl_path, "verify", record_ref.cid, "--output", "json"]
+
+            # Add OIDC verification options if present
+            if any_verifier is not None and any_verifier.HasField("oidc_options"):
+                opts = any_verifier.oidc_options
+                if opts.tuf_mirror_url:
+                    command.extend(["--tuf-mirror-url", opts.tuf_mirror_url])
+                if opts.trusted_root_path:
+                    command.extend(["--trusted-root-path", opts.trusted_root_path])
+                if opts.ignore_tlog:
+                    command.append("--ignore-tlog")
+                if opts.ignore_tsa:
+                    command.append("--ignore-tsa")
+                if opts.ignore_sct:
+                    command.append("--ignore-sct")
+
+            # Execute the verification command
+            result = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                timeout=60,  # 1 minute timeout
+            )
+
+            return self._parse_verify_response(result.stdout)
+
+        except subprocess.CalledProcessError as e:
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "dirctl verification timed out"
+            raise RuntimeError(msg) from e
+        except Exception as e:
+            msg = f"Unexpected error during verification: {e}"
+            raise RuntimeError(msg) from e
+
+    def _verify_with_oidc(
+        self,
+        record_ref: core_v1.RecordRef,
+        oidc_verifier: sign_v1.VerifyWithOIDC | None,
+    ) -> sign_v1.VerifyResponse:
+        """Verify a record using OIDC-based verification.
+
+        This private method handles OIDC-based verification by building the appropriate
+        dirctl command with OIDC parameters and executing it.
+
+        Args:
+            record_ref: Reference to the record to verify
+            oidc_verifier: VerifyWithOIDC containing the OIDC verification options,
+                          or None for default verification
+
+        Returns:
+            VerifyResponse containing the verification result
+
+        Raises:
+            RuntimeError: If any error occurs during verification
+
+        """
+        try:
+            # Build base command
+            command = [self.config.dirctl_path, "verify", record_ref.cid, "--output", "json"]
+
+            # Add OIDC-specific parameters if provided
+            if oidc_verifier is not None:
+                if oidc_verifier.issuer:
+                    command.extend(["--oidc-issuer", oidc_verifier.issuer])
+                if oidc_verifier.subject:
+                    command.extend(["--oidc-subject", oidc_verifier.subject])
+
+                # Add verification options if present
+                if oidc_verifier.HasField("options"):
+                    opts = oidc_verifier.options
+                    if opts.tuf_mirror_url:
+                        command.extend(["--tuf-mirror-url", opts.tuf_mirror_url])
+                    if opts.trusted_root_path:
+                        command.extend(["--trusted-root-path", opts.trusted_root_path])
+                    if opts.ignore_tlog:
+                        command.append("--ignore-tlog")
+                    if opts.ignore_tsa:
+                        command.append("--ignore-tsa")
+                    if opts.ignore_sct:
+                        command.append("--ignore-sct")
+
+            # Execute the verification command
+            result = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                timeout=60,  # 1 minute timeout
+            )
+
+            return self._parse_verify_response(result.stdout)
+
+        except subprocess.CalledProcessError as e:
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "dirctl verification timed out"
+            raise RuntimeError(msg) from e
+        except Exception as e:
+            msg = f"Unexpected error during OIDC verification: {e}"
+            raise RuntimeError(msg) from e
+
+    def _parse_verify_response(self, output: bytes) -> sign_v1.VerifyResponse:
+        """Parse the JSON output from dirctl verify command.
+
+        Args:
+            output: Raw bytes output from the dirctl command
+
+        Returns:
+            VerifyResponse parsed from the JSON output
+
+        Raises:
+            RuntimeError: If the output cannot be parsed
+
+        """
+        try:
+            json_str = output.decode("utf-8")
+            json_data = json.loads(json_str)
+
+            # The CLI outputs the response directly as JSON
+            response = sign_v1.VerifyResponse()
+            json_format.ParseDict(json_data, response)
+            return response
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            msg = f"Failed to parse verification response: {e}"
+            raise RuntimeError(msg) from e
 
     def sign(
         self,

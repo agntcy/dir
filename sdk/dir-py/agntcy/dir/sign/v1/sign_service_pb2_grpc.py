@@ -7,6 +7,8 @@ from agntcy.dir.sign.v1 import sign_service_pb2 as agntcy_dot_dir_dot_sign_dot_v
 
 class SignServiceStub(object):
     """SignService provides methods to sign and verify records.
+
+    NOTE: This is a client-side service and is not available on the server.
     """
 
     def __init__(self, channel):
@@ -29,17 +31,21 @@ class SignServiceStub(object):
 
 class SignServiceServicer(object):
     """SignService provides methods to sign and verify records.
+
+    NOTE: This is a client-side service and is not available on the server.
     """
 
     def Sign(self, request, context):
-        """Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+        """Sign record using keyless OIDC based provider or
+        using PEM-encoded private key with an optional passphrase.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Verify(self, request, context):
-        """Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+        """Verify signed record using keyless OIDC based provider or
+        using PEM-encoded public key.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -68,6 +74,8 @@ def add_SignServiceServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class SignService(object):
     """SignService provides methods to sign and verify records.
+
+    NOTE: This is a client-side service and is not available on the server.
     """
 
     @staticmethod

@@ -9,6 +9,8 @@ import (
 	"reflect"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 // OutputFormat represents the different output formats available.
@@ -81,7 +83,7 @@ func PrintMessage(cmd *cobra.Command, title, message string, value any) error {
 
 	case FormatJSON:
 		// For JSON format, output the value as JSON with indentation
-		output, err := json.MarshalIndent(value, "", "  ")
+		output, err := marshalJSON(value)
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
@@ -109,7 +111,7 @@ func PrintMessage(cmd *cobra.Command, title, message string, value any) error {
 func printJSONL(cmd *cobra.Command, value any) error {
 	// Handle single object
 	if !isSliceOrArray(value) {
-		output, err := json.Marshal(value)
+		output, err := marshalJSONCompact(value)
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
@@ -122,7 +124,7 @@ func printJSONL(cmd *cobra.Command, value any) error {
 	// Handle array/slice - print each element on a separate line
 	v := reflect.ValueOf(value)
 	for i := range v.Len() {
-		output, err := json.Marshal(v.Index(i).Interface())
+		output, err := marshalJSONCompact(v.Index(i).Interface())
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
@@ -131,6 +133,33 @@ func printJSONL(cmd *cobra.Command, value any) error {
 	}
 
 	return nil
+}
+
+// marshalJSON marshals a value to JSON with indentation.
+// Uses protojson for proto messages to ensure correct field names.
+//
+//nolint:wrapcheck
+func marshalJSON(value any) ([]byte, error) {
+	if msg, ok := value.(proto.Message); ok {
+		return protojson.MarshalOptions{
+			Multiline: true,
+			Indent:    "  ",
+		}.Marshal(msg)
+	}
+
+	return json.MarshalIndent(value, "", "  ")
+}
+
+// marshalJSONCompact marshals a value to JSON without indentation.
+// Uses protojson for proto messages to ensure correct field names.
+//
+//nolint:wrapcheck
+func marshalJSONCompact(value any) ([]byte, error) {
+	if msg, ok := value.(proto.Message); ok {
+		return protojson.Marshal(msg)
+	}
+
+	return json.Marshal(value)
 }
 
 // isSliceOrArray returns true if the value is a slice or array.

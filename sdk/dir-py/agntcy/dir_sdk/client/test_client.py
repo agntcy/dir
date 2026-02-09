@@ -287,7 +287,7 @@ class TestClient(unittest.TestCase):
         provider_url = shell_env.get("OIDC_PROVIDER_URL", "")
         client_id = shell_env.get("OIDC_CLIENT_ID", "sigstore")
 
-        oidc_options = sign_v1.SignWithOIDC.SignOpts(oidc_provider_url=provider_url)
+        oidc_options = sign_v1.SignOptionsOIDC(oidc_provider_url=provider_url)
         oidc_provider = sign_v1.SignWithOIDC(id_token=token, options=oidc_options)
         request_oidc_provider = sign_v1.SignRequestProvider(oidc=oidc_provider)
         oidc_request = sign_v1.SignRequest(

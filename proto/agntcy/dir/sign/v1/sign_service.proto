@@ -9,12 +9,81 @@ import "agntcy/dir/core/v1/record.proto";
 import "agntcy/dir/sign/v1/signature.proto";
 
 // SignService provides methods to sign and verify records.
+//
+// NOTE: This is a client-side service and is not available on the server.
 service SignService {
-  // Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+  // Sign record using keyless OIDC based provider or
+  // using PEM-encoded private key with an optional passphrase.
   rpc Sign(SignRequest) returns (SignResponse);
 
-  // Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+  // Verify signed record using keyless OIDC based provider or
+  // using PEM-encoded public key.
   rpc Verify(VerifyRequest) returns (VerifyResponse);
+}
+
+// Options for OIDC-based signing.
+message SignOptionsOIDC {
+  // Fulcio authority access URL.
+  // Default: https://fulcio.sigstore.dev
+  string fulcio_url = 1;
+
+  // Rekor transparency log access URL.
+  // Default: https://rekor.sigstore.dev
+  string rekor_url = 2;
+
+  // Timestamp authority access URL.
+  // Default: https://timestamp.sigstore.dev/api/v1/timestamp
+  string timestamp_url = 3;
+
+  // OIDC provider access URL.
+  // Default: https://oauth2.sigstore.dev/auth
+  string oidc_provider_url = 4;
+
+  // OIDC client ID.
+  // Default: sigstore
+  string oidc_client_id = 5;
+
+  // OIDC client secret.
+  // Required for confidential OIDC clients that require client authentication.
+  // Default: empty
+  string oidc_client_secret = 6;
+
+  // Skip uploading signature to transparency log (Rekor).
+  // Set to true for private signing where transparency log upload is not desired.
+  // Note: Signatures created with this option cannot be verified against Rekor.
+  // Default: false
+  bool skip_tlog = 7;
+}
+
+// Options for OIDC-based verification.
+message VerifyOptionsOIDC {
+  // TUF repository mirror URL.
+  // Used to fetch trusted root material (certificates, keys) for verification.
+  // Default: https://tuf-repo-cdn.sigstore.dev (public good instance)
+  string tuf_mirror_url = 1;
+
+  // Path to a Sigstore TrustedRoot JSON file.
+  // When provided, verification uses this file instead of fetching from TUF.
+  // Required for fully offline/air-gapped verification.
+  // The file contains Fulcio CAs, Rekor keys, TSA certs, and CT log keys.
+  // Default: empty (uses TUF to fetch trusted root)
+  string trusted_root_path = 2;
+
+  // Skip transparency log (Rekor) verification.
+  // Set to true for private infrastructure without Rekor,
+  // or when signatures weren't uploaded to the transparency log.
+  // Default: false
+  bool ignore_tlog = 3;
+
+  // Skip timestamp authority (TSA) verification.
+  // Set to true when timestamps aren't required or TSA wasn't used during signing.
+  // Default: false
+  bool ignore_tsa = 4;
+
+  // Skip Signed Certificate Timestamp (SCT) verification.
+  // Set to true for private PKI where Certificate Transparency logs aren't used.
+  // Default: false
+  bool ignore_sct = 5;
 }
 
 message SignRequest {
@@ -27,35 +96,12 @@ message SignRequest {
 
 message SignRequestProvider {
   oneof request {
-    // Sign with OIDC provider
-    SignWithOIDC oidc = 1;
-
     // Sign with PEM-encoded public key
-    SignWithKey key = 2;
+    SignWithKey key = 1;
+
+    // Sign with OIDC provider
+    SignWithOIDC oidc = 2;
   }
-}
-
-message SignWithOIDC {
-  // List of sign options for OIDC
-  message SignOpts {
-    // Fulcio authority access URL (default value: https://fulcio.sigstage.dev)
-    optional string fulcio_url = 1;
-
-    // Rekor validator access URL (default value: https://rekor.sigstage.dev)
-    optional string rekor_url = 2;
-
-    // Timestamp authority access URL (default value: https://timestamp.sigstage.dev/api/v1/timestamp)
-    optional string timestamp_url = 3;
-
-    // OIDC provider access URL (default value: https://oauth2.sigstage.dev/auth)
-    optional string oidc_provider_url = 4;
-  }
-
-  // Token for OIDC provider
-  string id_token = 1;
-
-  // Signing options for OIDC
-  SignOpts options = 2;
 }
 
 message SignWithKey {
@@ -64,6 +110,14 @@ message SignWithKey {
 
   // Password to unlock the private key
   optional bytes password = 2;
+}
+
+message SignWithOIDC {
+  // Token for OIDC provider
+  string id_token = 1;
+
+  // Signing options for OIDC
+  optional SignOptionsOIDC options = 2;
 }
 
 message SignResponse {
@@ -75,92 +129,76 @@ message VerifyRequest {
   // Record reference to be verified
   core.v1.RecordRef record_ref = 1;
 
-  // Optional verification options. If not provided, any valid signature is accepted.
-  VerifyOptions options = 2;
+  // Verification provider to use
+  VerifyRequestProvider provider = 2;
 }
 
-// Verification options - specifies what criteria to verify against
-message VerifyOptions {
-  oneof verification_type {
-    // Verify against a specific public key
-    VerifyWithPublicKey key = 1;
+message VerifyRequestProvider {
+  oneof request {
+    // Verify with PEM-encoded public key
+    VerifyWithKey key = 1;
 
-    // Verify against OIDC identity
-    VerifyWithOIDCIdentity oidc = 2;
+    // Verify with OIDC provider
+    VerifyWithOIDC oidc = 2;
+
+    // Verify implicitly without providing any key or OIDC information.
+    // This will attempt to verify any signature found on the record.
+    // This is useful for verifying records that have been signed and have signatures attached,
+    // without needing to verify against a specific key or OIDC identity.
+    VerifyWithAny any = 3;
   }
 }
 
-// Verify signature against a specific public key
-message VerifyWithPublicKey {
+message VerifyWithKey {
   // PEM-encoded public key to verify against
-  string public_key = 1;
+  bytes public_key = 1;
 }
 
-// Verify signature against OIDC identity
-message VerifyWithOIDCIdentity {
-  // OIDC issuer URL (exact match, e.g., "https://github.com/login/oauth")
+message VerifyWithOIDC {
+  // OIDC issuer URL.
+  // Accepts exact match or regular expression (e.g., "https://github.com/login/oauth")
   string issuer = 1;
 
-  // OIDC subject/identity (exact match, e.g., "user@example.com")
-  string identity = 2;
+  // OIDC subject/identity.
+  // Accepts exact match or regular expression (e.g., "user@example.com")
+  string subject = 2;
 
-  // Optional trust root configuration for verification.
-  // If not provided, uses Sigstore public good instance.
-  TrustRoot trust_root = 3;
+  // Verification options for OIDC
+  optional VerifyOptionsOIDC options = 3;
 }
 
-// Trust root configuration for Sigstore verification
-message TrustRoot {
-  // Fulcio CA root certificate (PEM-encoded).
-  // If not provided, uses Sigstore public good Fulcio root.
-  optional string fulcio_root_pem = 1;
-
-  // Rekor public key (PEM-encoded).
-  // If not provided, uses Sigstore public good Rekor key.
-  optional string rekor_public_key_pem = 2;
-
-  // Timestamp authority root certificates (PEM-encoded).
-  // If not provided, uses Sigstore public good TSA roots.
-  repeated string timestamp_authority_roots_pem = 3;
-
-  // Certificate Transparency log public keys (PEM-encoded).
-  // If not provided, uses Sigstore public good CT log keys.
-  repeated string ct_log_public_keys_pem = 4;
+message VerifyWithAny {
+  // Verification options for OIDC.
+  // This is used to verify only OIDC signatures on the record.
+  // For key-based signatures, this field is ignored.
+  optional VerifyOptionsOIDC oidc_options = 1;
 }
 
 message VerifyResponse {
   // The verify process result
   bool success = 1;
 
+  // List of all signers that signed the record.
+  // Each entry represents one valid signature on the record.
+  repeated SignerInfo signers = 2;
+
   // Optional error message if verification failed
-  optional string error_message = 2;
-
-  // Metadata about the signer (deprecated, use signers instead)
-  // Common keys:
-  // - "provider": "oidc" or "key"
-  // - "oidc.issuer": OIDC issuer URL (OIDC provider only)
-  // - "oidc.identity": OIDC identity/subject (OIDC provider only)
-  // - "public_key": Public key used for verification (Key provider only)
-  map<string, string> signer_metadata = 3;
-
-  // List of all signers that signed the record
-  // Each entry represents one valid signature on the record
-  repeated SignerInfo signers = 4;
+  optional string error_message = 3;
 }
 
 // Structured information about who signed the record
 message SignerInfo {
-  oneof signer_type {
+  oneof type {
     // Key-based signer information
-    KeySignerInfo key = 1;
+    SignerInfoKey key = 1;
 
     // OIDC-based signer information
-    OIDCSignerInfo oidc = 2;
+    SignerInfoOIDC oidc = 2;
   }
 }
 
 // Information about a key-based signer
-message KeySignerInfo {
+message SignerInfoKey {
   // Public key used for verification (PEM-encoded)
   string public_key = 1;
 
@@ -169,10 +207,10 @@ message KeySignerInfo {
 }
 
 // Information about an OIDC-based signer
-message OIDCSignerInfo {
+message SignerInfoOIDC {
   // OIDC issuer URL (e.g., "https://github.com/login/oauth")
   string issuer = 1;
 
   // OIDC subject/identity (e.g., "user@example.com")
-  string identity = 2;
+  string subject = 2;
 }

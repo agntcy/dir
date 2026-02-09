@@ -107,13 +107,6 @@ func (s *SafeEventBus) RecordSigned(cid, signer string) {
 	}
 }
 
-// RecordVerified publishes a record verified event. No-op if bus is nil.
-func (s *SafeEventBus) RecordVerified(cid string, verified bool) {
-	if s.bus != nil {
-		s.bus.RecordVerified(cid, verified)
-	}
-}
-
 // PublicKeyUploaded publishes a public key uploaded event. No-op if bus is nil.
 func (s *SafeEventBus) PublicKeyUploaded(keyID string) {
 	if s.bus != nil {

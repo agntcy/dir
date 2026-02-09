@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -16,7 +17,8 @@ import (
 	"github.com/agntcy/dir/cli/presenter"
 	ctxUtils "github.com/agntcy/dir/cli/util/context"
 	"github.com/agntcy/dir/client"
-	"github.com/agntcy/dir/utils/cosign"
+	"github.com/sigstore/cosign/v3/pkg/cosign"
+	"github.com/sigstore/cosign/v3/pkg/cosign/env"
 	"github.com/sigstore/sigstore/pkg/oauthflow"
 	"github.com/spf13/cobra"
 )
@@ -83,6 +85,9 @@ func runCommand(cmd *cobra.Command, recordCID string) error {
 }
 
 func Sign(ctx context.Context, c *client.Client, recordCID string) error {
+	// Construct the sign request with the provided options
+	var provider *signv1.SignRequestProvider
+
 	switch {
 	case opts.Key != "":
 		// Load the key from file
@@ -92,81 +97,94 @@ func Sign(ctx context.Context, c *client.Client, recordCID string) error {
 		}
 
 		// Read password from environment variable
-		pw, err := cosign.ReadPrivateKeyPassword()()
+		pw, err := readPrivateKeyPassword()()
 		if err != nil {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
 
-		req := &signv1.SignRequest{
-			RecordRef: &corev1.RecordRef{Cid: recordCID},
-			Provider: &signv1.SignRequestProvider{
-				Request: &signv1.SignRequestProvider_Key{
-					Key: &signv1.SignWithKey{
-						PrivateKey: rawKey,
-						Password:   pw,
-					},
-				},
-			},
-		}
-
 		// Sign the record using the provided key
-		_, err = c.SignWithKey(ctx, req)
-		if err != nil {
-			return fmt.Errorf("failed to sign record with key: %w", err)
+		provider = &signv1.SignRequestProvider{
+			Request: &signv1.SignRequestProvider_Key{
+				Key: &signv1.SignWithKey{
+					PrivateKey: rawKey,
+					Password:   pw,
+				},
+			},
 		}
+
 	case opts.OIDCToken != "":
-		req := &signv1.SignRequest{
-			RecordRef: &corev1.RecordRef{Cid: recordCID},
-			Provider: &signv1.SignRequestProvider{
-				Request: &signv1.SignRequestProvider_Oidc{
-					Oidc: &signv1.SignWithOIDC{
-						IdToken: opts.OIDCToken,
-						Options: &signv1.SignWithOIDC_SignOpts{
-							FulcioUrl:       &opts.FulcioURL,
-							RekorUrl:        &opts.RekorURL,
-							TimestampUrl:    &opts.TimestampURL,
-							OidcProviderUrl: &opts.OIDCProviderURL,
-						},
+		// Sign the record using the OIDC provider
+		provider = &signv1.SignRequestProvider{
+			Request: &signv1.SignRequestProvider_Oidc{
+				Oidc: &signv1.SignWithOIDC{
+					IdToken: opts.OIDCToken,
+					Options: &signv1.SignOptionsOIDC{
+						FulcioUrl:        opts.FulcioURL,
+						RekorUrl:         opts.RekorURL,
+						TimestampUrl:     opts.TimestampURL,
+						OidcProviderUrl:  opts.OIDCProviderURL,
+						OidcClientId:     opts.OIDCClientID,
+						OidcClientSecret: opts.OIDCClientSecret,
+						SkipTlog:         opts.SkipTlog,
 					},
 				},
 			},
 		}
 
-		// Sign the record using the OIDC provider
-		_, err := c.SignWithOIDC(ctx, req)
-		if err != nil {
-			return fmt.Errorf("failed to sign record: %w", err)
-		}
 	default:
 		// Retrieve the token from the OIDC provider
-		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, "", "", oauthflow.DefaultIDTokenGetter)
+		token, err := oauthflow.OIDConnect(opts.OIDCProviderURL, opts.OIDCClientID, opts.OIDCClientSecret, "", oauthflow.DefaultIDTokenGetter)
 		if err != nil {
 			return fmt.Errorf("failed to get OIDC token: %w", err)
 		}
 
-		req := &signv1.SignRequest{
-			RecordRef: &corev1.RecordRef{Cid: recordCID},
-			Provider: &signv1.SignRequestProvider{
-				Request: &signv1.SignRequestProvider_Oidc{
-					Oidc: &signv1.SignWithOIDC{
-						IdToken: token.RawString,
-						Options: &signv1.SignWithOIDC_SignOpts{
-							FulcioUrl:       &opts.FulcioURL,
-							RekorUrl:        &opts.RekorURL,
-							TimestampUrl:    &opts.TimestampURL,
-							OidcProviderUrl: &opts.OIDCProviderURL,
-						},
+		// Sign the record using the OIDC provider
+		provider = &signv1.SignRequestProvider{
+			Request: &signv1.SignRequestProvider_Oidc{
+				Oidc: &signv1.SignWithOIDC{
+					IdToken: token.RawString,
+					Options: &signv1.SignOptionsOIDC{
+						FulcioUrl:        opts.FulcioURL,
+						RekorUrl:         opts.RekorURL,
+						TimestampUrl:     opts.TimestampURL,
+						OidcProviderUrl:  opts.OIDCProviderURL,
+						OidcClientId:     opts.OIDCClientID,
+						OidcClientSecret: opts.OIDCClientSecret,
+						SkipTlog:         opts.SkipTlog,
 					},
 				},
 			},
 		}
+	}
 
-		// Sign the record using the OIDC provider
-		_, err = c.SignWithOIDC(ctx, req)
-		if err != nil {
-			return fmt.Errorf("failed to sign record: %w", err)
-		}
+	// Sign the record using given provider
+	_, err := c.Sign(ctx, &signv1.SignRequest{
+		RecordRef: &corev1.RecordRef{Cid: recordCID},
+		Provider:  provider,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to sign record: %w", err)
 	}
 
 	return nil
+}
+
+func readPrivateKeyPassword() func() ([]byte, error) {
+	pw, ok := env.LookupEnv(env.VariablePassword)
+
+	switch {
+	case ok:
+		return func() ([]byte, error) {
+			return []byte(pw), nil
+		}
+	case cosign.IsTerminal():
+		return func() ([]byte, error) {
+			return cosign.GetPassFromTerm(true)
+		}
+	// Handle piped in passwords.
+	default:
+		return func() ([]byte, error) {
+			return io.ReadAll(os.Stdin)
+		}
+	}
 }

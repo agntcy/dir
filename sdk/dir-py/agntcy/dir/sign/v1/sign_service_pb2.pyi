@@ -7,6 +7,38 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class SignOptionsOIDC(_message.Message):
+    __slots__ = ("fulcio_url", "rekor_url", "timestamp_url", "oidc_provider_url", "oidc_client_id", "oidc_client_secret", "skip_tlog")
+    FULCIO_URL_FIELD_NUMBER: _ClassVar[int]
+    REKOR_URL_FIELD_NUMBER: _ClassVar[int]
+    TIMESTAMP_URL_FIELD_NUMBER: _ClassVar[int]
+    OIDC_PROVIDER_URL_FIELD_NUMBER: _ClassVar[int]
+    OIDC_CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
+    OIDC_CLIENT_SECRET_FIELD_NUMBER: _ClassVar[int]
+    SKIP_TLOG_FIELD_NUMBER: _ClassVar[int]
+    fulcio_url: str
+    rekor_url: str
+    timestamp_url: str
+    oidc_provider_url: str
+    oidc_client_id: str
+    oidc_client_secret: str
+    skip_tlog: bool
+    def __init__(self, fulcio_url: _Optional[str] = ..., rekor_url: _Optional[str] = ..., timestamp_url: _Optional[str] = ..., oidc_provider_url: _Optional[str] = ..., oidc_client_id: _Optional[str] = ..., oidc_client_secret: _Optional[str] = ..., skip_tlog: bool = ...) -> None: ...
+
+class VerifyOptionsOIDC(_message.Message):
+    __slots__ = ("tuf_mirror_url", "trusted_root_path", "ignore_tlog", "ignore_tsa", "ignore_sct")
+    TUF_MIRROR_URL_FIELD_NUMBER: _ClassVar[int]
+    TRUSTED_ROOT_PATH_FIELD_NUMBER: _ClassVar[int]
+    IGNORE_TLOG_FIELD_NUMBER: _ClassVar[int]
+    IGNORE_TSA_FIELD_NUMBER: _ClassVar[int]
+    IGNORE_SCT_FIELD_NUMBER: _ClassVar[int]
+    tuf_mirror_url: str
+    trusted_root_path: str
+    ignore_tlog: bool
+    ignore_tsa: bool
+    ignore_sct: bool
+    def __init__(self, tuf_mirror_url: _Optional[str] = ..., trusted_root_path: _Optional[str] = ..., ignore_tlog: bool = ..., ignore_tsa: bool = ..., ignore_sct: bool = ...) -> None: ...
+
 class SignRequest(_message.Message):
     __slots__ = ("record_ref", "provider")
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
@@ -16,31 +48,12 @@ class SignRequest(_message.Message):
     def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., provider: _Optional[_Union[SignRequestProvider, _Mapping]] = ...) -> None: ...
 
 class SignRequestProvider(_message.Message):
-    __slots__ = ("oidc", "key")
-    OIDC_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ("key", "oidc")
     KEY_FIELD_NUMBER: _ClassVar[int]
-    oidc: SignWithOIDC
+    OIDC_FIELD_NUMBER: _ClassVar[int]
     key: SignWithKey
-    def __init__(self, oidc: _Optional[_Union[SignWithOIDC, _Mapping]] = ..., key: _Optional[_Union[SignWithKey, _Mapping]] = ...) -> None: ...
-
-class SignWithOIDC(_message.Message):
-    __slots__ = ("id_token", "options")
-    class SignOpts(_message.Message):
-        __slots__ = ("fulcio_url", "rekor_url", "timestamp_url", "oidc_provider_url")
-        FULCIO_URL_FIELD_NUMBER: _ClassVar[int]
-        REKOR_URL_FIELD_NUMBER: _ClassVar[int]
-        TIMESTAMP_URL_FIELD_NUMBER: _ClassVar[int]
-        OIDC_PROVIDER_URL_FIELD_NUMBER: _ClassVar[int]
-        fulcio_url: str
-        rekor_url: str
-        timestamp_url: str
-        oidc_provider_url: str
-        def __init__(self, fulcio_url: _Optional[str] = ..., rekor_url: _Optional[str] = ..., timestamp_url: _Optional[str] = ..., oidc_provider_url: _Optional[str] = ...) -> None: ...
-    ID_TOKEN_FIELD_NUMBER: _ClassVar[int]
-    OPTIONS_FIELD_NUMBER: _ClassVar[int]
-    id_token: str
-    options: SignWithOIDC.SignOpts
-    def __init__(self, id_token: _Optional[str] = ..., options: _Optional[_Union[SignWithOIDC.SignOpts, _Mapping]] = ...) -> None: ...
+    oidc: SignWithOIDC
+    def __init__(self, key: _Optional[_Union[SignWithKey, _Mapping]] = ..., oidc: _Optional[_Union[SignWithOIDC, _Mapping]] = ...) -> None: ...
 
 class SignWithKey(_message.Message):
     __slots__ = ("private_key", "password")
@@ -50,6 +63,14 @@ class SignWithKey(_message.Message):
     password: bytes
     def __init__(self, private_key: _Optional[bytes] = ..., password: _Optional[bytes] = ...) -> None: ...
 
+class SignWithOIDC(_message.Message):
+    __slots__ = ("id_token", "options")
+    ID_TOKEN_FIELD_NUMBER: _ClassVar[int]
+    OPTIONS_FIELD_NUMBER: _ClassVar[int]
+    id_token: str
+    options: SignOptionsOIDC
+    def __init__(self, id_token: _Optional[str] = ..., options: _Optional[_Union[SignOptionsOIDC, _Mapping]] = ...) -> None: ...
+
 class SignResponse(_message.Message):
     __slots__ = ("signature",)
     SIGNATURE_FIELD_NUMBER: _ClassVar[int]
@@ -57,77 +78,64 @@ class SignResponse(_message.Message):
     def __init__(self, signature: _Optional[_Union[_signature_pb2.Signature, _Mapping]] = ...) -> None: ...
 
 class VerifyRequest(_message.Message):
-    __slots__ = ("record_ref", "options")
+    __slots__ = ("record_ref", "provider")
     RECORD_REF_FIELD_NUMBER: _ClassVar[int]
-    OPTIONS_FIELD_NUMBER: _ClassVar[int]
+    PROVIDER_FIELD_NUMBER: _ClassVar[int]
     record_ref: _record_pb2.RecordRef
-    options: VerifyOptions
-    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., options: _Optional[_Union[VerifyOptions, _Mapping]] = ...) -> None: ...
+    provider: VerifyRequestProvider
+    def __init__(self, record_ref: _Optional[_Union[_record_pb2.RecordRef, _Mapping]] = ..., provider: _Optional[_Union[VerifyRequestProvider, _Mapping]] = ...) -> None: ...
 
-class VerifyOptions(_message.Message):
-    __slots__ = ("key", "oidc")
+class VerifyRequestProvider(_message.Message):
+    __slots__ = ("key", "oidc", "any")
     KEY_FIELD_NUMBER: _ClassVar[int]
     OIDC_FIELD_NUMBER: _ClassVar[int]
-    key: VerifyWithPublicKey
-    oidc: VerifyWithOIDCIdentity
-    def __init__(self, key: _Optional[_Union[VerifyWithPublicKey, _Mapping]] = ..., oidc: _Optional[_Union[VerifyWithOIDCIdentity, _Mapping]] = ...) -> None: ...
+    ANY_FIELD_NUMBER: _ClassVar[int]
+    key: VerifyWithKey
+    oidc: VerifyWithOIDC
+    any: VerifyWithAny
+    def __init__(self, key: _Optional[_Union[VerifyWithKey, _Mapping]] = ..., oidc: _Optional[_Union[VerifyWithOIDC, _Mapping]] = ..., any: _Optional[_Union[VerifyWithAny, _Mapping]] = ...) -> None: ...
 
-class VerifyWithPublicKey(_message.Message):
+class VerifyWithKey(_message.Message):
     __slots__ = ("public_key",)
     PUBLIC_KEY_FIELD_NUMBER: _ClassVar[int]
-    public_key: str
-    def __init__(self, public_key: _Optional[str] = ...) -> None: ...
+    public_key: bytes
+    def __init__(self, public_key: _Optional[bytes] = ...) -> None: ...
 
-class VerifyWithOIDCIdentity(_message.Message):
-    __slots__ = ("issuer", "identity", "trust_root")
+class VerifyWithOIDC(_message.Message):
+    __slots__ = ("issuer", "subject", "options")
     ISSUER_FIELD_NUMBER: _ClassVar[int]
-    IDENTITY_FIELD_NUMBER: _ClassVar[int]
-    TRUST_ROOT_FIELD_NUMBER: _ClassVar[int]
+    SUBJECT_FIELD_NUMBER: _ClassVar[int]
+    OPTIONS_FIELD_NUMBER: _ClassVar[int]
     issuer: str
-    identity: str
-    trust_root: TrustRoot
-    def __init__(self, issuer: _Optional[str] = ..., identity: _Optional[str] = ..., trust_root: _Optional[_Union[TrustRoot, _Mapping]] = ...) -> None: ...
+    subject: str
+    options: VerifyOptionsOIDC
+    def __init__(self, issuer: _Optional[str] = ..., subject: _Optional[str] = ..., options: _Optional[_Union[VerifyOptionsOIDC, _Mapping]] = ...) -> None: ...
 
-class TrustRoot(_message.Message):
-    __slots__ = ("fulcio_root_pem", "rekor_public_key_pem", "timestamp_authority_roots_pem", "ct_log_public_keys_pem")
-    FULCIO_ROOT_PEM_FIELD_NUMBER: _ClassVar[int]
-    REKOR_PUBLIC_KEY_PEM_FIELD_NUMBER: _ClassVar[int]
-    TIMESTAMP_AUTHORITY_ROOTS_PEM_FIELD_NUMBER: _ClassVar[int]
-    CT_LOG_PUBLIC_KEYS_PEM_FIELD_NUMBER: _ClassVar[int]
-    fulcio_root_pem: str
-    rekor_public_key_pem: str
-    timestamp_authority_roots_pem: _containers.RepeatedScalarFieldContainer[str]
-    ct_log_public_keys_pem: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, fulcio_root_pem: _Optional[str] = ..., rekor_public_key_pem: _Optional[str] = ..., timestamp_authority_roots_pem: _Optional[_Iterable[str]] = ..., ct_log_public_keys_pem: _Optional[_Iterable[str]] = ...) -> None: ...
+class VerifyWithAny(_message.Message):
+    __slots__ = ("oidc_options",)
+    OIDC_OPTIONS_FIELD_NUMBER: _ClassVar[int]
+    oidc_options: VerifyOptionsOIDC
+    def __init__(self, oidc_options: _Optional[_Union[VerifyOptionsOIDC, _Mapping]] = ...) -> None: ...
 
 class VerifyResponse(_message.Message):
-    __slots__ = ("success", "error_message", "signer_metadata", "signers")
-    class SignerMetadataEntry(_message.Message):
-        __slots__ = ("key", "value")
-        KEY_FIELD_NUMBER: _ClassVar[int]
-        VALUE_FIELD_NUMBER: _ClassVar[int]
-        key: str
-        value: str
-        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    __slots__ = ("success", "signers", "error_message")
     SUCCESS_FIELD_NUMBER: _ClassVar[int]
-    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    SIGNER_METADATA_FIELD_NUMBER: _ClassVar[int]
     SIGNERS_FIELD_NUMBER: _ClassVar[int]
+    ERROR_MESSAGE_FIELD_NUMBER: _ClassVar[int]
     success: bool
-    error_message: str
-    signer_metadata: _containers.ScalarMap[str, str]
     signers: _containers.RepeatedCompositeFieldContainer[SignerInfo]
-    def __init__(self, success: bool = ..., error_message: _Optional[str] = ..., signer_metadata: _Optional[_Mapping[str, str]] = ..., signers: _Optional[_Iterable[_Union[SignerInfo, _Mapping]]] = ...) -> None: ...
+    error_message: str
+    def __init__(self, success: bool = ..., signers: _Optional[_Iterable[_Union[SignerInfo, _Mapping]]] = ..., error_message: _Optional[str] = ...) -> None: ...
 
 class SignerInfo(_message.Message):
     __slots__ = ("key", "oidc")
     KEY_FIELD_NUMBER: _ClassVar[int]
     OIDC_FIELD_NUMBER: _ClassVar[int]
-    key: KeySignerInfo
-    oidc: OIDCSignerInfo
-    def __init__(self, key: _Optional[_Union[KeySignerInfo, _Mapping]] = ..., oidc: _Optional[_Union[OIDCSignerInfo, _Mapping]] = ...) -> None: ...
+    key: SignerInfoKey
+    oidc: SignerInfoOIDC
+    def __init__(self, key: _Optional[_Union[SignerInfoKey, _Mapping]] = ..., oidc: _Optional[_Union[SignerInfoOIDC, _Mapping]] = ...) -> None: ...
 
-class KeySignerInfo(_message.Message):
+class SignerInfoKey(_message.Message):
     __slots__ = ("public_key", "algorithm")
     PUBLIC_KEY_FIELD_NUMBER: _ClassVar[int]
     ALGORITHM_FIELD_NUMBER: _ClassVar[int]
@@ -135,10 +143,10 @@ class KeySignerInfo(_message.Message):
     algorithm: str
     def __init__(self, public_key: _Optional[str] = ..., algorithm: _Optional[str] = ...) -> None: ...
 
-class OIDCSignerInfo(_message.Message):
-    __slots__ = ("issuer", "identity")
+class SignerInfoOIDC(_message.Message):
+    __slots__ = ("issuer", "subject")
     ISSUER_FIELD_NUMBER: _ClassVar[int]
-    IDENTITY_FIELD_NUMBER: _ClassVar[int]
+    SUBJECT_FIELD_NUMBER: _ClassVar[int]
     issuer: str
-    identity: str
-    def __init__(self, issuer: _Optional[str] = ..., identity: _Optional[str] = ...) -> None: ...
+    subject: str
+    def __init__(self, issuer: _Optional[str] = ..., subject: _Optional[str] = ...) -> None: ...

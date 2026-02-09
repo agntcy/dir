@@ -5,8 +5,10 @@ package utils
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"os/exec"
 
-	"github.com/agntcy/dir/utils/cosign"
 	"github.com/onsi/ginkgo/v2"
 )
 
@@ -18,12 +20,15 @@ const (
 // GenerateCosignKeyPair generates a cosign key pair in the specified directory.
 // Helper function for signature testing.
 func GenerateCosignKeyPair(dir string) {
-	opts := &cosign.GenerateKeyPairOptions{
-		Directory: dir,
-		Password:  TestPassword,
-	}
+	// Prepare cosign generate-key-pair command
+	cmd := exec.CommandContext(context.Background(), "cosign", "generate-key-pair")
+	cmd.Dir = dir
 
-	if err := cosign.GenerateKeyPair(context.Background(), opts); err != nil {
-		ginkgo.Fail("cosign generate-key-pair failed: " + err.Error())
+	cmd.Env = append(os.Environ(), "COSIGN_PASSWORD="+TestPassword)
+
+	// Execute command
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		ginkgo.Fail(fmt.Sprintf("cosign generate-key-pair failed: %v\nOutput: %s", err, string(output)))
 	}
 }

@@ -31,7 +31,7 @@ func (s *Signature) MarshalReferrer() (*corev1.RecordReferrer, error) {
 	}
 
 	// Unmarshal JSON to a map
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(jsonBytes, &m); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal json to map: %w", err)
 	}

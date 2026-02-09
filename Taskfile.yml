@@ -522,8 +522,6 @@ tasks:
       # - Use SQLite for local development (no PostgreSQL required)
       DIRECTORY_SERVER_DATABASE_DB_TYPE: sqlite
       DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH: /tmp/dir.db
-      DIRECTORY_LOGGER_LOG_LEVEL: debug
-      DIRECTORY_LOGGER_LOG_FILE: /tmp/dir.log
     cmds:
       - defer: { task: server:store:stop }
       - task: server:store:start
@@ -533,9 +531,9 @@ tasks:
     desc: Pull local OCI registry server docker image
     vars:
       IMAGE: "{{.IMAGE}}"
-    cmds:
-      - |
-        docker pull {{.IMAGE}}
+    cmd: docker pull "{{.IMAGE}}"
+    status:
+      - docker image inspect "{{.IMAGE}}" > /dev/null 2>&1 || exit 1
 
   server:store:start:
     desc: Start local OCI registry server for storage

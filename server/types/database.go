@@ -24,9 +24,6 @@ type DatabaseAPI interface {
 	// NameVerificationDatabaseAPI handles management of name verifications.
 	NameVerificationDatabaseAPI
 
-	// SignatureVerificationDatabaseAPI handles caching of signature verification results.
-	SignatureVerificationDatabaseAPI
-
 	// IsReady checks if the database connection is ready to serve traffic.
 	IsReady(context.Context) bool
 }
@@ -113,23 +110,4 @@ type NameVerificationDatabaseAPI interface {
 	// GetRecordsNeedingVerification retrieves signed records with verifiable names
 	// that either don't have a verification or have an expired verification.
 	GetRecordsNeedingVerification(ttl time.Duration) ([]Record, error)
-}
-
-// SignatureVerificationDatabaseAPI handles caching of signature verification results.
-// Each signature on a record is cached individually, keyed by record CID + signature digest.
-type SignatureVerificationDatabaseAPI interface {
-	// CreateSignatureVerification creates a new signature verification cache entry.
-	CreateSignatureVerification(input SignatureVerificationInput) error
-
-	// GetSignatureVerification retrieves a cached verification by record CID and signature digest.
-	GetSignatureVerification(recordCID, signatureDigest string) (SignatureVerificationObject, error)
-
-	// GetSignatureVerificationsByRecord retrieves all cached verifications for a record.
-	GetSignatureVerificationsByRecord(recordCID string) ([]SignatureVerificationObject, error)
-
-	// DeleteSignatureVerification deletes a cached verification by record CID and signature digest.
-	DeleteSignatureVerification(recordCID, signatureDigest string) error
-
-	// DeleteSignatureVerificationsByRecord deletes all cached verifications for a record.
-	DeleteSignatureVerificationsByRecord(recordCID string) error
 }

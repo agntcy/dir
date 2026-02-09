@@ -25,8 +25,7 @@ const (
 )
 
 // Signature is the signing data associated with a Record.
-// Multiple signatures can be associated with a single Record,
-// ie 1 record : N record signatures.
+// Multiple signatures can be associated with a single Record.
 //
 // Storage and management of signatures is provided via
 // StoreService as a RecordReferrer object.

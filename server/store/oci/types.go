@@ -11,10 +11,10 @@ import (
 // These are mapped from proto full names at the server boundary.
 const (
 	// PublicKeyArtifactMediaType defines the internal OCI media type for public key blobs.
-	PublicKeyArtifactMediaType = "application/vnd.agntcy.dir.publickey.v1+pem"
+	PublicKeyArtifactMediaType = "application/vnd.agntcy.dir.sign.publickey.v1+pem"
 
 	// SignatureArtifactType defines the internal OCI media type for signature layers.
-	SignatureArtifactType = "application/vnd.dev.cosign.simplesigning.v1+json"
+	SignatureArtifactType = "application/vnd.agntcy.dir.sign.signature.v1+json"
 
 	// DefaultReferrerArtifactMediaType defines the default internal OCI media type for referrer blobs.
 	DefaultReferrerArtifactMediaType = "application/vnd.agntcy.dir.referrer.v1+json"
