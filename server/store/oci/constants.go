@@ -26,29 +26,11 @@ const (
 	MetadataKeyCreatedAt     = "created-at"
 	MetadataKeyAuthors       = "authors"
 
-	// Capability Discovery (simple keys).
-	MetadataKeySkills       = "skills"
-	MetadataKeyLocatorTypes = "locator-types"
-	MetadataKeyModuleNames  = "module-names"
-
-	// Security (simple keys).
-	MetadataKeySigned        = "signed"
-	MetadataKeySignatureAlgo = "signature-algorithm"
-	MetadataKeySignedAt      = "signed-at"
-
 	// Versioning (simple keys).
 	MetadataKeyPreviousCid = "previous-cid"
 
-	// Team-based (simple keys).
-	MetadataKeyTeam         = "team"
-	MetadataKeyOrganization = "organization"
-	MetadataKeyProject      = "project"
-
 	// Count metadata (simple keys).
-	MetadataKeyAuthorsCount      = "authors-count"
-	MetadataKeySkillsCount       = "skills-count"
-	MetadataKeyLocatorTypesCount = "locator-types-count"
-	MetadataKeyModuleCount       = "module-names-count"
+	MetadataKeyAuthorsCount = "authors-count"
 
 	// Derived from MetadataKey constants to ensure consistency.
 
@@ -63,16 +45,6 @@ const (
 	ManifestKeySchemaVersion = manifestDirObjectKeyPrefix + "/" + MetadataKeySchemaVersion
 	ManifestKeyCreatedAt     = manifestDirObjectKeyPrefix + "/" + MetadataKeyCreatedAt
 	ManifestKeyAuthors       = manifestDirObjectKeyPrefix + "/" + MetadataKeyAuthors
-
-	// Capability Discovery (derived from MetadataKey constants).
-	ManifestKeySkills       = manifestDirObjectKeyPrefix + "/" + MetadataKeySkills
-	ManifestKeyLocatorTypes = manifestDirObjectKeyPrefix + "/" + MetadataKeyLocatorTypes
-	ManifestKeyModuleNames  = manifestDirObjectKeyPrefix + "/" + MetadataKeyModuleNames
-
-	// Security & Integrity (mixed: some derived, some standalone).
-	ManifestKeySigned        = manifestDirObjectKeyPrefix + "/" + MetadataKeySigned
-	ManifestKeySignatureAlgo = manifestDirObjectKeyPrefix + "/" + MetadataKeySignatureAlgo
-	ManifestKeySignedAt      = manifestDirObjectKeyPrefix + "/" + MetadataKeySignedAt
 
 	// Versioning & Linking (standalone - no simple key equivalents).
 	ManifestKeyPreviousCid = manifestDirObjectKeyPrefix + "/" + MetadataKeyPreviousCid

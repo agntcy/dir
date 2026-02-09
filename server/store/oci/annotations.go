@@ -58,50 +58,6 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 		annotations[ManifestKeyAuthors] = strings.Join(authors, ",")
 	}
 
-	// Capability discovery - extract skill names
-	if skills := recordData.GetSkills(); len(skills) > 0 {
-		skillNames := make([]string, len(skills))
-		for i, skill := range skills {
-			skillNames[i] = skill.GetName()
-		}
-
-		annotations[ManifestKeySkills] = strings.Join(skillNames, ",")
-	}
-
-	// Extract locator types
-	if locators := recordData.GetLocators(); len(locators) > 0 {
-		locatorTypes := make([]string, len(locators))
-		for i, locator := range locators {
-			locatorTypes[i] = locator.GetType()
-		}
-
-		annotations[ManifestKeyLocatorTypes] = strings.Join(locatorTypes, ",")
-	}
-
-	// Extract module names
-	if modules := recordData.GetModules(); len(modules) > 0 {
-		moduleNames := make([]string, len(modules))
-		for i, module := range modules {
-			moduleNames[i] = module.GetName()
-		}
-
-		annotations[ManifestKeyModuleNames] = strings.Join(moduleNames, ",")
-	}
-
-	// Security metadata
-	if signature := recordData.GetSignature(); signature != nil {
-		annotations[ManifestKeySigned] = "true"
-		if algorithm := signature.GetAlgorithm(); algorithm != "" {
-			annotations[ManifestKeySignatureAlgo] = algorithm
-		}
-
-		if signedAt := signature.GetSignedAt(); signedAt != "" {
-			annotations[ManifestKeySignedAt] = signedAt
-		}
-	} else {
-		annotations[ManifestKeySigned] = "false"
-	}
-
 	// Versioning (v1 specific)
 	if previousCid := recordData.GetPreviousRecordCid(); previousCid != "" {
 		annotations[ManifestKeyPreviousCid] = previousCid
@@ -166,40 +122,6 @@ func parseManifestAnnotations(annotations map[string]string) *corev1.RecordMeta 
 		// Also provide parsed count for quick stats
 		authorList := parseCommaSeparated(authors)
 		recordMeta.Annotations[MetadataKeyAuthorsCount] = strconv.Itoa(len(authorList))
-	}
-
-	if skills := annotations[ManifestKeySkills]; skills != "" {
-		recordMeta.Annotations[MetadataKeySkills] = skills // comma-separated
-		skillList := parseCommaSeparated(skills)
-		recordMeta.Annotations[MetadataKeySkillsCount] = strconv.Itoa(len(skillList))
-	}
-
-	if locatorTypes := annotations[ManifestKeyLocatorTypes]; locatorTypes != "" {
-		recordMeta.Annotations[MetadataKeyLocatorTypes] = locatorTypes // comma-separated
-		locatorList := parseCommaSeparated(locatorTypes)
-		recordMeta.Annotations[MetadataKeyLocatorTypesCount] = strconv.Itoa(len(locatorList))
-	}
-
-	if moduleNames := annotations[ManifestKeyModuleNames]; moduleNames != "" {
-		recordMeta.Annotations[MetadataKeyModuleNames] = moduleNames // comma-separated
-		moduleList := parseCommaSeparated(moduleNames)
-		recordMeta.Annotations[MetadataKeyModuleCount] = strconv.Itoa(len(moduleList))
-	}
-
-	// Security information (structured and easily accessible)
-	//nolint:nestif // Nested structure needed for conditional signature metadata extraction
-	if signedStr := annotations[ManifestKeySigned]; signedStr != "" {
-		recordMeta.Annotations[MetadataKeySigned] = signedStr
-
-		if signedStr == "true" {
-			if algorithm := annotations[ManifestKeySignatureAlgo]; algorithm != "" {
-				recordMeta.Annotations[MetadataKeySignatureAlgo] = algorithm
-			}
-
-			if signedAt := annotations[ManifestKeySignedAt]; signedAt != "" {
-				recordMeta.Annotations[MetadataKeySignedAt] = signedAt
-			}
-		}
 	}
 
 	// Versioning information
