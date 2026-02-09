@@ -5,6 +5,8 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -82,12 +84,29 @@ func (c *Client) SignWithOIDC(ctx context.Context, req *signv1.SignRequest) (*si
 		return nil, fmt.Errorf("failed to sign with OIDC: %w", err)
 	}
 
-	signatureObj := &signv1.Signature{
-		Signature: result.Signature,
-		Annotations: map[string]string{
-			"payload": string(payloadBytes),
-		},
+	// Build annotations with OIDC metadata
+	annotations := make(map[string]string)
+	if result.Issuer != "" {
+		annotations["oidc.issuer"] = result.Issuer
 	}
+	if result.Identity != "" {
+		annotations["oidc.identity"] = result.Identity
+	}
+
+	signatureObj := &signv1.Signature{
+		Signature:     result.Signature,
+		Annotations:   annotations,
+		Certificate:   result.Certificate,
+		ContentType:   "application/vnd.dev.sigstore.bundle.v0.3+json",
+		ContentBundle: base64.StdEncoding.EncodeToString([]byte(result.BundleJSON)),
+	}
+
+	// convert to JSON and print for debugging
+	signatureJSON, err := json.MarshalIndent(signatureObj, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal signature object to JSON: %w", err)
+	}
+	fmt.Printf("Generated Signature Object:\n%s\n", string(signatureJSON))
 
 	// Push signature and public key to store
 	err = c.pushReferrersToStore(ctx, req.GetRecordRef().GetCid(), signatureObj, result.PublicKey)

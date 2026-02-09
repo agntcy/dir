@@ -273,7 +273,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	}
 
 	// Create signing service
-	signingService, err := signing.New(storeAPI, options)
+	signingService, err := signing.New(storeAPI, databaseAPI, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signing service: %w", err)
 	}

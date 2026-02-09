@@ -47,21 +47,22 @@ func (s *signCtrl) Verify(ctx context.Context, req *signv1.VerifyRequest) (*sign
 
 	signLogger.Debug("Attempting signature verification", "recordCID", recordCID)
 
-	verified, metadata, err := s.signing.Verify(ctx, recordCID)
+	result, err := s.signing.Verify(ctx, recordCID, req.GetOptions())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "signature verification failed: %v", err)
 	}
 
-	signLogger.Debug("Signature verification completed", "recordCID", recordCID, "verified", verified)
+	signLogger.Debug("Signature verification completed", "recordCID", recordCID, "verified", result.Success)
 
-	var errMsg string
-	if !verified {
-		errMsg = "Signature verification failed"
+	var errMsg *string
+	if result.ErrorMessage != "" {
+		errMsg = &result.ErrorMessage
 	}
 
 	return &signv1.VerifyResponse{
-		Success:        verified,
-		ErrorMessage:   &errMsg,
-		SignerMetadata: metadata, // Pass signer metadata to response
+		Success:        result.Success,
+		ErrorMessage:   errMsg,
+		SignerMetadata: result.LegacyMetadata,
+		Signers:        result.Signers,
 	}, nil
 }

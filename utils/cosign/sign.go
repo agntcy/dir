@@ -20,16 +20,17 @@ import (
 	ociremote "github.com/sigstore/cosign/v3/pkg/oci/remote"
 	"github.com/sigstore/cosign/v3/pkg/oci/static"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
+	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/sign"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 )
 
 const (
-	DefaultFulcioURL       = "https://fulcio.sigstage.dev"
-	DefaultRekorURL        = "https://rekor.sigstage.dev"
-	DefaultTimestampURL    = "https://timestamp.sigstage.dev/api/v1/timestamp"
-	DefaultOIDCProviderURL = "https://oauth2.sigstage.dev/auth"
+	DefaultFulcioURL       = "https://fulcio.sigstore.dev"
+	DefaultRekorURL        = "https://rekor.sigstore.dev"
+	DefaultTimestampURL    = "https://timestamp.sigstore.dev/api/v1/timestamp"
+	DefaultOIDCProviderURL = "https://oauth2.sigstore.dev/auth"
 	DefaultOIDCClientID    = "sigstore"
 
 	DefaultFulcioTimeout             = 30 * time.Second
@@ -58,8 +59,12 @@ type SignBlobOIDCOptions struct {
 
 // SignBlobOIDCResult contains the result of OIDC blob signing.
 type SignBlobOIDCResult struct {
-	Signature string
-	PublicKey string
+	Signature   string
+	PublicKey   string
+	BundleJSON  string // Full Sigstore bundle in JSON format
+	Certificate string // PEM-encoded signing certificate
+	Issuer      string // OIDC issuer from certificate
+	Identity    string // OIDC identity/subject from certificate
 }
 
 // SignBlobWithOIDC signs a blob using OIDC authentication.
@@ -183,10 +188,47 @@ func SignBlobWithOIDC(_ context.Context, opts *SignBlobOIDCOptions) (*SignBlobOI
 		return nil, fmt.Errorf("failed to get public key: %w", err)
 	}
 
-	return &SignBlobOIDCResult{
-		Signature: base64.StdEncoding.EncodeToString(sigBundle.GetMessageSignature().GetSignature()),
-		PublicKey: publicKeyPEM,
-	}, nil
+	// Wrap protobundle in bundle.Bundle for proper JSON serialization
+	wrappedBundle, err := bundle.NewBundle(sigBundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to wrap bundle: %w", err)
+	}
+
+	// Marshal bundle to JSON using bundle.Bundle's MarshalJSON which produces correct format
+	bundleJSON, err := wrappedBundle.MarshalJSON()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal bundle to JSON: %w", err)
+	}
+
+	bundleJSONStr := string(bundleJSON)
+
+	// Parse bundle to extract OIDC info and certificate
+	parsedBundle, err := ParseBundle(bundleJSONStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse bundle for OIDC extraction: %w", err)
+	}
+
+	result := &SignBlobOIDCResult{
+		Signature:  base64.StdEncoding.EncodeToString(sigBundle.GetMessageSignature().GetSignature()),
+		PublicKey:  publicKeyPEM,
+		BundleJSON: bundleJSONStr,
+	}
+
+	// Extract OIDC info if available
+	if parsedBundle.OIDCInfo != nil {
+		result.Issuer = parsedBundle.OIDCInfo.Issuer
+		result.Identity = parsedBundle.OIDCInfo.Identity
+	}
+
+	// Extract certificate PEM if available
+	if parsedBundle.Certificate != nil {
+		certPEM, err := parsedBundle.GetCertificatePEM()
+		if err == nil {
+			result.Certificate = certPEM
+		}
+	}
+
+	return result, nil
 }
 
 // SignBlobKeyOptions contains options for key-based blob signing.

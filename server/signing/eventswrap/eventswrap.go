@@ -9,6 +9,7 @@ package eventswrap
 import (
 	"context"
 
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/server/events"
 	"github.com/agntcy/dir/server/types"
 )
@@ -28,15 +29,15 @@ func Wrap(source types.SigningAPI, eventBus *events.SafeEventBus) types.SigningA
 	}
 }
 
-// Verify verifies a record signature and emits a RECORD_VERIFIED event.
-func (s *eventsSigning) Verify(ctx context.Context, recordCID string) (bool, map[string]string, error) {
-	verified, metadata, err := s.source.Verify(ctx, recordCID)
+// Verify verifies record signatures and emits a RECORD_VERIFIED event.
+func (s *eventsSigning) Verify(ctx context.Context, recordCID string, options *signv1.VerifyOptions) (*types.VerifyResult, error) {
+	result, err := s.source.Verify(ctx, recordCID, options)
 	if err != nil {
-		return false, nil, err //nolint:wrapcheck // Transparent wrapper - pass through errors unchanged
+		return nil, err //nolint:wrapcheck // Transparent wrapper - pass through errors unchanged
 	}
 
 	// Emit event after verification
-	s.eventBus.RecordVerified(recordCID, verified)
+	s.eventBus.RecordVerified(recordCID, result.Success)
 
-	return verified, metadata, nil
+	return result, nil
 }

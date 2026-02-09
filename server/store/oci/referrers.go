@@ -56,8 +56,9 @@ func (s *store) PushReferrer(ctx context.Context, recordCID string, referrer *co
 	// Route based on referrer type
 	switch referrer.GetType() {
 	case corev1.SignatureReferrerType:
+		return s.pushReferrer(ctx, recordCID, referrer)
 		// Use cosign to attach signatures
-		return s.pushSignatureWithCosign(ctx, recordCID, referrer)
+		// return s.pushSignatureWithCosign(ctx, recordCID, referrer)
 
 	case corev1.PublicKeyReferrerType:
 		// Store as OCI referrer and upload to Zot if applicable
@@ -322,16 +323,16 @@ func (s *store) extractReferrerFromManifest(ctx context.Context, manifestDesc oc
 
 	referrer := &corev1.RecordReferrer{}
 
-	// If the referrer is not a signature, unmarshal the referrer from JSON
-	if blobDesc.MediaType != SignatureArtifactType {
-		// Unmarshal the referrer from JSON
-		if err := protojson.Unmarshal(referrerData, referrer); err != nil {
+	// Try to unmarshal the referrer from JSON (new format with full RecordReferrer)
+	if err := protojson.Unmarshal(referrerData, referrer); err != nil {
+		// If unmarshaling fails and this is a signature, try legacy cosign format
+		if blobDesc.MediaType == SignatureArtifactType {
+			referrer, err = signing.ConvertCosignSignatureToReferrer(blobDesc.Annotations, referrerData)
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to convert cosign signature to referrer: %v", err)
+			}
+		} else {
 			return nil, status.Errorf(codes.Internal, "failed to unmarshal referrer for CID %s: %v", recordCID, err)
-		}
-	} else { // If the referrer is a signature, convert the cosign signature to a referrer
-		referrer, err = signing.ConvertCosignSignatureToReferrer(blobDesc.Annotations, referrerData)
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to convert cosign signature to referrer: %v", err)
 		}
 	}
 

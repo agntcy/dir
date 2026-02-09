@@ -74,6 +74,58 @@ message SignResponse {
 message VerifyRequest {
   // Record reference to be verified
   core.v1.RecordRef record_ref = 1;
+
+  // Optional verification options. If not provided, any valid signature is accepted.
+  VerifyOptions options = 2;
+}
+
+// Verification options - specifies what criteria to verify against
+message VerifyOptions {
+  oneof verification_type {
+    // Verify against a specific public key
+    VerifyWithPublicKey key = 1;
+
+    // Verify against OIDC identity
+    VerifyWithOIDCIdentity oidc = 2;
+  }
+}
+
+// Verify signature against a specific public key
+message VerifyWithPublicKey {
+  // PEM-encoded public key to verify against
+  string public_key = 1;
+}
+
+// Verify signature against OIDC identity
+message VerifyWithOIDCIdentity {
+  // OIDC issuer URL (exact match, e.g., "https://github.com/login/oauth")
+  string issuer = 1;
+
+  // OIDC subject/identity (exact match, e.g., "user@example.com")
+  string identity = 2;
+
+  // Optional trust root configuration for verification.
+  // If not provided, uses Sigstore public good instance.
+  TrustRoot trust_root = 3;
+}
+
+// Trust root configuration for Sigstore verification
+message TrustRoot {
+  // Fulcio CA root certificate (PEM-encoded).
+  // If not provided, uses Sigstore public good Fulcio root.
+  optional string fulcio_root_pem = 1;
+
+  // Rekor public key (PEM-encoded).
+  // If not provided, uses Sigstore public good Rekor key.
+  optional string rekor_public_key_pem = 2;
+
+  // Timestamp authority root certificates (PEM-encoded).
+  // If not provided, uses Sigstore public good TSA roots.
+  repeated string timestamp_authority_roots_pem = 3;
+
+  // Certificate Transparency log public keys (PEM-encoded).
+  // If not provided, uses Sigstore public good CT log keys.
+  repeated string ct_log_public_keys_pem = 4;
 }
 
 message VerifyResponse {
@@ -83,11 +135,44 @@ message VerifyResponse {
   // Optional error message if verification failed
   optional string error_message = 2;
 
-  // Metadata about the signer
+  // Metadata about the signer (deprecated, use signers instead)
   // Common keys:
-  // - "provider": "zot" or "key"
-  // - "author": Identity of the signer (Zot provider only)
-  // - "tool": Tool used for signing (Zot provider only)
+  // - "provider": "oidc" or "key"
+  // - "oidc.issuer": OIDC issuer URL (OIDC provider only)
+  // - "oidc.identity": OIDC identity/subject (OIDC provider only)
   // - "public_key": Public key used for verification (Key provider only)
   map<string, string> signer_metadata = 3;
+
+  // List of all signers that signed the record
+  // Each entry represents one valid signature on the record
+  repeated SignerInfo signers = 4;
+}
+
+// Structured information about who signed the record
+message SignerInfo {
+  oneof signer_type {
+    // Key-based signer information
+    KeySignerInfo key = 1;
+
+    // OIDC-based signer information
+    OIDCSignerInfo oidc = 2;
+  }
+}
+
+// Information about a key-based signer
+message KeySignerInfo {
+  // Public key used for verification (PEM-encoded)
+  string public_key = 1;
+
+  // Key algorithm (e.g., "ECDSA-P256", "Ed25519", "RSA")
+  string algorithm = 2;
+}
+
+// Information about an OIDC-based signer
+message OIDCSignerInfo {
+  // OIDC issuer URL (e.g., "https://github.com/login/oauth")
+  string issuer = 1;
+
+  // OIDC subject/identity (e.g., "user@example.com")
+  string identity = 2;
 }

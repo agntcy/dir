@@ -191,6 +191,13 @@ export declare type VerifyRequest = Message<"agntcy.dir.sign.v1.VerifyRequest"> 
    * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
    */
   recordRef?: RecordRef;
+
+  /**
+   * Optional verification options. If not provided, any valid signature is accepted.
+   *
+   * @generated from field: agntcy.dir.sign.v1.VerifyOptions options = 2;
+   */
+  options?: VerifyOptions;
 };
 
 /**
@@ -198,6 +205,140 @@ export declare type VerifyRequest = Message<"agntcy.dir.sign.v1.VerifyRequest"> 
  * Use `create(VerifyRequestSchema)` to create a new message.
  */
 export declare const VerifyRequestSchema: GenMessage<VerifyRequest>;
+
+/**
+ * Verification options - specifies what criteria to verify against
+ *
+ * @generated from message agntcy.dir.sign.v1.VerifyOptions
+ */
+export declare type VerifyOptions = Message<"agntcy.dir.sign.v1.VerifyOptions"> & {
+  /**
+   * @generated from oneof agntcy.dir.sign.v1.VerifyOptions.verification_type
+   */
+  verificationType: {
+    /**
+     * Verify against a specific public key
+     *
+     * @generated from field: agntcy.dir.sign.v1.VerifyWithPublicKey key = 1;
+     */
+    value: VerifyWithPublicKey;
+    case: "key";
+  } | {
+    /**
+     * Verify against OIDC identity
+     *
+     * @generated from field: agntcy.dir.sign.v1.VerifyWithOIDCIdentity oidc = 2;
+     */
+    value: VerifyWithOIDCIdentity;
+    case: "oidc";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyOptions.
+ * Use `create(VerifyOptionsSchema)` to create a new message.
+ */
+export declare const VerifyOptionsSchema: GenMessage<VerifyOptions>;
+
+/**
+ * Verify signature against a specific public key
+ *
+ * @generated from message agntcy.dir.sign.v1.VerifyWithPublicKey
+ */
+export declare type VerifyWithPublicKey = Message<"agntcy.dir.sign.v1.VerifyWithPublicKey"> & {
+  /**
+   * PEM-encoded public key to verify against
+   *
+   * @generated from field: string public_key = 1;
+   */
+  publicKey: string;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyWithPublicKey.
+ * Use `create(VerifyWithPublicKeySchema)` to create a new message.
+ */
+export declare const VerifyWithPublicKeySchema: GenMessage<VerifyWithPublicKey>;
+
+/**
+ * Verify signature against OIDC identity
+ *
+ * @generated from message agntcy.dir.sign.v1.VerifyWithOIDCIdentity
+ */
+export declare type VerifyWithOIDCIdentity = Message<"agntcy.dir.sign.v1.VerifyWithOIDCIdentity"> & {
+  /**
+   * OIDC issuer URL (exact match, e.g., "https://github.com/login/oauth")
+   *
+   * @generated from field: string issuer = 1;
+   */
+  issuer: string;
+
+  /**
+   * OIDC subject/identity (exact match, e.g., "user@example.com")
+   *
+   * @generated from field: string identity = 2;
+   */
+  identity: string;
+
+  /**
+   * Optional trust root configuration for verification.
+   * If not provided, uses Sigstore public good instance.
+   *
+   * @generated from field: agntcy.dir.sign.v1.TrustRoot trust_root = 3;
+   */
+  trustRoot?: TrustRoot;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyWithOIDCIdentity.
+ * Use `create(VerifyWithOIDCIdentitySchema)` to create a new message.
+ */
+export declare const VerifyWithOIDCIdentitySchema: GenMessage<VerifyWithOIDCIdentity>;
+
+/**
+ * Trust root configuration for Sigstore verification
+ *
+ * @generated from message agntcy.dir.sign.v1.TrustRoot
+ */
+export declare type TrustRoot = Message<"agntcy.dir.sign.v1.TrustRoot"> & {
+  /**
+   * Fulcio CA root certificate (PEM-encoded).
+   * If not provided, uses Sigstore public good Fulcio root.
+   *
+   * @generated from field: optional string fulcio_root_pem = 1;
+   */
+  fulcioRootPem?: string;
+
+  /**
+   * Rekor public key (PEM-encoded).
+   * If not provided, uses Sigstore public good Rekor key.
+   *
+   * @generated from field: optional string rekor_public_key_pem = 2;
+   */
+  rekorPublicKeyPem?: string;
+
+  /**
+   * Timestamp authority root certificates (PEM-encoded).
+   * If not provided, uses Sigstore public good TSA roots.
+   *
+   * @generated from field: repeated string timestamp_authority_roots_pem = 3;
+   */
+  timestampAuthorityRootsPem: string[];
+
+  /**
+   * Certificate Transparency log public keys (PEM-encoded).
+   * If not provided, uses Sigstore public good CT log keys.
+   *
+   * @generated from field: repeated string ct_log_public_keys_pem = 4;
+   */
+  ctLogPublicKeysPem: string[];
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.TrustRoot.
+ * Use `create(TrustRootSchema)` to create a new message.
+ */
+export declare const TrustRootSchema: GenMessage<TrustRoot>;
 
 /**
  * @generated from message agntcy.dir.sign.v1.VerifyResponse
@@ -218,16 +359,24 @@ export declare type VerifyResponse = Message<"agntcy.dir.sign.v1.VerifyResponse"
   errorMessage?: string;
 
   /**
-   * Metadata about the signer
+   * Metadata about the signer (deprecated, use signers instead)
    * Common keys:
-   * - "provider": "zot" or "key"
-   * - "author": Identity of the signer (Zot provider only)
-   * - "tool": Tool used for signing (Zot provider only)
+   * - "provider": "oidc" or "key"
+   * - "oidc.issuer": OIDC issuer URL (OIDC provider only)
+   * - "oidc.identity": OIDC identity/subject (OIDC provider only)
    * - "public_key": Public key used for verification (Key provider only)
    *
    * @generated from field: map<string, string> signer_metadata = 3;
    */
   signerMetadata: { [key: string]: string };
+
+  /**
+   * List of all signers that signed the record
+   * Each entry represents one valid signature on the record
+   *
+   * @generated from field: repeated agntcy.dir.sign.v1.SignerInfo signers = 4;
+   */
+  signers: SignerInfo[];
 };
 
 /**
@@ -235,6 +384,94 @@ export declare type VerifyResponse = Message<"agntcy.dir.sign.v1.VerifyResponse"
  * Use `create(VerifyResponseSchema)` to create a new message.
  */
 export declare const VerifyResponseSchema: GenMessage<VerifyResponse>;
+
+/**
+ * Structured information about who signed the record
+ *
+ * @generated from message agntcy.dir.sign.v1.SignerInfo
+ */
+export declare type SignerInfo = Message<"agntcy.dir.sign.v1.SignerInfo"> & {
+  /**
+   * @generated from oneof agntcy.dir.sign.v1.SignerInfo.signer_type
+   */
+  signerType: {
+    /**
+     * Key-based signer information
+     *
+     * @generated from field: agntcy.dir.sign.v1.KeySignerInfo key = 1;
+     */
+    value: KeySignerInfo;
+    case: "key";
+  } | {
+    /**
+     * OIDC-based signer information
+     *
+     * @generated from field: agntcy.dir.sign.v1.OIDCSignerInfo oidc = 2;
+     */
+    value: OIDCSignerInfo;
+    case: "oidc";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignerInfo.
+ * Use `create(SignerInfoSchema)` to create a new message.
+ */
+export declare const SignerInfoSchema: GenMessage<SignerInfo>;
+
+/**
+ * Information about a key-based signer
+ *
+ * @generated from message agntcy.dir.sign.v1.KeySignerInfo
+ */
+export declare type KeySignerInfo = Message<"agntcy.dir.sign.v1.KeySignerInfo"> & {
+  /**
+   * Public key used for verification (PEM-encoded)
+   *
+   * @generated from field: string public_key = 1;
+   */
+  publicKey: string;
+
+  /**
+   * Key algorithm (e.g., "ECDSA-P256", "Ed25519", "RSA")
+   *
+   * @generated from field: string algorithm = 2;
+   */
+  algorithm: string;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.KeySignerInfo.
+ * Use `create(KeySignerInfoSchema)` to create a new message.
+ */
+export declare const KeySignerInfoSchema: GenMessage<KeySignerInfo>;
+
+/**
+ * Information about an OIDC-based signer
+ *
+ * @generated from message agntcy.dir.sign.v1.OIDCSignerInfo
+ */
+export declare type OIDCSignerInfo = Message<"agntcy.dir.sign.v1.OIDCSignerInfo"> & {
+  /**
+   * OIDC issuer URL (e.g., "https://github.com/login/oauth")
+   *
+   * @generated from field: string issuer = 1;
+   */
+  issuer: string;
+
+  /**
+   * OIDC subject/identity (e.g., "user@example.com")
+   *
+   * @generated from field: string identity = 2;
+   */
+  identity: string;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.OIDCSignerInfo.
+ * Use `create(OIDCSignerInfoSchema)` to create a new message.
+ */
+export declare const OIDCSignerInfoSchema: GenMessage<OIDCSignerInfo>;
 
 /**
  * SignService provides methods to sign and verify records.

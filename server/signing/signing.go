@@ -12,9 +12,7 @@ import (
 	"github.com/agntcy/dir/server/signing/eventswrap"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/agntcy/dir/utils/zot"
 )
 
 var logger = logging.Logger("signing")
@@ -23,11 +21,11 @@ var logger = logging.Logger("signing")
 type sign struct {
 	store     types.ReferrerStoreAPI
 	ociConfig *ociconfig.Config
-	zotConfig *zot.VerifyConfig
+	db        types.SignatureVerificationDatabaseAPI
 }
 
 // New creates a new signing service.
-func New(storeAPI types.StoreAPI, opts types.APIOptions) (types.SigningAPI, error) {
+func New(storeAPI types.StoreAPI, db types.SignatureVerificationDatabaseAPI, opts types.APIOptions) (types.SigningAPI, error) {
 	// Check if store supports referrers (required for signing service)
 	referrerStore, ok := storeAPI.(types.ReferrerStoreAPI)
 	if !ok {
@@ -39,20 +37,7 @@ func New(storeAPI types.StoreAPI, opts types.APIOptions) (types.SigningAPI, erro
 	s := &sign{
 		store:     referrerStore,
 		ociConfig: &cfg.Store.OCI,
-	}
-
-	// Configure Zot verification if using Zot registry
-	if cfg.Store.OCI.GetType() == registry.RegistryTypeZot {
-		s.zotConfig = &zot.VerifyConfig{
-			RegistryAddress: cfg.Store.OCI.RegistryAddress,
-			RepositoryName:  cfg.Store.OCI.RepositoryName,
-			Username:        cfg.Store.OCI.Username,
-			Password:        cfg.Store.OCI.Password,
-			AccessToken:     cfg.Store.OCI.AccessToken,
-			Insecure:        cfg.Store.OCI.Insecure,
-		}
-
-		logger.Debug("Signing service configured with Zot verification")
+		db:        db,
 	}
 
 	logger.Info("Signing service created")
