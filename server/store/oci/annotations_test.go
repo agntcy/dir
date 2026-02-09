@@ -11,57 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseCommaSeparated(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected []string
-	}{
-		{
-			name:     "Empty string",
-			input:    "",
-			expected: nil,
-		},
-		{
-			name:     "Single value",
-			input:    "value1",
-			expected: []string{"value1"},
-		},
-		{
-			name:     "Multiple values",
-			input:    "value1,value2,value3",
-			expected: []string{"value1", "value2", "value3"},
-		},
-		{
-			name:     "Values with spaces",
-			input:    "value1, value2 , value3",
-			expected: []string{"value1", "value2", "value3"},
-		},
-		{
-			name:     "Empty values filtered out",
-			input:    "value1,,value2, ,value3",
-			expected: []string{"value1", "value2", "value3"},
-		},
-		{
-			name:     "Only commas and spaces",
-			input:    ", , ,",
-			expected: nil,
-		},
-		{
-			name:     "Trailing and leading commas",
-			input:    ",value1,value2,",
-			expected: []string{"value1", "value2"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseCommaSeparated(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestExtractManifestAnnotations(t *testing.T) {
 	// NOTE: This test covers annotation extraction for different OASF versions
 	tests := []struct {
@@ -82,20 +31,16 @@ func TestExtractManifestAnnotations(t *testing.T) {
 			record: corev1.New(&typesv1alpha1.Record{
 				Name:          "test-agent",
 				Version:       "1.0.0",
-				Description:   "Test agent description",
 				SchemaVersion: "0.7.0",
 				CreatedAt:     "2023-01-01T00:00:00Z",
-				Authors:       []string{"author1", "author2"},
 			}),
 			contains: map[string]string{
 				manifestDirObjectTypeKey: "record",
 				ManifestKeyOASFVersion:   "0.7.0",
 				ManifestKeyName:          "test-agent",
 				ManifestKeyVersion:       "1.0.0",
-				ManifestKeyDescription:   "Test agent description",
 				ManifestKeySchemaVersion: "0.7.0",
 				ManifestKeyCreatedAt:     "2023-01-01T00:00:00Z",
-				ManifestKeyAuthors:       "author1,author2",
 			},
 		},
 		{
@@ -122,14 +67,12 @@ func TestExtractManifestAnnotations(t *testing.T) {
 				Name:              "test-record-v2",
 				Version:           "2.0.0",
 				SchemaVersion:     "0.7.0",
-				Description:       "Test record v2 description",
 				PreviousRecordCid: stringPtr("QmPreviousCID123"),
 			}),
 			contains: map[string]string{
 				ManifestKeyOASFVersion: "0.7.0",
 				ManifestKeyName:        "test-record-v2",
 				ManifestKeyVersion:     "2.0.0",
-				ManifestKeyDescription: "Test record v2 description",
 				ManifestKeyPreviousCid: "QmPreviousCID123",
 			},
 		},
@@ -179,7 +122,6 @@ func TestParseManifestAnnotations(t *testing.T) {
 				ManifestKeyCreatedAt:     "2023-01-01T00:00:00Z",
 				ManifestKeyName:          "test-agent",
 				ManifestKeyVersion:       "1.0.0",
-				ManifestKeyDescription:   "Test description",
 				ManifestKeyOASFVersion:   "v1",
 			},
 			expected: &corev1.RecordMeta{
@@ -188,23 +130,7 @@ func TestParseManifestAnnotations(t *testing.T) {
 				Annotations: map[string]string{
 					MetadataKeyName:        "test-agent",
 					MetadataKeyVersion:     "1.0.0",
-					MetadataKeyDescription: "Test description",
 					MetadataKeyOASFVersion: "v1",
-				},
-			},
-		},
-		{
-			name: "Record with authors and counts",
-			annotations: map[string]string{
-				ManifestKeyName:    "author-agent",
-				ManifestKeyAuthors: "author1,author2",
-			},
-			expected: &corev1.RecordMeta{
-				SchemaVersion: FallbackSchemaVersion,
-				Annotations: map[string]string{
-					MetadataKeyName:         "author-agent",
-					MetadataKeyAuthors:      "author1,author2",
-					MetadataKeyAuthorsCount: "2",
 				},
 			},
 		},
@@ -252,12 +178,10 @@ func TestParseManifestAnnotations(t *testing.T) {
 				assert.Equal(t, expectedValue, result.GetAnnotations()[key], "Annotation key %s should have correct value", key)
 			}
 
-			// Ensure no unexpected annotations (allow for additional count fields)
+			// Ensure no unexpected annotations
 			for key := range result.GetAnnotations() {
-				if _, expected := tt.expected.GetAnnotations()[key]; !expected {
-					// Allow count fields that are auto-generated
-					assert.Equal(t, MetadataKeyAuthorsCount, key, "Unexpected annotation key: %s", key)
-				}
+				_, expected := tt.expected.GetAnnotations()[key]
+				assert.True(t, expected, "Unexpected annotation key: %s", key)
 			}
 		})
 	}
@@ -292,10 +216,8 @@ func TestRoundTripConversion(t *testing.T) {
 	originalRecord := corev1.New(&typesv1alpha1.Record{
 		Name:          "roundtrip-agent",
 		Version:       "1.0.0",
-		Description:   "Test roundtrip conversion",
 		SchemaVersion: "0.7.0",
 		CreatedAt:     "2023-01-01T00:00:00Z",
-		Authors:       []string{"author1", "author2"},
 		Annotations: map[string]string{
 			"custom": "value",
 		},
@@ -312,9 +234,6 @@ func TestRoundTripConversion(t *testing.T) {
 	assert.Equal(t, "2023-01-01T00:00:00Z", recordMeta.GetCreatedAt())
 	assert.Equal(t, "roundtrip-agent", recordMeta.GetAnnotations()[MetadataKeyName])
 	assert.Equal(t, "1.0.0", recordMeta.GetAnnotations()[MetadataKeyVersion])
-	assert.Equal(t, "Test roundtrip conversion", recordMeta.GetAnnotations()[MetadataKeyDescription])
 	assert.Equal(t, "0.7.0", recordMeta.GetAnnotations()[MetadataKeyOASFVersion])
-	assert.Equal(t, "author1,author2", recordMeta.GetAnnotations()[MetadataKeyAuthors])
-	assert.Equal(t, "2", recordMeta.GetAnnotations()[MetadataKeyAuthorsCount])
 	assert.Equal(t, "value", recordMeta.GetAnnotations()["custom"])
 }

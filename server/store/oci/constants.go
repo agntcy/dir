@@ -17,34 +17,27 @@ const (
 	// Core Identity (simple keys).
 	MetadataKeyName        = "name"
 	MetadataKeyVersion     = "version"
-	MetadataKeyDescription = "description"
 	MetadataKeyOASFVersion = "oasf-version"
 	MetadataKeyCid         = "cid"
 
 	// Lifecycle (simple keys).
 	MetadataKeySchemaVersion = "schema-version"
 	MetadataKeyCreatedAt     = "created-at"
-	MetadataKeyAuthors       = "authors"
 
 	// Versioning (simple keys).
 	MetadataKeyPreviousCid = "previous-cid"
-
-	// Count metadata (simple keys).
-	MetadataKeyAuthorsCount = "authors-count"
 
 	// Derived from MetadataKey constants to ensure consistency.
 
 	// Core Identity (derived from MetadataKey constants).
 	ManifestKeyName        = manifestDirObjectKeyPrefix + "/" + MetadataKeyName
 	ManifestKeyVersion     = manifestDirObjectKeyPrefix + "/" + MetadataKeyVersion
-	ManifestKeyDescription = manifestDirObjectKeyPrefix + "/" + MetadataKeyDescription
 	ManifestKeyOASFVersion = manifestDirObjectKeyPrefix + "/" + MetadataKeyOASFVersion
 	ManifestKeyCid         = manifestDirObjectKeyPrefix + "/" + MetadataKeyCid
 
 	// Lifecycle Metadata (mixed: some derived, some standalone).
 	ManifestKeySchemaVersion = manifestDirObjectKeyPrefix + "/" + MetadataKeySchemaVersion
 	ManifestKeyCreatedAt     = manifestDirObjectKeyPrefix + "/" + MetadataKeyCreatedAt
-	ManifestKeyAuthors       = manifestDirObjectKeyPrefix + "/" + MetadataKeyAuthors
 
 	// Versioning & Linking (standalone - no simple key equivalents).
 	ManifestKeyPreviousCid = manifestDirObjectKeyPrefix + "/" + MetadataKeyPreviousCid

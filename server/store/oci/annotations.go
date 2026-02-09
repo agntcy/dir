@@ -4,7 +4,6 @@
 package oci
 
 import (
-	"strconv"
 	"strings"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
@@ -41,10 +40,6 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 		annotations[ManifestKeyVersion] = version
 	}
 
-	if description := recordData.GetDescription(); description != "" {
-		annotations[ManifestKeyDescription] = description
-	}
-
 	// Lifecycle metadata
 	if schemaVersion := recordData.GetSchemaVersion(); schemaVersion != "" {
 		annotations[ManifestKeySchemaVersion] = schemaVersion
@@ -52,10 +47,6 @@ func extractManifestAnnotations(record *corev1.Record) map[string]string {
 
 	if createdAt := recordData.GetCreatedAt(); createdAt != "" {
 		annotations[ManifestKeyCreatedAt] = createdAt
-	}
-
-	if authors := recordData.GetAuthors(); len(authors) > 0 {
-		annotations[ManifestKeyAuthors] = strings.Join(authors, ",")
 	}
 
 	// Versioning (v1 specific)
@@ -108,20 +99,8 @@ func parseManifestAnnotations(annotations map[string]string) *corev1.RecordMeta 
 		recordMeta.Annotations[MetadataKeyVersion] = version
 	}
 
-	if description := annotations[ManifestKeyDescription]; description != "" {
-		recordMeta.Annotations[MetadataKeyDescription] = description
-	}
-
 	if oasfVersion := annotations[ManifestKeyOASFVersion]; oasfVersion != "" {
 		recordMeta.Annotations[MetadataKeyOASFVersion] = oasfVersion
-	}
-
-	// Structured lists (easily parseable by consumers)
-	if authors := annotations[ManifestKeyAuthors]; authors != "" {
-		recordMeta.Annotations[MetadataKeyAuthors] = authors // comma-separated
-		// Also provide parsed count for quick stats
-		authorList := parseCommaSeparated(authors)
-		recordMeta.Annotations[MetadataKeyAuthorsCount] = strconv.Itoa(len(authorList))
 	}
 
 	// Versioning information
@@ -138,27 +117,4 @@ func parseManifestAnnotations(annotations map[string]string) *corev1.RecordMeta 
 	}
 
 	return recordMeta
-}
-
-// parseCommaSeparated splits comma-separated values and trims whitespace.
-func parseCommaSeparated(value string) []string {
-	if value == "" {
-		return nil
-	}
-
-	parts := strings.Split(value, ",")
-	result := make([]string, 0, len(parts))
-
-	for _, part := range parts {
-		if trimmed := strings.TrimSpace(part); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-
-	// Return nil if result is empty after filtering
-	if len(result) == 0 {
-		return nil
-	}
-
-	return result
 }
