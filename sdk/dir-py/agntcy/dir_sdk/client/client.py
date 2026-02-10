@@ -1252,7 +1252,7 @@ class Client:
             return self._parse_verify_response(result.stdout)
 
         except subprocess.CalledProcessError as e:
-            msg = f"dirctl verification failed with return code {e.returncode}: {e.stdout.decode('utf-8', errors='ignore')}"
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
             raise RuntimeError(msg) from e
         except subprocess.TimeoutExpired as e:
             msg = "dirctl verification timed out"
@@ -1312,7 +1312,7 @@ class Client:
             return self._parse_verify_response(result.stdout)
 
         except subprocess.CalledProcessError as e:
-            msg = f"dirctl verification failed with return code {e.returncode}: {e.stdout.decode('utf-8', errors='ignore')}"
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
             raise RuntimeError(msg) from e
         except subprocess.TimeoutExpired as e:
             msg = "dirctl verification timed out"
@@ -1379,7 +1379,7 @@ class Client:
             return self._parse_verify_response(result.stdout)
 
         except subprocess.CalledProcessError as e:
-            msg = f"dirctl verification failed with return code {e.returncode}: {e.stdout.decode('utf-8', errors='ignore')}"
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
             raise RuntimeError(msg) from e
         except subprocess.TimeoutExpired as e:
             msg = "dirctl verification timed out"
@@ -1506,7 +1506,7 @@ class Client:
             msg = f"Failed to write key file to disk: {e}"
             raise RuntimeError(msg) from e
         except subprocess.CalledProcessError as e:
-            msg = f"dirctl signing failed with return code {e.returncode}: {e.stdout.decode('utf-8', errors='ignore')}"
+            msg = f"dirctl signing failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
             raise RuntimeError(msg) from e
         except subprocess.TimeoutExpired as e:
             msg = "dirctl signing timed out"
@@ -1566,7 +1566,7 @@ class Client:
             )
 
         except subprocess.CalledProcessError as e:
-            msg = f"dirctl signing failed with return code {e.returncode}: {e.stdout.decode('utf-8', errors='ignore')}"
+            msg = f"dirctl signing failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
             raise RuntimeError(msg) from e
         except subprocess.TimeoutExpired as e:
             msg = "dirctl signing timed out"
