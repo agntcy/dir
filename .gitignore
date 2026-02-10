@@ -9,6 +9,7 @@
 
 # Builds
 bin/
+!bin/Taskfile.yml
 
 # Python
 __pycache__/
