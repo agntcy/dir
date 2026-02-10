@@ -31,6 +31,10 @@ includes:
     taskfile: ./gui/Taskfile.yml
     dir: ./gui
     flatten: true
+  mcp:
+    taskfile: ./mcp/Taskfile.yml
+    dir: ./mcp
+    flatten: true
   runtime:
     taskfile: ./runtime/Taskfile.yml
     dir: ./runtime
@@ -140,31 +144,6 @@ tasks:
     cmds:
       - |
         git push --set-upstream origin release/{{.RELEASE_VERSION}} || true
-
-  ##
-  ## MCP Server
-  ##
-  mcp:build:
-    desc: Build the MCP server
-    dir: ./mcp
-    vars:
-      GOOS: "{{ .GOOS | default OS }}"
-      GOARCH: "{{ .GOARCH | default ARCH }}"
-      OUT_BINARY: "{{ .BIN_DIR }}/mcp-server"
-    cmds:
-      - mkdir -p {{ .BIN_DIR }}
-      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
-
-  mcp:build:server:
-    desc: Build the Directory Server binary for local MCP use
-    dir: ./server/cmd
-    vars:
-      GOOS: "{{ .GOOS | default OS }}"
-      GOARCH: "{{ .GOARCH | default ARCH }}"
-      OUT_BINARY: "{{ .BIN_DIR }}/dir-server"
-    cmds:
-      - mkdir -p {{ .BIN_DIR }}
-      - CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -o "{{.OUT_BINARY}}" main.go
 
   ##
   ## Client SDK
