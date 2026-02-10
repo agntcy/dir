@@ -4,6 +4,8 @@
 package utils
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -108,6 +110,20 @@ func CalculateCIDFromData(data []byte) string {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to convert digest to CID")
 
 	return cid
+}
+
+// ValidateCIDAgainstExpectedCID validates that a CID string matches a hardcoded expected CID value from expected_cid_list.json.
+func ValidateCIDAgainstExpectedCID(cidString string, recordData []byte, expectedCIDs []byte) {
+	var expectedCIDsMap map[string]map[string]string
+	err := json.Unmarshal(expectedCIDs, &expectedCIDsMap)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Should be able to unmarshal expected CIDs")
+
+	// Calculate MD5 hash of the record data
+	hash := md5.Sum(recordData)
+	hashString := hex.EncodeToString(hash[:])
+
+	// Validate the returned CID matches the hardcoded expected CID from expected_cid_list.json
+	gomega.Expect(cidString).To(gomega.Equal(expectedCIDsMap[hashString]["expected_cid"]), "CID should match the hardcoded expected CID")
 }
 
 // ValidateCIDPrefix validates that a CID starts with expected prefixes.

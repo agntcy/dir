@@ -141,6 +141,9 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 				// Validate that the returned CID correctly represents the pushed data using canonical marshaling
 				utils.ValidateCIDAgainstData(recordRef.GetCid(), canonicalData)
+
+				// Validate the returned CID is in the hardcoded expected CIDs from expected_cid_list.json
+				utils.ValidateCIDAgainstExpectedCID(recordRef.GetCid(), version.jsonData, testdata.ExpectedCIDs)
 			})
 
 			// Step 2: Pull (depends on push)

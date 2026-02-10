@@ -28,3 +28,6 @@ var ExpectedRecordWarningsV080JSON []byte
 
 //go:embed record_100.json
 var ExpectedRecordV100JSON []byte
+
+//go:embed expected_cid_list.json
+var ExpectedCIDs []byte
