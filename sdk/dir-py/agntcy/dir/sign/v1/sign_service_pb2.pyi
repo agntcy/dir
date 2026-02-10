@@ -59,9 +59,9 @@ class SignWithKey(_message.Message):
     __slots__ = ("private_key", "password")
     PRIVATE_KEY_FIELD_NUMBER: _ClassVar[int]
     PASSWORD_FIELD_NUMBER: _ClassVar[int]
-    private_key: bytes
+    private_key: str
     password: bytes
-    def __init__(self, private_key: _Optional[bytes] = ..., password: _Optional[bytes] = ...) -> None: ...
+    def __init__(self, private_key: _Optional[str] = ..., password: _Optional[bytes] = ...) -> None: ...
 
 class SignWithOIDC(_message.Message):
     __slots__ = ("id_token", "options")
@@ -98,8 +98,8 @@ class VerifyRequestProvider(_message.Message):
 class VerifyWithKey(_message.Message):
     __slots__ = ("public_key",)
     PUBLIC_KEY_FIELD_NUMBER: _ClassVar[int]
-    public_key: bytes
-    def __init__(self, public_key: _Optional[bytes] = ...) -> None: ...
+    public_key: str
+    def __init__(self, public_key: _Optional[str] = ...) -> None: ...
 
 class VerifyWithOIDC(_message.Message):
     __slots__ = ("issuer", "subject", "options")
@@ -144,9 +144,11 @@ class SignerInfoKey(_message.Message):
     def __init__(self, public_key: _Optional[str] = ..., algorithm: _Optional[str] = ...) -> None: ...
 
 class SignerInfoOIDC(_message.Message):
-    __slots__ = ("issuer", "subject")
+    __slots__ = ("issuer", "subject", "certificate_issuer")
     ISSUER_FIELD_NUMBER: _ClassVar[int]
     SUBJECT_FIELD_NUMBER: _ClassVar[int]
+    CERTIFICATE_ISSUER_FIELD_NUMBER: _ClassVar[int]
     issuer: str
     subject: str
-    def __init__(self, issuer: _Optional[str] = ..., subject: _Optional[str] = ...) -> None: ...
+    certificate_issuer: str
+    def __init__(self, issuer: _Optional[str] = ..., subject: _Optional[str] = ..., certificate_issuer: _Optional[str] = ...) -> None: ...

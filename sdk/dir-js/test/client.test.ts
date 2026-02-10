@@ -355,19 +355,19 @@ describe('Client', () => {
       });
 
       // Read configuration data
-      const keyFile = readFileSync('cosign.key');
       const token = shellEnv['OIDC_TOKEN'] || '';
       const providerUrl = shellEnv['OIDC_PROVIDER_URL'] || '';
       const clientId = shellEnv['OIDC_CLIENT_ID'] || 'sigstore';
 
-      // Create signing providers
+      // Create signing providers using file path reference
+      // The CLI will load the key from the file path directly
       const keyRequest = create(models.sign_v1.SignRequestSchema, {
         recordRef: recordRefs[0],
         provider: {
           request: {
             case: 'key',
             value: {
-              privateKey: keyFile,
+              privateKey: 'cosign.key',
               password: Buffer.from(keyPassword, 'utf-8'),
             },
           },

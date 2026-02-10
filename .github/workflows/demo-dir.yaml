@@ -10,11 +10,6 @@ name: Demo - DIR
 on:
   workflow_dispatch:
     inputs:
-      git-ref:
-        required: true
-        type: string
-        default: "main"
-        description: "Git branch, tag, or commit hash to build from"
       network:
         required: true
         type: boolean
@@ -31,8 +26,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          ref: ${{ inputs.git-ref }}
 
       - name: Setup Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
@@ -158,8 +151,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          ref: ${{ inputs.git-ref }}
 
       - name: Setup Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
@@ -176,14 +167,6 @@ jobs:
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
-
-      - name: Get Github OIDC token
-        id: oidc-token
-        run: |
-          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
-          echo "::add-mask::$OIDC_TOKEN"
-          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
 
       - name: Build Docker Images
         run: |
@@ -202,13 +185,21 @@ jobs:
           echo "Pushing record"
           bin/dirctl push e2e/shared/testdata/record_070.json --output raw > digest.txt
 
+      - name: Get Github OIDC token
+        id: oidc-token
+        run: |
+          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+          echo "::add-mask::$OIDC_TOKEN"
+          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
+
       - name: Sign record
         run: |
           echo "Running dir sign command"
           bin/dirctl sign $(cat digest.txt) \
-            --oidc-token ${{ steps.oidc-token.outputs.token }} \
-            --oidc-provider-url "https://token.actions.githubusercontent.com" \
-            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
+            --oidc-token="${{ steps.oidc-token.outputs.token }}" \
+            --oidc-provider-url="https://token.actions.githubusercontent.com" \
+            --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}"
 
       - name: Run verify command
         run: |
@@ -221,8 +212,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          ref: ${{ inputs.git-ref }}
 
       - name: Setup Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0

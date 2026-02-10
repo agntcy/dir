@@ -267,12 +267,10 @@ class TestClient(unittest.TestCase):
         command = (cosign_path, "generate-key-pair")
         subprocess.run(command, check=True, capture_output=True, env=shell_env)
 
-        with open("cosign.key", "rb") as reader:
-            key_file = reader.read()
-
-        # Prepare Key signing request
+        # Prepare Key signing request using file path reference
+        # The CLI will load the key from the file path directly
         key_provider = sign_v1.SignWithKey(
-            private_key=key_file,
+            private_key="cosign.key",
             password=key_password.encode("utf-8"),
         )
 

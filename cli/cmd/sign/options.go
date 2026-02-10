@@ -28,7 +28,18 @@ type Options struct {
 
 func AddSigningFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&opts.Key, "key", "",
-		"Path to the private key file to use for signing (e.g., a Cosign key generated with a GitHub token). Use this option to sign with a self-managed keypair instead of OIDC identity-based signing.")
+		`Private key for signing. Accepts PEM content, file path, URL, or KMS URI.
+Supported formats:
+  - File path: /path/to/cosign.key
+  - HTTP(S) URL: https://example.com/cosign.key
+  - Environment variable: env://COSIGN_PRIVATE_KEY
+  - AWS KMS: awskms://[ENDPOINT]/[ID/ALIAS/ARN]
+  - GCP KMS: gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]
+  - Azure Key Vault: azurekms://[VAULT_NAME][VAULT_URI]/[KEY]
+  - Hashicorp Vault: hashivault://[KEY]
+  - Kubernetes secret: k8s://[NAMESPACE]/[SECRET_NAME]
+  - PKCS11 token: pkcs11:token=...;slot-id=...;object=...
+  - GitLab: gitlab://[PROJECT]`)
 	flags.StringVar(&opts.FulcioURL, "fulcio-url", signv1.DefaultFulcioURL,
 		"Sigstore Fulcio URL")
 	flags.StringVar(&opts.RekorURL, "rekor-url", signv1.DefaultRekorURL,

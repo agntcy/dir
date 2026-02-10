@@ -210,14 +210,27 @@ export declare const SignRequestProviderSchema: GenMessage<SignRequestProvider>;
  */
 export declare type SignWithKey = Message<"agntcy.dir.sign.v1.SignWithKey"> & {
   /**
-   * Private key used for signing
+   * Private key for signing.
+   * Accepts either:
+   * - PEM-encoded private key content (inline)
+   * - Reference to a private key:
+   *   - File path: "/path/to/cosign.key" or "./cosign.key"
+   *   - HTTP(S) URL: "https://example.com/cosign.key"
+   *   - Environment variable: "env://COSIGN_PRIVATE_KEY"
+   *   - AWS KMS: "awskms://[ENDPOINT]/[ID/ALIAS/ARN]"
+   *   - GCP KMS: "gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]"
+   *   - Azure Key Vault: "azurekms://[VAULT_NAME][VAULT_URI]/[KEY]"
+   *   - Hashicorp Vault: "hashivault://[KEY]"
+   *   - Kubernetes secret: "k8s://[NAMESPACE]/[SECRET_NAME]"
+   *   - PKCS11 token: "pkcs11:token=...;slot-id=...;object=..."
+   *   - GitLab: "gitlab://[PROJECT]"
    *
-   * @generated from field: bytes private_key = 1;
+   * @generated from field: string private_key = 1;
    */
-  privateKey: Uint8Array;
+  privateKey: string;
 
   /**
-   * Password to unlock the private key
+   * Password to unlock the private key (if encrypted).
    *
    * @generated from field: optional bytes password = 2;
    */
@@ -346,11 +359,24 @@ export declare const VerifyRequestProviderSchema: GenMessage<VerifyRequestProvid
  */
 export declare type VerifyWithKey = Message<"agntcy.dir.sign.v1.VerifyWithKey"> & {
   /**
-   * PEM-encoded public key to verify against
+   * Public key to verify against.
+   * Accepts either:
+   * - PEM-encoded public key content (inline)
+   * - Reference to a public key:
+   *   - File path: "/path/to/cosign.pub" or "./cosign.pub"
+   *   - HTTP(S) URL: "https://example.com/cosign.pub"
+   *   - Environment variable: "env://COSIGN_PUBLIC_KEY"
+   *   - AWS KMS: "awskms://[ENDPOINT]/[ID/ALIAS/ARN]"
+   *   - GCP KMS: "gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]"
+   *   - Azure Key Vault: "azurekms://[VAULT_NAME][VAULT_URI]/[KEY]"
+   *   - Hashicorp Vault: "hashivault://[KEY]"
+   *   - Kubernetes secret: "k8s://[NAMESPACE]/[SECRET_NAME]"
+   *   - PKCS11 token: "pkcs11:token=...;slot-id=...;object=..."
+   *   - GitLab: "gitlab://[PROJECT]"
    *
-   * @generated from field: bytes public_key = 1;
+   * @generated from field: string public_key = 1;
    */
-  publicKey: Uint8Array;
+  publicKey: string;
 };
 
 /**
@@ -526,6 +552,13 @@ export declare type SignerInfoOIDC = Message<"agntcy.dir.sign.v1.SignerInfoOIDC"
    * @generated from field: string subject = 2;
    */
   subject: string;
+
+  /**
+   * X.509 certificate issuer (e.g., "CN=sigstore-intermediate,O=sigstore.dev")
+   *
+   * @generated from field: string certificate_issuer = 3;
+   */
+  certificateIssuer: string;
 };
 
 /**

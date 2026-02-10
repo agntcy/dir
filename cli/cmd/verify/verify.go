@@ -7,7 +7,6 @@ package verify
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -32,22 +31,25 @@ Usage examples:
 
 	dirctl verify <record-cid>
 
-2. Verify against a specific public key:
+2. Verify against a specific public key file:
 
-	dirctl verify <record-cid> --key <key-file>
+	dirctl verify <record-cid> --key /path/to/cosign.pub
 
-3. Verify against OIDC identity (exact match):
+3. Verify using public key from URL:
+
+	dirctl verify <record-cid> --key https://example.com/cosign.pub
+
+4. Verify against OIDC identity (exact match):
 
 	dirctl verify <record-cid> \
 		--oidc-issuer https://github.com/login/oauth \
 		--oidc-subject user@example.com
 
-4. Verify against just OIDC issuer (any identity from that issuer):
+5. Verify against just OIDC issuer (any identity from that issuer):
 
 	dirctl verify <record-cid> --oidc-issuer https://github.com/login/oauth
 
-5. Verify using regular expression patterns (cosign compatible):
-
+6. Verify using regular expression patterns (cosign compatible):
 	# Match any identity from GitHub Actions (regexp)
 	dirctl verify <record-cid> \
 		--oidc-issuer "https://token.actions.githubusercontent.com" \
@@ -63,7 +65,7 @@ Usage examples:
 		--oidc-issuer ".*sigstore.*" \
 		--oidc-subject ".*@example.com"
 
-6. Advanced verification options (OIDC only):
+7. Advanced verification options (OIDC only):
 
 	# Skip transparency log verification (for private signatures)
 	dirctl verify <record-cid> --ignore-tlog
@@ -77,7 +79,7 @@ Usage examples:
 	# Skip multiple verification checks
 	dirctl verify <record-cid> --ignore-tlog --ignore-tsa --ignore-sct
 
-7. Output formats:
+8. Output formats:
 
 	# Get verification result as JSON
 	dirctl verify <record-cid> --output json
@@ -112,16 +114,12 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 
 	switch {
 	case opts.Key != "":
-		// Read public key from flag and add to request
-		pubKey, err := os.ReadFile(opts.Key)
-		if err != nil {
-			return fmt.Errorf("failed to read public key file: %w", err)
-		}
-
+		// Verify using the provided key reference
+		// The key can be a file path, URL, KMS URI, etc.
 		provider = &signv1.VerifyRequestProvider{
 			Request: &signv1.VerifyRequestProvider_Key{
 				Key: &signv1.VerifyWithKey{
-					PublicKey: pubKey,
+					PublicKey: opts.Key,
 				},
 			},
 		}
