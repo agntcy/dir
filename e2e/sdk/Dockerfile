@@ -1,6 +1,7 @@
 ARG IMAGE_TAG=latest
+ARG IMAGE_REPO=ghcr.io/agntcy
 
-FROM ghcr.io/agntcy/dir-ctl:${IMAGE_TAG} AS dirctl-bin
+FROM ${IMAGE_REPO}/dir-ctl:${IMAGE_TAG} AS dirctl-bin
 FROM ghcr.io/sigstore/cosign/cosign:v3.0.4 AS cosign-bin
 
 FROM astral/uv:0.9.26-python3.12-alpine

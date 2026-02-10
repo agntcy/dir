@@ -133,5 +133,9 @@ target "sdks-test" {
     "_common",
     "docker-metadata-action",
   ]
+  args = {
+    IMAGE_REPO = "${IMAGE_REPO}"
+    IMAGE_TAG = "${IMAGE_TAG}"
+  }
   tags = get_tag(target.docker-metadata-action.tags, "${target.sdks-test.name}")
 }

@@ -1187,7 +1187,7 @@ class Client:
 
         """
         try:
-            provider = req.provider
+            provider: sign_v1.VerifyRequestProvider = req.provider
             if provider is None:
                 return self._verify_with_any(req.record_ref, None)
             elif provider.HasField("key"):
@@ -1197,7 +1197,7 @@ class Client:
             elif provider.HasField("any"):
                 return self._verify_with_any(req.record_ref, provider.any)
             else:
-                raise ValueError("Invalid verification provider specified in the request")
+                return self._verify_with_any(req.record_ref, None)
         except RuntimeError as e:
             msg = f"Failed to verify the object: {e}"
             raise RuntimeError(msg) from e
