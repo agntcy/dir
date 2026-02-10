@@ -531,9 +531,9 @@ tasks:
     desc: Pull local OCI registry server docker image
     vars:
       IMAGE: "{{.IMAGE}}"
-    cmds:
-      - |
-        docker pull {{.IMAGE}}
+    cmd: docker pull "{{.IMAGE}}"
+    status:
+      - docker image inspect "{{.IMAGE}}" > /dev/null 2>&1 || exit 1
 
   server:store:start:
     desc: Start local OCI registry server for storage

@@ -115,11 +115,8 @@ enum EventType {
   // A record was signed.
   EVENT_TYPE_RECORD_SIGNED = 9;
 
-  // A record signature was verified.
-  EVENT_TYPE_RECORD_VERIFIED = 10;
-
   // A public key was uploaded.
-  EVENT_TYPE_PUBLIC_KEY_UPLOADED = 11;
+  EVENT_TYPE_PUBLIC_KEY_UPLOADED = 10;
 
   // Future event types can be added here without breaking existing clients.
   // Examples:

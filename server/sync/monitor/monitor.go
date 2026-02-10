@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -20,7 +19,6 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/agntcy/dir/utils/zot"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -345,14 +343,11 @@ func (s *MonitorService) processChanges(ctx context.Context, changes *RegistryCh
 		if err := s.indexRecord(ctx, tag); err != nil {
 			// Warn but continue processing other records even if one fails
 			logger.Error("Failed to index record", "tag", tag, "error", err)
-		} else {
-			logger.Debug("Successfully indexed record", "tag", tag)
+
+			continue
 		}
 
-		// Upload public key to OCI store
-		if err := s.uploadPublicKey(ctx, tag); err != nil {
-			logger.Error("Failed to upload public key", "tag", tag, "error", err)
-		}
+		logger.Debug("Successfully indexed record", "tag", tag)
 	}
 }
 
@@ -391,63 +386,6 @@ func (s *MonitorService) indexRecord(ctx context.Context, tag string) error {
 	}
 
 	logger.Info("Successfully indexed local record", "cid", tag)
-
-	return nil
-}
-
-// uploadPublicKey uploads a public key to the OCI store.
-func (s *MonitorService) uploadPublicKey(ctx context.Context, tag string) error {
-	logger.Debug("Uploading public key", "tag", tag)
-
-	// Try to use signature storage if the store supports it
-	referrerStore, ok := s.store.(types.ReferrerStoreAPI)
-	if !ok {
-		logger.Error("Store does not support public key upload, skipping", "tag", tag)
-
-		return nil
-	}
-
-	// Walk public key referrers from referrer store
-	walkFn := func(referrer *corev1.RecordReferrer) error {
-		publicKeyValue, ok := referrer.GetData().AsMap()["publicKey"]
-		if !ok {
-			return errors.New("publicKey field not found in referrer data")
-		}
-
-		publicKey, ok := publicKeyValue.(string)
-		if !ok {
-			return errors.New("publicKey field is not a string")
-		}
-
-		// Upload the public key to zot for signature verification
-		// This enables zot to mark this signature as "trusted" in verification queries
-		uploadOpts := &zot.UploadPublicKeyOptions{
-			Config: &zot.VerifyConfig{
-				RegistryAddress: s.ociConfig.RegistryAddress,
-				RepositoryName:  s.ociConfig.RepositoryName,
-				Username:        s.ociConfig.Username,
-				Password:        s.ociConfig.Password,
-				AccessToken:     s.ociConfig.AccessToken,
-				Insecure:        s.ociConfig.Insecure,
-			},
-			PublicKey: publicKey,
-		}
-
-		err := zot.UploadPublicKey(ctx, uploadOpts)
-		if err != nil {
-			return fmt.Errorf("failed to upload public key to zot for verification: %w", err)
-		}
-
-		return nil // Continue walking
-	}
-
-	// Walk public key referrers
-	err := referrerStore.WalkReferrers(ctx, tag, corev1.PublicKeyReferrerType, walkFn)
-	if err != nil {
-		return fmt.Errorf("failed to walk public key referrers: %w", err)
-	}
-
-	logger.Debug("Successfully uploaded public keys to zot for verification", "tag", tag)
 
 	return nil
 }

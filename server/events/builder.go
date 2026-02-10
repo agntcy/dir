@@ -142,14 +142,6 @@ func (b *EventBus) RecordSigned(cid, signer string) {
 	b.Publish(event)
 }
 
-// RecordVerified publishes a record verified event.
-func (b *EventBus) RecordVerified(cid string, verified bool) {
-	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_RECORD_VERIFIED, cid).
-		WithMetadata("verified", strconv.FormatBool(verified)).
-		Build()
-	b.Publish(event)
-}
-
 // PublicKeyUploaded publishes a public key uploaded event.
 func (b *EventBus) PublicKeyUploaded(keyID string) {
 	event := NewEventBuilder(eventsv1.EventType_EVENT_TYPE_PUBLIC_KEY_UPLOADED, keyID).

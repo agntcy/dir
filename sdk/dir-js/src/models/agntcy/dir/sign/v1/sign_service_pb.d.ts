@@ -16,6 +16,139 @@ import type { Signature } from "./signature_pb.js";
 export declare const file_agntcy_dir_sign_v1_sign_service: GenFile;
 
 /**
+ * Options for OIDC-based signing.
+ *
+ * @generated from message agntcy.dir.sign.v1.SignOptionsOIDC
+ */
+export declare type SignOptionsOIDC = Message<"agntcy.dir.sign.v1.SignOptionsOIDC"> & {
+  /**
+   * Fulcio authority access URL.
+   * Default: https://fulcio.sigstore.dev
+   *
+   * @generated from field: string fulcio_url = 1;
+   */
+  fulcioUrl: string;
+
+  /**
+   * Rekor transparency log access URL.
+   * Default: https://rekor.sigstore.dev
+   *
+   * @generated from field: string rekor_url = 2;
+   */
+  rekorUrl: string;
+
+  /**
+   * Timestamp authority access URL.
+   * Default: https://timestamp.sigstore.dev/api/v1/timestamp
+   *
+   * @generated from field: string timestamp_url = 3;
+   */
+  timestampUrl: string;
+
+  /**
+   * OIDC provider access URL.
+   * Default: https://oauth2.sigstore.dev/auth
+   *
+   * @generated from field: string oidc_provider_url = 4;
+   */
+  oidcProviderUrl: string;
+
+  /**
+   * OIDC client ID.
+   * Default: sigstore
+   *
+   * @generated from field: string oidc_client_id = 5;
+   */
+  oidcClientId: string;
+
+  /**
+   * OIDC client secret.
+   * Required for confidential OIDC clients that require client authentication.
+   * Default: empty
+   *
+   * @generated from field: string oidc_client_secret = 6;
+   */
+  oidcClientSecret: string;
+
+  /**
+   * Skip uploading signature to transparency log (Rekor).
+   * Set to true for private signing where transparency log upload is not desired.
+   * Note: Signatures created with this option cannot be verified against Rekor.
+   * Default: false
+   *
+   * @generated from field: bool skip_tlog = 7;
+   */
+  skipTlog: boolean;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignOptionsOIDC.
+ * Use `create(SignOptionsOIDCSchema)` to create a new message.
+ */
+export declare const SignOptionsOIDCSchema: GenMessage<SignOptionsOIDC>;
+
+/**
+ * Options for OIDC-based verification.
+ *
+ * @generated from message agntcy.dir.sign.v1.VerifyOptionsOIDC
+ */
+export declare type VerifyOptionsOIDC = Message<"agntcy.dir.sign.v1.VerifyOptionsOIDC"> & {
+  /**
+   * TUF repository mirror URL.
+   * Used to fetch trusted root material (certificates, keys) for verification.
+   * Default: https://tuf-repo-cdn.sigstore.dev (public good instance)
+   *
+   * @generated from field: string tuf_mirror_url = 1;
+   */
+  tufMirrorUrl: string;
+
+  /**
+   * Path to a Sigstore TrustedRoot JSON file.
+   * When provided, verification uses this file instead of fetching from TUF.
+   * Required for fully offline/air-gapped verification.
+   * The file contains Fulcio CAs, Rekor keys, TSA certs, and CT log keys.
+   * Default: empty (uses TUF to fetch trusted root)
+   *
+   * @generated from field: string trusted_root_path = 2;
+   */
+  trustedRootPath: string;
+
+  /**
+   * Skip transparency log (Rekor) verification.
+   * Set to true for private infrastructure without Rekor,
+   * or when signatures weren't uploaded to the transparency log.
+   * Default: false
+   *
+   * @generated from field: bool ignore_tlog = 3;
+   */
+  ignoreTlog: boolean;
+
+  /**
+   * Skip timestamp authority (TSA) verification.
+   * Set to true when timestamps aren't required or TSA wasn't used during signing.
+   * Default: false
+   *
+   * @generated from field: bool ignore_tsa = 4;
+   */
+  ignoreTsa: boolean;
+
+  /**
+   * Skip Signed Certificate Timestamp (SCT) verification.
+   * Set to true for private PKI where Certificate Transparency logs aren't used.
+   * Default: false
+   *
+   * @generated from field: bool ignore_sct = 5;
+   */
+  ignoreSct: boolean;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyOptionsOIDC.
+ * Use `create(VerifyOptionsOIDCSchema)` to create a new message.
+ */
+export declare const VerifyOptionsOIDCSchema: GenMessage<VerifyOptionsOIDC>;
+
+/**
  * @generated from message agntcy.dir.sign.v1.SignRequest
  */
 export declare type SignRequest = Message<"agntcy.dir.sign.v1.SignRequest"> & {
@@ -49,20 +182,20 @@ export declare type SignRequestProvider = Message<"agntcy.dir.sign.v1.SignReques
    */
   request: {
     /**
-     * Sign with OIDC provider
-     *
-     * @generated from field: agntcy.dir.sign.v1.SignWithOIDC oidc = 1;
-     */
-    value: SignWithOIDC;
-    case: "oidc";
-  } | {
-    /**
      * Sign with PEM-encoded public key
      *
-     * @generated from field: agntcy.dir.sign.v1.SignWithKey key = 2;
+     * @generated from field: agntcy.dir.sign.v1.SignWithKey key = 1;
      */
     value: SignWithKey;
     case: "key";
+  } | {
+    /**
+     * Sign with OIDC provider
+     *
+     * @generated from field: agntcy.dir.sign.v1.SignWithOIDC oidc = 2;
+     */
+    value: SignWithOIDC;
+    case: "oidc";
   } | { case: undefined; value?: undefined };
 };
 
@@ -71,72 +204,6 @@ export declare type SignRequestProvider = Message<"agntcy.dir.sign.v1.SignReques
  * Use `create(SignRequestProviderSchema)` to create a new message.
  */
 export declare const SignRequestProviderSchema: GenMessage<SignRequestProvider>;
-
-/**
- * @generated from message agntcy.dir.sign.v1.SignWithOIDC
- */
-export declare type SignWithOIDC = Message<"agntcy.dir.sign.v1.SignWithOIDC"> & {
-  /**
-   * Token for OIDC provider
-   *
-   * @generated from field: string id_token = 1;
-   */
-  idToken: string;
-
-  /**
-   * Signing options for OIDC
-   *
-   * @generated from field: agntcy.dir.sign.v1.SignWithOIDC.SignOpts options = 2;
-   */
-  options?: SignWithOIDC_SignOpts;
-};
-
-/**
- * Describes the message agntcy.dir.sign.v1.SignWithOIDC.
- * Use `create(SignWithOIDCSchema)` to create a new message.
- */
-export declare const SignWithOIDCSchema: GenMessage<SignWithOIDC>;
-
-/**
- * List of sign options for OIDC
- *
- * @generated from message agntcy.dir.sign.v1.SignWithOIDC.SignOpts
- */
-export declare type SignWithOIDC_SignOpts = Message<"agntcy.dir.sign.v1.SignWithOIDC.SignOpts"> & {
-  /**
-   * Fulcio authority access URL (default value: https://fulcio.sigstage.dev)
-   *
-   * @generated from field: optional string fulcio_url = 1;
-   */
-  fulcioUrl?: string;
-
-  /**
-   * Rekor validator access URL (default value: https://rekor.sigstage.dev)
-   *
-   * @generated from field: optional string rekor_url = 2;
-   */
-  rekorUrl?: string;
-
-  /**
-   * Timestamp authority access URL (default value: https://timestamp.sigstage.dev/api/v1/timestamp)
-   *
-   * @generated from field: optional string timestamp_url = 3;
-   */
-  timestampUrl?: string;
-
-  /**
-   * OIDC provider access URL (default value: https://oauth2.sigstage.dev/auth)
-   *
-   * @generated from field: optional string oidc_provider_url = 4;
-   */
-  oidcProviderUrl?: string;
-};
-
-/**
- * Describes the message agntcy.dir.sign.v1.SignWithOIDC.SignOpts.
- * Use `create(SignWithOIDC_SignOptsSchema)` to create a new message.
- */
-export declare const SignWithOIDC_SignOptsSchema: GenMessage<SignWithOIDC_SignOpts>;
 
 /**
  * @generated from message agntcy.dir.sign.v1.SignWithKey
@@ -162,6 +229,31 @@ export declare type SignWithKey = Message<"agntcy.dir.sign.v1.SignWithKey"> & {
  * Use `create(SignWithKeySchema)` to create a new message.
  */
 export declare const SignWithKeySchema: GenMessage<SignWithKey>;
+
+/**
+ * @generated from message agntcy.dir.sign.v1.SignWithOIDC
+ */
+export declare type SignWithOIDC = Message<"agntcy.dir.sign.v1.SignWithOIDC"> & {
+  /**
+   * Token for OIDC provider
+   *
+   * @generated from field: string id_token = 1;
+   */
+  idToken: string;
+
+  /**
+   * Signing options for OIDC
+   *
+   * @generated from field: optional agntcy.dir.sign.v1.SignOptionsOIDC options = 2;
+   */
+  options?: SignOptionsOIDC;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignWithOIDC.
+ * Use `create(SignWithOIDCSchema)` to create a new message.
+ */
+export declare const SignWithOIDCSchema: GenMessage<SignWithOIDC>;
 
 /**
  * @generated from message agntcy.dir.sign.v1.SignResponse
@@ -191,6 +283,13 @@ export declare type VerifyRequest = Message<"agntcy.dir.sign.v1.VerifyRequest"> 
    * @generated from field: agntcy.dir.core.v1.RecordRef record_ref = 1;
    */
   recordRef?: RecordRef;
+
+  /**
+   * Verification provider to use
+   *
+   * @generated from field: agntcy.dir.sign.v1.VerifyRequestProvider provider = 2;
+   */
+  provider?: VerifyRequestProvider;
 };
 
 /**
@@ -198,6 +297,121 @@ export declare type VerifyRequest = Message<"agntcy.dir.sign.v1.VerifyRequest"> 
  * Use `create(VerifyRequestSchema)` to create a new message.
  */
 export declare const VerifyRequestSchema: GenMessage<VerifyRequest>;
+
+/**
+ * @generated from message agntcy.dir.sign.v1.VerifyRequestProvider
+ */
+export declare type VerifyRequestProvider = Message<"agntcy.dir.sign.v1.VerifyRequestProvider"> & {
+  /**
+   * @generated from oneof agntcy.dir.sign.v1.VerifyRequestProvider.request
+   */
+  request: {
+    /**
+     * Verify with PEM-encoded public key
+     *
+     * @generated from field: agntcy.dir.sign.v1.VerifyWithKey key = 1;
+     */
+    value: VerifyWithKey;
+    case: "key";
+  } | {
+    /**
+     * Verify with OIDC provider
+     *
+     * @generated from field: agntcy.dir.sign.v1.VerifyWithOIDC oidc = 2;
+     */
+    value: VerifyWithOIDC;
+    case: "oidc";
+  } | {
+    /**
+     * Verify implicitly without providing any key or OIDC information.
+     * This will attempt to verify any signature found on the record.
+     * This is useful for verifying records that have been signed and have signatures attached,
+     * without needing to verify against a specific key or OIDC identity.
+     *
+     * @generated from field: agntcy.dir.sign.v1.VerifyWithAny any = 3;
+     */
+    value: VerifyWithAny;
+    case: "any";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyRequestProvider.
+ * Use `create(VerifyRequestProviderSchema)` to create a new message.
+ */
+export declare const VerifyRequestProviderSchema: GenMessage<VerifyRequestProvider>;
+
+/**
+ * @generated from message agntcy.dir.sign.v1.VerifyWithKey
+ */
+export declare type VerifyWithKey = Message<"agntcy.dir.sign.v1.VerifyWithKey"> & {
+  /**
+   * PEM-encoded public key to verify against
+   *
+   * @generated from field: bytes public_key = 1;
+   */
+  publicKey: Uint8Array;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyWithKey.
+ * Use `create(VerifyWithKeySchema)` to create a new message.
+ */
+export declare const VerifyWithKeySchema: GenMessage<VerifyWithKey>;
+
+/**
+ * @generated from message agntcy.dir.sign.v1.VerifyWithOIDC
+ */
+export declare type VerifyWithOIDC = Message<"agntcy.dir.sign.v1.VerifyWithOIDC"> & {
+  /**
+   * OIDC issuer URL.
+   * Accepts exact match or regular expression (e.g., "https://github.com/login/oauth")
+   *
+   * @generated from field: string issuer = 1;
+   */
+  issuer: string;
+
+  /**
+   * OIDC subject/identity.
+   * Accepts exact match or regular expression (e.g., "user@example.com")
+   *
+   * @generated from field: string subject = 2;
+   */
+  subject: string;
+
+  /**
+   * Verification options for OIDC
+   *
+   * @generated from field: optional agntcy.dir.sign.v1.VerifyOptionsOIDC options = 3;
+   */
+  options?: VerifyOptionsOIDC;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyWithOIDC.
+ * Use `create(VerifyWithOIDCSchema)` to create a new message.
+ */
+export declare const VerifyWithOIDCSchema: GenMessage<VerifyWithOIDC>;
+
+/**
+ * @generated from message agntcy.dir.sign.v1.VerifyWithAny
+ */
+export declare type VerifyWithAny = Message<"agntcy.dir.sign.v1.VerifyWithAny"> & {
+  /**
+   * Verification options for OIDC.
+   * This is used to verify only OIDC signatures on the record.
+   * For key-based signatures, this field is ignored.
+   *
+   * @generated from field: optional agntcy.dir.sign.v1.VerifyOptionsOIDC oidc_options = 1;
+   */
+  oidcOptions?: VerifyOptionsOIDC;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.VerifyWithAny.
+ * Use `create(VerifyWithAnySchema)` to create a new message.
+ */
+export declare const VerifyWithAnySchema: GenMessage<VerifyWithAny>;
 
 /**
  * @generated from message agntcy.dir.sign.v1.VerifyResponse
@@ -211,23 +425,19 @@ export declare type VerifyResponse = Message<"agntcy.dir.sign.v1.VerifyResponse"
   success: boolean;
 
   /**
-   * Optional error message if verification failed
+   * List of all signers that signed the record.
+   * Each entry represents one valid signature on the record.
    *
-   * @generated from field: optional string error_message = 2;
+   * @generated from field: repeated agntcy.dir.sign.v1.SignerInfo signers = 2;
    */
-  errorMessage?: string;
+  signers: SignerInfo[];
 
   /**
-   * Metadata about the signer
-   * Common keys:
-   * - "provider": "zot" or "key"
-   * - "author": Identity of the signer (Zot provider only)
-   * - "tool": Tool used for signing (Zot provider only)
-   * - "public_key": Public key used for verification (Key provider only)
+   * Optional error message if verification failed
    *
-   * @generated from field: map<string, string> signer_metadata = 3;
+   * @generated from field: optional string error_message = 3;
    */
-  signerMetadata: { [key: string]: string };
+  errorMessage?: string;
 };
 
 /**
@@ -237,13 +447,104 @@ export declare type VerifyResponse = Message<"agntcy.dir.sign.v1.VerifyResponse"
 export declare const VerifyResponseSchema: GenMessage<VerifyResponse>;
 
 /**
+ * Structured information about who signed the record
+ *
+ * @generated from message agntcy.dir.sign.v1.SignerInfo
+ */
+export declare type SignerInfo = Message<"agntcy.dir.sign.v1.SignerInfo"> & {
+  /**
+   * @generated from oneof agntcy.dir.sign.v1.SignerInfo.type
+   */
+  type: {
+    /**
+     * Key-based signer information
+     *
+     * @generated from field: agntcy.dir.sign.v1.SignerInfoKey key = 1;
+     */
+    value: SignerInfoKey;
+    case: "key";
+  } | {
+    /**
+     * OIDC-based signer information
+     *
+     * @generated from field: agntcy.dir.sign.v1.SignerInfoOIDC oidc = 2;
+     */
+    value: SignerInfoOIDC;
+    case: "oidc";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignerInfo.
+ * Use `create(SignerInfoSchema)` to create a new message.
+ */
+export declare const SignerInfoSchema: GenMessage<SignerInfo>;
+
+/**
+ * Information about a key-based signer
+ *
+ * @generated from message agntcy.dir.sign.v1.SignerInfoKey
+ */
+export declare type SignerInfoKey = Message<"agntcy.dir.sign.v1.SignerInfoKey"> & {
+  /**
+   * Public key used for verification (PEM-encoded)
+   *
+   * @generated from field: string public_key = 1;
+   */
+  publicKey: string;
+
+  /**
+   * Key algorithm (e.g., "ECDSA-P256", "Ed25519", "RSA")
+   *
+   * @generated from field: string algorithm = 2;
+   */
+  algorithm: string;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignerInfoKey.
+ * Use `create(SignerInfoKeySchema)` to create a new message.
+ */
+export declare const SignerInfoKeySchema: GenMessage<SignerInfoKey>;
+
+/**
+ * Information about an OIDC-based signer
+ *
+ * @generated from message agntcy.dir.sign.v1.SignerInfoOIDC
+ */
+export declare type SignerInfoOIDC = Message<"agntcy.dir.sign.v1.SignerInfoOIDC"> & {
+  /**
+   * OIDC issuer URL (e.g., "https://github.com/login/oauth")
+   *
+   * @generated from field: string issuer = 1;
+   */
+  issuer: string;
+
+  /**
+   * OIDC subject/identity (e.g., "user@example.com")
+   *
+   * @generated from field: string subject = 2;
+   */
+  subject: string;
+};
+
+/**
+ * Describes the message agntcy.dir.sign.v1.SignerInfoOIDC.
+ * Use `create(SignerInfoOIDCSchema)` to create a new message.
+ */
+export declare const SignerInfoOIDCSchema: GenMessage<SignerInfoOIDC>;
+
+/**
  * SignService provides methods to sign and verify records.
+ *
+ * NOTE: This is a client-side service and is not available on the server.
  *
  * @generated from service agntcy.dir.sign.v1.SignService
  */
 export declare const SignService: GenService<{
   /**
-   * Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+   * Sign record using keyless OIDC based provider or
+   * using PEM-encoded private key with an optional passphrase.
    *
    * @generated from rpc agntcy.dir.sign.v1.SignService.Sign
    */
@@ -253,7 +554,8 @@ export declare const SignService: GenService<{
     output: typeof SignResponseSchema;
   },
   /**
-   * Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+   * Verify signed record using keyless OIDC based provider or
+   * using PEM-encoded public key.
    *
    * @generated from rpc agntcy.dir.sign.v1.SignService.Verify
    */

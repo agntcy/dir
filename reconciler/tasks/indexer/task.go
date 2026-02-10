@@ -10,7 +10,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -21,7 +20,6 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/adapters"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/agntcy/dir/utils/zot"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -115,11 +113,6 @@ func (t *Task) Run(ctx context.Context) error {
 			failedCount++
 
 			continue
-		}
-
-		// Upload public keys for signature verification
-		if err := t.uploadPublicKey(ctx, tag); err != nil {
-			logger.Error("Failed to upload public key", "tag", tag, "error", err)
 		}
 
 		indexedCount++
@@ -243,62 +236,6 @@ func (t *Task) indexRecord(ctx context.Context, tag string) error {
 	}
 
 	logger.Info("Successfully indexed record", "cid", tag)
-
-	return nil
-}
-
-// uploadPublicKey uploads public keys associated with the record to zot for verification.
-func (t *Task) uploadPublicKey(ctx context.Context, tag string) error {
-	logger.Debug("Uploading public key", "tag", tag)
-
-	// Try to use signature storage if the store supports it
-	referrerStore, ok := t.store.(types.ReferrerStoreAPI)
-	if !ok {
-		logger.Debug("Store does not support referrers, skipping public key upload", "tag", tag)
-
-		return nil
-	}
-
-	// Walk public key referrers from referrer store
-	walkFn := func(referrer *corev1.RecordReferrer) error {
-		publicKeyValue, ok := referrer.GetData().AsMap()["publicKey"]
-		if !ok {
-			return errors.New("publicKey field not found in referrer data")
-		}
-
-		publicKey, ok := publicKeyValue.(string)
-		if !ok {
-			return errors.New("publicKey field is not a string")
-		}
-
-		// Upload the public key to zot for signature verification
-		uploadOpts := &zot.UploadPublicKeyOptions{
-			Config: &zot.VerifyConfig{
-				RegistryAddress: t.ociConfig.RegistryAddress,
-				RepositoryName:  t.ociConfig.RepositoryName,
-				Username:        t.ociConfig.Username,
-				Password:        t.ociConfig.Password,
-				AccessToken:     t.ociConfig.AccessToken,
-				Insecure:        t.ociConfig.Insecure,
-			},
-			PublicKey: publicKey,
-		}
-
-		err := zot.UploadPublicKey(ctx, uploadOpts)
-		if err != nil {
-			return fmt.Errorf("failed to upload public key to zot: %w", err)
-		}
-
-		return nil
-	}
-
-	// Walk public key referrers
-	err := referrerStore.WalkReferrers(ctx, tag, corev1.PublicKeyReferrerType, walkFn)
-	if err != nil {
-		return fmt.Errorf("failed to walk public key referrers: %w", err)
-	}
-
-	logger.Debug("Successfully uploaded public keys for record", "tag", tag)
 
 	return nil
 }

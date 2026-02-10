@@ -213,18 +213,11 @@ export enum EventType {
   RECORD_SIGNED = 9,
 
   /**
-   * A record signature was verified.
-   *
-   * @generated from enum value: EVENT_TYPE_RECORD_VERIFIED = 10;
-   */
-  RECORD_VERIFIED = 10,
-
-  /**
    * A public key was uploaded.
    *
-   * @generated from enum value: EVENT_TYPE_PUBLIC_KEY_UPLOADED = 11;
+   * @generated from enum value: EVENT_TYPE_PUBLIC_KEY_UPLOADED = 10;
    */
-  PUBLIC_KEY_UPLOADED = 11,
+  PUBLIC_KEY_UPLOADED = 10,
 }
 
 /**

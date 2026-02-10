@@ -9,11 +9,13 @@ import (
 	"path/filepath"
 	"time"
 
+	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/agntcy/dir/e2e/shared/config"
 	"github.com/agntcy/dir/e2e/shared/testdata"
 	"github.com/agntcy/dir/e2e/shared/utils"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // Using the shared record data from embed.go
@@ -31,6 +33,7 @@ type signTestPaths struct {
 	publicKey       string
 	signature       string
 	signatureOutput string
+	verifyOutput    string
 }
 
 func setupSignTestPaths() *signTestPaths {
@@ -42,6 +45,7 @@ func setupSignTestPaths() *signTestPaths {
 		record:          filepath.Join(tempDir, "record.json"),
 		signature:       filepath.Join(tempDir, "signature.json"),
 		signatureOutput: filepath.Join(tempDir, "signature-output.json"),
+		verifyOutput:    filepath.Join(tempDir, "verify-output.json"),
 		privateKey:      filepath.Join(tempDir, "cosign.key"),
 		publicKey:       filepath.Join(tempDir, "cosign.pub"),
 	}
@@ -119,7 +123,38 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			time.Sleep(10 * time.Second)
 		})
 
-		ginkgo.It("should verify a signature with a public key on server side", func() {
+		ginkgo.It("should verify a signature with a public key", func() {
+			// Verify using the public key and write output to file
+			_ = cli.Command("verify").
+				WithArgs(cid).
+				WithArgs("--key", paths.publicKey).
+				WithArgs("--output-file", paths.verifyOutput).
+				ShouldSucceed()
+
+			// Read and parse the verify response from the output file
+			verifyData, err := os.ReadFile(paths.verifyOutput)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			var verifyResponse signv1.VerifyResponse
+			err = protojson.Unmarshal(verifyData, &verifyResponse)
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+			// Verify the response indicates success
+			gomega.Expect(verifyResponse.GetSuccess()).To(gomega.BeTrue())
+
+			// Verify that signers array is present and not empty
+			gomega.Expect(verifyResponse.GetSigners()).NotTo(gomega.BeEmpty())
+
+			// For key-based signing, verify key signer info
+			signer := verifyResponse.GetSigners()[0]
+			keySigner := signer.GetKey()
+			gomega.Expect(keySigner).NotTo(gomega.BeNil(), "Expected key signer info for key-signed record")
+			gomega.Expect(keySigner.GetPublicKey()).NotTo(gomega.BeEmpty(), "Expected public key in signer info")
+			gomega.Expect(keySigner.GetAlgorithm()).NotTo(gomega.BeEmpty(), "Expected algorithm in signer info")
+		})
+
+		ginkgo.It("should verify any valid signature on the record", func() {
+			// Verify without specifying a key (any valid signature)
 			cli.Command("verify").
 				WithArgs(cid).
 				ShouldContain("Record signature is: trusted")

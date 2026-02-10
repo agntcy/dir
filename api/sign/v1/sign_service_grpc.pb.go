@@ -31,10 +31,14 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // SignService provides methods to sign and verify records.
+//
+// NOTE: This is a client-side service and is not available on the server.
 type SignServiceClient interface {
-	// Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+	// Sign record using keyless OIDC based provider or
+	// using PEM-encoded private key with an optional passphrase.
 	Sign(ctx context.Context, in *SignRequest, opts ...grpc.CallOption) (*SignResponse, error)
-	// Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+	// Verify signed record using keyless OIDC based provider or
+	// using PEM-encoded public key.
 	Verify(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*VerifyResponse, error)
 }
 
@@ -71,10 +75,14 @@ func (c *signServiceClient) Verify(ctx context.Context, in *VerifyRequest, opts 
 // for forward compatibility.
 //
 // SignService provides methods to sign and verify records.
+//
+// NOTE: This is a client-side service and is not available on the server.
 type SignServiceServer interface {
-	// Sign record using keyless OIDC based provider or using PEM-encoded private key with an optional passphrase
+	// Sign record using keyless OIDC based provider or
+	// using PEM-encoded private key with an optional passphrase.
 	Sign(context.Context, *SignRequest) (*SignResponse, error)
-	// Verify signed record using keyless OIDC based provider or using PEM-encoded formatted PEM public key encrypted
+	// Verify signed record using keyless OIDC based provider or
+	// using PEM-encoded public key.
 	Verify(context.Context, *VerifyRequest) (*VerifyResponse, error)
 }
 

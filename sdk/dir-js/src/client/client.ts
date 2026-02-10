@@ -15,6 +15,7 @@ import {
 } from '@connectrpc/connect';
 import { createGrpcTransport } from '@connectrpc/connect-node';
 import { createClient as createClientSpiffe, X509SVID } from 'spiffe';
+import { fromJsonString } from '@bufbuild/protobuf';
 import * as models from '../models';
 
 /**
@@ -756,7 +757,7 @@ export class Client {
    * console.log(`Signature: ${response.signature}`);
    * ```
    */
-  sign(req: models.sign_v1.SignRequest, oidc_client_id = 'sigstore'): void {
+  sign(req: models.sign_v1.SignRequest): void {
 
     var output;
 
@@ -765,7 +766,6 @@ export class Client {
         output = this.__sign_with_oidc(
           req.recordRef?.cid || '',
           req.provider.request.value,
-          oidc_client_id,
         );
         break;
 
@@ -792,24 +792,77 @@ export class Client {
    * to ensure its authenticity and integrity. This operation verifies
    * that the record has not been tampered with since signing.
    *
-   * @param request - VerifyRequest containing the record reference and verification parameters
-   * @returns Promise that resolves to a VerifyResponse containing the verification result and details
+   * The verification process uses the external dirctl command-line tool
+   * to perform the actual cryptographic operations.
    *
-   * @throws {Error} If the gRPC call fails or the verification operation fails
+   * @param request - VerifyRequest containing the record reference and verification parameters.
+   *                  The provider can specify either key-based verification (with a public key)
+   *                  or OIDC-based verification
+   * @returns VerifyResponse containing the verification result and details
+   *
+   * @throws {Error} If the verification operation fails or unsupported provider is supplied
    *
    * @example
    * ```typescript
    * const request = new models.sign_v1.VerifyRequest({
    *   recordRef: new models.core_v1.RecordRef({cid: "QmExample123"})
    * });
-   * const response = await client.verify(request);
-   * console.log(`Signature valid: ${response.valid}`);
+   * const response = client.verify(request);
+   * console.log(`Signature valid: ${response.success}`);
    * ```
    */
-  async verify(
+  verify(
     request: models.sign_v1.VerifyRequest,
-  ): Promise<models.sign_v1.VerifyResponse> {
-    return await this.signClient.verify(request);
+  ): models.sign_v1.VerifyResponse {
+    // Create a temp file for output
+    const tempDir = mkdtempSync(join(tmpdir(), 'dirctl-verify-'));
+    const outputPath = join(tempDir, 'output.json');
+
+    try {
+      switch (request.provider?.request.case) {
+        case 'oidc':
+          this.__verify_with_oidc(
+            request.recordRef?.cid || '',
+            request.provider.request.value,
+            outputPath,
+          );
+          break;
+
+        case 'key':
+          this.__verify_with_key(
+            request.recordRef?.cid || '',
+            request.provider.request.value,
+            outputPath,
+          );
+          break;
+
+        case 'any':
+          this.__verify_with_any(
+            request.recordRef?.cid || '',
+            request.provider.request.value,
+            outputPath,
+          );
+          break;
+
+        default:
+          // Default: verify any valid signature
+          this.__verify_with_any(request.recordRef?.cid || '', undefined, outputPath);
+          break;
+      }
+
+      // Read and parse the output file
+      const jsonContent = readFileSync(outputPath, 'utf8');
+      return fromJsonString(models.sign_v1.VerifyResponseSchema, jsonContent);
+    } catch (e) {
+      throw new Error(`Failed to parse verification response: ${e}`);
+    } finally {
+      // Clean up the temp directory
+      try {
+        rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   }
 
   /**
@@ -1095,10 +1148,6 @@ export class Client {
 
       let commandArgs = ["sign", cid, "--key", tmp_key_filename];
 
-      if (this.config.spiffeEndpointSocket !== '') {
-        commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
-      }
-
       // Execute command
       let output = spawnSync(
         `${this.config.dirctlPath}`, commandArgs,
@@ -1125,7 +1174,6 @@ export class Client {
    *
    * @param cid - Content identifier of the record to sign
    * @param req - SignWithOIDC request containing the OIDC configuration
-   * @param oidc_client_id - OIDC client identifier for authentication
    * @returns SignResponse containing the signature
    *
    * @throws {Error} If any error occurs during signing
@@ -1135,7 +1183,6 @@ export class Client {
   private __sign_with_oidc(
     cid: string,
     req: models.sign_v1.SignWithOIDC,
-    oidc_client_id: string,
   ): SpawnSyncReturns<string> {
     // Prepare command
     let commandArgs = ["sign", cid];
@@ -1147,6 +1194,15 @@ export class Client {
       req.options.oidcProviderUrl !== ''
     ) {
       commandArgs.push(...["--oidc-provider-url", req.options.oidcProviderUrl]);
+    }
+    if (req.options?.oidcClientId !== undefined && req.options.oidcClientId !== '') {
+      commandArgs.push(...["--oidc-client-id", req.options.oidcClientId]);
+    }
+    if (req.options?.oidcClientSecret !== undefined && req.options.oidcClientSecret !== '') {
+      commandArgs.push(...["--oidc-client-secret", req.options.oidcClientSecret]);
+    }
+    if (req.options?.skipTlog !== undefined && req.options.skipTlog) {
+      commandArgs.push("--skip-tlog");
     }
     if (req.options?.fulcioUrl !== undefined && req.options.fulcioUrl !== '') {
       commandArgs.push(...["--fulcio-url", req.options.fulcioUrl]);
@@ -1161,8 +1217,86 @@ export class Client {
       commandArgs.push(...["--timestamp-url", req.options.timestampUrl]);
     }
 
-    if (this.config.spiffeEndpointSocket !== '') {
-      commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
+    // Execute command
+    let output = spawnSync(`${this.config.dirctlPath}`, commandArgs, {
+      env: { ...env },
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    return output;
+  }
+
+  /**
+   * Verify a record using a public key.
+   *
+   * This private method handles key-based verification by passing the public key
+   * file path to the dirctl command.
+   *
+   * @param cid - Content identifier of the record to verify
+   * @param req - VerifyWithKey request containing the path to the public key file
+   * @param outputPath - Path to the output file for the verification result
+   *
+   * @throws {Error} If any error occurs during verification
+   *
+   * @private
+   */
+  private __verify_with_key(cid: string, req: models.sign_v1.VerifyWithKey, outputPath: string): void {
+    // Decode the public key path from bytes
+    const keyPath = new TextDecoder().decode(req.publicKey);
+
+    let commandArgs = ["verify", cid, "--key", keyPath, "--output-file", outputPath];
+
+    // Execute command
+    let output = spawnSync(
+      `${this.config.dirctlPath}`, commandArgs,
+      { env: { ...env }, encoding: 'utf8', stdio: 'pipe' },
+    );
+
+    if (output.status !== 0) {
+      throw new Error(output.stderr || output.stdout || 'Verification failed');
+    }
+  }
+
+  /**
+   * Verify a record with any valid signature.
+   *
+   * This private method handles verification that accepts any valid signature,
+   * with optional OIDC verification options for additional constraints.
+   *
+   * @param cid - Content identifier of the record to verify
+   * @param req - VerifyWithAny request containing optional OIDC options, or undefined for default verification
+   * @param outputPath - Path to the output file for the verification result
+   *
+   * @throws {Error} If any error occurs during verification
+   *
+   * @private
+   */
+  private __verify_with_any(
+    cid: string,
+    req: models.sign_v1.VerifyWithAny | undefined,
+    outputPath: string,
+  ): void {
+    // Prepare command
+    let commandArgs = ["verify", cid, "--output-file", outputPath];
+
+    // Add OIDC options if provided
+    if (req?.oidcOptions !== undefined) {
+      if (req.oidcOptions.tufMirrorUrl !== undefined && req.oidcOptions.tufMirrorUrl !== '') {
+        commandArgs.push(...["--tuf-mirror-url", req.oidcOptions.tufMirrorUrl]);
+      }
+      if (req.oidcOptions.trustedRootPath !== undefined && req.oidcOptions.trustedRootPath !== '') {
+        commandArgs.push(...["--trusted-root-path", req.oidcOptions.trustedRootPath]);
+      }
+      if (req.oidcOptions.ignoreTlog === true) {
+        commandArgs.push("--ignore-tlog");
+      }
+      if (req.oidcOptions.ignoreTsa === true) {
+        commandArgs.push("--ignore-tsa");
+      }
+      if (req.oidcOptions.ignoreSct === true) {
+        commandArgs.push("--ignore-sct");
+      }
     }
 
     // Execute command
@@ -1172,6 +1306,71 @@ export class Client {
       stdio: 'pipe',
     });
 
-    return output;
+    if (output.status !== 0) {
+      throw new Error(output.stderr || output.stdout || 'Verification failed');
+    }
+  }
+
+  /**
+   * Verify a record using OIDC-based verification.
+   *
+   * This private method handles OIDC-based verification by building the appropriate
+   * dirctl command with OIDC parameters and executing it.
+   *
+   * @param cid - Content identifier of the record to verify
+   * @param req - VerifyWithOIDC request containing the OIDC configuration, or undefined for default verification
+   * @param outputPath - Path to the output file for the verification result
+   *
+   * @throws {Error} If any error occurs during verification
+   *
+   * @private
+   */
+  private __verify_with_oidc(
+    cid: string,
+    req: models.sign_v1.VerifyWithOIDC | undefined,
+    outputPath: string,
+  ): void {
+    // Prepare command
+    let commandArgs = ["verify", cid, "--output-file", outputPath];
+
+    // Add OIDC-specific parameters if provided
+    if (req !== undefined) {
+      if (req.issuer !== undefined && req.issuer !== '') {
+        commandArgs.push(...["--oidc-issuer", req.issuer]);
+      }
+      if (req.subject !== undefined && req.subject !== '') {
+        commandArgs.push(...["--oidc-subject", req.subject]);
+      }
+
+      // Add verification options if present
+      if (req.options !== undefined) {
+        if (req.options.tufMirrorUrl !== undefined && req.options.tufMirrorUrl !== '') {
+          commandArgs.push(...["--tuf-mirror-url", req.options.tufMirrorUrl]);
+        }
+        if (req.options.trustedRootPath !== undefined && req.options.trustedRootPath !== '') {
+          commandArgs.push(...["--trusted-root-path", req.options.trustedRootPath]);
+        }
+        if (req.options.ignoreTlog === true) {
+          commandArgs.push("--ignore-tlog");
+        }
+        if (req.options.ignoreTsa === true) {
+          commandArgs.push("--ignore-tsa");
+        }
+        if (req.options.ignoreSct === true) {
+          commandArgs.push("--ignore-sct");
+        }
+      }
+    }
+
+    // Execute command
+    let output = spawnSync(`${this.config.dirctlPath}`, commandArgs, {
+      env: { ...env },
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+
+    if (output.status !== 0) {
+      throw new Error(output.stderr || output.stdout || 'Verification failed');
+    }
   }
 }

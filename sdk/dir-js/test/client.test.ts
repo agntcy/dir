@@ -382,6 +382,7 @@ describe('Client', () => {
             value: {
               idToken: token,
               options: {
+                oidcClientId: clientId,
                 oidcProviderUrl: providerUrl,
               },
             },
@@ -392,21 +393,49 @@ describe('Client', () => {
       // Sign test
       client.sign(keyRequest);
 
-      if ((shellEnv['OIDC_TOKEN'] || '') != '' && (shellEnv['OIDC_PROVIDER_URL'] || '') != '') {
-        client.sign(oidcRequest, clientId);
+      if (token !== '' && providerUrl !== '') {
+        client.sign(oidcRequest);
       } else {
         recordRefs.pop(); // NOTE: Drop the unsigned record if no OIDC tested
       }
 
-      // Verify test
+      // Verify test - check signer information in response
+      let verifyIndex = 0;
       for (const ref of recordRefs) {
-        const response = await client.verify(
+        const response = client.verify(
           create(models.sign_v1.VerifyRequestSchema, {
             recordRef: ref,
           }),
         );
 
         expect(response.success).toBe(true);
+        
+        // Verify that signers array is present and not empty
+        expect(response.signers).toBeDefined();
+        expect(response.signers.length).toBeGreaterThan(0);
+        
+        // For the first record (key-signed), verify key signer info
+        if (verifyIndex === 0) {
+          const signer = response.signers[0];
+          expect(signer.type.case).toBe('key');
+          if (signer.type.case === 'key') {
+            expect(signer.type.value.publicKey).toBeDefined();
+            expect(signer.type.value.publicKey.length).toBeGreaterThan(0);
+            expect(signer.type.value.algorithm).toBeDefined();
+          }
+        }
+        
+        // For OIDC-signed record, verify OIDC signer info
+        if (verifyIndex === 1 && token !== '' && providerUrl !== '') {
+          const signer = response.signers[0];
+          expect(signer.type.case).toBe('oidc');
+          if (signer.type.case === 'oidc') {
+            expect(signer.type.value.issuer).toBeDefined();
+            expect(signer.type.value.subject).toBeDefined();
+          }
+        }
+        
+        verifyIndex++;
       }
 
       // Test invalid CID

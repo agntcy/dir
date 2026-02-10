@@ -10,12 +10,13 @@ Directory services including routing, search, store, and signing operations.
 import builtins
 import logging
 import os
-from typing import List
+import json
 import subprocess
 import tempfile
 from collections.abc import Sequence
 
 import grpc
+from google.protobuf import json_format
 from cryptography.hazmat.primitives import serialization
 from spiffe import WorkloadApiClient, X509Source
 
@@ -1156,7 +1157,6 @@ class Client:
     def verify(
         self,
         req: sign_v1.VerifyRequest,
-        metadata: Sequence[tuple[str, str]] | None = None,
     ) -> sign_v1.VerifyResponse:
         """Verify a cryptographic signature on a record.
 
@@ -1164,16 +1164,18 @@ class Client:
         to ensure its authenticity and integrity. This operation verifies
         that the record has not been tampered with since signing.
 
+        The verification process uses the external dirctl command-line tool
+        to perform the actual cryptographic operations.
+
         Args:
             req: VerifyRequest containing the record reference and verification
-                 parameters
-            metadata: Optional gRPC metadata headers as sequence of key-value pairs
+                 parameters. The provider can specify either key-based verification
+                 (with a public key) or OIDC-based verification
 
         Returns:
             VerifyResponse containing the verification result and details
 
         Raises:
-            grpc.RpcError: If the gRPC call fails (includes InvalidArgument, NotFound, etc.)
             RuntimeError: If the verification operation fails
 
         Example:
@@ -1181,25 +1183,245 @@ class Client:
             ...     record_ref=core_v1.RecordRef(cid="QmExample123")
             ... )
             >>> response = client.verify(req)
-            >>> print(f"Signature valid: {response.valid}")
+            >>> print(f"Signature valid: {response.success}")
+
+        """
+        # Create a temp file for output
+        fd, output_path = tempfile.mkstemp(suffix=".json", prefix="dirctl-verify-")
+        os.close(fd)
+
+        try:
+            provider: sign_v1.VerifyRequestProvider = req.provider
+            if provider is None:
+                self._verify_with_any(req.record_ref, None, output_path)
+            elif provider.HasField("key"):
+                self._verify_with_key(req.record_ref, provider.key, output_path)
+            elif provider.HasField("oidc"):
+                self._verify_with_oidc(req.record_ref, provider.oidc, output_path)
+            elif provider.HasField("any"):
+                self._verify_with_any(req.record_ref, provider.any, output_path)
+            else:
+                self._verify_with_any(req.record_ref, None, output_path)
+
+            # Read and parse the output file
+            with open(output_path, "rb") as f:
+                return self._parse_verify_response(f.read())
+        except RuntimeError as e:
+            msg = f"Failed to verify the object: {e}"
+            raise RuntimeError(msg) from e
+        except Exception as e:
+            logger.exception("Verification operation failed: %s", e)
+            msg = f"Failed to verify the object: {e}"
+            raise RuntimeError(msg) from e
+        finally:
+            # Clean up the temp file
+            try:
+                os.unlink(output_path)
+            except OSError:
+                # Ignore cleanup errors
+                pass
+
+    def _verify_with_key(
+        self,
+        record_ref: core_v1.RecordRef,
+        key_verifier: sign_v1.VerifyWithKey,
+        output_path: str,
+    ) -> None:
+        """Verify a record using a public key.
+
+        This private method handles key-based verification by passing the public key
+        file path to the dirctl command.
+
+        Args:
+            record_ref: Reference to the record to verify
+            key_verifier: VerifyWithKey containing the path to the public key file
+            output_path: Path to the output file for verification result
+
+        Raises:
+            RuntimeError: If any error occurs during verification
 
         """
         try:
-            response = self.sign_client.Verify(req, metadata=metadata)
-        except grpc.RpcError as e:
-            logger.exception("gRPC error during verify: %s", e)
-            raise
+            # Decode the public key path from bytes
+            key_path = key_verifier.public_key.decode("utf-8")
+
+            # Build and execute the verification command
+            command = [
+                self.config.dirctl_path,
+                "verify",
+                record_ref.cid,
+                "--key",
+                key_path,
+                "--output-file",
+                output_path,
+            ]
+
+            subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                timeout=60,  # 1 minute timeout
+            )
+
+        except subprocess.CalledProcessError as e:
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "dirctl verification timed out"
+            raise RuntimeError(msg) from e
         except Exception as e:
-            logger.exception("Unexpected error during verify: %s", e)
-            msg = f"Failed to verify the object: {e}"
+            msg = f"Unexpected error during key-based verification: {e}"
             raise RuntimeError(msg) from e
 
-        return response
+    def _verify_with_any(
+        self,
+        record_ref: core_v1.RecordRef,
+        any_verifier: sign_v1.VerifyWithAny | None,
+        output_path: str,
+    ) -> None:
+        """Verify a record using any valid signature.
+
+        This private method handles verification of any signature on the record,
+        with optional OIDC options for OIDC-based signatures.
+
+        Args:
+            record_ref: Reference to the record to verify
+            any_verifier: VerifyWithAny containing optional OIDC verification options,
+                          or None for default verification
+            output_path: Path to the output file for verification result
+
+        Raises:
+            RuntimeError: If any error occurs during verification
+
+        """
+        try:
+            # Build base command
+            command = [self.config.dirctl_path, "verify", record_ref.cid, "--output-file", output_path]
+
+            # Add OIDC verification options if present
+            if any_verifier is not None and any_verifier.HasField("oidc_options"):
+                opts = any_verifier.oidc_options
+                if opts.tuf_mirror_url:
+                    command.extend(["--tuf-mirror-url", opts.tuf_mirror_url])
+                if opts.trusted_root_path:
+                    command.extend(["--trusted-root-path", opts.trusted_root_path])
+                if opts.ignore_tlog:
+                    command.append("--ignore-tlog")
+                if opts.ignore_tsa:
+                    command.append("--ignore-tsa")
+                if opts.ignore_sct:
+                    command.append("--ignore-sct")
+
+            # Execute the verification command
+            subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                timeout=60,  # 1 minute timeout
+            )
+
+        except subprocess.CalledProcessError as e:
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "dirctl verification timed out"
+            raise RuntimeError(msg) from e
+        except Exception as e:
+            msg = f"Unexpected error during verification: {e}"
+            raise RuntimeError(msg) from e
+
+    def _verify_with_oidc(
+        self,
+        record_ref: core_v1.RecordRef,
+        oidc_verifier: sign_v1.VerifyWithOIDC | None,
+        output_path: str,
+    ) -> None:
+        """Verify a record using OIDC-based verification.
+
+        This private method handles OIDC-based verification by building the appropriate
+        dirctl command with OIDC parameters and executing it.
+
+        Args:
+            record_ref: Reference to the record to verify
+            oidc_verifier: VerifyWithOIDC containing the OIDC verification options,
+                          or None for default verification
+            output_path: Path to the output file for verification result
+
+        Raises:
+            RuntimeError: If any error occurs during verification
+
+        """
+        try:
+            # Build base command
+            command = [self.config.dirctl_path, "verify", record_ref.cid, "--output-file", output_path]
+
+            # Add OIDC-specific parameters if provided
+            if oidc_verifier is not None:
+                if oidc_verifier.issuer:
+                    command.extend(["--oidc-issuer", oidc_verifier.issuer])
+                if oidc_verifier.subject:
+                    command.extend(["--oidc-subject", oidc_verifier.subject])
+
+                # Add verification options if present
+                if oidc_verifier.HasField("options"):
+                    opts = oidc_verifier.options
+                    if opts.tuf_mirror_url:
+                        command.extend(["--tuf-mirror-url", opts.tuf_mirror_url])
+                    if opts.trusted_root_path:
+                        command.extend(["--trusted-root-path", opts.trusted_root_path])
+                    if opts.ignore_tlog:
+                        command.append("--ignore-tlog")
+                    if opts.ignore_tsa:
+                        command.append("--ignore-tsa")
+                    if opts.ignore_sct:
+                        command.append("--ignore-sct")
+
+            # Execute the verification command
+            subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                timeout=60,  # 1 minute timeout
+            )
+
+        except subprocess.CalledProcessError as e:
+            msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "dirctl verification timed out"
+            raise RuntimeError(msg) from e
+        except Exception as e:
+            msg = f"Unexpected error during OIDC verification: {e}"
+            raise RuntimeError(msg) from e
+
+    def _parse_verify_response(self, output: bytes) -> sign_v1.VerifyResponse:
+        """Parse the JSON output from dirctl verify command.
+
+        Args:
+            output: Raw bytes output from the dirctl command
+
+        Returns:
+            VerifyResponse parsed from the JSON output
+
+        Raises:
+            RuntimeError: If the output cannot be parsed
+
+        """
+        try:
+            json_str = output.decode("utf-8")
+            json_data = json.loads(json_str)
+
+            # The CLI outputs the response directly as JSON
+            response = sign_v1.VerifyResponse()
+            json_format.ParseDict(json_data, response)
+            return response
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            msg = f"Failed to parse verification response: {e}"
+            raise RuntimeError(msg) from e
 
     def sign(
         self,
         req: sign_v1.SignRequest,
-        oidc_client_id: str | None = "sigstore",
     ) -> None:
         """Sign a record with a cryptographic signature.
 
@@ -1227,10 +1449,13 @@ class Client:
 
         """
         try:
-            if len(req.provider.key.private_key) > 0:
+            if req.provider is None:
+                msg = "No signing provider specified in the request"
+                raise RuntimeError(msg)
+            elif req.provider.HasField("key"):
                 self._sign_with_key(req.record_ref, req.provider.key)
-            else:
-                self._sign_with_oidc(req.record_ref, req.provider.oidc, oidc_client_id)
+            elif req.provider.HasField("oidc"):
+                self._sign_with_oidc(req.record_ref, req.provider.oidc)
         except RuntimeError as e:
             msg = f"Failed to sign the object: {e}"
             raise RuntimeError(msg) from e
@@ -1275,9 +1500,6 @@ class Client:
                     tmp_key_file.name,
                 ]
 
-                if self.config.spiffe_socket_path != "":
-                    command.extend(["--spiffe-socket-path", self.config.spiffe_socket_path])
-                
                 subprocess.run(
                     command,
                     check=True,
@@ -1303,7 +1525,6 @@ class Client:
         self,
         record_ref: core_v1.RecordRef,
         oidc_signer: sign_v1.SignWithOIDC,
-        oidc_client_id: str = "sigstore",
     ) -> None:
         """Sign a record using OIDC-based authentication.
 
@@ -1312,7 +1533,6 @@ class Client:
 
         Args:
             req: SignRequest containing the record reference and OIDC provider
-            oidc_client_id: OIDC client identifier for authentication
 
         Raises:
             RuntimeError: If any other error occurs during signing
@@ -1328,24 +1548,19 @@ class Client:
             if oidc_signer.id_token:
                 command.extend(["--oidc-token", oidc_signer.id_token])
             if oidc_signer.options.oidc_provider_url:
-                command.extend(
-                    [
-                        "--oidc-provider-url",
-                        oidc_signer.options.oidc_provider_url,
-                    ]
-                )
+                command.extend(["--oidc-provider-url", oidc_signer.options.oidc_provider_url])
+            if oidc_signer.options.oidc_client_id:
+                command.extend(["--oidc-client-id", oidc_signer.options.oidc_client_id])
+            if oidc_signer.options.oidc_client_secret:
+                command.extend(["--oidc-client-secret", oidc_signer.options.oidc_client_secret])
             if oidc_signer.options.fulcio_url:
                 command.extend(["--fulcio-url", oidc_signer.options.fulcio_url])
             if oidc_signer.options.rekor_url:
                 command.extend(["--rekor-url", oidc_signer.options.rekor_url])
             if oidc_signer.options.timestamp_url:
                 command.extend(["--timestamp-url", oidc_signer.options.timestamp_url])
-
-            # Add client ID
-            command.extend(["--oidc-client-id", oidc_client_id])
-
-            if self.config.spiffe_socket_path != "":
-                command.extend(["--spiffe-socket-path", self.config.spiffe_socket_path])
+            if oidc_signer.options.skip_tlog:
+                command.append("--skip-tlog")
 
             # Execute the signing command
             subprocess.run(

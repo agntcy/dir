@@ -287,7 +287,7 @@ class TestClient(unittest.TestCase):
         provider_url = shell_env.get("OIDC_PROVIDER_URL", "")
         client_id = shell_env.get("OIDC_CLIENT_ID", "sigstore")
 
-        oidc_options = sign_v1.SignWithOIDC.SignOpts(oidc_provider_url=provider_url)
+        oidc_options = sign_v1.SignOptionsOIDC(oidc_provider_url=provider_url, oidc_client_id=client_id)
         oidc_provider = sign_v1.SignWithOIDC(id_token=token, options=oidc_options)
         request_oidc_provider = sign_v1.SignRequestProvider(oidc=oidc_provider)
         oidc_request = sign_v1.SignRequest(
@@ -300,15 +300,36 @@ class TestClient(unittest.TestCase):
             self.client.sign(key_request)
 
             # Sign and verify using OIDC signing if set
-            if shell_env.get("OIDC_TOKEN", "") != "" and shell_env.get("OIDC_PROVIDER_URL", "") != "":
-                self.client.sign(oidc_request, client_id)
+            if token and provider_url:
+                self.client.sign(oidc_request)
             else:
                 record_refs.pop() # NOTE: Drop the unsigned record if no OIDC tested
 
+            verify_index = 0
             for ref in record_refs:
                 response = self.client.verify(sign_v1.VerifyRequest(record_ref=ref))
 
                 assert response.success is True
+                
+                # Verify that signers array is present and not empty
+                assert response.signers is not None
+                assert len(response.signers) > 0
+                
+                # For the first record (key-signed), verify key signer info
+                if verify_index == 0:
+                    signer = response.signers[0]
+                    assert signer.HasField("key"), "Expected key signer info for key-signed record"
+                    assert signer.key.public_key, "Expected public key in signer info"
+                    assert signer.key.algorithm, "Expected algorithm in signer info"
+                
+                # For OIDC-signed record, verify OIDC signer info
+                if verify_index == 1 and token and provider_url:
+                    signer = response.signers[0]
+                    assert signer.HasField("oidc"), "Expected OIDC signer info for OIDC-signed record"
+                    assert signer.oidc.issuer, "Expected issuer in OIDC signer info"
+                    assert signer.oidc.subject, "Expected subject in OIDC signer info"
+                
+                verify_index += 1
                 
         except Exception as e:
             assert e is None

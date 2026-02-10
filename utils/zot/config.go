@@ -11,10 +11,25 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	zotconfig "zotregistry.dev/zot/v2/pkg/api/config"
 	zotextensionsconfig "zotregistry.dev/zot/v2/pkg/extensions/config"
 	zotsyncconfig "zotregistry.dev/zot/v2/pkg/extensions/config/sync"
+)
+
+const (
+	// DefaultZotConfigPath is the default path to the zot configuration file.
+	DefaultZotConfigPath = "/etc/zot/config.json"
+
+	// DefaultPollInterval is the default interval for polling new content.
+	DefaultPollInterval = time.Second * 60
+
+	// DefaultRetryDelay is the default delay between retries.
+	DefaultRetryDelay = time.Minute * 5
+
+	// DefaultMaxRetries is the default maximum number of retries.
+	DefaultMaxRetries = 3
 )
 
 // readConfigFile reads and parses the zot configuration file.

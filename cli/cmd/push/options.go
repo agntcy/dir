@@ -6,7 +6,6 @@ package push
 import (
 	signcmd "github.com/agntcy/dir/cli/cmd/sign"
 	"github.com/agntcy/dir/cli/presenter"
-	"github.com/agntcy/dir/client"
 )
 
 var opts = &options{}
@@ -14,9 +13,6 @@ var opts = &options{}
 type options struct {
 	FromStdin bool
 	Sign      bool
-
-	// Signing options
-	client.SignOpts
 }
 
 func init() {
