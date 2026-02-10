@@ -59,7 +59,7 @@ jobs:
             version: 1.14.1
           - image: postgresql
             repo: docker.io/bitnami/postgresql
-            digest: sha256:e9d4bdd350e8446c630d84dfd56da4ab1c9779802d47d043948861eff452b895
+            digest: sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
