@@ -845,7 +845,7 @@ export class Client {
     }
 
     if (output.status !== 0) {
-      throw new Error(output.stderr || output.stdout || 'Verification failed');
+      throw new Error(output.stdout || 'Verification failed');
     }
 
     // Attempt to parse the output as JSON first

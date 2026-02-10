@@ -14,6 +14,7 @@ ENV DIRECTORY_CLIENT_SERVER_ADDRESS="dir-apiserver.dir-server.svc.cluster.local:
 ENV DIRECTORY_CLIENT_SPIFFE_SOCKET_PATH=""
 ENV DIRECTORY_CLIENT_AUTH_MODE="x509"
 ENV DIRECTORY_CLIENT_JWT_AUDIENCE="spiffe://dir.example/spire/server"
+ENV DIRECTORY_LOGGER_LOG_FILE="/dev/stderr"
 
 WORKDIR /tmp/
 COPY ./sdk /tmp/
