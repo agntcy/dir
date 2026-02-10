@@ -11,6 +11,10 @@ includes:
     taskfile: ./Taskfile.vars.yml
     dir: ./
     flatten: true
+  gui:
+    taskfile: ./gui/Taskfile.yml
+    dir: ./gui
+    flatten: true
   server:
     taskfile: ./server/Taskfile.yml
     dir: ./server

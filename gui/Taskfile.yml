@@ -1,0 +1,12 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  gui:build:macos:
+    desc: Build the GUI for macOS
+    cmds:
+      - flutter config --enable-macos-desktop
+      - flutter create . --platforms=macos
+      - flutter build macos
