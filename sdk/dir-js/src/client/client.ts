@@ -1123,11 +1123,11 @@ export class Client {
   /**
    * Sign a record using a private key.
    *
-   * This private method handles key-based signing by writing the private key
-   * to a temporary file and executing the dirctl command with the key file.
+   * This private method handles key-based signing by passing the key reference
+   * directly to the dirctl command. The key can be a file path, URL, or KMS URI.
    *
    * @param cid - Content identifier of the record to sign
-   * @param req - SignWithKey request containing the private key
+   * @param req - SignWithKey request containing the private key reference
    * @returns SignResponse containing the signature
    *
    * @throws {Error} If any error occurs during signing
@@ -1135,35 +1135,22 @@ export class Client {
    * @private
    */
   private __sign_with_key(cid: string, req: models.sign_v1.SignWithKey): SpawnSyncReturns<string> {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'dirctl-sign-'));
-    const tmp_key_filename = join(tmpDir, 'private.key');
+    // Prepare environment for command
+    // Always set COSIGN_PASSWORD (even if empty) to avoid terminal prompts
+    const shell_env = { ...env };
+    shell_env['COSIGN_PASSWORD'] = req.password ? String(req.password) : '';
 
-    try {
-      // Write private key to the temporary file with secure permissions (owner read/write only)
-      writeFileSync(tmp_key_filename, String(req.privateKey), { mode: 0o600 });
+    // Pass key reference directly to dirctl which handles
+    // file paths, URLs, KMS URIs, etc.
+    const commandArgs = ["sign", cid, "--key", req.privateKey];
 
-      // Prepare environment for command
-      const shell_env = env;
-      shell_env['COSIGN_PASSWORD'] = String(req.password);
+    // Execute command
+    const output = spawnSync(
+      `${this.config.dirctlPath}`, commandArgs,
+      { env: shell_env, encoding: 'utf8', stdio: 'pipe' },
+    );
 
-      let commandArgs = ["sign", cid, "--key", tmp_key_filename];
-
-      // Execute command
-      let output = spawnSync(
-        `${this.config.dirctlPath}`, commandArgs,
-        { env: { ...shell_env }, encoding: 'utf8', stdio: 'pipe' },
-      );
-
-      return output;
-    } finally {
-      // Clean up: remove the temporary directory and its contents
-      try {
-        rmSync(tmpDir, { recursive: true, force: true });
-      } catch (cleanupError) {
-        // Log cleanup error but don't fail the operation
-        console.warn(`Failed to clean up temporary directory ${tmpDir}:`, cleanupError);
-      }
-    }
+    return output;
   }
 
   /**
@@ -1231,10 +1218,10 @@ export class Client {
    * Verify a record using a public key.
    *
    * This private method handles key-based verification by passing the public key
-   * file path to the dirctl command.
+   * reference to the dirctl command. The key can be a file path, URL, or KMS URI.
    *
    * @param cid - Content identifier of the record to verify
-   * @param req - VerifyWithKey request containing the path to the public key file
+   * @param req - VerifyWithKey request containing the public key reference
    * @param outputPath - Path to the output file for the verification result
    *
    * @throws {Error} If any error occurs during verification
@@ -1242,10 +1229,9 @@ export class Client {
    * @private
    */
   private __verify_with_key(cid: string, req: models.sign_v1.VerifyWithKey, outputPath: string): void {
-    // Decode the public key path from bytes
-    const keyPath = new TextDecoder().decode(req.publicKey);
-
-    let commandArgs = ["verify", cid, "--key", keyPath, "--output-file", outputPath];
+    // Pass key reference directly to dirctl which handles
+    // file paths, URLs, KMS URIs, etc.
+    const commandArgs = ["verify", cid, "--key", req.publicKey, "--output-file", outputPath];
 
     // Execute command
     let output = spawnSync(
