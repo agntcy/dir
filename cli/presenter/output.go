@@ -203,5 +203,6 @@ func WriteMessageToFile(filePath string, value any) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 
+	//nolint:mnd
 	return os.WriteFile(filePath, data, 0o600)
 }

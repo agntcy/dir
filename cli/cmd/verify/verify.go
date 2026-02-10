@@ -180,7 +180,7 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 	opts := presenter.GetOutputOptions(cmd)
 	if opts.Format == presenter.FormatHuman {
 		if response.GetSuccess() {
-			presenter.Println(cmd, fmt.Sprintf("Record signature is: trusted"))
+			presenter.Println(cmd, "Record signature is: trusted")
 
 			// Show signers info
 			signers := response.GetSigners()
@@ -205,7 +205,7 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 				}
 			}
 		} else if response.GetErrorMessage() != "" {
-			presenter.Println(cmd, fmt.Sprintf("Record signature is: not trusted"))
+			presenter.Println(cmd, "Record signature is: not trusted")
 			presenter.Println(cmd, fmt.Sprintf("Reason: %s", response.GetErrorMessage()))
 		}
 
