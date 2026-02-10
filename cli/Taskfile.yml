@@ -1,0 +1,43 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  cli:compile:
+    desc: Compile CLI binaries
+    vars:
+      GOOS: "{{ .GOOS | default OS }}"
+      GOARCH: "{{ .GOARCH | default ARCH }}"
+      BINARY_NAME: '{{ .BINARY_NAME | default "dirctl" }}'
+      OUT_BINARY: '{{ if eq OS "windows" }}{{ .ROOT_DIR }}\\bin\\{{ .BINARY_NAME }}.exe{{ else }}{{ .ROOT_DIR }}/bin/{{ .BINARY_NAME }}{{ end }}'
+      LDFLAGS: "-s -w -extldflags -static {{ .VERSION_LDFLAGS }}"
+      TRY_SKIP_COMPILE: '{{ .TRY_SKIP_COMPILE | default "false" }}'
+    cmds:
+      - |
+        if [ "{{.TRY_SKIP_COMPILE}}" = "true" ]; then
+          if [ -f "{{.OUT_BINARY}}" ]; then
+            echo "Binary {{.OUT_BINARY}} already exists, skipping compilation."
+            exit 0
+          else
+            echo "Binary {{.OUT_BINARY}} does not exist, proceeding with compilation."
+          fi
+        fi
+
+        CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{ .LDFLAGS }}" -o "{{.OUT_BINARY}}" cli.go
+
+  cli:compile:all:
+    desc: Compile CLI client binaries for multiple platforms
+    aliases: [compile]
+    cmds:
+      - for:
+          matrix:
+            OS: ["linux", "darwin", "windows"]
+            ARCH: ["amd64", "arm64"]
+        cmd: |
+          # Skip unsupported combinations (e.g., Windows ARM64)
+          if [ "{{.ITEM.OS}}" = "windows" ] && [ "{{.ITEM.ARCH}}" = "arm64" ]; then
+            echo "Skipping unsupported platform: {{.ITEM.OS}}/{{.ITEM.ARCH}}"
+          else
+            GOOS={{.ITEM.OS}} GOARCH={{.ITEM.ARCH}} BINARY_NAME=dirctl-{{.ITEM.OS}}-{{.ITEM.ARCH}} task cli:compile
+          fi
