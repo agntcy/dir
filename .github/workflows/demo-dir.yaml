@@ -197,9 +197,9 @@ jobs:
         run: |
           echo "Running dir sign command"
           bin/dirctl sign $(cat digest.txt) \
-            --oidc-token ${{ steps.oidc-token.outputs.token }} \
-            --oidc-provider-url "https://token.actions.githubusercontent.com" \
-            --oidc-client-id "https://github.com/${{ github.repository }}/.github/workflows/demo.yaml@${{ github.ref }}"
+            --oidc-token="${{ steps.oidc-token.outputs.token }}" \
+            --oidc-provider-url="https://token.actions.githubusercontent.com" \
+            --oidc-client-id="https://github.com/${{ github.repository }}/.github/workflows/demo-dir.yaml@${{ github.ref }}"
 
       - name: Run verify command
         run: |
