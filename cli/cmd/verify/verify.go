@@ -200,7 +200,7 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 					} else if oidcInfo := signer.GetOidc(); oidcInfo != nil {
 						presenter.Println(cmd, fmt.Sprintf("  [%d] Type: oidc", i+1))
 						presenter.Println(cmd, fmt.Sprintf("       Issuer: %s", oidcInfo.GetIssuer()))
-						presenter.Println(cmd, fmt.Sprintf("       Identity: %s", oidcInfo.GetSubject()))
+						presenter.Println(cmd, fmt.Sprintf("       Subject: %s", oidcInfo.GetSubject()))
 					}
 				}
 			}
