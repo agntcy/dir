@@ -168,14 +168,6 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
 
-      - name: Get Github OIDC token
-        id: oidc-token
-        run: |
-          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
-          echo "::add-mask::$OIDC_TOKEN"
-          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
-
       - name: Build Docker Images
         run: |
           COMMIT_SHA=$(git rev-parse --short HEAD)
@@ -192,6 +184,14 @@ jobs:
         run: |
           echo "Pushing record"
           bin/dirctl push e2e/shared/testdata/record_070.json --output raw > digest.txt
+
+      - name: Get Github OIDC token
+        id: oidc-token
+        run: |
+          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+          echo "::add-mask::$OIDC_TOKEN"
+          echo "token=$OIDC_TOKEN" >> $GITHUB_OUTPUT
 
       - name: Sign record
         run: |
