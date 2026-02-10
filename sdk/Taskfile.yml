@@ -1,0 +1,203 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+tasks:
+  sdk:deps:common:
+    desc: Common dependencies for SDKs
+    vars:
+      TRY_SKIP_COMPILE: "{{ .TRY_SKIP_COMPILE }}"
+    cmds:
+      - task: deps:cosign
+      - task: cli:compile
+        vars:
+          TRY_SKIP_COMPILE: "{{.TRY_SKIP_COMPILE}}"
+      - task: sdk:deps:javascript
+      - task: sdk:deps:python
+
+  sdk:deps:cicd:iodc-token-generation:
+    desc: Get Fulcio OIDC token for CICD
+    requires:
+      vars: [CLIENT_ID]
+    cmds:
+      - |
+        OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+           "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+
+        CLIENT_ID="{{.CLIENT_ID}}"
+        PROVIDER_URL="https://token.actions.githubusercontent.com"
+
+        echo "OIDC_PROVIDER_URL=${PROVIDER_URL}"
+        echo "CLIENT_ID=${CLIENT_ID}"
+        echo "OIDC_TOKEN=${OIDC_TOKEN}"
+
+  sdk:build:all:
+    desc: Build all client SDK package
+    cmds:
+      - task: sdk:build:javascript
+      - task: sdk:build:python
+
+  sdk:build:python:
+    desc: Build python client SDK package
+    dir: ./dir-py
+    deps:
+      - task: sdk:deps:python
+    cmds:
+      - "{{.UV_BIN}} build"
+
+  sdk:build:javascript:
+    desc: Build javascript client SDK package
+    dir: ./dir-js
+    deps:
+      - task: sdk:deps:javascript
+    cmds:
+      - npm run build
+
+  sdk:test-env:create:
+    desc: Create Kubernetes cluster test environment
+    cmds:
+      - task: deploy:kubernetes:local
+        vars:
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
+          DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
+      - task: deploy:kubernetes:local:port-forward
+
+  sdk:test-env:delete:
+    desc: Delete Kubernetes cluster test environment
+    cmds:
+      - task: deploy:kubernetes:local:port-forward:cleanup
+      - task: deploy:kubernetes:local:cleanup
+
+  sdk:test-env:spiffe:load-test-image:
+    desc: Load the SDK tests into KinD
+    deps:
+      - task: api:gen
+    vars:
+      GOARCH: "{{ .GOARCH | default ARCH }}"
+    cmds:
+      - "{{.BAKE_ENV}} docker buildx bake sdks-test --set *.platform=linux/{{.GOARCH}} {{.IMAGE_BAKE_OPTS}}"
+      - "{{.KUBECTL_BIN}} config use-context kind-dir.example"
+      - "{{.KIND_BIN}} load docker-image ghcr.io/agntcy/sdks-test:{{.IMAGE_TAG}} --name dir.example"
+
+  sdk:test:all:spiffe:
+    desc: Test all client SDK pacakges with spiffe
+    dir: ../e2e/sdk
+    cmds:
+      - "{{.KUBECTL_BIN}} config use-context kind-dir.example"
+      - "{{.HELM_BIN}} uninstall sdk-tests --wait --keep-history --ignore-not-found > /dev/null || true"
+      - "{{.HELM_BIN}} install --replace --timeout 3m --wait --wait-for-jobs sdk-tests ./chart -f chart/values.yaml --set image.tag={{.IMAGE_TAG}} > /dev/null || true"
+      - |
+        status=$({{.KUBECTL_BIN}} get job sdks-test -o jsonpath='{.status.conditions[0].type}')
+        status_value=$({{.KUBECTL_BIN}} get job sdks-test -o jsonpath='{.status.conditions[0].status}')
+
+        if [[ "$status" == "SuccessCriteriaMet" ]] && [[ "$status_value" == "True" ]]; then
+          echo "SDKs test are finished successfully! ✅"
+          exit 0
+        fi
+
+        if [[ "$status" == "FailureTarget" ]] && [[ "$status_value" == "True" ]]; then
+          {{.KUBECTL_BIN}} logs jobs/sdks-test
+          echo "SDKs test are failed! ❎"
+          exit 1
+        fi
+
+        echo "Unknown error happend, check logs! ⚠️"
+        exit 1
+
+  sdk:test:all:
+    desc: Test all client SDK packages
+    cmds:
+      - task: sdk:test:javascript
+      - task: sdk:test:python
+
+  sdk:test:python:
+    desc: Test python client SDK package
+    dir: ./dir-py
+    deps:
+      - task: sdk:deps:python
+    env:
+      KIND_CLUSTER_NAME: "sdk-py-test"
+    cmds:
+      - task: sdk:test-env:create
+      - defer: { task: sdk:test-env:delete }
+      - |
+        export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
+        export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
+
+        # Run SDK tests
+        '{{.UV_BIN}}' run pytest
+
+        # Run SDK example to verify it works
+        cd {{ .ROOT_DIR }}/sdk/examples/example-py
+        '{{.UV_BIN}}' sync
+        '{{.UV_BIN}}' run python example.py
+
+  sdk:test:javascript:
+    desc: Test javascript client SDK package
+    dir: ./dir-js
+    deps:
+      - task: sdk:deps:javascript
+    env:
+      KIND_CLUSTER_NAME: "sdk-js-test"
+    cmds:
+      - task: sdk:test-env:create
+      - defer: { task: sdk:test-env:delete }
+      - |
+        export DIRCTL_PATH="$(printf "%s" "${DIRCTL_PATH:-{{ .DIRCTL_BIN }}}")"
+        export COSIGN_PATH="$(printf "%s" "${COSIGN_PATH:-{{ .COSIGN_BIN }}}")"
+
+        # Run SDK tests
+        npm run test
+
+        # Run SDK example to verify it works
+        cd {{ .ROOT_DIR }}/sdk/examples/example-js
+        npm install
+        npm run example
+
+  sdk:deps:python:
+    desc: Install deps for python SDK package
+    dir: ./dir-py
+    deps:
+      - task: deps:bufbuild
+      - task: deps:uv
+    cmds:
+      - task: api:gen
+      - "{{.UV_BIN}} sync --all-packages"
+
+  sdk:deps:javascript:
+    desc: Install deps for javascript SDK package
+    dir: ./dir-js
+    cmds:
+      - npm install
+      - task: api:gen
+
+  sdk:release:all:
+    desc: Release all client SDK package
+    env:
+      UV_PUBLISH_TOKEN: "{{ .UV_PUBLISH_TOKEN }}"
+    cmds:
+      - task: sdk:release:javascript
+      - task: sdk:release:python
+
+  sdk:release:python:
+    desc: Release python client SDK package
+    dir: ./dir-py
+    env:
+      UV_PUBLISH_TOKEN: "{{ .UV_PUBLISH_TOKEN }}"
+    deps:
+      - task: deps:uv
+    cmds:
+      - "{{.UV_BIN}} publish"
+
+  sdk:release:javascript:
+    desc: Release javascript client SDK package
+    dir: ./dir-js
+    cmd: |
+      version=$(npm pkg get version)
+
+      if [[ $version == *"rc"* ]]; then
+        npm publish --scope=@agntcy --access public --tag rc-{{.COMMIT_SHA}}
+      else
+        npm publish --scope=@agntcy --access public
+      fi
