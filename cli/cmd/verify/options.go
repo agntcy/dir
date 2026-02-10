@@ -33,7 +33,19 @@ func init() {
 	presenter.AddOutputFlags(Command)
 
 	// Add verification option flags
-	Command.Flags().StringVar(&opts.Key, "key", "", "PEM-encoded public key to verify against")
+	Command.Flags().StringVar(&opts.Key, "key", "",
+		`Public key to verify against. Accepts PEM content, file path, URL, or KMS URI.
+Supported formats:
+  - File path: /path/to/cosign.pub
+  - HTTP(S) URL: https://example.com/cosign.pub
+  - Environment variable: env://COSIGN_PUBLIC_KEY
+  - AWS KMS: awskms://[ENDPOINT]/[ID/ALIAS/ARN]
+  - GCP KMS: gcpkms://projects/[PROJECT]/locations/[LOC]/keyRings/[RING]/cryptoKeys/[KEY]
+  - Azure Key Vault: azurekms://[VAULT_NAME][VAULT_URI]/[KEY]
+  - Hashicorp Vault: hashivault://[KEY]
+  - Kubernetes secret: k8s://[NAMESPACE]/[SECRET_NAME]
+  - PKCS11 token: pkcs11:token=...;slot-id=...;object=...
+  - GitLab: gitlab://[PROJECT]`)
 	Command.Flags().StringVar(&opts.OIDCIssuer, "oidc-issuer", "", "OIDC issuer URL to verify against (e.g., https://github.com/login/oauth)")
 	Command.Flags().StringVar(&opts.OIDCSubject, "oidc-subject", "", "OIDC subject/identity to verify against (e.g., user@example.com)")
 	Command.Flags().StringVar(&opts.TufMirrorUrl, "tuf-mirror-url", signv1.DefaultVerifyOptionsOIDC.GetTufMirrorUrl(),
