@@ -85,6 +85,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 		expectedSkillLabels []string
 		expectedDomainLabel string
 		expectedModuleLabel string
+		expectedCID         string
 	}{
 		{
 			name:     "Record_070_Agent",
@@ -95,6 +96,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			},
 			expectedDomainLabel: "/domains/life_science/biotechnology",
 			expectedModuleLabel: "/modules/runtime/model", // From record_070.json modules
+			expectedCID:         "baeareih47nx2vjmqxx5xlar766ufi7jbxyedv634kcgagqrmnt42xjor3u",
 		},
 		{
 			name:     "Record_080_Agent",
@@ -105,6 +107,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 			},
 			expectedDomainLabel: "/domains/life_science/biotechnology",
 			expectedModuleLabel: "/modules/core/llm/model", // From record_080.json modules
+			expectedCID:         "baeareih4lnfmd4rzl4banzcts7qr7f4h2rkhhnxu4wxvvh4lmmw7mryone",
 		},
 		{
 			name:     "Record_100_Agent",
@@ -113,6 +116,7 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 				"/skills/natural_language_processing/natural_language_understanding/contextual_comprehension",
 			},
 			expectedModuleLabel: "/modules/integration/mcp", // From record_100.json modules
+			expectedCID:         "baeareiabbog2umgduqhlcb64fzt6adn34kblzvru3fdzkl75hjhwt6h3da",
 		},
 	}
 
@@ -141,6 +145,8 @@ var _ = ginkgo.Describe("Running client end-to-end tests using a local single no
 
 				// Validate that the returned CID correctly represents the pushed data using canonical marshaling
 				utils.ValidateCIDAgainstData(recordRef.GetCid(), canonicalData)
+
+				gomega.Expect(recordRef.GetCid()).To(gomega.Equal(version.expectedCID))
 			})
 
 			// Step 2: Pull (depends on push)
