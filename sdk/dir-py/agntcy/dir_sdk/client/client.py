@@ -1186,18 +1186,26 @@ class Client:
             >>> print(f"Signature valid: {response.success}")
 
         """
+        # Create a temp file for output
+        fd, output_path = tempfile.mkstemp(suffix=".json", prefix="dirctl-verify-")
+        os.close(fd)
+
         try:
             provider: sign_v1.VerifyRequestProvider = req.provider
             if provider is None:
-                return self._verify_with_any(req.record_ref, None)
+                self._verify_with_any(req.record_ref, None, output_path)
             elif provider.HasField("key"):
-                return self._verify_with_key(req.record_ref, provider.key)
+                self._verify_with_key(req.record_ref, provider.key, output_path)
             elif provider.HasField("oidc"):
-                return self._verify_with_oidc(req.record_ref, provider.oidc)
+                self._verify_with_oidc(req.record_ref, provider.oidc, output_path)
             elif provider.HasField("any"):
-                return self._verify_with_any(req.record_ref, provider.any)
+                self._verify_with_any(req.record_ref, provider.any, output_path)
             else:
-                return self._verify_with_any(req.record_ref, None)
+                self._verify_with_any(req.record_ref, None, output_path)
+
+            # Read and parse the output file
+            with open(output_path, "rb") as f:
+                return self._parse_verify_response(f.read())
         except RuntimeError as e:
             msg = f"Failed to verify the object: {e}"
             raise RuntimeError(msg) from e
@@ -1205,12 +1213,20 @@ class Client:
             logger.exception("Verification operation failed: %s", e)
             msg = f"Failed to verify the object: {e}"
             raise RuntimeError(msg) from e
+        finally:
+            # Clean up the temp file
+            try:
+                os.unlink(output_path)
+            except OSError:
+                # Ignore cleanup errors
+                pass
 
     def _verify_with_key(
         self,
         record_ref: core_v1.RecordRef,
         key_verifier: sign_v1.VerifyWithKey,
-    ) -> sign_v1.VerifyResponse:
+        output_path: str,
+    ) -> None:
         """Verify a record using a public key.
 
         This private method handles key-based verification by passing the public key
@@ -1219,9 +1235,7 @@ class Client:
         Args:
             record_ref: Reference to the record to verify
             key_verifier: VerifyWithKey containing the path to the public key file
-
-        Returns:
-            VerifyResponse containing the verification result
+            output_path: Path to the output file for verification result
 
         Raises:
             RuntimeError: If any error occurs during verification
@@ -1238,18 +1252,16 @@ class Client:
                 record_ref.cid,
                 "--key",
                 key_path,
-                "--output",
-                "json",
+                "--output-file",
+                output_path,
             ]
 
-            result = subprocess.run(
+            subprocess.run(
                 command,
                 check=True,
                 capture_output=True,
                 timeout=60,  # 1 minute timeout
             )
-
-            return self._parse_verify_response(result.stdout)
 
         except subprocess.CalledProcessError as e:
             msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
@@ -1265,7 +1277,8 @@ class Client:
         self,
         record_ref: core_v1.RecordRef,
         any_verifier: sign_v1.VerifyWithAny | None,
-    ) -> sign_v1.VerifyResponse:
+        output_path: str,
+    ) -> None:
         """Verify a record using any valid signature.
 
         This private method handles verification of any signature on the record,
@@ -1275,9 +1288,7 @@ class Client:
             record_ref: Reference to the record to verify
             any_verifier: VerifyWithAny containing optional OIDC verification options,
                           or None for default verification
-
-        Returns:
-            VerifyResponse containing the verification result
+            output_path: Path to the output file for verification result
 
         Raises:
             RuntimeError: If any error occurs during verification
@@ -1285,7 +1296,7 @@ class Client:
         """
         try:
             # Build base command
-            command = [self.config.dirctl_path, "verify", record_ref.cid, "--output", "json"]
+            command = [self.config.dirctl_path, "verify", record_ref.cid, "--output-file", output_path]
 
             # Add OIDC verification options if present
             if any_verifier is not None and any_verifier.HasField("oidc_options"):
@@ -1302,14 +1313,12 @@ class Client:
                     command.append("--ignore-sct")
 
             # Execute the verification command
-            result = subprocess.run(
+            subprocess.run(
                 command,
                 check=True,
                 capture_output=True,
                 timeout=60,  # 1 minute timeout
             )
-
-            return self._parse_verify_response(result.stdout)
 
         except subprocess.CalledProcessError as e:
             msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
@@ -1325,7 +1334,8 @@ class Client:
         self,
         record_ref: core_v1.RecordRef,
         oidc_verifier: sign_v1.VerifyWithOIDC | None,
-    ) -> sign_v1.VerifyResponse:
+        output_path: str,
+    ) -> None:
         """Verify a record using OIDC-based verification.
 
         This private method handles OIDC-based verification by building the appropriate
@@ -1335,9 +1345,7 @@ class Client:
             record_ref: Reference to the record to verify
             oidc_verifier: VerifyWithOIDC containing the OIDC verification options,
                           or None for default verification
-
-        Returns:
-            VerifyResponse containing the verification result
+            output_path: Path to the output file for verification result
 
         Raises:
             RuntimeError: If any error occurs during verification
@@ -1345,7 +1353,7 @@ class Client:
         """
         try:
             # Build base command
-            command = [self.config.dirctl_path, "verify", record_ref.cid, "--output", "json"]
+            command = [self.config.dirctl_path, "verify", record_ref.cid, "--output-file", output_path]
 
             # Add OIDC-specific parameters if provided
             if oidc_verifier is not None:
@@ -1369,14 +1377,12 @@ class Client:
                         command.append("--ignore-sct")
 
             # Execute the verification command
-            result = subprocess.run(
+            subprocess.run(
                 command,
                 check=True,
                 capture_output=True,
                 timeout=60,  # 1 minute timeout
             )
-
-            return self._parse_verify_response(result.stdout)
 
         except subprocess.CalledProcessError as e:
             msg = f"dirctl verification failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"

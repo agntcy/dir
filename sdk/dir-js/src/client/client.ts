@@ -814,45 +814,54 @@ export class Client {
   verify(
     request: models.sign_v1.VerifyRequest,
   ): models.sign_v1.VerifyResponse {
-    let output: SpawnSyncReturns<string>;
+    // Create a temp file for output
+    const tempDir = mkdtempSync(join(tmpdir(), 'dirctl-verify-'));
+    const outputPath = join(tempDir, 'output.json');
 
-    switch (request.provider?.request.case) {
-      case 'oidc':
-        output = this.__verify_with_oidc(
-          request.recordRef?.cid || '',
-          request.provider.request.value,
-        );
-        break;
-
-      case 'key':
-        output = this.__verify_with_key(
-          request.recordRef?.cid || '',
-          request.provider.request.value,
-        );
-        break;
-
-      case 'any':
-        output = this.__verify_with_any(
-          request.recordRef?.cid || '',
-          request.provider.request.value,
-        );
-        break;
-
-      default:
-        // Default: verify any valid signature
-        output = this.__verify_with_any(request.recordRef?.cid || '', undefined);
-        break;
-    }
-
-    if (output.status !== 0) {
-      throw new Error(output.stderr || output.stdout || 'Verification failed');
-    }
-
-    // Attempt to parse the output as JSON first
     try {
-      return fromJsonString(models.sign_v1.VerifyResponseSchema, output.stdout);
+      switch (request.provider?.request.case) {
+        case 'oidc':
+          this.__verify_with_oidc(
+            request.recordRef?.cid || '',
+            request.provider.request.value,
+            outputPath,
+          );
+          break;
+
+        case 'key':
+          this.__verify_with_key(
+            request.recordRef?.cid || '',
+            request.provider.request.value,
+            outputPath,
+          );
+          break;
+
+        case 'any':
+          this.__verify_with_any(
+            request.recordRef?.cid || '',
+            request.provider.request.value,
+            outputPath,
+          );
+          break;
+
+        default:
+          // Default: verify any valid signature
+          this.__verify_with_any(request.recordRef?.cid || '', undefined, outputPath);
+          break;
+      }
+
+      // Read and parse the output file
+      const jsonContent = readFileSync(outputPath, 'utf8');
+      return fromJsonString(models.sign_v1.VerifyResponseSchema, jsonContent);
     } catch (e) {
       throw new Error(`Failed to parse verification response: ${e}`);
+    } finally {
+      // Clean up the temp directory
+      try {
+        rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 
@@ -1226,17 +1235,17 @@ export class Client {
    *
    * @param cid - Content identifier of the record to verify
    * @param req - VerifyWithKey request containing the path to the public key file
-   * @returns SpawnSyncReturns containing the command output
+   * @param outputPath - Path to the output file for the verification result
    *
    * @throws {Error} If any error occurs during verification
    *
    * @private
    */
-  private __verify_with_key(cid: string, req: models.sign_v1.VerifyWithKey): SpawnSyncReturns<string> {
+  private __verify_with_key(cid: string, req: models.sign_v1.VerifyWithKey, outputPath: string): void {
     // Decode the public key path from bytes
     const keyPath = new TextDecoder().decode(req.publicKey);
 
-    let commandArgs = ["verify", cid, "--key", keyPath, "--output", "json"];
+    let commandArgs = ["verify", cid, "--key", keyPath, "--output-file", outputPath];
 
     // Execute command
     let output = spawnSync(
@@ -1244,7 +1253,9 @@ export class Client {
       { env: { ...env }, encoding: 'utf8', stdio: 'pipe' },
     );
 
-    return output;
+    if (output.status !== 0) {
+      throw new Error(output.stderr || output.stdout || 'Verification failed');
+    }
   }
 
   /**
@@ -1255,7 +1266,7 @@ export class Client {
    *
    * @param cid - Content identifier of the record to verify
    * @param req - VerifyWithAny request containing optional OIDC options, or undefined for default verification
-   * @returns SpawnSyncReturns containing the command output
+   * @param outputPath - Path to the output file for the verification result
    *
    * @throws {Error} If any error occurs during verification
    *
@@ -1264,9 +1275,10 @@ export class Client {
   private __verify_with_any(
     cid: string,
     req: models.sign_v1.VerifyWithAny | undefined,
-  ): SpawnSyncReturns<string> {
+    outputPath: string,
+  ): void {
     // Prepare command
-    let commandArgs = ["verify", cid, "--output", "json"];
+    let commandArgs = ["verify", cid, "--output-file", outputPath];
 
     // Add OIDC options if provided
     if (req?.oidcOptions !== undefined) {
@@ -1294,7 +1306,9 @@ export class Client {
       stdio: 'pipe',
     });
 
-    return output;
+    if (output.status !== 0) {
+      throw new Error(output.stderr || output.stdout || 'Verification failed');
+    }
   }
 
   /**
@@ -1305,7 +1319,7 @@ export class Client {
    *
    * @param cid - Content identifier of the record to verify
    * @param req - VerifyWithOIDC request containing the OIDC configuration, or undefined for default verification
-   * @returns SpawnSyncReturns containing the command output
+   * @param outputPath - Path to the output file for the verification result
    *
    * @throws {Error} If any error occurs during verification
    *
@@ -1314,9 +1328,10 @@ export class Client {
   private __verify_with_oidc(
     cid: string,
     req: models.sign_v1.VerifyWithOIDC | undefined,
-  ): SpawnSyncReturns<string> {
+    outputPath: string,
+  ): void {
     // Prepare command
-    let commandArgs = ["verify", cid, "--output", "json"];
+    let commandArgs = ["verify", cid, "--output-file", outputPath];
 
     // Add OIDC-specific parameters if provided
     if (req !== undefined) {
@@ -1354,6 +1369,8 @@ export class Client {
       stdio: 'pipe',
     });
 
-    return output;
+    if (output.status !== 0) {
+      throw new Error(output.stderr || output.stdout || 'Verification failed');
+    }
   }
 }

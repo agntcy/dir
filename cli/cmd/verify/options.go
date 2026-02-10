@@ -23,6 +23,9 @@ type Options struct {
 	IgnoreTlog      bool
 	IgnoreTsa       bool
 	IgnoreSct       bool
+
+	// Output file flag
+	OutputFile string
 }
 
 func init() {
@@ -43,6 +46,10 @@ func init() {
 		"Skip timestamp authority (TSA) verification")
 	Command.Flags().BoolVar(&opts.IgnoreSct, "ignore-sct", signv1.DefaultVerifyOptionsOIDC.GetIgnoreSct(),
 		"Skip Signed Certificate Timestamp (SCT) verification")
+
+	// Output file flag
+	Command.Flags().StringVar(&opts.OutputFile, "output-file", "",
+		"Write JSON output to file instead of stdout")
 
 	// Mark flags as mutually exclusive
 	Command.MarkFlagsMutuallyExclusive("key", "oidc-issuer")

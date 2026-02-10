@@ -170,17 +170,18 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 		return fmt.Errorf("failed to verify record: %w", err)
 	}
 
-	// Output in the appropriate format
-	status := "trusted"
-	if !response.GetSuccess() {
-		status = "not trusted"
+	// If output file is specified, write JSON directly to file and return
+	// This takes priority over other output options to avoid stdout pollution
+	if opts.OutputFile != "" {
+		return presenter.WriteMessageToFile(opts.OutputFile, response)
 	}
 
+	// Output in the appropriate format
 	opts := presenter.GetOutputOptions(cmd)
 	if opts.Format == presenter.FormatHuman {
-		presenter.Println(cmd, fmt.Sprintf("Record signature is: %s", status))
-
 		if response.GetSuccess() {
+			presenter.Println(cmd, fmt.Sprintf("Record signature is: trusted"))
+
 			// Show signers info
 			signers := response.GetSigners()
 			if len(signers) > 0 {
@@ -204,11 +205,13 @@ func runCommand(cmd *cobra.Command, recordRef string) error {
 				}
 			}
 		} else if response.GetErrorMessage() != "" {
+			presenter.Println(cmd, fmt.Sprintf("Record signature is: not trusted"))
 			presenter.Println(cmd, fmt.Sprintf("Reason: %s", response.GetErrorMessage()))
 		}
 
 		return nil
 	}
 
+	// For structured output formats, print the full response as JSON
 	return presenter.PrintMessage(cmd, "", "", response)
 }

@@ -6,6 +6,7 @@ package presenter
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/spf13/cobra"
@@ -190,4 +191,17 @@ func isEmptySlice(value any) bool {
 	}
 
 	return false
+}
+
+// WriteMessageToFile writes a value as JSON directly to a file.
+// This is used for SDK integration to avoid stdout pollution from logs.
+//
+//nolint:wrapcheck
+func WriteMessageToFile(filePath string, value any) error {
+	data, err := marshalJSON(value)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	return os.WriteFile(filePath, data, 0o600)
 }
