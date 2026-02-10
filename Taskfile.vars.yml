@@ -1,0 +1,69 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3"
+
+vars:
+  ## Version
+  RELEASE_VERSION:
+    sh: grep 'version:' versions.yaml | awk '{print $2}'
+  RELEASE_VERSION_LDFLAG: "-X 'github.com/agntcy/dir/api/version.Version={{ .RELEASE_VERSION }}'"
+  COMMIT_SHA:
+    sh: git rev-parse --short HEAD
+  COMMIT_SHA_LDFLAG: "-X 'github.com/agntcy/dir/api/version.CommitHash={{ .COMMIT_SHA }}'"
+  VERSION_LDFLAGS: "{{ .RELEASE_VERSION_LDFLAG }} {{ .COMMIT_SHA_LDFLAG }}"
+
+  ## External dependency versions
+  ZOT_VERSION: "2.1.14"
+  SPIRE_VERSION: "1.14.1"
+  REGSYNC_VERSION: "0.11.1"
+
+  ## External dependency images
+  ZOT_IMAGE: "ghcr.io/project-zot/zot-linux-{{ARCH}}:v{{.ZOT_VERSION}}"
+
+  ## Image config
+  IMAGE_REPO: '{{ .IMAGE_REPO | default "ghcr.io/agntcy" }}'
+  IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}"
+  IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.IMAGE_TAG}} REGSYNC_VERSION=v{{.REGSYNC_VERSION}}"
+  IMAGE_BAKE_OPTS: '{{ .IMAGE_BAKE_OPTS | default "" }}'
+  BAKE_ENV: '{{ .IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
+  COVERAGE_IMAGE_TAG: "{{ .IMAGE_TAG | default .COMMIT_SHA }}-coverage"
+  COVERAGE_IMAGE_BAKE_ENV: "IMAGE_REPO={{.IMAGE_REPO}} IMAGE_TAG={{.COVERAGE_IMAGE_TAG}}"
+  COVERAGE_BAKE_ENV: '{{ .COVERAGE_IMAGE_BAKE_ENV }} EXTRA_LDFLAGS="{{.VERSION_LDFLAGS}}"'
+  COVERAGE_PKGS: '{{ .COVERAGE_PKGS | default "github.com/agntcy/dir/api/...,github.com/agntcy/dir/cli/...,github.com/agntcy/dir/client/...,github.com/agntcy/dir/importer/...,github.com/agntcy/dir/utils/..." }}'
+
+  ## Dependency config
+  BIN_DIR: "{{ .ROOT_DIR }}/bin"
+  DIRCTL_BIN: "{{ .BIN_DIR}}/dirctl"
+  HELM_VERSION: "4.0.5"
+  HELM_BIN: "{{ .BIN_DIR }}/helm-{{.HELM_VERSION}}"
+  KUBECTL_VERSION: "1.35.0"
+  KUBECTL_BIN: "{{ .BIN_DIR }}/kubectl-{{.KUBECTL_VERSION}}"
+  KIND_VERSION: "0.31.0"
+  KIND_BIN: "{{ .BIN_DIR }}/kind-{{.KIND_VERSION}}"
+  PROTOC_VERSION: "33.4"
+  PROTOC_BIN: "{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}"
+  BUFBUILD_VERSION: "1.63.0"
+  BUFBUILD_BIN: "{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}"
+  GO_VERSION: "1.25.6"
+  MULTIMOD_VERSION: "0.28.1"
+  MULTIMOD_BIN: "{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}"
+  GOLANGCI_LINT_VERSION: "2.8.0"
+  GOLANGCI_LINT_BIN: "{{ .BIN_DIR }}/golangci-lint-{{.GOLANGCI_LINT_VERSION}}"
+  LICENSEI_VERSION: "0.9.0"
+  LICENSEI_BIN: "{{ .BIN_DIR }}/licensei-{{.LICENSEI_VERSION}}"
+  UV_VERSION: "0.9.26"
+  UV_BIN: "{{ .BIN_DIR }}/uv-{{.UV_VERSION}}"
+  UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
+  COSIGN_VERSION: "3.0.4"
+  COSIGN_BIN: "{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}"
+
+  ## Runtime CRD
+  CONTROLLER_GEN_VERSION: "v0.17.3"
+  CONTROLLER_GEN_BIN: "sigs.k8s.io/controller-tools/cmd/controller-gen@{{ .CONTROLLER_GEN_VERSION }}"
+
+  ## Go module discovery
+  GO_MOD_DIR:
+    sh: find . -name go.mod -not -path "./tmp*" -exec dirname {} \;
+  GO_MOD_DIR_UNIT_TEST:
+    sh: find . -name go.mod -not -path "./e2e*" -not -path "./tmp*" -exec dirname {} \;
