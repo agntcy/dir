@@ -1230,11 +1230,11 @@ class Client:
         """Verify a record using a public key.
 
         This private method handles key-based verification by passing the public key
-        file path to the dirctl command.
+        reference to the dirctl command. The key can be a file path, URL, or KMS URI.
 
         Args:
             record_ref: Reference to the record to verify
-            key_verifier: VerifyWithKey containing the path to the public key file
+            key_verifier: VerifyWithKey containing the public key reference
             output_path: Path to the output file for verification result
 
         Raises:
@@ -1242,16 +1242,15 @@ class Client:
 
         """
         try:
-            # Decode the public key path from bytes
-            key_path = key_verifier.public_key.decode("utf-8")
-
             # Build and execute the verification command
+            # The key reference is passed directly to dirctl which handles
+            # file paths, URLs, KMS URIs, etc.
             command = [
                 self.config.dirctl_path,
                 "verify",
                 record_ref.cid,
                 "--key",
-                key_path,
+                key_verifier.public_key,
                 "--output-file",
                 output_path,
             ]
@@ -1471,46 +1470,45 @@ class Client:
     ) -> None:
         """Sign a record using a private key.
 
-        This private method handles key-based signing by writing the private key
-        to a temporary file and executing the dirctl command with the key file.
+        This private method handles key-based signing by passing the key reference
+        directly to the dirctl command. The key can be a file path, URL, or KMS URI.
 
         Args:
-            req: SignRequest containing the record reference and key provider
+            record_ref: Reference to the record to sign
+            key_signer: SignWithKey containing the private key reference and password
 
         Raises:
-            RuntimeError: If any other error occurs during signing
+            RuntimeError: If any error occurs during signing
 
         """
         try:
-            # Create temporary file for the private key
-            with tempfile.NamedTemporaryFile(delete=False) as tmp_key_file:
-                tmp_key_file.write(key_signer.private_key)
-                tmp_key_file.flush()
+            # Set up environment with password
+            # Always set COSIGN_PASSWORD (even if empty) to avoid terminal prompts
+            shell_env = os.environ.copy()
+            password = ""
+            if key_signer.password:
+                password = key_signer.password.decode("utf-8")
+            shell_env["COSIGN_PASSWORD"] = password
 
-                # Set up environment with password
-                shell_env = os.environ.copy()
-                shell_env["COSIGN_PASSWORD"] = key_signer.password.decode("utf-8")
+            # Build and execute the signing command
+            # The key reference is passed directly to dirctl which handles
+            # file paths, URLs, KMS URIs, etc.
+            command = [
+                self.config.dirctl_path,
+                "sign",
+                record_ref.cid,
+                "--key",
+                key_signer.private_key,
+            ]
 
-                # Build and execute the signing command
-                command = [
-                    self.config.dirctl_path,
-                    "sign",
-                    record_ref.cid,
-                    "--key",
-                    tmp_key_file.name,
-                ]
+            subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                env=shell_env,
+                timeout=60,  # 1 minute timeout
+            )
 
-                subprocess.run(
-                    command,
-                    check=True,
-                    capture_output=True,
-                    env=shell_env,
-                    timeout=60,  # 1 minute timeout
-                )
-
-        except OSError as e:
-            msg = f"Failed to write key file to disk: {e}"
-            raise RuntimeError(msg) from e
         except subprocess.CalledProcessError as e:
             msg = f"dirctl signing failed with return code {e.returncode}: {e.stderr.decode('utf-8', errors='ignore')}"
             raise RuntimeError(msg) from e

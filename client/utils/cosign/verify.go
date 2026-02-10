@@ -5,6 +5,7 @@ package cosign
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -80,8 +81,9 @@ func VerifyWithOIDC(payload []byte, req *signv1.VerifyWithOIDC, signature *signv
 	return &signv1.SignerInfo{
 		Type: &signv1.SignerInfo_Oidc{
 			Oidc: &signv1.SignerInfoOIDC{
-				Issuer:  result.Signature.Certificate.Issuer,
-				Subject: result.Signature.Certificate.SubjectAlternativeName,
+				Issuer:            result.Signature.Certificate.Issuer,
+				Subject:           result.Signature.Certificate.SubjectAlternativeName,
+				CertificateIssuer: result.Signature.Certificate.CertificateIssuer,
 			},
 		},
 	}, nil
@@ -90,14 +92,15 @@ func VerifyWithOIDC(payload []byte, req *signv1.VerifyWithOIDC, signature *signv
 // VerifyWithKeys verifies signatures against public keys using cosign.
 // It iterates through all combinations of public keys and signatures to find
 // a valid match, similar to Zot's VerifyCosignSignature pattern.
+// Public keys can be either PEM content or key references (file paths, URLs, KMS URIs).
 //
 // Returns true with metadata if any signature verifies with any public key.
 // Returns false with nil error if no valid combination is found or if
 // no signatures/public keys are provided.
-func VerifyWithKeys(payload []byte, pubKeys []string, signature *signv1.Signature) (*signv1.SignerInfo, error) {
+func VerifyWithKeys(ctx context.Context, payload []byte, pubKeys []string, signature *signv1.Signature) (*signv1.SignerInfo, error) {
 	// Try each public key against each signature
 	for _, publicKey := range pubKeys {
-		err := verifySignatureWithKey(publicKey, signature.GetSignature(), payload)
+		pubKeyPEM, err := verifySignatureWithKey(ctx, publicKey, signature.GetSignature(), payload)
 		if err != nil {
 			// Log and continue to try next combination
 			continue
@@ -107,8 +110,8 @@ func VerifyWithKeys(payload []byte, pubKeys []string, signature *signv1.Signatur
 		return &signv1.SignerInfo{
 			Type: &signv1.SignerInfo_Key{
 				Key: &signv1.SignerInfoKey{
-					PublicKey: publicKey,
-					Algorithm: detectKeyAlgorithm(publicKey),
+					PublicKey: pubKeyPEM,
+					Algorithm: detectKeyAlgorithm(pubKeyPEM),
 				},
 			},
 		}, nil
@@ -118,28 +121,47 @@ func VerifyWithKeys(payload []byte, pubKeys []string, signature *signv1.Signatur
 	return nil, fmt.Errorf("no valid signature found for the provided public keys")
 }
 
-// verifySignatureWithKey verifies a single signature using a specific public key.
-func verifySignatureWithKey(publicKey string, signature string, expectedPayload []byte) error {
-	// Load public key verifier using cosign's sigstore library
+// verifySignatureWithKey verifies a single signature using a public key.
+// The publicKey can be either:
+// - PEM-encoded public key content
+// - A key reference (file path, URL, or KMS URI)
+// Returns the PEM-encoded public key content on success.
+func verifySignatureWithKey(ctx context.Context, publicKey string, sig string, expectedPayload []byte) (string, error) {
+	// Try loading as raw PEM content first
 	verifier, err := sigs.LoadPublicKeyRaw([]byte(publicKey), crypto.SHA256)
 	if err != nil {
-		return fmt.Errorf("failed to load public key: %w", err)
+		// Try to load as a key reference (file path, URL, or KMS URI)
+		verifier, err = sigs.PublicKeyFromKeyRefWithHashAlgo(ctx, publicKey, crypto.SHA256)
+		if err != nil {
+			return "", fmt.Errorf("failed to load public key: %w", err)
+		}
 	}
 
 	// Decode base64 signature
-	signatureBytes, err := base64.StdEncoding.DecodeString(signature)
+	signatureBytes, err := base64.StdEncoding.DecodeString(sig)
 	if err != nil {
 		// If decoding fails, assume it's already raw bytes
-		signatureBytes = []byte(signature)
+		signatureBytes = []byte(sig)
 	}
 
 	// Verify signature against the expected payload
 	err = verifier.VerifySignature(bytes.NewReader(signatureBytes), bytes.NewReader(expectedPayload))
 	if err != nil {
-		return fmt.Errorf("signature verification failed: %w", err)
+		return "", fmt.Errorf("signature verification failed: %w", err)
 	}
 
-	return nil
+	// Get the public key in PEM format
+	pubKey, err := verifier.PublicKey()
+	if err != nil {
+		return "", fmt.Errorf("failed to get public key: %w", err)
+	}
+
+	pubKeyPEM, err := cryptoutils.MarshalPublicKeyToPEM(pubKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal public key to PEM: %w", err)
+	}
+
+	return string(pubKeyPEM), nil
 }
 
 // getOIDCVerifierOptions builds verifier options for OIDC-based verification.

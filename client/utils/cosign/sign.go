@@ -12,6 +12,7 @@ import (
 
 	signv1 "github.com/agntcy/dir/api/sign/v1"
 	"github.com/sigstore/cosign/v3/pkg/cosign"
+	csignature "github.com/sigstore/cosign/v3/pkg/signature"
 	v1 "github.com/sigstore/protobuf-specs/gen/pb-go/trustroot/v1"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/sign"
@@ -71,11 +72,23 @@ func SignBlobWithOIDC(ctx context.Context, payload []byte, req *signv1.SignWithO
 }
 
 // SignBlobWithKey signs a blob using a private key.
-func SignBlobWithKey(_ context.Context, payload []byte, req *signv1.SignWithKey) (*signv1.Signature, *signv1.PublicKey, error) {
-	// Load private key
-	sv, err := cosign.LoadPrivateKey(req.GetPrivateKey(), req.GetPassword(), nil)
+// Supports both inline PEM content and key references (file paths, URLs, KMS URIs).
+func SignBlobWithKey(ctx context.Context, payload []byte, req *signv1.SignWithKey) (*signv1.Signature, *signv1.PublicKey, error) {
+	privateKey := req.GetPrivateKey()
+	if privateKey == "" {
+		return nil, nil, fmt.Errorf("private_key is required")
+	}
+
+	// Try loading the private key as raw PEM first
+	sv, err := cosign.LoadPrivateKey([]byte(privateKey), req.GetPassword(), nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("loading private key: %w", err)
+		// Fallback to loading as a key reference (file path, URL, KMS URI, etc.)
+		sv, err = csignature.SignerVerifierFromKeyRef(ctx, privateKey, func(_ bool) ([]byte, error) {
+			return req.GetPassword(), nil
+		}, nil)
+		if err != nil {
+			return nil, nil, fmt.Errorf("loading private key from reference: %w", err)
+		}
 	}
 
 	// Sign the message

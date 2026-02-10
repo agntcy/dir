@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	corev1 "github.com/agntcy/dir/api/core/v1"
 	signv1 "github.com/agntcy/dir/api/sign/v1"
@@ -36,17 +35,26 @@ and the transparency log is pushed to Sigstore Rekor.
 This command opens a browser window to authenticate the user
 with the default OIDC provider.
 
+Password for encrypted private keys:
+When using an encrypted private key, the password can be provided via:
+  1. COSIGN_PASSWORD environment variable
+  2. Interactive terminal prompt (if running in a terminal)
+
 Usage examples:
 
 1. Sign a record using OIDC:
 
 	dirctl sign <record-cid>
 
-2. Sign a record using key:
+2. Sign a record using key file:
 
-	dirctl sign <record-cid> --key <key-file>
+	dirctl sign <record-cid> --key /path/to/cosign.key
 
-3. Output formats:
+3. Sign with encrypted key (password from env):
+
+	COSIGN_PASSWORD=mypassword dirctl sign <record-cid> --key cosign.key
+
+4. Output formats:
 
 	# Get signing result as JSON
 	dirctl sign <record-cid> --output json
@@ -90,23 +98,18 @@ func Sign(ctx context.Context, c *client.Client, recordCID string) error {
 
 	switch {
 	case opts.Key != "":
-		// Load the key from file
-		rawKey, err := os.ReadFile(filepath.Clean(opts.Key))
-		if err != nil {
-			return fmt.Errorf("failed to read key file: %w", err)
-		}
-
-		// Read password from environment variable
+		// Read password from environment variable or terminal
 		pw, err := readPrivateKeyPassword()()
 		if err != nil {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
 
-		// Sign the record using the provided key
+		// Sign the record using the provided key reference
+		// The key can be a file path, URL, KMS URI, etc.
 		provider = &signv1.SignRequestProvider{
 			Request: &signv1.SignRequestProvider_Key{
 				Key: &signv1.SignWithKey{
-					PrivateKey: rawKey,
+					PrivateKey: opts.Key,
 					Password:   pw,
 				},
 			},

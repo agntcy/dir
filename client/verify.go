@@ -55,7 +55,7 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 
 	switch {
 	case req.GetProvider().GetKey() != nil:
-		publicKeys = []string{string(req.GetProvider().GetKey().GetPublicKey())}
+		publicKeys = []string{req.GetProvider().GetKey().GetPublicKey()}
 
 	case req.GetProvider().GetAny() != nil:
 		publicKeys, err = c.pullPublicKeys(ctx, req.GetRecordRef())
@@ -69,6 +69,7 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 
 	// Verify each signature
 	var (
+		seenKeys   = make(map[string]bool) // Track unique signers by key/identity
 		signers    []*signv1.SignerInfo
 		signerInfo *signv1.SignerInfo
 		verifyErr  error
@@ -81,13 +82,13 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 			signerInfo, verifyErr = cosign.VerifyWithOIDC(payload, provider.Oidc, sig)
 
 		case *signv1.VerifyRequestProvider_Key:
-			signerInfo, verifyErr = cosign.VerifyWithKeys(payload, publicKeys, sig)
+			signerInfo, verifyErr = cosign.VerifyWithKeys(ctx, payload, publicKeys, sig)
 
 		case *signv1.VerifyRequestProvider_Any:
 			// VerifyWithAny accepts any valid signature.
 			// If a signature has no bundle, it must be verified with a key.
 			if len(sig.GetContentBundle()) == 0 {
-				signerInfo, verifyErr = cosign.VerifyWithKeys(payload, publicKeys, sig)
+				signerInfo, verifyErr = cosign.VerifyWithKeys(ctx, payload, publicKeys, sig)
 			} else {
 				signerInfo, verifyErr = cosign.VerifyWithOIDC(payload, &signv1.VerifyWithOIDC{
 					Options: provider.Any.GetOidcOptions().GetDefaultOptions(),
@@ -103,6 +104,14 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 
 			continue
 		}
+
+		// Deduplicate signers based on unique key (public key or issuer+subject)
+		signerKey := getSignerKey(signerInfo)
+		if seenKeys[signerKey] {
+			continue // Skip duplicate signer
+		}
+
+		seenKeys[signerKey] = true
 
 		signers = append(signers, signerInfo)
 	}
@@ -121,6 +130,18 @@ func (c *Client) Verify(ctx context.Context, req *signv1.VerifyRequest) (*signv1
 		Success: true,
 		Signers: signers,
 	}, nil
+}
+
+// getSignerKey returns a unique key for a signer to use for deduplication.
+func getSignerKey(signer *signv1.SignerInfo) string {
+	switch s := signer.GetType().(type) {
+	case *signv1.SignerInfo_Key:
+		return "key:" + s.Key.String()
+	case *signv1.SignerInfo_Oidc:
+		return "oidc:" + s.Oidc.String()
+	default:
+		return ""
+	}
 }
 
 // pullSignatures fetches all signature referrers for a record.
