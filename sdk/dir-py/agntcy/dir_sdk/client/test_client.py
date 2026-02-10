@@ -305,10 +305,31 @@ class TestClient(unittest.TestCase):
             else:
                 record_refs.pop() # NOTE: Drop the unsigned record if no OIDC tested
 
+            verify_index = 0
             for ref in record_refs:
                 response = self.client.verify(sign_v1.VerifyRequest(record_ref=ref))
 
                 assert response.success is True
+                
+                # Verify that signers array is present and not empty
+                assert response.signers is not None
+                assert len(response.signers) > 0
+                
+                # For the first record (key-signed), verify key signer info
+                if verify_index == 0:
+                    signer = response.signers[0]
+                    assert signer.HasField("key"), "Expected key signer info for key-signed record"
+                    assert signer.key.public_key, "Expected public key in signer info"
+                    assert signer.key.algorithm, "Expected algorithm in signer info"
+                
+                # For OIDC-signed record, verify OIDC signer info
+                if verify_index == 1 and token and provider_url:
+                    signer = response.signers[0]
+                    assert signer.HasField("oidc"), "Expected OIDC signer info for OIDC-signed record"
+                    assert signer.oidc.issuer, "Expected issuer in OIDC signer info"
+                    assert signer.oidc.subject, "Expected subject in OIDC signer info"
+                
+                verify_index += 1
                 
         except Exception as e:
             assert e is None

@@ -119,7 +119,25 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests to check signature supp
 			time.Sleep(10 * time.Second)
 		})
 
-		ginkgo.It("should verify a signature with a public key on server side", func() {
+		ginkgo.It("should verify a signature with a public key", func() {
+			// Verify using the public key and check for trusted status
+			output := cli.Command("verify").
+				WithArgs(cid).
+				WithArgs("--key", paths.publicKey).
+				WithArgs("--output", "json").
+				ShouldSucceed()
+
+			// Verify the response contains signer information
+			gomega.Expect(output).To(gomega.ContainSubstring("\"success\":true"))
+			gomega.Expect(output).To(gomega.ContainSubstring("\"signers\""))
+			// For key-based signing, should contain key signer info with public key
+			gomega.Expect(output).To(gomega.ContainSubstring("\"key\""))
+			gomega.Expect(output).To(gomega.ContainSubstring("\"publicKey\""))
+			gomega.Expect(output).To(gomega.ContainSubstring("\"algorithm\""))
+		})
+
+		ginkgo.It("should verify any valid signature on the record", func() {
+			// Verify without specifying a key (any valid signature)
 			cli.Command("verify").
 				WithArgs(cid).
 				ShouldContain("Record signature is: trusted")
