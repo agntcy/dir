@@ -757,7 +757,7 @@ export class Client {
    * console.log(`Signature: ${response.signature}`);
    * ```
    */
-  sign(req: models.sign_v1.SignRequest, oidc_client_id = 'sigstore'): void {
+  sign(req: models.sign_v1.SignRequest): void {
 
     var output;
 
@@ -766,7 +766,6 @@ export class Client {
         output = this.__sign_with_oidc(
           req.recordRef?.cid || '',
           req.provider.request.value,
-          oidc_client_id,
         );
         break;
 
@@ -1140,10 +1139,6 @@ export class Client {
 
       let commandArgs = ["sign", cid, "--key", tmp_key_filename];
 
-      if (this.config.spiffeEndpointSocket !== '') {
-        commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
-      }
-
       // Execute command
       let output = spawnSync(
         `${this.config.dirctlPath}`, commandArgs,
@@ -1170,7 +1165,6 @@ export class Client {
    *
    * @param cid - Content identifier of the record to sign
    * @param req - SignWithOIDC request containing the OIDC configuration
-   * @param oidc_client_id - OIDC client identifier for authentication
    * @returns SignResponse containing the signature
    *
    * @throws {Error} If any error occurs during signing
@@ -1180,7 +1174,6 @@ export class Client {
   private __sign_with_oidc(
     cid: string,
     req: models.sign_v1.SignWithOIDC,
-    oidc_client_id: string,
   ): SpawnSyncReturns<string> {
     // Prepare command
     let commandArgs = ["sign", cid];
@@ -1193,6 +1186,15 @@ export class Client {
     ) {
       commandArgs.push(...["--oidc-provider-url", req.options.oidcProviderUrl]);
     }
+    if (req.options?.oidcClientId !== undefined && req.options.oidcClientId !== '') {
+      commandArgs.push(...["--oidc-client-id", req.options.oidcClientId]);
+    }
+    if (req.options?.oidcClientSecret !== undefined && req.options.oidcClientSecret !== '') {
+      commandArgs.push(...["--oidc-client-secret", req.options.oidcClientSecret]);
+    }
+    if (req.options?.skipTlog !== undefined && req.options.skipTlog) {
+      commandArgs.push("--skip-tlog");
+    }
     if (req.options?.fulcioUrl !== undefined && req.options.fulcioUrl !== '') {
       commandArgs.push(...["--fulcio-url", req.options.fulcioUrl]);
     }
@@ -1204,10 +1206,6 @@ export class Client {
       req.options.timestampUrl !== ''
     ) {
       commandArgs.push(...["--timestamp-url", req.options.timestampUrl]);
-    }
-
-    if (this.config.spiffeEndpointSocket !== '') {
-      commandArgs.push(...["--spiffe-socket-path", this.config.spiffeEndpointSocket]);
     }
 
     // Execute command

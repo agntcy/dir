@@ -382,6 +382,7 @@ describe('Client', () => {
             value: {
               idToken: token,
               options: {
+                oidcClientId: clientId,
                 oidcProviderUrl: providerUrl,
               },
             },
@@ -392,8 +393,8 @@ describe('Client', () => {
       // Sign test
       client.sign(keyRequest);
 
-      if ((shellEnv['OIDC_TOKEN'] || '') != '' && (shellEnv['OIDC_PROVIDER_URL'] || '') != '') {
-        client.sign(oidcRequest, clientId);
+      if (token !== '' && providerUrl !== '') {
+        client.sign(oidcRequest);
       } else {
         recordRefs.pop(); // NOTE: Drop the unsigned record if no OIDC tested
       }

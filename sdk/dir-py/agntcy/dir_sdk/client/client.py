@@ -1188,15 +1188,16 @@ class Client:
         """
         try:
             provider = req.provider
-            if provider is not None and provider.HasField("key") and len(provider.key.public_key) > 0:
+            if provider is None:
+                return self._verify_with_any(req.record_ref, None)
+            elif provider.HasField("key"):
                 return self._verify_with_key(req.record_ref, provider.key)
-            elif provider is not None and provider.HasField("oidc"):
+            elif provider.HasField("oidc"):
                 return self._verify_with_oidc(req.record_ref, provider.oidc)
-            elif provider is not None and provider.HasField("any"):
+            elif provider.HasField("any"):
                 return self._verify_with_any(req.record_ref, provider.any)
             else:
-                # Default: verify any valid signature
-                return self._verify_with_any(req.record_ref, None)
+                raise ValueError("Invalid verification provider specified in the request")
         except RuntimeError as e:
             msg = f"Failed to verify the object: {e}"
             raise RuntimeError(msg) from e
@@ -1415,7 +1416,6 @@ class Client:
     def sign(
         self,
         req: sign_v1.SignRequest,
-        oidc_client_id: str | None = "sigstore",
     ) -> None:
         """Sign a record with a cryptographic signature.
 
@@ -1443,10 +1443,13 @@ class Client:
 
         """
         try:
-            if len(req.provider.key.private_key) > 0:
+            if req.provider is None:
+                msg = "No signing provider specified in the request"
+                raise RuntimeError(msg)
+            elif req.provider.HasField("key"):
                 self._sign_with_key(req.record_ref, req.provider.key)
-            else:
-                self._sign_with_oidc(req.record_ref, req.provider.oidc, oidc_client_id)
+            elif req.provider.HasField("oidc"):
+                self._sign_with_oidc(req.record_ref, req.provider.oidc)
         except RuntimeError as e:
             msg = f"Failed to sign the object: {e}"
             raise RuntimeError(msg) from e
@@ -1491,9 +1494,6 @@ class Client:
                     tmp_key_file.name,
                 ]
 
-                if self.config.spiffe_socket_path != "":
-                    command.extend(["--spiffe-socket-path", self.config.spiffe_socket_path])
-                
                 subprocess.run(
                     command,
                     check=True,
@@ -1519,7 +1519,6 @@ class Client:
         self,
         record_ref: core_v1.RecordRef,
         oidc_signer: sign_v1.SignWithOIDC,
-        oidc_client_id: str = "sigstore",
     ) -> None:
         """Sign a record using OIDC-based authentication.
 
@@ -1528,7 +1527,6 @@ class Client:
 
         Args:
             req: SignRequest containing the record reference and OIDC provider
-            oidc_client_id: OIDC client identifier for authentication
 
         Raises:
             RuntimeError: If any other error occurs during signing
@@ -1544,24 +1542,19 @@ class Client:
             if oidc_signer.id_token:
                 command.extend(["--oidc-token", oidc_signer.id_token])
             if oidc_signer.options.oidc_provider_url:
-                command.extend(
-                    [
-                        "--oidc-provider-url",
-                        oidc_signer.options.oidc_provider_url,
-                    ]
-                )
+                command.extend(["--oidc-provider-url", oidc_signer.options.oidc_provider_url])
+            if oidc_signer.options.oidc_client_id:
+                command.extend(["--oidc-client-id", oidc_signer.options.oidc_client_id])
+            if oidc_signer.options.oidc_client_secret:
+                command.extend(["--oidc-client-secret", oidc_signer.options.oidc_client_secret])
             if oidc_signer.options.fulcio_url:
                 command.extend(["--fulcio-url", oidc_signer.options.fulcio_url])
             if oidc_signer.options.rekor_url:
                 command.extend(["--rekor-url", oidc_signer.options.rekor_url])
             if oidc_signer.options.timestamp_url:
                 command.extend(["--timestamp-url", oidc_signer.options.timestamp_url])
-
-            # Add client ID
-            command.extend(["--oidc-client-id", oidc_client_id])
-
-            if self.config.spiffe_socket_path != "":
-                command.extend(["--spiffe-socket-path", self.config.spiffe_socket_path])
+            if oidc_signer.options.skip_tlog:
+                command.append("--skip-tlog")
 
             # Execute the signing command
             subprocess.run(
