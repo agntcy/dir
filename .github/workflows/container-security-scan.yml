@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: "0 3 * * *" # Daily at 03:00 UTC (runs on default branch context: main)
   workflow_dispatch:
+    inputs:
+      override-tag-version:
+        required: false
+        type: string
+        description: "Override tag version to scan:"
 
 permissions:
   contents: read
@@ -24,6 +29,7 @@ jobs:
       - name: Get latest tag
         id: get-tag
         run: |
+          if [ -z "${{ github.event.inputs.override-tag-version }}" ]; then
           LATEST_TAG=$(gh api graphql \
             -f query='
               query($owner: String!, $repo: String!, $tagCount: Int!) {
@@ -41,6 +47,11 @@ jobs:
           )
           echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
           echo "Latest tag version: ${LATEST_TAG}"
+
+          else
+            echo "version=${{ github.event.inputs.override-tag-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden tag version: ${{ github.event.inputs.override-tag-version }}"
+          fi
 
   trivy-scan:
     name: Trivy Image Scan (Pull from GHCR)
