@@ -1,0 +1,66 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Push OASF Record
+description: |
+  Push agent records to a Directory node's OCI registry.
+  Optionally publish to the DHT for network discovery.
+  Optionally sign records for authenticity verification.
+author: agntcy
+branding:
+  icon: upload-cloud
+  color: blue
+
+inputs:
+  record_paths:
+    description: |
+      Paths to OASF record JSON files to push (one per line).
+      Supports glob patterns (e.g., "agents/*.json").
+    required: false
+    default: "record.json"
+  server_addr:
+    description: Directory server address (host:port)
+    required: true
+  github_token:
+    description: GitHub PAT for authentication with Directory
+    required: true
+  sign:
+    description: Sign records after pushing (requires OIDC or key configuration)
+    required: false
+    default: "false"
+  oidc_client_id:
+    description: Workflow identity for keyless signing in CI (required when sign is true). Example https://github.com/OWNER/REPO/.github/workflows/YOUR_WORKFLOW.yaml@REF
+    required: false
+    default: ""
+  publish:
+    description: Publish records to DHT for network discovery after pushing
+    required: false
+    default: "false"
+
+outputs:
+  success:
+    description: Whether all records were pushed successfully ("true" or "false")
+    value: ${{ steps.push.outputs.success }}
+  cids:
+    description: JSON object mapping file paths to their CIDs
+    value: ${{ steps.push.outputs.cids }}
+  failed_files:
+    description: JSON array of file paths that failed to push
+    value: ${{ steps.push.outputs.failed_files }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Push records
+      id: push
+      shell: bash
+      env:
+        RECORD_PATHS: ${{ inputs.record_paths }}
+        SERVER_ADDR: ${{ inputs.server_addr }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        SIGN_RECORDS: ${{ inputs.sign }}
+        OIDC_CLIENT_ID: ${{ inputs.oidc_client_id }}
+        PUBLISH_RECORDS: ${{ inputs.publish }}
+      run: |
+        chmod +x "${{ github.action_path }}/push.sh"
+        "${{ github.action_path }}/push.sh"
