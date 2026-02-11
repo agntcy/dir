@@ -7,6 +7,27 @@ on:
   schedule:
     - cron: "0 3 * * *" # Daily at 03:00 UTC (runs on default branch context: main)
   workflow_dispatch:
+    inputs:
+      tag-version:
+        required: false
+        type: string
+        description: "Override tag version to scan"
+      zot-version:
+        required: false
+        type: string
+        description: "Override Zot version to scan"
+      spire-server-version:
+        required: false
+        type: string
+        description: "Override Spire server version to scan"
+      spire-agent-version:
+        required: false
+        type: string
+        description: "Override Spire agent version to scan"
+      postgresql-version:
+        required: false
+        type: string
+        description: "Override PostgreSQL version to scan"
 
 permissions:
   contents: read
@@ -15,51 +36,106 @@ permissions:
   issues: write # create issues for critical CVEs
 
 jobs:
-  get-version:
-    name: Get Latest Release Version
+  get-versions:
+    name: Get component versions
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get-release.outputs.version }}
+      tag-version: ${{ steps.get-tag.outputs.version }}
+      zot-version: ${{ steps.get-external-versions.outputs.zot-version }}
+      spire-server-version: ${{ steps.get-external-versions.outputs.spire-server-version }}
+      spire-agent-version: ${{ steps.get-external-versions.outputs.spire-agent-version }}
+      postgresql-version: ${{ steps.get-external-versions.outputs.postgresql-version }}
     steps:
-      - name: Get latest release
-        id: get-release
+      - name: Get latest tag
+        id: get-tag
         run: |
-          LATEST_TAG=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
-          echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
-          echo "Latest release version: ${LATEST_TAG}"
+          if [ -z "${{ github.event.inputs.tag-version }}" ]; then
+            LATEST_TAG=$(gh api graphql \
+              -f query='
+                query($owner: String!, $repo: String!, $tagCount: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
+                      nodes {
+                        name
+                      }
+                    }
+                  }
+                }
+              ' \
+              -F owner=${{ github.repository_owner }} -F repo=${{ github.repository }} -F tagCount=100 \
+              --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
+            )
+
+            echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
+            echo "Latest tag version: ${LATEST_TAG}"
+          else
+            echo "version=${{ github.event.inputs.tag-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden tag version: ${{ github.event.inputs.tag-version }}"
+          fi
+
+      - name: Get external dependency versions
+        id: get-external-versions
+        run: |
+          if [ -z "${{ github.event.inputs.zot-version }}" ]; then
+            echo "zot-version=v2.1.14" >> $GITHUB_OUTPUT
+          else
+            echo "zot-version=${{ github.event.inputs.zot-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden Zot version: ${{ github.event.inputs.zot-version }}"
+          fi
+
+          if [ -z "${{ github.event.inputs.spire-server-version }}" ]; then
+            echo "spire-server-version=1.14.1" >> $GITHUB_OUTPUT
+          else
+            echo "spire-server-version=${{ github.event.inputs.spire-server-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden Spire server version: ${{ github.event.inputs.spire-server-version }}"
+          fi
+
+          if [ -z "${{ github.event.inputs.spire-agent-version }}" ]; then
+            echo "spire-agent-version=1.14.1" >> $GITHUB_OUTPUT
+          else
+            echo "spire-agent-version=${{ github.event.inputs.spire-agent-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden Spire agent version: ${{ github.event.inputs.spire-agent-version }}"
+          fi
+
+          if [ -z "${{ github.event.inputs.postgresql-version }}" ]; then
+            echo "postgresql-version=sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5" >> $GITHUB_OUTPUT
+          else
+            echo "postgresql-version=${{ github.event.inputs.postgresql-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden PostgreSQL version: ${{ github.event.inputs.postgresql-version }}"
+          fi
 
   trivy-scan:
     name: Trivy Image Scan (Pull from GHCR)
     runs-on: ubuntu-latest
-    needs: get-version
+    needs: get-versions
     strategy:
       fail-fast: false
       matrix:
         include:
           - image: dir-apiserver
             repo: ghcr.io/${{ github.repository_owner }}/dir-apiserver
-            version: ${{ needs.get-version.outputs.version }}
+            version: ${{ needs.get-versions.outputs.tag-version }}
           - image: dir-ctl
             repo: ghcr.io/${{ github.repository_owner }}/dir-ctl
-            version: ${{ needs.get-version.outputs.version }}
+            version: ${{ needs.get-versions.outputs.tag-version }}
           - image: dir-runtime-discovery
             repo: ghcr.io/${{ github.repository_owner }}/dir-runtime-discovery
-            version: ${{ needs.get-version.outputs.version }}
+            version: ${{ needs.get-versions.outputs.tag-version }}
           - image: dir-runtime-server
             repo: ghcr.io/${{ github.repository_owner }}/dir-runtime-server
-            version: ${{ needs.get-version.outputs.version }}
+            version: ${{ needs.get-versions.outputs.tag-version }}
           - image: zot
             repo: ghcr.io/project-zot/zot
-            version: v2.1.14
+            version: ${{ needs.get-versions.outputs.zot-version }}
           - image: spire-server
             repo: ghcr.io/spiffe/spire-server
-            version: 1.14.1
+            version: ${{ needs.get-versions.outputs.spire-server-version }}
           - image: spire-agent
             repo: ghcr.io/spiffe/spire-agent
-            version: 1.14.1
+            version: ${{ needs.get-versions.outputs.spire-agent-version }}
           - image: postgresql
             repo: docker.io/bitnami/postgresql
-            digest: sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5
+            version: ${{ needs.get-versions.outputs.postgresql-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
