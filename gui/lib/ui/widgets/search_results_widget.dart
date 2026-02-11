@@ -175,6 +175,10 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
 
   Widget _buildHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final hasCriteria = widget.searchCriteria != null &&
+        widget.searchCriteria!.entries.any((e) => e.value != null && e.value.toString().isNotEmpty);
+    final title = hasCriteria ? 'Search Results' : 'All Agents';
+    final icon = hasCriteria ? Icons.search_outlined : Icons.list_alt_outlined;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -192,7 +196,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
               border: Border.all(color: colorScheme.primary.withOpacity(0.1)),
             ),
             child: Icon(
-              Icons.search_outlined,
+              icon,
               color: colorScheme.primary,
               size: 24,
             ),
@@ -203,7 +207,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Search Results',
+                  title,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -518,19 +522,21 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
 
   Widget _buildEmptyState(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final hasCriteria = widget.searchCriteria != null &&
+        widget.searchCriteria!.entries.any((e) => e.value != null && e.value.toString().isNotEmpty);
 
     return Container(
       padding: const EdgeInsets.all(32),
       child: Column(
         children: [
           Icon(
-            Icons.search_off_rounded,
+            hasCriteria ? Icons.search_off_rounded : Icons.list_alt_rounded,
             size: 48,
             color: colorScheme.onSurface.withOpacity(0.3),
           ),
           const SizedBox(height: 12),
           Text(
-            'No agents found',
+            hasCriteria ? 'No agents found' : 'No agents registered',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -539,7 +545,7 @@ class _SearchResultsWidgetState extends State<SearchResultsWidget> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Try adjusting your search criteria',
+            hasCriteria ? 'Try adjusting your search criteria' : 'Register agents to see them here',
             style: TextStyle(
               fontSize: 13,
               color: colorScheme.onSurface.withOpacity(0.4),
@@ -1562,6 +1568,142 @@ class _AgentDetailCardState extends State<AgentDetailCard> {
                     color: colorScheme.onSurface.withOpacity(0.85),
                     height: 1.5,
                   ),
+                ),
+              ),
+
+            // Verification Failure Message
+            if ((widget.agentData?['_verificationStatus'] == 'error' || widget.agentData?['_verificationStatus'] == 'failed') &&
+                widget.agentData?['_verificationMessage'] != null)
+              _buildDetailSection(
+                context,
+                icon: Icons.error_outline,
+                title: 'Verification Status',
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.error.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colorScheme.error.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    widget.agentData!['_verificationMessage'],
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colorScheme.error,
+                      height: 1.4
+                    ),
+                  ),
+                ),
+              ),
+
+            // Verification Signers
+            if (widget.agentData?['_verificationSigners'] is List && (widget.agentData!['_verificationSigners'] as List).isNotEmpty)
+              _buildDetailSection(
+                context,
+                icon: Icons.verified_user_outlined,
+                title: 'Verifiable Signatures',
+                child: Column(
+                  children: (widget.agentData!['_verificationSigners'] as List).map<Widget>((s) {
+                    var identity = 'Unknown Identifier';
+                    var issuer = '';
+
+                    if (s is Map) {
+                       // Check for nested OIDC structure
+                       if (s.containsKey('oidc') && s['oidc'] is Map) {
+                         final oidc = s['oidc'];
+                         identity = oidc['subject'] ?? oidc['email'] ?? identity;
+                         issuer = oidc['issuer'] ?? issuer;
+                       }
+                       // Check for protojson Type -> Oidc structure
+                       else if ((s.containsKey('Type') || s.containsKey('type'))) {
+                         final typeObj = s['Type'] ?? s['type'];
+                         if (typeObj is Map) {
+                           final oidc = typeObj['Oidc'] ?? typeObj['oidc'];
+                           if (oidc is Map) {
+                               identity = oidc['subject'] ?? oidc['Subject'] ?? oidc['email'] ?? oidc['Email'] ?? identity;
+                               issuer = oidc['issuer'] ?? oidc['Issuer'] ?? issuer;
+                           }
+                         }
+                       }
+                       // Check for flat structure
+                       else {
+                         identity = s['identity'] ?? s['Identity'] ?? s['subject'] ?? s['sub'] ??
+                                    s['id'] ?? s['name'] ?? s['email'] ?? 'Unknown Identifier';
+
+                         issuer = s['issuer'] ?? s['Issuer'] ?? s['iss'] ?? '';
+                       }
+
+                       // If still unknown, dump keys for debugging
+                       if (identity == 'Unknown Identifier' && s.isNotEmpty) {
+                          for (final v in s.values) {
+                             if (v is String && v.isNotEmpty) {
+                                identity = v;
+                                break;
+                             }
+                          }
+                       }
+                    } else {
+                       identity = s.toString();
+                    }
+
+                    // Format GitHub Actions identity effectively
+                    if (identity.startsWith('https://github.com/')) {
+                       // Example: https://github.com/owner/repo/...
+                       try {
+                         // Remove schema and host
+                         var path = identity.replaceFirst('https://github.com/', '');
+                         final parts = path.split('/');
+                         if (parts.length >= 2) {
+                           identity = '${parts[0]}/${parts[1]}'; // owner/repo
+                         }
+                       } catch (_) {
+                         // Keep original if parsing fails
+                       }
+                    } else if (identity.startsWith('repo:')) {
+                       // Example: repo:owner/repo:ref:refs/heads/main
+                       try {
+                         var parts = identity.split(':');
+                         if (parts.length >= 2) {
+                           identity = parts[1]; // owner/repo
+                         }
+                       } catch (_) {
+                         // Keep original if parsing fails
+                       }
+                    }
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.verified, size: 16, color: Colors.green.shade700),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  identity,
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colorScheme.onSurface),
+                                ),
+                                if (issuer.isNotEmpty)
+                                  Text(
+                                    issuer,
+                                    style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withOpacity(0.6)),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
 

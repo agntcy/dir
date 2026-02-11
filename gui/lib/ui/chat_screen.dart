@@ -383,6 +383,19 @@ class _ChatScreenState extends State<ChatScreen> {
          // Default to github if only token is present
          mcpEnv['DIRECTORY_CLIENT_AUTH_MODE'] = 'github';
        }
+
+       // Special case: If connecting to localhost, prefer insecure mode if it's currently 'github'
+       // This handles the dev scenario where a token exists but server is local plaintext
+       final isLocalhost = dirServerAddr.isEmpty ||
+                         dirServerAddr.contains('localhost') ||
+                         dirServerAddr.contains('127.0.0.1') ||
+                         dirServerAddr.contains('0.0.0.0');
+
+       if (isLocalhost && mcpEnv['DIRECTORY_CLIENT_AUTH_MODE'] == 'github') {
+         print('Detected localhost connection, forcing insecure/none auth mode');
+         mcpEnv['DIRECTORY_CLIENT_AUTH_MODE'] = 'none';
+       }
+
        print('Configuring Directory Auth Token (using ${mcpEnv['DIRECTORY_CLIENT_AUTH_MODE']} mode)');
     }
 
@@ -592,6 +605,27 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _verifyRecord(String cid) async {
+    // Test hook for failure
+    if (cid == 'fail-test') {
+      setState(() {
+         // mock an entry for 'fail-test' if not exists for testing
+         if (!_pulledRecords.containsKey(cid)) {
+           _pulledRecords[cid] = {'cid': 'fail-test', 'name': 'Failed Test Record'};
+         }
+         _pulledRecords[cid]!['_isVerifying'] = true;
+      });
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (mounted) {
+         setState(() {
+           _pulledRecords[cid]!['_isVerifying'] = false;
+           _pulledRecords[cid]!['_verificationStatus'] = 'failed';
+           _pulledRecords[cid]!['_verificationMessage'] = 'not trusted: signature mismatch';
+         });
+      }
+      return;
+    }
+
     if (_mcpClient == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -616,22 +650,40 @@ class _ChatScreenState extends State<ChatScreen> {
       bool success = false;
       String message = '';
 
+      List<dynamic>? signers;
+
       if (!result.isError) {
         // Handle content as list of text objects
         if (result.content is List && (result.content as List).isNotEmpty) {
           final contentList = result.content as List;
           final text = contentList[0]['text'].toString();
 
-          if (text.contains('not trusted')) {
-            success = false;
-            message = text;
-          } else if (text.contains('trusted')) {
-            success = true;
-            message = text;
-          } else {
-            message = text;
-            // Best effort guess if trusted keyword is missing
-            success = !text.toLowerCase().contains('error') && !text.toLowerCase().contains('failed');
+          try {
+            final json = jsonDecode(text);
+            if (json is Map) {
+              success = json['success'] == true;
+              message = json['message']?.toString() ?? 'Unknown status';
+              if (json.containsKey('error') && json['error'] != null) {
+                message = '${message}: ${json['error']}';
+              }
+              if (json.containsKey('signers') && json['signers'] is List) {
+                signers = json['signers'];
+              }
+            } else {
+              throw const FormatException();
+            }
+          } catch (_) {
+            if (text.contains('not trusted')) {
+              success = false;
+              message = text;
+            } else if (text.contains('trusted')) {
+              success = true;
+              message = text;
+            } else {
+              message = text;
+              // Best effort guess if trusted keyword is missing
+              success = !text.toLowerCase().contains('error') && !text.toLowerCase().contains('failed');
+            }
           }
         } else {
           message = result.content.toString();
@@ -646,6 +698,21 @@ class _ChatScreenState extends State<ChatScreen> {
             _pulledRecords[cid]!['_isVerifying'] = false;
             _pulledRecords[cid]!['_verificationStatus'] = success ? 'verified' : 'failed';
             _pulledRecords[cid]!['_verificationMessage'] = message;
+            if (signers != null) {
+                _pulledRecords[cid]!['_verificationSigners'] = signers;
+            }
+
+            // Add verification result message to chat
+            _messages.add({
+              'role': 'verification_result',
+              'success': success,
+              'message': message,
+              'signers': signers,
+              'cid': cid,
+              'verifying_cid': cid
+            });
+            // Scroll to bottom to show result
+            Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
           }
         });
       }
@@ -657,6 +724,16 @@ class _ChatScreenState extends State<ChatScreen> {
             _pulledRecords[cid]!['_isVerifying'] = false;
             _pulledRecords[cid]!['_verificationStatus'] = 'error';
             _pulledRecords[cid]!['_verificationMessage'] = e.toString();
+
+            // Add failure message
+            _messages.add({
+              'role': 'verification_result',
+              'success': false,
+              'message': e.toString(),
+              'cid': cid,
+              'verifying_cid': cid
+            });
+            Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
           }
         });
       }
@@ -789,7 +866,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Widget _buildSuggestionChip(BuildContext context, String text) {
+  Widget _buildSuggestionChip(BuildContext context, String text, {String? message}) {
     return ActionChip(
       label: Text(
         text,
@@ -806,7 +883,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (text.toLowerCase() == 'help') {
           _showHelpCommands();
         } else {
-          _controller.text = text;
+          _controller.text = message ?? text;
           _sendMessage();
         }
       },
@@ -825,7 +902,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
 **Search Agents**
 
-- List of all agents - Show all registered agents
+- List OASF records with skills (*) - Show all registered agents
 - search for \<query\> - Search agents by name, author, or description
 - find agents with skill \<skill\> - Search by skill
 - agents by author \<name\> - Filter by author
@@ -1020,7 +1097,10 @@ Type your query or click a suggestion to get started!''',
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              _buildSuggestionChip(context, 'List of all agents'),
+                              _buildSuggestionChip(
+                                context,
+                                'List OASF records with skills (*)',
+                              ),
                               _buildSuggestionChip(context, 'Help'),
                             ],
                           ),
@@ -1090,6 +1170,135 @@ Type your query or click a suggestion to get started!''',
                         title: 'Record from ${msg['source']}',
                       ),
                     );
+                  }
+
+                  if (role == 'verification_result') {
+                     final success = msg['success'] == true;
+                     final message = msg['message']?.toString() ?? '';
+                     final signers = msg['signers'] as List<dynamic>?;
+                     final cid = msg['cid']?.toString() ?? 'unknown';
+
+                     Color bgColor = success ? Colors.green.withOpacity(0.05) : Colors.red.withOpacity(0.05);
+                     Color borderColor = success ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3);
+                     Color iconColor = success ? Colors.green : Colors.red;
+                     IconData icon = success ? Icons.verified_user : Icons.error_outline;
+
+                     return Align(
+                       alignment: Alignment.centerLeft,
+                       child: FractionallySizedBox(
+                         widthFactor: 0.85,
+                         child: Container(
+                           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                           padding: const EdgeInsets.all(16),
+                           decoration: BoxDecoration(
+                             color: bgColor,
+                             borderRadius: BorderRadius.circular(12),
+                             border: Border.all(color: borderColor),
+                           ),
+                           child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Row(
+                                 children: [
+                                   Icon(icon, color: iconColor, size: 24),
+                                   const SizedBox(width: 12),
+                                   Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                           Text(
+                                             success ? 'Verification Successful' : 'Verification Failed',
+                                             style: TextStyle(
+                                               fontWeight: FontWeight.bold,
+                                               fontSize: 16,
+                                               color: iconColor
+                                             ),
+                                           ),
+                                           const SizedBox(height: 4),
+                                           Text(
+                                              'CID: ${cid.length > 8 ? cid.substring(0, 8) + '...' : cid}',
+                                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))
+                                           )
+                                        ]
+                                      )
+                                   )
+                                 ],
+                               ),
+                               const SizedBox(height: 12),
+                               Text(
+                                  message,
+                                  style: TextStyle(height: 1.5, color: Theme.of(context).colorScheme.onSurface),
+                               ),
+                               if (success && signers != null && signers.isNotEmpty) ...[
+                                  const SizedBox(height: 16),
+                                  const Divider(height: 1),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Signer Identity:',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...signers.map((s) {
+                                      var identity = 'Unknown';
+                                      var issuer = '';
+                                      if (s is Map) {
+                                           // Check for protojson Type -> Oidc structure
+                                           if ((s.containsKey('Type') || s.containsKey('type'))) {
+                                             final typeObj = s['Type'] ?? s['type'];
+                                             if (typeObj is Map && (typeObj['Oidc'] != null || typeObj['oidc'] != null)) {
+                                               final oidc = typeObj['Oidc'] ?? typeObj['oidc'];
+                                               identity = oidc['subject'] ?? oidc['Subject'] ?? oidc['email'] ?? oidc['Email'] ?? identity;
+                                               issuer = oidc['issuer'] ?? oidc['Issuer'] ?? issuer;
+                                             }
+                                           }
+                                           else if (s.containsKey('oidc')) {
+                                               final oidc = s['oidc'];
+                                               identity = oidc['subject'] ?? oidc['email'] ?? identity;
+                                               issuer = oidc['issuer'] ?? issuer;
+                                           } else {
+                                               identity = s['identity'] ?? s['Identity'] ?? identity;
+                                               issuer = s['issuer'] ?? s['Issuer'] ?? issuer;
+                                           }
+                                      }
+
+                                      // Format repo
+                                      if (identity.startsWith('repo:')) {
+                                           try {
+                                             var parts = identity.split(':');
+                                             if (parts.length >= 2) identity = parts[1];
+                                           } catch (_) {}
+                                      }
+
+                                      return Container(
+                                         margin: const EdgeInsets.only(bottom: 4),
+                                         padding: const EdgeInsets.all(8),
+                                         decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.surface,
+                                            borderRadius: BorderRadius.circular(6)
+                                         ),
+                                         child: Row(
+                                            children: [
+                                               Icon(Icons.person_outline, size: 16, color: Theme.of(context).colorScheme.secondary),
+                                               const SizedBox(width: 8),
+                                               Expanded(
+                                                  child: Column(
+                                                     crossAxisAlignment: CrossAxisAlignment.start,
+                                                     children: [
+                                                        Text(identity, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                                                        if (issuer.isNotEmpty) Text(issuer, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
+                                                     ]
+                                                  )
+                                               )
+                                            ]
+                                         )
+                                      );
+                                  }).toList()
+                               ]
+                             ],
+                           ),
+                         ),
+                       ),
+                     );
                   }
 
                   if (role == 'record_grid') {

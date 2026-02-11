@@ -349,7 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 items: const [
                   DropdownMenuItem(value: 'github', child: Text('GitHub (Token)')),
                   DropdownMenuItem(value: 'token', child: Text('Custom Token')),
-                  DropdownMenuItem(value: 'none', child: Text('None')),
+                  DropdownMenuItem(value: 'none', child: Text('None / Insecure (Localhost)')),
                 ],
                 onChanged: (value) {
                   if (value != null) {

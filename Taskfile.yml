@@ -522,6 +522,8 @@ tasks:
       # - Use SQLite for local development (no PostgreSQL required)
       DIRECTORY_SERVER_DATABASE_DB_TYPE: sqlite
       DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH: /tmp/dir.db
+      # - OCI Registry address (defaulting to 5001 to avoid AirPlay conflict)
+      DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS: "127.0.0.1:5001"
     cmds:
       - defer: { task: server:store:stop }
       - task: server:store:start
@@ -540,6 +542,7 @@ tasks:
     internal: true
     vars:
       IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:v{{.ZOT_VERSION}}
+      PORT: 5001
     deps:
       - task: server:store:pull
         vars:
@@ -555,7 +558,7 @@ tasks:
           },
           "http": {
             "address": "0.0.0.0",
-            "port": "5000"
+            "port": "{{.PORT}}"
           },
           "log": {
             "level": "debug"
@@ -576,7 +579,7 @@ tasks:
         # run docker with attached volume
         docker run \
               -it \
-              --rm -d -p 5000:5000 \
+              --rm -d -p {{.PORT}}:{{.PORT}} \
               -v /tmp/config.json:/config.json:ro \
               --name oci-registry {{.IMAGE}} serve /config.json
 
