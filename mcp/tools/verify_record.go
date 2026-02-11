@@ -93,6 +93,7 @@ func VerifyRecord(ctx context.Context, _ *mcp.CallToolRequest, input VerifyRecor
 
 	// Map signers to JSON-friendly struct
 	var signers []SignerDetail
+
 	for _, s := range resp.GetSigners() {
 		sd := SignerDetail{}
 		if oidc := s.GetOidc(); oidc != nil {
