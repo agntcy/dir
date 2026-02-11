@@ -8,26 +8,26 @@ on:
     - cron: "0 3 * * *" # Daily at 03:00 UTC (runs on default branch context: main)
   workflow_dispatch:
     inputs:
-      override-tag-version:
+      tag-version:
         required: false
         type: string
-        description: "Override tag version to scan:"
-      override-zot-version:
+        description: "Override tag version to scan"
+      zot-version:
         required: false
         type: string
-        description: "Override Zot version to scan:"
-      override-spire-server-version:
+        description: "Override Zot version to scan"
+      spire-server-version:
         required: false
         type: string
-        description: "Override Spire server version to scan:"
-      override-spire-agent-version:
+        description: "Override Spire server version to scan"
+      spire-agent-version:
         required: false
         type: string
-        description: "Override Spire agent version to scan:"
-      override-postgresql-version:
+        description: "Override Spire agent version to scan"
+      postgresql-version:
         required: false
         type: string
-        description: "Override PostgreSQL version to scan:"
+        description: "Override PostgreSQL version to scan"
 
 permissions:
   contents: read
@@ -37,7 +37,7 @@ permissions:
 
 jobs:
   get-versions:
-    name: Get Latest tag version and external dependency versions
+    name: Get component versions
     runs-on: ubuntu-latest
     outputs:
       tag-version: ${{ steps.get-tag.outputs.version }}
@@ -49,58 +49,59 @@ jobs:
       - name: Get latest tag
         id: get-tag
         run: |
-          if [ -z "${{ github.event.inputs.override-tag-version }}" ]; then
-          LATEST_TAG=$(gh api graphql \
-            -f query='
-              query($owner: String!, $repo: String!, $tagCount: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
-                    nodes {
-                      name
+          if [ -z "${{ github.event.inputs.tag-version }}" ]; then
+            LATEST_TAG=$(gh api graphql \
+              -f query='
+                query($owner: String!, $repo: String!, $tagCount: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
+                      nodes {
+                        name
+                      }
                     }
                   }
                 }
-              }
-            ' \
-            -F owner=${{ github.repository_owner }} -F repo=${{ github.repository }} -F tagCount=100 \
-            --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
-          )
-          echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
-          echo "Latest tag version: ${LATEST_TAG}"
+              ' \
+              -F owner=${{ github.repository_owner }} -F repo=${{ github.repository }} -F tagCount=100 \
+              --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
+            )
 
+            echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
+            echo "Latest tag version: ${LATEST_TAG}"
           else
-            echo "version=${{ github.event.inputs.override-tag-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden tag version: ${{ github.event.inputs.override-tag-version }}"
+            echo "version=${{ github.event.inputs.tag-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden tag version: ${{ github.event.inputs.tag-version }}"
           fi
+
       - name: Get external dependency versions
         id: get-external-versions
         run: |
-          if [ -z "${{ github.event.inputs.override-zot-version }}" ]; then
+          if [ -z "${{ github.event.inputs.zot-version }}" ]; then
             echo "zot-version=v2.1.14" >> $GITHUB_OUTPUT
           else
-            echo "zot-version=${{ github.event.inputs.override-zot-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden Zot version: ${{ github.event.inputs.override-zot-version }}"
+            echo "zot-version=${{ github.event.inputs.zot-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden Zot version: ${{ github.event.inputs.zot-version }}"
           fi
 
-          if [ -z "${{ github.event.inputs.override-spire-server-version }}" ]; then
+          if [ -z "${{ github.event.inputs.spire-server-version }}" ]; then
             echo "spire-server-version=1.14.1" >> $GITHUB_OUTPUT
           else
-            echo "spire-server-version=${{ github.event.inputs.override-spire-server-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden Spire server version: ${{ github.event.inputs.override-spire-server-version }}"
+            echo "spire-server-version=${{ github.event.inputs.spire-server-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden Spire server version: ${{ github.event.inputs.spire-server-version }}"
           fi
 
-          if [ -z "${{ github.event.inputs.override-spire-agent-version }}" ]; then
+          if [ -z "${{ github.event.inputs.spire-agent-version }}" ]; then
             echo "spire-agent-version=1.14.1" >> $GITHUB_OUTPUT
           else
-            echo "spire-agent-version=${{ github.event.inputs.override-spire-agent-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden Spire agent version: ${{ github.event.inputs.override-spire-agent-version }}"
+            echo "spire-agent-version=${{ github.event.inputs.spire-agent-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden Spire agent version: ${{ github.event.inputs.spire-agent-version }}"
           fi
 
-          if [ -z "${{ github.event.inputs.override-postgresql-version }}" ]; then
+          if [ -z "${{ github.event.inputs.postgresql-version }}" ]; then
             echo "postgresql-version=sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5" >> $GITHUB_OUTPUT
           else
-            echo "postgresql-version=${{ github.event.inputs.override-postgresql-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden PostgreSQL version: ${{ github.event.inputs.override-postgresql-version }}"
+            echo "postgresql-version=${{ github.event.inputs.postgresql-version }}" >> $GITHUB_OUTPUT
+            echo "Using overridden PostgreSQL version: ${{ github.event.inputs.postgresql-version }}"
           fi
 
   trivy-scan:
