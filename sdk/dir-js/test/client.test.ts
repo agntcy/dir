@@ -5,7 +5,7 @@ import { describe, test, beforeAll, afterAll, expect } from 'vitest';
 
 import { execFileSync } from 'node:child_process';
 import { pool as workerpool } from 'workerpool';
-import { readFileSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { env } from 'node:process';
 import { create } from '@bufbuild/protobuf';
 
@@ -409,11 +409,11 @@ describe('Client', () => {
         );
 
         expect(response.success).toBe(true);
-        
+
         // Verify that signers array is present and not empty
         expect(response.signers).toBeDefined();
         expect(response.signers.length).toBeGreaterThan(0);
-        
+
         // For the first record (key-signed), verify key signer info
         if (verifyIndex === 0) {
           const signer = response.signers[0];
@@ -424,7 +424,7 @@ describe('Client', () => {
             expect(signer.type.value.algorithm).toBeDefined();
           }
         }
-        
+
         // For OIDC-signed record, verify OIDC signer info
         if (verifyIndex === 1 && token !== '' && providerUrl !== '') {
           const signer = response.signers[0];
@@ -434,7 +434,7 @@ describe('Client', () => {
             expect(signer.type.value.subject).toBeDefined();
           }
         }
-        
+
         verifyIndex++;
       }
 
