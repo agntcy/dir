@@ -25,20 +25,20 @@ jobs:
         id: get-tag
         run: |
           LATEST_TAG=$(gh api graphql \
-                        -f query='
-                          query($owner: String!, $repo: String!, $tagCount: Int!) {
-                            repository(owner: $owner, name: $repo) {
-                              refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
-                                nodes {
-                                  name
-                                }
-                              }
-                            }
-                          }
-                        ' \
-                        -F owner=${{ github.repository_owner }} -F repo=${{ github.repository }} -F tagCount=100 \
-                        --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
-                      )
+            -f query='
+              query($owner: String!, $repo: String!, $tagCount: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
+                    nodes {
+                      name
+                    }
+                  }
+                }
+              }
+            ' \
+            -F owner=${{ github.repository_owner }} -F repo=${{ github.repository }} -F tagCount=100 \
+            --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
+          )
           echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
           echo "Latest tag version: ${LATEST_TAG}"
 
