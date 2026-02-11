@@ -128,12 +128,9 @@ authServer:
     #   - /agntcy.dir.search.v1.SearchService/SearchCIDs       # Search by CID
     #   - /agntcy.dir.search.v1.SearchService/SearchRecords    # Search records
     #
-    # SignService (Cryptographic Signing):
-    #   - /agntcy.dir.sign.v1.SignService/Sign                 # Sign data
-    #   - /agntcy.dir.sign.v1.SignService/Verify               # Verify signature
-    #
     # NamingService (Name Resolution):
     #   - /agntcy.dir.naming.v1.NamingService/GetVerificationInfo  # Get verification info
+    #   - /agntcy.dir.naming.v1.NamingService/Resolve              # Resolve name to CID
     #
     # EventService (Event Streaming):
     #   - /agntcy.dir.events.v1.EventService/Listen            # Listen to events
