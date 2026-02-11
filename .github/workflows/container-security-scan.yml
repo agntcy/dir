@@ -16,17 +16,31 @@ permissions:
 
 jobs:
   get-version:
-    name: Get Latest Release Version
+    name: Get Latest tag version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get-release.outputs.version }}
+      version: ${{ steps.get-tag.outputs.version }}
     steps:
-      - name: Get latest release
-        id: get-release
+      - name: Get latest tag
+        id: get-tag
         run: |
-          LATEST_TAG=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)
+          LATEST_TAG=$(gh api graphql \
+                        -f query='
+                          query($owner: String!, $repo: String!, $tagCount: Int!) {
+                            repository(owner: $owner, name: $repo) {
+                              refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
+                                nodes {
+                                  name
+                                }
+                              }
+                            }
+                          }
+                        ' \
+                        -F owner=${{ github.repository_owner }} -F repo=${{ github.repository }} -F tagCount=100 \
+                        --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
+                      )
           echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
-          echo "Latest release version: ${LATEST_TAG}"
+          echo "Latest tag version: ${LATEST_TAG}"
 
   trivy-scan:
     name: Trivy Image Scan (Pull from GHCR)
