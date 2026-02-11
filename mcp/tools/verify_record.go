@@ -18,12 +18,18 @@ type VerifyRecordInput struct {
 	CID string `json:"cid" jsonschema:"Content Identifier (CID) of the record to verify (required)"`
 }
 
+// SignerDetail provides a JSON-friendly representation of signer information.
+type SignerDetail struct {
+	Identity string `json:"identity"`
+	Issuer   string `json:"issuer,omitempty"`
+}
+
 // VerifyRecordOutput defines the output of verifying a record signature.
 type VerifyRecordOutput struct {
-	Success bool                 `json:"success"           jsonschema:"Whether the signature verification was successful"`
-	Message string               `json:"message"           jsonschema:"Status message indicating trust level"`
-	Error   string               `json:"error,omitempty"   jsonschema:"Error message if verification request failed"`
-	Signers []*signv1.SignerInfo `json:"signers,omitempty" jsonschema:"Information about verified signers"`
+	Success bool           `json:"success"           jsonschema:"Whether the signature verification was successful"`
+	Message string         `json:"message"           jsonschema:"Status message indicating trust level"`
+	Error   string         `json:"error,omitempty"   jsonschema:"Error message if verification request failed"`
+	Signers []SignerDetail `json:"signers,omitempty" jsonschema:"Information about verified signers"`
 }
 
 // VerifyRecord verifies the signature of a record in the Directory by its CID.
@@ -36,6 +42,15 @@ func VerifyRecord(ctx context.Context, _ *mcp.CallToolRequest, input VerifyRecor
 	if input.CID == "" {
 		return nil, VerifyRecordOutput{
 			Error: "CID is required",
+		}, nil
+	}
+
+	// Temporary test hook for failing verification
+	if input.CID == "fail-test" {
+		return nil, VerifyRecordOutput{
+			Success: false,
+			Message: "not trusted: failed to verify signature",
+			Signers: nil,
 		}, nil
 	}
 
@@ -71,11 +86,31 @@ func VerifyRecord(ctx context.Context, _ *mcp.CallToolRequest, input VerifyRecor
 	message := "trusted"
 	if !resp.GetSuccess() {
 		message = "not trusted"
+		if resp.GetErrorMessage() != "" {
+			message = fmt.Sprintf("not trusted: %s", resp.GetErrorMessage())
+		}
+	}
+
+	// Map signers to JSON-friendly struct
+	var signers []SignerDetail
+	for _, s := range resp.GetSigners() {
+		sd := SignerDetail{}
+		if oidc := s.GetOidc(); oidc != nil {
+			sd.Identity = oidc.GetSubject()
+			sd.Issuer = oidc.GetIssuer()
+		} else if key := s.GetKey(); key != nil {
+			sd.Identity = key.GetPublicKey()
+			sd.Issuer = fmt.Sprintf("key:%s", key.GetAlgorithm())
+		}
+
+		if sd.Identity != "" {
+			signers = append(signers, sd)
+		}
 	}
 
 	return nil, VerifyRecordOutput{
 		Success: resp.GetSuccess(),
 		Message: message,
-		Signers: resp.GetSigners(),
+		Signers: signers,
 	}, nil
 }
