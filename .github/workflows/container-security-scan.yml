@@ -8,26 +8,10 @@ on:
     - cron: "0 3 * * *" # Daily at 03:00 UTC (runs on default branch context: main)
   workflow_dispatch:
     inputs:
-      tag-version:
+      image-tag:
         required: false
         type: string
-        description: "Override tag version to scan"
-      zot-version:
-        required: false
-        type: string
-        description: "Override Zot version to scan"
-      spire-server-version:
-        required: false
-        type: string
-        description: "Override Spire server version to scan"
-      spire-agent-version:
-        required: false
-        type: string
-        description: "Override Spire agent version to scan"
-      postgresql-version:
-        required: false
-        type: string
-        description: "Override PostgreSQL version to scan"
+        description: "Override tag for repo images (empty for latest)"
 
 permissions:
   contents: read
@@ -36,33 +20,29 @@ permissions:
   issues: write # create issues for critical CVEs
 
 jobs:
-  get-versions:
-    name: Get component versions
+  resolve-tag:
+    name: Resolve image tag
     runs-on: ubuntu-latest
     outputs:
-      tag-version: ${{ steps.get-tag.outputs.version }}
-      zot-version: ${{ steps.get-external-versions.outputs.zot-version }}
-      spire-server-version: ${{ steps.get-external-versions.outputs.spire-server-version }}
-      spire-agent-version: ${{ steps.get-external-versions.outputs.spire-agent-version }}
-      postgresql-version: ${{ steps.get-external-versions.outputs.postgresql-version }}
+      version: ${{ steps.resolve.outputs.version }}
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Get latest tag
-        id: get-tag
+      - name: Resolve image tag
+        id: resolve
         run: |
-          if [ -z "${{ github.event.inputs.tag-version }}" ]; then
+          set -euo pipefail
+          if [ -n "${{ inputs.image-tag }}" ]; then
+            echo "version=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
+          else
             OWNER=${GITHUB_REPOSITORY%%/*}
             REPO_NAME=${GITHUB_REPOSITORY#*/}
-
-            LATEST_TAG=$(gh api graphql \
+            TAG_VERSION=$(gh api graphql \
               -f query='
                 query($owner: String!, $repo: String!, $tagCount: Int!) {
                   repository(owner: $owner, name: $repo) {
                     refs(refPrefix: "refs/tags/", first: $tagCount, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
-                      nodes {
-                        name
-                      }
+                      nodes { name }
                     }
                   }
                 }
@@ -70,108 +50,42 @@ jobs:
               -F owner=$OWNER -F repo=$REPO_NAME -F tagCount=100 \
               --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
             )
-
-            echo "version=${LATEST_TAG}" >> $GITHUB_OUTPUT
-            echo "Latest tag version: ${LATEST_TAG}"
-          else
-            echo "version=${{ github.event.inputs.tag-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden tag version: ${{ github.event.inputs.tag-version }}"
-          fi
-
-      - name: Get external dependency versions
-        id: get-external-versions
-        run: |
-          if [ -z "${{ github.event.inputs.zot-version }}" ]; then
-            echo "zot-version=v2.1.14" >> $GITHUB_OUTPUT
-          else
-            echo "zot-version=${{ github.event.inputs.zot-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden Zot version: ${{ github.event.inputs.zot-version }}"
-          fi
-
-          if [ -z "${{ github.event.inputs.spire-server-version }}" ]; then
-            echo "spire-server-version=1.14.1" >> $GITHUB_OUTPUT
-          else
-            echo "spire-server-version=${{ github.event.inputs.spire-server-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden Spire server version: ${{ github.event.inputs.spire-server-version }}"
-          fi
-
-          if [ -z "${{ github.event.inputs.spire-agent-version }}" ]; then
-            echo "spire-agent-version=1.14.1" >> $GITHUB_OUTPUT
-          else
-            echo "spire-agent-version=${{ github.event.inputs.spire-agent-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden Spire agent version: ${{ github.event.inputs.spire-agent-version }}"
-          fi
-
-          if [ -z "${{ github.event.inputs.postgresql-version }}" ]; then
-            echo "postgresql-version=sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5" >> $GITHUB_OUTPUT
-          else
-            echo "postgresql-version=${{ github.event.inputs.postgresql-version }}" >> $GITHUB_OUTPUT
-            echo "Using overridden PostgreSQL version: ${{ github.event.inputs.postgresql-version }}"
+            echo "version=${TAG_VERSION}" >> $GITHUB_OUTPUT
           fi
 
   trivy-scan:
-    name: Trivy Image Scan (Pull from GHCR)
+    name: Trivy Scan
     runs-on: ubuntu-latest
-    needs: get-versions
+    needs: [resolve-tag]
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - image: dir-apiserver
-            repo: ghcr.io/${{ github.repository_owner }}/dir-apiserver
-            version: ${{ needs.get-versions.outputs.tag-version }}
-          - image: dir-ctl
-            repo: ghcr.io/${{ github.repository_owner }}/dir-ctl
-            version: ${{ needs.get-versions.outputs.tag-version }}
-          - image: dir-runtime-discovery
-            repo: ghcr.io/${{ github.repository_owner }}/dir-runtime-discovery
-            version: ${{ needs.get-versions.outputs.tag-version }}
-          - image: dir-runtime-server
-            repo: ghcr.io/${{ github.repository_owner }}/dir-runtime-server
-            version: ${{ needs.get-versions.outputs.tag-version }}
-          - image: zot
-            repo: ghcr.io/project-zot/zot
-            version: ${{ needs.get-versions.outputs.zot-version }}
-          - image: spire-server
-            repo: ghcr.io/spiffe/spire-server
-            version: ${{ needs.get-versions.outputs.spire-server-version }}
-          - image: spire-agent
-            repo: ghcr.io/spiffe/spire-agent
-            version: ${{ needs.get-versions.outputs.spire-agent-version }}
-          - image: postgresql
-            repo: docker.io/bitnami/postgresql
-            digest: ${{ needs.get-versions.outputs.postgresql-version }}
+        # Single source of truth: add/remove images here
+        # Repo images use resolved tag, external images specify version or digest
+        image:
+          - ghcr.io/${{ github.repository_owner }}/dir-apiserver:${{ needs.resolve-tag.outputs.version }}
+          - ghcr.io/${{ github.repository_owner }}/dir-ctl:${{ needs.resolve-tag.outputs.version }}
+          - ghcr.io/${{ github.repository_owner }}/dir-runtime-discovery:${{ needs.resolve-tag.outputs.version }}
+          - ghcr.io/${{ github.repository_owner }}/dir-runtime-server:${{ needs.resolve-tag.outputs.version }}
+          - ghcr.io/project-zot/zot:v2.1.14
+          - ghcr.io/spiffe/spire-server:1.14.1
+          - ghcr.io/spiffe/spire-agent:1.14.1
+          - docker.io/bitnami/postgresql@sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5
     steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Log in to GHCR
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Pull image (explicit version or digest)
+      - name: Set image name
+        id: image-name
         run: |
-          set -euo pipefail
-          # Use digest if provided, otherwise use version tag
-          if [ -n "${{ matrix.digest }}" ]; then
-            IMAGE_REF="${{ matrix.repo }}@${{ matrix.digest }}"
-          else
-            IMAGE_REF="${{ matrix.repo }}:${{ matrix.version }}"
-          fi
-          echo "Pulling $IMAGE_REF"
-          docker pull "$IMAGE_REF"
-          docker image inspect "$IMAGE_REF" >/dev/null 2>&1
-          # Export for subsequent steps
-          echo "IMAGE_REF=$IMAGE_REF" >> $GITHUB_ENV
+          # Extract image name from full reference (e.g., ghcr.io/owner/image:tag -> image)
+          IMAGE_NAME=$(echo "${{ matrix.image }}" | sed -E 's|.*/||; s|[:@].*||')
+          echo "name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
-      - name: Run Trivy vulnerability scan (image)
+      - name: Scan image
         uses: aquasecurity/trivy-action@9ab158e8597f3b310480b9a69402b419bc03dbd5 # v0.24.0
         with:
-          image-ref: ${{ env.IMAGE_REF }}
+          image-ref: ${{ matrix.image }}
+          github-pat: ${{ secrets.GITHUB_TOKEN }}
           format: sarif
-          output: trivy-${{ matrix.image }}.sarif
+          output: trivy-${{ steps.image-name.outputs.name }}.sarif
           vuln-type: "os,library"
           severity: "CRITICAL,HIGH,MEDIUM"
           ignore-unfixed: true
@@ -179,15 +93,14 @@ jobs:
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@1b1aada464948af03b950897e5eb522f92603cc2 # v3.26.9
         with:
-          sarif_file: trivy-${{ matrix.image }}.sarif
-          # Distinguish reports per container image in Code Scanning UI
-          category: trivy-${{ matrix.image }}
+          sarif_file: trivy-${{ steps.image-name.outputs.name }}.sarif
+          category: trivy-${{ steps.image-name.outputs.name }}
 
       - name: Upload raw report artifact
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
-          name: trivy-report-${{ matrix.image }}
-          path: trivy-${{ matrix.image }}.sarif
+          name: trivy-report-${{ steps.image-name.outputs.name }}
+          path: trivy-${{ steps.image-name.outputs.name }}.sarif
           retention-days: 7
 
   summarize:
@@ -225,6 +138,7 @@ jobs:
           if [ "${found}" != "0" ]; then
             echo "Critical vulnerabilities detected. (Gate currently informational.)" >&2
           fi
+
       - name: Create GitHub issues for critical CVEs
         if: ${{ github.event_name != 'pull_request' }}
         env:
