@@ -2,6 +2,12 @@ module github.com/agntcy/dir/auth/cmd/envoy-authz
 
 go 1.25.6
 
+// Replace local modules
+replace (
+	github.com/agntcy/dir/auth/authprovider => ../../authprovider
+	github.com/agntcy/dir/auth/authzserver => ../../authzserver
+)
+
 require (
 	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.3
 	github.com/agntcy/dir/auth/authzserver v1.0.0-rc.3
@@ -29,9 +35,4 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-)
-
-replace (
-	github.com/agntcy/dir/auth/authprovider => ../../authprovider
-	github.com/agntcy/dir/auth/authzserver => ../../authzserver
 )
