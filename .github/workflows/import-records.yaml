@@ -169,8 +169,15 @@ jobs:
           fi
 
           echo "Running: ${CMD[*]}"
+          set +e
           OUTPUT=$("${CMD[@]}" 2>&1)
+          EXIT=$?
+          set -e
           echo "$OUTPUT"
+          if [ "$EXIT" -ne 0 ]; then
+            echo "--- Import failed with exit code $EXIT ---"
+            exit "$EXIT"
+          fi
 
           # Print jsonl output (dry-run mode)
           JSONL_FILE=$(echo "$OUTPUT" | grep 'Records saved to:' | sed 's/.*Records saved to: //')
