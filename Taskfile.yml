@@ -2113,11 +2113,8 @@ tasks:
     desc: Run vulnerability check on all Go modules
     deps:
       - deps:trivy
-    cmds:
-      - for: { var: GO_MOD_DIR }
-        cmd: |
-          echo "Checking vulnerabilities in {{.ITEM}}..." && \
-          {{.TRIVY_BIN}} fs --scanners vuln {{.ITEM}}
+    cmd: |
+      {{.TRIVY_BIN}} fs --scanners vuln {{.ROOT_DIR}}
 
   ##
   ## Helm
