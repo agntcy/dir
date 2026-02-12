@@ -1,0 +1,52 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Validate OASF Record
+description: |
+  Validate agent records against the OASF schema in your CI/CD pipeline.
+  Fails the workflow with actionable error messages if validation fails.
+author: agntcy
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  record_paths:
+    description: |
+      Paths to OASF record JSON files to validate (one per line).
+      Supports glob patterns (e.g., "agents/*.json").
+    required: false
+    default: "record.json"
+  schema_url:
+    description: URL of the OASF schema API for validation
+    required: false
+    default: "https://schema.oasf.outshift.com"
+  fail_on_warning:
+    description: Whether to fail the action on validation warnings (not just errors)
+    required: false
+    default: "false"
+
+outputs:
+  valid:
+    description: Whether all records passed validation ("true" or "false")
+    value: ${{ steps.validate.outputs.valid }}
+  validated_files:
+    description: JSON array of successfully validated file paths
+    value: ${{ steps.validate.outputs.validated_files }}
+  failed_files:
+    description: JSON array of file paths that failed validation
+    value: ${{ steps.validate.outputs.failed_files }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Validate records
+      id: validate
+      shell: bash
+      env:
+        RECORD_PATHS: ${{ inputs.record_paths }}
+        SCHEMA_URL: ${{ inputs.schema_url }}
+        FAIL_ON_WARNING: ${{ inputs.fail_on_warning }}
+      run: |
+        chmod +x "${{ github.action_path }}/validate.sh"
+        "${{ github.action_path }}/validate.sh"
