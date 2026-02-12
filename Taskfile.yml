@@ -2003,6 +2003,15 @@ tasks:
     status:
       - test -x {{.BUFBUILD_BIN}}
 
+  deps:update:
+    desc: Update dependencies
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: |
+          echo "Updating dependencies in {{.ITEM}}" && \
+          go -C {{.ITEM}} get -u ./... && \
+          go -C {{.ITEM}} mod tidy -go={{.GO_VERSION}}
+
   deps:tidy:
     desc: Ensure dependencies are up-to-date
     cmds:
