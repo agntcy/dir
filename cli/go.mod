@@ -18,7 +18,10 @@ replace (
 	github.com/cloudwego/eino-ext/components/model/openai => github.com/cloudwego/eino-ext/components/model/openai v0.1.8
 	github.com/cloudwego/eino-ext/libs/acl/openai => github.com/cloudwego/eino-ext/libs/acl/openai v0.1.9
 	github.com/getkin/kin-openapi => github.com/getkin/kin-openapi v0.123.0
+	// go-libp2p v0.47.0 incompatible with quic-go/webtransport in libp2p
+	github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.46.0
 
+	github.com/mark3labs/mcp-go => github.com/mark3labs/mcp-go v0.44.0-beta.2
 	github.com/mark3labs/mcphost => github.com/mark3labs/mcphost v0.33.2
 	github.com/ollama/ollama => github.com/ollama/ollama v0.12.10
 )
@@ -30,7 +33,7 @@ require (
 	github.com/agntcy/dir/importer v1.0.0-rc.3
 	github.com/agntcy/dir/mcp v1.0.0-rc.3
 	github.com/ipfs/go-cid v0.6.0
-	github.com/libp2p/go-libp2p v0.47.0
+	github.com/libp2p/go-libp2p v0.46.0
 	github.com/sigstore/cosign/v3 v3.0.4
 	github.com/sigstore/sigstore v1.10.4
 	github.com/spf13/cobra v1.10.2

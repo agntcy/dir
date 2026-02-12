@@ -493,8 +493,8 @@ github.com/mailru/easyjson v0.9.1 h1:LbtsOm5WAswyWbvTEOqhypdPeZzHavpZx96/n553mR8
 github.com/mailru/easyjson v0.9.1/go.mod h1:1+xMtQp2MRNVL/V1bOzuP3aP8VNwRW55fQUto+XFtTU=
 github.com/mark3labs/mcp-filesystem-server v0.11.1 h1:7uKIZRMaKWfgvtDj/uLAvo0+7Mwb8gxo5DJywhqFW88=
 github.com/mark3labs/mcp-filesystem-server v0.11.1/go.mod h1:xDqJizVYWZ5a31Mt4xuYbVku2AR/kT56H3O0SbpANoQ=
-github.com/mark3labs/mcp-go v0.44.0-beta.3 h1:7kDr2Qt5LfcGjdsziTNjmYXrJDwqy1Sl0cdrBRAOY40=
-github.com/mark3labs/mcp-go v0.44.0-beta.3/go.mod h1:YnJfOL382MIWDx1kMY+2zsRHU/q78dBg9aFb8W6Thdw=
+github.com/mark3labs/mcp-go v0.44.0-beta.2 h1:gfUT0m77E4odfgiHkqV/E+MQVaQ06rbutW7Ln0JRkBA=
+github.com/mark3labs/mcp-go v0.44.0-beta.2/go.mod h1:YnJfOL382MIWDx1kMY+2zsRHU/q78dBg9aFb8W6Thdw=
 github.com/mark3labs/mcphost v0.33.2 h1:0uXx9buUpvdMCSR+PBBw/A2tFlbdokCU2kvMRfjIN+A=
 github.com/mark3labs/mcphost v0.33.2/go.mod h1:syorxtekPePlR4d+eVitI4wXK7VnHbm4ls5u0LekNFw=
 github.com/maruel/natural v1.1.1 h1:Hja7XhhmvEFhcByqDoHz9QZbkWey+COd9xWfCfn1ioo=

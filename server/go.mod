@@ -10,6 +10,8 @@ replace (
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
 
+	// go-libp2p v0.47.0 is incompatible with quic-go/webtransport API (ConfigureHTTP3Server, http3.Server)
+	github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.46.0
 	// go-libp2p v0.46.0 does not support latest dependencies
 	github.com/quic-go/quic-go => github.com/quic-go/quic-go v0.57.1
 	github.com/quic-go/webtransport-go => github.com/quic-go/webtransport-go v0.9.0

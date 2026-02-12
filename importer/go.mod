@@ -16,6 +16,7 @@ replace (
 	github.com/cloudwego/eino-ext/libs/acl/openai => github.com/cloudwego/eino-ext/libs/acl/openai v0.1.9
 	github.com/getkin/kin-openapi => github.com/getkin/kin-openapi v0.123.0
 
+	github.com/mark3labs/mcp-go => github.com/mark3labs/mcp-go v0.44.0-beta.2
 	github.com/mark3labs/mcphost => github.com/mark3labs/mcphost v0.33.2
 	github.com/ollama/ollama => github.com/ollama/ollama v0.12.10
 )
