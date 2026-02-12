@@ -68,24 +68,19 @@ fi
 echo "Total files to push: ${#ALL_FILES[@]}"
 echo ""
 
-# When signing in GitHub Actions CI, obtain OIDC token once (non-interactive; no browser).
 SIGN_FLAGS=""
 if [ "$SIGN_RECORDS" = "true" ]; then
-  if [ -n "${GITHUB_ACTIONS:-}" ] && [ "$GITHUB_ACTIONS" = "true" ]; then
-    if [ -z "${OIDC_CLIENT_ID:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
-      echo "::error::Signing in CI requires: (1) permissions: id-token: write (2) oidc_client_id: https://github.com/\${{ github.repository }}/.github/workflows/YOUR_WORKFLOW.yaml@\${{ github.ref }}"
-      exit 1
-    fi
-    OIDC_TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-      "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
-    if [ -z "$OIDC_TOKEN" ] || [ "$OIDC_TOKEN" = "null" ]; then
-      echo "::error::Failed to obtain OIDC token. Ensure the job has permissions: id-token: write"
-      exit 1
-    fi
-    SIGN_FLAGS="--sign --oidc-token=\"$OIDC_TOKEN\" --oidc-provider-url=\"https://token.actions.githubusercontent.com\" --oidc-client-id=\"$OIDC_CLIENT_ID\""
-  else
-    SIGN_FLAGS="--sign"
+  if [ -z "${OIDC_CLIENT_ID:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+    echo "::error::Signing requires: (1) permissions: id-token: write (2) oidc_client_id: https://github.com/\${{ github.repository }}/.github/workflows/YOUR_WORKFLOW.yaml@\${{ github.ref }}"
+    exit 1
   fi
+  OIDC_TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+    "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sigstore" | jq -r '.value')
+  if [ -z "$OIDC_TOKEN" ] || [ "$OIDC_TOKEN" = "null" ]; then
+    echo "::error::Failed to obtain OIDC token. Ensure the job has permissions: id-token: write"
+    exit 1
+  fi
+  SIGN_FLAGS="--sign --oidc-token=\"$OIDC_TOKEN\" --oidc-provider-url=\"https://token.actions.githubusercontent.com\" --oidc-client-id=\"$OIDC_CLIENT_ID\""
 fi
 
 for FILE in "${ALL_FILES[@]}"; do
