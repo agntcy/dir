@@ -45,11 +45,16 @@ jobs:
       spire-server-version: ${{ steps.get-external-versions.outputs.spire-server-version }}
       spire-agent-version: ${{ steps.get-external-versions.outputs.spire-agent-version }}
       postgresql-version: ${{ steps.get-external-versions.outputs.postgresql-version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Get latest tag
         id: get-tag
         run: |
           if [ -z "${{ github.event.inputs.tag-version }}" ]; then
+            OWNER=${GITHUB_REPOSITORY%%/*}
+            REPO_NAME=${GITHUB_REPOSITORY#*/}
+
             LATEST_TAG=$(gh api graphql \
               -f query='
                 query($owner: String!, $repo: String!, $tagCount: Int!) {
@@ -62,7 +67,7 @@ jobs:
                   }
                 }
               ' \
-              -F owner=${{ github.repository_owner }} -F repo=${{ github.repository }} -F tagCount=100 \
+              -F owner=$OWNER -F repo=$REPO_NAME -F tagCount=100 \
               --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
             )
 
@@ -135,7 +140,7 @@ jobs:
             version: ${{ needs.get-versions.outputs.spire-agent-version }}
           - image: postgresql
             repo: docker.io/bitnami/postgresql
-            version: ${{ needs.get-versions.outputs.postgresql-version }}
+            digest: ${{ needs.get-versions.outputs.postgresql-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
