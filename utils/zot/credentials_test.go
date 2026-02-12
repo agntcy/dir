@@ -304,30 +304,6 @@ func TestUpdateCredentialsFile(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid registry URL", func(t *testing.T) {
-		// Create temporary directory
-		tmpDir, err := os.MkdirTemp("", "zot-creds-*")
-		if err != nil {
-			t.Fatalf("Failed to create temp dir: %v", err)
-		}
-		defer os.RemoveAll(tmpDir)
-
-		credPath := filepath.Join(tmpDir, "credentials.json")
-		testCreds := zotsyncconfig.Credentials{
-			Username: "testuser",
-			Password: "testpass",
-		}
-
-		err = updateCredentialsFile(credPath, "", testCreds)
-		if err == nil {
-			t.Errorf("Expected error for empty registry URL")
-		}
-
-		if !strings.Contains(err.Error(), "failed to normalize registry URL") {
-			t.Errorf("Expected URL normalization error, got: %v", err)
-		}
-	})
-
 	t.Run("write to invalid directory", func(t *testing.T) {
 		invalidPath := "/invalid/directory/credentials.json"
 		testCreds := zotsyncconfig.Credentials{

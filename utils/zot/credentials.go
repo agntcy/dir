@@ -32,13 +32,7 @@ func updateCredentialsFile(filePath string, remoteRegistryURL string, credential
 		logger.Debug("Credentials file not found, creating new one", "path", filePath)
 	}
 
-	// Normalize URL and create credentials key
-	normalizedURL, err := normalizeRegistryURL(remoteRegistryURL)
-	if err != nil {
-		return fmt.Errorf("failed to normalize registry URL: %w", err)
-	}
-
-	credKey := strings.TrimPrefix(strings.TrimPrefix(normalizedURL, "https://"), "http://")
+	credKey := strings.TrimPrefix(strings.TrimPrefix(remoteRegistryURL, "https://"), "http://")
 
 	// Update credentials
 	credentialsData[credKey] = credentials

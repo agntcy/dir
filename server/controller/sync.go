@@ -164,6 +164,26 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 		repositoryName = ociconfig.DefaultRepositoryName
 	}
 
+	// Add explicit scheme when none is present so Zot sync uses the correct protocol.
+	// Internal/insecure registries (e.g. E2E, k8s :5000) need http://; external use https://.
+	if !strings.HasPrefix(registryAddress, "http://") && !strings.HasPrefix(registryAddress, "https://") {
+		if ociConfig.Insecure {
+			registryAddress = "http://" + registryAddress
+		} else {
+			registryAddress = "https://" + registryAddress
+		}
+	}
+
+	// Validate the final URL so zot utils receive a valid address.
+	parsed, err := url.Parse(registryAddress)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid registry address: %v", err)
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, status.Errorf(codes.InvalidArgument, "registry address must use http or https scheme")
+	}
+
 	return &storev1.RequestRegistryCredentialsResponse{
 		Success:         true,
 		RegistryAddress: registryAddress,
