@@ -52,6 +52,9 @@ jobs:
         id: get-tag
         run: |
           if [ -z "${{ github.event.inputs.tag-version }}" ]; then
+            OWNER=${GITHUB_REPOSITORY%%/*}
+            REPO_NAME=${GITHUB_REPOSITORY#*/}
+
             LATEST_TAG=$(gh api graphql \
               -f query='
                 query($owner: String!, $repo: String!, $tagCount: Int!) {
@@ -64,7 +67,7 @@ jobs:
                   }
                 }
               ' \
-              -F owner=${{ github.repository_owner }} -F repo=${{ github.repository }} -F tagCount=100 \
+              -F owner=$OWNER -F repo=$REPO_NAME -F tagCount=100 \
               --jq 'first(.data.repository.refs.nodes[] | select(.name | contains("/") | not).name)'
             )
 
