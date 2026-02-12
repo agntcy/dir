@@ -6,6 +6,7 @@ approved = [
   "mpl-2.0",
   "Apache-2.0",
   "Apache-2.0 WITH LLVM-exception",
+  "0BSD",
   "BSD-2-Clause",
   "BSD-3-Clause",
   "ISC",
@@ -17,7 +18,6 @@ approved = [
 ignored = [
   "github.com/agntcy/dir/api",
   "buf.build/gen/go/agntcy/oasf/protocolbuffers/go",
-  
   "google.golang.org/protobuf", # BSD-3-Clause
   "github.com/xi2/xz", # Public Domain https://github.com/xi2/xz/blob/master/LICENSE
   "github.com/libp2p/go-libp2p-gorpc", # MIT https://github.com/libp2p/go-libp2p-gorpc/blob/master/LICENSE-MIT
@@ -25,7 +25,7 @@ ignored = [
   "go.mongodb.org/mongo-driver", # Apache License 2.0 https://github.com/mongodb/mongo-go-driver/blob/master/LICENSE
   "modernc.org/sqlite", # BSD-3-Clause https://gitlab.com/cznic/sqlite/-/blob/master/LICENSE
   "modernc.org/libc", # BSD-3-Clause https://gitlab.com/cznic/libc/-/blob/master/LICENSE
-  "modernc.org/mathutil", # BSD-3-Clausehttps://gitlab.com/cznic/mathutil/-/blob/master/LICENSE
+  "modernc.org/mathutil", # BSD-3-Clause https://gitlab.com/cznic/mathutil/-/blob/master/LICENSE
   "modernc.org/memory", # BSD-3-Clause https://gitlab.com/cznic/memory/-/blob/master/LICENSE
   "gitlab.com/gitlab-org/api/client-go", # Apache License 2.0 https://gitlab.com/gitlab-org/api/client-go/-/blob/main/LICENSE
   "github.com/xeipuuv/gojsonpointer", # Apache License 2.0 https://github.com/xeipuuv/gojsonpointer/blob/master/LICENSE-APACHE-2.0.txt
@@ -35,8 +35,6 @@ ignored = [
   "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go", # Generated protobuf code, no license file
   "github.com/grpc-ecosystem/go-grpc-middleware/v2", # Apache License 2.0 https://github.com/grpc-ecosystem/go-grpc-middleware/blob/main/LICENSE
   "gonum.org/v1/gonum", # BSD-3-Clause https://github.com/gonum/gonum/blob/master/LICENSE
-
   "github.com/modelcontextprotocol/registry", # Apache License 2.0 https://github.com/modelcontextprotocol/registry/blob/main/LICENSE
-
   "github.com/modelcontextprotocol/go-sdk", # Apache License 2.0 https://github.com/modelcontextprotocol/go-sdk/blob/main/LICENSE
 ]

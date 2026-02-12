@@ -57,6 +57,8 @@ vars:
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
   COSIGN_VERSION: "3.0.4"
   COSIGN_BIN: "{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}"
+  TRIVY_VERSION: "0.62.1"
+  TRIVY_BIN: "{{ .BIN_DIR }}/trivy-{{.TRIVY_VERSION}}"
   HUB_API_VERSION: "main"
 
   ## Runtime CRD
@@ -2087,6 +2089,35 @@ tasks:
     internal: true
     cmds:
       - npm install -g htpasswd
+
+  deps:trivy:
+    desc: Install trivy
+    internal: true
+    deps:
+      - deps:bin-dir
+    vars:
+      TRIVY_OS:
+        sh: uname -s | sed 's/Darwin/macOS/' | sed 's/Linux/Linux/'
+      TRIVY_ARCH:
+        sh: uname -m | sed 's/x86_64/64bit/' | sed 's/aarch64/ARM64/' | sed 's/arm64/ARM64/'
+    cmds:
+      - cmd: echo "Installing trivy v{{.TRIVY_VERSION}}..."
+      - cmd: |
+          curl -sfL https://github.com/aquasecurity/trivy/releases/download/v{{.TRIVY_VERSION}}/trivy_{{.TRIVY_VERSION}}_{{.TRIVY_OS}}-{{.TRIVY_ARCH}}.tar.gz | \
+          tar -xzf - -C {{.BIN_DIR}} && \
+          mv {{.BIN_DIR}}/trivy {{.TRIVY_BIN}}
+    status:
+      - test -x {{.TRIVY_BIN}}
+
+  deps:vuln:
+    desc: Run vulnerability check on all Go modules
+    deps:
+      - deps:trivy
+    cmds:
+      - for: { var: GO_MOD_DIR }
+        cmd: |
+          echo "Checking vulnerabilities in {{.ITEM}}..." && \
+          {{.TRIVY_BIN}} fs --scanners vuln {{.ITEM}}
 
   ##
   ## Helm

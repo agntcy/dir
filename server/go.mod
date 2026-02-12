@@ -10,15 +10,8 @@ replace (
 )
 
 // Replace external modules to address compatibility/security
-replace (
-	// Cosign does not updated the crypto11 owner
-	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
-	// go-libp2p v0.47.0 is incompatible with quic-go/webtransport API (ConfigureHTTP3Server, http3.Server)
-	github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.46.0
-	// go-libp2p v0.46.0 does not support latest dependencies
-	github.com/quic-go/quic-go => github.com/quic-go/quic-go v0.57.1
-	github.com/quic-go/webtransport-go => github.com/quic-go/webtransport-go v0.9.0
-)
+// Cosign does not updated the crypto11 owner
+replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
 	buf.build/gen/go/agntcy/oasf/protocolbuffers/go v1.36.11-20260211173955-845dfc1ebb08.1
@@ -80,6 +73,7 @@ require (
 	github.com/docker/cli v29.2.1+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
+	github.com/dunglas/httpsfv v1.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/filecoin-project/go-clock v0.1.0 // indirect
