@@ -140,7 +140,7 @@ jobs:
             version: ${{ needs.get-versions.outputs.spire-agent-version }}
           - image: postgresql
             repo: docker.io/bitnami/postgresql
-            version: ${{ needs.get-versions.outputs.postgresql-version }}
+            digest: ${{ needs.get-versions.outputs.postgresql-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
