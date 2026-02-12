@@ -17,16 +17,33 @@ if [[ -z "$files" ]]; then
   exit 0
 fi
 
-echo '| Image | Critical | High | Medium | Total | File |' >> "$GITHUB_STEP_SUMMARY"
-echo '|-------|----------|------|--------|-------|------|' >> "$GITHUB_STEP_SUMMARY"
+echo '| Image | Version | Critical | High | Medium | Total | File |' >> "$GITHUB_STEP_SUMMARY"
+echo '|-------|---------|----------|------|--------|-------|------|' >> "$GITHUB_STEP_SUMMARY"
 
 for f in $files; do
   img=$(basename "$f" .sarif | sed 's/^trivy-//')
+  # Read full image reference from metadata file
+  meta_file="${f%.sarif}.meta"
+  if [[ -f "$meta_file" ]]; then
+    full_ref=$(cat "$meta_file")
+    # Extract version (after @) or tag (after last :)
+    if [[ "$full_ref" == *"@"* ]]; then
+      version="${full_ref##*@}"
+      # Truncate hash to 12 characters + prefix
+      version="${version:0:19}"
+    elif [[ "$full_ref" == *":"* ]]; then
+      version="${full_ref##*:}"
+    else
+      version="-"
+    fi
+  else
+    version="-"
+  fi
   critical=$(jq -r '.runs[] as $run | [ $run.results[] | select(($run.tool.driver.rules[.ruleIndex].properties.tags // []) | index("CRITICAL")) ] | length' "$f" 2>/dev/null || echo 0)
   high=$(jq -r '.runs[] as $run | [ $run.results[] | select(($run.tool.driver.rules[.ruleIndex].properties.tags // []) | index("HIGH")) ] | length' "$f" 2>/dev/null || echo 0)
   medium=$(jq -r '.runs[] as $run | [ $run.results[] | select(($run.tool.driver.rules[.ruleIndex].properties.tags // []) | index("MEDIUM")) ] | length' "$f" 2>/dev/null || echo 0)
   total=$(jq -r '[.runs[].results[]] | length' "$f" 2>/dev/null || echo 0)
-  echo "| $img | $critical | $high | $medium | $total | $(basename "$f") |" >> "$GITHUB_STEP_SUMMARY"
+  echo "| $img | $version | $critical | $high | $medium | $total | $(basename "$f") |" >> "$GITHUB_STEP_SUMMARY"
 done
 
 echo '' >> "$GITHUB_STEP_SUMMARY"
