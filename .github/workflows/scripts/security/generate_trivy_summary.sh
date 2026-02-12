@@ -29,6 +29,8 @@ for f in $files; do
     # Extract version (after @) or tag (after last :)
     if [[ "$full_ref" == *"@"* ]]; then
       version="${full_ref##*@}"
+      # Truncate hash to 12 characters + prefix
+      version="${version:0:19}"
     elif [[ "$full_ref" == *":"* ]]; then
       version="${full_ref##*:}"
     else
