@@ -37,4 +37,6 @@ ignored = [
   "gonum.org/v1/gonum", # BSD-3-Clause https://github.com/gonum/gonum/blob/master/LICENSE
 
   "github.com/modelcontextprotocol/registry", # Apache License 2.0 https://github.com/modelcontextprotocol/registry/blob/main/LICENSE
+
+  "github.com/modelcontextprotocol/go-sdk", # Apache License 2.0 https://github.com/modelcontextprotocol/go-sdk/blob/main/LICENSE
 ]
