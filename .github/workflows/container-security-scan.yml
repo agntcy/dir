@@ -45,6 +45,8 @@ jobs:
       spire-server-version: ${{ steps.get-external-versions.outputs.spire-server-version }}
       spire-agent-version: ${{ steps.get-external-versions.outputs.spire-agent-version }}
       postgresql-version: ${{ steps.get-external-versions.outputs.postgresql-version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Get latest tag
         id: get-tag
