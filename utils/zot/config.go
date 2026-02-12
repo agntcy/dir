@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -108,17 +107,10 @@ func AddRegistryToSyncConfig(filePath string, remoteRegistryURL string, remoteRe
 		logger.Info("No credentials provided, using default credentials file", "remote_url", remoteRegistryURL)
 	}
 
-	// Create registry configuration with credentials if provided
-	// Add http:// scheme if not present for zot sync
-	registryURL, err := normalizeRegistryURL(remoteRegistryURL)
-	if err != nil {
-		return fmt.Errorf("failed to normalize registry URL: %w", err)
-	}
-
 	// Check if registry already exists
 	for _, existingRegistry := range syncConfig.Registries {
-		if slices.Contains(existingRegistry.URLs, registryURL) {
-			logger.Debug("Registry already exists in zot config", "registry_url", registryURL)
+		if slices.Contains(existingRegistry.URLs, remoteRegistryURL) {
+			logger.Debug("Registry already exists in zot config", "registry_url", remoteRegistryURL)
 
 			return nil
 		}
@@ -149,7 +141,7 @@ func AddRegistryToSyncConfig(filePath string, remoteRegistryURL string, remoteRe
 	}
 
 	registry := zotsyncconfig.RegistryConfig{
-		URLs:         []string{registryURL},
+		URLs:         []string{remoteRegistryURL},
 		OnDemand:     false, // Disable OnDemand for proactive sync
 		PollInterval: DefaultPollInterval,
 		MaxRetries:   toPtr(DefaultMaxRetries),
@@ -159,7 +151,7 @@ func AddRegistryToSyncConfig(filePath string, remoteRegistryURL string, remoteRe
 	}
 	syncConfig.Registries = append(syncConfig.Registries, registry)
 
-	logger.Debug("Registry added to zot sync", "remote_url", remoteRegistryURL, "registry_url", registryURL)
+	logger.Debug("Registry added to zot sync", "remote_url", remoteRegistryURL)
 
 	// Write the updated config back to the file
 	if err := writeConfigFile(filePath, zotConfig); err != nil {
@@ -195,17 +187,11 @@ func RemoveRegistryFromSyncConfig(filePath string, remoteRegistryURL string) err
 
 	syncConfig := zotConfig.Extensions.Sync
 
-	// Normalize the URL to match what would be stored
-	registryURL, err := normalizeRegistryURL(remoteRegistryURL)
-	if err != nil {
-		return fmt.Errorf("failed to normalize registry URL: %w", err)
-	}
-
 	// Find and remove the registry
 	var filteredRegistries []zotsyncconfig.RegistryConfig
 
 	for _, registry := range syncConfig.Registries {
-		found := slices.Contains(registry.URLs, registryURL)
+		found := slices.Contains(registry.URLs, remoteRegistryURL)
 
 		if !found {
 			filteredRegistries = append(filteredRegistries, registry)
@@ -213,7 +199,7 @@ func RemoveRegistryFromSyncConfig(filePath string, remoteRegistryURL string) err
 	}
 
 	if len(filteredRegistries) == len(syncConfig.Registries) {
-		logger.Debug("Registry not found in zot config", "registry_url", registryURL)
+		logger.Debug("Registry not found in zot config", "registry_url", remoteRegistryURL)
 
 		return nil
 	}
@@ -228,25 +214,6 @@ func RemoveRegistryFromSyncConfig(filePath string, remoteRegistryURL string) err
 	logger.Info("Successfully removed registry from zot sync")
 
 	return nil
-}
-
-// normalizeRegistryURL ensures the registry URL has the proper scheme for zot sync.
-func normalizeRegistryURL(rawURL string) (string, error) {
-	if rawURL == "" {
-		return "", errors.New("registry URL cannot be empty")
-	}
-
-	// Add http:// scheme if not present for zot sync
-	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
-		return "http://" + rawURL, nil
-	}
-
-	// Validate the URL format
-	if _, err := url.Parse(rawURL); err != nil {
-		return "", fmt.Errorf("invalid URL format: %w", err)
-	}
-
-	return rawURL, nil
 }
 
 func toPtr[T any](v T) *T {

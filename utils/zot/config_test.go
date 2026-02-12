@@ -154,71 +154,6 @@ func TestWriteConfigFile(t *testing.T) {
 	})
 }
 
-func TestNormalizeRegistryURL(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-		wantErr  bool
-	}{
-		{
-			name:     "URL without scheme",
-			input:    "registry.example.com",
-			expected: "http://registry.example.com",
-			wantErr:  false,
-		},
-		{
-			name:     "URL with http scheme",
-			input:    "http://registry.example.com",
-			expected: "http://registry.example.com",
-			wantErr:  false,
-		},
-		{
-			name:     "URL with https scheme",
-			input:    "https://registry.example.com",
-			expected: "https://registry.example.com",
-			wantErr:  false,
-		},
-		{
-			name:     "URL with port",
-			input:    "registry.example.com:5000",
-			expected: "http://registry.example.com:5000",
-			wantErr:  false,
-		},
-		{
-			name:    "empty URL",
-			input:   "",
-			wantErr: true,
-		},
-		{
-			name:     "URL with spaces (still valid after normalization)",
-			input:    "registry with spaces.com",
-			expected: "http://registry with spaces.com",
-			wantErr:  false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := normalizeRegistryURL(tt.input)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error: %v", err)
-				}
-
-				if result != tt.expected {
-					t.Errorf("Expected %q, got %q", tt.expected, result)
-				}
-			}
-		})
-	}
-}
-
 func TestToPtr(t *testing.T) {
 	t.Run("string pointer", func(t *testing.T) {
 		str := "test"
@@ -343,7 +278,7 @@ func TestAddRegistryToZotSync(t *testing.T) {
 
 		err := AddRegistryToSyncConfig(
 			configPath,
-			"registry.example.com",
+			"http://registry.example.com",
 			"test/repo",
 			zotsyncconfig.Credentials{},
 			nil,
@@ -388,7 +323,7 @@ func TestAddRegistryToZotSync(t *testing.T) {
 		// but we can verify the error is handled properly
 		err := AddRegistryToSyncConfig(
 			configPath,
-			"registry.example.com",
+			"http://registry.example.com",
 			"test/repo",
 			zotsyncconfig.Credentials{
 				Username: "testuser",
@@ -413,7 +348,7 @@ func TestAddRegistryToZotSync(t *testing.T) {
 
 		err := AddRegistryToSyncConfig(
 			configPath,
-			"registry.example.com",
+			"http://registry.example.com",
 			"test/repo",
 			zotsyncconfig.Credentials{},
 			cids,
@@ -450,7 +385,7 @@ func TestAddRegistryToZotSync(t *testing.T) {
 
 		err := AddRegistryToSyncConfig(
 			configPath,
-			"existing.registry.com",
+			"http://existing.registry.com",
 			"new/repo",
 			zotsyncconfig.Credentials{},
 			nil,
@@ -506,7 +441,7 @@ func TestAddRegistryToZotSync(t *testing.T) {
 
 		err = AddRegistryToSyncConfig(
 			tmpFile.Name(),
-			"registry.example.com",
+			"http://registry.example.com",
 			"test/repo",
 			zotsyncconfig.Credentials{},
 			nil,
@@ -590,7 +525,7 @@ func TestRemoveRegistryFromZotSync(t *testing.T) {
 		configPath := createConfigWithRegistries()
 		defer os.Remove(configPath)
 
-		err := RemoveRegistryFromSyncConfig(configPath, "registry1.example.com")
+		err := RemoveRegistryFromSyncConfig(configPath, "http://registry1.example.com")
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
@@ -616,7 +551,7 @@ func TestRemoveRegistryFromZotSync(t *testing.T) {
 		configPath := createConfigWithRegistries()
 		defer os.Remove(configPath)
 
-		err := RemoveRegistryFromSyncConfig(configPath, "nonexistent.registry.com")
+		err := RemoveRegistryFromSyncConfig(configPath, "http://nonexistent.registry.com")
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
@@ -636,7 +571,7 @@ func TestRemoveRegistryFromZotSync(t *testing.T) {
 		configPath := createBasicConfig()
 		defer os.Remove(configPath)
 
-		err := RemoveRegistryFromSyncConfig(configPath, "registry.example.com")
+		err := RemoveRegistryFromSyncConfig(configPath, "http://registry.example.com")
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
@@ -679,14 +614,14 @@ func TestRemoveRegistryFromZotSync(t *testing.T) {
 
 		tmpFile.Close()
 
-		err = RemoveRegistryFromSyncConfig(tmpFile.Name(), "registry.example.com")
+		err = RemoveRegistryFromSyncConfig(tmpFile.Name(), "http://registry.example.com")
 		if err == nil {
 			t.Errorf("Expected error for invalid config file")
 		}
 	})
 
 	t.Run("file not found", func(t *testing.T) {
-		err := RemoveRegistryFromSyncConfig("/non/existent/file.json", "registry.example.com")
+		err := RemoveRegistryFromSyncConfig("/non/existent/file.json", "http://registry.example.com")
 		if err == nil {
 			t.Errorf("Expected error for non-existent file")
 		}

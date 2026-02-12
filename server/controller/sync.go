@@ -152,10 +152,9 @@ func (c *syncCtlr) RequestRegistryCredentials(_ context.Context, req *storev1.Re
 	ociConfig := c.opts.Config().Store.OCI
 	syncConfig := c.opts.Config().Sync
 
-	// Get registry address with default fallback
-	registryAddress := ociConfig.RegistryAddress
-	if registryAddress == "" {
-		registryAddress = ociconfig.DefaultRegistryAddress
+	registryAddress, err := ociConfig.GetRegistryAddress()
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	// Get repository name with default fallback

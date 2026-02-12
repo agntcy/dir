@@ -4,6 +4,10 @@
 package config
 
 import (
+	"fmt"
+	"net/url"
+	"strings"
+
 	"github.com/agntcy/dir/server/types/registry"
 )
 
@@ -43,6 +47,38 @@ func (c Config) GetType() registry.RegistryType {
 	}
 
 	return c.Type
+}
+
+// GetRegistryAddress returns the registry address with scheme and default applied.
+// If RegistryAddress is empty, DefaultRegistryAddress is used. When the address
+// has no scheme, http is used for insecure (e.g. E2E, internal) and https otherwise.
+// The returned string is a full URL valid for Zot sync; an error is returned if
+// the result is not a valid http or https URL.
+func (c Config) GetRegistryAddress() (string, error) {
+	addr := c.RegistryAddress
+	if addr == "" {
+		addr = DefaultRegistryAddress
+	}
+
+	// Add explicit scheme when none is present so Zot sync uses the correct protocol.
+	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
+		if c.Insecure {
+			addr = "http://" + addr
+		} else {
+			addr = "https://" + addr
+		}
+	}
+
+	parsed, err := url.Parse(addr)
+	if err != nil {
+		return "", fmt.Errorf("invalid registry address: %w", err)
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "", fmt.Errorf("registry address must use http or https scheme")
+	}
+
+	return addr, nil
 }
 
 // AuthConfig represents the configuration for authentication.
