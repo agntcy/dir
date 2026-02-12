@@ -58,8 +58,8 @@ jobs:
 
 ## Outputs
 
-| Output | Description |
-|--------|-------------|
-| `success` | Whether all records were pushed successfully (`true` or `false`) |
-| `cids` | JSON object mapping file paths to their CIDs |
-| `failed_files` | JSON array of file paths that failed to push |
+| Output | Description | Example |
+|--------|-------------|--------|
+| `success` | Whether all records were pushed successfully | `true` |
+| `cids` | JSON object mapping file paths to CIDs | `{"record.json":"bae...","agents/a.json":"bae..."}` |
+| `failed_files` | JSON array of file paths that failed to push | `["agents/bad.json"]` |

@@ -40,8 +40,8 @@ jobs:
 
 ## Outputs
 
-| Output | Description |
-|--------|-------------|
-| `valid` | Whether all records passed validation (`true` or `false`) |
-| `validated_files` | JSON array of successfully validated file paths |
-| `failed_files` | JSON array of file paths that failed validation |
+| Output | Description | Example |
+|--------|-------------|--------|
+| `valid` | Whether all records passed validation | `true` |
+| `validated_files` | JSON array of file paths that passed | `["record.json","agents/a.json"]` |
+| `failed_files` | JSON array of file paths that failed validation | `["agents/invalid.json"]` |
