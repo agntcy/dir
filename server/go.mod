@@ -2,14 +2,17 @@ module github.com/agntcy/dir/server
 
 go 1.25.6
 
+// Replace local modules
 replace (
-	// Cosign does not updated the crypto11 owner
-	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
-
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
+)
 
+// Replace external modules to address compatibility/security
+replace (
+	// Cosign does not updated the crypto11 owner
+	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 	// go-libp2p v0.47.0 is incompatible with quic-go/webtransport API (ConfigureHTTP3Server, http3.Server)
 	github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.46.0
 	// go-libp2p v0.46.0 does not support latest dependencies

@@ -14,8 +14,7 @@ replace (
 	github.com/cloudwego/eino-ext/components/model/ollama => github.com/cloudwego/eino-ext/components/model/ollama v0.1.2
 	github.com/cloudwego/eino-ext/components/model/openai => github.com/cloudwego/eino-ext/components/model/openai v0.1.8
 	github.com/cloudwego/eino-ext/libs/acl/openai => github.com/cloudwego/eino-ext/libs/acl/openai v0.1.9
-	github.com/getkin/kin-openapi => github.com/getkin/kin-openapi v0.123.0
-
+	github.com/getkin/kin-openapi => github.com/getkin/kin-openapi v0.131.0
 	github.com/mark3labs/mcp-go => github.com/mark3labs/mcp-go v0.44.0-beta.2
 	github.com/mark3labs/mcphost => github.com/mark3labs/mcphost v0.33.2
 	github.com/ollama/ollama => github.com/ollama/ollama v0.12.10
@@ -160,7 +159,6 @@ require (
 	github.com/in-toto/in-toto-golang v0.10.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
-	github.com/invopop/yaml v0.3.1 // indirect
 	github.com/ipfs/go-cid v0.6.0 // indirect
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -198,6 +196,8 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nikolalohinski/gonja v1.5.3 // indirect
 	github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 // indirect
+	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
+	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/ollama/ollama v0.14.2 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
