@@ -6,7 +6,7 @@ ARG REGSYNC_VERSION=v0.11.1
 # xx is a helper for cross-compilation
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.9.0@sha256:c64defb9ed5a91eacb37f96ccc3d4cd72521c4bd18d5442905b95e2226b0e707 AS xx
 
-FROM --platform=$BUILDPLATFORM golang:1.25.6-bookworm@sha256:2f768d462dbffbb0f0b3a5171009f162945b086f326e0b2a8fd5d29c3219ff14 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.7-bookworm@sha256:38342f3e7a504bf1efad858c18e771f84b66dc0b363add7a57c9a0bbb6cf7b12 AS builder
 
 COPY --link --from=xx / /
 
@@ -38,11 +38,24 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 RUN xx-verify /bin/reconciler
 
-# Download regsync binary
-FROM ghcr.io/regclient/regsync:${REGSYNC_VERSION} AS regsync
+# Build regsync from source using the same Go version.
+# This ensures we have a statically linked binary compatible with distroless
+# and avoids security issues with different Go versions in prebuilt binaries.
+ARG REGSYNC_VERSION
+
+RUN git clone --depth 1 --branch ${REGSYNC_VERSION} \
+    https://github.com/regclient/regclient.git /tmp/regclient
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=bind,source=.,target=/build,ro \
+    xx-go -C /tmp/regclient build -o /bin/regsync ./cmd/regsync
+
+RUN xx-verify /bin/regsync
 
 # Runtime stage - using Alpine because regsync may need shell/tools
-FROM alpine:3.21@sha256:21dc6063fd678b478f57c0e13f47560d0ea4eeba26dfc947b2a4f81f686b9f45
+# https://github.com/docker-library/repo-info/blob/master/repos/alpine/tag-details.md
+FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
 
 RUN apk add --no-cache ca-certificates tzdata
 
@@ -52,7 +65,7 @@ RUN addgroup -g 65532 -S nonroot && adduser -u 65532 -S nonroot -G nonroot
 WORKDIR /
 
 COPY --from=builder /bin/reconciler ./reconciler
-COPY --from=regsync /regsync /usr/local/bin/regsync
+COPY --from=builder /bin/regsync /usr/local/bin/regsync
 
 # Create config directories
 RUN mkdir -p /etc/agntcy/reconciler /etc/regsync && \

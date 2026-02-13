@@ -1,29 +1,22 @@
 module github.com/agntcy/dir/cli
 
-go 1.25.6
+go 1.25.7
 
+// Replace local modules
 replace (
-	// Cosign does not updated the crypto11 owner
-	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/auth/authprovider => ../auth/authprovider
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/importer => ../importer
 	github.com/agntcy/dir/mcp => ../mcp
 	github.com/agntcy/dir/utils => ../utils
-	//v0.33.2 mark3labs/mcphost does not support newer versions of these dependencies
-	github.com/cloudwego/eino => github.com/cloudwego/eino v0.5.15
-	github.com/cloudwego/eino-ext/components/model/claude => github.com/cloudwego/eino-ext/components/model/claude v0.1.12
-	github.com/cloudwego/eino-ext/components/model/ollama => github.com/cloudwego/eino-ext/components/model/ollama v0.1.2
-	github.com/cloudwego/eino-ext/components/model/openai => github.com/cloudwego/eino-ext/components/model/openai v0.1.8
-	github.com/cloudwego/eino-ext/libs/acl/openai => github.com/cloudwego/eino-ext/libs/acl/openai v0.1.9
-	github.com/getkin/kin-openapi => github.com/getkin/kin-openapi v0.123.0
+)
+
+replace (
+	// Cosign does not updated the crypto11 owner
+	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 	// go-libp2p v0.47.0 incompatible with quic-go/webtransport in libp2p
 	github.com/libp2p/go-libp2p => github.com/libp2p/go-libp2p v0.46.0
-
-	github.com/mark3labs/mcp-go => github.com/mark3labs/mcp-go v0.44.0-beta.2
-	github.com/mark3labs/mcphost => github.com/mark3labs/mcphost v0.33.2
-	github.com/ollama/ollama => github.com/ollama/ollama v0.12.10
 )
 
 require (
@@ -123,6 +116,7 @@ require (
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/eino-contrib/jsonschema v1.0.3 // indirect
+	github.com/eino-contrib/ollama v0.1.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/evanphx/json-patch v0.5.2 // indirect
@@ -181,7 +175,6 @@ require (
 	github.com/in-toto/in-toto-golang v0.10.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
-	github.com/invopop/yaml v0.3.1 // indirect
 	github.com/jedisct1/go-minisign v0.0.0-20241212093149-d2f9f49435c7 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -192,8 +185,7 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/mark3labs/mcp-filesystem-server v0.11.1 // indirect
-	github.com/mark3labs/mcp-go v0.44.0-beta.3 // indirect
-	github.com/mark3labs/mcphost v0.33.2 // indirect
+	github.com/mark3labs/mcp-go v0.44.0-beta.2 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
@@ -224,8 +216,9 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nikolalohinski/gonja v1.5.3 // indirect
 	github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 // indirect
+	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
+	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/ollama/ollama v0.14.2 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
@@ -233,6 +226,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/ramizpolic/mcphost v0.33.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/sassoftware/relic v7.2.1+incompatible // indirect
@@ -266,6 +260,7 @@ require (
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
+	github.com/woodsbury/decimal128 v1.3.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yargevad/filepathx v1.0.0 // indirect

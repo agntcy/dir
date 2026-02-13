@@ -1,14 +1,16 @@
 module github.com/agntcy/dir/mcp
 
-go 1.25.6
+go 1.25.7
 
+// Replace local modules
 replace (
-	// Cosign does not updated the crypto11 owner
-	github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 	github.com/agntcy/dir/api => ../api
 	github.com/agntcy/dir/client => ../client
 	github.com/agntcy/dir/utils => ../utils
 )
+
+// Cosign does not updated the crypto11 owner
+replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6.0
 
 require (
 	github.com/agntcy/dir/api v1.0.0-rc.3

@@ -45,7 +45,7 @@ vars:
   PROTOC_BIN: "{{ .BIN_DIR }}/protoc-{{.PROTOC_VERSION}}"
   BUFBUILD_VERSION: "1.63.0"
   BUFBUILD_BIN: "{{ .BIN_DIR }}/bufbuild-{{.BUFBUILD_VERSION}}"
-  GO_VERSION: "1.25.6"
+  GO_VERSION: "1.25.7"
   MULTIMOD_VERSION: "0.28.1"
   MULTIMOD_BIN: "{{ .BIN_DIR }}/multimod-{{.MULTIMOD_VERSION}}"
   GOLANGCI_LINT_VERSION: "2.8.0"
@@ -57,6 +57,8 @@ vars:
   UV_PUBLISH_TOKEN: '{{ .UV_PUBLISH_TOKEN | default "" }}'
   COSIGN_VERSION: "3.0.4"
   COSIGN_BIN: "{{ .BIN_DIR }}/cosign-{{.COSIGN_VERSION}}"
+  TRIVY_VERSION: "0.62.1"
+  TRIVY_BIN: "{{ .BIN_DIR }}/trivy-{{.TRIVY_VERSION}}"
   HUB_API_VERSION: "main"
 
   ## Runtime CRD
@@ -2087,6 +2089,57 @@ tasks:
     internal: true
     cmds:
       - npm install -g htpasswd
+
+  deps:trivy:
+    desc: Install trivy
+    internal: true
+    deps:
+      - deps:bin-dir
+    vars:
+      TRIVY_OS:
+        sh: uname -s | sed 's/Darwin/macOS/' | sed 's/Linux/Linux/'
+      TRIVY_ARCH:
+        sh: uname -m | sed 's/x86_64/64bit/' | sed 's/aarch64/ARM64/' | sed 's/arm64/ARM64/'
+    cmds:
+      - cmd: echo "Installing trivy v{{.TRIVY_VERSION}}..."
+      - cmd: |
+          curl -sfL https://github.com/aquasecurity/trivy/releases/download/v{{.TRIVY_VERSION}}/trivy_{{.TRIVY_VERSION}}_{{.TRIVY_OS}}-{{.TRIVY_ARCH}}.tar.gz | \
+          tar -xzf - -C {{.BIN_DIR}} && \
+          mv {{.BIN_DIR}}/trivy {{.TRIVY_BIN}}
+    status:
+      - test -x {{.TRIVY_BIN}}
+
+  deps:vuln:
+    desc: Run vulnerability check on all Go modules
+    deps:
+      - deps:trivy
+    cmd: |
+      {{.TRIVY_BIN}} clean --scan-cache
+      {{.TRIVY_BIN}} fs --scanners vuln --severity CRITICAL,HIGH,MEDIUM --ignore-unfixed {{.ROOT_DIR}}
+
+  # TODO: Switch GH actions to use this task instead of trivy action.
+  #
+  # This avoids redundant installations and have more control over scanning parameters.
+  # The TASKFILE should serve as a central source of truth for all dev-related operations.
+  deps:vuln:images:
+    desc: Run vulnerability check on container images
+    deps:
+      - deps:trivy
+    vars:
+      IMAGES:
+        - ghcr.io/agntcy/dir-apiserver:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/dir-ctl:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/dir-reconciler:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/dir-runtime-discovery:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/dir-runtime-server:{{.IMAGE_TAG}}
+        - ghcr.io/agntcy/envoy-authz:{{.IMAGE_TAG}}
+    cmds:
+      - cmd: |
+          {{.TRIVY_BIN}} clean --scan-cache
+      - for: { var: IMAGES }
+        cmd: |
+          echo "Scanning {{.ITEM}}..."
+          {{.TRIVY_BIN}} image --scanners vuln --severity CRITICAL,HIGH,MEDIUM --ignore-unfixed {{.ITEM}}
 
   ##
   ## Helm

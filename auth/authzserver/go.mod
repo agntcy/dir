@@ -1,6 +1,9 @@
 module github.com/agntcy/dir/auth/authzserver
 
-go 1.25.6
+go 1.25.7
+
+// Replace local modules
+replace github.com/agntcy/dir/auth/authprovider => ../authprovider
 
 require (
 	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.3
@@ -22,5 +25,3 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
-
-replace github.com/agntcy/dir/auth/authprovider => ../authprovider

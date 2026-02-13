@@ -65,8 +65,10 @@ jobs:
         image:
           - ghcr.io/${{ github.repository_owner }}/dir-apiserver:${{ needs.resolve-tag.outputs.version }}
           - ghcr.io/${{ github.repository_owner }}/dir-ctl:${{ needs.resolve-tag.outputs.version }}
+          - ghcr.io/${{ github.repository_owner }}/dir-reconciler:${{ needs.resolve-tag.outputs.version }}
           - ghcr.io/${{ github.repository_owner }}/dir-runtime-discovery:${{ needs.resolve-tag.outputs.version }}
           - ghcr.io/${{ github.repository_owner }}/dir-runtime-server:${{ needs.resolve-tag.outputs.version }}
+          - ghcr.io/${{ github.repository_owner }}/envoy-authz:${{ needs.resolve-tag.outputs.version }}
           - ghcr.io/project-zot/zot:v2.1.14
           - ghcr.io/spiffe/spire-server:1.14.1
           - ghcr.io/spiffe/spire-agent:1.14.1

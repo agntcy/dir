@@ -1,6 +1,6 @@
 module github.com/agntcy/dir/runtime/api
 
-go 1.25.6
+go 1.25.7
 
 require (
 	google.golang.org/grpc v1.78.0
