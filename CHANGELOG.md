@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0-rc.4] - 2026-02-13
+
+### Added
+- **Helm**: Topology-aware StorageClass support for Zot config (#937)
+- **Client**: Extended options for record signing/verification (#930)
+- **Sign**: Switch to local trust chain verification (#921)
+- **CI/CD**: Push record and validate record GitHub Actions (#935)
+
+### Changed
+- **Security**: Bump Go v1.25.7 and package versions (#945)
+- **Dependencies**: Update go mods across modules (#943)
+- **Helm**: Bump Bitnami PostgreSQL chart 18.2.3 → 18.2.6 (#927)
+- **SDK**: Update Python cryptography dependency (#933)
+- **Dir**: Remove unused OCI annotations (#923)
+- **CI/CD**: Simplify image security scanning GitHub Action (#940)
+- **CI/CD**: Add GH token env for gh cli, fix repository/owner params and PostgreSQL image version (#939)
+- **CI/CD**: Fix token timing in demo-dir workflow and remove demo-dirctl (#928)
+
+### Fixed
+- **Sync/Zot**: Registry URL handling and validation (#944)
+- **Dir**: Get latest tag without slash instead of release (#934)
+- **GUI**: Improve verification details parsing and add verification result widget (#932)
+- **CI/CD**: Handle command execution errors in import-records workflow (#938)
+
+### E2E
+- **E2E**: Add hardcoded expected CID for e2e test (#931)
+
 ## [v1.0.0-rc.3] - 2026-02-06
 
 ### Added
