@@ -6,7 +6,7 @@ go 1.25.7
 replace github.com/agntcy/dir/auth/authprovider => ../authprovider
 
 require (
-	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.3
+	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.4
 	github.com/casbin/casbin/v2 v2.135.0
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57

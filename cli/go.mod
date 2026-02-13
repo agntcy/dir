@@ -20,11 +20,11 @@ replace (
 )
 
 require (
-	github.com/agntcy/dir/api v1.0.0-rc.3
-	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.3
-	github.com/agntcy/dir/client v1.0.0-rc.3
-	github.com/agntcy/dir/importer v1.0.0-rc.3
-	github.com/agntcy/dir/mcp v1.0.0-rc.3
+	github.com/agntcy/dir/api v1.0.0-rc.4
+	github.com/agntcy/dir/auth/authprovider v1.0.0-rc.4
+	github.com/agntcy/dir/client v1.0.0-rc.4
+	github.com/agntcy/dir/importer v1.0.0-rc.4
+	github.com/agntcy/dir/mcp v1.0.0-rc.4
 	github.com/ipfs/go-cid v0.6.0
 	github.com/libp2p/go-libp2p v0.46.0
 	github.com/sigstore/cosign/v3 v3.0.4
@@ -50,7 +50,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/utils v1.0.0-rc.3 // indirect
+	github.com/agntcy/dir/utils v1.0.0-rc.4 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
