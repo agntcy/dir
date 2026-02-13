@@ -41,7 +41,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.6'
+          go-version: '1.25.7'
 
       - name: Create .env file
         run: |
@@ -92,7 +92,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.6'
+          go-version: '1.25.7'
 
       - name: Create .env file
         run: |
@@ -188,7 +188,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.6'
+          go-version: '1.25.7'
 
       - name: Create .env file
         shell: bash
