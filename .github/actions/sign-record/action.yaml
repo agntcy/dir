@@ -1,0 +1,54 @@
+# Copyright AGNTCY Contributors (https://github.com/agntcy)
+# SPDX-License-Identifier: Apache-2.0
+
+name: Sign OASF Records
+description: |
+  Sign record CIDs using GitHub OIDC (keyless). Use after push-record.
+  Only supported in GitHub Actions. Job must have permissions: id-token: write.
+author: agntcy
+branding:
+  icon: shield
+  color: purple
+
+inputs:
+  cids:
+    description: |
+      JSON object (file -> CID) from push-record output, or newline-separated list of CIDs.
+    required: true
+  server_addr:
+    description: Optional Directory server address (host:port). Uses dirctl default if omitted.
+    required: false
+    default: ""
+  github_token:
+    description: Optional GitHub PAT for Directory authentication
+    required: false
+    default: ""
+  oidc_client_id:
+    description: Workflow identity for keyless signing. Example https://github.com/OWNER/REPO/.github/workflows/YOUR_WORKFLOW.yaml@REF
+    required: true
+
+outputs:
+  success:
+    description: Whether all CIDs were signed successfully ("true" or "false")
+    value: ${{ steps.sign.outputs.success }}
+  signed:
+    description: Number of CIDs successfully signed
+    value: ${{ steps.sign.outputs.signed }}
+  failed:
+    description: Number of CIDs that failed to sign
+    value: ${{ steps.sign.outputs.failed }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Sign records
+      id: sign
+      shell: bash
+      env:
+        CIDS: ${{ inputs.cids }}
+        SERVER_ADDR: ${{ inputs.server_addr }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        OIDC_CLIENT_ID: ${{ inputs.oidc_client_id }}
+      run: |
+        chmod +x "${{ github.action_path }}/sign.sh"
+        "${{ github.action_path }}/sign.sh"
