@@ -18,10 +18,8 @@ require (
 	github.com/agntcy/dir/client v1.0.0-rc.4
 	github.com/agntcy/dir/utils v1.0.0-rc.4
 	github.com/agntcy/oasf-sdk/pkg v1.0.0
+	github.com/mark3labs/mcphost v0.33.4
 	github.com/modelcontextprotocol/registry v1.4.1
-	// Switch to original repo after the security patch is merged and released.
-	// https://github.com/mark3labs/mcphost/pull/154
-	github.com/ramizpolic/mcphost v0.33.5
 	google.golang.org/protobuf v1.36.11
 )
 
