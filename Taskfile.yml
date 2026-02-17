@@ -1367,6 +1367,10 @@ tasks:
       COVERAGE_DIR: '{{ .COVERAGE_DIR | default (print .ROOT_DIR "/.coverage/e2e") }}'
     env:
       DIRECTORY_E2E_DEPLOYMENT_MODE: "network"
+    deps:
+      - deps:helm
+      - deps:kubectl
+      - deps:kind
     cmds:
       - defer: { task: deploy:kubernetes:network:cleanup }
       - defer: { task: deploy:kubernetes:network:port-forward:cleanup }
