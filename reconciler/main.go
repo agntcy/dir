@@ -63,7 +63,7 @@ func run() error {
 	}
 
 	// Create database connection
-	db, err := database.NewPostgres(cfg.Database)
+	db, err := database.New(cfg.Database)
 	if err != nil {
 		return err
 	}

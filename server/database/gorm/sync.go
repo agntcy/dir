@@ -50,7 +50,7 @@ func (d *DB) CreateSync(remoteURL string, cids []string) (string, error) {
 		return "", err
 	}
 
-	logger.Debug("Added sync to SQLite database", "sync_id", sync.ID)
+	logger.Debug("Added sync to database", "sync_id", sync.ID)
 
 	return sync.ID, nil
 }
@@ -119,7 +119,7 @@ func (d *DB) UpdateSyncStatus(syncID string, status storev1.SyncStatus) error {
 		return err
 	}
 
-	logger.Debug("Updated sync in SQLite database", "sync_id", sync.GetID(), "status", sync.GetStatus())
+	logger.Debug("Updated sync in database", "sync_id", sync.GetID(), "status", sync.GetStatus())
 
 	return nil
 }
@@ -143,7 +143,7 @@ func (d *DB) DeleteSync(syncID string) error {
 		return err
 	}
 
-	logger.Debug("Deleted sync from SQLite database", "sync_id", syncID)
+	logger.Debug("Deleted sync from database", "sync_id", syncID)
 
 	return nil
 }

@@ -40,13 +40,13 @@ func (r *Record) GetRecordData() (types.RecordData, error) {
 	return &RecordDataAdapter{record: r}, nil
 }
 
-// RecordDataAdapter adapts SQLite Record to central RecordData interface.
+// RecordDataAdapter adapts Database Record to central RecordData interface.
 type RecordDataAdapter struct {
 	record *Record
 }
 
 func (r *RecordDataAdapter) GetAnnotations() map[string]string {
-	// SQLite records don't store annotations, return empty map
+	// Database records don't store annotations, return empty map
 	return make(map[string]string)
 }
 
@@ -76,7 +76,7 @@ func (r *RecordDataAdapter) GetVersion() string {
 }
 
 func (r *RecordDataAdapter) GetDescription() string {
-	// SQLite records don't store description
+	// Database records don't store description
 	return ""
 }
 
@@ -120,12 +120,12 @@ func (r *RecordDataAdapter) GetModules() []types.Module {
 }
 
 func (r *RecordDataAdapter) GetSignature() types.Signature {
-	// SQLite records don't store signature information
+	// Database records don't store signature information
 	return nil
 }
 
 func (r *RecordDataAdapter) GetPreviousRecordCid() string {
-	// SQLite records don't store previous record CID
+	// Database records don't store previous record CID
 	return ""
 }
 
@@ -156,7 +156,7 @@ func (d *DB) AddRecord(record types.Record) error {
 	}
 
 	// Build complete Record with all associations
-	sqliteRecord := &Record{
+	dbRecord := &Record{
 		RecordCID:     cid,
 		Name:          recordData.GetName(),
 		Version:       recordData.GetVersion(),
@@ -170,13 +170,13 @@ func (d *DB) AddRecord(record types.Record) error {
 	}
 
 	// Let GORM handle the entire creation with associations
-	if err := d.gormDB.Create(sqliteRecord).Error; err != nil {
-		return fmt.Errorf("failed to add record to SQLite database: %w", err)
+	if err := d.gormDB.Create(dbRecord).Error; err != nil {
+		return fmt.Errorf("failed to add record to database: %w", err)
 	}
 
-	logger.Debug("Added new record with associations to SQLite database", "record_cid", sqliteRecord.RecordCID, "cid", cid,
-		"skills", len(sqliteRecord.Skills), "locators", len(sqliteRecord.Locators), "modules", len(sqliteRecord.Modules),
-		"domains", len(sqliteRecord.Domains))
+	logger.Debug("Added new record with associations to database", "record_cid", dbRecord.RecordCID, "cid", cid,
+		"skills", len(dbRecord.Skills), "locators", len(dbRecord.Locators), "modules", len(dbRecord.Modules),
+		"domains", len(dbRecord.Domains))
 
 	return nil
 }

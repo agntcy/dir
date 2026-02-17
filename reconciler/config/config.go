@@ -29,15 +29,6 @@ const (
 
 	// DefaultConfigPath is the default configuration file path.
 	DefaultConfigPath = "/etc/agntcy/reconciler"
-
-	// DefaultPostgresHost is the default PostgreSQL host.
-	DefaultPostgresHost = "localhost"
-
-	// DefaultPostgresPort is the default PostgreSQL port.
-	DefaultPostgresPort = 5432
-
-	// DefaultPostgresDatabase is the default PostgreSQL database name.
-	DefaultPostgresDatabase = "directory"
 )
 
 var logger = logging.Logger("reconciler/config")
@@ -45,7 +36,7 @@ var logger = logging.Logger("reconciler/config")
 // Config holds the reconciler configuration.
 type Config struct {
 	// Database holds PostgreSQL connection configuration.
-	Database dbconfig.PostgresConfig `json:"database" mapstructure:"database"`
+	Database dbconfig.Config `json:"database" mapstructure:"database"`
 
 	// LocalRegistry holds configuration for the local OCI registry.
 	LocalRegistry ociconfig.Config `json:"local_registry" mapstructure:"local_registry"`
@@ -89,19 +80,19 @@ func LoadConfig() (*Config, error) {
 	// Database configuration
 	//
 	_ = v.BindEnv("database.host")
-	v.SetDefault("database.host", DefaultPostgresHost)
+	v.SetDefault("database.host", dbconfig.DefaultPostgresHost)
 
 	_ = v.BindEnv("database.port")
-	v.SetDefault("database.port", DefaultPostgresPort)
+	v.SetDefault("database.port", dbconfig.DefaultPostgresPort)
 
 	_ = v.BindEnv("database.database")
-	v.SetDefault("database.database", DefaultPostgresDatabase)
+	v.SetDefault("database.database", dbconfig.DefaultPostgresDatabase)
 
 	_ = v.BindEnv("database.username")
 	_ = v.BindEnv("database.password")
 
 	_ = v.BindEnv("database.ssl_mode")
-	v.SetDefault("database.ssl_mode", "disable")
+	v.SetDefault("database.ssl_mode", dbconfig.DefaultPostgresSSLMode)
 
 	//
 	// Local registry configuration (shared by all tasks)

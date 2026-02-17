@@ -71,7 +71,7 @@ func (d *DB) CreatePublication(request *routingv1.PublishRequest) (string, error
 		return "", fmt.Errorf("failed to create publication: %w", err)
 	}
 
-	logger.Debug("Added publication to SQLite database", "publication_id", publication.ID)
+	logger.Debug("Added publication to database", "publication_id", publication.ID)
 
 	return publication.ID, nil
 }
@@ -141,7 +141,7 @@ func (d *DB) UpdatePublicationStatus(publicationID string, status routingv1.Publ
 		return err
 	}
 
-	logger.Debug("Updated publication in SQLite database", "publication_id", publication.GetID(), "status", publication.GetStatus())
+	logger.Debug("Updated publication in database", "publication_id", publication.GetID(), "status", publication.GetStatus())
 
 	return nil
 }
@@ -151,7 +151,7 @@ func (d *DB) DeletePublication(publicationID string) error {
 		return err
 	}
 
-	logger.Debug("Deleted publication from SQLite database", "publication_id", publicationID)
+	logger.Debug("Deleted publication from database", "publication_id", publicationID)
 
 	return nil
 }

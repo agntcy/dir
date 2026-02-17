@@ -4,31 +4,22 @@
 package config
 
 const (
+	// DefaultDBType is the default database type if not specified in the config.
 	DefaultDBType = "postgres"
-
-	// SQLite defaults.
-	DefaultSQLiteDBPath = "/tmp/dir.db"
 
 	// PostgreSQL defaults.
 	DefaultPostgresHost     = "localhost"
 	DefaultPostgresPort     = 5432
 	DefaultPostgresDatabase = "dir"
+	DefaultPostgresSSLMode  = "disable"
 )
 
 type Config struct {
-	// DBType is the type of the database (sqlite or postgres).
+	// DBType is the type of the database (postgres).
 	DBType string `json:"db_type,omitempty" mapstructure:"db_type"`
-
-	// SQLite database configuration.
-	SQLite SQLiteConfig `json:"sqlite" mapstructure:"sqlite"`
 
 	// PostgreSQL database configuration.
 	Postgres PostgresConfig `json:"postgres" mapstructure:"postgres"`
-}
-
-type SQLiteConfig struct {
-	// DBPath is the path to the SQLite database file.
-	DBPath string `json:"db_path,omitempty" mapstructure:"db_path"`
 }
 
 type PostgresConfig struct {
@@ -46,4 +37,7 @@ type PostgresConfig struct {
 
 	// Password is the database password.
 	Password string `json:"password,omitempty" mapstructure:"password"`
+
+	// SSLMode indicates the SSL mode for the connection.
+	SSLMode string `json:"ssl_mode,omitempty" mapstructure:"ssl_mode"`
 }

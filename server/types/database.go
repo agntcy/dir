@@ -24,6 +24,9 @@ type DatabaseAPI interface {
 	// NameVerificationDatabaseAPI handles management of name verifications.
 	NameVerificationDatabaseAPI
 
+	// Close closes the database connection and releases any resources.
+	Close() error
+
 	// IsReady checks if the database connection is ready to serve traffic.
 	IsReady(context.Context) bool
 }

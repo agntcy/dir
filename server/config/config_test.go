@@ -46,8 +46,11 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS":              "/ip4/1.1.1.1/tcp/1",
 				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":             "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
 				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                    "/path/to/key",
-				"DIRECTORY_SERVER_DATABASE_DB_TYPE":                    "sqlite",
-				"DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH":             "sqlite.db",
+				"DIRECTORY_SERVER_DATABASE_DB_TYPE":                    "postgres",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_HOST":              "localhost",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_PORT":              "5432",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_DATABASE":          "dir",
+				"DIRECTORY_SERVER_DATABASE_POSTGRES_SSL_MODE":          "auto",
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME":           "sync-user",
 				"DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD":           "sync-password",
 				"DIRECTORY_SERVER_AUTHZ_ENABLED":                       "true",
@@ -98,14 +101,12 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Database: dbconfig.Config{
-					DBType: "sqlite",
-					SQLite: dbconfig.SQLiteConfig{
-						DBPath: "sqlite.db",
-					},
+					DBType: "postgres",
 					Postgres: dbconfig.PostgresConfig{
-						Host:     dbconfig.DefaultPostgresHost,
-						Port:     dbconfig.DefaultPostgresPort,
-						Database: dbconfig.DefaultPostgresDatabase,
+						Host:     "localhost",
+						Port:     5432,
+						Database: "dir",
+						SSLMode:  "auto",
 					},
 				},
 				Sync: SyncConfig{
@@ -172,13 +173,11 @@ func TestConfig(t *testing.T) {
 				},
 				Database: dbconfig.Config{
 					DBType: dbconfig.DefaultDBType,
-					SQLite: dbconfig.SQLiteConfig{
-						DBPath: dbconfig.DefaultSQLiteDBPath,
-					},
 					Postgres: dbconfig.PostgresConfig{
 						Host:     dbconfig.DefaultPostgresHost,
 						Port:     dbconfig.DefaultPostgresPort,
 						Database: dbconfig.DefaultPostgresDatabase,
+						SSLMode:  dbconfig.DefaultPostgresSSLMode,
 					},
 				},
 				Sync: SyncConfig{

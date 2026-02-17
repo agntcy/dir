@@ -229,7 +229,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create routing: %w", err)
 	}
 
-	databaseAPI, err := database.New(options)
+	databaseAPI, err := database.New(cfg.Database)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database API: %w", err)
 	}

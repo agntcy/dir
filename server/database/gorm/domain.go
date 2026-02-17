@@ -19,7 +19,7 @@ type Domain struct {
 }
 
 func (domain *Domain) GetAnnotations() map[string]string {
-	// SQLite domains don't store annotations, return empty map
+	// Database domains don't store annotations, return empty map
 	return make(map[string]string)
 }
 
@@ -31,7 +31,7 @@ func (domain *Domain) GetID() uint64 {
 	return domain.DomainID
 }
 
-// convertDomains converts domain interfaces to SQLite Domain structs.
+// convertDomains converts domain interfaces to Database Domain structs.
 func convertDomains(domains []types.Domain, recordCID string) []Domain {
 	result := make([]Domain, len(domains))
 	for i, domain := range domains {
