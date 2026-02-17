@@ -475,7 +475,7 @@ apiserver:
     enabled: true
     auth:
       username: "dir"
-      password: ""  # Auto-generated if empty
+      password: "password"  # Default password for development
       database: "dir"
 
   # Deployment strategy for pod updates

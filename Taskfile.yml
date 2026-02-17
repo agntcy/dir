@@ -729,6 +729,7 @@ tasks:
           --set apiserver.postgresql.auth.password=dirpassword \
           --set apiserver.postgresql.auth.database=dir \
           --set apiserver.reconciler.regsync.interval="1s" \
+          --set apiserver.reconciler.indexer.interval="1s" \
           --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
           --set apiserver.config.oasf_api_validation.disable=true \
           --namespace {{ .HELM_NAMESPACE }} \
