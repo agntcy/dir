@@ -15,7 +15,7 @@ import (
 	typesv1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1"
 	typesv1alpha1 "buf.build/gen/go/agntcy/oasf/protocolbuffers/go/agntcy/oasf/types/v1alpha1"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/ramizpolic/mcphost/sdk"
+	"github.com/mark3labs/mcphost/sdk"
 	"golang.org/x/time/rate"
 )
 

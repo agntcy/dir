@@ -470,6 +470,8 @@ github.com/mark3labs/mcp-filesystem-server v0.11.1 h1:7uKIZRMaKWfgvtDj/uLAvo0+7M
 github.com/mark3labs/mcp-filesystem-server v0.11.1/go.mod h1:xDqJizVYWZ5a31Mt4xuYbVku2AR/kT56H3O0SbpANoQ=
 github.com/mark3labs/mcp-go v0.44.0-beta.2 h1:gfUT0m77E4odfgiHkqV/E+MQVaQ06rbutW7Ln0JRkBA=
 github.com/mark3labs/mcp-go v0.44.0-beta.2/go.mod h1:YnJfOL382MIWDx1kMY+2zsRHU/q78dBg9aFb8W6Thdw=
+github.com/mark3labs/mcphost v0.33.4 h1:DEq95tzZJW3yi5x5aH5OtzmvNh1/bTNt2cEprEh0Mbw=
+github.com/mark3labs/mcphost v0.33.4/go.mod h1:Ht4XBzUWVAtlUdLhbCpKogybZRrqxuFGogD7TWxH/6A=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
 github.com/mattn/go-colorable v0.1.14/go.mod h1:6LmQG8QLFO4G5z1gPvYEzlUgJ2wF+stgPZH1UqBm1s8=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
@@ -586,8 +588,6 @@ github.com/prometheus/common v0.67.5 h1:pIgK94WWlQt1WLwAC5j2ynLaBRDiinoAb86HZHTU
 github.com/prometheus/common v0.67.5/go.mod h1:SjE/0MzDEEAyrdr5Gqc6G+sXI67maCxzaT3A2+HqjUw=
 github.com/prometheus/procfs v0.19.2 h1:zUMhqEW66Ex7OXIiDkll3tl9a1ZdilUOd/F6ZXw4Vws=
 github.com/prometheus/procfs v0.19.2/go.mod h1:M0aotyiemPhBCM0z5w87kL22CxfcH05ZpYlu+b4J7mw=
-github.com/ramizpolic/mcphost v0.33.5 h1:ejp+G67O9yTSfW8Slzv+soqAi+0e4RMfk9/URfGCCwA=
-github.com/ramizpolic/mcphost v0.33.5/go.mod h1:BYYr9aIF4vu0gnpG3+/3KGY3ztx8LB602w1pdsPc+9o=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.7 h1:WUdvkW8uEhrYfLC4ZzdpI2ztxP1I582+49Oc5Mq64VQ=
