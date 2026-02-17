@@ -3,7 +3,7 @@
 
 // Package regsync implements the reconciliation task for regsync configuration.
 // It monitors the database for pending sync operations and creates workers
-// to synchronize images from non-Zot registries.
+// to synchronize tags from OCI registries.
 package regsync
 
 import (

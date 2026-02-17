@@ -15,6 +15,7 @@ replace github.com/ThalesIgnite/crypto11 => github.com/ThalesGroup/crypto11 v1.6
 
 require (
 	github.com/agntcy/dir/api v1.0.0-rc.4
+	github.com/agntcy/dir/client v1.0.0-rc.4
 	github.com/agntcy/dir/server v1.0.0-rc.4
 	github.com/agntcy/dir/utils v1.0.0-rc.4
 	github.com/spf13/viper v1.21.0
@@ -29,7 +30,6 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
-	github.com/agntcy/dir/client v1.0.0-rc.4 // indirect
 	github.com/agntcy/oasf-sdk/pkg v1.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
@@ -44,8 +44,6 @@ require (
 	github.com/dgraph-io/ristretto v0.2.0 // indirect
 	github.com/digitorus/pkcs7 v0.0.0-20250730155240-ffadbf3f398c // indirect
 	github.com/digitorus/timestamp v0.0.0-20250524132541-c45532741eea // indirect
-	github.com/distribution/distribution/v3 v3.0.0 // indirect
-	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/cli v29.2.1+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
@@ -132,7 +130,6 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/opencontainers/distribution-spec/specs-go v0.0.0-20260129194314-05d45d0f94ad // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
@@ -142,6 +139,7 @@ require (
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/sassoftware/relic v7.2.1+incompatible // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.10.0 // indirect
+	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
 	github.com/sigstore/cosign/v3 v3.0.4 // indirect
 	github.com/sigstore/protobuf-specs v0.5.0 // indirect
@@ -162,7 +160,6 @@ require (
 	github.com/thales-e-security/pool v0.0.2 // indirect
 	github.com/theupdateframework/go-tuf v0.7.0 // indirect
 	github.com/theupdateframework/go-tuf/v2 v2.4.1 // indirect
-	github.com/tiendc/go-deepcopy v1.7.2 // indirect
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/transparency-dev/formats v0.1.0 // indirect
 	github.com/transparency-dev/merkle v0.0.2 // indirect
@@ -211,5 +208,4 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
-	zotregistry.dev/zot/v2 v2.1.14 // indirect
 )

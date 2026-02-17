@@ -17,7 +17,6 @@ import (
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
-	"github.com/agntcy/dir/utils/zot"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -411,9 +410,6 @@ func (s *store) Delete(ctx context.Context, ref *corev1.RecordRef) error {
 
 // IsReady checks if the storage backend is ready to serve traffic.
 // For local stores, always returns true.
-// For remote OCI registries:
-//   - Zot: checks /readyz endpoint
-//   - Generic: attempts a ping/tags request to verify connectivity
 func (s *store) IsReady(ctx context.Context) bool {
 	// Local directory stores are always ready
 	if s.config.LocalDir != "" {
@@ -433,12 +429,8 @@ func (s *store) IsReady(ctx context.Context) bool {
 
 	// Check readiness based on registry type
 	switch s.config.GetType() {
-	case registry.RegistryTypeZot:
-		// Use the zot utility package to check Zot's readiness
-		return zot.CheckReadiness(ctx, s.config.RegistryAddress, s.config.Insecure)
-
-	case registry.RegistryTypeGHCR, registry.RegistryTypeDockerHub:
-		// For GHCR/Docker Hub, try to list tags to verify connectivity
+	case registry.RegistryTypeZot, registry.RegistryTypeGHCR, registry.RegistryTypeDockerHub, registry.RegistryTypeOCI:
+		// For supported OCI regisstries, try to list tags to verify connectivity.
 		// This is a lightweight operation that these registries support
 		err := remoteRepo.Tags(ctx, "", func(_ []string) error {
 			return nil // Just checking connectivity, don't need results
@@ -459,9 +451,6 @@ func (s *store) IsReady(ctx context.Context) bool {
 
 		logger.Debug("Store ready", "registry_type", s.config.GetType())
 
-		return true
-
-	case registry.RegistryTypeOCI:
 		return true
 
 	default:

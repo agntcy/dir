@@ -91,7 +91,7 @@ func VerifyWithOIDC(payload []byte, req *signv1.VerifyWithOIDC, signature *signv
 
 // VerifyWithKeys verifies signatures against public keys using cosign.
 // It iterates through all combinations of public keys and signatures to find
-// a valid match, similar to Zot's VerifyCosignSignature pattern.
+// a valid match.
 // Public keys can be either PEM content or key references (file paths, URLs, KMS URIs).
 //
 // Returns true with metadata if any signature verifies with any public key.
