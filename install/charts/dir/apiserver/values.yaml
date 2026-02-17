@@ -657,7 +657,6 @@ postgresql:
     registry: docker.io
     repository: bitnami/postgresql
     digest: sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5
-    pullPolicy: IfNotPresent
   auth:
     username: "dir"
     password: "dirpassword"
