@@ -113,7 +113,11 @@ func (t *Task) processPendingCreations(ctx context.Context) error {
 
 			if err := t.processSync(ctx, sync); err != nil {
 				logger.Error("Failed to process sync creation", "sync_id", sync.GetID(), "error", err)
+
+				return
 			}
+
+			logger.Info("Sync processed successfully", "sync_id", sync.GetID())
 		}(syncObj)
 	}
 
@@ -161,7 +165,11 @@ func (t *Task) processPendingDeletions(ctx context.Context) error {
 
 			if err := t.processSyncDeletion(ctx, sync); err != nil {
 				logger.Error("Failed to process sync deletion", "sync_id", sync.GetID(), "error", err)
+
+				return
 			}
+
+			logger.Info("Sync deletion processed successfully", "sync_id", sync.GetID())
 		}(syncObj)
 	}
 

@@ -361,6 +361,7 @@ tasks:
     cmds:
       - task: deploy:kubernetes:local
         vars:
+          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
           DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
       - task: deploy:kubernetes:local:port-forward
 

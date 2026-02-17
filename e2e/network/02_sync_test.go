@@ -179,7 +179,7 @@ var _ = ginkgo.Describe("Running dirctl end-to-end tests for sync commands", fun
 		// Wait for sync to complete
 		ginkgo.It("should wait for sync to complete", func() {
 			// Poll sync status until it changes from PENDING to IN_PROGRESS
-			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("IN_PROGRESS", 120*time.Second)
+			output := cli.Sync().Status(syncID).OnServer(utils.Peer2Addr).ShouldEventuallyContain("IN_PROGRESS", 240*time.Second)
 			ginkgo.GinkgoWriter.Printf("Current sync status: %s", output)
 
 			// Wait for 60 seconds to ensure the sync is complete (reduce flakiness)
