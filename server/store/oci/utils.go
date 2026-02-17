@@ -13,10 +13,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
-func stringPtr(s string) *string {
-	return &s
-}
-
 // NewORASRepository creates a new ORAS repository client configured with authentication.
 func NewORASRepository(cfg ociconfig.Config) (*remote.Repository, error) {
 	repo, err := remote.NewRepository(fmt.Sprintf("%s/%s", cfg.RegistryAddress, cfg.RepositoryName))

@@ -6,6 +6,7 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/agntcy/dir/server/types/registry"
@@ -79,6 +80,17 @@ func (c Config) GetRegistryAddress() (string, error) {
 	}
 
 	return addr, nil
+}
+
+// GetRepositoryURL returns the full repository URL (registry address + repository name).
+func (c Config) GetRepositoryURL() string {
+	address := c.RegistryAddress
+
+	if c.RepositoryName != "" {
+		return path.Join(address, c.RepositoryName)
+	}
+
+	return address
 }
 
 // AuthConfig represents the configuration for authentication.

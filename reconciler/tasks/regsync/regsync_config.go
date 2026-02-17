@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -19,9 +18,8 @@ const (
 
 // RegsyncConfig represents the regsync configuration file format.
 // See: https://github.com/regclient/regclient/blob/main/docs/regsync.md
+// This struct is not thread-safe and should only be used by a single worker.
 type RegsyncConfig struct {
-	mu sync.Mutex
-
 	// Version is the config file version.
 	Version int `yaml:"version"`
 
@@ -98,7 +96,7 @@ type TagFilter struct {
 	Deny []string `yaml:"deny,omitempty"`
 }
 
-// NewRegsyncConfig creates a new regsync configuration with sensible defaults.
+// NewRegsyncConfig creates a new regsync configuration for a worker.
 func NewRegsyncConfig() *RegsyncConfig {
 	return &RegsyncConfig{
 		Version: 1,
@@ -115,9 +113,6 @@ func NewRegsyncConfig() *RegsyncConfig {
 
 // AddCredential adds or updates a credential for a registry.
 func (c *RegsyncConfig) AddCredential(registry, username, password string, insecure bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	// Remove scheme from registry URL
 	registry = trimScheme(registry)
 
@@ -153,9 +148,6 @@ func (c *RegsyncConfig) AddCredential(registry, username, password string, insec
 
 // AddSync adds a new sync entry or updates an existing one.
 func (c *RegsyncConfig) AddSync(source, target string, tags []string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	// Remove scheme from URLs
 	source = trimScheme(source)
 	target = trimScheme(target)
@@ -187,23 +179,12 @@ func (c *RegsyncConfig) AddSync(source, target string, tags []string) {
 	c.Sync = append(c.Sync, entry)
 }
 
-// ClearSyncs removes all sync entries while keeping credentials.
-func (c *RegsyncConfig) ClearSyncs() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.Sync = []SyncEntry{}
-}
-
 // WriteToFile writes the configuration to a file.
 // The syncID is embedded in a header comment for the sidecar to parse.
-func (c *RegsyncConfig) WriteToFile(path, syncID string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+func (c *RegsyncConfig) WriteToFile(syncID string) (string, error) {
 	data, err := yaml.Marshal(c)
 	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
+		return "", fmt.Errorf("failed to marshal config: %w", err)
 	}
 
 	// Prepend header comment with sync ID if provided
@@ -216,11 +197,25 @@ func (c *RegsyncConfig) WriteToFile(path, syncID string) error {
 		content = data
 	}
 
-	if err := os.WriteFile(path, content, configFilePermissions); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
+	// Create temporary file in the system temp directory with pattern regsync-{syncID}-*.yaml
+	pattern := fmt.Sprintf("regsync-%s-*.yaml", syncID)
+
+	file, err := os.CreateTemp("", pattern)
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
 
-	return nil
+	file.Close() // Close the file as we only need the path
+
+	path := file.Name()
+
+	if err := os.WriteFile(path, content, configFilePermissions); err != nil {
+		os.Remove(path) // Clean up on error
+
+		return "", fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return path, nil
 }
 
 // trimScheme removes the scheme (http:// or https://) from a URL.

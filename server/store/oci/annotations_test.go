@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func stringPtr(s string) *string {
+	return &s
+}
+
 func TestExtractManifestAnnotations(t *testing.T) {
 	// NOTE: This test covers annotation extraction for different OASF versions
 	tests := []struct {

@@ -163,18 +163,6 @@ func (t *Task) createRegistrySnapshot(ctx context.Context) (*registrySnapshot, e
 	}, nil
 }
 
-// createContentHash creates a hash of the tags for quick comparison.
-func createContentHash(tags []string) string {
-	hasher := sha256.New()
-
-	for _, tag := range tags {
-		hasher.Write([]byte(tag))
-		hasher.Write([]byte("|"))
-	}
-
-	return hex.EncodeToString(hasher.Sum(nil))
-}
-
 // detectNewTags compares two snapshots and returns new tags.
 func (t *Task) detectNewTags(oldSnapshot, newSnapshot *registrySnapshot) []string {
 	// If content hashes match, no changes
@@ -266,4 +254,15 @@ func isRepositoryNotFoundError(err error) bool {
 		(strings.Contains(errStr, "name unknown") ||
 			strings.Contains(errStr, "repository name not known") ||
 			strings.Contains(errStr, "not found"))
+}
+
+// createContentHash creates a hash of the tags for quick comparison.
+func createContentHash(tags []string) string {
+	hasher := sha256.New()
+
+	for _, tag := range tags {
+		hasher.Write([]byte(tag))
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil))
 }
