@@ -547,6 +547,9 @@ tasks:
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_BAKE_ENV: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_BAKE_ENV }}{{ else }}{{ .BAKE_ENV }}{{ end }}'
       DEPLOY_BAKE_GROUP: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}coverage{{ else }}default{{ end }}'
+      # External images to pre-pull (avoids slow pulls during helm install)
+      ZOT_IMAGE: "ghcr.io/project-zot/zot:v2.1.14"
+      POSTGRESQL_IMAGE: "docker.io/bitnami/postgresql@sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5"
     cmds:
       # Create ephemeral cluster
       - "{{ .KIND_BIN }} create cluster {{ .KIND_CREATE_OPTS }} --name {{ .KIND_CLUSTER_NAME }}"
@@ -555,11 +558,20 @@ tasks:
       # Check cluster status
       - "{{ .KUBECTL_BIN }} cluster-info"
 
-      # Import images
+      # Import images (parallel loading for speed)
       - |
         images=$({{.DEPLOY_BAKE_ENV}} docker buildx bake {{.DEPLOY_BAKE_GROUP}} --print | jq -r '.target | with_entries(.value |= .tags[0]) | to_entries[] | .value')
-        echo "$images" | while read image; do
-          {{ .KIND_BIN }} load docker-image $image --name {{ .KIND_CLUSTER_NAME }}
+        echo "$images" | xargs -P 4 -I {} {{ .KIND_BIN }} load docker-image {} --name {{ .KIND_CLUSTER_NAME }}
+
+      # Pre-pull external images to avoid slow pulls during helm install
+      - |
+        EXTERNAL_IMAGES="{{ .ZOT_IMAGE }} {{ .POSTGRESQL_IMAGE }}"
+        for img in $EXTERNAL_IMAGES; do
+          docker pull $img &
+        done
+        wait
+        for img in $EXTERNAL_IMAGES; do
+          {{ .KIND_BIN }} load docker-image $img --name {{ .KIND_CLUSTER_NAME }} 2>/dev/null || true
         done
 
   deploy:kubernetes:gen-htpasswd-creds:
@@ -990,6 +1002,9 @@ tasks:
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
       RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
+      # Build helm dependencies once (shared across deployments)
+      - "{{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}"
+
       # Deploy bootstrap with explicit var passing (not as dependency)
       - task: deploy:kubernetes:network:bootstrap
         vars:
@@ -1012,7 +1027,6 @@ tasks:
           # Load credentials
           source /tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env
 
-          {{ .HELM_BIN }} dependency build {{ .HELM_CHART_PATH }}
           {{ .HELM_BIN }} upgrade agntcy-dir \
             {{ .HELM_CHART_PATH }} \
             -f {{ .HELM_VALUES_PATH }} \
@@ -1502,6 +1516,12 @@ tasks:
         apiserver:
           service:
             type: LoadBalancer
+          authz_policies_csv: |
+            p,{{ .DIR_TRUST_DOMAIN }},*
+            p,*,/agntcy.dir.store.v1.StoreService/Pull
+            p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
+            p,*,/agntcy.dir.store.v1.StoreService/Lookup
+            p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
           config:
             authn:
               enabled: true
@@ -1510,12 +1530,6 @@ tasks:
                 - "spiffe://{{ .DIR_TRUST_DOMAIN }}/spire/server"
             authz:
               enabled: true
-              enforcer_policy_csv: |
-                p,{{ .DIR_TRUST_DOMAIN }},*
-                p,*,/agntcy.dir.store.v1.StoreService/Pull
-                p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
-                p,*,/agntcy.dir.store.v1.StoreService/Lookup
-                p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
             oasf_api_validation:
               schema_url: "https://schema.oasf.outshift.com"
           spire:

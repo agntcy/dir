@@ -187,6 +187,11 @@ func (t *Task) processSyncDeletion(_ context.Context, syncObj types.SyncObject) 
 
 	logger.Info("Processing sync deletion", "sync_id", syncID)
 
+	// Update status to DELETE_PENDING before starting worker
+	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING); err != nil {
+		return fmt.Errorf("failed to update sync status to DELETE_PENDING: %w", err)
+	}
+
 	// Register as active to prevent duplicate processing
 	t.mu.Lock()
 	t.activeWorkers[syncID] = nil // Use nil worker for delete operations
@@ -198,11 +203,9 @@ func (t *Task) processSyncDeletion(_ context.Context, syncObj types.SyncObject) 
 		t.mu.Unlock()
 	}()
 
-	// Delete the sync from the database
-	// This removes the sync record completely
-	if err := t.db.DeleteSync(syncID); err != nil {
-		// If deletion fails, we don't update status - it will be retried
-		return fmt.Errorf("failed to delete sync from database: %w", err)
+	// Soft delete the sync
+	if err := t.db.UpdateSyncStatus(syncID, storev1.SyncStatus_SYNC_STATUS_DELETED); err != nil {
+		return fmt.Errorf("failed to update sync status to DELETED: %w", err)
 	}
 
 	logger.Info("Sync deleted successfully", "sync_id", syncID)

@@ -86,6 +86,12 @@ p,partner2.com,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
 To enable authorization policies in your Helm deployment:
 
 ```yaml
+authz_policies_csv: |
+  p,example.org,*
+  p,*,/agntcy.dir.store.v1.StoreService/Pull
+  p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
+  p,*,/agntcy.dir.store.v1.StoreService/Lookup
+
 config:
   # Authentication must be enabled first
   authn:
@@ -97,11 +103,6 @@ config:
   authz:
     enabled: true
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
-    enforcer_policy_csv: |
-      p,example.org,*
-      p,*,/agntcy.dir.store.v1.StoreService/Pull
-      p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
-      p,*,/agntcy.dir.store.v1.StoreService/Lookup
 ```
 
 **Important:** Authorization requires authentication to be enabled. The authorization system extracts the trust domain from the authenticated SPIFFE ID (either from X.509-SVID or JWT-SVID) and evaluates it against the configured policies.
