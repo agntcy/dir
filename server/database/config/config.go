@@ -4,8 +4,8 @@
 package config
 
 const (
-	// DefaultDBType is the default database type if not specified in the config.
-	DefaultDBType = "postgres"
+	// DefaultType is the default database type if not specified in the config.
+	DefaultType = "postgres"
 
 	// PostgreSQL defaults.
 	DefaultPostgresHost     = "localhost"
@@ -15,8 +15,8 @@ const (
 )
 
 type Config struct {
-	// DBType is the type of the database (postgres).
-	DBType string `json:"db_type,omitempty" mapstructure:"db_type"`
+	// Type is the type of the database (postgres).
+	Type string `json:"type,omitempty" mapstructure:"type"`
 
 	// PostgreSQL database configuration.
 	Postgres PostgresConfig `json:"postgres" mapstructure:"postgres"`

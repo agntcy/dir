@@ -79,8 +79,8 @@ func LoadConfig() (*Config, error) {
 	//
 	// Database configuration
 	//
-	_ = v.BindEnv("database.db_type")
-	v.SetDefault("database.db_type", dbconfig.DefaultDBType)
+	_ = v.BindEnv("database.type")
+	v.SetDefault("database.type", dbconfig.DefaultType)
 
 	// PostgreSQL configuration
 	_ = v.BindEnv("database.postgres.host")
@@ -101,7 +101,6 @@ func LoadConfig() (*Config, error) {
 	//
 	// Local registry configuration (shared by all tasks)
 	//
-	_ = v.BindEnv("local_registry.type")
 	_ = v.BindEnv("local_registry.registry_address")
 	_ = v.BindEnv("local_registry.repository_name")
 	_ = v.BindEnv("local_registry.auth_config.username")

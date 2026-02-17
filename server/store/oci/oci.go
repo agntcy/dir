@@ -15,7 +15,6 @@ import (
 	"github.com/agntcy/dir/server/store/cache"
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
 	"github.com/agntcy/dir/server/types"
-	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/grpc/codes"
@@ -66,12 +65,7 @@ func New(cfg ociconfig.Config) (types.StoreAPI, error) {
 		}, nil
 	}
 
-	// Validate registry type (logs warning for experimental types like ghcr, dockerhub)
-	registryType := cfg.GetType()
-	if !registry.IsSupported(registryType) {
-		return nil, fmt.Errorf("unsupported registry type: %s", registryType)
-	}
-
+	// Create repo for remote registry
 	repo, err := NewORASRepository(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create remote repo: %w", err)
@@ -428,32 +422,26 @@ func (s *store) IsReady(ctx context.Context) bool {
 	}
 
 	// Check readiness based on registry type
-	switch s.config.GetType() {
-	case registry.RegistryTypeZot, registry.RegistryTypeGHCR, registry.RegistryTypeDockerHub, registry.RegistryTypeOCI:
-		// For supported OCI regisstries, try to list tags to verify connectivity.
-		// This is a lightweight operation that these registries support
-		err := remoteRepo.Tags(ctx, "", func(_ []string) error {
-			return nil // Just checking connectivity, don't need results
-		})
-		if err != nil {
-			// Check if it's a "repository not found" error - that's OK, registry is reachable
-			errStr := err.Error()
-			if strings.Contains(errStr, "404") || strings.Contains(errStr, "NAME_UNKNOWN") {
-				logger.Debug("Store ready: registry reachable, repository may not exist yet")
+	// For supported OCI regisstries, try to list tags to verify connectivity.
+	// This is a lightweight operation that these registries support
+	err := remoteRepo.Tags(ctx, "", func(_ []string) error {
+		return nil // Just checking connectivity, don't need results
+	})
+	if err != nil {
+		// Check if it's a "repository not found" error - that's OK, registry is reachable
+		errStr := err.Error()
+		if strings.Contains(errStr, "404") || strings.Contains(errStr, "NAME_UNKNOWN") {
+			logger.Debug("Store ready: registry reachable, repository may not exist yet")
 
-				return true
-			}
-
-			logger.Debug("Store not ready: failed to connect to registry", "error", err)
-
-			return false
+			return true
 		}
 
-		logger.Debug("Store ready", "registry_type", s.config.GetType())
+		logger.Debug("Store not ready: failed to connect to registry", "error", err)
 
-		return true
-
-	default:
 		return false
 	}
+
+	logger.Debug("Store ready")
+
+	return true
 }

@@ -18,7 +18,6 @@ import (
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
-	"github.com/agntcy/dir/server/types/registry"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +45,7 @@ func TestConfig(t *testing.T) {
 				"DIRECTORY_SERVER_ROUTING_LISTEN_ADDRESS":              "/ip4/1.1.1.1/tcp/1",
 				"DIRECTORY_SERVER_ROUTING_BOOTSTRAP_PEERS":             "/ip4/1.1.1.1/tcp/1,/ip4/1.1.1.1/tcp/2",
 				"DIRECTORY_SERVER_ROUTING_KEY_PATH":                    "/path/to/key",
-				"DIRECTORY_SERVER_DATABASE_DB_TYPE":                    "postgres",
+				"DIRECTORY_SERVER_DATABASE_TYPE":                       "postgres",
 				"DIRECTORY_SERVER_DATABASE_POSTGRES_HOST":              "localhost",
 				"DIRECTORY_SERVER_DATABASE_POSTGRES_PORT":              "5432",
 				"DIRECTORY_SERVER_DATABASE_POSTGRES_DATABASE":          "dir",
@@ -73,7 +72,6 @@ func TestConfig(t *testing.T) {
 				Store: store.Config{
 					Provider: "provider",
 					OCI: oci.Config{
-						Type:            registry.RegistryTypeGHCR,
 						LocalDir:        "local-dir",
 						RegistryAddress: "example.com:5001",
 						RepositoryName:  "test-dir",
@@ -101,7 +99,7 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Database: dbconfig.Config{
-					DBType: "postgres",
+					Type: "postgres",
 					Postgres: dbconfig.PostgresConfig{
 						Host:     "localhost",
 						Port:     5432,
@@ -153,7 +151,6 @@ func TestConfig(t *testing.T) {
 				Store: store.Config{
 					Provider: store.DefaultProvider,
 					OCI: oci.Config{
-						Type:            registry.DefaultRegistryType,
 						RegistryAddress: oci.DefaultRegistryAddress,
 						RepositoryName:  oci.DefaultRepositoryName,
 						AuthConfig: oci.AuthConfig{
@@ -172,7 +169,7 @@ func TestConfig(t *testing.T) {
 					},
 				},
 				Database: dbconfig.Config{
-					DBType: dbconfig.DefaultDBType,
+					Type: dbconfig.DefaultType,
 					Postgres: dbconfig.PostgresConfig{
 						Host:     dbconfig.DefaultPostgresHost,
 						Port:     dbconfig.DefaultPostgresPort,

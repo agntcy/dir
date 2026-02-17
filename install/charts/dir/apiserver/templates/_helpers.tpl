@@ -113,21 +113,10 @@ Single source of truth based on configuration mode:
   - postgresql.enabled=true  → use postgresql.auth.* (subchart manages credentials)
   - externalSecrets.enabled  → credentials from Vault (no values needed here)
   - otherwise                → use secrets.postgresAuth.* (explicit credentials)
-*/}}
 
-{{/*
-Get PostgreSQL host.
-When subchart is enabled, derive from release name. Otherwise use explicit config.
+Note: Database connection config (host, port, database, ssl_mode) should be specified
+directly in config.database.postgres - no helpers for those values.
 */}}
-{{- define "chart.postgres.host" -}}
-{{- if .Values.postgresql.enabled -}}
-{{- printf "%s-postgresql" .Release.Name -}}
-{{- else if .Values.database.postgres.host -}}
-{{- .Values.database.postgres.host -}}
-{{- else -}}
-localhost
-{{- end -}}
-{{- end -}}
 
 {{/*
 Get PostgreSQL username.
@@ -152,23 +141,31 @@ Get PostgreSQL password.
 {{- end -}}
 
 {{/*
-Get PostgreSQL database name.
-*/}}
-{{- define "chart.postgres.database" -}}
-{{- if .Values.postgresql.enabled -}}
-{{- .Values.postgresql.auth.database | default "dir" -}}
-{{- else -}}
-{{- .Values.database.postgres.database | default "dir" -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Check if postgres credentials are configured.
 Returns true when credentials will be available (from any source).
 */}}
 {{- define "chart.postgres.credentialsConfigured" -}}
 {{- if or .Values.postgresql.enabled (and .Values.externalSecrets.enabled .Values.externalSecrets.postgresAuth.enabled) .Values.secrets.postgresAuth.username .Values.secrets.postgresAuth.password -}}
 true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Get PostgreSQL host address.
+Priority order:
+  1. Explicit user configuration (config.database.postgres.host) - always respected
+  2. Auto-detected internal PostgreSQL service (when postgresql.enabled=true and no explicit host)
+
+This allows users to deploy the PostgreSQL subchart for convenience while still
+being able to specify a custom external host if needed.
+*/}}
+{{- define "chart.postgres.host" -}}
+{{- if .Values.config.database.postgres.host -}}
+{{- .Values.config.database.postgres.host -}}
+{{- else if .Values.postgresql.enabled -}}
+{{- printf "%s-postgresql.%s.svc.cluster.local" .Release.Name .Release.Namespace -}}
+{{- else -}}
+localhost
 {{- end -}}
 {{- end -}}
 

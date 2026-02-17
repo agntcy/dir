@@ -4,6 +4,11 @@
 // Package regsync implements the reconciliation task for regsync configuration.
 // It monitors the database for pending sync operations and creates workers
 // to synchronize tags from OCI registries.
+//
+// TODO: this is a quick implementation to get the core functionality working.
+// TODO: it should be further refactored to simplify, separate concerns and improve testability
+//
+//nolint:dupl
 package regsync
 
 import (
@@ -59,17 +64,33 @@ func (t *Task) IsEnabled() bool {
 func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running regsync reconciliation")
 
-	// Find pending syncs that need regsync
+	// Process pending sync creations
+	if err := t.processPendingCreations(ctx); err != nil {
+		logger.Error("Failed to process pending sync creations", "error", err)
+	}
+
+	// Process pending sync deletions
+	if err := t.processPendingDeletions(ctx); err != nil {
+		logger.Error("Failed to process pending sync deletions", "error", err)
+	}
+
+	return nil
+}
+
+// processPendingCreations handles syncs in SYNC_STATUS_PENDING state.
+func (t *Task) processPendingCreations(ctx context.Context) error {
 	pendingSyncs, err := t.db.GetSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_PENDING)
 	if err != nil {
 		return fmt.Errorf("failed to get pending syncs: %w", err)
 	}
 
 	if len(pendingSyncs) == 0 {
-		logger.Debug("No pending syncs to process")
+		logger.Debug("No pending sync creations to process")
 
 		return nil
 	}
+
+	logger.Info("Processing pending sync creations", "count", len(pendingSyncs))
 
 	// Process all pending syncs concurrently
 	var wg sync.WaitGroup
@@ -91,7 +112,7 @@ func (t *Task) Run(ctx context.Context) error {
 			defer wg.Done()
 
 			if err := t.processSync(ctx, sync); err != nil {
-				logger.Error("Failed to start worker for sync", "sync_id", sync.GetID(), "error", err)
+				logger.Error("Failed to process sync creation", "sync_id", sync.GetID(), "error", err)
 			}
 		}(syncObj)
 	}
@@ -99,7 +120,84 @@ func (t *Task) Run(ctx context.Context) error {
 	// Wait for all workers to complete
 	wg.Wait()
 
-	logger.Debug("Completed processing pending syncs", "count", len(pendingSyncs))
+	logger.Debug("Completed processing pending sync creations", "count", len(pendingSyncs))
+
+	return nil
+}
+
+// processPendingDeletions handles syncs in SYNC_STATUS_DELETE_PENDING state.
+func (t *Task) processPendingDeletions(ctx context.Context) error {
+	pendingDeletes, err := t.db.GetSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_DELETE_PENDING)
+	if err != nil {
+		return fmt.Errorf("failed to get pending deletes: %w", err)
+	}
+
+	if len(pendingDeletes) == 0 {
+		logger.Debug("No pending sync deletions to process")
+
+		return nil
+	}
+
+	logger.Info("Processing pending sync deletions", "count", len(pendingDeletes))
+
+	// Process all pending deletions concurrently
+	var wg sync.WaitGroup
+
+	for _, syncObj := range pendingDeletes {
+		syncID := syncObj.GetID()
+
+		// Skip if already being processed
+		if t.isWorkerActive(syncID) {
+			logger.Debug("Sync deletion already being processed, skipping", "sync_id", syncID)
+
+			continue
+		}
+
+		// Process each deletion in a separate goroutine
+		wg.Add(1)
+
+		go func(sync types.SyncObject) {
+			defer wg.Done()
+
+			if err := t.processSyncDeletion(ctx, sync); err != nil {
+				logger.Error("Failed to process sync deletion", "sync_id", sync.GetID(), "error", err)
+			}
+		}(syncObj)
+	}
+
+	// Wait for all deletions to complete
+	wg.Wait()
+
+	logger.Debug("Completed processing pending sync deletions", "count", len(pendingDeletes))
+
+	return nil
+}
+
+// processSyncDeletion handles the deletion of a single sync object.
+func (t *Task) processSyncDeletion(_ context.Context, syncObj types.SyncObject) error {
+	syncID := syncObj.GetID()
+
+	logger.Info("Processing sync deletion", "sync_id", syncID)
+
+	// Register as active to prevent duplicate processing
+	t.mu.Lock()
+	t.activeWorkers[syncID] = nil // Use nil worker for delete operations
+	t.mu.Unlock()
+
+	defer func() {
+		t.mu.Lock()
+		delete(t.activeWorkers, syncID)
+		t.mu.Unlock()
+	}()
+
+	// Delete the sync from the database
+	// This removes the sync record completely
+	if err := t.db.DeleteSync(syncID); err != nil {
+		// If deletion fails, we don't update status - it will be retried
+		return fmt.Errorf("failed to delete sync from database: %w", err)
+	}
+
+	logger.Info("Sync deleted successfully", "sync_id", syncID)
 
 	return nil
 }

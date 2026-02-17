@@ -658,8 +658,8 @@ tasks:
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
           --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
-          --set apiserver.reconciler.regsync.interval="1s" \
-          --set apiserver.reconciler.indexer.interval="1s" \
+          --set apiserver.reconciler.config.regsync.interval="1s" \
+          --set apiserver.reconciler.config.indexer.interval="1s" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -715,21 +715,21 @@ tasks:
           --set apiserver.config.store.oci.auth_config.password="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD}" \
           --set apiserver.config.store.oci.auth_config.insecure=false \
           --set apiserver.zot.enabled=false \
-          --set apiserver.reconciler.regsync.enabled=true \
+          --set apiserver.reconciler.config.regsync.enabled=true \
           --set apiserver.secrets.ociAuth.username="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_USERNAME}" \
           --set apiserver.secrets.ociAuth.password="${DIRECTORY_SERVER_STORE_OCI_AUTH_CONFIG_PASSWORD}" \
           --set apiserver.secrets.syncAuth.username="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
-          --set apiserver.database.postgres.host=dir-postgresql.{{ .HELM_NAMESPACE }}.svc.cluster.local \
-          --set apiserver.database.postgres.port=5432 \
+          --set apiserver.config.database.postgres.host=dir-postgresql.{{ .HELM_NAMESPACE }}.svc.cluster.local \
+          --set apiserver.config.database.postgres.port=5432 \
           --set apiserver.postgresql.enabled=true \
           --set apiserver.postgresql.auth.username=dir \
           --set apiserver.postgresql.auth.password=dirpassword \
           --set apiserver.postgresql.auth.database=dir \
-          --set apiserver.reconciler.regsync.interval="1s" \
-          --set apiserver.reconciler.indexer.interval="1s" \
+          --set apiserver.reconciler.config.regsync.interval="1s" \
+          --set apiserver.reconciler.config.indexer.interval="1s" \
           --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
           --set apiserver.config.oasf_api_validation.disable=true \
           --namespace {{ .HELM_NAMESPACE }} \
@@ -800,8 +800,8 @@ tasks:
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           --set apiserver.log_level="DEBUG" \
           --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
-          --set apiserver.reconciler.regsync.interval="1s" \
-          --set apiserver.reconciler.indexer.interval="1s" \
+          --set apiserver.reconciler.config.regsync.interval="1s" \
+          --set apiserver.reconciler.config.indexer.interval="1s" \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -969,8 +969,8 @@ tasks:
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
           --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
-          --set apiserver.reconciler.regsync.interval="1s" \
-          --set apiserver.reconciler.indexer.interval="1s" \
+          --set apiserver.reconciler.config.regsync.interval="1s" \
+          --set apiserver.reconciler.config.indexer.interval="1s" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -996,14 +996,14 @@ tasks:
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
           RECONCILER_IMAGE_TAG: "{{ .RECONCILER_IMAGE_TAG }}"
 
-      # Deploy the peer servers using Helm
+      # Step 1: Deploy all peer servers without waiting (fast)
       - for:
           matrix:
             PEER: ["peer1", "peer2", "peer3"]
         cmd: |
           export $(cat .env)
 
-          # Generate fresh credentials for this peer using helper task
+          # Generate fresh credentials for this peer
           task deploy:kubernetes:gen-htpasswd-creds \
             CREDS_FILE=/tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env \
             HTPASSWD_FILE=/tmp/zot-htpasswd-{{ .ITEM.PEER }}
@@ -1030,18 +1030,27 @@ tasks:
             {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
             --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
             --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
-            --set apiserver.reconciler.regsync.interval="1s" \
-            --set apiserver.reconciler.indexer.interval="1s" \
+            --set apiserver.reconciler.config.regsync.interval="1s" \
+            --set apiserver.reconciler.config.indexer.interval="1s" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
-            --install \
-            --wait \
-            --wait-for-jobs \
-            --timeout "15m"
+            --install
 
           # Cleanup temp files
           rm -f /tmp/zot-htpasswd-{{ .ITEM.PEER }}
           rm -f /tmp/dir-htpasswd-creds-{{ .ITEM.PEER }}.env
+
+      # Step 2: Wait for all peer deployments to be ready
+      - for:
+          matrix:
+            PEER: ["peer1", "peer2", "peer3"]
+        cmd: |
+          echo "Waiting for {{ .ITEM.PEER }} deployments to be ready..."
+          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-apiserver -n {{ .ITEM.PEER }} --timeout=10m
+          {{ .KUBECTL_BIN }} wait --for=condition=available deployment/agntcy-dir-reconciler -n {{ .ITEM.PEER }} --timeout=10m
+          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=zot -n {{ .ITEM.PEER }} --timeout=10m
+          {{ .KUBECTL_BIN }} wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n {{ .ITEM.PEER }} --timeout=10m
+          echo "{{ .ITEM.PEER }} is ready"
 
   deploy:kubernetes:network:port-forward:
     aliases: [deploy:network:port-forward]

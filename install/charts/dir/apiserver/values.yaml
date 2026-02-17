@@ -1,10 +1,6 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-# Default values for helm-chart.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
 nameOverride: ""
 fullnameOverride: ""
 
@@ -22,7 +18,16 @@ image:
   pullPolicy: IfNotPresent
   pullSecrets: []
 
-# Server configuration
+# Authorization policy file content (separate from config)
+# This is written to authz_policies.csv file, not part of the server config struct
+authz_policies_csv: |
+  p,example.org,*
+  p,*,/agntcy.dir.store.v1.StoreService/Pull
+  p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
+  p,*,/agntcy.dir.store.v1.StoreService/Lookup
+  p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
+
+# Server configuration (maps directly to server config.go Config struct)
 config:
   # listen_address: "0.0.0.0:8888"
 
@@ -50,14 +55,6 @@ config:
     # Path to the authorization policy file
     enforcer_policy_file_path: "/etc/agntcy/dir/authz_policies.csv"
 
-    # Content of the authorization policy file
-    enforcer_policy_csv: |
-      p,example.org,*
-      p,*,/agntcy.dir.store.v1.StoreService/Pull
-      p,*,/agntcy.dir.store.v1.StoreService/PullReferrer
-      p,*,/agntcy.dir.store.v1.StoreService/Lookup
-      p,*,/agntcy.dir.sync.v1.SyncService/RequestRegistryCredentials
-
   # Store settings for the storage backend.
   store:
     # Storage provider to use.
@@ -74,9 +71,10 @@ config:
 
       # Registry address to connect to
       registry_address: ""
+
       # All data will be stored under this repo.
       # Objects are pushed as tags, manifests, and blobs.
-      # repository_name: ""
+      repository_name: ""
 
       # Auth credentials to use.
       auth_config:
@@ -112,6 +110,8 @@ config:
   sync:
     # Authentication configuration for sync operations
     auth_config: {}
+      # username: ""
+      # password: ""
 
   # Events configuration
   events:
@@ -204,6 +204,30 @@ config:
     #     rps: 200     # Higher limit for read operations
     #     burst: 400
 
+  # Database configuration (PostgreSQL)
+  # Connection settings for the apiserver database.
+  # Credentials are managed separately via secrets.postgresAuth or externalSecrets.
+  database:
+    # Database type (only postgres is supported)
+    type: "postgres"
+
+    # PostgreSQL connection settings
+    postgres:
+      # PostgreSQL host address
+      # For local (postgresql.enabled=true): use "<release-name>-postgresql"
+      # For external: your PostgreSQL hostname
+      host: ""
+
+      # PostgreSQL port
+      port: 5432
+
+      # Database name
+      database: "dir"
+
+      # SSL mode for PostgreSQL connection
+      # Options: disable, require, verify-ca, verify-full
+      ssl_mode: "disable"
+
   # OASF API validation configuration
   oasf_api_validation:
     # Schema URL for OASF validation
@@ -282,30 +306,6 @@ pvc:
   create: false
   storageClassName: standard
   size: 1G
-
-# Database configuration (PostgreSQL only)
-# PostgreSQL can be deployed via:
-# 1. Built-in subchart: postgresql.enabled: true (default)
-# 2. External/manually deployed: postgresql.enabled: false + configure database.postgres.*
-database:
-  # PostgreSQL configuration
-  # When postgresql.enabled=true (subchart), these values are auto-derived from postgresql.auth.*
-  # When postgresql.enabled=false (external), configure these for your external PostgreSQL instance
-  postgres:
-    # PostgreSQL host address (only used when postgresql.enabled=false)
-    # For external PostgreSQL, set to your database hostname
-    host: ""
-    
-    # PostgreSQL port (default: 5432)
-    port: 5432
-    
-    # Database name (only used when postgresql.enabled=false)
-    # When using subchart, this is derived from postgresql.auth.database
-    database: "dir"
-    
-    # SSL mode for PostgreSQL connection
-    # Options: disable, require, verify-ca, verify-full
-    sslMode: "disable"
 
 # Service exposes gRPC server api
 service:
@@ -512,8 +512,9 @@ secrets:
     username: ""
     password: ""
 
-  # PostgreSQL authentication (only used when database.type: "postgres" AND postgresql.enabled: false)
-  # When postgresql subchart is enabled, credentials are taken from postgresql.auth.* instead.
+  # PostgreSQL authentication
+  # These credentials are used for database connections.
+  # When postgresql subchart is enabled, these values override postgresql.auth.* for the connection secret.
   # Username defaults to "dir", password is randomly generated if empty.
   postgresAuth:
     username: ""
@@ -564,7 +565,7 @@ externalSecrets:
   
   # PostgreSQL authentication (only used when database.type: "postgres")
   postgresAuth:
-    enabled: false  # Enable when using PostgreSQL with Vault-managed credentials
+    enabled: true 
     # Property names in Vault secret (defaults shown)
     usernameProperty: "postgres-username"
     passwordProperty: "postgres-password"
@@ -652,6 +653,10 @@ envoy-authz:
 # When enabled, postgresql.auth.* is the single source of truth for credentials.
 postgresql:
   enabled: true
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    digest: sha256:c47e54a69b39aa97d4405d68ea02bf2ffe06b646748e2ddf9c761416ead6acd5
   auth:
     username: "dir"
     password: "dirpassword"
@@ -659,25 +664,78 @@ postgresql:
 
 # Reconciler configuration
 # The reconciler handles async operations including:
-# - regsync: sync
+# - regsync: syncs records from remote registries
 # - indexer: indexes synced records into the database for search
-# Requires database.type: "postgres" - shares the same database as the apiserver.
+# Shares the same database as the apiserver.
 reconciler:
   image:
     repository: ghcr.io/agntcy/dir-reconciler
     tag: latest
     pullPolicy: IfNotPresent
 
-  # Regsync task configuration
-  regsync:
-    enabled: true
-    interval: "1h"
-    timeout: "10m"
+  # Reconciler configuration - all settings go here
+  # This entire section is rendered directly to reconciler.config.yml
+  config:
+    # Database configuration (PostgreSQL)
+    # Connection settings for the apiserver database.
+    # Credentials are managed separately via secrets.postgresAuth or externalSecrets.
+    database:
+      # Database type (only postgres is supported)
+      type: "postgres"
 
-  # Indexer task configuration
-  # Indexes synced records into the database for search
-  indexer:
-    enabled: true
-    interval: "1h"
+      # PostgreSQL connection settings
+      postgres:
+        # PostgreSQL host address
+        # For local (postgresql.enabled=true): use "<release-name>-postgresql"
+        # For external: your PostgreSQL hostname
+        host: ""
+
+        # PostgreSQL port
+        port: 5432
+
+        # Database name
+        database: "dir"
+
+        # SSL mode for PostgreSQL connection
+        # Options: disable, require, verify-ca, verify-full
+        ssl_mode: "disable"
+
+    # Local registry configuration (for syncing)
+    local_registry:
+      # Path to a local directory that will be to hold data instead of remote.
+      # If this is set to non-empty value, only local store will be used.
+      # local_dir: ""
+
+      # Cache directory to use for metadata.
+      # cache_dir: ""
+
+      # Registry address to connect to
+      registry_address: ""
+
+      # All data will be stored under this repo.
+      # Objects are pushed as tags, manifests, and blobs.
+      repository_name: ""
+
+      # Auth credentials to use.
+      auth_config:
+        insecure: true
+        # username: ""
+        # password: ""
+        # access_token: ""
+        # refresh_token: ""
+
+    # OASF schema URL for validation
+    schema_url: "https://schema.oasf.outshift.com"
+
+    # Regsync task configuration
+    regsync:
+      enabled: true
+      interval: "1h"
+      timeout: "10m"
+
+    # Indexer task configuration
+    indexer:
+      enabled: true
+      interval: "1h"
 
   resources: {}

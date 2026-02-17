@@ -19,7 +19,6 @@ import (
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
-	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
@@ -391,9 +390,6 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("store.provider")
 	v.SetDefault("store.provider", store.DefaultProvider)
 
-	_ = v.BindEnv("store.oci.type")
-	v.SetDefault("store.oci.type", string(registry.DefaultRegistryType))
-
 	_ = v.BindEnv("store.oci.local_dir")
 	v.SetDefault("store.oci.local_dir", "")
 
@@ -449,8 +445,8 @@ func LoadConfig() (*Config, error) {
 	//
 	// Database configuration
 	//
-	_ = v.BindEnv("database.db_type")
-	v.SetDefault("database.db_type", dbconfig.DefaultDBType)
+	_ = v.BindEnv("database.type")
+	v.SetDefault("database.type", dbconfig.DefaultType)
 
 	// PostgreSQL configuration
 	_ = v.BindEnv("database.postgres.host")

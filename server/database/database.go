@@ -24,7 +24,7 @@ const (
 )
 
 func New(config config.Config) (types.DatabaseAPI, error) {
-	switch db := DB(config.DBType); db {
+	switch db := DB(config.Type); db {
 	case Postgres:
 		postgresDB, err := newPostgres(config.Postgres)
 		if err != nil {
