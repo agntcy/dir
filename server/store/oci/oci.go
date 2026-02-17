@@ -461,8 +461,8 @@ func (s *store) IsReady(ctx context.Context) bool {
 
 		return true
 
-	case registry.RegistryTypeUnknown:
-		return false
+	case registry.RegistryTypeOCI:
+		return true
 
 	default:
 		return false

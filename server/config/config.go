@@ -19,8 +19,6 @@ import (
 	routing "github.com/agntcy/dir/server/routing/config"
 	store "github.com/agntcy/dir/server/store/config"
 	oci "github.com/agntcy/dir/server/store/oci/config"
-	sync "github.com/agntcy/dir/server/sync/config"
-	syncmonitor "github.com/agntcy/dir/server/sync/monitor/config"
 	"github.com/agntcy/dir/server/types/registry"
 	"github.com/agntcy/dir/utils/logging"
 	"github.com/mitchellh/mapstructure"
@@ -142,7 +140,7 @@ type Config struct {
 	Database dbconfig.Config `json:"database" mapstructure:"database"`
 
 	// Sync configuration
-	Sync sync.Config `json:"sync" mapstructure:"sync"`
+	Sync SyncConfig `json:"sync" mapstructure:"sync"`
 
 	// Publication configuration
 	Publication publication.Config `json:"publication" mapstructure:"publication"`
@@ -155,6 +153,11 @@ type Config struct {
 
 	// Reverification configuration
 	Reverification reverification.Config `json:"reverification,omitzero" mapstructure:"reverification"`
+}
+
+type SyncConfig struct {
+	// AuthConfig holds authentication configuration for sync operations.
+	AuthConfig oci.AuthConfig `json:"auth_config" mapstructure:"auth_config"`
 }
 
 // OASFAPIValidationConfig defines OASF API validation configuration.
@@ -469,19 +472,6 @@ func LoadConfig() (*Config, error) {
 	//
 	// Sync configuration
 	//
-
-	_ = v.BindEnv("sync.scheduler_interval")
-	v.SetDefault("sync.scheduler_interval", sync.DefaultSyncSchedulerInterval)
-
-	_ = v.BindEnv("sync.worker_count")
-	v.SetDefault("sync.worker_count", sync.DefaultSyncWorkerCount)
-
-	_ = v.BindEnv("sync.worker_timeout")
-	v.SetDefault("sync.worker_timeout", sync.DefaultSyncWorkerTimeout)
-
-	_ = v.BindEnv("sync.registry_monitor.check_interval")
-	v.SetDefault("sync.registry_monitor.check_interval", syncmonitor.DefaultCheckInterval)
-
 	_ = v.BindEnv("sync.auth_config.username")
 	_ = v.BindEnv("sync.auth_config.password")
 

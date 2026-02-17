@@ -55,7 +55,7 @@ type SyncServiceClient interface {
 	// RequestRegistryCredentials requests registry credentials between two Directory nodes.
 	//
 	// This RPC allows a requesting node to authenticate with this node and obtain
-	// temporary registry credentials for secure Zot-based synchronization.
+	// temporary registry credentials for secure OCI synchronization.
 	RequestRegistryCredentials(ctx context.Context, in *RequestRegistryCredentialsRequest, opts ...grpc.CallOption) (*RequestRegistryCredentialsResponse, error)
 }
 
@@ -166,7 +166,7 @@ type SyncServiceServer interface {
 	// RequestRegistryCredentials requests registry credentials between two Directory nodes.
 	//
 	// This RPC allows a requesting node to authenticate with this node and obtain
-	// temporary registry credentials for secure Zot-based synchronization.
+	// temporary registry credentials for secure OCI synchronization.
 	RequestRegistryCredentials(context.Context, *RequestRegistryCredentialsRequest) (*RequestRegistryCredentialsResponse, error)
 }
 

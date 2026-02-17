@@ -361,7 +361,6 @@ tasks:
     cmds:
       - task: deploy:kubernetes:local
         vars:
-          DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
           DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
       - task: deploy:kubernetes:local:port-forward
 
@@ -790,7 +789,7 @@ tasks:
           --set apiserver.postgresql.auth.username=dir \
           --set apiserver.postgresql.auth.password=dirpassword \
           --set apiserver.postgresql.auth.database=dir \
-          --set apiserver.reconciler.enabled=true \
+          --set apiserver.reconciler.regsync.interval="10s" \
           --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
           --set apiserver.config.oasf_api_validation.disable=true \
           --namespace {{ .HELM_NAMESPACE }} \

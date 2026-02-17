@@ -37,7 +37,6 @@ import (
 	"github.com/agntcy/dir/server/reverification"
 	"github.com/agntcy/dir/server/routing"
 	"github.com/agntcy/dir/server/store"
-	"github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 	"github.com/agntcy/dir/utils/logging"
 	"google.golang.org/grpc"
@@ -61,7 +60,6 @@ type Server struct {
 	routing               types.RoutingAPI
 	database              types.DatabaseAPI
 	eventService          *events.Service
-	syncService           *sync.Service
 	authnService          *authn.Service
 	authzService          *authz.Service
 	publicationService    *publication.Service
@@ -236,12 +234,6 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create database API: %w", err)
 	}
 
-	// Create services
-	syncService, err := sync.New(databaseAPI, storeAPI, options)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create sync service: %w", err)
-	}
-
 	// Create JWT authentication service if enabled
 	var authnService *authn.Service
 	if cfg.Authn.Enabled {
@@ -326,7 +318,6 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 		routing:               routingAPI,
 		database:              databaseAPI,
 		eventService:          eventService,
-		syncService:           syncService,
 		authnService:          authnService,
 		authzService:          authzService,
 		publicationService:    publicationService,
@@ -384,13 +375,6 @@ func (s Server) Close(ctx context.Context) {
 		}
 	}
 
-	// Stop sync service if running
-	if s.syncService != nil {
-		if err := s.syncService.Stop(); err != nil {
-			logger.Error("Failed to stop sync service", "error", err)
-		}
-	}
-
 	// Stop authn service if running
 	if s.authnService != nil {
 		if err := s.authnService.Stop(); err != nil {
@@ -432,15 +416,6 @@ func (s Server) start(ctx context.Context) error {
 		logger.Info("Metrics server started")
 	}
 
-	// Start sync service
-	if s.syncService != nil {
-		if err := s.syncService.Start(ctx); err != nil {
-			return fmt.Errorf("failed to start sync service: %w", err)
-		}
-
-		logger.Info("Sync service started")
-	}
-
 	// Start publication service
 	if s.publicationService != nil {
 		if err := s.publicationService.Start(ctx); err != nil {
@@ -467,7 +442,6 @@ func (s Server) start(ctx context.Context) error {
 
 	// Add readiness checks
 	s.health.AddReadinessCheck("database", s.database.IsReady)
-	s.health.AddReadinessCheck("sync", s.syncService.IsReady)
 	s.health.AddReadinessCheck("publication", s.publicationService.IsReady)
 	s.health.AddReadinessCheck("store", s.store.IsReady)
 	s.health.AddReadinessCheck("routing", s.routing.IsReady)

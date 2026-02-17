@@ -12,7 +12,6 @@ import (
 	"os/exec"
 
 	ociconfig "github.com/agntcy/dir/server/store/oci/config"
-	serversync "github.com/agntcy/dir/server/sync"
 	"github.com/agntcy/dir/server/types"
 )
 
@@ -47,7 +46,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	logger.Info("Executing sync", "sync_id", w.syncID, "remote_directory", remoteDirectoryURL)
 
 	// Negotiate credentials with the remote Directory node
-	credentials, err := serversync.NegotiateCredentials(ctx, remoteDirectoryURL, w.config.Authn)
+	credentials, err := NegotiateCredentials(ctx, remoteDirectoryURL, w.config.Authn)
 	if err != nil {
 		return fmt.Errorf("failed to negotiate credentials: %w", err)
 	}

@@ -47,7 +47,7 @@ type SearchDatabaseAPI interface {
 
 type SyncDatabaseAPI interface {
 	// CreateSync creates a new sync object in the database.
-	CreateSync(remoteURL string, remoteRegistryAddress string, cids []string, requiresRegsync bool) (string, error)
+	CreateSync(remoteURL string, cids []string) (string, error)
 
 	// GetSyncByID retrieves a sync object by its ID.
 	GetSyncByID(syncID string) (SyncObject, error)
@@ -58,20 +58,8 @@ type SyncDatabaseAPI interface {
 	// GetSyncsByStatus retrieves all sync objects by their status.
 	GetSyncsByStatus(status storev1.SyncStatus) ([]SyncObject, error)
 
-	// GetZotSyncsByStatus retrieves sync objects that use Zot-to-Zot sync (requires_regsync = false).
-	GetZotSyncsByStatus(status storev1.SyncStatus) ([]SyncObject, error)
-
-	// GetRegsyncSyncsByStatus retrieves sync objects that require regsync (requires_regsync = true).
-	GetRegsyncSyncsByStatus(status storev1.SyncStatus) ([]SyncObject, error)
-
 	// UpdateSyncStatus updates an existing sync object in the database.
 	UpdateSyncStatus(syncID string, status storev1.SyncStatus) error
-
-	// UpdateSyncRemoteRegistry updates the remote registry of a sync object.
-	UpdateSyncRemoteRegistry(syncID string, remoteRegistry string) error
-
-	// GetSyncRemoteRegistry retrieves the remote registry of a sync object.
-	GetSyncRemoteRegistry(syncID string) (string, error)
 
 	// DeleteSync deletes a sync object by its ID.
 	DeleteSync(syncID string) error

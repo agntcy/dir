@@ -1,7 +1,7 @@
 # Copyright AGNTCY Contributors (https://github.com/agntcy)
 # SPDX-License-Identifier: Apache-2.0
 
-{{- if and .Values.reconciler.enabled (eq .Values.database.type "postgres") }}
+{{- if eq .Values.database.type "postgres" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

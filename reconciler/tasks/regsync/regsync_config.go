@@ -18,7 +18,6 @@ const (
 
 // RegsyncConfig represents the regsync configuration file format.
 // See: https://github.com/regclient/regclient/blob/main/docs/regsync.md
-// This struct is not thread-safe and should only be used by a single worker.
 type RegsyncConfig struct {
 	// Version is the config file version.
 	Version int `yaml:"version"`

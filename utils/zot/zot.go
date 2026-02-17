@@ -14,21 +14,6 @@ import (
 
 var logger = logging.Logger("utils/zot")
 
-// buildRegistryURL constructs the registry URL with proper protocol.
-func buildRegistryURL(registryURL string, insecure bool) string {
-	// If URL already has a protocol, return as-is
-	if strings.HasPrefix(registryURL, "http://") || strings.HasPrefix(registryURL, "https://") {
-		return registryURL
-	}
-
-	// Add appropriate protocol based on insecure flag
-	if insecure {
-		return "http://" + registryURL
-	}
-
-	return "https://" + registryURL
-}
-
 // CheckReadiness checks if Zot is ready to serve traffic by querying its /readyz endpoint.
 // Returns true if Zot responds with 200 OK, false otherwise.
 func CheckReadiness(ctx context.Context, registryAddress string, insecure bool) bool {
@@ -67,4 +52,19 @@ func CheckReadiness(ctx context.Context, registryAddress string, insecure bool) 
 	logger.Debug("Zot not ready", "address", registryAddress, "status", resp.StatusCode)
 
 	return false
+}
+
+// buildRegistryURL constructs the registry URL with proper protocol.
+func buildRegistryURL(registryURL string, insecure bool) string {
+	// If URL already has a protocol, return as-is
+	if strings.HasPrefix(registryURL, "http://") || strings.HasPrefix(registryURL, "https://") {
+		return registryURL
+	}
+
+	// Add appropriate protocol based on insecure flag
+	if insecure {
+		return "http://" + registryURL
+	}
+
+	return "https://" + registryURL
 }

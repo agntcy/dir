@@ -91,7 +91,7 @@ class SyncServiceServicer(object):
         """RequestRegistryCredentials requests registry credentials between two Directory nodes.
 
         This RPC allows a requesting node to authenticate with this node and obtain
-        temporary registry credentials for secure Zot-based synchronization.
+        temporary registry credentials for secure OCI synchronization.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

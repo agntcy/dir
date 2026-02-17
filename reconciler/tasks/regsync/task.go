@@ -60,7 +60,7 @@ func (t *Task) Run(ctx context.Context) error {
 	logger.Debug("Running regsync reconciliation")
 
 	// Find pending syncs that need regsync
-	pendingSyncs, err := t.db.GetRegsyncSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_PENDING)
+	pendingSyncs, err := t.db.GetSyncsByStatus(storev1.SyncStatus_SYNC_STATUS_PENDING)
 	if err != nil {
 		return fmt.Errorf("failed to get pending syncs: %w", err)
 	}

@@ -5,8 +5,6 @@
 package registry
 
 import (
-	"strings"
-
 	"github.com/agntcy/dir/utils/logging"
 )
 
@@ -26,8 +24,9 @@ const (
 	// RegistryTypeDockerHub represents Docker Hub.
 	RegistryTypeDockerHub RegistryType = "dockerhub"
 
-	// RegistryTypeUnknown represents an unknown registry type.
-	RegistryTypeUnknown RegistryType = "unknown"
+	// RegistryTypeOCI represents a generic OCI registry type.
+	// Must support OCI 1.1 Distribution/Image Spec.
+	RegistryTypeOCI RegistryType = "oci"
 
 	// DefaultRegistryType is the default registry type for backward compatibility.
 	DefaultRegistryType = RegistryTypeZot
@@ -46,25 +45,9 @@ func IsSupported(r RegistryType) bool {
 			"registry_type", string(r))
 
 		return true
-	case RegistryTypeUnknown:
-		return false
+	case RegistryTypeOCI:
+		return true
 	default:
 		return false
-	}
-}
-
-// DetectRegistryType attempts to detect the registry type from a URL.
-func DetectRegistryType(url string) RegistryType {
-	url = strings.ToLower(url)
-
-	switch {
-	case strings.Contains(url, "ghcr.io"):
-		return RegistryTypeGHCR
-	case strings.Contains(url, "docker.io") || strings.Contains(url, "registry.hub.docker.com"):
-		return RegistryTypeDockerHub
-	case strings.Contains(url, "zot") || strings.Contains(url, "localhost") || strings.Contains(url, "127.0.0.1"):
-		return RegistryTypeZot
-	default:
-		return RegistryTypeUnknown
 	}
 }
