@@ -63,6 +63,7 @@ func (r *RecordDataAdapter) GetSchemaVersion() string {
 	if r.record.SchemaVersion != "" {
 		return r.record.SchemaVersion
 	}
+
 	// Default schema version for search records
 	return "v1"
 }

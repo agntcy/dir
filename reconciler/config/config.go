@@ -79,20 +79,24 @@ func LoadConfig() (*Config, error) {
 	//
 	// Database configuration
 	//
-	_ = v.BindEnv("database.host")
-	v.SetDefault("database.host", dbconfig.DefaultPostgresHost)
+	_ = v.BindEnv("database.db_type")
+	v.SetDefault("database.db_type", dbconfig.DefaultDBType)
 
-	_ = v.BindEnv("database.port")
-	v.SetDefault("database.port", dbconfig.DefaultPostgresPort)
+	// PostgreSQL configuration
+	_ = v.BindEnv("database.postgres.host")
+	v.SetDefault("database.postgres.host", dbconfig.DefaultPostgresHost)
 
-	_ = v.BindEnv("database.database")
-	v.SetDefault("database.database", dbconfig.DefaultPostgresDatabase)
+	_ = v.BindEnv("database.postgres.port")
+	v.SetDefault("database.postgres.port", dbconfig.DefaultPostgresPort)
 
-	_ = v.BindEnv("database.username")
-	_ = v.BindEnv("database.password")
+	_ = v.BindEnv("database.postgres.database")
+	v.SetDefault("database.postgres.database", dbconfig.DefaultPostgresDatabase)
 
-	_ = v.BindEnv("database.ssl_mode")
-	v.SetDefault("database.ssl_mode", dbconfig.DefaultPostgresSSLMode)
+	_ = v.BindEnv("database.postgres.username")
+	_ = v.BindEnv("database.postgres.password")
+
+	_ = v.BindEnv("database.postgres.ssl_mode")
+	v.SetDefault("database.postgres.ssl_mode", dbconfig.DefaultPostgresSSLMode)
 
 	//
 	// Local registry configuration (shared by all tasks)
@@ -113,16 +117,15 @@ func LoadConfig() (*Config, error) {
 	_ = v.BindEnv("regsync.interval")
 	v.SetDefault("regsync.interval", regsync.DefaultInterval)
 
-	_ = v.BindEnv("regsync.config_path")
-	v.SetDefault("regsync.config_path", regsync.DefaultConfigPath)
-
 	_ = v.BindEnv("regsync.binary_path")
 	v.SetDefault("regsync.binary_path", regsync.DefaultBinaryPath)
 
 	_ = v.BindEnv("regsync.timeout")
 	v.SetDefault("regsync.timeout", regsync.DefaultTimeout)
 
-	// Authentication configuration for remote Directory connections
+	//
+	// Authentication configuration for registry credentials provider
+	//
 	_ = v.BindEnv("regsync.authn.enabled")
 	v.SetDefault("regsync.authn.enabled", false)
 
