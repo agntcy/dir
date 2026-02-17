@@ -22,20 +22,16 @@ data:
     {{- $metricsConfig := dict "enabled" .Values.metrics.enabled "address" (printf ":%d" (.Values.metrics.port | int)) }}
     {{- $_ := set $config "metrics" $metricsConfig }}
     {{- end }}
-    {{- /* Database configuration */ -}}
-    {{- $dbConfig := dict "db_type" .Values.database.type }}
-    {{- if eq .Values.database.type "sqlite" }}
-    {{- $sqliteConfig := dict "db_path" .Values.database.sqlite.dbPath }}
-    {{- $_ := set $dbConfig "sqlite" $sqliteConfig }}
-    {{- else if eq .Values.database.type "postgres" }}
+    {{- /* Database configuration (PostgreSQL only) */ -}}
+    {{- $dbConfig := dict "db_type" "postgres" }}
     {{- $pgConfig := dict }}
     {{- /* Use helper to derive host from postgresql subchart when enabled */ -}}
     {{- $_ := set $pgConfig "host" (include "chart.postgres.host" .) }}
     {{- $_ := set $pgConfig "port" (.Values.database.postgres.port | default 5432 | int) }}
     {{- /* Use helper to derive database name from postgresql subchart when enabled */ -}}
     {{- $_ := set $pgConfig "database" (include "chart.postgres.database" .) }}
+    {{- $_ := set $pgConfig "ssl_mode" (.Values.database.postgres.sslMode | default "disable") }}
     {{- $_ := set $dbConfig "postgres" $pgConfig }}
-    {{- end }}
     {{- $_ := set $config "database" $dbConfig }}
     {{- $config | toYaml | nindent 4 }}
 
@@ -43,3 +39,48 @@ data:
     {{- if .Values.config.authz.enforcer_policy_csv }}
     {{- .Values.config.authz.enforcer_policy_csv | nindent 4}}
     {{- end }}
+
+  reconciler.config.yml: |
+    {{- /* Reconciler configuration */ -}}
+    {{- $reconcilerConfig := dict }}
+    {{- /* Database configuration (PostgreSQL) */ -}}
+    {{- $dbConfig := dict "db_type" "postgres" }}
+    {{- $pgConfig := dict }}
+    {{- $_ := set $pgConfig "host" (include "chart.postgres.host" .) }}
+    {{- $_ := set $pgConfig "port" (.Values.database.postgres.port | default 5432 | int) }}
+    {{- $_ := set $pgConfig "database" (include "chart.postgres.database" .) }}
+    {{- $_ := set $pgConfig "ssl_mode" (.Values.database.postgres.sslMode | default "disable") }}
+    {{- $_ := set $dbConfig "postgres" $pgConfig }}
+    {{- $_ := set $reconcilerConfig "database" $dbConfig }}
+    {{- /* Local registry configuration */ -}}
+    {{- $registryConfig := dict }}
+    {{- $_ := set $registryConfig "type" (.Values.config.store.oci.type | default "oci") }}
+    {{- $_ := set $registryConfig "registry_address" (include "chart.oci.registryAddress" .) }}
+    {{- $_ := set $registryConfig "repository_name" (include "chart.oci.repositoryName" .) }}
+    {{- $authConfig := dict }}
+    {{- $insecureVal := .Values.config.store.oci.auth_config.insecure }}
+    {{- if kindIs "string" $insecureVal }}
+    {{- $_ := set $authConfig "insecure" (eq $insecureVal "true") }}
+    {{- else }}
+    {{- $_ := set $authConfig "insecure" ($insecureVal | default false) }}
+    {{- end }}
+    {{- $_ := set $registryConfig "auth_config" $authConfig }}
+    {{- $_ := set $reconcilerConfig "local_registry" $registryConfig }}
+    {{- /* OASF schema URL */ -}}
+    {{- if and .Values.config .Values.config.oasf_api_validation }}
+    {{- $_ := set $reconcilerConfig "schema_url" (.Values.config.oasf_api_validation.schema_url | default "https://schema.oasf.outshift.com") }}
+    {{- else }}
+    {{- $_ := set $reconcilerConfig "schema_url" "https://schema.oasf.outshift.com" }}
+    {{- end }}
+    {{- /* Regsync task configuration */ -}}
+    {{- $regsyncConfig := dict }}
+    {{- $_ := set $regsyncConfig "enabled" .Values.reconciler.regsync.enabled }}
+    {{- $_ := set $regsyncConfig "interval" .Values.reconciler.regsync.interval }}
+    {{- $_ := set $regsyncConfig "timeout" .Values.reconciler.regsync.timeout }}
+    {{- $_ := set $reconcilerConfig "regsync" $regsyncConfig }}
+    {{- /* Indexer task configuration */ -}}
+    {{- $indexerConfig := dict }}
+    {{- $_ := set $indexerConfig "enabled" .Values.reconciler.indexer.enabled }}
+    {{- $_ := set $indexerConfig "interval" .Values.reconciler.indexer.interval }}
+    {{- $_ := set $reconcilerConfig "indexer" $indexerConfig }}
+    {{- $reconcilerConfig | toYaml | nindent 4 }}

@@ -626,7 +626,7 @@ for _, record := range records {
 
 ### Integration Points
 - **Storage Layer** - OCI implementations
-- **Search Layer** - SQLite, in-memory implementations  
+- **Search Layer** - SQL/PostgreSQL database
 - **Routing Layer** - P2P networking implementations
 - **Config System** - Server configuration management
 

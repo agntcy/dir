@@ -512,82 +512,18 @@ tasks:
       - "{{.BAKE_ENV}} docker buildx bake {{.IMAGE_BAKE_OPTS}} dir-apiserver"
 
   server:start:
-    desc: Start Directory server
-    dir: server/cmd
+    desc: Start local Directory server stack
+    dir: ./install/docker
     env:
-      # Local development settings:
-      # - Faster publication scheduling for quicker feedback
       DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL: 1s
-      # - OASF validation uses OASF API (schema URL is required)
-      DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL: "https://schema.oasf.outshift.com"
-      # - Use SQLite for local development (no PostgreSQL required)
-      DIRECTORY_SERVER_DATABASE_DB_TYPE: sqlite
-      DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH: /tmp/dir.db
-      # - OCI Registry address (defaulting to 5001 to avoid AirPlay conflict)
-      DIRECTORY_SERVER_STORE_OCI_REGISTRY_ADDRESS: "127.0.0.1:5001"
     cmds:
-      - defer: { task: server:store:stop }
-      - task: server:store:start
-      - go run main.go
+      - docker compose up -d --build
 
-  server:store:pull:
-    desc: Pull local OCI registry server docker image
-    vars:
-      IMAGE: "{{.IMAGE}}"
-    cmd: docker pull "{{.IMAGE}}"
-    status:
-      - docker image inspect "{{.IMAGE}}" > /dev/null 2>&1 || exit 1
-
-  server:store:start:
-    desc: Start local OCI registry server for storage
-    internal: true
-    vars:
-      IMAGE: ghcr.io/project-zot/zot-linux-{{ARCH}}:v{{.ZOT_VERSION}}
-      PORT: 5001
-    deps:
-      - task: server:store:pull
-        vars:
-          IMAGE: "{{.IMAGE}}"
+  server:stop:
+    desc: Stop local Directory server stack
+    dir: ./install/docker
     cmds:
-      - |
-        # mount config
-        cat > /tmp/config.json <<EOF
-        {
-          "distSpecVersion": "1.1.1",
-          "storage": {
-            "rootDirectory": "/tmp/zot"
-          },
-          "http": {
-            "address": "0.0.0.0",
-            "port": "{{.PORT}}"
-          },
-          "log": {
-            "level": "debug"
-          },
-          "extensions": {
-            "search": {
-              "enable": true
-            },
-            "trust": {
-              "enable": true,
-              "cosign": true,
-              "notation": false
-            }
-          }
-        }
-        EOF
-
-        # run docker with attached volume
-        docker run \
-              -it \
-              --rm -d -p {{.PORT}}:{{.PORT}} \
-              -v /tmp/config.json:/config.json:ro \
-              --name oci-registry {{.IMAGE}} serve /config.json
-
-  server:store:stop:
-    desc: Stop local OCI registry node
-    cmds:
-      - docker stop oci-registry
+      - docker compose down
 
   server:bench:
     desc: Benchmark Directory server code
@@ -683,6 +619,7 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # TODO: make logic idempotent so that running functional tests does not change previous contexts
 
@@ -720,6 +657,9 @@ tasks:
           {{ if .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}--set apiserver.config.ratelimit.per_client_burst="{{ .DIRECTORY_SERVER_RATELIMIT_PER_CLIENT_BURST }}"{{ end }} \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           {{ if .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}--set apiserver.config.oasf_api_validation.schema_url="{{ .DIRECTORY_SERVER_OASF_API_VALIDATION_SCHEMA_URL }}"{{ end }} \
+          --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+          --set apiserver.reconciler.regsync.interval="1s" \
+          --set apiserver.reconciler.indexer.interval="1s" \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
           --install \
@@ -782,14 +722,13 @@ tasks:
           --set apiserver.secrets.syncAuth.password="${DIRECTORY_SERVER_SYNC_AUTH_CONFIG_PASSWORD}" \
           {{ if .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}--set apiserver.config.publication.scheduler_interval="{{ .DIRECTORY_SERVER_PUBLICATION_SCHEDULER_INTERVAL }}"{{ end }} \
           --set apiserver.config.routing.refresh_interval="1s" \
-          --set apiserver.database.type=postgres \
           --set apiserver.database.postgres.host=dir-postgresql.{{ .HELM_NAMESPACE }}.svc.cluster.local \
           --set apiserver.database.postgres.port=5432 \
           --set apiserver.postgresql.enabled=true \
           --set apiserver.postgresql.auth.username=dir \
           --set apiserver.postgresql.auth.password=dirpassword \
           --set apiserver.postgresql.auth.database=dir \
-          --set apiserver.reconciler.regsync.interval="10s" \
+          --set apiserver.reconciler.regsync.interval="1s" \
           --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
           --set apiserver.config.oasf_api_validation.disable=true \
           --namespace {{ .HELM_NAMESPACE }} \
@@ -831,6 +770,7 @@ tasks:
       HELM_CHART_PATH: "{{ .ROOT_DIR }}/install/charts/dir"
       HELM_VALUES_PATH: "{{ .ROOT_DIR }}/install/charts/dir/values.yaml"
       HELM_EXTRA_ARGS: '{{ .HELM_EXTRA_ARGS | default "" }}'
+      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # Generate credentials and htpasswd file (using defaults)
       - task: deploy:kubernetes:gen-htpasswd-creds
@@ -858,6 +798,9 @@ tasks:
           --set apiserver.secrets.syncAuth.username="${HTPASSWD_SYNC_USERNAME}" \
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           --set apiserver.log_level="DEBUG" \
+          --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+          --set apiserver.reconciler.regsync.interval="1s" \
+          --set apiserver.reconciler.indexer.interval="1s" \
           {{ .HELM_EXTRA_ARGS }} \
           --namespace {{ .HELM_NAMESPACE }} \
           --create-namespace \
@@ -973,6 +916,7 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # Generate private key if it doesn't exist
       - |
@@ -1015,7 +959,6 @@ tasks:
           --set apiserver.config.routing.listen_address="/ip4/0.0.0.0/tcp/8999" \
           --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.bootstrap.svc.cluster.local:8888" \
           --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.bootstrap.svc.cluster.local:5000" \
-          --set apiserver.zot.extraVolumes[0].persistentVolumeClaim.claimName="agntcy-dir-zot-config" \
           --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
           --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
           --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
@@ -1024,6 +967,9 @@ tasks:
           --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
           {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
           --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
+          --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+          --set apiserver.reconciler.regsync.interval="1s" \
+          --set apiserver.reconciler.indexer.interval="1s" \
           --namespace "bootstrap" \
           --create-namespace \
           --install \
@@ -1040,12 +986,14 @@ tasks:
       # Coverage config
       E2E_COVERAGE_ENABLED: '{{ .E2E_COVERAGE_ENABLED | default "false" }}'
       DEPLOY_IMAGE_TAG: '{{ if eq .E2E_COVERAGE_ENABLED "true" }}{{ .COVERAGE_IMAGE_TAG }}{{ else }}{{ .IMAGE_TAG }}{{ end }}'
+      RECONCILER_IMAGE_TAG: '{{ .RECONCILER_IMAGE_TAG | default .IMAGE_TAG }}'
     cmds:
       # Deploy bootstrap with explicit var passing (not as dependency)
       - task: deploy:kubernetes:network:bootstrap
         vars:
           PUBLICATION_SCHEDULER_INTERVAL: "{{ .PUBLICATION_SCHEDULER_INTERVAL }}"
           E2E_COVERAGE_ENABLED: "{{ .E2E_COVERAGE_ENABLED }}"
+          RECONCILER_IMAGE_TAG: "{{ .RECONCILER_IMAGE_TAG }}"
 
       # Deploy the peer servers using Helm
       - for:
@@ -1072,7 +1020,6 @@ tasks:
             --set apiserver.config.store.oci.registry_address="agntcy-dir-zot.{{ .ITEM.PEER }}.svc.cluster.local:5000" \
             --set apiserver.config.routing.bootstrap_peers[0]="/dns4/agntcy-dir-apiserver-routing.bootstrap.svc.cluster.local/tcp/8999/p2p/${BOOTSTRAP_PEER_ID}" \
             --set apiserver.config.routing.directory_api_address="agntcy-dir-apiserver.{{ .ITEM.PEER }}.svc.cluster.local:8888" \
-            --set apiserver.zot.extraVolumes[0].persistentVolumeClaim.claimName="agntcy-dir-zot-config" \
             --set apiserver.secrets.ociAuth.username="${HTPASSWD_USERNAME}" \
             --set apiserver.secrets.ociAuth.password="${HTPASSWD_PASSWORD}" \
             --set apiserver.zot.authHeader="${HTPASSWD_AUTH_HEADER}" \
@@ -1081,6 +1028,9 @@ tasks:
             --set apiserver.secrets.syncAuth.password="${HTPASSWD_SYNC_PASSWORD}" \
             {{ if eq .E2E_COVERAGE_ENABLED "true" }}--set-json 'apiserver.extraEnv=[{"name":"GOCOVERDIR","value":"/tmp/coverage"}]' --set apiserver.coverageVolume=true{{ end }} \
             --set apiserver.config.oasf_api_validation.schema_url="https://schema.oasf.outshift.com" \
+            --set apiserver.reconciler.image.tag="{{ .RECONCILER_IMAGE_TAG }}" \
+            --set apiserver.reconciler.regsync.interval="1s" \
+            --set apiserver.reconciler.indexer.interval="1s" \
             --namespace "{{ .ITEM.PEER }}" \
             --create-namespace \
             --install \

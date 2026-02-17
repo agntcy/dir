@@ -80,7 +80,7 @@ config:
 
       # Auth credentials to use.
       auth_config:
-        insecure: "true"
+        insecure: true
         # username: ""
         # password: ""
         # access_token: ""
@@ -204,6 +204,16 @@ config:
     #     rps: 200     # Higher limit for read operations
     #     burst: 400
 
+  # OASF API validation configuration
+  oasf_api_validation:
+    # Schema URL for OASF validation
+    # Used by both the apiserver and reconciler for validating agent records
+    schema_url: "https://schema.oasf.outshift.com"
+
+    # Disable OASF validation entirely (default: false)
+    # Set to true to skip schema validation (useful for testing)
+    disable: false
+
 # SPIRE configuration
 spire:
   enabled: false
@@ -273,43 +283,29 @@ pvc:
   storageClassName: standard
   size: 1G
 
-# Database configuration
+# Database configuration (PostgreSQL only)
+# PostgreSQL can be deployed via:
+# 1. Built-in subchart: postgresql.enabled: true (default)
+# 2. External/manually deployed: postgresql.enabled: false + configure database.postgres.*
 database:
-  # Database type: "sqlite" or "postgres"
-  # - sqlite: Single-file embedded database
-  # - postgres: External PostgreSQL database
-  type: "postgres"
-
-  # SQLite configuration
-  sqlite:
-    # Path to SQLite database file
-    # Default: /tmp/dir.db (ephemeral - lost on pod restart)
-    # When using PVC: /var/lib/dir/database/dir.db (persistent)
-    dbPath: "/tmp/dir.db"
-  
   # PostgreSQL configuration
-  # Requires an external PostgreSQL instance (deploy separately or use managed service)
+  # When postgresql.enabled=true (subchart), these values are auto-derived from postgresql.auth.*
+  # When postgresql.enabled=false (external), configure these for your external PostgreSQL instance
   postgres:
-    # PostgreSQL host address
+    # PostgreSQL host address (only used when postgresql.enabled=false)
+    # For external PostgreSQL, set to your database hostname
     host: ""
     
     # PostgreSQL port (default: 5432)
     port: 5432
     
-    # Database name
+    # Database name (only used when postgresql.enabled=false)
+    # When using subchart, this is derived from postgresql.auth.database
     database: "dir"
-  
-  # PVC for SQLite database persistence (optional)
-  # When enabled, database persists across pod restarts
-  # Also allows enabling readOnlyRootFilesystem security hardening
-  # IMPORTANT: When PVC is enabled, set strategy.type to "Recreate" to avoid
-  # SQLite lock conflicts during updates (see strategy configuration above)
-  pvc:
-    enabled: false # Disabled by default (opt-in for backward compatibility)
-    create: true # Create PVC automatically
-    storageClassName: "" # Use cluster default storage class
-    size: 1Gi # Database size (adjust based on expected record count)
-    accessMode: ReadWriteOnce
+    
+    # SSL mode for PostgreSQL connection
+    # Options: disable, require, verify-ca, verify-full
+    sslMode: "disable"
 
 # Service exposes gRPC server api
 service:
@@ -402,7 +398,7 @@ securityContext: {}
   # capabilities:
   #   drop:
   #   - ALL
-  # readOnlyRootFilesystem: true  # When enabled, /tmp emptyDir is automatically mounted for SQLite temp files
+  # readOnlyRootFilesystem: true
   # runAsNonRoot: true
   # runAsUser: 1000
 
@@ -443,19 +439,19 @@ autoscaling:
   # targetMemoryUtilizationPercentage: 80
 
 # Deployment strategy for pod updates
-# IMPORTANT: When using PVCs (routing or database), use "Recreate" strategy
-# to avoid file lock conflicts with BadgerDB and SQLite.
+# IMPORTANT: When using PVCs for routing, use "Recreate" strategy
+# to avoid file lock conflicts with BadgerDB.
 #
 # Recreate: Terminates old pod before starting new one (default, required with PVCs)
 # - Ensures clean database shutdown and no lock conflicts
 # - Brief downtime during updates (10-15 seconds)
 # - Prevents CrashLoopBackOff due to file locks
 #
-# RollingUpdate: Zero-downtime updates (only for stateless deployments without PVCs)
-# - NOT recommended when PVCs are enabled
-# - Can cause BadgerDB/SQLite lock conflicts
+# RollingUpdate: Zero-downtime updates (only for stateless deployments without routing PVC)
+# - NOT recommended when routing PVC is enabled
+# - Can cause BadgerDB lock conflicts
 #
-# To use RollingUpdate (only if NO PVCs are used):
+# To use RollingUpdate (only if NO routing PVC is used):
 # strategy:
 #   type: RollingUpdate
 #   rollingUpdate:

@@ -35,34 +35,6 @@ spec:
       serviceAccountName: {{ include "chart.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
-      initContainers:
-        - name: init-zot-config
-          image: busybox:1.36
-          command:
-            - sh
-            - -c
-            - |
-              echo "Initializing ZOT config..."
-              if [ ! -f /etc/zot/config.json ]; then
-                echo "Creating ZOT config from template..."
-                cat > /etc/zot/config.json << 'EOF'
-              {{- tpl (index .Values.zot.configFiles "config.json") . | nindent 14 }}
-              EOF
-                chmod 666 /etc/zot/config.json
-                echo "Config initialized successfully"
-              else
-                echo "Config exists, ensuring it's writable..."
-                chmod 666 /etc/zot/config.json
-                echo "Config permissions updated"
-              fi
-              echo "Setting directory permissions..."
-              chmod 777 /etc/zot
-              echo "Initialization complete"
-          volumeMounts:
-            - name: zot-config-storage
-              mountPath: /etc/zot
-      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           env:
@@ -96,12 +68,7 @@ spec:
                   name: {{ include "chart.fullname" . }}
                   key: oci-password
             {{- end }}
-            {{- if eq .Values.database.type "sqlite" }}
-            {{- if .Values.database.sqlite.dbPath }}
-            - name: DIRECTORY_SERVER_DATABASE_SQLITE_DB_PATH
-              value: {{ .Values.database.sqlite.dbPath }}
-            {{- end }}
-            {{- else if eq .Values.database.type "postgres" }}
+            {{- /* PostgreSQL database credentials */ -}}
             {{- if include "chart.postgres.credentialsConfigured" . }}
             - name: DIRECTORY_SERVER_DATABASE_POSTGRES_USERNAME
               valueFrom:
@@ -113,7 +80,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "chart.fullname" . }}
                   key: postgres-password
-            {{- end }}
             {{- end }}
             {{- if eq .Values.spire.enabled true }}
             - name: DIRECTORY_SERVER_AUTHZ_ENABLED
@@ -216,17 +182,9 @@ spec:
             - name: routing-data
               mountPath: {{ .Values.config.routing.datastore_dir }}
             {{- end }}
-            {{- if .Values.database.pvc.enabled }}
-            - name: database-data
-              mountPath: /var/lib/dir/database
-            {{- end }}
             {{- if .Values.securityContext.readOnlyRootFilesystem }}
             - name: tmp-data
               mountPath: /tmp
-            {{- end }}
-            {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
-            - name: zot-config-storage
-              mountPath: /etc/zot
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
@@ -282,16 +240,6 @@ spec:
         - name: routing-data
           persistentVolumeClaim:
             claimName: {{ include "chart.fullname" . }}-pvc
-        {{- end }}
-        {{- if .Values.database.pvc.enabled }}
-        - name: database-data
-          persistentVolumeClaim:
-            claimName: {{ include "chart.fullname" . }}-database-pvc
-        {{- end }}
-        {{- if and .Values.zot.enabled (eq .Values.zot.mountConfig false) }}
-        - name: zot-config-storage
-          persistentVolumeClaim:
-            claimName: {{ .Release.Name }}-zot-config
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

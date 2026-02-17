@@ -38,7 +38,7 @@ func BuildWildcardCondition(field string, patterns []string) (string, []any) {
 
 // BuildSingleWildcardCondition builds a WHERE condition for a single field with wildcard or exact matching.
 // Returns the condition string and argument for the WHERE clause.
-// Uses SQL LIKE which works accross SQL databases.
+// Uses SQL LIKE which works across SQL databases.
 //
 // Supported wildcards:
 //   - * matches any sequence of characters (converted to %)

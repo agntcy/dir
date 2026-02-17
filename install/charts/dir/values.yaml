@@ -280,9 +280,6 @@ apiserver:
     # Enable Zot registry (set to false for external registries like GHCR)
     enabled: true
 
-    # Disable default config mounting
-    mountConfig: false
-
     # Enable default secret mounting
     mountSecret: true
 
@@ -333,23 +330,6 @@ apiserver:
     # htpasswd credentials for ZOT authentication
     secretFiles:
       htpasswd: ""
-
-    # Extra volumes to mount the shared PVC for writable config
-    # This allows the apiserver sync worker to modify ZOT's config at runtime
-    extraVolumes:
-      - name: zot-config-storage
-        persistentVolumeClaim:
-          claimName: dir-zot-config
-
-    # Mount the shared PVC into ZOT container
-    extraVolumeMounts:
-      - name: zot-config-storage
-        mountPath: /etc/zot
-
-    # Configure zot to use the config file from the shared mounted volume
-    extraArgs:
-      - "serve"
-      - "/etc/zot/config.json"
 
   # OASF server configuration (subchart) - OPTIONAL
   # OASF is NOT installed by default. Set enabled: true to deploy an OASF schema server instance.
@@ -465,38 +445,49 @@ apiserver:
       usernameProperty: "sync-username"
       passwordProperty: "sync-password"
 
-  # Database configuration
+  # Database configuration (PostgreSQL only)
+  # PostgreSQL can be deployed via:
+  # 1. Built-in subchart: postgresql.enabled: true (default, see postgresql section below)
+  # 2. External/manually deployed: postgresql.enabled: false + configure database.postgres.*
+  #
+  # When using the postgresql subchart (default), credentials are automatically
+  # configured from postgresql.auth.* section below.
   database:
-    # Database type: "sqlite" or "postgres"
-    type: "postgres"
+    # PostgreSQL configuration
+    # When using external PostgreSQL (postgresql.enabled: false), set these values:
+    postgres:
+      # PostgreSQL host address (only used when postgresql.enabled=false)
+      host: ""
+      
+      # PostgreSQL port
+      port: 5432
+      
+      # Database name (only used when postgresql.enabled=false)
+      database: "dir"
+      
+      # SSL mode for PostgreSQL connection
+      # Options: disable, require, verify-ca, verify-full
+      sslMode: "disable"
 
-    # SQLite configuration
-    sqlite:
-      # Path to SQLite database file
-      # Default: /tmp/dir.db (ephemeral - lost on pod restart)
-      # When using PVC: /var/lib/dir/database/dir.db (persistent)
-      dbPath: "/tmp/dir.db"
-
-    # PVC for database persistence (optional)
-    # When enabled, database persists across pod restarts
-    # Also allows enabling readOnlyRootFilesystem security hardening
-    pvc:
-      enabled: false # Disabled by default (opt-in for backward compatibility)
-      create: true # Create PVC automatically
-      storageClassName: "" # Use cluster default storage class
-      size: 1Gi # Database size (1Gi for dev, 5Gi recommended for production)
-      accessMode: ReadWriteOnce
+  # PostgreSQL subchart configuration
+  # Set enabled: false to use an external/manually deployed PostgreSQL instance
+  postgresql:
+    enabled: true
+    auth:
+      username: "dir"
+      password: ""  # Auto-generated if empty
+      database: "dir"
 
   # Deployment strategy for pod updates
-  # IMPORTANT: Use "Recreate" when PVCs are enabled (routing or database)
-  # to avoid file lock conflicts with BadgerDB and SQLite
+  # Use "Recreate" when routing PVCs are enabled to avoid
+  # BadgerDB lock conflicts during updates
   #
-  # Default: Recreate (prevents database lock conflicts during updates)
+  # Default: Recreate (prevents lock conflicts during updates)
   # - Brief downtime during updates (10-15 seconds)
-  # - Required when using PVCs to avoid CrashLoopBackOff
+  # - Required when using routing PVCs to avoid CrashLoopBackOff
   #
-  # Alternative: RollingUpdate (only for fully stateless deployments)
+  # Alternative: RollingUpdate (only for stateless deployments without routing PVC)
   # - Zero-downtime updates
-  # - NOT compatible with PVCs (will cause lock conflicts)
+  # - NOT compatible with routing PVCs (will cause lock conflicts)
   strategy:
     type: Recreate
